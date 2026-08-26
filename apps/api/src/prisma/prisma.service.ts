@@ -18,7 +18,7 @@ export class PrismaService
     await this.connectWithRetry();
   }
 
-  private async connectWithRetry(retries = 5) {
+  private async connectWithRetry(retries = process.env.VERCEL ? 2 : 5) {
     let lastError: unknown;
     for (let i = 1; i <= retries; i++) {
       try {
@@ -34,13 +34,13 @@ export class PrismaService
         await new Promise((r) => setTimeout(r, 1000 * i));
       }
     }
-    // Don't crash the HTTP server in local/dev if DB is briefly unreachable.
+    // Keep the HTTP process alive so health routes still respond on cold start.
+    // Request handlers that need the DB will fail until reconnect succeeds.
     this.logger.error(
-      `Database unavailable after ${retries} attempts. API is up; DB calls will fail until reconnect.`,
+      `Database unavailable after ${retries} attempts. API is up; DB calls will fail until reconnect.${
+        lastError instanceof Error ? ` Last error: ${lastError.message}` : ''
+      }`,
     );
-    if (process.env.NODE_ENV === 'production') {
-      throw lastError;
-    }
   }
 
   async onModuleDestroy() {
