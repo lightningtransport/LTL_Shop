@@ -49,7 +49,12 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    const payload = await this.verifySupabaseJwt(token);
+    let payload;
+    try {
+      payload = await this.verifySupabaseJwt(token);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired authorization token');
+    }
     const email = String(payload.email ?? '');
     if (!email) {
       throw new UnauthorizedException('Token missing email');

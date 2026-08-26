@@ -88,14 +88,16 @@ export default function LoginPage() {
         <button className="btn-primary w-full" disabled={busy} type="submit">
           Sign In
         </button>
-        <button
-          type="button"
-          className="btn-secondary w-full"
-          disabled={busy}
-          onClick={onDevLogin}
-        >
-          Dev Login (local bypass)
-        </button>
+        {process.env.NODE_ENV !== 'production' ? (
+          <button
+            type="button"
+            className="btn-secondary w-full"
+            disabled={busy}
+            onClick={onDevLogin}
+          >
+            Dev Login (local bypass)
+          </button>
+        ) : null}
       </form>
     </div>
   );
