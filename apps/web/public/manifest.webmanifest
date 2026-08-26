@@ -1,0 +1,16 @@
+{
+  "name": "Lightning Shop Mechanic",
+  "short_name": "LTL Shop",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1720",
+  "theme_color": "#0f1720",
+  "description": "Mechanic Work Order app for Lightning Shop",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

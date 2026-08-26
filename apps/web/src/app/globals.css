@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-shop-bg text-white font-body antialiased min-h-screen;
+  background-image:
+    radial-gradient(ellipse at top, rgba(245, 166, 35, 0.08), transparent 45%),
+    linear-gradient(180deg, #0f1720 0%, #0b1219 100%);
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-shop-accent text-black hover:bg-shop-accentDark;
+  }
+  .btn-secondary {
+    @apply btn bg-shop-panel border border-shop-border text-white hover:border-shop-accent/50;
+  }
+  .btn-danger {
+    @apply btn bg-shop-danger/15 border border-shop-danger/40 text-red-200;
+  }
+  .field {
+    @apply w-full rounded-xl border border-shop-border bg-shop-panel px-4 py-3 text-sm outline-none focus:border-shop-accent;
+  }
+  .card {
+    @apply rounded-2xl border border-shop-border bg-shop-panel/80 p-4 shadow-soft;
+  }
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-shop-muted;
+  }
+}

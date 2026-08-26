@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  mechanic
+  manager
+  admin
+}
+
+enum WorkOrderStatus {
+  created
+  in_progress
+  waiting_paused
+  completed
+  cancelled
+}
+
+enum JobStatus {
+  to_do
+  completed
+  cancelled
+}
+
+enum Priority {
+  low
+  normal
+  high
+  critical
+}
+
+enum PauseReason {
+  waiting_for_parts
+  waiting_for_approval
+  waiting_for_vendor
+  waiting_for_equipment
+  waiting_for_bay
+  waiting_for_driver
+  truck_unavailable
+  working_on_another_wo
+  break
+  end_of_shift
+  other
+}
+
+enum CatalogStatus {
+  active
+  inactive
+}
+
+enum ActivityEventType {
+  work_order_created
+  work_started
+  job_added
+  job_completed
+  job_cancelled
+  work_paused
+  pause_reason_changed
+  work_resumed
+  mechanic_added
+  mechanic_removed
+  priority_changed
+  notes_updated
+  work_order_completed
+  manager_correction
+}
+
+model User {
+  id              String   @id @default(uuid()) @db.Uuid
+  email           String   @unique
+  name            String
+  role            UserRole @default(mechanic)
+  active          Boolean  @default(true)
+  supabaseAuthId  String?  @unique @map("supabase_auth_id")
+  ninoxExternalId String?  @map("ninox_external_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  createdWorkOrders     WorkOrder[]           @relation("WorkOrderCreatedBy")
+  completedWorkOrders   WorkOrder[]           @relation("WorkOrderCompletedBy")
+  mechanicAssignments   MechanicAssignment[]
+  addedJobs             WorkOrderJob[]        @relation("JobAddedBy")
+  completedJobs         WorkOrderJob[]        @relation("JobCompletedBy")
+  pauseEvents           PauseEvent[]
+  activityLogs          ActivityLog[]
+  createdCatalogJobs    CatalogJob[]          @relation("CatalogJobCreatedBy")
+
+  @@map("users")
+}
+
+model Truck {
+  id              String   @id @default(uuid()) @db.Uuid
+  truckNumber     String   @unique @map("truck_number")
+  make            String?
+  model           String?
+  year            Int?
+  mileage         Int?
+  company         String?
+  owner           String?
+  ninoxExternalId String?  @map("ninox_external_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  workOrders WorkOrder[]
+
+  @@index([truckNumber])
+  @@map("trucks")
+}
+
+model JobCategory {
+  id              String        @id @default(uuid()) @db.Uuid
+  name            String        @unique
+  status          CatalogStatus @default(active)
+  sortOrder       Int           @default(0) @map("sort_order")
+  ninoxExternalId String?       @map("ninox_external_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  catalogJobs          CatalogJob[]
+  workOrders           WorkOrder[]
+  workOrderJobs        WorkOrderJob[]
+
+  @@map("job_categories")
+}
+
+model CatalogJob {
+  id              String        @id @default(uuid()) @db.Uuid
+  categoryId      String        @map("category_id") @db.Uuid
+  displayName     String        @map("display_name")
+  status          CatalogStatus @default(active)
+  ninoxExternalId String?       @map("ninox_external_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  createdById     String?       @map("created_by_id") @db.Uuid
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  category      JobCategory   @relation(fields: [categoryId], references: [id])
+  createdBy     User?         @relation("CatalogJobCreatedBy", fields: [createdById], references: [id])
+  aliases       JobAlias[]
+  workOrderJobs WorkOrderJob[]
+
+  @@index([categoryId, status])
+  @@map("catalog_jobs")
+}
+
+model JobAlias {
+  id           String @id @default(uuid()) @db.Uuid
+  catalogJobId String @map("catalog_job_id") @db.Uuid
+  aliasText    String @map("alias_text")
+  aliasNorm    String @unique @map("alias_norm")
+
+  catalogJob CatalogJob @relation(fields: [catalogJobId], references: [id], onDelete: Cascade)
+
+  @@index([catalogJobId])
+  @@map("job_aliases")
+}
+
+model WorkOrder {
+  id                 String          @id @default(uuid()) @db.Uuid
+  displayId          String          @unique @map("display_id")
+  truckId            String          @map("truck_id") @db.Uuid
+  primaryCategoryId  String          @map("primary_category_id") @db.Uuid
+  status             WorkOrderStatus @default(created)
+  priority           Priority        @default(normal)
+  notes              String?
+  createdAt          DateTime        @default(now()) @map("created_at")
+  createdById        String          @map("created_by_id") @db.Uuid
+  startedAt          DateTime?       @map("started_at")
+  completedAt        DateTime?       @map("completed_at")
+  completedById      String?         @map("completed_by_id") @db.Uuid
+  totalActiveLaborMs BigInt          @default(0) @map("total_active_labor_ms")
+  totalWaitingMs     BigInt          @default(0) @map("total_waiting_ms")
+  idempotencyKey     String?         @unique @map("idempotency_key")
+  version            Int             @default(1)
+  ninoxExternalId    String?         @map("ninox_external_id")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  truck           Truck                @relation(fields: [truckId], references: [id])
+  primaryCategory JobCategory          @relation(fields: [primaryCategoryId], references: [id])
+  createdBy       User                 @relation("WorkOrderCreatedBy", fields: [createdById], references: [id])
+  completedBy     User?                @relation("WorkOrderCompletedBy", fields: [completedById], references: [id])
+  jobs            WorkOrderJob[]
+  sessions        WorkSession[]
+  pauseEvents     PauseEvent[]
+  mechanics       MechanicAssignment[]
+  activityLogs    ActivityLog[]
+
+  @@index([status])
+  @@index([truckId, status])
+  @@index([createdById])
+  @@map("work_orders")
+}
+
+model WorkOrderJob {
+  id                String    @id @default(uuid()) @db.Uuid
+  workOrderId       String    @map("work_order_id") @db.Uuid
+  catalogJobId      String?   @map("catalog_job_id") @db.Uuid
+  categoryId        String    @map("category_id") @db.Uuid
+  displayName       String    @map("display_name")
+  customDescription String?   @map("custom_description")
+  isCustom          Boolean   @default(false) @map("is_custom")
+  status            JobStatus @default(to_do)
+  addedAt           DateTime  @default(now()) @map("added_at")
+  addedById         String    @map("added_by_id") @db.Uuid
+  completedAt       DateTime? @map("completed_at")
+  completedById     String?   @map("completed_by_id") @db.Uuid
+  cancelledAt       DateTime? @map("cancelled_at")
+  cancelledReason   String?   @map("cancelled_reason")
+  // Manager review fields for custom jobs
+  mappedCatalogJobId String?  @map("mapped_catalog_job_id") @db.Uuid
+  reviewStatus       String?  @map("review_status")
+  ninoxExternalId    String?  @map("ninox_external_id")
+
+  workOrder  WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalogJob CatalogJob?  @relation(fields: [catalogJobId], references: [id])
+  category   JobCategory  @relation(fields: [categoryId], references: [id])
+  addedBy    User         @relation("JobAddedBy", fields: [addedById], references: [id])
+  completedBy User?       @relation("JobCompletedBy", fields: [completedById], references: [id])
+
+  @@index([workOrderId, status])
+  @@map("work_order_jobs")
+}
+
+model WorkSession {
+  id          String    @id @default(uuid()) @db.Uuid
+  workOrderId String    @map("work_order_id") @db.Uuid
+  startedAt   DateTime  @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@map("work_sessions")
+}
+
+model PauseEvent {
+  id          String      @id @default(uuid()) @db.Uuid
+  workOrderId String      @map("work_order_id") @db.Uuid
+  reason      PauseReason
+  notes       String?
+  startedAt   DateTime    @map("started_at")
+  endedAt     DateTime?   @map("ended_at")
+  durationMs  BigInt?     @map("duration_ms")
+  createdById String      @map("created_by_id") @db.Uuid
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id])
+
+  @@index([workOrderId])
+  @@map("pause_events")
+}
+
+model MechanicAssignment {
+  id          String    @id @default(uuid()) @db.Uuid
+  workOrderId String    @map("work_order_id") @db.Uuid
+  mechanicId  String    @map("mechanic_id") @db.Uuid
+  addedAt     DateTime  @default(now()) @map("added_at")
+  addedById   String    @map("added_by_id") @db.Uuid
+  removedAt   DateTime? @map("removed_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  mechanic  User      @relation(fields: [mechanicId], references: [id])
+
+  @@unique([workOrderId, mechanicId])
+  @@index([mechanicId])
+  @@map("mechanic_assignments")
+}
+
+model ActivityLog {
+  id          String            @id @default(uuid()) @db.Uuid
+  workOrderId String?           @map("work_order_id") @db.Uuid
+  eventType   ActivityEventType @map("event_type")
+  entityType  String            @map("entity_type")
+  entityId    String?           @map("entity_id")
+  userId      String            @map("user_id") @db.Uuid
+  previousValue Json?           @map("previous_value")
+  newValue      Json?           @map("new_value")
+  relevantValue Json?           @map("relevant_value")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([workOrderId, createdAt])
+  @@map("activity_logs")
+}

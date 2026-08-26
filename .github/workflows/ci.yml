@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ltl_shop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ltl_shop
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/ltl_shop
+      AUTH_DEV_BYPASS: 'true'
+      DATA_SOURCE: supabase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run build --workspace=@ltl-shop/shared
+      - run: npm run prisma:generate --workspace=@ltl-shop/api
+      - run: npm exec --workspace=@ltl-shop/api -- prisma migrate deploy
+      - run: npm test --workspace=@ltl-shop/api
+      - run: npm run lint --workspace=@ltl-shop/api
+      - run: npm run build --workspace=@ltl-shop/web

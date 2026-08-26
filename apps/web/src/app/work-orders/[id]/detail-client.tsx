@@ -1,0 +1,534 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import {
+  PAUSE_REASON_LABELS,
+  PauseReason,
+  Priority,
+  type CatalogJobDto,
+  type JobCategoryDto,
+  type WorkOrderDetailDto,
+} from '@ltl-shop/shared';
+import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api';
+import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
+import {
+  EmptyState,
+  Modal,
+  PriorityBadge,
+  ScreenHeader,
+} from '@/components/ui';
+
+export default function WorkOrderDetailPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const search = useSearchParams();
+  const id = params.id;
+
+  const [wo, setWo] = useState<WorkOrderDetailDto | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [truckOpen, setTruckOpen] = useState(false);
+  const [finishJob, setFinishJob] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
+  const [pauseNotes, setPauseNotes] = useState('');
+  const [changeReason, setChangeReason] = useState<PauseReason | ''>('');
+  const [addOpen, setAddOpen] = useState(false);
+  const [categories, setCategories] = useState<JobCategoryDto[]>([]);
+
+  const reload = useCallback(async () => {
+    const data = await apiFetch<WorkOrderDetailDto>(`/api/work-orders/${id}`);
+    setWo(data);
+  }, [id]);
+
+  useEffect(() => {
+    if (!loading && !user) router.replace('/login');
+  }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    reload().catch((e) => setError(e.message));
+    apiFetch<JobCategoryDto[]>('/api/catalog/categories').then(setCategories);
+  }, [user, reload]);
+
+  useEffect(() => {
+    const action = search.get('action');
+    if (action === 'pause') setPauseOpen(true);
+  }, [search]);
+
+  async function run(action: () => Promise<unknown>) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Action failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading || !user || !wo) {
+    return <p className="text-shop-muted">{error ?? 'Loading…'}</p>;
+  }
+
+  const todo = wo.jobs.filter((j) => j.status === 'to_do');
+  const done = wo.jobs.filter((j) => j.status === 'completed');
+
+  return (
+    <div>
+      <ScreenHeader
+        title={wo.displayId}
+        subtitle={`#${wo.truckNumber} · ${statusLabel(wo.status)}`}
+        backHref="/"
+      />
+
+      <div className="card mb-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <PriorityBadge priority={wo.priority} />
+          <span className="text-sm text-shop-muted">
+            {wo.primaryCategoryName} — {wo.jobsCompleted} de {wo.jobsTotal}{' '}
+            trabajos
+          </span>
+        </div>
+        {wo.currentPauseReason ? (
+          <p className="text-sm text-amber-200">
+            {pauseLabel(wo.currentPauseReason)}
+          </p>
+        ) : null}
+      </div>
+
+      {error ? <p className="mb-3 text-sm text-red-300">{error}</p> : null}
+
+      <section className="mb-4 space-y-2">
+        <p className="section-label">Work Options</p>
+        {wo.status === 'created' ? (
+          <button
+            type="button"
+            className="btn-primary w-full"
+            disabled={busy}
+            onClick={() =>
+              run(() =>
+                apiFetch(`/api/work-orders/${wo.id}/start`, { method: 'POST' }),
+              )
+            }
+          >
+            Start Work
+          </button>
+        ) : null}
+        {wo.status === 'in_progress' ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={busy}
+              onClick={() => setPauseOpen(true)}
+            >
+              Pausar Trabajo
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy}
+              onClick={() =>
+                run(() =>
+                  apiFetch(`/api/work-orders/${wo.id}/complete`, {
+                    method: 'POST',
+                  }),
+                )
+              }
+            >
+              Finalizar Trabajo
+            </button>
+          </div>
+        ) : null}
+        {wo.status === 'waiting_paused' ? (
+          <button
+            type="button"
+            className="btn-primary w-full"
+            disabled={busy}
+            onClick={() =>
+              run(() =>
+                apiFetch(`/api/work-orders/${wo.id}/resume`, { method: 'POST' }),
+              )
+            }
+          >
+            Continuar Trabajo
+          </button>
+        ) : null}
+      </section>
+
+      {wo.status === 'waiting_paused' ? (
+        <section className="card mb-4 space-y-3">
+          <p className="section-label">Change Pause Reason</p>
+          <select
+            className="field"
+            value={changeReason || wo.currentPauseReason || ''}
+            onChange={(e) => setChangeReason(e.target.value as PauseReason)}
+          >
+            {Object.values(PauseReason).map((r) => (
+              <option key={r} value={r}>
+                {PAUSE_REASON_LABELS[r]}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn-secondary w-full"
+            disabled={busy}
+            onClick={() =>
+              run(() =>
+                apiFetch(`/api/work-orders/${wo.id}/pause-reason`, {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    reason: changeReason || wo.currentPauseReason,
+                  }),
+                }),
+              )
+            }
+          >
+            Update Pause
+          </button>
+        </section>
+      ) : null}
+
+      <section className="card mb-4">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between"
+          onClick={() => setTruckOpen((v) => !v)}
+        >
+          <span className="section-label">Truck Information</span>
+          <span>{truckOpen ? '˄' : '˅'}</span>
+        </button>
+        {truckOpen ? (
+          <div className="mt-3 space-y-3">
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <Info label="Make" value={wo.truck.make} />
+              <Info label="Model" value={wo.truck.model} />
+              <Info label="Year" value={wo.truck.year?.toString()} />
+              <Info label="Mileage" value={formatMileage(wo.truck.mileage)} />
+              <Info label="Company" value={wo.truck.company} />
+              <Info label="Owner" value={wo.truck.owner} />
+            </div>
+            <Link
+              href={`/trucks/${wo.truckId}/history`}
+              className="btn-secondary w-full"
+            >
+              See Truck Repair History
+            </Link>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mb-4">
+        <p className="section-label mb-2">Jobs To Do</p>
+        {todo.length === 0 ? (
+          <EmptyState>No hay trabajos pendientes</EmptyState>
+        ) : (
+          <ul className="mb-3 space-y-2">
+            {todo.map((job) => (
+              <li key={job.id}>
+                <button
+                  type="button"
+                  className="card flex w-full items-center gap-3 text-left"
+                  disabled={busy || wo.status !== 'in_progress'}
+                  onClick={() =>
+                    setFinishJob({ id: job.id, name: job.displayName })
+                  }
+                >
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-shop-border text-xs">
+                    ○
+                  </span>
+                  <span>{job.displayName}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {wo.status !== 'completed' && wo.status !== 'cancelled' ? (
+          <button
+            type="button"
+            className="btn-secondary w-full"
+            onClick={() => setAddOpen(true)}
+          >
+            Agregar trabajo +
+          </button>
+        ) : null}
+      </section>
+
+      <section className="mb-4">
+        <p className="section-label mb-2">Completed</p>
+        {done.length === 0 ? (
+          <EmptyState>No hay trabajos completados</EmptyState>
+        ) : (
+          <ul className="space-y-2">
+            {done.map((job) => (
+              <li
+                key={job.id}
+                className="card flex items-center gap-3 text-shop-success"
+              >
+                <span>✓</span>
+                <span>{job.displayName}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card space-y-3">
+        <div>
+          <p className="section-label">Working With</p>
+          <p className="mt-1 text-sm">
+            {wo.mechanics.map((m) => m.mechanicName).join(' / ') || '—'}
+          </p>
+        </div>
+        <div>
+          <p className="section-label mb-2">Priority</p>
+          <div className="grid grid-cols-4 gap-2">
+            {Object.values(Priority).map((p) => (
+              <span
+                key={p}
+                className={
+                  wo.priority === p
+                    ? 'btn-primary text-center'
+                    : 'btn-secondary text-center opacity-60'
+                }
+              >
+                {p.toUpperCase()}
+              </span>
+            ))}
+          </div>
+        </div>
+        {wo.notes ? (
+          <div>
+            <p className="section-label">Notes</p>
+            <p className="mt-1 text-sm text-shop-muted">{wo.notes}</p>
+          </div>
+        ) : null}
+      </section>
+
+      <Modal
+        open={!!finishJob}
+        title="JOB FINISHED"
+        onClose={() => setFinishJob(null)}
+      >
+        <p className="mb-4 text-lg">{finishJob?.name}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setFinishJob(null)}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busy}
+            onClick={() => {
+              if (!finishJob) return;
+              const jobId = finishJob.id;
+              setFinishJob(null);
+              run(() =>
+                apiFetch(`/api/work-orders/${wo.id}/jobs/${jobId}/complete`, {
+                  method: 'POST',
+                }),
+              );
+            }}
+          >
+            Terminar Trabajo
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={pauseOpen}
+        title="PAUSE WORK ORDER"
+        onClose={() => setPauseOpen(false)}
+      >
+        <select
+          className="field mb-3"
+          value={pauseReason}
+          onChange={(e) => setPauseReason(e.target.value as PauseReason)}
+        >
+          <option value="">Seleccione una opción</option>
+          {Object.values(PauseReason).map((r) => (
+            <option key={r} value={r}>
+              {PAUSE_REASON_LABELS[r]}
+            </option>
+          ))}
+        </select>
+        {pauseReason === PauseReason.OTHER ? (
+          <textarea
+            className="field mb-3 min-h-20"
+            placeholder="Reason required for Other"
+            value={pauseNotes}
+            onChange={(e) => setPauseNotes(e.target.value)}
+          />
+        ) : null}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setPauseOpen(false)}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!pauseReason || busy}
+            onClick={() => {
+              setPauseOpen(false);
+              run(() =>
+                apiFetch(`/api/work-orders/${wo.id}/pause`, {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    reason: pauseReason,
+                    notes: pauseNotes || undefined,
+                  }),
+                }),
+              );
+            }}
+          >
+            Pausar Trabajo
+          </button>
+        </div>
+      </Modal>
+
+      <AddJobSheet
+        open={addOpen}
+        categories={categories}
+        defaultCategoryId={wo.primaryCategoryId}
+        onClose={() => setAddOpen(false)}
+        onAdd={(body) => {
+          setAddOpen(false);
+          run(() =>
+            apiFetch(`/api/work-orders/${wo.id}/jobs`, {
+              method: 'POST',
+              body: JSON.stringify(body),
+            }),
+          );
+        }}
+      />
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-wide text-shop-muted">
+        {label}
+      </p>
+      <p className="font-medium">{value || '—'}</p>
+    </div>
+  );
+}
+
+function AddJobSheet({
+  open,
+  categories,
+  defaultCategoryId,
+  onClose,
+  onAdd,
+}: {
+  open: boolean;
+  categories: JobCategoryDto[];
+  defaultCategoryId: string;
+  onClose: () => void;
+  onAdd: (body: {
+    catalogJobId?: string;
+    categoryId: string;
+    displayName: string;
+    customDescription?: string;
+  }) => void;
+}) {
+  const [categoryId, setCategoryId] = useState(defaultCategoryId);
+  const [q, setQ] = useState('');
+  const [jobs, setJobs] = useState<CatalogJobDto[]>([]);
+  const [custom, setCustom] = useState('');
+
+  useEffect(() => {
+    if (open) setCategoryId(defaultCategoryId);
+  }, [open, defaultCategoryId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const params = new URLSearchParams({ categoryId });
+    if (q) params.set('q', q);
+    apiFetch<CatalogJobDto[]>(`/api/catalog/jobs?${params}`).then(setJobs);
+  }, [open, categoryId, q]);
+
+  return (
+    <Modal open={open} title="Agregar trabajo" onClose={onClose}>
+      <div className="space-y-3">
+        <select
+          className="field"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+        >
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <input
+          className="field"
+          placeholder="Search catalog / alias"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <ul className="max-h-48 space-y-1 overflow-auto">
+          {jobs.map((job) => (
+            <li key={job.id}>
+              <button
+                type="button"
+                className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5"
+                onClick={() =>
+                  onAdd({
+                    catalogJobId: job.id,
+                    categoryId: job.categoryId,
+                    displayName: job.displayName,
+                  })
+                }
+              >
+                {job.displayName}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <input
+          className="field"
+          placeholder="JOB NOT LISTED — describe custom job"
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+        />
+        <button
+          type="button"
+          className="btn-primary w-full"
+          disabled={!custom.trim()}
+          onClick={() =>
+            onAdd({
+              categoryId,
+              displayName: custom.trim(),
+              customDescription: custom.trim(),
+            })
+          }
+        >
+          Add Custom Job
+        </button>
+      </div>
+    </Modal>
+  );
+}

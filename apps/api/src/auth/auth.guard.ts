@@ -1,0 +1,123 @@
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { PrismaService } from '../prisma/prisma.service';
+import type { Request } from 'express';
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  active: boolean;
+  supabaseAuthId: string | null;
+};
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      user?: AuthUser;
+    }
+  }
+}
+
+@Injectable()
+export class AuthGuard implements CanActivate {
+  private jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest<Request>();
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Missing authorization token');
+    }
+    const token = header.slice('Bearer '.length);
+
+    // Dev bypass for local/demo without Supabase
+    if (process.env.AUTH_DEV_BYPASS === 'true' && token.startsWith('dev:')) {
+      const email = token.slice(4);
+      const user = await this.resolveShopUser(email, null);
+      req.user = user;
+      return true;
+    }
+
+    const payload = await this.verifySupabaseJwt(token);
+    const email = String(payload.email ?? '');
+    if (!email) {
+      throw new UnauthorizedException('Token missing email');
+    }
+    const sub = String(payload.sub ?? '');
+    const user = await this.resolveShopUser(email, sub || null);
+    req.user = user;
+    return true;
+  }
+
+  private async verifySupabaseJwt(token: string) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+    const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+
+    if (jwtSecret) {
+      const { payload } = await jwtVerify(
+        token,
+        new TextEncoder().encode(jwtSecret),
+        { algorithms: ['HS256'] },
+      );
+      return payload;
+    }
+
+    if (!supabaseUrl) {
+      throw new UnauthorizedException('Auth is not configured');
+    }
+
+    if (!this.jwks) {
+      this.jwks = createRemoteJWKSet(
+        new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`),
+      );
+    }
+    const { payload } = await jwtVerify(token, this.jwks);
+    return payload;
+  }
+
+  private async resolveShopUser(
+    email: string,
+    supabaseAuthId: string | null,
+  ): Promise<AuthUser> {
+    let user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+
+    if (!user && supabaseAuthId) {
+      user = await this.prisma.user.findUnique({
+        where: { supabaseAuthId },
+      });
+    }
+
+    if (!user || !user.active) {
+      throw new ForbiddenException(
+        'Your account is not configured for the Shop application.',
+      );
+    }
+
+    if (supabaseAuthId && user.supabaseAuthId !== supabaseAuthId) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { supabaseAuthId },
+      });
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      active: user.active,
+      supabaseAuthId: user.supabaseAuthId,
+    };
+  }
+}
