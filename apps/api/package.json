@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "node ../../node_modules/typescript/lib/tsc.js -p ../../packages/shared/tsconfig.json && prisma generate && nest build",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
     "lint": "tsc -p tsconfig.json --noEmit",

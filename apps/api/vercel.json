@@ -1,0 +1,4 @@
+{
+  "buildCommand": "node ../../node_modules/typescript/lib/tsc.js -p ../../packages/shared/tsconfig.json && npx prisma generate && npx nest build",
+  "installCommand": "cd ../.. && npm install"
+}
