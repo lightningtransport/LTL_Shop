@@ -41,7 +41,7 @@ export default function HomePage() {
       <div className="mb-2 flex items-center justify-between">
         <ScreenHeader
           title="Home"
-          subtitle="Trabajos actuales, Ordenes de trabajo y trabajos recientes."
+          subtitle="Current jobs, work orders, and recent work."
         />
         <button type="button" className="btn-secondary self-start" onClick={logout}>
           Logout
@@ -58,9 +58,9 @@ export default function HomePage() {
 
       {data?.created?.length ? (
         <section className="mb-6">
-          <h2 className="section-label mb-2">Por iniciar</h2>
+          <h2 className="section-label mb-2">Ready to Start</h2>
           <p className="mb-3 text-sm text-shop-muted">
-            {data.created.length} orden(es) listas para Start Work
+            {data.created.length} order(s) ready to Start Work
           </p>
           <div className="space-y-3">
             {data.created.map((wo) => (
@@ -71,12 +71,12 @@ export default function HomePage() {
       ) : null}
 
       <section className="mb-6">
-        <h2 className="section-label mb-2">Trabajos Activos</h2>
+        <h2 className="section-label mb-2">Active Jobs</h2>
         <p className="mb-3 text-sm text-shop-muted">
-          {data?.active.length ?? 0} trabajos activos
+          {data?.active.length ?? 0} active jobs
         </p>
         {!data?.active.length ? (
-          <EmptyState>No hay trabajos activos.</EmptyState>
+          <EmptyState>No active jobs.</EmptyState>
         ) : (
           <div className="space-y-3">
             {data.active.map((wo) => (
@@ -87,12 +87,12 @@ export default function HomePage() {
       </section>
 
       <section>
-        <h2 className="section-label mb-2">Trabajos Pausados</h2>
+        <h2 className="section-label mb-2">Paused Jobs</h2>
         <p className="mb-3 text-sm text-shop-muted">
-          {data?.paused.length ?? 0} trabajos pausados
+          {data?.paused.length ?? 0} paused jobs
         </p>
         {!data?.paused.length ? (
-          <EmptyState>No hay trabajos pausados.</EmptyState>
+          <EmptyState>No paused jobs.</EmptyState>
         ) : (
           <div className="space-y-3">
             {data.paused.map((wo) => (
@@ -130,17 +130,42 @@ function WorkOrderCard({
         </div>
         <PriorityBadge priority={wo.priority} />
       </div>
-      <p className="text-sm">
-        {wo.primaryCategoryName} — {wo.jobsCompleted} de {wo.jobsTotal} trabajos
+      <p className="text-sm text-shop-muted">
+        {wo.primaryCategoryName} · {wo.jobsCompleted} of {wo.jobsTotal} jobs
+        done
       </p>
+      {(mode === 'active' || mode === 'paused') && wo.jobs.length > 0 ? (
+        <ul className="space-y-1 text-sm">
+          {wo.jobs.map((job) => (
+            <li key={job.id} className="flex items-center gap-2">
+              <span
+                className={
+                  job.status === 'completed'
+                    ? 'text-shop-success'
+                    : 'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-shop-border text-[10px] text-shop-muted'
+                }
+              >
+                {job.status === 'completed' ? '✓' : '○'}
+              </span>
+              <span
+                className={
+                  job.status === 'completed' ? 'text-shop-muted line-through' : ''
+                }
+              >
+                {job.displayName}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="flex gap-2">
         {mode === 'paused' ? (
           <>
             <Link href={`/work-orders/${wo.id}`} className="btn-secondary flex-1">
-              Ver Información
+              View Details
             </Link>
             <Link href={`/work-orders/${wo.id}?action=resume`} className="btn-primary flex-1">
-              Continuar Trabajo
+              Resume Work
             </Link>
           </>
         ) : mode === 'created' ? (
@@ -150,10 +175,10 @@ function WorkOrderCard({
         ) : (
           <>
             <Link href={`/work-orders/${wo.id}?action=pause`} className="btn-secondary flex-1">
-              Pausar Trabajo
+              Pause Work
             </Link>
             <Link href={`/work-orders/${wo.id}`} className="btn-primary flex-1">
-              Ver Trabajo
+              View Work
             </Link>
           </>
         )}

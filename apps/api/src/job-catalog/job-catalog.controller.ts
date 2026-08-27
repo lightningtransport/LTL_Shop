@@ -19,4 +19,12 @@ export class JobCatalogController {
   ) {
     return this.catalog.listJobs(categoryId, q);
   }
+
+  @Get('aliases')
+  aliases(
+    @Query('categoryId') categoryId?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.catalog.listAliases(categoryId, q);
+  }
 }

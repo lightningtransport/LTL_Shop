@@ -3,7 +3,7 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 
 export const metadata: Metadata = {
-  title: 'Lightning Shop — Mecánico',
+  title: 'Lightning Shop — Mechanic',
   description: 'Lightning Shop Mechanic Work Order app',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
+    <html lang="en">
       <body>
         <AuthProvider>
           <div className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-6">

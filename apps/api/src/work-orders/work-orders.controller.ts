@@ -65,6 +65,15 @@ export class WorkOrdersController {
     return this.workOrders.addJob(req.user!, id, body);
   }
 
+  @Post(':id/notes')
+  updateNotes(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return this.workOrders.updateNotes(req.user!, id, body);
+  }
+
   @Post(':id/jobs/:jobId/complete')
   completeJob(
     @Req() req: Request,

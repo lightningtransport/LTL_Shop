@@ -68,8 +68,14 @@ export type WorkOrderWithRelations = {
 };
 
 export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
-  const jobsCompleted = wo.jobs.filter((j) => j.status === 'completed').length;
-  const jobsTotal = wo.jobs.filter((j) => j.status !== 'cancelled').length;
+  const activeJobs = wo.jobs.filter((j) => j.status !== 'cancelled');
+  const jobsCompleted = activeJobs.filter((j) => j.status === 'completed').length;
+  const jobsTotal = activeJobs.length;
+  const jobs = activeJobs.map((j) => ({
+    id: j.id,
+    displayName: j.displayName,
+    status: j.status,
+  }));
   const currentPause = wo.pauseEvents?.find((p) => !p.endedAt) ?? null;
   return {
     id: wo.id,
@@ -82,6 +88,7 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     priority: wo.priority,
     jobsCompleted,
     jobsTotal,
+    jobs,
     currentPauseReason: currentPause?.reason ?? null,
     createdAt: wo.createdAt.toISOString(),
     startedAt: wo.startedAt?.toISOString() ?? null,

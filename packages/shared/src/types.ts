@@ -38,6 +38,13 @@ export interface CatalogJobDto {
   aliases?: string[];
 }
 
+export interface JobAliasOptionDto {
+  aliasText: string;
+  catalogJobId: string;
+  categoryId: string;
+  displayName: string;
+}
+
 export interface WorkOrderJobDto {
   id: string;
   workOrderId: string;
@@ -78,6 +85,7 @@ export interface WorkOrderSummaryDto {
   priority: Priority;
   jobsCompleted: number;
   jobsTotal: number;
+  jobs: Pick<WorkOrderJobDto, 'id' | 'displayName' | 'status'>[];
   currentPauseReason: PauseReason | null;
   createdAt: string;
   startedAt: string | null;

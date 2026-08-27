@@ -56,7 +56,7 @@ export default function LoginPage() {
     <div>
       <ScreenHeader
         title="Sign In"
-        subtitle="Acceso con el correo asociado al Shop."
+        subtitle="Sign in with the email linked to the Shop."
       />
       <form onSubmit={onSubmit} className="card space-y-4">
         <div>

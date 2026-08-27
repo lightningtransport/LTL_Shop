@@ -84,7 +84,7 @@ export default function RepairHistoryPage() {
       </div>
 
       {!items.length ? (
-        <EmptyState>No hay historial de reparaciones.</EmptyState>
+        <EmptyState>No repair history.</EmptyState>
       ) : (
         <div className="space-y-3">
           {items.map((item) => (

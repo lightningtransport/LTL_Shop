@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Priority,
-  type CatalogJobDto,
+  type JobAliasOptionDto,
   type JobCategoryDto,
   type TruckDto,
   type WorkOrderSummaryDto,
@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
+import { fetchAliasOptions, filterAliasOptions } from '@/lib/job-catalog';
 import { EmptyState, Modal, ScreenHeader } from '@/components/ui';
 
 type DraftJob = {
@@ -86,7 +87,7 @@ export default function NewWorkOrderPage() {
 
   async function create() {
     if (!truck || !categoryId || jobs.length === 0) {
-      setError('Truck, category y al menos un Job son requeridos.');
+      setError('Truck, category, and at least one job are required.');
       return;
     }
     setBusy(true);
@@ -128,8 +129,8 @@ export default function NewWorkOrderPage() {
   return (
     <div>
       <ScreenHeader
-        title="Nueva Orden de Trabajo"
-        subtitle="Ingrese la información necesaria."
+        title="New Work Order"
+        subtitle="Enter the required information."
         backHref="/"
       />
 
@@ -168,7 +169,7 @@ export default function NewWorkOrderPage() {
             <p className="section-label">Truck Information</p>
           </div>
           {!truck ? (
-            <EmptyState>Seleccione un Truck para mostrar sus datos.</EmptyState>
+            <EmptyState>Select a truck to show its details.</EmptyState>
           ) : (
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2 text-sm">
@@ -229,7 +230,7 @@ export default function NewWorkOrderPage() {
             <div>
               <p className="section-label mb-2">Jobs To Do</p>
               {jobs.length === 0 ? (
-                <EmptyState>Agregue al menos un trabajo.</EmptyState>
+                <EmptyState>Add at least one job.</EmptyState>
               ) : (
                 <ul className="mb-3 space-y-2">
                   {jobs.map((j) => (
@@ -256,7 +257,7 @@ export default function NewWorkOrderPage() {
                 className="btn-secondary w-full"
                 onClick={() => setAddOpen(true)}
               >
-                Agregar trabajo +
+                Add job +
               </button>
             </div>
 
@@ -303,7 +304,7 @@ export default function NewWorkOrderPage() {
               <label className="section-label">Notes (Optional)</label>
               <textarea
                 className="field mt-2 min-h-24"
-                placeholder="Describe o agrega más información que sea necesaria para ejecutar el trabajo"
+                placeholder="Describe or add any information needed to perform the work"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -365,23 +366,27 @@ function AddJobModal({
 }) {
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [q, setQ] = useState('');
-  const [catalog, setCatalog] = useState<CatalogJobDto[]>([]);
+  const [allAliases, setAllAliases] = useState<JobAliasOptionDto[]>([]);
   const [customOpen, setCustomOpen] = useState(false);
   const [customName, setCustomName] = useState('');
 
   useEffect(() => {
-    if (open) setCategoryId(defaultCategoryId);
+    if (!open) return;
+    setCategoryId(defaultCategoryId);
+    setQ('');
   }, [open, defaultCategoryId]);
 
   useEffect(() => {
     if (!open) return;
-    const params = new URLSearchParams();
-    if (categoryId) params.set('categoryId', categoryId);
-    if (q) params.set('q', q);
-    apiFetch<CatalogJobDto[]>(`/api/catalog/jobs?${params}`)
-      .then(setCatalog)
-      .catch(() => setCatalog([]));
-  }, [open, categoryId, q]);
+    fetchAliasOptions(categoryId || undefined)
+      .then(setAllAliases)
+      .catch(() => setAllAliases([]));
+  }, [open, categoryId]);
+
+  const aliases = useMemo(
+    () => filterAliasOptions(allAliases, q),
+    [allAliases, q],
+  );
 
   const categoryName = useMemo(
     () => categories.find((c) => c.id === categoryId)?.name ?? '',
@@ -389,7 +394,7 @@ function AddJobModal({
   );
 
   return (
-    <Modal open={open} title="Agregar trabajo" onClose={onClose}>
+    <Modal open={open} title="Add job" onClose={onClose}>
       <div className="space-y-3">
         <select
           className="field"
@@ -404,29 +409,37 @@ function AddJobModal({
         </select>
         <input
           className="field"
-          placeholder="Buscar job / alias (e.g. 3in1)"
+          placeholder="Search job / alias (e.g. 3in1)"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
         <ul className="max-h-56 space-y-1 overflow-auto">
-          {catalog.map((job) => (
-            <li key={job.id}>
-              <button
-                type="button"
-                className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5"
-                onClick={() =>
-                  onAdd({
-                    key: crypto.randomUUID(),
-                    catalogJobId: job.id,
-                    categoryId: job.categoryId,
-                    displayName: job.displayName,
-                  })
-                }
-              >
-                {job.displayName}
-              </button>
+          {aliases.length ? (
+            aliases.map((alias) => (
+              <li key={`${alias.catalogJobId}-${alias.aliasText}`}>
+                <button
+                  type="button"
+                  className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5"
+                  onClick={() =>
+                    onAdd({
+                      key: crypto.randomUUID(),
+                      catalogJobId: alias.catalogJobId,
+                      categoryId: alias.categoryId,
+                      displayName: alias.displayName,
+                    })
+                  }
+                >
+                  {alias.aliasText}
+                </button>
+              </li>
+            ))
+          ) : (
+            <li className="px-3 py-2 text-sm text-shop-muted">
+              {q.trim()
+                ? 'No matching aliases.'
+                : 'No aliases for this category.'}
             </li>
-          ))}
+          )}
         </ul>
         <button
           type="button"
@@ -438,11 +451,11 @@ function AddJobModal({
         {customOpen ? (
           <div className="space-y-2">
             <p className="text-xs text-shop-muted">
-              Custom job en {categoryName || 'categoría seleccionada'}
+              Custom job in {categoryName || 'selected category'}
             </p>
             <input
               className="field"
-              placeholder="Describe el trabajo"
+              placeholder="Describe the job"
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
             />

@@ -12,6 +12,7 @@ import {
   changePauseReasonSchema,
   createWorkOrderSchema,
   pauseWorkOrderSchema,
+  updateWorkOrderNotesSchema,
   type CreateWorkOrderInput,
 } from '@ltl-shop/shared';
 import { Prisma } from '@prisma/client';
@@ -356,6 +357,31 @@ export class WorkOrdersService {
         entityType: 'work_order_job',
         userId: user.id,
         newValue: { displayName: parsed.data.displayName },
+      });
+      return toWorkOrderDetail(updated);
+    });
+  }
+
+  async updateNotes(user: AuthUser, id: string, raw: unknown) {
+    const parsed = updateWorkOrderNotesSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+
+    return this.prisma.$transaction(async (tx) => {
+      const wo = await this.requireWo(tx, id);
+      const notes = parsed.data.notes?.trim() || null;
+      const updated = await tx.workOrder.update({
+        where: { id },
+        data: { notes, version: { increment: 1 } },
+        include: workOrderDetailInclude,
+      });
+      await this.activity.log(tx, {
+        workOrderId: id,
+        eventType: ActivityEventType.NOTES_UPDATED,
+        entityType: 'work_order',
+        entityId: id,
+        userId: user.id,
+        previousValue: { notes: wo.notes },
+        newValue: { notes },
       });
       return toWorkOrderDetail(updated);
     });

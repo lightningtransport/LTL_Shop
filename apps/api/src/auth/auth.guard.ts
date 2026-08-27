@@ -69,6 +69,21 @@ export class AuthGuard implements CanActivate {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
     const jwtSecret = process.env.SUPABASE_JWT_SECRET;
 
+    // Prefer JWKS — Supabase signing keys use ES256/RS256.
+    if (supabaseUrl) {
+      try {
+        if (!this.jwks) {
+          this.jwks = createRemoteJWKSet(
+            new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`),
+          );
+        }
+        const { payload } = await jwtVerify(token, this.jwks);
+        return payload;
+      } catch {
+        // Fall through to legacy HS256 verification.
+      }
+    }
+
     if (jwtSecret) {
       const { payload } = await jwtVerify(
         token,
@@ -78,17 +93,7 @@ export class AuthGuard implements CanActivate {
       return payload;
     }
 
-    if (!supabaseUrl) {
-      throw new UnauthorizedException('Auth is not configured');
-    }
-
-    if (!this.jwks) {
-      this.jwks = createRemoteJWKSet(
-        new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`),
-      );
-    }
-    const { payload } = await jwtVerify(token, this.jwks);
-    return payload;
+    throw new UnauthorizedException('Auth is not configured');
   }
 
   private async resolveShopUser(

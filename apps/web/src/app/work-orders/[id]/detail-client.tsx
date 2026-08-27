@@ -1,19 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   PAUSE_REASON_LABELS,
   PauseReason,
   Priority,
-  type CatalogJobDto,
+  type JobAliasOptionDto,
   type JobCategoryDto,
   type WorkOrderDetailDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
+import { fetchAliasOptions, filterAliasOptions } from '@/lib/job-catalog';
 import {
   EmptyState,
   Modal,
@@ -42,6 +43,8 @@ export default function WorkOrderDetailPage() {
   const [changeReason, setChangeReason] = useState<PauseReason | ''>('');
   const [addOpen, setAddOpen] = useState(false);
   const [categories, setCategories] = useState<JobCategoryDto[]>([]);
+  const [notes, setNotes] = useState('');
+  const [notesDirty, setNotesDirty] = useState(false);
 
   const reload = useCallback(async () => {
     const data = await apiFetch<WorkOrderDetailDto>(`/api/work-orders/${id}`);
@@ -62,6 +65,12 @@ export default function WorkOrderDetailPage() {
     const action = search.get('action');
     if (action === 'pause') setPauseOpen(true);
   }, [search]);
+
+  useEffect(() => {
+    if (!wo) return;
+    setNotes(wo.notes ?? '');
+    setNotesDirty(false);
+  }, [wo]);
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -95,8 +104,8 @@ export default function WorkOrderDetailPage() {
         <div className="flex items-center justify-between">
           <PriorityBadge priority={wo.priority} />
           <span className="text-sm text-shop-muted">
-            {wo.primaryCategoryName} — {wo.jobsCompleted} de {wo.jobsTotal}{' '}
-            trabajos
+            {wo.primaryCategoryName} — {wo.jobsCompleted} of {wo.jobsTotal}{' '}
+            jobs
           </span>
         </div>
         {wo.currentPauseReason ? (
@@ -132,7 +141,7 @@ export default function WorkOrderDetailPage() {
               disabled={busy}
               onClick={() => setPauseOpen(true)}
             >
-              Pausar Trabajo
+              Pause Work
             </button>
             <button
               type="button"
@@ -146,7 +155,7 @@ export default function WorkOrderDetailPage() {
                 )
               }
             >
-              Finalizar Trabajo
+              Finish Work
             </button>
           </div>
         ) : null}
@@ -161,7 +170,7 @@ export default function WorkOrderDetailPage() {
               )
             }
           >
-            Continuar Trabajo
+            Resume Work
           </button>
         ) : null}
       </section>
@@ -232,7 +241,7 @@ export default function WorkOrderDetailPage() {
       <section className="mb-4">
         <p className="section-label mb-2">Jobs To Do</p>
         {todo.length === 0 ? (
-          <EmptyState>No hay trabajos pendientes</EmptyState>
+          <EmptyState>No pending jobs</EmptyState>
         ) : (
           <ul className="mb-3 space-y-2">
             {todo.map((job) => (
@@ -260,7 +269,7 @@ export default function WorkOrderDetailPage() {
             className="btn-secondary w-full"
             onClick={() => setAddOpen(true)}
           >
-            Agregar trabajo +
+            Add job +
           </button>
         ) : null}
       </section>
@@ -268,7 +277,7 @@ export default function WorkOrderDetailPage() {
       <section className="mb-4">
         <p className="section-label mb-2">Completed</p>
         {done.length === 0 ? (
-          <EmptyState>No hay trabajos completados</EmptyState>
+          <EmptyState>No completed jobs</EmptyState>
         ) : (
           <ul className="space-y-2">
             {done.map((job) => (
@@ -308,12 +317,39 @@ export default function WorkOrderDetailPage() {
             ))}
           </div>
         </div>
-        {wo.notes ? (
-          <div>
-            <p className="section-label">Notes</p>
-            <p className="mt-1 text-sm text-shop-muted">{wo.notes}</p>
-          </div>
-        ) : null}
+        <div>
+          <label className="section-label" htmlFor="wo-notes">
+            Notes
+          </label>
+          <textarea
+            id="wo-notes"
+            className="field mt-2 min-h-20"
+            placeholder="Add notes (optional)"
+            value={notes}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              setNotesDirty(true);
+            }}
+          />
+          {notesDirty ? (
+            <button
+              type="button"
+              className="btn-secondary mt-2 w-full"
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  await apiFetch(`/api/work-orders/${wo.id}/notes`, {
+                    method: 'POST',
+                    body: JSON.stringify({ notes: notes || undefined }),
+                  });
+                  setNotesDirty(false);
+                })
+              }
+            >
+              Save Notes
+            </button>
+          ) : null}
+        </div>
       </section>
 
       <Modal
@@ -328,7 +364,7 @@ export default function WorkOrderDetailPage() {
             className="btn-secondary"
             onClick={() => setFinishJob(null)}
           >
-            Cancelar
+            Cancel
           </button>
           <button
             type="button"
@@ -345,7 +381,7 @@ export default function WorkOrderDetailPage() {
               );
             }}
           >
-            Terminar Trabajo
+            Complete Job
           </button>
         </div>
       </Modal>
@@ -360,7 +396,7 @@ export default function WorkOrderDetailPage() {
           value={pauseReason}
           onChange={(e) => setPauseReason(e.target.value as PauseReason)}
         >
-          <option value="">Seleccione una opción</option>
+          <option value="">Select an option</option>
           {Object.values(PauseReason).map((r) => (
             <option key={r} value={r}>
               {PAUSE_REASON_LABELS[r]}
@@ -381,7 +417,7 @@ export default function WorkOrderDetailPage() {
             className="btn-secondary"
             onClick={() => setPauseOpen(false)}
           >
-            Cancelar
+            Cancel
           </button>
           <button
             type="button"
@@ -400,7 +436,7 @@ export default function WorkOrderDetailPage() {
               );
             }}
           >
-            Pausar Trabajo
+            Pause Work
           </button>
         </div>
       </Modal>
@@ -455,22 +491,29 @@ function AddJobSheet({
 }) {
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [q, setQ] = useState('');
-  const [jobs, setJobs] = useState<CatalogJobDto[]>([]);
+  const [allAliases, setAllAliases] = useState<JobAliasOptionDto[]>([]);
   const [custom, setCustom] = useState('');
 
   useEffect(() => {
-    if (open) setCategoryId(defaultCategoryId);
+    if (!open) return;
+    setCategoryId(defaultCategoryId);
+    setQ('');
   }, [open, defaultCategoryId]);
 
   useEffect(() => {
     if (!open) return;
-    const params = new URLSearchParams({ categoryId });
-    if (q) params.set('q', q);
-    apiFetch<CatalogJobDto[]>(`/api/catalog/jobs?${params}`).then(setJobs);
-  }, [open, categoryId, q]);
+    fetchAliasOptions(categoryId || undefined)
+      .then(setAllAliases)
+      .catch(() => setAllAliases([]));
+  }, [open, categoryId]);
+
+  const aliases = useMemo(
+    () => filterAliasOptions(allAliases, q),
+    [allAliases, q],
+  );
 
   return (
-    <Modal open={open} title="Agregar trabajo" onClose={onClose}>
+    <Modal open={open} title="Add job" onClose={onClose}>
       <div className="space-y-3">
         <select
           className="field"
@@ -485,28 +528,36 @@ function AddJobSheet({
         </select>
         <input
           className="field"
-          placeholder="Search catalog / alias"
+          placeholder="Search job / alias (e.g. 3in1)"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
         <ul className="max-h-48 space-y-1 overflow-auto">
-          {jobs.map((job) => (
-            <li key={job.id}>
-              <button
-                type="button"
-                className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5"
-                onClick={() =>
-                  onAdd({
-                    catalogJobId: job.id,
-                    categoryId: job.categoryId,
-                    displayName: job.displayName,
-                  })
-                }
-              >
-                {job.displayName}
-              </button>
+          {aliases.length ? (
+            aliases.map((alias) => (
+              <li key={`${alias.catalogJobId}-${alias.aliasText}`}>
+                <button
+                  type="button"
+                  className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5"
+                  onClick={() =>
+                    onAdd({
+                      catalogJobId: alias.catalogJobId,
+                      categoryId: alias.categoryId,
+                      displayName: alias.displayName,
+                    })
+                  }
+                >
+                  {alias.aliasText}
+                </button>
+              </li>
+            ))
+          ) : (
+            <li className="px-3 py-2 text-sm text-shop-muted">
+              {q.trim()
+                ? 'No matching aliases.'
+                : 'No aliases for this category.'}
             </li>
-          ))}
+          )}
         </ul>
         <input
           className="field"

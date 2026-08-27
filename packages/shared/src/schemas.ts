@@ -28,6 +28,10 @@ export const changePauseReasonSchema = z.object({
   notes: z.string().max(1000).optional(),
 });
 
+export const updateWorkOrderNotesSchema = z.object({
+  notes: z.string().max(2000).optional(),
+});
+
 export const addJobSchema = z.object({
   catalogJobId: z.string().uuid().optional(),
   categoryId: z.string().uuid(),
@@ -47,4 +51,5 @@ export const loginSchema = z.object({
 export type CreateWorkOrderInput = z.infer<typeof createWorkOrderSchema>;
 export type PauseWorkOrderInput = z.infer<typeof pauseWorkOrderSchema>;
 export type ChangePauseReasonInput = z.infer<typeof changePauseReasonSchema>;
+export type UpdateWorkOrderNotesInput = z.infer<typeof updateWorkOrderNotesSchema>;
 export type AddJobInput = z.infer<typeof addJobSchema>;

@@ -19,3 +19,4 @@ test-results
 .env
 apps/api/.env
 apps/web/.env.local
+.env*

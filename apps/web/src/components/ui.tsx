@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 export function ScreenHeader({
-  eyebrow = 'MECÁNICO',
+  eyebrow,
   title,
   subtitle,
   backHref,
@@ -13,6 +14,9 @@ export function ScreenHeader({
   subtitle?: string;
   backHref?: string;
 }) {
+  const { user } = useAuth();
+  const label = eyebrow ?? user?.name ?? 'MECHANIC';
+
   return (
     <header className="mb-6">
       {backHref ? (
@@ -20,7 +24,7 @@ export function ScreenHeader({
           ← Back
         </Link>
       ) : null}
-      <p className="section-label">{eyebrow}</p>
+      <p className="section-label">{label}</p>
       <h1 className="mt-1 font-display text-3xl font-bold tracking-wide">
         {title}
       </h1>

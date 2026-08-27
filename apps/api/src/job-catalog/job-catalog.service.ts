@@ -59,6 +59,40 @@ export class JobCatalogService {
     });
     return jobs.map(mapJob);
   }
+
+  async listAliases(categoryId?: string, q?: string) {
+    const query = q?.trim();
+    const rows = await this.prisma.jobAlias.findMany({
+      where: {
+        catalogJob: {
+          status: 'active',
+          ...(categoryId ? { categoryId } : {}),
+        },
+        ...(query
+          ? {
+              OR: [
+                { aliasNorm: { contains: normalizeAlias(query) } },
+                { aliasText: { contains: query, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      include: {
+        catalogJob: {
+          select: { id: true, categoryId: true, displayName: true },
+        },
+      },
+      orderBy: { aliasText: 'asc' },
+      take: 200,
+    });
+
+    return rows.map((row) => ({
+      aliasText: row.aliasText,
+      catalogJobId: row.catalogJobId,
+      categoryId: row.catalogJob.categoryId,
+      displayName: row.catalogJob.displayName,
+    }));
+  }
 }
 
 function mapJob(job: {
