@@ -74,16 +74,18 @@ without storing the token used to collect them.
 
 ## Preview status — 2026-08-28
 
-Vercel accepted uploads for both projects, but blocked the deployments before
-the build started:
+After authenticating GitHub as an authorized repository administrator and
+creating the branch head with that identity, both projects built successfully:
 
-- API: `https://ltl-shop-j0y4xh9zn-ltl8.vercel.app`
-- Web: `https://ltl-shop-j5zbwbhb2-ltl8.vercel.app`
-- Vercel state: `BLOCKED` / `TEAM_ACCESS_REQUIRED`
-- Reason: the Git author `crixcroxdev` does not currently have deployment access
-  to the Vercel team `LTL`.
+- Web: `https://ltl-shop-web-git-codex-performance-optimization-ltl8.vercel.app`
+  (`READY`). Its login page became usable in approximately 1.37 seconds during
+  an external browser check, with no browser console warnings or errors.
+- API: `https://ltl-shop-api-performance-preview.vercel.app` (`READY`). The
+  generated NestJS function is 9.2 MB and runs in `pdx1`, next to the Supabase
+  `us-west-2` pooler as intended.
 
-No production deployment or environment variable was changed. After team access
-is granted (or the CLI is authenticated as an authorized member), retry both
-Previews, measure cold/warm responses, and only then consider production
-promotion.
+Vercel deployment protection remains enabled. The installed CLI does not support
+authenticated `vercel curl`, and direct API navigation is blocked by the browser
+security client, so cold/warm Preview endpoint timings are still pending. No
+production deployment or environment variable was changed; production promotion
+must wait for those API measurements and an authenticated end-to-end Preview run.
