@@ -18,7 +18,7 @@ export class PrismaService
     await this.connectWithRetry();
   }
 
-  private async connectWithRetry(retries = process.env.VERCEL ? 2 : 5) {
+  private async connectWithRetry(retries = process.env.VERCEL ? 1 : 5) {
     let lastError: unknown;
     for (let i = 1; i <= retries; i++) {
       try {
@@ -31,7 +31,9 @@ export class PrismaService
         this.logger.warn(
           `Database connect attempt ${i}/${retries} failed; retrying...`,
         );
-        await new Promise((r) => setTimeout(r, 1000 * i));
+        if (i < retries) {
+          await new Promise((r) => setTimeout(r, 1000 * i));
+        }
       }
     }
     // Keep the HTTP process alive so health routes still respond on cold start.

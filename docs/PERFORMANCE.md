@@ -28,6 +28,15 @@ The frontend is served from Vercel's cache and is not the dominant baseline
 bottleneck. The API shows a roughly 1.57 second cold-to-warm delta before an
 authenticated database query is included.
 
+### Infrastructure finding
+
+- The API deployment originally executed in Vercel `iad1` (`us-east-1`).
+- The configured Supavisor pooler is in AWS `us-west-2`.
+- `DATABASE_URL` already uses transaction mode on port `6543`; credentials were
+  not printed or stored during verification.
+- The API is therefore pinned to Vercel `pdx1` (`us-west-2`) for Preview and the
+  subsequent production promotion.
+
 ## Instrumentation
 
 - Vercel Speed Insights reports real-user Web Vitals per frontend route.
