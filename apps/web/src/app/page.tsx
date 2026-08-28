@@ -7,7 +7,13 @@ import type { WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { useWorkOrders } from '@/lib/shop-data';
 import { pauseLabel, priorityLabel } from '@/lib/format';
-import { EmptyState, PriorityBadge, ScreenHeader } from '@/components/ui';
+import {
+  CardListSkeleton,
+  EmptyState,
+  PageSkeleton,
+  PriorityBadge,
+  ScreenHeader,
+} from '@/components/ui';
 
 export default function HomePage() {
   const { token, sessionLoading, logout } = useAuth();
@@ -19,7 +25,7 @@ export default function HomePage() {
   }, [sessionLoading, token, router]);
 
   if (sessionLoading || !token) {
-    return <p className="text-shop-muted">Loading…</p>;
+    return <PageSkeleton label="Restoring session" />;
   }
 
   return (
@@ -44,51 +50,62 @@ export default function HomePage() {
         </p>
       ) : null}
 
-      {data?.created?.length ? (
-        <section className="mb-6">
-          <h2 className="section-label mb-2">Ready to Start</h2>
-          <p className="mb-3 text-sm text-shop-muted">
-            {data.created.length} order(s) ready to Start Work
-          </p>
-          <div className="space-y-3">
-            {data.created.map((wo) => (
-              <WorkOrderCard key={wo.id} wo={wo} mode="created" />
-            ))}
-          </div>
-        </section>
+      {!data && !error ? (
+        <div role="status" aria-label="Loading work orders" aria-live="polite">
+          <CardListSkeleton />
+          <span className="sr-only">Loading work orders</span>
+        </div>
       ) : null}
 
-      <section className="mb-6">
-        <h2 className="section-label mb-2">Active Jobs</h2>
-        <p className="mb-3 text-sm text-shop-muted">
-          {data?.active.length ?? 0} active jobs
-        </p>
-        {!data?.active.length ? (
-          <EmptyState>No active jobs.</EmptyState>
-        ) : (
-          <div className="space-y-3">
-            {data.active.map((wo) => (
-              <WorkOrderCard key={wo.id} wo={wo} mode="active" />
-            ))}
-          </div>
-        )}
-      </section>
+      {data ? (
+        <>
+          {data.created.length ? (
+            <section className="mb-6">
+              <h2 className="section-label mb-2">Ready to Start</h2>
+              <p className="mb-3 text-sm text-shop-muted">
+                {data.created.length} order(s) ready to Start Work
+              </p>
+              <div className="space-y-3">
+                {data.created.map((wo) => (
+                  <WorkOrderCard key={wo.id} wo={wo} mode="created" />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-      <section>
-        <h2 className="section-label mb-2">Paused Jobs</h2>
-        <p className="mb-3 text-sm text-shop-muted">
-          {data?.paused.length ?? 0} paused jobs
-        </p>
-        {!data?.paused.length ? (
-          <EmptyState>No paused jobs.</EmptyState>
-        ) : (
-          <div className="space-y-3">
-            {data.paused.map((wo) => (
-              <WorkOrderCard key={wo.id} wo={wo} mode="paused" />
-            ))}
-          </div>
-        )}
-      </section>
+          <section className="mb-6">
+            <h2 className="section-label mb-2">Active Jobs</h2>
+            <p className="mb-3 text-sm text-shop-muted">
+              {data.active.length} active jobs
+            </p>
+            {!data.active.length ? (
+              <EmptyState>No active jobs.</EmptyState>
+            ) : (
+              <div className="space-y-3">
+                {data.active.map((wo) => (
+                  <WorkOrderCard key={wo.id} wo={wo} mode="active" />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="section-label mb-2">Paused Jobs</h2>
+            <p className="mb-3 text-sm text-shop-muted">
+              {data.paused.length} paused jobs
+            </p>
+            {!data.paused.length ? (
+              <EmptyState>No paused jobs.</EmptyState>
+            ) : (
+              <div className="space-y-3">
+                {data.paused.map((wo) => (
+                  <WorkOrderCard key={wo.id} wo={wo} mode="paused" />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }

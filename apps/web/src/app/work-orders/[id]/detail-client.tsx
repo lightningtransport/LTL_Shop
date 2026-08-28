@@ -24,6 +24,7 @@ import {
 import {
   EmptyState,
   Modal,
+  PageSkeleton,
   PriorityBadge,
   ScreenHeader,
 } from '@/components/ui';
@@ -93,11 +94,11 @@ export default function WorkOrderDetailPage() {
   }
 
   if (sessionLoading || !token || !wo) {
-    const message =
-      error ??
-      (loadError instanceof Error ? loadError.message : null) ??
-      'Loading…';
-    return <p className="text-shop-muted">{message}</p>;
+    if (error) return <p className="text-shop-muted">{error}</p>;
+    if (loadError instanceof Error) {
+      return <p className="text-shop-muted">{loadError.message}</p>;
+    }
+    return <PageSkeleton label="Loading work order" />;
   }
 
   const todo = wo.jobs.filter((j) => j.status === 'to_do');

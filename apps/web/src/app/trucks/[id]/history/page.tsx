@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
-import { EmptyState, ScreenHeader } from '@/components/ui';
+import { EmptyState, PageSkeleton, ScreenHeader } from '@/components/ui';
 
 export default function RepairHistoryPage() {
   const { token, sessionLoading } = useAuth();
@@ -27,11 +27,10 @@ export default function RepairHistoryPage() {
   }, [sessionLoading, token, router]);
 
   if (!truck) {
-    return (
-      <p className="text-shop-muted">
-        {error instanceof Error ? error.message : 'Loading…'}
-      </p>
-    );
+    if (error instanceof Error) {
+      return <p className="text-shop-muted">{error.message}</p>;
+    }
+    return <PageSkeleton label="Loading repair history" />;
   }
 
   return (

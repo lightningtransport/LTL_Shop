@@ -21,7 +21,7 @@ import {
   useCategories,
   useMechanics,
 } from '@/lib/shop-data';
-import { EmptyState, Modal, ScreenHeader } from '@/components/ui';
+import { EmptyState, Modal, PageSkeleton, ScreenHeader } from '@/components/ui';
 
 type DraftJob = {
   key: string;
@@ -141,7 +141,7 @@ export default function NewWorkOrderPage() {
   }
 
   if (sessionLoading || !token) {
-    return <p className="text-shop-muted">Loading…</p>;
+    return <PageSkeleton label="Restoring session" />;
   }
 
   return (

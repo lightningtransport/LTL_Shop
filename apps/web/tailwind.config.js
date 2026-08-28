@@ -16,8 +16,8 @@ module.exports = {
         },
       },
       fontFamily: {
-        display: ['"Barlow Condensed"', 'system-ui', 'sans-serif'],
-        body: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
+        body: ['var(--font-body)', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         soft: '0 10px 30px rgba(0,0,0,0.35)',

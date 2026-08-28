@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { ScreenHeader } from '@/components/ui';
+import { PageSkeleton, ScreenHeader } from '@/components/ui';
 
 export default function LoginPage() {
   const { login, loginDev, token, sessionLoading } = useAuth();
@@ -18,7 +18,7 @@ export default function LoginPage() {
   }, [sessionLoading, token, router]);
 
   if (sessionLoading || token) {
-    return <p className="text-shop-muted">Loading…</p>;
+    return <PageSkeleton label="Restoring session" />;
   }
 
   async function onSubmit(e: FormEvent) {
