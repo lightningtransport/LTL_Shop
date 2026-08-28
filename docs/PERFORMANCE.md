@@ -71,3 +71,19 @@ without storing the token used to collect them.
   orders are loading.
 - The workspace test command excludes Playwright specifications from Vitest,
   and the workspace lint command runs non-interactively in CI.
+
+## Preview status — 2026-08-28
+
+Vercel accepted uploads for both projects, but blocked the deployments before
+the build started:
+
+- API: `https://ltl-shop-j0y4xh9zn-ltl8.vercel.app`
+- Web: `https://ltl-shop-j5zbwbhb2-ltl8.vercel.app`
+- Vercel state: `BLOCKED` / `TEAM_ACCESS_REQUIRED`
+- Reason: the Git author `crixcroxdev` does not currently have deployment access
+  to the Vercel team `LTL`.
+
+No production deployment or environment variable was changed. After team access
+is granted (or the CLI is authenticated as an authorized member), retry both
+Previews, measure cold/warm responses, and only then consider production
+promotion.
