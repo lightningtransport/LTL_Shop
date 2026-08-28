@@ -27,7 +27,7 @@ type DraftJob = {
 type Mechanic = { id: string; name: string; email: string };
 
 export default function NewWorkOrderPage() {
-  const { user, loading } = useAuth();
+  const { user, token, sessionLoading } = useAuth();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TruckDto[]>([]);
@@ -45,11 +45,11 @@ export default function NewWorkOrderPage() {
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
-  }, [loading, user, router]);
+    if (!sessionLoading && !token) router.replace('/login');
+  }, [sessionLoading, token, router]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!token) return;
     Promise.all([
       apiFetch<JobCategoryDto[]>('/api/catalog/categories'),
       apiFetch<Mechanic[]>('/api/mechanics'),
@@ -57,8 +57,12 @@ export default function NewWorkOrderPage() {
       setCategories(cats);
       setMechanics(mechs);
       if (cats[0]) setCategoryId(cats[0].id);
-      setWorkingWith([user.id]);
     });
+  }, [token]);
+
+  useEffect(() => {
+    if (!user) return;
+    setWorkingWith((current) => (current.length ? current : [user.id]));
   }, [user]);
 
   useEffect(() => {
@@ -124,7 +128,9 @@ export default function NewWorkOrderPage() {
     }
   }
 
-  if (loading || !user) return <p className="text-shop-muted">Loading…</p>;
+  if (sessionLoading || !token) {
+    return <p className="text-shop-muted">Loading…</p>;
+  }
 
   return (
     <div>

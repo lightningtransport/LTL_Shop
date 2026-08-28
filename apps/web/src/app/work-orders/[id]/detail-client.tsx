@@ -23,7 +23,7 @@ import {
 } from '@/components/ui';
 
 export default function WorkOrderDetailPage() {
-  const { user, loading } = useAuth();
+  const { token, sessionLoading } = useAuth();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
@@ -52,14 +52,14 @@ export default function WorkOrderDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
-  }, [loading, user, router]);
+    if (!sessionLoading && !token) router.replace('/login');
+  }, [sessionLoading, token, router]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!token) return;
     reload().catch((e) => setError(e.message));
     apiFetch<JobCategoryDto[]>('/api/catalog/categories').then(setCategories);
-  }, [user, reload]);
+  }, [token, reload]);
 
   useEffect(() => {
     const action = search.get('action');
@@ -85,7 +85,7 @@ export default function WorkOrderDetailPage() {
     }
   }
 
-  if (loading || !user || !wo) {
+  if (sessionLoading || !token || !wo) {
     return <p className="text-shop-muted">{error ?? 'Loading…'}</p>;
   }
 

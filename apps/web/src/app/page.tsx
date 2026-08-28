@@ -16,23 +16,23 @@ type HomeLists = {
 };
 
 export default function HomePage() {
-  const { user, loading, logout } = useAuth();
+  const { token, sessionLoading, logout } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<HomeLists | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
-  }, [loading, user, router]);
+    if (!sessionLoading && !token) router.replace('/login');
+  }, [sessionLoading, token, router]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!token) return;
     apiFetch<HomeLists>('/api/work-orders')
       .then(setData)
       .catch((e) => setError(e.message));
-  }, [user]);
+  }, [token]);
 
-  if (loading || !user) {
+  if (sessionLoading || !token) {
     return <p className="text-shop-muted">Loading…</p>;
   }
 

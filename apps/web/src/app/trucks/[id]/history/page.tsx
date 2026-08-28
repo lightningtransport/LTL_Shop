@@ -13,7 +13,7 @@ import { formatMileage } from '@/lib/format';
 import { EmptyState, ScreenHeader } from '@/components/ui';
 
 export default function RepairHistoryPage() {
-  const { user, loading } = useAuth();
+  const { token, sessionLoading } = useAuth();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const [truck, setTruck] = useState<TruckDto | null>(null);
@@ -22,16 +22,16 @@ export default function RepairHistoryPage() {
   const [categoryId, setCategoryId] = useState<string>('all');
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
-  }, [loading, user, router]);
+    if (!sessionLoading && !token) router.replace('/login');
+  }, [sessionLoading, token, router]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!token) return;
     apiFetch<JobCategoryDto[]>('/api/catalog/categories').then(setCategories);
-  }, [user]);
+  }, [token]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!token) return;
     const qs =
       categoryId !== 'all' ? `?categoryId=${encodeURIComponent(categoryId)}` : '';
     apiFetch<{ truck: TruckDto; items: RepairHistoryItemDto[] }>(
@@ -40,7 +40,7 @@ export default function RepairHistoryPage() {
       setTruck(res.truck);
       setItems(res.items);
     });
-  }, [user, params.id, categoryId]);
+  }, [token, params.id, categoryId]);
 
   if (!truck) return <p className="text-shop-muted">Loading…</p>;
 
