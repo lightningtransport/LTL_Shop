@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -9,6 +10,7 @@ import { WorkOrdersModule } from './work-orders/work-orders.module';
 import { ActivityLogModule } from './activity-log/activity-log.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { HealthController } from './health.controller';
+import { RequestTimingInterceptor } from './observability/request-timing.interceptor';
 
 @Module({
   imports: [
@@ -26,5 +28,11 @@ import { HealthController } from './health.controller';
     IntegrationsModule,
   ],
   controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestTimingInterceptor,
+    },
+  ],
 })
 export class AppModule {}
