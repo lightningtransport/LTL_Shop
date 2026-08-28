@@ -2,47 +2,37 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import type {
-  JobCategoryDto,
-  RepairHistoryItemDto,
-  TruckDto,
-} from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
+import { useCategories, useRepairHistory } from '@/lib/shop-data';
 import { EmptyState, ScreenHeader } from '@/components/ui';
 
 export default function RepairHistoryPage() {
   const { token, sessionLoading } = useAuth();
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const [truck, setTruck] = useState<TruckDto | null>(null);
-  const [items, setItems] = useState<RepairHistoryItemDto[]>([]);
-  const [categories, setCategories] = useState<JobCategoryDto[]>([]);
   const [categoryId, setCategoryId] = useState<string>('all');
+  const { data: categoryData } = useCategories(!!token);
+  const { data, error } = useRepairHistory(
+    params.id,
+    categoryId,
+    !!token,
+  );
+  const categories = categoryData ?? [];
+  const truck = data?.truck;
+  const items = data?.items ?? [];
 
   useEffect(() => {
     if (!sessionLoading && !token) router.replace('/login');
   }, [sessionLoading, token, router]);
 
-  useEffect(() => {
-    if (!token) return;
-    apiFetch<JobCategoryDto[]>('/api/catalog/categories').then(setCategories);
-  }, [token]);
-
-  useEffect(() => {
-    if (!token) return;
-    const qs =
-      categoryId !== 'all' ? `?categoryId=${encodeURIComponent(categoryId)}` : '';
-    apiFetch<{ truck: TruckDto; items: RepairHistoryItemDto[] }>(
-      `/api/trucks/${params.id}/repair-history${qs}`,
-    ).then((res) => {
-      setTruck(res.truck);
-      setItems(res.items);
-    });
-  }, [token, params.id, categoryId]);
-
-  if (!truck) return <p className="text-shop-muted">Loading…</p>;
+  if (!truck) {
+    return (
+      <p className="text-shop-muted">
+        {error instanceof Error ? error.message : 'Loading…'}
+      </p>
+    );
+  }
 
   return (
     <div>

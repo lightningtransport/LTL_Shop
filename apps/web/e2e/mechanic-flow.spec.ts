@@ -47,4 +47,31 @@ test.describe('Mechanic P0 critical path', () => {
     releaseProfile();
     await profileResponse;
   });
+
+  test('navigation reuses the fresh work-order cache', async ({ page }) => {
+    let workOrderReads = 0;
+    page.on('request', (request) => {
+      if (
+        request.method() === 'GET' &&
+        new URL(request.url()).pathname === '/api/work-orders'
+      ) {
+        workOrderReads += 1;
+      }
+    });
+
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(
+      page.getByRole('link', { name: /Create New Work Order/i }),
+    ).toBeVisible();
+    expect(workOrderReads).toBe(1);
+
+    await page.getByRole('link', { name: /Create New Work Order/i }).click();
+    await expect(
+      page.getByRole('heading', { name: /New Work Order/i }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: /Back/i }).click();
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    expect(workOrderReads).toBe(1);
+  });
 });

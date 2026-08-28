@@ -1,36 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetch } from '@/lib/api';
+import { useWorkOrders } from '@/lib/shop-data';
 import { pauseLabel, priorityLabel } from '@/lib/format';
 import { EmptyState, PriorityBadge, ScreenHeader } from '@/components/ui';
-
-type HomeLists = {
-  created: WorkOrderSummaryDto[];
-  active: WorkOrderSummaryDto[];
-  paused: WorkOrderSummaryDto[];
-};
 
 export default function HomePage() {
   const { token, sessionLoading, logout } = useAuth();
   const router = useRouter();
-  const [data, setData] = useState<HomeLists | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error } = useWorkOrders(!!token);
 
   useEffect(() => {
     if (!sessionLoading && !token) router.replace('/login');
   }, [sessionLoading, token, router]);
-
-  useEffect(() => {
-    if (!token) return;
-    apiFetch<HomeLists>('/api/work-orders')
-      .then(setData)
-      .catch((e) => setError(e.message));
-  }, [token]);
 
   if (sessionLoading || !token) {
     return <p className="text-shop-muted">Loading…</p>;
@@ -53,7 +39,9 @@ export default function HomePage() {
       </Link>
 
       {error ? (
-        <p className="mb-4 text-sm text-red-300">{error}</p>
+        <p className="mb-4 text-sm text-red-300">
+          {error instanceof Error ? error.message : 'Unable to load work orders'}
+        </p>
       ) : null}
 
       {data?.created?.length ? (

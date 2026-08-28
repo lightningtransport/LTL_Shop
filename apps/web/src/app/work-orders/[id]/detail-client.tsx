@@ -1,20 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useSWRConfig } from 'swr';
 import {
   PAUSE_REASON_LABELS,
   PauseReason,
   Priority,
   type JobAliasOptionDto,
   type JobCategoryDto,
-  type WorkOrderDetailDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
-import { fetchAliasOptions, filterAliasOptions } from '@/lib/job-catalog';
+import { filterAliasOptions } from '@/lib/job-catalog';
+import {
+  shopKeys,
+  useAliasOptions,
+  useCategories,
+  useWorkOrder,
+} from '@/lib/shop-data';
 import {
   EmptyState,
   Modal,
@@ -28,8 +34,15 @@ export default function WorkOrderDetailPage() {
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
   const id = params.id;
+  const { mutate: mutateGlobal } = useSWRConfig();
+  const {
+    data: wo,
+    error: loadError,
+    mutate: mutateWorkOrder,
+  } = useWorkOrder(id, !!token);
+  const { data: categoryData } = useCategories(!!token);
+  const categories = categoryData ?? [];
 
-  const [wo, setWo] = useState<WorkOrderDetailDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [truckOpen, setTruckOpen] = useState(false);
@@ -42,24 +55,12 @@ export default function WorkOrderDetailPage() {
   const [pauseNotes, setPauseNotes] = useState('');
   const [changeReason, setChangeReason] = useState<PauseReason | ''>('');
   const [addOpen, setAddOpen] = useState(false);
-  const [categories, setCategories] = useState<JobCategoryDto[]>([]);
   const [notes, setNotes] = useState('');
   const [notesDirty, setNotesDirty] = useState(false);
-
-  const reload = useCallback(async () => {
-    const data = await apiFetch<WorkOrderDetailDto>(`/api/work-orders/${id}`);
-    setWo(data);
-  }, [id]);
 
   useEffect(() => {
     if (!sessionLoading && !token) router.replace('/login');
   }, [sessionLoading, token, router]);
-
-  useEffect(() => {
-    if (!token) return;
-    reload().catch((e) => setError(e.message));
-    apiFetch<JobCategoryDto[]>('/api/catalog/categories').then(setCategories);
-  }, [token, reload]);
 
   useEffect(() => {
     const action = search.get('action');
@@ -67,17 +68,23 @@ export default function WorkOrderDetailPage() {
   }, [search]);
 
   useEffect(() => {
-    if (!wo) return;
+    if (!wo || notesDirty) return;
     setNotes(wo.notes ?? '');
-    setNotesDirty(false);
-  }, [wo]);
+  }, [wo, notesDirty]);
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
     setError(null);
     try {
       await action();
-      await reload();
+      await Promise.all([
+        mutateWorkOrder(),
+        mutateGlobal(shopKeys.workOrders),
+        mutateGlobal(
+          (key) =>
+            typeof key === 'string' && key.includes('/repair-history'),
+        ),
+      ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Action failed');
     } finally {
@@ -86,7 +93,11 @@ export default function WorkOrderDetailPage() {
   }
 
   if (sessionLoading || !token || !wo) {
-    return <p className="text-shop-muted">{error ?? 'Loading…'}</p>;
+    const message =
+      error ??
+      (loadError instanceof Error ? loadError.message : null) ??
+      'Loading…';
+    return <p className="text-shop-muted">{message}</p>;
   }
 
   const todo = wo.jobs.filter((j) => j.status === 'to_do');
@@ -491,21 +502,15 @@ function AddJobSheet({
 }) {
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [q, setQ] = useState('');
-  const [allAliases, setAllAliases] = useState<JobAliasOptionDto[]>([]);
   const [custom, setCustom] = useState('');
+  const { data: aliasData } = useAliasOptions(categoryId, open);
+  const allAliases: JobAliasOptionDto[] = aliasData ?? [];
 
   useEffect(() => {
     if (!open) return;
     setCategoryId(defaultCategoryId);
     setQ('');
   }, [open, defaultCategoryId]);
-
-  useEffect(() => {
-    if (!open) return;
-    fetchAliasOptions(categoryId || undefined)
-      .then(setAllAliases)
-      .catch(() => setAllAliases([]));
-  }, [open, categoryId]);
 
   const aliases = useMemo(
     () => filterAliasOptions(allAliases, q),
