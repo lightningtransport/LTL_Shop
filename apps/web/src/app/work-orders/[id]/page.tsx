@@ -2,10 +2,11 @@
 
 import { Suspense } from 'react';
 import WorkOrderDetailPage from './detail-client';
+import { PageSkeleton } from '@/components/ui';
 
 export default function Page() {
   return (
-    <Suspense fallback={<p className="text-shop-muted">Loading…</p>}>
+    <Suspense fallback={<PageSkeleton label="Loading work order" />}>
       <WorkOrderDetailPage />
     </Suspense>
   );

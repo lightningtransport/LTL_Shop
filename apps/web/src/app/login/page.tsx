@@ -3,10 +3,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { ScreenHeader } from '@/components/ui';
+import { PageSkeleton, ScreenHeader } from '@/components/ui';
 
 export default function LoginPage() {
-  const { login, loginDev, user, loading } = useAuth();
+  const { login, loginDev, token, sessionLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('mechanic@lightning.local');
   const [password, setPassword] = useState('');
@@ -14,11 +14,11 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) router.replace('/');
-  }, [loading, user, router]);
+    if (!sessionLoading && token) router.replace('/');
+  }, [sessionLoading, token, router]);
 
-  if (loading || user) {
-    return <p className="text-shop-muted">Loading…</p>;
+  if (sessionLoading || token) {
+    return <PageSkeleton label="Restoring session" />;
   }
 
   async function onSubmit(e: FormEvent) {

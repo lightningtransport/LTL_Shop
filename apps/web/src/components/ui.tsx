@@ -43,6 +43,39 @@ export function EmptyState({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function PageSkeleton({ label = 'Loading page' }: { label?: string }) {
+  return (
+    <div
+      className="animate-pulse space-y-6"
+      role="status"
+      aria-label={label}
+      aria-live="polite"
+    >
+      <div className="space-y-3">
+        <div className="h-3 w-24 rounded bg-shop-border" />
+        <div className="h-9 w-2/3 rounded-lg bg-shop-panel" />
+        <div className="h-4 w-full rounded bg-shop-panel" />
+      </div>
+      <CardListSkeleton />
+      <span className="sr-only">{label}</span>
+    </div>
+  );
+}
+
+export function CardListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="animate-pulse space-y-3" aria-hidden="true">
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className="card space-y-3">
+          <div className="h-5 w-1/3 rounded bg-shop-border" />
+          <div className="h-4 w-3/4 rounded bg-shop-border/70" />
+          <div className="h-10 w-full rounded-xl bg-shop-border/60" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Modal({
   open,
   title,

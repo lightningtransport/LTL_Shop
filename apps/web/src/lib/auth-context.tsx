@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { UserDto } from '@ltl-shop/shared';
@@ -14,7 +15,8 @@ import { apiFetch, AUTH_TOKEN_KEY, setAuthToken } from './api';
 type AuthState = {
   user: UserDto | null;
   token: string | null;
-  loading: boolean;
+  sessionLoading: boolean;
+  profileLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   loginDev: (email: string) => Promise<void>;
@@ -40,23 +42,45 @@ async function getSupabaseClient() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserDto | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const profileTokenRef = useRef<string | null>(null);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     setAuthToken(null);
     setUser(null);
     setToken(null);
+    setProfileLoading(false);
+    profileTokenRef.current = null;
   }, []);
 
-  const hydrate = useCallback(async (tok: string) => {
+  const applyToken = useCallback((tok: string) => {
     setAuthToken(tok);
-    const res = await apiFetch<{ user: UserDto }>('/api/auth/me');
-    setUser(res.user);
     setToken(tok);
     localStorage.setItem(AUTH_TOKEN_KEY, tok);
   }, []);
+
+  const loadProfile = useCallback(
+    async (tok: string) => {
+      if (profileTokenRef.current === tok) return;
+      profileTokenRef.current = tok;
+      setProfileLoading(true);
+      applyToken(tok);
+      try {
+        const res = await apiFetch<{ user: UserDto }>('/api/auth/me');
+        setUser(res.user);
+      } catch (profileError) {
+        profileTokenRef.current = null;
+        clearSession();
+        throw profileError;
+      } finally {
+        setProfileLoading(false);
+      }
+    },
+    [applyToken, clearSession],
+  );
 
   useEffect(() => {
     const onExpired = () => clearSession();
@@ -76,11 +100,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } = await supabase.auth.getSession();
 
           if (session?.access_token) {
-            await hydrate(session.access_token);
+            applyToken(session.access_token);
+            if (!cancelled) setSessionLoading(false);
+            void loadProfile(session.access_token).catch(() => undefined);
           } else {
             const saved = localStorage.getItem(AUTH_TOKEN_KEY);
             if (saved?.startsWith('dev:')) {
-              await hydrate(saved);
+              applyToken(saved);
+              if (!cancelled) setSessionLoading(false);
+              void loadProfile(saved).catch(() => undefined);
             }
           }
 
@@ -89,10 +117,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const {
             data: { subscription },
           } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-            if (!nextSession?.access_token) return;
-            setAuthToken(nextSession.access_token);
-            localStorage.setItem(AUTH_TOKEN_KEY, nextSession.access_token);
-            setToken(nextSession.access_token);
+            if (!nextSession?.access_token) {
+              clearSession();
+              return;
+            }
+            applyToken(nextSession.access_token);
+            setSessionLoading(false);
+            void loadProfile(nextSession.access_token).catch(() => undefined);
           });
 
           return () => subscription.unsubscribe();
@@ -100,12 +131,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const saved = localStorage.getItem(AUTH_TOKEN_KEY);
         if (saved) {
-          await hydrate(saved);
+          applyToken(saved);
+          if (!cancelled) setSessionLoading(false);
+          void loadProfile(saved).catch(() => undefined);
         }
       } catch {
         clearSession();
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setSessionLoading(false);
       }
     }
 
@@ -114,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       void cleanupPromise.then((cleanup) => cleanup?.());
     };
-  }, [hydrate, clearSession]);
+  }, [applyToken, loadProfile, clearSession]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -132,17 +165,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authError || !data.session) {
         throw new Error(authError?.message ?? 'Sign in failed');
       }
-      await hydrate(data.session.access_token);
+      await loadProfile(data.session.access_token);
     },
-    [hydrate],
+    [loadProfile],
   );
 
   const loginDev = useCallback(
     async (email: string) => {
       setError(null);
-      await hydrate(`dev:${email.toLowerCase()}`);
+      await loadProfile(`dev:${email.toLowerCase()}`);
     },
-    [hydrate],
+    [loadProfile],
   );
 
   const logout = useCallback(() => {
@@ -153,8 +186,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [clearSession]);
 
   const value = useMemo(
-    () => ({ user, token, loading, error, login, loginDev, logout }),
-    [user, token, loading, error, login, loginDev, logout],
+    () => ({
+      user,
+      token,
+      sessionLoading,
+      profileLoading,
+      error,
+      login,
+      loginDev,
+      logout,
+    }),
+    [
+      user,
+      token,
+      sessionLoading,
+      profileLoading,
+      error,
+      login,
+      loginDev,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

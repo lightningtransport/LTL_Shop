@@ -1,39 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetch } from '@/lib/api';
+import { useWorkOrders } from '@/lib/shop-data';
 import { pauseLabel, priorityLabel } from '@/lib/format';
-import { EmptyState, PriorityBadge, ScreenHeader } from '@/components/ui';
-
-type HomeLists = {
-  created: WorkOrderSummaryDto[];
-  active: WorkOrderSummaryDto[];
-  paused: WorkOrderSummaryDto[];
-};
+import {
+  CardListSkeleton,
+  EmptyState,
+  PageSkeleton,
+  PriorityBadge,
+  ScreenHeader,
+} from '@/components/ui';
 
 export default function HomePage() {
-  const { user, loading, logout } = useAuth();
+  const { token, sessionLoading, logout } = useAuth();
   const router = useRouter();
-  const [data, setData] = useState<HomeLists | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error } = useWorkOrders(!!token);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
-  }, [loading, user, router]);
+    if (!sessionLoading && !token) router.replace('/login');
+  }, [sessionLoading, token, router]);
 
-  useEffect(() => {
-    if (!user) return;
-    apiFetch<HomeLists>('/api/work-orders')
-      .then(setData)
-      .catch((e) => setError(e.message));
-  }, [user]);
-
-  if (loading || !user) {
-    return <p className="text-shop-muted">Loading…</p>;
+  if (sessionLoading || !token) {
+    return <PageSkeleton label="Restoring session" />;
   }
 
   return (
@@ -53,54 +45,67 @@ export default function HomePage() {
       </Link>
 
       {error ? (
-        <p className="mb-4 text-sm text-red-300">{error}</p>
+        <p className="mb-4 text-sm text-red-300">
+          {error instanceof Error ? error.message : 'Unable to load work orders'}
+        </p>
       ) : null}
 
-      {data?.created?.length ? (
-        <section className="mb-6">
-          <h2 className="section-label mb-2">Ready to Start</h2>
-          <p className="mb-3 text-sm text-shop-muted">
-            {data.created.length} order(s) ready to Start Work
-          </p>
-          <div className="space-y-3">
-            {data.created.map((wo) => (
-              <WorkOrderCard key={wo.id} wo={wo} mode="created" />
-            ))}
-          </div>
-        </section>
+      {!data && !error ? (
+        <div role="status" aria-label="Loading work orders" aria-live="polite">
+          <CardListSkeleton />
+          <span className="sr-only">Loading work orders</span>
+        </div>
       ) : null}
 
-      <section className="mb-6">
-        <h2 className="section-label mb-2">Active Jobs</h2>
-        <p className="mb-3 text-sm text-shop-muted">
-          {data?.active.length ?? 0} active jobs
-        </p>
-        {!data?.active.length ? (
-          <EmptyState>No active jobs.</EmptyState>
-        ) : (
-          <div className="space-y-3">
-            {data.active.map((wo) => (
-              <WorkOrderCard key={wo.id} wo={wo} mode="active" />
-            ))}
-          </div>
-        )}
-      </section>
+      {data ? (
+        <>
+          {data.created.length ? (
+            <section className="mb-6">
+              <h2 className="section-label mb-2">Ready to Start</h2>
+              <p className="mb-3 text-sm text-shop-muted">
+                {data.created.length} order(s) ready to Start Work
+              </p>
+              <div className="space-y-3">
+                {data.created.map((wo) => (
+                  <WorkOrderCard key={wo.id} wo={wo} mode="created" />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-      <section>
-        <h2 className="section-label mb-2">Paused Jobs</h2>
-        <p className="mb-3 text-sm text-shop-muted">
-          {data?.paused.length ?? 0} paused jobs
-        </p>
-        {!data?.paused.length ? (
-          <EmptyState>No paused jobs.</EmptyState>
-        ) : (
-          <div className="space-y-3">
-            {data.paused.map((wo) => (
-              <WorkOrderCard key={wo.id} wo={wo} mode="paused" />
-            ))}
-          </div>
-        )}
-      </section>
+          <section className="mb-6">
+            <h2 className="section-label mb-2">Active Jobs</h2>
+            <p className="mb-3 text-sm text-shop-muted">
+              {data.active.length} active jobs
+            </p>
+            {!data.active.length ? (
+              <EmptyState>No active jobs.</EmptyState>
+            ) : (
+              <div className="space-y-3">
+                {data.active.map((wo) => (
+                  <WorkOrderCard key={wo.id} wo={wo} mode="active" />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="section-label mb-2">Paused Jobs</h2>
+            <p className="mb-3 text-sm text-shop-muted">
+              {data.paused.length} paused jobs
+            </p>
+            {!data.paused.length ? (
+              <EmptyState>No paused jobs.</EmptyState>
+            ) : (
+              <div className="space-y-3">
+                {data.paused.map((wo) => (
+                  <WorkOrderCard key={wo.id} wo={wo} mode="paused" />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }

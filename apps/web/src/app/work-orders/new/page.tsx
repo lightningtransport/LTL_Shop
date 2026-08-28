@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSWRConfig } from 'swr';
 import {
   Priority,
   type JobAliasOptionDto,
@@ -13,8 +14,14 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
-import { fetchAliasOptions, filterAliasOptions } from '@/lib/job-catalog';
-import { EmptyState, Modal, ScreenHeader } from '@/components/ui';
+import { filterAliasOptions } from '@/lib/job-catalog';
+import {
+  shopKeys,
+  useAliasOptions,
+  useCategories,
+  useMechanics,
+} from '@/lib/shop-data';
+import { EmptyState, Modal, PageSkeleton, ScreenHeader } from '@/components/ui';
 
 type DraftJob = {
   key: string;
@@ -24,19 +31,20 @@ type DraftJob = {
   customDescription?: string;
 };
 
-type Mechanic = { id: string; name: string; email: string };
-
 export default function NewWorkOrderPage() {
-  const { user, loading } = useAuth();
+  const { user, token, sessionLoading } = useAuth();
   const router = useRouter();
+  const { mutate } = useSWRConfig();
+  const { data: categoryData, error: categoryError } = useCategories(!!token);
+  const { data: mechanicData, error: mechanicError } = useMechanics(!!token);
+  const categories = categoryData ?? [];
+  const mechanics = mechanicData ?? [];
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TruckDto[]>([]);
   const [truck, setTruck] = useState<TruckDto | null>(null);
   const [openWo, setOpenWo] = useState<WorkOrderSummaryDto | null>(null);
-  const [categories, setCategories] = useState<JobCategoryDto[]>([]);
   const [categoryId, setCategoryId] = useState('');
   const [jobs, setJobs] = useState<DraftJob[]>([]);
-  const [mechanics, setMechanics] = useState<Mechanic[]>([]);
   const [workingWith, setWorkingWith] = useState<string[]>([]);
   const [priority, setPriority] = useState<Priority>(Priority.NORMAL);
   const [notes, setNotes] = useState('');
@@ -45,20 +53,16 @@ export default function NewWorkOrderPage() {
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login');
-  }, [loading, user, router]);
+    if (!sessionLoading && !token) router.replace('/login');
+  }, [sessionLoading, token, router]);
+
+  useEffect(() => {
+    if (!categoryId && categories[0]) setCategoryId(categories[0].id);
+  }, [categories, categoryId]);
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([
-      apiFetch<JobCategoryDto[]>('/api/catalog/categories'),
-      apiFetch<Mechanic[]>('/api/mechanics'),
-    ]).then(([cats, mechs]) => {
-      setCategories(cats);
-      setMechanics(mechs);
-      if (cats[0]) setCategoryId(cats[0].id);
-      setWorkingWith([user.id]);
-    });
+    setWorkingWith((current) => (current.length ? current : [user.id]));
   }, [user]);
 
   useEffect(() => {
@@ -66,12 +70,23 @@ export default function NewWorkOrderPage() {
       setResults([]);
       return;
     }
+    const controller = new AbortController();
     const t = setTimeout(() => {
-      apiFetch<TruckDto[]>(`/api/trucks/search?q=${encodeURIComponent(query)}`)
+      apiFetch<TruckDto[]>(
+        `/api/trucks/search?q=${encodeURIComponent(query)}`,
+        { signal: controller.signal },
+      )
         .then(setResults)
-        .catch(() => setResults([]));
+        .catch((searchError) => {
+          if (!(searchError instanceof Error && searchError.name === 'AbortError')) {
+            setResults([]);
+          }
+        });
     }, 200);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
   }, [query]);
 
   async function selectTruck(t: TruckDto) {
@@ -110,6 +125,7 @@ export default function NewWorkOrderPage() {
           idempotencyKey: crypto.randomUUID(),
         }),
       });
+      void mutate(shopKeys.workOrders);
       router.push(`/work-orders/${wo.id}`);
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
@@ -124,7 +140,9 @@ export default function NewWorkOrderPage() {
     }
   }
 
-  if (loading || !user) return <p className="text-shop-muted">Loading…</p>;
+  if (sessionLoading || !token) {
+    return <PageSkeleton label="Restoring session" />;
+  }
 
   return (
     <div>
@@ -315,6 +333,12 @@ export default function NewWorkOrderPage() {
             <p className="mb-3 text-sm text-red-300">{error}</p>
           ) : null}
 
+          {categoryError || mechanicError ? (
+            <p className="mb-3 text-sm text-red-300">
+              Unable to load shop reference data.
+            </p>
+          ) : null}
+
           <button
             type="button"
             className="btn-primary w-full"
@@ -366,22 +390,16 @@ function AddJobModal({
 }) {
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [q, setQ] = useState('');
-  const [allAliases, setAllAliases] = useState<JobAliasOptionDto[]>([]);
   const [customOpen, setCustomOpen] = useState(false);
   const [customName, setCustomName] = useState('');
+  const { data: aliasData } = useAliasOptions(categoryId, open);
+  const allAliases: JobAliasOptionDto[] = aliasData ?? [];
 
   useEffect(() => {
     if (!open) return;
     setCategoryId(defaultCategoryId);
     setQ('');
   }, [open, defaultCategoryId]);
-
-  useEffect(() => {
-    if (!open) return;
-    fetchAliasOptions(categoryId || undefined)
-      .then(setAllAliases)
-      .catch(() => setAllAliases([]));
-  }, [open, categoryId]);
 
   const aliases = useMemo(
     () => filterAliasOptions(allAliases, q),
