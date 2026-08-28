@@ -58,3 +58,16 @@ curl -sS -o /dev/null -w 'status=%{http_code} ttfb=%{time_starttransfer}s total=
 
 Authenticated endpoint measurements will be added from a Preview deployment
 without storing the token used to collect them.
+
+## Local verification — 2026-08-28
+
+- All workspace production builds pass. The web bundle remains 133–135 kB on
+  authenticated routes after adding SWR; replacing the remote font import did
+  not increase it further.
+- API and shared unit suites pass: 11 tests total.
+- Type checks pass for API, web, and shared workspaces.
+- Playwright passes all 5 critical-flow tests, including non-blocking profile
+  restoration, cache reuse during navigation, and a usable shell while work
+  orders are loading.
+- The workspace test command excludes Playwright specifications from Vitest,
+  and the workspace lint command runs non-interactively in CI.
