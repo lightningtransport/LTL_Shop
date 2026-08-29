@@ -7,6 +7,13 @@ import { toWorkOrderSummary } from '../work-orders/work-order.mapper';
 export class TrucksService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async list() {
+    const trucks = await this.prisma.truck.findMany({
+      orderBy: { truckNumber: 'asc' },
+    });
+    return trucks.map(toTruckDto);
+  }
+
   async search(q: string) {
     const term = q.trim().replace(/^#/, '');
     if (!term) return [];

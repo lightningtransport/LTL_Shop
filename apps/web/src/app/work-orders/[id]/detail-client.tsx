@@ -504,7 +504,7 @@ function AddJobSheet({
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [q, setQ] = useState('');
   const [custom, setCustom] = useState('');
-  const { data: aliasData } = useAliasOptions(categoryId, open);
+  const { data: aliasData } = useAliasOptions(categoryId, true);
   const allAliases: JobAliasOptionDto[] = aliasData ?? [];
 
   useEffect(() => {

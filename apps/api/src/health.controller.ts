@@ -11,7 +11,7 @@ export class HealthController {
       docs: {
         me: 'GET /api/auth/me',
         workOrders: 'GET /api/work-orders',
-        trucks: 'GET /api/trucks/search?q=905',
+        trucks: 'GET /api/trucks',
       },
       web: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
     };

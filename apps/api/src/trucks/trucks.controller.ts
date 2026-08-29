@@ -7,6 +7,11 @@ import { TrucksService } from './trucks.service';
 export class TrucksController {
   constructor(private readonly trucks: TrucksService) {}
 
+  @Get()
+  list() {
+    return this.trucks.list();
+  }
+
   @Get('search')
   search(@Query('q') q: string) {
     return this.trucks.search(q ?? '');
