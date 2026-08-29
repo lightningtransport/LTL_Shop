@@ -74,11 +74,14 @@ With `AUTH_DEV_BYPASS=true`, use **Dev Login** on `/login` with:
 | `packages/shared` | Enums, DTOs, Zod contracts |
 | `supabase/migrations` | SQL mirror of schema for Supabase CLI |
 | `docs/PRD_Lightning_Shop_Mechanic_P0.md` | Full PRD |
+| `docs/ENGINEERING_PRACTICES.md` | Data-flow, caching, mutation, and performance rules |
+| `docs/PERFORMANCE.md` | Production measurements and performance targets |
 
 ## API overview
 
 - `GET /api/auth/me`
 - `GET /api/mechanics`
+- `GET /api/trucks`
 - `GET /api/trucks/search?q=`
 - `GET /api/trucks/:id/open-work-order`
 - `GET /api/trucks/:id/repair-history`
@@ -98,7 +101,7 @@ npm run test:e2e --workspace=@ltl-shop/web   # requires running app
 ## Deploy
 
 - Frontend → Vercel (`apps/web`)
-- Backend → Railway (`apps/api`)
+- Backend → Vercel Functions in `pdx1` (`apps/api`)
 - Database → Supabase
 
 ## Out of P0

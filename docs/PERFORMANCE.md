@@ -4,6 +4,9 @@ This document records repeatable performance measurements and the changes made
 to the production critical path. Never add tokens, credentials, or database
 connection strings here.
 
+For the engineering rules that apply these findings to future features, see
+[ENGINEERING_PRACTICES.md](./ENGINEERING_PRACTICES.md).
+
 ## Targets (P75)
 
 - Usable application: under 2 seconds.
