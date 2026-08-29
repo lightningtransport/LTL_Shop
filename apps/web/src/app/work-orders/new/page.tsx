@@ -20,6 +20,7 @@ import {
   useAliasOptions,
   useCategories,
   useMechanics,
+  useTrucks,
 } from '@/lib/shop-data';
 import { EmptyState, Modal, PageSkeleton, ScreenHeader } from '@/components/ui';
 
@@ -37,10 +38,10 @@ export default function NewWorkOrderPage() {
   const { mutate } = useSWRConfig();
   const { data: categoryData, error: categoryError } = useCategories(!!token);
   const { data: mechanicData, error: mechanicError } = useMechanics(!!token);
+  const { data: truckData, error: truckError } = useTrucks(!!token);
   const categories = categoryData ?? [];
   const mechanics = mechanicData ?? [];
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<TruckDto[]>([]);
   const [truck, setTruck] = useState<TruckDto | null>(null);
   const [openWo, setOpenWo] = useState<WorkOrderSummaryDto | null>(null);
   const [categoryId, setCategoryId] = useState('');
@@ -65,34 +66,17 @@ export default function NewWorkOrderPage() {
     setWorkingWith((current) => (current.length ? current : [user.id]));
   }, [user]);
 
-  useEffect(() => {
-    if (query.trim().length < 1) {
-      setResults([]);
-      return;
-    }
-    const controller = new AbortController();
-    const t = setTimeout(() => {
-      apiFetch<TruckDto[]>(
-        `/api/trucks/search?q=${encodeURIComponent(query)}`,
-        { signal: controller.signal },
-      )
-        .then(setResults)
-        .catch((searchError) => {
-          if (!(searchError instanceof Error && searchError.name === 'AbortError')) {
-            setResults([]);
-          }
-        });
-    }, 200);
-    return () => {
-      clearTimeout(t);
-      controller.abort();
-    };
-  }, [query]);
+  const results = useMemo(() => {
+    const term = query.trim().replace(/^#/, '').toLowerCase();
+    if (!term || truck) return [];
+    return (truckData ?? [])
+      .filter((item) => item.truckNumber.toLowerCase().includes(term))
+      .slice(0, 20);
+  }, [query, truck, truckData]);
 
   async function selectTruck(t: TruckDto) {
     setTruck(t);
     setQuery(t.truckNumber);
-    setResults([]);
     setOpenWo(null);
     const open = await apiFetch<
       { exists: false } | { exists: true; workOrder: WorkOrderSummaryDto }
@@ -333,7 +317,7 @@ export default function NewWorkOrderPage() {
             <p className="mb-3 text-sm text-red-300">{error}</p>
           ) : null}
 
-          {categoryError || mechanicError ? (
+          {categoryError || mechanicError || truckError ? (
             <p className="mb-3 text-sm text-red-300">
               Unable to load shop reference data.
             </p>
@@ -392,7 +376,7 @@ function AddJobModal({
   const [q, setQ] = useState('');
   const [customOpen, setCustomOpen] = useState(false);
   const [customName, setCustomName] = useState('');
-  const { data: aliasData } = useAliasOptions(categoryId, open);
+  const { data: aliasData } = useAliasOptions(categoryId, true);
   const allAliases: JobAliasOptionDto[] = aliasData ?? [];
 
   useEffect(() => {

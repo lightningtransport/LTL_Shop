@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import useSWR from 'swr';
 import type {
   JobAliasOptionDto,
@@ -34,6 +35,7 @@ export const shopKeys = {
   workOrder: (id: string) => `/api/work-orders/${id}`,
   categories: '/api/catalog/categories',
   mechanics: '/api/mechanics',
+  trucks: '/api/trucks',
   repairHistory: (truckId: string, categoryId: string) => {
     const query =
       categoryId === 'all'
@@ -72,6 +74,13 @@ export function useMechanics(enabled: boolean) {
   });
 }
 
+export function useTrucks(enabled: boolean) {
+  return useSWR<TruckDto[]>(enabled ? shopKeys.trucks : null, {
+    dedupingInterval: 5 * 60_000,
+    revalidateOnFocus: false,
+  });
+}
+
 export function useRepairHistory(
   truckId: string,
   categoryId: string,
@@ -84,9 +93,18 @@ export function useRepairHistory(
 }
 
 export function useAliasOptions(categoryId: string, enabled: boolean) {
-  return useSWR<JobAliasOptionDto[]>(
-    enabled ? shopKeys.aliases(categoryId) : null,
-    () => fetchAliasOptions(categoryId || undefined),
+  const response = useSWR<JobAliasOptionDto[]>(
+    enabled ? shopKeys.aliases() : null,
+    () => fetchAliasOptions(),
     { dedupingInterval: 5 * 60_000, revalidateOnFocus: false },
   );
+  const data = useMemo(
+    () =>
+      categoryId
+        ? response.data?.filter((alias) => alias.categoryId === categoryId)
+        : response.data,
+    [categoryId, response.data],
+  );
+
+  return { ...response, data };
 }

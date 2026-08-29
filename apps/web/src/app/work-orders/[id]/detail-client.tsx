@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSWRConfig } from 'swr';
 import {
+  JobStatus,
   PAUSE_REASON_LABELS,
   PauseReason,
   Priority,
   type JobAliasOptionDto,
   type JobCategoryDto,
+  type WorkOrderDetailDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
@@ -30,7 +32,7 @@ import {
 } from '@/components/ui';
 
 export default function WorkOrderDetailPage() {
-  const { token, sessionLoading } = useAuth();
+  const { user, token, sessionLoading } = useAuth();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
@@ -73,20 +75,34 @@ export default function WorkOrderDetailPage() {
     setNotes(wo.notes ?? '');
   }, [wo, notesDirty]);
 
-  async function run(action: () => Promise<unknown>) {
+  async function run(
+    action: () => Promise<WorkOrderDetailDto>,
+    optimisticUpdate?: (
+      current: WorkOrderDetailDto,
+    ) => WorkOrderDetailDto,
+  ) {
+    const snapshot = wo;
     setBusy(true);
     setError(null);
+    if (snapshot && optimisticUpdate) {
+      await mutateWorkOrder(optimisticUpdate(snapshot), {
+        revalidate: false,
+      });
+    }
     try {
-      await action();
-      await Promise.all([
-        mutateWorkOrder(),
+      const updated = await action();
+      await mutateWorkOrder(updated, { revalidate: false });
+      void Promise.all([
         mutateGlobal(shopKeys.workOrders),
         mutateGlobal(
           (key) =>
             typeof key === 'string' && key.includes('/repair-history'),
         ),
-      ]);
+      ]).catch(() => undefined);
     } catch (e) {
+      if (snapshot && optimisticUpdate) {
+        await mutateWorkOrder(snapshot, { revalidate: false });
+      }
       setError(e instanceof Error ? e.message : 'Action failed');
     } finally {
       setBusy(false);
@@ -138,7 +154,9 @@ export default function WorkOrderDetailPage() {
             disabled={busy}
             onClick={() =>
               run(() =>
-                apiFetch(`/api/work-orders/${wo.id}/start`, { method: 'POST' }),
+                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
+                  method: 'POST',
+                }),
               )
             }
           >
@@ -161,7 +179,7 @@ export default function WorkOrderDetailPage() {
               disabled={busy}
               onClick={() =>
                 run(() =>
-                  apiFetch(`/api/work-orders/${wo.id}/complete`, {
+                  apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, {
                     method: 'POST',
                   }),
                 )
@@ -178,7 +196,9 @@ export default function WorkOrderDetailPage() {
             disabled={busy}
             onClick={() =>
               run(() =>
-                apiFetch(`/api/work-orders/${wo.id}/resume`, { method: 'POST' }),
+                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/resume`, {
+                  method: 'POST',
+                }),
               )
             }
           >
@@ -207,7 +227,7 @@ export default function WorkOrderDetailPage() {
             disabled={busy}
             onClick={() =>
               run(() =>
-                apiFetch(`/api/work-orders/${wo.id}/pause-reason`, {
+                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause-reason`, {
                   method: 'POST',
                   body: JSON.stringify({
                     reason: changeReason || wo.currentPauseReason,
@@ -350,11 +370,15 @@ export default function WorkOrderDetailPage() {
               disabled={busy}
               onClick={() =>
                 run(async () => {
-                  await apiFetch(`/api/work-orders/${wo.id}/notes`, {
+                  const updated = await apiFetch<WorkOrderDetailDto>(
+                    `/api/work-orders/${wo.id}/notes`,
+                    {
                     method: 'POST',
                     body: JSON.stringify({ notes: notes || undefined }),
-                  });
+                    },
+                  );
                   setNotesDirty(false);
+                  return updated;
                 })
               }
             >
@@ -386,10 +410,33 @@ export default function WorkOrderDetailPage() {
               if (!finishJob) return;
               const jobId = finishJob.id;
               setFinishJob(null);
-              run(() =>
-                apiFetch(`/api/work-orders/${wo.id}/jobs/${jobId}/complete`, {
-                  method: 'POST',
-                }),
+              run(
+                () =>
+                  apiFetch<WorkOrderDetailDto>(
+                    `/api/work-orders/${wo.id}/jobs/${jobId}/complete`,
+                    { method: 'POST' },
+                  ),
+                (current) => {
+                  const completedAt = new Date().toISOString();
+                  const jobs = current.jobs.map((job) =>
+                    job.id === jobId
+                      ? {
+                          ...job,
+                          status: JobStatus.COMPLETED,
+                          completedAt,
+                          completedById: user?.id ?? null,
+                        }
+                      : job,
+                  );
+                  return {
+                    ...current,
+                    jobs,
+                    jobsCompleted: jobs.filter(
+                      (job) => job.status === 'completed',
+                    ).length,
+                    version: current.version + 1,
+                  };
+                },
               );
             }}
           >
@@ -438,7 +485,7 @@ export default function WorkOrderDetailPage() {
             onClick={() => {
               setPauseOpen(false);
               run(() =>
-                apiFetch(`/api/work-orders/${wo.id}/pause`, {
+                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause`, {
                   method: 'POST',
                   body: JSON.stringify({
                     reason: pauseReason,
@@ -461,7 +508,7 @@ export default function WorkOrderDetailPage() {
         onAdd={(body) => {
           setAddOpen(false);
           run(() =>
-            apiFetch(`/api/work-orders/${wo.id}/jobs`, {
+            apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/jobs`, {
               method: 'POST',
               body: JSON.stringify(body),
             }),
@@ -504,7 +551,7 @@ function AddJobSheet({
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [q, setQ] = useState('');
   const [custom, setCustom] = useState('');
-  const { data: aliasData } = useAliasOptions(categoryId, open);
+  const { data: aliasData } = useAliasOptions(categoryId, true);
   const allAliases: JobAliasOptionDto[] = aliasData ?? [];
 
   useEffect(() => {
