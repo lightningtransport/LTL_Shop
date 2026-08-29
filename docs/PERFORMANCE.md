@@ -86,6 +86,24 @@ creating the branch head with that identity, both projects built successfully:
 
 Vercel deployment protection remains enabled. The installed CLI does not support
 authenticated `vercel curl`, and direct API navigation is blocked by the browser
-security client, so cold/warm Preview endpoint timings are still pending. No
-production deployment or environment variable was changed; production promotion
-must wait for those API measurements and an authenticated end-to-end Preview run.
+security client, so cold/warm Preview endpoint timings were deferred until the
+production promotion.
+
+## Production verification — 2026-08-29
+
+- The API Preview was promoted to production as deployment
+  `dpl_H7bgiLGWW8KchqMqgSZzDrTgGhGT`.
+- `ltl-shop-api.vercel.app` now resolves to the 9.2 MB NestJS function in `pdx1`;
+  the previous `iad1` deployment remains available for rollback.
+- Five sequential `/api/health` probes measured 0.55 seconds on the first request
+  and 0.24–0.29 seconds on the following requests. All returned HTTP 200.
+- The production response includes `Server-Timing` and identifies the execution
+  path as `iad1::pdx1`; the application portion of the sampled request was 1.1 ms.
+- `/api/auth/me` without a token returns the expected HTTP 401, and production
+  CORS allows `https://ltl-shop-web.vercel.app`.
+- Runtime logs show the structured `request_completed` event and no unexpected
+  HTTP 500 during verification.
+- The Vercel API project is connected to `lightningtransport/LTL_Shop`, with
+  `apps/api` as its root and `main` as its production branch.
+
+No environment variables were changed during promotion or verification.
