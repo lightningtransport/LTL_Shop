@@ -37,7 +37,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        display: ['var(--font-serif)', 'Georgia', 'serif'],
+        display: ['var(--font-inter)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         body: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'monospace'],
       },

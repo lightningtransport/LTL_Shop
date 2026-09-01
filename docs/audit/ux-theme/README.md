@@ -16,6 +16,7 @@ The mechanic P0 flow now uses a semantic OKLCH theme in light and dark modes, re
 | 3. Select truck | Keyboard-capable combobox, truck `905`, verified open-work-order state | `07-new-order-light-390x844.png`, `10-new-order-dark-320x568.png` | Healthy |
 | 4. Add job | Labeled category select, stable chevron, focus-managed dialog | `08-add-job-dialog-light-390x844.png` | Healthy |
 | 5. Select mechanics | Accessible checkbox multiselect and compact summary | `09-working-with-light-390x844.png`, `11-working-with-dark-320x568.png` | Healthy |
+| 6. Brand shell | Responsive LTL logo and Inter headings in both themes | `12-home-light-logo-390x844.png`, `13-home-dark-logo-390x844.png` | Healthy |
 
 ## Corrections covered
 

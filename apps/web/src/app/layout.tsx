@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Image from 'next/image';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
@@ -50,7 +51,15 @@ export default function RootLayout({
           <AuthProvider>
             <DataProvider>
               <div className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-6">
-                <div className="mb-3 flex justify-end">
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <Image
+                    src="/ltl-logo.png"
+                    alt="Lightning Transport and Logistics"
+                    width={1536}
+                    height={894}
+                    priority
+                    className="h-auto w-40 object-contain sm:w-48"
+                  />
                   <ThemeToggle />
                 </div>
                 {children}
