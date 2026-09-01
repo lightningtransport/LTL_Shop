@@ -60,8 +60,11 @@ export default function LoginPage() {
       />
       <form onSubmit={onSubmit} className="card space-y-4">
         <div>
-          <label className="section-label">Email</label>
+          <label className="section-label" htmlFor="login-email">
+            Email
+          </label>
           <input
+            id="login-email"
             className="field mt-2"
             type="email"
             value={email}
@@ -71,8 +74,11 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="section-label">Password</label>
+          <label className="section-label" htmlFor="login-password">
+            Password
+          </label>
           <input
+            id="login-password"
             className="field mt-2"
             type="password"
             value={password}
@@ -81,7 +87,11 @@ export default function LoginPage() {
           />
         </div>
         {error ? (
-          <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <p
+            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+            role="alert"
+            aria-live="assertive"
+          >
             {error}
           </p>
         ) : null}

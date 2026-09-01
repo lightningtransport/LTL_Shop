@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Check, ChevronDown, Trash2 } from 'lucide-react';
 import { useSWRConfig } from 'swr';
 import {
   Priority,
@@ -21,6 +22,7 @@ import {
   useCategories,
   useMechanics,
   useTrucks,
+  type Mechanic,
 } from '@/lib/shop-data';
 import { EmptyState, Modal, PageSkeleton, ScreenHeader } from '@/components/ui';
 
@@ -52,6 +54,15 @@ export default function NewWorkOrderPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [workingWithOpen, setWorkingWithOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeResult, setActiveResult] = useState(-1);
+  const [openWoCheck, setOpenWoCheck] = useState<
+    'idle' | 'checking' | 'verified' | 'error'
+  >('idle');
+  const openWoRequest = useRef(0);
+  const addJobTriggerRef = useRef<HTMLButtonElement>(null);
+  const workingWithTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!sessionLoading && !token) router.replace('/login');
@@ -74,18 +85,37 @@ export default function NewWorkOrderPage() {
       .slice(0, 20);
   }, [query, truck, truckData]);
 
+  const hasSearchTerm = query.trim().replace(/^#/, '').length > 0;
+  const resultsOpen = searchOpen && hasSearchTerm && !truck;
+
+  useEffect(() => {
+    setActiveResult(results.length ? 0 : -1);
+  }, [results]);
+
   async function selectTruck(t: TruckDto) {
+    const requestId = ++openWoRequest.current;
     setTruck(t);
     setQuery(t.truckNumber);
+    setSearchOpen(false);
     setOpenWo(null);
-    const open = await apiFetch<
-      { exists: false } | { exists: true; workOrder: WorkOrderSummaryDto }
-    >(`/api/trucks/${t.id}/open-work-order`);
-    if (open.exists) setOpenWo(open.workOrder);
+    setOpenWoCheck('checking');
+    setError(null);
+    try {
+      const open = await apiFetch<
+        { exists: false } | { exists: true; workOrder: WorkOrderSummaryDto }
+      >(`/api/trucks/${t.id}/open-work-order`);
+      if (requestId !== openWoRequest.current) return;
+      if (open.exists) setOpenWo(open.workOrder);
+      setOpenWoCheck('verified');
+    } catch {
+      if (requestId !== openWoRequest.current) return;
+      setOpenWoCheck('error');
+      setError('Unable to verify open Work Orders. Retry before creating the Work Order.');
+    }
   }
 
   async function create() {
-    if (!truck || !categoryId || jobs.length === 0) {
+    if (!truck || openWoCheck !== 'verified' || !categoryId || jobs.length === 0) {
       setError('Truck, category, and at least one job are required.');
       return;
     }
@@ -137,34 +167,98 @@ export default function NewWorkOrderPage() {
       />
 
       <section className="card mb-4 space-y-3">
-        <label className="section-label">Truck</label>
+        <label className="section-label" htmlFor="truck-search">
+          Truck
+        </label>
         <div className="relative">
           <input
+            id="truck-search"
             className="field"
             placeholder="Search Truck Number (e.g. #905)"
             value={query}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={resultsOpen}
+            aria-controls="truck-search-results"
+            aria-activedescendant={
+              resultsOpen && activeResult >= 0
+                ? `truck-result-${results[activeResult]?.id}`
+                : undefined
+            }
+            onFocus={() => setSearchOpen(true)}
+            onKeyDown={(event) => {
+              if (!resultsOpen) return;
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveResult((current) =>
+                  Math.min(current + 1, results.length - 1),
+                );
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveResult((current) => Math.max(current - 1, 0));
+              } else if (event.key === 'Enter' && activeResult >= 0) {
+                event.preventDefault();
+                const activeTruck = results[activeResult];
+                if (activeTruck) void selectTruck(activeTruck);
+              } else if (event.key === 'Escape') {
+                setSearchOpen(false);
+              }
+            }}
             onChange={(e) => {
+              openWoRequest.current += 1;
               setQuery(e.target.value);
               setTruck(null);
               setOpenWo(null);
+              setOpenWoCheck('idle');
+              setSearchOpen(true);
+              setError(null);
             }}
           />
-          {results.length > 0 && !truck ? (
-            <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-shop-border bg-shop-panel">
+          {resultsOpen ? (
+            <ul
+              id="truck-search-results"
+              role="listbox"
+              className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-shop-border bg-shop-panel shadow-lg"
+            >
               {results.map((t) => (
-                <li key={t.id}>
+                <li key={t.id} role="presentation">
                   <button
+                    id={`truck-result-${t.id}`}
                     type="button"
-                    className="w-full px-4 py-3 text-left text-sm hover:bg-white/5"
-                    onClick={() => selectTruck(t)}
+                    role="option"
+                    aria-selected={results[activeResult]?.id === t.id}
+                    className="min-h-11 w-full px-4 py-3 text-left text-sm hover:bg-shop-accent focus:bg-shop-accent"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => void selectTruck(t)}
                   >
                     #{t.truckNumber} · {t.make} {t.model}
                   </button>
                 </li>
               ))}
+              {!results.length ? (
+                <li className="px-4 py-3 text-sm text-shop-muted" role="option">
+                  No trucks found.
+                </li>
+              ) : null}
             </ul>
           ) : null}
+          <div className="sr-only" aria-live="polite">
+            {openWoCheck === 'checking'
+              ? 'Checking for an open Work Order.'
+              : resultsOpen
+                ? `${results.length} truck results available.`
+                : ''}
+          </div>
         </div>
+        {openWoCheck === 'error' && truck ? (
+          <button
+            type="button"
+            className="btn-secondary w-full"
+            onClick={() => void selectTruck(truck)}
+          >
+            Retry Work Order check
+          </button>
+        ) : null}
 
         <div>
           <div className="mb-2 flex items-center justify-between">
@@ -183,7 +277,7 @@ export default function NewWorkOrderPage() {
                 <Info label="Owner" value={truck.owner} />
               </div>
               <Link
-                href={`/trucks/${truck.id}/history`}
+                href={`/trucks/${truck.id}/history?from=${encodeURIComponent('/work-orders/new')}`}
                 className="btn-secondary w-full"
               >
                 See Truck Repair History
@@ -215,18 +309,24 @@ export default function NewWorkOrderPage() {
         <>
           <section className="card mb-4 space-y-4">
             <div>
-              <label className="section-label">Category</label>
-              <select
-                className="field mt-2"
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <label className="section-label" htmlFor="work-order-category">
+                Category
+              </label>
+              <div className="relative mt-2">
+                <select
+                  id="work-order-category"
+                  className="field appearance-none pr-11"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+              </div>
             </div>
 
             <div>
@@ -243,18 +343,20 @@ export default function NewWorkOrderPage() {
                       <span>{j.displayName}</span>
                       <button
                         type="button"
-                        className="text-shop-muted"
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-shop-muted hover:bg-shop-accent hover:text-primary-foreground"
+                        aria-label={`Remove ${j.displayName}`}
                         onClick={() =>
                           setJobs((prev) => prev.filter((x) => x.key !== j.key))
                         }
                       >
-                        🗑
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
               <button
+                ref={addJobTriggerRef}
                 type="button"
                 className="btn-secondary w-full"
                 onClick={() => setAddOpen(true)}
@@ -264,33 +366,32 @@ export default function NewWorkOrderPage() {
             </div>
 
             <div>
-              <label className="section-label">Working With</label>
-              <select
-                className="field mt-2"
-                multiple
-                value={workingWith}
-                onChange={(e) =>
-                  setWorkingWith(
-                    Array.from(e.target.selectedOptions).map((o) => o.value),
-                  )
-                }
-                size={Math.min(4, mechanics.length || 1)}
+              <p className="section-label" id="working-with-label">
+                Working With
+              </p>
+              <button
+                ref={workingWithTriggerRef}
+                type="button"
+                className="field mt-2 flex items-center justify-between text-left"
+                aria-labelledby="working-with-label working-with-summary"
+                aria-haspopup="dialog"
+                onClick={() => setWorkingWithOpen(true)}
               >
-                {mechanics.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
+                <span id="working-with-summary">
+                  {selectedMechanicSummary(mechanics, workingWith)}
+                </span>
+                <ChevronDown className="h-5 w-5 text-shop-muted" aria-hidden="true" />
+              </button>
             </div>
 
             <div>
               <p className="section-label mb-2">Priority</p>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {Object.values(Priority).map((p) => (
                   <button
                     key={p}
                     type="button"
+                    aria-pressed={priority === p}
                     className={
                       priority === p ? 'btn-primary' : 'btn-secondary'
                     }
@@ -303,8 +404,11 @@ export default function NewWorkOrderPage() {
             </div>
 
             <div>
-              <label className="section-label">Notes (Optional)</label>
+              <label className="section-label" htmlFor="work-order-notes">
+                Notes (Optional)
+              </label>
               <textarea
+                id="work-order-notes"
                 className="field mt-2 min-h-24"
                 placeholder="Describe or add any information needed to perform the work"
                 value={notes}
@@ -314,7 +418,9 @@ export default function NewWorkOrderPage() {
           </section>
 
           {error ? (
-            <p className="mb-3 text-sm text-red-300">{error}</p>
+            <p className="mb-3 text-sm text-red-300" role="alert" aria-live="assertive">
+              {error}
+            </p>
           ) : null}
 
           {categoryError || mechanicError || truckError ? (
@@ -326,7 +432,7 @@ export default function NewWorkOrderPage() {
           <button
             type="button"
             className="btn-primary w-full"
-            disabled={busy}
+            disabled={busy || openWoCheck !== 'verified'}
             onClick={create}
           >
             Create Work Order
@@ -343,8 +449,84 @@ export default function NewWorkOrderPage() {
           setJobs((prev) => [...prev, job]);
           setAddOpen(false);
         }}
+        returnFocusRef={addJobTriggerRef}
+      />
+      <WorkingWithModal
+        open={workingWithOpen}
+        mechanics={mechanics}
+        selected={workingWith}
+        onChange={setWorkingWith}
+        onClose={() => setWorkingWithOpen(false)}
+        returnFocusRef={workingWithTriggerRef}
       />
     </div>
+  );
+}
+
+function selectedMechanicSummary(mechanics: Mechanic[], selected: string[]) {
+  const names = mechanics
+    .filter((mechanic) => selected.includes(mechanic.id))
+    .map((mechanic) => mechanic.name);
+  if (!names.length) return 'Select mechanics';
+  if (names.length <= 2) return names.join(' / ');
+  return `${names[0]} + ${names.length - 1} more`;
+}
+
+function WorkingWithModal({
+  open,
+  mechanics,
+  selected,
+  onChange,
+  onClose,
+  returnFocusRef,
+}: {
+  open: boolean;
+  mechanics: Mechanic[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+  onClose: () => void;
+  returnFocusRef: RefObject<HTMLElement | null>;
+}) {
+  return (
+    <Modal
+      open={open}
+      title="Working With"
+      onClose={onClose}
+      returnFocusRef={returnFocusRef}
+    >
+      <fieldset className="space-y-2">
+        <legend className="sr-only">Select mechanics</legend>
+        {mechanics.map((mechanic) => {
+          const checked = selected.includes(mechanic.id);
+          return (
+            <label
+              key={mechanic.id}
+              className="flex min-h-11 cursor-pointer items-center justify-between rounded-xl border border-shop-border px-3 py-2 hover:bg-shop-accent"
+            >
+              <span className="text-sm font-medium">{mechanic.name}</span>
+              <span className="relative flex h-5 w-5 items-center justify-center rounded border border-shop-border bg-shop-panel">
+                <input
+                  type="checkbox"
+                  className="peer absolute inset-0 cursor-pointer opacity-0"
+                  checked={checked}
+                  onChange={() =>
+                    onChange(
+                      checked
+                        ? selected.filter((id) => id !== mechanic.id)
+                        : [...selected, mechanic.id],
+                    )
+                  }
+                />
+                {checked ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
+              </span>
+            </label>
+          );
+        })}
+      </fieldset>
+      <button type="button" className="btn-primary mt-4 w-full" onClick={onClose}>
+        Done
+      </button>
+    </Modal>
   );
 }
 
@@ -365,12 +547,14 @@ function AddJobModal({
   defaultCategoryId,
   onClose,
   onAdd,
+  returnFocusRef,
 }: {
   open: boolean;
   categories: JobCategoryDto[];
   defaultCategoryId: string;
   onClose: () => void;
   onAdd: (job: DraftJob) => void;
+  returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [q, setQ] = useState('');
@@ -396,20 +580,36 @@ function AddJobModal({
   );
 
   return (
-    <Modal open={open} title="Add job" onClose={onClose}>
+    <Modal
+      open={open}
+      title="Add job"
+      onClose={onClose}
+      returnFocusRef={returnFocusRef}
+    >
       <div className="space-y-3">
-        <select
-          className="field"
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-        >
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <label className="section-label block" htmlFor="new-job-category">
+          Category
+        </label>
+        <div className="relative">
+          <select
+            id="new-job-category"
+            className="field appearance-none pr-11"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+          >
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+        </div>
+        <label className="section-label block" htmlFor="new-job-search">
+          Search job or alias
+        </label>
         <input
+          id="new-job-search"
           className="field"
           placeholder="Search job / alias (e.g. 3in1)"
           value={q}
@@ -455,7 +655,11 @@ function AddJobModal({
             <p className="text-xs text-shop-muted">
               Custom job in {categoryName || 'selected category'}
             </p>
+            <label className="section-label block" htmlFor="new-custom-job">
+              Custom job description
+            </label>
             <input
+              id="new-custom-job"
               className="field"
               placeholder="Describe the job"
               value={customName}

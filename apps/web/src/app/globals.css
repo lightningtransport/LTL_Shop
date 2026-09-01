@@ -3,36 +3,137 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: light;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.23 0.0038 106.6929);
+  --card: oklch(0.9842 0.0034 247.8575);
+  --card-foreground: oklch(0.23 0.0038 106.6929);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.23 0.0038 106.6929);
+  --primary: oklch(0.5358 0.1444 248.0435);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.7062 0.1363 140.8559);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.9683 0.0069 247.8956);
+  --muted-foreground: oklch(0.5544 0.0407 257.4166);
+  --accent: oklch(0.9514 0.025 236.8242);
+  --accent-foreground: oklch(0.5358 0.1444 248.0435);
+  --destructive: oklch(0.6368 0.2078 25.3313);
+  --destructive-foreground: oklch(0.9842 0.0034 247.8575);
+  --border: oklch(0.9288 0.0126 255.5078);
+  --input: oklch(0.9288 0.0126 255.5078);
+  --ring: oklch(0.5358 0.1444 248.0435);
+  --success: oklch(0.57 0.14 151);
+  --warning: oklch(0.74 0.15 80);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-serif: var(--font-sans);
+  --font-mono: var(--font-jetbrains-mono), monospace;
+  --radius: 0.375rem;
+  --tracking-normal: -0.01em;
+  --shadow-2xs: 0 4px 10px -3px hsl(0 0% 0% / 0.05);
+  --shadow-xs: var(--shadow-2xs);
+  --shadow-sm: 0 4px 10px -3px hsl(0 0% 0% / 0.1), 0 1px 2px -4px hsl(0 0% 0% / 0.1);
+  --shadow: var(--shadow-sm);
+  --shadow-md: 0 4px 10px -3px hsl(0 0% 0% / 0.1), 0 2px 4px -4px hsl(0 0% 0% / 0.1);
+  --shadow-lg: 0 4px 10px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
+  --shadow-xl: 0 4px 10px -3px hsl(0 0% 0% / 0.1), 0 8px 10px -4px hsl(0 0% 0% / 0.1);
+
+  /* Tailwind 3 needs channel-only values for opacity utilities. */
+  --shop-bg: 1 0 0;
+  --shop-panel: 0.9842 0.0034 247.8575;
+  --shop-border: 0.9288 0.0126 255.5078;
+  --shop-accent: 0.5358 0.1444 248.0435;
+  --shop-accent-dark: 0.45 0.13 248.0435;
+  --shop-muted: 0.5544 0.0407 257.4166;
+  --shop-danger: 0.6368 0.2078 25.3313;
+  --shop-success: 0.57 0.14 151;
+}
+
+.dark {
   color-scheme: dark;
+  --background: oklch(0.2077 0.0398 265.7549);
+  --foreground: oklch(0.9842 0.0034 247.8575);
+  --card: oklch(0.2795 0.0368 260.031);
+  --card-foreground: oklch(0.9842 0.0034 247.8575);
+  --popover: oklch(0.2077 0.0398 265.7549);
+  --popover-foreground: oklch(0.9842 0.0034 247.8575);
+  --primary: oklch(0.7535 0.139 232.6615);
+  --primary-foreground: oklch(0.2077 0.0398 265.7549);
+  --secondary: oklch(0.8712 0.1363 154.4491);
+  --secondary-foreground: oklch(0.2664 0.0628 152.9343);
+  --muted: oklch(0.2795 0.0368 260.031);
+  --muted-foreground: oklch(0.7107 0.0351 256.7878);
+  --accent: oklch(0.2795 0.0368 260.031);
+  --accent-foreground: oklch(0.7535 0.139 232.6615);
+  --destructive: oklch(0.3958 0.1331 25.723);
+  --destructive-foreground: oklch(0.9842 0.0034 247.8575);
+  --border: oklch(0.3717 0.0392 257.287);
+  --input: oklch(0.3717 0.0392 257.287);
+  --ring: oklch(0.7535 0.139 232.6615);
+  --success: oklch(0.72 0.14 151);
+  --warning: oklch(0.82 0.14 91.6054);
+  --shadow-2xs: 0 10px 15px -5px hsl(0 0% 0% / 0.2);
+  --shadow-xs: var(--shadow-2xs);
+  --shadow-sm: 0 10px 15px -5px hsl(0 0% 0% / 0.4), 0 1px 2px -6px hsl(0 0% 0% / 0.4);
+  --shadow: var(--shadow-sm);
+  --shadow-md: 0 10px 15px -5px hsl(0 0% 0% / 0.4), 0 2px 4px -6px hsl(0 0% 0% / 0.4);
+  --shadow-lg: 0 10px 15px -5px hsl(0 0% 0% / 0.4), 0 4px 6px -6px hsl(0 0% 0% / 0.4);
+  --shadow-xl: 0 10px 15px -5px hsl(0 0% 0% / 0.4), 0 8px 10px -6px hsl(0 0% 0% / 0.4);
+  --shop-bg: 0.2077 0.0398 265.7549;
+  --shop-panel: 0.2795 0.0368 260.031;
+  --shop-border: 0.3717 0.0392 257.287;
+  --shop-accent: 0.7535 0.139 232.6615;
+  --shop-accent-dark: 0.62 0.13 232.6615;
+  --shop-muted: 0.7107 0.0351 256.7878;
+  --shop-danger: 0.7106 0.1661 22.2162;
+  --shop-success: 0.72 0.14 151;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  min-width: 320px;
+  background: var(--background);
 }
 
 body {
-  @apply bg-shop-bg text-white font-body antialiased min-h-screen;
-  background-image:
-    radial-gradient(ellipse at top, rgba(245, 166, 35, 0.08), transparent 45%),
-    linear-gradient(180deg, #0f1720 0%, #0b1219 100%);
+  @apply min-h-screen bg-background font-body text-foreground antialiased;
+  letter-spacing: var(--tracking-normal);
+  background-image: radial-gradient(ellipse at top, oklch(from var(--primary) l c h / 0.08), transparent 48%);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-shop-accent text-black hover:bg-shop-accentDark;
+    @apply btn bg-primary text-primary-foreground hover:opacity-90;
   }
   .btn-secondary {
-    @apply btn bg-shop-panel border border-shop-border text-white hover:border-shop-accent/50;
+    @apply btn border bg-card text-card-foreground hover:bg-accent;
   }
   .btn-danger {
-    @apply btn bg-shop-danger/15 border border-shop-danger/40 text-red-200;
+    @apply btn border border-destructive bg-destructive text-destructive-foreground hover:opacity-90;
   }
   .field {
-    @apply w-full rounded-xl border border-shop-border bg-shop-panel px-4 py-3 text-sm outline-none focus:border-shop-accent;
+    @apply min-h-11 w-full rounded-lg border bg-background px-4 py-2.5 text-sm text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring;
   }
   .card {
-    @apply rounded-2xl border border-shop-border bg-shop-panel/80 p-4 shadow-soft;
+    @apply rounded-xl border bg-card p-4 text-card-foreground shadow-soft;
   }
   .section-label {
-    @apply text-xs font-semibold uppercase tracking-[0.14em] text-shop-muted;
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground;
   }
+}
+
+select.field {
+  appearance: none;
+  padding-right: 2.75rem;
 }

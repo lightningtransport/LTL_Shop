@@ -1,7 +1,305 @@
 'use client';
 
 import Link from 'next/link';
+import * as React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { Dialog as DialogPrimitive } from 'radix-ui';
+import { ArrowLeft, Check, ChevronDown, Moon, Sun, X } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
+import { cn } from '@/lib/utils';
+
+const buttonVariants = cva(
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground hover:opacity-90',
+        secondary: 'border bg-card text-card-foreground hover:bg-accent',
+        outline: 'border bg-background text-foreground hover:bg-accent',
+        ghost: 'text-foreground hover:bg-accent',
+        destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
+      },
+      size: {
+        default: 'min-h-11',
+        sm: 'min-h-9 px-3 py-2 text-xs',
+        lg: 'min-h-12 px-5 py-3 text-base',
+        icon: 'size-11 p-0',
+      },
+    },
+    defaultVariants: { variant: 'default', size: 'default' },
+  },
+);
+
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants>;
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, type = 'button', ...props }, ref) => (
+    <button ref={ref} type={type} className={cn(buttonVariants({ variant, size }), className)} {...props} />
+  ),
+);
+Button.displayName = 'Button';
+
+export const Input = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(({ className, type, ...props }, ref) => (
+  <input
+    ref={ref}
+    type={type}
+    className={cn('field', className)}
+    {...props}
+  />
+));
+Input.displayName = 'Input';
+
+export const Textarea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>
+>(({ className, ...props }, ref) => (
+  <textarea ref={ref} className={cn('field min-h-28 resize-y', className)} {...props} />
+));
+Textarea.displayName = 'Textarea';
+
+export const Label = React.forwardRef<
+  HTMLLabelElement,
+  React.LabelHTMLAttributes<HTMLLabelElement>
+>(({ className, ...props }, ref) => (
+  <label ref={ref} className={cn('text-sm font-medium text-foreground', className)} {...props} />
+));
+Label.displayName = 'Label';
+
+export const Select = React.forwardRef<
+  HTMLSelectElement,
+  React.SelectHTMLAttributes<HTMLSelectElement>
+>(({ className, children, ...props }, ref) => (
+  <div className="relative">
+    <select
+      ref={ref}
+      className={cn('field appearance-none pr-11', className)}
+      {...props}
+    >
+      {children}
+    </select>
+    <ChevronDown
+      aria-hidden="true"
+      className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+    />
+  </div>
+));
+Select.displayName = 'Select';
+
+export const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => <div ref={ref} className={cn('card', className)} {...props} />);
+Card.displayName = 'Card';
+
+export const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => <div ref={ref} className={cn('mb-4 space-y-1.5', className)} {...props} />);
+CardHeader.displayName = 'CardHeader';
+
+export const CardTitle = React.forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3 ref={ref} className={cn('font-display text-lg font-semibold tracking-wide', className)} {...props} />
+));
+CardTitle.displayName = 'CardTitle';
+
+export const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
+));
+CardDescription.displayName = 'CardDescription';
+
+export const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => <div ref={ref} className={cn(className)} {...props} />);
+CardContent.displayName = 'CardContent';
+
+export const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => <div ref={ref} className={cn('mt-4 flex items-center', className)} {...props} />);
+CardFooter.displayName = 'CardFooter';
+
+const badgeVariants = cva(
+  'inline-flex min-h-6 items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+  {
+    variants: {
+      variant: {
+        default: 'border-primary bg-primary text-primary-foreground',
+        secondary: 'border-border bg-muted text-muted-foreground',
+        outline: 'border-border text-foreground',
+        destructive: 'border-destructive bg-destructive text-destructive-foreground',
+        success: 'border-shop-success/40 bg-shop-success/15 text-shop-success',
+        warning: 'border-shop-accent/40 bg-shop-accent/15 text-shop-accent',
+      },
+    },
+    defaultVariants: { variant: 'default' },
+  },
+);
+
+export type BadgeProps = React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof badgeVariants>;
+
+export function Badge({ className, variant, ...props }: BadgeProps) {
+  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+}
+
+export const Dialog = DialogPrimitive.Root;
+export const DialogTrigger = DialogPrimitive.Trigger;
+export const DialogClose = DialogPrimitive.Close;
+
+export const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPrimitive.Portal>
+    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out" />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        'fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-t-xl border bg-popover p-5 text-popover-foreground shadow-xl focus:outline-none sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl',
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </DialogPrimitive.Content>
+  </DialogPrimitive.Portal>
+));
+DialogContent.displayName = 'DialogContent';
+
+export const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title ref={ref} className={cn('font-display text-2xl font-bold tracking-wide', className)} {...props} />
+));
+DialogTitle.displayName = 'DialogTitle';
+
+export const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
+));
+DialogDescription.displayName = 'DialogDescription';
+
+export type MultiSelectOption = { label: string; value: string; disabled?: boolean };
+
+export function MultiSelect({
+  label,
+  options,
+  value,
+  onValueChange,
+  placeholder = 'Select options',
+  className,
+}: {
+  label: string;
+  options: MultiSelectOption[];
+  value: string[];
+  onValueChange: (value: string[]) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const selected = options.filter((option) => value.includes(option.value));
+  const summary = selected.length === 0 ? placeholder : selected.map((option) => option.label).join(', ');
+
+  function toggleValue(option: MultiSelectOption) {
+    onValueChange(
+      value.includes(option.value)
+        ? value.filter((item) => item !== option.value)
+        : [...value, option.value],
+    );
+  }
+
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+      <DialogPrimitive.Trigger asChild>
+        <Button variant="outline" className={cn('w-full justify-between text-left font-normal', className)}>
+          <span className={selected.length === 0 ? 'text-muted-foreground' : undefined}>{summary}</span>
+          <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        </Button>
+      </DialogPrimitive.Trigger>
+      <DialogContent aria-describedby={undefined}>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <DialogTitle>{label}</DialogTitle>
+          <DialogPrimitive.Close asChild>
+            <Button variant="ghost" size="icon" aria-label={`Close ${label}`}>
+              <X aria-hidden="true" className="size-5" />
+            </Button>
+          </DialogPrimitive.Close>
+        </div>
+        <div className="space-y-2">
+          {options.map((option) => {
+            const checked = value.includes(option.value);
+            return (
+              <label
+                key={option.value}
+                className={cn(
+                  'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors',
+                  checked ? 'border-primary bg-accent' : 'border-border hover:bg-muted',
+                  option.disabled && 'cursor-not-allowed opacity-50',
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={option.disabled}
+                  onChange={() => toggleValue(option)}
+                  className="sr-only"
+                />
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'flex size-5 shrink-0 items-center justify-center rounded border',
+                    checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background',
+                  )}
+                >
+                  {checked ? <Check className="size-3.5" /> : null}
+                </span>
+                {option.label}
+              </label>
+            );
+          })}
+        </div>
+        <Button className="mt-5 w-full" onClick={() => setOpen(false)}>
+          Done
+        </Button>
+      </DialogContent>
+    </DialogPrimitive.Root>
+  );
+}
+
+export function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => setMounted(true), []);
+
+  const isDark = mounted && resolvedTheme === 'dark';
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="rounded-full border bg-card shadow-sm"
+      aria-label={isDark ? 'Toggle theme: use light mode' : 'Toggle theme: use dark mode'}
+      title={isDark ? 'Use light theme' : 'Use dark theme'}
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+    >
+      {isDark ? <Sun aria-hidden="true" className="size-5" /> : <Moon aria-hidden="true" className="size-5" />}
+    </Button>
+  );
+}
 
 export function ScreenHeader({
   eyebrow,
@@ -20,8 +318,12 @@ export function ScreenHeader({
   return (
     <header className="mb-6">
       {backHref ? (
-        <Link href={backHref} className="mb-3 inline-flex text-sm text-shop-muted">
-          ← Back
+        <Link
+          href={backHref}
+          className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-shop-muted hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back
         </Link>
       ) : null}
       <p className="section-label">{label}</p>
@@ -81,44 +383,68 @@ export function Modal({
   title,
   children,
   onClose,
+  returnFocusRef,
 }: {
   open: boolean;
   title: string;
   children: React.ReactNode;
   onClose: () => void;
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 }) {
-  if (!open) return null;
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const capturedFocusRef = React.useRef<HTMLElement | null>(null);
+
+  React.useLayoutEffect(() => {
+    if (!open || typeof document === 'undefined') return;
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && !contentRef.current?.contains(activeElement)) {
+      capturedFocusRef.current = activeElement;
+    }
+  }, [open]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
-      <div className="w-full max-w-md rounded-2xl border border-shop-border bg-shop-panel p-5 shadow-soft">
+    <DialogPrimitive.Root open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        ref={contentRef}
+        aria-describedby={undefined}
+        onOpenAutoFocus={(event) => {
+          const initialControl = contentRef.current?.querySelector<HTMLElement>(
+            'input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+          );
+          if (!initialControl) return;
+          event.preventDefault();
+          window.requestAnimationFrame(() => initialControl.focus());
+        }}
+        onCloseAutoFocus={(event) => {
+          const focusTarget = returnFocusRef?.current ?? capturedFocusRef.current;
+          if (!focusTarget) return;
+          event.preventDefault();
+          focusTarget.focus();
+        }}
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-2xl font-bold tracking-wide">
-            {title}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-shop-muted hover:text-white"
-            aria-label="Close"
-          >
-            ✕
-          </button>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogPrimitive.Close asChild>
+            <Button variant="ghost" size="icon" aria-label={`Close ${title}`}>
+              <X aria-hidden="true" className="size-5" />
+            </Button>
+          </DialogPrimitive.Close>
         </div>
         {children}
-      </div>
-    </div>
+      </DialogContent>
+    </DialogPrimitive.Root>
   );
 }
 
 export function PriorityBadge({ priority }: { priority: string }) {
   const color =
     priority === 'critical'
-      ? 'text-red-300 border-red-400/40'
+      ? 'border-destructive/40 text-destructive'
       : priority === 'high'
-        ? 'text-orange-300 border-orange-400/40'
+        ? 'border-shop-accent/40 text-shop-accent'
         : priority === 'low'
-          ? 'text-slate-300 border-slate-500/40'
-          : 'text-amber-200 border-amber-400/40';
+          ? 'border-border text-muted-foreground'
+          : 'border-shop-accent/40 text-shop-accent';
   return (
     <span
       className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${color}`}
