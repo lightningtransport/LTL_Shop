@@ -1,21 +1,22 @@
 import type { Metadata, Viewport } from 'next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { Barlow_Condensed, IBM_Plex_Sans } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { DataProvider } from '@/lib/data-provider';
+import { PathScrollReset } from '@/components/path-scroll-reset';
+import { ThemeProvider } from '@/components/theme-provider';
+import { ThemeToggle } from '@/components/ui';
 
-const displayFont = Barlow_Condensed({
+const bodyFont = Inter({
   subsets: ['latin'],
-  weight: ['600', '700'],
-  variable: '--font-display',
+  variable: '--font-inter',
   display: 'swap',
 });
 
-const bodyFont = IBM_Plex_Sans({
+const monoFont = JetBrains_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-body',
+  variable: '--font-jetbrains-mono',
   display: 'swap',
 });
 
@@ -34,7 +35,6 @@ export const viewport: Viewport = {
   themeColor: '#0f1720',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -43,15 +43,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${displayFont.variable} ${bodyFont.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${bodyFont.variable} ${monoFont.variable}`}>
       <body>
-        <AuthProvider>
-          <DataProvider>
-            <div className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-6">
-              {children}
-            </div>
-          </DataProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <PathScrollReset />
+          <AuthProvider>
+            <DataProvider>
+              <div className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-6">
+                <div className="mb-3 flex justify-end">
+                  <ThemeToggle />
+                </div>
+                {children}
+              </div>
+            </DataProvider>
+          </AuthProvider>
+        </ThemeProvider>
         <SpeedInsights />
       </body>
     </html>
