@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
@@ -10,6 +10,7 @@ import { EmptyState, PageSkeleton, ScreenHeader } from '@/components/ui';
 export default function RepairHistoryPage() {
   const { token, sessionLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams<{ id: string }>();
   const [categoryId, setCategoryId] = useState<string>('all');
   const { data: categoryData } = useCategories(!!token);
@@ -21,6 +22,8 @@ export default function RepairHistoryPage() {
   const categories = categoryData ?? [];
   const truck = data?.truck;
   const items = data?.items ?? [];
+  const requestedReturn = searchParams.get('from');
+  const backHref = requestedReturn?.startsWith('/') ? requestedReturn : '/';
 
   useEffect(() => {
     if (!sessionLoading && !token) router.replace('/login');
@@ -28,23 +31,21 @@ export default function RepairHistoryPage() {
 
   if (!truck) {
     if (error instanceof Error) {
-      return <p className="text-shop-muted">{error.message}</p>;
+      return (
+        <p className="text-shop-muted" role="alert">
+          {error.message}
+        </p>
+      );
     }
     return <PageSkeleton label="Loading repair history" />;
   }
 
   return (
     <div>
-      <button
-        type="button"
-        className="mb-3 text-sm text-shop-muted"
-        onClick={() => router.back()}
-      >
-        ← Back
-      </button>
       <ScreenHeader
         title="REPAIR HISTORY"
         subtitle={`#${truck.truckNumber}`}
+        backHref={backHref}
       />
 
       <section className="card mb-4 text-sm">
@@ -56,7 +57,10 @@ export default function RepairHistoryPage() {
         </p>
       </section>
 
-      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+      <div
+        className="mb-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-2"
+        aria-label="Filter repair history by category"
+      >
         <FilterChip
           active={categoryId === 'all'}
           onClick={() => setCategoryId('all')}
@@ -129,6 +133,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={
         active
           ? 'btn-primary whitespace-nowrap px-3 py-2 text-xs'

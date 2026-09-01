@@ -45,7 +45,7 @@ export default function HomePage() {
       </Link>
 
       {error ? (
-        <p className="mb-4 text-sm text-red-300">
+        <p className="mb-4 text-sm text-red-300" role="alert" aria-live="assertive">
           {error instanceof Error ? error.message : 'Unable to load work orders'}
         </p>
       ) : null}

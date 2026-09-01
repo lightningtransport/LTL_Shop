@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 import { useSWRConfig } from 'swr';
 import {
   JobStatus,
@@ -60,6 +61,9 @@ export default function WorkOrderDetailPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [notesDirty, setNotesDirty] = useState(false);
+  const pauseTriggerRef = useRef<HTMLButtonElement>(null);
+  const addJobTriggerRef = useRef<HTMLButtonElement>(null);
+  const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!sessionLoading && !token) router.replace('/login');
@@ -110,9 +114,9 @@ export default function WorkOrderDetailPage() {
   }
 
   if (sessionLoading || !token || !wo) {
-    if (error) return <p className="text-shop-muted">{error}</p>;
+    if (error) return <p className="text-shop-muted" role="alert">{error}</p>;
     if (loadError instanceof Error) {
-      return <p className="text-shop-muted">{loadError.message}</p>;
+      return <p className="text-shop-muted" role="alert">{loadError.message}</p>;
     }
     return <PageSkeleton label="Loading work order" />;
   }
@@ -143,7 +147,11 @@ export default function WorkOrderDetailPage() {
         ) : null}
       </div>
 
-      {error ? <p className="mb-3 text-sm text-red-300">{error}</p> : null}
+      {error ? (
+        <p className="mb-3 text-sm text-red-300" role="alert" aria-live="assertive">
+          {error}
+        </p>
+      ) : null}
 
       <section className="mb-4 space-y-2">
         <p className="section-label">Work Options</p>
@@ -166,6 +174,7 @@ export default function WorkOrderDetailPage() {
         {wo.status === 'in_progress' ? (
           <div className="grid grid-cols-2 gap-2">
             <button
+              ref={pauseTriggerRef}
               type="button"
               className="btn-secondary"
               disabled={busy}
@@ -209,18 +218,24 @@ export default function WorkOrderDetailPage() {
 
       {wo.status === 'waiting_paused' ? (
         <section className="card mb-4 space-y-3">
-          <p className="section-label">Change Pause Reason</p>
-          <select
-            className="field"
-            value={changeReason || wo.currentPauseReason || ''}
-            onChange={(e) => setChangeReason(e.target.value as PauseReason)}
-          >
-            {Object.values(PauseReason).map((r) => (
-              <option key={r} value={r}>
-                {PAUSE_REASON_LABELS[r]}
-              </option>
-            ))}
-          </select>
+          <label className="section-label" htmlFor="change-pause-reason">
+            Change Pause Reason
+          </label>
+          <div className="relative">
+            <select
+              id="change-pause-reason"
+              className="field appearance-none pr-11"
+              value={changeReason || wo.currentPauseReason || ''}
+              onChange={(e) => setChangeReason(e.target.value as PauseReason)}
+            >
+              {Object.values(PauseReason).map((r) => (
+                <option key={r} value={r}>
+                  {PAUSE_REASON_LABELS[r]}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+          </div>
           <button
             type="button"
             className="btn-secondary w-full"
@@ -244,14 +259,19 @@ export default function WorkOrderDetailPage() {
       <section className="card mb-4">
         <button
           type="button"
-          className="flex w-full items-center justify-between"
+          className="flex min-h-11 w-full items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shop-accent"
           onClick={() => setTruckOpen((v) => !v)}
+          aria-expanded={truckOpen}
+          aria-controls="truck-information-panel"
         >
           <span className="section-label">Truck Information</span>
-          <span>{truckOpen ? '˄' : '˅'}</span>
+          <ChevronDown
+            className={`h-5 w-5 transition-transform ${truckOpen ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
         </button>
         {truckOpen ? (
-          <div className="mt-3 space-y-3">
+          <div id="truck-information-panel" className="mt-3 space-y-3">
             <div className="grid grid-cols-3 gap-2 text-sm">
               <Info label="Make" value={wo.truck.make} />
               <Info label="Model" value={wo.truck.model} />
@@ -261,7 +281,7 @@ export default function WorkOrderDetailPage() {
               <Info label="Owner" value={wo.truck.owner} />
             </div>
             <Link
-              href={`/trucks/${wo.truckId}/history`}
+              href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}
               className="btn-secondary w-full"
             >
               See Truck Repair History
@@ -282,9 +302,10 @@ export default function WorkOrderDetailPage() {
                   type="button"
                   className="card flex w-full items-center gap-3 text-left"
                   disabled={busy || wo.status !== 'in_progress'}
-                  onClick={() =>
-                    setFinishJob({ id: job.id, name: job.displayName })
-                  }
+                  onClick={(event) => {
+                    finishJobTriggerRef.current = event.currentTarget;
+                    setFinishJob({ id: job.id, name: job.displayName });
+                  }}
                 >
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-shop-border text-xs">
                     ○
@@ -297,6 +318,7 @@ export default function WorkOrderDetailPage() {
         )}
         {wo.status !== 'completed' && wo.status !== 'cancelled' ? (
           <button
+            ref={addJobTriggerRef}
             type="button"
             className="btn-secondary w-full"
             onClick={() => setAddOpen(true)}
@@ -334,10 +356,11 @@ export default function WorkOrderDetailPage() {
         </div>
         <div>
           <p className="section-label mb-2">Priority</p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Work order priority">
             {Object.values(Priority).map((p) => (
               <span
                 key={p}
+                aria-label={`${p} priority${wo.priority === p ? ', selected' : ''}`}
                 className={
                   wo.priority === p
                     ? 'btn-primary text-center'
@@ -392,6 +415,7 @@ export default function WorkOrderDetailPage() {
         open={!!finishJob}
         title="JOB FINISHED"
         onClose={() => setFinishJob(null)}
+        returnFocusRef={finishJobTriggerRef}
       >
         <p className="mb-4 text-lg">{finishJob?.name}</p>
         <div className="grid grid-cols-2 gap-2">
@@ -449,26 +473,40 @@ export default function WorkOrderDetailPage() {
         open={pauseOpen}
         title="PAUSE WORK ORDER"
         onClose={() => setPauseOpen(false)}
+        returnFocusRef={pauseTriggerRef}
       >
-        <select
-          className="field mb-3"
-          value={pauseReason}
-          onChange={(e) => setPauseReason(e.target.value as PauseReason)}
-        >
-          <option value="">Select an option</option>
-          {Object.values(PauseReason).map((r) => (
-            <option key={r} value={r}>
-              {PAUSE_REASON_LABELS[r]}
-            </option>
-          ))}
-        </select>
+        <label className="section-label mb-2 block" htmlFor="pause-reason">
+          Pause reason
+        </label>
+        <div className="relative mb-3">
+          <select
+            id="pause-reason"
+            className="field appearance-none pr-11"
+            value={pauseReason}
+            onChange={(e) => setPauseReason(e.target.value as PauseReason)}
+          >
+            <option value="">Select an option</option>
+            {Object.values(PauseReason).map((r) => (
+              <option key={r} value={r}>
+                {PAUSE_REASON_LABELS[r]}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+        </div>
         {pauseReason === PauseReason.OTHER ? (
-          <textarea
-            className="field mb-3 min-h-20"
-            placeholder="Reason required for Other"
-            value={pauseNotes}
-            onChange={(e) => setPauseNotes(e.target.value)}
-          />
+          <div className="mb-3">
+            <label className="section-label mb-2 block" htmlFor="pause-notes">
+              Additional details
+            </label>
+            <textarea
+              id="pause-notes"
+              className="field min-h-20"
+              placeholder="Reason required for Other"
+              value={pauseNotes}
+              onChange={(e) => setPauseNotes(e.target.value)}
+            />
+          </div>
         ) : null}
         <div className="grid grid-cols-2 gap-2">
           <button
@@ -514,6 +552,7 @@ export default function WorkOrderDetailPage() {
             }),
           );
         }}
+        returnFocusRef={addJobTriggerRef}
       />
     </div>
   );
@@ -536,6 +575,7 @@ function AddJobSheet({
   defaultCategoryId,
   onClose,
   onAdd,
+  returnFocusRef,
 }: {
   open: boolean;
   categories: JobCategoryDto[];
@@ -547,6 +587,7 @@ function AddJobSheet({
     displayName: string;
     customDescription?: string;
   }) => void;
+  returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [q, setQ] = useState('');
@@ -566,20 +607,36 @@ function AddJobSheet({
   );
 
   return (
-    <Modal open={open} title="Add job" onClose={onClose}>
+    <Modal
+      open={open}
+      title="Add job"
+      onClose={onClose}
+      returnFocusRef={returnFocusRef}
+    >
       <div className="space-y-3">
-        <select
-          className="field"
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-        >
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <label className="section-label block" htmlFor="detail-job-category">
+          Category
+        </label>
+        <div className="relative">
+          <select
+            id="detail-job-category"
+            className="field appearance-none pr-11"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+          >
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+        </div>
+        <label className="section-label block" htmlFor="detail-job-search">
+          Search job or alias
+        </label>
         <input
+          id="detail-job-search"
           className="field"
           placeholder="Search job / alias (e.g. 3in1)"
           value={q}
@@ -612,9 +669,13 @@ function AddJobSheet({
             </li>
           )}
         </ul>
+        <label className="section-label block" htmlFor="detail-custom-job">
+          Job not listed
+        </label>
         <input
+          id="detail-custom-job"
           className="field"
-          placeholder="JOB NOT LISTED — describe custom job"
+          placeholder="Describe custom job"
           value={custom}
           onChange={(e) => setCustom(e.target.value)}
         />
