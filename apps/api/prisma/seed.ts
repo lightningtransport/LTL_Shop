@@ -229,8 +229,8 @@ async function main() {
     const name = partCategoryNames[index];
     const category = await prisma.partCategory.upsert({
       where: { name },
-      update: { sortOrder: index, active: true },
-      create: { name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), sortOrder: index },
+      update: { sortOrder: index, active: true, aliases: name === 'Paper Fuel Filter' ? ['Papel Fuel Filter'] : [] },
+      create: { name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), sortOrder: index, aliases: name === 'Paper Fuel Filter' ? ['Papel Fuel Filter'] : [] },
     });
     partCategories[name] = category.id;
   }

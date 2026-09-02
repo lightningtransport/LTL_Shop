@@ -207,6 +207,7 @@ model PartCategory {
   id        String   @id @default(uuid()) @db.Uuid
   slug      String   @unique
   name      String   @unique
+  aliases   String[] @default([])
   sortOrder Int      @default(0) @map("sort_order")
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
