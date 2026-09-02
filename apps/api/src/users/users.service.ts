@@ -7,7 +7,7 @@ export class UsersService {
 
   listMechanics() {
     return this.prisma.user.findMany({
-      where: { active: true, role: { in: ['mechanic', 'manager'] } },
+      where: { active: true, role: 'mechanic' },
       orderBy: { name: 'asc' },
       select: { id: true, name: true, email: true, role: true },
     });
