@@ -288,11 +288,15 @@ export default function NewWorkOrderPage() {
       </section>
 
       {openWo ? (
-        <div className="mb-4 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4">
-          <p className="font-semibold text-amber-100">
+        <div
+          className="mb-4 rounded-2xl border border-[var(--warning)] bg-warning-surface p-4 text-warning-foreground"
+          role="alert"
+          aria-live="polite"
+        >
+          <p className="font-semibold">
             Truck #{truck?.truckNumber} already has an open Work Order.
           </p>
-          <p className="mt-1 text-sm text-amber-100/80">
+          <p className="mt-1 text-sm">
             {openWo.displayId} · {openWo.status} · {openWo.jobsCompleted}/
             {openWo.jobsTotal}
           </p>

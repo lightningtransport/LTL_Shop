@@ -25,6 +25,8 @@ module.exports = {
         ring: 'var(--ring)',
         success: 'var(--success)',
         warning: 'var(--warning)',
+        'warning-foreground': 'var(--warning-foreground)',
+        'warning-surface': 'var(--warning-surface)',
         shop: {
           bg: 'oklch(var(--shop-bg) / <alpha-value>)',
           panel: 'oklch(var(--shop-panel) / <alpha-value>)',

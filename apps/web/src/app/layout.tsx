@@ -58,7 +58,7 @@ export default function RootLayout({
                     width={1536}
                     height={894}
                     priority
-                    className="h-auto w-28 object-contain sm:w-36"
+                    className="h-auto w-[85px] object-contain sm:w-28"
                   />
                   <AppHeaderActions />
                 </div>
