@@ -14,7 +14,9 @@ export const createWorkOrderSchema = z.object({
   priority: z.nativeEnum(Priority).default(Priority.NORMAL),
   notes: z.string().max(2000).optional(),
   mechanicIds: z.array(z.string().uuid()).default([]),
-  jobs: z.array(createWorkOrderJobSchema).min(1),
+  // The service validates category-specific job requirements: standard Work
+  // Orders need jobs, while PM is a standalone service with no checklist.
+  jobs: z.array(createWorkOrderJobSchema).default([]),
   idempotencyKey: z.string().min(8).max(128).optional(),
 });
 

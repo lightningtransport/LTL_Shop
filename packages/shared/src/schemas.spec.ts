@@ -9,13 +9,13 @@ describe('shared contracts', () => {
     expect(OPEN_WORK_ORDER_STATUSES).toContain(WorkOrderStatus.WAITING_PAUSED);
   });
 
-  it('requires at least one job on create', () => {
+  it('allows category-specific job validation in the service', () => {
     const result = createWorkOrderSchema.safeParse({
       truckId: '00000000-0000-0000-0000-000000000001',
       primaryCategoryId: '00000000-0000-0000-0000-000000000002',
       jobs: [],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it('includes end of shift pause reason', () => {

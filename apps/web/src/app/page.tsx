@@ -114,6 +114,7 @@ function WorkOrderCard({
   wo: WorkOrderSummaryDto;
   mode: 'created' | 'active' | 'paused';
 }) {
+  const isPm = wo.primaryCategoryName === 'PM';
   return (
     <article className="card space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -122,7 +123,7 @@ function WorkOrderCard({
             {wo.displayId}
           </p>
           <p className="text-sm text-shop-muted">
-            #{wo.truckNumber} · {priorityLabel(wo.priority)} ·{' '}
+            #{wo.truckNumber} · {!isPm ? `${priorityLabel(wo.priority)} · ` : ''}
             {mode === 'paused'
               ? pauseLabel(wo.currentPauseReason)
               : mode === 'created'
@@ -130,13 +131,12 @@ function WorkOrderCard({
                 : 'In Progress'}
           </p>
         </div>
-        <PriorityBadge priority={wo.priority} />
+        {!isPm ? <PriorityBadge priority={wo.priority} /> : null}
       </div>
       <p className="text-sm text-shop-muted">
-        {wo.primaryCategoryName} · {wo.jobsCompleted} of {wo.jobsTotal} jobs
-        done
+        {isPm ? 'PM Service' : `${wo.primaryCategoryName} · ${wo.jobsCompleted} of ${wo.jobsTotal} jobs done`}
       </p>
-      {(mode === 'active' || mode === 'paused') && wo.jobs.length > 0 ? (
+      {!isPm && (mode === 'active' || mode === 'paused') && wo.jobs.length > 0 ? (
         <ul className="space-y-1 text-sm">
           {wo.jobs.map((job) => (
             <li key={job.id} className="flex items-center gap-2">

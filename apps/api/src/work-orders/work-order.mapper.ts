@@ -68,7 +68,10 @@ export type WorkOrderWithRelations = {
 };
 
 export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
-  const activeJobs = wo.jobs.filter((j) => j.status !== 'cancelled');
+  const isPm = wo.primaryCategory.name === 'PM';
+  // PM is a single service. Legacy jobs remain in the database for audit but
+  // are never presented as a checklist or progress metric.
+  const activeJobs = isPm ? [] : wo.jobs.filter((j) => j.status !== 'cancelled');
   const jobsCompleted = activeJobs.filter((j) => j.status === 'completed').length;
   const jobsTotal = activeJobs.length;
   const jobs = activeJobs.map((j) => ({
@@ -107,7 +110,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
     totalWaitingMs: Number(wo.totalWaitingMs),
     version: wo.version,
     truck: toTruckDto(wo.truck),
-    jobs: wo.jobs.map((j) => ({
+    jobs: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => ({
       id: j.id,
       workOrderId: j.workOrderId,
       catalogJobId: j.catalogJobId,

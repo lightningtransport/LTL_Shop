@@ -6,6 +6,7 @@ const user = {
   name: 'Alex Mechanic',
   role: 'mechanic',
   active: true,
+  pmAuthorized: false,
 };
 
 const truck = {
@@ -244,12 +245,16 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(control).toContainText(/Jamie|more/i);
   });
 
-  test('Daniel PM flow confirms mileage corrections and saves selected parts', async ({ page }) => {
+  test('Daniel PM flow autosaves the service and requires mileage plus a part to finish', async ({ page }) => {
+    const daniel = { ...user, id: 'daniel-1', email: 'daniel@lightning.local', name: 'Daniel', pmAuthorized: true };
     const pmWorkOrder = {
       ...workOrder,
       primaryCategoryId: 'cat-pm',
       primaryCategoryName: 'PM',
       status: 'in_progress',
+      jobsCompleted: 0,
+      jobsTotal: 0,
+      jobs: [],
     };
     const pmDetails = {
       workOrderId: pmWorkOrder.id,
@@ -264,25 +269,52 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       selections: [],
     };
     let savedBody: unknown;
+    let savedSelections: { partCategoryId: string; partId: string }[] = [];
+    let savedMileage: number | null = pmDetails.observedMileage;
+    await page.route('**/api/auth/me', async (route) => json(route, { user: daniel }));
     await page.route(`**/api/work-orders/${workOrder.id}`, async (route) => {
       await json(route, {
-        ...pmWorkOrder, notes: null, createdById: user.id, completedAt: null,
+        ...pmWorkOrder, notes: null, createdById: daniel.id, completedAt: null,
         totalActiveLaborMs: 0, totalWaitingMs: 0, mechanics: [], currentPause: null,
         truck, version: 1,
       });
     });
     await page.route(`**/api/work-orders/${workOrder.id}/pm`, async (route) => {
-      if (route.request().method() === 'POST') savedBody = route.request().postDataJSON();
-      await json(route, pmDetails);
+      if (route.request().method() === 'POST') {
+        savedBody = route.request().postDataJSON();
+        savedSelections = (savedBody as { selections: { partCategoryId: string; partId: string }[] }).selections;
+        savedMileage = (savedBody as { observedMileage: number | null }).observedMileage;
+      }
+      await json(route, { ...pmDetails, observedMileage: savedMileage, selections: savedSelections });
     });
+    await page.route(`**/api/work-orders/${workOrder.id}/complete`, async (route) => json(route, {
+      ...pmWorkOrder, status: 'completed', notes: null, createdById: daniel.id,
+      completedAt: '2026-01-01T14:00:00.000Z', totalActiveLaborMs: 1, totalWaitingMs: 0,
+      mechanics: [], currentPause: null, truck, version: 2,
+    }));
     await login(page);
+    // Let the login redirect settle before navigating to the fixture detail.
+    await page.waitForTimeout(200);
     await page.goto(`/work-orders/${workOrder.id}`);
+    await expect(page.getByRole('heading', { name: 'Truck Information' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'PM Service' })).toBeVisible();
+    await expect(page.getByText('Jobs To Do', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Working With', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Priority', { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel('Observed mileage')).toHaveAttribute('type', 'text');
+    await expect(page.getByRole('button', { name: 'Finish Work' })).toBeDisabled();
     await page.getByLabel('Observed mileage').fill('120500');
+    await page.waitForTimeout(650);
+    await expect.poll(() => savedBody).toEqual({ observedMileage: 120500, selections: [] });
     await page.getByLabel('Oil Filter 1 Unit').selectOption('part-oil');
-    await page.getByRole('button', { name: 'Save PM service' }).click();
-    await expect(page.getByRole('heading', { name: 'Confirm mileage update' })).toBeVisible();
-    await page.getByRole('button', { name: 'Confirm update' }).click();
+    await expect.poll(() => savedBody).toEqual({
+      observedMileage: 120500,
+      selections: [{ partCategoryId: 'part-cat-oil', partId: 'part-oil' }],
+    });
+    await expect(page.getByRole('button', { name: 'Finish Work' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Finish Work' }).click();
+    await expect(page.getByRole('heading', { name: 'Finish PM service' })).toBeVisible();
+    await page.getByRole('button', { name: 'Finish Work' }).last().click();
     await expect.poll(() => savedBody).toEqual({
       observedMileage: 120500,
       selections: [{ partCategoryId: 'part-cat-oil', partId: 'part-oil' }],

@@ -31,7 +31,7 @@ import {
   PriorityBadge,
   ScreenHeader,
 } from '@/components/ui';
-import { PmServiceCard } from '@/components/pm-service-card';
+import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
 
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
@@ -120,6 +120,24 @@ export default function WorkOrderDetailPage() {
       return <p className="text-shop-muted" role="alert">{loadError.message}</p>;
     }
     return <PageSkeleton label="Loading work order" />;
+  }
+
+  if (wo.primaryCategoryName === 'PM') {
+    return (
+      <PmWorkOrderDetail
+        wo={wo}
+        onUpdated={async (updated) => {
+          await mutateWorkOrder(updated, { revalidate: false });
+          void Promise.all([
+            mutateGlobal(shopKeys.workOrders),
+            mutateGlobal(
+              (key) => typeof key === 'string' && key.includes('/repair-history'),
+            ),
+            mutateGlobal(shopKeys.pmService(wo.id)),
+          ]).catch(() => undefined);
+        }}
+      />
+    );
   }
 
   const todo = wo.jobs.filter((j) => j.status === 'to_do');
@@ -557,6 +575,249 @@ export default function WorkOrderDetailPage() {
         }}
         returnFocusRef={addJobTriggerRef}
       />
+    </div>
+  );
+}
+
+function PmWorkOrderDetail({
+  wo,
+  onUpdated,
+}: {
+  wo: WorkOrderDetailDto;
+  onUpdated: (updated: WorkOrderDetailDto) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState(wo.notes ?? '');
+  const [notesDirty, setNotesDirty] = useState(false);
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<PmDraftState>({
+    ready: false,
+    pending: false,
+    hasError: false,
+    observedMileage: '',
+    selectedParts: 0,
+  });
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
+  const [pauseNotes, setPauseNotes] = useState('');
+  const [changeReason, setChangeReason] = useState<PauseReason | ''>('');
+  const pauseTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!notesDirty) setNotes(wo.notes ?? '');
+  }, [notesDirty, wo.notes]);
+
+  async function run(action: () => Promise<WorkOrderDetailDto>) {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await action();
+      await onUpdated(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Action failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveNotes() {
+    if (!notesDirty || notesSaving || wo.status === 'completed' || wo.status === 'cancelled') return;
+    setNotesSaving(true);
+    setNotesError(null);
+    try {
+      const updated = await apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/notes`, {
+        method: 'POST',
+        body: JSON.stringify({ notes: notes || undefined }),
+      });
+      setNotesDirty(false);
+      await onUpdated(updated);
+    } catch (err) {
+      setNotesError(err instanceof Error ? err.message : 'Unable to save notes.');
+    } finally {
+      setNotesSaving(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!notesDirty || notesSaving || notesError) return;
+    const timer = window.setTimeout(() => void saveNotes(), 600);
+    return () => window.clearTimeout(timer);
+  }, [notes, notesDirty, notesError, notesSaving]);
+
+  const mileage = Number(draft.observedMileage);
+  const validMileage =
+    draft.observedMileage.trim() !== '' && Number.isInteger(mileage) && mileage >= 0;
+  const finishBlocked =
+    busy ||
+    !draft.ready ||
+    draft.pending ||
+    draft.hasError ||
+    notesDirty ||
+    notesSaving ||
+    !!notesError ||
+    !validMileage ||
+    draft.selectedParts < 1;
+  const mileageChangesTruck = validMileage && mileage !== wo.truck.mileage;
+
+  return (
+    <div>
+      <ScreenHeader
+        title={wo.displayId}
+        subtitle={`#${wo.truckNumber} · ${statusLabel(wo.status)}`}
+        backHref="/"
+      />
+
+      {error ? <p className="mb-3 text-sm text-destructive" role="alert">{error}</p> : null}
+
+      <section className="card mb-4 space-y-3" aria-labelledby="pm-truck-information">
+        <h2 id="pm-truck-information" className="section-label">Truck Information</h2>
+        <div className="grid grid-cols-3 gap-2 text-sm">
+          <Info label="Make" value={wo.truck.make} />
+          <Info label="Model" value={wo.truck.model} />
+          <Info label="Year" value={wo.truck.year?.toString()} />
+          <Info label="Mileage" value={formatMileage(wo.truck.mileage)} />
+          <Info label="Company" value={wo.truck.company} />
+          <Info label="Owner" value={wo.truck.owner} />
+        </div>
+        <Link
+          href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}
+          className="btn-secondary w-full"
+        >
+          See Truck Repair History
+        </Link>
+      </section>
+
+      {wo.status === 'created' ? (
+        <section className="mb-4">
+          <button
+            type="button"
+            className="btn-primary w-full"
+            disabled={busy}
+            onClick={() =>
+              run(() =>
+                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
+                  method: 'POST',
+                }),
+              )
+            }
+          >
+            Start Work
+          </button>
+        </section>
+      ) : (
+        <PmServiceCard workOrderId={wo.id} onDraftStateChange={setDraft} />
+      )}
+
+      {wo.status === 'waiting_paused' ? (
+        <section className="card mb-4 space-y-3">
+          <label className="section-label" htmlFor="pm-change-pause-reason">Change Pause Reason</label>
+          <div className="relative">
+            <select
+              id="pm-change-pause-reason"
+              className="field appearance-none pr-11"
+              value={changeReason || wo.currentPauseReason || ''}
+              onChange={(event) => setChangeReason(event.target.value as PauseReason)}
+            >
+              {Object.values(PauseReason).map((reason) => (
+                <option key={reason} value={reason}>{PAUSE_REASON_LABELS[reason]}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+          </div>
+          <button
+            type="button"
+            className="btn-secondary w-full"
+            disabled={busy}
+            onClick={() => run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause-reason`, {
+              method: 'POST',
+              body: JSON.stringify({ reason: changeReason || wo.currentPauseReason }),
+            }))}
+          >
+            Update Pause
+          </button>
+        </section>
+      ) : null}
+
+      <section className="card mb-4 space-y-2">
+        <label className="section-label" htmlFor="pm-notes">Notes</label>
+        <textarea
+          id="pm-notes"
+          className="field min-h-20"
+          placeholder="Add notes (optional)"
+          disabled={wo.status === 'completed' || wo.status === 'cancelled'}
+          value={notes}
+          onChange={(event) => {
+            setNotes(event.target.value);
+            setNotesDirty(true);
+            setNotesError(null);
+          }}
+          onBlur={() => void saveNotes()}
+        />
+        <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
+          {notesSaving ? 'Saving…' : notesError ? <><span className="text-destructive">{notesError} </span><button className="underline" type="button" onClick={() => void saveNotes()}>Retry</button></> : notesDirty ? 'Saving…' : 'Saved'}
+        </p>
+      </section>
+
+      {wo.currentPauseReason ? (
+        <p className="mb-3 text-sm font-medium text-warning-foreground">{pauseLabel(wo.currentPauseReason)}</p>
+      ) : null}
+
+      <section className="mb-4 space-y-2" aria-label="PM work actions">
+        {wo.status === 'in_progress' ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button ref={pauseTriggerRef} type="button" className="btn-secondary" disabled={busy} onClick={() => setPauseOpen(true)}>Pause Work</button>
+            <button type="button" className="btn-primary" disabled={finishBlocked} onClick={() => setFinishOpen(true)}>Finish Work</button>
+          </div>
+        ) : null}
+        {wo.status === 'waiting_paused' ? (
+          <button type="button" className="btn-primary w-full" disabled={busy} onClick={() => run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/resume`, { method: 'POST' }))}>Resume Work</button>
+        ) : null}
+        {wo.status === 'in_progress' && finishBlocked ? (
+          <p className="text-sm text-muted-foreground">Finish Work requires a saved observed mileage and at least one part.</p>
+        ) : null}
+      </section>
+
+      <Modal open={finishOpen} title="Finish PM service" onClose={() => setFinishOpen(false)}>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {mileageChangesTruck
+            ? `This will update the truck mileage from ${formatMileage(wo.truck.mileage)} to ${formatMileage(mileage)} and create an audit record.`
+            : 'This will complete the PM service.'}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" className="btn-secondary" onClick={() => setFinishOpen(false)}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={busy} onClick={() => {
+            setFinishOpen(false);
+            void run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, { method: 'POST' }));
+          }}>Finish Work</button>
+        </div>
+      </Modal>
+
+      <Modal open={pauseOpen} title="PAUSE WORK ORDER" onClose={() => setPauseOpen(false)} returnFocusRef={pauseTriggerRef}>
+        <label className="section-label mb-2 block" htmlFor="pm-pause-reason">Pause reason</label>
+        <div className="relative mb-3">
+          <select id="pm-pause-reason" className="field appearance-none pr-11" value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
+            <option value="">Select an option</option>
+            {Object.values(PauseReason).map((reason) => <option key={reason} value={reason}>{PAUSE_REASON_LABELS[reason]}</option>)}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+        </div>
+        {pauseReason === PauseReason.OTHER ? (
+          <textarea className="field mb-3 min-h-20" placeholder="Reason required for Other" value={pauseNotes} onChange={(event) => setPauseNotes(event.target.value)} />
+        ) : null}
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" className="btn-secondary" onClick={() => setPauseOpen(false)}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={!pauseReason || busy} onClick={() => {
+            setPauseOpen(false);
+            void run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause`, {
+              method: 'POST',
+              body: JSON.stringify({ reason: pauseReason, notes: pauseNotes || undefined }),
+            }));
+          }}>Pause Work</button>
+        </div>
+      </Modal>
     </div>
   );
 }

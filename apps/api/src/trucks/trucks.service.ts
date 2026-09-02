@@ -73,7 +73,7 @@ export class TrucksService {
         truckNumber: truck.truckNumber,
         mechanicNames: wo.mechanics.map((m) => m.mechanic.name),
         mileage: wo.pmService?.observedMileage ?? truck.mileage,
-        jobs: wo.jobs.map((j) => j.displayName),
+        jobs: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => j.displayName),
       })),
     };
   }

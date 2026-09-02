@@ -128,8 +128,8 @@ export default function NewWorkOrderPage() {
   }
 
   async function create() {
-    if (!truck || openWoCheck !== 'verified' || !categoryId || jobs.length === 0) {
-      setError('Truck, category, and at least one job are required.');
+    if (!truck || openWoCheck !== 'verified' || !categoryId || (!isPmMechanic && jobs.length === 0)) {
+      setError(isPmMechanic ? 'Select a truck before creating the PM Work Order.' : 'Truck, category, and at least one job are required.');
       return;
     }
     setBusy(true);
@@ -142,8 +142,8 @@ export default function NewWorkOrderPage() {
           primaryCategoryId: categoryId,
           priority,
           notes: notes || undefined,
-          mechanicIds: isPm && daniel ? [daniel.id] : workingWith,
-          jobs: jobs.map((j) => ({
+          mechanicIds: isPmMechanic ? [] : isPm && daniel ? [daniel.id] : workingWith,
+          jobs: isPmMechanic ? [] : jobs.map((j) => ({
             catalogJobId: j.catalogJobId,
             categoryId: j.categoryId,
             displayName: j.displayName,
@@ -175,11 +175,7 @@ export default function NewWorkOrderPage() {
     <div>
       <ScreenHeader
         title={isPmMechanic ? 'New PM Service' : 'New Work Order'}
-        subtitle={
-          isPmMechanic
-            ? 'Select a truck and add the PM work to perform.'
-            : 'Enter the required information.'
-        }
+        subtitle={isPmMechanic ? 'Select a truck to create a PM service.' : 'Enter the required information.'}
         backHref="/"
       />
 
@@ -329,14 +325,7 @@ export default function NewWorkOrderPage() {
       {truck && !openWo ? (
         <>
           <section className="card mb-4 space-y-4">
-            {isPmMechanic ? (
-              <div>
-                <p className="section-label">Service Type</p>
-                <p className="mt-2 rounded-xl border border-shop-border bg-shop-accent px-4 py-3 font-medium">
-                  PM
-                </p>
-              </div>
-            ) : (
+            {!isPmMechanic ? (
               <div>
                 <label className="section-label" htmlFor="work-order-category">
                   Category
@@ -357,10 +346,10 @@ export default function NewWorkOrderPage() {
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
                 </div>
               </div>
-            )}
+            ) : null}
 
-            <div>
-              <p className="section-label mb-2">{isPmMechanic ? 'PM Jobs To Do' : 'Jobs To Do'}</p>
+            {!isPmMechanic ? <div>
+              <p className="section-label mb-2">Jobs To Do</p>
               {jobs.length === 0 ? (
                 <EmptyState>Add at least one job.</EmptyState>
               ) : (
@@ -393,9 +382,9 @@ export default function NewWorkOrderPage() {
               >
                 Add job +
               </button>
-            </div>
+            </div> : null}
 
-            <div>
+            {!isPmMechanic ? <div>
               <p className="section-label" id="working-with-label">
                 Working With
               </p>
@@ -416,9 +405,9 @@ export default function NewWorkOrderPage() {
                 <ChevronDown className="h-5 w-5 text-shop-muted" aria-hidden="true" />
               </button>
               )}
-            </div>
+            </div> : null}
 
-            <div>
+            {!isPmMechanic ? <div>
               <p className="section-label mb-2">Priority</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {Object.values(Priority).map((p) => (
@@ -435,7 +424,7 @@ export default function NewWorkOrderPage() {
                   </button>
                 ))}
               </div>
-            </div>
+            </div> : null}
 
             <div>
               <label className="section-label" htmlFor="work-order-notes">
@@ -469,7 +458,7 @@ export default function NewWorkOrderPage() {
             disabled={busy || openWoCheck !== 'verified' || (isPm && (!user?.pmAuthorized || !daniel))}
             onClick={create}
           >
-            Create Work Order
+            {isPmMechanic ? 'Create PM Work Order' : 'Create Work Order'}
           </button>
           {isPm && !user?.pmAuthorized ? <p className="mt-2 text-sm text-muted-foreground">Only Daniel can create PM Work Orders.</p> : null}
         </>
