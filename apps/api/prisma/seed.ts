@@ -29,6 +29,25 @@ async function main() {
     },
   });
 
+  const additionalMechanics = [
+    { email: 'alejandro-2@lightning.local', name: 'Alejandro 2' },
+    { email: 'john@lightning.local', name: 'John' },
+    { email: 'daniel@lightning.local', name: 'Daniel' },
+    { email: 'elliot@lightning.local', name: 'Elliot' },
+  ];
+
+  for (const additionalMechanic of additionalMechanics) {
+    await prisma.user.upsert({
+      where: { email: additionalMechanic.email },
+      update: {
+        name: additionalMechanic.name,
+        role: 'mechanic',
+        active: true,
+      },
+      create: { ...additionalMechanic, role: 'mechanic', active: true },
+    });
+  }
+
   await prisma.user.upsert({
     where: { email: 'manager@lightning.local' },
     update: {},
@@ -162,6 +181,7 @@ async function main() {
   console.log('Seed complete', {
     mechanic: mechanic.email,
     mechanic2: mechanic2.email,
+    additionalMechanics: additionalMechanics.length,
     trucks: trucks.map((t) => t.truckNumber),
     categories: categories.length,
     catalogJobs: catalog.length,
