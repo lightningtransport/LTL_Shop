@@ -110,10 +110,17 @@ export class WorkOrdersService {
       where: { id: input.primaryCategoryId },
     });
     if (!category) throw new BadRequestException('Invalid primary category');
+
+    if (user.pmAuthorized && category.name !== 'PM') {
+      throw new ForbiddenException('PM mechanics can only create PM Work Orders');
+    }
     if (category.name === 'PM') {
       this.assertPmMutationAccess(user);
       if (input.mechanicIds.some((id) => id !== user.id)) {
         throw new BadRequestException('PM Work Orders can only be assigned to Daniel');
+      }
+      if (input.jobs.some((job) => job.categoryId !== input.primaryCategoryId)) {
+        throw new BadRequestException('PM Work Orders can only contain PM jobs');
       }
     }
 

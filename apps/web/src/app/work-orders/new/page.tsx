@@ -44,6 +44,7 @@ export default function NewWorkOrderPage() {
   const categories = categoryData ?? [];
   const mechanics = mechanicData ?? [];
   const pmCategory = categories.find((category) => category.name === 'PM');
+  const isPmMechanic = !!user?.pmAuthorized;
   const [query, setQuery] = useState('');
   const [truck, setTruck] = useState<TruckDto | null>(null);
   const [openWo, setOpenWo] = useState<WorkOrderSummaryDto | null>(null);
@@ -70,15 +71,19 @@ export default function NewWorkOrderPage() {
   }, [sessionLoading, token, router]);
 
   useEffect(() => {
+    if (isPmMechanic && pmCategory) {
+      setCategoryId(pmCategory.id);
+      return;
+    }
     if (!categoryId && categories[0]) setCategoryId(categories[0].id);
-  }, [categories, categoryId]);
+  }, [categories, categoryId, isPmMechanic, pmCategory]);
 
   useEffect(() => {
     if (!user) return;
     setWorkingWith((current) => (current.length ? current : [user.id]));
   }, [user]);
 
-  const isPm = categoryId === pmCategory?.id;
+  const isPm = isPmMechanic || categoryId === pmCategory?.id;
   const daniel = mechanics.find((mechanic) => mechanic.name.toLowerCase() === 'daniel');
 
   useEffect(() => {
@@ -169,8 +174,12 @@ export default function NewWorkOrderPage() {
   return (
     <div>
       <ScreenHeader
-        title="New Work Order"
-        subtitle="Enter the required information."
+        title={isPmMechanic ? 'New PM Service' : 'New Work Order'}
+        subtitle={
+          isPmMechanic
+            ? 'Select a truck and add the PM work to perform.'
+            : 'Enter the required information.'
+        }
         backHref="/"
       />
 
@@ -320,29 +329,38 @@ export default function NewWorkOrderPage() {
       {truck && !openWo ? (
         <>
           <section className="card mb-4 space-y-4">
-            <div>
-              <label className="section-label" htmlFor="work-order-category">
-                Category
-              </label>
-              <div className="relative mt-2">
-                <select
-                  id="work-order-category"
-                  className="field appearance-none pr-11"
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+            {isPmMechanic ? (
+              <div>
+                <p className="section-label">Service Type</p>
+                <p className="mt-2 rounded-xl border border-shop-border bg-shop-accent px-4 py-3 font-medium">
+                  PM
+                </p>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="section-label" htmlFor="work-order-category">
+                  Category
+                </label>
+                <div className="relative mt-2">
+                  <select
+                    id="work-order-category"
+                    className="field appearance-none pr-11"
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+                </div>
+              </div>
+            )}
 
             <div>
-              <p className="section-label mb-2">Jobs To Do</p>
+              <p className="section-label mb-2">{isPmMechanic ? 'PM Jobs To Do' : 'Jobs To Do'}</p>
               {jobs.length === 0 ? (
                 <EmptyState>Add at least one job.</EmptyState>
               ) : (
@@ -382,7 +400,7 @@ export default function NewWorkOrderPage() {
                 Working With
               </p>
               {isPm ? (
-                <p className="mt-2 text-sm text-muted-foreground">Daniel is the only mechanic assigned to PM work.</p>
+                <p className="mt-2 text-sm text-muted-foreground">Assigned to Daniel. PM work is completed independently.</p>
               ) : (
               <button
                 ref={workingWithTriggerRef}
