@@ -157,6 +157,39 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   });
 
+  test('keeps Home controls exclusive and uses logical back destinations', async ({ page }) => {
+    await page.goto('/login');
+    await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Back/i })).toHaveCount(0);
+
+    await login(page);
+    await expect(page.getByRole('banner', { name: 'Home controls' })).toBeVisible();
+    await expect(page.getByAltText('Lightning Transport and Logistics')).toBeVisible();
+
+    await page.getByRole('link', { name: /Create New Work Order/i }).click();
+    await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
+    const backToHome = page.getByRole('link', { name: 'Back to Home' });
+    await expect(backToHome).toBeVisible();
+    const backBox = await backToHome.boundingBox();
+    expect(backBox?.width).toBeGreaterThanOrEqual(44);
+    expect(backBox?.height).toBeGreaterThanOrEqual(44);
+
+    await selectTruck(page);
+    await page.getByRole('link', { name: /See Truck Repair History/i }).click();
+    await expect(page.getByRole('heading', { name: 'REPAIR HISTORY' })).toBeVisible();
+    await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Back to New Work Order' }).click();
+    await expect(page.getByRole('heading', { name: 'New Work Order' })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Back to Home' }).click();
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    await page.getByRole('link', { name: /Start Work/i }).click();
+    await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
+    await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Back to Home' }).click();
+    await expect(page.getByRole('banner', { name: 'Home controls' })).toBeVisible();
+  });
+
   test('toggles light/dark theme and persists explicit preference', async ({ page }) => {
     await login(page);
     const toggle = page.getByRole('button', { name: /toggle (theme|dark mode|light mode)/i }).first();
