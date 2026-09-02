@@ -82,11 +82,21 @@ async function main() {
     { email: 'daniel@lightning.local', name: 'Daniel' },
     { email: 'elliot@lightning.local', name: 'Elliot' },
   ];
-  for (const entry of additionalMechanics) {
+  for (const additionalMechanic of additionalMechanics) {
     await prisma.user.upsert({
-      where: { email: entry.email },
-      update: { name: entry.name, role: 'mechanic', active: true, pmAuthorized: entry.name === 'Daniel' },
-      create: { ...entry, role: 'mechanic', active: true, pmAuthorized: entry.name === 'Daniel' },
+      where: { email: additionalMechanic.email },
+      update: {
+        name: additionalMechanic.name,
+        role: 'mechanic',
+        active: true,
+        pmAuthorized: additionalMechanic.name === 'Daniel',
+      },
+      create: {
+        ...additionalMechanic,
+        role: 'mechanic',
+        active: true,
+        pmAuthorized: additionalMechanic.name === 'Daniel',
+      },
     });
   }
 
@@ -251,6 +261,7 @@ async function main() {
   console.log('Seed complete', {
     mechanic: mechanic.email,
     mechanic2: mechanic2.email,
+    additionalMechanics: additionalMechanics.length,
     trucks: trucks.map((t) => t.truckNumber),
     categories: categories.length,
     catalogJobs: catalog.length,
