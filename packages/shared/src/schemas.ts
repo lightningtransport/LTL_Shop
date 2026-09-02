@@ -32,6 +32,14 @@ export const updateWorkOrderNotesSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
+export const updatePmServiceSchema = z.object({
+  observedMileage: z.number().int().nonnegative().nullable(),
+  selections: z.array(z.object({
+    partCategoryId: z.string().uuid(),
+    partId: z.string().uuid(),
+  })).max(9),
+});
+
 export const addJobSchema = z.object({
   catalogJobId: z.string().uuid().optional(),
   categoryId: z.string().uuid(),
@@ -53,3 +61,4 @@ export type PauseWorkOrderInput = z.infer<typeof pauseWorkOrderSchema>;
 export type ChangePauseReasonInput = z.infer<typeof changePauseReasonSchema>;
 export type UpdateWorkOrderNotesInput = z.infer<typeof updateWorkOrderNotesSchema>;
 export type AddJobInput = z.infer<typeof addJobSchema>;
+export type UpdatePmServiceInput = z.infer<typeof updatePmServiceSchema>;

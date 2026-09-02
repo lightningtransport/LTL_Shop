@@ -15,6 +15,7 @@ export type AuthUser = {
   name: string;
   role: string;
   active: boolean;
+  pmAuthorized: boolean;
   supabaseAuthId: string | null;
 };
 
@@ -127,6 +128,7 @@ export class AuthGuard implements CanActivate {
       name: user.name,
       role: user.role,
       active: user.active,
+      pmAuthorized: user.pmAuthorized,
       supabaseAuthId: user.supabaseAuthId,
     };
   }

@@ -22,8 +22,8 @@ export class WorkOrdersController {
   }
 
   @Get(':id')
-  get(@Param('id') id: string) {
-    return this.workOrders.getById(id);
+  get(@Req() req: Request, @Param('id') id: string) {
+    return this.workOrders.getById(req.user!, id);
   }
 
   @Post()
@@ -81,5 +81,15 @@ export class WorkOrdersController {
     @Param('jobId') jobId: string,
   ) {
     return this.workOrders.completeJob(req.user!, id, jobId);
+  }
+
+  @Get(':id/pm')
+  getPm(@Req() req: Request, @Param('id') id: string) {
+    return this.workOrders.getPmService(req.user!, id);
+  }
+
+  @Post(':id/pm')
+  updatePm(@Req() req: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.workOrders.updatePmService(req.user!, id, body);
   }
 }

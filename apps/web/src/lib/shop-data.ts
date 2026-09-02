@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import type {
   JobAliasOptionDto,
   JobCategoryDto,
+  PmServiceDto,
   RepairHistoryItemDto,
   TruckDto,
   WorkOrderDetailDto,
@@ -43,6 +44,7 @@ export const shopKeys = {
         : `?categoryId=${encodeURIComponent(categoryId)}`;
     return `/api/trucks/${truckId}/repair-history${query}`;
   },
+  pmService: (workOrderId: string) => `/api/work-orders/${workOrderId}/pm`,
   aliases: (categoryId?: string) =>
     `shop:aliases:${categoryId || 'all'}`,
 };
@@ -57,6 +59,13 @@ export function useWorkOrders(enabled: boolean) {
 export function useWorkOrder(id: string, enabled: boolean) {
   return useSWR<WorkOrderDetailDto>(
     enabled && id ? shopKeys.workOrder(id) : null,
+    { dedupingInterval: 5_000, refreshInterval: 15_000 },
+  );
+}
+
+export function usePmService(workOrderId: string, enabled: boolean) {
+  return useSWR<PmServiceDto>(
+    enabled && workOrderId ? shopKeys.pmService(workOrderId) : null,
     { dedupingInterval: 5_000, refreshInterval: 15_000 },
   );
 }

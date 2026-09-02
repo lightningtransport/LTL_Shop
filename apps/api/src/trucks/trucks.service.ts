@@ -57,6 +57,7 @@ export class TrucksService {
         primaryCategory: true,
         mechanics: { include: { mechanic: true }, where: { removedAt: null } },
         jobs: { where: { status: 'completed' } },
+        pmService: true,
       },
       orderBy: { completedAt: 'desc' },
       take: 100,
@@ -71,7 +72,7 @@ export class TrucksService {
         primaryCategoryName: wo.primaryCategory.name,
         truckNumber: truck.truckNumber,
         mechanicNames: wo.mechanics.map((m) => m.mechanic.name),
-        mileage: truck.mileage,
+        mileage: wo.pmService?.observedMileage ?? truck.mileage,
         jobs: wo.jobs.map((j) => j.displayName),
       })),
     };

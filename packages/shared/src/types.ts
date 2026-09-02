@@ -12,6 +12,7 @@ export interface UserDto {
   name: string;
   role: UserRole;
   active: boolean;
+  pmAuthorized: boolean;
 }
 
 export interface TruckDto {
@@ -124,4 +125,32 @@ export interface ApiErrorDto {
   statusCode: number;
   message: string;
   code?: string;
+}
+
+export interface PmPartDto {
+  id: string;
+  partNumber: string | null;
+  displayName: string;
+}
+
+export interface PmPartCategoryDto {
+  id: string;
+  slug: string;
+  name: string;
+  parts: PmPartDto[];
+}
+
+export interface PmServiceDto {
+  workOrderId: string;
+  canEdit: boolean;
+  currentTruckMileage: number | null;
+  observedMileage: number | null;
+  lastCompletedPm: {
+    workOrderId: string;
+    displayId: string;
+    completedAt: string;
+    observedMileage: number | null;
+  } | null;
+  categories: PmPartCategoryDto[];
+  selections: { partCategoryId: string; partId: string }[];
 }
