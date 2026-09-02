@@ -110,11 +110,20 @@ export class WorkOrdersService {
       where: { id: input.primaryCategoryId },
     });
     if (!category) throw new BadRequestException('Invalid primary category');
+
+    if (user.pmAuthorized && category.name !== 'PM') {
+      throw new ForbiddenException('PM mechanics can only create PM Work Orders');
+    }
     if (category.name === 'PM') {
       this.assertPmMutationAccess(user);
+      if (input.jobs.length) {
+        throw new BadRequestException('PM Work Orders do not use jobs');
+      }
       if (input.mechanicIds.some((id) => id !== user.id)) {
         throw new BadRequestException('PM Work Orders can only be assigned to Daniel');
       }
+    } else if (!input.jobs.length) {
+      throw new BadRequestException('At least one job is required for this Work Order');
     }
 
     const mechanicIds = Array.from(
@@ -344,6 +353,13 @@ export class WorkOrdersService {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
       await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      const category = await tx.jobCategory.findUnique({
+        where: { id: wo.primaryCategoryId },
+        select: { name: true },
+      });
+      if (category?.name === 'PM') {
+        throw new BadRequestException('PM Work Orders do not use jobs');
+      }
       if (wo.status === 'completed' || wo.status === 'cancelled') {
         throw new BadRequestException('Cannot add jobs to a closed Work Order');
       }
@@ -406,6 +422,13 @@ export class WorkOrdersService {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, workOrderId);
       await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      const category = await tx.jobCategory.findUnique({
+        where: { id: wo.primaryCategoryId },
+        select: { name: true },
+      });
+      if (category?.name === 'PM') {
+        throw new BadRequestException('PM Work Orders do not use jobs');
+      }
       const gate = canCompleteJob(wo.status);
       if (!gate.ok) {
         throw new BadRequestException({ code: gate.code, message: gate.message });
@@ -444,14 +467,33 @@ export class WorkOrdersService {
 
   async complete(user: AuthUser, id: string) {
     return this.prisma.$transaction(async (tx) => {
-      const wo = await this.requireWo(tx, id);
+      const wo = await tx.workOrder.findUnique({
+        where: { id },
+        include: {
+          truck: true,
+          primaryCategory: true,
+          pmService: { include: { parts: true } },
+        },
+      });
+      if (!wo) throw new NotFoundException('Work Order not found');
       await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
       if (wo.status !== 'in_progress') {
         throw new BadRequestException('Work Order must be in progress to finish');
       }
-      const jobs = await tx.workOrderJob.findMany({ where: { workOrderId: id } });
-      const gate = canFinishWorkOrder(jobs);
-      if (!gate.ok) throw new BadRequestException(gate.message);
+      const isPm = wo.primaryCategory.name === 'PM';
+      const pmObservedMileage = wo.pmService?.observedMileage;
+      if (isPm) {
+        if (pmObservedMileage == null) {
+          throw new BadRequestException('Observed mileage is required to finish a PM service');
+        }
+        if (!wo.pmService?.parts.length) {
+          throw new BadRequestException('Select at least one part before finishing a PM service');
+        }
+      } else {
+        const jobs = await tx.workOrderJob.findMany({ where: { workOrderId: id } });
+        const gate = canFinishWorkOrder(jobs);
+        if (!gate.ok) throw new BadRequestException(gate.message);
+      }
 
       const now = new Date();
       await this.closeOpenSession(tx, id, now);
@@ -459,6 +501,31 @@ export class WorkOrdersService {
       const sessions = await tx.workSession.findMany({ where: { workOrderId: id } });
       const pauses = await tx.pauseEvent.findMany({ where: { workOrderId: id } });
       const totals = computeTotals({ sessions, pauses, now });
+
+      if (isPm && pmObservedMileage !== wo.truck.mileage) {
+        await tx.truck.update({
+          where: { id: wo.truckId },
+          data: { mileage: pmObservedMileage },
+        });
+        await tx.truckMileageAdjustment.create({
+          data: {
+            truckId: wo.truckId,
+            workOrderId: wo.id,
+            previousMileage: wo.truck.mileage,
+            observedMileage: pmObservedMileage!,
+            createdById: user.id,
+          },
+        });
+        await this.activity.log(tx, {
+          workOrderId: wo.id,
+          eventType: ActivityEventType.TRUCK_MILEAGE_CORRECTED,
+          entityType: 'truck',
+          entityId: wo.truckId,
+          userId: user.id,
+          previousValue: { mileage: wo.truck.mileage },
+          newValue: { mileage: pmObservedMileage },
+        });
+      }
 
       const updated = await tx.workOrder.update({
         where: { id },
@@ -527,7 +594,9 @@ export class WorkOrdersService {
     const truckModel = wo.truck.model?.toLowerCase() ?? null;
     return {
       workOrderId: wo.id,
-      canEdit: user.pmAuthorized,
+      canEdit:
+        user.pmAuthorized &&
+        ['in_progress', 'waiting_paused'].includes(wo.status),
       currentTruckMileage: wo.truck.mileage,
       observedMileage: wo.pmService?.observedMileage ?? null,
       lastCompletedPm: lastCompletedPm
@@ -570,6 +639,9 @@ export class WorkOrdersService {
       });
       if (!wo) throw new NotFoundException('Work Order not found');
       if (wo.primaryCategory.name !== 'PM') throw new BadRequestException('Work Order is not a PM service');
+      if (!['in_progress', 'waiting_paused'].includes(wo.status)) {
+        throw new BadRequestException('Start or resume the PM Work Order before updating service details');
+      }
 
       const selectedParts = await tx.part.findMany({
         where: { id: { in: parsed.data.selections.map((selection) => selection.partId) }, active: true },
@@ -588,21 +660,6 @@ export class WorkOrdersService {
       if (parsed.data.selections.length) {
         await tx.pmServicePart.createMany({
           data: parsed.data.selections.map((selection) => ({ ...selection, pmServiceId: service.id })),
-        });
-      }
-      if (parsed.data.observedMileage !== null && parsed.data.observedMileage !== wo.truck.mileage) {
-        await tx.truck.update({ where: { id: wo.truckId }, data: { mileage: parsed.data.observedMileage } });
-        await tx.truckMileageAdjustment.create({
-          data: {
-            truckId: wo.truckId, workOrderId: wo.id,
-            previousMileage: wo.truck.mileage, observedMileage: parsed.data.observedMileage,
-            createdById: user.id,
-          },
-        });
-        await this.activity.log(tx, {
-          workOrderId: wo.id, eventType: ActivityEventType.TRUCK_MILEAGE_CORRECTED,
-          entityType: 'truck', entityId: wo.truckId, userId: user.id,
-          previousValue: { mileage: wo.truck.mileage }, newValue: { mileage: parsed.data.observedMileage },
         });
       }
       await this.activity.log(tx, {
