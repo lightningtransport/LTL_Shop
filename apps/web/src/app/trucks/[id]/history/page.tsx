@@ -24,6 +24,11 @@ export default function RepairHistoryPage() {
   const items = data?.items ?? [];
   const requestedReturn = searchParams.get('from');
   const backHref = requestedReturn?.startsWith('/') ? requestedReturn : '/';
+  const backLabel = backHref === '/work-orders/new'
+    ? 'Back to New Work Order'
+    : backHref.startsWith('/work-orders/')
+      ? 'Back to Work Order'
+      : 'Back to Home';
 
   useEffect(() => {
     if (!sessionLoading && !token) router.replace('/login');
@@ -46,6 +51,7 @@ export default function RepairHistoryPage() {
         title="REPAIR HISTORY"
         subtitle={`#${truck.truckNumber}`}
         backHref={backHref}
+        backLabel={backLabel}
       />
 
       <section className="card mb-4 text-sm">

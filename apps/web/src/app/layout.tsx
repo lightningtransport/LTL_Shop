@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import Image from 'next/image';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
@@ -7,7 +6,6 @@ import { AuthProvider } from '@/lib/auth-context';
 import { DataProvider } from '@/lib/data-provider';
 import { PathScrollReset } from '@/components/path-scroll-reset';
 import { ThemeProvider } from '@/components/theme-provider';
-import { AppHeaderActions } from '@/components/ui';
 
 const bodyFont = Inter({
   subsets: ['latin'],
@@ -51,17 +49,6 @@ export default function RootLayout({
           <AuthProvider>
             <DataProvider>
               <div className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-6">
-                <div className="mb-5 flex items-start justify-between gap-3">
-                  <Image
-                    src="/ltl-logo.png"
-                    alt="Lightning Transport and Logistics"
-                    width={1536}
-                    height={894}
-                    priority
-                    className="h-auto w-[85px] object-contain sm:w-28"
-                  />
-                  <AppHeaderActions />
-                </div>
                 {children}
               </div>
             </DataProvider>

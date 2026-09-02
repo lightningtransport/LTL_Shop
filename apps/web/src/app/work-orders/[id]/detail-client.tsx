@@ -141,7 +141,7 @@ export default function WorkOrderDetailPage() {
           </span>
         </div>
         {wo.currentPauseReason ? (
-          <p className="text-sm text-amber-200">
+          <p className="text-sm font-medium text-warning-foreground">
             {pauseLabel(wo.currentPauseReason)}
           </p>
         ) : null}

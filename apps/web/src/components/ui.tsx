@@ -1,9 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Dialog as DialogPrimitive } from 'radix-ui';
+import { Dialog as DialogPrimitive, Slot } from 'radix-ui';
 import { ArrowLeft, Check, ChevronDown, Moon, Sun, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
@@ -32,12 +33,23 @@ const buttonVariants = cva(
 );
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants>;
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+  };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, type = 'button', ...props }, ref) => (
-    <button ref={ref} type={type} className={cn(buttonVariants({ variant, size }), className)} {...props} />
-  ),
+  ({ className, variant, size, type = 'button', asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot.Root : 'button';
+
+    return (
+      <Comp
+        ref={ref}
+        {...(!asChild ? { type } : {})}
+        className={cn(buttonVariants({ variant, size }), className)}
+        {...props}
+      />
+    );
+  },
 );
 Button.displayName = 'Button';
 
@@ -316,38 +328,64 @@ export function AppHeaderActions() {
   );
 }
 
+export function HomeTopBar() {
+  return (
+    <header
+      className="mb-5 flex items-start justify-between gap-3"
+      aria-label="Home controls"
+    >
+      <Image
+        src="/ltl-logo.png"
+        alt="Lightning Transport and Logistics"
+        width={1536}
+        height={894}
+        priority
+        className="h-auto w-[85px] object-contain sm:w-28"
+      />
+      <AppHeaderActions />
+    </header>
+  );
+}
+
 export function ScreenHeader({
   eyebrow,
   title,
   subtitle,
   backHref,
+  backLabel,
 }: {
   eyebrow?: string;
   title: string;
   subtitle?: string;
   backHref?: string;
+  backLabel?: string;
 }) {
-  const { user } = useAuth();
-  const label = eyebrow ?? user?.name ?? 'MECHANIC';
-
-  return (
-    <header className="mb-6">
-      {backHref ? (
-        <Link
-          href={backHref}
-          className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-shop-muted hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back
-        </Link>
-      ) : null}
-      <p className="section-label">{label}</p>
-      <h1 className="mt-1 font-display text-3xl font-bold tracking-wide">
+  const content = (
+    <div className="min-w-0">
+      {eyebrow ? <p className="section-label">{eyebrow}</p> : null}
+      <h1 className="font-display text-3xl font-bold tracking-wide">
         {title}
       </h1>
       {subtitle ? (
         <p className="mt-1 text-sm text-shop-muted">{subtitle}</p>
       ) : null}
+    </div>
+  );
+
+  return (
+    <header className="mb-6">
+      {backHref ? (
+        <div className="flex items-center gap-3">
+          <Button asChild variant="secondary" size="icon" className="shrink-0 shadow-sm">
+            <Link href={backHref} aria-label={backLabel ?? 'Back to Home'}>
+              <ArrowLeft className="size-5" aria-hidden="true" />
+            </Link>
+          </Button>
+          {content}
+        </div>
+      ) : (
+        content
+      )}
     </header>
   );
 }
