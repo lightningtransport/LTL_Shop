@@ -43,6 +43,7 @@ export default function NewWorkOrderPage() {
   const { data: truckData, error: truckError } = useTrucks(!!token);
   const categories = categoryData ?? [];
   const mechanics = mechanicData ?? [];
+  const pmCategory = categories.find((category) => category.name === 'PM');
   const [query, setQuery] = useState('');
   const [truck, setTruck] = useState<TruckDto | null>(null);
   const [openWo, setOpenWo] = useState<WorkOrderSummaryDto | null>(null);
@@ -76,6 +77,13 @@ export default function NewWorkOrderPage() {
     if (!user) return;
     setWorkingWith((current) => (current.length ? current : [user.id]));
   }, [user]);
+
+  const isPm = categoryId === pmCategory?.id;
+  const daniel = mechanics.find((mechanic) => mechanic.name.toLowerCase() === 'daniel');
+
+  useEffect(() => {
+    if (isPm && daniel) setWorkingWith([daniel.id]);
+  }, [isPm, daniel]);
 
   const results = useMemo(() => {
     const term = query.trim().replace(/^#/, '').toLowerCase();
@@ -129,7 +137,7 @@ export default function NewWorkOrderPage() {
           primaryCategoryId: categoryId,
           priority,
           notes: notes || undefined,
-          mechanicIds: workingWith,
+          mechanicIds: isPm && daniel ? [daniel.id] : workingWith,
           jobs: jobs.map((j) => ({
             catalogJobId: j.catalogJobId,
             categoryId: j.categoryId,
@@ -373,6 +381,9 @@ export default function NewWorkOrderPage() {
               <p className="section-label" id="working-with-label">
                 Working With
               </p>
+              {isPm ? (
+                <p className="mt-2 text-sm text-muted-foreground">Daniel is the only mechanic assigned to PM work.</p>
+              ) : (
               <button
                 ref={workingWithTriggerRef}
                 type="button"
@@ -386,6 +397,7 @@ export default function NewWorkOrderPage() {
                 </span>
                 <ChevronDown className="h-5 w-5 text-shop-muted" aria-hidden="true" />
               </button>
+              )}
             </div>
 
             <div>
@@ -436,11 +448,12 @@ export default function NewWorkOrderPage() {
           <button
             type="button"
             className="btn-primary w-full"
-            disabled={busy || openWoCheck !== 'verified'}
+            disabled={busy || openWoCheck !== 'verified' || (isPm && (!user?.pmAuthorized || !daniel))}
             onClick={create}
           >
             Create Work Order
           </button>
+          {isPm && !user?.pmAuthorized ? <p className="mt-2 text-sm text-muted-foreground">Only Daniel can create PM Work Orders.</p> : null}
         </>
       ) : null}
 

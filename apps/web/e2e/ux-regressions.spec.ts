@@ -244,6 +244,51 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(control).toContainText(/Jamie|more/i);
   });
 
+  test('Daniel PM flow confirms mileage corrections and saves selected parts', async ({ page }) => {
+    const pmWorkOrder = {
+      ...workOrder,
+      primaryCategoryId: 'cat-pm',
+      primaryCategoryName: 'PM',
+      status: 'in_progress',
+    };
+    const pmDetails = {
+      workOrderId: pmWorkOrder.id,
+      canEdit: true,
+      currentTruckMileage: 120000,
+      observedMileage: 120000,
+      lastCompletedPm: null,
+      categories: [{
+        id: 'part-cat-oil', slug: 'oil-filter-1-unit', name: 'Oil Filter 1 Unit',
+        parts: [{ id: 'part-oil', partNumber: '2234788', displayName: 'PETERBILT Oil Filter Paccar' }],
+      }],
+      selections: [],
+    };
+    let savedBody: unknown;
+    await page.route(`**/api/work-orders/${workOrder.id}`, async (route) => {
+      await json(route, {
+        ...pmWorkOrder, notes: null, createdById: user.id, completedAt: null,
+        totalActiveLaborMs: 0, totalWaitingMs: 0, mechanics: [], currentPause: null,
+        truck, version: 1,
+      });
+    });
+    await page.route(`**/api/work-orders/${workOrder.id}/pm`, async (route) => {
+      if (route.request().method() === 'POST') savedBody = route.request().postDataJSON();
+      await json(route, pmDetails);
+    });
+    await login(page);
+    await page.goto(`/work-orders/${workOrder.id}`);
+    await expect(page.getByRole('heading', { name: 'PM Service' })).toBeVisible();
+    await page.getByLabel('Observed mileage').fill('120500');
+    await page.getByLabel('Oil Filter 1 Unit').selectOption('part-oil');
+    await page.getByRole('button', { name: 'Save PM service' }).click();
+    await expect(page.getByRole('heading', { name: 'Confirm mileage update' })).toBeVisible();
+    await page.getByRole('button', { name: 'Confirm update' }).click();
+    await expect.poll(() => savedBody).toEqual({
+      observedMileage: 120500,
+      selections: [{ partCategoryId: 'part-cat-oil', partId: 'part-oil' }],
+    });
+  });
+
   test('Add job dialog traps focus and closes with Escape', async ({ page }) => {
     await openNewWorkOrder(page);
     await selectTruck(page);

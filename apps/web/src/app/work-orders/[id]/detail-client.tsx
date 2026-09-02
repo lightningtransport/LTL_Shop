@@ -31,6 +31,7 @@ import {
   PriorityBadge,
   ScreenHeader,
 } from '@/components/ui';
+import { PmServiceCard } from '@/components/pm-service-card';
 
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
@@ -152,6 +153,8 @@ export default function WorkOrderDetailPage() {
           {error}
         </p>
       ) : null}
+
+      {wo.primaryCategoryName === 'PM' ? <PmServiceCard workOrderId={wo.id} /> : null}
 
       <section className="mb-4 space-y-2">
         <p className="section-label">Work Options</p>

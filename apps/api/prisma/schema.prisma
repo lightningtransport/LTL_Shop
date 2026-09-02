@@ -69,6 +69,8 @@ enum ActivityEventType {
   notes_updated
   work_order_completed
   manager_correction
+  pm_details_updated
+  truck_mileage_corrected
 }
 
 model User {
@@ -77,6 +79,7 @@ model User {
   name            String
   role            UserRole @default(mechanic)
   active          Boolean  @default(true)
+  pmAuthorized    Boolean  @default(false) @map("pm_authorized")
   supabaseAuthId  String?  @unique @map("supabase_auth_id")
   ninoxExternalId String?  @map("ninox_external_id")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -90,6 +93,7 @@ model User {
   pauseEvents           PauseEvent[]
   activityLogs          ActivityLog[]
   createdCatalogJobs    CatalogJob[]          @relation("CatalogJobCreatedBy")
+  mileageAdjustments    TruckMileageAdjustment[]
 
   @@map("users")
 }
@@ -108,6 +112,7 @@ model Truck {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   workOrders WorkOrder[]
+  mileageAdjustments TruckMileageAdjustment[]
 
   @@index([truckNumber])
   @@map("trucks")
@@ -189,11 +194,105 @@ model WorkOrder {
   pauseEvents     PauseEvent[]
   mechanics       MechanicAssignment[]
   activityLogs    ActivityLog[]
+  pmService       PmService?
+  mileageAdjustments TruckMileageAdjustment[]
 
   @@index([status])
   @@index([truckId, status])
   @@index([createdById])
   @@map("work_orders")
+}
+
+model PartCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  name      String   @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parts          Part[]
+  pmServiceParts PmServicePart[]
+
+  @@map("part_categories")
+}
+
+model Part {
+  id             String   @id @default(uuid()) @db.Uuid
+  categoryId     String   @map("category_id") @db.Uuid
+  partNumber     String?  @map("part_number")
+  displayName    String   @map("display_name")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  category       PartCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  fitments       PartFitment[]
+  pmServiceParts PmServicePart[]
+
+  @@unique([categoryId, partNumber, displayName])
+  @@index([categoryId, active])
+  @@map("parts")
+}
+
+model PartFitment {
+  id        String   @id @default(uuid()) @db.Uuid
+  partId    String   @map("part_id") @db.Uuid
+  make      String?
+  model     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  part Part @relation(fields: [partId], references: [id], onDelete: Cascade)
+
+  @@index([partId])
+  @@index([make, model])
+  @@map("part_fitments")
+}
+
+model PmService {
+  id              String   @id @default(uuid()) @db.Uuid
+  workOrderId     String   @unique @map("work_order_id") @db.Uuid
+  observedMileage Int?     @map("observed_mileage")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  workOrder WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  parts     PmServicePart[]
+
+  @@map("pm_services")
+}
+
+model PmServicePart {
+  id             String @id @default(uuid()) @db.Uuid
+  pmServiceId    String @map("pm_service_id") @db.Uuid
+  partCategoryId String @map("part_category_id") @db.Uuid
+  partId         String @map("part_id") @db.Uuid
+
+  pmService    PmService    @relation(fields: [pmServiceId], references: [id], onDelete: Cascade)
+  partCategory PartCategory @relation(fields: [partCategoryId], references: [id])
+  part          Part        @relation(fields: [partId], references: [id])
+
+  @@unique([pmServiceId, partCategoryId])
+  @@map("pm_service_parts")
+}
+
+model TruckMileageAdjustment {
+  id              String   @id @default(uuid()) @db.Uuid
+  truckId         String   @map("truck_id") @db.Uuid
+  workOrderId     String   @map("work_order_id") @db.Uuid
+  previousMileage Int?     @map("previous_mileage")
+  observedMileage Int      @map("observed_mileage")
+  createdById     String   @map("created_by_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  truck     Truck     @relation(fields: [truckId], references: [id])
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
+  createdBy User      @relation(fields: [createdById], references: [id])
+
+  @@index([truckId, createdAt])
+  @@index([workOrderId])
+  @@map("truck_mileage_adjustments")
 }
 
 model WorkOrderJob {

@@ -68,6 +68,8 @@ export enum ActivityEventType {
   NOTES_UPDATED = 'notes_updated',
   WORK_ORDER_COMPLETED = 'work_order_completed',
   MANAGER_CORRECTION = 'manager_correction',
+  PM_DETAILS_UPDATED = 'pm_details_updated',
+  TRUCK_MILEAGE_CORRECTED = 'truck_mileage_corrected',
 }
 
 export enum CatalogStatus {
