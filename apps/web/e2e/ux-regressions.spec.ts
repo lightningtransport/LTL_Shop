@@ -168,6 +168,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
     await page.getByRole('link', { name: /Create New Work Order/i }).click();
     await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
+    await expect(page.getByText(user.name, { exact: true })).toHaveCount(0);
     const backToHome = page.getByRole('link', { name: 'Back to Home' });
     await expect(backToHome).toBeVisible();
     const backBox = await backToHome.boundingBox();

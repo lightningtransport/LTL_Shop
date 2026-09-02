@@ -360,12 +360,10 @@ export function ScreenHeader({
   backHref?: string;
   backLabel?: string;
 }) {
-  const { user } = useAuth();
-  const label = eyebrow ?? user?.name ?? 'MECHANIC';
   const content = (
     <div className="min-w-0">
-      <p className="section-label">{label}</p>
-      <h1 className="mt-1 font-display text-3xl font-bold tracking-wide">
+      {eyebrow ? <p className="section-label">{eyebrow}</p> : null}
+      <h1 className="font-display text-3xl font-bold tracking-wide">
         {title}
       </h1>
       {subtitle ? (
@@ -377,7 +375,7 @@ export function ScreenHeader({
   return (
     <header className="mb-6">
       {backHref ? (
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <Button asChild variant="secondary" size="icon" className="shrink-0 shadow-sm">
             <Link href={backHref} aria-label={backLabel ?? 'Back to Home'}>
               <ArrowLeft className="size-5" aria-hidden="true" />
