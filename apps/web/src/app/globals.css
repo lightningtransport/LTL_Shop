@@ -25,6 +25,8 @@
   --ring: oklch(0.5358 0.1444 248.0435);
   --success: oklch(0.57 0.14 151);
   --warning: oklch(0.74 0.15 80);
+  --warning-foreground: oklch(0.38 0.09 72);
+  --warning-surface: oklch(0.965 0.035 92);
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-serif: var(--font-sans);
   --font-mono: var(--font-jetbrains-mono), monospace;
@@ -72,6 +74,8 @@
   --ring: oklch(0.7535 0.139 232.6615);
   --success: oklch(0.72 0.14 151);
   --warning: oklch(0.82 0.14 91.6054);
+  --warning-foreground: oklch(0.92 0.12 91.6054);
+  --warning-surface: oklch(0.29 0.05 78);
   --shadow-2xs: 0 10px 15px -5px hsl(0 0% 0% / 0.2);
   --shadow-xs: var(--shadow-2xs);
   --shadow-sm: 0 10px 15px -5px hsl(0 0% 0% / 0.4), 0 1px 2px -6px hsl(0 0% 0% / 0.4);
