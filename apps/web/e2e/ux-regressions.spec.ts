@@ -192,6 +192,8 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     const box = await category.boundingBox();
     expect(box?.height).toBeGreaterThanOrEqual(40);
     expect(await category.evaluate((node) => getComputedStyle(node).appearance)).toMatch(/none|auto/);
+    expect(await category.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(16);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
   });
 
   test('Working With supports accessible multi-selection', async ({ page }) => {

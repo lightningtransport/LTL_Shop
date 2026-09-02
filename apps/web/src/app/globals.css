@@ -100,6 +100,8 @@
 html {
   min-width: 320px;
   background: var(--background);
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -127,7 +129,7 @@ body {
     @apply btn border border-destructive bg-destructive text-destructive-foreground hover:opacity-90;
   }
   .field {
-    @apply min-h-11 w-full rounded-lg border bg-background px-4 py-2.5 text-sm text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring;
+    @apply min-h-11 w-full rounded-lg border bg-background px-4 py-2.5 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring md:text-sm;
   }
   .card {
     @apply rounded-xl border bg-card p-4 text-card-foreground shadow-soft;
