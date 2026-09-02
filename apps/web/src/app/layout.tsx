@@ -7,7 +7,7 @@ import { AuthProvider } from '@/lib/auth-context';
 import { DataProvider } from '@/lib/data-provider';
 import { PathScrollReset } from '@/components/path-scroll-reset';
 import { ThemeProvider } from '@/components/theme-provider';
-import { ThemeToggle } from '@/components/ui';
+import { AppHeaderActions } from '@/components/ui';
 
 const bodyFont = Inter({
   subsets: ['latin'],
@@ -51,16 +51,16 @@ export default function RootLayout({
           <AuthProvider>
             <DataProvider>
               <div className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-6">
-                <div className="mb-5 flex items-start justify-between gap-4">
+                <div className="mb-5 flex items-start justify-between gap-3">
                   <Image
                     src="/ltl-logo.png"
                     alt="Lightning Transport and Logistics"
                     width={1536}
                     height={894}
                     priority
-                    className="h-auto w-40 object-contain sm:w-48"
+                    className="h-auto w-28 object-contain sm:w-36"
                   />
-                  <ThemeToggle />
+                  <AppHeaderActions />
                 </div>
                 {children}
               </div>

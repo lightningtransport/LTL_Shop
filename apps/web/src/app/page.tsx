@@ -16,7 +16,7 @@ import {
 } from '@/components/ui';
 
 export default function HomePage() {
-  const { token, sessionLoading, logout } = useAuth();
+  const { token, sessionLoading } = useAuth();
   const router = useRouter();
   const { data, error } = useWorkOrders(!!token);
 
@@ -30,15 +30,10 @@ export default function HomePage() {
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
-        <ScreenHeader
-          title="Home"
-          subtitle="Current jobs, work orders, and recent work."
-        />
-        <button type="button" className="btn-secondary self-start" onClick={logout}>
-          Logout
-        </button>
-      </div>
+      <ScreenHeader
+        title="Home"
+        subtitle="Current jobs, work orders, and recent work."
+      />
 
       <Link href="/work-orders/new" className="btn-primary mb-6 w-full">
         Create New Work Order

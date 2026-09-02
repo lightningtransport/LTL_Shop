@@ -301,6 +301,21 @@ export function ThemeToggle() {
   );
 }
 
+export function AppHeaderActions() {
+  const { user, logout } = useAuth();
+
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <ThemeToggle />
+      {user ? (
+        <Button variant="secondary" size="sm" onClick={logout}>
+          Logout
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 export function ScreenHeader({
   eyebrow,
   title,
