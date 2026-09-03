@@ -25,6 +25,7 @@ export type Mechanic = {
   name: string;
   email: string;
   role: string;
+  pmAuthorized: boolean;
 };
 
 export type RepairHistory = {

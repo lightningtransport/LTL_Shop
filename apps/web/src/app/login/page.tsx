@@ -6,16 +6,21 @@ import { useAuth } from '@/lib/auth-context';
 import { PageSkeleton, ScreenHeader } from '@/components/ui';
 
 export default function LoginPage() {
-  const { login, loginDev, token, sessionLoading } = useAuth();
+  const { login, loginDev, requestPasswordReset, passwordRecovery, token, sessionLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('mechanic@lightning.local');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (passwordRecovery) {
+      window.location.replace(`/reset-password${window.location.hash}`);
+      return;
+    }
     if (!sessionLoading && token) router.replace('/');
-  }, [sessionLoading, token, router]);
+  }, [passwordRecovery, sessionLoading, token, router]);
 
   if (sessionLoading || token) {
     return <PageSkeleton label="Restoring session" />;
@@ -47,6 +52,19 @@ export default function LoginPage() {
           ? err.message
           : 'Your account is not configured for the Shop application.',
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onForgotPassword() {
+    setBusy(true);
+    setError(null);
+    try {
+      await requestPasswordReset(email);
+      setResetSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to send a reset email.');
     } finally {
       setBusy(false);
     }
@@ -98,6 +116,19 @@ export default function LoginPage() {
         <button className="btn-primary w-full" disabled={busy} type="submit">
           Sign In
         </button>
+        <button
+          type="button"
+          className="btn-secondary w-full"
+          disabled={busy}
+          onClick={onForgotPassword}
+        >
+          Reset password
+        </button>
+        {resetSent ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            If this email has an account, a password-reset link has been sent.
+          </p>
+        ) : null}
         {process.env.NODE_ENV !== 'production' ? (
           <button
             type="button"

@@ -44,6 +44,7 @@ export default function NewWorkOrderPage() {
   const categories = categoryData ?? [];
   const mechanics = mechanicData ?? [];
   const pmCategory = categories.find((category) => category.name === 'PM');
+  const standardCategories = categories.filter((category) => category.name !== 'PM');
   const isPmMechanic = !!user?.pmAuthorized;
   const [query, setQuery] = useState('');
   const [truck, setTruck] = useState<TruckDto | null>(null);
@@ -73,22 +74,12 @@ export default function NewWorkOrderPage() {
   useEffect(() => {
     if (isPmMechanic && pmCategory) {
       setCategoryId(pmCategory.id);
-      return;
     }
-    if (!categoryId && categories[0]) setCategoryId(categories[0].id);
-  }, [categories, categoryId, isPmMechanic, pmCategory]);
+  }, [isPmMechanic, pmCategory]);
 
-  useEffect(() => {
-    if (!user) return;
-    setWorkingWith((current) => (current.length ? current : [user.id]));
-  }, [user]);
-
-  const isPm = isPmMechanic || categoryId === pmCategory?.id;
-  const daniel = mechanics.find((mechanic) => mechanic.name.toLowerCase() === 'daniel');
-
-  useEffect(() => {
-    if (isPm && daniel) setWorkingWith([daniel.id]);
-  }, [isPm, daniel]);
+  const availableCoworkers = mechanics.filter(
+    (mechanic) => mechanic.id !== user?.id && !mechanic.pmAuthorized,
+  );
 
   const results = useMemo(() => {
     const term = query.trim().replace(/^#/, '').toLowerCase();
@@ -142,7 +133,7 @@ export default function NewWorkOrderPage() {
           primaryCategoryId: categoryId,
           priority,
           ...(isPmMechanic ? {} : { notes: notes || undefined }),
-          mechanicIds: isPmMechanic ? [] : isPm && daniel ? [daniel.id] : workingWith,
+          mechanicIds: isPmMechanic ? [] : workingWith,
           jobs: isPmMechanic ? [] : jobs.map((j) => ({
             catalogJobId: j.catalogJobId,
             categoryId: j.categoryId,
@@ -337,7 +328,10 @@ export default function NewWorkOrderPage() {
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
                   >
-                    {categories.map((c) => (
+                    <option value="" disabled>
+                      Select a category
+                    </option>
+                    {standardCategories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
                       </option>
@@ -378,6 +372,7 @@ export default function NewWorkOrderPage() {
                 ref={addJobTriggerRef}
                 type="button"
                 className="btn-secondary w-full"
+                disabled={!categoryId}
                 onClick={() => setAddOpen(true)}
               >
                 Add job +
@@ -388,9 +383,6 @@ export default function NewWorkOrderPage() {
               <p className="section-label" id="working-with-label">
                 Working With
               </p>
-              {isPm ? (
-                <p className="mt-2 text-sm text-muted-foreground">Assigned to Daniel. PM work is completed independently.</p>
-              ) : (
               <button
                 ref={workingWithTriggerRef}
                 type="button"
@@ -400,11 +392,10 @@ export default function NewWorkOrderPage() {
                 onClick={() => setWorkingWithOpen(true)}
               >
                 <span id="working-with-summary">
-                  {selectedMechanicSummary(mechanics, workingWith)}
+                  {selectedMechanicSummary(availableCoworkers, workingWith)}
                 </span>
                 <ChevronDown className="h-5 w-5 text-shop-muted" aria-hidden="true" />
               </button>
-              )}
             </div> : null}
 
             {!isPmMechanic ? <div>
@@ -455,18 +446,17 @@ export default function NewWorkOrderPage() {
           <button
             type="button"
             className="btn-primary w-full"
-            disabled={busy || openWoCheck !== 'verified' || (isPm && (!user?.pmAuthorized || !daniel))}
+            disabled={busy || openWoCheck !== 'verified'}
             onClick={create}
           >
             {isPmMechanic ? 'Create PM Work Order' : 'Create Work Order'}
           </button>
-          {isPm && !user?.pmAuthorized ? <p className="mt-2 text-sm text-muted-foreground">Only Daniel can create PM Work Orders.</p> : null}
         </>
       ) : null}
 
       <AddJobModal
         open={addOpen}
-        categories={categories}
+        categories={standardCategories}
         defaultCategoryId={categoryId}
         onClose={() => setAddOpen(false)}
         onAdd={(job) => {
@@ -477,7 +467,7 @@ export default function NewWorkOrderPage() {
       />
       <WorkingWithModal
         open={workingWithOpen}
-        mechanics={mechanics}
+        mechanics={availableCoworkers}
         selected={workingWith}
         onChange={setWorkingWith}
         onClose={() => setWorkingWithOpen(false)}

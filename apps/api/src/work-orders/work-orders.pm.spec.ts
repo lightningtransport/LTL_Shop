@@ -165,4 +165,27 @@ describe('PM Work Order authorization', () => {
       response: { message: 'This job is already on the Work Order' },
     });
   });
+
+  it('does not let a standard Work Order assign Daniel', async () => {
+    const prisma = {
+      workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null) },
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-1' }) },
+      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'brakes-category', name: 'Brakes' }) },
+      user: { findMany: vi.fn().mockResolvedValue([{ id: '00000000-0000-4000-8000-000000000004', pmAuthorized: true }]) },
+    } as never;
+    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
+
+    await expect(service.create({
+      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
+      role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+    }, {
+      truckId: '00000000-0000-4000-8000-000000000001',
+      primaryCategoryId: '00000000-0000-4000-8000-000000000003',
+      priority: Priority.NORMAL,
+      mechanicIds: ['00000000-0000-4000-8000-000000000004'],
+      jobs: [{ categoryId: '00000000-0000-4000-8000-000000000003', displayName: 'Brake Inspection' }],
+    })).rejects.toMatchObject({
+      response: { message: 'PM mechanics cannot be assigned to standard Work Orders' },
+    });
+  });
 });
