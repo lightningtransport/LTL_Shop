@@ -85,7 +85,7 @@ export default function WorkOrderDetailPage() {
       current: WorkOrderDetailDto,
     ) => WorkOrderDetailDto,
     onSuccess?: () => void,
-  ) {
+  ): Promise<boolean> {
     const snapshot = wo;
     setBusy(true);
     setError(null);
@@ -105,11 +105,13 @@ export default function WorkOrderDetailPage() {
         ),
       ]).catch(() => undefined);
       onSuccess?.();
+      return true;
     } catch (e) {
       if (snapshot && optimisticUpdate) {
         await mutateWorkOrder(snapshot, { revalidate: false });
       }
       setError(e instanceof Error ? e.message : 'Action failed');
+      return false;
     } finally {
       setBusy(false);
     }
@@ -566,15 +568,14 @@ export default function WorkOrderDetailPage() {
           .filter((job) => job.status !== 'cancelled')
           .map((job) => job.displayName)}
         onClose={() => setAddOpen(false)}
-        onAdd={(body) => {
-          setAddOpen(false);
+        onAdd={(body) =>
           run(() =>
             apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/jobs`, {
               method: 'POST',
               body: JSON.stringify(body),
             }),
-          );
-        }}
+          )
+        }
         returnFocusRef={addJobTriggerRef}
       />
     </div>
@@ -864,12 +865,13 @@ function AddJobSheet({
     categoryId: string;
     displayName: string;
     customDescription?: string;
-  }) => void;
+  }) => Promise<boolean>;
   returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [q, setQ] = useState('');
   const [custom, setCustom] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { data: aliasData } = useAliasOptions(categoryId, true);
   const allAliases: JobAliasOptionDto[] = aliasData ?? [];
 
@@ -877,18 +879,37 @@ function AddJobSheet({
     if (!open) return;
     setCategoryId(defaultCategoryId);
     setQ('');
+    setCustom('');
+    setSubmitting(false);
   }, [open, defaultCategoryId]);
 
+  const normalizedExistingNames = useMemo(
+    () => new Set(existingDisplayNames.map(normalizeJobName)),
+    [existingDisplayNames],
+  );
   const aliases = useMemo(
     () =>
       filterAliasOptions(allAliases, q).filter(
-        (alias) => !existingCatalogJobIds.includes(alias.catalogJobId),
+        (alias) =>
+          !existingCatalogJobIds.includes(alias.catalogJobId) &&
+          !normalizedExistingNames.has(normalizeJobName(alias.displayName)),
       ),
-    [allAliases, existingCatalogJobIds, q],
+    [allAliases, existingCatalogJobIds, normalizedExistingNames, q],
   );
-  const customIsDuplicate = existingDisplayNames.some(
-    (name) => name.trim().toLocaleLowerCase('en-US') === custom.trim().toLocaleLowerCase('en-US'),
-  );
+  const customIsDuplicate = normalizedExistingNames.has(normalizeJobName(custom));
+
+  async function submitJob(body: {
+    catalogJobId?: string;
+    categoryId: string;
+    displayName: string;
+    customDescription?: string;
+  }) {
+    if (submitting) return;
+    setSubmitting(true);
+    const added = await onAdd(body);
+    setSubmitting(false);
+    if (added) onClose();
+  }
 
   return (
     <Modal
@@ -933,8 +954,9 @@ function AddJobSheet({
                 <button
                   type="button"
                   className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5"
+                  disabled={submitting}
                   onClick={() =>
-                    onAdd({
+                    void submitJob({
                       catalogJobId: alias.catalogJobId,
                       categoryId: alias.categoryId,
                       displayName: alias.displayName,
@@ -966,16 +988,16 @@ function AddJobSheet({
         <button
           type="button"
           className="btn-primary w-full"
-          disabled={!custom.trim() || customIsDuplicate}
+          disabled={!custom.trim() || customIsDuplicate || submitting}
           onClick={() =>
-            onAdd({
+            void submitJob({
               categoryId,
               displayName: custom.trim(),
               customDescription: custom.trim(),
             })
           }
         >
-          Add Custom Job
+          {submitting ? 'Adding job…' : 'Add Custom Job'}
         </button>
         {customIsDuplicate ? (
           <p className="text-sm text-muted-foreground" role="status">
@@ -985,4 +1007,8 @@ function AddJobSheet({
       </div>
     </Modal>
   );
+}
+
+function normalizeJobName(name: string) {
+  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
 }
