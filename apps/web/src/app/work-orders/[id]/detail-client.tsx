@@ -9,7 +9,6 @@ import {
   JobStatus,
   PAUSE_REASON_LABELS,
   PauseReason,
-  Priority,
   type JobAliasOptionDto,
   type JobCategoryDto,
   type WorkOrderDetailDto,
@@ -85,6 +84,7 @@ export default function WorkOrderDetailPage() {
     optimisticUpdate?: (
       current: WorkOrderDetailDto,
     ) => WorkOrderDetailDto,
+    onSuccess?: () => void,
   ) {
     const snapshot = wo;
     setBusy(true);
@@ -104,6 +104,7 @@ export default function WorkOrderDetailPage() {
             typeof key === 'string' && key.includes('/repair-history'),
         ),
       ]).catch(() => undefined);
+      onSuccess?.();
     } catch (e) {
       if (snapshot && optimisticUpdate) {
         await mutateWorkOrder(snapshot, { revalidate: false });
@@ -142,6 +143,10 @@ export default function WorkOrderDetailPage() {
 
   const todo = wo.jobs.filter((j) => j.status === 'to_do');
   const done = wo.jobs.filter((j) => j.status === 'completed');
+  const coworkers = wo.mechanics.filter(
+    (assignment) => assignment.mechanicId !== wo.createdById,
+  );
+  const finishBlocked = busy || todo.length > 0;
 
   return (
     <div>
@@ -206,18 +211,25 @@ export default function WorkOrderDetailPage() {
             <button
               type="button"
               className="btn-primary"
-              disabled={busy}
+              disabled={finishBlocked}
               onClick={() =>
                 run(() =>
                   apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, {
                     method: 'POST',
                   }),
+                  undefined,
+                  () => router.replace('/'),
                 )
               }
             >
               Finish Work
             </button>
           </div>
+        ) : null}
+        {wo.status === 'in_progress' && todo.length > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Complete all remaining jobs before finishing this Work Order.
+          </p>
         ) : null}
         {wo.status === 'waiting_paused' ? (
           <button
@@ -369,30 +381,14 @@ export default function WorkOrderDetailPage() {
       </section>
 
       <section className="card space-y-3">
-        <div>
+        {coworkers.length ? (
+          <div>
           <p className="section-label">Working With</p>
           <p className="mt-1 text-sm">
-            {wo.mechanics.map((m) => m.mechanicName).join(' / ') || '—'}
+            {coworkers.map((m) => m.mechanicName).join(' / ')}
           </p>
-        </div>
-        <div>
-          <p className="section-label mb-2">Priority</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Work order priority">
-            {Object.values(Priority).map((p) => (
-              <span
-                key={p}
-                aria-label={`${p} priority${wo.priority === p ? ', selected' : ''}`}
-                className={
-                  wo.priority === p
-                    ? 'btn-primary text-center'
-                    : 'btn-secondary text-center opacity-60'
-                }
-              >
-                {p.toUpperCase()}
-              </span>
-            ))}
           </div>
-        </div>
+        ) : null}
         <div>
           <label className="section-label" htmlFor="wo-notes">
             Notes
@@ -563,6 +559,12 @@ export default function WorkOrderDetailPage() {
         open={addOpen}
         categories={categories}
         defaultCategoryId={wo.primaryCategoryId}
+        existingCatalogJobIds={wo.jobs
+          .filter((job) => job.status !== 'cancelled' && job.catalogJobId)
+          .map((job) => job.catalogJobId!)}
+        existingDisplayNames={wo.jobs
+          .filter((job) => job.status !== 'cancelled')
+          .map((job) => job.displayName)}
         onClose={() => setAddOpen(false)}
         onAdd={(body) => {
           setAddOpen(false);
@@ -586,6 +588,7 @@ function PmWorkOrderDetail({
   wo: WorkOrderDetailDto;
   onUpdated: (updated: WorkOrderDetailDto) => Promise<void>;
 }) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState(wo.notes ?? '');
@@ -610,12 +613,16 @@ function PmWorkOrderDetail({
     if (!notesDirty) setNotes(wo.notes ?? '');
   }, [notesDirty, wo.notes]);
 
-  async function run(action: () => Promise<WorkOrderDetailDto>) {
+  async function run(
+    action: () => Promise<WorkOrderDetailDto>,
+    onSuccess?: () => void,
+  ) {
     setBusy(true);
     setError(null);
     try {
       const updated = await action();
       await onUpdated(updated);
+      onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Action failed');
     } finally {
@@ -790,7 +797,10 @@ function PmWorkOrderDetail({
           <button type="button" className="btn-secondary" onClick={() => setFinishOpen(false)}>Cancel</button>
           <button type="button" className="btn-primary" disabled={busy} onClick={() => {
             setFinishOpen(false);
-            void run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, { method: 'POST' }));
+            void run(
+              () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, { method: 'POST' }),
+              () => router.replace('/'),
+            );
           }}>Finish Work</button>
         </div>
       </Modal>
@@ -837,6 +847,8 @@ function AddJobSheet({
   open,
   categories,
   defaultCategoryId,
+  existingCatalogJobIds,
+  existingDisplayNames,
   onClose,
   onAdd,
   returnFocusRef,
@@ -844,6 +856,8 @@ function AddJobSheet({
   open: boolean;
   categories: JobCategoryDto[];
   defaultCategoryId: string;
+  existingCatalogJobIds: string[];
+  existingDisplayNames: string[];
   onClose: () => void;
   onAdd: (body: {
     catalogJobId?: string;
@@ -866,8 +880,14 @@ function AddJobSheet({
   }, [open, defaultCategoryId]);
 
   const aliases = useMemo(
-    () => filterAliasOptions(allAliases, q),
-    [allAliases, q],
+    () =>
+      filterAliasOptions(allAliases, q).filter(
+        (alias) => !existingCatalogJobIds.includes(alias.catalogJobId),
+      ),
+    [allAliases, existingCatalogJobIds, q],
+  );
+  const customIsDuplicate = existingDisplayNames.some(
+    (name) => name.trim().toLocaleLowerCase('en-US') === custom.trim().toLocaleLowerCase('en-US'),
   );
 
   return (
@@ -929,7 +949,7 @@ function AddJobSheet({
             <li className="px-3 py-2 text-sm text-shop-muted">
               {q.trim()
                 ? 'No matching aliases.'
-                : 'No aliases for this category.'}
+                : 'All available catalog jobs for this category have already been added.'}
             </li>
           )}
         </ul>
@@ -946,7 +966,7 @@ function AddJobSheet({
         <button
           type="button"
           className="btn-primary w-full"
-          disabled={!custom.trim()}
+          disabled={!custom.trim() || customIsDuplicate}
           onClick={() =>
             onAdd({
               categoryId,
@@ -957,6 +977,11 @@ function AddJobSheet({
         >
           Add Custom Job
         </button>
+        {customIsDuplicate ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            This job is already on the Work Order.
+          </p>
+        ) : null}
       </div>
     </Modal>
   );

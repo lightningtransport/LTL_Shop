@@ -17,6 +17,7 @@ export type HomeLists = {
   created: WorkOrderSummaryDto[];
   active: WorkOrderSummaryDto[];
   paused: WorkOrderSummaryDto[];
+  completed: WorkOrderSummaryDto[];
 };
 
 export type Mechanic = {

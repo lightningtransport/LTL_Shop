@@ -101,6 +101,19 @@ export default function HomePage() {
               </div>
             )}
           </section>
+
+          {data.completed.length ? (
+            <details className="mt-6">
+              <summary className="btn-secondary w-full cursor-pointer list-none">
+                View completed work ({data.completed.length})
+              </summary>
+              <div className="mt-3 space-y-3">
+                {data.completed.map((wo) => (
+                  <WorkOrderCard key={wo.id} wo={wo} mode="completed" />
+                ))}
+              </div>
+            </details>
+          ) : null}
         </>
       ) : null}
     </div>
@@ -112,7 +125,7 @@ function WorkOrderCard({
   mode,
 }: {
   wo: WorkOrderSummaryDto;
-  mode: 'created' | 'active' | 'paused';
+  mode: 'created' | 'active' | 'paused' | 'completed';
 }) {
   const isPm = wo.primaryCategoryName === 'PM';
   return (
@@ -128,7 +141,9 @@ function WorkOrderCard({
               ? pauseLabel(wo.currentPauseReason)
               : mode === 'created'
                 ? 'Created'
-                : 'In Progress'}
+                : mode === 'completed'
+                  ? 'Completed'
+                  : 'In Progress'}
           </p>
         </div>
         {!isPm ? <PriorityBadge priority={wo.priority} /> : null}
@@ -161,7 +176,11 @@ function WorkOrderCard({
         </ul>
       ) : null}
       <div className="flex gap-2">
-        {mode === 'paused' ? (
+        {mode === 'completed' ? (
+          <Link href={`/work-orders/${wo.id}`} className="btn-secondary flex-1">
+            View completed work
+          </Link>
+        ) : mode === 'paused' ? (
           <>
             <Link href={`/work-orders/${wo.id}`} className="btn-secondary flex-1">
               View Details
