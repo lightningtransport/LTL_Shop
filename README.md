@@ -13,9 +13,12 @@ Greenfield monorepo for the Lightning Shop Mechanic Work Order experience.
 ## Locked product rules
 
 1. **Create Work Order ≠ Start Work.** Mechanic must tap **Start Work** to open the first work session and begin Active Labor.
+   - **PM exception:** a mechanic with `pmAuthorized` creates a PM service already in progress. The system assigns the PM mechanic, creates one work session, and records creation/start events atomically.
 2. Timers are computed from persisted session / pause timestamps (never client-only counters).
 3. Completing a Job does not pause or finish the Work Order.
 4. One open Work Order per Truck.
+5. A normal Work Order requires at least one job. Duplicate catalog jobs and duplicate custom-job names are rejected in both the UI and API.
+6. A normal Work Order cannot be paused when it has no remaining jobs. PM work is controlled by its PM Service requirements instead.
 
 ## Quick start (local)
 
@@ -57,6 +60,8 @@ With `AUTH_DEV_BYPASS=true`, use **Dev Login** on `/login` with:
 - `anthony@lightning.local`
 - `manager@lightning.local`
 
+The local seed also includes `daniel@lightning.local` as the PM-authorized mechanic.
+
 ### Supabase Auth (staging/production)
 
 1. Create a Supabase project.
@@ -72,8 +77,10 @@ With `AUTH_DEV_BYPASS=true`, use **Dev Login** on `/login` with:
 | `apps/web` | Mechanic mobile-first UI |
 | `apps/api` | REST API + domain logic |
 | `packages/shared` | Enums, DTOs, Zod contracts |
-| `supabase/migrations` | SQL mirror of schema for Supabase CLI |
+| `apps/api/prisma` | Prisma schema, migrations, and local seed; this is the only migration source |
 | `docs/PRD_Lightning_Shop_Mechanic_P0.md` | Full PRD |
+| `docs/CURRENT_PRODUCT_STATUS.md` | Implemented workflows, operating configuration, and explicit next steps |
+| `docs/pm-daniel.md` | PM authorization and future assignment-policy note |
 | `docs/ENGINEERING_PRACTICES.md` | Data-flow, caching, mutation, and performance rules |
 | `docs/PERFORMANCE.md` | Production measurements and performance targets |
 
