@@ -481,6 +481,31 @@ export function HomeTopBar() {
   );
 }
 
+export function AuthBrandHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <header className="mb-6">
+      <Image
+        src="/ltl-logo.png"
+        alt="Lightning Transport and Logistics"
+        width={1536}
+        height={894}
+        priority
+        className="h-auto w-36 object-contain sm:w-40"
+      />
+      <div className="mt-5">
+        <h1 className="font-display text-3xl font-bold tracking-wide">{title}</h1>
+        {subtitle ? <p className="mt-1 text-sm text-shop-muted">{subtitle}</p> : null}
+      </div>
+    </header>
+  );
+}
+
 export function ScreenHeader({
   eyebrow,
   title,
