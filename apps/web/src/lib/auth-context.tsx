@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type { UserDto } from '@ltl-shop/shared';
 import { apiFetch, AUTH_TOKEN_KEY, setAuthToken } from './api';
+import { passwordResetRedirectUrl } from './site-url';
 
 type AuthState = {
   user: UserDto | null;
@@ -194,9 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const supabase = await getSupabaseClient();
     const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
-      // /login is the deployed Auth Site URL. The page recognizes recovery links and
-      // immediately forwards them, with their fragment intact, to /reset-password.
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: passwordResetRedirectUrl(window.location.origin),
     });
     if (authError) throw new Error(authError.message);
   }, []);

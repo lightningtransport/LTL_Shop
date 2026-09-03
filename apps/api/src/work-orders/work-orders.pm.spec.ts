@@ -147,7 +147,7 @@ describe('PM Work Order authorization', () => {
         }),
       },
       jobCategory: { findUnique: vi.fn().mockResolvedValue({ name: 'Brakes' }) },
-      workOrderJob: { findFirst: vi.fn().mockResolvedValue({ id: 'existing-job' }) },
+      workOrderJob: { findMany: vi.fn().mockResolvedValue([{ catalogJobId: '00000000-0000-4000-8000-000000000012', displayName: 'Brake Inspection' }]) },
     };
     const prisma = {
       $transaction: vi.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
@@ -163,6 +163,46 @@ describe('PM Work Order authorization', () => {
       displayName: 'Brake Inspection',
     })).rejects.toMatchObject({
       response: { message: 'This job is already on the Work Order' },
+    });
+  });
+
+  it('rejects duplicate jobs in a newly created Work Order before writing', async () => {
+    const prisma = {
+      workOrder: { findUnique: vi.fn().mockResolvedValue(null) },
+    } as never;
+    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
+
+    await expect(service.create({
+      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
+      role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+    }, {
+      truckId: '00000000-0000-4000-8000-000000000001',
+      primaryCategoryId: '00000000-0000-4000-8000-000000000003',
+      priority: Priority.NORMAL,
+      mechanicIds: [],
+      jobs: [
+        { catalogJobId: '00000000-0000-4000-8000-000000000012', categoryId: '00000000-0000-4000-8000-000000000003', displayName: 'Brake Inspection' },
+        { catalogJobId: '00000000-0000-4000-8000-000000000012', categoryId: '00000000-0000-4000-8000-000000000003', displayName: 'Brake Inspection' },
+      ],
+    })).rejects.toMatchObject({ response: { message: 'A Work Order cannot contain duplicate jobs' } });
+  });
+
+  it('rejects pausing a standard Work Order with no pending jobs', async () => {
+    const tx = {
+      workOrder: { findUnique: vi.fn().mockResolvedValue({
+        id: '00000000-0000-4000-8000-000000000011',
+        primaryCategoryId: '00000000-0000-4000-8000-000000000003',
+        primaryCategory: { name: 'Brakes' }, status: 'in_progress', jobs: [{ status: 'completed' }],
+      }) },
+      jobCategory: { findUnique: vi.fn().mockResolvedValue({ name: 'Brakes' }) },
+    };
+    const prisma = { $transaction: vi.fn((callback: (transaction: typeof tx) => unknown) => callback(tx)) } as never;
+    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
+
+    await expect(service.pause({
+      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1', role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+    }, '00000000-0000-4000-8000-000000000011', { reason: 'waiting_for_parts' })).rejects.toMatchObject({
+      response: { message: 'A Work Order without pending jobs cannot be paused' },
     });
   });
 

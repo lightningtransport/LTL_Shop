@@ -194,14 +194,16 @@ function WorkOrderCard({
             Start Work
           </Link>
         ) : (
-          <>
-            <Link href={`/work-orders/${wo.id}?action=pause`} className="btn-secondary flex-1">
-              Pause Work
+          isPm || wo.jobs.some((job) => job.status === 'to_do') ? <>
+              <Link href={`/work-orders/${wo.id}?action=pause`} className="btn-secondary flex-1">
+                Pause Work
+              </Link>
+              <Link href={`/work-orders/${wo.id}`} className="btn-primary flex-1">
+                View Work
+              </Link>
+            </> : <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
+              Finish Work
             </Link>
-            <Link href={`/work-orders/${wo.id}`} className="btn-primary flex-1">
-              View Work
-            </Link>
-          </>
         )}
       </div>
     </article>

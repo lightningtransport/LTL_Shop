@@ -76,6 +76,7 @@ test.describe('Daniel PM workflow', () => {
     await login(page);
     await chooseTruckAndCreate(page);
     await expect(page.getByRole('heading', { name: /PM Service/i })).toBeVisible();
+    await expect(page.getByText('Jobs To Do')).toHaveCount(0);
     await expect.poll(() => createBody).toMatchObject({ primaryCategoryId: pmCategory.id, mechanicIds: [], jobs: [] });
     expect(createBody).not.toHaveProperty('notes');
   });
@@ -87,7 +88,7 @@ test.describe('Daniel PM workflow', () => {
     const notes = page.getByLabel('Notes');
     await notes.fill('Filter housing inspected');
     await notes.blur();
-    await expect(page.getByText('Saved')).toBeVisible();
+    await expect(page.getByText('Saved', { exact: true }).last()).toBeVisible();
     await expect(notes).toHaveValue('Filter housing inspected');
 
     const observedMileage = page.getByLabel('Observed mileage');
@@ -113,6 +114,9 @@ test.describe('Daniel PM workflow', () => {
     await mockPmApi(page);
     await login(page);
     await page.goto(`/work-orders/${woId}`);
+    await expect(page.getByText('Parts used')).toHaveCount(0);
+    await expect(page.getByText('Enter the observed mileage to record parts used.')).toBeVisible();
+    await page.getByLabel('Observed mileage').fill('155000');
     await expect(page.getByLabel('Fuel Filter: no compatible parts for this truck')).toBeVisible();
     const oil = page.getByLabel('Oil Filter 1 Unit');
     await expect(oil).toBeVisible();

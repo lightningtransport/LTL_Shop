@@ -54,6 +54,12 @@ const aliases = [
     categoryId: categories[0].id,
     displayName: 'Brake inspection',
   },
+  {
+    aliasText: 'brake check',
+    catalogJobId: 'catalog-brake-inspection',
+    categoryId: categories[0].id,
+    displayName: 'Brake inspection',
+  },
 ];
 
 const history = {
@@ -243,6 +249,20 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(jamie).toBeChecked();
     await dialog.getByRole('button', { name: /Done/i }).click();
     await expect(control).toContainText(/Jamie|more/i);
+  });
+
+  test('job picker groups aliases and blocks rapid duplicate additions', async ({ page }) => {
+    await openNewWorkOrder(page);
+    await selectTruck(page);
+    await page.getByRole('combobox', { name: /Category/i }).selectOption(categories[0].id);
+    await page.getByRole('button', { name: /Add job/i }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add job' });
+    const option = dialog.getByRole('button', { name: 'Add Brake inspection' });
+    await expect(option).toHaveCount(1);
+    const box = await option.boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+    await Promise.all([option.click(), option.click()]);
+    await expect(page.getByText('Brake inspection', { exact: true })).toHaveCount(1);
   });
 
   test('Daniel PM flow autosaves the service and requires mileage plus a part to finish', async ({ page }) => {
