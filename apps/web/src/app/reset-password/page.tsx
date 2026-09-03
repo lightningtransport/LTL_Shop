@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { PageSkeleton, ScreenHeader } from '@/components/ui';
+import { AuthBrandHeader, PageSkeleton } from '@/components/ui';
 
 export default function ResetPasswordPage() {
   const { sessionLoading, token, updatePassword, logout } = useAuth();
@@ -42,7 +42,7 @@ export default function ResetPasswordPage() {
   if (complete) {
     return (
       <div>
-        <ScreenHeader title="Password updated" subtitle="Sign in with your new password." />
+        <AuthBrandHeader title="Password updated" subtitle="Sign in with your new password." />
         <div className="card space-y-4">
           <p className="text-sm text-muted-foreground" role="status">
             Your password has been changed successfully.
@@ -58,7 +58,7 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <div>
-        <ScreenHeader title="Recovery link unavailable" subtitle="Request a new password-reset email and try again." />
+        <AuthBrandHeader title="Recovery link unavailable" subtitle="Request a new password-reset email and try again." />
         <div className="card">
           <Link className="btn-primary w-full" href="/login">
             Back to sign in
@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div>
-      <ScreenHeader title="Set new password" subtitle="Choose a new password for your Shop account." />
+      <AuthBrandHeader title="Set new password" subtitle="Choose a new password for your Shop account." />
       <form onSubmit={onSubmit} className="card space-y-4">
         <div>
           <label className="section-label" htmlFor="new-password">
