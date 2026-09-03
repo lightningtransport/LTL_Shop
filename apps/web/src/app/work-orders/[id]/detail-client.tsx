@@ -1,6 +1,6 @@
 'use client';
 
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
@@ -9,17 +9,13 @@ import {
   JobStatus,
   PAUSE_REASON_LABELS,
   PauseReason,
-  type JobAliasOptionDto,
-  type JobCategoryDto,
   type WorkOrderDetailDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
-import { filterAliasOptions } from '@/lib/job-catalog';
 import {
   shopKeys,
-  useAliasOptions,
   useCategories,
   useWorkOrder,
 } from '@/lib/shop-data';
@@ -31,6 +27,7 @@ import {
   ScreenHeader,
 } from '@/components/ui';
 import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
+import { JobPickerDialog } from '@/components/job-picker-dialog';
 
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
@@ -71,8 +68,10 @@ export default function WorkOrderDetailPage() {
 
   useEffect(() => {
     const action = search.get('action');
-    if (action === 'pause') setPauseOpen(true);
-  }, [search]);
+    if (action === 'pause' && wo?.primaryCategoryName !== 'PM' && wo?.status === 'in_progress' && wo.jobs.some((job) => job.status === 'to_do')) {
+      setPauseOpen(true);
+    }
+  }, [search, wo]);
 
   useEffect(() => {
     if (!wo || notesDirty) return;
@@ -200,8 +199,8 @@ export default function WorkOrderDetailPage() {
           </button>
         ) : null}
         {wo.status === 'in_progress' ? (
-          <div className="grid grid-cols-2 gap-2">
-            <button
+          <div className={todo.length ? 'grid grid-cols-2 gap-2' : undefined}>
+            {todo.length ? <button
               ref={pauseTriggerRef}
               type="button"
               className="btn-secondary"
@@ -209,18 +208,18 @@ export default function WorkOrderDetailPage() {
               onClick={() => setPauseOpen(true)}
             >
               Pause Work
-            </button>
+            </button> : null}
             <button
               type="button"
-              className="btn-primary"
+              className="btn-primary w-full"
               disabled={finishBlocked}
               onClick={() =>
                 run(() =>
                   apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, {
-                    method: 'POST',
-                  }),
-                  undefined,
-                  () => router.replace('/'),
+                  method: 'POST',
+                }),
+                undefined,
+                  () => router.replace('/', { scroll: true }),
                 )
               }
             >
@@ -557,7 +556,7 @@ export default function WorkOrderDetailPage() {
         </div>
       </Modal>
 
-      <AddJobSheet
+      <JobPickerDialog
         open={addOpen}
         categories={categories}
         defaultCategoryId={wo.primaryCategoryId}
@@ -800,7 +799,7 @@ function PmWorkOrderDetail({
             setFinishOpen(false);
             void run(
               () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, { method: 'POST' }),
-              () => router.replace('/'),
+              () => router.replace('/', { scroll: true }),
             );
           }}>Finish Work</button>
         </div>
@@ -842,173 +841,4 @@ function Info({ label, value }: { label: string; value?: string | null }) {
       <p className="font-medium">{value || '—'}</p>
     </div>
   );
-}
-
-function AddJobSheet({
-  open,
-  categories,
-  defaultCategoryId,
-  existingCatalogJobIds,
-  existingDisplayNames,
-  onClose,
-  onAdd,
-  returnFocusRef,
-}: {
-  open: boolean;
-  categories: JobCategoryDto[];
-  defaultCategoryId: string;
-  existingCatalogJobIds: string[];
-  existingDisplayNames: string[];
-  onClose: () => void;
-  onAdd: (body: {
-    catalogJobId?: string;
-    categoryId: string;
-    displayName: string;
-    customDescription?: string;
-  }) => Promise<boolean>;
-  returnFocusRef: RefObject<HTMLElement | null>;
-}) {
-  const [categoryId, setCategoryId] = useState(defaultCategoryId);
-  const [q, setQ] = useState('');
-  const [custom, setCustom] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const { data: aliasData } = useAliasOptions(categoryId, true);
-  const allAliases: JobAliasOptionDto[] = aliasData ?? [];
-
-  useEffect(() => {
-    if (!open) return;
-    setCategoryId(defaultCategoryId);
-    setQ('');
-    setCustom('');
-    setSubmitting(false);
-  }, [open, defaultCategoryId]);
-
-  const normalizedExistingNames = useMemo(
-    () => new Set(existingDisplayNames.map(normalizeJobName)),
-    [existingDisplayNames],
-  );
-  const aliases = useMemo(
-    () =>
-      filterAliasOptions(allAliases, q).filter(
-        (alias) =>
-          !existingCatalogJobIds.includes(alias.catalogJobId) &&
-          !normalizedExistingNames.has(normalizeJobName(alias.displayName)),
-      ),
-    [allAliases, existingCatalogJobIds, normalizedExistingNames, q],
-  );
-  const customIsDuplicate = normalizedExistingNames.has(normalizeJobName(custom));
-
-  async function submitJob(body: {
-    catalogJobId?: string;
-    categoryId: string;
-    displayName: string;
-    customDescription?: string;
-  }) {
-    if (submitting) return;
-    setSubmitting(true);
-    const added = await onAdd(body);
-    setSubmitting(false);
-    if (added) onClose();
-  }
-
-  return (
-    <Modal
-      open={open}
-      title="Add job"
-      onClose={onClose}
-      returnFocusRef={returnFocusRef}
-    >
-      <div className="space-y-3">
-        <label className="section-label block" htmlFor="detail-job-category">
-          Category
-        </label>
-        <div className="relative">
-          <select
-            id="detail-job-category"
-            className="field appearance-none pr-11"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
-        </div>
-        <label className="section-label block" htmlFor="detail-job-search">
-          Search job or alias
-        </label>
-        <input
-          id="detail-job-search"
-          className="field"
-          placeholder="Search job / alias (e.g. 3in1)"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <ul className="max-h-48 space-y-1 overflow-auto">
-          {aliases.length ? (
-            aliases.map((alias) => (
-              <li key={`${alias.catalogJobId}-${alias.aliasText}`}>
-                <button
-                  type="button"
-                  className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5"
-                  disabled={submitting}
-                  onClick={() =>
-                    void submitJob({
-                      catalogJobId: alias.catalogJobId,
-                      categoryId: alias.categoryId,
-                      displayName: alias.displayName,
-                    })
-                  }
-                >
-                  {alias.aliasText}
-                </button>
-              </li>
-            ))
-          ) : (
-            <li className="px-3 py-2 text-sm text-shop-muted">
-              {q.trim()
-                ? 'No matching aliases.'
-                : 'All available catalog jobs for this category have already been added.'}
-            </li>
-          )}
-        </ul>
-        <label className="section-label block" htmlFor="detail-custom-job">
-          Job not listed
-        </label>
-        <input
-          id="detail-custom-job"
-          className="field"
-          placeholder="Describe custom job"
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-        />
-        <button
-          type="button"
-          className="btn-primary w-full"
-          disabled={!custom.trim() || customIsDuplicate || submitting}
-          onClick={() =>
-            void submitJob({
-              categoryId,
-              displayName: custom.trim(),
-              customDescription: custom.trim(),
-            })
-          }
-        >
-          {submitting ? 'Adding job…' : 'Add Custom Job'}
-        </button>
-        {customIsDuplicate ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            This job is already on the Work Order.
-          </p>
-        ) : null}
-      </div>
-    </Modal>
-  );
-}
-
-function normalizeJobName(name: string) {
-  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
 }

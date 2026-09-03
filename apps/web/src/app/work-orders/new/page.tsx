@@ -7,24 +7,21 @@ import { Check, ChevronDown, Trash2 } from 'lucide-react';
 import { useSWRConfig } from 'swr';
 import {
   Priority,
-  type JobAliasOptionDto,
-  type JobCategoryDto,
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
-import { filterAliasOptions } from '@/lib/job-catalog';
 import {
   shopKeys,
-  useAliasOptions,
   useCategories,
   useMechanics,
   useTrucks,
   type Mechanic,
 } from '@/lib/shop-data';
 import { EmptyState, Modal, PageSkeleton, ScreenHeader } from '@/components/ui';
+import { JobPickerDialog } from '@/components/job-picker-dialog';
 
 type DraftJob = {
   key: string;
@@ -144,7 +141,7 @@ export default function NewWorkOrderPage() {
         }),
       });
       void mutate(shopKeys.workOrders);
-      router.push(`/work-orders/${wo.id}`);
+      router.push(`/work-orders/${wo.id}`, { scroll: true });
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         const body = e.body as { workOrder?: WorkOrderSummaryDto };
@@ -315,7 +312,7 @@ export default function NewWorkOrderPage() {
 
       {truck && !openWo ? (
         <>
-          <section className="card mb-4 space-y-4">
+          {!isPmMechanic ? <section className="card mb-4 space-y-4">
             {!isPmMechanic ? (
               <div>
                 <label className="section-label" htmlFor="work-order-category">
@@ -429,7 +426,7 @@ export default function NewWorkOrderPage() {
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div> : null}
-          </section>
+          </section> : null}
 
           {error ? (
             <p className="mb-3 text-sm text-red-300" role="alert" aria-live="assertive">
@@ -454,14 +451,23 @@ export default function NewWorkOrderPage() {
         </>
       ) : null}
 
-      <AddJobModal
+      <JobPickerDialog
         open={addOpen}
         categories={standardCategories}
         defaultCategoryId={categoryId}
         onClose={() => setAddOpen(false)}
         onAdd={(job) => {
-          setJobs((prev) => [...prev, job]);
-          setAddOpen(false);
+          let added = false;
+          setJobs((current) => {
+            const duplicate = current.some((existing) =>
+              (job.catalogJobId && existing.catalogJobId === job.catalogJobId) ||
+              normalizeJobName(existing.displayName) === normalizeJobName(job.displayName),
+            );
+            if (duplicate) return current;
+            added = true;
+            return [...current, { ...job, key: crypto.randomUUID() }];
+          });
+          return added;
         }}
         returnFocusRef={addJobTriggerRef}
       />
@@ -555,151 +561,6 @@ function Info({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function AddJobModal({
-  open,
-  categories,
-  defaultCategoryId,
-  onClose,
-  onAdd,
-  returnFocusRef,
-}: {
-  open: boolean;
-  categories: JobCategoryDto[];
-  defaultCategoryId: string;
-  onClose: () => void;
-  onAdd: (job: DraftJob) => void;
-  returnFocusRef: RefObject<HTMLElement | null>;
-}) {
-  const [categoryId, setCategoryId] = useState(defaultCategoryId);
-  const [q, setQ] = useState('');
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customName, setCustomName] = useState('');
-  const { data: aliasData } = useAliasOptions(categoryId, true);
-  const allAliases: JobAliasOptionDto[] = aliasData ?? [];
-
-  useEffect(() => {
-    if (!open) return;
-    setCategoryId(defaultCategoryId);
-    setQ('');
-  }, [open, defaultCategoryId]);
-
-  const aliases = useMemo(
-    () => filterAliasOptions(allAliases, q),
-    [allAliases, q],
-  );
-
-  const categoryName = useMemo(
-    () => categories.find((c) => c.id === categoryId)?.name ?? '',
-    [categories, categoryId],
-  );
-
-  return (
-    <Modal
-      open={open}
-      title="Add job"
-      onClose={onClose}
-      returnFocusRef={returnFocusRef}
-    >
-      <div className="space-y-3">
-        <label className="section-label block" htmlFor="new-job-category">
-          Category
-        </label>
-        <div className="relative">
-          <select
-            id="new-job-category"
-            className="field appearance-none pr-11"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
-        </div>
-        <label className="section-label block" htmlFor="new-job-search">
-          Search job or alias
-        </label>
-        <input
-          id="new-job-search"
-          className="field"
-          placeholder="Search job / alias (e.g. 3in1)"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <ul className="max-h-56 space-y-1 overflow-auto">
-          {aliases.length ? (
-            aliases.map((alias) => (
-              <li key={`${alias.catalogJobId}-${alias.aliasText}`}>
-                <button
-                  type="button"
-                  className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5"
-                  onClick={() =>
-                    onAdd({
-                      key: crypto.randomUUID(),
-                      catalogJobId: alias.catalogJobId,
-                      categoryId: alias.categoryId,
-                      displayName: alias.displayName,
-                    })
-                  }
-                >
-                  {alias.aliasText}
-                </button>
-              </li>
-            ))
-          ) : (
-            <li className="px-3 py-2 text-sm text-shop-muted">
-              {q.trim()
-                ? 'No matching aliases.'
-                : 'No aliases for this category.'}
-            </li>
-          )}
-        </ul>
-        <button
-          type="button"
-          className="btn-secondary w-full"
-          onClick={() => setCustomOpen((v) => !v)}
-        >
-          JOB NOT LISTED
-        </button>
-        {customOpen ? (
-          <div className="space-y-2">
-            <p className="text-xs text-shop-muted">
-              Custom job in {categoryName || 'selected category'}
-            </p>
-            <label className="section-label block" htmlFor="new-custom-job">
-              Custom job description
-            </label>
-            <input
-              id="new-custom-job"
-              className="field"
-              placeholder="Describe the job"
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-            />
-            <button
-              type="button"
-              className="btn-primary w-full"
-              disabled={!customName.trim()}
-              onClick={() =>
-                onAdd({
-                  key: crypto.randomUUID(),
-                  categoryId,
-                  displayName: customName.trim(),
-                  customDescription: customName.trim(),
-                })
-              }
-            >
-              Add Custom Job
-            </button>
-          </div>
-        ) : null}
-        <button type="button" className="btn-secondary w-full" onClick={onClose}>
-          Cancel
-        </button>
-      </div>
-    </Modal>
-  );
+function normalizeJobName(name: string) {
+  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
 }

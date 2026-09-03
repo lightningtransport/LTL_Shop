@@ -87,6 +87,8 @@ export class WorkOrdersService {
       if (existing) return toWorkOrderDetail(existing);
     }
 
+    this.assertNoDuplicateJobs(input.jobs);
+
     const open = await this.prisma.workOrder.findFirst({
       where: {
         truckId: input.truckId,
@@ -256,6 +258,9 @@ export class WorkOrdersService {
       if (wo.status !== 'in_progress') {
         throw new BadRequestException('Only in-progress Work Orders can be paused');
       }
+      if (wo.primaryCategory.name !== 'PM' && !wo.jobs.some((job) => job.status === 'to_do')) {
+        throw new BadRequestException('A Work Order without pending jobs cannot be paused');
+      }
       const now = new Date();
       await this.closeOpenSession(tx, id, now);
       await tx.pauseEvent.create({
@@ -392,24 +397,17 @@ export class WorkOrdersService {
       if (wo.status === 'completed' || wo.status === 'cancelled') {
         throw new BadRequestException('Cannot add jobs to a closed Work Order');
       }
-      const duplicate = await tx.workOrderJob.findFirst({
+      const currentJobs = await tx.workOrderJob.findMany({
         where: {
           workOrderId: id,
           status: { not: 'cancelled' },
-          OR: [
-            ...(parsed.data.catalogJobId
-              ? [{ catalogJobId: parsed.data.catalogJobId }]
-              : []),
-            {
-              displayName: {
-                equals: parsed.data.displayName.trim(),
-                mode: 'insensitive',
-              },
-            },
-          ],
         },
-        select: { id: true },
+        select: { catalogJobId: true, displayName: true },
       });
+      const duplicate = currentJobs.some((job) =>
+        (parsed.data.catalogJobId && job.catalogJobId === parsed.data.catalogJobId) ||
+        this.normalizeJobName(job.displayName) === this.normalizeJobName(parsed.data.displayName),
+      );
       if (duplicate) {
         throw new BadRequestException('This job is already on the Work Order');
       }
@@ -440,6 +438,23 @@ export class WorkOrdersService {
       });
       return toWorkOrderDetail(updated);
     });
+  }
+
+  private normalizeJobName(name: string) {
+    return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
+  }
+
+  private assertNoDuplicateJobs(jobs: CreateWorkOrderInput['jobs']) {
+    const catalogIds = new Set<string>();
+    const names = new Set<string>();
+    for (const job of jobs) {
+      const normalizedName = this.normalizeJobName(job.displayName);
+      if (names.has(normalizedName) || (job.catalogJobId && catalogIds.has(job.catalogJobId))) {
+        throw new BadRequestException('A Work Order cannot contain duplicate jobs');
+      }
+      names.add(normalizedName);
+      if (job.catalogJobId) catalogIds.add(job.catalogJobId);
+    }
   }
 
   async updateNotes(user: AuthUser, id: string, raw: unknown) {
@@ -740,7 +755,7 @@ export class WorkOrdersService {
     tx: Prisma.TransactionClient,
     id: string,
   ) {
-    const wo = await tx.workOrder.findUnique({ where: { id } });
+    const wo = await tx.workOrder.findUnique({ where: { id }, include: workOrderDetailInclude });
     if (!wo) throw new NotFoundException('Work Order not found');
     return wo;
   }
