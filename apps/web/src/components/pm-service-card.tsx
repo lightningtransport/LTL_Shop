@@ -136,6 +136,9 @@ export function PmServiceCard({
   if (!data) return <Card className="mb-4 text-sm text-muted-foreground">Loading PM service details…</Card>;
 
   const canEdit = data.canEdit;
+  const hasValidObservedMileage = /^\d+$/.test(mileage);
+  const hasHistoricalParts = !canEdit && data.selections.length > 0;
+  const showParts = hasValidObservedMileage || hasHistoricalParts;
   const lastPmValue = !data.lastCompletedPm
     ? 'No prior PM recorded'
     : data.lastCompletedPm.observedMileage === null
@@ -179,9 +182,14 @@ export function PmServiceCard({
           />
           <span id="pm-observed-mileage-unit" className="text-sm text-muted-foreground">mi</span>
         </div>
+        {!showParts ? (
+          <p className="mt-2 text-sm text-muted-foreground" id="pm-parts-instruction">
+            Enter the observed mileage to record parts used.
+          </p>
+        ) : null}
       </div>
 
-      <div className="space-y-3">
+      {showParts ? <div className="space-y-3">
         <p className="section-label">Parts used</p>
         {data.categories.map((category) => (
           <div key={category.id}>
@@ -215,7 +223,7 @@ export function PmServiceCard({
             )}
           </div>
         ))}
-      </div>
+      </div> : null}
 
       <div className="min-h-5 text-sm" aria-live="polite">
         {saving ? <span className="text-muted-foreground">Saving…</span> : null}

@@ -3,17 +3,28 @@
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
 
-/** Resets document scroll only for pathname changes; query-only state is preserved. */
+/** Owns history scroll restoration so mobile Safari never reopens a route mid-page. */
 export function PathScrollReset() {
   const pathname = usePathname();
-  const previousPathname = React.useRef<string | null>(null);
+  const resetScroll = React.useCallback(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+    resetScroll();
+    const frame = window.requestAnimationFrame(resetScroll);
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname, resetScroll]);
 
   React.useEffect(() => {
-    if (previousPathname.current !== null && previousPathname.current !== pathname) {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    }
-    previousPathname.current = pathname;
-  }, [pathname]);
+    const onPageShow = () => {
+      resetScroll();
+      window.requestAnimationFrame(resetScroll);
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, [resetScroll]);
 
   return null;
 }
