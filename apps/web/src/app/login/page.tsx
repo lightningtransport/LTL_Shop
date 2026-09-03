@@ -21,7 +21,7 @@ export default function LoginPage() {
       window.location.replace(`/reset-password${window.location.hash}`);
       return;
     }
-    if (!sessionLoading && token) router.replace('/');
+    if (!sessionLoading && token) router.replace('/', { scroll: true });
   }, [passwordRecovery, sessionLoading, token, router]);
 
   if (sessionLoading || token) {
@@ -34,7 +34,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(email, password);
-      router.replace('/');
+      router.replace('/', { scroll: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
     } finally {
@@ -47,7 +47,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await loginDev(email);
-      router.replace('/');
+      router.replace('/', { scroll: true });
     } catch (err) {
       setError(
         err instanceof Error
