@@ -40,6 +40,9 @@ export const updatePmServiceSchema = z.object({
     partCategoryId: z.string().uuid(),
     partId: z.string().uuid(),
   })).max(9),
+}).refine((value) => new Set(value.selections.map((selection) => selection.partCategoryId)).size === value.selections.length, {
+  message: 'Only one part can be selected per category',
+  path: ['selections'],
 });
 
 export const addJobSchema = z.object({

@@ -1,8 +1,53 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Priority } from '@ltl-shop/shared';
+import { ActivityEventType, Priority } from '@ltl-shop/shared';
 import { WorkOrdersService } from './work-orders.service';
 
 describe('PM Work Order authorization', () => {
+  it('creates Daniel PM work atomically as active with one session and both audit events', async () => {
+    const createdAt = new Date('2026-09-02T15:00:00.000Z');
+    const created = {
+      id: 'wo-pm-1', displayId: 'WO-0001', truckId: 'truck-1', primaryCategoryId: 'pm-category',
+      status: 'in_progress', priority: Priority.NORMAL, notes: null, createdAt, createdById: 'daniel-id',
+      startedAt: createdAt, completedAt: null, completedById: null, totalActiveLaborMs: BigInt(0),
+      totalWaitingMs: BigInt(0), version: 1,
+      truck: { id: 'truck-1', truckNumber: '905', make: 'Peterbilt', model: '579', year: 2025, mileage: 155000, company: null, owner: null },
+      primaryCategory: { id: 'pm-category', name: 'PM' }, jobs: [], pauseEvents: [],
+      mechanics: [{ mechanicId: 'daniel-id', addedAt: createdAt, removedAt: null, mechanic: { name: 'Daniel' } }],
+    } as never;
+    const tx = { workOrder: { create: vi.fn().mockResolvedValue(created) } };
+    const prisma = {
+      workOrder: {
+        findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0),
+      },
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-1' }) },
+      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'pm-category', name: 'PM' }) },
+      $transaction: vi.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
+    } as never;
+    const activity = { log: vi.fn().mockResolvedValue(undefined) };
+    const service = new WorkOrdersService(prisma, activity as never);
+
+    const result = await service.create({
+      id: 'daniel-id', email: 'daniel@lightning.local', name: 'Daniel',
+      role: 'mechanic', active: true, pmAuthorized: true, supabaseAuthId: null,
+    }, {
+      truckId: '00000000-0000-4000-8000-000000000001',
+      primaryCategoryId: '00000000-0000-4000-8000-000000000002',
+      priority: Priority.NORMAL, mechanicIds: [], jobs: [], notes: 'must not be saved at creation',
+    });
+
+    expect(result.status).toBe('in_progress');
+    expect(tx.workOrder.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        status: 'in_progress', startedAt: expect.any(Date), notes: undefined,
+        sessions: { create: { startedAt: expect.any(Date) } },
+        jobs: { create: [] },
+        mechanics: { create: [{ mechanicId: 'daniel-id', addedById: 'daniel-id' }] },
+      }),
+    }));
+    expect(activity.log).toHaveBeenCalledTimes(2);
+    expect(activity.log).toHaveBeenLastCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.WORK_STARTED }));
+  });
+
   it('rejects PM creation by a mechanic without PM authorization', async () => {
     const prisma = {
       workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null) },

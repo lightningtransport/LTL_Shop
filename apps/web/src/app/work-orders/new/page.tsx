@@ -141,7 +141,7 @@ export default function NewWorkOrderPage() {
           truckId: truck.id,
           primaryCategoryId: categoryId,
           priority,
-          notes: notes || undefined,
+          ...(isPmMechanic ? {} : { notes: notes || undefined }),
           mechanicIds: isPmMechanic ? [] : isPm && daniel ? [daniel.id] : workingWith,
           jobs: isPmMechanic ? [] : jobs.map((j) => ({
             catalogJobId: j.catalogJobId,
@@ -426,7 +426,7 @@ export default function NewWorkOrderPage() {
               </div>
             </div> : null}
 
-            <div>
+            {!isPmMechanic ? <div>
               <label className="section-label" htmlFor="work-order-notes">
                 Notes (Optional)
               </label>
@@ -437,7 +437,7 @@ export default function NewWorkOrderPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
-            </div>
+            </div> : null}
           </section>
 
           {error ? (

@@ -645,7 +645,7 @@ function PmWorkOrderDetail({
     if (!notesDirty || notesSaving || notesError) return;
     const timer = window.setTimeout(() => void saveNotes(), 600);
     return () => window.clearTimeout(timer);
-  }, [notes, notesDirty, notesError, notesSaving]);
+  }, [notes, notesDirty, notesSaving, notesError]);
 
   const mileage = Number(draft.observedMileage);
   const validMileage =
