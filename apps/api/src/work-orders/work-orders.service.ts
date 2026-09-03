@@ -125,6 +125,17 @@ export class WorkOrdersService {
       }
     } else if (!input.jobs.length) {
       throw new BadRequestException('At least one job is required for this Work Order');
+    } else if (input.mechanicIds.length) {
+      const selectedMechanics = await this.prisma.user.findMany({
+        where: { id: { in: input.mechanicIds }, active: true },
+        select: { id: true, pmAuthorized: true },
+      });
+      if (selectedMechanics.length !== new Set(input.mechanicIds).size) {
+        throw new BadRequestException('One or more selected mechanics are unavailable');
+      }
+      if (selectedMechanics.some((mechanic) => mechanic.pmAuthorized)) {
+        throw new BadRequestException('PM mechanics cannot be assigned to standard Work Orders');
+      }
     }
 
     const mechanicIds = Array.from(
