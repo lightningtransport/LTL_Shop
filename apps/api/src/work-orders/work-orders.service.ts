@@ -43,7 +43,7 @@ export class WorkOrdersService {
   async listForMechanic(userId: string) {
     const rows = await this.prisma.workOrder.findMany({
       where: {
-        status: { in: ['created', 'in_progress', 'waiting_paused'] },
+        status: { in: ['created', 'in_progress', 'waiting_paused', 'completed'] },
         OR: [
           { createdById: userId },
           { mechanics: { some: { mechanicId: userId, removedAt: null } } },
@@ -58,6 +58,7 @@ export class WorkOrdersService {
       created: mapped.filter((w) => w.status === 'created'),
       active: mapped.filter((w) => w.status === 'in_progress'),
       paused: mapped.filter((w) => w.status === 'waiting_paused'),
+      completed: mapped.filter((w) => w.status === 'completed'),
     };
   }
 
@@ -390,6 +391,27 @@ export class WorkOrdersService {
       }
       if (wo.status === 'completed' || wo.status === 'cancelled') {
         throw new BadRequestException('Cannot add jobs to a closed Work Order');
+      }
+      const duplicate = await tx.workOrderJob.findFirst({
+        where: {
+          workOrderId: id,
+          status: { not: 'cancelled' },
+          OR: [
+            ...(parsed.data.catalogJobId
+              ? [{ catalogJobId: parsed.data.catalogJobId }]
+              : []),
+            {
+              displayName: {
+                equals: parsed.data.displayName.trim(),
+                mode: 'insensitive',
+              },
+            },
+          ],
+        },
+        select: { id: true },
+      });
+      if (duplicate) {
+        throw new BadRequestException('This job is already on the Work Order');
       }
       await tx.workOrderJob.create({
         data: {
