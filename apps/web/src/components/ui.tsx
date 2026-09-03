@@ -313,17 +313,151 @@ export function ThemeToggle() {
   );
 }
 
-export function AppHeaderActions() {
-  const { user, logout } = useAuth();
+function ProfileDialog() {
+  const { user, updatePassword, logout } = useAuth();
+  const [open, setOpen] = React.useState(false);
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [status, setStatus] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [isUpdatingPassword, setIsUpdatingPassword] = React.useState(false);
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
+  if (!user) return null;
+
+  async function handlePasswordUpdate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus(null);
+    setError(null);
+
+    if (newPassword.length < 8) {
+      setError('Use at least 8 characters for your new password.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('The passwords do not match.');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      await updatePassword(newPassword);
+      setNewPassword('');
+      setConfirmPassword('');
+      setStatus('Password updated.');
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : 'Unable to update password.');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  }
+
+  async function handleLogout() {
+    setError(null);
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      setOpen(false);
+    } catch (logoutError) {
+      setError(logoutError instanceof Error ? logoutError.message : 'Unable to sign out.');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setStatus(null);
+          setError(null);
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="max-w-36 justify-between gap-1.5 sm:max-w-44"
+          aria-label={`Open profile for ${user.name}`}
+        >
+          <span className="truncate">{user.name}</span>
+          <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent aria-describedby="profile-description">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <DialogTitle>{user.name}</DialogTitle>
+            <DialogDescription id="profile-description" className="mt-1 break-words">
+              {user.email}
+            </DialogDescription>
+          </div>
+          <DialogClose asChild>
+            <Button variant="ghost" size="icon" aria-label="Close profile">
+              <X aria-hidden="true" className="size-5" />
+            </Button>
+          </DialogClose>
+        </div>
+
+        <form className="space-y-4" onSubmit={handlePasswordUpdate}>
+          <div className="space-y-2">
+            <Label htmlFor="profile-new-password">New password</Label>
+            <Input
+              id="profile-new-password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="profile-confirm-password">Confirm new password</Label>
+            <Input
+              id="profile-confirm-password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              required
+            />
+          </div>
+
+          <p className="text-sm text-muted-foreground">Use at least 8 characters.</p>
+          {status ? <p className="text-sm font-medium text-shop-success" role="status">{status}</p> : null}
+          {error ? <p className="text-sm font-medium text-destructive" role="alert">{error}</p> : null}
+
+          <Button className="w-full" type="submit" disabled={isUpdatingPassword || isLoggingOut}>
+            {isUpdatingPassword ? 'Updating password…' : 'Update password'}
+          </Button>
+        </form>
+
+        <div className="mt-5 border-t pt-5">
+          <Button
+            className="w-full"
+            variant="destructive"
+            onClick={() => void handleLogout()}
+            disabled={isUpdatingPassword || isLoggingOut}
+          >
+            {isLoggingOut ? 'Signing out…' : 'Sign out'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function AppHeaderActions() {
   return (
     <div className="flex shrink-0 items-center gap-2">
       <ThemeToggle />
-      {user ? (
-        <Button variant="secondary" size="sm" onClick={logout}>
-          Logout
-        </Button>
-      ) : null}
+      <ProfileDialog />
     </div>
   );
 }
