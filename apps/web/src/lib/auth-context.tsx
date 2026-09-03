@@ -17,10 +17,13 @@ type AuthState = {
   token: string | null;
   sessionLoading: boolean;
   profileLoading: boolean;
+  passwordRecovery: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   loginDev: (email: string) => Promise<void>;
-  logout: () => void;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -44,6 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [passwordRecovery, setPasswordRecovery] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery',
+  );
   const [error, setError] = useState<string | null>(null);
   const profileTokenRef = useRef<string | null>(null);
 
@@ -53,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setToken(null);
     setProfileLoading(false);
+    setPasswordRecovery(false);
     profileTokenRef.current = null;
   }, []);
 
@@ -116,7 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           const {
             data: { subscription },
-          } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+          } = supabase.auth.onAuthStateChange((event, nextSession) => {
+            if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
             if (!nextSession?.access_token) {
               clearSession();
               return;
@@ -178,10 +188,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [loadProfile],
   );
 
-  const logout = useCallback(() => {
+  const requestPasswordReset = useCallback(async (email: string) => {
+    if (!canUseSupabase()) {
+      throw new Error('Password recovery is unavailable until Supabase is configured.');
+    }
+    const supabase = await getSupabaseClient();
+    const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
+      // /login is the deployed Auth Site URL. The page recognizes recovery links and
+      // immediately forwards them, with their fragment intact, to /reset-password.
+      redirectTo: `${window.location.origin}/login`,
+    });
+    if (authError) throw new Error(authError.message);
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    if (!canUseSupabase()) {
+      throw new Error('Password recovery is unavailable until Supabase is configured.');
+    }
+    const supabase = await getSupabaseClient();
+    const { error: authError } = await supabase.auth.updateUser({ password });
+    if (authError) throw new Error(authError.message);
+  }, []);
+
+  const logout = useCallback(async () => {
     clearSession();
     if (canUseSupabase()) {
-      void getSupabaseClient().then((supabase) => supabase.auth.signOut());
+      const supabase = await getSupabaseClient();
+      await supabase.auth.signOut();
     }
   }, [clearSession]);
 
@@ -191,9 +224,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token,
       sessionLoading,
       profileLoading,
+      passwordRecovery,
       error,
       login,
       loginDev,
+      requestPasswordReset,
+      updatePassword,
       logout,
     }),
     [
@@ -201,9 +237,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token,
       sessionLoading,
       profileLoading,
+      passwordRecovery,
       error,
       login,
       loginDev,
+      requestPasswordReset,
+      updatePassword,
       logout,
     ],
   );
