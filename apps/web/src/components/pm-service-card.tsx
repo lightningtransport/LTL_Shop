@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PmServiceDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
@@ -29,6 +29,10 @@ function payloadFor(mileage: string, selections: Record<string, string>): Payloa
   };
 }
 
+function displayObservedMileage(mileage: string) {
+  return mileage ? Number(mileage).toLocaleString('en-US') : '';
+}
+
 export function PmServiceCard({
   workOrderId,
   onDraftStateChange,
@@ -44,7 +48,9 @@ export function PmServiceCard({
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const lastSavedKey = useRef('');
-  const savingKey = useRef<string | null>(null);
+  const queuedPayload = useRef<Payload | null>(null);
+  const dirtyRef = useRef(false);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     if (!data) return;
@@ -52,44 +58,67 @@ export function PmServiceCard({
     const nextSelections = Object.fromEntries(
       data.selections.map((item) => [item.partCategoryId, item.partId]),
     );
-    setMileage(nextMileage);
-    setSelections(nextSelections);
-    lastSavedKey.current = JSON.stringify(payloadFor(nextMileage, nextSelections));
-    setDirty(false);
-    setSaveError(null);
-    setHydrated(true);
+    // SWR revalidations must never overwrite an in-progress local draft.
+    if (!hydrated || (!dirtyRef.current && !savingRef.current)) {
+      setMileage(nextMileage);
+      setSelections(nextSelections);
+      lastSavedKey.current = JSON.stringify(payloadFor(nextMileage, nextSelections));
+      queuedPayload.current = null;
+      dirtyRef.current = false;
+      setDirty(false);
+      setSaveError(null);
+      setHydrated(true);
+    }
   }, [data]);
 
   const draft = useMemo(() => payloadFor(mileage, selections), [mileage, selections]);
 
-  async function persist(payload: Payload) {
-    const key = JSON.stringify(payload);
-    if (!data?.canEdit || key === lastSavedKey.current || key === savingKey.current) return;
-    savingKey.current = key;
-    setDirty(false);
+  const flushSaveQueue = useCallback(async () => {
+    if (!data?.canEdit || savingRef.current) return;
+
+    savingRef.current = true;
     setSaving(true);
-    setSaveError(null);
     try {
-      const updated = await apiFetch<PmServiceDto>(shopKeys.pmService(workOrderId), {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      lastSavedKey.current = key;
-      await mutate(updated, { revalidate: false });
+      while (queuedPayload.current) {
+        const nextPayload = queuedPayload.current;
+        const key = JSON.stringify(nextPayload);
+        if (key === lastSavedKey.current) {
+          queuedPayload.current = null;
+          continue;
+        }
+
+        queuedPayload.current = null;
+        const updated = await apiFetch<PmServiceDto>(shopKeys.pmService(workOrderId), {
+          method: 'POST',
+          body: JSON.stringify(nextPayload),
+        });
+        lastSavedKey.current = key;
+        await mutate(updated, { revalidate: false });
+      }
+      dirtyRef.current = false;
+      setDirty(false);
+      setSaveError(null);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Unable to save PM service details.');
+      dirtyRef.current = true;
       setDirty(true);
     } finally {
-      savingKey.current = null;
+      savingRef.current = false;
       setSaving(false);
     }
-  }
+  }, [data?.canEdit, mutate, workOrderId]);
+
+  const persist = useCallback((payload: Payload) => {
+    if (!data?.canEdit) return;
+    queuedPayload.current = payload;
+    void flushSaveQueue();
+  }, [data?.canEdit, flushSaveQueue]);
 
   useEffect(() => {
     if (!hydrated || !data?.canEdit || !dirty || saveError) return;
-    const timer = window.setTimeout(() => void persist(draft), 600);
+    const timer = window.setTimeout(() => persist(draft), 600);
     return () => window.clearTimeout(timer);
-  }, [data?.canEdit, dirty, draft, hydrated, saveError]);
+  }, [data?.canEdit, dirty, draft, hydrated, persist, saveError]);
 
   useEffect(() => {
     onDraftStateChange?.({
@@ -106,10 +135,12 @@ export function PmServiceCard({
   }
   if (!data) return <Card className="mb-4 text-sm text-muted-foreground">Loading PM service details…</Card>;
 
-  const canEdit = data.canEdit && !saving;
-  const lastPmValue = data.lastCompletedPm
-    ? `${data.lastCompletedPm.displayId} · ${formatMileage(data.lastCompletedPm.observedMileage)} · ${new Date(data.lastCompletedPm.completedAt).toLocaleDateString()}`
-    : 'No prior PM recorded';
+  const canEdit = data.canEdit;
+  const lastPmValue = !data.lastCompletedPm
+    ? 'No prior PM recorded'
+    : data.lastCompletedPm.observedMileage === null
+      ? 'Mileage not recorded'
+      : formatMileage(data.lastCompletedPm.observedMileage);
 
   return (
     <Card className="mb-4 space-y-4" aria-labelledby="pm-service-title">
@@ -128,22 +159,26 @@ export function PmServiceCard({
 
       <div>
         <Label htmlFor="pm-observed-mileage">Observed mileage</Label>
-        <Input
-          id="pm-observed-mileage"
-          className="mt-2"
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="off"
-          value={mileage}
-          disabled={!canEdit}
-          onChange={(event) => {
-            setMileage(event.target.value.replace(/\D/g, ''));
-            setDirty(true);
-            setSaveError(null);
-          }}
-          onBlur={() => void persist(payloadFor(mileage, selections))}
-        />
+        <div className="mt-2 flex items-center gap-2">
+          <Input
+            id="pm-observed-mileage"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="off"
+            value={displayObservedMileage(mileage)}
+            aria-describedby="pm-observed-mileage-unit"
+            disabled={!canEdit}
+            onChange={(event) => {
+              setMileage(event.target.value.replace(/\D/g, ''));
+              dirtyRef.current = true;
+              setDirty(true);
+              setSaveError(null);
+            }}
+            onBlur={() => void persist(payloadFor(mileage, selections))}
+          />
+          <span id="pm-observed-mileage-unit" className="text-sm text-muted-foreground">mi</span>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -151,27 +186,33 @@ export function PmServiceCard({
         {data.categories.map((category) => (
           <div key={category.id}>
             <Label htmlFor={`pm-part-${category.id}`}>{category.name}</Label>
-            <Select
-              id={`pm-part-${category.id}`}
-              className="mt-2"
-              value={selections[category.id] ?? ''}
-              disabled={!canEdit}
-              onChange={(event) => {
-                const nextSelections = { ...selections, [category.id]: event.target.value };
-                setSelections(nextSelections);
-                setDirty(true);
-                setSaveError(null);
-                void persist(payloadFor(mileage, nextSelections));
-              }}
-            >
-              <option value="">No part used</option>
-              {category.parts.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {part.partNumber ? `${part.partNumber} — ${part.displayName}` : part.displayName}
-                </option>
-              ))}
-            </Select>
-            {!category.parts.length ? <p className="mt-1 text-xs text-muted-foreground">No compatible parts configured for this truck.</p> : null}
+            {category.parts.length ? (
+              <Select
+                id={`pm-part-${category.id}`}
+                className="mt-2"
+                value={selections[category.id] ?? ''}
+                disabled={!canEdit}
+                onChange={(event) => {
+                  const nextSelections = { ...selections, [category.id]: event.target.value };
+                  setSelections(nextSelections);
+                  dirtyRef.current = true;
+                  setDirty(true);
+                  setSaveError(null);
+                  void persist(payloadFor(mileage, nextSelections));
+                }}
+              >
+                <option value="">No part used</option>
+                {category.parts.map((part) => (
+                  <option key={part.id} value={part.id}>
+                    {part.partNumber ? `${part.partNumber} — ${part.displayName}` : part.displayName}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Select id={`pm-part-${category.id}`} className="mt-2" value="" disabled aria-label={`${category.name}: no compatible parts for this truck`}>
+                <option>No compatible parts for this truck</option>
+              </Select>
+            )}
           </div>
         ))}
       </div>
@@ -182,7 +223,7 @@ export function PmServiceCard({
         {saveError ? (
           <span className="text-destructive" role="alert">
             {saveError}{' '}
-            <button className="underline" type="button" onClick={() => void persist(draft)}>Retry</button>
+            <button className="underline" type="button" onClick={() => persist(draft)}>Retry</button>
           </span>
         ) : null}
       </div>

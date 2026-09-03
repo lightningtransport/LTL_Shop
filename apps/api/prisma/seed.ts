@@ -1,57 +1,11 @@
 import { PrismaClient } from '@prisma/client';
+import { loadCanonicalPmParts, PM_PART_CATEGORIES } from './pm-parts';
 
 const prisma = new PrismaClient();
 
 function norm(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
-
-const PM_PARTS: Array<{ category: string; partNumber: string; displayName: string; makes?: string[] }> = [
-  { category: 'Oil Filter 1 Unit', partNumber: '2234788', displayName: 'PETERBILT Oil Filter Paccar', makes: ['Peterbilt'] },
-  { category: 'Oil Filter 1 Unit', partNumber: '5575298', displayName: 'PETERBILT Oil Filter Cummins', makes: ['Peterbilt'] },
-  { category: 'Oil Filter 1 Unit', partNumber: 'B40145', displayName: 'PETERBILT Oil Filter Cummins', makes: ['Peterbilt'] },
-  { category: 'Oil Filter 1 Unit', partNumber: 'WIX WL10107', displayName: 'PETERBILT Oil Filter Cummins', makes: ['Peterbilt'] },
-  { category: 'Oil Filter 1 Unit', partNumber: 'WIX WL10341', displayName: 'PETERBILT Oil Filter', makes: ['Peterbilt'] },
-  { category: 'Fuel Filter', partNumber: '2323323', displayName: 'PETERBILT Fuel Filter Paccar', makes: ['Peterbilt'] },
-  { category: 'Fuel Filter', partNumber: '2242964', displayName: 'PETERBILT Fuel Filter Paccar', makes: ['Peterbilt'] },
-  { category: 'Fuel Filter', partNumber: '5575143', displayName: 'PETERBILT Fuel Filter Cummins', makes: ['Peterbilt'] },
-  { category: 'Fuel Filter', partNumber: 'BF46129', displayName: 'PETERBILT Fuel Filter Cummins', makes: ['Peterbilt'] },
-  { category: 'Fuel Filter', partNumber: 'WIX WF10755', displayName: 'Large PETERBILT Fuel Filter Premium', makes: ['Peterbilt'] },
-  { category: 'Fuel Filter', partNumber: 'WIX WF10755', displayName: 'Short PETERBILT Fuel Filter Premium', makes: ['Peterbilt'] },
-  { category: 'Fuel Filter', partNumber: 'WF10515', displayName: 'PETERBILT Fuel Filter Cummins', makes: ['Peterbilt'] },
-  { category: 'Paper Fuel Filter', partNumber: 'K37-1021', displayName: 'PETERBILT Paper Fuel Filter', makes: ['Peterbilt'] },
-  { category: 'Paper Fuel Filter', partNumber: 'PF46236', displayName: 'PETERBILT Paper Fuel Filter', makes: ['Peterbilt'] },
-  { category: 'Paper Fuel Filter', partNumber: 'L9765FXL', displayName: 'LUBER-FINER Fuel Filter PETERBILT', makes: ['Peterbilt'] },
-  { category: 'Paper Fuel Filter', partNumber: 'WF10005', displayName: 'Paper Fuel Filter PETERBILT - Volvo', makes: ['Peterbilt', 'Volvo'] },
-  { category: 'Paper Fuel Filter', partNumber: 'WF10566', displayName: 'PETERBILT Paper Filter', makes: ['Peterbilt'] },
-  { category: 'Paper Fuel Filter', partNumber: 'P550851', displayName: 'Paper Fuel Filter PETERBILT - Volvo', makes: ['Peterbilt', 'Volvo'] },
-  { category: 'Cabin Air Filter', partNumber: 'PA30093', displayName: 'PETERBILT Cabin Air Filter', makes: ['Peterbilt'] },
-  { category: 'Cabin Air Filter', partNumber: 'CY08221P', displayName: 'PETERBILT Air Cabin Filter', makes: ['Peterbilt'] },
-  { category: 'Cabin Air Filter', partNumber: 'WIX-24479', displayName: 'PETERBILT Air Cabin Filter', makes: ['Peterbilt'] },
-  { category: 'Desiccant Filter', partNumber: '21620181', displayName: 'Desiccant and Oil Separator' },
-  { category: 'Desiccant Filter', partNumber: '23099526', displayName: 'Desiccant Filter' },
-  { category: 'Desiccant Filter', partNumber: '85115361', displayName: 'Desiccant Filter' },
-  { category: 'Desiccant Filter', partNumber: 'P584764', displayName: 'PETERBILT DONALDSON', makes: ['Peterbilt'] },
-  { category: 'Desiccant Filter', partNumber: '5009041PG', displayName: 'PETERBILT BENDIX', makes: ['Peterbilt'] },
-  { category: 'Desiccant Filter', partNumber: 'BENP584764', displayName: 'Air Dryer Filter' },
-  { category: 'Desiccant Filter', partNumber: 'WAB4324219222', displayName: 'Air Dryer Filter' },
-  { category: 'Desiccant Filter', partNumber: 'WAB4329012382', displayName: 'Air Dryer Filter' },
-  { category: 'Desiccant Filter', partNumber: 'WIX 24374', displayName: 'Desiccant Filter' },
-  { category: 'Engine Air Filter', partNumber: '21715813', displayName: 'FILTER AIR C/P VN', makes: ['Volvo'] },
-  { category: 'Engine Air Filter', partNumber: 'LAF9201', displayName: 'Air Filter' },
-  { category: 'Engine Air Filter', partNumber: 'D37-1061', displayName: 'PETERBILT Engine Air Filter', makes: ['Peterbilt'] },
-  { category: 'Engine Air Filter', partNumber: '25100042', displayName: 'Mack Engine Air Filter', makes: ['Mack'] },
-  { category: 'Engine Air Filter', partNumber: 'WX49126', displayName: 'Engine Air Filter' },
-  { category: 'Engine Air Filter', partNumber: 'WBX42808', displayName: 'Mack Engine Air Filter', makes: ['Mack'] },
-  { category: 'Engine Air Filter', partNumber: 'DTP 03-42776-010', displayName: 'Freightliner Engine Air Filter Detroit', makes: ['Freightliner'] },
-  { category: 'Wiper Blades', partNumber: 'MV31520B', displayName: 'WIPER BLADES' },
-  { category: 'Wiper Blades', partNumber: 'MV31522B', displayName: 'Wiper Blades' },
-  { category: 'Wiper Blades', partNumber: 'MV31524B', displayName: 'Wipers' },
-  { category: 'Wiper Blades', partNumber: 'ANC31-22', displayName: 'Wiper Blades' },
-  { category: 'Coolant Filter', partNumber: '21937327', displayName: 'COOLANT FILTER' },
-  { category: 'Coolant Filter', partNumber: 'LFW5141', displayName: 'FILTER COOLANT' },
-  { category: 'Coolant Filter', partNumber: 'DBC4086', displayName: 'FILTER COOLANT' },
-];
 
 async function main() {
   const mechanic = await prisma.user.upsert({
@@ -230,24 +184,22 @@ async function main() {
     }
   }
 
-  const partCategoryNames = [
-    'Oil Filter 1 Unit', 'Oil Filter 2 Unit', 'Fuel Filter', 'Paper Fuel Filter',
-    'Cabin Air Filter', 'Desiccant Filter', 'Engine Air Filter', 'Wiper Blades', 'Coolant Filter',
-  ];
   const partCategories: Record<string, string> = {};
-  for (let index = 0; index < partCategoryNames.length; index += 1) {
-    const name = partCategoryNames[index];
+  for (let index = 0; index < PM_PART_CATEGORIES.length; index += 1) {
+    const sourceCategory = PM_PART_CATEGORIES[index];
+    const { name } = sourceCategory;
     const category = await prisma.partCategory.upsert({
       where: { name },
-      update: { sortOrder: index, active: true, aliases: name === 'Paper Fuel Filter' ? ['Papel Fuel Filter'] : [] },
-      create: { name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), sortOrder: index, aliases: name === 'Paper Fuel Filter' ? ['Papel Fuel Filter'] : [] },
+      update: { sortOrder: index, active: true, aliases: [...sourceCategory.aliases] },
+      create: { name, slug: sourceCategory.slug, sortOrder: index, aliases: [...sourceCategory.aliases] },
     });
     partCategories[name] = category.id;
   }
-  const partsToSeed = [
-    ...PM_PARTS,
-    ...PM_PARTS.filter((part) => part.category === 'Oil Filter 1 Unit').map((part) => ({ ...part, category: 'Oil Filter 2 Unit' })),
-  ];
+  const partsToSeed = loadCanonicalPmParts();
+  await prisma.part.updateMany({
+    where: { categoryId: { in: Object.values(partCategories) } },
+    data: { active: false },
+  });
   for (const item of partsToSeed) {
     const part = await prisma.part.upsert({
       where: { categoryId_partNumber_displayName: { categoryId: partCategories[item.category], partNumber: item.partNumber, displayName: item.displayName } },
@@ -255,7 +207,7 @@ async function main() {
       create: { categoryId: partCategories[item.category], partNumber: item.partNumber, displayName: item.displayName },
     });
     await prisma.partFitment.deleteMany({ where: { partId: part.id } });
-    if (item.makes?.length) await prisma.partFitment.createMany({ data: item.makes.map((make) => ({ partId: part.id, make })) });
+    if (item.fitments.length) await prisma.partFitment.createMany({ data: item.fitments.map((fitment) => ({ partId: part.id, ...fitment })) });
   }
 
   console.log('Seed complete', {

@@ -114,7 +114,8 @@ export class WorkOrdersService {
     if (user.pmAuthorized && category.name !== 'PM') {
       throw new ForbiddenException('PM mechanics can only create PM Work Orders');
     }
-    if (category.name === 'PM') {
+    const isPm = category.name === 'PM';
+    if (isPm) {
       this.assertPmMutationAccess(user);
       if (input.jobs.length) {
         throw new BadRequestException('PM Work Orders do not use jobs');
@@ -134,16 +135,21 @@ export class WorkOrdersService {
     const displayId = nextDisplayId(count + 1);
 
     const wo = await this.prisma.$transaction(async (tx) => {
+      const startedAt = isPm ? new Date() : null;
       const created = await tx.workOrder.create({
         data: {
           displayId,
           truckId: input.truckId,
           primaryCategoryId: input.primaryCategoryId,
-          status: 'created',
-          priority: input.priority,
-          notes: input.notes,
+          // A new PM service is work that Daniel starts immediately. Existing
+          // created PM orders remain startable through the legacy endpoint.
+          status: isPm ? 'in_progress' : 'created',
+          priority: isPm ? 'normal' : input.priority,
+          notes: isPm ? undefined : input.notes,
           createdById: user.id,
+          startedAt,
           idempotencyKey: input.idempotencyKey,
+          sessions: isPm && startedAt ? { create: { startedAt } } : undefined,
           jobs: {
             create: input.jobs.map((job) => ({
               catalogJobId: job.catalogJobId,
@@ -174,6 +180,17 @@ export class WorkOrdersService {
         userId: user.id,
         newValue: { displayId, status: 'created' },
       });
+      if (isPm) {
+        await this.activity.log(tx, {
+          workOrderId: created.id,
+          eventType: ActivityEventType.WORK_STARTED,
+          entityType: 'work_order',
+          entityId: created.id,
+          userId: user.id,
+          previousValue: { status: 'created' },
+          newValue: { status: 'in_progress' },
+        });
+      }
 
       return created;
     });
@@ -590,8 +607,6 @@ export class WorkOrdersService {
       }),
     ]);
 
-    const truckMake = wo.truck.make?.toLowerCase() ?? null;
-    const truckModel = wo.truck.model?.toLowerCase() ?? null;
     return {
       workOrderId: wo.id,
       canEdit:
@@ -612,12 +627,7 @@ export class WorkOrdersService {
         slug: category.slug,
         name: category.name,
         parts: category.parts
-          .filter((part) =>
-            part.fitments.length === 0 || part.fitments.some((fitment) =>
-              (!fitment.make || fitment.make.toLowerCase() === truckMake) &&
-              (!fitment.model || fitment.model.toLowerCase() === truckModel),
-            ),
-          )
+          .filter((part) => this.partFitsTruck(part.fitments, wo.truck))
           .map((part) => ({ id: part.id, partNumber: part.partNumber, displayName: part.displayName })),
       })),
       selections: (wo.pmService?.parts ?? []).map((part) => ({
@@ -645,11 +655,14 @@ export class WorkOrdersService {
 
       const selectedParts = await tx.part.findMany({
         where: { id: { in: parsed.data.selections.map((selection) => selection.partId) }, active: true },
-        select: { id: true, categoryId: true },
+        include: { fitments: true },
       });
       if (selectedParts.length !== parsed.data.selections.length || parsed.data.selections.some((selection) =>
         selectedParts.find((part) => part.id === selection.partId)?.categoryId !== selection.partCategoryId,
       )) throw new BadRequestException('Invalid PM part selection');
+      if (selectedParts.some((part) => !this.partFitsTruck(part.fitments, wo.truck))) {
+        throw new BadRequestException('Selected PM part is not compatible with this truck');
+      }
 
       const service = await tx.pmService.upsert({
         where: { workOrderId: id },
@@ -714,5 +727,22 @@ export class WorkOrdersService {
         data: { endedAt: now },
       });
     }
+  }
+
+  private partFitsTruck(
+    fitments: Array<{ make: string | null; model: string | null }>,
+    truck: { make: string | null; model: string | null },
+  ) {
+    if (!fitments.length) return true;
+    const make = this.normalizeVehicleValue(truck.make);
+    const model = this.normalizeVehicleValue(truck.model);
+    return fitments.some((fitment) =>
+      (!fitment.make || this.normalizeVehicleValue(fitment.make) === make) &&
+      (!fitment.model || this.normalizeVehicleValue(fitment.model) === model),
+    );
+  }
+
+  private normalizeVehicleValue(value: string | null) {
+    return value?.toLocaleLowerCase('en-US').replace(/[^a-z0-9]/g, '') ?? '';
   }
 }

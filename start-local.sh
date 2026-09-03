@@ -20,4 +20,4 @@ export WATCHPACK_POLLING=true
 export CHOKIDAR_USEPOLLING=true
 exec npx concurrently -n api,web -c blue,magenta \
   "npm run dev:api" \
-  "WATCHPACK_POLLING=true npm run dev --workspace=@ltl-shop/web"
+  "NEXT_PUBLIC_API_URL=http://127.0.0.1:3001 WATCHPACK_POLLING=true npm run dev --workspace=@ltl-shop/web"

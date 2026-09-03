@@ -1,0 +1,95 @@
+sep=|
+Id|Part Code|Part Description|Choice|Is On Parts list?|Active
+1|LFF8897|FUEL FILTER 4 MICRON MP7 EPA|Fuel Filters|1|
+2|LFF8059|Fuel Filter|Fuel Filters|1|
+3|23920469|Fuel Filter|Fuel Filters|1|
+4|23856886|FILTER,FUEL,SECONDARY,US17,US21|Fuel Filters|1|
+5|21380521|FILTER F/W SEPARTR 21017305|Fuel Filters|1|
+8|L9765FXL|LUBER-FINER FUEL FILTER|Papel Fuel Filter|1|
+9|21737499|FUEL FILTER INSERT 2334|Papel Fuel Filter|1|
+10|20483578|GASKET,TRANS OIL FILTER|Papel Fuel Filter|1|
+12|CAF24000|Cabin Air Filter|Cabin Air Filter|1|
+13|20435801|FILTER CAB A/C|Cabin Air Filter|1|
+15|21715813|FILTER AIR C/P VN|Engine Air Filter|1|
+16|LAF9201|Air Filter|Engine Air Filter|1|
+17|MV31520B|WIPER BLADES|Wiper Blades|1|
+18|MV31522B|Wiper Blades|Wiper Blades|1|
+19|MV31524B|Wipers|Wiper Blades|1|
+20|21937327|COOLANT FILTER|Coolant Filter|1|
+21|LFW5141|FILTER COOLANT|Coolant Filter|1|
+22|DBC4086|FILTER COOLANT|Coolant Filter|1|
+23|23151592|Oil Filter (2)|Oil Filter 2|1|
+24|LFP8642|Oil Filter|Oil Filter 1|1|
+25|21707132|Oil Filter|Oil Filter 1|1|
+26|21707135|Mack Oil filter|Oil Filter 1|1|
+27|LF3654|Fleetguard Oil Filter|Oil Filter 1|1|
+28|LFP3191|Oil Filter (2)|Oil Filter 2|1|
+29|LFP3236|Luber Finer Oil Filter (2)|Oil Filter 2|1|
+30|21707133|Volvo Long Life Oil Filter (2)|Oil Filter 2|1|
+31|23658092|Volvo Long Life Oil Filter (2)|Oil Filter 2|1|
+32|21939298|Luber Filter Pure Mack (2)|Oil Filter 2|1|
+33|LF17503|Fleetguard Oil Filter (2)|Oil Filter 2|1|
+34|21620181|Desiccant and oil separator|Air Dryer Filter|1|
+35|23099526|Desiccant Filter|Air Dryer Filter|1|
+37|LFP3247|Luber Finer Oil Filter (2)|Oil Filter 2|1|
+38|24009059|Special Papel Filter|Papel Fuel Filter|1|
+39|24009058|Special Papel Filter|Papel Fuel Filter|1|
+40|FS20313|Fleetguard Water Separator|Papel Fuel Filter|1|
+41|P23843839|Fuel Filter MACK|Fuel Filters|1|
+42|23155587|MACK Oil Filter (2)|Oil Filter 2|1|
+43|21380475|Fuel Filter|Fuel Filters|1|
+44|24470880|Mack Fuel Filter|Fuel Filters|1|
+45|24008818|Desc. Filter Kit Fuel|Fuel Filters|1|
+46|24137493|Long Life Extra Fuel|Fuel Filters|1|
+47|2234788|PETERBILT Oil Filter Paccar|Oil Filter 1|1|
+48|2323323|PETERBILT Fuel Filter Paccar|Fuel Filters|1|
+49|2242964|PETERBILT Fuel Filter Paccar|Fuel Filters|1|
+50|PA30093|PETERBILT Cabin Air Filter|Cabin Air Filter|1|
+51|CY08221P|PETERBILT Air Cabin Filter|Cabin Air Filter|1|
+52|D37-1061|PETERBILT Engine Air Filter|Engine Air Filter|1|
+53|K37-1021|PETERBILT Papel Fuel Filter|Papel Fuel Filter|1|
+54|PF46236|PETERBILT Papel Fuel Filter|Papel Fuel Filter|1|
+55|5575143|PETERBILT Fuel Filter Cummins|Fuel Filters|1|
+56|5575298|PETERBILT Oil Filter Cummins|Oil Filter 1|1|
+57|B40145|PETERBILT Oil Filter Cummins|Oil Filter 1|1|
+58|24633960|Desc. Filter Kit|Fuel Filters|1|
+59|BF46129|PETERBILT Fuel Filter Cummins|Fuel Filters|1|
+61|WIX WL10107|PETERBILT Oil Filter Cummins|Oil Filter 1|1|
+63|K37-1021|PETERBILT Papel Fuel Filter|Papel Fuel Filter|1|No
+64|L9765FXL|LUBER-FINER FUEL FILTER PETERBILT|Papel Fuel Filter|1|
+65|24137737|Fuel Filter|Fuel Filters|1|
+66|25100042|Mack Engine Air Filter|Engine Air Filter|1|
+67|85115361|Desiccant Filter|Air Dryer Filter|1|
+68|P584764|PETERBILT DONALDSON|Air Dryer Filter|1|
+69|5009041PG|PETERBILT BENDIX|Air Dryer Filter|1|
+70|85151124|MACK Cabin Air Filter|Cabin Air Filter|1|
+71|23582260|VOLVO Cabin Air Filter|Cabin Air Filter|1|
+72|WIX-24479|PETERBILT Air Cabin Filter|Cabin Air Filter|1|
+74|WIX WF10447|Fuel Filter Volvo|Fuel Filters|1|
+75|WIX WL10651|Oil Filter Volvo 2 units|Oil Filter 2|1|
+76|WX49084|Cabin Filter Volvo|Cabin Air Filter|1|
+77|ANC31-22|Wipers Blades|Wiper Blades|1|
+78|BENP584764|Air dryer filter|Air Dryer Filter|1|
+79|WX51791|Oil Filter (2 units)|Oil Filter 2|1|
+80|WL10106|Oil filter (1Unit)|Oil Filter 1|1|Yes
+81|WF10005|Papel Fuel Filter PETERBILT - Volvo|Papel Fuel Filter|1|
+82|WAB4324219222|Air Dryer Filter|Air Dryer Filter|1|
+83|WAB4329012382|Air Dryer Filter|Air Dryer Filter|1|
+84|WIX 33995|Fuel Filter|Fuel Filters|1|
+85|WX49126|Engine Air Filter|Engine Air Filter|1|
+86|WBX42808|Mac Engine Air Filter|Engine Air Filter|1|
+87|WIX WF10755|Large PETERBILT Fuel filter premium|Fuel Filters|1|
+88|WIX WF10755|Short PETERBILT Fuel filter premium|Fuel Filters|1|
+89|WIX WL10341|PETERBILT Oil Filter|Oil Filter 1|1|
+90|WF10566|PETERBILT PAPEL FILTER|Papel Fuel Filter|1|
+91|WL10663|Freightliner Cascadia Oil Filter 1 unit|Oil Filter 1|1|
+92|WF10678|Freightliner Cascadia Large Fuel Filter|Fuel Filters|1|
+93|WF10678|Freightliner Short Fuel Filter filter|Fuel Filters|1|
+94|A0000905251|Freightliner Cascadia Pepel Fuel |Papel Fuel Filter|1|
+95|MAHLE82019|Freightliner Cascadia Cabin Air Filter|Cabin Air Filter|1|
+96|DTP 03-42776-010|Freightliner Engine Air Filter Detroit|Engine Air Filter|1|
+97|WF10515|PETERBILT Fuel Filter Cummins|Fuel Filters|1|
+98|WIX524318|Freightliner Cascadia Cabin Air Filter|Cabin Air Filter|1|
+99|FS20176|Fleetguard Water Separator|Papel Fuel Filter|1|
+100|WIX 24374|Desiccant Filter|Air Dryer Filter|1|
+101|P550851|Papel Fuel Filter PETERBILT - Volvo|Papel Fuel Filter|1|
