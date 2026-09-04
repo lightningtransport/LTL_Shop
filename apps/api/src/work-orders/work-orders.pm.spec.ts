@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Prisma } from '@prisma/client';
 import { ActivityEventType, Priority } from '@ltl-shop/shared';
 import { WorkOrdersService } from './work-orders.service';
 
@@ -14,7 +15,10 @@ describe('PM Work Order authorization', () => {
       primaryCategory: { id: 'pm-category', name: 'PM' }, jobs: [], pauseEvents: [],
       mechanics: [{ mechanicId: 'daniel-id', addedAt: createdAt, removedAt: null, mechanic: { name: 'Daniel' } }],
     } as never;
-    const tx = { workOrder: { create: vi.fn().mockResolvedValue(created) } };
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ sequence: BigInt(1) }]),
+      workOrder: { create: vi.fn().mockResolvedValue(created) },
+    };
     const prisma = {
       workOrder: {
         findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0),
@@ -46,6 +50,43 @@ describe('PM Work Order authorization', () => {
     }));
     expect(activity.log).toHaveBeenCalledTimes(2);
     expect(activity.log).toHaveBeenLastCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.WORK_STARTED }));
+  });
+
+  it('returns the existing open Work Order when a concurrent create hits the database constraint', async () => {
+    const createdAt = new Date('2026-09-04T16:00:00.000Z');
+    const concurrentOpen = {
+      id: 'wo-existing', displayId: 'WO-042', truckId: 'truck-1', primaryCategoryId: 'brakes-category',
+      status: 'created', priority: Priority.NORMAL, notes: null, createdAt, createdById: 'alex-id',
+      startedAt: null, completedAt: null, completedById: null, totalActiveLaborMs: BigInt(0),
+      totalWaitingMs: BigInt(0), version: 1,
+      truck: { id: 'truck-1', truckNumber: '905', make: null, model: null, year: null, mileage: null, company: null, owner: null },
+      primaryCategory: { id: 'brakes-category', name: 'Brakes' }, jobs: [], pauseEvents: [], mechanics: [],
+    } as never;
+    const prisma = {
+      workOrder: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        findFirst: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(concurrentOpen),
+      },
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-1' }) },
+      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'brakes-category', name: 'Brakes' }) },
+      $transaction: vi.fn().mockRejectedValue(new Prisma.PrismaClientKnownRequestError('duplicate', {
+        code: 'P2002', clientVersion: Prisma.prismaVersion.client,
+      })),
+    } as never;
+    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
+
+    await expect(service.create({
+      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
+      role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+    }, {
+      truckId: '00000000-0000-4000-8000-000000000001',
+      primaryCategoryId: '00000000-0000-4000-8000-000000000003',
+      priority: Priority.NORMAL,
+      mechanicIds: [],
+      jobs: [{ categoryId: '00000000-0000-4000-8000-000000000003', displayName: 'Brake Inspection' }],
+    })).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'OPEN_WORK_ORDER_EXISTS' }),
+    });
   });
 
   it('rejects PM creation by a mechanic without PM authorization', async () => {

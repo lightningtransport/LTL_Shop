@@ -33,6 +33,22 @@ import {
 } from './work-order.timing';
 import type { AuthUser } from '../auth/auth.guard';
 
+function isUniqueConstraintError(
+  error: unknown,
+): error is Prisma.PrismaClientKnownRequestError {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
+
+function openWorkOrderConflict(
+  workOrder: Parameters<typeof toWorkOrderSummary>[0],
+) {
+  return new ConflictException({
+    code: 'OPEN_WORK_ORDER_EXISTS',
+    message: 'Truck already has an open Work Order.',
+    workOrder: toWorkOrderSummary(workOrder),
+  });
+}
+
 @Injectable()
 export class WorkOrdersService {
   constructor(
@@ -97,11 +113,7 @@ export class WorkOrdersService {
       include: workOrderDetailInclude,
     });
     if (open) {
-      throw new ConflictException({
-        code: 'OPEN_WORK_ORDER_EXISTS',
-        message: `Truck already has an open Work Order.`,
-        workOrder: toWorkOrderSummary(open),
-      });
+      throw openWorkOrderConflict(open);
     }
 
     const truck = await this.prisma.truck.findUnique({
@@ -145,12 +157,15 @@ export class WorkOrdersService {
       new Set([user.id, ...input.mechanicIds]),
     );
 
-    const count = await this.prisma.workOrder.count();
-    const displayId = nextDisplayId(count + 1);
-
-    const wo = await this.prisma.$transaction(async (tx) => {
-      const startedAt = isPm ? new Date() : null;
-      const created = await tx.workOrder.create({
+    let wo;
+    try {
+      wo = await this.prisma.$transaction(async (tx) => {
+        const [{ sequence }] = await tx.$queryRaw<Array<{ sequence: bigint }>>(
+          Prisma.sql`SELECT nextval('work_order_display_id_seq') AS sequence`,
+        );
+        const displayId = nextDisplayId(Number(sequence));
+        const startedAt = isPm ? new Date() : null;
+        const created = await tx.workOrder.create({
         data: {
           displayId,
           truckId: input.truckId,
@@ -186,7 +201,7 @@ export class WorkOrdersService {
         include: workOrderDetailInclude,
       });
 
-      await this.activity.log(tx, {
+        await this.activity.log(tx, {
         workOrderId: created.id,
         eventType: ActivityEventType.WORK_ORDER_CREATED,
         entityType: 'work_order',
@@ -194,8 +209,8 @@ export class WorkOrdersService {
         userId: user.id,
         newValue: { displayId, status: 'created' },
       });
-      if (isPm) {
-        await this.activity.log(tx, {
+        if (isPm) {
+          await this.activity.log(tx, {
           workOrderId: created.id,
           eventType: ActivityEventType.WORK_STARTED,
           entityType: 'work_order',
@@ -203,11 +218,34 @@ export class WorkOrdersService {
           userId: user.id,
           previousValue: { status: 'created' },
           newValue: { status: 'in_progress' },
+          });
+        }
+
+        return created;
+      });
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) throw error;
+
+      if (input.idempotencyKey) {
+        const existing = await this.prisma.workOrder.findUnique({
+          where: { idempotencyKey: input.idempotencyKey },
+          include: workOrderDetailInclude,
         });
+        if (existing) return toWorkOrderDetail(existing);
       }
 
-      return created;
-    });
+      const concurrentOpen = await this.prisma.workOrder.findFirst({
+        where: {
+          truckId: input.truckId,
+          status: { in: OPEN_WORK_ORDER_STATUSES },
+        },
+        include: workOrderDetailInclude,
+      });
+      if (concurrentOpen) {
+        throw openWorkOrderConflict(concurrentOpen);
+      }
+      throw error;
+    }
 
     return toWorkOrderDetail(wo);
   }
