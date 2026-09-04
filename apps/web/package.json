@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ltl-shop/shared": "*",
+    "@sentry/nextjs": "^10.73.0",
     "@supabase/supabase-js": "^2.47.12",
     "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
