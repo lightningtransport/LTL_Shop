@@ -3,10 +3,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { AuthBrandHeader, PageSkeleton } from '@/components/ui';
+import { AuthBrandHeader, LoadFailure, PageSkeleton } from '@/components/ui';
 
 export default function LoginPage() {
-  const { login, loginDev, requestPasswordReset, passwordRecovery, token, sessionLoading } = useAuth();
+  const { login, loginDev, requestPasswordReset, passwordRecovery, token, sessionLoading, sessionError, retrySession } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState(() =>
     process.env.NODE_ENV === 'production' ? '' : 'mechanic@lightning.local',
@@ -78,6 +78,11 @@ export default function LoginPage() {
         title="Sign In"
         subtitle="Sign in with the email linked to the Shop."
       />
+      {sessionError ? (
+        <div className="mb-4">
+          <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
+        </div>
+      ) : null}
       <form onSubmit={onSubmit} className="card space-y-4">
         <div>
           <label className="section-label" htmlFor="login-email">

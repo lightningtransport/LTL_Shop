@@ -1,6 +1,6 @@
 'use client';
 
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, ChevronDown, Trash2 } from 'lucide-react';
@@ -20,7 +20,7 @@ import {
   useTrucks,
   type Mechanic,
 } from '@/lib/shop-data';
-import { EmptyState, Modal, PageSkeleton, ScreenHeader } from '@/components/ui';
+import { CardListSkeleton, EmptyState, LoadFailure, Modal, PageSkeleton, ScreenHeader } from '@/components/ui';
 import { JobPickerDialog } from '@/components/job-picker-dialog';
 
 type DraftJob = {
@@ -32,12 +32,12 @@ type DraftJob = {
 };
 
 export default function NewWorkOrderPage() {
-  const { user, token, sessionLoading } = useAuth();
+  const { user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const { data: categoryData, error: categoryError } = useCategories(!!token);
-  const { data: mechanicData, error: mechanicError } = useMechanics(!!token);
-  const { data: truckData, error: truckError } = useTrucks(!!token);
+  const { data: categoryData, error: categoryError, mutate: mutateCategories } = useCategories(!!token);
+  const { data: mechanicData, error: mechanicError, mutate: mutateMechanics } = useMechanics(!!token);
+  const { data: truckData, error: truckError, mutate: mutateTrucks } = useTrucks(!!token);
   const categories = categoryData ?? [];
   const mechanics = mechanicData ?? [];
   const pmCategory = categories.find((category) => category.name === 'PM');
@@ -65,8 +65,8 @@ export default function NewWorkOrderPage() {
   const workingWithTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!sessionLoading && !token) router.replace('/login');
-  }, [sessionLoading, token, router]);
+    if (!sessionLoading && !token && !sessionError) router.replace('/login');
+  }, [sessionLoading, token, sessionError, router]);
 
   useEffect(() => {
     if (isPmMechanic && pmCategory) {
@@ -155,8 +155,49 @@ export default function NewWorkOrderPage() {
     }
   }
 
-  if (sessionLoading || !token) {
+  if (sessionLoading && !token) {
+    return <NewWorkOrderLoading label="Restoring session" />;
+  }
+
+  if (!token && sessionError) {
+    return (
+      <NewWorkOrderLoading>
+        <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
+      </NewWorkOrderLoading>
+    );
+  }
+
+  if (!token) {
     return <PageSkeleton label="Restoring session" />;
+  }
+
+  if (profileLoading || !user) {
+    return (
+      <NewWorkOrderLoading>
+        {sessionError ? (
+          <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry profile" />
+        ) : (
+          <CardListSkeleton count={2} />
+        )}
+      </NewWorkOrderLoading>
+    );
+  }
+
+  const referenceError = categoryError || mechanicError || truckError;
+  if (referenceError || !categoryData || !mechanicData || !truckData) {
+    return (
+      <NewWorkOrderLoading>
+        {referenceError ? (
+          <LoadFailure
+            message="Unable to load shop reference data."
+            onRetry={() => void Promise.all([mutateCategories(), mutateMechanics(), mutateTrucks()])}
+            retryLabel="Retry reference data"
+          />
+        ) : (
+          <CardListSkeleton count={2} />
+        )}
+      </NewWorkOrderLoading>
+    );
   }
 
   return (
@@ -434,12 +475,6 @@ export default function NewWorkOrderPage() {
             </p>
           ) : null}
 
-          {categoryError || mechanicError || truckError ? (
-            <p className="mb-3 text-sm text-red-300">
-              Unable to load shop reference data.
-            </p>
-          ) : null}
-
           <button
             type="button"
             className="btn-primary w-full"
@@ -479,6 +514,21 @@ export default function NewWorkOrderPage() {
         onClose={() => setWorkingWithOpen(false)}
         returnFocusRef={workingWithTriggerRef}
       />
+    </div>
+  );
+}
+
+function NewWorkOrderLoading({
+  label,
+  children,
+}: {
+  label?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div>
+      <ScreenHeader title="New Work Order" subtitle="Enter the required information." backHref="/" />
+      {children ?? <PageSkeleton label={label ?? 'Loading work order form'} />}
     </div>
   );
 }

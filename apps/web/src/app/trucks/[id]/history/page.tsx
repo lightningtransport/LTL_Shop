@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
-import { EmptyState, PageSkeleton, ScreenHeader } from '@/components/ui';
+import { EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui';
 
 export default function RepairHistoryPage() {
   const { token, sessionLoading } = useAuth();
@@ -14,7 +14,7 @@ export default function RepairHistoryPage() {
   const params = useParams<{ id: string }>();
   const [categoryId, setCategoryId] = useState<string>('all');
   const { data: categoryData } = useCategories(!!token);
-  const { data, error } = useRepairHistory(
+  const { data, error, mutate } = useRepairHistory(
     params.id,
     categoryId,
     !!token,
@@ -37,9 +37,7 @@ export default function RepairHistoryPage() {
   if (!truck) {
     if (error instanceof Error) {
       return (
-        <p className="text-shop-muted" role="alert">
-          {error.message}
-        </p>
+        <LoadFailure message={error.message} onRetry={() => void mutate()} retryLabel="Retry repair history" />
       );
     }
     return <PageSkeleton label="Loading repair history" />;

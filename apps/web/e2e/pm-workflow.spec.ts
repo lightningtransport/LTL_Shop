@@ -27,7 +27,7 @@ async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
     if (path === '/api/mechanics') return fulfill(route, [{ ...daniel, role: 'mechanic' }]);
     if (path === '/api/trucks') return fulfill(route, [truck]);
     if (path === `/api/trucks/${truck.id}/open-work-order`) return fulfill(route, { exists: false });
-    if (path === '/api/work-orders' && request.method() === 'GET') return fulfill(route, { created: [], active: [summary()], paused: [] });
+    if (path === '/api/work-orders' && request.method() === 'GET') return fulfill(route, { created: [], active: [summary()], paused: [], completed: [] });
     if (path === '/api/work-orders' && request.method() === 'POST') return fulfill(route, { id: woId }, 201);
     if (path === `/api/work-orders/${woId}/pm`) {
       if (request.method() === 'POST') {

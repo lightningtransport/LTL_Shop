@@ -4,14 +4,19 @@ import { useEffect, useRef } from 'react';
 import { SWRConfig, useSWRConfig } from 'swr';
 import { ApiError, apiFetch } from './api';
 import { useAuth } from './auth-context';
+import { captureException } from './observability';
 
 const config = {
   fetcher: apiFetch,
   dedupingInterval: 5_000,
-  errorRetryCount: 2,
+  errorRetryCount: 0,
   revalidateOnFocus: true,
-  shouldRetryOnError: (error: unknown) =>
-    !(error instanceof ApiError && [401, 403].includes(error.status)),
+  shouldRetryOnError: () => false,
+  onError: (error: unknown, key: string) => {
+    if (error instanceof ApiError && ![401, 403].includes(error.status)) {
+      captureException(error, { key, kind: error.kind, status: error.status });
+    }
+  },
 };
 
 export function DataProvider({ children }: { children: React.ReactNode }) {

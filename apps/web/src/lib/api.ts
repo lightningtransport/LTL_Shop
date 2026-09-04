@@ -1,3 +1,5 @@
+import { trackEvent } from './observability';
+
 export const AUTH_TOKEN_KEY = 'ltl_shop_token';
 
 let authToken: string | null = null;
@@ -27,29 +29,112 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 export class ApiError extends Error {
   status: number;
   body: unknown;
-  constructor(message: string, status: number, body: unknown) {
+  kind: 'http' | 'network' | 'timeout';
+  constructor(
+    message: string,
+    status: number,
+    body: unknown,
+    kind: 'http' | 'network' | 'timeout' = 'http',
+  ) {
     super(message);
     this.status = status;
     this.body = body;
+    this.kind = kind;
   }
+}
+
+export type ApiFetchOptions = RequestInit & {
+  /** Defaults to 8s for reads and 15s for mutations. */
+  timeoutMs?: number;
+};
+
+function defaultTimeout(method?: string) {
+  return !method || method.toUpperCase() === 'GET' ? 8_000 : 15_000;
+}
+
+function endpointFamily(path: string) {
+  const pathname = path.split('?')[0] ?? path;
+  if (/^\/api\/work-orders\/[^/]+\/jobs\/[^/]+/.test(pathname)) {
+    return '/api/work-orders/:id/jobs/:jobId';
+  }
+  if (/^\/api\/work-orders\/[^/]+/.test(pathname)) {
+    return pathname.replace(/^\/api\/work-orders\/[^/]+/, '/api/work-orders/:id');
+  }
+  if (/^\/api\/trucks\/[^/]+/.test(pathname)) {
+    return pathname.replace(/^\/api\/trucks\/[^/]+/, '/api/trucks/:id');
+  }
+  return pathname;
+}
+
+function errorMessage(body: unknown, status: number) {
+  if (typeof body === 'object' && body !== null) {
+    const candidate = body as { message?: unknown; error?: unknown };
+    const message = candidate.message ?? candidate.error;
+    if (Array.isArray(message)) return message.join(', ');
+    if (message) return String(message);
+  }
+  return typeof body === 'string' ? body : `Request failed (${status})`;
 }
 
 export async function apiFetch<T>(
   path: string,
-  init: RequestInit = {},
+  init: ApiFetchOptions = {},
 ): Promise<T> {
-  const headers = new Headers(init.headers);
+  const { timeoutMs = defaultTimeout(init.method), signal: callerSignal, ...requestInit } = init;
+  const headers = new Headers(requestInit.headers);
   headers.set('Content-Type', 'application/json');
   const token = resolveAuthToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers,
-  });
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort(callerSignal?.reason);
+  if (callerSignal) {
+    if (callerSignal.aborted) abortFromCaller();
+    else callerSignal.addEventListener('abort', abortFromCaller, { once: true });
+  }
+  const timer = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  const startedAt = performance.now();
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...requestInit,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    const durationMs = Math.round(performance.now() - startedAt);
+    const kind = timedOut ? 'timeout' : 'network';
+    trackEvent('api_request_failed', {
+      route: endpointFamily(path),
+      method: requestInit.method ?? 'GET',
+      kind,
+      durationMs,
+    });
+    throw new ApiError(
+      timedOut ? 'The request took too long. Please try again.' : 'Unable to reach the Shop. Please try again.',
+      0,
+      null,
+      kind,
+    );
+  } finally {
+    window.clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', abortFromCaller);
+  }
 
   const text = await res.text();
-  const body = text ? JSON.parse(text) : null;
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = text;
+    }
+  }
 
   if (!res.ok) {
     if (res.status === 401 && typeof window !== 'undefined') {
@@ -57,15 +142,25 @@ export async function apiFetch<T>(
       authToken = null;
       window.dispatchEvent(new Event('ltl-auth-expired'));
     }
-    const message =
-      body?.message ??
-      body?.error ??
-      (typeof body === 'string' ? body : `Request failed (${res.status})`);
+    const message = errorMessage(body, res.status);
+    trackEvent('api_request_failed', {
+      route: endpointFamily(path),
+      method: requestInit.method ?? 'GET',
+      kind: 'http',
+      status: res.status,
+      durationMs: Math.round(performance.now() - startedAt),
+    });
     throw new ApiError(
-      Array.isArray(message) ? message.join(', ') : String(message),
+      message,
       res.status,
       body,
     );
   }
+  trackEvent('api_request_completed', {
+    route: endpointFamily(path),
+    method: requestInit.method ?? 'GET',
+    status: res.status,
+    durationMs: Math.round(performance.now() - startedAt),
+  });
   return body as T;
 }

@@ -6,6 +6,7 @@ import { AuthProvider } from '@/lib/auth-context';
 import { DataProvider } from '@/lib/data-provider';
 import { PathScrollReset } from '@/components/path-scroll-reset';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ObservabilityProvider } from '@/components/observability-provider';
 
 const bodyFont = Inter({
   subsets: ['latin'],
@@ -44,8 +45,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${bodyFont.variable} ${monoFont.variable}`}>
       <body>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "if ('scrollRestoration' in history) history.scrollRestoration = 'manual';",
+          }}
+        />
         <ThemeProvider>
           <PathScrollReset />
+          <ObservabilityProvider />
           <AuthProvider>
             <DataProvider>
               <div className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-6">

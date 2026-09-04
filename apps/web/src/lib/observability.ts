@@ -1,7 +1,20 @@
-/**
- * Sentry/PostHog stubs — wire DSN/keys via env when ready.
- * Keep no-op in local unless configured.
- */
+/** Lightweight, explicit browser telemetry. Never send request bodies, tokens, or IDs. */
+
+let posthogClient: { capture: (event: string, properties?: Record<string, unknown>) => void } | null = null;
+
+export async function initBrowserObservability() {
+  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  if (!key || typeof window === 'undefined' || posthogClient) return;
+
+  const posthog = (await import('posthog-js')).default;
+  posthog.init(key, {
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    autocapture: false,
+    capture_pageview: false,
+    disable_session_recording: true,
+  });
+  posthogClient = posthog;
+}
 
 export function initSentryBrowser() {
   const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
@@ -17,12 +30,5 @@ export function captureException(error: unknown, context?: Record<string, unknow
 }
 
 export function trackEvent(event: string, properties?: Record<string, unknown>) {
-  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  if (!key) return;
-  if (typeof window !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ph = (window as any).posthog;
-    if (ph?.capture) ph.capture(event, properties);
-    else console.info('[posthog:stub]', event, properties);
-  }
+  posthogClient?.capture(event, properties);
 }
