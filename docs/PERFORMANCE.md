@@ -75,6 +75,18 @@ without storing the token used to collect them.
 - The workspace test command excludes Playwright specifications from Vitest,
   and the workspace lint command runs non-interactively in CI.
 
+## Optimization safety baseline — 2026-09-04
+
+- Before the dependency upgrade, the authenticated routes had 164–170 kB of
+  First Load JS; 170 kB is the comparison ceiling unless a measured benefit is
+  documented in the pull request.
+- Next.js 16 no longer prints per-route First Load JS in the production build
+  output. Compare Preview route transfer and Vercel Speed Insights with this
+  baseline before approving a bundle-affecting change.
+- The production build uses Webpack explicitly. Turbopack could not spawn its
+  CSS worker in the constrained local runner; Preview remains the environment
+  for validating Turbopack/Vercel behavior if it is enabled later.
+
 ## Preview status — 2026-08-28
 
 After authenticating GitHub as an authorized repository administrator and
