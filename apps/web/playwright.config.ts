@@ -15,9 +15,18 @@ export default defineConfig({
   ],
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
     ? undefined
-    : {
-        command: 'echo "Start pnpm dev separately for e2e"',
-        port: 3000,
-        reuseExistingServer: true,
-      },
+    : [
+        {
+          command: 'npm run dev:api --prefix ../..',
+          port: 3001,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
+        {
+          command: 'NEXT_PUBLIC_API_URL=http://127.0.0.1:3001 npm run dev:web --prefix ../..',
+          port: 3000,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
+      ],
 });

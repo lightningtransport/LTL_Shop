@@ -11,6 +11,8 @@
     "dev:web": "npm run dev --workspace=@ltl-shop/web",
     "dev:api": "npm run dev --workspace=@ltl-shop/api",
     "build": "npm run build --workspaces --if-present",
+    "verify": "npm run lint && npm test && npm run build",
+    "test:e2e": "npm run test:e2e --workspace=@ltl-shop/web",
     "build:shared": "npm run build --workspace=@ltl-shop/shared",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
@@ -26,11 +28,11 @@
     "node": ">=20"
   },
   "allowScripts": {
-    "prisma@6.19.3": true,
-    "@prisma/client@6.19.3": true,
-    "@prisma/engines@6.19.3": true,
+    "prisma@7.10.0": true,
+    "@prisma/client@7.10.0": true,
+    "@prisma/engines@7.10.0": true,
     "esbuild@0.28.2": true,
     "esbuild@0.21.5": true,
-    "@nestjs/core@10.4.22": true
+    "@nestjs/core@12.0.1": true
   }
 }

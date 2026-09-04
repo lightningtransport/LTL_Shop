@@ -33,10 +33,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm install
-      - run: npm run build --workspace=@ltl-shop/shared
+      - run: npm ci
       - run: npm run prisma:generate --workspace=@ltl-shop/api
       - run: npm exec --workspace=@ltl-shop/api -- prisma migrate deploy
-      - run: npm test --workspace=@ltl-shop/api
-      - run: npm run lint --workspace=@ltl-shop/api
-      - run: npm run build --workspace=@ltl-shop/web
+      - run: npm run db:seed
+      - run: npm run verify
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e

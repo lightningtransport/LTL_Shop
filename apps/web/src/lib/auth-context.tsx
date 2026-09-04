@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import type { UserDto } from '@ltl-shop/shared';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError, apiFetch, AUTH_TOKEN_KEY, setAuthToken } from './api';
 import { passwordResetRedirectUrl } from './site-url';
 
@@ -30,6 +31,7 @@ type AuthState = {
 };
 
 const AuthContext = createContext<AuthState | null>(null);
+let supabaseClient: SupabaseClient | null = null;
 
 function canUseSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -38,11 +40,13 @@ function canUseSupabase() {
 }
 
 async function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
   const { createClient } = await import('@supabase/supabase-js');
-  return createClient(
+  supabaseClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
+  return supabaseClient;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

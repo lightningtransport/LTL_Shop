@@ -70,7 +70,8 @@ test.describe('Daniel PM workflow', () => {
     let createBody: Record<string, unknown> | undefined;
     await mockPmApi(page);
     await page.route('**/api/work-orders', async (route) => {
-      if (route.request().method() === 'POST') createBody = route.request().postDataJSON();
+      if (route.request().method() !== 'POST') return route.fallback();
+      createBody = route.request().postDataJSON();
       await fulfill(route, { id: woId }, 201);
     });
     await login(page);
