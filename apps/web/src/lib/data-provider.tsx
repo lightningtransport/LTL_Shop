@@ -12,9 +12,9 @@ const config = {
   errorRetryCount: 0,
   revalidateOnFocus: true,
   shouldRetryOnError: () => false,
-  onError: (error: unknown, key: string) => {
+  onError: (error: unknown) => {
     if (error instanceof ApiError && ![401, 403].includes(error.status)) {
-      captureException(error, { key, kind: error.kind, status: error.status });
+      captureException(error, { kind: error.kind, status: error.status });
     }
   },
 };
