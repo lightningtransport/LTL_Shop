@@ -21,6 +21,7 @@ import {
 } from '@/lib/shop-data';
 import {
   EmptyState,
+  LoadFailure,
   Modal,
   PageSkeleton,
   PriorityBadge,
@@ -119,7 +120,7 @@ export default function WorkOrderDetailPage() {
   if (sessionLoading || !token || !wo) {
     if (error) return <p className="text-shop-muted" role="alert">{error}</p>;
     if (loadError instanceof Error) {
-      return <p className="text-shop-muted" role="alert">{loadError.message}</p>;
+      return <LoadFailure message={loadError.message} onRetry={() => void mutateWorkOrder()} retryLabel="Retry work order" />;
     }
     return <PageSkeleton label="Loading work order" />;
   }

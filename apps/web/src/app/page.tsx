@@ -11,21 +11,42 @@ import {
   CardListSkeleton,
   EmptyState,
   HomeTopBar,
+  LoadFailure,
   PageSkeleton,
   PriorityBadge,
   ScreenHeader,
 } from '@/components/ui';
 
 export default function HomePage() {
-  const { token, sessionLoading } = useAuth();
+  const { token, sessionLoading, sessionError, retrySession } = useAuth();
   const router = useRouter();
-  const { data, error } = useWorkOrders(!!token);
+  const { data, error, mutate } = useWorkOrders(!!token);
 
   useEffect(() => {
-    if (!sessionLoading && !token) router.replace('/login');
-  }, [sessionLoading, token, router]);
+    if (!sessionLoading && !token && !sessionError) router.replace('/login');
+  }, [sessionLoading, token, sessionError, router]);
 
-  if (sessionLoading || !token) {
+  if (sessionLoading && !token) {
+    return (
+      <div>
+        <HomeTopBar />
+        <ScreenHeader title="Home" subtitle="Current jobs, work orders, and recent work." />
+        <PageSkeleton label="Restoring session" />
+      </div>
+    );
+  }
+
+  if (!token && sessionError) {
+    return (
+      <div>
+        <HomeTopBar />
+        <ScreenHeader title="Home" subtitle="Current jobs, work orders, and recent work." />
+        <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
+      </div>
+    );
+  }
+
+  if (!token) {
     return <PageSkeleton label="Restoring session" />;
   }
 
@@ -42,9 +63,13 @@ export default function HomePage() {
       </Link>
 
       {error ? (
-        <p className="mb-4 text-sm text-red-300" role="alert" aria-live="assertive">
-          {error instanceof Error ? error.message : 'Unable to load work orders'}
-        </p>
+        <div className="mb-4">
+          <LoadFailure
+            message={error instanceof Error ? error.message : 'Unable to load work orders'}
+            onRetry={() => void mutate()}
+            retryLabel="Retry work orders"
+          />
+        </div>
       ) : null}
 
       {!data && !error ? (

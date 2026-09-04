@@ -11,19 +11,25 @@ export function PathScrollReset() {
   }, []);
 
   React.useLayoutEffect(() => {
-    if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
     resetScroll();
-    const frame = window.requestAnimationFrame(resetScroll);
-    return () => window.cancelAnimationFrame(frame);
+    const firstFrame = window.requestAnimationFrame(() => {
+      resetScroll();
+      window.requestAnimationFrame(resetScroll);
+    });
+    return () => window.cancelAnimationFrame(firstFrame);
   }, [pathname, resetScroll]);
 
   React.useEffect(() => {
-    const onPageShow = () => {
+    const onRestore = () => {
       resetScroll();
       window.requestAnimationFrame(resetScroll);
     };
-    window.addEventListener('pageshow', onPageShow);
-    return () => window.removeEventListener('pageshow', onPageShow);
+    window.addEventListener('pageshow', onRestore);
+    window.addEventListener('popstate', onRestore);
+    return () => {
+      window.removeEventListener('pageshow', onRestore);
+      window.removeEventListener('popstate', onRestore);
+    };
   }, [resetScroll]);
 
   return null;

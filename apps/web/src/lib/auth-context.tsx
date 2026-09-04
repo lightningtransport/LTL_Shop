@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import type { UserDto } from '@ltl-shop/shared';
-import { apiFetch, AUTH_TOKEN_KEY, setAuthToken } from './api';
+import { ApiError, apiFetch, AUTH_TOKEN_KEY, setAuthToken } from './api';
 import { passwordResetRedirectUrl } from './site-url';
 
 type AuthState = {
@@ -20,11 +20,13 @@ type AuthState = {
   profileLoading: boolean;
   passwordRecovery: boolean;
   error: string | null;
+  sessionError: string | null;
   login: (email: string, password: string) => Promise<void>;
   loginDev: (email: string) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   logout: () => Promise<void>;
+  retrySession: () => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -54,6 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery',
   );
   const [error, setError] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [sessionAttempt, setSessionAttempt] = useState(0);
   const profileTokenRef = useRef<string | null>(null);
 
   const clearSession = useCallback(() => {
@@ -64,6 +68,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfileLoading(false);
     setPasswordRecovery(false);
     profileTokenRef.current = null;
+  }, []);
+
+  const retrySession = useCallback(() => {
+    setSessionError(null);
+    setSessionLoading(true);
+    setSessionAttempt((current) => current + 1);
   }, []);
 
   const applyToken = useCallback((tok: string) => {
@@ -83,7 +93,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(res.user);
       } catch (profileError) {
         profileTokenRef.current = null;
-        clearSession();
+        if (profileError instanceof ApiError && [401, 403].includes(profileError.status)) {
+          clearSession();
+        } else {
+          setSessionError(
+            profileError instanceof Error
+              ? profileError.message
+              : 'Unable to restore your profile. Please try again.',
+          );
+        }
         throw profileError;
       } finally {
         setProfileLoading(false);
@@ -100,26 +118,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    let saved: string | null = null;
 
     async function init() {
+      setSessionError(null);
+      setSessionLoading(true);
       try {
+        saved = localStorage.getItem(AUTH_TOKEN_KEY);
+        if (saved) {
+          applyToken(saved);
+          if (!cancelled) setSessionLoading(false);
+          void loadProfile(saved).catch(() => undefined);
+        }
+
         if (canUseSupabase()) {
-          const supabase = await getSupabaseClient();
+          const supabase = await withDeadline(getSupabaseClient(), 5_000);
           const {
             data: { session },
-          } = await supabase.auth.getSession();
+          } = await withDeadline(supabase.auth.getSession(), 5_000);
 
           if (session?.access_token) {
             applyToken(session.access_token);
             if (!cancelled) setSessionLoading(false);
             void loadProfile(session.access_token).catch(() => undefined);
-          } else {
-            const saved = localStorage.getItem(AUTH_TOKEN_KEY);
-            if (saved?.startsWith('dev:')) {
-              applyToken(saved);
-              if (!cancelled) setSessionLoading(false);
-              void loadProfile(saved).catch(() => undefined);
-            }
+          } else if (!saved && !cancelled) {
+            setSessionLoading(false);
           }
 
           if (cancelled) return;
@@ -140,14 +163,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return () => subscription.unsubscribe();
         }
 
-        const saved = localStorage.getItem(AUTH_TOKEN_KEY);
-        if (saved) {
-          applyToken(saved);
-          if (!cancelled) setSessionLoading(false);
-          void loadProfile(saved).catch(() => undefined);
+        if (!saved && !cancelled) setSessionLoading(false);
+      } catch (initError) {
+        if (!cancelled && !saved) {
+          setSessionError(
+            initError instanceof Error
+              ? initError.message
+              : 'Unable to restore your session. Please try again.',
+          );
         }
-      } catch {
-        clearSession();
       } finally {
         if (!cancelled) setSessionLoading(false);
       }
@@ -158,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       void cleanupPromise.then((cleanup) => cleanup?.());
     };
-  }, [applyToken, loadProfile, clearSession]);
+  }, [applyToken, loadProfile, clearSession, sessionAttempt]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -225,11 +249,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileLoading,
       passwordRecovery,
       error,
+      sessionError,
       login,
       loginDev,
       requestPasswordReset,
       updatePassword,
       logout,
+      retrySession,
     }),
     [
       user,
@@ -238,15 +264,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileLoading,
       passwordRecovery,
       error,
+      sessionError,
       login,
       loginDev,
       requestPasswordReset,
       updatePassword,
       logout,
+      retrySession,
     ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+async function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeout: number | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = window.setTimeout(
+      () => reject(new Error('Session restoration timed out. Please try again.')),
+      timeoutMs,
+    );
+  });
+
+  try {
+    return await Promise.race([promise, deadline]);
+  } finally {
+    if (timeout) window.clearTimeout(timeout);
+  }
 }
 
 export function useAuth() {

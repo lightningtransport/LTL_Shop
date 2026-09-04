@@ -8,8 +8,11 @@ export default defineConfig({
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
     trace: 'on-first-retry',
-    ...devices['iPhone 13'],
   },
+  projects: [
+    { name: 'mobile-chromium', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
+    { name: 'mobile-webkit', use: { ...devices['iPhone 13'], browserName: 'webkit' } },
+  ],
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
     ? undefined
     : {

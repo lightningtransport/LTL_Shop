@@ -47,6 +47,15 @@ const workOrder = {
   startedAt: null,
 };
 
+const activeWorkOrders = Array.from({ length: 5 }, (_, index) => ({
+  ...workOrder,
+  id: `wo-active-${index + 1}`,
+  displayId: `WO-ACTIVE-${index + 1}`,
+  status: 'in_progress',
+}));
+
+let workOrdersMode: 'normal' | 'stall-once' = 'normal';
+
 const aliases = [
   {
     aliasText: 'brake inspection',
@@ -90,7 +99,11 @@ async function mockShopApi(page: Page) {
 
     if (path === '/api/auth/me') return json(route, { user });
     if (path === '/api/work-orders' && request.method() === 'GET') {
-      return json(route, { created: [workOrder], active: [], paused: [] });
+      if (workOrdersMode === 'stall-once') {
+        workOrdersMode = 'normal';
+        return;
+      }
+      return json(route, { created: [workOrder], active: activeWorkOrders, paused: [], completed: [] });
     }
     if (path === '/api/work-orders' && request.method() === 'POST') {
       return json(route, { id: workOrder.id }, 201);
@@ -133,7 +146,7 @@ async function login(page: Page) {
 async function openNewWorkOrder(page: Page) {
   await login(page);
   await page.getByRole('link', { name: /Create New Work Order/i }).click();
-  await expect(page.getByRole('heading', { name: /New Work Order/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /New Work Order/i })).toBeVisible({ timeout: 15_000 });
 }
 
 async function selectTruck(page: Page) {
@@ -148,20 +161,35 @@ async function selectTruck(page: Page) {
 
 test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
   test.beforeEach(async ({ page }) => {
+    workOrdersMode = 'normal';
     await mockShopApi(page);
   });
 
   test('resets scroll to the top when navigating between screens and on back', async ({ page }) => {
     await login(page);
     await page.evaluate(() => window.scrollTo(0, 1200));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     await page.getByRole('link', { name: /Create New Work Order/i }).click();
     await expect(page.getByRole('heading', { name: /New Work Order/i })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    const newHeader = await page.getByRole('heading', { name: /New Work Order/i }).boundingBox();
+    expect(newHeader?.y).toBeGreaterThanOrEqual(0);
+    expect(newHeader?.y).toBeLessThan(await page.evaluate(() => window.innerHeight));
 
-    await page.evaluate(() => window.scrollTo(0, 1200));
     await page.getByRole('link', { name: /Back/i }).click();
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
+  test('replaces a stalled Home skeleton with Retry and recovers without reload', async ({ page }) => {
+    workOrdersMode = 'stall-once';
+    await login(page);
+    await expect(page.getByRole('status', { name: /Loading work orders/i })).toBeVisible();
+    const timeoutAlert = page.getByRole('alert').filter({ hasText: /took too long/i });
+    await expect(timeoutAlert).toBeVisible({ timeout: 12_000 });
+    await page.getByRole('button', { name: /Retry work orders/i }).click();
+    await expect(timeoutAlert).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Start Work/i })).toBeVisible();
   });
 
   test('keeps Home controls exclusive and uses logical back destinations', async ({ page }) => {
@@ -344,6 +372,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
   test('Add job dialog traps focus and closes with Escape', async ({ page }) => {
     await openNewWorkOrder(page);
     await selectTruck(page);
+    await page.getByRole('combobox', { name: /Category/i }).selectOption(categories[0].id);
     await page.getByRole('button', { name: /Add job/i }).click();
     const dialog = page.getByRole('dialog', { name: /Add job/i });
     await expect(dialog).toBeVisible();

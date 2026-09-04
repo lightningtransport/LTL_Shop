@@ -576,6 +576,29 @@ export function PageSkeleton({ label = 'Loading page' }: { label?: string }) {
   );
 }
 
+export function LoadFailure({
+  message = 'Unable to load this screen.',
+  onRetry,
+  retryLabel = 'Retry',
+}: {
+  message?: string;
+  onRetry: () => void;
+  retryLabel?: string;
+}) {
+  return (
+    <div
+      className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+      role="alert"
+      aria-live="assertive"
+    >
+      <p>{message}</p>
+      <button type="button" className="btn-secondary mt-3 w-full" onClick={onRetry}>
+        {retryLabel}
+      </button>
+    </div>
+  );
+}
+
 export function CardListSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="animate-pulse space-y-3" aria-hidden="true">
