@@ -55,6 +55,7 @@ const activeWorkOrders = Array.from({ length: 5 }, (_, index) => ({
 }));
 
 let workOrdersMode: 'normal' | 'stall-once' = 'normal';
+let profileBarrier: Promise<void> | null = null;
 
 const aliases = [
   {
@@ -97,7 +98,10 @@ async function mockShopApi(page: Page) {
     const url = new URL(request.url());
     const path = url.pathname;
 
-    if (path === '/api/auth/me') return json(route, { user });
+    if (path === '/api/auth/me') {
+      if (profileBarrier) await profileBarrier;
+      return json(route, { user });
+    }
     if (path === '/api/work-orders' && request.method() === 'GET') {
       if (workOrdersMode === 'stall-once') {
         workOrdersMode = 'normal';
@@ -162,7 +166,25 @@ async function selectTruck(page: Page) {
 test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
   test.beforeEach(async ({ page }) => {
     workOrdersMode = 'normal';
+    profileBarrier = null;
     await mockShopApi(page);
+  });
+
+  test('finishes login initialization before navigating to Home', async ({ page }) => {
+    let releaseProfile!: () => void;
+    profileBarrier = new Promise<void>((resolve) => {
+      releaseProfile = resolve;
+    });
+
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole('status', { name: /Restoring session/i })).toBeVisible();
+
+    releaseProfile();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('link', { name: /Create New Work Order/i })).toBeVisible();
+    await expect(page.getByRole('status', { name: /Loading work orders/i })).toBeHidden();
   });
 
   test('resets scroll to the top when navigating between screens and on back', async ({ page }) => {

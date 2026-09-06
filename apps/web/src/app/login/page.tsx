@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { AuthBrandHeader, LoadFailure, PageSkeleton } from '@/components/ui';
@@ -15,14 +15,25 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const navigationStarted = useRef(false);
 
   useEffect(() => {
     if (passwordRecovery) {
       window.location.replace(`/reset-password${window.location.hash}`);
       return;
     }
-    if (!sessionLoading && token) router.replace('/', { scroll: true });
-  }, [passwordRecovery, sessionLoading, token, router]);
+    if (
+      !busy &&
+      !error &&
+      !sessionError &&
+      !sessionLoading &&
+      token &&
+      !navigationStarted.current
+    ) {
+      navigationStarted.current = true;
+      router.replace('/', { scroll: true });
+    }
+  }, [passwordRecovery, busy, error, sessionError, sessionLoading, token, router]);
 
   if (sessionLoading || token) {
     return <PageSkeleton label="Restoring session" />;
@@ -34,6 +45,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(email, password);
+      navigationStarted.current = true;
       router.replace('/', { scroll: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
@@ -47,6 +59,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await loginDev(email);
+      navigationStarted.current = true;
       router.replace('/', { scroll: true });
     } catch (err) {
       setError(
