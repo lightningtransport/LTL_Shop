@@ -1,7 +1,15 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { loadCanonicalPmParts, PM_PART_CATEGORIES } from './pm-parts';
 
-const prisma = new PrismaClient();
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required to run the Prisma seed.');
+}
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: databaseUrl }),
+});
 
 function norm(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]/g, '');
