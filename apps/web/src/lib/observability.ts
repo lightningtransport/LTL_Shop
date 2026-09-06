@@ -1,6 +1,7 @@
 /** Lightweight, explicit browser telemetry. Never send request bodies, tokens, or IDs. */
 
 import * as Sentry from '@sentry/nextjs';
+import { isSentryEnabled } from './sentry-environment';
 
 let posthogClient: { capture: (event: string, properties?: Record<string, unknown>) => void } | null = null;
 
@@ -19,10 +20,12 @@ export async function initBrowserObservability() {
 }
 
 export function captureException(error: unknown, context?: Record<string, unknown>) {
-  Sentry.withScope((scope) => {
-    if (context) scope.setContext('error_details', context);
-    Sentry.captureException(error);
-  });
+  if (isSentryEnabled('client')) {
+    Sentry.withScope((scope) => {
+      if (context) scope.setContext('error_details', context);
+      Sentry.captureException(error);
+    });
+  }
 
   if (process.env.NODE_ENV !== 'production') {
     console.error('[sentry]', error, context);
