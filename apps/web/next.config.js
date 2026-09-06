@@ -12,7 +12,9 @@ module.exports = withSentryConfig(nextConfig, {
   silent: !process.env.CI,
   widenClientFileUpload: true,
   sourcemaps: {
-    disable: process.env.SENTRY_SKIP_SOURCE_MAP_UPLOAD === '1',
+    disable:
+      process.env.VERCEL_ENV !== 'production' ||
+      process.env.SENTRY_SKIP_SOURCE_MAP_UPLOAD === '1',
   },
 
   webpack: {
