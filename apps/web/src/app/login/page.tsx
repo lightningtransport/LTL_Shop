@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { AuthBrandHeader, LoadFailure, PageSkeleton } from '@/components/ui';
 
 export default function LoginPage() {
-  const { login, loginDev, requestPasswordReset, passwordRecovery, token, sessionLoading, sessionError, retrySession } = useAuth();
+  const { login, loginDev, requestPasswordReset, logout, passwordRecovery, token, sessionLoading, sessionError, retrySession } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState(() =>
     process.env.NODE_ENV === 'production' ? '' : 'mechanic@lightning.local',
@@ -35,7 +35,7 @@ export default function LoginPage() {
     }
   }, [passwordRecovery, busy, error, sessionError, sessionLoading, token, router]);
 
-  if (sessionLoading || token) {
+  if (sessionLoading || (token && !sessionError)) {
     return <PageSkeleton label="Restoring session" />;
   }
 
@@ -92,8 +92,13 @@ export default function LoginPage() {
         subtitle="Sign in with the email linked to the Shop."
       />
       {sessionError ? (
-        <div className="mb-4">
+        <div className="mb-4 space-y-2">
           <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
+          {token ? (
+            <button type="button" className="btn-secondary w-full" onClick={() => void logout()}>
+              Use another account
+            </button>
+          ) : null}
         </div>
       ) : null}
       <form onSubmit={onSubmit} className="card space-y-4">

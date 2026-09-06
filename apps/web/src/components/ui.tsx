@@ -592,9 +592,9 @@ export function LoadFailure({
       aria-live="assertive"
     >
       <p>{message}</p>
-      <button type="button" className="btn-secondary mt-3 w-full" onClick={onRetry}>
+      <Button type="button" variant="secondary" className="mt-3 w-full" onClick={onRetry}>
         {retryLabel}
-      </button>
+      </Button>
     </div>
   );
 }

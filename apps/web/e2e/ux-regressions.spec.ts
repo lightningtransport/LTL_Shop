@@ -56,6 +56,7 @@ const activeWorkOrders = Array.from({ length: 5 }, (_, index) => ({
 
 let workOrdersMode: 'normal' | 'stall-once' = 'normal';
 let profileBarrier: Promise<void> | null = null;
+let profileMode: 'normal' | 'error' = 'normal';
 
 const aliases = [
   {
@@ -100,6 +101,7 @@ async function mockShopApi(page: Page) {
 
     if (path === '/api/auth/me') {
       if (profileBarrier) await profileBarrier;
+      if (profileMode === 'error') return json(route, { message: 'Profile unavailable' }, 503);
       return json(route, { user });
     }
     if (path === '/api/work-orders' && request.method() === 'GET') {
@@ -167,6 +169,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
   test.beforeEach(async ({ page }) => {
     workOrdersMode = 'normal';
     profileBarrier = null;
+    profileMode = 'normal';
     await mockShopApi(page);
   });
 
@@ -197,10 +200,53 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     const newHeader = await page.getByRole('heading', { name: /New Work Order/i }).boundingBox();
     expect(newHeader?.y).toBeGreaterThanOrEqual(0);
     expect(newHeader?.y).toBeLessThan(await page.evaluate(() => window.innerHeight));
+    await expect(page.locator('main')).toBeFocused();
 
     await page.getByRole('link', { name: /Back/i }).click();
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
+  test('opens query actions at the top and preserves dialog focus', async ({ page }) => {
+    const activeWorkOrder = activeWorkOrders[0];
+    await page.route(`**/api/work-orders/${activeWorkOrder.id}`, async (route) => {
+      return json(route, {
+        ...activeWorkOrder,
+        notes: null,
+        createdById: user.id,
+        completedAt: null,
+        totalActiveLaborMs: 1,
+        totalWaitingMs: 0,
+        mechanics: [],
+        currentPause: null,
+        truck,
+        version: 1,
+      });
+    });
+
+    await login(page);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await page.getByRole('link', { name: 'Pause Work' }).first().click();
+    await expect(page).toHaveURL(/\?action=pause$/);
+    const dialog = page.getByRole('dialog', { name: /Pause Work/i });
+    await expect(dialog).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    await expect
+      .poll(() => dialog.evaluate((node) => node.contains(document.activeElement)))
+      .toBe(true);
+  });
+
+  test('shows recovery actions when a saved session profile cannot be restored', async ({ page }) => {
+    profileMode = 'error';
+    await page.addInitScript(() => localStorage.setItem('ltl_shop_token', 'dev:mechanic@example.com'));
+    await page.goto('/login');
+
+    await expect(page.getByRole('alert').filter({ hasText: /Profile unavailable/i })).toBeVisible();
+    await expect(page.getByRole('status', { name: /Restoring session/i })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Use another account' }).click();
+    await expect(page.getByRole('button', { name: /Dev Login/i })).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('ltl_shop_token'))).toBeNull();
   });
 
   test('replaces a stalled Home skeleton with Retry and recovers without reload', async ({ page }) => {

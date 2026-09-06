@@ -211,7 +211,7 @@ export default function NewWorkOrderPage() {
   }
 
   return (
-    <div className={truck && !openWo ? 'pb-24' : undefined}>
+    <div className={truck && !openWo ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : undefined}>
       <ScreenHeader
         title={isPmMechanic ? 'New PM Service' : 'New Work Order'}
         subtitle={isPmMechanic ? 'Select a truck to create a PM service.' : 'Enter the required information. Creating saves the order; Start Work begins labor.'}
@@ -485,7 +485,7 @@ export default function NewWorkOrderPage() {
             </p>
           ) : null}
 
-          <div className="fixed inset-x-4 bottom-4 z-30 mx-auto max-w-md rounded-xl border border-shop-border bg-background/95 p-2 shadow-lg backdrop-blur">
+          <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto max-w-[calc(28rem-2rem)] rounded-xl border border-shop-border bg-background/95 p-2 shadow-lg backdrop-blur">
             <button
               type="button"
               className="btn-primary w-full"
