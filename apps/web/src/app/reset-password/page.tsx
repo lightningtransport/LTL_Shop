@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { AuthBrandHeader, PageSkeleton } from '@/components/ui';
+import { AuthBrandHeader, Button, Card, InlineAlert, Input, Label, PageSkeleton } from '@/components/ui';
 
 export default function ResetPasswordPage() {
   const { sessionLoading, token, updatePassword, logout } = useAuth();
@@ -43,14 +43,12 @@ export default function ResetPasswordPage() {
     return (
       <div>
         <AuthBrandHeader title="Password updated" subtitle="Sign in with your new password." />
-        <div className="card space-y-4">
+        <Card className="space-y-4">
           <p className="text-sm text-muted-foreground" role="status">
             Your password has been changed successfully.
           </p>
-          <Link className="btn-primary w-full" href="/login">
-            Back to sign in
-          </Link>
-        </div>
+          <Button asChild className="w-full"><Link href="/login">Back to sign in</Link></Button>
+        </Card>
       </div>
     );
   }
@@ -59,11 +57,9 @@ export default function ResetPasswordPage() {
     return (
       <div>
         <AuthBrandHeader title="Recovery link unavailable" subtitle="Request a new password-reset email and try again." />
-        <div className="card">
-          <Link className="btn-primary w-full" href="/login">
-            Back to sign in
-          </Link>
-        </div>
+        <Card>
+          <Button asChild className="w-full"><Link href="/login">Back to sign in</Link></Button>
+        </Card>
       </div>
     );
   }
@@ -71,14 +67,15 @@ export default function ResetPasswordPage() {
   return (
     <div>
       <AuthBrandHeader title="Set new password" subtitle="Choose a new password for your Shop account." />
-      <form onSubmit={onSubmit} className="card space-y-4">
+      <form onSubmit={onSubmit}>
+        <Card className="space-y-4">
         <div>
-          <label className="section-label" htmlFor="new-password">
+          <Label className="section-label" htmlFor="new-password">
             New password
-          </label>
-          <input
+          </Label>
+          <Input
             id="new-password"
-            className="field mt-2"
+            className="mt-2"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -88,12 +85,12 @@ export default function ResetPasswordPage() {
           />
         </div>
         <div>
-          <label className="section-label" htmlFor="confirm-password">
+          <Label className="section-label" htmlFor="confirm-password">
             Confirm new password
-          </label>
-          <input
+          </Label>
+          <Input
             id="confirm-password"
-            className="field mt-2"
+            className="mt-2"
             type="password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
@@ -103,17 +100,12 @@ export default function ResetPasswordPage() {
           />
         </div>
         {error ? (
-          <p
-            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200"
-            role="alert"
-            aria-live="assertive"
-          >
-            {error}
-          </p>
+          <InlineAlert>{error}</InlineAlert>
         ) : null}
-        <button className="btn-primary w-full" disabled={busy} type="submit">
+        <Button className="w-full" disabled={busy} type="submit">
           {busy ? 'Updating password…' : 'Update password'}
-        </button>
+        </Button>
+        </Card>
       </form>
     </div>
   );

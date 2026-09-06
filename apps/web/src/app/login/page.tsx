@@ -3,7 +3,16 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { AuthBrandHeader, LoadFailure, PageSkeleton } from '@/components/ui';
+import {
+  AuthBrandHeader,
+  Button,
+  Card,
+  InlineAlert,
+  Input,
+  Label,
+  LoadFailure,
+  PageSkeleton,
+} from '@/components/ui';
 
 export default function LoginPage() {
   const { login, loginDev, requestPasswordReset, logout, passwordRecovery, token, sessionLoading, sessionError, retrySession } = useAuth();
@@ -95,20 +104,21 @@ export default function LoginPage() {
         <div className="mb-4 space-y-2">
           <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
           {token ? (
-            <button type="button" className="btn-secondary w-full" onClick={() => void logout()}>
+            <Button variant="secondary" className="w-full" onClick={() => void logout()}>
               Use another account
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : null}
-      <form onSubmit={onSubmit} className="card space-y-4">
+      <form onSubmit={onSubmit}>
+        <Card className="space-y-4">
         <div>
-          <label className="section-label" htmlFor="login-email">
+          <Label className="section-label" htmlFor="login-email">
             Email
-          </label>
-          <input
+          </Label>
+          <Input
             id="login-email"
-            className="field mt-2"
+            className="mt-2"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -117,12 +127,12 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="section-label" htmlFor="login-password">
+          <Label className="section-label" htmlFor="login-password">
             Password
-          </label>
-          <input
+          </Label>
+          <Input
             id="login-password"
-            className="field mt-2"
+            className="mt-2"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -131,40 +141,35 @@ export default function LoginPage() {
           />
         </div>
         {error ? (
-          <p
-            className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            role="alert"
-            aria-live="assertive"
-          >
-            {error}
-          </p>
+          <InlineAlert>{error}</InlineAlert>
         ) : null}
-        <button className="btn-primary w-full" disabled={busy} type="submit">
+        <Button className="w-full" disabled={busy} type="submit">
           Sign In
-        </button>
-        <button
-          type="button"
-          className="btn-secondary w-full"
+        </Button>
+        <Button
+          variant="secondary"
+          className="w-full"
           disabled={busy}
           onClick={onForgotPassword}
         >
           Reset password
-        </button>
+        </Button>
         {resetSent ? (
           <p className="text-sm text-muted-foreground" role="status">
             If this email has an account, a password-reset link has been sent.
           </p>
         ) : null}
         {process.env.NODE_ENV !== 'production' ? (
-          <button
-            type="button"
-            className="btn-secondary w-full"
+          <Button
+            variant="secondary"
+            className="w-full"
             disabled={busy}
             onClick={onDevLogin}
           >
             Dev Login (local bypass)
-          </button>
+          </Button>
         ) : null}
+        </Card>
       </form>
     </div>
   );

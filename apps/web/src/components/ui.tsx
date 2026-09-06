@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -141,6 +141,24 @@ export const CardFooter = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => <div ref={ref} className={cn('mt-4 flex items-center', className)} {...props} />);
 CardFooter.displayName = 'CardFooter';
+
+export function InlineAlert({
+  children,
+  className,
+}: React.HTMLAttributes<HTMLParagraphElement>) {
+  return (
+    <p
+      className={cn(
+        'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive',
+        className,
+      )}
+      role="alert"
+      aria-live="assertive"
+    >
+      {children}
+    </p>
+  );
+}
 
 const badgeVariants = cva(
   'inline-flex min-h-6 items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
@@ -466,6 +484,7 @@ export function HomeTopBar() {
   return (
     <header
       className="mb-5 flex items-start justify-between gap-3"
+      role="banner"
       aria-label="Home controls"
     >
       <Image
