@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
-import { EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui';
+import { Button, Card, EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui';
 
 export default function RepairHistoryPage() {
   const { token, sessionLoading } = useAuth();
@@ -52,14 +52,14 @@ export default function RepairHistoryPage() {
         backLabel={backLabel}
       />
 
-      <section className="card mb-4 text-sm">
+      <Card className="mb-4 text-sm">
         <p>
           {truck.make} | {truck.model} | {truck.year}
         </p>
         <p className="text-shop-muted">
           {formatMileage(truck.mileage)} | {truck.company} | {truck.owner}
         </p>
-      </section>
+      </Card>
 
       <div
         className="mb-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-2"
@@ -134,17 +134,14 @@ function FilterChip({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
       onClick={onClick}
       aria-pressed={active}
-      className={
-        active
-          ? 'btn-primary whitespace-nowrap px-3 py-2 text-xs'
-          : 'btn-secondary whitespace-nowrap px-3 py-2 text-xs'
-      }
+      variant={active ? 'default' : 'secondary'}
+      size="sm"
+      className="min-h-11 whitespace-nowrap"
     >
       {label}
-    </button>
+    </Button>
   );
 }

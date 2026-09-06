@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
@@ -51,13 +52,15 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <PathScrollReset />
+          <Suspense fallback={null}>
+            <PathScrollReset />
+          </Suspense>
           <ObservabilityProvider />
           <AuthProvider>
             <DataProvider>
-              <div className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-6">
+              <main id="main-content" tabIndex={-1} className="app-shell">
                 {children}
-              </div>
+              </main>
             </DataProvider>
           </AuthProvider>
         </ThemeProvider>

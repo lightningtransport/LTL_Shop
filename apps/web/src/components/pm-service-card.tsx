@@ -5,7 +5,7 @@ import type { PmServiceDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
 import { shopKeys, usePmService } from '@/lib/shop-data';
-import { Card, Input, Label, Select } from '@/components/ui';
+import { Button, Card, Input, Label, Select } from '@/components/ui';
 
 export type PmDraftState = {
   ready: boolean;
@@ -231,7 +231,7 @@ export function PmServiceCard({
         {saveError ? (
           <span className="text-destructive" role="alert">
             {saveError}{' '}
-            <button className="underline" type="button" onClick={() => persist(draft)}>Retry</button>
+            <Button variant="ghost" className="px-1 underline" onClick={() => persist(draft)}>Retry</Button>
           </span>
         ) : null}
       </div>

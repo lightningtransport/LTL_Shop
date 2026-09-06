@@ -20,7 +20,20 @@ import {
   useTrucks,
   type Mechanic,
 } from '@/lib/shop-data';
-import { CardListSkeleton, EmptyState, LoadFailure, Modal, PageSkeleton, ScreenHeader } from '@/components/ui';
+import {
+  Button,
+  CardListSkeleton,
+  EmptyState,
+  InlineAlert,
+  Input,
+  Label,
+  LoadFailure,
+  Modal,
+  PageSkeleton,
+  ScreenHeader,
+  Select,
+  Textarea,
+} from '@/components/ui';
 import { JobPickerDialog } from '@/components/job-picker-dialog';
 
 type DraftJob = {
@@ -211,7 +224,7 @@ export default function NewWorkOrderPage() {
   }
 
   return (
-    <div className={truck && !openWo ? 'pb-24' : undefined}>
+    <div className={truck && !openWo ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : undefined}>
       <ScreenHeader
         title={isPmMechanic ? 'New PM Service' : 'New Work Order'}
         subtitle={isPmMechanic ? 'Select a truck to create a PM service.' : 'Enter the required information. Creating saves the order; Start Work begins labor.'}
@@ -219,13 +232,12 @@ export default function NewWorkOrderPage() {
       />
 
       <section className="card mb-4 space-y-3">
-        <label className="section-label" htmlFor="truck-search">
+        <Label className="section-label" htmlFor="truck-search">
           Truck
-        </label>
+        </Label>
         <div className="relative">
-          <input
+          <Input
             id="truck-search"
-            className="field"
             placeholder="Search Truck Number (e.g. #905)"
             value={query}
             role="combobox"
@@ -274,17 +286,17 @@ export default function NewWorkOrderPage() {
             >
               {results.map((t) => (
                 <li key={t.id} role="presentation">
-                  <button
+                  <Button
                     id={`truck-result-${t.id}`}
-                    type="button"
                     role="option"
                     aria-selected={results[activeResult]?.id === t.id}
-                    className="min-h-11 w-full px-4 py-3 text-left text-sm hover:bg-shop-accent focus:bg-shop-accent"
+                    variant="ghost"
+                    className="w-full justify-start rounded-none px-4 py-3 text-left font-normal hover:bg-shop-accent focus:bg-shop-accent"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => void selectTruck(t)}
                   >
                     #{t.truckNumber} · {t.make} {t.model}
-                  </button>
+                  </Button>
                 </li>
               ))}
               {!results.length ? (
@@ -303,13 +315,13 @@ export default function NewWorkOrderPage() {
           </div>
         </div>
         {openWoCheck === 'error' && truck ? (
-          <button
-            type="button"
-            className="btn-secondary w-full"
+          <Button
+            variant="secondary"
+            className="w-full"
             onClick={() => void selectTruck(truck)}
           >
             Retry Work Order check
-          </button>
+          </Button>
         ) : null}
 
         <div>
@@ -328,12 +340,11 @@ export default function NewWorkOrderPage() {
                 <Info label="Company" value={truck.company} />
                 <Info label="Owner" value={truck.owner} />
               </div>
-              <Link
-                href={`/trucks/${truck.id}/history?from=${encodeURIComponent('/work-orders/new')}`}
-                className="btn-secondary w-full"
-              >
-                See Truck Repair History
-              </Link>
+              <Button asChild variant="secondary" className="w-full">
+                <Link href={`/trucks/${truck.id}/history?from=${encodeURIComponent('/work-orders/new')}`}>
+                  See Truck Repair History
+                </Link>
+              </Button>
             </div>
           )}
         </div>
@@ -352,12 +363,9 @@ export default function NewWorkOrderPage() {
             {openWo.displayId} · {openWo.status} · {openWo.jobsCompleted}/
             {openWo.jobsTotal}
           </p>
-          <Link
-            href={`/work-orders/${openWo.id}`}
-            className="btn-primary mt-3 w-full"
-          >
-            VIEW OPEN WORK ORDER
-          </Link>
+          <Button asChild className="mt-3 w-full">
+            <Link href={`/work-orders/${openWo.id}`}>VIEW OPEN WORK ORDER</Link>
+          </Button>
         </div>
       ) : null}
 
@@ -366,13 +374,12 @@ export default function NewWorkOrderPage() {
           {!isPmMechanic ? <section className="card mb-4 space-y-4">
             {!isPmMechanic ? (
               <div>
-                <label className="section-label" htmlFor="work-order-category">
+                <Label className="section-label" htmlFor="work-order-category">
                   Category
-                </label>
-                <div className="relative mt-2">
-                  <select
+                </Label>
+                <div className="mt-2">
+                  <Select
                     id="work-order-category"
-                    className="field appearance-none pr-11"
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
                   >
@@ -384,8 +391,7 @@ export default function NewWorkOrderPage() {
                         {c.name}
                       </option>
                     ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+                  </Select>
                 </div>
               </div>
             ) : null}
@@ -402,39 +408,40 @@ export default function NewWorkOrderPage() {
                       className="flex items-center justify-between rounded-xl border border-shop-border px-3 py-2 text-sm"
                     >
                       <span>{j.displayName}</span>
-                      <button
-                        type="button"
-                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-shop-muted hover:bg-shop-accent hover:text-primary-foreground"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-shop-muted hover:bg-shop-accent hover:text-primary-foreground"
                         aria-label={`Remove ${j.displayName}`}
                         onClick={() =>
                           setJobs((prev) => prev.filter((x) => x.key !== j.key))
                         }
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>
               )}
-              <button
+              <Button
                 ref={addJobTriggerRef}
-                type="button"
-                className="btn-secondary w-full"
+                variant="secondary"
+                className="w-full"
                 disabled={!categoryId}
                 onClick={() => setAddOpen(true)}
               >
                 Add job +
-              </button>
+              </Button>
             </div> : null}
 
             {!isPmMechanic ? <div>
               <p className="section-label" id="working-with-label">
                 Working With
               </p>
-              <button
+              <Button
                 ref={workingWithTriggerRef}
-                type="button"
-                className="field mt-2 flex items-center justify-between text-left"
+                variant="outline"
+                className="mt-2 w-full justify-between text-left font-normal"
                 aria-labelledby="working-with-label working-with-summary"
                 aria-haspopup="dialog"
                 onClick={() => setWorkingWithOpen(true)}
@@ -443,35 +450,32 @@ export default function NewWorkOrderPage() {
                   {selectedMechanicSummary(availableCoworkers, workingWith)}
                 </span>
                 <ChevronDown className="h-5 w-5 text-shop-muted" aria-hidden="true" />
-              </button>
+              </Button>
             </div> : null}
 
             {!isPmMechanic ? <div>
               <p className="section-label mb-2">Priority</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {Object.values(Priority).map((p) => (
-                  <button
+                  <Button
                     key={p}
-                    type="button"
                     aria-pressed={priority === p}
-                    className={
-                      priority === p ? 'btn-primary' : 'btn-secondary'
-                    }
+                    variant={priority === p ? 'default' : 'secondary'}
                     onClick={() => setPriority(p)}
                   >
                     {p.toUpperCase()}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div> : null}
 
             {!isPmMechanic ? <div>
-              <label className="section-label" htmlFor="work-order-notes">
+              <Label className="section-label" htmlFor="work-order-notes">
                 Notes (Optional)
-              </label>
-              <textarea
+              </Label>
+              <Textarea
                 id="work-order-notes"
-                className="field mt-2 min-h-24"
+                className="mt-2"
                 placeholder="Describe or add any information needed to perform the work"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -480,20 +484,17 @@ export default function NewWorkOrderPage() {
           </section> : null}
 
           {error ? (
-            <p className="mb-3 text-sm text-red-300" role="alert" aria-live="assertive">
-              {error}
-            </p>
+            <InlineAlert className="mb-3">{error}</InlineAlert>
           ) : null}
 
-          <div className="fixed inset-x-4 bottom-4 z-30 mx-auto max-w-md rounded-xl border border-shop-border bg-background/95 p-2 shadow-lg backdrop-blur">
-            <button
-              type="button"
-              className="btn-primary w-full"
+          <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto max-w-[calc(28rem-2rem)] rounded-xl border border-shop-border bg-background/95 p-2 shadow-lg backdrop-blur">
+            <Button
+              className="w-full"
               disabled={createBlocked}
               onClick={create}
             >
               {createActionLabel}
-            </button>
+            </Button>
           </div>
         </>
       ) : null}
@@ -605,9 +606,9 @@ function WorkingWithModal({
           );
         })}
       </fieldset>
-      <button type="button" className="btn-primary mt-4 w-full" onClick={onClose}>
+      <Button className="mt-4 w-full" onClick={onClose}>
         Done
-      </button>
+      </Button>
     </Modal>
   );
 }

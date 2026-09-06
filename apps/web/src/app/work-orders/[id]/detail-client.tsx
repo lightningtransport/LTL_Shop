@@ -20,12 +20,18 @@ import {
   useWorkOrder,
 } from '@/lib/shop-data';
 import {
+  Button,
+  Card,
   EmptyState,
+  InlineAlert,
+  Label,
   LoadFailure,
   Modal,
   PageSkeleton,
   PriorityBadge,
   ScreenHeader,
+  Select,
+  Textarea,
 } from '@/components/ui';
 import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
 import { JobPickerDialog } from '@/components/job-picker-dialog';
@@ -176,9 +182,7 @@ export default function WorkOrderDetailPage() {
       </div>
 
       {error ? (
-        <p className="mb-3 text-sm text-red-300" role="alert" aria-live="assertive">
-          {error}
-        </p>
+        <InlineAlert className="mb-3">{error}</InlineAlert>
       ) : null}
 
       {wo.primaryCategoryName === 'PM' ? <PmServiceCard workOrderId={wo.id} /> : null}
@@ -186,9 +190,8 @@ export default function WorkOrderDetailPage() {
       <section className="mb-4 space-y-2">
         <p className="section-label">Work Options</p>
         {wo.status === 'created' ? (
-          <button
-            type="button"
-            className="btn-primary w-full"
+          <Button
+            className="w-full"
             disabled={busy}
             onClick={() =>
               run(() =>
@@ -199,28 +202,26 @@ export default function WorkOrderDetailPage() {
             }
           >
             Start Work
-          </button>
+          </Button>
         ) : null}
         {wo.status === 'in_progress' ? (
           <div className={todo.length ? 'grid grid-cols-2 gap-2' : undefined}>
-            {todo.length ? <button
+            {todo.length ? <Button
               ref={pauseTriggerRef}
-              type="button"
-              className="btn-secondary"
+              variant="secondary"
               disabled={busy}
               onClick={() => setPauseOpen(true)}
             >
               Pause Work
-            </button> : null}
-            <button
+            </Button> : null}
+            <Button
               ref={finishWorkTriggerRef}
-              type="button"
-              className="btn-primary w-full"
+              className="w-full"
               disabled={finishBlocked}
               onClick={() => setFinishOpen(true)}
             >
               Finish Work
-            </button>
+            </Button>
           </div>
         ) : null}
         {wo.status === 'in_progress' && todo.length > 0 ? (
@@ -229,9 +230,8 @@ export default function WorkOrderDetailPage() {
           </p>
         ) : null}
         {wo.status === 'waiting_paused' ? (
-          <button
-            type="button"
-            className="btn-primary w-full"
+          <Button
+            className="w-full"
             disabled={busy}
             onClick={() =>
               run(() =>
@@ -242,19 +242,17 @@ export default function WorkOrderDetailPage() {
             }
           >
             Resume Work
-          </button>
+          </Button>
         ) : null}
       </section>
 
       {wo.status === 'waiting_paused' ? (
         <section className="card mb-4 space-y-3">
-          <label className="section-label" htmlFor="change-pause-reason">
+          <Label className="section-label" htmlFor="change-pause-reason">
             Change Pause Reason
-          </label>
-          <div className="relative">
-            <select
+          </Label>
+          <Select
               id="change-pause-reason"
-              className="field appearance-none pr-11"
               value={changeReason || wo.currentPauseReason || ''}
               onChange={(e) => setChangeReason(e.target.value as PauseReason)}
             >
@@ -263,12 +261,10 @@ export default function WorkOrderDetailPage() {
                   {PAUSE_REASON_LABELS[r]}
                 </option>
               ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
-          </div>
-          <button
-            type="button"
-            className="btn-secondary w-full"
+          </Select>
+          <Button
+            variant="secondary"
+            className="w-full"
             disabled={busy}
             onClick={() =>
               run(() =>
@@ -282,14 +278,14 @@ export default function WorkOrderDetailPage() {
             }
           >
             Update Pause
-          </button>
+          </Button>
         </section>
       ) : null}
 
       <section className="card mb-4">
-        <button
-          type="button"
-          className="flex min-h-11 w-full items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shop-accent"
+        <Button
+          variant="ghost"
+          className="w-full justify-between px-0"
           onClick={() => setTruckOpen((v) => !v)}
           aria-expanded={truckOpen}
           aria-controls="truck-information-panel"
@@ -299,7 +295,7 @@ export default function WorkOrderDetailPage() {
             className={`h-5 w-5 transition-transform ${truckOpen ? 'rotate-180' : ''}`}
             aria-hidden="true"
           />
-        </button>
+        </Button>
         {truckOpen ? (
           <div id="truck-information-panel" className="mt-3 space-y-3">
             <div className="grid grid-cols-3 gap-2 text-sm">
@@ -310,12 +306,11 @@ export default function WorkOrderDetailPage() {
               <Info label="Company" value={wo.truck.company} />
               <Info label="Owner" value={wo.truck.owner} />
             </div>
-            <Link
-              href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}
-              className="btn-secondary w-full"
-            >
-              See Truck Repair History
-            </Link>
+            <Button asChild variant="secondary" className="w-full">
+              <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
+                See Truck Repair History
+              </Link>
+            </Button>
           </div>
         ) : null}
       </section>
@@ -328,9 +323,9 @@ export default function WorkOrderDetailPage() {
           <ul className="mb-3 space-y-2">
             {todo.map((job) => (
               <li key={job.id}>
-                <button
-                  type="button"
-                  className="card flex w-full items-center gap-3 text-left"
+                <Button
+                  variant="outline"
+                  className="h-auto w-full justify-start gap-3 p-4 text-left font-normal"
                   disabled={busy || wo.status !== 'in_progress'}
                   onClick={(event) => {
                     finishJobTriggerRef.current = event.currentTarget;
@@ -341,20 +336,20 @@ export default function WorkOrderDetailPage() {
                     ○
                   </span>
                   <span>{job.displayName}</span>
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
         )}
         {wo.status !== 'completed' && wo.status !== 'cancelled' ? (
-          <button
+          <Button
             ref={addJobTriggerRef}
-            type="button"
-            className="btn-secondary w-full"
+            variant="secondary"
+            className="w-full"
             onClick={() => setAddOpen(true)}
           >
             Add job +
-          </button>
+          </Button>
         ) : null}
       </section>
 
@@ -387,12 +382,12 @@ export default function WorkOrderDetailPage() {
           </div>
         ) : null}
         <div>
-          <label className="section-label" htmlFor="wo-notes">
+          <Label className="section-label" htmlFor="wo-notes">
             Notes
-          </label>
-          <textarea
+          </Label>
+          <Textarea
             id="wo-notes"
-            className="field mt-2 min-h-20"
+            className="mt-2"
             placeholder="Add notes (optional)"
             value={notes}
             onChange={(e) => {
@@ -401,9 +396,9 @@ export default function WorkOrderDetailPage() {
             }}
           />
           {notesDirty ? (
-            <button
-              type="button"
-              className="btn-secondary mt-2 w-full"
+            <Button
+              variant="secondary"
+              className="mt-2 w-full"
               disabled={busy}
               onClick={() =>
                 run(async () => {
@@ -420,7 +415,7 @@ export default function WorkOrderDetailPage() {
               }
             >
               Save Notes
-            </button>
+            </Button>
           ) : null}
         </div>
       </section>
@@ -433,16 +428,13 @@ export default function WorkOrderDetailPage() {
       >
         <p className="mb-4 text-lg">{finishJob?.name}</p>
         <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
+          <Button
+            variant="secondary"
             onClick={() => setFinishJob(null)}
           >
             Cancel
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
+          </Button>
+          <Button
             disabled={busy}
             onClick={() => {
               if (!finishJob) return;
@@ -479,7 +471,7 @@ export default function WorkOrderDetailPage() {
             }}
           >
             Complete Job
-          </button>
+          </Button>
         </div>
       </Modal>
 
@@ -494,16 +486,13 @@ export default function WorkOrderDetailPage() {
           All {wo.jobsTotal} {wo.jobsTotal === 1 ? 'job is' : 'jobs are'} complete. Finish this Work Order?
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
+          <Button
+            variant="secondary"
             onClick={() => setFinishOpen(false)}
           >
             Cancel
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
+          </Button>
+          <Button
             disabled={busy}
             onClick={() => {
               setFinishOpen(false);
@@ -518,7 +507,7 @@ export default function WorkOrderDetailPage() {
             }}
           >
             Finish Work
-          </button>
+          </Button>
         </div>
       </Modal>
 
@@ -528,13 +517,12 @@ export default function WorkOrderDetailPage() {
         onClose={() => setPauseOpen(false)}
         returnFocusRef={pauseTriggerRef}
       >
-        <label className="section-label mb-2 block" htmlFor="pause-reason">
+        <Label className="section-label mb-2 block" htmlFor="pause-reason">
           Pause reason
-        </label>
-        <div className="relative mb-3">
-          <select
+        </Label>
+        <div className="mb-3">
+          <Select
             id="pause-reason"
-            className="field appearance-none pr-11"
             value={pauseReason}
             onChange={(e) => setPauseReason(e.target.value as PauseReason)}
           >
@@ -544,17 +532,15 @@ export default function WorkOrderDetailPage() {
                 {PAUSE_REASON_LABELS[r]}
               </option>
             ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+          </Select>
         </div>
         {pauseReason === PauseReason.OTHER ? (
           <div className="mb-3">
-            <label className="section-label mb-2 block" htmlFor="pause-notes">
+            <Label className="section-label mb-2 block" htmlFor="pause-notes">
               Additional details
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               id="pause-notes"
-              className="field min-h-20"
               placeholder="Reason required for Other"
               value={pauseNotes}
               onChange={(e) => setPauseNotes(e.target.value)}
@@ -562,16 +548,13 @@ export default function WorkOrderDetailPage() {
           </div>
         ) : null}
         <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
+          <Button
+            variant="secondary"
             onClick={() => setPauseOpen(false)}
           >
             Cancel
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
+          </Button>
+          <Button
             disabled={!pauseReason || busy}
             onClick={() => {
               setPauseOpen(false);
@@ -587,7 +570,7 @@ export default function WorkOrderDetailPage() {
             }}
           >
             Pause Work
-          </button>
+          </Button>
         </div>
       </Modal>
 
@@ -712,7 +695,7 @@ function PmWorkOrderDetail({
         backHref="/"
       />
 
-      {error ? <p className="mb-3 text-sm text-destructive" role="alert">{error}</p> : null}
+      {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
       <section className="card mb-4 space-y-3" aria-labelledby="pm-truck-information">
         <h2 id="pm-truck-information" className="section-label">Truck Information</h2>
@@ -724,19 +707,17 @@ function PmWorkOrderDetail({
           <Info label="Company" value={wo.truck.company} />
           <Info label="Owner" value={wo.truck.owner} />
         </div>
-        <Link
-          href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}
-          className="btn-secondary w-full"
-        >
-          See Truck Repair History
-        </Link>
+        <Button asChild variant="secondary" className="w-full">
+          <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
+            See Truck Repair History
+          </Link>
+        </Button>
       </section>
 
       {wo.status === 'created' ? (
         <section className="mb-4">
-          <button
-            type="button"
-            className="btn-primary w-full"
+          <Button
+            className="w-full"
             disabled={busy}
             onClick={() =>
               run(() =>
@@ -747,7 +728,7 @@ function PmWorkOrderDetail({
             }
           >
             Start Work
-          </button>
+          </Button>
         </section>
       ) : (
         <PmServiceCard workOrderId={wo.id} onDraftStateChange={setDraft} />
@@ -755,23 +736,19 @@ function PmWorkOrderDetail({
 
       {wo.status === 'waiting_paused' ? (
         <section className="card mb-4 space-y-3">
-          <label className="section-label" htmlFor="pm-change-pause-reason">Change Pause Reason</label>
-          <div className="relative">
-            <select
+          <Label className="section-label" htmlFor="pm-change-pause-reason">Change Pause Reason</Label>
+          <Select
               id="pm-change-pause-reason"
-              className="field appearance-none pr-11"
               value={changeReason || wo.currentPauseReason || ''}
               onChange={(event) => setChangeReason(event.target.value as PauseReason)}
             >
               {Object.values(PauseReason).map((reason) => (
                 <option key={reason} value={reason}>{PAUSE_REASON_LABELS[reason]}</option>
               ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
-          </div>
-          <button
-            type="button"
-            className="btn-secondary w-full"
+          </Select>
+          <Button
+            variant="secondary"
+            className="w-full"
             disabled={busy}
             onClick={() => run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause-reason`, {
               method: 'POST',
@@ -779,15 +756,14 @@ function PmWorkOrderDetail({
             }))}
           >
             Update Pause
-          </button>
+          </Button>
         </section>
       ) : null}
 
       <section className="card mb-4 space-y-2">
-        <label className="section-label" htmlFor="pm-notes">Notes</label>
-        <textarea
+        <Label className="section-label" htmlFor="pm-notes">Notes</Label>
+        <Textarea
           id="pm-notes"
-          className="field min-h-20"
           placeholder="Add notes (optional)"
           disabled={wo.status === 'completed' || wo.status === 'cancelled'}
           value={notes}
@@ -799,7 +775,7 @@ function PmWorkOrderDetail({
           onBlur={() => void saveNotes()}
         />
         <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
-          {notesSaving ? 'Saving…' : notesError ? <><span className="text-destructive">{notesError} </span><button className="underline" type="button" onClick={() => void saveNotes()}>Retry</button></> : notesDirty ? 'Saving…' : 'Saved'}
+          {notesSaving ? 'Saving…' : notesError ? <><span className="text-destructive">{notesError} </span><Button variant="ghost" className="px-1 underline" onClick={() => void saveNotes()}>Retry</Button></> : notesDirty ? 'Saving…' : 'Saved'}
         </p>
       </section>
 
@@ -810,12 +786,12 @@ function PmWorkOrderDetail({
       <section className="mb-4 space-y-2" aria-label="PM work actions">
         {wo.status === 'in_progress' ? (
           <div className="grid grid-cols-2 gap-2">
-            <button ref={pauseTriggerRef} type="button" className="btn-secondary" disabled={busy} onClick={() => setPauseOpen(true)}>Pause Work</button>
-            <button type="button" className="btn-primary" disabled={finishBlocked} onClick={() => setFinishOpen(true)}>Finish Work</button>
+            <Button ref={pauseTriggerRef} variant="secondary" disabled={busy} onClick={() => setPauseOpen(true)}>Pause Work</Button>
+            <Button disabled={finishBlocked} onClick={() => setFinishOpen(true)}>Finish Work</Button>
           </div>
         ) : null}
         {wo.status === 'waiting_paused' ? (
-          <button type="button" className="btn-primary w-full" disabled={busy} onClick={() => run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/resume`, { method: 'POST' }))}>Resume Work</button>
+          <Button className="w-full" disabled={busy} onClick={() => run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/resume`, { method: 'POST' }))}>Resume Work</Button>
         ) : null}
         {wo.status === 'in_progress' && finishBlocked ? (
           <p className="text-sm text-muted-foreground">Finish Work requires a saved observed mileage and at least one part.</p>
@@ -829,38 +805,37 @@ function PmWorkOrderDetail({
             : 'This will complete the PM service.'}
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" className="btn-secondary" onClick={() => setFinishOpen(false)}>Cancel</button>
-          <button type="button" className="btn-primary" disabled={busy} onClick={() => {
+          <Button variant="secondary" onClick={() => setFinishOpen(false)}>Cancel</Button>
+          <Button disabled={busy} onClick={() => {
             setFinishOpen(false);
             void run(
               () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, { method: 'POST' }),
               () => router.replace('/', { scroll: true }),
             );
-          }}>Finish Work</button>
+          }}>Finish Work</Button>
         </div>
       </Modal>
 
       <Modal open={pauseOpen} title="PAUSE WORK ORDER" onClose={() => setPauseOpen(false)} returnFocusRef={pauseTriggerRef}>
-        <label className="section-label mb-2 block" htmlFor="pm-pause-reason">Pause reason</label>
-        <div className="relative mb-3">
-          <select id="pm-pause-reason" className="field appearance-none pr-11" value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
+        <Label className="section-label mb-2 block" htmlFor="pm-pause-reason">Pause reason</Label>
+        <div className="mb-3">
+          <Select id="pm-pause-reason" value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
             <option value="">Select an option</option>
             {Object.values(PauseReason).map((reason) => <option key={reason} value={reason}>{PAUSE_REASON_LABELS[reason]}</option>)}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-shop-muted" aria-hidden="true" />
+          </Select>
         </div>
         {pauseReason === PauseReason.OTHER ? (
-          <textarea className="field mb-3 min-h-20" placeholder="Reason required for Other" value={pauseNotes} onChange={(event) => setPauseNotes(event.target.value)} />
+          <Textarea className="mb-3" placeholder="Reason required for Other" value={pauseNotes} onChange={(event) => setPauseNotes(event.target.value)} />
         ) : null}
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" className="btn-secondary" onClick={() => setPauseOpen(false)}>Cancel</button>
-          <button type="button" className="btn-primary" disabled={!pauseReason || busy} onClick={() => {
+          <Button variant="secondary" onClick={() => setPauseOpen(false)}>Cancel</Button>
+          <Button disabled={!pauseReason || busy} onClick={() => {
             setPauseOpen(false);
             void run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause`, {
               method: 'POST',
               body: JSON.stringify({ reason: pauseReason, notes: pauseNotes || undefined }),
             }));
-          }}>Pause Work</button>
+          }}>Pause Work</Button>
         </div>
       </Modal>
     </div>
