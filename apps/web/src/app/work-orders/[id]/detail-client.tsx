@@ -52,6 +52,7 @@ export default function WorkOrderDetailPage() {
     id: string;
     name: string;
   } | null>(null);
+  const [finishOpen, setFinishOpen] = useState(false);
   const [pauseOpen, setPauseOpen] = useState(false);
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [pauseNotes, setPauseNotes] = useState('');
@@ -62,6 +63,7 @@ export default function WorkOrderDetailPage() {
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
   const addJobTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
+  const finishWorkTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!sessionLoading && !token) router.replace('/login');
@@ -211,18 +213,11 @@ export default function WorkOrderDetailPage() {
               Pause Work
             </button> : null}
             <button
+              ref={finishWorkTriggerRef}
               type="button"
               className="btn-primary w-full"
               disabled={finishBlocked}
-              onClick={() =>
-                run(() =>
-                  apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, {
-                  method: 'POST',
-                }),
-                undefined,
-                  () => router.replace('/', { scroll: true }),
-                )
-              }
+              onClick={() => setFinishOpen(true)}
             >
               Finish Work
             </button>
@@ -484,6 +479,45 @@ export default function WorkOrderDetailPage() {
             }}
           >
             Complete Job
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={finishOpen}
+        title="FINISH WORK ORDER"
+        onClose={() => setFinishOpen(false)}
+        returnFocusRef={finishWorkTriggerRef}
+      >
+        <p className="mb-2 text-lg">{wo.displayId} · Truck #{wo.truckNumber}</p>
+        <p className="mb-4 text-sm text-shop-muted">
+          All {wo.jobsTotal} {wo.jobsTotal === 1 ? 'job is' : 'jobs are'} complete. Finish this Work Order?
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setFinishOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busy}
+            onClick={() => {
+              setFinishOpen(false);
+              void run(
+                () =>
+                  apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, {
+                    method: 'POST',
+                  }),
+                undefined,
+                () => router.replace('/', { scroll: true }),
+              );
+            }}
+          >
+            Finish Work
           </button>
         </div>
       </Modal>
