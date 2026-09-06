@@ -11,7 +11,7 @@
     "dev:web": "npm run dev --workspace=@ltl-shop/web",
     "dev:api": "npm run dev --workspace=@ltl-shop/api",
     "build": "npm run build --workspaces --if-present",
-    "verify": "npm run lint && npm test && npm run build",
+    "verify": "npm run build:shared && npm run lint && npm test && npm run build",
     "test:e2e": "npm run test:e2e --workspace=@ltl-shop/web",
     "build:shared": "npm run build --workspace=@ltl-shop/shared",
     "test": "npm run test --workspaces --if-present",
