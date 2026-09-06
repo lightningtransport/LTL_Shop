@@ -18,7 +18,7 @@ import {
 } from '@/components/ui';
 
 export default function HomePage() {
-  const { token, sessionLoading, sessionError, retrySession } = useAuth();
+  const { user, token, sessionLoading, sessionError, retrySession } = useAuth();
   const router = useRouter();
   const { data, error, mutate } = useWorkOrders(!!token);
 
@@ -59,8 +59,13 @@ export default function HomePage() {
       />
 
       <Link href="/work-orders/new" className="btn-primary mb-6 w-full">
-        Create New Work Order
+        {user?.pmAuthorized ? 'Create PM Service' : 'Create New Work Order'}
       </Link>
+      {user?.pmAuthorized ? (
+        <p className="-mt-4 mb-6 text-center text-sm text-shop-muted">
+          PM services start immediately after creation.
+        </p>
+      ) : null}
 
       {error ? (
         <div className="mb-4">
@@ -101,7 +106,9 @@ export default function HomePage() {
               {data.active.length} active jobs
             </p>
             {!data.active.length ? (
-              <EmptyState>No active jobs.</EmptyState>
+              <EmptyState>
+                No active jobs. Create a Work Order, then Start Work to begin labor.
+              </EmptyState>
             ) : (
               <div className="space-y-3">
                 {data.active.map((wo) => (
@@ -117,7 +124,9 @@ export default function HomePage() {
               {data.paused.length} paused jobs
             </p>
             {!data.paused.length ? (
-              <EmptyState>No paused jobs.</EmptyState>
+              <EmptyState>
+                No paused jobs. Paused work will appear here until it is resumed.
+              </EmptyState>
             ) : (
               <div className="space-y-3">
                 {data.paused.map((wo) => (

@@ -423,6 +423,52 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(input).toHaveAttribute('aria-expanded', 'false');
   });
 
+  test('requires confirmation before finishing a standard Work Order', async ({ page }) => {
+    const completedJobs = {
+      ...workOrder,
+      status: 'in_progress',
+      jobsCompleted: 1,
+      jobs: [{ ...workOrder.jobs[0], status: 'completed' }],
+      startedAt: '2026-01-01T12:01:00.000Z',
+    };
+    let completeCalls = 0;
+
+    await page.route(`**/api/work-orders/${workOrder.id}`, async (route) => {
+      await json(route, {
+        ...completedJobs,
+        notes: null,
+        createdById: user.id,
+        completedAt: null,
+        totalActiveLaborMs: 1,
+        totalWaitingMs: 0,
+        mechanics: [],
+        currentPause: null,
+        truck,
+        version: 1,
+      });
+    });
+    await page.route(`**/api/work-orders/${workOrder.id}/complete`, async (route) => {
+      completeCalls += 1;
+      await json(route, { ...completedJobs, status: 'completed' });
+    });
+
+    await login(page);
+    await page.goto(`/work-orders/${workOrder.id}`);
+    await page.getByRole('button', { name: 'Finish Work' }).click();
+    const dialog = page.getByRole('dialog', { name: 'FINISH WORK ORDER' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/All 1 job is complete/i)).toBeVisible();
+    expect(completeCalls).toBe(0);
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toBeHidden();
+    expect(completeCalls).toBe(0);
+
+    await page.getByRole('button', { name: 'Finish Work' }).click();
+    await dialog.getByRole('button', { name: 'Finish Work', exact: true }).click();
+    await expect.poll(() => completeCalls).toBe(1);
+  });
+
   test('priority choices expose pressed state and form fields have labels', async ({ page }) => {
     await openNewWorkOrder(page);
     await selectTruck(page);

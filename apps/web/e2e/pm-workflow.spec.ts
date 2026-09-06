@@ -55,14 +55,14 @@ async function login(page: Page) {
 }
 
 async function chooseTruckAndCreate(page: Page) {
-  await page.getByRole('link', { name: /Create New PM Service|Create New Work Order/i }).click();
+  await page.getByRole('link', { name: /Create PM Service|Create New Work Order/i }).click();
   await expect(page.getByRole('heading', { name: /New PM Service|New Work Order/i })).toBeVisible();
   const input = page.getByRole('combobox', { name: /Truck/i }).first();
   await input.fill('905');
   await expect(page.getByRole('option', { name: /905/i }).first()).toBeVisible();
   await page.getByRole('option', { name: /905/i }).first().click();
-  await expect(page.getByRole('button', { name: /Create PM Work Order/i })).toBeEnabled();
-  await page.getByRole('button', { name: /Create PM Work Order/i }).click();
+  await expect(page.getByRole('button', { name: /Create PM Service/i })).toBeEnabled();
+  await page.getByRole('button', { name: /Create PM Service/i }).click();
 }
 
 test.describe('Daniel PM workflow', () => {
@@ -70,7 +70,8 @@ test.describe('Daniel PM workflow', () => {
     let createBody: Record<string, unknown> | undefined;
     await mockPmApi(page);
     await page.route('**/api/work-orders', async (route) => {
-      if (route.request().method() === 'POST') createBody = route.request().postDataJSON();
+      if (route.request().method() !== 'POST') return route.fallback();
+      createBody = route.request().postDataJSON();
       await fulfill(route, { id: woId }, 201);
     });
     await login(page);

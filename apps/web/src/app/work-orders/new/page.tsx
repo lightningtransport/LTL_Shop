@@ -88,6 +88,16 @@ export default function NewWorkOrderPage() {
 
   const hasSearchTerm = query.trim().replace(/^#/, '').length > 0;
   const resultsOpen = searchOpen && hasSearchTerm && !truck;
+  const createBlocked = busy || openWoCheck !== 'verified' || !categoryId || (!isPmMechanic && jobs.length === 0);
+  const createActionLabel = isPmMechanic
+    ? openWoCheck === 'checking'
+      ? 'Checking truck…'
+      : 'Create PM Service'
+    : !categoryId
+      ? 'Choose a category'
+      : jobs.length === 0
+        ? 'Add a job to continue'
+        : 'Create Work Order';
 
   useEffect(() => {
     setActiveResult(results.length ? 0 : -1);
@@ -201,10 +211,10 @@ export default function NewWorkOrderPage() {
   }
 
   return (
-    <div>
+    <div className={truck && !openWo ? 'pb-24' : undefined}>
       <ScreenHeader
         title={isPmMechanic ? 'New PM Service' : 'New Work Order'}
-        subtitle={isPmMechanic ? 'Select a truck to create a PM service.' : 'Enter the required information.'}
+        subtitle={isPmMechanic ? 'Select a truck to create a PM service.' : 'Enter the required information. Creating saves the order; Start Work begins labor.'}
         backHref="/"
       />
 
@@ -475,14 +485,16 @@ export default function NewWorkOrderPage() {
             </p>
           ) : null}
 
-          <button
-            type="button"
-            className="btn-primary w-full"
-            disabled={busy || openWoCheck !== 'verified'}
-            onClick={create}
-          >
-            {isPmMechanic ? 'Create PM Work Order' : 'Create Work Order'}
-          </button>
+          <div className="fixed inset-x-4 bottom-4 z-30 mx-auto max-w-md rounded-xl border border-shop-border bg-background/95 p-2 shadow-lg backdrop-blur">
+            <button
+              type="button"
+              className="btn-primary w-full"
+              disabled={createBlocked}
+              onClick={create}
+            >
+              {createActionLabel}
+            </button>
+          </div>
         </>
       ) : null}
 
