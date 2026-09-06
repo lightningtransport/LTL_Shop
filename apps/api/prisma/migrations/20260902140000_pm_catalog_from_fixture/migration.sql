@@ -5,7 +5,7 @@ CREATE TEMP TABLE pm_catalog_categories (
   slug TEXT NOT NULL,
   aliases TEXT[] NOT NULL,
   sort_order INTEGER NOT NULL
-) ON COMMIT DROP;
+);
 
 INSERT INTO pm_catalog_categories (name, slug, aliases, sort_order)
 SELECT name, slug, aliases, "sortOrder"
@@ -31,7 +31,7 @@ CREATE TEMP TABLE pm_catalog_parts (
   "partNumber" TEXT NOT NULL,
   "displayName" TEXT NOT NULL,
   fitments JSONB NOT NULL
-) ON COMMIT DROP;
+);
 
 INSERT INTO pm_catalog_parts (category, "partNumber", "displayName", fitments)
 SELECT category, "partNumber", "displayName", fitments
