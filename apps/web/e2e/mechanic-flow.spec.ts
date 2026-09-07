@@ -18,7 +18,7 @@ test.describe('Mechanic P0 critical path', () => {
     });
   });
 
-  test('restored session loads work orders without waiting for profile', async ({
+  test('restored session verifies current capabilities before loading work orders', async ({
     page,
   }) => {
     await page.goto('/login');
@@ -36,16 +36,21 @@ test.describe('Mechanic P0 critical path', () => {
       await route.continue();
     });
 
-    const workOrdersRequest = page.waitForRequest('**/api/work-orders');
-    await page.reload();
-    await workOrdersRequest;
-    await expect(
-      page.getByRole('link', { name: /Create New Work Order/i }),
-    ).toBeVisible();
-
+    let workOrdersRequested = false;
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/work-orders') workOrdersRequested = true;
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(250);
+    expect(workOrdersRequested).toBe(false);
+    const workOrdersRequest = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return url.pathname === '/api/work-orders' && url.searchParams.get('mode') === 'standard';
+    });
     const profileResponse = page.waitForResponse('**/api/auth/me');
     releaseProfile();
-    await profileResponse;
+    await Promise.all([profileResponse, workOrdersRequest]);
+    await expect(page.getByRole('link', { name: /Create New Work Order/i })).toBeVisible();
   });
 
   test('navigation reuses the fresh work-order cache', async ({ page }) => {
@@ -71,7 +76,7 @@ test.describe('Mechanic P0 critical path', () => {
       page.getByRole('heading', { name: /New Work Order/i }),
     ).toBeVisible();
     await page.getByRole('link', { name: /Back/i }).click();
-    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Standard Mechanic' })).toBeVisible();
     expect(workOrderReads).toBe(1);
   });
 
@@ -80,7 +85,7 @@ test.describe('Mechanic P0 critical path', () => {
     const workOrdersBlocked = new Promise<void>((resolve) => {
       releaseWorkOrders = resolve;
     });
-    await page.route('**/api/work-orders', async (route) => {
+    await page.route('**/api/work-orders?*', async (route) => {
       await workOrdersBlocked;
       await route.continue();
     });

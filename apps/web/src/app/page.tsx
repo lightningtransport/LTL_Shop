@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import type { WorkOrderSummaryDto } from '@ltl-shop/shared';
+import { usePathname, useRouter } from 'next/navigation';
+import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { useWorkOrders } from '@/lib/shop-data';
 import { pauseLabel, priorityLabel } from '@/lib/format';
+import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
   CardListSkeleton,
   EmptyState,
@@ -20,16 +21,29 @@ import {
 export default function HomePage() {
   const { user, token, sessionLoading, sessionError, retrySession } = useAuth();
   const router = useRouter();
-  const { data, error, mutate } = useWorkOrders(!!token);
+  const pathname = usePathname();
+  const mode = pathname === '/mechanic/pm'
+    ? MechanicMode.PM
+    : pathname === '/mechanic/standard'
+      ? MechanicMode.STANDARD
+      : null;
+  const requiredCapability = mode === MechanicMode.PM
+    ? AppCapability.MECHANIC_PM
+    : AppCapability.MECHANIC_STANDARD;
+  const hasWorkspaceAccess = !!mode && !!user?.capabilities.includes(requiredCapability);
+  const { data, error, mutate } = useWorkOrders(!!token && hasWorkspaceAccess, mode ?? undefined);
 
   useEffect(() => {
     if (!sessionLoading && !token && !sessionError) router.replace('/login');
-  }, [sessionLoading, token, sessionError, router]);
+    if (!sessionLoading && token && user && (!mode || !user.capabilities.includes(requiredCapability))) {
+      router.replace(defaultWorkspacePath(user));
+    }
+  }, [sessionLoading, token, sessionError, user, mode, requiredCapability, router]);
 
   if (sessionLoading && !token) {
     return (
       <div>
-        <HomeTopBar />
+        <HomeTopBar mode={mode ?? undefined} />
         <ScreenHeader title="Home" subtitle="Current jobs, work orders, and recent work." />
         <PageSkeleton label="Restoring session" />
       </div>
@@ -39,29 +53,31 @@ export default function HomePage() {
   if (!token && sessionError) {
     return (
       <div>
-        <HomeTopBar />
+        <HomeTopBar mode={mode ?? undefined} />
         <ScreenHeader title="Home" subtitle="Current jobs, work orders, and recent work." />
         <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
       </div>
     );
   }
 
-  if (!token) {
+  if (!token || !user || !mode || !hasWorkspaceAccess) {
     return <PageSkeleton label="Restoring session" />;
   }
 
+  const isPm = mode === MechanicMode.PM;
+
   return (
     <div>
-      <HomeTopBar />
+      <HomeTopBar mode={mode} />
       <ScreenHeader
-        title="Home"
-        subtitle="Current jobs, work orders, and recent work."
+        title={isPm ? 'PM Mechanic' : 'Standard Mechanic'}
+        subtitle={isPm ? 'PM services assigned to you.' : 'Standard Work Orders assigned to you.'}
       />
 
-      <Link href="/work-orders/new" className="btn-primary mb-6 w-full">
-        {user?.pmAuthorized ? 'Create PM Service' : 'Create New Work Order'}
+      <Link href={`/mechanic/${mode}/new`} className="btn-primary mb-6 w-full">
+        {isPm ? 'Create PM Service' : 'Create New Work Order'}
       </Link>
-      {user?.pmAuthorized ? (
+      {isPm ? (
         <p className="-mt-4 mb-6 text-center text-sm text-shop-muted">
           PM services start immediately after creation.
         </p>
@@ -107,7 +123,9 @@ export default function HomePage() {
             </p>
             {!data.active.length ? (
               <EmptyState>
-                No active jobs. Create a Work Order, then Start Work to begin labor.
+                {isPm
+                  ? 'No active PM services assigned to you.'
+                  : 'No active jobs. Create a Work Order, then Start Work to begin labor.'}
               </EmptyState>
             ) : (
               <div className="space-y-3">

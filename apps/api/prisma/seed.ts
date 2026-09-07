@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { AppCapability, PrismaClient } from '@prisma/client';
 import { loadCanonicalPmParts, PM_PART_CATEGORIES } from './pm-parts';
 
 const prisma = new PrismaClient();
@@ -65,6 +65,22 @@ async function main() {
     },
   });
 
+  const multiWorkspaceAdmins = [
+    { email: 'ibrain@ltransl.com', name: 'iBrain Admin' },
+    { email: 'cristian240588@hotmail.com', name: 'Cristian Perez' },
+  ];
+  for (const multiWorkspaceAdmin of multiWorkspaceAdmins) {
+    await prisma.user.upsert({
+      where: { email: multiWorkspaceAdmin.email },
+      update: { role: 'admin', active: true },
+      create: {
+        ...multiWorkspaceAdmin,
+        role: 'admin',
+        active: true,
+      },
+    });
+  }
+
   await prisma.user.upsert({
     where: { email: 'admin@lightning.local' },
     update: {},
@@ -75,6 +91,40 @@ async function main() {
       active: true,
     },
   });
+
+  const capabilityPlan: Array<{ email: string; capabilities: AppCapability[] }> = [
+    { email: 'mechanic@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
+    { email: 'anthony@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
+    { email: 'alejandro-2@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
+    { email: 'john@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
+    { email: 'elliot@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
+    { email: 'daniel@lightning.local', capabilities: [AppCapability.MECHANIC_PM] },
+    { email: 'manager@lightning.local', capabilities: [AppCapability.ADMIN_ACCESS] },
+    { email: 'admin@lightning.local', capabilities: [AppCapability.ADMIN_ACCESS] },
+    {
+      email: 'ibrain@ltransl.com',
+      capabilities: [
+        AppCapability.ADMIN_ACCESS,
+        AppCapability.MECHANIC_STANDARD,
+        AppCapability.MECHANIC_PM,
+      ],
+    },
+    {
+      email: 'cristian240588@hotmail.com',
+      capabilities: [
+        AppCapability.ADMIN_ACCESS,
+        AppCapability.MECHANIC_STANDARD,
+        AppCapability.MECHANIC_PM,
+      ],
+    },
+  ];
+  for (const entry of capabilityPlan) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: entry.email } });
+    await prisma.userCapability.deleteMany({ where: { userId: user.id } });
+    await prisma.userCapability.createMany({
+      data: entry.capabilities.map((capability) => ({ userId: user.id, capability })),
+    });
+  }
 
   const trucks = [
     {
@@ -225,6 +275,7 @@ async function main() {
     mechanic: mechanic.email,
     mechanic2: mechanic2.email,
     additionalMechanics: additionalMechanics.length,
+    multiWorkspaceAdmins: multiWorkspaceAdmins.map(({ email }) => email),
     trucks: trucks.map((t) => t.truckNumber),
     categories: categories.length,
     catalogJobs: catalog.length,

@@ -8,11 +8,14 @@ PRD.
 
 ### Shop Admin read-only operations
 
-- Active users with role `manager` or `admin` can enter the server-protected
-  `/admin` shell; a Mechanic receives a secure 403 response and no Admin data.
-- NestJS exposes reusable declarative RBAC through a roles decorator and guard.
-- Login redirects by verified application role, using the shared authentication
-  flow rather than a second Admin login.
+- Active users with `admin.access` can enter the server-protected `/admin`
+  shell; users without that capability receive a secure 403 response and no
+  Admin data.
+- NestJS exposes reusable declarative authorization through a capability
+  decorator and guard. Capabilities are read from application tables for each
+  authenticated request instead of editable user metadata or stale JWT claims.
+- The role still selects the initial destination. Login uses one shared
+  authentication flow, and users classified as Admin land on `/admin`.
 - `/admin` displays the current operational state from Supabase PostgreSQL with
   a generated-at timestamp and explicit `supabase_postgres` provenance. Its
   supported counts are open, Created, In Progress, Waiting/Paused,
@@ -31,7 +34,10 @@ PRD.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
-  Trucks, Mechanics, History, Catalog, administrative mutations, and Ninox data
+- The Admin dashboard offers capability-filtered Workspaces cards for Standard
+  Mechanic and PM Mechanic. Work performed there retains the signed-in user's
+  identity; it is not impersonation.
+- Trucks, Mechanics, History, Catalog, administrative mutations, and Ninox data
   remain deferred to later phases.
 
 ### Authentication and profile
@@ -43,12 +49,15 @@ PRD.
   production site URL. Local development preserves the current local origin.
 - The web app restores navigation at the top of the page, including Safari
   back/forward cache restoration.
+- `admin.access`, `mechanic.standard`, and `mechanic.pm` are persisted and
+  independently auditable. A role classifies a user but does not grant mechanic
+  mutation authority.
 
 ### Standard mechanic work orders
 
 - A mechanic selects a truck, a non-PM category, one or more jobs, optional
   collaborators, priority, and optional notes.
-- PM is not offered to a mechanic without PM authorization. Collaborators are
+- PM is not offered to a user without `mechanic.pm`. Collaborators are
   optional and never default to the work-order creator.
 - Jobs are selected through one shared picker in creation and detail screens.
   Catalog aliases search to one canonical result; a catalog job or normalized
@@ -58,10 +67,11 @@ PRD.
 - Finished work returns to Home and is available from the completed-work
   section. Active and paused work remain separate.
 
-### Daniel PM workflow
+### PM workflow
 
-`pmAuthorized` is a temporary capability; the current PM mechanic is Daniel.
-The capability—not a name or email—is the authorization check.
+`mechanic.pm` is the authorization check. Daniel remains PM-only, while an
+approved multi-workspace user may also perform PM work under their own identity.
+The legacy `pmAuthorized` column remains only for migration compatibility.
 
 1. Select a truck.
 2. Create PM Work Order. It starts immediately with one assigned PM mechanic
@@ -108,8 +118,8 @@ These are deliberately outside the current implementation:
    connect their Auth IDs to the existing application users.
 2. Perform a production smoke test with a real reset-password email and a real
    Safari mobile device.
-3. Replace `pmAuthorized` with a managed assignment policy that can assign
-   multiple mechanics to categories or individual jobs.
+3. Remove the compatibility-only `pmAuthorized` column after production
+   stability is confirmed; a general permission-management UI remains deferred.
 4. Continue Shop Admin with read-only Trucks, Mechanics, and History before
    adding administrative mutations.
 5. Integrate live Ninox data only after its adapter contract and write model

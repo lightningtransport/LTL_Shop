@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { UserDto } from '@ltl-shop/shared';
+import { AppCapability, type UserDto } from '@ltl-shop/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError, apiFetch, AUTH_TOKEN_KEY, setAuthToken } from './api';
 import { passwordResetRedirectUrl } from './site-url';
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }),
           ]);
           if (!serverSession.ok) {
-            if (res.user.role === 'manager' || res.user.role === 'admin') {
+            if (res.user.capabilities.includes(AppCapability.ADMIN_ACCESS)) {
               throw new Error('Unable to establish the secure application session.');
             }
           }

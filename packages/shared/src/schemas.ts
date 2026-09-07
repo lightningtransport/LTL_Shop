@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { PauseReason, Priority, WorkOrderStatus } from './enums';
+import { MechanicMode, PauseReason, Priority, WorkOrderStatus } from './enums';
+
+export const mechanicModeSchema = z.nativeEnum(MechanicMode);
 
 export const adminListQuerySchema = z.object({
   cursor: z.string().min(1).max(256).optional(),

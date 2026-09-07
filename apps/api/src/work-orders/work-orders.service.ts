@@ -6,7 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AppCapability,
   ActivityEventType,
+  MechanicMode,
   OPEN_WORK_ORDER_STATUSES,
   PauseReason,
   addJobSchema,
@@ -15,6 +17,7 @@ import {
   pauseWorkOrderSchema,
   updateWorkOrderNotesSchema,
   updatePmServiceSchema,
+  mechanicModeSchema,
   type CreateWorkOrderInput,
 } from '@ltl-shop/shared';
 import { Prisma } from '@prisma/client';
@@ -32,6 +35,7 @@ import {
   nextDisplayId,
 } from './work-order.timing';
 import type { AuthUser } from '../auth/auth.guard';
+import { hasCapability } from '../auth/capabilities';
 
 @Injectable()
 export class WorkOrdersService {
@@ -40,13 +44,33 @@ export class WorkOrdersService {
     private readonly activity: ActivityLogService,
   ) {}
 
-  async listForMechanic(userId: string) {
+  async listForMechanic(user: AuthUser, rawMode?: string) {
+    const parsedMode = rawMode === undefined ? null : mechanicModeSchema.safeParse(rawMode);
+    if (parsedMode && !parsedMode.success) {
+      throw new BadRequestException('Invalid mechanic workspace mode');
+    }
+    const mode = parsedMode?.success ? parsedMode.data : null;
+    const canStandard = hasCapability(user, AppCapability.MECHANIC_STANDARD);
+    const canPm = hasCapability(user, AppCapability.MECHANIC_PM);
+    if ((mode === MechanicMode.STANDARD && !canStandard) || (mode === MechanicMode.PM && !canPm)) {
+      throw new ForbiddenException('You do not have access to this mechanic workspace.');
+    }
+    if (!mode && !canStandard && !canPm) {
+      throw new ForbiddenException('You do not have access to a mechanic workspace.');
+    }
+
+    const categoryFilter = mode === MechanicMode.STANDARD || (!mode && canStandard && !canPm)
+      ? { name: { not: 'PM' } }
+      : mode === MechanicMode.PM || (!mode && canPm && !canStandard)
+        ? { name: 'PM' }
+        : undefined;
     const rows = await this.prisma.workOrder.findMany({
       where: {
         status: { in: ['created', 'in_progress', 'waiting_paused', 'completed'] },
+        ...(categoryFilter ? { primaryCategory: categoryFilter } : {}),
         OR: [
-          { createdById: userId },
-          { mechanics: { some: { mechanicId: userId, removedAt: null } } },
+          { createdById: user.id },
+          { mechanics: { some: { mechanicId: user.id, removedAt: null } } },
         ],
       },
       include: workOrderDetailInclude,
@@ -68,7 +92,7 @@ export class WorkOrdersService {
       include: workOrderDetailInclude,
     });
     if (!wo) throw new NotFoundException('Work Order not found');
-    this.assertPmReadAccess(user, wo.primaryCategory.name);
+    this.assertMechanicAccess(user, wo);
     return toWorkOrderDetail(wo);
   }
 
@@ -84,25 +108,13 @@ export class WorkOrdersService {
         where: { idempotencyKey: input.idempotencyKey },
         include: workOrderDetailInclude,
       });
-      if (existing) return toWorkOrderDetail(existing);
+      if (existing) {
+        this.assertMechanicAccess(user, existing);
+        return toWorkOrderDetail(existing);
+      }
     }
 
     this.assertNoDuplicateJobs(input.jobs);
-
-    const open = await this.prisma.workOrder.findFirst({
-      where: {
-        truckId: input.truckId,
-        status: { in: OPEN_WORK_ORDER_STATUSES },
-      },
-      include: workOrderDetailInclude,
-    });
-    if (open) {
-      throw new ConflictException({
-        code: 'OPEN_WORK_ORDER_EXISTS',
-        message: `Truck already has an open Work Order.`,
-        workOrder: toWorkOrderSummary(open),
-      });
-    }
 
     const truck = await this.prisma.truck.findUnique({
       where: { id: input.truckId },
@@ -114,31 +126,53 @@ export class WorkOrdersService {
     });
     if (!category) throw new BadRequestException('Invalid primary category');
 
-    if (user.pmAuthorized && category.name !== 'PM') {
-      throw new ForbiddenException('PM mechanics can only create PM Work Orders');
-    }
     const isPm = category.name === 'PM';
     if (isPm) {
-      this.assertPmMutationAccess(user);
+      this.assertCapability(user, AppCapability.MECHANIC_PM, 'PM mechanic');
       if (input.jobs.length) {
         throw new BadRequestException('PM Work Orders do not use jobs');
       }
       if (input.mechanicIds.some((id) => id !== user.id)) {
-        throw new BadRequestException('PM Work Orders can only be assigned to Daniel');
+        throw new BadRequestException('PM Work Orders can only be assigned to their creator');
       }
     } else if (!input.jobs.length) {
       throw new BadRequestException('At least one job is required for this Work Order');
-    } else if (input.mechanicIds.length) {
-      const selectedMechanics = await this.prisma.user.findMany({
-        where: { id: { in: input.mechanicIds }, active: true },
-        select: { id: true, pmAuthorized: true },
+    } else {
+      this.assertCapability(user, AppCapability.MECHANIC_STANDARD, 'standard mechanic');
+      if (!input.mechanicIds.length) {
+        // The creator is assigned below.
+      } else {
+        const selectedMechanics = await this.prisma.user.findMany({
+          where: {
+            id: { in: input.mechanicIds },
+            active: true,
+            capabilities: { some: { capability: 'MECHANIC_STANDARD' } },
+          },
+          select: { id: true },
+        });
+        if (selectedMechanics.length !== new Set(input.mechanicIds).size) {
+          throw new BadRequestException('One or more selected mechanics cannot perform standard work');
+        }
+      }
+    }
+
+    const open = await this.prisma.workOrder.findFirst({
+      where: {
+        truckId: input.truckId,
+        status: { in: OPEN_WORK_ORDER_STATUSES },
+      },
+      include: workOrderDetailInclude,
+    });
+    if (open) {
+      const openCapability = open.primaryCategory.name === 'PM'
+        ? AppCapability.MECHANIC_PM
+        : AppCapability.MECHANIC_STANDARD;
+      const canSeeOpenWorkOrder = hasCapability(user, openCapability) && this.isAssigned(user, open);
+      throw new ConflictException({
+        code: 'OPEN_WORK_ORDER_EXISTS',
+        message: 'Truck already has an open Work Order.',
+        ...(canSeeOpenWorkOrder ? { workOrder: toWorkOrderSummary(open) } : {}),
       });
-      if (selectedMechanics.length !== new Set(input.mechanicIds).size) {
-        throw new BadRequestException('One or more selected mechanics are unavailable');
-      }
-      if (selectedMechanics.some((mechanic) => mechanic.pmAuthorized)) {
-        throw new BadRequestException('PM mechanics cannot be assigned to standard Work Orders');
-      }
     }
 
     const mechanicIds = Array.from(
@@ -155,7 +189,7 @@ export class WorkOrdersService {
           displayId,
           truckId: input.truckId,
           primaryCategoryId: input.primaryCategoryId,
-          // A new PM service is work that Daniel starts immediately. Existing
+          // A new PM service starts immediately for its authorized creator. Existing
           // created PM orders remain startable through the legacy endpoint.
           status: isPm ? 'in_progress' : 'created',
           priority: isPm ? 'normal' : input.priority,
@@ -215,7 +249,7 @@ export class WorkOrdersService {
   async start(user: AuthUser, id: string) {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      this.assertMechanicAccess(user, wo);
       if (wo.status !== 'created') {
         throw new BadRequestException('Work Order can only be started from created status');
       }
@@ -254,7 +288,7 @@ export class WorkOrdersService {
 
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      this.assertMechanicAccess(user, wo);
       if (wo.status !== 'in_progress') {
         throw new BadRequestException('Only in-progress Work Orders can be paused');
       }
@@ -298,7 +332,7 @@ export class WorkOrdersService {
 
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      this.assertMechanicAccess(user, wo);
       if (wo.status !== 'waiting_paused') {
         throw new BadRequestException('Work Order is not paused');
       }
@@ -344,7 +378,7 @@ export class WorkOrdersService {
   async resume(user: AuthUser, id: string) {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      this.assertMechanicAccess(user, wo);
       if (wo.status !== 'waiting_paused') {
         throw new BadRequestException('Only paused Work Orders can be resumed');
       }
@@ -386,7 +420,7 @@ export class WorkOrdersService {
 
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      this.assertMechanicAccess(user, wo);
       const category = await tx.jobCategory.findUnique({
         where: { id: wo.primaryCategoryId },
         select: { name: true },
@@ -463,7 +497,7 @@ export class WorkOrdersService {
 
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      this.assertMechanicAccess(user, wo);
       const notes = parsed.data.notes?.trim() || null;
       const updated = await tx.workOrder.update({
         where: { id },
@@ -486,7 +520,7 @@ export class WorkOrdersService {
   async completeJob(user: AuthUser, workOrderId: string, jobId: string) {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, workOrderId);
-      await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      this.assertMechanicAccess(user, wo);
       const category = await tx.jobCategory.findUnique({
         where: { id: wo.primaryCategoryId },
         select: { name: true },
@@ -538,10 +572,11 @@ export class WorkOrdersService {
           truck: true,
           primaryCategory: true,
           pmService: { include: { parts: true } },
+          mechanics: true,
         },
       });
       if (!wo) throw new NotFoundException('Work Order not found');
-      await this.assertPmMutationForWorkOrder(tx, user, wo.primaryCategoryId);
+      this.assertMechanicAccess(user, wo);
       if (wo.status !== 'in_progress') {
         throw new BadRequestException('Work Order must be in progress to finish');
       }
@@ -623,11 +658,16 @@ export class WorkOrdersService {
   async getPmService(user: AuthUser, id: string) {
     const wo = await this.prisma.workOrder.findUnique({
       where: { id },
-      include: { truck: true, primaryCategory: true, pmService: { include: { parts: true } } },
+      include: {
+        truck: true,
+        primaryCategory: true,
+        pmService: { include: { parts: true } },
+        mechanics: true,
+      },
     });
     if (!wo) throw new NotFoundException('Work Order not found');
     if (wo.primaryCategory.name !== 'PM') throw new BadRequestException('Work Order is not a PM service');
-    this.assertPmReadAccess(user, wo.primaryCategory.name);
+    this.assertMechanicAccess(user, wo);
 
     const [categories, lastCompletedPm] = await Promise.all([
       this.prisma.partCategory.findMany({
@@ -658,7 +698,8 @@ export class WorkOrdersService {
     return {
       workOrderId: wo.id,
       canEdit:
-        user.pmAuthorized &&
+        hasCapability(user, AppCapability.MECHANIC_PM) &&
+        this.isAssigned(user, wo) &&
         ['in_progress', 'waiting_paused'].includes(wo.status),
       currentTruckMileage: wo.truck.mileage,
       observedMileage: wo.pmService?.observedMileage ?? null,
@@ -688,15 +729,14 @@ export class WorkOrdersService {
   async updatePmService(user: AuthUser, id: string, raw: unknown) {
     const parsed = updatePmServiceSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
-    this.assertPmMutationAccess(user);
-
     await this.prisma.$transaction(async (tx) => {
       const wo = await tx.workOrder.findUnique({
         where: { id },
-        include: { truck: true, primaryCategory: true },
+        include: { truck: true, primaryCategory: true, mechanics: true },
       });
       if (!wo) throw new NotFoundException('Work Order not found');
       if (wo.primaryCategory.name !== 'PM') throw new BadRequestException('Work Order is not a PM service');
+      this.assertMechanicAccess(user, wo);
       if (!['in_progress', 'waiting_paused'].includes(wo.status)) {
         throw new BadRequestException('Start or resume the PM Work Order before updating service details');
       }
@@ -732,23 +772,37 @@ export class WorkOrdersService {
     return this.getPmService(user, id);
   }
 
-  private assertPmReadAccess(user: AuthUser, categoryName: string) {
-    if (categoryName === 'PM' && !user.pmAuthorized && user.role !== 'admin') {
-      throw new ForbiddenException('PM Work Orders are available only to Daniel and administrators');
+  private assertCapability(user: AuthUser, capability: AppCapability, workspace: string) {
+    if (!hasCapability(user, capability)) {
+      throw new ForbiddenException(`You do not have access to the ${workspace} workspace.`);
     }
   }
 
-  private assertPmMutationAccess(user: AuthUser) {
-    if (!user.pmAuthorized) throw new ForbiddenException('Only Daniel can perform PM work');
+  private isAssigned(
+    user: AuthUser,
+    wo: { createdById: string; mechanics?: { mechanicId: string; removedAt: Date | null }[] },
+  ) {
+    return wo.createdById === user.id ||
+      !!wo.mechanics?.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt);
   }
 
-  private async assertPmMutationForWorkOrder(
-    tx: Prisma.TransactionClient,
+  private assertMechanicAccess(
     user: AuthUser,
-    categoryId: string,
+    wo: {
+      createdById: string;
+      primaryCategory: { name: string };
+      mechanics?: { mechanicId: string; removedAt: Date | null }[];
+    },
   ) {
-    const category = await tx.jobCategory.findUnique({ where: { id: categoryId }, select: { name: true } });
-    if (category?.name === 'PM') this.assertPmMutationAccess(user);
+    const isPm = wo.primaryCategory.name === 'PM';
+    this.assertCapability(
+      user,
+      isPm ? AppCapability.MECHANIC_PM : AppCapability.MECHANIC_STANDARD,
+      isPm ? 'PM mechanic' : 'standard mechanic',
+    );
+    if (!this.isAssigned(user, wo)) {
+      throw new ForbiddenException('This Work Order is not assigned to you.');
+    }
   }
 
   private async requireWo(

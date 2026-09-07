@@ -14,6 +14,12 @@ enum UserRole {
   admin
 }
 
+enum AppCapability {
+  ADMIN_ACCESS       @map("admin.access")
+  MECHANIC_STANDARD  @map("mechanic.standard")
+  MECHANIC_PM        @map("mechanic.pm")
+}
+
 enum WorkOrderStatus {
   created
   in_progress
@@ -94,8 +100,25 @@ model User {
   activityLogs          ActivityLog[]
   createdCatalogJobs    CatalogJob[]          @relation("CatalogJobCreatedBy")
   mileageAdjustments    TruckMileageAdjustment[]
+  capabilities          UserCapability[]          @relation("CapabilityUser")
+  capabilitiesGranted   UserCapability[]          @relation("CapabilityGrantor")
 
   @@map("users")
+}
+
+model UserCapability {
+  userId       String        @map("user_id") @db.Uuid
+  capability   AppCapability
+  grantedAt    DateTime      @default(now()) @map("granted_at")
+  grantedById  String?       @map("granted_by_id") @db.Uuid
+
+  user         User          @relation("CapabilityUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy    User?         @relation("CapabilityGrantor", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@id([userId, capability])
+  @@index([capability])
+  @@index([grantedById])
+  @@map("user_capabilities")
 }
 
 model Truck {

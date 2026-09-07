@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import useSWR from 'swr';
 import type {
+  AppCapability,
   JobAliasOptionDto,
   JobCategoryDto,
   PmServiceDto,
@@ -26,6 +27,7 @@ export type Mechanic = {
   email: string;
   role: string;
   pmAuthorized: boolean;
+  capabilities: AppCapability[];
 };
 
 export type RepairHistory = {
@@ -34,7 +36,8 @@ export type RepairHistory = {
 };
 
 export const shopKeys = {
-  workOrders: '/api/work-orders',
+  workOrders: (mode?: 'standard' | 'pm') =>
+    `/api/work-orders${mode ? `?mode=${mode}` : ''}`,
   workOrder: (id: string) => `/api/work-orders/${id}`,
   categories: '/api/catalog/categories',
   mechanics: '/api/mechanics',
@@ -51,8 +54,8 @@ export const shopKeys = {
     `shop:aliases:${categoryId || 'all'}`,
 };
 
-export function useWorkOrders(enabled: boolean) {
-  return useSWR<HomeLists>(enabled ? shopKeys.workOrders : null, {
+export function useWorkOrders(enabled: boolean, mode?: 'standard' | 'pm') {
+  return useSWR<HomeLists>(enabled ? shopKeys.workOrders(mode) : null, {
     dedupingInterval: 10_000,
     refreshInterval: 30_000,
   });

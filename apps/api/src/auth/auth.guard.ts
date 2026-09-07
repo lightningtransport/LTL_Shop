@@ -9,6 +9,8 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Request } from 'express';
 import { UserRole } from '@ltl-shop/shared';
+import type { AppCapability } from '@ltl-shop/shared';
+import { toSharedCapability } from './capabilities';
 
 export type AuthUser = {
   id: string;
@@ -17,6 +19,7 @@ export type AuthUser = {
   role: `${UserRole}`;
   active: boolean;
   pmAuthorized: boolean;
+  capabilities: AppCapability[];
   supabaseAuthId: string | null;
 };
 
@@ -102,11 +105,15 @@ export class AuthGuard implements CanActivate {
     email: string,
     supabaseAuthId: string | null,
   ): Promise<AuthUser> {
-    let user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    let user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      include: { capabilities: { select: { capability: true } } },
+    });
 
     if (!user && supabaseAuthId) {
       user = await this.prisma.user.findUnique({
         where: { supabaseAuthId },
+        include: { capabilities: { select: { capability: true } } },
       });
     }
 
@@ -120,6 +127,7 @@ export class AuthGuard implements CanActivate {
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: { supabaseAuthId },
+        include: { capabilities: { select: { capability: true } } },
       });
     }
 
@@ -130,6 +138,7 @@ export class AuthGuard implements CanActivate {
       role: user.role,
       active: user.active,
       pmAuthorized: user.pmAuthorized,
+      capabilities: user.capabilities.map(({ capability }) => toSharedCapability(capability)),
       supabaseAuthId: user.supabaseAuthId,
     };
   }
