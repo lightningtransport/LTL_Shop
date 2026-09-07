@@ -22,8 +22,8 @@ type AuthState = {
   passwordRecovery: boolean;
   error: string | null;
   sessionError: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  loginDev: (email: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<UserDto>;
+  loginDev: (email: string) => Promise<UserDto>;
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [sessionAttempt, setSessionAttempt] = useState(0);
-  const profileTokenRef = useRef<string | null>(null);
+  const profilePromiseRef = useRef<{ token: string; promise: Promise<UserDto> } | null>(null);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
@@ -74,7 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setProfileLoading(false);
     setPasswordRecovery(false);
-    profileTokenRef.current = null;
+    profilePromiseRef.current = null;
+    void fetch('/api/admin/session', { method: 'DELETE' }).catch(() => undefined);
   }, []);
 
   const retrySession = useCallback(() => {
@@ -90,29 +91,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadProfile = useCallback(
-    async (tok: string) => {
-      if (profileTokenRef.current === tok) return;
-      profileTokenRef.current = tok;
-      setProfileLoading(true);
-      applyToken(tok);
-      try {
-        const res = await apiFetch<{ user: UserDto }>('/api/auth/me');
-        setUser(res.user);
-      } catch (profileError) {
-        profileTokenRef.current = null;
-        if (profileError instanceof ApiError && [401, 403].includes(profileError.status)) {
-          clearSession();
-        } else {
-          setSessionError(
-            profileError instanceof Error
-              ? profileError.message
-              : 'Unable to restore your profile. Please try again.',
-          );
+    (tok: string): Promise<UserDto> => {
+      if (profilePromiseRef.current?.token === tok) return profilePromiseRef.current.promise;
+
+      const promise = (async () => {
+        setProfileLoading(true);
+        applyToken(tok);
+        try {
+          const [res, serverSession] = await Promise.all([
+            apiFetch<{ user: UserDto }>('/api/auth/me'),
+            fetch('/api/admin/session', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${tok}` },
+            }),
+          ]);
+          if (!serverSession.ok) {
+            if (res.user.role === 'manager' || res.user.role === 'admin') {
+              throw new Error('Unable to establish the secure application session.');
+            }
+          }
+          setUser(res.user);
+          return res.user;
+        } catch (profileError) {
+          profilePromiseRef.current = null;
+          if (profileError instanceof ApiError && [401, 403].includes(profileError.status)) {
+            clearSession();
+          } else {
+            setSessionError(
+              profileError instanceof Error
+                ? profileError.message
+                : 'Unable to restore your profile. Please try again.',
+            );
+          }
+          throw profileError;
+        } finally {
+          setProfileLoading(false);
         }
-        throw profileError;
-      } finally {
-        setProfileLoading(false);
-      }
+      })();
+
+      profilePromiseRef.current = { token: tok, promise };
+      return promise;
     },
     [applyToken, clearSession],
   );
@@ -207,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authError || !data.session) {
         throw new Error(authError?.message ?? 'Sign in failed');
       }
-      await loadProfile(data.session.access_token);
+      return loadProfile(data.session.access_token);
     },
     [loadProfile],
   );
@@ -215,7 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginDev = useCallback(
     async (email: string) => {
       setError(null);
-      await loadProfile(`dev:${email.toLowerCase()}`);
+      return loadProfile(`dev:${email.toLowerCase()}`);
     },
     [loadProfile],
   );

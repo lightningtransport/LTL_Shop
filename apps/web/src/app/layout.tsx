@@ -7,6 +7,7 @@ import { DataProvider } from '@/lib/data-provider';
 import { PathScrollReset } from '@/components/path-scroll-reset';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ObservabilityProvider } from '@/components/observability-provider';
+import { AppFrame } from '@/components/app-frame';
 
 const bodyFont = Inter({
   subsets: ['latin'],
@@ -55,9 +56,7 @@ export default function RootLayout({
           <ObservabilityProvider />
           <AuthProvider>
             <DataProvider>
-              <div className="mx-auto min-h-screen max-w-md px-4 pb-10 pt-6">
-                {children}
-              </div>
+              <AppFrame>{children}</AppFrame>
             </DataProvider>
           </AuthProvider>
         </ThemeProvider>

@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ['@ltl-shop/shared'],
+  experimental: {
+    authInterrupts: true,
+  },
 };
 
 const { withSentryConfig } = require('@sentry/nextjs/config');
