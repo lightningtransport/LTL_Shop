@@ -11,6 +11,7 @@ import { ActivityLogModule } from './activity-log/activity-log.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { HealthController } from './health.controller';
 import { RequestTimingInterceptor } from './observability/request-timing.interceptor';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { RequestTimingInterceptor } from './observability/request-timing.interce
     WorkOrdersModule,
     ActivityLogModule,
     IntegrationsModule,
+    AdminModule,
   ],
   controllers: [HealthController],
   providers: [

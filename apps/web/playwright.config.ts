@@ -15,7 +15,20 @@ export default defineConfig({
   ],
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
     ? undefined
-    : {
+    : process.env.ADMIN_E2E_FIXTURE
+      ? [
+          {
+            command: 'node e2e/fixtures/admin-api.mjs',
+            port: 3101,
+            reuseExistingServer: false,
+          },
+          {
+            command: 'NEXT_PUBLIC_API_URL=http://127.0.0.1:3101 next dev --hostname 127.0.0.1 --port 3010',
+            port: 3010,
+            reuseExistingServer: false,
+          },
+        ]
+      : {
         command: 'echo "Start pnpm dev separately for e2e"',
         port: 3000,
         reuseExistingServer: true,

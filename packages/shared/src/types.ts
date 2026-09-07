@@ -127,6 +127,18 @@ export interface ApiErrorDto {
   code?: string;
 }
 
+export interface AdminPage<T> {
+  items: T[];
+  nextCursor: string | null;
+  total?: number;
+}
+
+export interface AdminMutationMeta {
+  expectedVersion: number;
+  idempotencyKey: string;
+  reason?: string;
+}
+
 export interface PmPartDto {
   id: string;
   partNumber: string | null;

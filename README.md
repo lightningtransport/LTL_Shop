@@ -59,6 +59,7 @@ With `AUTH_DEV_BYPASS=true`, use **Dev Login** on `/login` with:
 - `mechanic@lightning.local`
 - `anthony@lightning.local`
 - `manager@lightning.local`
+- `admin@lightning.local`
 
 The local seed also includes `daniel@lightning.local` as the PM-authorized mechanic.
 
@@ -78,6 +79,7 @@ The local seed also includes `daniel@lightning.local` as the PM-authorized mecha
 | `apps/api` | REST API + domain logic |
 | `packages/shared` | Enums, DTOs, Zod contracts |
 | `apps/api/prisma` | Prisma schema, migrations, and local seed; this is the only migration source |
+| `/admin` | Server-authorized responsive shell for active Manager and Admin accounts |
 | `docs/PRD_Lightning_Shop_Mechanic_P0.md` | Full PRD |
 | `docs/CURRENT_PRODUCT_STATUS.md` | Implemented workflows, operating configuration, and explicit next steps |
 | `docs/pm-daniel.md` | PM authorization and future assignment-policy note |
