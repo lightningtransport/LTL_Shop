@@ -13,7 +13,7 @@ Greenfield monorepo for the Lightning Shop Mechanic Work Order experience.
 ## Locked product rules
 
 1. **Create Work Order ≠ Start Work.** Mechanic must tap **Start Work** to open the first work session and begin Active Labor.
-   - **PM exception:** a mechanic with `pmAuthorized` creates a PM service already in progress. The system assigns the PM mechanic, creates one work session, and records creation/start events atomically.
+   - **PM exception:** a user with `mechanic.pm` creates a PM service already in progress. The system assigns that user, creates one work session, and records creation/start events atomically.
 2. Timers are computed from persisted session / pause timestamps (never client-only counters).
 3. Completing a Job does not pause or finish the Work Order.
 4. One open Work Order per Truck.
@@ -61,7 +61,7 @@ With `AUTH_DEV_BYPASS=true`, use **Dev Login** on `/login` with:
 - `manager@lightning.local`
 - `admin@lightning.local`
 
-The local seed also includes `daniel@lightning.local` as the PM-authorized mechanic.
+The local seed also includes `daniel@lightning.local` with the PM-only capability.
 
 ### Supabase Auth (staging/production)
 
@@ -79,7 +79,9 @@ The local seed also includes `daniel@lightning.local` as the PM-authorized mecha
 | `apps/api` | REST API + domain logic |
 | `packages/shared` | Enums, DTOs, Zod contracts |
 | `apps/api/prisma` | Prisma schema, migrations, and local seed; this is the only migration source |
-| `/admin` | Server-authorized responsive shell for active Manager and Admin accounts |
+| `/admin` | Server-authorized responsive shell for users with `admin.access` |
+| `/mechanic/standard` | Standard mechanic workspace for users with `mechanic.standard` |
+| `/mechanic/pm` | PM mechanic workspace for users with `mechanic.pm` |
 | `docs/PRD_Lightning_Shop_Mechanic_P0.md` | Full PRD |
 | `docs/CURRENT_PRODUCT_STATUS.md` | Implemented workflows, operating configuration, and explicit next steps |
 | `docs/pm-daniel.md` | PM authorization and future assignment-policy note |
@@ -95,7 +97,8 @@ The local seed also includes `daniel@lightning.local` as the PM-authorized mecha
 - `GET /api/trucks/:id/open-work-order`
 - `GET /api/trucks/:id/repair-history`
 - `GET /api/catalog/categories|jobs`
-- `GET|POST /api/work-orders`
+- `GET /api/work-orders?mode=standard|pm`
+- `POST /api/work-orders`
 - `POST /api/work-orders/:id/start|pause|pause-reason|resume|complete`
 - `POST /api/work-orders/:id/jobs`
 - `POST /api/work-orders/:id/jobs/:jobId/complete`

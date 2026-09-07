@@ -1,4 +1,5 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { TrucksService } from './trucks.service';
 
@@ -23,8 +24,8 @@ export class TrucksController {
   }
 
   @Get(':id/open-work-order')
-  openWorkOrder(@Param('id') id: string) {
-    return this.trucks.getOpenWorkOrder(id);
+  openWorkOrder(@Req() request: Request, @Param('id') id: string) {
+    return this.trucks.getOpenWorkOrder(request.user!, id);
   }
 
   @Get(':id/repair-history')

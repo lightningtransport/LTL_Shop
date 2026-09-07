@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -17,8 +18,8 @@ export class WorkOrdersController {
   constructor(private readonly workOrders: WorkOrdersService) {}
 
   @Get()
-  list(@Req() req: Request) {
-    return this.workOrders.listForMechanic(req.user!.id);
+  list(@Req() req: Request, @Query('mode') mode?: string) {
+    return this.workOrders.listForMechanic(req.user!, mode);
   }
 
   @Get(':id')

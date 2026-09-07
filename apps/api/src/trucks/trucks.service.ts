@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { OPEN_WORK_ORDER_STATUSES } from '@ltl-shop/shared';
+import { AppCapability, OPEN_WORK_ORDER_STATUSES } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { toWorkOrderSummary } from '../work-orders/work-order.mapper';
+import type { AuthUser } from '../auth/auth.guard';
+import { hasCapability } from '../auth/capabilities';
 
 @Injectable()
 export class TrucksService {
@@ -31,7 +33,7 @@ export class TrucksService {
     return toTruckDto(truck);
   }
 
-  async getOpenWorkOrder(truckId: string) {
+  async getOpenWorkOrder(user: AuthUser, truckId: string) {
     await this.getById(truckId);
     const wo = await this.prisma.workOrder.findFirst({
       where: {
@@ -42,7 +44,17 @@ export class TrucksService {
       orderBy: { createdAt: 'desc' },
     });
     if (!wo) return { exists: false as const };
-    return { exists: true as const, workOrder: toWorkOrderSummary(wo) };
+    const requiredCapability = wo.primaryCategory.name === 'PM'
+      ? AppCapability.MECHANIC_PM
+      : AppCapability.MECHANIC_STANDARD;
+    const isAssigned = wo.createdById === user.id ||
+      wo.mechanics.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt);
+    return {
+      exists: true as const,
+      ...(hasCapability(user, requiredCapability) && isAssigned
+        ? { workOrder: toWorkOrderSummary(wo) }
+        : {}),
+    };
   }
 
   async getRepairHistory(truckId: string, categoryId?: string) {
@@ -105,5 +117,9 @@ const workOrderSummaryInclude = {
   truck: true,
   primaryCategory: true,
   jobs: true,
+  mechanics: {
+    include: { mechanic: true },
+    orderBy: { addedAt: 'asc' as const },
+  },
   pauseEvents: { where: { endedAt: null }, take: 1, orderBy: { startedAt: 'desc' as const } },
 };

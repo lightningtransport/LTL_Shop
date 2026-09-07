@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ActivityEventType, Priority } from '@ltl-shop/shared';
+import { ActivityEventType, AppCapability, Priority } from '@ltl-shop/shared';
 import { WorkOrdersService } from './work-orders.service';
 
 describe('PM Work Order authorization', () => {
@@ -28,7 +28,7 @@ describe('PM Work Order authorization', () => {
 
     const result = await service.create({
       id: 'daniel-id', email: 'daniel@lightning.local', name: 'Daniel',
-      role: 'mechanic', active: true, pmAuthorized: true, supabaseAuthId: null,
+      role: 'mechanic', active: true, pmAuthorized: true, capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
     }, {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000002',
@@ -58,7 +58,7 @@ describe('PM Work Order authorization', () => {
 
     await expect(service.create({
       id: 'alejandro-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
     }, {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000002',
@@ -68,7 +68,7 @@ describe('PM Work Order authorization', () => {
         categoryId: '00000000-0000-4000-8000-000000000002',
         displayName: 'PM A Service',
       }],
-    })).rejects.toThrow('Only Daniel can perform PM work');
+    })).rejects.toThrow('You do not have access to the PM mechanic workspace');
   });
 
   it('does not let a PM mechanic create a non-PM Work Order', async () => {
@@ -81,7 +81,7 @@ describe('PM Work Order authorization', () => {
 
     await expect(service.create({
       id: 'daniel-id', email: 'daniel@lightning.local', name: 'Daniel',
-      role: 'mechanic', active: true, pmAuthorized: true, supabaseAuthId: null,
+      role: 'mechanic', active: true, pmAuthorized: true, capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
     }, {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000003',
@@ -91,7 +91,7 @@ describe('PM Work Order authorization', () => {
         categoryId: '00000000-0000-4000-8000-000000000003',
         displayName: 'Brake Inspection',
       }],
-    })).rejects.toThrow('PM mechanics can only create PM Work Orders');
+    })).rejects.toThrow('You do not have access to the standard mechanic workspace');
   });
 
   it('rejects a job checklist on a PM Work Order', async () => {
@@ -104,7 +104,7 @@ describe('PM Work Order authorization', () => {
 
     await expect(service.create({
       id: 'daniel-id', email: 'daniel@lightning.local', name: 'Daniel',
-      role: 'mechanic', active: true, pmAuthorized: true, supabaseAuthId: null,
+      role: 'mechanic', active: true, pmAuthorized: true, capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
     }, {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000002',
@@ -127,7 +127,7 @@ describe('PM Work Order authorization', () => {
 
     await expect(service.create({
       id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
     }, {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000003',
@@ -143,7 +143,7 @@ describe('PM Work Order authorization', () => {
         findUnique: vi.fn().mockResolvedValue({
           id: '00000000-0000-4000-8000-000000000011',
           primaryCategoryId: '00000000-0000-4000-8000-000000000003',
-          status: 'in_progress',
+          status: 'in_progress', createdById: 'alex-id', mechanics: [], primaryCategory: { name: 'Brakes' },
         }),
       },
       jobCategory: { findUnique: vi.fn().mockResolvedValue({ name: 'Brakes' }) },
@@ -156,7 +156,7 @@ describe('PM Work Order authorization', () => {
 
     await expect(service.addJob({
       id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
     }, '00000000-0000-4000-8000-000000000011', {
       catalogJobId: '00000000-0000-4000-8000-000000000012',
       categoryId: '00000000-0000-4000-8000-000000000003',
@@ -174,7 +174,7 @@ describe('PM Work Order authorization', () => {
 
     await expect(service.create({
       id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
     }, {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000003',
@@ -193,6 +193,7 @@ describe('PM Work Order authorization', () => {
         id: '00000000-0000-4000-8000-000000000011',
         primaryCategoryId: '00000000-0000-4000-8000-000000000003',
         primaryCategory: { name: 'Brakes' }, status: 'in_progress', jobs: [{ status: 'completed' }],
+        createdById: 'alex-id', mechanics: [],
       }) },
       jobCategory: { findUnique: vi.fn().mockResolvedValue({ name: 'Brakes' }) },
     };
@@ -200,24 +201,24 @@ describe('PM Work Order authorization', () => {
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
 
     await expect(service.pause({
-      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1', role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1', role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
     }, '00000000-0000-4000-8000-000000000011', { reason: 'waiting_for_parts' })).rejects.toMatchObject({
       response: { message: 'A Work Order without pending jobs cannot be paused' },
     });
   });
 
-  it('does not let a standard Work Order assign Daniel', async () => {
+  it('does not let a standard Work Order assign a PM-only mechanic', async () => {
     const prisma = {
       workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null) },
       truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-1' }) },
       jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'brakes-category', name: 'Brakes' }) },
-      user: { findMany: vi.fn().mockResolvedValue([{ id: '00000000-0000-4000-8000-000000000004', pmAuthorized: true }]) },
+      user: { findMany: vi.fn().mockResolvedValue([]) },
     } as never;
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
 
     await expect(service.create({
       id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, supabaseAuthId: null,
+      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
     }, {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000003',
@@ -225,7 +226,7 @@ describe('PM Work Order authorization', () => {
       mechanicIds: ['00000000-0000-4000-8000-000000000004'],
       jobs: [{ categoryId: '00000000-0000-4000-8000-000000000003', displayName: 'Brake Inspection' }],
     })).rejects.toMatchObject({
-      response: { message: 'PM mechanics cannot be assigned to standard Work Orders' },
+      response: { message: 'One or more selected mechanics cannot perform standard work' },
     });
   });
 });

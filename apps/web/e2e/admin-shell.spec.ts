@@ -41,7 +41,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByLabel('Status').selectOption('waiting_paused');
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/status=waiting_paused/);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.getByText('WO-0101').first()).toBeVisible();
     await page.getByText('WO-0101').first().click();
     await expect(page.getByRole('heading', { name: 'WO-0101' })).toBeVisible();
@@ -62,15 +62,38 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByLabel('Email').fill('admin@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
-    await page.goto('/admin/work-orders');
+    await page.getByRole('link', { name: 'Work Orders' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await page.getByRole('button', { name: 'Load more' }).click();
     await expect(page.getByText('WO-0103').first()).toBeVisible();
   });
 
+  for (const email of ['ibrain@ltransl.com', 'cristian240588@hotmail.com']) {
+    test(`${email} opens Standard and PM without signing in again`, async ({ page }) => {
+      await page.goto('/login');
+      await page.getByLabel('Email').fill(email);
+      await page.getByRole('button', { name: /Dev Login/i }).click();
+      await expect(page).toHaveURL(/\/admin$/);
+      await expect(page.getByRole('heading', { name: 'Workspaces' })).toBeVisible();
+
+      await page.getByRole('link', { name: 'Open Standard Mechanic' }).click();
+      await expect(page).toHaveURL(/\/mechanic\/standard$/);
+      await expect(page.getByRole('heading', { name: 'Standard Mechanic' })).toBeVisible();
+      await page.getByRole('link', { name: 'Back to Shop Admin' }).click();
+
+      await page.getByRole('button', { name: /Language: English/ }).click();
+      await expect(page.getByRole('heading', { name: 'Espacios de trabajo' })).toBeVisible();
+      await page.getByRole('link', { name: 'Abrir Mecánico PM' }).click();
+      await expect(page).toHaveURL(/\/mechanic\/pm$/);
+      await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Back to Shop Admin' })).toBeVisible();
+    });
+  }
+
   test('mechanic receives a secure forbidden screen for direct Admin access', async ({ page }) => {
     await page.goto('/login');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Standard Mechanic' })).toBeVisible();
     const response = await page.goto('/admin');
     expect(response?.status()).toBe(403);
     await expect(page.getByRole('heading', { name: 'Shop Admin access denied' })).toBeVisible();

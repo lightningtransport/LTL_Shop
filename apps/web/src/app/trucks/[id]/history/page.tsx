@@ -24,7 +24,7 @@ export default function RepairHistoryPage() {
   const items = data?.items ?? [];
   const requestedReturn = searchParams.get('from');
   const backHref = requestedReturn?.startsWith('/') ? requestedReturn : '/';
-  const backLabel = backHref === '/work-orders/new'
+  const backLabel = backHref === '/work-orders/new' || /^\/mechanic\/(standard|pm)\/new$/.test(backHref)
     ? 'Back to New Work Order'
     : backHref.startsWith('/work-orders/')
       ? 'Back to Work Order'

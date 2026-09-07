@@ -2,15 +2,18 @@
 
 import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Check, ChevronDown, Trash2 } from 'lucide-react';
 import { useSWRConfig } from 'swr';
 import {
+  AppCapability,
+  MechanicMode,
   Priority,
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
+import { defaultWorkspacePath } from '@/lib/admin-routing';
 import { ApiError, apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
 import {
@@ -33,6 +36,7 @@ import {
   ScreenHeader,
   Select,
   Textarea,
+  WorkspaceNav,
 } from '@/components/ui';
 import { JobPickerDialog } from '@/components/job-picker-dialog';
 
@@ -47,6 +51,7 @@ type DraftJob = {
 export default function NewWorkOrderPage() {
   const { user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const { mutate } = useSWRConfig();
   const { data: categoryData, error: categoryError, mutate: mutateCategories } = useCategories(!!token);
   const { data: mechanicData, error: mechanicError, mutate: mutateMechanics } = useMechanics(!!token);
@@ -55,10 +60,21 @@ export default function NewWorkOrderPage() {
   const mechanics = mechanicData ?? [];
   const pmCategory = categories.find((category) => category.name === 'PM');
   const standardCategories = categories.filter((category) => category.name !== 'PM');
-  const isPmMechanic = !!user?.pmAuthorized;
+  const explicitPm = pathname.startsWith('/mechanic/pm/');
+  const explicitStandard = pathname.startsWith('/mechanic/standard/');
+  const isPmOnly = !!user?.capabilities.includes(AppCapability.MECHANIC_PM) &&
+    !user.capabilities.includes(AppCapability.MECHANIC_STANDARD);
+  const mechanicMode = explicitPm || (!explicitStandard && isPmOnly)
+    ? MechanicMode.PM
+    : MechanicMode.STANDARD;
+  const requiredCapability = mechanicMode === MechanicMode.PM
+    ? AppCapability.MECHANIC_PM
+    : AppCapability.MECHANIC_STANDARD;
+  const isPmMechanic = mechanicMode === MechanicMode.PM;
   const [query, setQuery] = useState('');
   const [truck, setTruck] = useState<TruckDto | null>(null);
   const [openWo, setOpenWo] = useState<WorkOrderSummaryDto | null>(null);
+  const [hasOpenWo, setHasOpenWo] = useState(false);
   const [categoryId, setCategoryId] = useState('');
   const [jobs, setJobs] = useState<DraftJob[]>([]);
   const [workingWith, setWorkingWith] = useState<string[]>([]);
@@ -79,7 +95,10 @@ export default function NewWorkOrderPage() {
 
   useEffect(() => {
     if (!sessionLoading && !token && !sessionError) router.replace('/login');
-  }, [sessionLoading, token, sessionError, router]);
+    if (!sessionLoading && token && user && !user.capabilities.includes(requiredCapability)) {
+      router.replace(defaultWorkspacePath(user));
+    }
+  }, [sessionLoading, token, sessionError, user, requiredCapability, router]);
 
   useEffect(() => {
     if (isPmMechanic && pmCategory) {
@@ -88,7 +107,7 @@ export default function NewWorkOrderPage() {
   }, [isPmMechanic, pmCategory]);
 
   const availableCoworkers = mechanics.filter(
-    (mechanic) => mechanic.id !== user?.id && !mechanic.pmAuthorized,
+    (mechanic) => mechanic.id !== user?.id,
   );
 
   const results = useMemo(() => {
@@ -101,7 +120,7 @@ export default function NewWorkOrderPage() {
 
   const hasSearchTerm = query.trim().replace(/^#/, '').length > 0;
   const resultsOpen = searchOpen && hasSearchTerm && !truck;
-  const createBlocked = busy || openWoCheck !== 'verified' || !categoryId || (!isPmMechanic && jobs.length === 0);
+  const createBlocked = busy || hasOpenWo || openWoCheck !== 'verified' || !categoryId || (!isPmMechanic && jobs.length === 0);
   const createActionLabel = isPmMechanic
     ? openWoCheck === 'checking'
       ? 'Checking truck…'
@@ -122,14 +141,16 @@ export default function NewWorkOrderPage() {
     setQuery(t.truckNumber);
     setSearchOpen(false);
     setOpenWo(null);
+    setHasOpenWo(false);
     setOpenWoCheck('checking');
     setError(null);
     try {
       const open = await apiFetch<
-        { exists: false } | { exists: true; workOrder: WorkOrderSummaryDto }
+        { exists: false } | { exists: true; workOrder?: WorkOrderSummaryDto }
       >(`/api/trucks/${t.id}/open-work-order`);
       if (requestId !== openWoRequest.current) return;
-      if (open.exists) setOpenWo(open.workOrder);
+      setHasOpenWo(open.exists);
+      if (open.exists && open.workOrder) setOpenWo(open.workOrder);
       setOpenWoCheck('verified');
     } catch {
       if (requestId !== openWoRequest.current) return;
@@ -163,12 +184,13 @@ export default function NewWorkOrderPage() {
           idempotencyKey: crypto.randomUUID(),
         }),
       });
-      void mutate(shopKeys.workOrders);
+      void mutate(shopKeys.workOrders(mechanicMode));
       router.push(`/work-orders/${wo.id}`, { scroll: true });
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         const body = e.body as { workOrder?: WorkOrderSummaryDto };
         if (body.workOrder) setOpenWo(body.workOrder);
+        setHasOpenWo(true);
         setError('Truck already has an open Work Order.');
       } else {
         setError(e instanceof Error ? e.message : 'Create failed');
@@ -179,12 +201,12 @@ export default function NewWorkOrderPage() {
   }
 
   if (sessionLoading && !token) {
-    return <NewWorkOrderLoading label="Restoring session" />;
+    return <NewWorkOrderLoading mode={mechanicMode} label="Restoring session" />;
   }
 
   if (!token && sessionError) {
     return (
-      <NewWorkOrderLoading>
+      <NewWorkOrderLoading mode={mechanicMode}>
         <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
       </NewWorkOrderLoading>
     );
@@ -196,7 +218,7 @@ export default function NewWorkOrderPage() {
 
   if (profileLoading || !user) {
     return (
-      <NewWorkOrderLoading>
+      <NewWorkOrderLoading mode={mechanicMode}>
         {sessionError ? (
           <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry profile" />
         ) : (
@@ -206,10 +228,14 @@ export default function NewWorkOrderPage() {
     );
   }
 
+  if (!user.capabilities.includes(requiredCapability)) {
+    return <PageSkeleton label="Opening your workspace" />;
+  }
+
   const referenceError = categoryError || mechanicError || truckError;
   if (referenceError || !categoryData || !mechanicData || !truckData) {
     return (
-      <NewWorkOrderLoading>
+      <NewWorkOrderLoading mode={mechanicMode}>
         {referenceError ? (
           <LoadFailure
             message="Unable to load shop reference data."
@@ -224,11 +250,12 @@ export default function NewWorkOrderPage() {
   }
 
   return (
-    <div className={truck && !openWo ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : undefined}>
+    <div className={truck && !hasOpenWo ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : undefined}>
+      <WorkspaceNav mode={mechanicMode} />
       <ScreenHeader
         title={isPmMechanic ? 'New PM Service' : 'New Work Order'}
         subtitle={isPmMechanic ? 'Select a truck to create a PM service.' : 'Enter the required information. Creating saves the order; Start Work begins labor.'}
-        backHref="/"
+        backHref={`/mechanic/${mechanicMode}`}
       />
 
       <section className="card mb-4 space-y-3">
@@ -273,6 +300,7 @@ export default function NewWorkOrderPage() {
               setQuery(e.target.value);
               setTruck(null);
               setOpenWo(null);
+              setHasOpenWo(false);
               setOpenWoCheck('idle');
               setSearchOpen(true);
               setError(null);
@@ -341,7 +369,7 @@ export default function NewWorkOrderPage() {
                 <Info label="Owner" value={truck.owner} />
               </div>
               <Button asChild variant="secondary" className="w-full">
-                <Link href={`/trucks/${truck.id}/history?from=${encodeURIComponent('/work-orders/new')}`}>
+                <Link href={`/trucks/${truck.id}/history?from=${encodeURIComponent(pathname)}`}>
                   See Truck Repair History
                 </Link>
               </Button>
@@ -369,7 +397,13 @@ export default function NewWorkOrderPage() {
         </div>
       ) : null}
 
-      {truck && !openWo ? (
+      {hasOpenWo && !openWo ? (
+        <InlineAlert className="mb-4 border-[var(--warning)] bg-warning-surface text-warning-foreground">
+          Truck #{truck?.truckNumber} already has an open Work Order assigned to another mechanic.
+        </InlineAlert>
+      ) : null}
+
+      {truck && !hasOpenWo ? (
         <>
           {!isPmMechanic ? <section className="card mb-4 space-y-4">
             {!isPmMechanic ? (
@@ -532,15 +566,22 @@ export default function NewWorkOrderPage() {
 }
 
 function NewWorkOrderLoading({
+  mode,
   label,
   children,
 }: {
+  mode: MechanicMode;
   label?: string;
   children?: ReactNode;
 }) {
   return (
     <div>
-      <ScreenHeader title="New Work Order" subtitle="Enter the required information." backHref="/" />
+      <WorkspaceNav mode={mode} />
+      <ScreenHeader
+        title={mode === MechanicMode.PM ? 'New PM Service' : 'New Work Order'}
+        subtitle={mode === MechanicMode.PM ? 'Select a truck to create a PM service.' : 'Enter the required information.'}
+        backHref={`/mechanic/${mode}`}
+      />
       {children ?? <PageSkeleton label={label ?? 'Loading work order form'} />}
     </div>
   );

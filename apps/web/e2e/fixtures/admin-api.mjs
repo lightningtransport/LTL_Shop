@@ -8,6 +8,7 @@ const users = {
     role: 'mechanic',
     active: true,
     pmAuthorized: false,
+    capabilities: ['mechanic.standard'],
   },
   'manager@lightning.local': {
     id: '00000000-0000-4000-8000-000000000002',
@@ -16,6 +17,7 @@ const users = {
     role: 'manager',
     active: true,
     pmAuthorized: false,
+    capabilities: ['admin.access'],
   },
   'admin@lightning.local': {
     id: '00000000-0000-4000-8000-000000000003',
@@ -24,6 +26,25 @@ const users = {
     role: 'admin',
     active: true,
     pmAuthorized: false,
+    capabilities: ['admin.access'],
+  },
+  'ibrain@ltransl.com': {
+    id: '00000000-0000-4000-8000-000000000004',
+    email: 'ibrain@ltransl.com',
+    name: 'iBrain Admin',
+    role: 'admin',
+    active: true,
+    pmAuthorized: true,
+    capabilities: ['admin.access', 'mechanic.standard', 'mechanic.pm'],
+  },
+  'cristian240588@hotmail.com': {
+    id: '00000000-0000-4000-8000-000000000005',
+    email: 'cristian240588@hotmail.com',
+    name: 'Cristian Perez',
+    role: 'admin',
+    active: true,
+    pmAuthorized: false,
+    capabilities: ['admin.access', 'mechanic.standard', 'mechanic.pm'],
   },
 };
 
@@ -55,14 +76,14 @@ createServer((request, response) => {
   if (request.url === '/api/admin/access') {
     json(
       response,
-      user.role === 'manager' || user.role === 'admin' ? 200 : 403,
-      user.role === 'manager' || user.role === 'admin'
+      user.capabilities.includes('admin.access') ? 200 : 403,
+      user.capabilities.includes('admin.access')
         ? { user }
         : { message: 'You do not have access to Shop Admin.' },
     );
     return;
   }
-  if (request.url?.startsWith('/api/admin/') && user.role !== 'manager' && user.role !== 'admin') {
+  if (request.url?.startsWith('/api/admin/') && !user.capabilities.includes('admin.access')) {
     json(response, 403, { message: 'You do not have access to Shop Admin.' });
     return;
   }
@@ -108,7 +129,7 @@ createServer((request, response) => {
     });
     return;
   }
-  if (request.url === '/api/work-orders') {
+  if (request.url?.startsWith('/api/work-orders')) {
     json(response, 200, { created: [], active: [], paused: [], completed: [] });
     return;
   }

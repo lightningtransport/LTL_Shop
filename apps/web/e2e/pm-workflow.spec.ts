@@ -1,6 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 
-const daniel = { id: '00000000-0000-0000-0000-000000000101', email: 'daniel@lightning.local', name: 'Daniel', role: 'mechanic', active: true, pmAuthorized: true };
+const daniel = { id: '00000000-0000-0000-0000-000000000101', email: 'daniel@lightning.local', name: 'Daniel', role: 'mechanic', active: true, pmAuthorized: true, capabilities: ['mechanic.pm'] };
 const truck = { id: '00000000-0000-0000-0000-000000000201', truckNumber: '905', make: 'Freightliner', model: 'Cascadia', year: 2022, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' };
 const pmCategory = { id: '00000000-0000-0000-0000-000000000301', name: 'PM', sortOrder: 1 };
 const oilPartCategory = '00000000-0000-0000-0000-000000000401';
@@ -51,7 +51,7 @@ async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
 async function login(page: Page) {
   await page.goto('/login');
   await page.getByRole('button', { name: /Dev Login/i }).click();
-  await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
 }
 
 async function chooseTruckAndCreate(page: Page) {

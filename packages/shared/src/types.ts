@@ -1,4 +1,5 @@
 import type {
+  AppCapability,
   ActivityEventType,
   JobStatus,
   PauseReason,
@@ -16,6 +17,7 @@ export interface UserDto {
   role: UserRole;
   active: boolean;
   pmAuthorized: boolean;
+  capabilities: AppCapability[];
 }
 
 export interface TruckDto {

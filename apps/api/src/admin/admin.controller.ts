@@ -1,14 +1,14 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
-import { UserRole } from '@ltl-shop/shared';
+import { AppCapability } from '@ltl-shop/shared';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
+import { Capabilities } from '../auth/capabilities.decorator';
+import { CapabilitiesGuard } from '../auth/capabilities.guard';
 import { AdminService } from './admin.service';
 
 @Controller('admin')
-@UseGuards(AuthGuard, RolesGuard)
-@Roles(UserRole.MANAGER, UserRole.ADMIN)
+@UseGuards(AuthGuard, CapabilitiesGuard)
+@Capabilities(AppCapability.ADMIN_ACCESS)
 export class AdminController {
   constructor(private readonly admin: AdminService) {}
 
