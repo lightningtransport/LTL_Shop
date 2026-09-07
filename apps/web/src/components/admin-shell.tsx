@@ -1,16 +1,23 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
-import { ClipboardList, Gauge, History, Library, Truck, UsersRound, Wrench } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { ClipboardList, Gauge, History, Library, Truck, UsersRound } from 'lucide-react';
 import { AdminLocaleSwitcher } from './admin-locale-switcher';
 import { AppHeaderActions, Badge, Button } from './ui';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 const futureNavigation = [
-  { message: 'workOrders', icon: ClipboardList },
   { message: 'trucks', icon: Truck },
   { message: 'mechanics', icon: UsersRound },
   { message: 'jobCatalog', icon: Library },
   { message: 'history', icon: History },
+] as const;
+
+const activeNavigation = [
+  { message: 'dashboard', icon: Gauge, href: '/admin' },
+  { message: 'workOrders', icon: ClipboardList, href: '/admin/work-orders' },
 ] as const;
 
 export function AdminShell({
@@ -24,17 +31,20 @@ export function AdminShell({
   messages: AdminMessages;
   user: { name: string; role: string };
 }) {
+  const pathname = usePathname();
   return (
     <div className="min-h-screen bg-background lg:grid lg:grid-cols-[250px_minmax(0,1fr)]">
       <aside className="hidden border-r bg-card px-4 py-5 lg:flex lg:flex-col" aria-label={messages.navigation}>
         <AdminBrand />
         <nav className="mt-8 space-y-1">
-          <Button asChild variant="secondary" className="w-full justify-start">
-            <Link href="/admin" aria-current="page">
-              <Gauge aria-hidden="true" className="size-4" />
-              {messages.dashboard}
-            </Link>
-          </Button>
+          {activeNavigation.map(({ message, icon: Icon, href }) => {
+            const active = href === '/admin' ? pathname === href : pathname.startsWith(href);
+            return <Button key={href} asChild variant={active ? 'secondary' : 'ghost'} className="w-full justify-start">
+              <Link href={href} aria-current={active ? 'page' : undefined}>
+                <Icon aria-hidden="true" className="size-4" />{messages[message]}
+              </Link>
+            </Button>;
+          })}
           {futureNavigation.map(({ message, icon: Icon }) => (
             <div key={message} className="flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm text-muted-foreground" title={messages.comingLater}>
               <Icon aria-hidden="true" className="size-4" />
@@ -59,10 +69,13 @@ export function AdminShell({
             </div>
           </div>
           <nav className="flex gap-2 overflow-x-auto px-4 pb-3 lg:hidden" aria-label={messages.mobileNavigation}>
-            <Button asChild variant="secondary" size="sm" className="shrink-0">
-              <Link href="/admin" aria-current="page"><Gauge aria-hidden="true" className="size-4" />{messages.dashboard}</Link>
-            </Button>
-            {futureNavigation.slice(0, 3).map(({ message, icon: Icon }) => (
+            {activeNavigation.map(({ message, icon: Icon, href }) => {
+              const active = href === '/admin' ? pathname === href : pathname.startsWith(href);
+              return <Button key={href} asChild variant={active ? 'secondary' : 'ghost'} size="sm" className="shrink-0">
+                <Link href={href} aria-current={active ? 'page' : undefined}><Icon aria-hidden="true" className="size-4" />{messages[message]}</Link>
+              </Button>;
+            })}
+            {futureNavigation.slice(0, 2).map(({ message, icon: Icon }) => (
               <span key={message} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm text-muted-foreground" title={messages.comingLater}>
                 <Icon aria-hidden="true" className="size-4" />{messages[message]}
               </span>
