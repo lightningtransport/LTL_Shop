@@ -399,7 +399,7 @@ function ProfileDialog() {
         <Button
           variant="secondary"
           size="sm"
-          className="max-w-36 justify-between gap-1.5 sm:max-w-44"
+          className="max-w-28 justify-between gap-1.5 sm:max-w-44"
           aria-label={`Open profile for ${user.name}`}
         >
           <span className="truncate">{user.name}</span>

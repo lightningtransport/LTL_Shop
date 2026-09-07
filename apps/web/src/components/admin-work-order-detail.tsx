@@ -13,12 +13,12 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   if (error instanceof ApiError && error.status === 404) return <NotFound messages={messages} />;
   if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
-  return <div className="space-y-6">
+  return <div className="space-y-5">
     <header>
       <Button asChild variant="ghost" size="sm" className="mb-3"><Link href="/admin/work-orders">← {messages.backToWorkOrders}</Link></Button>
       <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="section-label">{messages.readOnly}</p><h1 className="mt-2 font-display text-3xl font-bold">{data.displayId}</h1><p className="mt-2 text-muted-foreground">{data.truck.truckNumber} · {data.category.name}</p></div><div className="flex gap-2"><PriorityBadge priority={data.priority} /><Badge variant="outline">{humanize(data.status)}</Badge></div></div>
     </header>
-    <section className="grid gap-4 lg:grid-cols-2">
+    <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
       <Card><CardHeader><CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle></CardHeader><CardContent>{data.jobs.length ? <ul className="divide-y">{data.jobs.map((job) => <li key={job.id} className="flex items-start justify-between gap-3 py-3 first:pt-0"><div><p className="font-medium">{job.displayName}</p><p className="text-xs text-muted-foreground">{job.category.name}</p>{job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}</div><Badge variant={job.status === 'completed' ? 'success' : 'outline'}>{humanize(job.status)}</Badge></li>)}</ul> : <EmptyState>{messages.noJobs}</EmptyState>}</CardContent></Card>
       <div className="space-y-4">
         <Card><CardHeader><CardTitle>{messages.activeMechanics}</CardTitle></CardHeader><CardContent>{data.mechanics.length ? <ul className="space-y-2">{data.mechanics.map((mechanic) => <li key={mechanic.mechanicId} className="rounded-lg border p-3 font-medium">{mechanic.mechanicName}</li>)}</ul> : <EmptyState>{messages.noMechanics}</EmptyState>}</CardContent></Card>
