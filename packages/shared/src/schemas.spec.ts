@@ -3,6 +3,8 @@ import { OPEN_WORK_ORDER_STATUSES, PauseReason, WorkOrderStatus } from './enums'
 import {
   adminListQuerySchema,
   adminMutationMetaSchema,
+  adminWorkOrderCursorSchema,
+  adminWorkOrdersQuerySchema,
   createWorkOrderSchema,
 } from './schemas';
 
@@ -29,6 +31,32 @@ describe('shared contracts', () => {
   it('bounds Admin pagination and applies safe defaults', () => {
     expect(adminListQuerySchema.parse({})).toMatchObject({ limit: 25, direction: 'asc' });
     expect(adminListQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
+  });
+
+  it('applies read-only Work Order defaults and accepts supported filters', () => {
+    expect(adminWorkOrdersQuerySchema.parse({})).toMatchObject({
+      limit: 25,
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+    expect(adminWorkOrdersQuerySchema.parse({
+      status: 'created,waiting_paused',
+      priority: 'high,critical',
+    })).toMatchObject({
+      status: ['created', 'waiting_paused'],
+      priority: ['high', 'critical'],
+    });
+  });
+
+  it('rejects unsupported Work Order filters, limits, and malformed cursors', () => {
+    expect(adminWorkOrdersQuerySchema.safeParse({ status: 'archived' }).success).toBe(false);
+    expect(adminWorkOrdersQuerySchema.safeParse({ priority: 'urgent' }).success).toBe(false);
+    expect(adminWorkOrdersQuerySchema.safeParse({ sort: 'priority' }).success).toBe(false);
+    expect(adminWorkOrdersQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
+    expect(adminWorkOrdersQuerySchema.safeParse({ cursor: 'not+a+cursor' }).success).toBe(false);
+    expect(adminWorkOrderCursorSchema.safeParse({
+      sort: 'updatedAt', direction: 'desc', value: '', id: 'bad-id',
+    }).success).toBe(false);
   });
 
   it('requires version and UUID idempotency for Admin mutations', () => {

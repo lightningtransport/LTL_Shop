@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test.describe('Shop Admin Phase 1', () => {
+test.describe('Shop Admin Phase 2A', () => {
   test('unauthenticated requests are redirected to the shared login', async ({ page }) => {
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/login\?next=%2Fadmin$/);
@@ -12,6 +12,8 @@ test.describe('Shop Admin Phase 1', () => {
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+    await expect(page.getByText('Current operations from Supabase PostgreSQL')).toBeVisible();
+    await expect(page.getByText('Open Work Orders').first()).toBeVisible();
 
     for (const viewport of [
       { width: 390, height: 844 },
@@ -25,6 +27,36 @@ test.describe('Shop Admin Phase 1', () => {
 
     await page.getByRole('button', { name: /Language: English/ }).click();
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
+    await expect(page.getByText('Operación actual desde Supabase PostgreSQL')).toBeVisible();
+  });
+
+  test('manager navigates Dashboard to filtered list, pagination, and read-only detail', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await page.getByRole('link', { name: 'Work Orders' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/work-orders$/);
+    await expect(page.getByRole('heading', { name: 'Work Orders' })).toBeVisible();
+    await page.getByLabel('Status').selectOption('waiting_paused');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await expect(page).toHaveURL(/status=waiting_paused/);
+    await page.reload();
+    await expect(page.getByText('WO-0101').first()).toBeVisible();
+    await page.getByText('WO-0101').first().click();
+    await expect(page.getByRole('heading', { name: 'WO-0101' })).toBeVisible();
+    await expect(page.getByText('Read only')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
+  });
+
+  test('admin role can load dashboard and pagination completes', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('admin@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+    await page.goto('/admin/work-orders');
+    await page.getByRole('button', { name: 'Load more' }).click();
+    await expect(page.getByText('WO-0103').first()).toBeVisible();
   });
 
   test('mechanic receives a secure forbidden screen for direct Admin access', async ({ page }) => {
