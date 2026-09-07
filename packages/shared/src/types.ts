@@ -1,10 +1,13 @@
 import type {
+  ActivityEventType,
   JobStatus,
   PauseReason,
   Priority,
   UserRole,
   WorkOrderStatus,
 } from './enums';
+
+export type AdminDataSource = 'supabase_postgres';
 
 export interface UserDto {
   id: string;
@@ -137,6 +140,70 @@ export interface AdminMutationMeta {
   expectedVersion: number;
   idempotencyKey: string;
   reason?: string;
+}
+
+export interface AdminWorkOrderSummaryDto {
+  id: string;
+  displayId: string;
+  truck: Pick<TruckDto, 'id' | 'truckNumber' | 'make' | 'model' | 'year'>;
+  category: { id: string; name: string };
+  status: WorkOrderStatus;
+  priority: Priority;
+  jobsCompleted: number;
+  jobsTotal: number;
+  mechanics: MechanicAssignmentDto[];
+  currentPause: PauseEventDto | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
+}
+
+export interface AdminActivityLogDto {
+  id: string;
+  eventType: ActivityEventType;
+  entityType: string;
+  entityId: string | null;
+  user: { id: string; name: string };
+  previousValue: unknown;
+  newValue: unknown;
+  relevantValue: unknown;
+  createdAt: string;
+}
+
+export interface AdminWorkOrderJobDto {
+  id: string;
+  displayName: string;
+  customDescription: string | null;
+  category: { id: string; name: string };
+  status: JobStatus;
+}
+
+export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
+  notes: string | null;
+  createdBy: { id: string; name: string };
+  completedBy: { id: string; name: string } | null;
+  totalActiveLaborMs: number;
+  totalWaitingMs: number;
+  jobs: AdminWorkOrderJobDto[];
+  pauseHistory: (PauseEventDto & {
+    createdBy: { id: string; name: string };
+  })[];
+  activityLog: AdminActivityLogDto[];
+}
+
+export interface AdminDashboardDto {
+  generatedAt: string;
+  source: AdminDataSource;
+  counts: {
+    open: number;
+    created: number;
+    inProgress: number;
+    waitingPaused: number;
+    highCriticalOpen: number;
+    unassignedOpen: number;
+  };
+  attention: AdminWorkOrderSummaryDto[];
 }
 
 export interface PmPartDto {
