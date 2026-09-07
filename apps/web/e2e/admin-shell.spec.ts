@@ -16,6 +16,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Open Work Orders').first()).toBeVisible();
 
     for (const viewport of [
+      { width: 320, height: 568 },
       { width: 390, height: 844 },
       { width: 834, height: 1194 },
       { width: 1440, height: 1024 },
@@ -47,6 +48,13 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Read only')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
+
+    await page.setViewportSize({ width: 1440, height: 700 });
+    const content = page.locator('#main-content main');
+    await expect(content).toHaveCSS('overflow-y', 'auto');
+    await content.evaluate((element) => { element.scrollTop = 500; });
+    await expect(page.getByRole('banner', { name: 'Shop Admin controls' })).toBeInViewport();
+    await expect(page.getByRole('complementary', { name: 'Shop Admin navigation' })).toBeInViewport();
   });
 
   test('admin role can load dashboard and pagination completes', async ({ page }) => {
