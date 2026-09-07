@@ -35,6 +35,7 @@ async function main() {
     { email: 'john@lightning.local', name: 'John' },
     { email: 'daniel@lightning.local', name: 'Daniel' },
     { email: 'elliot@lightning.local', name: 'Elliot' },
+    { email: 'cristian@ltransl.com', name: 'Cristian' },
   ];
   for (const additionalMechanic of additionalMechanics) {
     await prisma.user.upsert({
@@ -98,6 +99,7 @@ async function main() {
     { email: 'alejandro-2@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
     { email: 'john@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
     { email: 'elliot@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
+    { email: 'cristian@ltransl.com', capabilities: [AppCapability.MECHANIC_STANDARD] },
     { email: 'daniel@lightning.local', capabilities: [AppCapability.MECHANIC_PM] },
     { email: 'manager@lightning.local', capabilities: [AppCapability.ADMIN_ACCESS] },
     { email: 'admin@lightning.local', capabilities: [AppCapability.ADMIN_ACCESS] },

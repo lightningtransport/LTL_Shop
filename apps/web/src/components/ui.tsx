@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Dialog as DialogPrimitive, Slot } from 'radix-ui';
@@ -334,6 +335,7 @@ export function ThemeToggle() {
 
 function ProfileDialog() {
   const { user, updatePassword, logout } = useAuth();
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
@@ -377,6 +379,9 @@ function ProfileDialog() {
     setIsLoggingOut(true);
     try {
       await logout();
+      router.replace('/login');
+      router.refresh();
+      window.location.replace('/login');
       setOpen(false);
     } catch (logoutError) {
       setError(logoutError instanceof Error ? logoutError.message : 'Unable to sign out.');

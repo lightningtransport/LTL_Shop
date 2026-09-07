@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sessionAttempt, setSessionAttempt] = useState(0);
   const profilePromiseRef = useRef<{ token: string; promise: Promise<UserDto> } | null>(null);
 
-  const clearSession = useCallback(() => {
+  const clearSession = useCallback(async () => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     setAuthToken(null);
     setUser(null);
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfileLoading(false);
     setPasswordRecovery(false);
     profilePromiseRef.current = null;
-    void fetch('/api/admin/session', { method: 'DELETE' }).catch(() => undefined);
+    await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => undefined);
   }, []);
 
   const retrySession = useCallback(() => {
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (profileError) {
           profilePromiseRef.current = null;
           if (profileError instanceof ApiError && [401, 403].includes(profileError.status)) {
-            clearSession();
+            void clearSession();
           } else {
             setSessionError(
               profileError instanceof Error
@@ -136,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    const onExpired = () => clearSession();
+    const onExpired = () => void clearSession();
     window.addEventListener('ltl-auth-expired', onExpired);
     return () => window.removeEventListener('ltl-auth-expired', onExpired);
   }, [clearSession]);
@@ -177,7 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } = supabase.auth.onAuthStateChange((event, nextSession) => {
             if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
             if (!nextSession?.access_token) {
-              clearSession();
+              void clearSession();
               return;
             }
             applyToken(nextSession.access_token);
@@ -259,10 +259,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    clearSession();
-    if (canUseSupabase()) {
-      const supabase = await getSupabaseClient();
-      await supabase.auth.signOut();
+    const cleared = clearSession();
+    try {
+      if (canUseSupabase()) {
+        const supabase = await getSupabaseClient();
+        const { error: authError } = await supabase.auth.signOut();
+        if (authError) throw new Error(authError.message);
+      }
+    } finally {
+      await cleared;
     }
   }, [clearSession]);
 

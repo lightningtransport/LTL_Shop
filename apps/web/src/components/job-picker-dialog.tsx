@@ -2,10 +2,10 @@
 
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import type { JobAliasOptionDto, JobCategoryDto } from '@ltl-shop/shared';
-import { filterAliasOptions } from '@/lib/job-catalog';
+import type { JobAliasOptionDto } from '@ltl-shop/shared';
+import { canonicalAliasOptions } from '@/lib/job-catalog';
 import { useAliasOptions } from '@/lib/shop-data';
-import { Button, Input, Label, Modal, Select } from '@/components/ui';
+import { Button, Input, Label, Modal } from '@/components/ui';
 
 export type PickedJob = {
   catalogJobId?: string;
@@ -18,19 +18,11 @@ function normalizeJobName(name: string) {
   return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
 }
 
-function canonicalOptions(aliases: JobAliasOptionDto[], query: string) {
-  const byCatalogId = new Map<string, JobAliasOptionDto>();
-  for (const alias of filterAliasOptions(aliases, query)) {
-    if (!byCatalogId.has(alias.catalogJobId)) byCatalogId.set(alias.catalogJobId, alias);
-  }
-  return [...byCatalogId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
-}
-
 /** Shared catalog picker for both draft creation and an existing Work Order. */
 export function JobPickerDialog({
   open,
-  categories,
   defaultCategoryId,
+  categoryName,
   existingCatalogJobIds = [],
   existingDisplayNames = [],
   onClose,
@@ -38,8 +30,8 @@ export function JobPickerDialog({
   returnFocusRef,
 }: {
   open: boolean;
-  categories: JobCategoryDto[];
   defaultCategoryId: string;
+  categoryName: string;
   existingCatalogJobIds?: string[];
   existingDisplayNames?: string[];
   onClose: () => void;
@@ -70,7 +62,7 @@ export function JobPickerDialog({
     [existingDisplayNames],
   );
   const options = useMemo(
-    () => canonicalOptions(allAliases, query).filter(
+    () => canonicalAliasOptions(allAliases, query).filter(
       (option) =>
         !existingCatalogJobIds.includes(option.catalogJobId) &&
         !normalizedExistingNames.has(normalizeJobName(option.displayName)),
@@ -78,8 +70,6 @@ export function JobPickerDialog({
     [allAliases, existingCatalogJobIds, normalizedExistingNames, query],
   );
   const customIsDuplicate = normalizedExistingNames.has(normalizeJobName(customName));
-  const categoryName = categories.find((category) => category.id === categoryId)?.name;
-
   async function submit(job: PickedJob, key: string) {
     if (submittingRef.current.has(key)) return;
     submittingRef.current.add(key);
@@ -97,18 +87,8 @@ export function JobPickerDialog({
   return (
     <Modal open={open} title="Add job" onClose={onClose} returnFocusRef={returnFocusRef}>
       <div className="space-y-3">
-        <div>
-          <Label className="section-label block" htmlFor="job-picker-category">Category</Label>
-          <Select
-            id="job-picker-category"
-            className="mt-2"
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-          >
-            {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-          </Select>
-        </div>
-        <div>
+        <p className="text-sm text-muted-foreground">Adding a job to {categoryName}.</p>
+        {!customOpen && options.length > 6 ? <div>
           <Label className="section-label block" htmlFor="job-picker-search">Search job or alias</Label>
           <Input
             id="job-picker-search"
@@ -117,8 +97,8 @@ export function JobPickerDialog({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-        </div>
-        <ul className="max-h-56 space-y-1 overflow-auto" aria-label="Available jobs">
+        </div> : null}
+        {!customOpen ? <ul className="max-h-56 space-y-1 overflow-auto" aria-label="Available jobs">
           {options.length ? options.map((option) => {
             const key = `catalog:${option.catalogJobId}`;
             return (
@@ -141,10 +121,10 @@ export function JobPickerDialog({
             );
           }) : (
             <li className="px-3 py-2 text-sm text-muted-foreground">
-              {query.trim() ? 'No matching jobs.' : 'All available catalog jobs for this category have already been added.'}
+              {query.trim() ? 'No matching jobs.' : 'No listed jobs are available for this category.'}
             </li>
           )}
-        </ul>
+        </ul> : null}
         <Button
           variant="secondary"
           className="w-full"
@@ -152,11 +132,11 @@ export function JobPickerDialog({
           aria-controls="job-not-listed-form"
           onClick={() => setCustomOpen((current) => !current)}
         >
-          Job not listed
+          {customOpen ? 'Back to listed jobs' : 'Job not listed'}
         </Button>
         {customOpen ? (
           <div id="job-not-listed-form" className="space-y-2">
-            <p className="text-xs text-muted-foreground">Custom job in {categoryName ?? 'selected category'}.</p>
+            <p className="text-xs text-muted-foreground">Custom job in {categoryName}.</p>
             <Label className="section-label block" htmlFor="job-picker-custom">Custom job description</Label>
             <Input
               id="job-picker-custom"

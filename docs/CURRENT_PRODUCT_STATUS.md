@@ -59,8 +59,11 @@ PRD.
   collaborators, priority, and optional notes.
 - PM is not offered to a user without `mechanic.pm`. Collaborators are
   optional and never default to the work-order creator.
-- Jobs are selected through one shared picker in creation and detail screens.
-  Catalog aliases search to one canonical result; a catalog job or normalized
+- On creation, choosing a category immediately lists its catalog jobs inline.
+  “Job not listed” switches to an exclusive custom-job form; category changes
+  confirm before removing selected jobs. Existing orders use the simplified,
+  category-locked picker. A Work Order cannot mix categories.
+- Catalog aliases resolve to one canonical result; a catalog job or normalized
   custom job cannot be added twice.
 - Work can start, pause only while a job remains pending, resume, and finish
   after all required jobs are complete.
