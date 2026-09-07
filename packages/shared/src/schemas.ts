@@ -1,6 +1,20 @@
 import { z } from 'zod';
 import { PauseReason, Priority } from './enums';
 
+export const adminListQuerySchema = z.object({
+  cursor: z.string().min(1).max(256).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  search: z.string().trim().min(1).max(200).optional(),
+  sort: z.string().trim().min(1).max(80).optional(),
+  direction: z.enum(['asc', 'desc']).default('asc'),
+});
+
+export const adminMutationMetaSchema = z.object({
+  expectedVersion: z.number().int().nonnegative(),
+  idempotencyKey: z.string().uuid(),
+  reason: z.string().trim().min(1).max(1000).optional(),
+});
+
 export const createWorkOrderJobSchema = z.object({
   catalogJobId: z.string().uuid().optional(),
   categoryId: z.string().uuid(),
@@ -67,3 +81,5 @@ export type ChangePauseReasonInput = z.infer<typeof changePauseReasonSchema>;
 export type UpdateWorkOrderNotesInput = z.infer<typeof updateWorkOrderNotesSchema>;
 export type AddJobInput = z.infer<typeof addJobSchema>;
 export type UpdatePmServiceInput = z.infer<typeof updatePmServiceSchema>;
+export type AdminListQuery = z.infer<typeof adminListQuerySchema>;
+export type AdminMutationMetaInput = z.infer<typeof adminMutationMetaSchema>;

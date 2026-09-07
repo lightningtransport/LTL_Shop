@@ -8,12 +8,13 @@ import {
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Request } from 'express';
+import { UserRole } from '@ltl-shop/shared';
 
 export type AuthUser = {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: `${UserRole}`;
   active: boolean;
   pmAuthorized: boolean;
   supabaseAuthId: string | null;

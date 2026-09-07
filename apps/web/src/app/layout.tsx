@@ -8,6 +8,7 @@ import { DataProvider } from '@/lib/data-provider';
 import { PathScrollReset } from '@/components/path-scroll-reset';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ObservabilityProvider } from '@/components/observability-provider';
+import { AppFrame } from '@/components/app-frame';
 
 const bodyFont = Inter({
   subsets: ['latin'],
@@ -58,9 +59,7 @@ export default function RootLayout({
           <ObservabilityProvider />
           <AuthProvider>
             <DataProvider>
-              <main id="main-content" tabIndex={-1} className="app-shell">
-                {children}
-              </main>
+              <AppFrame>{children}</AppFrame>
             </DataProvider>
           </AuthProvider>
         </ThemeProvider>
