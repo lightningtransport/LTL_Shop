@@ -6,17 +6,33 @@ PRD.
 
 ## What is implemented
 
-### Shop Admin foundation
+### Shop Admin read-only operations
 
 - Active users with role `manager` or `admin` can enter the server-protected
   `/admin` shell; a Mechanic receives a secure 403 response and no Admin data.
 - NestJS exposes reusable declarative RBAC through a roles decorator and guard.
 - Login redirects by verified application role, using the shared authentication
   flow rather than a second Admin login.
+- `/admin` displays the current operational state from Supabase PostgreSQL with
+  a generated-at timestamp and explicit `supabase_postgres` provenance. Its
+  supported counts are open, Created, In Progress, Waiting/Paused,
+  High/Critical open, and open Work Orders without an active Mechanic.
+- Dashboard attention is ordered by Critical, High, Waiting/Paused, and then
+  least recently updated open Work Orders. It does not show downtime averages,
+  Off Duty, historical trends, percentages, or per-Job timing.
+- `/admin/work-orders` is a read-only global list. It defaults to open Work
+  Orders and supports validated status/priority filters, search by Work Order,
+  Truck, category, or Mechanic, stable cursor pagination, and sorting by updated
+  date, created date, or display ID. Completed and Cancelled are available by
+  filter, and URL query parameters preserve list state across refreshes.
+- `/admin/work-orders/[id]` provides Work Order-level timing, Jobs and progress,
+  active Mechanics, notes, current pause, pause history, and Activity Log. It
+  exposes no editing controls.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
-  Operational data and administrative mutations remain deferred to later phases.
+  Trucks, Mechanics, History, Catalog, administrative mutations, and Ninox data
+  remain deferred to later phases.
 
 ### Authentication and profile
 
@@ -94,8 +110,8 @@ These are deliberately outside the current implementation:
    Safari mobile device.
 3. Replace `pmAuthorized` with a managed assignment policy that can assign
    multiple mechanics to categories or individual jobs.
-4. Continue Shop Admin with Phase 2 read-only Work Orders, Trucks, Mechanics,
-   History, and evidence-backed dashboard metrics before adding mutations.
+4. Continue Shop Admin with read-only Trucks, Mechanics, and History before
+   adding administrative mutations.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.
 6. Keep release discipline: merge only after CI and both Vercel deployments
@@ -107,8 +123,10 @@ The release branch is expected to pass:
 
 ```bash
 npm run lint
+npm run test --workspace=@ltl-shop/shared
 npm run test --workspace=@ltl-shop/api
 npm run test --workspace=@ltl-shop/web
+npm run test:e2e --workspace=@ltl-shop/web -- admin-shell.spec.ts
 npm run build
 git diff --check
 ```
