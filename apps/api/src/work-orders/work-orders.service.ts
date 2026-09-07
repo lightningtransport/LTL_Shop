@@ -154,6 +154,10 @@ export class WorkOrdersService {
           throw new BadRequestException('One or more selected mechanics cannot perform standard work');
         }
       }
+      if (input.jobs.some((job) => job.categoryId !== category.id)) {
+        throw new BadRequestException('All jobs must belong to the Work Order category');
+      }
+      await this.assertCatalogJobsBelongToCategory(input.jobs, category.id);
     }
 
     const open = await this.prisma.workOrder.findFirst({
@@ -445,6 +449,10 @@ export class WorkOrdersService {
       if (duplicate) {
         throw new BadRequestException('This job is already on the Work Order');
       }
+      if (parsed.data.categoryId !== wo.primaryCategoryId) {
+        throw new BadRequestException('Jobs must belong to the Work Order category');
+      }
+      await this.assertCatalogJobsBelongToCategory([parsed.data], wo.primaryCategoryId, tx);
       await tx.workOrderJob.create({
         data: {
           workOrderId: id,
@@ -488,6 +496,22 @@ export class WorkOrdersService {
       }
       names.add(normalizedName);
       if (job.catalogJobId) catalogIds.add(job.catalogJobId);
+    }
+  }
+
+  private async assertCatalogJobsBelongToCategory(
+    jobs: Array<{ catalogJobId?: string }>,
+    categoryId: string,
+    client: Pick<PrismaService, 'catalogJob'> = this.prisma,
+  ) {
+    const ids = [...new Set(jobs.flatMap((job) => job.catalogJobId ? [job.catalogJobId] : []))];
+    if (!ids.length) return;
+    const matching = await client.catalogJob.findMany({
+      where: { id: { in: ids }, categoryId, status: 'active' },
+      select: { id: true },
+    });
+    if (matching.length !== ids.length) {
+      throw new BadRequestException('One or more catalog jobs do not belong to the Work Order category');
     }
   }
 

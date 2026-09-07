@@ -31,6 +31,17 @@ export function filterAliasOptions(
   });
 }
 
+export function canonicalAliasOptions(
+  aliases: JobAliasOptionDto[],
+  query = '',
+): JobAliasOptionDto[] {
+  const byCatalogId = new Map<string, JobAliasOptionDto>();
+  for (const alias of filterAliasOptions(aliases, query)) {
+    if (!byCatalogId.has(alias.catalogJobId)) byCatalogId.set(alias.catalogJobId, alias);
+  }
+  return [...byCatalogId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
 export async function fetchAliasOptions(
   categoryId?: string,
 ): Promise<JobAliasOptionDto[]> {

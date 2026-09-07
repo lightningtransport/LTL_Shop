@@ -18,11 +18,13 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
 import {
   shopKeys,
+  useAliasOptions,
   useCategories,
   useMechanics,
   useTrucks,
   type Mechanic,
 } from '@/lib/shop-data';
+import { canonicalAliasOptions } from '@/lib/job-catalog';
 import {
   Button,
   CardListSkeleton,
@@ -38,7 +40,6 @@ import {
   Textarea,
   WorkspaceNav,
 } from '@/components/ui';
-import { JobPickerDialog } from '@/components/job-picker-dialog';
 
 type DraftJob = {
   key: string;
@@ -82,7 +83,10 @@ export default function NewWorkOrderPage() {
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
+  const [customJobOpen, setCustomJobOpen] = useState(false);
+  const [customJobName, setCustomJobName] = useState('');
+  const [jobQuery, setJobQuery] = useState('');
+  const [pendingCategoryId, setPendingCategoryId] = useState<string | null>(null);
   const [workingWithOpen, setWorkingWithOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(-1);
@@ -90,8 +94,8 @@ export default function NewWorkOrderPage() {
     'idle' | 'checking' | 'verified' | 'error'
   >('idle');
   const openWoRequest = useRef(0);
-  const addJobTriggerRef = useRef<HTMLButtonElement>(null);
   const workingWithTriggerRef = useRef<HTMLButtonElement>(null);
+  const { data: aliasData } = useAliasOptions(categoryId, !!token && !!categoryId && !isPmMechanic);
 
   useEffect(() => {
     if (!sessionLoading && !token && !sessionError) router.replace('/login');
@@ -110,12 +114,10 @@ export default function NewWorkOrderPage() {
     (mechanic) => mechanic.id !== user?.id,
   );
 
-  const results = useMemo(() => {
-    const term = query.trim().replace(/^#/, '').toLowerCase();
-    if (!term || truck) return [];
-    return (truckData ?? [])
-      .filter((item) => item.truckNumber.toLowerCase().includes(term))
-      .slice(0, 20);
+  const { results, isFallback } = useMemo(() => {
+    const term = normalizeTruckSearch(query);
+    if (!term || truck) return { results: [], isFallback: false };
+    return rankTruckResults(truckData ?? [], term);
   }, [query, truck, truckData]);
 
   const hasSearchTerm = query.trim().replace(/^#/, '').length > 0;
@@ -130,10 +132,41 @@ export default function NewWorkOrderPage() {
       : jobs.length === 0
         ? 'Add a job to continue'
         : 'Create Work Order';
+  const selectedCategory = standardCategories.find((category) => category.id === categoryId);
+  const catalogJobs = useMemo(
+    () => canonicalAliasOptions(aliasData ?? [], jobQuery).filter(
+      (option) => !jobs.some((job) => job.catalogJobId === option.catalogJobId),
+    ),
+    [aliasData, jobQuery, jobs],
+  );
 
   useEffect(() => {
     setActiveResult(results.length ? 0 : -1);
   }, [results]);
+
+  useEffect(() => {
+    setJobQuery('');
+    setCustomJobOpen(false);
+    setCustomJobName('');
+  }, [categoryId]);
+
+  function addJob(job: Omit<DraftJob, 'key'>) {
+    setJobs((current) => {
+      const duplicate = current.some((existing) =>
+        (job.catalogJobId && existing.catalogJobId === job.catalogJobId) ||
+        normalizeJobName(existing.displayName) === normalizeJobName(job.displayName),
+      );
+      return duplicate ? current : [...current, { ...job, key: crypto.randomUUID() }];
+    });
+  }
+
+  function requestCategoryChange(nextCategoryId: string) {
+    if (nextCategoryId === categoryId || jobs.length === 0) {
+      setCategoryId(nextCategoryId);
+      return;
+    }
+    setPendingCategoryId(nextCategoryId);
+  }
 
   async function selectTruck(t: TruckDto) {
     const requestId = ++openWoRequest.current;
@@ -327,6 +360,11 @@ export default function NewWorkOrderPage() {
                   </Button>
                 </li>
               ))}
+              {isFallback ? (
+                <li className="px-4 pt-3 text-xs text-shop-muted" role="status">
+                  No truck starts with #{normalizeTruckSearch(query)}. Showing numbers that contain it.
+                </li>
+              ) : null}
               {!results.length ? (
                 <li className="px-4 py-3 text-sm text-shop-muted" role="option">
                   No trucks found.
@@ -338,7 +376,7 @@ export default function NewWorkOrderPage() {
             {openWoCheck === 'checking'
               ? 'Checking for an open Work Order.'
               : resultsOpen
-                ? `${results.length} truck results available.`
+                ? `${results.length} truck results available.${isFallback ? ' Showing contains matches because no truck starts with your search.' : ''}`
                 : ''}
           </div>
         </div>
@@ -415,7 +453,7 @@ export default function NewWorkOrderPage() {
                   <Select
                     id="work-order-category"
                     value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
+                    onChange={(e) => requestCategoryChange(e.target.value)}
                   >
                     <option value="" disabled>
                       Select a category
@@ -432,9 +470,9 @@ export default function NewWorkOrderPage() {
 
             {!isPmMechanic ? <div>
               <p className="section-label mb-2">Jobs To Do</p>
-              {jobs.length === 0 ? (
-                <EmptyState>Add at least one job.</EmptyState>
-              ) : (
+              {!categoryId ? <EmptyState>Choose a category to see its listed jobs.</EmptyState> : null}
+              {categoryId && jobs.length === 0 ? <p className="mb-3 text-sm text-muted-foreground">Select at least one job.</p> : null}
+              {jobs.length ? (
                 <ul className="mb-3 space-y-2">
                   {jobs.map((j) => (
                     <li
@@ -456,16 +494,75 @@ export default function NewWorkOrderPage() {
                     </li>
                   ))}
                 </ul>
-              )}
-              <Button
-                ref={addJobTriggerRef}
-                variant="secondary"
-                className="w-full"
-                disabled={!categoryId}
-                onClick={() => setAddOpen(true)}
-              >
-                Add job +
-              </Button>
+              ) : null}
+              {categoryId ? (
+                <div className="space-y-2">
+                  {!customJobOpen && catalogJobs.length > 6 ? (
+                    <div>
+                      <Label className="section-label block" htmlFor="new-work-order-job-search">Search job or alias</Label>
+                      <Input
+                        id="new-work-order-job-search"
+                        className="mt-2"
+                        placeholder="Search job / alias"
+                        value={jobQuery}
+                        onChange={(event) => setJobQuery(event.target.value)}
+                      />
+                    </div>
+                  ) : null}
+                  {!customJobOpen ? (
+                    <ul className="max-h-64 space-y-1 overflow-auto" aria-label={`Listed jobs for ${selectedCategory?.name ?? 'selected category'}`}>
+                      {catalogJobs.length ? catalogJobs.map((option) => (
+                        <li key={option.catalogJobId}>
+                          <Button
+                            variant="secondary"
+                            className="w-full justify-between px-3 text-left font-normal"
+                            onClick={() => addJob({
+                              catalogJobId: option.catalogJobId,
+                              categoryId: option.categoryId,
+                              displayName: option.displayName,
+                            })}
+                          >
+                            <span>{option.displayName}</span>
+                            <Check aria-hidden="true" className="size-4 shrink-0" />
+                          </Button>
+                        </li>
+                      )) : (
+                        <li className="rounded-xl border border-dashed border-shop-border px-3 py-3 text-sm text-muted-foreground">
+                          {jobQuery.trim() ? 'No matching listed jobs.' : `No listed jobs are available for ${selectedCategory?.name ?? 'this category'}.`}
+                        </li>
+                      )}
+                    </ul>
+                  ) : (
+                    <div className="space-y-2 rounded-xl border border-shop-border p-3">
+                      <p className="text-sm text-muted-foreground">Add a custom job to {selectedCategory?.name ?? 'this category'}.</p>
+                      <Label className="section-label block" htmlFor="new-work-order-custom-job">Custom job description</Label>
+                      <Input
+                        id="new-work-order-custom-job"
+                        placeholder="Describe the job"
+                        value={customJobName}
+                        onChange={(event) => setCustomJobName(event.target.value)}
+                      />
+                      <Button
+                        className="w-full"
+                        disabled={!customJobName.trim() || jobs.some((job) => normalizeJobName(job.displayName) === normalizeJobName(customJobName))}
+                        onClick={() => {
+                          addJob({ categoryId, displayName: customJobName.trim(), customDescription: customJobName.trim() });
+                          setCustomJobName('');
+                        }}
+                      >
+                        Add custom job
+                      </Button>
+                    </div>
+                  )}
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => setCustomJobOpen((current) => !current)}
+                  >
+                    {customJobOpen ? 'Back to listed jobs' : 'Job not listed'}
+                  </Button>
+                </div>
+              ) : null}
             </div> : null}
 
             {!isPmMechanic ? <div>
@@ -533,26 +630,21 @@ export default function NewWorkOrderPage() {
         </>
       ) : null}
 
-      <JobPickerDialog
-        open={addOpen}
-        categories={standardCategories}
-        defaultCategoryId={categoryId}
-        onClose={() => setAddOpen(false)}
-        onAdd={(job) => {
-          let added = false;
-          setJobs((current) => {
-            const duplicate = current.some((existing) =>
-              (job.catalogJobId && existing.catalogJobId === job.catalogJobId) ||
-              normalizeJobName(existing.displayName) === normalizeJobName(job.displayName),
-            );
-            if (duplicate) return current;
-            added = true;
-            return [...current, { ...job, key: crypto.randomUUID() }];
-          });
-          return added;
-        }}
-        returnFocusRef={addJobTriggerRef}
-      />
+      <Modal
+        open={pendingCategoryId !== null}
+        title="Change category?"
+        onClose={() => setPendingCategoryId(null)}
+      >
+        <p className="text-sm text-muted-foreground">Changing the category removes the jobs already selected for this Work Order.</p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button variant="secondary" onClick={() => setPendingCategoryId(null)}>Keep current</Button>
+          <Button onClick={() => {
+            if (pendingCategoryId) setCategoryId(pendingCategoryId);
+            setJobs([]);
+            setPendingCategoryId(null);
+          }}>Change category</Button>
+        </div>
+      </Modal>
       <WorkingWithModal
         open={workingWithOpen}
         mechanics={availableCoworkers}
@@ -667,4 +759,26 @@ function Info({ label, value }: { label: string; value?: string | null }) {
 
 function normalizeJobName(name: string) {
   return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
+}
+
+function normalizeTruckSearch(query: string) {
+  return query.trim().replace(/^#\s*/, '').replace(/\s+/g, '').toLocaleLowerCase('en-US');
+}
+
+function rankTruckResults(trucks: TruckDto[], term: string) {
+  const naturalCompare = (left: TruckDto, right: TruckDto) =>
+    left.truckNumber.localeCompare(right.truckNumber, undefined, { numeric: true, sensitivity: 'base' });
+  const exact = trucks.filter((truck) => truck.truckNumber.toLocaleLowerCase('en-US') === term).sort(naturalCompare);
+  const prefix = trucks
+    .filter((truck) => truck.truckNumber.toLocaleLowerCase('en-US').startsWith(term) && !exact.some((match) => match.id === truck.id))
+    .sort(naturalCompare);
+  const primary = [...exact, ...prefix];
+  if (primary.length) return { results: primary.slice(0, 20), isFallback: false };
+  return {
+    results: trucks
+      .filter((truck) => truck.truckNumber.toLocaleLowerCase('en-US').includes(term))
+      .sort(naturalCompare)
+      .slice(0, 20),
+    isFallback: true,
+  };
 }

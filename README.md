@@ -61,7 +61,8 @@ With `AUTH_DEV_BYPASS=true`, use **Dev Login** on `/login` with:
 - `manager@lightning.local`
 - `admin@lightning.local`
 
-The local seed also includes `daniel@lightning.local` with the PM-only capability.
+The local seed also includes `daniel@lightning.local` with the PM-only capability and
+`cristian@ltransl.com` with the standard-mechanic capability.
 
 ### Supabase Auth (staging/production)
 

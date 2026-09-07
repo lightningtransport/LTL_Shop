@@ -15,11 +15,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
-import {
-  shopKeys,
-  useCategories,
-  useWorkOrder,
-} from '@/lib/shop-data';
+import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import {
   Button,
   Card,
@@ -54,8 +50,6 @@ export default function WorkOrderDetailPage() {
     error: loadError,
     mutate: mutateWorkOrder,
   } = useWorkOrder(id, !!token);
-  const { data: categoryData } = useCategories(!!token);
-  const categories = categoryData ?? [];
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -583,8 +577,8 @@ export default function WorkOrderDetailPage() {
 
       <JobPickerDialog
         open={addOpen}
-        categories={categories}
         defaultCategoryId={wo.primaryCategoryId}
+        categoryName={wo.primaryCategoryName}
         existingCatalogJobIds={wo.jobs
           .filter((job) => job.status !== 'cancelled' && job.catalogJobId)
           .map((job) => job.catalogJobId!)}

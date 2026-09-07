@@ -17,14 +17,22 @@ export class TrucksService {
   }
 
   async search(q: string) {
-    const term = q.trim().replace(/^#/, '');
+    const term = q.trim().replace(/^#\s*/, '').replace(/\s+/g, '');
     if (!term) return [];
-    const trucks = await this.prisma.truck.findMany({
-      where: { truckNumber: { contains: term, mode: 'insensitive' } },
-      orderBy: { truckNumber: 'asc' },
-      take: 20,
+    const primary = await this.prisma.truck.findMany({
+      where: {
+        OR: [
+          { truckNumber: { equals: term, mode: 'insensitive' } },
+          { truckNumber: { startsWith: term, mode: 'insensitive' } },
+        ],
+      },
     });
-    return trucks.map(toTruckDto);
+    if (primary.length) return rankTruckMatches(primary, term).map(toTruckDto);
+
+    const fallback = await this.prisma.truck.findMany({
+      where: { truckNumber: { contains: term, mode: 'insensitive' } },
+    });
+    return rankTruckMatches(fallback, term).map(toTruckDto);
   }
 
   async getById(id: string) {
@@ -89,6 +97,21 @@ export class TrucksService {
       })),
     };
   }
+}
+
+function rankTruckMatches<T extends { truckNumber: string }>(trucks: T[], term: string) {
+  const normalizedTerm = term.toLocaleLowerCase('en-US');
+  return [...trucks]
+    .sort((left, right) => {
+      const leftExact = left.truckNumber.toLocaleLowerCase('en-US') === normalizedTerm;
+      const rightExact = right.truckNumber.toLocaleLowerCase('en-US') === normalizedTerm;
+      if (leftExact !== rightExact) return leftExact ? -1 : 1;
+      return left.truckNumber.localeCompare(right.truckNumber, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+    })
+    .slice(0, 20);
 }
 
 export function toTruckDto(truck: {
