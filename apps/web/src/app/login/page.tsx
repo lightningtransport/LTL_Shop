@@ -13,9 +13,10 @@ import {
   LoadFailure,
   PageSkeleton,
 } from '@/components/ui';
+import { postLoginPath } from '@/lib/admin-routing';
 
 export default function LoginPage() {
-  const { login, loginDev, requestPasswordReset, logout, passwordRecovery, token, sessionLoading, sessionError, retrySession } = useAuth();
+  const { login, loginDev, requestPasswordReset, logout, passwordRecovery, user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState(() =>
     process.env.NODE_ENV === 'production' ? '' : 'mechanic@lightning.local',
@@ -37,12 +38,14 @@ export default function LoginPage() {
       !sessionError &&
       !sessionLoading &&
       token &&
+      user &&
+      !profileLoading &&
       !navigationStarted.current
     ) {
       navigationStarted.current = true;
-      router.replace('/', { scroll: true });
+      router.replace(postLoginPath(user.role, requestedPath()), { scroll: true });
     }
-  }, [passwordRecovery, busy, error, sessionError, sessionLoading, token, router]);
+  }, [passwordRecovery, busy, error, sessionError, sessionLoading, profileLoading, token, user, router]);
 
   if (sessionLoading || (token && !sessionError)) {
     return <PageSkeleton label="Restoring session" />;
@@ -53,9 +56,9 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      await login(email, password);
+      const signedInUser = await login(email, password);
       navigationStarted.current = true;
-      router.replace('/', { scroll: true });
+      router.replace(postLoginPath(signedInUser.role, requestedPath()), { scroll: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
     } finally {
@@ -67,9 +70,9 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      await loginDev(email);
+      const signedInUser = await loginDev(email);
       navigationStarted.current = true;
-      router.replace('/', { scroll: true });
+      router.replace(postLoginPath(signedInUser.role, requestedPath()), { scroll: true });
     } catch (err) {
       setError(
         err instanceof Error
@@ -173,4 +176,9 @@ export default function LoginPage() {
       </form>
     </div>
   );
+}
+
+function requestedPath() {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('next');
 }

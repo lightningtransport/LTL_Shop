@@ -65,6 +65,17 @@ async function main() {
     },
   });
 
+  await prisma.user.upsert({
+    where: { email: 'admin@lightning.local' },
+    update: {},
+    create: {
+      email: 'admin@lightning.local',
+      name: 'Shop Administrator',
+      role: 'admin',
+      active: true,
+    },
+  });
+
   const trucks = [
     {
       truckNumber: '905',
