@@ -14,9 +14,11 @@ import {
   PageSkeleton,
 } from '@/components/ui';
 import { postLoginPath } from '@/lib/admin-routing';
+import { useShopLocale } from '@/lib/locale-context';
 
 export default function LoginPage() {
   const { login, loginDev, requestPasswordReset, logout, passwordRecovery, user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
+  const { messages } = useShopLocale();
   const router = useRouter();
   const [email, setEmail] = useState(() =>
     process.env.NODE_ENV === 'production' ? '' : 'mechanic@lightning.local',
@@ -48,7 +50,7 @@ export default function LoginPage() {
   }, [passwordRecovery, busy, error, sessionError, sessionLoading, profileLoading, token, user, router]);
 
   if (sessionLoading || (token && !sessionError)) {
-    return <PageSkeleton label="Restoring session" />;
+    return <PageSkeleton label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />;
   }
 
   async function onSubmit(e: FormEvent) {
@@ -60,7 +62,7 @@ export default function LoginPage() {
       navigationStarted.current = true;
       router.replace(postLoginPath(signedInUser, requestedPath()), { scroll: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed');
+      setError(err instanceof Error ? err.message : (messages.locale === 'es' ? 'No se pudo iniciar sesión.' : 'Sign in failed.'));
     } finally {
       setBusy(false);
     }
@@ -91,7 +93,7 @@ export default function LoginPage() {
       await requestPasswordReset(email);
       setResetSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to send a reset email.');
+      setError(err instanceof Error ? err.message : (messages.locale === 'es' ? 'No se pudo enviar el correo de restablecimiento.' : 'Unable to send a reset email.'));
     } finally {
       setBusy(false);
     }
@@ -100,15 +102,15 @@ export default function LoginPage() {
   return (
     <div>
       <AuthBrandHeader
-        title="Sign In"
-        subtitle="Sign in with the email linked to the Shop."
+        title={messages.signIn}
+        subtitle={messages.signInHint}
       />
       {sessionError ? (
         <div className="mb-4 space-y-2">
-          <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
+          <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
           {token ? (
             <Button variant="secondary" className="w-full" onClick={() => void logout()}>
-              Use another account
+              {messages.locale === 'es' ? 'Usar otra cuenta' : 'Use another account'}
             </Button>
           ) : null}
         </div>
@@ -117,7 +119,7 @@ export default function LoginPage() {
         <Card className="space-y-4">
         <div>
           <Label className="section-label" htmlFor="login-email">
-            Email
+            {messages.email}
           </Label>
           <Input
             id="login-email"
@@ -131,7 +133,7 @@ export default function LoginPage() {
         </div>
         <div>
           <Label className="section-label" htmlFor="login-password">
-            Password
+            {messages.password}
           </Label>
           <Input
             id="login-password"
@@ -147,7 +149,7 @@ export default function LoginPage() {
           <InlineAlert>{error}</InlineAlert>
         ) : null}
         <Button className="w-full" disabled={busy} type="submit">
-          Sign In
+          {messages.signIn}
         </Button>
         <Button
           variant="secondary"
@@ -155,11 +157,11 @@ export default function LoginPage() {
           disabled={busy}
           onClick={onForgotPassword}
         >
-          Reset password
+          {messages.resetPassword}
         </Button>
         {resetSent ? (
           <p className="text-sm text-muted-foreground" role="status">
-            If this email has an account, a password-reset link has been sent.
+            {messages.locale === 'es' ? 'Si este correo tiene una cuenta, se envió un enlace para restablecer la contraseña.' : 'If this email has an account, a password-reset link has been sent.'}
           </p>
         ) : null}
         {process.env.NODE_ENV !== 'production' ? (
@@ -169,7 +171,7 @@ export default function LoginPage() {
             disabled={busy}
             onClick={onDevLogin}
           >
-            Dev Login (local bypass)
+            {messages.devLogin}
           </Button>
         ) : null}
         </Card>

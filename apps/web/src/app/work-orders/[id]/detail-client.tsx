@@ -13,7 +13,8 @@ import {
   type WorkOrderDetailDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetch } from '@/lib/api';
+import { ApiError, apiFetch } from '@/lib/api';
+import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import {
@@ -40,6 +41,7 @@ function isWorkOrderListKey(key: unknown): key is string {
 
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
+  const { messages } = useShopLocale();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
@@ -127,6 +129,19 @@ export default function WorkOrderDetailPage() {
 
   if (sessionLoading || !token || !wo) {
     if (error) return <p className="text-shop-muted" role="alert">{error}</p>;
+    if (loadError instanceof ApiError && loadError.status === 403) {
+      return (
+        <div className="space-y-3">
+          <InlineAlert>{messages.noAccessToPmWorkOrder}</InlineAlert>
+          <p className="text-sm text-muted-foreground">
+            {messages.locale === 'es' ? 'Elige otro Work Order o vuelve a Inicio.' : 'Choose another Work Order or return to Home.'}
+          </p>
+          <Button asChild variant="secondary" className="w-full">
+            <Link href="/">{messages.backToHome}</Link>
+          </Button>
+        </div>
+      );
+    }
     if (loadError instanceof Error) {
       return <LoadFailure message={loadError.message} onRetry={() => void mutateWorkOrder()} retryLabel="Retry work order" />;
     }

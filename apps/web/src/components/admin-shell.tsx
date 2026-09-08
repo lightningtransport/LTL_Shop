@@ -46,7 +46,7 @@ export function AdminShell({
             </Button>;
           })}
           {futureNavigation.map(({ message, icon: Icon }) => (
-            <div key={message} className="flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm text-muted-foreground" title={messages.comingLater}>
+            <div key={message} className="flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm text-muted-foreground" aria-disabled="true" title={messages.comingLater}>
               <Icon aria-hidden="true" className="size-4" />
               <span>{messages[message]}</span>
               <Badge variant="secondary" className="ml-auto">P2+</Badge>
