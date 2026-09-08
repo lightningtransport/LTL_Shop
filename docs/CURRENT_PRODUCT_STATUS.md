@@ -6,17 +6,45 @@ PRD.
 
 ## What is implemented
 
-### Shop Admin foundation
+### Shop Admin read-only operations
 
-- Active users with role `manager` or `admin` can enter the server-protected
-  `/admin` shell; a Mechanic receives a secure 403 response and no Admin data.
-- NestJS exposes reusable declarative RBAC through a roles decorator and guard.
-- Login redirects by verified application role, using the shared authentication
-  flow rather than a second Admin login.
+- Active users with `admin.access` can enter the server-protected `/admin`
+  shell; users without that capability receive a secure 403 response and no
+  Admin data.
+- NestJS exposes reusable declarative authorization through a capability
+  decorator and guard. Capabilities are read from application tables for each
+  authenticated request instead of editable user metadata or stale JWT claims.
+- The role still selects the initial destination. Login uses one shared
+  authentication flow, and users classified as Admin land on `/admin`.
+- `/admin` displays the current operational state from Supabase PostgreSQL with
+  a generated-at timestamp and explicit `supabase_postgres` provenance. Its
+  actionable counts are Open Work Orders, Waiting/Paused, High/Critical open,
+  open more than 24 hours, completed today, and completed in the last seven
+  calendar days. Today and seven-day windows use `America/New_York` calendar
+  boundaries represented as explicit UTC instants for drill-down queries.
+- Dashboard attention is ordered by Critical, High, Waiting/Paused, and then
+  least recently updated open Work Orders. It does not show downtime averages,
+  Off Duty, historical trends, percentages, or per-Job timing.
+- `/admin/work-orders` is a read-only global list. It defaults to all Work
+  Orders and supports validated status/priority and absolute date filters,
+  search by Work Order,
+  Truck, category, or Mechanic, stable cursor pagination, and sorting by updated
+  date, created date, or display ID. Dashboard links pass their filters
+  explicitly, and URL query parameters preserve list state across refreshes.
+- `/admin/work-orders/[id]` prioritizes operational status, age, progress,
+  assigned Mechanics, and the current pause; shows the available Truck number,
+  make, model, year, mileage, company, and owner; and provides category-filtered,
+  cursor-paginated recent completed repair history. Work Order timing, Jobs,
+  notes, pause history, and Activity Log remain read-only.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
-  Operational data and administrative mutations remain deferred to later phases.
+- The Admin dashboard offers capability-filtered Workspaces cards for Standard
+  Mechanic and PM Mechanic. Work performed there retains the signed-in user's
+  identity; it is not impersonation.
+- Standalone Trucks, Mechanics, History, Catalog, administrative mutations, and
+  Ninox data remain deferred to later phases. The Truck repair-history slice is
+  available only within Work Order detail.
 
 ### Authentication and profile
 
@@ -27,25 +55,32 @@ PRD.
   production site URL. Local development preserves the current local origin.
 - The web app restores navigation at the top of the page, including Safari
   back/forward cache restoration.
+- `admin.access`, `mechanic.standard`, and `mechanic.pm` are persisted and
+  independently auditable. A role classifies a user but does not grant mechanic
+  mutation authority.
 
 ### Standard mechanic work orders
 
 - A mechanic selects a truck, a non-PM category, one or more jobs, optional
   collaborators, priority, and optional notes.
-- PM is not offered to a mechanic without PM authorization. Collaborators are
+- PM is not offered to a user without `mechanic.pm`. Collaborators are
   optional and never default to the work-order creator.
-- Jobs are selected through one shared picker in creation and detail screens.
-  Catalog aliases search to one canonical result; a catalog job or normalized
+- On creation, choosing a category immediately lists its catalog jobs inline.
+  “Job not listed” switches to an exclusive custom-job form; category changes
+  confirm before removing selected jobs. Existing orders use the simplified,
+  category-locked picker. A Work Order cannot mix categories.
+- Catalog aliases resolve to one canonical result; a catalog job or normalized
   custom job cannot be added twice.
 - Work can start, pause only while a job remains pending, resume, and finish
   after all required jobs are complete.
 - Finished work returns to Home and is available from the completed-work
   section. Active and paused work remain separate.
 
-### Daniel PM workflow
+### PM workflow
 
-`pmAuthorized` is a temporary capability; the current PM mechanic is Daniel.
-The capability—not a name or email—is the authorization check.
+`mechanic.pm` is the authorization check. Daniel remains PM-only, while an
+approved multi-workspace user may also perform PM work under their own identity.
+The legacy `pmAuthorized` column remains only for migration compatibility.
 
 1. Select a truck.
 2. Create PM Work Order. It starts immediately with one assigned PM mechanic
@@ -92,10 +127,10 @@ These are deliberately outside the current implementation:
    connect their Auth IDs to the existing application users.
 2. Perform a production smoke test with a real reset-password email and a real
    Safari mobile device.
-3. Replace `pmAuthorized` with a managed assignment policy that can assign
-   multiple mechanics to categories or individual jobs.
-4. Continue Shop Admin with Phase 2 read-only Work Orders, Trucks, Mechanics,
-   History, and evidence-backed dashboard metrics before adding mutations.
+3. Remove the compatibility-only `pmAuthorized` column after production
+   stability is confirmed; a general permission-management UI remains deferred.
+4. Continue Shop Admin with read-only Trucks, Mechanics, and History before
+   adding administrative mutations.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.
 6. Keep release discipline: merge only after CI and both Vercel deployments
@@ -107,8 +142,10 @@ The release branch is expected to pass:
 
 ```bash
 npm run lint
+npm run test --workspace=@ltl-shop/shared
 npm run test --workspace=@ltl-shop/api
 npm run test --workspace=@ltl-shop/web
+npm run test:e2e --workspace=@ltl-shop/web -- admin-shell.spec.ts
 npm run build
 git diff --check
 ```

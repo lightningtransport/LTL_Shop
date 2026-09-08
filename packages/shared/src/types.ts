@@ -1,10 +1,14 @@
 import type {
+  AppCapability,
+  ActivityEventType,
   JobStatus,
   PauseReason,
   Priority,
   UserRole,
   WorkOrderStatus,
 } from './enums';
+
+export type AdminDataSource = 'supabase_postgres';
 
 export interface UserDto {
   id: string;
@@ -13,6 +17,7 @@ export interface UserDto {
   role: UserRole;
   active: boolean;
   pmAuthorized: boolean;
+  capabilities: AppCapability[];
 }
 
 export interface TruckDto {
@@ -137,6 +142,83 @@ export interface AdminMutationMeta {
   expectedVersion: number;
   idempotencyKey: string;
   reason?: string;
+}
+
+export interface AdminWorkOrderSummaryDto {
+  id: string;
+  displayId: string;
+  truck: Pick<TruckDto, 'id' | 'truckNumber' | 'make' | 'model' | 'year'>;
+  category: { id: string; name: string };
+  status: WorkOrderStatus;
+  priority: Priority;
+  jobsCompleted: number;
+  jobsTotal: number;
+  mechanics: MechanicAssignmentDto[];
+  currentPause: PauseEventDto | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
+}
+
+export interface AdminActivityLogDto {
+  id: string;
+  eventType: ActivityEventType;
+  entityType: string;
+  entityId: string | null;
+  user: { id: string; name: string };
+  previousValue: unknown;
+  newValue: unknown;
+  relevantValue: unknown;
+  createdAt: string;
+}
+
+export interface AdminWorkOrderJobDto {
+  id: string;
+  displayName: string;
+  customDescription: string | null;
+  category: { id: string; name: string };
+  status: JobStatus;
+}
+
+export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
+  truck: TruckDto;
+  notes: string | null;
+  createdBy: { id: string; name: string };
+  completedBy: { id: string; name: string } | null;
+  totalActiveLaborMs: number;
+  totalWaitingMs: number;
+  jobs: AdminWorkOrderJobDto[];
+  pauseHistory: (PauseEventDto & {
+    createdBy: { id: string; name: string };
+  })[];
+  activityLog: AdminActivityLogDto[];
+}
+
+export interface AdminRepairHistoryDto {
+  truck: TruckDto;
+  items: RepairHistoryItemDto[];
+  nextCursor: string | null;
+}
+
+export interface AdminDashboardDto {
+  generatedAt: string;
+  source: AdminDataSource;
+  timeZone: 'America/New_York';
+  windows: {
+    openOlderThan24h: { before: string };
+    today: { from: string; to: string };
+    last7Days: { from: string; to: string };
+  };
+  counts: {
+    open: number;
+    waitingPaused: number;
+    highCriticalOpen: number;
+    openOlderThan24h: number;
+    completedToday: number;
+    completedLast7Days: number;
+  };
+  attention: AdminWorkOrderSummaryDto[];
 }
 
 export interface PmPartDto {

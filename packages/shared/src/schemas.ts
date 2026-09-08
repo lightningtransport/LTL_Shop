@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { PauseReason, Priority } from './enums';
+import { MechanicMode, PauseReason, Priority, WorkOrderStatus } from './enums';
+
+export const mechanicModeSchema = z.nativeEnum(MechanicMode);
 
 export const adminListQuerySchema = z.object({
   cursor: z.string().min(1).max(256).optional(),
@@ -7,6 +9,42 @@ export const adminListQuerySchema = z.object({
   search: z.string().trim().min(1).max(200).optional(),
   sort: z.string().trim().min(1).max(80).optional(),
   direction: z.enum(['asc', 'desc']).default('asc'),
+});
+
+const commaSeparatedEnum = <T extends z.EnumLike>(values: T) =>
+  z.preprocess(
+    (value) =>
+      typeof value === 'string'
+        ? value.split(',').map((item) => item.trim()).filter(Boolean)
+        : value,
+    z.array(z.nativeEnum(values)).min(1),
+  );
+
+export const adminWorkOrderCursorSchema = z.object({
+  sort: z.enum(['updatedAt', 'createdAt', 'displayId']),
+  direction: z.enum(['asc', 'desc']),
+  value: z.string().min(1),
+  id: z.string().uuid(),
+});
+
+export const adminWorkOrdersQuerySchema = z.object({
+  cursor: z.string().trim().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  search: z.string().trim().min(1).max(200).optional(),
+  status: commaSeparatedEnum(WorkOrderStatus).optional(),
+  priority: commaSeparatedEnum(Priority).optional(),
+  createdBefore: z.string().datetime({ offset: true }).optional(),
+  completedFrom: z.string().datetime({ offset: true }).optional(),
+  completedBefore: z.string().datetime({ offset: true }).optional(),
+  sort: z.enum(['updatedAt', 'createdAt', 'displayId']).default('updatedAt'),
+  direction: z.enum(['asc', 'desc']).default('desc'),
+});
+
+export const adminRepairHistoryQuerySchema = z.object({
+  categoryId: z.string().uuid().optional(),
+  excludeWorkOrderId: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(25).default(5),
+  cursor: z.string().trim().min(1).max(256).regex(/^[A-Za-z0-9_-]+$/).optional(),
 });
 
 export const adminMutationMetaSchema = z.object({
@@ -82,4 +120,7 @@ export type UpdateWorkOrderNotesInput = z.infer<typeof updateWorkOrderNotesSchem
 export type AddJobInput = z.infer<typeof addJobSchema>;
 export type UpdatePmServiceInput = z.infer<typeof updatePmServiceSchema>;
 export type AdminListQuery = z.infer<typeof adminListQuerySchema>;
+export type AdminWorkOrdersQuery = z.infer<typeof adminWorkOrdersQuerySchema>;
+export type AdminWorkOrderCursor = z.infer<typeof adminWorkOrderCursorSchema>;
+export type AdminRepairHistoryQuery = z.infer<typeof adminRepairHistoryQuerySchema>;
 export type AdminMutationMetaInput = z.infer<typeof adminMutationMetaSchema>;

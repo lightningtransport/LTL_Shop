@@ -26,7 +26,7 @@ export default function RepairHistoryPage() {
   const items = data?.items ?? [];
   const requestedReturn = searchParams.get('from');
   const backHref = requestedReturn?.startsWith('/') ? requestedReturn : '/';
-  const backLabel = backHref === '/work-orders/new'
+  const backLabel = backHref === '/work-orders/new' || /^\/mechanic\/(standard|pm)\/new$/.test(backHref)
     ? (messages.locale === 'es' ? 'Volver al nuevo Work Order' : 'Back to New Work Order')
     : backHref.startsWith('/work-orders/')
       ? (messages.locale === 'es' ? 'Volver al Work Order' : 'Back to Work Order')

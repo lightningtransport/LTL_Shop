@@ -2,10 +2,12 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Dialog as DialogPrimitive, Slot } from 'radix-ui';
-import { ArrowLeft, Check, ChevronDown, Languages, Moon, Sun, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, Gauge, Languages, Moon, Sun, Wrench, X } from 'lucide-react';
+import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
@@ -336,6 +338,7 @@ export function ThemeToggle() {
 function ProfileDialog() {
   const { user, updatePassword, logout } = useAuth();
   const { messages } = useShopLocale();
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
@@ -379,6 +382,9 @@ function ProfileDialog() {
     setIsLoggingOut(true);
     try {
       await logout();
+      router.replace('/login');
+      router.refresh();
+      window.location.replace('/login');
       setOpen(false);
     } catch (logoutError) {
       setError(logoutError instanceof Error ? logoutError.message : 'Unable to sign out.');
@@ -402,7 +408,7 @@ function ProfileDialog() {
         <Button
           variant="secondary"
           size="sm"
-          className="max-w-36 justify-between gap-1.5 sm:max-w-44"
+          className="max-w-28 justify-between gap-1.5 sm:max-w-44"
           aria-label={messages.locale === 'es' ? `Abrir perfil de ${user.name}` : `Open profile for ${user.name}`}
         >
           <span className="truncate">{user.name}</span>
@@ -483,35 +489,71 @@ export function AppHeaderActions() {
   );
 }
 
-export function HomeTopBar() {
+export function HomeTopBar({ mode }: { mode?: MechanicMode }) {
   const { messages, setLocale } = useShopLocale();
   return (
-    <header
-      className="mb-5 flex items-start justify-between gap-3"
-      role="banner"
-      aria-label={messages.locale === 'es' ? 'Controles de Inicio' : 'Home controls'}
-    >
-      <Image
-        src="/ltl-logo.png"
-        alt="Lightning Transport and Logistics"
-        width={1536}
-        height={894}
-        priority
-        className="h-auto w-[85px] object-contain sm:w-28"
-      />
-      <div className="flex shrink-0 items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          aria-label={messages.switchTo}
-          onClick={() => setLocale(messages.locale === 'en' ? 'es' : 'en')}
-        >
-          <Languages aria-hidden="true" className="size-4" />
-          {messages.locale === 'en' ? 'ES' : 'EN'}
+    <>
+      <header
+        className="mb-4 flex items-start justify-between gap-3"
+        role="banner"
+        aria-label={messages.locale === 'es' ? 'Controles de Inicio' : 'Home controls'}
+      >
+        <Image
+          src="/ltl-logo.png"
+          alt="Lightning Transport and Logistics"
+          width={1536}
+          height={894}
+          priority
+          className="h-auto w-[85px] object-contain sm:w-28"
+        />
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={messages.switchTo}
+            onClick={() => setLocale(messages.locale === 'en' ? 'es' : 'en')}
+          >
+            <Languages aria-hidden="true" className="size-4" />
+            {messages.locale === 'en' ? 'ES' : 'EN'}
+          </Button>
+          <AppHeaderActions />
+        </div>
+      </header>
+      {mode ? <WorkspaceNav mode={mode} /> : null}
+    </>
+  );
+}
+
+export function WorkspaceNav({ mode }: { mode: MechanicMode }) {
+  const { user } = useAuth();
+  if (!user) return null;
+  const canAdmin = user.capabilities.includes(AppCapability.ADMIN_ACCESS);
+  const canStandard = user.capabilities.includes(AppCapability.MECHANIC_STANDARD);
+  const canPm = user.capabilities.includes(AppCapability.MECHANIC_PM);
+  if (!canAdmin && Number(canStandard) + Number(canPm) < 2) return null;
+
+  return (
+    <nav className="mb-5 flex gap-2 overflow-x-auto pb-1" aria-label="Shop workspaces">
+      {canAdmin ? (
+        <Button asChild variant="outline" size="sm" className="shrink-0">
+          <Link href="/admin"><Gauge aria-hidden="true" className="size-4" />Back to Shop Admin</Link>
         </Button>
-        <AppHeaderActions />
-      </div>
-    </header>
+      ) : null}
+      {canStandard ? (
+        <Button asChild variant={mode === MechanicMode.STANDARD ? 'secondary' : 'ghost'} size="sm" className="shrink-0">
+          <Link href="/mechanic/standard" aria-current={mode === MechanicMode.STANDARD ? 'page' : undefined}>
+            <Wrench aria-hidden="true" className="size-4" />Standard
+          </Link>
+        </Button>
+      ) : null}
+      {canPm ? (
+        <Button asChild variant={mode === MechanicMode.PM ? 'secondary' : 'ghost'} size="sm" className="shrink-0">
+          <Link href="/mechanic/pm" aria-current={mode === MechanicMode.PM ? 'page' : undefined}>
+            <Wrench aria-hidden="true" className="size-4" />PM
+          </Link>
+        </Button>
+      ) : null}
+    </nav>
   );
 }
 

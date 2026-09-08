@@ -45,7 +45,7 @@ export default function LoginPage() {
       !navigationStarted.current
     ) {
       navigationStarted.current = true;
-      router.replace(postLoginPath(user.role, requestedPath()), { scroll: true });
+      router.replace(postLoginPath(user, requestedPath()), { scroll: true });
     }
   }, [passwordRecovery, busy, error, sessionError, sessionLoading, profileLoading, token, user, router]);
 
@@ -60,7 +60,7 @@ export default function LoginPage() {
     try {
       const signedInUser = await login(email, password);
       navigationStarted.current = true;
-      router.replace(postLoginPath(signedInUser.role, requestedPath()), { scroll: true });
+      router.replace(postLoginPath(signedInUser, requestedPath()), { scroll: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : (messages.locale === 'es' ? 'No se pudo iniciar sesión.' : 'Sign in failed.'));
     } finally {
@@ -74,7 +74,7 @@ export default function LoginPage() {
     try {
       const signedInUser = await loginDev(email);
       navigationStarted.current = true;
-      router.replace(postLoginPath(signedInUser.role, requestedPath()), { scroll: true });
+      router.replace(postLoginPath(signedInUser, requestedPath()), { scroll: true });
     } catch (err) {
       setError(
         err instanceof Error

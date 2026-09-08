@@ -1,9 +1,26 @@
-import { UserRole } from '@ltl-shop/shared';
+import { AppCapability, type UserDto } from '@ltl-shop/shared';
 
-export function postLoginPath(role: UserRole, requestedPath?: string | null) {
-  if (role !== UserRole.MANAGER && role !== UserRole.ADMIN) return '/';
-  if (requestedPath?.startsWith('/admin') && !requestedPath.startsWith('//')) {
+export function hasCapability(
+  user: Pick<UserDto, 'capabilities'> | null | undefined,
+  capability: AppCapability,
+) {
+  return !!user?.capabilities.includes(capability);
+}
+
+export function defaultWorkspacePath(user: Pick<UserDto, 'capabilities'>) {
+  if (hasCapability(user, AppCapability.ADMIN_ACCESS)) return '/admin';
+  if (hasCapability(user, AppCapability.MECHANIC_STANDARD)) return '/mechanic/standard';
+  if (hasCapability(user, AppCapability.MECHANIC_PM)) return '/mechanic/pm';
+  return '/access-denied';
+}
+
+export function postLoginPath(user: Pick<UserDto, 'capabilities'>, requestedPath?: string | null) {
+  if (
+    hasCapability(user, AppCapability.ADMIN_ACCESS) &&
+    requestedPath?.startsWith('/admin') &&
+    !requestedPath.startsWith('//')
+  ) {
     return requestedPath;
   }
-  return '/admin';
+  return defaultWorkspacePath(user);
 }

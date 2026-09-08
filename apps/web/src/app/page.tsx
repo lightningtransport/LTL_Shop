@@ -2,12 +2,13 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import type { WorkOrderSummaryDto } from '@ltl-shop/shared';
+import { usePathname, useRouter } from 'next/navigation';
+import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { useWorkOrders } from '@/lib/shop-data';
 import { pauseLabel, priorityLabel } from '@/lib/format';
 import { useShopLocale } from '@/lib/locale-context';
+import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
   CardListSkeleton,
   EmptyState,
@@ -22,16 +23,29 @@ export default function HomePage() {
   const { user, token, sessionLoading, sessionError, retrySession } = useAuth();
   const { messages } = useShopLocale();
   const router = useRouter();
-  const { data, error, mutate } = useWorkOrders(!!token);
+  const pathname = usePathname();
+  const mode = pathname === '/mechanic/pm'
+    ? MechanicMode.PM
+    : pathname === '/mechanic/standard'
+      ? MechanicMode.STANDARD
+      : null;
+  const requiredCapability = mode === MechanicMode.PM
+    ? AppCapability.MECHANIC_PM
+    : AppCapability.MECHANIC_STANDARD;
+  const hasWorkspaceAccess = !!mode && !!user?.capabilities.includes(requiredCapability);
+  const { data, error, mutate } = useWorkOrders(!!token && hasWorkspaceAccess, mode ?? undefined);
 
   useEffect(() => {
     if (!sessionLoading && !token && !sessionError) router.replace('/login');
-  }, [sessionLoading, token, sessionError, router]);
+    if (!sessionLoading && token && user && (!mode || !user.capabilities.includes(requiredCapability))) {
+      router.replace(defaultWorkspacePath(user));
+    }
+  }, [sessionLoading, token, sessionError, user, mode, requiredCapability, router]);
 
   if (sessionLoading && !token) {
     return (
       <div>
-        <HomeTopBar />
+        <HomeTopBar mode={mode ?? undefined} />
         <ScreenHeader title={messages.home} subtitle={messages.locale === 'es' ? 'Jobs actuales, Work Orders y trabajo reciente.' : 'Current jobs, work orders, and recent work.'} />
         <PageSkeleton label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />
       </div>
@@ -41,29 +55,31 @@ export default function HomePage() {
   if (!token && sessionError) {
     return (
       <div>
-        <HomeTopBar />
+        <HomeTopBar mode={mode ?? undefined} />
         <ScreenHeader title={messages.home} subtitle={messages.locale === 'es' ? 'Jobs actuales, Work Orders y trabajo reciente.' : 'Current jobs, work orders, and recent work.'} />
         <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
       </div>
     );
   }
 
-  if (!token) {
+  if (!token || !user || !mode || !hasWorkspaceAccess) {
     return <PageSkeleton label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />;
   }
 
+  const isPm = mode === MechanicMode.PM;
+
   return (
     <div>
-      <HomeTopBar />
+      <HomeTopBar mode={mode} />
       <ScreenHeader
-        title={messages.home}
-        subtitle={messages.locale === 'es' ? 'Jobs actuales, Work Orders y trabajo reciente.' : 'Current jobs, work orders, and recent work.'}
+        title={isPm ? (messages.locale === 'es' ? 'Mecánico de PM' : 'PM Mechanic') : (messages.locale === 'es' ? 'Mecánico estándar' : 'Standard Mechanic')}
+        subtitle={isPm ? (messages.locale === 'es' ? 'Servicios de PM asignados a ti.' : 'PM services assigned to you.') : (messages.locale === 'es' ? 'Work Orders estándar asignadas a ti.' : 'Standard Work Orders assigned to you.')}
       />
 
-      <Link href="/work-orders/new" className="btn-primary mb-6 w-full">
-        {user?.pmAuthorized ? messages.createPmService : messages.createWorkOrder}
+      <Link href={`/mechanic/${mode}/new`} className="btn-primary mb-6 w-full">
+        {isPm ? messages.createPmService : messages.createWorkOrder}
       </Link>
-      {user?.pmAuthorized ? (
+      {isPm ? (
         <p className="-mt-4 mb-6 text-center text-sm text-shop-muted">
           {messages.locale === 'es' ? 'Los servicios de PM comienzan inmediatamente después de crearse.' : 'PM services start immediately after creation.'}
         </p>
@@ -109,7 +125,7 @@ export default function HomePage() {
             </p>
             {!data.active.length ? (
               <EmptyState>
-                {messages.noActiveJobs}
+                {isPm && messages.locale === 'es' ? 'No hay servicios de PM activos asignados a ti.' : isPm ? 'No active PM services assigned to you.' : messages.noActiveJobs}
               </EmptyState>
             ) : (
               <div className="space-y-3">

@@ -7,6 +7,7 @@ import { ChevronDown } from 'lucide-react';
 import { useSWRConfig } from 'swr';
 import {
   JobStatus,
+  MechanicMode,
   PAUSE_REASON_LABELS,
   PauseReason,
   type WorkOrderDetailDto,
@@ -15,11 +16,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
-import {
-  shopKeys,
-  useCategories,
-  useWorkOrder,
-} from '@/lib/shop-data';
+import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import {
   Button,
   Card,
@@ -33,9 +30,14 @@ import {
   ScreenHeader,
   Select,
   Textarea,
+  WorkspaceNav,
 } from '@/components/ui';
 import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
 import { JobPickerDialog } from '@/components/job-picker-dialog';
+
+function isWorkOrderListKey(key: unknown): key is string {
+  return typeof key === 'string' && (key === '/api/work-orders' || key.startsWith('/api/work-orders?'));
+}
 
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
@@ -50,8 +52,6 @@ export default function WorkOrderDetailPage() {
     error: loadError,
     mutate: mutateWorkOrder,
   } = useWorkOrder(id, !!token);
-  const { data: categoryData } = useCategories(!!token);
-  const categories = categoryData ?? [];
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -108,7 +108,7 @@ export default function WorkOrderDetailPage() {
       const updated = await action();
       await mutateWorkOrder(updated, { revalidate: false });
       void Promise.all([
-        mutateGlobal(shopKeys.workOrders),
+        mutateGlobal(isWorkOrderListKey),
         mutateGlobal(
           (key) =>
             typeof key === 'string' && key.includes('/repair-history'),
@@ -155,7 +155,7 @@ export default function WorkOrderDetailPage() {
         onUpdated={async (updated) => {
           await mutateWorkOrder(updated, { revalidate: false });
           void Promise.all([
-            mutateGlobal(shopKeys.workOrders),
+            mutateGlobal(isWorkOrderListKey),
             mutateGlobal(
               (key) => typeof key === 'string' && key.includes('/repair-history'),
             ),
@@ -175,10 +175,11 @@ export default function WorkOrderDetailPage() {
 
   return (
     <div>
+      <WorkspaceNav mode={MechanicMode.STANDARD} />
       <ScreenHeader
         title={wo.displayId}
         subtitle={`#${wo.truckNumber} · ${statusLabel(wo.status)}`}
-        backHref="/"
+        backHref="/mechanic/standard"
       />
 
       <div className="card mb-4 space-y-2">
@@ -517,7 +518,7 @@ export default function WorkOrderDetailPage() {
                     method: 'POST',
                   }),
                 undefined,
-                () => router.replace('/', { scroll: true }),
+                () => router.replace('/mechanic/standard', { scroll: true }),
               );
             }}
           >
@@ -591,8 +592,8 @@ export default function WorkOrderDetailPage() {
 
       <JobPickerDialog
         open={addOpen}
-        categories={categories}
         defaultCategoryId={wo.primaryCategoryId}
+        categoryName={wo.primaryCategoryName}
         existingCatalogJobIds={wo.jobs
           .filter((job) => job.status !== 'cancelled' && job.catalogJobId)
           .map((job) => job.catalogJobId!)}
@@ -704,10 +705,11 @@ function PmWorkOrderDetail({
 
   return (
     <div>
+      <WorkspaceNav mode={MechanicMode.PM} />
       <ScreenHeader
         title={wo.displayId}
         subtitle={`#${wo.truckNumber} · ${statusLabel(wo.status)}`}
-        backHref="/"
+        backHref="/mechanic/pm"
       />
 
       {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
@@ -825,7 +827,7 @@ function PmWorkOrderDetail({
             setFinishOpen(false);
             void run(
               () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, { method: 'POST' }),
-              () => router.replace('/', { scroll: true }),
+              () => router.replace('/mechanic/pm', { scroll: true }),
             );
           }}>Finish Work</Button>
         </div>

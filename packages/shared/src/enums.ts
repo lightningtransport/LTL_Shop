@@ -4,6 +4,17 @@ export enum UserRole {
   ADMIN = 'admin',
 }
 
+export enum AppCapability {
+  ADMIN_ACCESS = 'admin.access',
+  MECHANIC_STANDARD = 'mechanic.standard',
+  MECHANIC_PM = 'mechanic.pm',
+}
+
+export enum MechanicMode {
+  STANDARD = 'standard',
+  PM = 'pm',
+}
+
 export enum WorkOrderStatus {
   CREATED = 'created',
   IN_PROGRESS = 'in_progress',
