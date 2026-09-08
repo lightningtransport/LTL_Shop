@@ -1,6 +1,15 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Shop Admin Phase 2A', () => {
+  test('login landmark does not show a focus ring while controls keep focus styles', async ({ page }) => {
+    await page.goto('/login');
+    await page.locator('#main-content').focus();
+    await expect(page.locator('#main-content')).toHaveCSS('outline-style', 'none');
+    await page.getByLabel('Email').focus();
+    await expect(page.getByLabel('Email')).toBeFocused();
+    await expect(page.getByLabel('Email')).toHaveCSS('outline-style', 'solid');
+  });
+
   test('unauthenticated requests are redirected to the shared login', async ({ page }) => {
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/login\?next=%2Fadmin$/);
@@ -46,6 +55,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByText('WO-0101').first().click();
     await expect(page.getByRole('heading', { name: 'WO-0101' })).toBeVisible();
     await expect(page.getByText('Read only')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Truck details' })).toBeVisible();
+    await expect(page.getByText('120,000').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Recent repair history' })).toBeVisible();
+    await expect(page.getByText('WO-0104').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
 
@@ -55,6 +68,43 @@ test.describe('Shop Admin Phase 2A', () => {
     await content.evaluate((element) => { element.scrollTop = 500; });
     await expect(page.getByRole('banner', { name: 'Shop Admin controls' })).toBeInViewport();
     await expect(page.getByRole('complementary', { name: 'Shop Admin navigation' })).toBeInViewport();
+  });
+
+  test('work orders open with all statuses and dashboard metrics use explicit list filters', async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('link', { name: /^Open Work Orders\b/ }).click();
+    await expect(page).toHaveURL(/status=created%2Cin_progress%2Cwaiting_paused/);
+    await page.goBack();
+
+    const verifyMetric = async (name: RegExp, expected: Record<string, string>) => {
+      await page.getByRole('region', { name: 'Current operations' }).getByRole('link', { name }).click();
+      await page.waitForURL((url) => Object.entries(expected).every(([key, value]) => url.searchParams.get(key) === value));
+      const url = new URL(page.url());
+      for (const [key, value] of Object.entries(expected)) expect(url.searchParams.get(key)).toBe(value);
+      await page.goBack();
+      await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible({ timeout: 15_000 });
+    };
+    await verifyMetric(/Waiting \/ Paused/, { status: 'waiting_paused' });
+    await verifyMetric(/High \/ Critical open/, { status: 'created,in_progress,waiting_paused', priority: 'high,critical' });
+    await verifyMetric(/Open more than 24 hours/, { status: 'created,in_progress,waiting_paused', createdBefore: '2026-09-05T18:30:00.000Z' });
+    await verifyMetric(/Completed today/, { status: 'completed', completedFrom: '2026-09-06T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
+    await verifyMetric(/Completed in the last 7 days/, { status: 'completed', completedFrom: '2026-08-31T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
+
+    await page.getByRole('link', { name: 'Work Orders' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/work-orders$/);
+    await expect(page.getByLabel('Status')).toHaveValue('all');
+    await page.getByRole('button', { name: 'Clear' }).click();
+    await expect(page).toHaveURL(/\/admin\/work-orders$/);
+    await expect(page.getByText('WO-0101').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Load more' }).click();
+    await expect(page.getByText('WO-0104').first()).toBeVisible();
+    await expect(page.getByText('WO-0105').first()).toBeVisible();
   });
 
   test('admin role can load dashboard and pagination completes', async ({ page }) => {

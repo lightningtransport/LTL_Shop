@@ -9,14 +9,20 @@ import { formatAdminDate, humanize } from '@/lib/admin-format';
 import { useAdminWorkOrders } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
-const allStatuses = 'created,in_progress,waiting_paused,completed,cancelled';
+const OPEN_STATUSES = 'created,in_progress,waiting_paused';
+const DASHBOARD_RANGE_KEYS = ['createdBefore', 'completedFrom', 'completedBefore'] as const;
+
+function statusFilterValue(searchParams: { get(name: string): string | null }) {
+  const value = searchParams.get('status');
+  return value === OPEN_STATUSES ? 'open' : value ?? 'all';
+}
 
 export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
-  const [status, setStatus] = useState(searchParams.get('status') ?? 'open');
+  const [status, setStatus] = useState(statusFilterValue(searchParams));
   const [priority, setPriority] = useState(searchParams.get('priority') ?? 'all');
   const [sort, setSort] = useState(searchParams.get('sort') ?? 'updatedAt');
   const [direction, setDirection] = useState(searchParams.get('direction') ?? 'desc');
@@ -24,7 +30,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
 
   useEffect(() => {
     setSearch(searchParams.get('search') ?? '');
-    setStatus(searchParams.get('status') ?? 'open');
+    setStatus(statusFilterValue(searchParams));
     setPriority(searchParams.get('priority') ?? 'all');
     setSort(searchParams.get('sort') ?? 'updatedAt');
     setDirection(searchParams.get('direction') ?? 'desc');
@@ -37,13 +43,19 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
     event.preventDefault();
     const next = new URLSearchParams();
     if (search.trim()) next.set('search', search.trim());
-    if (status === 'all') next.set('status', allStatuses);
-    else if (status !== 'open') next.set('status', status);
+    if (status === 'open') next.set('status', OPEN_STATUSES);
+    else if (status !== 'all') next.set('status', status);
     if (priority !== 'all') next.set('priority', priority);
     if (sort !== 'updatedAt') next.set('sort', sort);
     if (direction !== 'desc') next.set('direction', direction);
+    for (const key of DASHBOARD_RANGE_KEYS) {
+      const value = searchParams.get(key);
+      if (value) next.set(key, value);
+    }
     router.replace(`/admin/work-orders${next.size ? `?${next}` : ''}`);
   }
+
+  const hasDashboardRange = DASHBOARD_RANGE_KEYS.some((key) => searchParams.has(key));
 
   return <div className="space-y-5">
     <header><p className="section-label">{messages.eyebrow}</p><h1 className="mt-2 font-display text-3xl font-bold tracking-wide">{messages.workOrdersTitle}</h1><p className="mt-2 text-sm text-muted-foreground">{messages.workOrdersDescription}</p></header>
@@ -53,9 +65,10 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
         <label className="space-y-1 xl:col-span-2"><span className="text-sm font-medium">{messages.status}</span><Select value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="open">{messages.openStatuses}</option><option value="all">{messages.allStatuses}</option><option value="created">{messages.created}</option><option value="in_progress">{messages.inProgress}</option><option value="waiting_paused">{messages.waitingPaused}</option><option value="completed">{messages.completed}</option><option value="cancelled">{messages.cancelled}</option>
         </Select></label>
-        <label className="space-y-1 xl:col-span-2"><span className="text-sm font-medium">{messages.priority}</span><Select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="all">{messages.allPriorities}</option><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option></Select></label>
+        <label className="space-y-1 xl:col-span-2"><span className="text-sm font-medium">{messages.priority}</span><Select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="all">{messages.allPriorities}</option><option value="high,critical">{messages.highCritical}</option><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option></Select></label>
         <label className="space-y-1 xl:col-span-2"><span className="text-sm font-medium">{messages.sort}</span><Select value={sort} onChange={(event) => setSort(event.target.value)}><option value="updatedAt">{messages.updatedAt}</option><option value="createdAt">{messages.createdAt}</option><option value="displayId">{messages.displayId}</option></Select></label>
         <label className="space-y-1 xl:col-span-2"><span className="text-sm font-medium">{messages.direction}</span><Select value={direction} onChange={(event) => setDirection(event.target.value)}><option value="desc">{messages.newestFirst}</option><option value="asc">{messages.oldestFirst}</option></Select></label>
+        {hasDashboardRange ? <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground md:col-span-2 xl:col-span-12">{messages.dashboardRangeActive}</p> : null}
         <div className="flex items-end justify-end gap-2 border-t pt-3 md:col-span-2 xl:col-span-12"><Button type="button" variant="ghost" onClick={() => router.replace('/admin/work-orders')}>{messages.clearFilters}</Button><Button type="submit">{messages.applyFilters}</Button></div>
       </form>
     </Card>

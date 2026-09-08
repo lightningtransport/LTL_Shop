@@ -22,6 +22,8 @@ import {
   type AdminWorkOrdersQuery,
 } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { toTruckDto } from '../trucks/trucks.service';
+import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
 
@@ -72,25 +74,44 @@ export class AdminService {
     const openWhere: Prisma.WorkOrderWhereInput = {
       status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] },
     };
-    const [open, created, inProgress, waitingPaused, highCriticalOpen, unassignedOpen, attention] =
+    const now = new Date();
+    const windows = getShopDashboardWindows(now);
+    const olderThan24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const [open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days, attention] =
       await Promise.all([
         this.prisma.workOrder.count({ where: openWhere }),
-        this.prisma.workOrder.count({ where: { status: WorkOrderStatus.created } }),
-        this.prisma.workOrder.count({ where: { status: WorkOrderStatus.in_progress } }),
         this.prisma.workOrder.count({ where: { status: WorkOrderStatus.waiting_paused } }),
         this.prisma.workOrder.count({
           where: { ...openWhere, priority: { in: [Priority.high, Priority.critical] } },
         }),
         this.prisma.workOrder.count({
-          where: { ...openWhere, mechanics: { none: { removedAt: null } } },
+          where: { ...openWhere, createdAt: { lt: olderThan24h } },
+        }),
+        this.prisma.workOrder.count({
+          where: {
+            status: WorkOrderStatus.completed,
+            completedAt: { gte: new Date(windows.today.from), lt: new Date(windows.today.to) },
+          },
+        }),
+        this.prisma.workOrder.count({
+          where: {
+            status: WorkOrderStatus.completed,
+            completedAt: { gte: new Date(windows.last7Days.from), lt: new Date(windows.last7Days.to) },
+          },
         }),
         this.getAttention(openWhere),
       ]);
 
     return {
-      generatedAt: new Date().toISOString(),
+      generatedAt: now.toISOString(),
       source: 'supabase_postgres',
-      counts: { open, created, inProgress, waitingPaused, highCriticalOpen, unassignedOpen },
+      timeZone: windows.timeZone,
+      windows: {
+        openOlderThan24h: { before: olderThan24h.toISOString() },
+        today: windows.today,
+        last7Days: windows.last7Days,
+      },
+      counts: { open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days },
       attention,
     };
   }
@@ -168,9 +189,12 @@ export class AdminService {
   }
 
   private buildWhere(query: AdminWorkOrdersQuery, cursor: AdminWorkOrderCursor | null) {
-    const status = (query.status ?? OPEN_WORK_ORDER_STATUSES) as WorkOrderStatus[];
-    const filters: Prisma.WorkOrderWhereInput[] = [{ status: { in: status } }];
+    const filters: Prisma.WorkOrderWhereInput[] = [];
+    if (query.status) filters.push({ status: { in: query.status as WorkOrderStatus[] } });
     if (query.priority) filters.push({ priority: { in: query.priority as Priority[] } });
+    if (query.createdBefore) filters.push({ createdAt: { lt: new Date(query.createdBefore) } });
+    if (query.completedFrom) filters.push({ completedAt: { gte: new Date(query.completedFrom) } });
+    if (query.completedBefore) filters.push({ completedAt: { lt: new Date(query.completedBefore) } });
     if (query.search) {
       const contains = { contains: query.search, mode: 'insensitive' as const };
       filters.push({ OR: [
@@ -188,7 +212,7 @@ export class AdminService {
         { [query.sort]: value, id: { [comparison]: cursor.id } },
       ] });
     }
-    return { AND: filters } satisfies Prisma.WorkOrderWhereInput;
+    return filters.length ? { AND: filters } satisfies Prisma.WorkOrderWhereInput : {};
   }
 
   private decodeCursor(encoded: string, query: AdminWorkOrdersQuery) {
@@ -253,6 +277,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
   }));
   return {
     ...summary,
+    truck: toTruckDto(row.truck),
     notes: row.notes,
     createdBy: row.createdBy,
     completedBy: row.completedBy,

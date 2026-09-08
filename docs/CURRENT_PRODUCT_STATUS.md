@@ -18,27 +18,33 @@ PRD.
   authentication flow, and users classified as Admin land on `/admin`.
 - `/admin` displays the current operational state from Supabase PostgreSQL with
   a generated-at timestamp and explicit `supabase_postgres` provenance. Its
-  supported counts are open, Created, In Progress, Waiting/Paused,
-  High/Critical open, and open Work Orders without an active Mechanic.
+  actionable counts are Open Work Orders, Waiting/Paused, High/Critical open,
+  open more than 24 hours, completed today, and completed in the last seven
+  calendar days. Today and seven-day windows use `America/New_York` calendar
+  boundaries represented as explicit UTC instants for drill-down queries.
 - Dashboard attention is ordered by Critical, High, Waiting/Paused, and then
   least recently updated open Work Orders. It does not show downtime averages,
   Off Duty, historical trends, percentages, or per-Job timing.
-- `/admin/work-orders` is a read-only global list. It defaults to open Work
-  Orders and supports validated status/priority filters, search by Work Order,
+- `/admin/work-orders` is a read-only global list. It defaults to all Work
+  Orders and supports validated status/priority and absolute date filters,
+  search by Work Order,
   Truck, category, or Mechanic, stable cursor pagination, and sorting by updated
-  date, created date, or display ID. Completed and Cancelled are available by
-  filter, and URL query parameters preserve list state across refreshes.
-- `/admin/work-orders/[id]` provides Work Order-level timing, Jobs and progress,
-  active Mechanics, notes, current pause, pause history, and Activity Log. It
-  exposes no editing controls.
+  date, created date, or display ID. Dashboard links pass their filters
+  explicitly, and URL query parameters preserve list state across refreshes.
+- `/admin/work-orders/[id]` prioritizes operational status, age, progress,
+  assigned Mechanics, and the current pause; shows the available Truck number,
+  make, model, year, mileage, company, and owner; and provides category-filtered,
+  cursor-paginated recent completed repair history. Work Order timing, Jobs,
+  notes, pause history, and Activity Log remain read-only.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
 - The Admin dashboard offers capability-filtered Workspaces cards for Standard
   Mechanic and PM Mechanic. Work performed there retains the signed-in user's
   identity; it is not impersonation.
-- Trucks, Mechanics, History, Catalog, administrative mutations, and Ninox data
-  remain deferred to later phases.
+- Standalone Trucks, Mechanics, History, Catalog, administrative mutations, and
+  Ninox data remain deferred to later phases. The Truck repair-history slice is
+  available only within Work Order detail.
 
 ### Authentication and profile
 

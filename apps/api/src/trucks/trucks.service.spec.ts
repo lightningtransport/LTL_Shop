@@ -46,4 +46,56 @@ describe('TrucksService search', () => {
       where: { truckNumber: { contains: '05', mode: 'insensitive' } },
     }));
   });
+
+  it('returns completed repair history with bounded cursor pagination', async () => {
+    const currentTruck = truck('905');
+    const findUnique = vi.fn().mockResolvedValue(currentTruck);
+    const rows = [
+      {
+        id: '00000000-0000-4000-8000-000000000002',
+        displayId: 'WO-002',
+        completedAt: new Date('2026-09-08T12:00:00.000Z'),
+        createdAt: new Date('2026-09-08T10:00:00.000Z'),
+        primaryCategory: { name: 'Suspension' },
+        mechanics: [{ mechanic: { name: 'Alex' } }],
+        pmService: null,
+        jobs: [{ displayName: 'Inspect suspension' }],
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        displayId: 'WO-001',
+        completedAt: new Date('2026-09-07T12:00:00.000Z'),
+        createdAt: new Date('2026-09-07T10:00:00.000Z'),
+        primaryCategory: { name: 'PM' },
+        mechanics: [],
+        pmService: { observedMileage: 123456 },
+        jobs: [{ displayName: 'Hidden PM row' }],
+      },
+    ];
+    const findMany = vi.fn().mockResolvedValue(rows);
+    const service = new TrucksService({ truck: { findUnique }, workOrder: { findMany } } as never);
+
+    const excludedId = '00000000-0000-4000-8000-000000000099';
+    const result = await service.getRepairHistory(currentTruck.id, undefined, {
+      excludeWorkOrderId: excludedId,
+      limit: 1,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      displayId: 'WO-002',
+      mechanicNames: ['Alex'],
+      jobs: ['Inspect suspension'],
+    });
+    expect(result.nextCursor).toBeTypeOf('string');
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      take: 2,
+      orderBy: [{ completedAt: 'desc' }, { id: 'desc' }],
+      where: expect.objectContaining({
+        status: 'completed',
+        completedAt: { not: null },
+        id: { not: excludedId },
+      }),
+    }));
+  });
 });

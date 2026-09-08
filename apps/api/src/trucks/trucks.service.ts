@@ -1,5 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { AppCapability, OPEN_WORK_ORDER_STATUSES } from '@ltl-shop/shared';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  AppCapability,
+  OPEN_WORK_ORDER_STATUSES,
+  type AdminRepairHistoryDto,
+} from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { toWorkOrderSummary } from '../work-orders/work-order.mapper';
 import type { AuthUser } from '../auth/auth.guard';
@@ -65,13 +69,27 @@ export class TrucksService {
     };
   }
 
-  async getRepairHistory(truckId: string, categoryId?: string) {
+  async getRepairHistory(
+    truckId: string,
+    categoryId?: string,
+    options: { excludeWorkOrderId?: string; limit?: number; cursor?: string } = {},
+  ): Promise<AdminRepairHistoryDto> {
     const truck = await this.getById(truckId);
+    const limit = options.limit ?? 100;
+    const cursor = options.cursor ? decodeRepairHistoryCursor(options.cursor) : null;
     const workOrders = await this.prisma.workOrder.findMany({
       where: {
         truckId,
         status: 'completed',
+        completedAt: { not: null },
         ...(categoryId ? { primaryCategoryId: categoryId } : {}),
+        ...(options.excludeWorkOrderId ? { id: { not: options.excludeWorkOrderId } } : {}),
+        ...(cursor ? {
+          OR: [
+            { completedAt: { lt: cursor.completedAt } },
+            { completedAt: cursor.completedAt, id: { lt: cursor.id } },
+          ],
+        } : {}),
       },
       include: {
         primaryCategory: true,
@@ -79,24 +97,69 @@ export class TrucksService {
         jobs: { where: { status: 'completed' } },
         pmService: true,
       },
-      orderBy: { completedAt: 'desc' },
-      take: 100,
+      orderBy: [{ completedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
     });
+    const hasNext = workOrders.length > limit;
+    const pageRows = hasNext ? workOrders.slice(0, limit) : workOrders;
 
     return {
       truck,
-      items: workOrders.map((wo) => ({
-        workOrderId: wo.id,
-        displayId: wo.displayId,
-        date: (wo.completedAt ?? wo.createdAt).toISOString(),
-        primaryCategoryName: wo.primaryCategory.name,
-        truckNumber: truck.truckNumber,
-        mechanicNames: wo.mechanics.map((m) => m.mechanic.name),
-        mileage: wo.pmService?.observedMileage ?? truck.mileage,
-        jobs: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => j.displayName),
-      })),
+      items: pageRows.map((wo) => toRepairHistoryItem(wo, truck.truckNumber, truck.mileage)),
+      nextCursor: hasNext
+        ? encodeRepairHistoryCursor(pageRows[pageRows.length - 1])
+        : null,
     };
   }
+}
+
+function toRepairHistoryItem(
+  wo: {
+    id: string;
+    displayId: string;
+    completedAt: Date | null;
+    createdAt: Date;
+    primaryCategory: { name: string };
+    mechanics: { mechanic: { name: string } }[];
+    pmService: { observedMileage: number | null } | null;
+    jobs: { displayName: string }[];
+  },
+  truckNumber: string,
+  truckMileage: number | null,
+) {
+  return {
+    workOrderId: wo.id,
+    displayId: wo.displayId,
+    date: (wo.completedAt ?? wo.createdAt).toISOString(),
+    primaryCategoryName: wo.primaryCategory.name,
+    truckNumber,
+    mechanicNames: wo.mechanics.map((m) => m.mechanic.name),
+    mileage: wo.pmService?.observedMileage ?? truckMileage,
+    jobs: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => j.displayName),
+  };
+}
+
+function decodeRepairHistoryCursor(encoded: string) {
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (!parsed || typeof parsed !== 'object') throw new Error('shape');
+    const candidate = parsed as { completedAt?: unknown; id?: unknown };
+    if (
+      typeof candidate.completedAt !== 'string' ||
+      Number.isNaN(Date.parse(candidate.completedAt)) ||
+      typeof candidate.id !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate.id)
+    ) throw new Error('value');
+    return { completedAt: new Date(candidate.completedAt), id: candidate.id };
+  } catch {
+    throw new BadRequestException('Invalid repair history cursor');
+  }
+}
+
+function encodeRepairHistoryCursor(row: { id: string; completedAt: Date | null }) {
+  if (!row.completedAt) return null;
+  return Buffer.from(JSON.stringify({ completedAt: row.completedAt.toISOString(), id: row.id }))
+    .toString('base64url');
 }
 
 function rankTruckMatches<T extends { truckNumber: string }>(trucks: T[], term: string) {
