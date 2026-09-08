@@ -3,6 +3,7 @@ import { OPEN_WORK_ORDER_STATUSES, PauseReason, WorkOrderStatus } from './enums'
 import {
   adminListQuerySchema,
   adminMutationMetaSchema,
+  adminRepairHistoryQuerySchema,
   adminWorkOrderCursorSchema,
   adminWorkOrdersQuerySchema,
   createWorkOrderSchema,
@@ -42,6 +43,9 @@ describe('shared contracts', () => {
     expect(adminWorkOrdersQuerySchema.parse({
       status: 'created,waiting_paused',
       priority: 'high,critical',
+      createdBefore: '2026-09-08T12:00:00.000Z',
+      completedFrom: '2026-09-01T00:00:00-04:00',
+      completedBefore: '2026-09-09T00:00:00-04:00',
     })).toMatchObject({
       status: ['created', 'waiting_paused'],
       priority: ['high', 'critical'],
@@ -57,6 +61,14 @@ describe('shared contracts', () => {
     expect(adminWorkOrderCursorSchema.safeParse({
       sort: 'updatedAt', direction: 'desc', value: '', id: 'bad-id',
     }).success).toBe(false);
+    expect(adminRepairHistoryQuerySchema.parse({
+      excludeWorkOrderId: '00000000-0000-4000-8000-000000000001',
+    })).toMatchObject({
+      excludeWorkOrderId: '00000000-0000-4000-8000-000000000001',
+      limit: 5,
+    });
+    expect(adminRepairHistoryQuerySchema.safeParse({ limit: 26 }).success).toBe(false);
+    expect(adminWorkOrdersQuerySchema.safeParse({ createdBefore: 'not-a-date' }).success).toBe(false);
   });
 
   it('requires version and UUID idempotency for Admin mutations', () => {

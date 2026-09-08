@@ -33,8 +33,18 @@ export const adminWorkOrdersQuerySchema = z.object({
   search: z.string().trim().min(1).max(200).optional(),
   status: commaSeparatedEnum(WorkOrderStatus).optional(),
   priority: commaSeparatedEnum(Priority).optional(),
+  createdBefore: z.string().datetime({ offset: true }).optional(),
+  completedFrom: z.string().datetime({ offset: true }).optional(),
+  completedBefore: z.string().datetime({ offset: true }).optional(),
   sort: z.enum(['updatedAt', 'createdAt', 'displayId']).default('updatedAt'),
   direction: z.enum(['asc', 'desc']).default('desc'),
+});
+
+export const adminRepairHistoryQuerySchema = z.object({
+  categoryId: z.string().uuid().optional(),
+  excludeWorkOrderId: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(25).default(5),
+  cursor: z.string().trim().min(1).max(256).regex(/^[A-Za-z0-9_-]+$/).optional(),
 });
 
 export const adminMutationMetaSchema = z.object({
@@ -112,4 +122,5 @@ export type UpdatePmServiceInput = z.infer<typeof updatePmServiceSchema>;
 export type AdminListQuery = z.infer<typeof adminListQuerySchema>;
 export type AdminWorkOrdersQuery = z.infer<typeof adminWorkOrdersQuerySchema>;
 export type AdminWorkOrderCursor = z.infer<typeof adminWorkOrderCursorSchema>;
+export type AdminRepairHistoryQuery = z.infer<typeof adminRepairHistoryQuerySchema>;
 export type AdminMutationMetaInput = z.infer<typeof adminMutationMetaSchema>;

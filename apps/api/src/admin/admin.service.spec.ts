@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AdminService } from './admin.service';
 
 const baseRow = {
@@ -41,22 +41,53 @@ function createPrisma() {
 }
 
 describe('AdminService', () => {
+  afterEach(() => vi.useRealTimers());
+
   it('returns current dashboard counts with provenance', async () => {
     const prisma = createPrisma();
-    [6, 2, 2, 2, 3, 1].forEach((value) => prisma.workOrder.count.mockResolvedValueOnce(value));
+    [6, 2, 3, 4, 5, 6].forEach((value) => prisma.workOrder.count.mockResolvedValueOnce(value));
     prisma.workOrder.findMany.mockResolvedValue([]);
     const service = new AdminService(prisma as never);
 
     await expect(service.dashboard()).resolves.toMatchObject({
       source: 'supabase_postgres',
       counts: {
-        open: 6, created: 2, inProgress: 2, waitingPaused: 2,
-        highCriticalOpen: 3, unassignedOpen: 1,
+        open: 6, waitingPaused: 2, highCriticalOpen: 3,
+        openOlderThan24h: 4, completedToday: 5, completedLast7Days: 6,
       },
       attention: [],
     });
     expect(prisma.workOrder.count).toHaveBeenCalledTimes(6);
     expect(prisma.workOrder.findMany).toHaveBeenCalledTimes(4);
+  });
+
+  it('returns the exact UTC cutoff used by the older-than-24-hours count', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-08T14:45:00.000Z'));
+    const prisma = createPrisma();
+    [0, 0, 0, 1, 0, 0].forEach((value) => prisma.workOrder.count.mockResolvedValueOnce(value));
+    prisma.workOrder.findMany.mockResolvedValue([]);
+    const service = new AdminService(prisma as never);
+
+    const result = await service.dashboard();
+
+    expect(result.windows.openOlderThan24h.before).toBe('2026-09-07T14:45:00.000Z');
+    expect(prisma.workOrder.count.mock.calls[3][0]).toEqual({
+      where: {
+        status: { in: ['created', 'in_progress', 'waiting_paused'] },
+        createdAt: { lt: new Date('2026-09-07T14:45:00.000Z') },
+      },
+    });
+  });
+
+  it('does not add a status filter when the list query has no status', async () => {
+    const prisma = createPrisma();
+    prisma.workOrder.findMany.mockResolvedValue([]);
+    const service = new AdminService(prisma as never);
+
+    await service.list({});
+
+    expect(prisma.workOrder.findMany.mock.calls[0][0].where).toEqual({});
   });
 
   it('uses a stable sort-value plus UUID cursor without repeating the boundary row', async () => {
@@ -103,6 +134,25 @@ describe('AdminService', () => {
     expect(where).toContain('truckNumber');
     expect(where).toContain('primaryCategory');
     expect(where).toContain('mechanics');
+  });
+
+  it('applies absolute created and completed date boundaries', async () => {
+    const prisma = createPrisma();
+    prisma.workOrder.findMany.mockResolvedValue([]);
+    const service = new AdminService(prisma as never);
+
+    await service.list({
+      createdBefore: '2026-09-08T12:00:00.000Z',
+      completedFrom: '2026-09-01T00:00:00-04:00',
+      completedBefore: '2026-09-09T00:00:00-04:00',
+    });
+
+    const where = prisma.workOrder.findMany.mock.calls[0][0].where;
+    expect(where.AND).toEqual(expect.arrayContaining([
+      { createdAt: { lt: new Date('2026-09-08T12:00:00.000Z') } },
+      { completedAt: { gte: new Date('2026-09-01T04:00:00.000Z') } },
+      { completedAt: { lt: new Date('2026-09-09T04:00:00.000Z') } },
+    ]));
   });
 
   it('returns 404 for a missing detail', async () => {

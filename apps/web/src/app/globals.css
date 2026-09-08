@@ -115,6 +115,12 @@ body {
   outline-offset: 2px;
 }
 
+/* PathScrollReset focuses this programmatic landmark after navigation. Keep
+   that announcement target quiet while retaining visible focus on controls. */
+#main-content[tabindex='-1']:focus-visible {
+  outline: none;
+}
+
 @layer components {
   .app-shell {
     @apply mx-auto min-h-screen w-full max-w-md px-4 outline-none;

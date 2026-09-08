@@ -182,6 +182,7 @@ export interface AdminWorkOrderJobDto {
 }
 
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
+  truck: TruckDto;
   notes: string | null;
   createdBy: { id: string; name: string };
   completedBy: { id: string; name: string } | null;
@@ -194,16 +195,28 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   activityLog: AdminActivityLogDto[];
 }
 
+export interface AdminRepairHistoryDto {
+  truck: TruckDto;
+  items: RepairHistoryItemDto[];
+  nextCursor: string | null;
+}
+
 export interface AdminDashboardDto {
   generatedAt: string;
   source: AdminDataSource;
+  timeZone: 'America/New_York';
+  windows: {
+    openOlderThan24h: { before: string };
+    today: { from: string; to: string };
+    last7Days: { from: string; to: string };
+  };
   counts: {
     open: number;
-    created: number;
-    inProgress: number;
     waitingPaused: number;
     highCriticalOpen: number;
-    unassignedOpen: number;
+    openOlderThan24h: number;
+    completedToday: number;
+    completedLast7Days: number;
   };
   attention: AdminWorkOrderSummaryDto[];
 }
