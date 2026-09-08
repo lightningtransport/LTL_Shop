@@ -9,6 +9,7 @@ import { PathScrollReset } from '@/components/path-scroll-reset';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ObservabilityProvider } from '@/components/observability-provider';
 import { AppFrame } from '@/components/app-frame';
+import { ShopLocaleProvider } from '@/lib/locale-context';
 
 const bodyFont = Inter({
   subsets: ['latin'],
@@ -57,11 +58,13 @@ export default function RootLayout({
             <PathScrollReset />
           </Suspense>
           <ObservabilityProvider />
-          <AuthProvider>
-            <DataProvider>
-              <AppFrame>{children}</AppFrame>
-            </DataProvider>
-          </AuthProvider>
+          <ShopLocaleProvider>
+            <AuthProvider>
+              <DataProvider>
+                <AppFrame>{children}</AppFrame>
+              </DataProvider>
+            </AuthProvider>
+          </ShopLocaleProvider>
         </ThemeProvider>
         <SpeedInsights />
       </body>

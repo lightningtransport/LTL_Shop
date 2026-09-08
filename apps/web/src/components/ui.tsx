@@ -5,9 +5,10 @@ import Link from 'next/link';
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Dialog as DialogPrimitive, Slot } from 'radix-ui';
-import { ArrowLeft, Check, ChevronDown, Moon, Sun, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, Languages, Moon, Sun, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
+import { useShopLocale } from '@/lib/locale-context';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
@@ -312,6 +313,7 @@ export function MultiSelect({
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  const { messages } = useShopLocale();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => setMounted(true), []);
@@ -322,8 +324,8 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       className="rounded-full border bg-card shadow-sm"
-      aria-label={isDark ? 'Toggle theme: use light mode' : 'Toggle theme: use dark mode'}
-      title={isDark ? 'Use light theme' : 'Use dark theme'}
+      aria-label={isDark ? (messages.locale === 'es' ? 'Cambiar tema: usar modo claro' : 'Toggle theme: use light mode') : (messages.locale === 'es' ? 'Cambiar tema: usar modo oscuro' : 'Toggle theme: use dark mode')}
+      title={isDark ? (messages.locale === 'es' ? 'Usar tema claro' : 'Use light theme') : (messages.locale === 'es' ? 'Usar tema oscuro' : 'Use dark theme')}
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
     >
       {isDark ? <Sun aria-hidden="true" className="size-5" /> : <Moon aria-hidden="true" className="size-5" />}
@@ -333,6 +335,7 @@ export function ThemeToggle() {
 
 function ProfileDialog() {
   const { user, updatePassword, logout } = useAuth();
+  const { messages } = useShopLocale();
   const [open, setOpen] = React.useState(false);
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
@@ -349,12 +352,12 @@ function ProfileDialog() {
     setError(null);
 
     if (newPassword.length < 8) {
-      setError('Use at least 8 characters for your new password.');
+      setError(messages.locale === 'es' ? 'Usa al menos 8 caracteres para la nueva contraseña.' : 'Use at least 8 characters for your new password.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('The passwords do not match.');
+      setError(messages.locale === 'es' ? 'Las contraseñas no coinciden.' : 'The passwords do not match.');
       return;
     }
 
@@ -363,7 +366,7 @@ function ProfileDialog() {
       await updatePassword(newPassword);
       setNewPassword('');
       setConfirmPassword('');
-      setStatus('Password updated.');
+      setStatus(messages.locale === 'es' ? 'Contraseña actualizada.' : 'Password updated.');
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : 'Unable to update password.');
     } finally {
@@ -400,7 +403,7 @@ function ProfileDialog() {
           variant="secondary"
           size="sm"
           className="max-w-36 justify-between gap-1.5 sm:max-w-44"
-          aria-label={`Open profile for ${user.name}`}
+          aria-label={messages.locale === 'es' ? `Abrir perfil de ${user.name}` : `Open profile for ${user.name}`}
         >
           <span className="truncate">{user.name}</span>
           <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
@@ -415,7 +418,7 @@ function ProfileDialog() {
             </DialogDescription>
           </div>
           <DialogClose asChild>
-            <Button variant="ghost" size="icon" aria-label="Close profile">
+            <Button variant="ghost" size="icon" aria-label={messages.locale === 'es' ? 'Cerrar perfil' : 'Close profile'}>
               <X aria-hidden="true" className="size-5" />
             </Button>
           </DialogClose>
@@ -423,7 +426,7 @@ function ProfileDialog() {
 
         <form className="space-y-4" onSubmit={handlePasswordUpdate}>
           <div className="space-y-2">
-            <Label htmlFor="profile-new-password">New password</Label>
+            <Label htmlFor="profile-new-password">{messages.locale === 'es' ? 'Nueva contraseña' : 'New password'}</Label>
             <Input
               id="profile-new-password"
               type="password"
@@ -435,7 +438,7 @@ function ProfileDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="profile-confirm-password">Confirm new password</Label>
+            <Label htmlFor="profile-confirm-password">{messages.locale === 'es' ? 'Confirmar nueva contraseña' : 'Confirm new password'}</Label>
             <Input
               id="profile-confirm-password"
               type="password"
@@ -447,12 +450,12 @@ function ProfileDialog() {
             />
           </div>
 
-          <p className="text-sm text-muted-foreground">Use at least 8 characters.</p>
+          <p className="text-sm text-muted-foreground">{messages.locale === 'es' ? 'Usa al menos 8 caracteres.' : 'Use at least 8 characters.'}</p>
           {status ? <p className="text-sm font-medium text-shop-success" role="status">{status}</p> : null}
           {error ? <p className="text-sm font-medium text-destructive" role="alert">{error}</p> : null}
 
           <Button className="w-full" type="submit" disabled={isUpdatingPassword || isLoggingOut}>
-            {isUpdatingPassword ? 'Updating password…' : 'Update password'}
+            {isUpdatingPassword ? (messages.locale === 'es' ? 'Actualizando contraseña…' : 'Updating password…') : (messages.locale === 'es' ? 'Actualizar contraseña' : 'Update password')}
           </Button>
         </form>
 
@@ -463,7 +466,7 @@ function ProfileDialog() {
             onClick={() => void handleLogout()}
             disabled={isUpdatingPassword || isLoggingOut}
           >
-            {isLoggingOut ? 'Signing out…' : 'Sign out'}
+            {isLoggingOut ? (messages.locale === 'es' ? 'Cerrando sesión…' : 'Signing out…') : (messages.locale === 'es' ? 'Cerrar sesión' : 'Sign out')}
           </Button>
         </div>
       </DialogContent>
@@ -481,11 +484,12 @@ export function AppHeaderActions() {
 }
 
 export function HomeTopBar() {
+  const { messages, setLocale } = useShopLocale();
   return (
     <header
       className="mb-5 flex items-start justify-between gap-3"
       role="banner"
-      aria-label="Home controls"
+      aria-label={messages.locale === 'es' ? 'Controles de Inicio' : 'Home controls'}
     >
       <Image
         src="/ltl-logo.png"
@@ -495,7 +499,18 @@ export function HomeTopBar() {
         priority
         className="h-auto w-[85px] object-contain sm:w-28"
       />
-      <AppHeaderActions />
+      <div className="flex shrink-0 items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={messages.switchTo}
+          onClick={() => setLocale(messages.locale === 'en' ? 'es' : 'en')}
+        >
+          <Languages aria-hidden="true" className="size-4" />
+          {messages.locale === 'en' ? 'ES' : 'EN'}
+        </Button>
+        <AppHeaderActions />
+      </div>
     </header>
   );
 }
@@ -538,6 +553,7 @@ export function ScreenHeader({
   backHref?: string;
   backLabel?: string;
 }) {
+  const { messages } = useShopLocale();
   const content = (
     <div className="min-w-0">
       {eyebrow ? <p className="section-label">{eyebrow}</p> : null}
@@ -555,7 +571,7 @@ export function ScreenHeader({
       {backHref ? (
         <div className="flex items-center gap-3">
           <Button asChild variant="secondary" size="icon" className="shrink-0 shadow-sm">
-            <Link href={backHref} aria-label={backLabel ?? 'Back to Home'}>
+            <Link href={backHref} aria-label={backLabel ?? messages.backToHome}>
               <ArrowLeft className="size-5" aria-hidden="true" />
             </Link>
           </Button>

@@ -28,7 +28,7 @@ export function AdminLocaleSwitcher({
     <Button
       variant="outline"
       size="sm"
-      aria-label={`${messages.language}: ${locale === 'en' ? messages.english : messages.spanish}`}
+      aria-label={locale === 'en' ? 'Switch to Spanish' : 'Cambiar a inglés'}
       onClick={() => {
         document.cookie = `${ADMIN_LOCALE_COOKIE}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
         router.refresh();

@@ -22,6 +22,6 @@ describe('Shop Admin routing and messages', () => {
   it('keeps one typed message shape for English and Spanish', () => {
     expect(Object.keys(getAdminMessages('en'))).toEqual(Object.keys(getAdminMessages('es')));
     expect(getAdminMessages('es').nextPhaseBody).toContain('Work Orders');
-    expect(getAdminMessages('es').nextPhaseBody).toContain('Trucks');
+    expect(getAdminMessages('es').nextPhaseBody).toContain('unidades');
   });
 });

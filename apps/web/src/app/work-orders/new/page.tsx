@@ -35,6 +35,8 @@ import {
   Textarea,
 } from '@/components/ui';
 import { JobPickerDialog } from '@/components/job-picker-dialog';
+import { useShopLocale } from '@/lib/locale-context';
+import { statusLabel } from '@/lib/format';
 
 type DraftJob = {
   key: string;
@@ -46,6 +48,7 @@ type DraftJob = {
 
 export default function NewWorkOrderPage() {
   const { user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
+  const { messages } = useShopLocale();
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const { data: categoryData, error: categoryError, mutate: mutateCategories } = useCategories(!!token);
@@ -105,12 +108,12 @@ export default function NewWorkOrderPage() {
   const createActionLabel = isPmMechanic
     ? openWoCheck === 'checking'
       ? 'Checking truck…'
-      : 'Create PM Service'
+      : messages.createPmService
     : !categoryId
       ? 'Choose a category'
       : jobs.length === 0
         ? 'Add a job to continue'
-        : 'Create Work Order';
+        : messages.createWorkOrder;
 
   useEffect(() => {
     setActiveResult(results.length ? 0 : -1);
@@ -134,13 +137,13 @@ export default function NewWorkOrderPage() {
     } catch {
       if (requestId !== openWoRequest.current) return;
       setOpenWoCheck('error');
-      setError('Unable to verify open Work Orders. Retry before creating the Work Order.');
+      setError(messages.locale === 'es' ? 'No pudimos verificar los Work Orders abiertos. Reintenta antes de crear el Work Order.' : 'Unable to verify open Work Orders. Retry before creating the Work Order.');
     }
   }
 
   async function create() {
     if (!truck || openWoCheck !== 'verified' || !categoryId || (!isPmMechanic && jobs.length === 0)) {
-      setError(isPmMechanic ? 'Select a truck before creating the PM Work Order.' : 'Truck, category, and at least one job are required.');
+      setError(isPmMechanic ? (messages.locale === 'es' ? 'Selecciona una unidad antes de crear el Work Order de PM.' : 'Select a truck before creating the PM Work Order.') : (messages.locale === 'es' ? 'Se requieren una unidad, una categoría y al menos un Job.' : 'Truck, category, and at least one job are required.'));
       return;
     }
     setBusy(true);
@@ -169,7 +172,7 @@ export default function NewWorkOrderPage() {
       if (e instanceof ApiError && e.status === 409) {
         const body = e.body as { workOrder?: WorkOrderSummaryDto };
         if (body.workOrder) setOpenWo(body.workOrder);
-        setError('Truck already has an open Work Order.');
+        setError(messages.workOrderOpen(truck.truckNumber));
       } else {
         setError(e instanceof Error ? e.message : 'Create failed');
       }
@@ -179,26 +182,26 @@ export default function NewWorkOrderPage() {
   }
 
   if (sessionLoading && !token) {
-    return <NewWorkOrderLoading label="Restoring session" />;
+    return <NewWorkOrderLoading label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />;
   }
 
   if (!token && sessionError) {
     return (
       <NewWorkOrderLoading>
-        <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
+        <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
       </NewWorkOrderLoading>
     );
   }
 
   if (!token) {
-    return <PageSkeleton label="Restoring session" />;
+    return <PageSkeleton label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />;
   }
 
   if (profileLoading || !user) {
     return (
       <NewWorkOrderLoading>
         {sessionError ? (
-          <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry profile" />
+            <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
         ) : (
           <CardListSkeleton count={2} />
         )}
@@ -214,7 +217,7 @@ export default function NewWorkOrderPage() {
           <LoadFailure
             message="Unable to load shop reference data."
             onRetry={() => void Promise.all([mutateCategories(), mutateMechanics(), mutateTrucks()])}
-            retryLabel="Retry reference data"
+            retryLabel={messages.retry}
           />
         ) : (
           <CardListSkeleton count={2} />
@@ -226,19 +229,19 @@ export default function NewWorkOrderPage() {
   return (
     <div className={truck && !openWo ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : undefined}>
       <ScreenHeader
-        title={isPmMechanic ? 'New PM Service' : 'New Work Order'}
-        subtitle={isPmMechanic ? 'Select a truck to create a PM service.' : 'Enter the required information. Creating saves the order; Start Work begins labor.'}
+        title={isPmMechanic ? messages.newPmService : messages.newWorkOrder}
+        subtitle={isPmMechanic ? messages.pmServiceHint : messages.workOrderHint}
         backHref="/"
       />
 
       <section className="card mb-4 space-y-3">
         <Label className="section-label" htmlFor="truck-search">
-          Truck
+          {messages.truck}
         </Label>
         <div className="relative">
           <Input
             id="truck-search"
-            placeholder="Search Truck Number (e.g. #905)"
+            placeholder={messages.searchTruck}
             value={query}
             role="combobox"
             aria-autocomplete="list"
@@ -301,16 +304,16 @@ export default function NewWorkOrderPage() {
               ))}
               {!results.length ? (
                 <li className="px-4 py-3 text-sm text-shop-muted" role="option">
-                  No trucks found.
+                  {messages.noTrucks}
                 </li>
               ) : null}
             </ul>
           ) : null}
           <div className="sr-only" aria-live="polite">
             {openWoCheck === 'checking'
-              ? 'Checking for an open Work Order.'
+              ? messages.checkingOpenWorkOrder
               : resultsOpen
-                ? `${results.length} truck results available.`
+                ? messages.truckResults(results.length)
                 : ''}
           </div>
         </div>
@@ -320,16 +323,16 @@ export default function NewWorkOrderPage() {
             className="w-full"
             onClick={() => void selectTruck(truck)}
           >
-            Retry Work Order check
+            {messages.retryWorkOrderCheck}
           </Button>
         ) : null}
 
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="section-label">Truck Information</p>
+            <p className="section-label">{messages.truckInformation}</p>
           </div>
           {!truck ? (
-            <EmptyState>Select a truck to show its details.</EmptyState>
+            <EmptyState>{messages.selectTruck}</EmptyState>
           ) : (
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2 text-sm">
@@ -342,7 +345,7 @@ export default function NewWorkOrderPage() {
               </div>
               <Button asChild variant="secondary" className="w-full">
                 <Link href={`/trucks/${truck.id}/history?from=${encodeURIComponent('/work-orders/new')}`}>
-                  See Truck Repair History
+                  {messages.repairHistory}
                 </Link>
               </Button>
             </div>
@@ -357,15 +360,23 @@ export default function NewWorkOrderPage() {
           aria-live="polite"
         >
           <p className="font-semibold">
-            Truck #{truck?.truckNumber} already has an open Work Order.
+            {messages.workOrderOpen(truck?.truckNumber ?? '')}
           </p>
           <p className="mt-1 text-sm">
-            {openWo.displayId} · {openWo.status} · {openWo.jobsCompleted}/
-            {openWo.jobsTotal}
+            {messages.workOrderSummary(openWo.displayId, messages.status[openWo.status] ?? statusLabel(openWo.status), openWo.jobsCompleted, openWo.jobsTotal)}
           </p>
-          <Button asChild className="mt-3 w-full">
-            <Link href={`/work-orders/${openWo.id}`}>VIEW OPEN WORK ORDER</Link>
-          </Button>
+          {openWo.primaryCategoryName === 'PM' && !user.pmAuthorized && user.role !== 'admin' ? (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm">{messages.noAccessToPmWorkOrder}</p>
+              <Button asChild variant="secondary" className="w-full">
+                <Link href="/work-orders/new">{messages.chooseAnotherWorkOrder}</Link>
+              </Button>
+            </div>
+          ) : (
+            <Button asChild className="mt-3 w-full">
+              <Link href={`/work-orders/${openWo.id}`}>{messages.openWorkOrder}</Link>
+            </Button>
+          )}
         </div>
       ) : null}
 
@@ -538,10 +549,11 @@ function NewWorkOrderLoading({
   label?: string;
   children?: ReactNode;
 }) {
+  const { messages } = useShopLocale();
   return (
     <div>
-      <ScreenHeader title="New Work Order" subtitle="Enter the required information." backHref="/" />
-      {children ?? <PageSkeleton label={label ?? 'Loading work order form'} />}
+      <ScreenHeader title={messages.newWorkOrder} subtitle={messages.workOrderHint} backHref="/" />
+      {children ?? <PageSkeleton label={label ?? (messages.locale === 'es' ? 'Cargando formulario de Work Order' : 'Loading Work Order form')} />}
     </div>
   );
 }

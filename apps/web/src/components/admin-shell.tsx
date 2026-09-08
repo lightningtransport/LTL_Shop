@@ -36,7 +36,7 @@ export function AdminShell({
             </Link>
           </Button>
           {futureNavigation.map(({ message, icon: Icon }) => (
-            <div key={message} className="flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm text-muted-foreground" title={messages.comingLater}>
+            <div key={message} className="flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm text-muted-foreground" aria-disabled="true" title={messages.comingLater}>
               <Icon aria-hidden="true" className="size-4" />
               <span>{messages[message]}</span>
               <Badge variant="secondary" className="ml-auto">P2+</Badge>
@@ -63,7 +63,7 @@ export function AdminShell({
               <Link href="/admin" aria-current="page"><Gauge aria-hidden="true" className="size-4" />{messages.dashboard}</Link>
             </Button>
             {futureNavigation.slice(0, 3).map(({ message, icon: Icon }) => (
-              <span key={message} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm text-muted-foreground" title={messages.comingLater}>
+              <span key={message} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm text-muted-foreground" aria-disabled="true" title={messages.comingLater}>
                 <Icon aria-hidden="true" className="size-4" />{messages[message]}
               </span>
             ))}

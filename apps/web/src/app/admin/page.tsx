@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { CheckCircle2, Eye } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui';
 import { getAdminMessages, isAdminLocale } from '@/lib/admin-messages';
 import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
 
@@ -19,18 +19,18 @@ export default async function AdminHomePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{messages.foundationTitle}</CardTitle>
+          <h2 className="font-display text-lg font-semibold tracking-wide">{messages.foundationTitle}</h2>
           <CardDescription>{messages.foundationBody}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <section className="rounded-xl border bg-background p-4">
             <CheckCircle2 aria-hidden="true" className="size-6 text-success" />
-            <h2 className="mt-4 font-display text-lg font-semibold">{messages.secureAccess}</h2>
+            <h3 className="mt-4 font-display text-lg font-semibold">{messages.secureAccess}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{messages.secureAccessBody}</p>
           </section>
           <section className="rounded-xl border bg-background p-4">
             <Eye aria-hidden="true" className="size-6 text-primary" />
-            <h2 className="mt-4 font-display text-lg font-semibold">{messages.nextPhase}</h2>
+            <h3 className="mt-4 font-display text-lg font-semibold">{messages.nextPhase}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{messages.nextPhaseBody}</p>
           </section>
         </CardContent>

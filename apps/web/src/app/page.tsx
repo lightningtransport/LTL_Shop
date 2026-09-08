@@ -7,6 +7,7 @@ import type { WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { useWorkOrders } from '@/lib/shop-data';
 import { pauseLabel, priorityLabel } from '@/lib/format';
+import { useShopLocale } from '@/lib/locale-context';
 import {
   CardListSkeleton,
   EmptyState,
@@ -19,6 +20,7 @@ import {
 
 export default function HomePage() {
   const { user, token, sessionLoading, sessionError, retrySession } = useAuth();
+  const { messages } = useShopLocale();
   const router = useRouter();
   const { data, error, mutate } = useWorkOrders(!!token);
 
@@ -30,8 +32,8 @@ export default function HomePage() {
     return (
       <div>
         <HomeTopBar />
-        <ScreenHeader title="Home" subtitle="Current jobs, work orders, and recent work." />
-        <PageSkeleton label="Restoring session" />
+        <ScreenHeader title={messages.home} subtitle={messages.locale === 'es' ? 'Jobs actuales, Work Orders y trabajo reciente.' : 'Current jobs, work orders, and recent work.'} />
+        <PageSkeleton label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />
       </div>
     );
   }
@@ -40,30 +42,30 @@ export default function HomePage() {
     return (
       <div>
         <HomeTopBar />
-        <ScreenHeader title="Home" subtitle="Current jobs, work orders, and recent work." />
-        <LoadFailure message={sessionError} onRetry={retrySession} retryLabel="Retry session" />
+        <ScreenHeader title={messages.home} subtitle={messages.locale === 'es' ? 'Jobs actuales, Work Orders y trabajo reciente.' : 'Current jobs, work orders, and recent work.'} />
+        <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
       </div>
     );
   }
 
   if (!token) {
-    return <PageSkeleton label="Restoring session" />;
+    return <PageSkeleton label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />;
   }
 
   return (
     <div>
       <HomeTopBar />
       <ScreenHeader
-        title="Home"
-        subtitle="Current jobs, work orders, and recent work."
+        title={messages.home}
+        subtitle={messages.locale === 'es' ? 'Jobs actuales, Work Orders y trabajo reciente.' : 'Current jobs, work orders, and recent work.'}
       />
 
       <Link href="/work-orders/new" className="btn-primary mb-6 w-full">
-        {user?.pmAuthorized ? 'Create PM Service' : 'Create New Work Order'}
+        {user?.pmAuthorized ? messages.createPmService : messages.createWorkOrder}
       </Link>
       {user?.pmAuthorized ? (
         <p className="-mt-4 mb-6 text-center text-sm text-shop-muted">
-          PM services start immediately after creation.
+          {messages.locale === 'es' ? 'Los servicios de PM comienzan inmediatamente después de crearse.' : 'PM services start immediately after creation.'}
         </p>
       ) : null}
 
@@ -72,15 +74,15 @@ export default function HomePage() {
           <LoadFailure
             message={error instanceof Error ? error.message : 'Unable to load work orders'}
             onRetry={() => void mutate()}
-            retryLabel="Retry work orders"
+            retryLabel={messages.retry}
           />
         </div>
       ) : null}
 
       {!data && !error ? (
-        <div role="status" aria-label="Loading work orders" aria-live="polite">
+        <div role="status" aria-label={messages.locale === 'es' ? 'Cargando Work Orders' : 'Loading work orders'} aria-live="polite">
           <CardListSkeleton />
-          <span className="sr-only">Loading work orders</span>
+          <span className="sr-only">{messages.locale === 'es' ? 'Cargando Work Orders' : 'Loading work orders'}</span>
         </div>
       ) : null}
 
@@ -88,7 +90,7 @@ export default function HomePage() {
         <>
           {data.created.length ? (
             <section className="mb-6">
-              <h2 className="section-label mb-2">Ready to Start</h2>
+              <h2 className="section-label mb-2">{messages.locale === 'es' ? 'Listos para iniciar' : 'Ready to Start'}</h2>
               <p className="mb-3 text-sm text-shop-muted">
                 {data.created.length} order(s) ready to Start Work
               </p>
@@ -101,13 +103,13 @@ export default function HomePage() {
           ) : null}
 
           <section className="mb-6">
-            <h2 className="section-label mb-2">Active Jobs</h2>
+              <h2 className="section-label mb-2">{messages.locale === 'es' ? 'Jobs activos' : 'Active Jobs'}</h2>
             <p className="mb-3 text-sm text-shop-muted">
-              {data.active.length} active jobs
+              {messages.activeJobs(data.active.length)}
             </p>
             {!data.active.length ? (
               <EmptyState>
-                No active jobs. Create a Work Order, then Start Work to begin labor.
+                {messages.noActiveJobs}
               </EmptyState>
             ) : (
               <div className="space-y-3">
@@ -119,13 +121,13 @@ export default function HomePage() {
           </section>
 
           <section>
-            <h2 className="section-label mb-2">Paused Jobs</h2>
+            <h2 className="section-label mb-2">{messages.locale === 'es' ? 'Jobs pausados' : 'Paused Jobs'}</h2>
             <p className="mb-3 text-sm text-shop-muted">
-              {data.paused.length} paused jobs
+              {messages.pausedJobs(data.paused.length)}
             </p>
             {!data.paused.length ? (
               <EmptyState>
-                No paused jobs. Paused work will appear here until it is resumed.
+                {messages.noPausedJobs}
               </EmptyState>
             ) : (
               <div className="space-y-3">
@@ -139,7 +141,7 @@ export default function HomePage() {
           {data.completed.length ? (
             <details className="mt-6">
               <summary className="btn-secondary w-full cursor-pointer list-none">
-                View completed work ({data.completed.length})
+                {messages.viewCompletedWork(data.completed.length)}
               </summary>
               <div className="mt-3 space-y-3">
                 {data.completed.map((wo) => (
