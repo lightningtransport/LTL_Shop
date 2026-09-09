@@ -1,5 +1,31 @@
 # PRD — Lightning Shop Mechanic App
 
+## Status overlay — 2026-09-09
+
+This PRD preserves the original product history. For implementation status,
+`README.md` and `CURRENT_PRODUCT_STATUS.md` take precedence; for the approved
+Work Order evolution, use the
+[2026-09-09 documentation package](./Lightning_Shop_Documentation_Package_2026-09-09/00_INDEX.md)
+and its [checkout audit](./audits/WORK_ORDER_MULTICATEGORY_AUDIT_2026-09-09.md).
+
+- **CURRENT/legacy:** Standard creation and Add Job are restricted to one
+  Category even though each `WorkOrderJob` already stores `categoryId`.
+- **TARGET:** a Work Order is the complete service intervention for one Truck;
+  Jobs own their Categories and one Work Order may mix Categories.
+  `primaryCategoryId` remains required initially as Initial/Primary Category.
+- **LOCKED:** one open Work Order per Truck; a new Work Order means a new
+  service event. Yard Phase does not create a Work Order. Standard Create does
+  not Start; PM remains the specialized `mechanic.pm` exception. Completing a
+  Job does not complete the Work Order, and Work Order `Completed` is separate
+  from `Ready to Go`/`Returned to Service`.
+- **DEFERRED:** per-Job timers/assignments, configurable rules, unconfirmed
+  integrations, multiple open Work Orders per Truck, and removal of the legacy
+  primary Category field.
+
+Sections that describe Ninox as the P0 source of truth, Prisma as future, or a
+non-Vercel API host are historical design context and are superseded by the
+current Supabase PostgreSQL + Prisma + Vercel implementation.
+
 ## 1. Objetivo
 
 Construir la experiencia del mecánico para el software de gestión del Shop de Lightning.
@@ -439,13 +465,14 @@ Al crear registrar automáticamente:
 
 El contador representa trabajo real, no tiempo con una pantalla abierta.
 
-Si crear la WO equivale operacionalmente a empezar el trabajo, `Create Work Order` inicia la primera Work Session.
-
-Si puede existir demora entre creación e inicio físico, debe existir:
+**LOCKED — Standard:** `Create Work Order` no inicia trabajo ni abre una Work
+Session. El mecánico debe ejecutar:
 
 **START WORK**
 
-P0 debe elegir una regla única y aplicarla consistentemente.
+**LOCKED — PM:** un usuario autorizado por `mechanic.pm` crea el servicio PM ya
+iniciado, con asignación y primera Work Session atómicas. Esta excepción no se
+extiende a Standard.
 
 ---
 
@@ -930,6 +957,10 @@ Siempre visibles:
 
 ## 34. Ninox y futura migración
 
+> **HISTORICAL/SUPERSEDED:** el checkout actual usa Supabase PostgreSQL
+> administrado por Prisma. Ninox está DEFERRED y solo existe un adapter stub; no
+> se ha confirmado lectura, escritura ni dual-write operacional.
+
 Durante la transición, la aplicación utiliza la API de Ninox para leer/escribir la información que todavía tenga Ninox como Source of Truth.
 
 El frontend no debe acoplarse directamente a la estructura interna de Ninox.
@@ -1339,6 +1370,11 @@ La Work Order debe permanecer como el principal punto de unión de la operación
 ---
 
 ## 40. Technical Architecture & Migration Strategy
+
+> **HISTORICAL/SUPERSEDED:** esta sección conserva la estrategia original. El
+> estado CURRENT es Next.js + NestJS + Prisma sobre Supabase PostgreSQL, con web
+> y API desplegados en Vercel. Las referencias a Ninox como autoridad P0,
+> Prisma como futuro y Render/Railway/Fly.io no describen el checkout actual.
 
 ### 40.1 Objetivo
 

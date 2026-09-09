@@ -13,3 +13,8 @@ them. This is intentionally not a general mechanic-to-category assignment UI.
 A later migration can remove `pmAuthorized` after production stability is
 confirmed. PM part selections and observed mileage remain recorded per PM Work
 Order, while every change to the truck's canonical mileage is auditable.
+
+The Standard multi-Category target does not absorb PM. The Standard flow never
+offers or accepts PM as a Job Category. A user who holds `mechanic.pm`, including
+a multi-workspace user, must enter the specialized PM flow for mileage, parts,
+automatic start, and completion rules.

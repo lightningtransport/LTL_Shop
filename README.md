@@ -20,6 +20,28 @@ Greenfield monorepo for the Lightning Shop Mechanic Work Order experience.
 5. A normal Work Order requires at least one job. Duplicate catalog jobs and duplicate custom-job names are rejected in both the UI and API.
 6. A normal Work Order cannot be paused when it has no remaining jobs. PM work is controlled by its PM Service requirements instead.
 
+## Work Order domain direction
+
+- **CURRENT/legacy:** Standard creation and Add Job restrict every Job to
+  `WorkOrder.primaryCategoryId`; the web picker is likewise category-locked.
+- **TARGET:** a Work Order is the complete service intervention for one Truck.
+  Every `WorkOrderJob` owns its Category and one Work Order may contain Jobs
+  from multiple Categories. `primaryCategoryId` remains required initially as
+  the **Initial/Primary Category** for backward compatibility.
+- **LOCKED:** one open Work Order per Truck; a later visit or distinct service
+  event creates a new Work Order. A Yard Phase is not a Category and never
+  creates another Work Order.
+- **LOCKED:** Standard Create remains different from Start. PM remains the
+  specialized `mechanic.pm` exception. Completing a Job does not complete the
+  Work Order, and Work Order `Completed` does not mean `Ready to Go` or
+  `Returned to Service`.
+- **DEFERRED:** Job-level timers/assignments, a configurable rules engine,
+  unconfirmed external integrations, multiple open Work Orders per Truck, and
+  removal of `primaryCategoryId`.
+
+The approved migration sequence and current-code audit are indexed in
+[`docs/Lightning_Shop_Documentation_Package_2026-09-09/00_INDEX.md`](docs/Lightning_Shop_Documentation_Package_2026-09-09/00_INDEX.md).
+
 ## Quick start (local)
 
 ```bash
@@ -81,6 +103,7 @@ The local seed also includes `daniel@lightning.local` with the PM-only capabilit
 | `packages/shared` | Enums, DTOs, Zod contracts |
 | `apps/api/prisma` | Prisma schema, migrations, and local seed; this is the only migration source |
 | `/admin` | Server-authorized responsive shell for users with `admin.access` |
+| `/admin/yard-operations` | Admin Yard Operations and readiness view; mutations require `yard.operations.manage` |
 | `/mechanic/standard` | Standard mechanic workspace for users with `mechanic.standard` |
 | `/mechanic/pm` | PM mechanic workspace for users with `mechanic.pm` |
 | `docs/PRD_Lightning_Shop_Mechanic_P0.md` | Full PRD |
@@ -117,6 +140,8 @@ npm run test:e2e --workspace=@ltl-shop/web   # requires running app
 - Backend → Vercel Functions in `pdx1` (`apps/api`)
 - Database → Supabase
 
-## Out of P0
+## Deferred beyond the current release
 
-Manager UI, Ninox live integration, per-job timers, parts/purchasing, dual-write.
+Ninox live integration, per-Job timers/assignments, purchasing/costing,
+configurable rules, unconfirmed Samsara/Dispatch/McLeod integrations, and
+permanent dual-write.

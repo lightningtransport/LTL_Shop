@@ -42,9 +42,25 @@ PRD.
 - The Admin dashboard offers capability-filtered Workspaces cards for Standard
   Mechanic and PM Mechanic. Work performed there retains the signed-in user's
   identity; it is not impersonation.
-- Standalone Trucks, Mechanics, History, Catalog, administrative mutations, and
-  Ninox data remain deferred to later phases. The Truck repair-history slice is
-  available only within Work Order detail.
+- Standalone Mechanics, global History, Catalog management, and Ninox data
+  remain deferred. Truck Detail and Yard Operations are implemented as the
+  scoped readiness slice described below.
+
+### Yard Operations and readiness Phase 1
+
+- Users with `admin.access` can read `/admin/yard-operations` and
+  `/admin/trucks/[id]`. Presence is explicitly `UNKNOWN`; Incoming Trucks and
+  Upcoming Departures are unavailable because no telematics, gate, or Dispatch
+  source is connected.
+- Users with `yard.operations.manage` can start or close a readiness
+  assessment, update its six requirements, and explicitly mark it Ready when
+  the rules pass. These mutations use server authorization, optimistic version
+  checks, idempotency, and Activity Log records.
+- Yard Phase is derived for presentation from assessment and Work Order
+  evidence. It is not a persisted Work Order status, not a Job Category, and
+  does not create another Work Order.
+- `Ready to Go` is an explicit readiness approval. Completing a Work Order does
+  not establish physical presence, departure, or return to service.
 
 ### Authentication and profile
 
@@ -75,6 +91,29 @@ PRD.
   after all required jobs are complete.
 - Finished work returns to Home and is available from the completed-work
   section. Active and paused work remain separate.
+
+### Approved Work Order direction (not implemented)
+
+- **CURRENT/legacy:** both `WorkOrder.primaryCategoryId` and
+  `WorkOrderJob.categoryId` are required, but Standard API and web validation
+  require every Job Category to equal the Work Order primary Category.
+- **TARGET:** the Work Order represents the complete intervention for a Truck;
+  each Job owns its Category and one Work Order may mix Categories.
+  `primaryCategoryId` remains required initially and is interpreted as the
+  Initial/Primary Category for compatible clients and existing reports.
+- **LOCKED:** there remains one open Work Order per Truck; work found during the
+  same intervention is added to it, while a new service event creates a new
+  Work Order. Standard Create does not Start, PM remains a `mechanic.pm`
+  exception, Job completion does not complete the Work Order, and Work Order
+  `Completed` does not mean `Ready to Go`/`Returned to Service`.
+- **TARGET contract rules:** Standard may not add the PM Category; catalog
+  duplicates use `catalogJobId`, Custom Job duplicates use normalized custom
+  name; inactive Categories and historical Jobs remain readable but cannot be
+  selected for new work; repair-history Category filters match any Job
+  Category; Add Job requires `expectedVersion` and `idempotencyKey`.
+- **DEFERRED:** Job timers/assignments, configurable rules, unconfirmed
+  integrations, multiple open Work Orders per Truck, and removing or making
+  `primaryCategoryId` nullable.
 
 ### PM workflow
 
@@ -129,8 +168,9 @@ These are deliberately outside the current implementation:
    Safari mobile device.
 3. Remove the compatibility-only `pmAuthorized` column after production
    stability is confirmed; a general permission-management UI remains deferred.
-4. Continue Shop Admin with read-only Trucks, Mechanics, and History before
-   adding administrative mutations.
+4. Continue Shop Admin with standalone Mechanics and global History before
+   broader administrative mutations; keep Yard/readiness mutations scoped to
+   `yard.operations.manage`.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.
 6. Keep release discipline: merge only after CI and both Vercel deployments

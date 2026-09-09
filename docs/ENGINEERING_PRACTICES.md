@@ -160,6 +160,25 @@ unknown and protected routing cannot yet be decided.
 
 ## Required verification
 
+### Work Order Job mutation contract
+
+The multi-Category target does not relax mutation safety. Before enabling it:
+
+- require `expectedVersion` and a unique `idempotencyKey` for Add Job;
+- lock/re-read the Work Order in the transaction and return 409 for stale state;
+- validate the submitted Category is active and that a Catalog Job belongs to
+  it; Standard must reject the PM Category;
+- deduplicate catalog work by `catalogJobId` and Custom Jobs by normalized
+  custom name, not by a display name shared across different catalog entries;
+- include Job ID, Category, actor, and before/after-relevant values in the
+  Activity Log;
+- return the updated DTO and roll back optimistic UI on any failure.
+
+Create Work Order currently protects the one-open-per-Truck rule with a
+transaction-scoped advisory lock and verifies idempotency actor/payload. Preserve
+that behavior. A rollback may disable new multi-Category writes, but readers
+must continue rendering already persisted Jobs from different Categories.
+
 Every change to authentication, data fetching, caching, or work-order
 mutations must cover the relevant cases:
 
@@ -197,4 +216,3 @@ Before approving a data-flow change, answer:
 5. Are invalidations scoped and non-blocking?
 6. Are authorization and business rules still enforced by the API?
 7. What measurement proves the suspected bottleneck and the improvement?
-
