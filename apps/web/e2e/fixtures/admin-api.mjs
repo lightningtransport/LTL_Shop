@@ -56,6 +56,17 @@ const workOrders = [
   makeWorkOrder('00000000-0000-4000-8000-000000000105', 'WO-0105', 'T-105', 'normal', 'cancelled'),
 ];
 
+const yardOperations = [
+  makeYardItem('00000000-0000-4000-8000-000000001001', 'Y-101', 'needs_evaluation', null, null),
+  makeYardItem('00000000-0000-4000-8000-000000001002', 'Y-102', 'inspection', 'high', 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001003', 'Y-103', 'required_work', 'critical', 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001004', 'Y-104', 'pm', 'normal', 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001005', 'Y-105', 'alignment', 'normal', 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001006', 'Y-106', 'detailing', 'low', 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001007', 'Y-107', 'quality_check', 'normal', 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001008', 'Y-108', 'ready_to_go', null, 'ready'),
+];
+
 createServer((request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
@@ -109,6 +120,36 @@ createServer((request, response) => {
       },
       counts: { open: 3, waitingPaused: 1, highCriticalOpen: 2, openOlderThan24h: 1, completedToday: 1, completedLast7Days: 1 },
       attention: workOrders.slice(0, 3),
+    });
+    return;
+  }
+  if (request.url?.startsWith('/api/admin/yard-operations')) {
+    const url = new URL(request.url, 'http://fixture.local');
+    const cursor = url.searchParams.get('cursor');
+    const search = url.searchParams.get('search')?.toLowerCase();
+    const readiness = url.searchParams.get('readiness')?.split(',');
+    const phase = url.searchParams.get('phase')?.split(',');
+    const workOrderStatus = url.searchParams.get('workOrderStatus')?.split(',');
+    const priority = url.searchParams.get('priority')?.split(',');
+    const blocked = url.searchParams.get('blocked');
+    let items = yardOperations.filter((item) => {
+      if (search && !`${item.truck.truckNumber} ${item.truck.make} ${item.truck.model} ${item.activeWorkOrder?.displayId ?? ''}`.toLowerCase().includes(search)) return false;
+      if (readiness?.length && !readiness.includes(item.assessment?.status ?? 'not_started')) return false;
+      if (phase?.length && !phase.includes(item.phase)) return false;
+      if (workOrderStatus?.length && !workOrderStatus.includes(item.activeWorkOrder?.status ?? '')) return false;
+      if (priority?.length && !priority.includes(item.activeWorkOrder?.priority ?? '')) return false;
+      if (blocked === 'true' && item.blockers.length === 0) return false;
+      if (blocked === 'false' && item.blockers.length > 0) return false;
+      return true;
+    });
+    if (cursor) items = items.slice(4);
+    const hasCursor = !cursor && !search && !readiness && !phase && !workOrderStatus && !priority && !blocked;
+    json(response, 200, {
+      items: hasCursor ? items.slice(0, 4) : items,
+      nextCursor: hasCursor ? 'yard-page-2' : null,
+      counts: { underReview: 6, readyToGo: 1, blocked: 6, presenceUnknown: 8 },
+      incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' },
+      upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' },
     });
     return;
   }
@@ -195,4 +236,16 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status) {
     currentPause: paused ? { id: '00000000-0000-4000-8000-000000000401', workOrderId: id, reason: 'waiting_for_parts', notes: 'Air line ordered', startedAt: '2026-09-06T17:00:00.000Z', endedAt: null, durationMs: null } : null,
     createdAt, startedAt: status === 'created' ? null : '2026-09-06T16:00:00.000Z', completedAt, updatedAt: '2026-09-06T18:00:00.000Z',
   };
+}
+
+function makeYardItem(truckId, truckNumber, phase, priority, assessmentStatus) {
+  const hasWorkOrder = Boolean(priority);
+  const workOrderId = truckId.replace('100', '200');
+  const activeWorkOrder = hasWorkOrder ? makeWorkOrder(workOrderId, `WO-${truckNumber.slice(2)}`, truckNumber, priority, phase === 'required_work' ? 'in_progress' : 'created') : null;
+  if (activeWorkOrder) activeWorkOrder.truck.id = truckId;
+  const now = '2026-09-06T18:00:00.000Z';
+  const requirementType = phase === 'inspection' ? 'inspection' : phase === 'required_work' ? 'required_repairs' : phase === 'pm' ? 'pm' : phase === 'alignment' ? 'alignment' : phase === 'detailing' ? 'detailing' : phase === 'quality_check' ? 'quality_check' : null;
+  const assessment = assessmentStatus ? { id: truckId.replace('100', '300'), truckId, status: assessmentStatus, version: 1, startedAt: '2026-09-06T12:00:00.000Z', startedById: users['manager@lightning.local'].id, readyAt: assessmentStatus === 'ready' ? now : null, approvedById: assessmentStatus === 'ready' ? users['manager@lightning.local'].id : null, closedAt: null, closedById: null, closedReason: null, requirements: requirementType ? [{ id: truckId.replace('100', '400'), type: requirementType, outcome: 'required', waiverReason: null, evidenceWorkOrderId: null, evaluatedById: null, evaluatedAt: null, version: 1 }] : [] } : null;
+  const blockers = phase === 'ready_to_go' || !assessment ? [] : [{ kind: activeWorkOrder ? 'open_work_order' : 'unevaluated_requirement', requirementType, workOrderId: activeWorkOrder?.id, status: activeWorkOrder?.status, priority: activeWorkOrder?.priority, categoryName: activeWorkOrder?.category.name, message: activeWorkOrder ? 'Open Work Order remains linked.' : 'Assessment requires evaluation.' }];
+  return { truck: { id: truckId, truckNumber, make: 'Volvo', model: 'VNL', year: 2024, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' }, presence: { state: 'unknown', provenance: 'phase_1_unavailable' }, assessment, phase, blockers, activeWorkOrder };
 }

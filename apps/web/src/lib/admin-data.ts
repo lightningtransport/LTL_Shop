@@ -8,6 +8,7 @@ import type {
   AdminRepairHistoryDto,
   AdminWorkOrderDetailDto,
   AdminWorkOrderSummaryDto,
+  YardOperationsPageDto,
 } from '@ltl-shop/shared';
 
 export function useAdminDashboard() {
@@ -29,6 +30,19 @@ export function useAdminWorkOrders(query: string) {
 
 export function useAdminWorkOrder(id: string) {
   return useSWR<AdminWorkOrderDetailDto>(id ? `/api/admin/work-orders/${id}` : null, { dedupingInterval: 10_000 });
+}
+
+export function useAdminYardOperations(query: string) {
+  return useSWRInfinite<YardOperationsPageDto>(
+    (pageIndex, previous) => {
+      if (previous && !previous.nextCursor) return null;
+      const params = new URLSearchParams(query);
+      params.set('limit', '25');
+      if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
+      return `/api/admin/yard-operations?${params.toString()}`;
+    },
+    { revalidateFirstPage: false, persistSize: false },
+  );
 }
 
 export function useAdminRepairHistory(truckId: string, excludeWorkOrderId: string, categoryId?: string) {
