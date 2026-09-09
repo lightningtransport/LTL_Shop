@@ -605,7 +605,11 @@ export default function WorkOrderDetailPage() {
           run(() =>
             apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/jobs`, {
               method: 'POST',
-              body: JSON.stringify(body),
+              body: JSON.stringify({
+                ...body,
+                expectedVersion: wo.version,
+                idempotencyKey: crypto.randomUUID(),
+              }),
             }),
           )
         }

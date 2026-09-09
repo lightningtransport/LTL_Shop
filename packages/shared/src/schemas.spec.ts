@@ -14,6 +14,7 @@ import {
   adminWorkOrderCursorSchema,
   adminWorkOrdersQuerySchema,
   updateReadinessRequirementSchema,
+  addJobSchema,
   createWorkOrderSchema,
 } from './schemas';
 
@@ -85,6 +86,18 @@ describe('shared contracts', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000000001',
     }).success).toBe(true);
     expect(adminMutationMetaSchema.safeParse({ expectedVersion: 2 }).success).toBe(false);
+  });
+
+  it('requires version and UUID idempotency for Add Job mutations', () => {
+    const base = {
+      categoryId: '00000000-0000-4000-8000-000000000001',
+      displayName: 'Brake inspection',
+      expectedVersion: 3,
+      idempotencyKey: '00000000-0000-4000-8000-000000000002',
+    };
+    expect(addJobSchema.safeParse(base).success).toBe(true);
+    expect(addJobSchema.safeParse({ ...base, idempotencyKey: undefined }).success).toBe(false);
+    expect(addJobSchema.safeParse({ ...base, expectedVersion: -1 }).success).toBe(false);
   });
 
   it('requires a reason when waiving a readiness requirement', () => {

@@ -172,6 +172,8 @@ export const addJobSchema = z.object({
   categoryId: z.string().uuid(),
   displayName: z.string().min(1).max(200),
   customDescription: z.string().min(1).max(500).optional(),
+  expectedVersion: z.number().int().nonnegative(),
+  idempotencyKey: z.string().uuid(),
 });
 
 export const searchTrucksSchema = z.object({
