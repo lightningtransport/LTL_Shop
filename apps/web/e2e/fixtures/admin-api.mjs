@@ -17,7 +17,7 @@ const users = {
     role: 'manager',
     active: true,
     pmAuthorized: false,
-    capabilities: ['admin.access'],
+    capabilities: ['admin.access', 'yard.operations.manage'],
   },
   'admin@lightning.local': {
     id: '00000000-0000-4000-8000-000000000003',
@@ -26,7 +26,7 @@ const users = {
     role: 'admin',
     active: true,
     pmAuthorized: false,
-    capabilities: ['admin.access'],
+    capabilities: ['admin.access', 'yard.operations.manage'],
   },
   'ibrain@ltransl.com': {
     id: '00000000-0000-4000-8000-000000000004',
@@ -67,9 +67,10 @@ const yardOperations = [
   makeYardItem('00000000-0000-4000-8000-000000001008', 'Y-108', 'ready_to_go', null, 'ready'),
 ];
 
-createServer((request, response) => {
+createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
   if (request.method === 'OPTIONS') {
     response.writeHead(204).end();
     return;
@@ -121,6 +122,77 @@ createServer((request, response) => {
       counts: { open: 3, waitingPaused: 1, highCriticalOpen: 2, openOlderThan24h: 1, completedToday: 1, completedLast7Days: 1 },
       attention: workOrders.slice(0, 3),
     });
+    return;
+  }
+  const truckDetailMatch = request.url?.match(/^\/api\/admin\/trucks\/([0-9a-f-]+)$/i);
+  if (truckDetailMatch) {
+    const item = yardOperations.find((candidate) => candidate.truck.id === truckDetailMatch[1]);
+    if (!item) json(response, 404, { message: 'Truck not found' });
+    else json(response, 200, { ...item, repairHistory: { items: [], nextCursor: null }, repairHistoryUrl: `/api/admin/trucks/${item.truck.id}/repair-history`, incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' }, upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' } });
+    return;
+  }
+  const startAssessmentMatch = request.url?.match(/^\/api\/admin\/trucks\/([0-9a-f-]+)\/readiness-assessments$/i);
+  const requirementMatch = request.url?.match(/^\/api\/admin\/readiness-assessments\/([0-9a-f-]+)\/requirements\/([a-z_]+)$/i);
+  const readyMatch = request.url?.match(/^\/api\/admin\/readiness-assessments\/([0-9a-f-]+)\/mark-ready$/i);
+  const closeMatch = request.url?.match(/^\/api\/admin\/readiness-assessments\/([0-9a-f-]+)\/close$/i);
+  if (startAssessmentMatch || requirementMatch || readyMatch || closeMatch) {
+    if (!user.capabilities.includes('yard.operations.manage')) {
+      json(response, 403, { message: 'Yard readiness management is not available for this account.' });
+      return;
+    }
+    const body = await readJson(request);
+    if (!body?.idempotencyKey) {
+      json(response, 400, { message: 'An idempotency key is required.' });
+      return;
+    }
+    if (startAssessmentMatch) {
+      const item = yardOperations.find((candidate) => candidate.truck.id === startAssessmentMatch[1]);
+      if (!item) { json(response, 404, { message: 'Truck not found' }); return; }
+      if (item.assessment) { json(response, 409, { code: 'ACTIVE_READINESS_ASSESSMENT_EXISTS', message: 'Truck already has an active readiness assessment.' }); return; }
+      item.assessment = makeAssessment(item);
+      item.phase = 'needs_evaluation';
+      item.blockers = [{ kind: 'unevaluated_requirement', requirementType: 'inspection' }];
+      json(response, 200, { assessment: item.assessment, linkedWorkOrderId: item.activeWorkOrder?.id ?? null });
+      return;
+    }
+    const assessmentId = requirementMatch?.[1] ?? readyMatch?.[1] ?? closeMatch?.[1];
+    const item = yardOperations.find((candidate) => candidate.assessment?.id === assessmentId);
+    if (!item?.assessment) { json(response, 404, { message: 'Readiness assessment not found' }); return; }
+    if (requirementMatch) {
+      const requirement = item.assessment.requirements.find((candidate) => candidate.type === requirementMatch[2]);
+      if (!requirement) { json(response, 404, { message: 'Readiness requirement not found' }); return; }
+      if (body.expectedVersion !== requirement.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Readiness requirement version changed.' }); return; }
+      if (body.outcome === 'waived' && !body.waiverReason) { json(response, 400, { message: 'A waiver reason is required.' }); return; }
+      if (body.outcome === 'completed' && ['pm', 'alignment', 'required_repairs'].includes(requirement.type) && !body.evidenceWorkOrderId) { json(response, 400, { message: 'Completed maintenance requirements need evidence.' }); return; }
+      requirement.outcome = body.outcome;
+      requirement.waiverReason = body.outcome === 'waived' ? body.waiverReason : null;
+      requirement.evidenceWorkOrderId = body.outcome === 'completed' ? (body.evidenceWorkOrderId ?? null) : null;
+      requirement.version += 1;
+      item.assessment.version += 1;
+      json(response, 200, { assessment: item.assessment, requirement });
+      return;
+    }
+    if (body.expectedVersion !== item.assessment.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Readiness assessment version changed.' }); return; }
+    if (readyMatch) {
+      const unresolved = item.assessment.requirements.some((requirement) => ['not_evaluated', 'required'].includes(requirement.outcome));
+      if (unresolved) { json(response, 409, { code: 'READINESS_NOT_READY', message: 'All readiness requirements must be resolved before approval.' }); return; }
+      if (item.activeWorkOrder) { json(response, 409, { code: 'OPEN_WORK_ORDER_EXISTS', message: 'An open linked Work Order blocks readiness approval.' }); return; }
+      item.assessment.status = 'ready';
+      item.assessment.readyAt = '2026-09-06T18:00:00.000Z';
+      item.assessment.approvedById = user.id;
+      item.assessment.version += 1;
+      item.phase = 'ready_to_go';
+      item.blockers = [];
+      json(response, 200, { assessment: item.assessment });
+      return;
+    }
+    if (!body.reason) { json(response, 400, { message: 'A close reason is required.' }); return; }
+    item.assessment.status = 'closed';
+    item.assessment.closedAt = '2026-09-06T18:00:00.000Z';
+    item.assessment.closedById = user.id;
+    item.assessment.closedReason = body.reason;
+    item.assessment.version += 1;
+    json(response, 200, { assessment: item.assessment });
     return;
   }
   if (request.url?.startsWith('/api/admin/yard-operations')) {
@@ -223,6 +295,16 @@ function json(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
+function readJson(request) {
+  return new Promise((resolve) => {
+    let text = '';
+    request.on('data', (chunk) => { text += chunk; });
+    request.on('end', () => {
+      try { resolve(text ? JSON.parse(text) : null); } catch { resolve(null); }
+    });
+  });
+}
+
 function makeWorkOrder(id, displayId, truckNumber, priority, status) {
   const paused = status === 'waiting_paused';
   const createdAt = displayId === 'WO-0101' ? '2026-09-04T15:00:00.000Z' : '2026-09-06T15:00:00.000Z';
@@ -248,4 +330,9 @@ function makeYardItem(truckId, truckNumber, phase, priority, assessmentStatus) {
   const assessment = assessmentStatus ? { id: truckId.replace('100', '300'), truckId, status: assessmentStatus, version: 1, startedAt: '2026-09-06T12:00:00.000Z', startedById: users['manager@lightning.local'].id, readyAt: assessmentStatus === 'ready' ? now : null, approvedById: assessmentStatus === 'ready' ? users['manager@lightning.local'].id : null, closedAt: null, closedById: null, closedReason: null, requirements: requirementType ? [{ id: truckId.replace('100', '400'), type: requirementType, outcome: 'required', waiverReason: null, evidenceWorkOrderId: null, evaluatedById: null, evaluatedAt: null, version: 1 }] : [] } : null;
   const blockers = phase === 'ready_to_go' || !assessment ? [] : [{ kind: activeWorkOrder ? 'open_work_order' : 'unevaluated_requirement', requirementType, workOrderId: activeWorkOrder?.id, status: activeWorkOrder?.status, priority: activeWorkOrder?.priority, categoryName: activeWorkOrder?.category.name, message: activeWorkOrder ? 'Open Work Order remains linked.' : 'Assessment requires evaluation.' }];
   return { truck: { id: truckId, truckNumber, make: 'Volvo', model: 'VNL', year: 2024, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' }, presence: { state: 'unknown', provenance: 'phase_1_unavailable' }, assessment, phase, blockers, activeWorkOrder };
+}
+
+function makeAssessment(item) {
+  const requirements = ['inspection', 'required_repairs', 'pm', 'alignment', 'detailing', 'quality_check'].map((type, index) => ({ id: `${item.truck.id.slice(0, -3)}${String(500 + index).padStart(3, '0')}`, type, outcome: 'not_evaluated', waiverReason: null, evidenceWorkOrderId: null, evaluatedById: null, evaluatedAt: null, version: 1 }));
+  return { id: `${item.truck.id.slice(0, -3)}600`, truckId: item.truck.id, status: 'under_review', version: 1, startedAt: '2026-09-06T12:00:00.000Z', startedById: users['manager@lightning.local'].id, readyAt: null, approvedById: null, closedAt: null, closedById: null, closedReason: null, requirements };
 }
