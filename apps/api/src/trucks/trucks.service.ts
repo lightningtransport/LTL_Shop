@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AppCapability,
+  JobStatus,
   OPEN_WORK_ORDER_STATUSES,
   type AdminRepairHistoryDto,
 } from '@ltl-shop/shared';
@@ -82,7 +83,7 @@ export class TrucksService {
         truckId,
         status: 'completed',
         completedAt: { not: null },
-        ...(categoryId ? { primaryCategoryId: categoryId } : {}),
+        ...(categoryId ? { jobs: { some: { categoryId } } } : {}),
         ...(options.excludeWorkOrderId ? { id: { not: options.excludeWorkOrderId } } : {}),
         ...(cursor ? {
           OR: [
@@ -94,7 +95,10 @@ export class TrucksService {
       include: {
         primaryCategory: true,
         mechanics: { include: { mechanic: true }, where: { removedAt: null } },
-        jobs: { where: { status: 'completed' } },
+        jobs: {
+          where: { status: 'completed' },
+          include: { category: { select: { id: true, name: true } } },
+        },
         pmService: true,
       },
       orderBy: [{ completedAt: 'desc' }, { id: 'desc' }],
@@ -122,7 +126,12 @@ function toRepairHistoryItem(
     primaryCategory: { name: string };
     mechanics: { mechanic: { name: string } }[];
     pmService: { observedMileage: number | null } | null;
-    jobs: { displayName: string }[];
+    jobs: {
+      id: string;
+      categoryId: string;
+      category: { id: string; name: string };
+      displayName: string;
+    }[];
   },
   truckNumber: string,
   truckMileage: number | null,
@@ -136,6 +145,13 @@ function toRepairHistoryItem(
     mechanicNames: wo.mechanics.map((m) => m.mechanic.name),
     mileage: wo.pmService?.observedMileage ?? truckMileage,
     jobs: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => j.displayName),
+    jobDetails: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => ({
+      id: j.id,
+      categoryId: j.categoryId,
+      category: j.category,
+      displayName: j.displayName,
+      status: JobStatus.COMPLETED,
+    })),
   };
 }
 
@@ -202,7 +218,7 @@ export function toTruckDto(truck: {
 const workOrderSummaryInclude = {
   truck: true,
   primaryCategory: true,
-  jobs: true,
+  jobs: { include: { category: { select: { id: true, name: true } } } },
   mechanics: {
     include: { mechanic: true },
     orderBy: { addedAt: 'asc' as const },

@@ -59,7 +59,12 @@ describe('TrucksService search', () => {
         primaryCategory: { name: 'Suspension' },
         mechanics: [{ mechanic: { name: 'Alex' } }],
         pmService: null,
-        jobs: [{ displayName: 'Inspect suspension' }],
+        jobs: [{
+          id: '00000000-0000-4000-8000-000000000003',
+          categoryId: '00000000-0000-4000-8000-000000000004',
+          category: { id: '00000000-0000-4000-8000-000000000004', name: 'Suspension' },
+          displayName: 'Inspect suspension',
+        }],
       },
       {
         id: '00000000-0000-4000-8000-000000000001',
@@ -69,7 +74,12 @@ describe('TrucksService search', () => {
         primaryCategory: { name: 'PM' },
         mechanics: [],
         pmService: { observedMileage: 123456 },
-        jobs: [{ displayName: 'Hidden PM row' }],
+        jobs: [{
+          id: '00000000-0000-4000-8000-000000000005',
+          categoryId: '00000000-0000-4000-8000-000000000006',
+          category: { id: '00000000-0000-4000-8000-000000000006', name: 'PM' },
+          displayName: 'Hidden PM row',
+        }],
       },
     ];
     const findMany = vi.fn().mockResolvedValue(rows);
@@ -86,6 +96,13 @@ describe('TrucksService search', () => {
       displayId: 'WO-002',
       mechanicNames: ['Alex'],
       jobs: ['Inspect suspension'],
+      jobDetails: [{
+        id: '00000000-0000-4000-8000-000000000003',
+        categoryId: '00000000-0000-4000-8000-000000000004',
+        category: { id: '00000000-0000-4000-8000-000000000004', name: 'Suspension' },
+        displayName: 'Inspect suspension',
+        status: 'completed',
+      }],
     });
     expect(result.nextCursor).toBeTypeOf('string');
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -95,6 +112,28 @@ describe('TrucksService search', () => {
         status: 'completed',
         completedAt: { not: null },
         id: { not: excludedId },
+      }),
+    }));
+  });
+
+  it('filters repair history by any Job Category while retaining primary Category fields', async () => {
+    const currentTruck = truck('905');
+    const findUnique = vi.fn().mockResolvedValue(currentTruck);
+    const findMany = vi.fn().mockResolvedValue([]);
+    const service = new TrucksService({ truck: { findUnique }, workOrder: { findMany } } as never);
+
+    await service.getRepairHistory(currentTruck.id, '00000000-0000-4000-8000-000000000004');
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        jobs: { some: { categoryId: '00000000-0000-4000-8000-000000000004' } },
+      }),
+      include: expect.objectContaining({
+        primaryCategory: true,
+        jobs: expect.objectContaining({
+          where: { status: 'completed' },
+          include: { category: { select: { id: true, name: true } } },
+        }),
       }),
     }));
   });

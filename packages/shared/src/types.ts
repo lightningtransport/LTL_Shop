@@ -42,6 +42,8 @@ export interface JobCategoryDto {
   sortOrder: number;
 }
 
+export type JobCategoryReferenceDto = Pick<JobCategoryDto, 'id' | 'name'>;
+
 export interface CatalogJobDto {
   id: string;
   categoryId: string;
@@ -61,6 +63,7 @@ export interface WorkOrderJobDto {
   workOrderId: string;
   catalogJobId: string | null;
   categoryId: string;
+  category: JobCategoryReferenceDto;
   displayName: string;
   customDescription: string | null;
   status: JobStatus;
@@ -96,7 +99,7 @@ export interface WorkOrderSummaryDto {
   priority: Priority;
   jobsCompleted: number;
   jobsTotal: number;
-  jobs: Pick<WorkOrderJobDto, 'id' | 'displayName' | 'status'>[];
+  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status'>[];
   currentPauseReason: PauseReason | null;
   createdAt: string;
   startedAt: string | null;
@@ -123,7 +126,10 @@ export interface RepairHistoryItemDto {
   truckNumber: string;
   mechanicNames: string[];
   mileage: number | null;
+  // Legacy display-only field retained for existing clients.
   jobs: string[];
+  // Additive, canonical Job identity and Category data for multi-Category readers.
+  jobDetails: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status'>[];
 }
 
 export interface OpenWorkOrderConflictDto {
@@ -182,7 +188,7 @@ export interface AdminWorkOrderJobDto {
   id: string;
   displayName: string;
   customDescription: string | null;
-  category: { id: string; name: string };
+  category: JobCategoryReferenceDto;
   status: JobStatus;
 }
 
