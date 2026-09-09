@@ -4,7 +4,12 @@ import type {
   JobStatus,
   PauseReason,
   Priority,
+  ReadinessAssessmentStatus,
+  ReadinessPhase,
+  ReadinessRequirementOutcome,
+  ReadinessRequirementType,
   UserRole,
+  YardPresenceState,
   WorkOrderStatus,
 } from './enums';
 
@@ -219,6 +224,82 @@ export interface AdminDashboardDto {
     completedLast7Days: number;
   };
   attention: AdminWorkOrderSummaryDto[];
+}
+
+export interface YardPresenceDto {
+  state: YardPresenceState;
+  provenance: 'phase_1_unavailable';
+}
+
+export interface ReadinessRequirementDto {
+  id: string;
+  type: ReadinessRequirementType;
+  outcome: ReadinessRequirementOutcome;
+  waiverReason: string | null;
+  evidenceWorkOrderId: string | null;
+  evaluatedById: string | null;
+  evaluatedAt: string | null;
+  version: number;
+}
+
+export interface ReadinessAssessmentDto {
+  id: string;
+  truckId: string;
+  status: ReadinessAssessmentStatus;
+  version: number;
+  startedAt: string;
+  startedById: string;
+  readyAt: string | null;
+  approvedById: string | null;
+  closedAt: string | null;
+  closedById: string | null;
+  closedReason: string | null;
+  requirements: ReadinessRequirementDto[];
+}
+
+export interface ReadinessBlockerDto {
+  kind: 'open_work_order' | 'required_requirement' | 'unevaluated_requirement' | 'approval_conflict';
+  requirementType?: ReadinessRequirementType;
+  workOrderId?: string;
+  status?: WorkOrderStatus;
+  priority?: Priority;
+  categoryName?: string;
+  pauseReason?: PauseReason | null;
+  message?: string;
+}
+
+export interface YardOperationsTruckDto {
+  truck: TruckDto;
+  presence: YardPresenceDto;
+  assessment: ReadinessAssessmentDto | null;
+  phase: ReadinessPhase;
+  blockers: ReadinessBlockerDto[];
+  activeWorkOrder: AdminWorkOrderSummaryDto | null;
+}
+
+export interface YardOperationsCountsDto {
+  underReview: number;
+  readyToGo: number;
+  blocked: number;
+  presenceUnknown: number;
+}
+
+export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto> {
+  counts: YardOperationsCountsDto;
+  incomingTrucks: YardOperationsUnavailableDto;
+  upcomingDepartures: YardOperationsUnavailableDto;
+}
+
+export interface AdminTruckDetailDto extends YardOperationsTruckDto {
+  repairHistory: Pick<AdminRepairHistoryDto, 'items' | 'nextCursor'>;
+  repairHistoryUrl: string;
+  incomingTrucks: YardOperationsUnavailableDto;
+  upcomingDepartures: YardOperationsUnavailableDto;
+}
+
+export interface YardOperationsUnavailableDto {
+  status: 'unavailable';
+  reason: 'integration_not_connected';
 }
 
 export interface PmPartDto {

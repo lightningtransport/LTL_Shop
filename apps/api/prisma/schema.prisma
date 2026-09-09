@@ -15,9 +15,10 @@ enum UserRole {
 }
 
 enum AppCapability {
-  ADMIN_ACCESS       @map("admin.access")
-  MECHANIC_STANDARD  @map("mechanic.standard")
-  MECHANIC_PM        @map("mechanic.pm")
+  ADMIN_ACCESS           @map("admin.access")
+  MECHANIC_STANDARD      @map("mechanic.standard")
+  MECHANIC_PM            @map("mechanic.pm")
+  YARD_OPERATIONS_MANAGE @map("yard.operations.manage")
 }
 
 enum WorkOrderStatus {
@@ -77,6 +78,34 @@ enum ActivityEventType {
   manager_correction
   pm_details_updated
   truck_mileage_corrected
+  readiness_assessment_started
+  readiness_requirement_updated
+  readiness_approved
+  readiness_approval_invalidated
+  readiness_assessment_closed
+}
+
+enum ReadinessAssessmentStatus {
+  under_review
+  ready
+  closed
+}
+
+enum ReadinessRequirementType {
+  inspection
+  required_repairs
+  pm
+  alignment
+  detailing
+  quality_check
+}
+
+enum ReadinessRequirementOutcome {
+  not_evaluated
+  required
+  not_required
+  completed
+  waived
 }
 
 model User {
@@ -91,29 +120,33 @@ model User {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  createdWorkOrders     WorkOrder[]           @relation("WorkOrderCreatedBy")
-  completedWorkOrders   WorkOrder[]           @relation("WorkOrderCompletedBy")
-  mechanicAssignments   MechanicAssignment[]
-  addedJobs             WorkOrderJob[]        @relation("JobAddedBy")
-  completedJobs         WorkOrderJob[]        @relation("JobCompletedBy")
-  pauseEvents           PauseEvent[]
-  activityLogs          ActivityLog[]
-  createdCatalogJobs    CatalogJob[]          @relation("CatalogJobCreatedBy")
-  mileageAdjustments    TruckMileageAdjustment[]
-  capabilities          UserCapability[]          @relation("CapabilityUser")
-  capabilitiesGranted   UserCapability[]          @relation("CapabilityGrantor")
+  createdWorkOrders              WorkOrder[]                @relation("WorkOrderCreatedBy")
+  completedWorkOrders            WorkOrder[]                @relation("WorkOrderCompletedBy")
+  mechanicAssignments            MechanicAssignment[]
+  addedJobs                      WorkOrderJob[]             @relation("JobAddedBy")
+  completedJobs                  WorkOrderJob[]             @relation("JobCompletedBy")
+  pauseEvents                    PauseEvent[]
+  activityLogs                   ActivityLog[]
+  createdCatalogJobs             CatalogJob[]               @relation("CatalogJobCreatedBy")
+  mileageAdjustments             TruckMileageAdjustment[]
+  capabilities                   UserCapability[]           @relation("CapabilityUser")
+  capabilitiesGranted            UserCapability[]           @relation("CapabilityGrantor")
+  startedReadinessAssessments    TruckReadinessAssessment[] @relation("ReadinessAssessmentStartedBy")
+  approvedReadinessAssessments   TruckReadinessAssessment[] @relation("ReadinessAssessmentApprovedBy")
+  closedReadinessAssessments     TruckReadinessAssessment[] @relation("ReadinessAssessmentClosedBy")
+  evaluatedReadinessRequirements ReadinessRequirement[]     @relation("ReadinessRequirementEvaluatedBy")
 
   @@map("users")
 }
 
 model UserCapability {
-  userId       String        @map("user_id") @db.Uuid
-  capability   AppCapability
-  grantedAt    DateTime      @default(now()) @map("granted_at")
-  grantedById  String?       @map("granted_by_id") @db.Uuid
+  userId      String        @map("user_id") @db.Uuid
+  capability  AppCapability
+  grantedAt   DateTime      @default(now()) @map("granted_at")
+  grantedById String?       @map("granted_by_id") @db.Uuid
 
-  user         User          @relation("CapabilityUser", fields: [userId], references: [id], onDelete: Cascade)
-  grantedBy    User?         @relation("CapabilityGrantor", fields: [grantedById], references: [id], onDelete: SetNull)
+  user      User  @relation("CapabilityUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy User? @relation("CapabilityGrantor", fields: [grantedById], references: [id], onDelete: SetNull)
 
   @@id([userId, capability])
   @@index([capability])
@@ -134,11 +167,82 @@ model Truck {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  workOrders WorkOrder[]
-  mileageAdjustments TruckMileageAdjustment[]
+  workOrders           WorkOrder[]
+  mileageAdjustments   TruckMileageAdjustment[]
+  readinessAssessments TruckReadinessAssessment[]
 
   @@index([truckNumber])
   @@map("trucks")
+}
+
+model TruckReadinessAssessment {
+  id           String                    @id @default(uuid()) @db.Uuid
+  truckId      String                    @map("truck_id") @db.Uuid
+  status       ReadinessAssessmentStatus @default(under_review)
+  version      Int                       @default(1)
+  startedAt    DateTime                  @default(now()) @map("started_at")
+  startedById  String                    @map("started_by_id") @db.Uuid
+  readyAt      DateTime?                 @map("ready_at")
+  approvedById String?                   @map("approved_by_id") @db.Uuid
+  closedAt     DateTime?                 @map("closed_at")
+  closedById   String?                   @map("closed_by_id") @db.Uuid
+  closedReason String?                   @map("closed_reason")
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  updatedAt    DateTime                  @updatedAt @map("updated_at")
+
+  truck        Truck                  @relation(fields: [truckId], references: [id])
+  startedBy    User                   @relation("ReadinessAssessmentStartedBy", fields: [startedById], references: [id])
+  approvedBy   User?                  @relation("ReadinessAssessmentApprovedBy", fields: [approvedById], references: [id])
+  closedBy     User?                  @relation("ReadinessAssessmentClosedBy", fields: [closedById], references: [id])
+  requirements ReadinessRequirement[]
+  workOrders   WorkOrder[]
+  mutations    ReadinessMutation[]
+
+  @@index([truckId, status])
+  @@index([status, updatedAt])
+  @@index([startedById])
+  @@map("truck_readiness_assessments")
+}
+
+model ReadinessMutation {
+  idempotencyKey String                   @id @map("idempotency_key")
+  assessmentId   String                   @map("assessment_id") @db.Uuid
+  targetKey      String                   @map("target_key")
+  operation      String
+  payloadHash    String                   @map("payload_hash")
+  actorId        String                   @map("actor_id") @db.Uuid
+  result         Json
+  createdAt      DateTime                 @default(now()) @map("created_at")
+
+  assessment TruckReadinessAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId, createdAt])
+  @@index([targetKey, operation, payloadHash])
+  @@map("readiness_mutations")
+}
+
+model ReadinessRequirement {
+  id                  String                      @id @default(uuid()) @db.Uuid
+  assessmentId        String                      @map("assessment_id") @db.Uuid
+  type                ReadinessRequirementType
+  outcome             ReadinessRequirementOutcome @default(not_evaluated)
+  waiverReason        String?                     @map("waiver_reason")
+  evidenceWorkOrderId String?                     @map("evidence_work_order_id") @db.Uuid
+  evaluatedById       String?                     @map("evaluated_by_id") @db.Uuid
+  evaluatedAt         DateTime?                   @map("evaluated_at")
+  version             Int                         @default(1)
+  createdAt           DateTime                    @default(now()) @map("created_at")
+  updatedAt           DateTime                    @updatedAt @map("updated_at")
+
+  assessment        TruckReadinessAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  evidenceWorkOrder WorkOrder?               @relation("ReadinessRequirementEvidence", fields: [evidenceWorkOrderId], references: [id], onDelete: SetNull)
+  evaluatedBy       User?                    @relation("ReadinessRequirementEvaluatedBy", fields: [evaluatedById], references: [id], onDelete: SetNull)
+
+  @@unique([assessmentId, type])
+  @@index([assessmentId, outcome])
+  @@index([evidenceWorkOrderId])
+  @@index([evaluatedById])
+  @@map("readiness_requirements")
 }
 
 model JobCategory {
@@ -150,9 +254,9 @@ model JobCategory {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  catalogJobs          CatalogJob[]
-  workOrders           WorkOrder[]
-  workOrderJobs        WorkOrderJob[]
+  catalogJobs   CatalogJob[]
+  workOrders    WorkOrder[]
+  workOrderJobs WorkOrderJob[]
 
   @@map("job_categories")
 }
@@ -167,8 +271,8 @@ model CatalogJob {
   createdById     String?       @map("created_by_id") @db.Uuid
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  category      JobCategory   @relation(fields: [categoryId], references: [id])
-  createdBy     User?         @relation("CatalogJobCreatedBy", fields: [createdById], references: [id])
+  category      JobCategory    @relation(fields: [categoryId], references: [id])
+  createdBy     User?          @relation("CatalogJobCreatedBy", fields: [createdById], references: [id])
   aliases       JobAlias[]
   workOrderJobs WorkOrderJob[]
 
@@ -189,40 +293,46 @@ model JobAlias {
 }
 
 model WorkOrder {
-  id                 String          @id @default(uuid()) @db.Uuid
-  displayId          String          @unique @map("display_id")
-  truckId            String          @map("truck_id") @db.Uuid
-  primaryCategoryId  String          @map("primary_category_id") @db.Uuid
-  status             WorkOrderStatus @default(created)
-  priority           Priority        @default(normal)
-  notes              String?
-  createdAt          DateTime        @default(now()) @map("created_at")
-  createdById        String          @map("created_by_id") @db.Uuid
-  startedAt          DateTime?       @map("started_at")
-  completedAt        DateTime?       @map("completed_at")
-  completedById      String?         @map("completed_by_id") @db.Uuid
-  totalActiveLaborMs BigInt          @default(0) @map("total_active_labor_ms")
-  totalWaitingMs     BigInt          @default(0) @map("total_waiting_ms")
-  idempotencyKey     String?         @unique @map("idempotency_key")
-  version            Int             @default(1)
-  ninoxExternalId    String?         @map("ninox_external_id")
-  updatedAt          DateTime        @updatedAt @map("updated_at")
+  id                    String          @id @default(uuid()) @db.Uuid
+  displayId             String          @unique @map("display_id")
+  truckId               String          @map("truck_id") @db.Uuid
+  primaryCategoryId     String          @map("primary_category_id") @db.Uuid
+  status                WorkOrderStatus @default(created)
+  priority              Priority        @default(normal)
+  notes                 String?
+  createdAt             DateTime        @default(now()) @map("created_at")
+  createdById           String          @map("created_by_id") @db.Uuid
+  startedAt             DateTime?       @map("started_at")
+  completedAt           DateTime?       @map("completed_at")
+  completedById         String?         @map("completed_by_id") @db.Uuid
+  totalActiveLaborMs    BigInt          @default(0) @map("total_active_labor_ms")
+  totalWaitingMs        BigInt          @default(0) @map("total_waiting_ms")
+  idempotencyKey        String?         @unique @map("idempotency_key")
+  idempotencyPayloadHash String?        @map("idempotency_payload_hash")
+  idempotencyActorId    String?         @map("idempotency_actor_id") @db.Uuid
+  version               Int             @default(1)
+  ninoxExternalId       String?         @map("ninox_external_id")
+  readinessAssessmentId String?         @map("readiness_assessment_id") @db.Uuid
+  updatedAt             DateTime        @updatedAt @map("updated_at")
 
-  truck           Truck                @relation(fields: [truckId], references: [id])
-  primaryCategory JobCategory          @relation(fields: [primaryCategoryId], references: [id])
-  createdBy       User                 @relation("WorkOrderCreatedBy", fields: [createdById], references: [id])
-  completedBy     User?                @relation("WorkOrderCompletedBy", fields: [completedById], references: [id])
-  jobs            WorkOrderJob[]
-  sessions        WorkSession[]
-  pauseEvents     PauseEvent[]
-  mechanics       MechanicAssignment[]
-  activityLogs    ActivityLog[]
-  pmService       PmService?
-  mileageAdjustments TruckMileageAdjustment[]
+  truck                         Truck                     @relation(fields: [truckId], references: [id])
+  primaryCategory               JobCategory               @relation(fields: [primaryCategoryId], references: [id])
+  createdBy                     User                      @relation("WorkOrderCreatedBy", fields: [createdById], references: [id])
+  completedBy                   User?                     @relation("WorkOrderCompletedBy", fields: [completedById], references: [id])
+  jobs                          WorkOrderJob[]
+  sessions                      WorkSession[]
+  pauseEvents                   PauseEvent[]
+  mechanics                     MechanicAssignment[]
+  activityLogs                  ActivityLog[]
+  pmService                     PmService?
+  mileageAdjustments            TruckMileageAdjustment[]
+  readinessAssessment           TruckReadinessAssessment? @relation(fields: [readinessAssessmentId], references: [id], onDelete: SetNull)
+  readinessEvidenceRequirements ReadinessRequirement[]    @relation("ReadinessRequirementEvidence")
 
   @@index([status])
   @@index([truckId, status])
   @@index([createdById])
+  @@index([readinessAssessmentId])
   @@map("work_orders")
 }
 
@@ -243,15 +353,15 @@ model PartCategory {
 }
 
 model Part {
-  id             String   @id @default(uuid()) @db.Uuid
-  categoryId     String   @map("category_id") @db.Uuid
-  partNumber     String?  @map("part_number")
-  displayName    String   @map("display_name")
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  categoryId  String   @map("category_id") @db.Uuid
+  partNumber  String?  @map("part_number")
+  displayName String   @map("display_name")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  category       PartCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category       PartCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   fitments       PartFitment[]
   pmServiceParts PmServicePart[]
 
@@ -295,7 +405,7 @@ model PmServicePart {
 
   pmService    PmService    @relation(fields: [pmServiceId], references: [id], onDelete: Cascade)
   partCategory PartCategory @relation(fields: [partCategoryId], references: [id])
-  part          Part        @relation(fields: [partId], references: [id])
+  part         Part         @relation(fields: [partId], references: [id])
 
   @@unique([pmServiceId, partCategoryId])
   @@map("pm_service_parts")
@@ -320,29 +430,29 @@ model TruckMileageAdjustment {
 }
 
 model WorkOrderJob {
-  id                String    @id @default(uuid()) @db.Uuid
-  workOrderId       String    @map("work_order_id") @db.Uuid
-  catalogJobId      String?   @map("catalog_job_id") @db.Uuid
-  categoryId        String    @map("category_id") @db.Uuid
-  displayName       String    @map("display_name")
-  customDescription String?   @map("custom_description")
-  isCustom          Boolean   @default(false) @map("is_custom")
-  status            JobStatus @default(to_do)
-  addedAt           DateTime  @default(now()) @map("added_at")
-  addedById         String    @map("added_by_id") @db.Uuid
-  completedAt       DateTime? @map("completed_at")
-  completedById     String?   @map("completed_by_id") @db.Uuid
-  cancelledAt       DateTime? @map("cancelled_at")
-  cancelledReason   String?   @map("cancelled_reason")
+  id                 String    @id @default(uuid()) @db.Uuid
+  workOrderId        String    @map("work_order_id") @db.Uuid
+  catalogJobId       String?   @map("catalog_job_id") @db.Uuid
+  categoryId         String    @map("category_id") @db.Uuid
+  displayName        String    @map("display_name")
+  customDescription  String?   @map("custom_description")
+  isCustom           Boolean   @default(false) @map("is_custom")
+  status             JobStatus @default(to_do)
+  addedAt            DateTime  @default(now()) @map("added_at")
+  addedById          String    @map("added_by_id") @db.Uuid
+  completedAt        DateTime? @map("completed_at")
+  completedById      String?   @map("completed_by_id") @db.Uuid
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancelledReason    String?   @map("cancelled_reason")
   // Manager review fields for custom jobs
-  mappedCatalogJobId String?  @map("mapped_catalog_job_id") @db.Uuid
-  reviewStatus       String?  @map("review_status")
-  ninoxExternalId    String?  @map("ninox_external_id")
+  mappedCatalogJobId String?   @map("mapped_catalog_job_id") @db.Uuid
+  reviewStatus       String?   @map("review_status")
+  ninoxExternalId    String?   @map("ninox_external_id")
 
-  workOrder  WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  catalogJob CatalogJob?  @relation(fields: [catalogJobId], references: [id])
-  category   JobCategory  @relation(fields: [categoryId], references: [id])
-  addedBy    User         @relation("JobAddedBy", fields: [addedById], references: [id])
+  workOrder   WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalogJob  CatalogJob? @relation(fields: [catalogJobId], references: [id])
+  category    JobCategory @relation(fields: [categoryId], references: [id])
+  addedBy     User        @relation("JobAddedBy", fields: [addedById], references: [id])
   completedBy User?       @relation("JobCompletedBy", fields: [completedById], references: [id])
 
   @@index([workOrderId, status])
@@ -397,16 +507,16 @@ model MechanicAssignment {
 }
 
 model ActivityLog {
-  id          String            @id @default(uuid()) @db.Uuid
-  workOrderId String?           @map("work_order_id") @db.Uuid
-  eventType   ActivityEventType @map("event_type")
-  entityType  String            @map("entity_type")
-  entityId    String?           @map("entity_id")
-  userId      String            @map("user_id") @db.Uuid
-  previousValue Json?           @map("previous_value")
-  newValue      Json?           @map("new_value")
-  relevantValue Json?           @map("relevant_value")
-  createdAt   DateTime          @default(now()) @map("created_at")
+  id            String            @id @default(uuid()) @db.Uuid
+  workOrderId   String?           @map("work_order_id") @db.Uuid
+  eventType     ActivityEventType @map("event_type")
+  entityType    String            @map("entity_type")
+  entityId      String?           @map("entity_id")
+  userId        String            @map("user_id") @db.Uuid
+  previousValue Json?             @map("previous_value")
+  newValue      Json?             @map("new_value")
+  relevantValue Json?             @map("relevant_value")
+  createdAt     DateTime          @default(now()) @map("created_at")
 
   workOrder WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
   user      User       @relation(fields: [userId], references: [id])

@@ -8,6 +8,7 @@ export enum AppCapability {
   ADMIN_ACCESS = 'admin.access',
   MECHANIC_STANDARD = 'mechanic.standard',
   MECHANIC_PM = 'mechanic.pm',
+  YARD_OPERATIONS_MANAGE = 'yard.operations.manage',
 }
 
 export enum MechanicMode {
@@ -81,6 +82,56 @@ export enum ActivityEventType {
   MANAGER_CORRECTION = 'manager_correction',
   PM_DETAILS_UPDATED = 'pm_details_updated',
   TRUCK_MILEAGE_CORRECTED = 'truck_mileage_corrected',
+  READINESS_ASSESSMENT_STARTED = 'readiness_assessment_started',
+  READINESS_REQUIREMENT_UPDATED = 'readiness_requirement_updated',
+  READINESS_APPROVED = 'readiness_approved',
+  READINESS_APPROVAL_INVALIDATED = 'readiness_approval_invalidated',
+  READINESS_ASSESSMENT_CLOSED = 'readiness_assessment_closed',
+}
+
+export enum YardPresenceState {
+  UNKNOWN = 'unknown',
+}
+
+export enum ReadinessAssessmentStatus {
+  UNDER_REVIEW = 'under_review',
+  READY = 'ready',
+  CLOSED = 'closed',
+}
+
+/** Readiness filters for the active Yard Operations workspace. */
+export enum YardReadinessFilter {
+  NOT_STARTED = 'not_started',
+  UNDER_REVIEW = 'under_review',
+  READY = 'ready',
+}
+
+export enum ReadinessRequirementType {
+  INSPECTION = 'inspection',
+  REQUIRED_REPAIRS = 'required_repairs',
+  PM = 'pm',
+  ALIGNMENT = 'alignment',
+  DETAILING = 'detailing',
+  QUALITY_CHECK = 'quality_check',
+}
+
+export enum ReadinessRequirementOutcome {
+  NOT_EVALUATED = 'not_evaluated',
+  REQUIRED = 'required',
+  NOT_REQUIRED = 'not_required',
+  COMPLETED = 'completed',
+  WAIVED = 'waived',
+}
+
+export enum ReadinessPhase {
+  NEEDS_EVALUATION = 'needs_evaluation',
+  INSPECTION = 'inspection',
+  REQUIRED_WORK = 'required_work',
+  PM = 'pm',
+  ALIGNMENT = 'alignment',
+  DETAILING = 'detailing',
+  QUALITY_CHECK = 'quality_check',
+  READY_TO_GO = 'ready_to_go',
 }
 
 export enum CatalogStatus {

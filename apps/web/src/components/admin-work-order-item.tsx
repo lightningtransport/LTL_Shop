@@ -15,7 +15,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false }: 
       <div className="flex flex-wrap items-start justify-between gap-3 xl:block">
         <div>
           <Link className="font-display text-lg font-semibold text-primary hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>
-          <p className="mt-1 text-sm font-medium">{item.truck.truckNumber} · {item.category.name}</p>
+          <p className="mt-1 text-sm font-medium"><Link className="text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link> · {item.category.name}</p>
         </div>
         <div className={cn('flex flex-wrap gap-2', compact && 'xl:hidden')}><PriorityBadge priority={item.priority} /><Badge variant="outline">{humanize(item.status)}</Badge></div>
       </div>

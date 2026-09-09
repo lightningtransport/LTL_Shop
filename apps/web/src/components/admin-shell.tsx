@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, Gauge, History, Library, Truck, UsersRound } from 'lucide-react';
+import { ClipboardList, Gauge, History, Library, Truck, UsersRound, Warehouse } from 'lucide-react';
 import { AdminLocaleSwitcher } from './admin-locale-switcher';
 import { AppHeaderActions, Badge, Button } from './ui';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -18,6 +18,7 @@ const futureNavigation = [
 const activeNavigation = [
   { message: 'dashboard', icon: Gauge, href: '/admin' },
   { message: 'workOrders', icon: ClipboardList, href: '/admin/work-orders' },
+  { message: 'yardOperations', icon: Warehouse, href: '/admin/yard-operations' },
 ] as const;
 
 export function AdminShell({
@@ -68,7 +69,7 @@ export function AdminShell({
               <AppHeaderActions />
             </div>
           </div>
-          <nav className="grid grid-cols-2 gap-2 px-4 pb-3 md:hidden" aria-label={messages.mobileNavigation}>
+          <nav className="grid grid-cols-3 gap-2 px-4 pb-3 md:hidden" aria-label={messages.mobileNavigation}>
             {activeNavigation.map(({ message, icon: Icon, href }) => {
               const active = href === '/admin' ? pathname === href : pathname.startsWith(href);
               return <Button key={href} asChild variant={active ? 'secondary' : 'ghost'} size="sm" className="w-full min-w-0">

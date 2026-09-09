@@ -34,4 +34,9 @@ describe('CapabilitiesGuard', () => {
   it('declares Admin access on the Admin controller', () => {
     expect(Reflect.getMetadata(CAPABILITIES_KEY, AdminController)).toEqual([AppCapability.ADMIN_ACCESS]);
   });
+
+  it('requires both Admin access and Yard Operations management for mutations', () => {
+    expect(Reflect.getMetadata(CAPABILITIES_KEY, AdminController.prototype.startReadinessAssessment))
+      .toEqual([AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE]);
+  });
 });
