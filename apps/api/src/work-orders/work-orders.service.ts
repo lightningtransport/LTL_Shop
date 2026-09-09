@@ -36,6 +36,8 @@ import {
 } from './work-order.timing';
 import type { AuthUser } from '../auth/auth.guard';
 import { hasCapability } from '../auth/capabilities';
+import { idempotencyFingerprint } from '../common/idempotency';
+import { lockTruckMutation } from '../common/truck-mutation-lock';
 
 @Injectable()
 export class WorkOrdersService {
@@ -102,6 +104,16 @@ export class WorkOrdersService {
       throw new BadRequestException(parsed.error.flatten());
     }
     const input: CreateWorkOrderInput = parsed.data;
+    const idempotencyPayloadHash = input.idempotencyKey
+      ? idempotencyFingerprint({
+          truckId: input.truckId,
+          primaryCategoryId: input.primaryCategoryId,
+          priority: input.priority,
+          notes: input.notes ?? null,
+          mechanicIds: [...input.mechanicIds].sort(),
+          jobs: input.jobs,
+        })
+      : null;
 
     if (input.idempotencyKey) {
       const existing = await this.prisma.workOrder.findUnique({
@@ -109,6 +121,7 @@ export class WorkOrdersService {
         include: workOrderDetailInclude,
       });
       if (existing) {
+        this.assertWorkOrderIdempotency(existing, input.truckId, idempotencyPayloadHash, user.id);
         this.assertMechanicAccess(user, existing);
         return toWorkOrderDetail(existing);
       }
@@ -160,94 +173,204 @@ export class WorkOrdersService {
       await this.assertCatalogJobsBelongToCategory(input.jobs, category.id);
     }
 
-    const open = await this.prisma.workOrder.findFirst({
+    const preflightOpen = await this.prisma.workOrder.findFirst({
       where: {
         truckId: input.truckId,
         status: { in: OPEN_WORK_ORDER_STATUSES },
       },
       include: workOrderDetailInclude,
     });
-    if (open) {
-      const openCapability = open.primaryCategory.name === 'PM'
-        ? AppCapability.MECHANIC_PM
-        : AppCapability.MECHANIC_STANDARD;
-      const canSeeOpenWorkOrder = hasCapability(user, openCapability) && this.isAssigned(user, open);
-      throw new ConflictException({
-        code: 'OPEN_WORK_ORDER_EXISTS',
-        message: 'Truck already has an open Work Order.',
-        ...(canSeeOpenWorkOrder ? { workOrder: toWorkOrderSummary(open) } : {}),
-      });
-    }
 
     const mechanicIds = Array.from(
       new Set([user.id, ...input.mechanicIds]),
     );
 
-    const count = await this.prisma.workOrder.count();
-    const displayId = nextDisplayId(count + 1);
+    let wo: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>;
+    try {
+      wo = await this.prisma.$transaction(async (tx) => {
+        await lockTruckMutation(tx, input.truckId);
+        if (input.idempotencyKey && typeof tx.workOrder.findUnique === 'function') {
+          const stored = await tx.workOrder.findUnique({
+            where: { idempotencyKey: input.idempotencyKey },
+            include: workOrderDetailInclude,
+          });
+          if (stored) {
+            this.assertWorkOrderIdempotency(stored, input.truckId, idempotencyPayloadHash, user.id);
+            this.assertMechanicAccess(user, stored);
+            return stored;
+          }
+        }
+        const truckAfterLock = typeof tx.truck?.findUnique === 'function'
+          ? await tx.truck.findUnique({ where: { id: input.truckId } })
+          : truck;
+        if (!truckAfterLock) throw new BadRequestException('Invalid truck');
 
-    const wo = await this.prisma.$transaction(async (tx) => {
-      const startedAt = isPm ? new Date() : null;
-      const created = await tx.workOrder.create({
-        data: {
-          displayId,
-          truckId: input.truckId,
-          primaryCategoryId: input.primaryCategoryId,
-          // A new PM service starts immediately for its authorized creator. Existing
-          // created PM orders remain startable through the legacy endpoint.
-          status: isPm ? 'in_progress' : 'created',
-          priority: isPm ? 'normal' : input.priority,
-          notes: isPm ? undefined : input.notes,
-          createdById: user.id,
-          startedAt,
-          idempotencyKey: input.idempotencyKey,
-          sessions: isPm && startedAt ? { create: { startedAt } } : undefined,
-          jobs: {
-            create: input.jobs.map((job) => ({
-              catalogJobId: job.catalogJobId,
-              categoryId: job.categoryId,
-              displayName: job.displayName,
-              customDescription: job.customDescription,
-              isCustom: !job.catalogJobId,
-              reviewStatus: job.catalogJobId ? null : 'pending_review',
-              addedById: user.id,
-              status: 'to_do',
-            })),
-          },
-          mechanics: {
-            create: mechanicIds.map((mechanicId) => ({
-              mechanicId,
-              addedById: user.id,
-            })),
-          },
-        },
-        include: workOrderDetailInclude,
-      });
+        const open = typeof tx.workOrder.findFirst === 'function'
+          ? await tx.workOrder.findFirst({
+              where: {
+                truckId: input.truckId,
+                status: { in: OPEN_WORK_ORDER_STATUSES },
+              },
+              include: workOrderDetailInclude,
+            })
+          : preflightOpen;
+        if (open) {
+          const openCapability = open.primaryCategory.name === 'PM'
+            ? AppCapability.MECHANIC_PM
+            : AppCapability.MECHANIC_STANDARD;
+          const canSeeOpenWorkOrder = hasCapability(user, openCapability) && this.isAssigned(user, open);
+          throw new ConflictException({
+            code: 'OPEN_WORK_ORDER_EXISTS',
+            message: 'Truck already has an open Work Order.',
+            ...(canSeeOpenWorkOrder ? { workOrder: toWorkOrderSummary(open) } : {}),
+          });
+        }
 
-      await this.activity.log(tx, {
-        workOrderId: created.id,
-        eventType: ActivityEventType.WORK_ORDER_CREATED,
-        entityType: 'work_order',
-        entityId: created.id,
-        userId: user.id,
-        newValue: { displayId, status: 'created' },
-      });
-      if (isPm) {
+        const count = typeof tx.workOrder.count === 'function'
+          ? await tx.workOrder.count()
+          : await this.prisma.workOrder.count();
+        const displayId = nextDisplayId(count + 1);
+        const startedAt = isPm ? new Date() : null;
+        // Keep older unit-test transaction doubles compatible while the real
+        // Prisma client always exposes the additive readiness model.
+        const activeAssessment = tx.truckReadinessAssessment
+          ? await tx.truckReadinessAssessment.findFirst({
+              where: { truckId: input.truckId, status: { in: ['under_review', 'ready'] } },
+              orderBy: { updatedAt: 'desc' },
+              select: { id: true, status: true, version: true, approvedById: true },
+            })
+          : null;
+        const created = await tx.workOrder.create({
+          data: {
+            displayId,
+            truckId: input.truckId,
+            primaryCategoryId: input.primaryCategoryId,
+            // A new PM service starts immediately for its authorized creator. Existing
+            // created PM orders remain startable through the legacy endpoint.
+            status: isPm ? 'in_progress' : 'created',
+            priority: isPm ? 'normal' : input.priority,
+            notes: isPm ? undefined : input.notes,
+            createdById: user.id,
+            startedAt,
+            readinessAssessmentId: activeAssessment?.id,
+            idempotencyKey: input.idempotencyKey,
+            idempotencyPayloadHash,
+            idempotencyActorId: input.idempotencyKey ? user.id : undefined,
+            sessions: isPm && startedAt ? { create: { startedAt } } : undefined,
+            jobs: {
+              create: input.jobs.map((job) => ({
+                catalogJobId: job.catalogJobId,
+                categoryId: job.categoryId,
+                displayName: job.displayName,
+                customDescription: job.customDescription,
+                isCustom: !job.catalogJobId,
+                reviewStatus: job.catalogJobId ? null : 'pending_review',
+                addedById: user.id,
+                status: 'to_do',
+              })),
+            },
+            mechanics: {
+              create: mechanicIds.map((mechanicId) => ({
+                mechanicId,
+                addedById: user.id,
+              })),
+            },
+          },
+          include: workOrderDetailInclude,
+        });
+
         await this.activity.log(tx, {
           workOrderId: created.id,
-          eventType: ActivityEventType.WORK_STARTED,
+          eventType: ActivityEventType.WORK_ORDER_CREATED,
           entityType: 'work_order',
           entityId: created.id,
           userId: user.id,
-          previousValue: { status: 'created' },
-          newValue: { status: 'in_progress' },
+          newValue: { displayId, status: 'created' },
         });
-      }
+        if (isPm) {
+          await this.activity.log(tx, {
+            workOrderId: created.id,
+            eventType: ActivityEventType.WORK_STARTED,
+            entityType: 'work_order',
+            entityId: created.id,
+            userId: user.id,
+            previousValue: { status: 'created' },
+            newValue: { status: 'in_progress' },
+          });
+        }
 
-      return created;
-    });
+        if (activeAssessment?.status === 'ready') {
+          await tx.truckReadinessAssessment.update({
+            where: { id: activeAssessment.id },
+            data: {
+              status: 'under_review',
+              readyAt: null,
+              approvedById: null,
+              version: { increment: 1 },
+            },
+          });
+          await this.activity.log(tx, {
+            eventType: ActivityEventType.READINESS_APPROVAL_INVALIDATED,
+            entityType: 'readiness_assessment',
+            entityId: activeAssessment.id,
+            userId: user.id,
+            previousValue: {
+              status: activeAssessment.status,
+              version: activeAssessment.version,
+              approvedById: activeAssessment.approvedById,
+            },
+            newValue: { status: 'under_review', approvedById: null },
+            relevantValue: { reason: 'work_order_created', workOrderId: created.id },
+          });
+        }
+
+        return created;
+      });
+    } catch (error) {
+      if (input.idempotencyKey && this.isUniqueViolation(error)) {
+        const existing = await this.prisma.workOrder.findUnique({
+          where: { idempotencyKey: input.idempotencyKey },
+          include: workOrderDetailInclude,
+        });
+        if (existing) {
+          this.assertWorkOrderIdempotency(existing, input.truckId, idempotencyPayloadHash, user.id);
+          this.assertMechanicAccess(user, existing);
+          return toWorkOrderDetail(existing);
+        }
+      }
+      throw error;
+    }
 
     return toWorkOrderDetail(wo);
+  }
+
+  private isUniqueViolation(error: unknown) {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+  }
+
+  private assertWorkOrderIdempotency(
+    existing: {
+      truckId: string;
+      idempotencyPayloadHash: string | null;
+      idempotencyActorId: string | null;
+    },
+    truckId: string,
+    payloadHash: string | null,
+    actorId: string,
+  ) {
+    const isLegacy = existing.idempotencyPayloadHash === null && existing.idempotencyActorId === null;
+    if (
+      existing.truckId !== truckId ||
+      (!isLegacy && (
+        existing.idempotencyPayloadHash !== payloadHash ||
+        existing.idempotencyActorId !== actorId
+      ))
+    ) {
+      throw new ConflictException({
+        code: 'IDEMPOTENCY_KEY_REUSE',
+        message: 'Idempotency key was already used for a different Work Order mutation.',
+      });
+    }
   }
 
   async start(user: AuthUser, id: string) {

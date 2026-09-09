@@ -196,11 +196,29 @@ model TruckReadinessAssessment {
   closedBy     User?                  @relation("ReadinessAssessmentClosedBy", fields: [closedById], references: [id])
   requirements ReadinessRequirement[]
   workOrders   WorkOrder[]
+  mutations    ReadinessMutation[]
 
   @@index([truckId, status])
   @@index([status, updatedAt])
   @@index([startedById])
   @@map("truck_readiness_assessments")
+}
+
+model ReadinessMutation {
+  idempotencyKey String                   @id @map("idempotency_key")
+  assessmentId   String                   @map("assessment_id") @db.Uuid
+  targetKey      String                   @map("target_key")
+  operation      String
+  payloadHash    String                   @map("payload_hash")
+  actorId        String                   @map("actor_id") @db.Uuid
+  result         Json
+  createdAt      DateTime                 @default(now()) @map("created_at")
+
+  assessment TruckReadinessAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId, createdAt])
+  @@index([targetKey, operation, payloadHash])
+  @@map("readiness_mutations")
 }
 
 model ReadinessRequirement {
@@ -290,6 +308,8 @@ model WorkOrder {
   totalActiveLaborMs    BigInt          @default(0) @map("total_active_labor_ms")
   totalWaitingMs        BigInt          @default(0) @map("total_waiting_ms")
   idempotencyKey        String?         @unique @map("idempotency_key")
+  idempotencyPayloadHash String?        @map("idempotency_payload_hash")
+  idempotencyActorId    String?         @map("idempotency_actor_id") @db.Uuid
   version               Int             @default(1)
   ninoxExternalId       String?         @map("ninox_external_id")
   readinessAssessmentId String?         @map("readiness_assessment_id") @db.Uuid

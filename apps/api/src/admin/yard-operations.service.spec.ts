@@ -58,7 +58,7 @@ describe('YardOperationsService', () => {
       .mockResolvedValueOnce([second])
       .mockResolvedValueOnce([]);
     prisma.truck.count.mockResolvedValue(2);
-    const service = new YardOperationsService(prisma as never, {} as never);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
 
     const page = await service.list({ limit: 1 });
     expect(page.items.map((item) => item.truck.truckNumber)).toEqual(['100']);
@@ -82,7 +82,7 @@ describe('YardOperationsService', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([row])
       .mockResolvedValueOnce([]);
-    const service = new YardOperationsService(prisma as never, {} as never);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
 
     const page = await service.list({ phase: 'needs_evaluation', blocked: 'true' });
     expect(page.items).toHaveLength(0);
@@ -104,7 +104,7 @@ describe('YardOperationsService', () => {
         { readinessAssessments: [{ status: 'ready', requirements: completeRequirements, workOrders: [{ id: 'wo-1', status: 'in_progress' }] }] },
       ]);
     prisma.truck.count.mockResolvedValue(10);
-    const service = new YardOperationsService(prisma as never, {} as never);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
 
     const page = await service.list({ limit: 1 });
 
@@ -115,7 +115,7 @@ describe('YardOperationsService', () => {
   it('returns not found for a missing Truck detail', async () => {
     const prisma = createPrisma();
     prisma.truck.findUnique.mockResolvedValue(null);
-    const service = new YardOperationsService(prisma as never, {} as never);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
     await expect(service.detail('00000000-0000-4000-8000-000000000001')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

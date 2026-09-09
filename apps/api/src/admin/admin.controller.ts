@@ -1,4 +1,15 @@
-import { BadRequestException, Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AppCapability, adminRepairHistoryQuerySchema } from '@ltl-shop/shared';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
@@ -46,6 +57,35 @@ export class AdminController {
   @Get('trucks/:id')
   yardTruck(@Param('id') id: string) {
     return this.yardOperations.detail(id);
+  }
+
+  @Post('trucks/:id/readiness-assessments')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
+  startReadinessAssessment(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.yardOperations.startAssessment(request.user!, id, body);
+  }
+
+  @Patch('readiness-assessments/:id/requirements/:type')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
+  updateReadinessRequirement(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('type') type: string,
+    @Body() body: unknown,
+  ) {
+    return this.yardOperations.updateRequirement(request.user!, id, type, body);
+  }
+
+  @Post('readiness-assessments/:id/mark-ready')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
+  markReadinessReady(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.yardOperations.markReady(request.user!, id, body);
+  }
+
+  @Post('readiness-assessments/:id/close')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
+  closeReadinessAssessment(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.yardOperations.closeAssessment(request.user!, id, body);
   }
 
   @Get('trucks/:id/repair-history')

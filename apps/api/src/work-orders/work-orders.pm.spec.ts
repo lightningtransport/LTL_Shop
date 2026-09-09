@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ActivityEventType, AppCapability, Priority } from '@ltl-shop/shared';
 import { WorkOrdersService } from './work-orders.service';
+import { idempotencyFingerprint } from '../common/idempotency';
 
 describe('PM Work Order authorization', () => {
   it('creates Daniel PM work atomically as active with one session and both audit events', async () => {
@@ -69,6 +70,80 @@ describe('PM Work Order authorization', () => {
         displayName: 'PM A Service',
       }],
     })).rejects.toThrow('You do not have access to the PM mechanic workspace');
+  });
+
+  it('rejects a Work Order idempotency key reused for another truck or payload', async () => {
+    const prisma = {
+      workOrder: {
+        findUnique: vi.fn().mockResolvedValue({
+          truckId: '00000000-0000-4000-8000-000000000099',
+          idempotencyPayloadHash: 'different-payload',
+          idempotencyActorId: 'daniel-id',
+        }),
+      },
+    } as never;
+    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
+
+    await expect(service.create({
+      id: 'daniel-id', email: 'daniel@lightning.local', name: 'Daniel',
+      role: 'mechanic', active: true, pmAuthorized: true, capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
+    }, {
+      truckId: '00000000-0000-4000-8000-000000000001',
+      primaryCategoryId: '00000000-0000-4000-8000-000000000002',
+      jobs: [],
+      idempotencyKey: 'idempotency-key-duplicate',
+    })).rejects.toMatchObject({ response: { code: 'IDEMPOTENCY_KEY_REUSE' } });
+  });
+
+  it('replays a Work Order found after waiting for the truck lock before open-WO checks', async () => {
+    const createdAt = new Date('2026-09-02T15:00:00.000Z');
+    const idempotencyKey = 'idempotency-key-after-lock';
+    const stored = {
+      id: 'wo-pm-after-lock', displayId: 'WO-0002', truckId: '00000000-0000-0000-0000-000000000001', primaryCategoryId: '00000000-0000-0000-0000-000000000002',
+      status: 'in_progress', priority: Priority.NORMAL, notes: null, createdAt, createdById: 'daniel-id',
+      startedAt: createdAt, completedAt: null, completedById: null, totalActiveLaborMs: BigInt(0),
+      totalWaitingMs: BigInt(0), version: 1,
+      idempotencyPayloadHash: idempotencyFingerprint({
+        truckId: '00000000-0000-0000-0000-000000000001',
+        primaryCategoryId: '00000000-0000-0000-0000-000000000002',
+        priority: Priority.NORMAL,
+        notes: null,
+        mechanicIds: [],
+        jobs: [],
+      }),
+      idempotencyActorId: 'daniel-id',
+      truck: { id: 'truck-1', truckNumber: '905', make: 'Peterbilt', model: '579', year: 2025, mileage: 155000, company: null, owner: null },
+      primaryCategory: { id: 'pm-category', name: 'PM' }, jobs: [], pauseEvents: [],
+      mechanics: [{ mechanicId: 'daniel-id', addedAt: createdAt, removedAt: null, mechanic: { name: 'Daniel' } }],
+    } as never;
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      workOrder: { findUnique: vi.fn().mockResolvedValue(stored) },
+    };
+    const prisma = {
+      workOrder: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-1' }) },
+      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'pm-category', name: 'PM' }) },
+      $transaction: vi.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
+    };
+    const service = new WorkOrdersService(prisma as never, { log: vi.fn() } as never);
+
+    const result = await service.create({
+      id: 'daniel-id', email: 'daniel@lightning.local', name: 'Daniel',
+      role: 'mechanic', active: true, pmAuthorized: true, capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
+    }, {
+      truckId: '00000000-0000-0000-0000-000000000001',
+      primaryCategoryId: '00000000-0000-0000-0000-000000000002',
+      jobs: [],
+      idempotencyKey,
+    });
+
+    expect(result.id).toBe('wo-pm-after-lock');
+    expect(tx.workOrder.findUnique).toHaveBeenCalledTimes(1);
+    expect(prisma.workOrder.findFirst).toHaveBeenCalledTimes(1);
   });
 
   it('does not let a PM mechanic create a non-PM Work Order', async () => {
