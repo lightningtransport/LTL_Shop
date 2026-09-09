@@ -1,5 +1,11 @@
 # Yard Operations Phase 1 contract
 
+Status: **CURRENT** on `main` as of 2026-09-09. The assessment aggregate,
+requirements, Work Order linkage, Admin routes/UI, authorization, optimistic
+concurrency, idempotency, and Activity Log behavior described here are
+implemented. Presence and external movement integrations remain unavailable as
+stated below.
+
 This document is the implementation contract for the first Yard Operations
 slice. It extends the existing Admin read-only operations without changing the
 mechanic Work Order semantics. The current checkout is the source of truth:
@@ -121,8 +127,8 @@ without mutation controls.
 
 ## API and route intent
 
-These are the Phase 1 public contracts; exact DTO names and validation schemas
-belong in `packages/shared` during the next loop.
+These are the implemented Phase 1 public contracts. DTOs and validation schemas
+live in `packages/shared`.
 
 | Method and route | Purpose | Availability |
 | --- | --- | --- |
@@ -139,13 +145,13 @@ Admin Work Order contracts retain their current semantics.
 
 ## Persistence and migration boundary
 
-The next implementation loop may add an assessment aggregate, requirement
-records, a nullable readiness-assessment link on Work Orders, indexes, and
-audit event values. It must be additive and preserve all existing rows and
-queries. No `Truck` presence/location fields, departure fields, Samsara IDs, or
-prototype-only categories should be added until their source and ownership are
-approved. Seed data may exercise assessments locally, but must be labelled as
-fixtures and never presented as production evidence.
+Phase 1 added the assessment aggregate, requirement records, a nullable
+readiness-assessment link on Work Orders, indexes, idempotency records, and
+audit event values through additive Prisma migrations. No `Truck`
+presence/location fields, departure fields, Samsara IDs, or prototype-only
+categories may be added until their source and ownership are approved. Seed
+data may exercise assessments locally, but must be labelled as fixtures and
+never presented as production evidence.
 
 ## Canonical bilingual terminology
 
@@ -176,4 +182,3 @@ Loading, empty, no-results, permission, validation, confirmation, success,
 recoverable-error, and accessibility-announcement states are required in both
 catalogs. Spanish copy must not imply that `UNKNOWN` means “not in yard” or
 that `Ready to Go` is a confirmed departure.
-

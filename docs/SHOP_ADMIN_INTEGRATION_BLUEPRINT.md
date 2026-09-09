@@ -18,7 +18,7 @@ Ese proyecto es una referencia de producto, contenido y cobertura, no código ni
 - Construir Shop Admin con los componentes shadcn, tokens y estilos vigentes de LTL Shop Mechanics.
 - Mantener Supabase Postgres, administrado mediante Prisma, como fuente operacional objetivo.
 - Convivir temporalmente con Ninox para consulta, importación y reconciliación hasta retirarlo.
-- Preservar sin regresiones los flujos actuales del mecánico, incluido PM mediante `pmAuthorized`.
+- Preservar sin regresiones los flujos actuales del mecánico, incluido PM mediante `mechanic.pm`; `pmAuthorized` es solo compatibilidad temporal.
 - Preparar una sola estructura de componentes para inglés y español.
 
 ## 2. Autoridad y resolución de conflictos
@@ -65,7 +65,12 @@ Términos canónicos que no se traducen: **Off Duty**, **Work Order**, **Job** y
 
 ## 3. Estado actual verificado
 
-Esta sección describe el checkout inspeccionado el 6 de septiembre de 2026. Debe volver a verificarse antes de implementar porque el código y los despliegues pueden avanzar.
+Esta sección partió del checkout inspeccionado el 6 de septiembre de 2026. La
+actualización del 9 de septiembre confirma que la fundación Admin, Work Orders
+read-only y Yard Operations/Readiness Phase 1 ya están implementadas. Las tablas
+de fases y pantallas posteriores conservan historia de planificación; el código,
+`CURRENT_PRODUCT_STATUS.md` y `YARD_OPERATIONS_PHASE_1_CONTRACT.md` mandan para
+el estado CURRENT.
 
 ### 3.1 Plataforma
 
@@ -101,7 +106,12 @@ Shop Admin debe extender esta base. No debe importar los tokens, Geist, CSS ni c
 - `manager`
 - `admin`
 
-`AuthGuard` valida el token de Supabase, resuelve el usuario de aplicación por email o `supabaseAuthId`, comprueba que esté activo y adjunta el usuario a la petición. Actualmente no existe un guard declarativo que restrinja endpoints por rol. Tener el enum no equivale a tener RBAC administrativo implementado.
+`AuthGuard` valida el token de Supabase, resuelve el usuario de aplicación por
+email o `supabaseAuthId`, comprueba que esté activo y adjunta el usuario a la
+petición. Existe autorización declarativa por capabilities para Admin y Yard
+Operations: `admin.access` permite lectura administrativa y
+`yard.operations.manage` protege mutaciones de readiness. El rol no equivale
+por sí solo a una capability.
 
 ### 3.4 Dominio reutilizable
 
@@ -152,7 +162,7 @@ Antes de diseñar coexistencia se debe inventariar cualquier integración que ex
 
 1. Solo puede existir una Work Order abierta por Truck.
 2. Crear una Work Order estándar no inicia Active Labor; el mecánico usa **Start Work**.
-3. La excepción PM inicia trabajo al crear y solo aplica por la capacidad `pmAuthorized`, nunca por nombre o email.
+3. La excepción PM inicia trabajo al crear y solo aplica por la capability `mechanic.pm`, nunca por nombre, email o el campo legacy `pmAuthorized`.
 4. Una Work Order normal requiere al menos un Job y rechaza Jobs duplicados.
 5. Completar un Job no pausa ni completa automáticamente la Work Order.
 6. Una Work Order no puede pausarse si ya no tiene Jobs pendientes; PM usa sus propias validaciones.
@@ -318,7 +328,14 @@ Una fase posterior puede introducir segmentos vinculados a Job y Mechanic, pero 
 
 ### 8.3 Concurrencia e idempotencia
 
-`WorkOrder.version` e `idempotencyKey` ya existen, pero no todas las entidades administrativas tienen control equivalente. Definir si cada mutación versiona la Work Order agregada o requiere `version` propio. No usar `updatedAt` del cliente como única garantía.
+`WorkOrder.version` e `idempotencyKey` ya existen. Create Work Order revalida la
+invariante de una abierta por Truck dentro de una transacción con advisory lock
+por Truck y verifica que un retry idempotente conserve actor y payload. Las
+mutaciones de readiness usan `expectedVersion` e `idempotencyKey`.
+
+La mutación Add Job aún no acepta esos metadatos. La evolución multicategoría
+debe exigir ambos, devolver 409 para una versión stale y registrar la Category
+en `JOB_ADDED`. No usar `updatedAt` del cliente como garantía.
 
 ### 8.4 Auditoría y correcciones
 
@@ -480,7 +497,7 @@ No mezclar historial Ninox y datos LTL en un mismo KPI sin mapping, deduplicaci�
 - no se agregan Jobs duplicados.
 - pausa inválida sigue bloqueada.
 - completar Job no termina la Work Order.
-- flujo PM sigue autorizado exclusivamente por `pmAuthorized` y conserva sus requisitos de millaje/partes.
+- flujo PM sigue autorizado exclusivamente por `mechanic.pm`; `pmAuthorized` no es autoridad y conserva solo compatibilidad temporal.
 
 ### UI e idiomas
 
