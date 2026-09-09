@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { OPEN_WORK_ORDER_STATUSES, PauseReason, WorkOrderStatus } from './enums';
+import {
+  OPEN_WORK_ORDER_STATUSES,
+  PauseReason,
+  ReadinessRequirementOutcome,
+  ReadinessRequirementType,
+  WorkOrderStatus,
+} from './enums';
 import {
   adminListQuerySchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
   adminWorkOrderCursorSchema,
   adminWorkOrdersQuerySchema,
+  updateReadinessRequirementSchema,
   createWorkOrderSchema,
 } from './schemas';
 
@@ -77,5 +84,16 @@ describe('shared contracts', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000000001',
     }).success).toBe(true);
     expect(adminMutationMetaSchema.safeParse({ expectedVersion: 2 }).success).toBe(false);
+  });
+
+  it('requires a reason when waiving a readiness requirement', () => {
+    const base = {
+      type: ReadinessRequirementType.INSPECTION,
+      outcome: ReadinessRequirementOutcome.WAIVED,
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000001',
+    };
+    expect(updateReadinessRequirementSchema.safeParse(base).success).toBe(false);
+    expect(updateReadinessRequirementSchema.safeParse({ ...base, waiverReason: 'Not required for this visit' }).success).toBe(true);
   });
 });

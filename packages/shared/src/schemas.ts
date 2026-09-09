@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { MechanicMode, PauseReason, Priority, WorkOrderStatus } from './enums';
+import {
+  MechanicMode,
+  PauseReason,
+  Priority,
+  ReadinessRequirementOutcome,
+  ReadinessRequirementType,
+  WorkOrderStatus,
+} from './enums';
 
 export const mechanicModeSchema = z.nativeEnum(MechanicMode);
 
@@ -51,6 +58,40 @@ export const adminMutationMetaSchema = z.object({
   expectedVersion: z.number().int().nonnegative(),
   idempotencyKey: z.string().uuid(),
   reason: z.string().trim().min(1).max(1000).optional(),
+});
+
+export const startReadinessAssessmentSchema = z.object({
+  idempotencyKey: z.string().uuid(),
+});
+
+export const updateReadinessRequirementSchema = z.object({
+  type: z.nativeEnum(ReadinessRequirementType),
+  outcome: z.nativeEnum(ReadinessRequirementOutcome),
+  expectedVersion: z.number().int().nonnegative(),
+  idempotencyKey: z.string().uuid(),
+  waiverReason: z.string().trim().min(1).max(1000).optional(),
+  evidenceWorkOrderId: z.string().uuid().optional(),
+}).superRefine((value, context) => {
+  if (value.outcome === ReadinessRequirementOutcome.WAIVED && !value.waiverReason) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['waiverReason'],
+      message: 'A waiver reason is required',
+    });
+  }
+  if (value.outcome !== ReadinessRequirementOutcome.WAIVED && value.waiverReason) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['waiverReason'],
+      message: 'Waiver reason is only valid for waived requirements',
+    });
+  }
+});
+
+export const markReadinessReadySchema = adminMutationMetaSchema;
+
+export const closeReadinessAssessmentSchema = adminMutationMetaSchema.extend({
+  reason: z.string().trim().min(1).max(1000),
 });
 
 export const createWorkOrderJobSchema = z.object({
@@ -124,3 +165,7 @@ export type AdminWorkOrdersQuery = z.infer<typeof adminWorkOrdersQuerySchema>;
 export type AdminWorkOrderCursor = z.infer<typeof adminWorkOrderCursorSchema>;
 export type AdminRepairHistoryQuery = z.infer<typeof adminRepairHistoryQuerySchema>;
 export type AdminMutationMetaInput = z.infer<typeof adminMutationMetaSchema>;
+export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessmentSchema>;
+export type UpdateReadinessRequirementInput = z.infer<typeof updateReadinessRequirementSchema>;
+export type MarkReadinessReadyInput = z.infer<typeof markReadinessReadySchema>;
+export type CloseReadinessAssessmentInput = z.infer<typeof closeReadinessAssessmentSchema>;

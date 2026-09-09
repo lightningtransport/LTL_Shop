@@ -101,8 +101,14 @@ async function main() {
     { email: 'elliot@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
     { email: 'cristian@ltransl.com', capabilities: [AppCapability.MECHANIC_STANDARD] },
     { email: 'daniel@lightning.local', capabilities: [AppCapability.MECHANIC_PM] },
-    { email: 'manager@lightning.local', capabilities: [AppCapability.ADMIN_ACCESS] },
-    { email: 'admin@lightning.local', capabilities: [AppCapability.ADMIN_ACCESS] },
+    {
+      email: 'manager@lightning.local',
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE],
+    },
+    {
+      email: 'admin@lightning.local',
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE],
+    },
     {
       email: 'ibrain@ltransl.com',
       capabilities: [
