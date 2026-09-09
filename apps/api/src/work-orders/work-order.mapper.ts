@@ -11,6 +11,7 @@ type JobRow = {
   workOrderId: string;
   catalogJobId: string | null;
   categoryId: string;
+  category: { id: string; name: string };
   displayName: string;
   customDescription: string | null;
   status: JobStatus;
@@ -76,6 +77,8 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
   const jobsTotal = activeJobs.length;
   const jobs = activeJobs.map((j) => ({
     id: j.id,
+    categoryId: j.categoryId,
+    category: j.category,
     displayName: j.displayName,
     status: j.status,
   }));
@@ -115,6 +118,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
       workOrderId: j.workOrderId,
       catalogJobId: j.catalogJobId,
       categoryId: j.categoryId,
+      category: j.category,
       displayName: j.displayName,
       customDescription: j.customDescription,
       status: j.status,
@@ -148,7 +152,10 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
 export const workOrderDetailInclude = {
   truck: true,
   primaryCategory: true,
-  jobs: { orderBy: { addedAt: 'asc' as const } },
+  jobs: {
+    include: { category: { select: { id: true, name: true } } },
+    orderBy: { addedAt: 'asc' as const },
+  },
   pauseEvents: { orderBy: { startedAt: 'desc' as const } },
   mechanics: {
     include: { mechanic: true },
