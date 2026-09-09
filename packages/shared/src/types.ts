@@ -277,6 +277,26 @@ export interface YardOperationsTruckDto {
   activeWorkOrder: AdminWorkOrderSummaryDto | null;
 }
 
+export interface YardOperationsCountsDto {
+  underReview: number;
+  readyToGo: number;
+  blocked: number;
+  presenceUnknown: number;
+}
+
+export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto> {
+  counts: YardOperationsCountsDto;
+  incomingTrucks: YardOperationsUnavailableDto;
+  upcomingDepartures: YardOperationsUnavailableDto;
+}
+
+export interface AdminTruckDetailDto extends YardOperationsTruckDto {
+  repairHistory: Pick<AdminRepairHistoryDto, 'items' | 'nextCursor'>;
+  repairHistoryUrl: string;
+  incomingTrucks: YardOperationsUnavailableDto;
+  upcomingDepartures: YardOperationsUnavailableDto;
+}
+
 export interface YardOperationsUnavailableDto {
   status: 'unavailable';
   reason: 'integration_not_connected';

@@ -99,6 +99,13 @@ export enum ReadinessAssessmentStatus {
   CLOSED = 'closed',
 }
 
+/** Readiness filters for the active Yard Operations workspace. */
+export enum YardReadinessFilter {
+  NOT_STARTED = 'not_started',
+  UNDER_REVIEW = 'under_review',
+  READY = 'ready',
+}
+
 export enum ReadinessRequirementType {
   INSPECTION = 'inspection',
   REQUIRED_REPAIRS = 'required_repairs',

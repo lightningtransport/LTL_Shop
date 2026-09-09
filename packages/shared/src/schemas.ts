@@ -5,6 +5,8 @@ import {
   Priority,
   ReadinessRequirementOutcome,
   ReadinessRequirementType,
+  ReadinessPhase,
+  YardReadinessFilter,
   WorkOrderStatus,
 } from './enums';
 
@@ -26,6 +28,16 @@ const commaSeparatedEnum = <T extends z.EnumLike>(values: T) =>
         : value,
     z.array(z.nativeEnum(values)).min(1),
   );
+
+const queryBoolean = z.preprocess(
+  (value) => {
+    if (typeof value !== 'string') return value;
+    if (value.toLowerCase() === 'true') return true;
+    if (value.toLowerCase() === 'false') return false;
+    return value;
+  },
+  z.boolean(),
+);
 
 export const adminWorkOrderCursorSchema = z.object({
   sort: z.enum(['updatedAt', 'createdAt', 'displayId']),
@@ -52,6 +64,23 @@ export const adminRepairHistoryQuerySchema = z.object({
   excludeWorkOrderId: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(25).default(5),
   cursor: z.string().trim().min(1).max(256).regex(/^[A-Za-z0-9_-]+$/).optional(),
+});
+
+export const adminYardOperationsCursorSchema = z.object({
+  truckNumber: z.string().min(1).max(120),
+  id: z.string().uuid(),
+});
+
+export const adminYardOperationsQuerySchema = z.object({
+  cursor: z.string().trim().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  search: z.string().trim().min(1).max(200).optional(),
+  readiness: commaSeparatedEnum(YardReadinessFilter).optional(),
+  phase: commaSeparatedEnum(ReadinessPhase).optional(),
+  workOrderStatus: commaSeparatedEnum(WorkOrderStatus).optional(),
+  priority: commaSeparatedEnum(Priority).optional(),
+  mechanicId: z.string().uuid().optional(),
+  blocked: queryBoolean.optional(),
 });
 
 export const adminMutationMetaSchema = z.object({
@@ -164,6 +193,8 @@ export type AdminListQuery = z.infer<typeof adminListQuerySchema>;
 export type AdminWorkOrdersQuery = z.infer<typeof adminWorkOrdersQuerySchema>;
 export type AdminWorkOrderCursor = z.infer<typeof adminWorkOrderCursorSchema>;
 export type AdminRepairHistoryQuery = z.infer<typeof adminRepairHistoryQuerySchema>;
+export type AdminYardOperationsQuery = z.infer<typeof adminYardOperationsQuerySchema>;
+export type AdminYardOperationsCursor = z.infer<typeof adminYardOperationsCursorSchema>;
 export type AdminMutationMetaInput = z.infer<typeof adminMutationMetaSchema>;
 export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessmentSchema>;
 export type UpdateReadinessRequirementInput = z.infer<typeof updateReadinessRequirementSchema>;

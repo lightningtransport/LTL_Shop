@@ -10,6 +10,7 @@ import {
   adminListQuerySchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
+  adminYardOperationsQuerySchema,
   adminWorkOrderCursorSchema,
   adminWorkOrdersQuerySchema,
   updateReadinessRequirementSchema,
@@ -95,5 +96,24 @@ describe('shared contracts', () => {
     };
     expect(updateReadinessRequirementSchema.safeParse(base).success).toBe(false);
     expect(updateReadinessRequirementSchema.safeParse({ ...base, waiverReason: 'Not required for this visit' }).success).toBe(true);
+  });
+
+  it('parses Yard Operations filters with safe pagination defaults', () => {
+    expect(adminYardOperationsQuerySchema.parse({
+      readiness: 'under_review,ready',
+      phase: 'inspection,required_work',
+      workOrderStatus: 'created,waiting_paused',
+      priority: 'high,critical',
+      blocked: 'true',
+    })).toMatchObject({
+      limit: 25,
+      readiness: ['under_review', 'ready'],
+      phase: ['inspection', 'required_work'],
+      workOrderStatus: ['created', 'waiting_paused'],
+      priority: ['high', 'critical'],
+      blocked: true,
+    });
+    expect(adminYardOperationsQuerySchema.parse({ blocked: 'false' }).blocked).toBe(false);
+    expect(adminYardOperationsQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
   });
 });

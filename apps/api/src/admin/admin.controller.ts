@@ -6,6 +6,7 @@ import { Capabilities } from '../auth/capabilities.decorator';
 import { CapabilitiesGuard } from '../auth/capabilities.guard';
 import { TrucksService } from '../trucks/trucks.service';
 import { AdminService } from './admin.service';
+import { YardOperationsService } from './yard-operations.service';
 
 @Controller('admin')
 @UseGuards(AuthGuard, CapabilitiesGuard)
@@ -14,6 +15,7 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly trucks: TrucksService,
+    private readonly yardOperations: YardOperationsService,
   ) {}
 
   @Get('access')
@@ -34,6 +36,16 @@ export class AdminController {
   @Get('work-orders/:id')
   workOrder(@Param('id') id: string) {
     return this.admin.detail(id);
+  }
+
+  @Get('yard-operations')
+  yardOperationsList(@Query() query: Record<string, unknown>) {
+    return this.yardOperations.list(query);
+  }
+
+  @Get('trucks/:id')
+  yardTruck(@Param('id') id: string) {
+    return this.yardOperations.detail(id);
   }
 
   @Get('trucks/:id/repair-history')
