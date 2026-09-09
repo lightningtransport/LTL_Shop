@@ -217,14 +217,19 @@ describe('PM Work Order authorization', () => {
       workOrder: {
         findUnique: vi.fn().mockResolvedValue({
           id: '00000000-0000-4000-8000-000000000011',
+          truckId: '00000000-0000-4000-8000-000000000001',
           primaryCategoryId: '00000000-0000-4000-8000-000000000003',
-          status: 'in_progress', createdById: 'alex-id', mechanics: [], primaryCategory: { name: 'Brakes' },
+          status: 'in_progress', version: 1, createdById: 'alex-id', mechanics: [], primaryCategory: { name: 'Brakes' },
         }),
       },
-      jobCategory: { findUnique: vi.fn().mockResolvedValue({ name: 'Brakes' }) },
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      jobCategory: { findFirst: vi.fn().mockResolvedValue({ id: '00000000-0000-4000-8000-000000000003', name: 'Brakes' }) },
+      catalogJob: { findMany: vi.fn().mockResolvedValue([{ id: '00000000-0000-4000-8000-000000000012' }]) },
       workOrderJob: { findMany: vi.fn().mockResolvedValue([{ catalogJobId: '00000000-0000-4000-8000-000000000012', displayName: 'Brake Inspection' }]) },
+      workOrderMutation: { findUnique: vi.fn().mockResolvedValue(null) },
     };
     const prisma = {
+      workOrderMutation: { findUnique: vi.fn().mockResolvedValue(null) },
       $transaction: vi.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
     } as never;
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
@@ -236,9 +241,61 @@ describe('PM Work Order authorization', () => {
       catalogJobId: '00000000-0000-4000-8000-000000000012',
       categoryId: '00000000-0000-4000-8000-000000000003',
       displayName: 'Brake Inspection',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000013',
     })).rejects.toMatchObject({
       response: { message: 'This job is already on the Work Order' },
     });
+  });
+
+  it('replays an Add Job response for the same idempotency key without another write', async () => {
+    const stored = { id: 'wo-result', version: 4 };
+    const prisma = {
+      workOrderMutation: { findUnique: vi.fn().mockResolvedValue({
+        workOrderId: '00000000-0000-4000-8000-000000000011',
+        operation: 'add_job',
+        payloadHash: idempotencyFingerprint({
+          workOrderId: '00000000-0000-4000-8000-000000000011',
+          categoryId: '00000000-0000-4000-8000-000000000003',
+          displayName: 'Brake Inspection',
+          expectedVersion: 3,
+          idempotencyKey: '00000000-0000-4000-8000-000000000014',
+        }),
+        actorId: 'alex-id',
+        result: stored,
+      }) },
+      $transaction: vi.fn(),
+    };
+    const service = new WorkOrdersService(prisma as never, { log: vi.fn() } as never);
+
+    await expect(service.addJob({
+      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
+      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    }, '00000000-0000-4000-8000-000000000011', {
+      categoryId: '00000000-0000-4000-8000-000000000003',
+      displayName: 'Brake Inspection', expectedVersion: 3,
+      idempotencyKey: '00000000-0000-4000-8000-000000000014',
+    })).resolves.toEqual(stored);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects reuse of an Add Job idempotency key for another payload', async () => {
+    const prisma = {
+      workOrderMutation: { findUnique: vi.fn().mockResolvedValue({
+        workOrderId: '00000000-0000-4000-8000-000000000011', operation: 'add_job',
+        payloadHash: 'other-payload', actorId: 'alex-id', result: {},
+      }) },
+    } as never;
+    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
+
+    await expect(service.addJob({
+      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
+      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    }, '00000000-0000-4000-8000-000000000011', {
+      categoryId: '00000000-0000-4000-8000-000000000003',
+      displayName: 'Brake Inspection', expectedVersion: 3,
+      idempotencyKey: '00000000-0000-4000-8000-000000000015',
+    })).rejects.toMatchObject({ response: { code: 'IDEMPOTENCY_KEY_REUSE' } });
   });
 
   it('rejects duplicate jobs in a newly created Work Order before writing', async () => {
