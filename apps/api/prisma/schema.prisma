@@ -324,6 +324,7 @@ model WorkOrder {
   pauseEvents                   PauseEvent[]
   mechanics                     MechanicAssignment[]
   activityLogs                  ActivityLog[]
+  mutations                     WorkOrderMutation[]
   pmService                     PmService?
   mileageAdjustments            TruckMileageAdjustment[]
   readinessAssessment           TruckReadinessAssessment? @relation(fields: [readinessAssessmentId], references: [id], onDelete: SetNull)
@@ -334,6 +335,22 @@ model WorkOrder {
   @@index([createdById])
   @@index([readinessAssessmentId])
   @@map("work_orders")
+}
+
+model WorkOrderMutation {
+  idempotencyKey String   @id @map("idempotency_key")
+  workOrderId    String   @map("work_order_id") @db.Uuid
+  operation      String
+  payloadHash    String   @map("payload_hash")
+  actorId        String   @map("actor_id") @db.Uuid
+  result         Json
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId, createdAt])
+  @@index([workOrderId, operation, payloadHash])
+  @@map("work_order_mutations")
 }
 
 model PartCategory {

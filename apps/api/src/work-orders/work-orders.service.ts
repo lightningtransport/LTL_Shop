@@ -544,65 +544,127 @@ export class WorkOrdersService {
   async addJob(user: AuthUser, id: string, raw: unknown) {
     const parsed = addJobSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const operation = 'add_job';
+    const payloadHash = idempotencyFingerprint({ workOrderId: id, ...input });
+    const existing = await this.findAddJobIdempotent(
+      input.idempotencyKey,
+      id,
+      operation,
+      payloadHash,
+      user.id,
+    );
+    if (existing) return existing;
 
-    return this.prisma.$transaction(async (tx) => {
-      const wo = await this.requireWo(tx, id);
-      this.assertMechanicAccess(user, wo);
-      const category = await tx.jobCategory.findUnique({
-        where: { id: wo.primaryCategoryId },
-        select: { name: true },
-      });
-      if (category?.name === 'PM') {
-        throw new BadRequestException('PM Work Orders do not use jobs');
-      }
-      if (wo.status === 'completed' || wo.status === 'cancelled') {
-        throw new BadRequestException('Cannot add jobs to a closed Work Order');
-      }
-      const currentJobs = await tx.workOrderJob.findMany({
-        where: {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await this.requireWo(tx, id);
+        await lockTruckMutation(tx, initial.truckId);
+        const wo = await this.requireWo(tx, id);
+        const replay = await this.findAddJobIdempotentInTransaction(
+          tx,
+          input.idempotencyKey,
+          id,
+          operation,
+          payloadHash,
+          user.id,
+        );
+        if (replay) return replay;
+        this.assertMechanicAccess(user, wo);
+        if (wo.primaryCategory.name === 'PM') {
+          throw new BadRequestException('PM Work Orders do not use jobs');
+        }
+        if (wo.status === 'completed' || wo.status === 'cancelled') {
+          throw new BadRequestException('Cannot add jobs to a closed Work Order');
+        }
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        if (input.categoryId !== wo.primaryCategoryId) {
+          throw new BadRequestException('Jobs must belong to the Work Order category');
+        }
+        const category = await tx.jobCategory.findFirst({
+          where: { id: input.categoryId, status: 'active' },
+          select: { id: true, name: true },
+        });
+        if (!category) throw new BadRequestException('Invalid or inactive job category');
+        if (category.name === 'PM') {
+          throw new BadRequestException('PM jobs must use the PM workflow');
+        }
+        await this.assertCatalogJobsBelongToCategory([input], input.categoryId, tx);
+        const currentJobs = await tx.workOrderJob.findMany({
+          where: { workOrderId: id, status: { not: 'cancelled' } },
+          select: { catalogJobId: true, displayName: true },
+        });
+        const duplicate = input.catalogJobId
+          ? currentJobs.some((job) => job.catalogJobId === input.catalogJobId)
+          : currentJobs.some((job) =>
+              !job.catalogJobId &&
+              this.normalizeJobName(job.displayName) === this.normalizeJobName(input.displayName),
+            );
+        if (duplicate) throw new BadRequestException('This job is already on the Work Order');
+        const createdJob = await tx.workOrderJob.create({
+          data: {
+            workOrderId: id,
+            catalogJobId: input.catalogJobId,
+            categoryId: input.categoryId,
+            displayName: input.displayName,
+            customDescription: input.customDescription,
+            isCustom: !input.catalogJobId,
+            reviewStatus: input.catalogJobId ? null : 'pending_review',
+            addedById: user.id,
+            status: 'to_do',
+          },
+        });
+        const incremented = await tx.workOrder.updateMany({
+          where: { id, version: input.expectedVersion },
+          data: { version: { increment: 1 } },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const updated = await this.requireWo(tx, id);
+        await this.activity.log(tx, {
           workOrderId: id,
-          status: { not: 'cancelled' },
-        },
-        select: { catalogJobId: true, displayName: true },
+          eventType: ActivityEventType.JOB_ADDED,
+          entityType: 'work_order_job',
+          entityId: createdJob.id,
+          userId: user.id,
+          newValue: {
+            jobId: createdJob.id,
+            categoryId: category.id,
+            categoryName: category.name,
+            catalogJobId: createdJob.catalogJobId,
+            displayName: createdJob.displayName,
+            isCustom: createdJob.isCustom,
+          },
+        });
+        const result = toWorkOrderDetail(updated);
+        await tx.workOrderMutation.create({
+          data: {
+            idempotencyKey: input.idempotencyKey,
+            workOrderId: id,
+            operation,
+            payloadHash,
+            actorId: user.id,
+            result: result as unknown as Prisma.InputJsonValue,
+          },
+        });
+        return result;
       });
-      const duplicate = currentJobs.some((job) =>
-        (parsed.data.catalogJobId && job.catalogJobId === parsed.data.catalogJobId) ||
-        this.normalizeJobName(job.displayName) === this.normalizeJobName(parsed.data.displayName),
-      );
-      if (duplicate) {
-        throw new BadRequestException('This job is already on the Work Order');
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findAddJobIdempotent(
+          input.idempotencyKey,
+          id,
+          operation,
+          payloadHash,
+          user.id,
+        );
+        if (replay) return replay;
       }
-      if (parsed.data.categoryId !== wo.primaryCategoryId) {
-        throw new BadRequestException('Jobs must belong to the Work Order category');
-      }
-      await this.assertCatalogJobsBelongToCategory([parsed.data], wo.primaryCategoryId, tx);
-      await tx.workOrderJob.create({
-        data: {
-          workOrderId: id,
-          catalogJobId: parsed.data.catalogJobId,
-          categoryId: parsed.data.categoryId,
-          displayName: parsed.data.displayName,
-          customDescription: parsed.data.customDescription,
-          isCustom: !parsed.data.catalogJobId,
-          reviewStatus: parsed.data.catalogJobId ? null : 'pending_review',
-          addedById: user.id,
-          status: 'to_do',
-        },
-      });
-      const updated = await tx.workOrder.update({
-        where: { id },
-        data: { version: { increment: 1 } },
-        include: workOrderDetailInclude,
-      });
-      await this.activity.log(tx, {
-        workOrderId: id,
-        eventType: ActivityEventType.JOB_ADDED,
-        entityType: 'work_order_job',
-        userId: user.id,
-        newValue: { displayName: parsed.data.displayName },
-      });
-      return toWorkOrderDetail(updated);
-    });
+      throw error;
+    }
   }
 
   private normalizeJobName(name: string) {
@@ -636,6 +698,55 @@ export class WorkOrdersService {
     if (matching.length !== ids.length) {
       throw new BadRequestException('One or more catalog jobs do not belong to the Work Order category');
     }
+  }
+
+  private versionConflict(message: string) {
+    return new ConflictException({ code: 'VERSION_CONFLICT', message });
+  }
+
+  private async findAddJobIdempotent(
+    key: string,
+    workOrderId: string,
+    operation: string,
+    payloadHash: string,
+    actorId: string,
+  ) {
+    const existing = await this.prisma.workOrderMutation.findUnique({ where: { idempotencyKey: key } });
+    return this.assertAddJobIdempotency(existing, workOrderId, operation, payloadHash, actorId);
+  }
+
+  private async findAddJobIdempotentInTransaction(
+    tx: Prisma.TransactionClient,
+    key: string,
+    workOrderId: string,
+    operation: string,
+    payloadHash: string,
+    actorId: string,
+  ) {
+    const existing = await tx.workOrderMutation.findUnique({ where: { idempotencyKey: key } });
+    return this.assertAddJobIdempotency(existing, workOrderId, operation, payloadHash, actorId);
+  }
+
+  private assertAddJobIdempotency(
+    existing: { workOrderId: string; operation: string; payloadHash: string; actorId: string; result: unknown } | null,
+    workOrderId: string,
+    operation: string,
+    payloadHash: string,
+    actorId: string,
+  ) {
+    if (!existing) return null;
+    if (
+      existing.workOrderId !== workOrderId ||
+      existing.operation !== operation ||
+      existing.payloadHash !== payloadHash ||
+      existing.actorId !== actorId
+    ) {
+      throw new ConflictException({
+        code: 'IDEMPOTENCY_KEY_REUSE',
+        message: 'Idempotency key was already used for a different Work Order mutation.',
+      });
+    }
+    return existing.result as ReturnType<typeof toWorkOrderDetail>;
   }
 
   async updateNotes(user: AuthUser, id: string, raw: unknown) {
