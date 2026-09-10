@@ -35,7 +35,7 @@ PRD.
   assigned Mechanics, and the current pause; shows the available Truck number,
   make, model, year, mileage, company, and owner; and provides category-filtered,
   cursor-paginated recent completed repair history. Work Order timing, Jobs,
-  notes, pause history, and Activity Log remain read-only. On an open Standard
+  pause history, and Activity Log remain visible. On an open Standard
   Work Order, managers with `admin.access` can add or soft-remove assigned
   mechanics. PM Work Orders stay assigned to their creator. Assignments keep at
   least one active mechanic, use Work Order versioning and idempotency, and
@@ -50,8 +50,12 @@ PRD.
   Order with a required reason when the Truck has no other open Work Order.
   Reopen restores `in_progress` if work had started, otherwise `created`,
   clears completion metadata, and records a `manager_correction` event. Jobs
-  are not reopened separately. This is not Off Duty, Catalog, field edits, or
-  Job-level assignment.
+  are not reopened separately. On any open Work Order, managers can PATCH
+  allowed fields: `priority` and `notes`. Empty notes store as null. PM
+  priority stays `normal`. Closed Work Orders stay read-only for these fields.
+  Field edits use versioning and idempotency and write `priority_changed`
+  and/or `notes_updated`. This is not Off Duty, Catalog, or Job-level
+  assignment, cancel, or reopen.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
@@ -187,9 +191,9 @@ These are deliberately outside the current implementation:
    Safari mobile device.
 3. Remove the compatibility-only `pmAuthorized` column after production
    stability is confirmed; a general permission-management UI remains deferred.
-4. Continue Shop Admin Fase 3 with allowed field edits;
-   keep Yard/readiness mutations scoped to `yard.operations.manage`.
-   Do not invent Off Duty or Catalog management.
+4. Continue Shop Admin Fase 3 with Job-level cancel/reopen and time
+   corrections; keep Yard/readiness mutations scoped to
+   `yard.operations.manage`. Do not invent Off Duty or Catalog management.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.
 6. Keep release discipline: merge only after CI and both Vercel deployments

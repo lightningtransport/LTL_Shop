@@ -144,6 +144,16 @@ export const adminReopenWorkOrderSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),
 });
 
+export const adminPatchWorkOrderSchema = adminMutationMetaSchema
+  .extend({
+    priority: z.nativeEnum(Priority).optional(),
+    notes: z.string().max(2000).nullable().optional(),
+  })
+  .refine((value) => value.priority !== undefined || value.notes !== undefined, {
+    message: 'At least one of priority or notes is required',
+    path: ['priority'],
+  });
+
 export const startReadinessAssessmentSchema = z.object({
   idempotencyKey: z.string().uuid(),
 });
@@ -263,6 +273,7 @@ export type AdminRemoveWorkOrderMechanicInput = z.infer<typeof adminRemoveWorkOr
 export type AdminCancelWorkOrderInput = z.infer<typeof adminCancelWorkOrderSchema>;
 export type AdminCompleteWorkOrderInput = z.infer<typeof adminCompleteWorkOrderSchema>;
 export type AdminReopenWorkOrderInput = z.infer<typeof adminReopenWorkOrderSchema>;
+export type AdminPatchWorkOrderInput = z.infer<typeof adminPatchWorkOrderSchema>;
 export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessmentSchema>;
 export type UpdateReadinessRequirementInput = z.infer<typeof updateReadinessRequirementSchema>;
 export type MarkReadinessReadyInput = z.infer<typeof markReadinessReadySchema>;

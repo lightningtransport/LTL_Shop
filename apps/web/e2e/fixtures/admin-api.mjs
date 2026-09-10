@@ -392,6 +392,37 @@ createServer(async (request, response) => {
     return;
   }
   const detailMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)$/i);
+  if (detailMatch && request.method === 'PATCH') {
+    const summary = workOrders.find((item) => item.id === detailMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (body.priority === undefined && body.notes === undefined) {
+      json(response, 400, { message: 'At least one of priority or notes is required' });
+      return;
+    }
+    if (!['created', 'in_progress', 'waiting_paused'].includes(summary.status)) {
+      json(response, 400, { message: 'Cannot update fields on a closed Work Order' });
+      return;
+    }
+    if (summary.category?.name === 'PM' && body.priority !== undefined && body.priority !== summary.priority) {
+      json(response, 400, { message: 'PM Work Order priority cannot be changed' });
+      return;
+    }
+    if (body.expectedVersion !== summary.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    const nextNotes = body.notes === undefined ? undefined : (typeof body.notes === 'string' ? body.notes.trim() || null : body.notes);
+    const priorityChanged = body.priority !== undefined && body.priority !== summary.priority;
+    const notesChanged = nextNotes !== undefined && nextNotes !== summary.notes;
+    if (!priorityChanged && !notesChanged) {
+      json(response, 400, { message: 'No allowed fields changed' });
+      return;
+    }
+    if (priorityChanged) summary.priority = body.priority;
+    if (notesChanged) summary.notes = nextNotes;
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   if (detailMatch) {
     const summary = workOrders.find((item) => item.id === detailMatch[1]);
     if (!summary) json(response, 404, { message: 'Work Order not found' });
@@ -424,7 +455,7 @@ function fixtureWorkOrderDetail(summary) {
   return {
     ...summary,
     truck: { ...summary.truck, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' },
-    notes: 'Inspect brake chamber before release.',
+    notes: summary.notes ?? null,
     createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name },
     completedBy: null,
     totalActiveLaborMs: 5400000,
@@ -463,6 +494,7 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status) {
     currentPause: paused ? { id: '00000000-0000-4000-8000-000000000401', workOrderId: id, reason: 'waiting_for_parts', notes: 'Air line ordered', startedAt: '2026-09-06T17:00:00.000Z', endedAt: null, durationMs: null } : null,
     createdAt, startedAt: status === 'created' ? null : '2026-09-06T16:00:00.000Z', completedAt, updatedAt: '2026-09-06T18:00:00.000Z',
     version: 1,
+    notes: 'Inspect brake chamber before release.',
   };
 }
 
