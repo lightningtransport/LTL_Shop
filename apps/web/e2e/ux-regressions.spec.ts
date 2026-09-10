@@ -73,6 +73,12 @@ const aliases = [
     categoryId: categories[0].id,
     displayName: 'Brake inspection',
   },
+  {
+    aliasText: 'engine diagnostic',
+    catalogJobId: 'catalog-engine-diagnostic',
+    categoryId: categories[1].id,
+    displayName: 'Engine diagnostic',
+  },
 ];
 
 const history = {
@@ -367,6 +373,30 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByLabel('Custom job description')).toBeVisible();
     await page.getByRole('button', { name: 'Back to listed jobs' }).click();
     await expect(listedJobs).toBeVisible();
+  });
+
+  test('creates a Standard Work Order with Jobs from multiple Categories without dropping the initial Job', async ({ page }) => {
+    await openNewWorkOrder(page);
+    await selectTruck(page);
+    const category = page.getByRole('combobox', { name: /Category/i });
+    await category.selectOption(categories[0].id);
+    await page.getByRole('list', { name: /Listed jobs for Brakes/i })
+      .getByRole('button', { name: 'Brake inspection' }).click();
+    await category.selectOption(categories[1].id);
+    await expect(page.getByText('Brake inspection', { exact: true })).toBeVisible();
+    await page.getByRole('list', { name: /Listed jobs for Engine/i })
+      .getByRole('button', { name: 'Engine diagnostic' }).click();
+
+    const request = page.waitForRequest((candidate) =>
+      candidate.url().endsWith('/api/work-orders') && candidate.method() === 'POST',
+    );
+    await page.getByRole('button', { name: /Create Work Order/i }).click();
+    const payload = JSON.parse((await request).postData() ?? '{}');
+    expect(payload.primaryCategoryId).toBe(categories[1].id);
+    expect(payload.jobs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ catalogJobId: 'catalog-brake-inspection', categoryId: categories[0].id }),
+      expect.objectContaining({ catalogJobId: 'catalog-engine-diagnostic', categoryId: categories[1].id }),
+    ]));
   });
 
   test('ranks truck prefixes before contains matches and labels fallback results', async ({ page }) => {
