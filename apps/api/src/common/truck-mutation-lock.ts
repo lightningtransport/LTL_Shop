@@ -15,6 +15,6 @@ type TransactionWithRawQuery = {
 export async function lockTruckMutation(tx: TransactionWithRawQuery, truckId: string) {
   if (typeof tx.$queryRaw !== 'function') return;
   await tx.$queryRaw(
-    Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${`ltl:truck:${truckId}`}, 0))`,
+    Prisma.sql`SELECT 1 AS "locked" FROM pg_advisory_xact_lock(hashtextextended(${`ltl:truck:${truckId}`}, 0))`,
   );
 }
