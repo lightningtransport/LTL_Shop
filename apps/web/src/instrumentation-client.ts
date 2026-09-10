@@ -32,7 +32,12 @@ Sentry.init({
   },
 
   // Session Replay is browser-only. Do not add replayIntegration to server/edge configs.
-  integrations: [Sentry.replayIntegration()],
+  integrations: [
+    Sentry.replayIntegration({
+      maskAllText: false,
+      blockAllMedia: false,
+    }),
+  ],
   // 10% of sessions; raise to 1.0 while verifying Replay locally or in a preview.
   replaysSessionSampleRate: 0.1,
   // Capture every session that hits an error.
