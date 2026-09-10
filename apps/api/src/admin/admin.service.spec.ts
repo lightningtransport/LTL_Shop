@@ -56,6 +56,10 @@ function createPrisma() {
     truck: {
       findMany: vi.fn(),
     },
+    jobCategory: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+    },
     workOrderMutation: {
       findUnique: vi.fn().mockResolvedValue(null),
     },
@@ -218,6 +222,55 @@ describe('AdminService', () => {
     prisma.truck.findMany.mockResolvedValue([]);
     const service = createService(prisma);
     await expect(service.listTrucks({})).resolves.toEqual({ items: [], nextCursor: null });
+  });
+
+  it('lists catalog categories with job and alias counts, including inactive jobs', async () => {
+    const prisma = createPrisma();
+    prisma.jobCategory.findMany.mockResolvedValue([{
+      id: '00000000-0000-4000-8000-000000000301',
+      name: 'Brakes',
+      status: 'active',
+      sortOrder: 1,
+      catalogJobs: [
+        { status: 'active', _count: { aliases: 2 } },
+        { status: 'inactive', _count: { aliases: 1 } },
+      ],
+    }]);
+    const service = createService(prisma);
+    await expect(service.listCatalogCategories()).resolves.toEqual([{
+      id: '00000000-0000-4000-8000-000000000301',
+      name: 'Brakes',
+      status: 'active',
+      sortOrder: 1,
+      activeJobCount: 1,
+      inactiveJobCount: 1,
+      aliasCount: 3,
+    }]);
+  });
+
+  it('returns catalog category jobs and aliases without inventing write actions', async () => {
+    const prisma = createPrisma();
+    prisma.jobCategory.findUnique.mockResolvedValue({
+      id: '00000000-0000-4000-8000-000000000301',
+      name: 'Brakes',
+      status: 'active',
+      sortOrder: 1,
+      catalogJobs: [{
+        id: '00000000-0000-4000-8000-000000000801',
+        displayName: 'Inspect brake chamber',
+        status: 'active',
+        aliases: [{ aliasText: 'Brake chamber' }],
+      }],
+    });
+    const service = createService(prisma);
+    await expect(service.catalogCategoryDetail('00000000-0000-4000-8000-000000000301')).resolves.toMatchObject({
+      name: 'Brakes',
+      activeJobCount: 1,
+      jobs: [{ displayName: 'Inspect brake chamber', aliases: ['Brake chamber'] }],
+    });
+    await expect(service.catalogCategoryDetail('not-a-uuid')).rejects.toBeInstanceOf(BadRequestException);
+    prisma.jobCategory.findUnique.mockResolvedValue(null);
+    await expect(service.catalogCategoryDetail('00000000-0000-4000-8000-000000000399')).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('adds a standard mechanic, reactivates a removed assignment, and refuses PM or closed Work Orders', async () => {

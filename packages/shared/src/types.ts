@@ -12,6 +12,7 @@ import type {
   YardPresenceState,
   WorkOrderStatus,
   TruckOperationalStatus,
+  CatalogStatus,
 } from './enums';
 
 export type AdminDataSource = 'supabase_postgres';
@@ -383,4 +384,25 @@ export interface PmServiceDto {
   } | null;
   categories: PmPartCategoryDto[];
   selections: { partCategoryId: string; partId: string }[];
+}
+
+export interface AdminCatalogCategorySummaryDto {
+  id: string;
+  name: string;
+  status: CatalogStatus;
+  sortOrder: number;
+  activeJobCount: number;
+  inactiveJobCount: number;
+  aliasCount: number;
+}
+
+export interface AdminCatalogJobDto {
+  id: string;
+  displayName: string;
+  status: CatalogStatus;
+  aliases: string[];
+}
+
+export interface AdminCatalogCategoryDetailDto extends AdminCatalogCategorySummaryDto {
+  jobs: AdminCatalogJobDto[];
 }

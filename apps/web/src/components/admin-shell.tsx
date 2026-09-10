@@ -5,12 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ClipboardList, Gauge, History, Library, Truck, UsersRound, Warehouse } from 'lucide-react';
 import { AdminLocaleSwitcher } from './admin-locale-switcher';
-import { AppHeaderActions, Badge, Button } from './ui';
+import { AppHeaderActions, Button } from './ui';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-
-const futureNavigation = [
-  { message: 'jobCatalog', icon: Library },
-] as const;
 
 const activeNavigation = [
   { message: 'dashboard', icon: Gauge, href: '/admin' },
@@ -18,6 +14,7 @@ const activeNavigation = [
   { message: 'yardOperations', icon: Warehouse, href: '/admin/yard-operations' },
   { message: 'trucks', icon: Truck, href: '/admin/trucks' },
   { message: 'mechanics', icon: UsersRound, href: '/admin/mechanics' },
+  { message: 'jobCatalog', icon: Library, href: '/admin/catalog' },
   { message: 'history', icon: History, href: '/admin/history' },
 ] as const;
 
@@ -46,13 +43,6 @@ export function AdminShell({
               </Link>
             </Button>;
           })}
-          {futureNavigation.map(({ message, icon: Icon }) => (
-            <div key={message} className="flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm text-muted-foreground" aria-disabled="true" title={messages.comingLater}>
-              <Icon aria-hidden="true" className="size-4" />
-              <span>{messages[message]}</span>
-              <Badge variant="secondary" className="ml-auto">P2+</Badge>
-            </div>
-          ))}
         </nav>
         <div className="mt-3 shrink-0 border-t px-1 pt-4 text-sm">
           <p className="truncate font-medium">{user.name}</p>
