@@ -76,6 +76,11 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('link', { name: 'Back to Work Orders' }).click();
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
+    await page.getByLabel('Time segment').selectOption({ index: 1 });
+    await page.getByLabel('Corrected end time').fill('2026-09-06T17:00');
+    await page.getByLabel('Reason for time correction').fill('Clock was wrong');
+    await page.getByRole('button', { name: 'Apply time correction' }).click();
+    await expect(page.getByText('Time correction saved.')).toBeVisible();
     await page.getByRole('button', { name: 'Confirm completion' }).click();
     await expect(page.getByText('Work Order completed.')).toBeVisible();
     await page.getByLabel('Reason for reopening').fill('More work found');

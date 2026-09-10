@@ -16,6 +16,7 @@ import {
   adminCompleteWorkOrderSchema,
   adminReopenWorkOrderSchema,
   adminPatchWorkOrderSchema,
+  adminTimeCorrectionSchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
   adminYardOperationsQuerySchema,
@@ -163,6 +164,22 @@ describe('shared contracts', () => {
     }).success).toBe(false);
     expect(adminPatchWorkOrderSchema.safeParse({
       notes: 'Check the leak again',
+    }).success).toBe(false);
+    expect(adminTimeCorrectionSchema.safeParse({
+      workOrderId: '00000000-0000-4000-8000-000000000011',
+      targetType: 'work_session',
+      targetId: '00000000-0000-4000-8000-000000000701',
+      endedAt: '2026-09-06T17:30:00.000Z',
+      reason: 'Clock was wrong',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000008',
+    }).success).toBe(true);
+    expect(adminTimeCorrectionSchema.safeParse({
+      workOrderId: '00000000-0000-4000-8000-000000000011',
+      targetType: 'work_session',
+      targetId: '00000000-0000-4000-8000-000000000701',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000008',
     }).success).toBe(false);
   });
 

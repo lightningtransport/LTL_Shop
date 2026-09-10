@@ -18,6 +18,7 @@ import {
   adminCompleteWorkOrderSchema,
   adminReopenWorkOrderSchema,
   adminPatchWorkOrderSchema,
+  adminTimeCorrectionSchema,
   adminHistoryQuerySchema,
   adminMechanicCursorSchema,
   adminMechanicsQuerySchema,
@@ -46,7 +47,7 @@ import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
 import { toTruckDto } from '../trucks/trucks.service';
-import { computeTotals, canFinishWorkOrder } from '../work-orders/work-order.timing';
+import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
@@ -117,6 +118,9 @@ const detailInclude = {
       category: { select: { name: true } },
     },
     orderBy: { addedAt: 'asc' as const },
+  },
+  sessions: {
+    orderBy: { startedAt: 'asc' as const },
   },
   pauseEvents: {
     include: { createdBy: { select: { id: true, name: true } } },
@@ -841,6 +845,126 @@ export class AdminService {
     }
   }
 
+  async correctTime(user: AuthUser, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    const parsed = adminTimeCorrectionSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const workOrderId = input.workOrderId;
+    const operation = 'admin_time_correction';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      targetType: input.targetType,
+      targetId: input.targetId,
+      startedAt: input.startedAt ?? null,
+      endedAt: input.endedAt ?? null,
+      reason: input.reason,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const segment = input.targetType === 'work_session'
+          ? await tx.workSession.findUnique({ where: { id: input.targetId } })
+          : await tx.pauseEvent.findUnique({ where: { id: input.targetId } });
+        if (!segment || segment.workOrderId !== workOrderId) {
+          throw new NotFoundException('Time segment not found');
+        }
+        if (!segment.endedAt) {
+          throw new BadRequestException('Cannot correct an open time segment');
+        }
+        const nextStartedAt = this.parseInstant(input.startedAt, segment.startedAt);
+        const nextEndedAt = this.parseInstant(input.endedAt, segment.endedAt);
+        if (nextEndedAt.getTime() <= nextStartedAt.getTime()) {
+          throw new BadRequestException('endedAt must be after startedAt');
+        }
+        if (
+          nextStartedAt.getTime() === segment.startedAt.getTime()
+          && nextEndedAt.getTime() === segment.endedAt.getTime()
+        ) {
+          throw new BadRequestException('No time values changed');
+        }
+        if (input.targetType === 'work_session') {
+          await tx.workSession.update({
+            where: { id: input.targetId },
+            data: { startedAt: nextStartedAt, endedAt: nextEndedAt },
+          });
+        } else {
+          await tx.pauseEvent.update({
+            where: { id: input.targetId },
+            data: {
+              startedAt: nextStartedAt,
+              endedAt: nextEndedAt,
+              durationMs: BigInt(nextEndedAt.getTime() - nextStartedAt.getTime()),
+            },
+          });
+        }
+        const sessions = await tx.workSession.findMany({ where: { workOrderId } });
+        const pauses = await tx.pauseEvent.findMany({ where: { workOrderId } });
+        const totals = computeTotals({ sessions, pauses, now: new Date() });
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: {
+            totalActiveLaborMs: BigInt(totals.totalActiveLaborMs),
+            totalWaitingMs: BigInt(totals.totalWaitingMs),
+            version: { increment: 1 },
+          },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.MANAGER_CORRECTION,
+          entityType: input.targetType,
+          entityId: input.targetId,
+          userId: user.id,
+          previousValue: {
+            startedAt: segment.startedAt.toISOString(),
+            endedAt: segment.endedAt.toISOString(),
+          },
+          newValue: {
+            startedAt: nextStartedAt.toISOString(),
+            endedAt: nextEndedAt.toISOString(),
+            reason: input.reason,
+          },
+          relevantValue: { action: 'time_corrected', targetType: input.targetType, reason: input.reason },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  private parseInstant(value: string | undefined, fallback: Date) {
+    if (value === undefined) return fallback;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) throw new BadRequestException('Invalid timestamp');
+    return parsed;
+  }
+
   private assertAssignableOpenWorkOrder(wo: DetailRow) {
     if (wo.primaryCategory.name === 'PM') {
       throw new BadRequestException('PM Work Orders can only be assigned to their creator');
@@ -1130,6 +1254,12 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     totalActiveLaborMs: Number(row.totalActiveLaborMs),
     totalWaitingMs: Number(row.totalWaitingMs),
     jobs,
+    laborSessions: row.sessions.map((session) => ({
+      id: session.id,
+      startedAt: session.startedAt.toISOString(),
+      endedAt: session.endedAt?.toISOString() ?? null,
+      durationMs: sessionDurationMs(session.startedAt, session.endedAt),
+    })),
     pauseHistory: row.pauseEvents.map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
     activityLog: row.activityLogs.map((entry) => ({
       id: entry.id,

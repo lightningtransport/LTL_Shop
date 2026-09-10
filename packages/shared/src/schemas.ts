@@ -154,6 +154,20 @@ export const adminPatchWorkOrderSchema = adminMutationMetaSchema
     path: ['priority'],
   });
 
+export const adminTimeCorrectionSchema = adminMutationMetaSchema
+  .extend({
+    workOrderId: z.string().uuid(),
+    targetType: z.enum(['work_session', 'pause_event']),
+    targetId: z.string().uuid(),
+    startedAt: z.string().datetime({ offset: true }).optional(),
+    endedAt: z.string().datetime({ offset: true }).optional(),
+    reason: z.string().trim().min(1).max(1000),
+  })
+  .refine((value) => value.startedAt !== undefined || value.endedAt !== undefined, {
+    message: 'At least one of startedAt or endedAt is required',
+    path: ['startedAt'],
+  });
+
 export const startReadinessAssessmentSchema = z.object({
   idempotencyKey: z.string().uuid(),
 });
@@ -274,6 +288,7 @@ export type AdminCancelWorkOrderInput = z.infer<typeof adminCancelWorkOrderSchem
 export type AdminCompleteWorkOrderInput = z.infer<typeof adminCompleteWorkOrderSchema>;
 export type AdminReopenWorkOrderInput = z.infer<typeof adminReopenWorkOrderSchema>;
 export type AdminPatchWorkOrderInput = z.infer<typeof adminPatchWorkOrderSchema>;
+export type AdminTimeCorrectionInput = z.infer<typeof adminTimeCorrectionSchema>;
 export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessmentSchema>;
 export type UpdateReadinessRequirementInput = z.infer<typeof updateReadinessRequirementSchema>;
 export type MarkReadinessReadyInput = z.infer<typeof markReadinessReadySchema>;

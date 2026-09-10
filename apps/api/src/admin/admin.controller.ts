@@ -55,6 +55,11 @@ export class AdminController {
     return this.admin.patchWorkOrder(request.user!, id, body);
   }
 
+  @Post('time-corrections')
+  correctTime(@Req() request: Request, @Body() body: unknown) {
+    return this.admin.correctTime(request.user!, body);
+  }
+
   @Post('work-orders/:id/reopen')
   reopenWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.reopenWorkOrder(request.user!, id, body);

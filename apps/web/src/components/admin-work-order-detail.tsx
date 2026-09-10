@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { AppCapability, OPEN_WORK_ORDER_STATUSES, Priority } from '@ltl-shop/shared';
+import { AppCapability, OPEN_WORK_ORDER_STATUSES, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, completeAdminWorkOrder, patchAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminWorkOrder, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminWorkOrder, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -20,6 +20,7 @@ import {
   LoadFailure,
   PageSkeleton,
   PriorityBadge,
+  Input,
   Select,
   Textarea,
 } from './ui';
@@ -32,6 +33,10 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [reopenReason, setReopenReason] = useState('');
   const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
   const [draftNotes, setDraftNotes] = useState('');
+  const [timeTarget, setTimeTarget] = useState('');
+  const [timeStartedAt, setTimeStartedAt] = useState('');
+  const [timeEndedAt, setTimeEndedAt] = useState('');
+  const [timeReason, setTimeReason] = useState('');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const { data: categoryData } = useCategories(true);
@@ -332,6 +337,86 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     </Card>
 
     <Card><CardHeader><CardTitle>{messages.workOrderTimes}</CardTitle></CardHeader><CardContent><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info label={messages.created} value={formatAdminDate(data.createdAt, locale)} /><Info label={messages.started} value={formatAdminDate(data.startedAt, locale)} /><Info label={messages.completed} value={formatAdminDate(data.completedAt, locale)} /><Info label={messages.updated} value={formatAdminDate(data.updatedAt, locale)} /><Info label={messages.activeLabor} value={formatDuration(data.totalActiveLaborMs)} /><Info label={messages.waitingTime} value={formatDuration(data.totalWaitingMs)} /></dl></CardContent></Card>
+    <Card>
+      <CardHeader>
+        <CardTitle>{messages.timeCorrectionTitle}</CardTitle>
+        <CardDescription>{messages.timeCorrectionDescription}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {closedTimeSegments(data).length ? (
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const selected = closedTimeSegments(data).find((segment) => `${segment.targetType}:${segment.id}` === timeTarget);
+              if (!selected) {
+                setFeedback({ kind: 'error', message: messages.timeCorrectionSegmentRequired });
+                return;
+              }
+              const reason = timeReason.trim();
+              if (!reason) {
+                setFeedback({ kind: 'error', message: messages.timeCorrectionReasonRequired });
+                return;
+              }
+              void runMutation('time', messages.timeCorrectionSuccess, async () => {
+                await correctAdminTime({
+                  workOrderId: data.id,
+                  targetType: selected.targetType,
+                  targetId: selected.id,
+                  expectedVersion: data.version,
+                  reason,
+                  startedAt: timeStartedAt ? fromDatetimeLocal(timeStartedAt) : selected.startedAt,
+                  endedAt: timeEndedAt ? fromDatetimeLocal(timeEndedAt) : selected.endedAt,
+                });
+                setTimeReason('');
+              }, (failure) => timeCorrectionError(failure, messages));
+            }}
+          >
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">{messages.timeCorrectionSegment}</span>
+              <Select
+                aria-label={messages.timeCorrectionSegment}
+                value={timeTarget}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setTimeTarget(value);
+                  const selected = closedTimeSegments(data).find((segment) => `${segment.targetType}:${segment.id}` === value);
+                  if (selected) {
+                    setTimeStartedAt(toDatetimeLocal(selected.startedAt));
+                    setTimeEndedAt(toDatetimeLocal(selected.endedAt));
+                  }
+                }}
+              >
+                <option value="">{messages.timeCorrectionSegment}</option>
+                {closedTimeSegments(data).map((segment) => (
+                  <option key={`${segment.targetType}:${segment.id}`} value={`${segment.targetType}:${segment.id}`}>
+                    {segment.targetType === 'work_session' ? messages.activeLabor : messages.waitingTime} · {formatAdminDate(segment.startedAt, locale)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span className="text-sm font-medium">{messages.timeCorrectionStartedAt}</span>
+                <Input type="datetime-local" aria-label={messages.timeCorrectionStartedAt} value={timeStartedAt} onChange={(event) => setTimeStartedAt(event.target.value)} />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-sm font-medium">{messages.timeCorrectionEndedAt}</span>
+                <Input type="datetime-local" aria-label={messages.timeCorrectionEndedAt} value={timeEndedAt} onChange={(event) => setTimeEndedAt(event.target.value)} />
+              </label>
+            </div>
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">{messages.timeCorrectionReason}</span>
+              <Textarea aria-label={messages.timeCorrectionReason} value={timeReason} onChange={(event) => setTimeReason(event.target.value)} maxLength={1000} required />
+              <span className="text-xs text-muted-foreground">{messages.timeCorrectionReasonHelp}</span>
+            </label>
+            <Button type="submit" disabled={Boolean(pendingAction) || !timeTarget}>{messages.timeCorrectionConfirm}</Button>
+          </form>
+        ) : (
+          <CompactEmpty>{messages.timeCorrectionEmpty}</CompactEmpty>
+        )}
+      </CardContent>
+    </Card>
     <section className="grid gap-4 lg:grid-cols-2">
       <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent>{data.currentPause ? <Pause pause={data.currentPause} locale={locale} /> : <CompactEmpty>{messages.noCurrentPause}</CompactEmpty>}</CardContent></Card>
       <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
@@ -374,6 +459,30 @@ function fieldUpdateError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.fieldUpdatesGenericError;
+}
+function timeCorrectionError(errorValue: unknown, messages: AdminMessages) {
+  if (errorValue instanceof ApiError) {
+    if (errorValue.status === 400) return messages.timeCorrectionBadRequest;
+    if (errorValue.status === 409) return messages.assignmentConflict;
+  }
+  return messages.timeCorrectionGenericError;
+}
+function closedTimeSegments(data: AdminWorkOrderDetailDto) {
+  const sessions = (data.laborSessions ?? [])
+    .filter((session) => session.endedAt)
+    .map((session) => ({ ...session, targetType: 'work_session' as const, endedAt: session.endedAt! }));
+  const pauses = data.pauseHistory
+    .filter((pause) => pause.endedAt)
+    .map((pause) => ({ id: pause.id, startedAt: pause.startedAt, endedAt: pause.endedAt!, targetType: 'pause_event' as const }));
+  return [...sessions, ...pauses];
+}
+function toDatetimeLocal(value: string) {
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+function fromDatetimeLocal(value: string) {
+  return new Date(value).toISOString();
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function CompactEmpty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>; }

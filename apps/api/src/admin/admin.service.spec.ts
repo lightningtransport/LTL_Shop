@@ -46,6 +46,12 @@ function createPrisma() {
     workOrderJob: {
       count: vi.fn(),
     },
+    workSession: {
+      findUnique: vi.fn(),
+    },
+    pauseEvent: {
+      findUnique: vi.fn(),
+    },
     truck: {
       findMany: vi.fn(),
     },
@@ -780,6 +786,91 @@ describe('AdminService', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000001106',
     })).resolves.toEqual(stored);
   });
+
+  it('corrects closed labor sessions and recalculates totals', async () => {
+    const manager = {
+      id: '00000000-0000-4000-8000-000000000002',
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS],
+      supabaseAuthId: null,
+    };
+    const session = {
+      id: '00000000-0000-4000-8000-000000000701',
+      workOrderId: baseRow.id,
+      startedAt: new Date('2026-09-06T16:00:00.000Z'),
+      endedAt: new Date('2026-09-06T18:00:00.000Z'),
+    };
+    const body = {
+      workOrderId: baseRow.id,
+      targetType: 'work_session' as const,
+      targetId: session.id,
+      endedAt: '2026-09-06T17:30:00.000Z',
+      reason: 'Clock was wrong',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001301',
+    };
+    const open = detailRow({ status: 'in_progress' });
+    const activity = { log: vi.fn() };
+    const tx = assignmentTx(open);
+    tx.workSession.findUnique.mockResolvedValue(session);
+    tx.workSession.findMany.mockResolvedValue([{ ...session, endedAt: new Date('2026-09-06T17:30:00.000Z') }]);
+    tx.workOrder.findUnique
+      .mockResolvedValueOnce(open)
+      .mockResolvedValueOnce(open)
+      .mockResolvedValueOnce(detailRow({ status: 'in_progress', version: 2, totalActiveLaborMs: 5_400_000n }));
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, activity as never);
+
+    await expect(service.correctTime(manager, body)).resolves.toMatchObject({ version: 2 });
+    expect(tx.workSession.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ endedAt: new Date('2026-09-06T17:30:00.000Z') }),
+    }));
+    expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ totalActiveLaborMs: expect.any(BigInt) }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({
+      eventType: ActivityEventType.MANAGER_CORRECTION,
+      relevantValue: expect.objectContaining({ action: 'time_corrected' }),
+    }));
+
+    tx.workSession.findUnique.mockResolvedValue({ ...session, endedAt: null });
+    await expect(service.correctTime(manager, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000001302' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    tx.workSession.findUnique.mockResolvedValue(session);
+    await expect(service.correctTime(manager, {
+      ...body,
+      endedAt: '2026-09-06T15:00:00.000Z',
+      idempotencyKey: '00000000-0000-4000-8000-000000001303',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    const stored = { id: baseRow.id, version: 3 };
+    prisma.workOrderMutation.findUnique.mockResolvedValueOnce({
+      workOrderId: baseRow.id,
+      operation: 'admin_time_correction',
+      payloadHash: idempotencyFingerprint({
+        workOrderId: baseRow.id,
+        targetType: 'work_session',
+        targetId: session.id,
+        startedAt: null,
+        endedAt: '2026-09-06T17:30:00.000Z',
+        reason: 'Clock was wrong',
+        expectedVersion: 1,
+      }),
+      actorId: manager.id,
+      result: stored,
+    });
+    const replaying = createService(prisma);
+    await expect(replaying.correctTime(manager, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001304',
+    })).resolves.toEqual(stored);
+  });
 });
 
 function detailRow(overrides: Record<string, unknown> = {}) {
@@ -796,6 +887,7 @@ function detailRow(overrides: Record<string, unknown> = {}) {
       category: { name: 'Engine' },
     }],
     pauseEvents: [],
+    sessions: [],
     activityLogs: [],
     mechanics: [],
     ...overrides,
@@ -814,11 +906,13 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
     mechanicAssignment: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     workOrderMutation: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
     workSession: {
+      findUnique: vi.fn(),
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
     },
     pauseEvent: {
+      findUnique: vi.fn(),
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
