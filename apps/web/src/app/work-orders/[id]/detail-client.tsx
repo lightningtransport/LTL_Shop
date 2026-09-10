@@ -16,7 +16,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
-import { shopKeys, useWorkOrder } from '@/lib/shop-data';
+import { shopKeys, useCategories, useWorkOrder } from '@/lib/shop-data';
 import {
   Button,
   Card,
@@ -68,6 +68,7 @@ export default function WorkOrderDetailPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [notesDirty, setNotesDirty] = useState(false);
+  const { data: categories = [] } = useCategories(!!token);
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
   const addJobTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
@@ -186,7 +187,7 @@ export default function WorkOrderDetailPage() {
         <div className="flex items-center justify-between">
           <PriorityBadge priority={wo.priority} />
           <span className="text-sm text-shop-muted">
-            {wo.primaryCategoryName} — {wo.jobsCompleted} of {wo.jobsTotal}{' '}
+            Primary: {wo.primaryCategoryName} — {wo.jobsCompleted} of {wo.jobsTotal}{' '}
             jobs
           </span>
         </div>
@@ -351,7 +352,10 @@ export default function WorkOrderDetailPage() {
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-shop-border text-xs">
                     ○
                   </span>
-                  <span>{job.displayName}</span>
+                  <span>
+                    <span className="block">{job.displayName}</span>
+                    <span className="block text-xs text-muted-foreground">{job.category.name}</span>
+                  </span>
                 </Button>
               </li>
             ))}
@@ -381,7 +385,10 @@ export default function WorkOrderDetailPage() {
                 className="card flex items-center gap-3 text-shop-success"
               >
                 <span>✓</span>
-                <span>{job.displayName}</span>
+                <span>
+                  <span className="block">{job.displayName}</span>
+                  <span className="block text-xs text-muted-foreground">{job.category.name}</span>
+                </span>
               </li>
             ))}
           </ul>
@@ -593,12 +600,13 @@ export default function WorkOrderDetailPage() {
       <JobPickerDialog
         open={addOpen}
         defaultCategoryId={wo.primaryCategoryId}
-        categoryName={wo.primaryCategoryName}
+        primaryCategoryName={wo.primaryCategoryName}
+        categories={categories}
         existingCatalogJobIds={wo.jobs
           .filter((job) => job.status !== 'cancelled' && job.catalogJobId)
           .map((job) => job.catalogJobId!)}
-        existingDisplayNames={wo.jobs
-          .filter((job) => job.status !== 'cancelled')
+        existingCustomDisplayNames={wo.jobs
+          .filter((job) => job.status !== 'cancelled' && !job.catalogJobId)
           .map((job) => job.displayName)}
         onClose={() => setAddOpen(false)}
         onAdd={(body) =>

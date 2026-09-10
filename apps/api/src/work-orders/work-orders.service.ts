@@ -580,9 +580,6 @@ export class WorkOrdersService {
         if (wo.version !== input.expectedVersion) {
           throw this.versionConflict('Work Order was updated. Refresh and try again.');
         }
-        if (input.categoryId !== wo.primaryCategoryId) {
-          throw new BadRequestException('Jobs must belong to the Work Order category');
-        }
         const category = await tx.jobCategory.findFirst({
           where: { id: input.categoryId, status: 'active' },
           select: { id: true, name: true },

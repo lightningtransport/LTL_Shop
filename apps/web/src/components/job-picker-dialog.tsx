@@ -2,7 +2,7 @@
 
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import type { JobAliasOptionDto } from '@ltl-shop/shared';
+import type { JobAliasOptionDto, JobCategoryDto } from '@ltl-shop/shared';
 import { canonicalAliasOptions } from '@/lib/job-catalog';
 import { useAliasOptions } from '@/lib/shop-data';
 import { Button, Input, Label, Modal } from '@/components/ui';
@@ -22,18 +22,20 @@ function normalizeJobName(name: string) {
 export function JobPickerDialog({
   open,
   defaultCategoryId,
-  categoryName,
+  primaryCategoryName,
+  categories,
   existingCatalogJobIds = [],
-  existingDisplayNames = [],
+  existingCustomDisplayNames = [],
   onClose,
   onAdd,
   returnFocusRef,
 }: {
   open: boolean;
   defaultCategoryId: string;
-  categoryName: string;
+  primaryCategoryName: string;
+  categories: JobCategoryDto[];
   existingCatalogJobIds?: string[];
-  existingDisplayNames?: string[];
+  existingCustomDisplayNames?: string[];
   onClose: () => void;
   onAdd: (job: PickedJob) => boolean | void | Promise<boolean | void>;
   returnFocusRef?: RefObject<HTMLElement | null>;
@@ -57,19 +59,28 @@ export function JobPickerDialog({
     setSubmittingIds(new Set());
   }, [defaultCategoryId, open]);
 
-  const normalizedExistingNames = useMemo(
-    () => new Set(existingDisplayNames.map(normalizeJobName)),
-    [existingDisplayNames],
+  const standardCategories = useMemo(
+    () => {
+      const active = categories.filter((category) => category.name !== 'PM');
+      return active.length
+        ? active
+        : [{ id: defaultCategoryId, name: primaryCategoryName, sortOrder: 0 }];
+    },
+    [categories, defaultCategoryId, primaryCategoryName],
+  );
+  const selectedCategory = standardCategories.find((category) => category.id === categoryId);
+  const normalizedExistingCustomNames = useMemo(
+    () => new Set(existingCustomDisplayNames.map(normalizeJobName)),
+    [existingCustomDisplayNames],
   );
   const options = useMemo(
     () => canonicalAliasOptions(allAliases, query).filter(
       (option) =>
-        !existingCatalogJobIds.includes(option.catalogJobId) &&
-        !normalizedExistingNames.has(normalizeJobName(option.displayName)),
+        !existingCatalogJobIds.includes(option.catalogJobId),
     ),
-    [allAliases, existingCatalogJobIds, normalizedExistingNames, query],
+    [allAliases, existingCatalogJobIds, query],
   );
-  const customIsDuplicate = normalizedExistingNames.has(normalizeJobName(customName));
+  const customIsDuplicate = normalizedExistingCustomNames.has(normalizeJobName(customName));
   async function submit(job: PickedJob, key: string) {
     if (submittingRef.current.has(key)) return;
     submittingRef.current.add(key);
@@ -87,7 +98,25 @@ export function JobPickerDialog({
   return (
     <Modal open={open} title="Add job" onClose={onClose} returnFocusRef={returnFocusRef}>
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">Adding a job to {categoryName}.</p>
+        <p className="text-sm text-muted-foreground">Add work discovered during this intervention. Primary Category remains unchanged.</p>
+        <div>
+          <Label className="section-label block" htmlFor="job-picker-category">Job Category</Label>
+          <select
+            id="job-picker-category"
+            className="mt-2 flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={categoryId}
+            onChange={(event) => {
+              setCategoryId(event.target.value);
+              setQuery('');
+              setCustomOpen(false);
+              setCustomName('');
+            }}
+          >
+            {standardCategories.map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
+        </div>
         {!customOpen && options.length > 6 ? <div>
           <Label className="section-label block" htmlFor="job-picker-search">Search job or alias</Label>
           <Input
@@ -136,7 +165,7 @@ export function JobPickerDialog({
         </Button>
         {customOpen ? (
           <div id="job-not-listed-form" className="space-y-2">
-            <p className="text-xs text-muted-foreground">Custom job in {categoryName}.</p>
+            <p className="text-xs text-muted-foreground">Custom job in {selectedCategory?.name ?? 'this category'}.</p>
             <Label className="section-label block" htmlFor="job-picker-custom">Custom job description</Label>
             <Input
               id="job-picker-custom"
