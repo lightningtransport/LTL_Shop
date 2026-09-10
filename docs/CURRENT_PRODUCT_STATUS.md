@@ -46,8 +46,12 @@ PRD.
   On an in-progress Work Order, managers can complete it with the same finish
   rules as the mechanic workspace: Standard Jobs cannot still be `to_do`, PM
   still needs observed mileage and at least one part, and completion writes
-  `work_order_completed`. This is not Off Duty, Catalog, reopen, field edits,
-  or Job-level assignment.
+  `work_order_completed`. Managers can reopen a completed or cancelled Work
+  Order with a required reason when the Truck has no other open Work Order.
+  Reopen restores `in_progress` if work had started, otherwise `created`,
+  clears completion metadata, and records a `manager_correction` event. Jobs
+  are not reopened separately. This is not Off Duty, Catalog, field edits, or
+  Job-level assignment.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
@@ -183,7 +187,7 @@ These are deliberately outside the current implementation:
    Safari mobile device.
 3. Remove the compatibility-only `pmAuthorized` column after production
    stability is confirmed; a general permission-management UI remains deferred.
-4. Continue Shop Admin Fase 3 with reopen and allowed field edits;
+4. Continue Shop Admin Fase 3 with allowed field edits;
    keep Yard/readiness mutations scoped to `yard.operations.manage`.
    Do not invent Off Duty or Catalog management.
 5. Integrate live Ninox data only after its adapter contract and write model

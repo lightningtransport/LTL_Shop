@@ -593,6 +593,84 @@ describe('AdminService', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000000906',
     })).resolves.toEqual(stored);
   });
+
+  it('reopens completed and cancelled Work Orders and refuses an open Truck conflict', async () => {
+    const manager = {
+      id: baseRow.createdById,
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS],
+      supabaseAuthId: null,
+    };
+    const body = {
+      reason: 'More work found',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001001',
+    };
+    const completed = detailRow({
+      status: 'completed',
+      startedAt: new Date('2026-09-06T16:00:00.000Z'),
+      completedAt: new Date('2026-09-06T18:00:00.000Z'),
+    });
+    const activity = { log: vi.fn() };
+    const tx = assignmentTx(completed);
+    tx.workOrder.findUnique
+      .mockResolvedValueOnce(completed)
+      .mockResolvedValueOnce(completed)
+      .mockResolvedValueOnce(detailRow({ status: 'in_progress', version: 2, startedAt: completed.startedAt, completedAt: null }));
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, activity as never);
+
+    await expect(service.reopenWorkOrder(manager, completed.id, body)).resolves.toMatchObject({ status: 'in_progress', version: 2 });
+    expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'in_progress', completedAt: null, completedById: null }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.MANAGER_CORRECTION }));
+
+    const cancelled = detailRow({ status: 'cancelled', startedAt: null, completedAt: new Date() });
+    const createdTx = assignmentTx(cancelled);
+    createdTx.workOrder.findUnique
+      .mockResolvedValueOnce(cancelled)
+      .mockResolvedValueOnce(cancelled)
+      .mockResolvedValueOnce(detailRow({ status: 'created', version: 2, startedAt: null, completedAt: null }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof createdTx) => unknown) => callback(createdTx));
+    await expect(service.reopenWorkOrder(manager, cancelled.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000001002' }))
+      .resolves.toMatchObject({ status: 'created' });
+
+    const open = assignmentTx(detailRow({ status: 'in_progress' }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof open) => unknown) => callback(open));
+    await expect(service.reopenWorkOrder(manager, completed.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000001003' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    const conflict = assignmentTx(completed);
+    conflict.workOrder.findFirst.mockResolvedValue({ id: 'other-open' });
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof conflict) => unknown) => callback(conflict));
+    await expect(service.reopenWorkOrder(manager, completed.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000001004' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    const stored = { id: baseRow.id, status: 'in_progress', version: 3 };
+    prisma.workOrderMutation.findUnique.mockResolvedValueOnce({
+      workOrderId: baseRow.id,
+      operation: 'admin_reopen_work_order',
+      payloadHash: idempotencyFingerprint({
+        workOrderId: baseRow.id,
+        reason: 'More work found',
+        expectedVersion: 1,
+      }),
+      actorId: manager.id,
+      result: stored,
+    });
+    const replaying = createService(prisma);
+    await expect(replaying.reopenWorkOrder(manager, baseRow.id, {
+      reason: 'More work found',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001005',
+    })).resolves.toEqual(stored);
+  });
 });
 
 function detailRow(overrides: Record<string, unknown> = {}) {
@@ -620,6 +698,7 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
     $queryRaw: vi.fn().mockResolvedValue([]),
     workOrder: {
       findUnique: vi.fn().mockResolvedValue(wo),
+      findFirst: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     user: { findFirst: vi.fn() },

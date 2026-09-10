@@ -290,6 +290,29 @@ createServer(async (request, response) => {
     json(response, 200, { items, nextCursor: null });
     return;
   }
+  const reopenMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/reopen$/i);
+  if (reopenMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === reopenMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (!String(body.reason ?? '').trim()) { json(response, 400, { message: 'A reopen reason is required.' }); return; }
+    if (!['completed', 'cancelled'].includes(summary.status)) {
+      json(response, 400, { message: 'Cannot reopen an open Work Order' });
+      return;
+    }
+    if (workOrders.some((item) => item.id !== summary.id && item.truck.id === summary.truck.id && ['created', 'in_progress', 'waiting_paused'].includes(item.status))) {
+      json(response, 400, { message: 'Truck already has an open Work Order.' });
+      return;
+    }
+    if (body.expectedVersion !== summary.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    summary.status = summary.startedAt ? 'in_progress' : 'created';
+    summary.completedAt = null;
+    summary.currentPause = null;
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   const completeMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/complete$/i);
   if (completeMatch && request.method === 'POST') {
     const summary = workOrders.find((item) => item.id === completeMatch[1]);

@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, completeAdminWorkOrder, removeAdminWorkOrderMechanic, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, completeAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminWorkOrder, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -29,6 +29,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [historyCategory, setHistoryCategory] = useState('');
   const [selectedMechanic, setSelectedMechanic] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+  const [reopenReason, setReopenReason] = useState('');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const { data: categoryData } = useCategories(true);
@@ -53,6 +54,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const canManageAssignments = isOpen && data.category.name !== 'PM';
   const canCancelWorkOrder = isOpen;
   const canCompleteWorkOrder = data.status === 'in_progress';
+  const canReopenWorkOrder = data.status === 'completed' || data.status === 'cancelled';
   const hasIncompleteJobs = data.category.name !== 'PM' && data.jobs.some((job) => job.status === 'to_do');
   const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
 
@@ -214,6 +216,47 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               {messages.cancelWorkOrderConfirm}
             </Button>
           </form>
+      </CardContent>
+    </Card>
+    ) : null}
+
+    {canReopenWorkOrder ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>{messages.reopenWorkOrderTitle}</CardTitle>
+          <CardDescription>{messages.reopenWorkOrderDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const reason = reopenReason.trim();
+              if (!reason) {
+                setFeedback({ kind: 'error', message: messages.reopenWorkOrderReasonRequired });
+                return;
+              }
+              void runMutation('reopen', messages.reopenWorkOrderSuccess, async () => {
+                await reopenAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
+                setReopenReason('');
+              }, (failure) => reopenError(failure, messages));
+            }}
+          >
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">{messages.reopenWorkOrderReason}</span>
+              <Textarea
+                aria-label={messages.reopenWorkOrderReason}
+                value={reopenReason}
+                onChange={(event) => setReopenReason(event.target.value)}
+                maxLength={1000}
+                required
+              />
+              <span className="text-xs text-muted-foreground">{messages.reopenWorkOrderReasonHelp}</span>
+            </label>
+            <Button type="submit" disabled={Boolean(pendingAction)}>
+              {messages.reopenWorkOrderConfirm}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     ) : null}
@@ -255,6 +298,13 @@ function completeError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.completeWorkOrderGenericError;
+}
+function reopenError(errorValue: unknown, messages: AdminMessages) {
+  if (errorValue instanceof ApiError) {
+    if (errorValue.status === 400) return messages.reopenWorkOrderBadRequest;
+    if (errorValue.status === 409) return messages.assignmentConflict;
+  }
+  return messages.reopenWorkOrderGenericError;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function CompactEmpty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>; }
