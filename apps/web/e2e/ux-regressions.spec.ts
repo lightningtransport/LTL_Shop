@@ -505,18 +505,18 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     });
   });
 
-  test('confirms before changing a category with selected jobs', async ({ page }) => {
+  test('keeps selected Jobs when changing the primary Category on a 320px viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
     await openNewWorkOrder(page);
     await selectTruck(page);
     const category = page.getByRole('combobox', { name: /Category/i });
     await category.selectOption(categories[0].id);
     await page.getByRole('list', { name: /Listed jobs for Brakes/i }).getByRole('button', { name: 'Brake inspection' }).click();
     await category.selectOption(categories[1].id);
-    const dialog = page.getByRole('dialog', { name: 'Change category?' });
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Change category', exact: true }).click();
-    await expect(page.getByText('Brake inspection', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Change category?' })).toHaveCount(0);
+    await expect(page.getByText('Brake inspection', { exact: true })).toBeVisible();
     await expect(page.getByRole('list', { name: /Listed jobs for Engine/i })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
   });
 
   test('truck combobox supports keyboard selection and exposes state', async ({ page }) => {
