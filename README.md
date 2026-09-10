@@ -22,12 +22,12 @@ Greenfield monorepo for the Lightning Shop Mechanic Work Order experience.
 
 ## Work Order domain direction
 
-- **CURRENT/legacy:** Standard creation and Add Job restrict every Job to
-  `WorkOrder.primaryCategoryId`; the web picker is likewise category-locked.
-- **TARGET:** a Work Order is the complete service intervention for one Truck.
-  Every `WorkOrderJob` owns its Category and one Work Order may contain Jobs
-  from multiple Categories. `primaryCategoryId` remains required initially as
-  the **Initial/Primary Category** for backward compatibility.
+- **CURRENT/legacy-compatible:** `primaryCategoryId` remains required as the
+  **Initial/Primary Category** for backward compatibility. Every
+  `WorkOrderJob` owns its Category.
+- **CURRENT:** a Work Order is the complete service intervention for one Truck.
+  Standard creation and Add Job permit multiple non-PM Job Categories without
+  removing legacy readers or `primaryCategoryId`.
 - **LOCKED:** one open Work Order per Truck; a later visit or distinct service
   event creates a new Work Order. A Yard Phase is not a Category and never
   creates another Work Order.

@@ -81,10 +81,11 @@ PRD.
   collaborators, priority, and optional notes.
 - PM is not offered to a user without `mechanic.pm`. Collaborators are
   optional and never default to the work-order creator.
-- On creation, choosing a category immediately lists its catalog jobs inline.
-  “Job not listed” switches to an exclusive custom-job form; category changes
-  confirm before removing selected jobs. Existing orders use the simplified,
-  category-locked picker. A Work Order cannot mix categories.
+- On creation, choosing a non-PM category immediately lists its catalog jobs
+  inline. “Job not listed” switches to an exclusive custom-job form. A Standard
+  Work Order may contain Jobs from multiple non-PM Categories; changing the
+  Initial/Primary Category never silently removes selected Jobs. Existing
+  orders use a picker that can add a Job from another Standard Category.
 - Catalog aliases resolve to one canonical result; a catalog job or normalized
   custom job cannot be added twice.
 - Work can start, pause only while a job remains pending, resume, and finish
@@ -92,21 +93,21 @@ PRD.
 - Finished work returns to Home and is available from the completed-work
   section. Active and paused work remain separate.
 
-### Approved Work Order direction (not implemented)
+### Work Order multi-Category implementation
 
-- **CURRENT/legacy:** both `WorkOrder.primaryCategoryId` and
-  `WorkOrderJob.categoryId` are required, but Standard API and web validation
-  require every Job Category to equal the Work Order primary Category.
-- **TARGET:** the Work Order represents the complete intervention for a Truck;
-  each Job owns its Category and one Work Order may mix Categories.
-  `primaryCategoryId` remains required initially and is interpreted as the
-  Initial/Primary Category for compatible clients and existing reports.
+- **CURRENT/legacy-compatible:** both `WorkOrder.primaryCategoryId` and
+  `WorkOrderJob.categoryId` are required. `primaryCategoryId` remains the
+  Initial/Primary Category for compatible clients and existing reports;
+  `WorkOrderJob.categoryId` owns each Job's Category.
+- **CURRENT:** the Work Order represents the complete intervention for a Truck;
+  Standard may mix non-PM Job Categories in one Work Order. Readers continue
+  rendering legacy single-Category Work Orders.
 - **LOCKED:** there remains one open Work Order per Truck; work found during the
   same intervention is added to it, while a new service event creates a new
   Work Order. Standard Create does not Start, PM remains a `mechanic.pm`
   exception, Job completion does not complete the Work Order, and Work Order
   `Completed` does not mean `Ready to Go`/`Returned to Service`.
-- **TARGET contract rules:** Standard may not add the PM Category; catalog
+- **CURRENT contract rules:** Standard may not add the PM Category; catalog
   duplicates use `catalogJobId`, Custom Job duplicates use normalized custom
   name; inactive Categories and historical Jobs remain readable but cannot be
   selected for new work; repair-history Category filters match any Job

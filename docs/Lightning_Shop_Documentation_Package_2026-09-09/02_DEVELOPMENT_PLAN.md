@@ -33,6 +33,9 @@ reales pendiente debe ejecutarse antes de una migración destructiva.
 
 ## Fase 1 — Contrato multicategoría, sin cambiar UX
 
+Estado: **CURRENT**. Los lectores y contratos exponen Category por Job sin
+retirar `primaryCategoryId`; los lectores legacy siguen siendo compatibles.
+
 Objetivo: hacer explícita la Category de cada Job en contratos y lecturas preservando clientes existentes.
 
 - Confirmar/reusar `WorkOrderJob.categoryId`.
@@ -44,6 +47,10 @@ Objetivo: hacer explícita la Category de cada Job en contratos y lecturas prese
 Gate: mismos flujos visibles; Standard y PM continúan pasando.
 
 ## Fase 2 — API autoriza Jobs de otras Categories
+
+Estado: **CURRENT**. Standard valida Category/Catalog Job activos y su relación
+en servidor; Add Job conserva versión, idempotencia, deduplicación, transacción
+y Activity Log. PM continúa excluido del flujo Standard.
 
 Objetivo: remover solo la validación de igualdad entre Job Category y primaryCategory.
 
@@ -58,6 +65,12 @@ Objetivo: remover solo la validación de igualdad entre Job Category y primaryCa
 Gate: API tests de autorización, duplicados, concurrencia, Activity Log y finalización pendiente.
 
 ## Fase 3 — UX Standard multicategoría
+
+Estado: **CURRENT**. Standard permite crear y agregar Jobs de Categories no-PM
+distintas. Cambiar la Category primaria no elimina Jobs. E2E cubre creación a
+390×844 y preservación a 320×568 en Chromium y WebKit; la suite PM sigue
+separada. El smoke con una sesión de producción sigue pendiente porque los
+aliases están protegidos por Vercel SSO.
 
 Objetivo: crear/agregar Jobs por Category de manera clara.
 

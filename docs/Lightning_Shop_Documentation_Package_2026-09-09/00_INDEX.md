@@ -1,6 +1,6 @@
 # Lightning Shop — paquete de dirección de producto y evolución
 
-Estado: dirección aprobada; implementación multicategoría pendiente
+Estado: dirección aprobada; implementación Standard multicategoría CURRENT
 Fecha: 2026-09-09
 Idioma normativo: los términos `Truck`, `Work Order` y `Job` se mantienen canónicos.
 
@@ -8,15 +8,19 @@ Idioma normativo: los términos `Truck`, `Work Order` y `Job` se mantienen canó
 
 Este paquete estabiliza la dirección de producto antes de modificar código. Reconciliamos dos hechos:
 
-1. El producto actual implementa una Work Order estándar limitada a una sola Category.
-2. El modelo de negocio objetivo define una Work Order como la intervención completa de un Truck y permite Jobs de distintas Categories dentro de esa intervención.
+1. El checkout auditado inicialmente implementaba una Work Order estándar limitada a una sola Category.
+2. El modelo de negocio aprobado define una Work Order como la intervención completa de un Truck y permite Jobs de distintas Categories dentro de esa intervención; Standard ya lo implementa de forma backward-compatible.
 
-Los documentos originales usados como evidencia no se modifican. Este paquete no afirma que la dirección objetivo ya esté implementada.
+Los documentos originales usados como evidencia no se modifican. Este índice se
+actualiza para distinguir el estado inicial del estado implementado actual.
 
 La auditoría del checkout `2d18680` está en
 [`../audits/WORK_ORDER_MULTICATEGORY_AUDIT_2026-09-09.md`](../audits/WORK_ORDER_MULTICATEGORY_AUDIT_2026-09-09.md).
 Después de actualizar desde `origin/main`, Yard Operations/Readiness Phase 1 es
-CURRENT; la evolución Standard multi-Category permanece TARGET.
+CURRENT. La evolución Standard multi-Category también es CURRENT: conserva
+`primaryCategoryId` como Initial/Primary, mientras `WorkOrderJob.categoryId`
+es la Category canónica de cada Job. Timers/asignaciones por Job, múltiples
+Work Orders abiertas e integraciones permanecen DEFERRED.
 
 ## Orden de lectura
 
@@ -61,8 +65,8 @@ Una diferencia entre código y documentación no se “corrige” silenciosament
 
 ## Decisiones maestras
 
-- **TARGET:** una Work Order representa una visita/intervención de servicio completa, no una Category, una fase o el trabajo de una sola persona.
-- **TARGET:** cada Job posee su Category real; una Work Order puede contener Jobs de múltiples Categories.
+- **CURRENT:** una Work Order representa una visita/intervención de servicio completa, no una Category, una fase o el trabajo de una sola persona.
+- **CURRENT:** cada Job posee su Category real; una Work Order Standard puede contener Jobs de múltiples Categories.
 - **LOCKED:** máximo una Work Order abierta por Truck, hasta que la operación demuestre y apruebe otra necesidad.
 - **LOCKED:** Standard `Create Work Order` no inicia labor; PM es una excepción separada.
 - **LOCKED:** completar un Job no pausa ni completa la Work Order.
@@ -98,4 +102,7 @@ La revisión del Help Center oficial de Fleetio se usa como benchmark de concept
 
 ## Cómo usar el paquete
 
-Primero ejecutar el prompt de auditoría. Después actualizar documentación canónica mediante un PR exclusivo. Solo entonces implementar una fase pequeña, con migración aditiva, tests de regresión Standard/PM, Preview y rollback. No entregar todas las fases en un único PR.
+Para una nueva evolución, ejecutar primero auditoría y actualizar documentación
+canónica mediante un PR exclusivo. La implementación multicategoría ya fue
+entregada en PRs pequeños y revisables; no habilita trabajo diferido ni elimina
+`primaryCategoryId`.
