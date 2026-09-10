@@ -57,8 +57,11 @@ PRD.
   and/or `notes_updated`. Managers can correct a closed labor session or wait
   interval with a required reason. Totals are recalculated from those segments;
   open time is not edited here. The correction writes `manager_correction` with
-  `time_corrected`. This is not Off Duty, Catalog, Job-level assignment, cancel,
-  or reopen.
+  `time_corrected`. On an open Standard Work Order, managers can cancel a to-do
+  Job or reopen a cancelled Job with a required reason. Cancel writes
+  `job_cancelled`; reopen writes `manager_correction` with `job_reopened`.
+  Completed Jobs stay as they are. PM Work Orders have no Jobs. This is not Off
+  Duty, Catalog, or Job-level assignment.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
@@ -194,10 +197,9 @@ These are deliberately outside the current implementation:
    Safari mobile device.
 3. Remove the compatibility-only `pmAuthorized` column after production
    stability is confirmed; a general permission-management UI remains deferred.
-4. Land Admin Job-level cancel/reopen on `main` (PR #62 merged to the fields
-   branch after #61). Return-to-service stays deferred until that domain model
-   exists. Keep Yard/readiness mutations scoped to `yard.operations.manage`.
-   Do not invent Off Duty or Catalog management.
+4. Return-to-service stays deferred until that domain model exists. Keep
+   Yard/readiness mutations scoped to `yard.operations.manage`. Do not invent
+   Off Duty or Catalog management.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.
 6. Keep release discipline: merge only after CI and both Vercel deployments

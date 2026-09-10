@@ -60,6 +60,16 @@ export class AdminController {
     return this.admin.correctTime(request.user!, body);
   }
 
+  @Post('jobs/:id/reopen')
+  reopenJob(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.admin.reopenJob(request.user!, id, body);
+  }
+
+  @Post('jobs/:id/cancel')
+  cancelJob(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.admin.cancelJob(request.user!, id, body);
+  }
+
   @Post('work-orders/:id/reopen')
   reopenWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.reopenWorkOrder(request.user!, id, body);

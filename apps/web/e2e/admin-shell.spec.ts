@@ -65,6 +65,12 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: 'Update priority and notes' }).click();
     await expect(page.getByText('Priority and notes updated.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Assignments' })).toBeVisible();
+    await page.getByLabel('Reason for this Job change').fill('Not needed');
+    await page.getByRole('button', { name: 'Confirm job cancellation' }).click();
+    await expect(page.getByText('Job cancelled.')).toBeVisible();
+    await page.getByLabel('Reason for this Job change').fill('Job is still required');
+    await page.getByRole('button', { name: 'Confirm job reopen' }).click();
+    await expect(page.getByText('Job reopened.')).toBeVisible();
     await page.getByLabel('Select a mechanic to add').selectOption({ label: 'Anthony' });
     await page.getByRole('button', { name: 'Add mechanic' }).click();
     await expect(page.getByText('Anthony').first()).toBeVisible();

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminWorkOrder, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderMechanic, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -31,6 +31,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [selectedMechanic, setSelectedMechanic] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [reopenReason, setReopenReason] = useState('');
+  const [jobReason, setJobReason] = useState('');
   const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
   const [draftNotes, setDraftNotes] = useState('');
   const [timeTarget, setTimeTarget] = useState('');
@@ -68,6 +69,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const canCancelWorkOrder = isOpen;
   const canCompleteWorkOrder = data.status === 'in_progress';
   const canReopenWorkOrder = data.status === 'completed' || data.status === 'cancelled';
+  const canManageJobs = isOpen && data.category.name !== 'PM';
   const hasIncompleteJobs = data.category.name !== 'PM' && data.jobs.some((job) => job.status === 'to_do');
   const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
 
@@ -329,7 +331,87 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <Card><CardHeader><CardTitle>{messages.notes}</CardTitle></CardHeader><CardContent>{data.notes ? <p className="whitespace-pre-wrap text-sm">{data.notes}</p> : <CompactEmpty>{messages.noNotes}</CompactEmpty>}</CardContent></Card>
     )}
 
-    <Card><CardHeader><CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle></CardHeader><CardContent>{data.jobs.length ? <ul className="divide-y">{data.jobs.map((job) => <li key={job.id} className="flex items-start justify-between gap-3 py-3 first:pt-0"><div><p className="font-medium">{job.displayName}</p><p className="text-xs text-muted-foreground">{job.category.name}</p>{job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}</div><Badge variant={job.status === 'completed' ? 'success' : 'outline'}>{humanize(job.status)}</Badge></li>)}</ul> : <EmptyState>{messages.noJobs}</EmptyState>}</CardContent></Card>
+    <Card>
+      <CardHeader>
+        <CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle>
+        <CardDescription>
+          {canManageJobs ? messages.jobsDescription : data.category.name === 'PM' ? messages.jobsPmLocked : messages.jobsClosedLocked}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {data.jobs.length ? (
+          <ul className="divide-y">
+            {data.jobs.map((job) => (
+              <li key={job.id} className="flex flex-col gap-3 py-3 first:pt-0 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="font-medium">{job.displayName}</p>
+                  <p className="text-xs text-muted-foreground">{job.category.name}</p>
+                  {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={job.status === 'completed' ? 'success' : 'outline'}>{humanize(job.status)}</Badge>
+                  {canManageJobs && job.status === 'to_do' ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={Boolean(pendingAction)}
+                      onClick={() => {
+                        const reason = jobReason.trim();
+                        if (!reason) {
+                          setFeedback({ kind: 'error', message: messages.jobChangeReasonRequired });
+                          return;
+                        }
+                        void runMutation(`cancel-job-${job.id}`, messages.cancelJobSuccess, async () => {
+                          await cancelAdminJob(job.id, { reason, expectedVersion: data.version });
+                          setJobReason('');
+                        }, (failure) => jobChangeError(failure, messages));
+                      }}
+                    >
+                      {messages.cancelJobConfirm}
+                    </Button>
+                  ) : null}
+                  {canManageJobs && job.status === 'cancelled' ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={Boolean(pendingAction)}
+                      onClick={() => {
+                        const reason = jobReason.trim();
+                        if (!reason) {
+                          setFeedback({ kind: 'error', message: messages.jobChangeReasonRequired });
+                          return;
+                        }
+                        void runMutation(`reopen-job-${job.id}`, messages.reopenJobSuccess, async () => {
+                          await reopenAdminJob(job.id, { reason, expectedVersion: data.version });
+                          setJobReason('');
+                        }, (failure) => jobChangeError(failure, messages));
+                      }}
+                    >
+                      {messages.reopenJobConfirm}
+                    </Button>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState>{messages.noJobs}</EmptyState>
+        )}
+        {canManageJobs ? (
+          <label className="block space-y-1">
+            <span className="text-sm font-medium">{messages.jobChangeReason}</span>
+            <Textarea
+              aria-label={messages.jobChangeReason}
+              value={jobReason}
+              onChange={(event) => setJobReason(event.target.value)}
+              maxLength={1000}
+            />
+            <span className="text-xs text-muted-foreground">{messages.jobChangeReasonHelp}</span>
+          </label>
+        ) : null}
+      </CardContent>
+    </Card>
 
     <Card>
       <CardHeader className="gap-3 sm:flex sm:flex-row sm:items-start sm:justify-between"><div><CardTitle>{messages.recentRepairHistory}</CardTitle><CardDescription>{messages.repairHistoryDescription}</CardDescription></div><label className="w-full space-y-1 sm:w-56"><span className="text-xs font-medium text-muted-foreground">{messages.filterByCategory}</span><Select aria-label={messages.filterByCategory} value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}><option value="">{messages.allCategories}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></label></CardHeader>
@@ -483,6 +565,13 @@ function toDatetimeLocal(value: string) {
 }
 function fromDatetimeLocal(value: string) {
   return new Date(value).toISOString();
+}
+function jobChangeError(errorValue: unknown, messages: AdminMessages) {
+  if (errorValue instanceof ApiError) {
+    if (errorValue.status === 400) return messages.jobChangeBadRequest;
+    if (errorValue.status === 409) return messages.assignmentConflict;
+  }
+  return messages.jobChangeGenericError;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function CompactEmpty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>; }

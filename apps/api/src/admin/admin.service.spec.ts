@@ -45,6 +45,7 @@ function createPrisma() {
     },
     workOrderJob: {
       count: vi.fn(),
+      findUnique: vi.fn(),
     },
     workSession: {
       findUnique: vi.fn(),
@@ -871,6 +872,113 @@ describe('AdminService', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000001304',
     })).resolves.toEqual(stored);
   });
+
+  it('cancels and reopens Jobs on open Standard Work Orders', async () => {
+    const manager = {
+      id: '00000000-0000-4000-8000-000000000002',
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS],
+      supabaseAuthId: null,
+    };
+    const jobId = '00000000-0000-4000-8000-000000000501';
+    const body = {
+      reason: 'Not needed',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001201',
+    };
+    const open = detailRow({ status: 'in_progress' });
+    const activity = { log: vi.fn() };
+    const tx = assignmentTx(open);
+    tx.workOrder.findUnique
+      .mockResolvedValueOnce(open)
+      .mockResolvedValueOnce(open)
+      .mockResolvedValueOnce(detailRow({
+        status: 'in_progress',
+        version: 2,
+        jobs: [{ ...open.jobs[0], status: 'cancelled' }],
+      }));
+    const prisma = createPrisma();
+    prisma.workOrderJob.findUnique.mockResolvedValue({ ...open.jobs[0], workOrderId: open.id });
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, activity as never);
+
+    await expect(service.cancelJob(manager, jobId, body)).resolves.toMatchObject({ version: 2 });
+    expect(tx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'cancelled', cancelledReason: 'Not needed' }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.JOB_CANCELLED }));
+
+    const completedJob = detailRow({
+      status: 'in_progress',
+      jobs: [{ ...open.jobs[0], status: 'completed' }],
+    });
+    const completedTx = assignmentTx(completedJob);
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof completedTx) => unknown) => callback(completedTx));
+    await expect(service.cancelJob(manager, jobId, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000001202' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    const pm = detailRow({ primaryCategory: { ...baseRow.primaryCategory, name: 'PM' } });
+    const pmTx = assignmentTx(pm);
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof pmTx) => unknown) => callback(pmTx));
+    await expect(service.cancelJob(manager, jobId, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000001203' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    const closed = assignmentTx(detailRow({ status: 'completed' }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof closed) => unknown) => callback(closed));
+    await expect(service.cancelJob(manager, jobId, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000001204' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    const cancelled = detailRow({
+      status: 'in_progress',
+      jobs: [{ ...open.jobs[0], status: 'cancelled' }],
+    });
+    const reopenTx = assignmentTx(cancelled);
+    reopenTx.workOrder.findUnique
+      .mockResolvedValueOnce(cancelled)
+      .mockResolvedValueOnce(cancelled)
+      .mockResolvedValueOnce(detailRow({ status: 'in_progress', version: 2, jobs: [{ ...open.jobs[0], status: 'to_do' }] }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof reopenTx) => unknown) => callback(reopenTx));
+    await expect(service.reopenJob(manager, jobId, {
+      reason: 'Job is still required',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001205',
+    })).resolves.toMatchObject({ version: 2 });
+    expect(reopenTx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'to_do', cancelledAt: null, cancelledReason: null }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(reopenTx, expect.objectContaining({ eventType: ActivityEventType.MANAGER_CORRECTION }));
+
+    const openTx = assignmentTx(open);
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof openTx) => unknown) => callback(openTx));
+    await expect(service.reopenJob(manager, jobId, {
+      reason: 'Job is still required',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001206',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    const stored = { id: baseRow.id, version: 3 };
+    prisma.workOrderMutation.findUnique.mockResolvedValueOnce({
+      workOrderId: baseRow.id,
+      operation: 'admin_cancel_job',
+      payloadHash: idempotencyFingerprint({
+        jobId,
+        workOrderId: baseRow.id,
+        reason: 'Not needed',
+        expectedVersion: 1,
+      }),
+      actorId: manager.id,
+      result: stored,
+    });
+    const replaying = createService(prisma);
+    await expect(replaying.cancelJob(manager, jobId, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001207',
+    })).resolves.toEqual(stored);
+  });
 });
 
 function detailRow(overrides: Record<string, unknown> = {}) {
@@ -904,6 +1012,10 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
     },
     user: { findFirst: vi.fn() },
     mechanicAssignment: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
+    workOrderJob: {
+      findUnique: vi.fn().mockResolvedValue(wo.jobs[0] ? { ...wo.jobs[0], workOrderId: wo.id } : null),
+      update: vi.fn(),
+    },
     workOrderMutation: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
     workSession: {
       findUnique: vi.fn(),
