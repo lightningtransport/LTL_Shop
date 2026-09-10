@@ -308,6 +308,46 @@ createServer(async (request, response) => {
     json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
+  const cancelJobMatch = request.url?.match(/^\/api\/admin\/jobs\/([0-9a-f-]+)\/cancel$/i);
+  if (cancelJobMatch && request.method === 'POST') {
+    const found = findFixtureJob(cancelJobMatch[1]);
+    const body = await readJson(request);
+    if (!found) { json(response, 404, { message: 'Job not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (!String(body.reason ?? '').trim()) { json(response, 400, { message: 'A job cancellation reason is required.' }); return; }
+    if (found.workOrder.category?.name === 'PM') { json(response, 400, { message: 'PM Work Orders do not use jobs' }); return; }
+    if (!['created', 'in_progress', 'waiting_paused'].includes(found.workOrder.status)) {
+      json(response, 400, { message: 'Cannot change Jobs on a closed Work Order' });
+      return;
+    }
+    if (found.job.status !== 'to_do') { json(response, 400, { message: 'Job is not in To Do status' }); return; }
+    if (body.expectedVersion !== found.workOrder.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    found.job.status = 'cancelled';
+    found.workOrder.version += 1;
+    syncJobCounts(found.workOrder);
+    json(response, 200, fixtureWorkOrderDetail(found.workOrder));
+    return;
+  }
+  const reopenJobMatch = request.url?.match(/^\/api\/admin\/jobs\/([0-9a-f-]+)\/reopen$/i);
+  if (reopenJobMatch && request.method === 'POST') {
+    const found = findFixtureJob(reopenJobMatch[1]);
+    const body = await readJson(request);
+    if (!found) { json(response, 404, { message: 'Job not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (!String(body.reason ?? '').trim()) { json(response, 400, { message: 'A job reopen reason is required.' }); return; }
+    if (found.workOrder.category?.name === 'PM') { json(response, 400, { message: 'PM Work Orders do not use jobs' }); return; }
+    if (!['created', 'in_progress', 'waiting_paused'].includes(found.workOrder.status)) {
+      json(response, 400, { message: 'Cannot change Jobs on a closed Work Order' });
+      return;
+    }
+    if (found.job.status !== 'cancelled') { json(response, 400, { message: 'Job is not cancelled' }); return; }
+    if (body.expectedVersion !== found.workOrder.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    found.job.status = 'to_do';
+    found.workOrder.version += 1;
+    syncJobCounts(found.workOrder);
+    json(response, 200, fixtureWorkOrderDetail(found.workOrder));
+    return;
+  }
   const reopenMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/reopen$/i);
   if (reopenMatch && request.method === 'POST') {
     const summary = workOrders.find((item) => item.id === reopenMatch[1]);
@@ -478,7 +518,7 @@ function fixtureWorkOrderDetail(summary) {
     completedBy: null,
     totalActiveLaborMs: 5400000,
     totalWaitingMs: 1800000,
-    jobs: [{ id: '00000000-0000-4000-8000-000000000501', displayName: 'Inspect brake chamber', customDescription: null, category: summary.category, status: summary.jobsCompleted >= summary.jobsTotal ? 'completed' : 'to_do' }],
+    jobs: summary.jobs,
     laborSessions: summary.laborSessions ?? [],
     pauseHistory: summary.currentPause ? [{ ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } }] : [],
     activityLog: [{ id: '00000000-0000-4000-8000-000000000601', eventType: 'work_order_created', entityType: 'work_order', entityId: summary.id, user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name }, previousValue: null, newValue: null, relevantValue: { displayId: summary.displayId }, createdAt: summary.createdAt }],
@@ -520,7 +560,28 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status) {
       endedAt: '2026-09-06T17:30:00.000Z',
       durationMs: 5_400_000,
     }],
+    jobs: [{
+      id: `00000000-0000-4000-8000-0000000005${id.slice(-2)}`,
+      displayName: 'Inspect brake chamber',
+      customDescription: null,
+      category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },
+      status: status === 'in_progress' || status === 'completed' ? 'completed' : 'to_do',
+    }],
   };
+}
+
+function findFixtureJob(jobId) {
+  for (const workOrder of workOrders) {
+    const job = workOrder.jobs?.find((item) => item.id === jobId);
+    if (job) return { workOrder, job };
+  }
+  return null;
+}
+
+function syncJobCounts(workOrder) {
+  const active = (workOrder.jobs ?? []).filter((job) => job.status !== 'cancelled');
+  workOrder.jobsTotal = active.length;
+  workOrder.jobsCompleted = active.filter((job) => job.status === 'completed').length;
 }
 
 function makeYardItem(truckId, truckNumber, phase, priority, assessmentStatus) {

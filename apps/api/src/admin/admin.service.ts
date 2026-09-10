@@ -3,6 +3,7 @@ import {
   AppCapability,
   Prisma,
   Priority,
+  JobStatus,
   WorkOrderStatus,
   type PauseReason,
 } from '@prisma/client';
@@ -19,6 +20,8 @@ import {
   adminReopenWorkOrderSchema,
   adminPatchWorkOrderSchema,
   adminTimeCorrectionSchema,
+  adminCancelJobSchema,
+  adminReopenJobSchema,
   adminHistoryQuerySchema,
   adminMechanicCursorSchema,
   adminMechanicsQuerySchema,
@@ -965,12 +968,177 @@ export class AdminService {
     return parsed;
   }
 
+  async cancelJob(user: AuthUser, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(jobId)) throw new BadRequestException('Invalid Job id');
+    const parsed = adminCancelJobSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const preview = await this.prisma.workOrderJob.findUnique({ where: { id: jobId } });
+    if (!preview) throw new NotFoundException('Job not found');
+    const workOrderId = preview.workOrderId;
+    const operation = 'admin_cancel_job';
+    const payloadHash = idempotencyFingerprint({
+      jobId,
+      workOrderId,
+      reason: input.reason,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        this.assertMutableJobs(wo);
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const job = wo.jobs.find((item) => item.id === jobId);
+        if (!job) throw new NotFoundException('Job not found');
+        if (job.status !== JobStatus.to_do) {
+          throw new BadRequestException('Job is not in To Do status');
+        }
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: { version: { increment: 1 } },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await tx.workOrderJob.update({
+          where: { id: jobId },
+          data: {
+            status: JobStatus.cancelled,
+            cancelledAt: new Date(),
+            cancelledReason: input.reason,
+          },
+        });
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.JOB_CANCELLED,
+          entityType: 'work_order_job',
+          entityId: jobId,
+          userId: user.id,
+          previousValue: { status: job.status, displayName: job.displayName },
+          newValue: { status: JobStatus.cancelled, reason: input.reason },
+          relevantValue: { action: 'job_cancelled', reason: input.reason, displayName: job.displayName },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  async reopenJob(user: AuthUser, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(jobId)) throw new BadRequestException('Invalid Job id');
+    const parsed = adminReopenJobSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const preview = await this.prisma.workOrderJob.findUnique({ where: { id: jobId } });
+    if (!preview) throw new NotFoundException('Job not found');
+    const workOrderId = preview.workOrderId;
+    const operation = 'admin_reopen_job';
+    const payloadHash = idempotencyFingerprint({
+      jobId,
+      workOrderId,
+      reason: input.reason,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        this.assertMutableJobs(wo);
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const job = wo.jobs.find((item) => item.id === jobId);
+        if (!job) throw new NotFoundException('Job not found');
+        if (job.status !== JobStatus.cancelled) {
+          throw new BadRequestException('Job is not cancelled');
+        }
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: { version: { increment: 1 } },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await tx.workOrderJob.update({
+          where: { id: jobId },
+          data: {
+            status: JobStatus.to_do,
+            cancelledAt: null,
+            cancelledReason: null,
+          },
+        });
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.MANAGER_CORRECTION,
+          entityType: 'work_order_job',
+          entityId: jobId,
+          userId: user.id,
+          previousValue: { status: job.status, displayName: job.displayName },
+          newValue: { status: JobStatus.to_do, reason: input.reason },
+          relevantValue: { action: 'job_reopened', reason: input.reason, displayName: job.displayName },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
   private assertAssignableOpenWorkOrder(wo: DetailRow) {
     if (wo.primaryCategory.name === 'PM') {
       throw new BadRequestException('PM Work Orders can only be assigned to their creator');
     }
     if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
       throw new BadRequestException('Cannot change assignments on a closed Work Order');
+    }
+  }
+
+  private assertMutableJobs(wo: DetailRow) {
+    if (wo.primaryCategory.name === 'PM') {
+      throw new BadRequestException('PM Work Orders do not use jobs');
+    }
+    if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
+      throw new BadRequestException('Cannot change Jobs on a closed Work Order');
     }
   }
 
