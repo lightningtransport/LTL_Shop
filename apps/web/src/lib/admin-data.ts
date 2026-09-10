@@ -15,6 +15,8 @@ import type {
   ReadinessAssessmentDto,
   ReadinessRequirementOutcome,
   ReadinessRequirementType,
+  AdminCatalogCategoryDetailDto,
+  AdminCatalogCategorySummaryDto,
   YardOperationsPageDto,
 } from '@ltl-shop/shared';
 import { apiFetch } from './api';
@@ -85,6 +87,14 @@ export function useAdminYardOperations(query: string) {
 
 export function useAdminTruck(id: string) {
   return useSWR<AdminTruckDetailDto>(id ? `/api/admin/trucks/${id}` : null, { dedupingInterval: 10_000 });
+}
+
+export function useAdminCatalogCategories() {
+  return useSWR<AdminCatalogCategorySummaryDto[]>('/api/admin/catalog/categories', { dedupingInterval: 30_000 });
+}
+
+export function useAdminCatalogCategory(id: string) {
+  return useSWR<AdminCatalogCategoryDetailDto>(id ? `/api/admin/catalog/categories/${id}` : null, { dedupingInterval: 30_000 });
 }
 
 export function useAdminTrucks(query: string) {

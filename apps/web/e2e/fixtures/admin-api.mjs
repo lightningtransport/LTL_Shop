@@ -118,6 +118,66 @@ createServer(async (request, response) => {
     json(response, 403, { message: 'You do not have access to Shop Admin.' });
     return;
   }
+  if (request.url === '/api/admin/catalog/categories') {
+    json(response, 200, [
+      {
+        id: '00000000-0000-4000-8000-000000000301',
+        name: 'Brakes',
+        status: 'active',
+        sortOrder: 1,
+        activeJobCount: 2,
+        inactiveJobCount: 1,
+        aliasCount: 3,
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000302',
+        name: 'Suspension',
+        status: 'inactive',
+        sortOrder: 2,
+        activeJobCount: 0,
+        inactiveJobCount: 1,
+        aliasCount: 0,
+      },
+    ]);
+    return;
+  }
+  if (request.url?.startsWith('/api/admin/catalog/categories/')) {
+    const id = request.url.slice('/api/admin/catalog/categories/'.length).split('?')[0];
+    if (id === '00000000-0000-4000-8000-000000000301') {
+      json(response, 200, {
+        id,
+        name: 'Brakes',
+        status: 'active',
+        sortOrder: 1,
+        activeJobCount: 2,
+        inactiveJobCount: 1,
+        aliasCount: 3,
+        jobs: [
+          {
+            id: '00000000-0000-4000-8000-000000000801',
+            displayName: 'Inspect brake chamber',
+            status: 'active',
+            aliases: ['Brake chamber', 'Chamber'],
+          },
+          {
+            id: '00000000-0000-4000-8000-000000000802',
+            displayName: 'Replace brake pads',
+            status: 'active',
+            aliases: [],
+          },
+          {
+            id: '00000000-0000-4000-8000-000000000803',
+            displayName: 'Retired brake job',
+            status: 'inactive',
+            aliases: ['Old brakes'],
+          },
+        ],
+      });
+      return;
+    }
+    json(response, 404, { message: 'Category not found' });
+    return;
+  }
   if (request.url === '/api/admin/dashboard') {
     json(response, 200, {
       generatedAt: '2026-09-06T18:30:00.000Z',

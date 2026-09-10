@@ -120,6 +120,16 @@ export class AdminController {
     return this.admin.listHistory(query);
   }
 
+  @Get('catalog/categories')
+  catalogCategories() {
+    return this.admin.listCatalogCategories();
+  }
+
+  @Get('catalog/categories/:id')
+  catalogCategory(@Param('id') id: string) {
+    return this.admin.catalogCategoryDetail(id);
+  }
+
   @Get('trucks')
   listTrucks(@Query() query: Record<string, unknown>) {
     return this.admin.listTrucks(query);

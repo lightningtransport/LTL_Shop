@@ -188,6 +188,8 @@ test.describe('Shop Admin Phase 2A', () => {
     expect(history?.status()).toBe(403);
     const trucks = await page.goto('/admin/trucks');
     expect(trucks?.status()).toBe(403);
+    const catalog = await page.goto('/admin/catalog');
+    expect(catalog?.status()).toBe(403);
   });
 
   test('manager opens read-only Mechanics, History, and Trucks', async ({ page }) => {
@@ -208,6 +210,20 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('T-101').first()).toBeVisible();
     await expect(page.getByText('WO-0101').first()).toBeVisible();
     await expect(page.getByText('No open Work Order').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Job Catalog' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/catalog$/);
+    await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
+    await expect(page.getByText('Brakes').first()).toBeVisible();
+    await expect(page.getByText('Suspension').first()).toBeVisible();
+    await expect(page.getByText('Inactive').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Brakes' }).click();
+    await expect(page).toHaveURL(/\/admin\/catalog\/categories\/00000000-0000-4000-8000-000000000301$/);
+    await expect(page.getByRole('heading', { name: 'Brakes' })).toBeVisible();
+    await expect(page.getByText('Inspect brake chamber')).toBeVisible();
+    await expect(page.getByText('Brake chamber, Chamber')).toBeVisible();
+    await expect(page.getByText('Retired brake job')).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
   });
 });

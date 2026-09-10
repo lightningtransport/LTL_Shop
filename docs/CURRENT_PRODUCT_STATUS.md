@@ -72,12 +72,17 @@ PRD.
 - The Admin dashboard offers capability-filtered Workspaces cards for Standard
   Mechanic and PM Mechanic. Work performed there retains the signed-in user's
   identity; it is not impersonation.
-- Catalog management and Ninox data remain deferred. Truck Detail and Yard
-  Operations are implemented as the scoped readiness slice described below.
-  `/admin/trucks` lists Shop trucks, any open Work Order, and operational
-  status derived from service-status events. Off Duty is not inferred and has
-  no mutation yet. `/admin/mechanics` and `/admin/history` are
-  read-only manager views.
+- `/admin/catalog` is a read-only Job Catalog for managers. It lists Categories
+  with active/inactive Job counts and alias counts, including inactive
+  Categories and Jobs. `/admin/catalog/categories/[id]` shows Jobs and aliases.
+  There are no create, rename, deactivate, or Custom Job mapping actions.
+  Mechanic catalog APIs remain active-only. Catalog writes, Custom Jobs review,
+  Waiting by Reason, and Job Performance stay deferred. Ninox data remains
+  deferred. Truck Detail and Yard Operations are implemented as the scoped
+  readiness slice described below. `/admin/trucks` lists Shop trucks, any open
+  Work Order, and operational status derived from service-status events. Off
+  Duty is not inferred and has no mutation yet. `/admin/mechanics` and
+  `/admin/history` are read-only manager views.
 
 ### Yard Operations and readiness Phase 1
 
@@ -203,8 +208,8 @@ These are deliberately outside the current implementation:
 3. Remove the compatibility-only `pmAuthorized` column after production
    stability is confirmed; a general permission-management UI remains deferred.
 4. Off Duty entry/exit and downtime metrics stay deferred. Keep Yard/readiness
-   mutations scoped to `yard.operations.manage`. Do not invent Catalog
-   management.
+   mutations scoped to `yard.operations.manage`. Do not invent Catalog writes,
+   Custom Job mapping, or Job Performance until those contracts exist.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.
 6. Keep release discipline: merge only after CI and both Vercel deployments

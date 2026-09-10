@@ -32,6 +32,8 @@ import {
   adminWorkOrderCursorSchema,
   adminWorkOrdersQuerySchema,
   type AdminDashboardDto,
+  type AdminCatalogCategoryDetailDto,
+  type AdminCatalogCategorySummaryDto,
   type AdminMechanicCursor,
   type AdminMechanicDetailDto,
   type AdminMechanicSummaryDto,
@@ -44,6 +46,7 @@ import {
   type AdminWorkOrderDetailDto,
   type AdminWorkOrderSummaryDto,
   type AdminWorkOrdersQuery,
+  CatalogStatus,
   TruckOperationalStatus,
 } from '@ltl-shop/shared';
 import { ActivityLogService } from '../activity-log/activity-log.service';
@@ -277,6 +280,51 @@ export class AdminService {
     return {
       items: pageRows.map(toTruckSummary),
       nextCursor: hasNext ? this.encodeTruckCursor(pageRows[pageRows.length - 1], query) : null,
+    };
+  }
+
+  async listCatalogCategories(): Promise<AdminCatalogCategorySummaryDto[]> {
+    const rows = await this.prisma.jobCategory.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      include: {
+        catalogJobs: {
+          select: {
+            status: true,
+            _count: { select: { aliases: true } },
+          },
+        },
+      },
+    });
+    return rows.map(toCatalogCategorySummary);
+  }
+
+  async catalogCategoryDetail(id: string): Promise<AdminCatalogCategoryDetailDto> {
+    if (!isUuid(id)) throw new BadRequestException('Invalid Category id');
+    const row = await this.prisma.jobCategory.findUnique({
+      where: { id },
+      include: {
+        catalogJobs: {
+          include: { aliases: { select: { aliasText: true }, orderBy: { aliasText: 'asc' } } },
+          orderBy: [{ status: 'asc' }, { displayName: 'asc' }],
+        },
+      },
+    });
+    if (!row) throw new NotFoundException('Category not found');
+    const summary = toCatalogCategorySummary({
+      ...row,
+      catalogJobs: row.catalogJobs.map((job) => ({
+        status: job.status,
+        _count: { aliases: job.aliases.length },
+      })),
+    });
+    return {
+      ...summary,
+      jobs: row.catalogJobs.map((job) => ({
+        id: job.id,
+        displayName: job.displayName,
+        status: job.status as CatalogStatus,
+        aliases: job.aliases.map((alias) => alias.aliasText),
+      })),
     };
   }
 
@@ -1629,6 +1677,24 @@ function derivedOperationalStatus(events: { status: string; occurredAt: Date }[]
     return { status: TruckOperationalStatus.OFF_DUTY, at: latest.occurredAt.toISOString() };
   }
   return { status: TruckOperationalStatus.UNKNOWN, at: null };
+}
+
+function toCatalogCategorySummary(row: {
+  id: string;
+  name: string;
+  status: string;
+  sortOrder: number;
+  catalogJobs: { status: string; _count: { aliases: number } }[];
+}): AdminCatalogCategorySummaryDto {
+  return {
+    id: row.id,
+    name: row.name,
+    status: row.status as CatalogStatus,
+    sortOrder: row.sortOrder,
+    activeJobCount: row.catalogJobs.filter((job) => job.status === 'active').length,
+    inactiveJobCount: row.catalogJobs.filter((job) => job.status === 'inactive').length,
+    aliasCount: row.catalogJobs.reduce((total, job) => total + job._count.aliases, 0),
+  };
 }
 
 function mapPause(pause: {
