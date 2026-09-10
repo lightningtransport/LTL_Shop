@@ -508,12 +508,6 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
     user: { findFirst: vi.fn() },
     mechanicAssignment: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     workOrderMutation: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
-    ...extra,
-  };
-}
-
-function cancelTx(wo: ReturnType<typeof detailRow>, extra: Record<string, unknown> = {}) {
-  return assignmentTx(wo, {
     workSession: {
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
@@ -525,5 +519,9 @@ function cancelTx(wo: ReturnType<typeof detailRow>, extra: Record<string, unknow
       update: vi.fn(),
     },
     ...extra,
-  });
+  };
+}
+
+function cancelTx(wo: ReturnType<typeof detailRow>, extra: Record<string, unknown> = {}) {
+  return assignmentTx(wo, extra);
 }
