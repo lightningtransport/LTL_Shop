@@ -171,6 +171,28 @@ export function patchAdminWorkOrder(
   });
 }
 
+export function cancelAdminJob(
+  jobId: string,
+  input: { reason: string; expectedVersion: number },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/jobs/${jobId}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
+export function reopenAdminJob(
+  jobId: string,
+  input: { reason: string; expectedVersion: number },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/jobs/${jobId}/reopen`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
 export function startAdminTruckAssessment(truckId: string, idempotencyKey = adminMutationIdempotencyKey()) {
   return apiFetch<{ assessment: ReadinessAssessmentDto; linkedWorkOrderId: string | null }>(`/api/admin/trucks/${truckId}/readiness-assessments`, {
     method: 'POST',

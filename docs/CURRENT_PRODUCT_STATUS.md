@@ -54,8 +54,11 @@ PRD.
   allowed fields: `priority` and `notes`. Empty notes store as null. PM
   priority stays `normal`. Closed Work Orders stay read-only for these fields.
   Field edits use versioning and idempotency and write `priority_changed`
-  and/or `notes_updated`. This is not Off Duty, Catalog, or Job-level
-  assignment, cancel, or reopen.
+  and/or `notes_updated`. On an open Standard Work Order, managers can cancel a
+  to-do Job or reopen a cancelled Job with a required reason. Cancel writes
+  `job_cancelled`; reopen writes `manager_correction` with `job_reopened`.
+  Completed Jobs stay as they are. PM Work Orders have no Jobs. This is not Off
+  Duty, Catalog, Job-level assignment, or time corrections.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
@@ -191,9 +194,9 @@ These are deliberately outside the current implementation:
    Safari mobile device.
 3. Remove the compatibility-only `pmAuthorized` column after production
    stability is confirmed; a general permission-management UI remains deferred.
-4. Continue Shop Admin Fase 3 with Job-level cancel/reopen and time
-   corrections; keep Yard/readiness mutations scoped to
-   `yard.operations.manage`. Do not invent Off Duty or Catalog management.
+4. Continue Shop Admin Fase 3 with time corrections; keep Yard/readiness
+   mutations scoped to `yard.operations.manage`. Do not invent Off Duty or
+   Catalog management.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.
 6. Keep release discipline: merge only after CI and both Vercel deployments

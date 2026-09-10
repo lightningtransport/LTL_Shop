@@ -16,6 +16,8 @@ import {
   adminCompleteWorkOrderSchema,
   adminReopenWorkOrderSchema,
   adminPatchWorkOrderSchema,
+  adminCancelJobSchema,
+  adminReopenJobSchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
   adminYardOperationsQuerySchema,
@@ -163,6 +165,24 @@ describe('shared contracts', () => {
     }).success).toBe(false);
     expect(adminPatchWorkOrderSchema.safeParse({
       notes: 'Check the leak again',
+    }).success).toBe(false);
+    expect(adminCancelJobSchema.safeParse({
+      reason: 'Not needed',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000008',
+    }).success).toBe(true);
+    expect(adminCancelJobSchema.safeParse({
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000008',
+    }).success).toBe(false);
+    expect(adminReopenJobSchema.safeParse({
+      reason: 'Job is still required',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000009',
+    }).success).toBe(true);
+    expect(adminReopenJobSchema.safeParse({
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000009',
     }).success).toBe(false);
   });
 
