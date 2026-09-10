@@ -17,6 +17,7 @@ import {
   adminCancelWorkOrderSchema,
   adminCompleteWorkOrderSchema,
   adminReopenWorkOrderSchema,
+  adminPatchWorkOrderSchema,
   adminHistoryQuerySchema,
   adminMechanicCursorSchema,
   adminMechanicsQuerySchema,
@@ -729,6 +730,100 @@ export class AdminService {
           newValue: { status: nextStatus, reason: input.reason },
           relevantValue: { action: 'work_order_reopened', reason: input.reason },
         });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  async patchWorkOrder(user: AuthUser, workOrderId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    const parsed = adminPatchWorkOrderSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const nextNotes = input.notes === undefined ? undefined : (input.notes?.trim() || null);
+    const operation = 'admin_patch_work_order';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      expectedVersion: input.expectedVersion,
+      priority: input.priority ?? null,
+      notes: nextNotes ?? null,
+      notesProvided: input.notes !== undefined,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
+          throw new BadRequestException('Cannot update fields on a closed Work Order');
+        }
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        if (
+          wo.primaryCategory.name === 'PM'
+          && input.priority !== undefined
+          && input.priority !== (wo.priority as SharedPriority)
+        ) {
+          throw new BadRequestException('PM Work Order priority cannot be changed');
+        }
+        const priorityChanged = input.priority !== undefined && input.priority !== (wo.priority as SharedPriority);
+        const notesChanged = nextNotes !== undefined && nextNotes !== wo.notes;
+        if (!priorityChanged && !notesChanged) {
+          throw new BadRequestException('No allowed fields changed');
+        }
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: {
+            ...(priorityChanged ? { priority: input.priority as Priority } : {}),
+            ...(notesChanged ? { notes: nextNotes } : {}),
+            version: { increment: 1 },
+          },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        if (priorityChanged) {
+          await this.activity.log(tx, {
+            workOrderId,
+            eventType: SharedActivityEventType.PRIORITY_CHANGED,
+            entityType: 'work_order',
+            entityId: workOrderId,
+            userId: user.id,
+            previousValue: { priority: wo.priority },
+            newValue: { priority: input.priority },
+          });
+        }
+        if (notesChanged) {
+          await this.activity.log(tx, {
+            workOrderId,
+            eventType: SharedActivityEventType.NOTES_UPDATED,
+            entityType: 'work_order',
+            entityId: workOrderId,
+            userId: user.id,
+            previousValue: { notes: wo.notes },
+            newValue: { notes: nextNotes },
+          });
+        }
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,

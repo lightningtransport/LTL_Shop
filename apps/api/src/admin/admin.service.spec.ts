@@ -671,6 +671,115 @@ describe('AdminService', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000001005',
     })).resolves.toEqual(stored);
   });
+
+  it('patches allowed Admin fields on open Work Orders', async () => {
+    const manager = {
+      id: '00000000-0000-4000-8000-000000000002',
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS],
+      supabaseAuthId: null,
+    };
+    const body = {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001101',
+      priority: 'high' as const,
+      notes: 'Check the leak again',
+    };
+    const open = detailRow({ status: 'in_progress', priority: 'normal', notes: null });
+    const activity = { log: vi.fn() };
+    const tx = assignmentTx(open);
+    tx.workOrder.findUnique
+      .mockResolvedValueOnce(open)
+      .mockResolvedValueOnce(open)
+      .mockResolvedValueOnce(detailRow({ status: 'in_progress', version: 2, priority: 'high', notes: 'Check the leak again' }));
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, activity as never);
+
+    await expect(service.patchWorkOrder(manager, open.id, body)).resolves.toMatchObject({
+      priority: 'high',
+      notes: 'Check the leak again',
+      version: 2,
+    });
+    expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ priority: 'high', notes: 'Check the leak again' }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.PRIORITY_CHANGED }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.NOTES_UPDATED }));
+
+    const pm = detailRow({
+      status: 'created',
+      priority: 'normal',
+      notes: null,
+      primaryCategory: { ...baseRow.primaryCategory, name: 'PM' },
+    });
+    const pmTx = assignmentTx(pm);
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof pmTx) => unknown) => callback(pmTx));
+    await expect(service.patchWorkOrder(manager, pm.id, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001102',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    pmTx.workOrder.findUnique
+      .mockResolvedValueOnce(pm)
+      .mockResolvedValueOnce(pm)
+      .mockResolvedValueOnce(detailRow({
+        status: 'created',
+        version: 2,
+        priority: 'normal',
+        notes: 'PM note',
+        primaryCategory: { ...baseRow.primaryCategory, name: 'PM' },
+      }));
+    await expect(service.patchWorkOrder(manager, pm.id, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001103',
+      notes: 'PM note',
+    })).resolves.toMatchObject({ notes: 'PM note' });
+
+    const closed = assignmentTx(detailRow({ status: 'completed' }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof closed) => unknown) => callback(closed));
+    await expect(service.patchWorkOrder(manager, open.id, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001104',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    const unchanged = assignmentTx(detailRow({ status: 'created', priority: 'normal', notes: 'Same' }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof unchanged) => unknown) => callback(unchanged));
+    await expect(service.patchWorkOrder(manager, open.id, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001105',
+      priority: 'normal',
+      notes: 'Same',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    const conflict = assignmentTx(detailRow({ status: 'created', version: 3 }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof conflict) => unknown) => callback(conflict));
+    await expect(service.patchWorkOrder(manager, open.id, body)).rejects.toBeInstanceOf(ConflictException);
+
+    const stored = { id: baseRow.id, priority: 'high', notes: 'Check the leak again', version: 2 };
+    prisma.workOrderMutation.findUnique.mockResolvedValueOnce({
+      workOrderId: baseRow.id,
+      operation: 'admin_patch_work_order',
+      payloadHash: idempotencyFingerprint({
+        workOrderId: baseRow.id,
+        expectedVersion: 1,
+        priority: 'high',
+        notes: 'Check the leak again',
+        notesProvided: true,
+      }),
+      actorId: manager.id,
+      result: stored,
+    });
+    const replaying = createService(prisma);
+    await expect(replaying.patchWorkOrder(manager, baseRow.id, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001106',
+    })).resolves.toEqual(stored);
+  });
 });
 
 function detailRow(overrides: Record<string, unknown> = {}) {

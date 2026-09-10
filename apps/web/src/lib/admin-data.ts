@@ -160,6 +160,17 @@ export function reopenAdminWorkOrder(
   });
 }
 
+export function patchAdminWorkOrder(
+  workOrderId: string,
+  input: { expectedVersion: number; priority?: AdminWorkOrderDetailDto['priority']; notes?: string | null },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
 export function startAdminTruckAssessment(truckId: string, idempotencyKey = adminMutationIdempotencyKey()) {
   return apiFetch<{ assessment: ReadinessAssessmentDto; linkedWorkOrderId: string | null }>(`/api/admin/trucks/${truckId}/readiness-assessments`, {
     method: 'POST',

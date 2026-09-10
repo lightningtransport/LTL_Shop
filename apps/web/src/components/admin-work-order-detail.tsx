@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { AppCapability, OPEN_WORK_ORDER_STATUSES } from '@ltl-shop/shared';
+import { useEffect, useMemo, useState } from 'react';
+import { AppCapability, OPEN_WORK_ORDER_STATUSES, Priority } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, completeAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminWorkOrder, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, completeAdminWorkOrder, patchAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminWorkOrder, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -30,6 +30,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [selectedMechanic, setSelectedMechanic] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [reopenReason, setReopenReason] = useState('');
+  const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
+  const [draftNotes, setDraftNotes] = useState('');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const { data: categoryData } = useCategories(true);
@@ -39,6 +41,12 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     () => (mechanicPages?.flatMap((page) => page.items) ?? []).filter((mechanic) => mechanic.active && mechanic.capabilities.includes(AppCapability.MECHANIC_STANDARD)),
     [mechanicPages],
   );
+
+  useEffect(() => {
+    if (!data) return;
+    setDraftPriority(data.priority);
+    setDraftNotes(data.notes ?? '');
+  }, [data]);
 
   if (isLoading) return <PageSkeleton label={messages.workOrdersTitle} />;
   if (error instanceof ApiError && error.status === 404) return <NotFound messages={messages} />;
@@ -81,6 +89,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         <div className="flex gap-2"><PriorityBadge priority={data.priority} /><Badge variant="outline">{humanize(data.status)}</Badge></div>
       </div>
     </header>
+    {feedback ? <p className={feedback.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'} role="status">{feedback.message}</p> : null}
 
     <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]" aria-label={messages.operationalSummary}>
       <Card>
@@ -114,7 +123,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         <CardDescription>{canManageAssignments ? messages.assignmentsDescription : data.category.name === 'PM' ? messages.pmAssignmentsLocked : messages.closedAssignmentsLocked}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {feedback ? <p className={feedback.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'} role="status">{feedback.message}</p> : null}
         {activeMechanics.length ? (
           <ul className="divide-y rounded-xl border">
             {activeMechanics.map((mechanic) => (
@@ -261,6 +269,61 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </Card>
     ) : null}
 
+    {isOpen ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>{messages.fieldUpdatesTitle}</CardTitle>
+          <CardDescription>
+            {data.category.name === 'PM' ? `${messages.fieldUpdatesDescription} ${messages.fieldUpdatesPmPriorityLocked}` : messages.fieldUpdatesDescription}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void runMutation('fields', messages.fieldUpdatesSuccess, async () => {
+                await patchAdminWorkOrder(data.id, {
+                  expectedVersion: data.version,
+                  priority: draftPriority,
+                  notes: draftNotes.trim() || null,
+                });
+              }, (failure) => fieldUpdateError(failure, messages));
+            }}
+          >
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">{messages.priority}</span>
+              <Select
+                aria-label={messages.priority}
+                value={draftPriority}
+                disabled={data.category.name === 'PM' || Boolean(pendingAction)}
+                onChange={(event) => setDraftPriority(event.target.value as Priority)}
+              >
+                <option value={Priority.LOW}>{messages.lowPriority}</option>
+                <option value={Priority.NORMAL}>{messages.normalPriority}</option>
+                <option value={Priority.HIGH}>{messages.highPriority}</option>
+                <option value={Priority.CRITICAL}>{messages.criticalPriority}</option>
+              </Select>
+            </label>
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">{messages.notes}</span>
+              <Textarea
+                aria-label={messages.workOrderNotes}
+                value={draftNotes}
+                onChange={(event) => setDraftNotes(event.target.value)}
+                maxLength={2000}
+              />
+            </label>
+            <Button type="submit" disabled={Boolean(pendingAction)}>
+              {messages.updatePriorityAndNotes}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    ) : (
+      <Card><CardHeader><CardTitle>{messages.notes}</CardTitle></CardHeader><CardContent>{data.notes ? <p className="whitespace-pre-wrap text-sm">{data.notes}</p> : <CompactEmpty>{messages.noNotes}</CompactEmpty>}</CardContent></Card>
+    )}
+
     <Card><CardHeader><CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle></CardHeader><CardContent>{data.jobs.length ? <ul className="divide-y">{data.jobs.map((job) => <li key={job.id} className="flex items-start justify-between gap-3 py-3 first:pt-0"><div><p className="font-medium">{job.displayName}</p><p className="text-xs text-muted-foreground">{job.category.name}</p>{job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}</div><Badge variant={job.status === 'completed' ? 'success' : 'outline'}>{humanize(job.status)}</Badge></li>)}</ul> : <EmptyState>{messages.noJobs}</EmptyState>}</CardContent></Card>
 
     <Card>
@@ -274,7 +337,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
     </section>
     <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{humanize(entry.eventType)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name} · {entry.entityType}</p>{entry.relevantValue !== null ? <pre className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs">{JSON.stringify(entry.relevantValue)}</pre> : null}</li>)}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</CardContent></Card>
-    <Card><CardHeader><CardTitle>{messages.notes}</CardTitle></CardHeader><CardContent>{data.notes ? <p className="whitespace-pre-wrap text-sm">{data.notes}</p> : <CompactEmpty>{messages.noNotes}</CompactEmpty>}</CardContent></Card>
   </div>;
 }
 
@@ -305,6 +367,13 @@ function reopenError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.reopenWorkOrderGenericError;
+}
+function fieldUpdateError(errorValue: unknown, messages: AdminMessages) {
+  if (errorValue instanceof ApiError) {
+    if (errorValue.status === 400) return messages.fieldUpdatesBadRequest;
+    if (errorValue.status === 409) return messages.assignmentConflict;
+  }
+  return messages.fieldUpdatesGenericError;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function CompactEmpty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>; }
