@@ -1,0 +1,18 @@
+---
+description: Always run local tests; do not skip because node_modules looks incomplete
+alwaysApply: true
+---
+
+# Local verification
+
+Agent shells often set `NODE_ENV=production`, so a bare `npm install` omits `vitest` and `tsx`. That is not a missing `node_modules` tree. Never tell the user tests were skipped because `node_modules` is missing.
+
+If `node_modules/.bin/vitest` is absent, run `NODE_ENV=development npm install --include=dev`.
+
+This workspace path contains colons. Do not put `$PWD/node_modules/.bin` on `PATH` (colons split PATH). Invoke binaries with a quoted path:
+
+```bash
+NODE_ENV=test "./node_modules/.bin/vitest" run
+```
+
+Run the Vitest (and Playwright, when UI/e2e changed) for the slice you touched. CI remains the merge gate; it does not replace local runs when the bins exist.
