@@ -1,13 +1,13 @@
 # Migración: una Category por Work Order → Categories por Job
 
-## Estado inicial y destino
+## Estado inicial, destino y estado implementado
 
 ```text
-CURRENT
+AUDIT / LEGACY (histórico)
 Work Order(primaryCategory)
 └── Jobs restringidos a primaryCategory
 
-TARGET
+TARGET IMPLEMENTADO / CURRENT
 Work Order(primaryCategory compatible/legacy)
 ├── Job(category A)
 ├── Job(category B)
@@ -15,6 +15,12 @@ Work Order(primaryCategory compatible/legacy)
 ```
 
 No se requiere crear otra Work Order cuando se descubre trabajo de otra Category durante la misma intervención.
+
+Standard permite Categories no-PM distintas por Job en Create y Add Job.
+`primaryCategoryId` permanece requerido como Initial/Primary Category; no se
+elimina ni se convierte a nullable en esta iniciativa. La evidencia de UI cubre
+creación a 390×844 y preservación de Jobs a 320×568 en Chromium y WebKit. Un
+smoke con sesión de producción sigue pendiente detrás de Vercel SSO.
 
 ## Invariantes a preservar
 
@@ -69,9 +75,9 @@ Nunca sobrescribir silenciosamente una Category contradictoria. Conservar eviden
   como compatibilidad de presentación mientras los consumidores migran.
 - No reutilizar `primaryCategory` como Category implícita en nuevos clientes salvo compatibilidad declarada.
 
-## Paso 4 — Cambio de validación
+## Paso 4 — Cambio de validación (CURRENT)
 
-Retirar exclusivamente la regla:
+Se retiró exclusivamente la regla:
 
 ```text
 job.categoryId MUST equal workOrder.primaryCategoryId
@@ -140,8 +146,8 @@ PM actualmente crea una WO ya iniciada sin Category, Jobs, collaborators, priori
 - Si se usa flag, el rollback deshabilita creación multicategoría pero sigue leyendo datos ya creados.
 - Nunca hacer rollback destruyendo Jobs de otras Categories.
 - Preservar el advisory lock transaccional por Truck y la validación de
-  actor/payload ya implementados en Create. Add Job debe sumar
-  `expectedVersion` e `idempotencyKey` antes de habilitar writers.
+  actor/payload en Create. Add Job conserva `expectedVersion` e
+  `idempotencyKey`.
 - Antes de retirar compatibilidad, confirmar que todos los clientes y reportes consumen Category por Job.
 
 ## No incluido
