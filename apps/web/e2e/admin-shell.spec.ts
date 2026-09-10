@@ -74,6 +74,9 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
     await page.getByRole('button', { name: 'Confirm completion' }).click();
     await expect(page.getByText('Work Order completed.')).toBeVisible();
+    await page.getByLabel('Reason for reopening').fill('More work found');
+    await page.getByRole('button', { name: 'Confirm reopen' }).click();
+    await expect(page.getByText('Work Order reopened.')).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
 
     await page.setViewportSize({ width: 1440, height: 700 });

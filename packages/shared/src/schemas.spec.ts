@@ -14,6 +14,7 @@ import {
   adminAddWorkOrderMechanicSchema,
   adminCancelWorkOrderSchema,
   adminCompleteWorkOrderSchema,
+  adminReopenWorkOrderSchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
   adminYardOperationsQuerySchema,
@@ -130,6 +131,15 @@ describe('shared contracts', () => {
     }).success).toBe(true);
     expect(adminCompleteWorkOrderSchema.safeParse({
       idempotencyKey: '00000000-0000-4000-8000-000000000005',
+    }).success).toBe(false);
+    expect(adminReopenWorkOrderSchema.safeParse({
+      reason: 'More work found',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000006',
+    }).success).toBe(true);
+    expect(adminReopenWorkOrderSchema.safeParse({
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000006',
     }).success).toBe(false);
   });
 

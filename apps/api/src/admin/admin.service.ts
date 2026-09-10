@@ -16,6 +16,7 @@ import {
   adminAddWorkOrderMechanicSchema,
   adminCancelWorkOrderSchema,
   adminCompleteWorkOrderSchema,
+  adminReopenWorkOrderSchema,
   adminHistoryQuerySchema,
   adminMechanicCursorSchema,
   adminMechanicsQuerySchema,
@@ -648,6 +649,85 @@ export class AdminService {
             totalActiveLaborMs: totals.totalActiveLaborMs,
             totalWaitingMs: totals.totalWaitingMs,
           },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  async reopenWorkOrder(user: AuthUser, workOrderId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    const parsed = adminReopenWorkOrderSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const operation = 'admin_reopen_work_order';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      reason: input.reason,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        if ((OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
+          throw new BadRequestException('Cannot reopen an open Work Order');
+        }
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const otherOpen = await tx.workOrder.findFirst({
+          where: {
+            truckId: wo.truckId,
+            id: { not: workOrderId },
+            status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] },
+          },
+        });
+        if (otherOpen) {
+          throw new BadRequestException('Truck already has an open Work Order.');
+        }
+        const nextStatus = wo.startedAt ? WorkOrderStatus.in_progress : WorkOrderStatus.created;
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: {
+            status: nextStatus,
+            completedAt: null,
+            completedById: null,
+            version: { increment: 1 },
+          },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.MANAGER_CORRECTION,
+          entityType: 'work_order',
+          entityId: workOrderId,
+          userId: user.id,
+          previousValue: { status: wo.status },
+          newValue: { status: nextStatus, reason: input.reason },
+          relevantValue: { action: 'work_order_reopened', reason: input.reason },
         });
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,

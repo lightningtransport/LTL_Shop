@@ -140,6 +140,10 @@ export const adminCancelWorkOrderSchema = adminMutationMetaSchema.extend({
 
 export const adminCompleteWorkOrderSchema = adminMutationMetaSchema;
 
+export const adminReopenWorkOrderSchema = adminMutationMetaSchema.extend({
+  reason: z.string().trim().min(1).max(1000),
+});
+
 export const startReadinessAssessmentSchema = z.object({
   idempotencyKey: z.string().uuid(),
 });
@@ -258,6 +262,7 @@ export type AdminAddWorkOrderMechanicInput = z.infer<typeof adminAddWorkOrderMec
 export type AdminRemoveWorkOrderMechanicInput = z.infer<typeof adminRemoveWorkOrderMechanicSchema>;
 export type AdminCancelWorkOrderInput = z.infer<typeof adminCancelWorkOrderSchema>;
 export type AdminCompleteWorkOrderInput = z.infer<typeof adminCompleteWorkOrderSchema>;
+export type AdminReopenWorkOrderInput = z.infer<typeof adminReopenWorkOrderSchema>;
 export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessmentSchema>;
 export type UpdateReadinessRequirementInput = z.infer<typeof updateReadinessRequirementSchema>;
 export type MarkReadinessReadyInput = z.infer<typeof markReadinessReadySchema>;
