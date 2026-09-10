@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  AppCapability,
   Prisma,
   Priority,
   WorkOrderStatus,
@@ -12,9 +13,16 @@ import {
   PauseReason as SharedPauseReason,
   Priority as SharedPriority,
   WorkOrderStatus as SharedWorkOrderStatus,
+  adminHistoryQuerySchema,
+  adminMechanicCursorSchema,
+  adminMechanicsQuerySchema,
   adminWorkOrderCursorSchema,
   adminWorkOrdersQuerySchema,
   type AdminDashboardDto,
+  type AdminMechanicCursor,
+  type AdminMechanicDetailDto,
+  type AdminMechanicSummaryDto,
+  type AdminMechanicsQuery,
   type AdminPage,
   type AdminWorkOrderCursor,
   type AdminWorkOrderDetailDto,
@@ -26,6 +34,47 @@ import { toTruckDto } from '../trucks/trucks.service';
 import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isUuid(id: string) {
+  return UUID_RE.test(id);
+}
+
+const mechanicCapabilityWhere: Prisma.UserWhereInput = {
+  capabilities: {
+    some: { capability: { in: [AppCapability.MECHANIC_STANDARD, AppCapability.MECHANIC_PM] } },
+  },
+};
+
+const mechanicAssignmentInclude = {
+  workOrder: {
+    select: {
+      id: true,
+      displayId: true,
+      status: true,
+      completedAt: true,
+      truck: { select: { truckNumber: true } },
+      primaryCategory: { select: { name: true } },
+    },
+  },
+} as const;
+
+const mechanicListInclude = {
+  capabilities: { select: { capability: true } },
+  mechanicAssignments: {
+    where: { removedAt: null, workOrder: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } } },
+    include: mechanicAssignmentInclude,
+    orderBy: { addedAt: 'asc' as const },
+  },
+};
+
+const mechanicDetailInclude = {
+  capabilities: { select: { capability: true } },
+  mechanicAssignments: {
+    where: { removedAt: null },
+    include: mechanicAssignmentInclude,
+    orderBy: { addedAt: 'desc' as const },
+  },
+};
 
 const summaryInclude = {
   truck: true,
@@ -143,12 +192,61 @@ export class AdminService {
   }
 
   async detail(id: string): Promise<AdminWorkOrderDetailDto> {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
-      throw new BadRequestException('Invalid Work Order id');
-    }
+    if (!isUuid(id)) throw new BadRequestException('Invalid Work Order id');
     const row = await this.prisma.workOrder.findUnique({ where: { id }, include: detailInclude });
     if (!row) throw new NotFoundException('Work Order not found');
     return toAdminDetail(row);
+  }
+
+  async listMechanics(rawQuery: unknown): Promise<AdminPage<AdminMechanicSummaryDto>> {
+    const parsed = adminMechanicsQuerySchema.safeParse(rawQuery);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const query = parsed.data;
+    const cursor = query.cursor ? this.decodeMechanicCursor(query.cursor, query) : null;
+    const rows = await this.prisma.user.findMany({
+      where: this.buildMechanicWhere(query, cursor),
+      include: mechanicListInclude,
+      orderBy: [{ name: query.direction }, { id: query.direction }],
+      take: query.limit + 1,
+    });
+    const hasNext = rows.length > query.limit;
+    const pageRows = hasNext ? rows.slice(0, query.limit) : rows;
+    return {
+      items: pageRows.map(toMechanicSummary),
+      nextCursor: hasNext ? this.encodeMechanicCursor(pageRows[pageRows.length - 1], query) : null,
+    };
+  }
+
+  async mechanicDetail(id: string): Promise<AdminMechanicDetailDto> {
+    if (!isUuid(id)) throw new BadRequestException('Invalid Mechanic id');
+    const row = await this.prisma.user.findFirst({
+      where: { id, ...mechanicCapabilityWhere },
+      include: mechanicDetailInclude,
+    });
+    if (!row) throw new NotFoundException('Mechanic not found');
+    const completedJobCount = await this.prisma.workOrderJob.count({
+      where: { completedById: id, status: 'completed' },
+    });
+    return {
+      ...toMechanicSummary(row),
+      completedJobCount,
+      recentClosedWorkOrders: row.mechanicAssignments
+        .filter((assignment) => assignment.workOrder.status === 'completed' || assignment.workOrder.status === 'cancelled')
+        .slice(0, 10)
+        .map(toMechanicAssignment),
+    };
+  }
+
+  async listHistory(rawQuery: unknown): Promise<AdminPage<AdminWorkOrderSummaryDto>> {
+    const parsed = adminHistoryQuerySchema.safeParse(rawQuery);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const query = parsed.data;
+    return this.list({
+      ...query,
+      status: query.status ?? ['completed', 'cancelled'],
+      priority: undefined,
+      createdBefore: undefined,
+    });
   }
 
   private async getAttention(openWhere: Prisma.WorkOrderWhereInput) {
@@ -213,6 +311,39 @@ export class AdminService {
       ] });
     }
     return filters.length ? { AND: filters } satisfies Prisma.WorkOrderWhereInput : {};
+  }
+
+  private buildMechanicWhere(query: AdminMechanicsQuery, cursor: AdminMechanicCursor | null): Prisma.UserWhereInput {
+    const filters: Prisma.UserWhereInput[] = [mechanicCapabilityWhere];
+    if (query.search) {
+      const contains = { contains: query.search, mode: 'insensitive' as const };
+      filters.push({ OR: [{ name: contains }, { email: contains }] });
+    }
+    if (cursor) {
+      const comparison = query.direction === 'asc' ? 'gt' : 'lt';
+      filters.push({
+        OR: [
+          { name: { [comparison]: cursor.name } },
+          { name: cursor.name, id: { [comparison]: cursor.id } },
+        ],
+      });
+    }
+    return { AND: filters };
+  }
+
+  private decodeMechanicCursor(encoded: string, query: AdminMechanicsQuery) {
+    try {
+      const decoded: unknown = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+      const cursor = adminMechanicCursorSchema.parse(decoded);
+      if (cursor.direction !== query.direction) throw new Error('mismatch');
+      return cursor;
+    } catch {
+      throw new BadRequestException('Invalid or incompatible cursor');
+    }
+  }
+
+  private encodeMechanicCursor(row: { id: string; name: string }, query: AdminMechanicsQuery) {
+    return Buffer.from(JSON.stringify({ direction: query.direction, name: row.name, id: row.id })).toString('base64url');
   }
 
   private decodeCursor(encoded: string, query: AdminWorkOrdersQuery) {
@@ -296,6 +427,48 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       relevantValue: entry.relevantValue,
       createdAt: entry.createdAt.toISOString(),
     })),
+  };
+}
+
+function toMechanicAssignment(assignment: {
+  workOrder: {
+    id: string;
+    displayId: string;
+    status: WorkOrderStatus;
+    truck: { truckNumber: string };
+    primaryCategory: { name: string };
+  };
+}): import('@ltl-shop/shared').AdminMechanicAssignmentDto {
+  return {
+    workOrderId: assignment.workOrder.id,
+    displayId: assignment.workOrder.displayId,
+    truckNumber: assignment.workOrder.truck.truckNumber,
+    status: assignment.workOrder.status as SharedWorkOrderStatus,
+    primaryCategoryName: assignment.workOrder.primaryCategory.name,
+  };
+}
+
+function toMechanicSummary(row: {
+  id: string;
+  name: string;
+  email: string;
+  role: import('@prisma/client').UserRole;
+  active: boolean;
+  capabilities: { capability: AppCapability }[];
+  mechanicAssignments: Parameters<typeof toMechanicAssignment>[0][];
+}): import('@ltl-shop/shared').AdminMechanicSummaryDto {
+  const currentAssignments = row.mechanicAssignments
+    .filter((assignment) => (OPEN_WORK_ORDER_STATUSES as string[]).includes(assignment.workOrder.status))
+    .map(toMechanicAssignment);
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role as import('@ltl-shop/shared').UserRole,
+    active: row.active,
+    capabilities: row.capabilities.map((item) => item.capability as import('@ltl-shop/shared').AppCapability),
+    openWorkOrderCount: currentAssignments.length,
+    currentAssignments,
   };
 }
 
