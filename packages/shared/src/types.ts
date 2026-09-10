@@ -218,6 +218,7 @@ export interface AdminWorkOrderJobDto {
 
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   truck: TruckDto;
+  version: number;
   notes: string | null;
   createdBy: { id: string; name: string };
   completedBy: { id: string; name: string } | null;

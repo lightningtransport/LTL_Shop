@@ -60,6 +60,11 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Recent repair history' })).toBeVisible();
     await expect(page.getByText('WO-0104').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Assignments' })).toBeVisible();
+    await page.getByLabel('Select a mechanic to add').selectOption({ label: 'Anthony' });
+    await page.getByRole('button', { name: 'Add mechanic' }).click();
+    await expect(page.getByText('Anthony').first()).toBeVisible();
+    await page.getByRole('listitem').filter({ hasText: 'Anthony' }).getByRole('button', { name: 'Remove' }).click();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
 
     await page.setViewportSize({ width: 1440, height: 700 });

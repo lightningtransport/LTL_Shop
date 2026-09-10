@@ -128,6 +128,12 @@ export const adminMutationMetaSchema = z.object({
   reason: z.string().trim().min(1).max(1000).optional(),
 });
 
+export const adminAddWorkOrderMechanicSchema = adminMutationMetaSchema.extend({
+  mechanicId: z.string().uuid(),
+});
+
+export const adminRemoveWorkOrderMechanicSchema = adminMutationMetaSchema;
+
 export const startReadinessAssessmentSchema = z.object({
   idempotencyKey: z.string().uuid(),
 });
@@ -242,6 +248,8 @@ export type AdminRepairHistoryQuery = z.infer<typeof adminRepairHistoryQuerySche
 export type AdminYardOperationsQuery = z.infer<typeof adminYardOperationsQuerySchema>;
 export type AdminYardOperationsCursor = z.infer<typeof adminYardOperationsCursorSchema>;
 export type AdminMutationMetaInput = z.infer<typeof adminMutationMetaSchema>;
+export type AdminAddWorkOrderMechanicInput = z.infer<typeof adminAddWorkOrderMechanicSchema>;
+export type AdminRemoveWorkOrderMechanicInput = z.infer<typeof adminRemoveWorkOrderMechanicSchema>;
 export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessmentSchema>;
 export type UpdateReadinessRequirementInput = z.infer<typeof updateReadinessRequirementSchema>;
 export type MarkReadinessReadyInput = z.infer<typeof markReadinessReadySchema>;

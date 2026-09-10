@@ -35,7 +35,12 @@ PRD.
   assigned Mechanics, and the current pause; shows the available Truck number,
   make, model, year, mileage, company, and owner; and provides category-filtered,
   cursor-paginated recent completed repair history. Work Order timing, Jobs,
-  notes, pause history, and Activity Log remain read-only.
+  notes, pause history, and Activity Log remain read-only. On an open Standard
+  Work Order, managers with `admin.access` can add or soft-remove assigned
+  mechanics. PM Work Orders stay assigned to their creator. Assignments keep at
+  least one active mechanic, use Work Order versioning and idempotency, and
+  write `mechanic_added` / `mechanic_removed` Activity Log events. This is not
+  Off Duty, Catalog, or Job-level assignment.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
@@ -171,9 +176,9 @@ These are deliberately outside the current implementation:
    Safari mobile device.
 3. Remove the compatibility-only `pmAuthorized` column after production
    stability is confirmed; a general permission-management UI remains deferred.
-4. Continue Shop Admin with standalone Mechanics and global History before
-   broader administrative mutations; keep Yard/readiness mutations scoped to
-   `yard.operations.manage`.
+4. Continue Shop Admin Fase 3 with cancel/complete/reopen and allowed field
+   edits; keep Yard/readiness mutations scoped to `yard.operations.manage`.
+   Do not invent Off Duty or Catalog management.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.
 6. Keep release discipline: merge only after CI and both Vercel deployments

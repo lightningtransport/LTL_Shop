@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -47,6 +48,21 @@ export class AdminController {
   @Get('work-orders/:id')
   workOrder(@Param('id') id: string) {
     return this.admin.detail(id);
+  }
+
+  @Post('work-orders/:id/mechanics')
+  addWorkOrderMechanic(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.admin.addMechanic(request.user!, id, body);
+  }
+
+  @Delete('work-orders/:id/mechanics/:mechanicId')
+  removeWorkOrderMechanic(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('mechanicId') mechanicId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.removeMechanic(request.user!, id, mechanicId, body);
   }
 
   @Get('mechanics')
