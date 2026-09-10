@@ -69,6 +69,11 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: 'Confirm cancellation' }).click();
     await expect(page.getByText('Work Order cancelled.')).toBeVisible();
     await expect(page.getByText('Cancelled').first()).toBeVisible();
+    await page.getByRole('link', { name: 'Back to Work Orders' }).click();
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
+    await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
+    await page.getByRole('button', { name: 'Confirm completion' }).click();
+    await expect(page.getByText('Work Order completed.')).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
 
     await page.setViewportSize({ width: 1440, height: 700 });

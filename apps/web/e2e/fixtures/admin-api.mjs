@@ -290,6 +290,28 @@ createServer(async (request, response) => {
     json(response, 200, { items, nextCursor: null });
     return;
   }
+  const completeMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/complete$/i);
+  if (completeMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === completeMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (summary.status !== 'in_progress') {
+      json(response, 400, { message: 'Work Order must be in progress to finish' });
+      return;
+    }
+    if ((summary.jobsCompleted ?? 0) < (summary.jobsTotal ?? 0)) {
+      json(response, 400, { message: 'This Work Order still has incomplete Jobs.' });
+      return;
+    }
+    if (body.expectedVersion !== summary.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    summary.status = 'completed';
+    summary.completedAt = '2026-09-06T19:20:00.000Z';
+    summary.currentPause = null;
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   const cancelMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/cancel$/i);
   if (cancelMatch && request.method === 'POST') {
     const summary = workOrders.find((item) => item.id === cancelMatch[1]);
@@ -384,7 +406,7 @@ function fixtureWorkOrderDetail(summary) {
     completedBy: null,
     totalActiveLaborMs: 5400000,
     totalWaitingMs: 1800000,
-    jobs: [{ id: '00000000-0000-4000-8000-000000000501', displayName: 'Inspect brake chamber', customDescription: null, category: summary.category, status: 'to_do' }],
+    jobs: [{ id: '00000000-0000-4000-8000-000000000501', displayName: 'Inspect brake chamber', customDescription: null, category: summary.category, status: summary.jobsCompleted >= summary.jobsTotal ? 'completed' : 'to_do' }],
     pauseHistory: summary.currentPause ? [{ ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } }] : [],
     activityLog: [{ id: '00000000-0000-4000-8000-000000000601', eventType: 'work_order_created', entityType: 'work_order', entityId: summary.id, user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name }, previousValue: null, newValue: null, relevantValue: { displayId: summary.displayId }, createdAt: summary.createdAt }],
   };
@@ -413,7 +435,7 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status) {
     id, displayId,
     truck: { id: `00000000-0000-4000-8001-${id.slice(-12)}`, truckNumber, make: 'Volvo', model: 'VNL', year: 2024, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' },
     category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },
-    status, priority, jobsCompleted: 0, jobsTotal: 1,
+    status, priority, jobsCompleted: status === 'in_progress' || status === 'completed' ? 1 : 0, jobsTotal: 1,
     mechanics: status === 'created' ? [] : [{ mechanicId: users['mechanic@lightning.local'].id, mechanicName: users['mechanic@lightning.local'].name, addedAt: '2026-09-06T16:00:00.000Z', removedAt: null }],
     currentPause: paused ? { id: '00000000-0000-4000-8000-000000000401', workOrderId: id, reason: 'waiting_for_parts', notes: 'Air line ordered', startedAt: '2026-09-06T17:00:00.000Z', endedAt: null, durationMs: null } : null,
     createdAt, startedAt: status === 'created' ? null : '2026-09-06T16:00:00.000Z', completedAt, updatedAt: '2026-09-06T18:00:00.000Z',

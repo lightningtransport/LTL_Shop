@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, removeAdminWorkOrderMechanic, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, completeAdminWorkOrder, removeAdminWorkOrderMechanic, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -52,6 +52,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const isOpen = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status);
   const canManageAssignments = isOpen && data.category.name !== 'PM';
   const canCancelWorkOrder = isOpen;
+  const canCompleteWorkOrder = data.status === 'in_progress';
+  const hasIncompleteJobs = data.category.name !== 'PM' && data.jobs.some((job) => job.status === 'to_do');
   const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
 
   async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
@@ -155,6 +157,26 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </CardContent>
     </Card>
 
+    {canCompleteWorkOrder ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>{messages.completeWorkOrderTitle}</CardTitle>
+          <CardDescription>{messages.completeWorkOrderDescription}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {data.category.name === 'PM' ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
+          {hasIncompleteJobs ? <p className="text-sm text-destructive">{messages.completeWorkOrderIncompleteJobs}</p> : null}
+          <Button
+            type="button"
+            disabled={Boolean(pendingAction) || hasIncompleteJobs}
+            onClick={() => void runMutation('complete', messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(data.id, data.version), (failure) => completeError(failure, messages))}
+          >
+            {messages.completeWorkOrderConfirm}
+          </Button>
+        </CardContent>
+      </Card>
+    ) : null}
+
     {canCancelWorkOrder ? (
       <Card>
         <CardHeader>
@@ -226,6 +248,13 @@ function cancelError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.cancelWorkOrderGenericError;
+}
+function completeError(errorValue: unknown, messages: AdminMessages) {
+  if (errorValue instanceof ApiError) {
+    if (errorValue.status === 400) return messages.completeWorkOrderBadRequest;
+    if (errorValue.status === 409) return messages.assignmentConflict;
+  }
+  return messages.completeWorkOrderGenericError;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function CompactEmpty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>; }

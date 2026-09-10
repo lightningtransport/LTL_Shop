@@ -476,6 +476,123 @@ describe('AdminService', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000000806',
     })).rejects.toBeInstanceOf(ConflictException);
   });
+
+  it('completes an in-progress Standard Work Order and refuses incomplete or paused ones', async () => {
+    const manager = {
+      id: baseRow.createdById,
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS],
+      supabaseAuthId: null,
+    };
+    const body = {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000901',
+    };
+    const jobs = [{
+      id: '00000000-0000-4000-8000-000000000501',
+      displayName: 'Inspect',
+      customDescription: null,
+      status: 'completed',
+      categoryId: baseRow.primaryCategoryId,
+      category: { name: 'Engine' },
+    }];
+    const wo = detailRow({ status: 'in_progress', jobs });
+    const activity = { log: vi.fn() };
+    const tx = assignmentTx(wo);
+    tx.workOrder.findUnique
+      .mockResolvedValueOnce(wo)
+      .mockResolvedValueOnce(wo)
+      .mockResolvedValueOnce(detailRow({ status: 'completed', version: 2, jobs }));
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, activity as never);
+
+    await expect(service.completeWorkOrder(manager, wo.id, body)).resolves.toMatchObject({ status: 'completed', version: 2 });
+    expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'completed' }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.WORK_ORDER_COMPLETED }));
+
+    const incomplete = assignmentTx(detailRow({ status: 'in_progress' }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof incomplete) => unknown) => callback(incomplete));
+    await expect(service.completeWorkOrder(manager, wo.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000000902' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    const paused = assignmentTx(detailRow({ status: 'waiting_paused', jobs }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof paused) => unknown) => callback(paused));
+    await expect(service.completeWorkOrder(manager, wo.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000000903' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('completes a PM Work Order with mileage and parts, and replays an idempotent complete', async () => {
+    const manager = {
+      id: baseRow.createdById,
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS],
+      supabaseAuthId: null,
+    };
+    const pmRow = detailRow({
+      status: 'in_progress',
+      primaryCategory: { ...baseRow.primaryCategory, name: 'PM' },
+      jobs: [],
+    });
+    const activity = { log: vi.fn() };
+    const ready = assignmentTx(pmRow, {
+      pmService: {
+        findUnique: vi.fn().mockResolvedValue({ observedMileage: 125000, parts: [{ id: 'part-1' }] }),
+      },
+    });
+    ready.workOrder.findUnique
+      .mockResolvedValueOnce(pmRow)
+      .mockResolvedValueOnce(pmRow)
+      .mockResolvedValueOnce(detailRow({
+        status: 'completed',
+        version: 2,
+        primaryCategory: pmRow.primaryCategory,
+        jobs: [],
+      }));
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof ready) => unknown) => callback(ready));
+    const service = new AdminService(prisma as never, activity as never);
+    await expect(service.completeWorkOrder(manager, pmRow.id, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000904',
+    })).resolves.toMatchObject({ status: 'completed' });
+    expect(ready.truck.update).toHaveBeenCalled();
+    expect(ready.truckMileageAdjustment.create).toHaveBeenCalled();
+
+    const missing = assignmentTx(pmRow);
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof missing) => unknown) => callback(missing));
+    await expect(service.completeWorkOrder(manager, pmRow.id, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000905',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    const stored = { id: baseRow.id, status: 'completed', version: 3 };
+    prisma.workOrderMutation.findUnique.mockResolvedValueOnce({
+      workOrderId: baseRow.id,
+      operation: 'admin_complete_work_order',
+      payloadHash: idempotencyFingerprint({
+        workOrderId: baseRow.id,
+        expectedVersion: 1,
+      }),
+      actorId: manager.id,
+      result: stored,
+    });
+    const replaying = createService(prisma);
+    await expect(replaying.completeWorkOrder(manager, baseRow.id, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000906',
+    })).resolves.toEqual(stored);
+  });
 });
 
 function detailRow(overrides: Record<string, unknown> = {}) {
@@ -518,6 +635,9 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
       findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
     },
+    pmService: { findUnique: vi.fn().mockResolvedValue(null) },
+    truck: { update: vi.fn() },
+    truckMileageAdjustment: { create: vi.fn() },
     ...extra,
   };
 }
