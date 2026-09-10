@@ -12,7 +12,11 @@
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:release-status": "tsx src/release/run-prisma-release-gate.ts --status --require-up-to-date",
+    "prisma:release-deploy": "tsx src/release/run-prisma-release-gate.ts --deploy --verify-api",
+    "prisma:release-gate": "tsx src/release/run-prisma-release-gate.ts --vercel-build",
+    "prisma:release-verify": "tsx src/release/run-prisma-release-gate.ts --verify-api"
   },
   "dependencies": {
     "@ltl-shop/shared": "*",

@@ -1,0 +1,61 @@
+name: Release safety
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_migrations:
+        description: Run prisma migrate deploy through the approved release path
+        type: boolean
+        default: false
+      verify_api:
+        description: Probe unauthenticated API health and root reads after the gate
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prisma-release-safety
+  cancel-in-progress: false
+
+jobs:
+  prisma-gate:
+    name: Prisma migration gate
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      API_BASE_URL: ${{ vars.API_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run build --workspace=@ltl-shop/shared
+      - run: npm run prisma:generate --workspace=@ltl-shop/api
+      - name: Refuse missing datasource secrets
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$DIRECT_URL" ]; then
+            echo "DATABASE_URL and DIRECT_URL must be configured on the production GitHub Environment. Values are not printed."
+            exit 1
+          fi
+      - name: Check Prisma migration status
+        if: ${{ !inputs.apply_migrations }}
+        run: npm run prisma:release-status --workspace=@ltl-shop/api
+      - name: Apply Prisma migrations (approved path)
+        if: ${{ inputs.apply_migrations }}
+        env:
+          PRISMA_APPROVED_RELEASE_PATH: '1'
+        run: npm exec --workspace=@ltl-shop/api -- tsx src/release/run-prisma-release-gate.ts --deploy
+      - name: Verify API health and root reads
+        if: ${{ inputs.verify_api }}
+        run: |
+          if [ -z "$API_BASE_URL" ]; then
+            echo "Set GitHub Environment variable API_BASE_URL (no credentials) for post-deploy verification."
+            exit 1
+          fi
+          npm run prisma:release-verify --workspace=@ltl-shop/api
