@@ -13,6 +13,7 @@ import {
   adminTrucksQuerySchema,
   adminAddWorkOrderMechanicSchema,
   adminCancelWorkOrderSchema,
+  adminCompleteWorkOrderSchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
   adminYardOperationsQuerySchema,
@@ -122,6 +123,13 @@ describe('shared contracts', () => {
     expect(adminCancelWorkOrderSchema.safeParse({
       expectedVersion: 1,
       idempotencyKey: '00000000-0000-4000-8000-000000000004',
+    }).success).toBe(false);
+    expect(adminCompleteWorkOrderSchema.safeParse({
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000005',
+    }).success).toBe(true);
+    expect(adminCompleteWorkOrderSchema.safeParse({
+      idempotencyKey: '00000000-0000-4000-8000-000000000005',
     }).success).toBe(false);
   });
 

@@ -15,6 +15,7 @@ import {
   WorkOrderStatus as SharedWorkOrderStatus,
   adminAddWorkOrderMechanicSchema,
   adminCancelWorkOrderSchema,
+  adminCompleteWorkOrderSchema,
   adminHistoryQuerySchema,
   adminMechanicCursorSchema,
   adminMechanicsQuerySchema,
@@ -43,7 +44,7 @@ import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
 import { toTruckDto } from '../trucks/trucks.service';
-import { computeTotals } from '../work-orders/work-order.timing';
+import { computeTotals, canFinishWorkOrder } from '../work-orders/work-order.timing';
 import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
@@ -524,6 +525,129 @@ export class AdminService {
           previousValue: { status: wo.status },
           newValue: { status: 'cancelled', reason: input.reason },
           relevantValue: { action: 'work_order_cancelled', reason: input.reason },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  async completeWorkOrder(user: AuthUser, workOrderId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    const parsed = adminCompleteWorkOrderSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const operation = 'admin_complete_work_order';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        if (wo.status !== WorkOrderStatus.in_progress) {
+          throw new BadRequestException('Work Order must be in progress to finish');
+        }
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const isPm = wo.primaryCategory.name === 'PM';
+        const pmService = isPm
+          ? await tx.pmService.findUnique({ where: { workOrderId }, include: { parts: true } })
+          : null;
+        const observedMileage = pmService?.observedMileage ?? null;
+        if (isPm) {
+          if (observedMileage == null) {
+            throw new BadRequestException('Observed mileage is required to finish a PM service');
+          }
+          if (!pmService?.parts.length) {
+            throw new BadRequestException('Select at least one part before finishing a PM service');
+          }
+        } else {
+          const gate = canFinishWorkOrder(wo.jobs);
+          if (!gate.ok) throw new BadRequestException(gate.message);
+        }
+        const now = new Date();
+        const openSession = await tx.workSession.findFirst({
+          where: { workOrderId, endedAt: null },
+          orderBy: { startedAt: 'desc' },
+        });
+        if (openSession) {
+          await tx.workSession.update({ where: { id: openSession.id }, data: { endedAt: now } });
+        }
+        const sessions = await tx.workSession.findMany({ where: { workOrderId } });
+        const pauses = await tx.pauseEvent.findMany({ where: { workOrderId } });
+        const totals = computeTotals({ sessions, pauses, now });
+        if (isPm && observedMileage !== null && observedMileage !== wo.truck.mileage) {
+          await tx.truck.update({
+            where: { id: wo.truckId },
+            data: { mileage: observedMileage },
+          });
+          await tx.truckMileageAdjustment.create({
+            data: {
+              truckId: wo.truckId,
+              workOrderId: wo.id,
+              previousMileage: wo.truck.mileage,
+              observedMileage,
+              createdById: user.id,
+            },
+          });
+          await this.activity.log(tx, {
+            workOrderId: wo.id,
+            eventType: SharedActivityEventType.TRUCK_MILEAGE_CORRECTED,
+            entityType: 'truck',
+            entityId: wo.truckId,
+            userId: user.id,
+            previousValue: { mileage: wo.truck.mileage },
+            newValue: { mileage: observedMileage },
+          });
+        }
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: {
+            status: WorkOrderStatus.completed,
+            completedAt: now,
+            completedById: user.id,
+            totalActiveLaborMs: BigInt(totals.totalActiveLaborMs),
+            totalWaitingMs: BigInt(totals.totalWaitingMs),
+            version: { increment: 1 },
+          },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.WORK_ORDER_COMPLETED,
+          entityType: 'work_order',
+          entityId: workOrderId,
+          userId: user.id,
+          previousValue: { status: wo.status },
+          newValue: {
+            status: 'completed',
+            totalActiveLaborMs: totals.totalActiveLaborMs,
+            totalWaitingMs: totals.totalWaitingMs,
+          },
         });
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
