@@ -138,6 +138,8 @@ createServer(async (request, response) => {
     const search = url.searchParams.get('search')?.toLowerCase();
     const items = workOrders.map((item) => ({
       truck: item.truck,
+      operationalStatus: item.returnedToServiceAt ? 'in_service' : 'unknown',
+      operationalStatusAt: item.returnedToServiceAt ?? null,
       openWorkOrder: ['created', 'in_progress', 'waiting_paused'].includes(item.status)
         ? { id: item.id, displayId: item.displayId, status: item.status, primaryCategoryName: item.category.name }
         : null,
@@ -371,6 +373,27 @@ createServer(async (request, response) => {
     json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
+  const returnToServiceMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/return-to-service$/i);
+  if (returnToServiceMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === returnToServiceMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (!String(body.reason ?? '').trim()) { json(response, 400, { message: 'A Return to Service reason is required.' }); return; }
+    if (summary.status !== 'completed') {
+      json(response, 400, { message: 'Only a completed Work Order can return a Truck to service' });
+      return;
+    }
+    if (summary.returnedToServiceAt) {
+      json(response, 400, { message: 'This Work Order already returned the Truck to service' });
+      return;
+    }
+    if (body.expectedVersion !== summary.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    summary.returnedToServiceAt = '2026-09-10T18:00:00.000Z';
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   const completeMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/complete$/i);
   if (completeMatch && request.method === 'POST') {
     const summary = workOrders.find((item) => item.id === completeMatch[1]);
@@ -522,6 +545,7 @@ function fixtureWorkOrderDetail(summary) {
     laborSessions: summary.laborSessions ?? [],
     pauseHistory: summary.currentPause ? [{ ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } }] : [],
     activityLog: [{ id: '00000000-0000-4000-8000-000000000601', eventType: 'work_order_created', entityType: 'work_order', entityId: summary.id, user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name }, previousValue: null, newValue: null, relevantValue: { displayId: summary.displayId }, createdAt: summary.createdAt }],
+    returnedToServiceAt: summary.returnedToServiceAt ?? null,
   };
 }
 
@@ -567,6 +591,7 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status) {
       category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },
       status: status === 'in_progress' || status === 'completed' ? 'completed' : 'to_do',
     }],
+    returnedToServiceAt: null,
   };
 }
 
@@ -593,7 +618,7 @@ function makeYardItem(truckId, truckNumber, phase, priority, assessmentStatus) {
   const requirementType = phase === 'inspection' ? 'inspection' : phase === 'required_work' ? 'required_repairs' : phase === 'pm' ? 'pm' : phase === 'alignment' ? 'alignment' : phase === 'detailing' ? 'detailing' : phase === 'quality_check' ? 'quality_check' : null;
   const assessment = assessmentStatus ? { id: truckId.replace('100', '300'), truckId, status: assessmentStatus, version: 1, startedAt: '2026-09-06T12:00:00.000Z', startedById: users['manager@lightning.local'].id, readyAt: assessmentStatus === 'ready' ? now : null, approvedById: assessmentStatus === 'ready' ? users['manager@lightning.local'].id : null, closedAt: null, closedById: null, closedReason: null, requirements: requirementType ? [{ id: truckId.replace('100', '400'), type: requirementType, outcome: 'required', waiverReason: null, evidenceWorkOrderId: null, evaluatedById: null, evaluatedAt: null, version: 1 }] : [] } : null;
   const blockers = phase === 'ready_to_go' || !assessment ? [] : [{ kind: activeWorkOrder ? 'open_work_order' : 'unevaluated_requirement', requirementType, workOrderId: activeWorkOrder?.id, status: activeWorkOrder?.status, priority: activeWorkOrder?.priority, categoryName: activeWorkOrder?.category.name, message: activeWorkOrder ? 'Open Work Order remains linked.' : 'Assessment requires evaluation.' }];
-  return { truck: { id: truckId, truckNumber, make: 'Volvo', model: 'VNL', year: 2024, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' }, presence: { state: 'unknown', provenance: 'phase_1_unavailable' }, assessment, phase, blockers, activeWorkOrder };
+  return { truck: { id: truckId, truckNumber, make: 'Volvo', model: 'VNL', year: 2024, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' }, presence: { state: 'unknown', provenance: 'phase_1_unavailable' }, operationalStatus: 'unknown', operationalStatusAt: null, assessment, phase, blockers, activeWorkOrder };
 }
 
 function makeAssessment(item) {

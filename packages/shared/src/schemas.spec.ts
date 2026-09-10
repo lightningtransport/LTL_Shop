@@ -19,6 +19,7 @@ import {
   adminTimeCorrectionSchema,
   adminCancelJobSchema,
   adminReopenJobSchema,
+  adminReturnToServiceSchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
   adminYardOperationsQuerySchema,
@@ -200,6 +201,15 @@ describe('shared contracts', () => {
     expect(adminReopenJobSchema.safeParse({
       expectedVersion: 1,
       idempotencyKey: '00000000-0000-4000-8000-00000000000a',
+    }).success).toBe(false);
+    expect(adminReturnToServiceSchema.safeParse({
+      reason: 'Repairs verified',
+      expectedVersion: 2,
+      idempotencyKey: '00000000-0000-4000-8000-00000000000b',
+    }).success).toBe(true);
+    expect(adminReturnToServiceSchema.safeParse({
+      expectedVersion: 2,
+      idempotencyKey: '00000000-0000-4000-8000-00000000000b',
     }).success).toBe(false);
   });
 

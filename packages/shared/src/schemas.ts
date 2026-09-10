@@ -176,6 +176,10 @@ export const adminReopenJobSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),
 });
 
+export const adminReturnToServiceSchema = adminMutationMetaSchema.extend({
+  reason: z.string().trim().min(1).max(1000),
+});
+
 export const startReadinessAssessmentSchema = z.object({
   idempotencyKey: z.string().uuid(),
 });
@@ -299,6 +303,7 @@ export type AdminPatchWorkOrderInput = z.infer<typeof adminPatchWorkOrderSchema>
 export type AdminTimeCorrectionInput = z.infer<typeof adminTimeCorrectionSchema>;
 export type AdminCancelJobInput = z.infer<typeof adminCancelJobSchema>;
 export type AdminReopenJobInput = z.infer<typeof adminReopenJobSchema>;
+export type AdminReturnToServiceInput = z.infer<typeof adminReturnToServiceSchema>;
 export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessmentSchema>;
 export type UpdateReadinessRequirementInput = z.infer<typeof updateReadinessRequirementSchema>;
 export type MarkReadinessReadyInput = z.infer<typeof markReadinessReadySchema>;

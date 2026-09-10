@@ -75,6 +75,11 @@ export class AdminController {
     return this.admin.reopenWorkOrder(request.user!, id, body);
   }
 
+  @Post('work-orders/:id/return-to-service')
+  returnToService(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.admin.returnToService(request.user!, id, body);
+  }
+
   @Post('work-orders/:id/complete')
   completeWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.completeWorkOrder(request.user!, id, body);

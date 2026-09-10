@@ -11,6 +11,7 @@ import type {
   UserRole,
   YardPresenceState,
   WorkOrderStatus,
+  TruckOperationalStatus,
 } from './enums';
 
 export type AdminDataSource = 'supabase_postgres';
@@ -230,6 +231,7 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
     createdBy: { id: string; name: string };
   })[];
   activityLog: AdminActivityLogDto[];
+  returnedToServiceAt: string | null;
 }
 
 export interface AdminTimeSegmentDto {
@@ -310,6 +312,8 @@ export interface ReadinessBlockerDto {
 export interface YardOperationsTruckDto {
   truck: TruckDto;
   presence: YardPresenceDto;
+  operationalStatus: TruckOperationalStatus;
+  operationalStatusAt: string | null;
   assessment: ReadinessAssessmentDto | null;
   phase: ReadinessPhase;
   blockers: ReadinessBlockerDto[];
@@ -331,6 +335,8 @@ export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto>
 
 export interface AdminTruckSummaryDto {
   truck: TruckDto;
+  operationalStatus: TruckOperationalStatus;
+  operationalStatusAt: string | null;
   openWorkOrder: {
     id: string;
     displayId: string;

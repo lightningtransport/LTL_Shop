@@ -60,8 +60,12 @@ PRD.
   `time_corrected`. On an open Standard Work Order, managers can cancel a to-do
   Job or reopen a cancelled Job with a required reason. Cancel writes
   `job_cancelled`; reopen writes `manager_correction` with `job_reopened`.
-  Completed Jobs stay as they are. PM Work Orders have no Jobs. This is not Off
-  Duty, Catalog, or Job-level assignment.
+  Completed Jobs stay as they are. PM Work Orders have no Jobs. After a Work
+  Order is completed, managers can mark the Truck **Returned to Service** with
+  a required reason. That writes an append-only `TruckServiceStatusEvent`
+  (`in_service`) and `truck_returned_to_service`. It does not change Work Order
+  status, Ready to Go, presence, or Off Duty. Trucks without an event stay
+  `Unknown`. This is not Catalog or Job-level assignment.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
@@ -70,8 +74,9 @@ PRD.
   identity; it is not impersonation.
 - Catalog management and Ninox data remain deferred. Truck Detail and Yard
   Operations are implemented as the scoped readiness slice described below.
-  `/admin/trucks` is a read-only list of Shop trucks and any open Work Order.
-  It does not invent Off Duty. `/admin/mechanics` and `/admin/history` are
+  `/admin/trucks` lists Shop trucks, any open Work Order, and operational
+  status derived from service-status events. Off Duty is not inferred and has
+  no mutation yet. `/admin/mechanics` and `/admin/history` are
   read-only manager views.
 
 ### Yard Operations and readiness Phase 1
@@ -197,9 +202,9 @@ These are deliberately outside the current implementation:
    Safari mobile device.
 3. Remove the compatibility-only `pmAuthorized` column after production
    stability is confirmed; a general permission-management UI remains deferred.
-4. Return-to-service stays deferred until that domain model exists. Keep
-   Yard/readiness mutations scoped to `yard.operations.manage`. Do not invent
-   Off Duty or Catalog management.
+4. Off Duty entry/exit and downtime metrics stay deferred. Keep Yard/readiness
+   mutations scoped to `yard.operations.manage`. Do not invent Catalog
+   management.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.
 6. Keep release discipline: merge only after CI and both Vercel deployments

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { AlertTriangle, ArrowLeft, CircleHelp, Info as InfoIcon, ShieldCheck } from 'lucide-react';
-import { AppCapability, ReadinessAssessmentStatus, ReadinessRequirementOutcome, ReadinessRequirementType, type AdminTruckDetailDto, type ReadinessRequirementDto } from '@ltl-shop/shared';
+import { AppCapability, ReadinessAssessmentStatus, ReadinessRequirementOutcome, ReadinessRequirementType, TruckOperationalStatus, type AdminTruckDetailDto, type ReadinessRequirementDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessment, updateAdminTruckRequirement, useAdminTruck } from '@/lib/admin-data';
@@ -140,7 +140,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
     <Card className="border-warning/50 bg-warning-surface"><CardHeader className="mb-0 flex flex-row items-start gap-3"><CircleHelp aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning-foreground" /><div><CardTitle className="text-base">{messages.physicalPresenceUnavailable}</CardTitle><CardDescription className="mt-1 text-warning-foreground">{messages.phase1PresenceDetail}</CardDescription></div></CardHeader></Card>
 
     <section className="grid items-start gap-4 xl:grid-cols-2" aria-label={messages.truckOverview}>
-      <Card><CardHeader><CardTitle>{messages.truckOverview}</CardTitle></CardHeader><CardContent><dl className="grid gap-4 text-sm sm:grid-cols-2"><Info label={messages.truckNumber} value={data.truck.truckNumber} /><Info label={messages.make} value={data.truck.make ?? messages.noValue} /><Info label={messages.model} value={data.truck.model ?? messages.noValue} /><Info label={messages.year} value={data.truck.year ? String(data.truck.year) : messages.noValue} /><Info label={messages.mileage} value={formatNumber(data.truck.mileage, locale, messages)} /><Info label={messages.company} value={data.truck.company ?? messages.noValue} /><Info label={messages.owner} value={data.truck.owner ?? messages.noValue} /><Info label={messages.presenceUnknown} value={messages.presenceUnknownDetail} /></dl></CardContent></Card>
+      <Card><CardHeader><CardTitle>{messages.truckOverview}</CardTitle></CardHeader><CardContent><dl className="grid gap-4 text-sm sm:grid-cols-2"><Info label={messages.truckNumber} value={data.truck.truckNumber} /><Info label={messages.make} value={data.truck.make ?? messages.noValue} /><Info label={messages.model} value={data.truck.model ?? messages.noValue} /><Info label={messages.year} value={data.truck.year ? String(data.truck.year) : messages.noValue} /><Info label={messages.mileage} value={formatNumber(data.truck.mileage, locale, messages)} /><Info label={messages.company} value={data.truck.company ?? messages.noValue} /><Info label={messages.owner} value={data.truck.owner ?? messages.noValue} /><Info label={messages.operationalStatus} value={operationalStatusLabel(data.operationalStatus, messages)} /><Info label={messages.presenceUnknown} value={messages.presenceUnknownDetail} /></dl></CardContent></Card>
       <Card><CardHeader><CardTitle>{messages.currentWork}</CardTitle><CardDescription>{messages.currentWorkDescription}</CardDescription></CardHeader><CardContent>{currentWork ? <div className="space-y-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${currentWork.id}`}>{currentWork.displayId}</Link><div className="flex gap-2"><Badge variant="outline">{localizedStatus(currentWork.status, messages)}</Badge><Badge variant="outline">{messages[priorityKey[currentWork.priority]]}</Badge></div></div><Info label={messages.category} value={currentWork.category.name} /><Info label={messages.mechanicsLabel} value={currentWork.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noMechanicsAssigned} />{currentWork.currentPause ? <p className="rounded-lg bg-muted px-3 py-2 text-muted-foreground">{messages.currentPause}: {localizedStatus(currentWork.currentPause.reason, messages)} · {formatAdminDate(currentWork.currentPause.startedAt, locale)}</p> : null}</div> : <EmptyState>{messages.noCurrentWork}</EmptyState>}</CardContent></Card>
     </section>
 
@@ -173,6 +173,12 @@ function localizedStatus(value: string, messages: AdminMessages) {
 
 function localizedAssessmentStatus(value: ReadinessAssessmentStatus, messages: AdminMessages) {
   return value === ReadinessAssessmentStatus.READY ? messages.readyToGo : value === ReadinessAssessmentStatus.CLOSED ? messages.closedStatus : messages.underReview;
+}
+
+function operationalStatusLabel(status: TruckOperationalStatus, messages: AdminMessages) {
+  if (status === TruckOperationalStatus.IN_SERVICE) return messages.operationalStatusInService;
+  if (status === TruckOperationalStatus.OFF_DUTY) return messages.operationalStatusOffDuty;
+  return messages.operationalStatusUnknown;
 }
 
 function formatNumber(value: number | null, locale: AdminLocale, messages: AdminMessages) {
