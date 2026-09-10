@@ -74,6 +74,29 @@ npm run dev:web
 - Web: http://localhost:3000  
 - API: http://localhost:3001/api/health  
 
+### Cursor Cloud Agents (Docker-less setup)
+
+The repo ships a versioned Cursor environment in `.cursor/` so Cloud Agents boot
+ready to run without manual setup:
+
+- `.cursor/environment.json` — declares the `install`/`start` hooks, a `dev`
+  terminal that runs `npm run dev`, and exposes ports 3000 (web) / 3001 (api).
+- `.cursor/install.sh` — idempotent bootstrap: installs PostgreSQL 16, creates
+  the `ltl_shop` database, writes a local `.env` (`AUTH_DEV_BYPASS=true`), then
+  runs `npm install`, builds `@ltl-shop/shared`, generates the Prisma client,
+  applies migrations, and seeds.
+- `.cursor/start.sh` — per-boot: starts the Postgres cluster and re-applies
+  migrations idempotently.
+
+Cloud Agent VMs have no Docker, so these scripts provision Postgres directly on
+the host using the **same** connection as `docker-compose.yml`
+(`postgres:postgres@localhost:5432/ltl_shop`) — no app code or connection
+strings change. Both scripts are safe to re-run. On a normal workstation you can
+still use the Docker flow above, or run `bash .cursor/install.sh` to get the
+same Docker-less setup. The generated `.env` is git-ignored and for local
+development only; staging/production keep using the Supabase variables in
+`.env.example`.
+
 ### Dev login
 
 With `AUTH_DEV_BYPASS=true`, use **Dev Login** on `/login` with:
