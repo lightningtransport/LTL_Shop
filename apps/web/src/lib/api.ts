@@ -30,16 +30,23 @@ export class ApiError extends Error {
   status: number;
   body: unknown;
   kind: 'http' | 'network' | 'timeout';
+  route: string;
+  method: string;
   constructor(
     message: string,
     status: number,
     body: unknown,
     kind: 'http' | 'network' | 'timeout' = 'http',
+    route = 'unknown',
+    method = 'GET',
   ) {
     super(message);
+    this.name = 'ApiError';
     this.status = status;
     this.body = body;
     this.kind = kind;
+    this.route = route;
+    this.method = method;
   }
 }
 
@@ -52,7 +59,7 @@ function defaultTimeout(method?: string) {
   return !method || method.toUpperCase() === 'GET' ? 8_000 : 15_000;
 }
 
-function endpointFamily(path: string) {
+export function endpointFamily(path: string) {
   const pathname = path.split('?')[0] ?? path;
   if (/^\/api\/work-orders\/[^/]+\/jobs\/[^/]+/.test(pathname)) {
     return '/api/work-orders/:id/jobs/:jobId';
@@ -106,12 +113,14 @@ export async function apiFetch<T>(
       headers,
       signal: controller.signal,
     });
-  } catch (error) {
+  } catch {
     const durationMs = Math.round(performance.now() - startedAt);
     const kind = timedOut ? 'timeout' : 'network';
+    const route = endpointFamily(path);
+    const method = requestInit.method ?? 'GET';
     trackEvent('api_request_failed', {
-      route: endpointFamily(path),
-      method: requestInit.method ?? 'GET',
+      route,
+      method,
       kind,
       durationMs,
     });
@@ -120,6 +129,8 @@ export async function apiFetch<T>(
       0,
       null,
       kind,
+      route,
+      method,
     );
   } finally {
     window.clearTimeout(timer);
@@ -143,18 +154,16 @@ export async function apiFetch<T>(
       window.dispatchEvent(new Event('ltl-auth-expired'));
     }
     const message = errorMessage(body, res.status);
+    const route = endpointFamily(path);
+    const method = requestInit.method ?? 'GET';
     trackEvent('api_request_failed', {
-      route: endpointFamily(path),
-      method: requestInit.method ?? 'GET',
+      route,
+      method,
       kind: 'http',
       status: res.status,
       durationMs: Math.round(performance.now() - startedAt),
     });
-    throw new ApiError(
-      message,
-      res.status,
-      body,
-    );
+    throw new ApiError(message, res.status, body, 'http', route, method);
   }
   trackEvent('api_request_completed', {
     route: endpointFamily(path),

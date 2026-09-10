@@ -42,6 +42,37 @@ describe('apiFetch', () => {
     await expect(apiFetch('/api/work-orders', { timeoutMs: 10 })).rejects.toMatchObject({
       kind: 'timeout',
       status: 0,
+      route: '/api/work-orders',
+      method: 'GET',
+    });
+  });
+
+  it('records a templated route on HTTP failures without leaking IDs', async () => {
+    installBrowserGlobals();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ statusCode: 500, message: 'Internal server error' }), {
+            status: 500,
+          }),
+        ),
+      ),
+    );
+
+    await expect(apiFetch('/api/admin/dashboard')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 500,
+      route: '/api/admin/dashboard',
+      method: 'GET',
+      message: 'Internal server error',
+    });
+
+    await expect(
+      apiFetch('/api/work-orders/d2262a20-0862-4f18-a6c8-184a88a42f78'),
+    ).rejects.toMatchObject({
+      status: 500,
+      route: '/api/work-orders/:id',
     });
   });
 });

@@ -5,6 +5,18 @@
 import * as Sentry from "@sentry/nextjs";
 import { getSentryDsn, getSentryEnvironment, isSentryEnabled } from "./lib/sentry-environment";
 
+function sentryTracePropagationTargets() {
+  const targets: Array<string | RegExp> = ['localhost', /^\//];
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) return targets;
+  try {
+    targets.push(new URL(apiUrl).origin);
+  } catch {
+    // Ignore invalid NEXT_PUBLIC_API_URL; traces still stay on same-origin fetches.
+  }
+  return targets;
+}
+
 Sentry.init({
   dsn: getSentryDsn("client"),
   enabled: isSentryEnabled("client"),
@@ -12,6 +24,7 @@ Sentry.init({
 
   tracesSampleRate: 0.1,
   sendDefaultPii: false,
+  tracePropagationTargets: sentryTracePropagationTargets(),
 
   dataCollection: {
     userInfo: false,
