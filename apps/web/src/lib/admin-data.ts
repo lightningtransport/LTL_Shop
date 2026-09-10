@@ -104,6 +104,29 @@ export function adminMutationIdempotencyKey() {
   return globalThis.crypto.randomUUID();
 }
 
+export function addAdminWorkOrderMechanic(
+  workOrderId: string,
+  input: { mechanicId: string; expectedVersion: number },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/mechanics`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
+export function removeAdminWorkOrderMechanic(
+  workOrderId: string,
+  mechanicId: string,
+  expectedVersion: number,
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/mechanics/${mechanicId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ expectedVersion, idempotencyKey }),
+  });
+}
+
 export function startAdminTruckAssessment(truckId: string, idempotencyKey = adminMutationIdempotencyKey()) {
   return apiFetch<{ assessment: ReadinessAssessmentDto; linkedWorkOrderId: string | null }>(`/api/admin/trucks/${truckId}/readiness-assessments`, {
     method: 'POST',

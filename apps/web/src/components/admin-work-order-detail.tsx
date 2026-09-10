@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { AppCapability, OPEN_WORK_ORDER_STATUSES } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderMechanic, removeAdminWorkOrderMechanic, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -25,8 +26,16 @@ import {
 export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { data, error, isLoading, mutate } = useAdminWorkOrder(id);
   const [historyCategory, setHistoryCategory] = useState('');
+  const [selectedMechanic, setSelectedMechanic] = useState('');
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const { data: categoryData } = useCategories(true);
   const historyQuery = useAdminRepairHistory(data?.truck.id ?? '', id, historyCategory || undefined);
+  const { data: mechanicPages } = useAdminMechanics('');
+  const assignableMechanics = useMemo(
+    () => (mechanicPages?.flatMap((page) => page.items) ?? []).filter((mechanic) => mechanic.active && mechanic.capabilities.includes(AppCapability.MECHANIC_STANDARD)),
+    [mechanicPages],
+  );
 
   if (isLoading) return <PageSkeleton label={messages.workOrdersTitle} />;
   if (error instanceof ApiError && error.status === 404) return <NotFound messages={messages} />;
@@ -38,6 +47,23 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const categories = values.filter((category, index) => values.findIndex((candidate) => candidate.id === category.id) === index);
   const activeMechanics = data.mechanics.filter((mechanic) => !mechanic.removedAt);
   const truck = data.truck;
+  const canManageAssignments = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status) && data.category.name !== 'PM';
+  const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
+
+  async function runAssignment(action: string, successMessage: string, operation: () => Promise<unknown>) {
+    if (pendingAction) return;
+    setPendingAction(action);
+    setFeedback(null);
+    try {
+      await operation();
+      await mutate();
+      setFeedback({ kind: 'success', message: successMessage });
+    } catch (failure) {
+      setFeedback({ kind: 'error', message: assignmentError(failure, messages) });
+    } finally {
+      setPendingAction(null);
+    }
+  }
 
   return <div className="space-y-5">
     <header>
@@ -74,6 +100,57 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </Card>
     </section>
 
+    <Card>
+      <CardHeader>
+        <CardTitle>{messages.assignmentsTitle}</CardTitle>
+        <CardDescription>{canManageAssignments ? messages.assignmentsDescription : data.category.name === 'PM' ? messages.pmAssignmentsLocked : messages.closedAssignmentsLocked}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {feedback ? <p className={feedback.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'} role="status">{feedback.message}</p> : null}
+        {activeMechanics.length ? (
+          <ul className="divide-y rounded-xl border">
+            {activeMechanics.map((mechanic) => (
+              <li key={mechanic.mechanicId} className="flex min-h-11 items-center justify-between gap-3 px-3 py-2">
+                <p className="font-medium">{mechanic.mechanicName}</p>
+                {canManageAssignments ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={Boolean(pendingAction) || activeMechanics.length <= 1}
+                    onClick={() => void runAssignment(`remove:${mechanic.mechanicId}`, messages.assignmentRemoved, () => removeAdminWorkOrderMechanic(data.id, mechanic.mechanicId, data.version))}
+                  >
+                    {messages.removeMechanic}
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : <EmptyState>{messages.noMechanics}</EmptyState>}
+        {canManageAssignments ? (
+          <form
+            className="flex flex-col gap-3 sm:flex-row"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!selectedMechanic) return;
+              void runAssignment('add', messages.assignmentAdded, async () => {
+                await addAdminWorkOrderMechanic(data.id, { mechanicId: selectedMechanic, expectedVersion: data.version });
+                setSelectedMechanic('');
+              });
+            }}
+          >
+            <Select aria-label={messages.selectMechanic} value={selectedMechanic} onChange={(event) => setSelectedMechanic(event.target.value)}>
+              <option value="">{messages.selectMechanic}</option>
+              {availableMechanics.map((mechanic) => (
+                <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
+              ))}
+            </Select>
+            <Button type="submit" disabled={!selectedMechanic || Boolean(pendingAction)}>{messages.addMechanic}</Button>
+          </form>
+        ) : null}
+      </CardContent>
+    </Card>
+
     <Card><CardHeader><CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle></CardHeader><CardContent>{data.jobs.length ? <ul className="divide-y">{data.jobs.map((job) => <li key={job.id} className="flex items-start justify-between gap-3 py-3 first:pt-0"><div><p className="font-medium">{job.displayName}</p><p className="text-xs text-muted-foreground">{job.category.name}</p>{job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}</div><Badge variant={job.status === 'completed' ? 'success' : 'outline'}>{humanize(job.status)}</Badge></li>)}</ul> : <EmptyState>{messages.noJobs}</EmptyState>}</CardContent></Card>
 
     <Card>
@@ -91,6 +168,13 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   </div>;
 }
 
+function assignmentError(errorValue: unknown, messages: AdminMessages) {
+  if (errorValue instanceof ApiError) {
+    if (errorValue.status === 400) return messages.assignmentBadRequest;
+    if (errorValue.status === 409) return messages.assignmentConflict;
+  }
+  return messages.assignmentGenericError;
+}
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function CompactEmpty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>; }
 function formatAge(value: string, locale: AdminLocale) { const elapsed = Math.max(0, Date.now() - new Date(value).getTime()); const hours = Math.floor(elapsed / 3_600_000); const number = new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US'); if (hours < 24) return `${number.format(hours)}h`; const days = Math.floor(hours / 24); return `${number.format(days)}d ${number.format(hours % 24)}h`; }

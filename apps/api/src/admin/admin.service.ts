@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AppCapability,
   Prisma,
@@ -13,9 +13,11 @@ import {
   PauseReason as SharedPauseReason,
   Priority as SharedPriority,
   WorkOrderStatus as SharedWorkOrderStatus,
+  adminAddWorkOrderMechanicSchema,
   adminHistoryQuerySchema,
   adminMechanicCursorSchema,
   adminMechanicsQuerySchema,
+  adminRemoveWorkOrderMechanicSchema,
   adminTruckCursorSchema,
   adminTrucksQuerySchema,
   adminWorkOrderCursorSchema,
@@ -34,6 +36,10 @@ import {
   type AdminWorkOrderSummaryDto,
   type AdminWorkOrdersQuery,
 } from '@ltl-shop/shared';
+import { ActivityLogService } from '../activity-log/activity-log.service';
+import type { AuthUser } from '../auth/auth.guard';
+import { idempotencyFingerprint } from '../common/idempotency';
+import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
 import { toTruckDto } from '../trucks/trucks.service';
 import { getShopDashboardWindows } from './admin-time';
@@ -122,7 +128,10 @@ type DetailRow = Prisma.WorkOrderGetPayload<{ include: typeof detailInclude }>;
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activity: ActivityLogService,
+  ) {}
 
   async dashboard(): Promise<AdminDashboardDto> {
     const openWhere: Prisma.WorkOrderWhereInput = {
@@ -278,6 +287,248 @@ export class AdminService {
       priority: undefined,
       createdBefore: undefined,
     });
+  }
+
+  async addMechanic(user: AuthUser, workOrderId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    const parsed = adminAddWorkOrderMechanicSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const operation = 'admin_add_mechanic';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      mechanicId: input.mechanicId,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        this.assertAssignableOpenWorkOrder(wo);
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const mechanic = await tx.user.findFirst({
+          where: {
+            id: input.mechanicId,
+            active: true,
+            capabilities: { some: { capability: AppCapability.MECHANIC_STANDARD } },
+          },
+          select: { id: true, name: true },
+        });
+        if (!mechanic) throw new BadRequestException('One or more selected mechanics cannot perform standard work');
+        const assignment = await tx.mechanicAssignment.findUnique({
+          where: { workOrderId_mechanicId: { workOrderId, mechanicId: input.mechanicId } },
+        });
+        if (assignment && !assignment.removedAt) {
+          throw new ConflictException({
+            code: 'ALREADY_ASSIGNED',
+            message: 'This mechanic is already assigned to the Work Order.',
+          });
+        }
+        if (assignment) {
+          await tx.mechanicAssignment.update({
+            where: { id: assignment.id },
+            data: { removedAt: null, addedAt: new Date(), addedById: user.id },
+          });
+        } else {
+          await tx.mechanicAssignment.create({
+            data: { workOrderId, mechanicId: input.mechanicId, addedById: user.id },
+          });
+        }
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: { version: { increment: 1 } },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.MECHANIC_ADDED,
+          entityType: 'mechanic_assignment',
+          entityId: input.mechanicId,
+          userId: user.id,
+          previousValue: assignment ? { mechanicId: input.mechanicId, removedAt: assignment.removedAt?.toISOString() ?? null } : null,
+          newValue: { mechanicId: input.mechanicId, mechanicName: mechanic.name },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  async removeMechanic(user: AuthUser, workOrderId: string, mechanicId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    if (!isUuid(mechanicId)) throw new BadRequestException('Invalid Mechanic id');
+    const parsed = adminRemoveWorkOrderMechanicSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const operation = 'admin_remove_mechanic';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      mechanicId,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        this.assertAssignableOpenWorkOrder(wo);
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const assignment = await tx.mechanicAssignment.findUnique({
+          where: { workOrderId_mechanicId: { workOrderId, mechanicId } },
+        });
+        if (!assignment || assignment.removedAt) throw new NotFoundException('Mechanic assignment not found');
+        if (wo.mechanics.filter((item) => !item.removedAt).length <= 1) {
+          throw new BadRequestException('A Work Order must keep at least one assigned mechanic');
+        }
+        await tx.mechanicAssignment.update({
+          where: { id: assignment.id },
+          data: { removedAt: new Date() },
+        });
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: { version: { increment: 1 } },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.MECHANIC_REMOVED,
+          entityType: 'mechanic_assignment',
+          entityId: mechanicId,
+          userId: user.id,
+          previousValue: { mechanicId, mechanicName: wo.mechanics.find((item) => item.mechanic.id === mechanicId)?.mechanic.name ?? null },
+          newValue: { mechanicId, removed: true },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  private assertAssignableOpenWorkOrder(wo: DetailRow) {
+    if (wo.primaryCategory.name === 'PM') {
+      throw new BadRequestException('PM Work Orders can only be assigned to their creator');
+    }
+    if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
+      throw new BadRequestException('Cannot change assignments on a closed Work Order');
+    }
+  }
+
+  private versionConflict(message: string) {
+    return new ConflictException({ code: 'VERSION_CONFLICT', message });
+  }
+
+  private isUniqueViolation(error: unknown) {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+  }
+
+  private async findWorkOrderMutation(
+    key: string,
+    workOrderId: string,
+    operation: string,
+    payloadHash: string,
+    actorId: string,
+  ) {
+    const existing = await this.prisma.workOrderMutation.findUnique({ where: { idempotencyKey: key } });
+    return this.assertWorkOrderMutation(existing, workOrderId, operation, payloadHash, actorId);
+  }
+
+  private async findWorkOrderMutationInTx(
+    tx: Prisma.TransactionClient,
+    key: string,
+    workOrderId: string,
+    operation: string,
+    payloadHash: string,
+    actorId: string,
+  ) {
+    const existing = await tx.workOrderMutation.findUnique({ where: { idempotencyKey: key } });
+    return this.assertWorkOrderMutation(existing, workOrderId, operation, payloadHash, actorId);
+  }
+
+  private assertWorkOrderMutation(
+    existing: { workOrderId: string; operation: string; payloadHash: string; actorId: string; result: unknown } | null,
+    workOrderId: string,
+    operation: string,
+    payloadHash: string,
+    actorId: string,
+  ) {
+    if (!existing) return null;
+    if (
+      existing.workOrderId !== workOrderId ||
+      existing.operation !== operation ||
+      existing.payloadHash !== payloadHash ||
+      existing.actorId !== actorId
+    ) {
+      throw new ConflictException({
+        code: 'IDEMPOTENCY_KEY_REUSE',
+        message: 'Idempotency key was already used for a different Work Order mutation.',
+      });
+    }
+    return existing.result as AdminWorkOrderDetailDto;
+  }
+
+  private async persistWorkOrderMutation(
+    tx: Prisma.TransactionClient,
+    input: { idempotencyKey: string; workOrderId: string; operation: string; payloadHash: string; actorId: string },
+  ) {
+    const row = await tx.workOrder.findUnique({ where: { id: input.workOrderId }, include: detailInclude });
+    if (!row) throw new NotFoundException('Work Order not found');
+    const result = toAdminDetail(row);
+    await tx.workOrderMutation.create({
+      data: {
+        idempotencyKey: input.idempotencyKey,
+        workOrderId: input.workOrderId,
+        operation: input.operation,
+        payloadHash: input.payloadHash,
+        actorId: input.actorId,
+        result: result as unknown as Prisma.InputJsonValue,
+      },
+    });
+    return result;
   }
 
   private async getAttention(openWhere: Prisma.WorkOrderWhereInput) {
@@ -480,6 +731,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
   return {
     ...summary,
     truck: toTruckDto(row.truck),
+    version: row.version,
     notes: row.notes,
     createdBy: row.createdBy,
     completedBy: row.completedBy,

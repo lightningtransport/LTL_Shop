@@ -10,6 +10,15 @@ const users = {
     pmAuthorized: false,
     capabilities: ['mechanic.standard'],
   },
+  'anthony@lightning.local': {
+    id: '00000000-0000-4000-8000-000000000006',
+    email: 'anthony@lightning.local',
+    name: 'Anthony',
+    role: 'mechanic',
+    active: true,
+    pmAuthorized: false,
+    capabilities: ['mechanic.standard'],
+  },
   'manager@lightning.local': {
     id: '00000000-0000-4000-8000-000000000002',
     email: 'manager@lightning.local',
@@ -70,7 +79,7 @@ const yardOperations = [
 createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (request.method === 'OPTIONS') {
     response.writeHead(204).end();
     return;
@@ -265,22 +274,64 @@ createServer(async (request, response) => {
     }
     return;
   }
+  if (request.url?.startsWith('/api/admin/mechanics')) {
+    const items = Object.values(users)
+      .filter((candidate) => candidate.capabilities.includes('mechanic.standard'))
+      .map((candidate) => ({
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        role: candidate.role,
+        active: candidate.active,
+        capabilities: candidate.capabilities,
+        openWorkOrderCount: 0,
+        currentAssignments: [],
+      }));
+    json(response, 200, { items, nextCursor: null });
+    return;
+  }
+  const addMechanicMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/mechanics$/i);
+  if (addMechanicMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === addMechanicMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (body.expectedVersion !== summary.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    const mechanic = Object.values(users).find((candidate) => candidate.id === body.mechanicId);
+    if (!mechanic?.capabilities.includes('mechanic.standard')) {
+      json(response, 400, { message: 'One or more selected mechanics cannot perform standard work' });
+      return;
+    }
+    if (summary.mechanics.some((assignment) => assignment.mechanicId === mechanic.id && !assignment.removedAt)) {
+      json(response, 409, { code: 'ALREADY_ASSIGNED', message: 'This mechanic is already assigned to the Work Order.' });
+      return;
+    }
+    summary.mechanics.push({ mechanicId: mechanic.id, mechanicName: mechanic.name, addedAt: '2026-09-06T19:00:00.000Z', removedAt: null });
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
+  const removeMechanicMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/mechanics\/([0-9a-f-]+)$/i);
+  if (removeMechanicMatch && request.method === 'DELETE') {
+    const summary = workOrders.find((item) => item.id === removeMechanicMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (body.expectedVersion !== summary.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    const active = summary.mechanics.filter((assignment) => !assignment.removedAt);
+    if (active.length <= 1) { json(response, 400, { message: 'A Work Order must keep at least one assigned mechanic' }); return; }
+    const assignment = summary.mechanics.find((item) => item.mechanicId === removeMechanicMatch[2] && !item.removedAt);
+    if (!assignment) { json(response, 404, { message: 'Mechanic assignment not found' }); return; }
+    assignment.removedAt = '2026-09-06T19:05:00.000Z';
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   const detailMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)$/i);
   if (detailMatch) {
     const summary = workOrders.find((item) => item.id === detailMatch[1]);
     if (!summary) json(response, 404, { message: 'Work Order not found' });
-    else json(response, 200, {
-      ...summary,
-      truck: { ...summary.truck, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' },
-      notes: 'Inspect brake chamber before release.',
-      createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name },
-      completedBy: null,
-      totalActiveLaborMs: 5400000,
-      totalWaitingMs: 1800000,
-      jobs: [{ id: '00000000-0000-4000-8000-000000000501', displayName: 'Inspect brake chamber', customDescription: null, category: summary.category, status: 'to_do' }],
-      pauseHistory: summary.currentPause ? [{ ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } }] : [],
-      activityLog: [{ id: '00000000-0000-4000-8000-000000000601', eventType: 'work_order_created', entityType: 'work_order', entityId: summary.id, user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name }, previousValue: null, newValue: null, relevantValue: { displayId: summary.displayId }, createdAt: summary.createdAt }],
-    });
+    else json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
   const historyMatch = request.url?.match(/^\/api\/admin\/trucks\/([0-9a-f-]+)\/repair-history(?:\?(.*))?$/i);
@@ -304,6 +355,21 @@ createServer(async (request, response) => {
 
   json(response, 404, { message: 'Fixture route not found' });
 }).listen(3101, '127.0.0.1');
+
+function fixtureWorkOrderDetail(summary) {
+  return {
+    ...summary,
+    truck: { ...summary.truck, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' },
+    notes: 'Inspect brake chamber before release.',
+    createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name },
+    completedBy: null,
+    totalActiveLaborMs: 5400000,
+    totalWaitingMs: 1800000,
+    jobs: [{ id: '00000000-0000-4000-8000-000000000501', displayName: 'Inspect brake chamber', customDescription: null, category: summary.category, status: 'to_do' }],
+    pauseHistory: summary.currentPause ? [{ ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } }] : [],
+    activityLog: [{ id: '00000000-0000-4000-8000-000000000601', eventType: 'work_order_created', entityType: 'work_order', entityId: summary.id, user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name }, previousValue: null, newValue: null, relevantValue: { displayId: summary.displayId }, createdAt: summary.createdAt }],
+  };
+}
 
 function json(response, status, body) {
   response.writeHead(status, { 'Content-Type': 'application/json' });
@@ -332,6 +398,7 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status) {
     mechanics: status === 'created' ? [] : [{ mechanicId: users['mechanic@lightning.local'].id, mechanicName: users['mechanic@lightning.local'].name, addedAt: '2026-09-06T16:00:00.000Z', removedAt: null }],
     currentPause: paused ? { id: '00000000-0000-4000-8000-000000000401', workOrderId: id, reason: 'waiting_for_parts', notes: 'Air line ordered', startedAt: '2026-09-06T17:00:00.000Z', endedAt: null, durationMs: null } : null,
     createdAt, startedAt: status === 'created' ? null : '2026-09-06T16:00:00.000Z', completedAt, updatedAt: '2026-09-06T18:00:00.000Z',
+    version: 1,
   };
 }
 
