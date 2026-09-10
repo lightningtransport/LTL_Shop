@@ -290,6 +290,12 @@ const messages = {
     noHistory: 'No closed Work Orders match these filters.',
     closedStatuses: 'Closed statuses',
     mechanicInactive: 'Inactive',
+    trucksTitle: 'Trucks',
+    trucksDescription: 'Read-only list of Shop trucks and any open Work Order. Operational Off Duty is not available.',
+    searchTrucks: 'Search truck number, make, model, or company',
+    noTrucksMatch: 'No trucks match these filters.',
+    currentWorkOrder: 'Open Work Order',
+    noOpenWorkOrder: 'No open Work Order',
   },
   es: {
     eyebrow: 'Shop Admin',
@@ -580,6 +586,12 @@ const messages = {
     noHistory: 'Ningún Work Order cerrado coincide con estos filtros.',
     closedStatuses: 'Estados cerrados',
     mechanicInactive: 'Inactivo',
+    trucksTitle: 'Unidades',
+    trucksDescription: 'Lista de solo lectura de los trucks del Shop y cualquier Work Order abierto. Off Duty operacional no está disponible.',
+    searchTrucks: 'Buscar número de truck, marca, modelo o empresa',
+    noTrucksMatch: 'Ningún truck coincide con estos filtros.',
+    currentWorkOrder: 'Work Order abierto',
+    noOpenWorkOrder: 'Sin Work Order abierto',
   },
 } as const;
 

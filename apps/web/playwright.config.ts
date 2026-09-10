@@ -24,9 +24,13 @@ export default defineConfig({
             reuseExistingServer: false,
           },
           {
-            command: 'NEXT_PUBLIC_API_URL=http://127.0.0.1:3101 next dev --hostname 127.0.0.1 --port 3010',
+            command: '../../node_modules/.bin/next dev --hostname 127.0.0.1 --port 3010',
             port: 3010,
             reuseExistingServer: false,
+            env: {
+              NODE_ENV: 'development',
+              NEXT_PUBLIC_API_URL: 'http://127.0.0.1:3101',
+            },
           },
         ]
       : {

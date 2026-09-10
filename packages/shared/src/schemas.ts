@@ -91,6 +91,13 @@ export const adminHistoryQuerySchema = z.object({
   direction: z.enum(['asc', 'desc']).default('desc'),
 });
 
+export const adminTrucksQuerySchema = adminMechanicsQuerySchema;
+export const adminTruckCursorSchema = z.object({
+  direction: z.enum(['asc', 'desc']),
+  truckNumber: z.string().min(1).max(120),
+  id: z.string().uuid(),
+});
+
 export const adminRepairHistoryQuerySchema = z.object({
   categoryId: z.string().uuid().optional(),
   excludeWorkOrderId: z.string().uuid().optional(),
@@ -229,6 +236,8 @@ export type AdminWorkOrderCursor = z.infer<typeof adminWorkOrderCursorSchema>;
 export type AdminMechanicsQuery = z.infer<typeof adminMechanicsQuerySchema>;
 export type AdminMechanicCursor = z.infer<typeof adminMechanicCursorSchema>;
 export type AdminHistoryQuery = z.infer<typeof adminHistoryQuerySchema>;
+export type AdminTrucksQuery = z.infer<typeof adminTrucksQuerySchema>;
+export type AdminTruckCursor = z.infer<typeof adminTruckCursorSchema>;
 export type AdminRepairHistoryQuery = z.infer<typeof adminRepairHistoryQuerySchema>;
 export type AdminYardOperationsQuery = z.infer<typeof adminYardOperationsQuerySchema>;
 export type AdminYardOperationsCursor = z.infer<typeof adminYardOperationsCursorSchema>;

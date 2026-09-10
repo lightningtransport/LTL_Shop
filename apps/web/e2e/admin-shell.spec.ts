@@ -151,9 +151,11 @@ test.describe('Shop Admin Phase 2A', () => {
     expect(mechanics?.status()).toBe(403);
     const history = await page.goto('/admin/history');
     expect(history?.status()).toBe(403);
+    const trucks = await page.goto('/admin/trucks');
+    expect(trucks?.status()).toBe(403);
   });
 
-  test('manager opens read-only Mechanics and History', async ({ page }) => {
+  test('manager opens read-only Mechanics, History, and Trucks', async ({ page }) => {
     await page.goto('/login');
     await page.getByLabel('Email').fill('manager@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
@@ -164,6 +166,13 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('link', { name: 'History' }).first().click();
     await expect(page).toHaveURL(/\/admin\/history$/);
     await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Trucks' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/trucks$/);
+    await expect(page.getByRole('heading', { name: 'Trucks' })).toBeVisible();
+    await expect(page.getByText('T-101').first()).toBeVisible();
+    await expect(page.getByText('WO-0101').first()).toBeVisible();
+    await expect(page.getByText('No open Work Order').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
   });
 });

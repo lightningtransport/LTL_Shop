@@ -9,7 +9,6 @@ import { AppHeaderActions, Badge, Button } from './ui';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 const futureNavigation = [
-  { message: 'trucks', icon: Truck },
   { message: 'jobCatalog', icon: Library },
 ] as const;
 
@@ -17,6 +16,7 @@ const activeNavigation = [
   { message: 'dashboard', icon: Gauge, href: '/admin' },
   { message: 'workOrders', icon: ClipboardList, href: '/admin/work-orders' },
   { message: 'yardOperations', icon: Warehouse, href: '/admin/yard-operations' },
+  { message: 'trucks', icon: Truck, href: '/admin/trucks' },
   { message: 'mechanics', icon: UsersRound, href: '/admin/mechanics' },
   { message: 'history', icon: History, href: '/admin/history' },
 ] as const;

@@ -44,6 +44,9 @@ function createPrisma() {
     workOrderJob: {
       count: vi.fn(),
     },
+    truck: {
+      findMany: vi.fn(),
+    },
   };
 }
 
@@ -191,5 +194,12 @@ describe('AdminService', () => {
   it('rejects History filters for open Work Orders', async () => {
     const service = new AdminService(createPrisma() as never);
     await expect(service.listHistory({ status: 'in_progress' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('lists trucks without inventing Off Duty state', async () => {
+    const prisma = createPrisma();
+    prisma.truck.findMany.mockResolvedValue([]);
+    const service = new AdminService(prisma as never);
+    await expect(service.listTrucks({})).resolves.toEqual({ items: [], nextCursor: null });
   });
 });

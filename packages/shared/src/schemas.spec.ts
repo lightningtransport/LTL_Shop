@@ -10,6 +10,7 @@ import {
   adminListQuerySchema,
   adminHistoryQuerySchema,
   adminMechanicsQuerySchema,
+  adminTrucksQuerySchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
   adminYardOperationsQuerySchema,
@@ -92,6 +93,8 @@ describe('shared contracts', () => {
     expect(adminHistoryQuerySchema.safeParse({ status: 'in_progress' }).success).toBe(false);
     expect(adminMechanicsQuerySchema.parse({}).direction).toBe('asc');
     expect(adminMechanicsQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
+    expect(adminTrucksQuerySchema.parse({}).direction).toBe('asc');
+    expect(adminTrucksQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
   });
 
   it('requires version and UUID idempotency for Admin mutations', () => {

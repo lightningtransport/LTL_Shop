@@ -16,6 +16,8 @@ import {
   adminHistoryQuerySchema,
   adminMechanicCursorSchema,
   adminMechanicsQuerySchema,
+  adminTruckCursorSchema,
+  adminTrucksQuerySchema,
   adminWorkOrderCursorSchema,
   adminWorkOrdersQuerySchema,
   type AdminDashboardDto,
@@ -24,6 +26,9 @@ import {
   type AdminMechanicSummaryDto,
   type AdminMechanicsQuery,
   type AdminPage,
+  type AdminTruckCursor,
+  type AdminTruckSummaryDto,
+  type AdminTrucksQuery,
   type AdminWorkOrderCursor,
   type AdminWorkOrderDetailDto,
   type AdminWorkOrderSummaryDto,
@@ -217,6 +222,32 @@ export class AdminService {
     };
   }
 
+  async listTrucks(rawQuery: unknown): Promise<AdminPage<AdminTruckSummaryDto>> {
+    const parsed = adminTrucksQuerySchema.safeParse(rawQuery);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const query = parsed.data;
+    const cursor = query.cursor ? this.decodeTruckCursor(query.cursor, query) : null;
+    const rows = await this.prisma.truck.findMany({
+      where: this.buildTruckWhere(query, cursor),
+      include: {
+        workOrders: {
+          where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+          include: { primaryCategory: { select: { name: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: [{ truckNumber: query.direction }, { id: query.direction }],
+      take: query.limit + 1,
+    });
+    const hasNext = rows.length > query.limit;
+    const pageRows = hasNext ? rows.slice(0, query.limit) : rows;
+    return {
+      items: pageRows.map(toTruckSummary),
+      nextCursor: hasNext ? this.encodeTruckCursor(pageRows[pageRows.length - 1], query) : null,
+    };
+  }
+
   async mechanicDetail(id: string): Promise<AdminMechanicDetailDto> {
     if (!isUuid(id)) throw new BadRequestException('Invalid Mechanic id');
     const row = await this.prisma.user.findFirst({
@@ -346,6 +377,46 @@ export class AdminService {
     return Buffer.from(JSON.stringify({ direction: query.direction, name: row.name, id: row.id })).toString('base64url');
   }
 
+  private buildTruckWhere(query: AdminTrucksQuery, cursor: AdminTruckCursor | null): Prisma.TruckWhereInput {
+    const filters: Prisma.TruckWhereInput[] = [];
+    if (query.search) {
+      const contains = { contains: query.search, mode: 'insensitive' as const };
+      filters.push({
+        OR: [
+          { truckNumber: contains },
+          { make: contains },
+          { model: contains },
+          { company: contains },
+        ],
+      });
+    }
+    if (cursor) {
+      const comparison = query.direction === 'asc' ? 'gt' : 'lt';
+      filters.push({
+        OR: [
+          { truckNumber: { [comparison]: cursor.truckNumber } },
+          { truckNumber: cursor.truckNumber, id: { [comparison]: cursor.id } },
+        ],
+      });
+    }
+    return filters.length ? { AND: filters } : {};
+  }
+
+  private decodeTruckCursor(encoded: string, query: AdminTrucksQuery) {
+    try {
+      const decoded: unknown = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+      const cursor = adminTruckCursorSchema.parse(decoded);
+      if (cursor.direction !== query.direction) throw new Error('mismatch');
+      return cursor;
+    } catch {
+      throw new BadRequestException('Invalid or incompatible cursor');
+    }
+  }
+
+  private encodeTruckCursor(row: { id: string; truckNumber: string }, query: AdminTrucksQuery) {
+    return Buffer.from(JSON.stringify({ direction: query.direction, truckNumber: row.truckNumber, id: row.id })).toString('base64url');
+  }
+
   private decodeCursor(encoded: string, query: AdminWorkOrdersQuery) {
     try {
       const decoded: unknown = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
@@ -469,6 +540,36 @@ function toMechanicSummary(row: {
     capabilities: row.capabilities.map((item) => item.capability as import('@ltl-shop/shared').AppCapability),
     openWorkOrderCount: currentAssignments.length,
     currentAssignments,
+  };
+}
+
+function toTruckSummary(row: {
+  id: string;
+  truckNumber: string;
+  make: string | null;
+  model: string | null;
+  year: number | null;
+  mileage: number | null;
+  company: string | null;
+  owner: string | null;
+  workOrders: {
+    id: string;
+    displayId: string;
+    status: WorkOrderStatus;
+    primaryCategory: { name: string };
+  }[];
+}): AdminTruckSummaryDto {
+  const open = row.workOrders[0] ?? null;
+  return {
+    truck: toTruckDto(row),
+    openWorkOrder: open
+      ? {
+          id: open.id,
+          displayId: open.displayId,
+          status: open.status as SharedWorkOrderStatus,
+          primaryCategoryName: open.primaryCategory.name,
+        }
+      : null,
   };
 }
 
