@@ -89,7 +89,6 @@ export default function NewWorkOrderPage() {
   const [customJobOpen, setCustomJobOpen] = useState(false);
   const [customJobName, setCustomJobName] = useState('');
   const [jobQuery, setJobQuery] = useState('');
-  const [pendingCategoryId, setPendingCategoryId] = useState<string | null>(null);
   const [workingWithOpen, setWorkingWithOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(-1);
@@ -155,20 +154,15 @@ export default function NewWorkOrderPage() {
 
   function addJob(job: Omit<DraftJob, 'key'>) {
     setJobs((current) => {
-      const duplicate = current.some((existing) =>
-        (job.catalogJobId && existing.catalogJobId === job.catalogJobId) ||
-        normalizeJobName(existing.displayName) === normalizeJobName(job.displayName),
-      );
+      const duplicate = job.catalogJobId
+        ? current.some((existing) => existing.catalogJobId === job.catalogJobId)
+        : current.some((existing) => !existing.catalogJobId && normalizeJobName(existing.displayName) === normalizeJobName(job.displayName));
       return duplicate ? current : [...current, { ...job, key: crypto.randomUUID() }];
     });
   }
 
   function requestCategoryChange(nextCategoryId: string) {
-    if (nextCategoryId === categoryId || jobs.length === 0) {
-      setCategoryId(nextCategoryId);
-      return;
-    }
-    setPendingCategoryId(nextCategoryId);
+    setCategoryId(nextCategoryId);
   }
 
   async function selectTruck(t: TruckDto) {
@@ -490,7 +484,12 @@ export default function NewWorkOrderPage() {
                       key={j.key}
                       className="flex items-center justify-between rounded-xl border border-shop-border px-3 py-2 text-sm"
                     >
-                      <span>{j.displayName}</span>
+                      <span>
+                        <span className="block">{j.displayName}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {standardCategories.find((category) => category.id === j.categoryId)?.name ?? 'Category'}
+                        </span>
+                      </span>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -555,7 +554,7 @@ export default function NewWorkOrderPage() {
                       />
                       <Button
                         className="w-full"
-                        disabled={!customJobName.trim() || jobs.some((job) => normalizeJobName(job.displayName) === normalizeJobName(customJobName))}
+                        disabled={!customJobName.trim() || jobs.some((job) => !job.catalogJobId && normalizeJobName(job.displayName) === normalizeJobName(customJobName))}
                         onClick={() => {
                           addJob({ categoryId, displayName: customJobName.trim(), customDescription: customJobName.trim() });
                           setCustomJobName('');
@@ -641,21 +640,6 @@ export default function NewWorkOrderPage() {
         </>
       ) : null}
 
-      <Modal
-        open={pendingCategoryId !== null}
-        title="Change category?"
-        onClose={() => setPendingCategoryId(null)}
-      >
-        <p className="text-sm text-muted-foreground">Changing the category removes the jobs already selected for this Work Order.</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={() => setPendingCategoryId(null)}>Keep current</Button>
-          <Button onClick={() => {
-            if (pendingCategoryId) setCategoryId(pendingCategoryId);
-            setJobs([]);
-            setPendingCategoryId(null);
-          }}>Change category</Button>
-        </div>
-      </Modal>
       <WorkingWithModal
         open={workingWithOpen}
         mechanics={availableCoworkers}

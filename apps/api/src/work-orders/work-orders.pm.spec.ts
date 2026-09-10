@@ -302,6 +302,39 @@ describe('PM Work Order authorization', () => {
     }));
   });
 
+  it('accepts active Standard Jobs from multiple Categories during creation validation', async () => {
+    const prisma = {
+      jobCategory: { findMany: vi.fn().mockResolvedValue([
+        { id: '00000000-0000-4000-8000-000000000003', name: 'Brakes' },
+        { id: '00000000-0000-4000-8000-000000000004', name: 'Suspension' },
+      ]) },
+      catalogJob: { findMany: vi.fn().mockResolvedValue([
+        { id: '00000000-0000-4000-8000-000000000012', categoryId: '00000000-0000-4000-8000-000000000003' },
+        { id: '00000000-0000-4000-8000-000000000022', categoryId: '00000000-0000-4000-8000-000000000004' },
+      ]) },
+    } as never;
+    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
+
+    await expect((service as never as { assertStandardJobsUseActiveCategories: (jobs: unknown[]) => Promise<void> })
+      .assertStandardJobsUseActiveCategories([
+        { catalogJobId: '00000000-0000-4000-8000-000000000012', categoryId: '00000000-0000-4000-8000-000000000003', displayName: 'Brake inspection' },
+        { catalogJobId: '00000000-0000-4000-8000-000000000022', categoryId: '00000000-0000-4000-8000-000000000004', displayName: 'Inspect shocks' },
+      ])).resolves.toBeUndefined();
+  });
+
+  it('rejects a catalog Job whose declared Category does not match during creation validation', async () => {
+    const prisma = {
+      jobCategory: { findMany: vi.fn().mockResolvedValue([{ id: '00000000-0000-4000-8000-000000000004', name: 'Suspension' }]) },
+      catalogJob: { findMany: vi.fn().mockResolvedValue([{ id: '00000000-0000-4000-8000-000000000012', categoryId: '00000000-0000-4000-8000-000000000003' }]) },
+    } as never;
+    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
+
+    await expect((service as never as { assertStandardJobsUseActiveCategories: (jobs: unknown[]) => Promise<void> })
+      .assertStandardJobsUseActiveCategories([
+        { catalogJobId: '00000000-0000-4000-8000-000000000012', categoryId: '00000000-0000-4000-8000-000000000004', displayName: 'Brake inspection' },
+      ])).rejects.toMatchObject({ response: { message: 'One or more catalog jobs do not belong to their declared category' } });
+  });
+
   it('replays an Add Job response for the same idempotency key without another write', async () => {
     const stored = { id: 'wo-result', version: 4 };
     const prisma = {

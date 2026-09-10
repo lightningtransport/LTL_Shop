@@ -167,10 +167,7 @@ export class WorkOrdersService {
           throw new BadRequestException('One or more selected mechanics cannot perform standard work');
         }
       }
-      if (input.jobs.some((job) => job.categoryId !== category.id)) {
-        throw new BadRequestException('All jobs must belong to the Work Order category');
-      }
-      await this.assertCatalogJobsBelongToCategory(input.jobs, category.id);
+      await this.assertStandardJobsUseActiveCategories(input.jobs);
     }
 
     const preflightOpen = await this.prisma.workOrder.findFirst({
@@ -673,11 +670,37 @@ export class WorkOrdersService {
     const names = new Set<string>();
     for (const job of jobs) {
       const normalizedName = this.normalizeJobName(job.displayName);
-      if (names.has(normalizedName) || (job.catalogJobId && catalogIds.has(job.catalogJobId))) {
+      const duplicate = job.catalogJobId
+        ? catalogIds.has(job.catalogJobId)
+        : names.has(normalizedName);
+      if (duplicate) {
         throw new BadRequestException('A Work Order cannot contain duplicate jobs');
       }
-      names.add(normalizedName);
+      if (!job.catalogJobId) names.add(normalizedName);
       if (job.catalogJobId) catalogIds.add(job.catalogJobId);
+    }
+  }
+
+  private async assertStandardJobsUseActiveCategories(
+    jobs: CreateWorkOrderInput['jobs'],
+  ) {
+    const categoryIds = [...new Set(jobs.map((job) => job.categoryId))];
+    const categories = await this.prisma.jobCategory.findMany({
+      where: { id: { in: categoryIds }, status: 'active' },
+      select: { id: true, name: true },
+    });
+    if (categories.length !== categoryIds.length || categories.some((item) => item.name === 'PM')) {
+      throw new BadRequestException('One or more job categories are invalid or inactive');
+    }
+    const catalogIds = [...new Set(jobs.flatMap((job) => job.catalogJobId ? [job.catalogJobId] : []))];
+    if (!catalogIds.length) return;
+    const catalogJobs = await this.prisma.catalogJob.findMany({
+      where: { id: { in: catalogIds }, status: 'active' },
+      select: { id: true, categoryId: true },
+    });
+    const categoryByCatalogId = new Map(catalogJobs.map((item) => [item.id, item.categoryId]));
+    if (jobs.some((job) => job.catalogJobId && categoryByCatalogId.get(job.catalogJobId) !== job.categoryId)) {
+      throw new BadRequestException('One or more catalog jobs do not belong to their declared category');
     }
   }
 
