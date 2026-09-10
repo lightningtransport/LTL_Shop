@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { TruckOperationalStatus } from '@ltl-shop/shared';
 import { Badge, Button, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useAdminTrucks } from '@/lib/admin-data';
 import { humanize } from '@/lib/admin-format';
@@ -53,6 +54,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
                 <th className="p-3 font-medium">{messages.trucks}</th>
+                <th className="p-3 font-medium">{messages.operationalStatus}</th>
                 <th className="p-3 font-medium">{messages.make}</th>
                 <th className="p-3 font-medium">{messages.company}</th>
                 <th className="p-3 font-medium">{messages.currentWorkOrder}</th>
@@ -66,6 +68,13 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
                     <p className="text-muted-foreground">
                       {[item.truck.year, item.truck.model].filter(Boolean).join(' ') || '—'}
                     </p>
+                  </td>
+                  <td className="p-3 text-muted-foreground">
+                    {item.operationalStatus === TruckOperationalStatus.IN_SERVICE
+                      ? messages.operationalStatusInService
+                      : item.operationalStatus === TruckOperationalStatus.OFF_DUTY
+                        ? messages.operationalStatusOffDuty
+                        : messages.operationalStatusUnknown}
                   </td>
                   <td className="p-3 text-muted-foreground">{item.truck.make ?? '—'}</td>
                   <td className="p-3 text-muted-foreground">{item.truck.company ?? '—'}</td>

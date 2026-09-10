@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { addAdminWorkOrderMechanic, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderMechanic, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, returnAdminWorkOrderToService, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -31,6 +31,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [selectedMechanic, setSelectedMechanic] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [reopenReason, setReopenReason] = useState('');
+  const [returnReason, setReturnReason] = useState('');
   const [jobReason, setJobReason] = useState('');
   const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
   const [draftNotes, setDraftNotes] = useState('');
@@ -69,6 +70,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const canCancelWorkOrder = isOpen;
   const canCompleteWorkOrder = data.status === 'in_progress';
   const canReopenWorkOrder = data.status === 'completed' || data.status === 'cancelled';
+  const canReturnToService = data.status === 'completed' && !data.returnedToServiceAt;
   const canManageJobs = isOpen && data.category.name !== 'PM';
   const hasIncompleteJobs = data.category.name !== 'PM' && data.jobs.some((job) => job.status === 'to_do');
   const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
@@ -233,6 +235,54 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           </form>
       </CardContent>
     </Card>
+    ) : null}
+
+    {data.status === 'completed' ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>{messages.returnToServiceTitle}</CardTitle>
+          <CardDescription>{messages.returnToServiceDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {canReturnToService ? (
+            <form
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const reason = returnReason.trim();
+                if (!reason) {
+                  setFeedback({ kind: 'error', message: messages.returnToServiceReasonRequired });
+                  return;
+                }
+                void runMutation('return-to-service', messages.returnToServiceSuccess, async () => {
+                  await returnAdminWorkOrderToService(data.id, { reason, expectedVersion: data.version });
+                  setReturnReason('');
+                }, (failure) => returnToServiceError(failure, messages));
+              }}
+            >
+              <label className="block space-y-1">
+                <span className="text-sm font-medium">{messages.returnToServiceReason}</span>
+                <Textarea
+                  aria-label={messages.returnToServiceReason}
+                  value={returnReason}
+                  onChange={(event) => setReturnReason(event.target.value)}
+                  maxLength={1000}
+                  required
+                />
+                <span className="text-xs text-muted-foreground">{messages.returnToServiceReasonHelp}</span>
+              </label>
+              <Button type="submit" disabled={Boolean(pendingAction)}>
+                {messages.returnToServiceConfirm}
+              </Button>
+            </form>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {messages.returnToServiceAlready}
+              {data.returnedToServiceAt ? ` ${formatAdminDate(data.returnedToServiceAt, locale)}` : ''}
+            </p>
+          )}
+        </CardContent>
+      </Card>
     ) : null}
 
     {canReopenWorkOrder ? (
@@ -534,6 +584,13 @@ function reopenError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.reopenWorkOrderGenericError;
+}
+function returnToServiceError(errorValue: unknown, messages: AdminMessages) {
+  if (errorValue instanceof ApiError) {
+    if (errorValue.status === 400) return messages.returnToServiceBadRequest;
+    if (errorValue.status === 409) return messages.assignmentConflict;
+  }
+  return messages.returnToServiceGenericError;
 }
 function fieldUpdateError(errorValue: unknown, messages: AdminMessages) {
   if (errorValue instanceof ApiError) {

@@ -89,6 +89,9 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Time correction saved.')).toBeVisible();
     await page.getByRole('button', { name: 'Confirm completion' }).click();
     await expect(page.getByText('Work Order completed.')).toBeVisible();
+    await page.getByLabel('Reason for Return to Service').fill('Repairs verified');
+    await page.getByRole('button', { name: 'Confirm Return to Service' }).click();
+    await expect(page.getByText('Truck returned to service.')).toBeVisible();
     await page.getByLabel('Reason for reopening').fill('More work found');
     await page.getByRole('button', { name: 'Confirm reopen' }).click();
     await expect(page.getByText('Work Order reopened.')).toBeVisible();

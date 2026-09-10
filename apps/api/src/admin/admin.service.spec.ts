@@ -979,6 +979,91 @@ describe('AdminService', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000001207',
     })).resolves.toEqual(stored);
   });
+
+  it('returns a completed Work Order Truck to service without changing Work Order status', async () => {
+    const manager = {
+      id: '00000000-0000-4000-8000-000000000002',
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS],
+      supabaseAuthId: null,
+    };
+    const body = {
+      reason: 'Repairs verified',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001401',
+    };
+    const completed = detailRow({ status: 'completed', startedAt: new Date('2026-09-06T16:00:00.000Z') });
+    const activity = { log: vi.fn() };
+    const tx = assignmentTx(completed);
+    tx.workOrder.findUnique
+      .mockResolvedValueOnce(completed)
+      .mockResolvedValueOnce(completed)
+      .mockResolvedValueOnce(detailRow({
+        status: 'completed',
+        version: 2,
+        startedAt: completed.startedAt,
+        serviceStatusEvents: [{ occurredAt: new Date('2026-09-10T18:00:00.000Z') }],
+      }));
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, activity as never);
+
+    await expect(service.returnToService(manager, completed.id, body)).resolves.toMatchObject({
+      status: 'completed',
+      version: 2,
+      returnedToServiceAt: '2026-09-10T18:00:00.000Z',
+    });
+    expect(tx.truckServiceStatusEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'in_service', reason: 'Repairs verified', workOrderId: completed.id }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({
+      eventType: ActivityEventType.TRUCK_RETURNED_TO_SERVICE,
+    }));
+
+    const open = assignmentTx(detailRow({ status: 'in_progress' }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof open) => unknown) => callback(open));
+    await expect(service.returnToService(manager, completed.id, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001402',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    const cancelled = assignmentTx(detailRow({ status: 'cancelled' }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof cancelled) => unknown) => callback(cancelled));
+    await expect(service.returnToService(manager, completed.id, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001403',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    const duplicateTx = assignmentTx(completed);
+    duplicateTx.truckServiceStatusEvent.findFirst.mockResolvedValue({ id: 'evt' });
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof duplicateTx) => unknown) => callback(duplicateTx));
+    await expect(service.returnToService(manager, completed.id, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001404',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
+    const stored = { id: completed.id, version: 3 };
+    prisma.workOrderMutation.findUnique.mockResolvedValueOnce({
+      workOrderId: completed.id,
+      operation: 'admin_return_to_service',
+      payloadHash: idempotencyFingerprint({
+        workOrderId: completed.id,
+        reason: 'Repairs verified',
+        expectedVersion: 1,
+      }),
+      actorId: manager.id,
+      result: stored,
+    });
+    const replaying = createService(prisma);
+    await expect(replaying.returnToService(manager, completed.id, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001405',
+    })).resolves.toEqual(stored);
+  });
 });
 
 function detailRow(overrides: Record<string, unknown> = {}) {
@@ -998,6 +1083,7 @@ function detailRow(overrides: Record<string, unknown> = {}) {
     sessions: [],
     activityLogs: [],
     mechanics: [],
+    serviceStatusEvents: [],
     ...overrides,
   };
 }
@@ -1028,6 +1114,10 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
+    },
+    truckServiceStatusEvent: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn(),
     },
     pmService: { findUnique: vi.fn().mockResolvedValue(null) },
     truck: { update: vi.fn() },

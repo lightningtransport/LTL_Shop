@@ -22,6 +22,7 @@ import {
   adminTimeCorrectionSchema,
   adminCancelJobSchema,
   adminReopenJobSchema,
+  adminReturnToServiceSchema,
   adminHistoryQuerySchema,
   adminMechanicCursorSchema,
   adminMechanicsQuerySchema,
@@ -43,6 +44,7 @@ import {
   type AdminWorkOrderDetailDto,
   type AdminWorkOrderSummaryDto,
   type AdminWorkOrdersQuery,
+  TruckOperationalStatus,
 } from '@ltl-shop/shared';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
@@ -132,6 +134,11 @@ const detailInclude = {
   activityLogs: {
     include: { user: { select: { id: true, name: true } } },
     orderBy: { createdAt: 'desc' as const },
+  },
+  serviceStatusEvents: {
+    where: { status: 'in_service' as const },
+    orderBy: { occurredAt: 'desc' as const },
+    take: 1,
   },
 };
 
@@ -255,6 +262,10 @@ export class AdminService {
           where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
           include: { primaryCategory: { select: { name: true } } },
           orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+        serviceStatusEvents: {
+          orderBy: { occurredAt: 'desc' },
           take: 1,
         },
       },
@@ -736,6 +747,91 @@ export class AdminService {
           previousValue: { status: wo.status },
           newValue: { status: nextStatus, reason: input.reason },
           relevantValue: { action: 'work_order_reopened', reason: input.reason },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  async returnToService(user: AuthUser, workOrderId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    const parsed = adminReturnToServiceSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const operation = 'admin_return_to_service';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      reason: input.reason,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        if ((OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
+          throw new BadRequestException('Cannot return a Truck to service from an open Work Order');
+        }
+        if (wo.status !== WorkOrderStatus.completed) {
+          throw new BadRequestException('Only a completed Work Order can return a Truck to service');
+        }
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const alreadyReturned = await tx.truckServiceStatusEvent.findFirst({
+          where: { workOrderId, status: 'in_service' },
+        });
+        if (alreadyReturned) {
+          throw new BadRequestException('This Work Order already returned the Truck to service');
+        }
+        const latest = await tx.truckServiceStatusEvent.findFirst({
+          where: { truckId: wo.truckId },
+          orderBy: { occurredAt: 'desc' },
+        });
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: { version: { increment: 1 } },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await tx.truckServiceStatusEvent.create({
+          data: {
+            truckId: wo.truckId,
+            status: 'in_service',
+            reason: input.reason,
+            workOrderId,
+            actorId: user.id,
+          },
+        });
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.TRUCK_RETURNED_TO_SERVICE,
+          entityType: 'truck',
+          entityId: wo.truckId,
+          userId: user.id,
+          previousValue: { operationalStatus: latest?.status ?? 'unknown' },
+          newValue: { operationalStatus: 'in_service', reason: input.reason },
+          relevantValue: { action: 'returned_to_service', reason: input.reason },
         });
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
@@ -1440,6 +1536,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       relevantValue: entry.relevantValue,
       createdAt: entry.createdAt.toISOString(),
     })),
+    returnedToServiceAt: row.serviceStatusEvents[0]?.occurredAt.toISOString() ?? null,
   };
 }
 
@@ -1500,10 +1597,14 @@ function toTruckSummary(row: {
     status: WorkOrderStatus;
     primaryCategory: { name: string };
   }[];
+  serviceStatusEvents: { status: string; occurredAt: Date }[];
 }): AdminTruckSummaryDto {
   const open = row.workOrders[0] ?? null;
+  const operational = derivedOperationalStatus(row.serviceStatusEvents);
   return {
     truck: toTruckDto(row),
+    operationalStatus: operational.status,
+    operationalStatusAt: operational.at,
     openWorkOrder: open
       ? {
           id: open.id,
@@ -1513,6 +1614,21 @@ function toTruckSummary(row: {
         }
       : null,
   };
+}
+
+function derivedOperationalStatus(events: { status: string; occurredAt: Date }[]): {
+  status: TruckOperationalStatus;
+  at: string | null;
+} {
+  const latest = events[0];
+  if (!latest) return { status: TruckOperationalStatus.UNKNOWN, at: null };
+  if (latest.status === 'in_service') {
+    return { status: TruckOperationalStatus.IN_SERVICE, at: latest.occurredAt.toISOString() };
+  }
+  if (latest.status === 'off_duty') {
+    return { status: TruckOperationalStatus.OFF_DUTY, at: latest.occurredAt.toISOString() };
+  }
+  return { status: TruckOperationalStatus.UNKNOWN, at: null };
 }
 
 function mapPause(pause: {

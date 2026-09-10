@@ -13,6 +13,7 @@ import {
   ReadinessAssessmentStatus,
   YardPresenceState,
   YardReadinessFilter,
+  TruckOperationalStatus,
   type AdminTruckDetailDto,
   type AdminWorkOrderSummaryDto,
   type YardOperationsPageDto,
@@ -83,6 +84,10 @@ const yardTruckInclude = {
       },
     },
   },
+  serviceStatusEvents: {
+    orderBy: { occurredAt: 'desc' as const },
+    take: 1,
+  },
 } as const;
 
 type SummaryWorkOrderRow = Prisma.WorkOrderGetPayload<{ include: typeof summaryWorkOrderInclude }>;
@@ -121,6 +126,7 @@ type YardTruckRow = {
   owner: string | null;
   workOrders: SummaryWorkOrderRow[];
   readinessAssessments: YardAssessmentRow[];
+  serviceStatusEvents: Array<{ status: string; occurredAt: Date }>;
 };
 
 type YardOperationsCountRow = {
@@ -713,9 +719,17 @@ export class YardOperationsService {
     const linkedWorkOrders = assessment?.workOrders.map(toAdminWorkOrderSummary) ?? [];
     const derivation = deriveReadiness({ assessment: mappedAssessment, linkedWorkOrders });
     const activeWorkOrder = row.workOrders[0] ? toAdminWorkOrderSummary(row.workOrders[0]) : null;
+    const latestService = row.serviceStatusEvents[0];
+    const operationalStatus = latestService?.status === 'in_service'
+      ? TruckOperationalStatus.IN_SERVICE
+      : latestService?.status === 'off_duty'
+        ? TruckOperationalStatus.OFF_DUTY
+        : TruckOperationalStatus.UNKNOWN;
     return {
       truck: toTruckDto(row),
       presence: { state: YardPresenceState.UNKNOWN, provenance: 'phase_1_unavailable' },
+      operationalStatus,
+      operationalStatusAt: latestService?.occurredAt.toISOString() ?? null,
       assessment: mappedAssessment,
       phase: derivation.phase,
       blockers: derivation.blockers,

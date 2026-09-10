@@ -78,6 +78,7 @@ enum ActivityEventType {
   manager_correction
   pm_details_updated
   truck_mileage_corrected
+  truck_returned_to_service
   readiness_assessment_started
   readiness_requirement_updated
   readiness_approved
@@ -108,6 +109,11 @@ enum ReadinessRequirementOutcome {
   waived
 }
 
+enum TruckServiceStatus {
+  in_service
+  off_duty
+}
+
 model User {
   id              String   @id @default(uuid()) @db.Uuid
   email           String   @unique
@@ -135,6 +141,7 @@ model User {
   approvedReadinessAssessments   TruckReadinessAssessment[] @relation("ReadinessAssessmentApprovedBy")
   closedReadinessAssessments     TruckReadinessAssessment[] @relation("ReadinessAssessmentClosedBy")
   evaluatedReadinessRequirements ReadinessRequirement[]     @relation("ReadinessRequirementEvaluatedBy")
+  truckServiceStatusEvents       TruckServiceStatusEvent[]
 
   @@map("users")
 }
@@ -170,9 +177,29 @@ model Truck {
   workOrders           WorkOrder[]
   mileageAdjustments   TruckMileageAdjustment[]
   readinessAssessments TruckReadinessAssessment[]
+  serviceStatusEvents  TruckServiceStatusEvent[]
 
   @@index([truckNumber])
   @@map("trucks")
+}
+
+model TruckServiceStatusEvent {
+  id          String             @id @default(uuid()) @db.Uuid
+  truckId     String             @map("truck_id") @db.Uuid
+  status      TruckServiceStatus
+  reason      String
+  workOrderId String?            @unique @map("work_order_id") @db.Uuid
+  actorId     String             @map("actor_id") @db.Uuid
+  occurredAt  DateTime           @default(now()) @map("occurred_at")
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  truck     Truck      @relation(fields: [truckId], references: [id])
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  actor     User       @relation(fields: [actorId], references: [id])
+
+  @@index([truckId, occurredAt])
+  @@index([actorId])
+  @@map("truck_service_status_events")
 }
 
 model TruckReadinessAssessment {
@@ -329,6 +356,7 @@ model WorkOrder {
   mileageAdjustments            TruckMileageAdjustment[]
   readinessAssessment           TruckReadinessAssessment? @relation(fields: [readinessAssessmentId], references: [id], onDelete: SetNull)
   readinessEvidenceRequirements ReadinessRequirement[]    @relation("ReadinessRequirementEvidence")
+  serviceStatusEvents           TruckServiceStatusEvent[]
 
   @@index([status])
   @@index([truckId, status])

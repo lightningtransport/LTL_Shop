@@ -82,6 +82,7 @@ export enum ActivityEventType {
   MANAGER_CORRECTION = 'manager_correction',
   PM_DETAILS_UPDATED = 'pm_details_updated',
   TRUCK_MILEAGE_CORRECTED = 'truck_mileage_corrected',
+  TRUCK_RETURNED_TO_SERVICE = 'truck_returned_to_service',
   READINESS_ASSESSMENT_STARTED = 'readiness_assessment_started',
   READINESS_REQUIREMENT_UPDATED = 'readiness_requirement_updated',
   READINESS_APPROVED = 'readiness_approved',
@@ -132,6 +133,17 @@ export enum ReadinessPhase {
   DETAILING = 'detailing',
   QUALITY_CHECK = 'quality_check',
   READY_TO_GO = 'ready_to_go',
+}
+
+export enum TruckServiceStatus {
+  IN_SERVICE = 'in_service',
+  OFF_DUTY = 'off_duty',
+}
+
+export enum TruckOperationalStatus {
+  UNKNOWN = 'unknown',
+  IN_SERVICE = 'in_service',
+  OFF_DUTY = 'off_duty',
 }
 
 export enum CatalogStatus {

@@ -10,6 +10,7 @@ const truck = (number: string, id: string) => ({
   make: 'Volvo', model: 'VNL', year: 2024, mileage: null, company: null, owner: null,
   workOrders: [] as any[],
   readinessAssessments: [] as any[],
+  serviceStatusEvents: [] as any[],
 });
 
 const readiness = (outcome: ReadinessRequirementOutcome = ReadinessRequirementOutcome.NOT_REQUIRED) => ({

@@ -160,6 +160,17 @@ export function reopenAdminWorkOrder(
   });
 }
 
+export function returnAdminWorkOrderToService(
+  workOrderId: string,
+  input: { reason: string; expectedVersion: number },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/return-to-service`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
 export function patchAdminWorkOrder(
   workOrderId: string,
   input: { expectedVersion: number; priority?: AdminWorkOrderDetailDto['priority']; notes?: string | null },
