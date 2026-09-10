@@ -124,6 +124,21 @@ createServer(async (request, response) => {
     });
     return;
   }
+  if (/^\/api\/admin\/trucks(?:\?|$)/.test(request.url ?? '')) {
+    const url = new URL(request.url, 'http://fixture.local');
+    const search = url.searchParams.get('search')?.toLowerCase();
+    const items = workOrders.map((item) => ({
+      truck: item.truck,
+      openWorkOrder: ['created', 'in_progress', 'waiting_paused'].includes(item.status)
+        ? { id: item.id, displayId: item.displayId, status: item.status, primaryCategoryName: item.category.name }
+        : null,
+    })).filter((item) => {
+      if (!search) return true;
+      return `${item.truck.truckNumber} ${item.truck.make} ${item.truck.model} ${item.truck.company}`.toLowerCase().includes(search);
+    });
+    json(response, 200, { items, nextCursor: null });
+    return;
+  }
   const truckDetailMatch = request.url?.match(/^\/api\/admin\/trucks\/([0-9a-f-]+)$/i);
   if (truckDetailMatch) {
     const item = yardOperations.find((candidate) => candidate.truck.id === truckDetailMatch[1]);

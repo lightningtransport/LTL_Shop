@@ -42,9 +42,11 @@ PRD.
 - The Admin dashboard offers capability-filtered Workspaces cards for Standard
   Mechanic and PM Mechanic. Work performed there retains the signed-in user's
   identity; it is not impersonation.
-- Standalone Mechanics, global History, Catalog management, and Ninox data
-  remain deferred. Truck Detail and Yard Operations are implemented as the
-  scoped readiness slice described below.
+- Catalog management and Ninox data remain deferred. Truck Detail and Yard
+  Operations are implemented as the scoped readiness slice described below.
+  `/admin/trucks` is a read-only list of Shop trucks and any open Work Order.
+  It does not invent Off Duty. `/admin/mechanics` and `/admin/history` are
+  read-only manager views.
 
 ### Yard Operations and readiness Phase 1
 

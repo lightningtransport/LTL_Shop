@@ -64,6 +64,11 @@ export class AdminController {
     return this.admin.listHistory(query);
   }
 
+  @Get('trucks')
+  listTrucks(@Query() query: Record<string, unknown>) {
+    return this.admin.listTrucks(query);
+  }
+
   @Get('yard-operations')
   yardOperationsList(@Query() query: Record<string, unknown>) {
     return this.yardOperations.list(query);

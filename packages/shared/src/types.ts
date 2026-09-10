@@ -320,6 +320,16 @@ export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto>
   upcomingDepartures: YardOperationsUnavailableDto;
 }
 
+export interface AdminTruckSummaryDto {
+  truck: TruckDto;
+  openWorkOrder: {
+    id: string;
+    displayId: string;
+    status: WorkOrderStatus;
+    primaryCategoryName: string;
+  } | null;
+}
+
 export interface AdminTruckDetailDto extends YardOperationsTruckDto {
   repairHistory: Pick<AdminRepairHistoryDto, 'items' | 'nextCursor'>;
   repairHistoryUrl: string;

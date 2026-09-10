@@ -9,6 +9,7 @@ import type {
   AdminPage,
   AdminRepairHistoryDto,
   AdminTruckDetailDto,
+  AdminTruckSummaryDto,
   AdminWorkOrderDetailDto,
   AdminWorkOrderSummaryDto,
   ReadinessAssessmentDto,
@@ -84,6 +85,19 @@ export function useAdminYardOperations(query: string) {
 
 export function useAdminTruck(id: string) {
   return useSWR<AdminTruckDetailDto>(id ? `/api/admin/trucks/${id}` : null, { dedupingInterval: 10_000 });
+}
+
+export function useAdminTrucks(query: string) {
+  return useSWRInfinite<AdminPage<AdminTruckSummaryDto>>(
+    (pageIndex, previous) => {
+      if (previous && !previous.nextCursor) return null;
+      const params = new URLSearchParams(query);
+      params.set('limit', '25');
+      if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
+      return `/api/admin/trucks?${params.toString()}`;
+    },
+    { revalidateFirstPage: false, persistSize: false },
+  );
 }
 
 export function adminMutationIdempotencyKey() {
