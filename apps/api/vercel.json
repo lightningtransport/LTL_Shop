@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["pdx1"],
-  "buildCommand": "cd ../.. && npm run build:shared && cd apps/api && npx prisma generate && npx nest build",
+  "buildCommand": "cd ../.. && npm run build:shared && cd apps/api && npx prisma generate && npm run prisma:release-gate && npx nest build",
   "installCommand": "cd ../.. && npm install --include=dev"
 }

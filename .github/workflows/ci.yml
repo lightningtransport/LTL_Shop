@@ -37,6 +37,7 @@ jobs:
       - run: npm run build --workspace=@ltl-shop/shared
       - run: npm run prisma:generate --workspace=@ltl-shop/api
       - run: npm exec --workspace=@ltl-shop/api -- prisma migrate deploy
+      - run: npm run prisma:release-status --workspace=@ltl-shop/api
       - run: npm test --workspace=@ltl-shop/api
       - run: npm run lint --workspace=@ltl-shop/api
       - run: npm run build --workspace=@ltl-shop/web
