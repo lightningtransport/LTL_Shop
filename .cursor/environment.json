@@ -1,0 +1,16 @@
+{
+  "name": "Lightning Shop (ltl_shop)",
+  "install": "bash ./.cursor/install.sh",
+  "start": "bash ./.cursor/start.sh",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "set -a; source .env; set +a; npm run dev",
+      "description": "Runs the NestJS API (http://localhost:3001) and Next.js web app (http://localhost:3000) with hot reload."
+    }
+  ],
+  "ports": [
+    { "name": "web", "port": 3000 },
+    { "name": "api", "port": 3001 }
+  ]
+}
