@@ -290,6 +290,25 @@ createServer(async (request, response) => {
     json(response, 200, { items, nextCursor: null });
     return;
   }
+  const cancelMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/cancel$/i);
+  if (cancelMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === cancelMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (!String(body.reason ?? '').trim()) { json(response, 400, { message: 'A cancellation reason is required.' }); return; }
+    if (!['created', 'in_progress', 'waiting_paused'].includes(summary.status)) {
+      json(response, 400, { message: 'Cannot cancel a closed Work Order' });
+      return;
+    }
+    if (body.expectedVersion !== summary.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    summary.status = 'cancelled';
+    summary.completedAt = '2026-09-06T19:10:00.000Z';
+    summary.currentPause = null;
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   const addMechanicMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/mechanics$/i);
   if (addMechanicMatch && request.method === 'POST') {
     const summary = workOrders.find((item) => item.id === addMechanicMatch[1]);

@@ -12,6 +12,7 @@ import {
   adminMechanicsQuerySchema,
   adminTrucksQuerySchema,
   adminAddWorkOrderMechanicSchema,
+  adminCancelWorkOrderSchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
   adminYardOperationsQuerySchema,
@@ -112,6 +113,15 @@ describe('shared contracts', () => {
     expect(adminAddWorkOrderMechanicSchema.safeParse({
       expectedVersion: 1,
       idempotencyKey: '00000000-0000-4000-8000-000000000003',
+    }).success).toBe(false);
+    expect(adminCancelWorkOrderSchema.safeParse({
+      reason: 'Duplicate Work Order',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000004',
+    }).success).toBe(true);
+    expect(adminCancelWorkOrderSchema.safeParse({
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000004',
     }).success).toBe(false);
   });
 

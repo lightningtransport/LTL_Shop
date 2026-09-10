@@ -39,8 +39,11 @@ PRD.
   Work Order, managers with `admin.access` can add or soft-remove assigned
   mechanics. PM Work Orders stay assigned to their creator. Assignments keep at
   least one active mechanic, use Work Order versioning and idempotency, and
-  write `mechanic_added` / `mechanic_removed` Activity Log events. This is not
-  Off Duty, Catalog, or Job-level assignment.
+  write `mechanic_added` / `mechanic_removed` Activity Log events. On any open
+  Work Order, including PM, managers can cancel it with a required reason. Cancel
+  stops open labor and wait time, sets status `cancelled`, and records a
+  `manager_correction` Activity Log event. Jobs are not cancelled separately.
+  This is not Off Duty, Catalog, complete/reopen, or Job-level assignment.
 - The responsive Admin shell reuses the current LTL shadcn primitives, semantic
   tokens, typography, icon family, light/dark theme, and 44 px controls.
 - Typed English and Spanish message catalogs share one React component tree.
@@ -176,8 +179,8 @@ These are deliberately outside the current implementation:
    Safari mobile device.
 3. Remove the compatibility-only `pmAuthorized` column after production
    stability is confirmed; a general permission-management UI remains deferred.
-4. Continue Shop Admin Fase 3 with cancel/complete/reopen and allowed field
-   edits; keep Yard/readiness mutations scoped to `yard.operations.manage`.
+4. Continue Shop Admin Fase 3 with complete/reopen and allowed field edits;
+   keep Yard/readiness mutations scoped to `yard.operations.manage`.
    Do not invent Off Duty or Catalog management.
 5. Integrate live Ninox data only after its adapter contract and write model
    are approved.

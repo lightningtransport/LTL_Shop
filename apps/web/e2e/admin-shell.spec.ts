@@ -65,6 +65,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: 'Add mechanic' }).click();
     await expect(page.getByText('Anthony').first()).toBeVisible();
     await page.getByRole('listitem').filter({ hasText: 'Anthony' }).getByRole('button', { name: 'Remove' }).click();
+    await page.getByLabel('Reason for cancellation').fill('Duplicate Work Order');
+    await page.getByRole('button', { name: 'Confirm cancellation' }).click();
+    await expect(page.getByText('Work Order cancelled.')).toBeVisible();
+    await expect(page.getByText('Cancelled').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
 
     await page.setViewportSize({ width: 1440, height: 700 });

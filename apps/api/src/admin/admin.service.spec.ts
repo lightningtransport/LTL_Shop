@@ -365,6 +365,117 @@ describe('AdminService', () => {
     expect(two.mechanicAssignment.update).toHaveBeenCalled();
     expect(activity.log).toHaveBeenCalledWith(two, expect.objectContaining({ eventType: ActivityEventType.MECHANIC_REMOVED }));
   });
+
+  it('cancels open Standard and PM Work Orders, closes labor, and refuses closed ones', async () => {
+    const manager = {
+      id: baseRow.createdById,
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS],
+      supabaseAuthId: null,
+    };
+    const body = {
+      reason: 'Duplicate Work Order',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000801',
+    };
+    const wo = detailRow({ status: 'in_progress' });
+    const session = { id: 'sess-1', startedAt: new Date('2026-09-06T16:00:00.000Z'), endedAt: null };
+    const pause = { id: 'pause-1', startedAt: new Date('2026-09-06T17:00:00.000Z'), endedAt: null };
+    const activity = { log: vi.fn() };
+    const tx = cancelTx(wo, {
+      workSession: {
+        findFirst: vi.fn().mockResolvedValue(session),
+        findMany: vi.fn().mockResolvedValue([{ ...session, endedAt: new Date() }]),
+        update: vi.fn(),
+      },
+      pauseEvent: {
+        findFirst: vi.fn().mockResolvedValue(pause),
+        findMany: vi.fn().mockResolvedValue([{ ...pause, endedAt: new Date() }]),
+        update: vi.fn(),
+      },
+    });
+    tx.workOrder.findUnique
+      .mockResolvedValueOnce(wo)
+      .mockResolvedValueOnce(wo)
+      .mockResolvedValueOnce(detailRow({ status: 'cancelled', version: 2 }));
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, activity as never);
+
+    await expect(service.cancelWorkOrder(manager, wo.id, body)).resolves.toMatchObject({ status: 'cancelled', version: 2 });
+    expect(tx.workSession.update).toHaveBeenCalled();
+    expect(tx.pauseEvent.update).toHaveBeenCalled();
+    expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'cancelled' }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.MANAGER_CORRECTION }));
+
+    const pmRow = detailRow({ primaryCategory: { ...baseRow.primaryCategory, name: 'PM' } });
+    const pm = cancelTx(pmRow);
+    pm.workOrder.findUnique
+      .mockResolvedValueOnce(pmRow)
+      .mockResolvedValueOnce(pmRow)
+      .mockResolvedValueOnce(detailRow({ status: 'cancelled', version: 2, primaryCategory: pmRow.primaryCategory }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof pm) => unknown) => callback(pm));
+    await expect(service.cancelWorkOrder(manager, wo.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000000802' }))
+      .resolves.toMatchObject({ status: 'cancelled' });
+
+    const closed = cancelTx(detailRow({ status: 'completed' }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof closed) => unknown) => callback(closed));
+    await expect(service.cancelWorkOrder(manager, wo.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000000803' }))
+      .rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(service.cancelWorkOrder(manager, wo.id, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000804',
+    })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('replays an idempotent cancel and rejects a stale Work Order version', async () => {
+    const manager = {
+      id: baseRow.createdById,
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS],
+      supabaseAuthId: null,
+    };
+    const stored = { id: baseRow.id, status: 'cancelled', version: 3 };
+    const prisma = createPrisma();
+    prisma.workOrderMutation.findUnique.mockResolvedValueOnce({
+      workOrderId: baseRow.id,
+      operation: 'admin_cancel_work_order',
+      payloadHash: idempotencyFingerprint({
+        workOrderId: baseRow.id,
+        reason: 'Duplicate Work Order',
+        expectedVersion: 1,
+      }),
+      actorId: manager.id,
+      result: stored,
+    });
+    const service = createService(prisma);
+    await expect(service.cancelWorkOrder(manager, baseRow.id, {
+      reason: 'Duplicate Work Order',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000805',
+    })).resolves.toEqual(stored);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+
+    prisma.workOrderMutation.findUnique.mockResolvedValue(null);
+    const stale = cancelTx(detailRow({ version: 4 }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof stale) => unknown) => callback(stale));
+    await expect(service.cancelWorkOrder(manager, baseRow.id, {
+      reason: 'Duplicate Work Order',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000806',
+    })).rejects.toBeInstanceOf(ConflictException);
+  });
 });
 
 function detailRow(overrides: Record<string, unknown> = {}) {
@@ -397,6 +508,20 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
     user: { findFirst: vi.fn() },
     mechanicAssignment: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     workOrderMutation: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    workSession: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn(),
+    },
+    pauseEvent: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn(),
+    },
     ...extra,
   };
+}
+
+function cancelTx(wo: ReturnType<typeof detailRow>, extra: Record<string, unknown> = {}) {
+  return assignmentTx(wo, extra);
 }

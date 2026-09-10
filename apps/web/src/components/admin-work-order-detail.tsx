@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { addAdminWorkOrderMechanic, removeAdminWorkOrderMechanic, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderMechanic, cancelAdminWorkOrder, removeAdminWorkOrderMechanic, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -21,12 +21,14 @@ import {
   PageSkeleton,
   PriorityBadge,
   Select,
+  Textarea,
 } from './ui';
 
 export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { data, error, isLoading, mutate } = useAdminWorkOrder(id);
   const [historyCategory, setHistoryCategory] = useState('');
   const [selectedMechanic, setSelectedMechanic] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const { data: categoryData } = useCategories(true);
@@ -47,10 +49,12 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const categories = values.filter((category, index) => values.findIndex((candidate) => candidate.id === category.id) === index);
   const activeMechanics = data.mechanics.filter((mechanic) => !mechanic.removedAt);
   const truck = data.truck;
-  const canManageAssignments = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status) && data.category.name !== 'PM';
+  const isOpen = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status);
+  const canManageAssignments = isOpen && data.category.name !== 'PM';
+  const canCancelWorkOrder = isOpen;
   const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
 
-  async function runAssignment(action: string, successMessage: string, operation: () => Promise<unknown>) {
+  async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
     if (pendingAction) return;
     setPendingAction(action);
     setFeedback(null);
@@ -59,7 +63,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       await mutate();
       setFeedback({ kind: 'success', message: successMessage });
     } catch (failure) {
-      setFeedback({ kind: 'error', message: assignmentError(failure, messages) });
+      setFeedback({ kind: 'error', message: onError(failure) });
     } finally {
       setPendingAction(null);
     }
@@ -118,7 +122,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                     variant="outline"
                     size="sm"
                     disabled={Boolean(pendingAction) || activeMechanics.length <= 1}
-                    onClick={() => void runAssignment(`remove:${mechanic.mechanicId}`, messages.assignmentRemoved, () => removeAdminWorkOrderMechanic(data.id, mechanic.mechanicId, data.version))}
+                    onClick={() => void runMutation(`remove:${mechanic.mechanicId}`, messages.assignmentRemoved, () => removeAdminWorkOrderMechanic(data.id, mechanic.mechanicId, data.version), (failure) => assignmentError(failure, messages))}
                   >
                     {messages.removeMechanic}
                   </Button>
@@ -133,10 +137,10 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             onSubmit={(event) => {
               event.preventDefault();
               if (!selectedMechanic) return;
-              void runAssignment('add', messages.assignmentAdded, async () => {
+              void runMutation('add', messages.assignmentAdded, async () => {
                 await addAdminWorkOrderMechanic(data.id, { mechanicId: selectedMechanic, expectedVersion: data.version });
                 setSelectedMechanic('');
-              });
+              }, (failure) => assignmentError(failure, messages));
             }}
           >
             <Select aria-label={messages.selectMechanic} value={selectedMechanic} onChange={(event) => setSelectedMechanic(event.target.value)}>
@@ -150,6 +154,47 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         ) : null}
       </CardContent>
     </Card>
+
+    {canCancelWorkOrder ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>{messages.cancelWorkOrderTitle}</CardTitle>
+          <CardDescription>{messages.cancelWorkOrderDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const reason = cancelReason.trim();
+              if (!reason) {
+                setFeedback({ kind: 'error', message: messages.cancelWorkOrderReasonRequired });
+                return;
+              }
+              void runMutation('cancel', messages.cancelWorkOrderSuccess, async () => {
+                await cancelAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
+                setCancelReason('');
+              }, (failure) => cancelError(failure, messages));
+            }}
+          >
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">{messages.cancelWorkOrderReason}</span>
+              <Textarea
+                aria-label={messages.cancelWorkOrderReason}
+                value={cancelReason}
+                onChange={(event) => setCancelReason(event.target.value)}
+                maxLength={1000}
+                required
+              />
+              <span className="text-xs text-muted-foreground">{messages.cancelWorkOrderReasonHelp}</span>
+            </label>
+            <Button type="submit" variant="destructive" disabled={Boolean(pendingAction)}>
+              {messages.cancelWorkOrderConfirm}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    ) : null}
 
     <Card><CardHeader><CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle></CardHeader><CardContent>{data.jobs.length ? <ul className="divide-y">{data.jobs.map((job) => <li key={job.id} className="flex items-start justify-between gap-3 py-3 first:pt-0"><div><p className="font-medium">{job.displayName}</p><p className="text-xs text-muted-foreground">{job.category.name}</p>{job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}</div><Badge variant={job.status === 'completed' ? 'success' : 'outline'}>{humanize(job.status)}</Badge></li>)}</ul> : <EmptyState>{messages.noJobs}</EmptyState>}</CardContent></Card>
 
@@ -174,6 +219,13 @@ function assignmentError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.assignmentGenericError;
+}
+function cancelError(errorValue: unknown, messages: AdminMessages) {
+  if (errorValue instanceof ApiError) {
+    if (errorValue.status === 400) return messages.cancelWorkOrderBadRequest;
+    if (errorValue.status === 409) return messages.assignmentConflict;
+  }
+  return messages.cancelWorkOrderGenericError;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function CompactEmpty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>; }

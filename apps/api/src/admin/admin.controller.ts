@@ -50,6 +50,11 @@ export class AdminController {
     return this.admin.detail(id);
   }
 
+  @Post('work-orders/:id/cancel')
+  cancelWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.admin.cancelWorkOrder(request.user!, id, body);
+  }
+
   @Post('work-orders/:id/mechanics')
   addWorkOrderMechanic(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.addMechanic(request.user!, id, body);
