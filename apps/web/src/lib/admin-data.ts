@@ -127,6 +127,17 @@ export function removeAdminWorkOrderMechanic(
   });
 }
 
+export function cancelAdminWorkOrder(
+  workOrderId: string,
+  input: { reason: string; expectedVersion: number },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
 export function startAdminTruckAssessment(truckId: string, idempotencyKey = adminMutationIdempotencyKey()) {
   return apiFetch<{ assessment: ReadinessAssessmentDto; linkedWorkOrderId: string | null }>(`/api/admin/trucks/${truckId}/readiness-assessments`, {
     method: 'POST',
