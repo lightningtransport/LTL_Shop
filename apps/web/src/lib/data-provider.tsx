@@ -14,7 +14,13 @@ const config = {
   shouldRetryOnError: () => false,
   onError: (error: unknown) => {
     if (error instanceof ApiError && ![401, 403].includes(error.status)) {
-      captureException(error, { kind: error.kind, status: error.status });
+      captureException(error, {
+        kind: error.kind,
+        status: error.status,
+        route: error.route,
+        method: error.method,
+        message: error.message,
+      });
     }
   },
 };
