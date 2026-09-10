@@ -225,10 +225,18 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   totalActiveLaborMs: number;
   totalWaitingMs: number;
   jobs: AdminWorkOrderJobDto[];
+  laborSessions: AdminTimeSegmentDto[];
   pauseHistory: (PauseEventDto & {
     createdBy: { id: string; name: string };
   })[];
   activityLog: AdminActivityLogDto[];
+}
+
+export interface AdminTimeSegmentDto {
+  id: string;
+  startedAt: string;
+  endedAt: string | null;
+  durationMs: number | null;
 }
 
 export interface AdminRepairHistoryDto {

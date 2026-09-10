@@ -171,6 +171,24 @@ export function patchAdminWorkOrder(
   });
 }
 
+export function correctAdminTime(
+  input: {
+    workOrderId: string;
+    targetType: 'work_session' | 'pause_event';
+    targetId: string;
+    expectedVersion: number;
+    reason: string;
+    startedAt?: string;
+    endedAt?: string;
+  },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>('/api/admin/time-corrections', {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
 export function startAdminTruckAssessment(truckId: string, idempotencyKey = adminMutationIdempotencyKey()) {
   return apiFetch<{ assessment: ReadinessAssessmentDto; linkedWorkOrderId: string | null }>(`/api/admin/trucks/${truckId}/readiness-assessments`, {
     method: 'POST',

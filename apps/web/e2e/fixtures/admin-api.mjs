@@ -290,6 +290,24 @@ createServer(async (request, response) => {
     json(response, 200, { items, nextCursor: null });
     return;
   }
+  if (request.url === '/api/admin/time-corrections' && request.method === 'POST') {
+    const body = await readJson(request);
+    const summary = workOrders.find((item) => item.id === body?.workOrderId);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (!String(body.reason ?? '').trim()) { json(response, 400, { message: 'A time correction reason is required.' }); return; }
+    if (body.expectedVersion !== summary.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    const session = (summary.laborSessions ?? []).find((item) => item.id === body.targetId);
+    const pause = summary.currentPause?.id === body.targetId ? summary.currentPause : null;
+    const segment = body.targetType === 'work_session' ? session : pause;
+    if (!segment) { json(response, 404, { message: 'Time segment not found' }); return; }
+    if (!segment.endedAt) { json(response, 400, { message: 'Cannot correct an open time segment' }); return; }
+    if (body.endedAt) segment.endedAt = body.endedAt;
+    if (body.startedAt) segment.startedAt = body.startedAt;
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   const reopenMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/reopen$/i);
   if (reopenMatch && request.method === 'POST') {
     const summary = workOrders.find((item) => item.id === reopenMatch[1]);
@@ -461,6 +479,7 @@ function fixtureWorkOrderDetail(summary) {
     totalActiveLaborMs: 5400000,
     totalWaitingMs: 1800000,
     jobs: [{ id: '00000000-0000-4000-8000-000000000501', displayName: 'Inspect brake chamber', customDescription: null, category: summary.category, status: summary.jobsCompleted >= summary.jobsTotal ? 'completed' : 'to_do' }],
+    laborSessions: summary.laborSessions ?? [],
     pauseHistory: summary.currentPause ? [{ ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } }] : [],
     activityLog: [{ id: '00000000-0000-4000-8000-000000000601', eventType: 'work_order_created', entityType: 'work_order', entityId: summary.id, user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name }, previousValue: null, newValue: null, relevantValue: { displayId: summary.displayId }, createdAt: summary.createdAt }],
   };
@@ -495,6 +514,12 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status) {
     createdAt, startedAt: status === 'created' ? null : '2026-09-06T16:00:00.000Z', completedAt, updatedAt: '2026-09-06T18:00:00.000Z',
     version: 1,
     notes: 'Inspect brake chamber before release.',
+    laborSessions: status === 'created' ? [] : [{
+      id: `00000000-0000-4000-8000-0000000007${id.slice(-2)}`,
+      startedAt: '2026-09-06T16:00:00.000Z',
+      endedAt: '2026-09-06T17:30:00.000Z',
+      durationMs: 5_400_000,
+    }],
   };
 }
 
