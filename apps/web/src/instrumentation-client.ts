@@ -17,6 +17,13 @@ Sentry.init({
     userInfo: false,
     httpBodies: [],
   },
+
+  // Session Replay is browser-only. Do not add replayIntegration to server/edge configs.
+  integrations: [Sentry.replayIntegration()],
+  // 10% of sessions; raise to 1.0 while verifying Replay locally or in a preview.
+  replaysSessionSampleRate: 0.1,
+  // Capture every session that hits an error.
+  replaysOnErrorSampleRate: 1.0,
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
