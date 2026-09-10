@@ -147,5 +147,23 @@ test.describe('Shop Admin Phase 2A', () => {
     const response = await page.goto('/admin');
     expect(response?.status()).toBe(403);
     await expect(page.getByRole('heading', { name: 'Shop Admin access denied' })).toBeVisible();
+    const mechanics = await page.goto('/admin/mechanics');
+    expect(mechanics?.status()).toBe(403);
+    const history = await page.goto('/admin/history');
+    expect(history?.status()).toBe(403);
+  });
+
+  test('manager opens read-only Mechanics and History', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await page.getByRole('link', { name: 'Mechanics' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/mechanics$/);
+    await expect(page.getByRole('heading', { name: 'Mechanics' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
+    await page.getByRole('link', { name: 'History' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/history$/);
+    await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
   });
 });

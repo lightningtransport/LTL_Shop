@@ -37,6 +37,13 @@ function createPrisma() {
       findMany: vi.fn(),
       findUnique: vi.fn(),
     },
+    user: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    workOrderJob: {
+      count: vi.fn(),
+    },
   };
 }
 
@@ -160,5 +167,29 @@ describe('AdminService', () => {
     prisma.workOrder.findUnique.mockResolvedValue(null);
     const service = new AdminService(prisma as never);
     await expect(service.detail(baseRow.id)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('lists mechanics with open assignments and rejects a missing mechanic', async () => {
+    const prisma = createPrisma();
+    prisma.user.findMany.mockResolvedValue([]);
+    prisma.user.findFirst.mockResolvedValue(null);
+    const service = new AdminService(prisma as never);
+    await expect(service.listMechanics({})).resolves.toEqual({ items: [], nextCursor: null });
+    await expect(service.mechanicDetail(baseRow.createdById)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('defaults History to completed and cancelled Work Orders', async () => {
+    const prisma = createPrisma();
+    prisma.workOrder.findMany.mockResolvedValue([]);
+    const service = new AdminService(prisma as never);
+    await service.listHistory({});
+    const where = JSON.stringify(prisma.workOrder.findMany.mock.calls[0][0].where);
+    expect(where).toContain('completed');
+    expect(where).toContain('cancelled');
+  });
+
+  it('rejects History filters for open Work Orders', async () => {
+    const service = new AdminService(createPrisma() as never);
+    await expect(service.listHistory({ status: 'in_progress' })).rejects.toBeInstanceOf(BadRequestException);
   });
 });

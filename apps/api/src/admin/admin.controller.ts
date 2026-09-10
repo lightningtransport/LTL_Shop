@@ -49,6 +49,21 @@ export class AdminController {
     return this.admin.detail(id);
   }
 
+  @Get('mechanics')
+  mechanics(@Query() query: Record<string, unknown>) {
+    return this.admin.listMechanics(query);
+  }
+
+  @Get('mechanics/:id')
+  mechanic(@Param('id') id: string) {
+    return this.admin.mechanicDetail(id);
+  }
+
+  @Get('history')
+  history(@Query() query: Record<string, unknown>) {
+    return this.admin.listHistory(query);
+  }
+
   @Get('yard-operations')
   yardOperationsList(@Query() query: Record<string, unknown>) {
     return this.yardOperations.list(query);

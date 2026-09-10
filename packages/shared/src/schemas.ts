@@ -59,6 +59,38 @@ export const adminWorkOrdersQuerySchema = z.object({
   direction: z.enum(['asc', 'desc']).default('desc'),
 });
 
+export const adminMechanicCursorSchema = z.object({
+  direction: z.enum(['asc', 'desc']),
+  name: z.string().min(1),
+  id: z.string().uuid(),
+});
+
+export const adminMechanicsQuerySchema = z.object({
+  cursor: z.string().trim().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  search: z.string().trim().min(1).max(200).optional(),
+  direction: z.enum(['asc', 'desc']).default('asc'),
+});
+
+const closedWorkOrderStatus = z.enum([WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]);
+
+export const adminHistoryQuerySchema = z.object({
+  cursor: z.string().trim().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  search: z.string().trim().min(1).max(200).optional(),
+  status: z.preprocess(
+    (value) =>
+      typeof value === 'string'
+        ? value.split(',').map((item) => item.trim()).filter(Boolean)
+        : value,
+    z.array(closedWorkOrderStatus).min(1),
+  ).optional(),
+  completedFrom: z.string().datetime({ offset: true }).optional(),
+  completedBefore: z.string().datetime({ offset: true }).optional(),
+  sort: z.enum(['updatedAt', 'createdAt', 'displayId']).default('updatedAt'),
+  direction: z.enum(['asc', 'desc']).default('desc'),
+});
+
 export const adminRepairHistoryQuerySchema = z.object({
   categoryId: z.string().uuid().optional(),
   excludeWorkOrderId: z.string().uuid().optional(),
@@ -194,6 +226,9 @@ export type UpdatePmServiceInput = z.infer<typeof updatePmServiceSchema>;
 export type AdminListQuery = z.infer<typeof adminListQuerySchema>;
 export type AdminWorkOrdersQuery = z.infer<typeof adminWorkOrdersQuerySchema>;
 export type AdminWorkOrderCursor = z.infer<typeof adminWorkOrderCursorSchema>;
+export type AdminMechanicsQuery = z.infer<typeof adminMechanicsQuerySchema>;
+export type AdminMechanicCursor = z.infer<typeof adminMechanicCursorSchema>;
+export type AdminHistoryQuery = z.infer<typeof adminHistoryQuerySchema>;
 export type AdminRepairHistoryQuery = z.infer<typeof adminRepairHistoryQuerySchema>;
 export type AdminYardOperationsQuery = z.infer<typeof adminYardOperationsQuerySchema>;
 export type AdminYardOperationsCursor = z.infer<typeof adminYardOperationsCursorSchema>;

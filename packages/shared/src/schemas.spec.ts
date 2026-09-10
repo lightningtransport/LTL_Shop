@@ -8,6 +8,8 @@ import {
 } from './enums';
 import {
   adminListQuerySchema,
+  adminHistoryQuerySchema,
+  adminMechanicsQuerySchema,
   adminMutationMetaSchema,
   adminRepairHistoryQuerySchema,
   adminYardOperationsQuerySchema,
@@ -78,6 +80,18 @@ describe('shared contracts', () => {
     });
     expect(adminRepairHistoryQuerySchema.safeParse({ limit: 26 }).success).toBe(false);
     expect(adminWorkOrdersQuerySchema.safeParse({ createdBefore: 'not-a-date' }).success).toBe(false);
+  });
+
+  it('scopes History to closed Work Orders and paginates Mechanics', async () => {
+    expect(adminHistoryQuerySchema.parse({})).toMatchObject({
+      limit: 25,
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+    expect(adminHistoryQuerySchema.parse({ status: 'completed' }).status).toEqual(['completed']);
+    expect(adminHistoryQuerySchema.safeParse({ status: 'in_progress' }).success).toBe(false);
+    expect(adminMechanicsQuerySchema.parse({}).direction).toBe('asc');
+    expect(adminMechanicsQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
   });
 
   it('requires version and UUID idempotency for Admin mutations', () => {

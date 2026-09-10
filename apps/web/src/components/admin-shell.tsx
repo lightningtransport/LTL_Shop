@@ -10,15 +10,15 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 const futureNavigation = [
   { message: 'trucks', icon: Truck },
-  { message: 'mechanics', icon: UsersRound },
   { message: 'jobCatalog', icon: Library },
-  { message: 'history', icon: History },
 ] as const;
 
 const activeNavigation = [
   { message: 'dashboard', icon: Gauge, href: '/admin' },
   { message: 'workOrders', icon: ClipboardList, href: '/admin/work-orders' },
   { message: 'yardOperations', icon: Warehouse, href: '/admin/yard-operations' },
+  { message: 'mechanics', icon: UsersRound, href: '/admin/mechanics' },
+  { message: 'history', icon: History, href: '/admin/history' },
 ] as const;
 
 export function AdminShell({
@@ -69,7 +69,7 @@ export function AdminShell({
               <AppHeaderActions />
             </div>
           </div>
-          <nav className="grid grid-cols-3 gap-2 px-4 pb-3 md:hidden" aria-label={messages.mobileNavigation}>
+          <nav className="grid grid-cols-2 gap-2 px-4 pb-3 sm:grid-cols-3 md:hidden" aria-label={messages.mobileNavigation}>
             {activeNavigation.map(({ message, icon: Icon, href }) => {
               const active = href === '/admin' ? pathname === href : pathname.startsWith(href);
               return <Button key={href} asChild variant={active ? 'secondary' : 'ghost'} size="sm" className="w-full min-w-0">

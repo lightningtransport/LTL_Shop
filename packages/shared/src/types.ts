@@ -149,6 +149,30 @@ export interface AdminPage<T> {
   total?: number;
 }
 
+export interface AdminMechanicAssignmentDto {
+  workOrderId: string;
+  displayId: string;
+  truckNumber: string;
+  status: WorkOrderStatus;
+  primaryCategoryName: string;
+}
+
+export interface AdminMechanicSummaryDto {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  active: boolean;
+  capabilities: AppCapability[];
+  openWorkOrderCount: number;
+  currentAssignments: AdminMechanicAssignmentDto[];
+}
+
+export interface AdminMechanicDetailDto extends AdminMechanicSummaryDto {
+  completedJobCount: number;
+  recentClosedWorkOrders: AdminMechanicAssignmentDto[];
+}
+
 export interface AdminMutationMeta {
   expectedVersion: number;
   idempotencyKey: string;
