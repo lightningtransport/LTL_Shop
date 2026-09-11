@@ -1,7 +1,7 @@
 # Current product status
 
 **Classification:** CURRENT STATE
-**Audited commit:** `2a77d4e`
+**Audited commit:** `4d25876`
 **Updated:** 2026-09-11
 
 This document describes only behavior implemented in the audited code. It does
