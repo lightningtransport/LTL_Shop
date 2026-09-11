@@ -39,9 +39,6 @@ schema, migration, or Vercel configuration should be changed to bypass it.
 | API runtime errors, previous 24 hours | None reported |
 | Local/Vercel deployment credentials in this agent | BLOCKED — no authorized workflow-dispatch or redeploy credential |
 
-The healthy probes describe the previous production deployment. They do not
-make the failed `436988f` deployment READY.
-
 ## Resolution
 
 The approved production action completed on 2026-09-11:
