@@ -1,0 +1,325 @@
+import { AppCapability } from '@ltl-shop/shared';
+import { AdminController } from '../admin/admin.controller';
+import { WorkOrdersController } from '../work-orders/work-orders.controller';
+import { CAPABILITIES_KEY } from './capabilities.decorator';
+
+export type CapabilityBoundaryKind = 'http_guard' | 'service';
+
+export type CapabilityBoundaryEntry = {
+  method: string;
+  path: string;
+  handler: string;
+  controller: 'admin' | 'work-orders';
+  expected: AppCapability[];
+  /** How the expected capabilities are enforced on the public HTTP path. */
+  enforcement: CapabilityBoundaryKind;
+  notes?: string;
+};
+
+const ADMIN = AppCapability.ADMIN_ACCESS;
+const WORK_ORDERS = AppCapability.WORK_ORDERS_MANAGE;
+const YARD = AppCapability.YARD_OPERATIONS_MANAGE;
+const STANDARD = AppCapability.MECHANIC_STANDARD;
+const PM = AppCapability.MECHANIC_PM;
+
+/**
+ * V1 expected capabilities for every Admin / Work Order / Yard mutation.
+ * Admin reads inherit class-level `admin.access` and are listed separately
+ * so the matrix stays complete without implying they are mutations.
+ */
+export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
+  {
+    method: 'POST',
+    path: '/admin/work-orders',
+    handler: 'createWorkOrder',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'http_guard',
+    notes: 'Manager planning create. Method re-declares admin.access because getAllAndOverride replaces class metadata.',
+  },
+  {
+    method: 'PATCH',
+    path: '/admin/work-orders/:id',
+    handler: 'patchWorkOrder',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+    notes: 'V1 Admin correction: priority/notes on an open Work Order.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/time-corrections',
+    handler: 'correctTime',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+    notes: 'V1 Admin correction of closed labor/wait segments.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/jobs/:id/reopen',
+    handler: 'reopenJob',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/jobs/:id/cancel',
+    handler: 'cancelJob',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/reopen',
+    handler: 'reopenWorkOrder',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/return-to-service',
+    handler: 'returnToService',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/complete',
+    handler: 'completeWorkOrder',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/cancel',
+    handler: 'cancelWorkOrder',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/pause',
+    handler: 'pauseWorkOrder',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'http_guard',
+    notes: 'Official Manager pause. Service pauseByManager does not re-check the capability.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/resume',
+    handler: 'resumeWorkOrder',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'http_guard',
+    notes: 'Official Manager resume. Service resumeByManager does not re-check the capability.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/mechanics',
+    handler: 'addWorkOrderMechanic',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+    notes: 'Work Order-level team assignment. Sibling Job assign requires work_orders.manage; V1 keeps this on admin.access.',
+  },
+  {
+    method: 'DELETE',
+    path: '/admin/work-orders/:id/mechanics/:mechanicId',
+    handler: 'removeWorkOrderMechanic',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+    notes: 'Work Order-level team unassignment. Same V1 admin.access rule as add.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/jobs/:jobId/assign',
+    handler: 'assignJob',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/jobs/:jobId/unassign',
+    handler: 'unassignJob',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/trucks/:id/readiness-assessments',
+    handler: 'startReadinessAssessment',
+    controller: 'admin',
+    expected: [ADMIN, YARD],
+    enforcement: 'http_guard',
+    notes: 'Yard service methods do not re-check yard.operations.manage.',
+  },
+  {
+    method: 'PATCH',
+    path: '/admin/readiness-assessments/:id/requirements/:type',
+    handler: 'updateReadinessRequirement',
+    controller: 'admin',
+    expected: [ADMIN, YARD],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/readiness-assessments/:id/mark-ready',
+    handler: 'markReadinessReady',
+    controller: 'admin',
+    expected: [ADMIN, YARD],
+    enforcement: 'http_guard',
+  },
+  {
+    method: 'POST',
+    path: '/admin/readiness-assessments/:id/close',
+    handler: 'closeReadinessAssessment',
+    controller: 'admin',
+    expected: [ADMIN, YARD],
+    enforcement: 'http_guard',
+  },
+];
+
+export const ADMIN_READ_BOUNDARIES: CapabilityBoundaryEntry[] = [
+  { method: 'GET', path: '/admin/access', handler: 'access', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/dashboard', handler: 'dashboard', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/work-orders', handler: 'workOrders', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/work-orders/:id', handler: 'workOrder', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/mechanics', handler: 'mechanics', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/mechanics/:id', handler: 'mechanic', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/history', handler: 'history', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/catalog/categories', handler: 'catalogCategories', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/catalog/categories/:id', handler: 'catalogCategory', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/trucks', handler: 'listTrucks', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/yard-operations', handler: 'yardOperationsList', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/trucks/:id', handler: 'yardTruck', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/trucks/:id/repair-history', handler: 'repairHistory', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+];
+
+export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
+  {
+    method: 'POST',
+    path: '/work-orders',
+    handler: 'create',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+    notes: 'PM create uses mechanic.pm instead. Controller has AuthGuard only. Legacy mechanic create is intentionally kept.',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/start',
+    handler: 'start',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+    notes: 'PM Work Orders require mechanic.pm and assignment. Enforced by assertMechanicAccess.',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/pause',
+    handler: 'pause',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+    notes: 'Legacy mechanic pause. Soft-cutover; do not remove in V1.',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/pause-reason',
+    handler: 'changePauseReason',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/resume',
+    handler: 'resume',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/blockers',
+    handler: 'reportBlocker',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/complete',
+    handler: 'complete',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/jobs',
+    handler: 'addJob',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/notes',
+    handler: 'updateNotes',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/jobs/:jobId/complete',
+    handler: 'completeJob',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+  },
+  {
+    method: 'POST',
+    path: '/work-orders/:id/pm',
+    handler: 'updatePm',
+    controller: 'work-orders',
+    expected: [PM],
+    enforcement: 'service',
+  },
+];
+
+export const ALL_MUTATION_BOUNDARIES = [
+  ...ADMIN_MUTATION_BOUNDARIES,
+  ...WORK_ORDER_MUTATION_BOUNDARIES,
+];
+
+export function declaredHttpCapabilities(
+  controller: object,
+  handler: ((...args: never[]) => unknown) | undefined,
+): AppCapability[] {
+  const fromHandler = handler
+    ? (Reflect.getMetadata(CAPABILITIES_KEY, handler) as AppCapability[] | undefined)
+    : undefined;
+  if (fromHandler?.length) return fromHandler;
+  return (Reflect.getMetadata(CAPABILITIES_KEY, controller) as AppCapability[] | undefined) ?? [];
+}
+
+export function adminHandler(name: CapabilityBoundaryEntry['handler']) {
+  return AdminController.prototype[name as keyof AdminController] as (...args: never[]) => unknown;
+}
+
+export function workOrderHandler(name: CapabilityBoundaryEntry['handler']) {
+  return WorkOrdersController.prototype[name as keyof WorkOrdersController] as (...args: never[]) => unknown;
+}
