@@ -47,6 +47,7 @@ For implementation work, also read the relevant row in
 | `audit/CODE_CLEANUP_CANDIDATES.md` | REFERENCE | Cleanup triage | Non-destructive code and artifact candidates | ACTIVE |
 | `audit/GIT_BRANCH_AUDIT.md` | REFERENCE | Git triage | Conservative local/remote branch classification | ACTIVE |
 | `audit/BASELINE_VERIFICATION.md` | REFERENCE | Verification evidence | Commands, outcomes, failures, and blockers | ACTIVE |
+| `audit/V1_000_DEPLOYMENT_INVESTIGATION.md` | REFERENCE | Release evidence | Root cause, production gate status, and required V1-000 action | ACTIVE |
 | `audit/NORMALIZATION_REPORT.md` | REFERENCE | Handoff | Final normalization result and next task | ACTIVE |
 | `Lightning_Shop_Documentation_Package_2026-09-09/00_INDEX.md` | HISTORICAL | None | Index of the superseded dated package | PRESERVED |
 | `Lightning_Shop_Documentation_Package_2026-09-09/01_PRODUCT_DIRECTION_AND_DOMAIN_MODEL.md` | HISTORICAL | None | Earlier product/domain direction | PRESERVED |
