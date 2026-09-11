@@ -7,7 +7,9 @@
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
 `LIGHTNING_SHOP_MASTER_PRD.md`; gaps and sequencing live in
-`audit/CURRENT_VS_TARGET.md` and `DEVELOPMENT_ROADMAP.md`.
+`audit/CURRENT_VS_TARGET.md` and `DEVELOPMENT_ROADMAP.md`. The proposed V2
+ownership cutover (not implemented) is `OWNERSHIP_CUTOVER_CONTRACT.md` and
+is pending Cristian’s approval.
 
 ## What is implemented
 
@@ -196,6 +198,10 @@ not define TARGET behavior. Product direction lives exclusively in
 - The persisted capabilities are `admin.access`, `mechanic.standard`,
   `mechanic.pm`, `yard.operations.manage`, and `work_orders.manage`. The
   endpoint/capability matrix is in `audit/CAPABILITY_BOUNDARY_AUDIT.md`.
+- V2-001 published `OWNERSHIP_CUTOVER_CONTRACT.md` for product approval.
+  CURRENT runtime behavior is unchanged: this is still the soft-cutover
+  hybrid. Do not hide or 403 legacy Standard create/pause because the
+  contract exists.
 
 ### PM workflow
 

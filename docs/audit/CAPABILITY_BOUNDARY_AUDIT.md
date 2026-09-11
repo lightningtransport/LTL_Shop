@@ -157,10 +157,13 @@ or that enforces a weaker set than it declares.
 
 ## V2 follow-up (not started)
 
-After production validation and an explicit cutover decision:
+The product-approval contract is `docs/OWNERSHIP_CUTOVER_CONTRACT.md`
+(V2-001). It does not change this V1 matrix. After Cristian approves that
+contract:
 
 - decide which remaining `admin.access` mutations become Manager
-  (`work_orders.manage`) vs elevated System Admin;
+  (`work_orders.manage`) vs elevated System Admin (contract Q3–Q7);
 - optionally re-assert those capabilities in Admin/Yard services;
-- hide Admin planning controls that the API already rejects;
-- keep mechanic legacy create/pause retirement on the ownership-cutover task.
+- hide Admin planning controls that the API already rejects (contract Q16);
+- retire mechanic legacy create/pause only through the approved W1/W2
+  window. Do not implement those changes in V2-001.

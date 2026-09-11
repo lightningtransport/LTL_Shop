@@ -965,6 +965,11 @@ Mechanic no longer:
 
 Backend permission enforcement changes together with UI.
 
+The product-approval contract for this phase is
+`OWNERSHIP_CUTOVER_CONTRACT.md` (V2-001). It proposes a W1 UI window and a
+W2 API-enforcement stage plus rollback. It does **not** authorize
+implementation until the Decision Log records Cristian’s answers.
+
 ---
 
 # 31. Manager UX Principles
@@ -1364,6 +1369,9 @@ Mechanic becomes execution-focused.
 
 Remove legacy controls only after backend authorization and migration are complete.
 
+Approval artifact: `OWNERSHIP_CUTOVER_CONTRACT.md`. Implementation stays
+gated until the Decision Log records Cristian’s §11 answers.
+
 ---
 
 ## V2.1 — Yard Operations Maturity
@@ -1519,6 +1527,14 @@ Manager plans and controls the intervention; Mechanic executes assigned work.
 ### 2026-09-11 — Ownership migration
 
 Do not destructively cut over. Introduce Manager workflow additively, validate, then retire Mechanic planning controls.
+
+### 2026-09-11 — V2-001 cutover contract drafted (not approved)
+
+A product-approval contract is published at `OWNERSHIP_CUTOVER_CONTRACT.md`.
+It documents CURRENT, post-cutover, migration, and rollback for every
+Standard mechanic, PM, Manager, and Admin action, and lists decisions that
+require Cristian’s answer. **This entry does not approve cutover and does
+not authorize V2 implementation.**
 
 ---
 

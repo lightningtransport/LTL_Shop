@@ -70,6 +70,11 @@ small, additive, and selected from the implementation queue.
 
 Begin only after V1/V1.2 production validation and an explicit product decision.
 
+The approval artifact is `OWNERSHIP_CUTOVER_CONTRACT.md`. It is **not**
+implementation authority. W1 (UI hide, APIs live) and W2 (Standard
+create/pause/resume/change-reason 403) start only after Cristian records
+the contract’s §11 answers in the Master PRD decision log.
+
 Manager:
 
 - creates and plans normal Work Orders;

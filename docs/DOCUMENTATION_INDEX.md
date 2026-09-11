@@ -16,7 +16,9 @@ implementation summary.
 
 For implementation work, also read the relevant row in
 `audit/CURRENT_VS_TARGET.md` and select one task from
-`IMPLEMENTATION_QUEUE.md`.
+`IMPLEMENTATION_QUEUE.md`. For any V2 ownership work, read
+`OWNERSHIP_CUTOVER_CONTRACT.md` first; do not implement until the Master
+PRD decision log records Cristian’s approvals.
 
 ## Authority map
 
@@ -29,6 +31,7 @@ For implementation work, also read the relevant row in
 | `DEPLOY.md` | ENGINEERING | Deployment | Prisma release and deployment safety | ACTIVE |
 | `DEVELOPMENT_ROADMAP.md` | IMPLEMENTATION PLAN | Sequencing only | NOW/NEXT/LATER milestones derived from canonical target and current gaps | ACTIVE |
 | `IMPLEMENTATION_QUEUE.md` | IMPLEMENTATION PLAN | Task execution | Small, scoped tasks with acceptance criteria and tests | ACTIVE |
+| `OWNERSHIP_CUTOVER_CONTRACT.md` | PRODUCT DECISION CONTRACT | V2 cutover proposal only | Action matrix, compatibility window, rollback, test plan, and Cristian decisions. Does not authorize code until the Master PRD decision log records approval | ACTIVE — PENDING APPROVAL |
 | `AGENT_WORKFLOW.md` | ENGINEERING | Delivery process | Context, agent responsibility, and development-loop rules | ACTIVE |
 | `YARD_OPERATIONS_PHASE_1_CONTRACT.md` | CURRENT STATE | Module contract | Implemented readiness Phase 1 boundary | ACTIVE |
 | `pm-daniel.md` | REFERENCE | PM-specific context | PM authorization and compatibility notes | ACTIVE |

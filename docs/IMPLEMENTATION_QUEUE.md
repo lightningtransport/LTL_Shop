@@ -4,6 +4,9 @@
 **Updated:** 2026-09-11
 **Selection rule:** Take the first unblocked task in milestone order. Do not
 combine tasks or start a later milestone without the roadmap gate.
+**V2 gate:** Ownership cutover implementation stays blocked until Cristian
+approves `OWNERSHIP_CUTOVER_CONTRACT.md` (§11 decisions recorded in the
+Master PRD decision log).
 
 ## V1-000 — Investigate failed Vercel API deployment
 
@@ -139,7 +142,11 @@ Acceptance Criteria: Assigned/unassigned Jobs and Work Order team inheritance
 are clear at mobile size; existing PM remains unchanged.
 Tests: Mobile Chromium/WebKit assignment flows plus API access tests.
 Risk: MEDIUM.
-Status: PENDING.
+Status: COMPLETE — validation evidence in PR #77 (V1.2-001). Mechanic
+list/detail label assigned vs inherited-team Jobs; Job assignees can read
+the Work Order on that branch; PM Home unchanged. This V2-001 contract
+treats V1.2 assigned-work UX as accepted. Merge #77 (or equivalent) before
+any W1 UI slice if it is not yet on `main`.
 
 ## V1.2-002 — Validate blocker lifecycle and visibility
 
@@ -159,7 +166,12 @@ Acceptance Criteria: Report does not pause; official pause does; actor/reason
 are auditable; totals exclude report-only events.
 Tests: API transaction/timing tests and both-role E2E.
 Risk: HIGH — timing and operational status.
-Status: PENDING.
+Status: COMPLETE — validation evidence in PR #78 (V1.2-002, includes #77).
+Reports stay `in_progress` with `blocker_reported`; official pause/resume
+still change status; waiting totals exclude report-only events; Admin
+list/detail surface the report. This V2-001 contract treats blocker
+lifecycle as accepted. Merge #78 (or equivalent) before any W1 UI slice
+if it is not yet on `main`.
 
 ## V2-001 — Approve ownership cutover contract
 
@@ -173,12 +185,16 @@ Scope: Decision document and audited impact; no implementation in this task.
 Out of Scope: Code/schema changes.
 Dependencies: V1 and V1.2 acceptance evidence.
 Files likely affected: Master PRD decision log, Current vs Target, roadmap,
-queue.
+queue; cutover contract under `docs/`.
 Acceptance Criteria: Every mechanic/Manager/PM action has CURRENT, post-cutover,
 migration, and rollback behavior.
 Tests: Test plan only.
 Risk: HIGH.
-Status: GATED.
+Status: READY FOR PRODUCT APPROVAL — contract in
+`docs/OWNERSHIP_CUTOVER_CONTRACT.md`. No code or schema was changed.
+Implementation of W1/W2 remains GATED until Cristian records §11 answers
+in the Master PRD decision log. Do not merge as an implementation
+authorization.
 
 ## V2.1-001 — Validate the Yard Phase persistence gap
 
