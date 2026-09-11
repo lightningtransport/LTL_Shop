@@ -155,7 +155,7 @@ async function mockShopApi(page: Page) {
 async function login(page: Page) {
   await page.goto('/login');
   await page.getByRole('button', { name: /Dev Login/i }).click();
-  await expect(page.getByRole('heading', { name: 'Standard Mechanic' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
 }
 
 async function openNewWorkOrder(page: Page) {
@@ -196,7 +196,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
     releaseProfile();
     await expect(page).toHaveURL(/\/mechanic\/standard$/);
-    await expect(page.getByRole('link', { name: /Create New Work Order/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     await expect(page.getByRole('status', { name: /Loading work orders/i })).toBeHidden();
   });
 
@@ -213,7 +213,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.locator('main')).toBeFocused();
 
     await page.getByRole('link', { name: /Back/i }).click();
-    await expect(page.getByRole('heading', { name: 'Standard Mechanic' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   });
 
@@ -235,11 +235,12 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     });
 
     await login(page);
+    await page.goto(`/work-orders/${activeWorkOrder.id}`);
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-    await page.getByRole('link', { name: 'Pause Work' }).first().click();
-    await expect(page).toHaveURL(/\?action=pause$/);
-    const dialog = page.getByRole('dialog', { name: /Pause Work/i });
+    // Manager-first ownership: mechanics report a blocker instead of pausing.
+    await page.getByRole('button', { name: 'Report Blocker' }).first().click();
+    const dialog = page.getByRole('dialog', { name: /Report Blocker/i });
     await expect(dialog).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     await expect
@@ -296,7 +297,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('heading', { name: 'New Work Order' })).toBeVisible();
 
     await page.getByRole('link', { name: 'Back to Home' }).click();
-    await expect(page.getByRole('heading', { name: 'Standard Mechanic' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     await page.getByRole('link', { name: /Start Work/i }).click();
     await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
     await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);

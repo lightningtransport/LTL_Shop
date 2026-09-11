@@ -7,6 +7,7 @@ const prismaToShared: Record<PrismaAppCapability, AppCapability> = {
   MECHANIC_STANDARD: AppCapability.MECHANIC_STANDARD,
   MECHANIC_PM: AppCapability.MECHANIC_PM,
   YARD_OPERATIONS_MANAGE: AppCapability.YARD_OPERATIONS_MANAGE,
+  WORK_ORDERS_MANAGE: AppCapability.WORK_ORDERS_MANAGE,
 };
 
 export function toSharedCapability(capability: PrismaAppCapability): AppCapability {

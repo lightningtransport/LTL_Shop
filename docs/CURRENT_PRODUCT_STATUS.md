@@ -109,9 +109,11 @@ PRD.
   production site URL. Local development preserves the current local origin.
 - The web app restores navigation at the top of the page, including Safari
   back/forward cache restoration.
-- `admin.access`, `mechanic.standard`, and `mechanic.pm` are persisted and
-  independently auditable. A role classifies a user but does not grant mechanic
-  mutation authority.
+- `admin.access`, `mechanic.standard`, `mechanic.pm`, and
+  `yard.operations.manage` are persisted and independently auditable. A role
+  classifies a user but does not grant mechanic mutation authority. The
+  ownership migration adds `work_orders.manage` for Manager operational
+  authority (see Work Order ownership below).
 
 ### Standard mechanic work orders
 
@@ -150,9 +152,29 @@ PRD.
   name; inactive Categories and historical Jobs remain readable but cannot be
   selected for new work; repair-history Category filters match any Job
   Category; Add Job requires `expectedVersion` and `idempotencyKey`.
-- **DEFERRED:** Job timers/assignments, configurable rules, unconfirmed
+- **DEFERRED:** Job timers, configurable rules, unconfirmed
   integrations, multiple open Work Orders per Truck, and removing or making
   `primaryCategoryId` nullable.
+
+### Work Order ownership and permissions
+
+- **CURRENT:** creating a Work Order requires a mechanic capability
+  (`mechanic.standard` or `mechanic.pm`); `admin.access` alone cannot create.
+  Priority is set by the mechanic at creation and changed afterward only by an
+  `admin.access` PATCH. Pause/resume are mechanic actions on the whole Work
+  Order; there is no manager pause. Assignment is Work-Order-level via
+  `MechanicAssignment` (no per-Job assignee).
+- **TARGET (ownership migration):** the **Shop Manager** (`work_orders.manage`,
+  additive capability) plans and controls the intervention — creates the Work
+  Order, sets priority, adds Jobs, assigns work per Job, pauses/resumes, and
+  manages blockers. The **Mechanic** executes assigned work, reports blockers,
+  and no longer sets priority or globally pauses. Mechanic-created standard Work
+  Orders and mechanic global pause stay working during a soft cutover and are
+  removed in a later, explicit slice. PM stays untouched: the PM mechanic keeps
+  self-creating the PM service. Full plan:
+  [`WORK_ORDER_OWNERSHIP_MIGRATION.md`](./WORK_ORDER_OWNERSHIP_MIGRATION.md);
+  current-state audit:
+  [`audits/WORK_ORDER_OWNERSHIP_AUDIT_2026-09-11.md`](./audits/WORK_ORDER_OWNERSHIP_AUDIT_2026-09-11.md).
 
 ### PM workflow
 

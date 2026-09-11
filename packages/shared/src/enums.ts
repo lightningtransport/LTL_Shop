@@ -9,6 +9,7 @@ export enum AppCapability {
   MECHANIC_STANDARD = 'mechanic.standard',
   MECHANIC_PM = 'mechanic.pm',
   YARD_OPERATIONS_MANAGE = 'yard.operations.manage',
+  WORK_ORDERS_MANAGE = 'work_orders.manage',
 }
 
 export enum MechanicMode {
@@ -74,6 +75,7 @@ export enum ActivityEventType {
   WORK_PAUSED = 'work_paused',
   PAUSE_REASON_CHANGED = 'pause_reason_changed',
   WORK_RESUMED = 'work_resumed',
+  BLOCKER_REPORTED = 'blocker_reported',
   MECHANIC_ADDED = 'mechanic_added',
   MECHANIC_REMOVED = 'mechanic_removed',
   PRIORITY_CHANGED = 'priority_changed',

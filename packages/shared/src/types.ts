@@ -216,6 +216,9 @@ export interface AdminWorkOrderJobDto {
   customDescription: string | null;
   category: JobCategoryReferenceDto;
   status: JobStatus;
+  // Manager-first ownership: optional per-Job assignment. Null means the Job
+  // inherits the Work Order general mechanic team.
+  assignedMechanic: { id: string; name: string } | null;
 }
 
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {

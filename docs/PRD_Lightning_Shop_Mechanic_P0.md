@@ -8,8 +8,16 @@ Work Order evolution, use the
 [2026-09-09 documentation package](./Lightning_Shop_Documentation_Package_2026-09-09/00_INDEX.md)
 and its [checkout audit](./audits/WORK_ORDER_MULTICATEGORY_AUDIT_2026-09-09.md).
 
-- **CURRENT/legacy:** Standard creation and Add Job are restricted to one
-  Category even though each `WorkOrderJob` already stores `categoryId`.
+- **CURRENT:** multi-category is implemented. Standard creation and Add Job
+  allow Jobs from multiple non-PM Categories; each `WorkOrderJob` stores its own
+  `categoryId`. (Updated 2026-09-11: this was previously labeled a one-Category
+  restriction / TARGET; it is now CURRENT.)
+- **CURRENT/legacy in transition:** the Mechanic creating a standard Work Order
+  and pausing the whole Work Order are legacy behaviors kept working during a
+  soft cutover. The ownership TARGET moves creation, priority, pause, and
+  assignment authority to the **Shop Manager** (`work_orders.manage`); the
+  Mechanic executes assigned work. See
+  [`WORK_ORDER_OWNERSHIP_MIGRATION.md`](./WORK_ORDER_OWNERSHIP_MIGRATION.md).
 - **TARGET:** a Work Order is the complete service intervention for one Truck;
   Jobs own their Categories and one Work Order may mix Categories.
   `primaryCategoryId` remains required initially as Initial/Primary Category.
@@ -18,7 +26,7 @@ and its [checkout audit](./audits/WORK_ORDER_MULTICATEGORY_AUDIT_2026-09-09.md).
   not Start; PM remains the specialized `mechanic.pm` exception. Completing a
   Job does not complete the Work Order, and Work Order `Completed` is separate
   from `Ready to Go`/`Returned to Service`.
-- **DEFERRED:** per-Job timers/assignments, configurable rules, unconfirmed
+- **DEFERRED:** per-Job timers, configurable rules, unconfirmed
   integrations, multiple open Work Orders per Truck, and removal of the legacy
   primary Category field.
 

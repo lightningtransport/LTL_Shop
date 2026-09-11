@@ -28,6 +28,14 @@ Greenfield monorepo for the Lightning Shop Mechanic Work Order experience.
 - **CURRENT:** a Work Order is the complete service intervention for one Truck.
   Standard creation and Add Job permit multiple non-PM Job Categories without
   removing legacy readers or `primaryCategoryId`.
+- **TARGET (ownership migration in progress):** the **Shop Manager** plans and
+  controls the intervention (creates the Work Order, sets priority, adds Jobs,
+  assigns work, pauses/resumes, manages blockers). The **Mechanic** executes
+  assigned work. Mechanic-created standard Work Orders and mechanic global pause
+  are **legacy in transition** and kept working during a soft cutover. The new
+  Manager capability is `work_orders.manage`. See
+  [`docs/WORK_ORDER_OWNERSHIP_MIGRATION.md`](docs/WORK_ORDER_OWNERSHIP_MIGRATION.md)
+  and its [audit](docs/audits/WORK_ORDER_OWNERSHIP_AUDIT_2026-09-11.md).
 - **LOCKED:** one open Work Order per Truck; a later visit or distinct service
   event creates a new Work Order. A Yard Phase is not a Category and never
   creates another Work Order.

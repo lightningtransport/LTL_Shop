@@ -333,9 +333,11 @@ invariante de una abierta por Truck dentro de una transacción con advisory lock
 por Truck y verifica que un retry idempotente conserve actor y payload. Las
 mutaciones de readiness usan `expectedVersion` e `idempotencyKey`.
 
-La mutación Add Job aún no acepta esos metadatos. La evolución multicategoría
-debe exigir ambos, devolver 409 para una versión stale y registrar la Category
-en `JOB_ADDED`. No usar `updatedAt` del cliente como garantía.
+La mutación Add Job **ya exige** `expectedVersion` e `idempotencyKey`
+(`addJobSchema`), devuelve 409 para una versión stale y registra la Category en
+`JOB_ADDED`. No usar `updatedAt` del cliente como garantía. (Corregido
+2026-09-11: la versión previa de este documento afirmaba que Add Job aún no
+aceptaba esos metadatos.)
 
 ### 8.4 Auditoría y correcciones
 

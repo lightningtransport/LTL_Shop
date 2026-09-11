@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { AppCapability, OPEN_WORK_ORDER_STATUSES, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { addAdminWorkOrderMechanic, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, returnAdminWorkOrderToService, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -33,6 +33,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [reopenReason, setReopenReason] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [jobReason, setJobReason] = useState('');
+  const [pauseReason, setPauseReason] = useState<PauseReason>(PauseReason.WAITING_FOR_PARTS);
+  const [assignDrafts, setAssignDrafts] = useState<Record<string, string>>({});
   const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
   const [draftNotes, setDraftNotes] = useState('');
   const [timeTarget, setTimeTarget] = useState('');
@@ -175,6 +177,40 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         ) : null}
       </CardContent>
     </Card>
+
+    {isOpen && data.category.name !== 'PM' ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>{data.status === 'waiting_paused' ? messages.resumeWorkOrderAction : messages.pauseWorkOrderAction}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {data.status === 'waiting_paused' ? (
+            <Button
+              type="button"
+              disabled={Boolean(pendingAction)}
+              onClick={() => void runMutation('resume-wo', messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(data.id), (failure) => assignmentError(failure, messages))}
+            >
+              {messages.resumeWorkOrderAction}
+            </Button>
+          ) : (
+            <form
+              className="flex flex-col gap-3 sm:flex-row"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void runMutation('pause-wo', messages.pauseWorkOrderSuccess, () => pauseAdminWorkOrder(data.id, { reason: pauseReason }), (failure) => assignmentError(failure, messages));
+              }}
+            >
+              <Select aria-label={messages.pauseReasonLabel} value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
+                {Object.values(PauseReason).map((reason) => (
+                  <option key={reason} value={reason}>{humanize(reason)}</option>
+                ))}
+              </Select>
+              <Button type="submit" disabled={Boolean(pendingAction)}>{messages.pauseWorkOrderAction}</Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+    ) : null}
 
     {canCompleteWorkOrder ? (
       <Card>
@@ -397,6 +433,59 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                   <p className="font-medium">{job.displayName}</p>
                   <p className="text-xs text-muted-foreground">{job.category.name}</p>
                   {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {job.assignedMechanic
+                      ? `${messages.jobAssignee}: ${job.assignedMechanic.name}`
+                      : messages.jobUnassignedInheritsTeam}
+                  </p>
+                  {canManageJobs && job.status !== 'cancelled' ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {job.assignedMechanic ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={Boolean(pendingAction)}
+                          onClick={() => {
+                            void runMutation(`unassign-job-${job.id}`, messages.unassignJobSuccess, async () => {
+                              await unassignAdminWorkOrderJob(id, job.id, data.version);
+                            }, (failure) => jobChangeError(failure, messages));
+                          }}
+                        >
+                          {messages.unassignJobAction}
+                        </Button>
+                      ) : (
+                        <>
+                          <Select
+                            aria-label={messages.assignJobPlaceholder}
+                            className="w-48"
+                            value={assignDrafts[job.id] ?? ''}
+                            onChange={(event) => setAssignDrafts((prev) => ({ ...prev, [job.id]: event.target.value }))}
+                          >
+                            <option value="">{messages.assignJobPlaceholder}</option>
+                            {assignableMechanics.map((mechanic) => (
+                              <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
+                            ))}
+                          </Select>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={Boolean(pendingAction) || !assignDrafts[job.id]}
+                            onClick={() => {
+                              const mechanicId = assignDrafts[job.id];
+                              if (!mechanicId) return;
+                              void runMutation(`assign-job-${job.id}`, messages.assignJobSuccess, async () => {
+                                await assignAdminWorkOrderJob(id, job.id, { mechanicId, expectedVersion: data.version });
+                                setAssignDrafts((prev) => ({ ...prev, [job.id]: '' }));
+                              }, (failure) => jobChangeError(failure, messages));
+                            }}
+                          >
+                            {messages.assignJobAction}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={job.status === 'completed' ? 'success' : 'outline'}>{humanize(job.status)}</Badge>

@@ -45,6 +45,12 @@ export class AdminController {
     return this.admin.list(query);
   }
 
+  @Post('work-orders')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  createWorkOrder(@Req() request: Request, @Body() body: unknown) {
+    return this.admin.createWorkOrder(request.user!, body);
+  }
+
   @Get('work-orders/:id')
   workOrder(@Param('id') id: string) {
     return this.admin.detail(id);
@@ -90,6 +96,18 @@ export class AdminController {
     return this.admin.cancelWorkOrder(request.user!, id, body);
   }
 
+  @Post('work-orders/:id/pause')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  pauseWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.admin.pauseWorkOrder(request.user!, id, body);
+  }
+
+  @Post('work-orders/:id/resume')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  resumeWorkOrder(@Req() request: Request, @Param('id') id: string) {
+    return this.admin.resumeWorkOrder(request.user!, id);
+  }
+
   @Post('work-orders/:id/mechanics')
   addWorkOrderMechanic(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.addMechanic(request.user!, id, body);
@@ -103,6 +121,28 @@ export class AdminController {
     @Body() body: unknown,
   ) {
     return this.admin.removeMechanic(request.user!, id, mechanicId, body);
+  }
+
+  @Post('work-orders/:id/jobs/:jobId/assign')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  assignJob(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.assignJob(request.user!, id, jobId, body);
+  }
+
+  @Post('work-orders/:id/jobs/:jobId/unassign')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  unassignJob(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.unassignJob(request.user!, id, jobId, body);
   }
 
   @Get('mechanics')

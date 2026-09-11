@@ -58,7 +58,14 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
   const hasDashboardRange = DASHBOARD_RANGE_KEYS.some((key) => searchParams.has(key));
 
   return <div className="space-y-5">
-    <header><p className="section-label">{messages.eyebrow}</p><h1 className="mt-2 font-display text-3xl font-bold tracking-wide">{messages.workOrdersTitle}</h1><p className="mt-2 text-sm text-muted-foreground">{messages.workOrdersDescription}</p></header>
+    <header className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p className="section-label">{messages.eyebrow}</p>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-wide">{messages.workOrdersTitle}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{messages.workOrdersDescription}</p>
+      </div>
+      <Button asChild><Link href="/admin/work-orders/new">{messages.newWorkOrderCta}</Link></Button>
+    </header>
     <Card>
       <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-12" onSubmit={applyFilters}>
         <label className="space-y-1 xl:col-span-4"><span className="text-sm font-medium">{messages.search}</span><Input value={search} onChange={(event) => setSearch(event.target.value)} /></label>

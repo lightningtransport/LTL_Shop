@@ -134,6 +134,12 @@ export const adminAddWorkOrderMechanicSchema = adminMutationMetaSchema.extend({
 
 export const adminRemoveWorkOrderMechanicSchema = adminMutationMetaSchema;
 
+export const adminAssignJobSchema = adminMutationMetaSchema.extend({
+  mechanicId: z.string().uuid(),
+});
+
+export const adminUnassignJobSchema = adminMutationMetaSchema;
+
 export const adminCancelWorkOrderSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),
 });
@@ -239,6 +245,18 @@ export const pauseWorkOrderSchema = z.object({
 });
 
 export const changePauseReasonSchema = z.object({
+  reason: z.nativeEnum(PauseReason),
+  notes: z.string().max(1000).optional(),
+});
+
+// Manager-first ownership: a mechanic reports a blocker without pausing the
+// Work Order. The Manager pauses/resumes officially.
+export const reportBlockerSchema = z.object({
+  reason: z.nativeEnum(PauseReason),
+  notes: z.string().max(1000).optional(),
+});
+
+export const adminPauseWorkOrderSchema = z.object({
   reason: z.nativeEnum(PauseReason),
   notes: z.string().max(1000).optional(),
 });

@@ -15,6 +15,8 @@ import {
   Priority as SharedPriority,
   WorkOrderStatus as SharedWorkOrderStatus,
   adminAddWorkOrderMechanicSchema,
+  adminAssignJobSchema,
+  adminUnassignJobSchema,
   adminCancelWorkOrderSchema,
   adminCompleteWorkOrderSchema,
   adminReopenWorkOrderSchema,
@@ -56,6 +58,7 @@ import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
+import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
@@ -124,6 +127,7 @@ const detailInclude = {
   jobs: {
     include: {
       category: { select: { name: true } },
+      assignedMechanic: { select: { id: true, name: true } },
     },
     orderBy: { addedAt: 'asc' as const },
   },
@@ -153,7 +157,30 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityLogService,
+    private readonly workOrders: WorkOrdersService,
   ) {}
+
+  // Manager-first ownership: a Manager (work_orders.manage) plans the
+  // intervention. Reuses the shared create path (truck advisory lock,
+  // idempotency, one-open-WO-per-Truck, multi-category Jobs) with a Manager
+  // actor so no mechanic capability is required and PM is rejected.
+  async createWorkOrder(user: AuthUser, body: unknown) {
+    return this.workOrders.createByManager(user, body);
+  }
+
+  // Manager-first ownership: the Manager pauses/resumes the Work Order. Reuses
+  // the mechanic pause/resume mechanics, then returns the admin detail DTO.
+  async pauseWorkOrder(user: AuthUser, workOrderId: string, body: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    await this.workOrders.pauseByManager(user, workOrderId, body);
+    return this.detail(workOrderId);
+  }
+
+  async resumeWorkOrder(user: AuthUser, workOrderId: string): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    await this.workOrders.resumeByManager(user, workOrderId);
+    return this.detail(workOrderId);
+  }
 
   async dashboard(): Promise<AdminDashboardDto> {
     const openWhere: Prisma.WorkOrderWhereInput = {
@@ -502,6 +529,154 @@ export class AdminService {
           userId: user.id,
           previousValue: { mechanicId, mechanicName: wo.mechanics.find((item) => item.mechanic.id === mechanicId)?.mechanic.name ?? null },
           newValue: { mechanicId, removed: true },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  // Manager-first ownership: assign a specific Job to a mechanic. Additive and
+  // independent of MechanicAssignment (the general team). A Job with no assignee
+  // visually inherits the general team.
+  async assignJob(user: AuthUser, workOrderId: string, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    if (!isUuid(jobId)) throw new BadRequestException('Invalid Job id');
+    const parsed = adminAssignJobSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const operation = 'admin_assign_job';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      jobId,
+      mechanicId: input.mechanicId,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        this.assertMutableJobs(wo);
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const job = wo.jobs.find((item) => item.id === jobId);
+        if (!job) throw new NotFoundException('Job not found');
+        const mechanic = await tx.user.findFirst({
+          where: {
+            id: input.mechanicId,
+            active: true,
+            capabilities: { some: { capability: AppCapability.MECHANIC_STANDARD } },
+          },
+          select: { id: true, name: true },
+        });
+        if (!mechanic) throw new BadRequestException('This mechanic cannot perform standard work');
+        await tx.workOrderJob.update({
+          where: { id: jobId },
+          data: { assignedMechanicId: input.mechanicId },
+        });
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: { version: { increment: 1 } },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.MECHANIC_ADDED,
+          entityType: 'work_order_job',
+          entityId: jobId,
+          userId: user.id,
+          previousValue: { jobId, assignedMechanicId: job.assignedMechanicId },
+          newValue: { jobId, action: 'job_assigned', assignedMechanicId: input.mechanicId, mechanicName: mechanic.name },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  async unassignJob(user: AuthUser, workOrderId: string, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    if (!isUuid(jobId)) throw new BadRequestException('Invalid Job id');
+    const parsed = adminUnassignJobSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const operation = 'admin_unassign_job';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      jobId,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        this.assertMutableJobs(wo);
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const job = wo.jobs.find((item) => item.id === jobId);
+        if (!job) throw new NotFoundException('Job not found');
+        if (!job.assignedMechanicId) throw new NotFoundException('Job is not assigned');
+        await tx.workOrderJob.update({
+          where: { id: jobId },
+          data: { assignedMechanicId: null },
+        });
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: { version: { increment: 1 } },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.MECHANIC_REMOVED,
+          entityType: 'work_order_job',
+          entityId: jobId,
+          userId: user.id,
+          previousValue: { jobId, assignedMechanicId: job.assignedMechanicId },
+          newValue: { jobId, action: 'job_unassigned', assignedMechanicId: null },
         });
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
@@ -1555,6 +1730,9 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     customDescription: job.customDescription,
     status: job.status as SharedJobStatus,
     category: { id: job.categoryId, name: job.category.name },
+    assignedMechanic: job.assignedMechanic
+      ? { id: job.assignedMechanic.id, name: job.assignedMechanic.name }
+      : null,
   }));
   return {
     ...summary,

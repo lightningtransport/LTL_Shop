@@ -223,13 +223,15 @@ export default function WorkOrderDetailPage() {
         ) : null}
         {wo.status === 'in_progress' ? (
           <div className={todo.length ? 'grid grid-cols-2 gap-2' : undefined}>
+            {/* Manager-first ownership: mechanics report blockers instead of
+                pausing the whole Work Order. The Manager decides to pause. */}
             {todo.length ? <Button
               ref={pauseTriggerRef}
               variant="secondary"
               disabled={busy}
               onClick={() => setPauseOpen(true)}
             >
-              Pause Work
+              Report Blocker
             </Button> : null}
             <Button
               ref={finishWorkTriggerRef}
@@ -536,12 +538,12 @@ export default function WorkOrderDetailPage() {
 
       <Modal
         open={pauseOpen}
-        title="PAUSE WORK ORDER"
+        title="REPORT BLOCKER"
         onClose={() => setPauseOpen(false)}
         returnFocusRef={pauseTriggerRef}
       >
         <Label className="section-label mb-2 block" htmlFor="pause-reason">
-          Pause reason
+          Blocker reason
         </Label>
         <div className="mb-3">
           <Select
@@ -582,7 +584,7 @@ export default function WorkOrderDetailPage() {
             onClick={() => {
               setPauseOpen(false);
               run(() =>
-                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause`, {
+                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers`, {
                   method: 'POST',
                   body: JSON.stringify({
                     reason: pauseReason,
@@ -592,7 +594,7 @@ export default function WorkOrderDetailPage() {
               );
             }}
           >
-            Pause Work
+            Report Blocker
           </Button>
         </div>
       </Modal>

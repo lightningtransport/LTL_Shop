@@ -15,6 +15,7 @@ import {
   changePauseReasonSchema,
   createWorkOrderSchema,
   pauseWorkOrderSchema,
+  reportBlockerSchema,
   updateWorkOrderNotesSchema,
   updatePmServiceSchema,
   mechanicModeSchema,
@@ -98,7 +99,20 @@ export class WorkOrdersService {
     return toWorkOrderDetail(wo);
   }
 
-  async create(user: AuthUser, raw: unknown) {
+  // Managers plan the intervention; mechanics execute it. The core create logic
+  // is shared, but a Manager actor skips mechanic-capability requirements, is not
+  // auto-assigned as a mechanic, and cannot open a PM service (PM stays in the
+  // mechanic flow). This is additive: the mechanic path is unchanged.
+  async createByManager(user: AuthUser, raw: unknown) {
+    return this.create(user, raw, { actorKind: 'manager' });
+  }
+
+  async create(
+    user: AuthUser,
+    raw: unknown,
+    options: { actorKind?: 'mechanic' | 'manager' } = {},
+  ) {
+    const actorKind = options.actorKind ?? 'mechanic';
     const parsed = createWorkOrderSchema.safeParse(raw);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.flatten());
@@ -122,7 +136,7 @@ export class WorkOrdersService {
       });
       if (existing) {
         this.assertWorkOrderIdempotency(existing, input.truckId, idempotencyPayloadHash, user.id);
-        this.assertMechanicAccess(user, existing);
+        if (actorKind === 'mechanic') this.assertMechanicAccess(user, existing);
         return toWorkOrderDetail(existing);
       }
     }
@@ -141,6 +155,11 @@ export class WorkOrdersService {
 
     const isPm = category.name === 'PM';
     if (isPm) {
+      if (actorKind === 'manager') {
+        throw new BadRequestException(
+          'Managers create standard Work Orders; PM stays in the mechanic flow.',
+        );
+      }
       this.assertCapability(user, AppCapability.MECHANIC_PM, 'PM mechanic');
       if (input.jobs.length) {
         throw new BadRequestException('PM Work Orders do not use jobs');
@@ -151,7 +170,9 @@ export class WorkOrdersService {
     } else if (!input.jobs.length) {
       throw new BadRequestException('At least one job is required for this Work Order');
     } else {
-      this.assertCapability(user, AppCapability.MECHANIC_STANDARD, 'standard mechanic');
+      if (actorKind === 'mechanic') {
+        this.assertCapability(user, AppCapability.MECHANIC_STANDARD, 'standard mechanic');
+      }
       if (!input.mechanicIds.length) {
         // The creator is assigned below.
       } else {
@@ -178,9 +199,11 @@ export class WorkOrdersService {
       include: workOrderDetailInclude,
     });
 
-    const mechanicIds = Array.from(
-      new Set([user.id, ...input.mechanicIds]),
-    );
+    // A Manager is not a mechanic and is never auto-assigned to the Work Order.
+    // Mechanics remain auto-assigned as the creator/executor.
+    const mechanicIds = actorKind === 'manager'
+      ? Array.from(new Set(input.mechanicIds))
+      : Array.from(new Set([user.id, ...input.mechanicIds]));
 
     let wo: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>;
     try {
@@ -193,7 +216,7 @@ export class WorkOrdersService {
           });
           if (stored) {
             this.assertWorkOrderIdempotency(stored, input.truckId, idempotencyPayloadHash, user.id);
-            this.assertMechanicAccess(user, stored);
+            if (actorKind === 'mechanic') this.assertMechanicAccess(user, stored);
             return stored;
           }
         }
@@ -331,7 +354,7 @@ export class WorkOrdersService {
         });
         if (existing) {
           this.assertWorkOrderIdempotency(existing, input.truckId, idempotencyPayloadHash, user.id);
-          this.assertMechanicAccess(user, existing);
+          if (actorKind === 'mechanic') this.assertMechanicAccess(user, existing);
           return toWorkOrderDetail(existing);
         }
       }
@@ -403,7 +426,62 @@ export class WorkOrdersService {
     });
   }
 
-  async pause(user: AuthUser, id: string, raw: unknown) {
+  // Manager-first ownership: the Manager pauses/resumes officially. These
+  // wrappers reuse the exact mechanic pause/resume mechanics (session close,
+  // PauseEvent, totals) but skip the mechanic-assignment check.
+  async pauseByManager(user: AuthUser, id: string, raw: unknown) {
+    return this.pause(user, id, raw, { managerActor: true });
+  }
+
+  async resumeByManager(user: AuthUser, id: string) {
+    return this.resume(user, id, { managerActor: true });
+  }
+
+  // A mechanic-reported blocker records reason/notes without changing Work Order
+  // status. Stored as a closed, zero-duration PauseEvent flagged
+  // isOfficialPause=false so it never affects waiting totals or the open-pause
+  // lookup used by resume/changePauseReason.
+  async reportBlocker(user: AuthUser, id: string, raw: unknown) {
+    const parsed = reportBlockerSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    if (parsed.data.reason === PauseReason.OTHER && !parsed.data.notes?.trim()) {
+      throw new BadRequestException('Notes are required when reason is Other');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const wo = await this.requireWo(tx, id);
+      this.assertMechanicAccess(user, wo);
+      const now = new Date();
+      await tx.pauseEvent.create({
+        data: {
+          workOrderId: id,
+          reason: parsed.data.reason,
+          notes: parsed.data.notes,
+          startedAt: now,
+          endedAt: now,
+          durationMs: 0n,
+          isOfficialPause: false,
+          reportedById: user.id,
+          createdById: user.id,
+        },
+      });
+      const updated = await tx.workOrder.update({
+        where: { id },
+        data: { version: { increment: 1 } },
+        include: workOrderDetailInclude,
+      });
+      await this.activity.log(tx, {
+        workOrderId: id,
+        eventType: ActivityEventType.BLOCKER_REPORTED,
+        entityType: 'work_order',
+        entityId: id,
+        userId: user.id,
+        newValue: { reason: parsed.data.reason, notes: parsed.data.notes ?? null },
+      });
+      return toWorkOrderDetail(updated);
+    });
+  }
+
+  async pause(user: AuthUser, id: string, raw: unknown, options: { managerActor?: boolean } = {}) {
     const parsed = pauseWorkOrderSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     if (parsed.data.reason === PauseReason.OTHER && !parsed.data.notes?.trim()) {
@@ -412,7 +490,7 @@ export class WorkOrdersService {
 
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      this.assertMechanicAccess(user, wo);
+      if (!options.managerActor) this.assertMechanicAccess(user, wo);
       if (wo.status !== 'in_progress') {
         throw new BadRequestException('Only in-progress Work Orders can be paused');
       }
@@ -499,10 +577,10 @@ export class WorkOrdersService {
     });
   }
 
-  async resume(user: AuthUser, id: string) {
+  async resume(user: AuthUser, id: string, options: { managerActor?: boolean } = {}) {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      this.assertMechanicAccess(user, wo);
+      if (!options.managerActor) this.assertMechanicAccess(user, wo);
       if (wo.status !== 'waiting_paused') {
         throw new BadRequestException('Only paused Work Orders can be resumed');
       }

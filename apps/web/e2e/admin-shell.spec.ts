@@ -163,7 +163,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
       await page.getByRole('link', { name: 'Open Standard Mechanic' }).click();
       await expect(page).toHaveURL(/\/mechanic\/standard$/);
-      await expect(page.getByRole('heading', { name: 'Standard Mechanic' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
       await page.getByRole('link', { name: 'Back to Shop Admin' }).click();
 
       await page.getByRole('button', { name: /Language: English/ }).click();
@@ -178,7 +178,7 @@ test.describe('Shop Admin Phase 2A', () => {
   test('mechanic receives a secure forbidden screen for direct Admin access', async ({ page }) => {
     await page.goto('/login');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await expect(page.getByRole('heading', { name: 'Standard Mechanic' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     const response = await page.goto('/admin');
     expect(response?.status()).toBe(403);
     await expect(page.getByRole('heading', { name: 'Shop Admin access denied' })).toBeVisible();
