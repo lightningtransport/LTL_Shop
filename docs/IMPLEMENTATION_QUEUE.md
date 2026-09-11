@@ -139,7 +139,12 @@ Acceptance Criteria: Assigned/unassigned Jobs and Work Order team inheritance
 are clear at mobile size; existing PM remains unchanged.
 Tests: Mobile Chromium/WebKit assignment flows plus API access tests.
 Risk: MEDIUM.
-Status: PENDING.
+Status: COMPLETE — mechanic list/detail now label assigned vs inherited-team
+Jobs; Job assignees can read the Work Order; Manager assign unions the
+assignee into the team; PM Home remains unchanged. Evidence: focused API/web
+unit tests, `ADMIN_E2E_FIXTURE=1` Playwright assignment cases on
+mobile-chromium and mobile-webkit, and seeded local mobile verification.
+PR #77. Do not merge from this task.
 
 ## V1.2-002 — Validate blocker lifecycle and visibility
 
