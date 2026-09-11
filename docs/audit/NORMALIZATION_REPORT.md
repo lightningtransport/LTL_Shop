@@ -30,9 +30,8 @@
 ## Git state
 
 - GitHub default branch: `main`; zero open PRs at audit time.
-- Recent visible GitHub Actions CI runs are green, but the combined status for
-  current `main` is failing because `Vercel – ltl-shop-api` failed; the web
-  deployment passed.
+- Current `main` is green: CI, Vercel web, and Vercel API succeeded after the
+  approved V1-000 Prisma release and production API redeploy.
 - Fully merged remote branches and unique/unknown branches are separated in
   `GIT_BRANCH_AUDIT.md`.
 - No branch was removed. Unique branches are KEEP by default.
@@ -48,8 +47,8 @@
 - FAIL / INCOMPLETE: full Playwright baseline after browsers were installed.
   Many cases passed, but multiple existing cross-browser failures/timeouts were
   observed and the overlong run was stopped without claiming a false aggregate.
-- FAIL: current `main` combined deployment status because the Vercel API
-  deployment failed while CI and Vercel web passed.
+- PASS: V1-000 production release safety applied the pending migrations,
+  verified API reads, and the current-main API redeploy is READY.
 - The exact matrix and CI coverage gaps are in `BASELINE_VERIFICATION.md`.
 
 ## Current product state
@@ -132,15 +131,12 @@ See `CODE_CLEANUP_CANDIDATES.md` for risk and recommended action.
 
 ## Recommended next task
 
-Finish the operational action for `V1-000 — Investigate failed Vercel API
-deployment`. The investigation proved that the production Prisma gate correctly
-blocked current `main` because four migrations are pending; it did not find a
-repository build/config defect. An authorized maintainer must run **Release
-safety** with migration deployment and API verification enabled, then redeploy
-the current `main` API commit. See `V1_000_DEPLOYMENT_INVESTIGATION.md`.
+`V1-000 — Investigate failed Vercel API deployment` is complete. The approved
+release path applied the pending Prisma migrations, API probes passed, and the
+current-main redeploy is READY. See `V1_000_DEPLOYMENT_INVESTIGATION.md`.
 
-Do not select `V1-001` until V1-000 is fully resolved and combined `main` is
-green.
+The recommended next task is `V1-001 — Restore a trustworthy E2E gate`; do not
+start it without selecting that scoped task.
 
 ## Normalization completion check
 
@@ -154,4 +150,4 @@ green.
 | What is out of scope? | Master PRD + roadmap phase boundaries |
 | What rules cannot break? | Master PRD + engineering/deploy documents |
 | How is a change verified? | `AGENT_WORKFLOW.md` + task tests + baseline |
-| What is the next task? | Complete the authorized production action for `V1-000` |
+| What is the next task? | Select `V1-001 — Restore a trustworthy E2E gate` |

@@ -4,7 +4,8 @@
 **Investigated:** 2026-09-11
 **Production commit:** `436988f`
 **Deployment:** `dpl_Fg4eJtMiABB8UhuNqm42i7oHfgkA`
-**Status:** BLOCKED — production migration approval and redeploy required
+**Redeployment:** `dpl_46ydTmr8ETSiLqnKysbh3Z7Vr7Td`
+**Status:** COMPLETE
 
 ## Root cause
 
@@ -41,28 +42,25 @@ schema, migration, or Vercel configuration should be changed to bypass it.
 The healthy probes describe the previous production deployment. They do not
 make the failed `436988f` deployment READY.
 
-## Required production action
+## Resolution
 
-An authorized maintainer must:
+The approved production action completed on 2026-09-11:
 
-1. Run GitHub Actions workflow **Release safety** on `main` with
-   `apply_migrations=true` and `verify_api=true`.
-2. Confirm all four Prisma migrations apply, the post-deploy migration status
-   is up to date, and both API probes pass.
-3. Redeploy production deployment `dpl_Fg4eJtMiABB8UhuNqm42i7oHfgkA` (or trigger
-   a fresh Git-integrated production deployment for current `main`).
-4. Confirm the API deployment is READY and the combined status for `436988f`
-   is green.
+1. GitHub Actions **Release safety** run `34626614809` completed successfully
+   on current `main` with the production migration path and API verification.
+2. The production API deployment was redeployed from the failed current-main
+   build as `dpl_46ydTmr8ETSiLqnKysbh3Z7Vr7Td`.
+3. Vercel reports that deployment as READY, with the `ltl-shop-api.vercel.app`
+   alias assigned.
+4. `GET /api/health` and `GET /` return HTTP 200 with `ok: true`.
+5. The combined status for `436988f` is green: both Vercel API and web
+   deployments completed successfully.
 
 The workflow in `.github/workflows/release-safety.yml` is the only approved
 production migration path. Prisma files under `apps/api/prisma/migrations`
 remain the sole migration authority.
 
-## Resolution criteria
+## Completed criteria
 
-Do not mark V1-000 complete until:
-
-- the approved Release safety run succeeds;
-- a current-`main` API production deployment is READY;
-- `/api/health` and `/` return HTTP 200 with `ok: true`; and
-- the combined commit status is green.
+All V1-000 acceptance criteria are satisfied. No repository build/configuration
+change was required, and the release gate remains enforced.
