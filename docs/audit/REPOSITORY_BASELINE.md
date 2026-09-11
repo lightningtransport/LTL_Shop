@@ -29,8 +29,9 @@ classified separately in `GIT_BRANCH_AUDIT.md`; no branch was deleted.
 
 - Application: Next.js in `apps/web`; NestJS in `apps/api`.
 - Shared contracts: `packages/shared`.
-- Data: Prisma schema, seed, and 15 migrations in `apps/api/prisma`; no second
-  migration history under `supabase/migrations`.
+- Data: Prisma schema, seed, and 15 authoritative migrations in
+  `apps/api/prisma`; one legacy initial-schema SQL snapshot also exists at
+  `supabase/migrations/20260825140000_init_domain.sql` and is not authority.
 - Documentation: 21 Markdown files under `docs` plus `README.md`; no canonical
   `docs/LIGHTNING_SHOP_MASTER_PRD.md` was present.
 - Tests: 17 API test files, 6 web unit test files, 1 shared test file, and 6

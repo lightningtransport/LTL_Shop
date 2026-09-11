@@ -5,6 +5,28 @@
 **Selection rule:** Take the first unblocked task in milestone order. Do not
 combine tasks or start a later milestone without the roadmap gate.
 
+## V1-000 — Investigate failed Vercel API deployment
+
+ID: V1-000
+Milestone: V1 — Stable Shop Core
+Problem: GitHub's combined status for current `main` is failing because the
+`Vercel – ltl-shop-api` deployment failed, although CI and web deployment pass.
+Outcome: The API deployment failure has an evidence-backed root cause and the
+existing application deploys successfully without feature expansion.
+Scope: Inspect the failed deployment/build logs, reproduce the release/build
+path where possible, and repair only the existing build/deployment defect.
+Out of Scope: Product features, schema redesign, environment-secret disclosure,
+or bypassing the Prisma release gate.
+Dependencies: Authorized Vercel deployment-log access.
+Files likely affected: API/Vercel/release configuration only if the failure is
+in repository code; otherwise environment configuration and audit evidence.
+Acceptance Criteria: API deployment is READY, health/root probes pass, combined
+`main` status is green, and no migration authority is duplicated.
+Tests: API build, Prisma release status, focused failure reproduction, API
+health/root reads, workspace regression checks.
+Risk: HIGH — production API availability and migration safety.
+Status: READY — recommended next task.
+
 ## V1-001 — Restore a trustworthy E2E gate
 
 ID: V1-001
@@ -25,7 +47,7 @@ browser/environment exception is approved; no test is weakened to hide a bug.
 Tests: Isolated failing tests, then full `ADMIN_E2E_FIXTURE=1` Playwright suite,
 unit tests, lint, build.
 Risk: MEDIUM — stale tests can be confused with regressions.
-Status: READY — recommended next task.
+Status: READY after V1-000.
 
 ## V1-002 — Provision production users
 

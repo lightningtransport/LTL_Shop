@@ -30,12 +30,13 @@
 ## Git state
 
 - GitHub default branch: `main`; zero open PRs at audit time.
-- Recent visible Actions runs are green.
+- Recent visible GitHub Actions CI runs are green, but the combined status for
+  current `main` is failing because `Vercel – ltl-shop-api` failed; the web
+  deployment passed.
 - Fully merged remote branches and unique/unknown branches are separated in
   `GIT_BRANCH_AUDIT.md`.
 - No branch was removed. Unique branches are KEEP by default.
-- Live branch-protection configuration could not be read (HTTP 403), so it
-  remains UNKNOWN rather than assumed.
+- GitHub reports `main` as unprotected with no required checks.
 
 ## Build/test state
 
@@ -47,6 +48,8 @@
 - FAIL / INCOMPLETE: full Playwright baseline after browsers were installed.
   Many cases passed, but multiple existing cross-browser failures/timeouts were
   observed and the overlong run was stopped without claiming a false aggregate.
+- FAIL: current `main` combined deployment status because the Vercel API
+  deployment failed while CI and Vercel web passed.
 - The exact matrix and CI coverage gaps are in `BASELINE_VERIFICATION.md`.
 
 ## Current product state
@@ -87,6 +90,8 @@ The target does not authorize immediate destructive cutover.
   operational lifecycle validation.
 - CI does not run all local unit/type/E2E checks.
 - Prisma package seed configuration is deprecated for the next major version.
+- A legacy initial-schema SQL file remains under `supabase/migrations`; Prisma
+  is still the sole migration authority.
 - Many merged remote branches remain because automatic deletion is disabled.
 
 See `CODE_CLEANUP_CANDIDATES.md` for risk and recommended action.
@@ -104,16 +109,19 @@ See `CODE_CLEANUP_CANDIDATES.md` for risk and recommended action.
 
 ## Cleanup deferred
 
-- All branch deletion.
+- All branch deletion, including merged-PR branches whose tips are not directly
+  contained in `main`.
 - All runtime/schema cleanup candidates.
 - Moving/renaming historical paths.
 - Removing compatibility behavior or fields.
 - E2E repair, because it is a separate scoped V1 stabilization task.
-- CI expansion and branch-protection changes.
+- CI expansion, branch-protection changes, and Vercel API failure remediation.
 
 ## Risks
 
 - Existing failed E2E cases may hide real regressions until isolated.
+- The failed Vercel API deployment may affect production readiness and should
+  be investigated before lower-priority stabilization.
 - Documentation can drift again if landed features do not update Current Status
   and queue state.
 - Treating the already-landed Manager slices as “not implemented” would cause
@@ -124,13 +132,13 @@ See `CODE_CLEANUP_CANDIDATES.md` for risk and recommended action.
 
 ## Recommended next task
 
-Select `V1-001 — Restore a trustworthy E2E gate` from
+Select `V1-000 — Investigate failed Vercel API deployment` from
 `docs/IMPLEMENTATION_QUEUE.md`.
 
-Run each currently failing case with one browser and one worker, use runtime
-evidence to classify stale assertion versus product defect, repair only
-existing behavior/tests, then rerun all 86 configured cases. Do not begin the
-next milestone during that task.
+Inspect the failed deployment logs, identify whether repository build code or
+Vercel configuration caused the failure, repair only that existing deployment
+defect, and verify health/root reads. Then select `V1-001` for the E2E gate. Do
+not begin the next milestone during either task.
 
 ## Normalization completion check
 
@@ -144,4 +152,4 @@ next milestone during that task.
 | What is out of scope? | Master PRD + roadmap phase boundaries |
 | What rules cannot break? | Master PRD + engineering/deploy documents |
 | How is a change verified? | `AGENT_WORKFLOW.md` + task tests + baseline |
-| What is the next task? | `V1-001` |
+| What is the next task? | `V1-000` |

@@ -233,7 +233,9 @@ the work order. Completed PM records are read-only.
 - The Supabase Reset Password email template must use
   `{{ .ConfirmationURL }}`.
 - Prisma is the sole schema-migration authority. Do not add a parallel
-  migration history under `supabase/migrations`.
+  migration history under `supabase/migrations`. The existing
+  `supabase/migrations/20260825140000_init_domain.sql` is a preserved legacy
+  snapshot, not an active or extensible migration source.
 
 ## Known current limitations
 

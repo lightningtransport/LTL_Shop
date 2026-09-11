@@ -48,8 +48,9 @@
   `apps/api/prisma/pm-parts.ts`.
 - Local development uses PostgreSQL 16. Supabase PostgreSQL is the operational
   hosted database.
-- `supabase/` contains configuration only; there is no competing migration
-  history.
+- `supabase/migrations/20260825140000_init_domain.sql` is a legacy copy of the
+  initial domain schema. It is preserved but must not be applied or extended;
+  it is not migration authority.
 
 ## Source-of-truth verification
 
@@ -65,7 +66,8 @@
 | UI | Existing Lightning Shop design system and shadcn-style primitives |
 
 Ninox is not operational and must not be reactivated from historical
-documentation.
+documentation. The legacy Supabase SQL snapshot likewise does not establish a
+second migration history.
 
 ## Documentation
 

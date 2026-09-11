@@ -11,9 +11,9 @@
 - GitHub reports zero open pull requests.
 - The latest 20 visible Actions runs were successful, including the current
   `main` CI run.
-- GitHub branch-protection details returned HTTP 403 to the available
-  integration. `docs/DEPLOY.md` requires branch protection, but its live
-  configuration is therefore `UNKNOWN` in this audit.
+- GitHub reports `main` as `protected: false`; no required checks are configured.
+- The combined `main` status is failing because Vercel API failed, while CI and
+  Vercel web passed.
 - Repository setting `deleteBranchOnMerge` is false, which explains the large
   merged-branch inventory.
 
@@ -87,10 +87,11 @@ Recommendation: these are cleanup candidates, but remote deletion should be a
 separate repository-administration action after confirming rollback/tag policy
 and ownership. They were intentionally kept.
 
-## UNKNOWN — unique commits or unverifiable intent
+## MERGED BY PR — tip not directly contained
 
-These branches are not fully contained in `origin/main` and have no open PR.
-That is not enough evidence to call them abandoned:
+These branches all have merged pull-request evidence, but their tips are not
+directly contained in `origin/main` because of squash, stacked work, or later
+branch commits:
 
 ```text
 codex/document-workflow-status
@@ -110,13 +111,45 @@ fix/manager-create-wo-ux
 release-safety/prisma-migration-gate
 ```
 
-Recommendation: KEEP. For each branch, ask the original owner or compare its
-unique commits/patch-id against merged squash commits before deciding whether
-to archive or delete it.
+Eleven are patch-equivalent to `main` under `git cherry` and are lower-risk
+cleanup candidates:
+
+```text
+codex/pm-daniel-parts
+codex/prevent-duplicate-jobs
+codex/standardize-page-navigation
+codex/work-order-add-job-safety
+codex/work-order-completion-ux
+codex/work-order-job-category-readers
+codex/workflow-regression-fixes
+cursor/document-dev-environment-4c72
+feat/admin-work-order-reopen
+fix/manager-create-wo-ux
+release-safety/prisma-migration-gate
+```
+
+Four retain patches that `git cherry` does not recognize in `main` and require
+diff review before deletion:
+
+| Branch | Commits ahead | Unrecognized patches |
+|---|---:|---:|
+| `codex/document-workflow-status` | 10 | 9 |
+| `codex/fix-vercel-nest-esm` | 9 | 9 |
+| `feat/admin-job-cancel-reopen` | 2 | 2 |
+| `feat/admin-work-order-fields` | 2 | 2 |
+
+Recommendation: KEEP all 15 until the appropriate cleanup review. “Merged PR”
+does not prove that every later branch-tip patch is disposable.
 
 ## ABANDONED
 
 None. No branch had sufficient evidence for this classification.
+
+## UNKNOWN
+
+None after correlating every pre-normalization remote work branch with merged
+pull-request history. The four review-required branches above remain classified
+MERGED but are not safe-delete candidates yet.
 
 ## GitHub configuration observations
 
@@ -129,11 +162,15 @@ None. No branch had sufficient evidence for this classification.
 | Rebase merge | Allowed |
 | Delete branch on merge | Disabled |
 | Open PRs | 0 |
-| Recent Actions | Green |
-| Branch protection | UNKNOWN (read denied) |
+| Recent GitHub Actions | Green |
+| Combined `main` status | FAIL — Vercel API failed; Vercel web passed |
+| Branch protection | Disabled |
+| Required checks | None |
 
 ## Recommended hygiene action
 
 After the normalization PR is accepted, run a human-reviewed branch cleanup
-batch for the MERGED list and enable delete-on-merge if rollback policy permits.
-Do not include UNKNOWN branches in that batch.
+batch beginning with the 49 directly contained branches. Review the four
+unrecognized-patch branches before any deletion. Protect `main`, require PR +
+CI, block force-push/deletion, investigate the Vercel API failure, and consider
+delete-on-merge if rollback policy permits.

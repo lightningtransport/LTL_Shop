@@ -67,6 +67,15 @@ Playwright, or an explicit API production build. This is a verification gap,
 not a failure in the current visible GitHub runs. The latest 20 visible Actions
 runs, including `main`, were successful.
 
+GitHub's separate combined commit status is nevertheless failing:
+
+- CI/check `test`: successful;
+- `Vercel – ltl-shop-web`: successful;
+- `Vercel – ltl-shop-api`: failed.
+
+This deployment failure is tracked as `V1-000` and takes priority over E2E
+stabilization.
+
 ## Status vocabulary
 
 - PASS: command completed successfully.
@@ -78,6 +87,7 @@ runs, including `main`, were successful.
 
 ## Required next verification
 
-The next task should isolate each failing E2E specification with one browser and
-one worker, classify product regression versus stale fixture/assertion, repair
-only verified test or existing-product defects, then rerun the complete suite.
+First investigate the failed Vercel API deployment (`V1-000`). After it is
+resolved, isolate each failing E2E specification with one browser and one
+worker, classify product regression versus stale fixture/assertion, repair only
+verified test or existing-product defects, then rerun the complete suite.
