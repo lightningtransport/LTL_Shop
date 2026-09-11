@@ -132,13 +132,15 @@ See `CODE_CLEANUP_CANDIDATES.md` for risk and recommended action.
 
 ## Recommended next task
 
-Select `V1-000 — Investigate failed Vercel API deployment` from
-`docs/IMPLEMENTATION_QUEUE.md`.
+Finish the operational action for `V1-000 — Investigate failed Vercel API
+deployment`. The investigation proved that the production Prisma gate correctly
+blocked current `main` because four migrations are pending; it did not find a
+repository build/config defect. An authorized maintainer must run **Release
+safety** with migration deployment and API verification enabled, then redeploy
+the current `main` API commit. See `V1_000_DEPLOYMENT_INVESTIGATION.md`.
 
-Inspect the failed deployment logs, identify whether repository build code or
-Vercel configuration caused the failure, repair only that existing deployment
-defect, and verify health/root reads. Then select `V1-001` for the E2E gate. Do
-not begin the next milestone during either task.
+Do not select `V1-001` until V1-000 is fully resolved and combined `main` is
+green.
 
 ## Normalization completion check
 
@@ -152,4 +154,4 @@ not begin the next milestone during either task.
 | What is out of scope? | Master PRD + roadmap phase boundaries |
 | What rules cannot break? | Master PRD + engineering/deploy documents |
 | How is a change verified? | `AGENT_WORKFLOW.md` + task tests + baseline |
-| What is the next task? | `V1-000` |
+| What is the next task? | Complete the authorized production action for `V1-000` |
