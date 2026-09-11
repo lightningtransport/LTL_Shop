@@ -25,7 +25,9 @@ Acceptance Criteria: API deployment is READY, health/root probes pass, combined
 Tests: API build, Prisma release status, focused failure reproduction, API
 health/root reads, workspace regression checks.
 Risk: HIGH — production API availability and migration safety.
-Status: READY — recommended next task.
+Status: COMPLETE — approved Release safety applied the pending migrations and
+verified the API; the current `main` API deployment is READY and combined
+status is green. See `audit/V1_000_DEPLOYMENT_INVESTIGATION.md`.
 
 ## V1-001 — Restore a trustworthy E2E gate
 
@@ -47,7 +49,8 @@ browser/environment exception is approved; no test is weakened to hide a bug.
 Tests: Isolated failing tests, then full `ADMIN_E2E_FIXTURE=1` Playwright suite,
 unit tests, lint, build.
 Risk: MEDIUM — stale tests can be confused with regressions.
-Status: READY after V1-000.
+Status: READY — V1-000 is resolved; select only when explicitly beginning the
+next stabilization task.
 
 ## V1-002 — Provision production users
 

@@ -15,6 +15,8 @@
 | `npm run build` | PASS | Shared, NestJS, Prisma generation, and Next.js production build passed. |
 | `ADMIN_E2E_FIXTURE=1 npm run test:e2e --workspace=@ltl-shop/web` | FAIL / INCOMPLETE | Initial run was blocked by missing browser binaries. After installing Chromium/WebKit, many cases passed but multiple existing failures/timeouts occurred; the overlong run was stopped after more than ten minutes. |
 | `git diff --check origin/main...HEAD` | PASS | Committed normalization diff has no whitespace errors. |
+| V1-000 production release safety | PASS | Run `34626614809` applied the four pending Prisma migrations and passed API health/root verification on current `main`. |
+| V1-000 API production redeploy | PASS | Deployment `dpl_46ydTmr8ETSiLqnKysbh3Z7Vr7Td` is READY; health and root return HTTP 200 with `ok: true`. |
 | Documentation index coverage | PASS | All 33 Markdown files under `docs` other than the self-classifying index are listed. |
 | Active documentation links | PASS | Relative links in README, active authorities, plans, and audit deliverables resolve locally. |
 
@@ -67,14 +69,13 @@ Playwright, or an explicit API production build. This is a verification gap,
 not a failure in the current visible GitHub runs. The latest 20 visible Actions
 runs, including `main`, were successful.
 
-GitHub's separate combined commit status is nevertheless failing:
+The V1-000 release action resolved the former separate combined-status failure
+on current `main`:
 
 - CI/check `test`: successful;
 - `Vercel – ltl-shop-web`: successful;
-- `Vercel – ltl-shop-api`: failed.
-
-This deployment failure is tracked as `V1-000` and takes priority over E2E
-stabilization.
+- `Vercel – ltl-shop-api`: successful after the approved migration release and
+  redeploy.
 
 ## Status vocabulary
 
@@ -87,7 +88,7 @@ stabilization.
 
 ## Required next verification
 
-First investigate the failed Vercel API deployment (`V1-000`). After it is
-resolved, isolate each failing E2E specification with one browser and one
-worker, classify product regression versus stale fixture/assertion, repair only
-verified test or existing-product defects, then rerun the complete suite.
+When explicitly selected, perform V1-001: isolate each failing E2E
+specification with one browser and one worker, classify product regression
+versus stale fixture/assertion, repair only verified test or existing-product
+defects, then rerun the complete suite.
