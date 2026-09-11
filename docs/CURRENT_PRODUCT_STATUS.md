@@ -41,8 +41,9 @@ not define TARGET behavior. Product direction lives exclusively in
   make, model, year, mileage, company, and owner; and provides category-filtered,
   cursor-paginated recent completed repair history. Work Order timing, Jobs,
   pause history, and Activity Log remain visible. On an open Standard
-  Work Order, managers with `admin.access` can add or soft-remove assigned
-  mechanics. PM Work Orders stay assigned to their creator. Assignments keep at
+  Work Order, users with `admin.access` can add or soft-remove assigned
+  mechanics; per-Job assign/unassign also requires `work_orders.manage`.
+  PM Work Orders stay assigned to their creator. Assignments keep at
   least one active mechanic, use Work Order versioning and idempotency, and
   write `mechanic_added` / `mechanic_removed` Activity Log events. On any open
   Work Order, including PM, managers can cancel it with a required reason. Cancel
@@ -187,10 +188,14 @@ not define TARGET behavior. Product direction lives exclusively in
 - Legacy mechanic pause/resume endpoints still exist. Standard detail presents
   Report Blocker while in progress, but a paused Work Order still exposes
   resume/change-reason behavior. PM retains its specialized pause behavior.
-- Admin users can patch priority/notes on open Work Orders. There is no general
-  permission-management UI.
+- Users with `admin.access` can patch priority/notes on open Work Orders and
+  perform the other V1 Admin corrections (cancel/complete/reopen, Job
+  cancel/reopen, time correction, Returned to Service). Official pause/resume,
+  Manager create, and per-Job assignment require `work_orders.manage` in
+  addition. There is no general permission-management UI.
 - The persisted capabilities are `admin.access`, `mechanic.standard`,
-  `mechanic.pm`, `yard.operations.manage`, and `work_orders.manage`.
+  `mechanic.pm`, `yard.operations.manage`, and `work_orders.manage`. The
+  endpoint/capability matrix is in `audit/CAPABILITY_BOUNDARY_AUDIT.md`.
 
 ### PM workflow
 
@@ -246,6 +251,9 @@ the work order. Completed PM records are read-only.
   implemented concepts.
 - Admin Catalog is read-only. Catalog writes, Custom Job review/mapping, Job
   performance, and a general permission UI do not exist.
+- Shop Manager and System Admin still share the Admin shell. V1-004 documents
+  the HTTP capability matrix; it does not split remaining `admin.access`
+  corrections onto `work_orders.manage`.
 - Ninox is not an operational source. The code has only a placeholder/status
   integration surface, and `DATA_SOURCE=supabase` is the current mode.
 - `pmAuthorized` remains in the schema for compatibility but does not grant PM

@@ -107,7 +107,9 @@ Acceptance Criteria: Every mutation has an explicit expected capability and
 positive/negative test.
 Tests: Capability guard and service/controller authorization tests.
 Risk: HIGH — authorization changes can widen access.
-Status: PENDING.
+Status: DONE — matrix in `docs/audit/CAPABILITY_BOUNDARY_AUDIT.md` and
+`apps/api/src/auth/capability-boundary.matrix.spec.ts`. No V1 HTTP access
+defect was repaired; Manager vs System Admin enforcement remains V2.
 
 ## V1.2-001 — Validate My Assigned Work
 
