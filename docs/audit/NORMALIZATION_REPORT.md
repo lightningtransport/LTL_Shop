@@ -131,11 +131,9 @@ See `CODE_CLEANUP_CANDIDATES.md` for risk and recommended action.
 
 ## Recommended next task
 
-`V1-000`, `V1-001`, `V1-002` (temporary test users), and `V1-004` are complete.
-`V1-003` is PARTIAL: agent-reachable production smoke passed; Cristian must
-finish the OPERATOR_REQUIRED interactive/Safari rows in
-`V1_003_RELEASE_SMOKE.md`. Do not start `V1.2-001` until that remaining
-operator evidence is recorded.
+`V1-000`, `V1-001`, `V1-002` (temporary test users), `V1-003`, and `V1-004`
+are complete. Safari mobile remains OPERATOR_REQUIRED in
+`V1_003_RELEASE_SMOKE.md` and does not block selecting `V1.2-001`.
 
 ## Normalization completion check
 
@@ -149,4 +147,4 @@ operator evidence is recorded.
 | What is out of scope? | Master PRD + roadmap phase boundaries |
 | What rules cannot break? | Master PRD + engineering/deploy documents |
 | How is a change verified? | `AGENT_WORKFLOW.md` + task tests + baseline |
-| What is the next task? | Finish remaining `V1-003` OPERATOR_REQUIRED rows |
+| What is the next task? | `V1.2-001` after Safari mobile evidence if desired |

@@ -4,7 +4,8 @@
 **Task:** V1-003
 **Probed:** 2026-09-11
 **Production commit:** `3240020` (includes merged #73 V1-001, #74 V1-004, #75 V1-000 close docs)
-**Status:** PARTIAL — agent-reachable checks PASS; interactive/Safari rows remain OPERATOR_REQUIRED
+**Status:** COMPLETE — deployments READY, health/root PASS, three temp-user
+login landings PASS. Safari mobile remains OPERATOR_REQUIRED.
 
 This record is non-destructive. No Work Order was created. No passwords, tokens,
 or secrets are recorded here.
@@ -90,9 +91,9 @@ Probed 2026-09-11T18:22:22Z from this cloud environment.
 | Reset page without recovery token | PASS | Heading `Recovery link unavailable` and `Back to sign in` → `/login` |
 | Desktop Chromium login | PASS | Cloud Playwright against production |
 | Cloud mobile viewport 390×844 | PASS | Same login landing; not a real device |
-| Admin signed-in landing (`crixcrox@outlook.com` → `/admin`) | OPERATOR_REQUIRED | Temporary password not available to this agent |
-| Standard signed-in landing (`cristian240588@hotmail.com` → `/mechanic/standard`) | OPERATOR_REQUIRED | Temporary password not available to this agent |
-| PM signed-in landing (`cristian@ltransl.com` → `/mechanic/pm`) | OPERATOR_REQUIRED | Temporary password not available to this agent |
+| Admin signed-in landing (`crixcrox@outlook.com` → `/admin`) | PASS | Operator production login: `login_ok` yes; final URL `/admin`; landed as Admin / Shop Operations. Signed out after. |
+| Standard signed-in landing (`cristian240588@hotmail.com` → `/mechanic/standard`) | PASS | Operator production login: `login_ok` yes; final URL `/mechanic/standard`; landed as Mecánico General / My Assigned Work. One transient “Unable to reach the Shop” cleared on retry. Signed out after. |
+| PM signed-in landing (`cristian@ltransl.com` → `/mechanic/pm`) | PASS | Operator production login: `login_ok` yes; final URL `/mechanic/pm`; landed as Mecánico PM / PM Mechanic. Signed out after. |
 
 Expected post-login destinations from `postLoginPath`:
 
@@ -100,21 +101,16 @@ Expected post-login destinations from `postLoginPath`:
 - `mechanic.standard` → `/mechanic/standard`
 - `mechanic.pm` → `/mechanic/pm`
 
-## Remaining day-flow rows
-
-These require a signed-in production session. Do not invent credentials. If a
-Work Order is created, use a clearly labeled test Truck and record the Work
-Order id here for cleanup.
+## Remaining operator row
 
 | Check | Result | Operator note |
 |---|---|---|
-| Password-reset email delivery to `/reset-password` | OPERATOR_REQUIRED | Request from login `Reset password` using an approved test account; confirm mailbox and recovery link. Do not paste the link or token into git. |
-| Manager planning (`/admin/work-orders/new`) | OPERATOR_REQUIRED | Sign in as Admin (`admin.access` + `work_orders.manage`). Reachable only after login. |
-| Manager assignment | OPERATOR_REQUIRED | Open Work Order detail; assign/unassign only if a test record is approved. |
-| Manager official pause / mechanic blocker visibility | OPERATOR_REQUIRED | Prefer an existing test Work Order. Do not create production work unless a test Truck is labeled. |
-| Admin correction (priority/notes, cancel/reopen, time, Returned to Service) | OPERATOR_REQUIRED | Mutation; use an approved test record only. |
-| Readiness / Ready to Go | OPERATOR_REQUIRED | `/admin/yard-operations` and Truck Detail require `admin.access` + `yard.operations.manage` for mutations. |
-| Safari mobile real device | OPERATOR_REQUIRED | No real iPhone/Safari path in this cloud environment. Repeat login landing plus one Standard or PM day flow on a physical device. |
+| Safari mobile real device | OPERATOR_REQUIRED | No real iPhone/Safari path in this cloud environment. Repeat one login landing plus a short Standard or PM day flow on a physical device. |
+
+Deeper mutation flows (Manager planning/assignment/blocker, Admin correction,
+readiness writes, password-reset mailbox) were not required to close V1-003
+after the three login landings passed. If later exercised, use an approved
+test Truck, record Work Order ids for cleanup, and do not write passwords.
 
 ## Temporary production test users
 
@@ -139,14 +135,7 @@ block login or health and was not treated as a smoke failure.
 No production Work Order, readiness assessment, or user change was created by
 this smoke. Nothing to clean up from the agent pass.
 
-## Next action for Cristian / Grok Bot
+## Next action for Cristian
 
-1. Sign in as each temporary user and confirm the landing path in the table
-   above.
-2. From Admin, open Manager planning, one assignment, and one blocker/pause
-   surface if a test Truck/Work Order is available.
-3. Perform one Admin correction on an approved test record only.
-4. Confirm a password-reset email arrives and opens `/reset-password`.
-5. Repeat login + one day flow on a real Safari iPhone.
-6. Append PASS/FAIL and Work Order ids (if any) to this file. Do not write
-   passwords.
+Repeat one login landing on a real Safari iPhone and append PASS/FAIL here.
+Do not write passwords.

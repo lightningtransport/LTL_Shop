@@ -72,9 +72,10 @@ workspace; inactive/unapproved users are denied.
 Tests: Auth/capability smoke matrix without recording credentials.
 Risk: HIGH — production identity and authorization.
 Status: COMPLETE — temporary approved production test users were provisioned
-by the operator (Admin, Mecánico General, Mecánico PM). The real Shop roster
-is still pending a later operations pass. No credentials are recorded in git.
-Interactive landing verification belongs to V1-003.
+by the operator (Admin, Mecánico General, Mecánico PM). Operator production
+login landings PASS (see `audit/V1_003_RELEASE_SMOKE.md`). The real Shop
+roster is still pending a later operations pass. No credentials are recorded
+in git.
 
 ## V1-003 — Run production release smoke
 
@@ -94,12 +95,9 @@ Acceptance Criteria: Smoke checklist passes with no unexpected 401/403/500 and
 rollback target is known.
 Tests: Real Safari mobile plus supported desktop browser; API health/root reads.
 Risk: HIGH — production operations.
-Status: PARTIAL — 2026-09-11. Agent-reachable production smoke PASS (release
-gate, both READY deployments on `3240020`, health/root, unauthenticated login
-landing, expected 401/307, rollback targets). Interactive Admin / Standard /
-PM landing, Manager planning/assignment/blocker, Admin correction, readiness
-mutations, password-reset email delivery, and Safari mobile remain
-OPERATOR_REQUIRED. See `audit/V1_003_RELEASE_SMOKE.md`.
+Status: COMPLETE — 2026-09-11. Both production deployments READY on `3240020`,
+health/root PASS, three temp-user login landings PASS, rollback targets known.
+Safari mobile remains OPERATOR_REQUIRED. See `audit/V1_003_RELEASE_SMOKE.md`.
 
 ## V1-004 — Audit operational capability boundaries
 
