@@ -92,5 +92,5 @@ on current `main`:
 
 ## Required next verification
 
-V1-001 is complete (PR #73). Remaining V1 production smoke rows are
-OPERATOR_REQUIRED in `V1_003_RELEASE_SMOKE.md`.
+V1-001 is complete (PR #73). V1-003 production smoke is complete except
+Safari mobile, which remains OPERATOR_REQUIRED in `V1_003_RELEASE_SMOKE.md`.
