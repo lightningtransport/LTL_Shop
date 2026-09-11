@@ -258,6 +258,6 @@ the work order. Completed PM records are read-only.
   integration surface, and `DATA_SOURCE=supabase` is the current mode.
 - `pmAuthorized` remains in the schema for compatibility but does not grant PM
   authority.
-- The complete local Playwright baseline currently has existing
-  failures/timeouts. Exact verification evidence is recorded in
-  `audit/BASELINE_VERIFICATION.md`.
+- The V1-001 Playwright fixture gate is restored (PR #73, 86 cases). The
+  earlier incomplete baseline run in `audit/BASELINE_VERIFICATION.md` is
+  historical. Production smoke evidence is in `audit/V1_003_RELEASE_SMOKE.md`.

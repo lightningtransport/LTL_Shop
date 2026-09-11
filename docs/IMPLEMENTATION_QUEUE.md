@@ -49,8 +49,10 @@ browser/environment exception is approved; no test is weakened to hide a bug.
 Tests: Isolated failing tests, then full `ADMIN_E2E_FIXTURE=1` Playwright suite,
 unit tests, lint, build.
 Risk: MEDIUM — stale tests can be confused with regressions.
-Status: READY — V1-000 is resolved; select only when explicitly beginning the
-next stabilization task.
+Status: COMPLETE — merged PR #73 (`8fd95c3`). All 86 Playwright fixture cases
+passed one browser / one worker. Failures were classified as stale
+fixtures/assertions, two proven product regressions, and documented
+environment limitations. No test was deleted or weakened.
 
 ## V1-002 — Provision production users
 
@@ -69,7 +71,11 @@ Acceptance Criteria: Each approved account signs in and lands in the correct
 workspace; inactive/unapproved users are denied.
 Tests: Auth/capability smoke matrix without recording credentials.
 Risk: HIGH — production identity and authorization.
-Status: BLOCKED — requires product/operations user list and production access.
+Status: COMPLETE — temporary approved production test users were provisioned
+by the operator (Admin, Mecánico General, Mecánico PM). Operator production
+login landings PASS (see `audit/V1_003_RELEASE_SMOKE.md`). The real Shop
+roster is still pending a later operations pass. No credentials are recorded
+in git.
 
 ## V1-003 — Run production release smoke
 
@@ -89,7 +95,9 @@ Acceptance Criteria: Smoke checklist passes with no unexpected 401/403/500 and
 rollback target is known.
 Tests: Real Safari mobile plus supported desktop browser; API health/root reads.
 Risk: HIGH — production operations.
-Status: BLOCKED.
+Status: COMPLETE — 2026-09-11. Both production deployments READY on `3240020`,
+health/root PASS, three temp-user login landings PASS, rollback targets known.
+Safari mobile remains OPERATOR_REQUIRED. See `audit/V1_003_RELEASE_SMOKE.md`.
 
 ## V1-004 — Audit operational capability boundaries
 
