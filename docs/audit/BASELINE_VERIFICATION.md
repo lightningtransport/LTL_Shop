@@ -14,7 +14,9 @@
 | `npm run test --workspace=@ltl-shop/web` | PASS | 6 files, 19 tests. |
 | `npm run build` | PASS | Shared, NestJS, Prisma generation, and Next.js production build passed. |
 | `ADMIN_E2E_FIXTURE=1 npm run test:e2e --workspace=@ltl-shop/web` | FAIL / INCOMPLETE | Initial run was blocked by missing browser binaries. After installing Chromium/WebKit, many cases passed but multiple existing failures/timeouts occurred; the overlong run was stopped after more than ten minutes. |
-| `git diff --check` | PENDING POST-NORMALIZATION | Run after documentation edits. |
+| `git diff --check origin/main...HEAD` | PASS | Committed normalization diff has no whitespace errors. |
+| Documentation index coverage | PASS | All 33 Markdown files under `docs` other than the self-classifying index are listed. |
+| Active documentation links | PASS | Relative links in README, active authorities, plans, and audit deliverables resolve locally. |
 
 ## E2E evidence and interpretation
 
