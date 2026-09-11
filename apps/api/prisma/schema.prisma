@@ -19,6 +19,7 @@ enum AppCapability {
   MECHANIC_STANDARD      @map("mechanic.standard")
   MECHANIC_PM            @map("mechanic.pm")
   YARD_OPERATIONS_MANAGE @map("yard.operations.manage")
+  WORK_ORDERS_MANAGE     @map("work_orders.manage")
 }
 
 enum WorkOrderStatus {
@@ -70,6 +71,7 @@ enum ActivityEventType {
   work_paused
   pause_reason_changed
   work_resumed
+  blocker_reported
   mechanic_added
   mechanic_removed
   priority_changed
@@ -131,7 +133,9 @@ model User {
   mechanicAssignments            MechanicAssignment[]
   addedJobs                      WorkOrderJob[]             @relation("JobAddedBy")
   completedJobs                  WorkOrderJob[]             @relation("JobCompletedBy")
-  pauseEvents                    PauseEvent[]
+  assignedJobs                   WorkOrderJob[]             @relation("JobAssignedTo")
+  pauseEvents                    PauseEvent[]               @relation("PauseCreatedBy")
+  reportedPauseEvents            PauseEvent[]               @relation("PauseReportedBy")
   activityLogs                   ActivityLog[]
   createdCatalogJobs             CatalogJob[]               @relation("CatalogJobCreatedBy")
   mileageAdjustments             TruckMileageAdjustment[]
@@ -493,14 +497,19 @@ model WorkOrderJob {
   mappedCatalogJobId String?   @map("mapped_catalog_job_id") @db.Uuid
   reviewStatus       String?   @map("review_status")
   ninoxExternalId    String?   @map("ninox_external_id")
+  // Manager-first ownership: optional per-Job assignment. Nullable so historical
+  // Jobs stay valid and an unassigned Job visually inherits the WO general team.
+  assignedMechanicId String?   @map("assigned_mechanic_id") @db.Uuid
 
-  workOrder   WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  catalogJob  CatalogJob? @relation(fields: [catalogJobId], references: [id])
-  category    JobCategory @relation(fields: [categoryId], references: [id])
-  addedBy     User        @relation("JobAddedBy", fields: [addedById], references: [id])
-  completedBy User?       @relation("JobCompletedBy", fields: [completedById], references: [id])
+  workOrder        WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalogJob       CatalogJob? @relation(fields: [catalogJobId], references: [id])
+  category         JobCategory @relation(fields: [categoryId], references: [id])
+  addedBy          User        @relation("JobAddedBy", fields: [addedById], references: [id])
+  completedBy      User?       @relation("JobCompletedBy", fields: [completedById], references: [id])
+  assignedMechanic User?       @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
 
   @@index([workOrderId, status])
+  @@index([assignedMechanicId])
   @@map("work_order_jobs")
 }
 
@@ -527,9 +536,15 @@ model PauseEvent {
   durationMs  BigInt?     @map("duration_ms")
   createdById String      @map("created_by_id") @db.Uuid
   createdAt   DateTime    @default(now()) @map("created_at")
+  // Manager-first ownership: distinguish an official Work Order pause (Manager)
+  // from a mechanic-reported blocker. Default true keeps historical rows as
+  // official pauses. reportedById records the mechanic who raised the blocker.
+  isOfficialPause Boolean @default(true) @map("is_official_pause")
+  reportedById String?    @map("reported_by_id") @db.Uuid
 
-  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  createdBy User      @relation(fields: [createdById], references: [id])
+  workOrder  WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  createdBy  User      @relation("PauseCreatedBy", fields: [createdById], references: [id])
+  reportedBy User?     @relation("PauseReportedBy", fields: [reportedById], references: [id])
 
   @@index([workOrderId])
   @@map("pause_events")

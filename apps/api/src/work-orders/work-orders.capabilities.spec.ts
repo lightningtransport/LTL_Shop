@@ -52,6 +52,61 @@ describe('Work Order workspace capabilities', () => {
     expect(findMany).toHaveBeenCalledTimes(2);
   });
 
+  it('lets a Manager without mechanic capability create a standard Work Order', async () => {
+    const truckId = '11111111-1111-4111-8111-111111111111';
+    const categoryId = '22222222-2222-4222-8222-222222222222';
+    const prisma = {
+      workOrder: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },
+      jobCategory: {
+        findUnique: vi.fn().mockResolvedValue({ id: categoryId, name: 'Brakes' }),
+        findMany: vi.fn().mockResolvedValue([{ id: categoryId, name: 'Brakes' }]),
+      },
+      // Prove the capability gate is passed for a Manager by reaching the tx.
+      $transaction: vi.fn().mockRejectedValue(new Error('reached-transaction')),
+    };
+    const service = new WorkOrdersService(prisma as never, { log: vi.fn() } as never);
+
+    await expect(
+      service.createByManager(user([AppCapability.WORK_ORDERS_MANAGE, AppCapability.ADMIN_ACCESS]), {
+        truckId,
+        primaryCategoryId: categoryId,
+        jobs: [{ categoryId, displayName: 'Custom brake fix', customDescription: 'Bleed lines' }],
+      }),
+    ).rejects.toThrow('reached-transaction');
+  });
+
+  it('rejects a Manager creating a PM service', async () => {
+    const truckId = '11111111-1111-4111-8111-111111111111';
+    const categoryId = '33333333-3333-4333-8333-333333333333';
+    const prisma = {
+      workOrder: { findUnique: vi.fn().mockResolvedValue(null) },
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },
+      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: categoryId, name: 'PM' }) },
+    };
+    const service = new WorkOrdersService(prisma as never, { log: vi.fn() } as never);
+
+    await expect(
+      service.createByManager(user([AppCapability.WORK_ORDERS_MANAGE]), {
+        truckId,
+        primaryCategoryId: categoryId,
+        jobs: [],
+      }),
+    ).rejects.toThrow('PM stays in the mechanic flow');
+  });
+
+  it('requires notes when a reported blocker uses the Other reason', async () => {
+    const service = new WorkOrdersService({} as never, { log: vi.fn() } as never);
+    await expect(
+      service.reportBlocker(user([AppCapability.MECHANIC_STANDARD]), '11111111-1111-4111-8111-111111111111', {
+        reason: 'other',
+      }),
+    ).rejects.toThrow('Notes are required when reason is Other');
+  });
+
   it('blocks direct mechanic access to a Work Order owned by someone else', async () => {
     const workOrder = {
       id: 'wo-1',

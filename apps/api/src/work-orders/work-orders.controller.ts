@@ -56,6 +56,11 @@ export class WorkOrdersController {
     return this.workOrders.resume(req.user!, id);
   }
 
+  @Post(':id/blockers')
+  reportBlocker(@Req() req: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.workOrders.reportBlocker(req.user!, id, body);
+  }
+
   @Post(':id/complete')
   complete(@Req() req: Request, @Param('id') id: string) {
     return this.workOrders.complete(req.user!, id);

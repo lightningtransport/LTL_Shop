@@ -68,7 +68,7 @@ function createPrisma() {
 }
 
 function createService(prisma: ReturnType<typeof createPrisma>) {
-  return new AdminService(prisma as never, { log: vi.fn() } as never);
+  return new AdminService(prisma as never, { log: vi.fn() } as never, {} as never);
 }
 
 describe('AdminService', () => {
@@ -309,7 +309,7 @@ describe('AdminService', () => {
       }));
     const prisma = createPrisma();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
-    const service = new AdminService(prisma as never, activity as never);
+    const service = new AdminService(prisma as never, activity as never, {} as never);
 
     await expect(service.addMechanic(manager, wo.id, body)).resolves.toMatchObject({ version: 2 });
     expect(tx.mechanicAssignment.create).toHaveBeenCalled();
@@ -416,7 +416,7 @@ describe('AdminService', () => {
         mechanics: [{ mechanic: { id: mechanicId, name: 'Alejandro 1' }, addedAt: new Date(), removedAt: null }],
       }));
     const activity = { log: vi.fn() };
-    const mutating = new AdminService(prisma as never, activity as never);
+    const mutating = new AdminService(prisma as never, activity as never, {} as never);
     prisma.$transaction.mockImplementation(async (callback: (client: typeof two) => unknown) => callback(two));
     await expect(mutating.removeMechanic(manager, baseRow.id, otherId, {
       expectedVersion: 1,
@@ -464,7 +464,7 @@ describe('AdminService', () => {
       .mockResolvedValueOnce(detailRow({ status: 'cancelled', version: 2 }));
     const prisma = createPrisma();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
-    const service = new AdminService(prisma as never, activity as never);
+    const service = new AdminService(prisma as never, activity as never, {} as never);
 
     await expect(service.cancelWorkOrder(manager, wo.id, body)).resolves.toMatchObject({ status: 'cancelled', version: 2 });
     expect(tx.workSession.update).toHaveBeenCalled();
@@ -569,7 +569,7 @@ describe('AdminService', () => {
       .mockResolvedValueOnce(detailRow({ status: 'completed', version: 2, jobs }));
     const prisma = createPrisma();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
-    const service = new AdminService(prisma as never, activity as never);
+    const service = new AdminService(prisma as never, activity as never, {} as never);
 
     await expect(service.completeWorkOrder(manager, wo.id, body)).resolves.toMatchObject({ status: 'completed', version: 2 });
     expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -621,7 +621,7 @@ describe('AdminService', () => {
       }));
     const prisma = createPrisma();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof ready) => unknown) => callback(ready));
-    const service = new AdminService(prisma as never, activity as never);
+    const service = new AdminService(prisma as never, activity as never, {} as never);
     await expect(service.completeWorkOrder(manager, pmRow.id, {
       expectedVersion: 1,
       idempotencyKey: '00000000-0000-4000-8000-000000000904',
@@ -683,7 +683,7 @@ describe('AdminService', () => {
       .mockResolvedValueOnce(detailRow({ status: 'in_progress', version: 2, startedAt: completed.startedAt, completedAt: null }));
     const prisma = createPrisma();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
-    const service = new AdminService(prisma as never, activity as never);
+    const service = new AdminService(prisma as never, activity as never, {} as never);
 
     await expect(service.reopenWorkOrder(manager, completed.id, body)).resolves.toMatchObject({ status: 'in_progress', version: 2 });
     expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -758,7 +758,7 @@ describe('AdminService', () => {
       .mockResolvedValueOnce(detailRow({ status: 'in_progress', version: 2, priority: 'high', notes: 'Check the leak again' }));
     const prisma = createPrisma();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
-    const service = new AdminService(prisma as never, activity as never);
+    const service = new AdminService(prisma as never, activity as never, {} as never);
 
     await expect(service.patchWorkOrder(manager, open.id, body)).resolves.toMatchObject({
       priority: 'high',
@@ -878,7 +878,7 @@ describe('AdminService', () => {
       .mockResolvedValueOnce(detailRow({ status: 'in_progress', version: 2, totalActiveLaborMs: 5_400_000n }));
     const prisma = createPrisma();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
-    const service = new AdminService(prisma as never, activity as never);
+    const service = new AdminService(prisma as never, activity as never, {} as never);
 
     await expect(service.correctTime(manager, body)).resolves.toMatchObject({ version: 2 });
     expect(tx.workSession.update).toHaveBeenCalledWith(expect.objectContaining({
@@ -957,7 +957,7 @@ describe('AdminService', () => {
     const prisma = createPrisma();
     prisma.workOrderJob.findUnique.mockResolvedValue({ ...open.jobs[0], workOrderId: open.id });
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
-    const service = new AdminService(prisma as never, activity as never);
+    const service = new AdminService(prisma as never, activity as never, {} as never);
 
     await expect(service.cancelJob(manager, jobId, body)).resolves.toMatchObject({ version: 2 });
     expect(tx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
@@ -1063,7 +1063,7 @@ describe('AdminService', () => {
       }));
     const prisma = createPrisma();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
-    const service = new AdminService(prisma as never, activity as never);
+    const service = new AdminService(prisma as never, activity as never, {} as never);
 
     await expect(service.returnToService(manager, completed.id, body)).resolves.toMatchObject({
       status: 'completed',
@@ -1117,6 +1117,75 @@ describe('AdminService', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000001405',
     })).resolves.toEqual(stored);
   });
+
+  it('assigns and unassigns a Job with version and idempotency guards', async () => {
+    const jobId = '00000000-0000-4000-8000-000000000501';
+    const mechanicId = '00000000-0000-4000-8000-000000000001';
+    const manager = {
+      id: baseRow.createdById,
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager' as const,
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE],
+      supabaseAuthId: null,
+    };
+    const wo = detailRow();
+    const activity = { log: vi.fn() };
+    const tx = assignmentTx(wo, {
+      user: { findFirst: vi.fn().mockResolvedValue({ id: mechanicId, name: 'Alejandro 1' }) },
+    });
+    tx.workOrder.findUnique
+      .mockResolvedValueOnce(wo)
+      .mockResolvedValueOnce(wo)
+      .mockResolvedValueOnce(detailRow({
+        version: 2,
+        jobs: [{ ...wo.jobs[0], assignedMechanicId: mechanicId, assignedMechanic: { id: mechanicId, name: 'Alejandro 1' } }],
+      }));
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, activity as never, {} as never);
+
+    await expect(service.assignJob(manager, wo.id, jobId, {
+      mechanicId,
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000801',
+    })).resolves.toMatchObject({ version: 2, jobs: [expect.objectContaining({ assignedMechanic: { id: mechanicId, name: 'Alejandro 1' } })] });
+    expect(tx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: jobId },
+      data: { assignedMechanicId: mechanicId },
+    }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({
+      eventType: ActivityEventType.MECHANIC_ADDED,
+      entityType: 'work_order_job',
+    }));
+
+    const stale = assignmentTx(detailRow({ version: 5 }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof stale) => unknown) => callback(stale));
+    await expect(service.assignJob(manager, wo.id, jobId, {
+      mechanicId,
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000802',
+    })).rejects.toBeInstanceOf(ConflictException);
+
+    const assignedRow = detailRow({
+      jobs: [{ ...wo.jobs[0], assignedMechanicId: mechanicId, assignedMechanic: { id: mechanicId, name: 'Alejandro 1' } }],
+    });
+    const unassignTx = assignmentTx(assignedRow);
+    unassignTx.workOrder.findUnique
+      .mockResolvedValueOnce(assignedRow)
+      .mockResolvedValueOnce(assignedRow)
+      .mockResolvedValueOnce(detailRow({ version: 2 }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof unassignTx) => unknown) => callback(unassignTx));
+    await expect(service.unassignJob(manager, wo.id, jobId, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000803',
+    })).resolves.toMatchObject({ version: 2 });
+    expect(unassignTx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { assignedMechanicId: null },
+    }));
+  });
 });
 
 function detailRow(overrides: Record<string, unknown> = {}) {
@@ -1131,6 +1200,8 @@ function detailRow(overrides: Record<string, unknown> = {}) {
       status: 'to_do',
       categoryId: baseRow.primaryCategoryId,
       category: { name: 'Engine' },
+      assignedMechanicId: null,
+      assignedMechanic: null,
     }],
     pauseEvents: [],
     sessions: [],

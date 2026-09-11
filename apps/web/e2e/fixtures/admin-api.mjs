@@ -26,7 +26,7 @@ const users = {
     role: 'manager',
     active: true,
     pmAuthorized: false,
-    capabilities: ['admin.access', 'yard.operations.manage'],
+    capabilities: ['admin.access', 'yard.operations.manage', 'work_orders.manage'],
   },
   'admin@lightning.local': {
     id: '00000000-0000-4000-8000-000000000003',
@@ -35,7 +35,7 @@ const users = {
     role: 'admin',
     active: true,
     pmAuthorized: false,
-    capabilities: ['admin.access', 'yard.operations.manage'],
+    capabilities: ['admin.access', 'yard.operations.manage', 'work_orders.manage'],
   },
   'ibrain@ltransl.com': {
     id: '00000000-0000-4000-8000-000000000004',

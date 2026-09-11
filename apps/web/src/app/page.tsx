@@ -72,18 +72,28 @@ export default function HomePage() {
     <div>
       <HomeTopBar mode={mode} />
       <ScreenHeader
-        title={isPm ? (messages.locale === 'es' ? 'Mecánico de PM' : 'PM Mechanic') : (messages.locale === 'es' ? 'Mecánico estándar' : 'Standard Mechanic')}
-        subtitle={isPm ? (messages.locale === 'es' ? 'Servicios de PM asignados a ti.' : 'PM services assigned to you.') : (messages.locale === 'es' ? 'Work Orders estándar asignadas a ti.' : 'Standard Work Orders assigned to you.')}
+        title={isPm ? (messages.locale === 'es' ? 'Mecánico de PM' : 'PM Mechanic') : (messages.locale === 'es' ? 'Mi trabajo asignado' : 'My Assigned Work')}
+        subtitle={isPm ? (messages.locale === 'es' ? 'Servicios de PM asignados a ti.' : 'PM services assigned to you.') : (messages.locale === 'es' ? 'Work Orders y Jobs que te asignó el Manager.' : 'Work Orders and Jobs the Manager assigned to you.')}
       />
 
-      <Link href={`/mechanic/${mode}/new`} className="btn-primary mb-6 w-full">
-        {isPm ? messages.createPmService : messages.createWorkOrder}
-      </Link>
+      {/* Manager-first ownership (soft cutover): the PM mechanic keeps creating
+          the PM service (PM untouched). Standard creation is moving to the
+          Manager; the legacy standard CTA stays available but demoted until the
+          Manager creation flow is verified, then it is removed in a later slice. */}
       {isPm ? (
-        <p className="-mt-4 mb-6 text-center text-sm text-shop-muted">
-          {messages.locale === 'es' ? 'Los servicios de PM comienzan inmediatamente después de crearse.' : 'PM services start immediately after creation.'}
-        </p>
-      ) : null}
+        <>
+          <Link href={`/mechanic/${mode}/new`} className="btn-primary mb-6 w-full">
+            {messages.createPmService}
+          </Link>
+          <p className="-mt-4 mb-6 text-center text-sm text-shop-muted">
+            {messages.locale === 'es' ? 'Los servicios de PM comienzan inmediatamente después de crearse.' : 'PM services start immediately after creation.'}
+          </p>
+        </>
+      ) : (
+        <Link href={`/mechanic/${mode}/new`} className="btn-secondary mb-6 w-full">
+          {messages.createWorkOrder}
+        </Link>
+      )}
 
       {error ? (
         <div className="mb-4">
@@ -246,14 +256,20 @@ function WorkOrderCard({
             Start Work
           </Link>
         ) : (
-          isPm || wo.jobs.some((job) => job.status === 'to_do') ? <>
+          isPm && wo.jobs.some((job) => job.status === 'to_do') ? <>
+              {/* Global pause stays a PM control only; standard mechanics report
+                  blockers from the detail view instead of pausing the WO. */}
               <Link href={`/work-orders/${wo.id}?action=pause`} className="btn-secondary flex-1">
                 Pause Work
               </Link>
               <Link href={`/work-orders/${wo.id}`} className="btn-primary flex-1">
                 View Work
               </Link>
-            </> : <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
+            </> : !isPm && wo.jobs.some((job) => job.status === 'to_do') ? (
+              <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
+                View Work
+              </Link>
+            ) : <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
               Finish Work
             </Link>
         )}

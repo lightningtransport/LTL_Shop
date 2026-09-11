@@ -18,6 +18,7 @@ import type {
   AdminCatalogCategoryDetailDto,
   AdminCatalogCategorySummaryDto,
   YardOperationsPageDto,
+  WorkOrderDetailDto,
 } from '@ltl-shop/shared';
 import { apiFetch } from './api';
 
@@ -114,6 +115,33 @@ export function adminMutationIdempotencyKey() {
   return globalThis.crypto.randomUUID();
 }
 
+export interface CreateAdminWorkOrderInput {
+  truckId: string;
+  primaryCategoryId: string;
+  priority?: string;
+  notes?: string;
+  mechanicIds?: string[];
+  jobs: Array<{
+    catalogJobId?: string;
+    categoryId: string;
+    displayName: string;
+    customDescription?: string;
+  }>;
+}
+
+// Manager-first ownership: create a Work Order via the admin surface. The API
+// enforces work_orders.manage, the truck advisory lock, idempotency, and the
+// one-open-WO-per-Truck rule. Callers should revalidate the admin WO list after.
+export function createAdminWorkOrder(
+  input: CreateAdminWorkOrderInput,
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<WorkOrderDetailDto>('/api/admin/work-orders', {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
 export function addAdminWorkOrderMechanic(
   workOrderId: string,
   input: { mechanicId: string; expectedVersion: number },
@@ -134,6 +162,47 @@ export function removeAdminWorkOrderMechanic(
   return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/mechanics/${mechanicId}`, {
     method: 'DELETE',
     body: JSON.stringify({ expectedVersion, idempotencyKey }),
+  });
+}
+
+export function assignAdminWorkOrderJob(
+  workOrderId: string,
+  jobId: string,
+  input: { mechanicId: string; expectedVersion: number },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/jobs/${jobId}/assign`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
+export function unassignAdminWorkOrderJob(
+  workOrderId: string,
+  jobId: string,
+  expectedVersion: number,
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/jobs/${jobId}/unassign`, {
+    method: 'POST',
+    body: JSON.stringify({ expectedVersion, idempotencyKey }),
+  });
+}
+
+export function pauseAdminWorkOrder(
+  workOrderId: string,
+  input: { reason: string; notes?: string },
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/pause`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function resumeAdminWorkOrder(workOrderId: string) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/resume`, {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 
