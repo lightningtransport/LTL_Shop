@@ -60,8 +60,9 @@ export class TrucksService {
     const requiredCapability = wo.primaryCategory.name === 'PM'
       ? AppCapability.MECHANIC_PM
       : AppCapability.MECHANIC_STANDARD;
-    const isAssigned = wo.createdById === user.id ||
-      wo.mechanics.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt);
+    const isAssigned = wo.createdById === user.id
+      || wo.mechanics.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt)
+      || wo.jobs.some((job) => job.assignedMechanicId === user.id);
     return {
       exists: true as const,
       ...(hasCapability(user, requiredCapability) && isAssigned
@@ -218,7 +219,12 @@ export function toTruckDto(truck: {
 const workOrderSummaryInclude = {
   truck: true,
   primaryCategory: true,
-  jobs: { include: { category: { select: { id: true, name: true } } } },
+  jobs: {
+    include: {
+      category: { select: { id: true, name: true } },
+      assignedMechanic: { select: { id: true, name: true } },
+    },
+  },
   mechanics: {
     include: { mechanic: true },
     orderBy: { addedAt: 'asc' as const },

@@ -17,6 +17,7 @@ type JobRow = {
   status: JobStatus;
   completedAt: Date | null;
   completedById: string | null;
+  assignedMechanic?: { id: string; name: string } | null;
 };
 
 type PauseRow = {
@@ -81,8 +82,15 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     category: j.category,
     displayName: j.displayName,
     status: j.status,
+    assignedMechanic: j.assignedMechanic ?? null,
   }));
   const currentPause = wo.pauseEvents?.find((p) => !p.endedAt) ?? null;
+  const mechanics = (wo.mechanics ?? [])
+    .filter((m) => !m.removedAt)
+    .map((m) => ({
+      mechanicId: m.mechanicId,
+      mechanicName: m.mechanic.name,
+    }));
   return {
     id: wo.id,
     displayId: wo.displayId,
@@ -95,6 +103,7 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     jobsCompleted,
     jobsTotal,
     jobs,
+    mechanics,
     currentPauseReason: currentPause?.reason ?? null,
     createdAt: wo.createdAt.toISOString(),
     startedAt: wo.startedAt?.toISOString() ?? null,
@@ -124,6 +133,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
       status: j.status,
       completedAt: j.completedAt?.toISOString() ?? null,
       completedById: j.completedById,
+      assignedMechanic: j.assignedMechanic ?? null,
     })),
     mechanics: (wo.mechanics ?? [])
       .filter((m) => !m.removedAt)
@@ -153,7 +163,10 @@ export const workOrderDetailInclude = {
   truck: true,
   primaryCategory: true,
   jobs: {
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      assignedMechanic: { select: { id: true, name: true } },
+    },
     orderBy: { addedAt: 'asc' as const },
   },
   pauseEvents: { orderBy: { startedAt: 'desc' as const } },

@@ -71,6 +71,8 @@ export interface WorkOrderJobDto {
   status: JobStatus;
   completedAt: string | null;
   completedById: string | null;
+  // Null means the Job inherits the Work Order general mechanic team.
+  assignedMechanic: { id: string; name: string } | null;
 }
 
 export interface PauseEventDto {
@@ -101,7 +103,8 @@ export interface WorkOrderSummaryDto {
   priority: Priority;
   jobsCompleted: number;
   jobsTotal: number;
-  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status'>[];
+  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic'>[];
+  mechanics: Pick<MechanicAssignmentDto, 'mechanicId' | 'mechanicName'>[];
   currentPauseReason: PauseReason | null;
   createdAt: string;
   startedAt: string | null;

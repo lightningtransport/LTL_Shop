@@ -48,7 +48,9 @@ const workOrder = {
     status: 'to_do',
     categoryId: categories[0].id,
     category: { id: categories[0].id, name: categories[0].name },
+    assignedMechanic: null,
   }],
+  mechanics: [],
   currentPauseReason: null,
   createdAt: '2026-01-01T12:00:00.000Z',
   startedAt: null,
@@ -497,6 +499,8 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('heading', { name: 'Truck Information' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'PM Service' })).toBeVisible();
     await expect(page.getByText('Jobs To Do', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('My Jobs', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Unassigned — inherits the Work Order team', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Working With', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Priority', { exact: true })).toHaveCount(0);
     await expect(page.getByLabel('Observed mileage')).toHaveAttribute('type', 'text');
@@ -602,5 +606,134 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(high).toHaveAttribute('aria-pressed', 'true');
     await expect(normal).toHaveAttribute('aria-pressed', 'false');
     await expect(page.getByRole('textbox', { name: /Notes/i })).toBeVisible();
+  });
+});
+
+const assignedWorkOrder = {
+  id: 'wo-assigned-1',
+  displayId: 'WO-ASSIGN-1',
+  truckId: truck.id,
+  truckNumber: truck.truckNumber,
+  primaryCategoryId: categories[0].id,
+  primaryCategoryName: categories[0].name,
+  status: 'in_progress',
+  priority: 'high',
+  jobsCompleted: 0,
+  jobsTotal: 3,
+  jobs: [
+    {
+      id: 'job-mine',
+      workOrderId: 'wo-assigned-1',
+      catalogJobId: 'catalog-pads',
+      categoryId: categories[0].id,
+      category: { id: categories[0].id, name: categories[0].name },
+      displayName: 'Replace pads',
+      customDescription: null,
+      status: 'to_do',
+      completedAt: null,
+      completedById: null,
+      assignedMechanic: { id: user.id, name: user.name },
+    },
+    {
+      id: 'job-team',
+      workOrderId: 'wo-assigned-1',
+      catalogJobId: 'catalog-bleed',
+      categoryId: categories[0].id,
+      category: { id: categories[0].id, name: categories[0].name },
+      displayName: 'Bleed brakes',
+      customDescription: null,
+      status: 'to_do',
+      completedAt: null,
+      completedById: null,
+      assignedMechanic: null,
+    },
+    {
+      id: 'job-other',
+      workOrderId: 'wo-assigned-1',
+      catalogJobId: 'catalog-abs',
+      categoryId: categories[1].id,
+      category: { id: categories[1].id, name: categories[1].name },
+      displayName: 'ABS sensor',
+      customDescription: null,
+      status: 'to_do',
+      completedAt: null,
+      completedById: null,
+      assignedMechanic: { id: 'mechanic-2', name: 'Jamie Technician' },
+    },
+  ],
+  mechanics: [
+    { mechanicId: user.id, mechanicName: user.name, addedAt: '2026-01-01T12:00:00.000Z', removedAt: null },
+    { mechanicId: 'mechanic-2', mechanicName: 'Jamie Technician', addedAt: '2026-01-01T12:00:00.000Z', removedAt: null },
+  ],
+  currentPauseReason: null,
+  createdAt: '2026-01-01T12:00:00.000Z',
+  startedAt: '2026-01-01T12:05:00.000Z',
+  notes: null,
+  createdById: 'manager-1',
+  completedAt: null,
+  totalActiveLaborMs: 1,
+  totalWaitingMs: 0,
+  currentPause: null,
+  truck,
+  version: 1,
+};
+
+test.describe('My Assigned Work presentation', () => {
+  test('labels assigned, unassigned inherited-team, and other Jobs at mobile size', async ({ page }) => {
+    await page.route('**/api/**', async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path === '/api/auth/me') return json(route, { user });
+      if (path === '/api/work-orders' && request.method() === 'GET') {
+        return json(route, { created: [], active: [assignedWorkOrder], paused: [], completed: [] });
+      }
+      if (path === `/api/work-orders/${assignedWorkOrder.id}`) {
+        return json(route, assignedWorkOrder);
+      }
+      if (path === `/api/work-orders/${assignedWorkOrder.id}/jobs/job-mine/complete`) {
+        return json(route, {
+          ...assignedWorkOrder,
+          jobsCompleted: 1,
+          jobs: assignedWorkOrder.jobs.map((job) => (
+            job.id === 'job-mine' ? { ...job, status: 'completed' } : job
+          )),
+        });
+      }
+      if (path === '/api/catalog/categories') return json(route, categories);
+      if (path === '/api/catalog/aliases' || path === '/api/catalog/jobs') return json(route, aliases);
+      if (path === '/api/mechanics') return json(route, mechanics);
+      if (path === '/api/trucks') return json(route, [truck]);
+      return route.continue();
+    });
+
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
+    const assignedCard = page.locator('article').filter({ hasText: 'WO-ASSIGN-1' });
+    await expect(assignedCard.getByText('Work Order team: Alex Mechanic / Jamie Technician')).toBeVisible();
+    await expect(assignedCard.getByText('Replace pads')).toBeVisible();
+    await expect(assignedCard.getByText('Assigned to you')).toBeVisible();
+    await expect(assignedCard.getByText('Bleed brakes')).toBeVisible();
+    await expect(assignedCard.getByText('Unassigned — inherits the Work Order team')).toBeVisible();
+    await expect(assignedCard.getByText('ABS sensor')).toBeVisible();
+    await expect(assignedCard.getByText('Assigned to Jamie Technician')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+
+    await assignedCard.getByRole('link', { name: /View Work/i }).click();
+    await expect(page.getByRole('heading', { name: 'WO-ASSIGN-1' })).toBeVisible();
+    await expect(page.getByText('Work Order team', { exact: true })).toBeVisible();
+    await expect(page.getByText('Alex Mechanic / Jamie Technician')).toBeVisible();
+    await expect(page.getByText('My Jobs', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Replace pads/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Bleed brakes/ })).toBeVisible();
+    await expect(page.getByText('Other work on this Truck')).toBeVisible();
+    await expect(page.getByRole('button', { name: /ABS sensor/ })).toBeVisible();
+    await expect(page.getByText('Create new Work Order')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+
+    await page.getByRole('button', { name: /Replace pads/ }).click();
+    await expect(page.getByRole('dialog', { name: 'JOB FINISHED' })).toBeVisible();
+    await page.getByRole('button', { name: 'Complete Job' }).click();
+    await expect(page.getByText('Replace pads')).toBeVisible();
   });
 });
