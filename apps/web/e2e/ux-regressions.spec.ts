@@ -42,7 +42,13 @@ const workOrder = {
   priority: 'normal',
   jobsCompleted: 0,
   jobsTotal: 1,
-  jobs: [{ id: 'job-1', displayName: 'Brake inspection', status: 'to_do' }],
+  jobs: [{
+    id: 'job-1',
+    displayName: 'Brake inspection',
+    status: 'to_do',
+    categoryId: categories[0].id,
+    category: { id: categories[0].id, name: categories[0].name },
+  }],
   currentPauseReason: null,
   createdAt: '2026-01-01T12:00:00.000Z',
   startedAt: null,
@@ -93,6 +99,13 @@ const history = {
       mechanicNames: [user.name],
       mileage: 119_000,
       jobs: ['Brake inspection'],
+      jobDetails: [{
+        id: 'job-1',
+        categoryId: categories[0].id,
+        category: { id: categories[0].id, name: categories[0].name },
+        displayName: 'Brake inspection',
+        status: 'completed',
+      }],
     },
   ],
 };
@@ -266,7 +279,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('status', { name: /Loading work orders/i })).toBeVisible();
     const timeoutAlert = page.getByRole('alert').filter({ hasText: /took too long/i });
     await expect(timeoutAlert).toBeVisible({ timeout: 12_000 });
-    await page.getByRole('button', { name: /Retry work orders/i }).click();
+    await page.getByRole('button', { name: /Try again|Retry work orders/i }).click();
     await expect(timeoutAlert).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Start Work/i })).toBeVisible();
   });
@@ -290,7 +303,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     expect(backBox?.height).toBeGreaterThanOrEqual(44);
 
     await selectTruck(page);
-    await page.getByRole('link', { name: /See Truck Repair History/i }).click();
+    await page.getByRole('link', { name: /View truck repair history|See Truck Repair History/i }).click();
     await expect(page.getByRole('heading', { name: 'REPAIR HISTORY' })).toBeVisible();
     await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
     await page.getByRole('link', { name: 'Back to New Work Order' }).click();
@@ -391,7 +404,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     const request = page.waitForRequest((candidate) =>
       candidate.url().endsWith('/api/work-orders') && candidate.method() === 'POST',
     );
-    await page.getByRole('button', { name: /Create Work Order/i }).click();
+    await page.getByRole('button', { name: /Create (new )?Work Order/i }).click();
     const payload = JSON.parse((await request).postData() ?? '{}');
     expect(payload.primaryCategoryId).toBe(categories[1].id);
     expect(payload.jobs).toEqual(expect.arrayContaining([
