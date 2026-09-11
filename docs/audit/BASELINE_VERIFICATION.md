@@ -22,6 +22,10 @@
 
 ## E2E evidence and interpretation
 
+V1-001 (PR #73) later restored the fixture gate: 86 cases passed one browser /
+one worker. The notes below are the historical incomplete baseline run from
+this normalization snapshot; they are not the current gate result.
+
 The browser-installed run started 86 project cases across mobile Chromium and
 mobile WebKit. Passing observations included:
 
@@ -88,7 +92,5 @@ on current `main`:
 
 ## Required next verification
 
-When explicitly selected, perform V1-001: isolate each failing E2E
-specification with one browser and one worker, classify product regression
-versus stale fixture/assertion, repair only verified test or existing-product
-defects, then rerun the complete suite.
+V1-001 is complete (PR #73). Remaining V1 production smoke rows are
+OPERATOR_REQUIRED in `V1_003_RELEASE_SMOKE.md`.

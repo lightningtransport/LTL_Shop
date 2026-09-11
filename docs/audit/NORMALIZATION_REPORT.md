@@ -131,12 +131,11 @@ See `CODE_CLEANUP_CANDIDATES.md` for risk and recommended action.
 
 ## Recommended next task
 
-`V1-000 — Investigate failed Vercel API deployment` is complete. The approved
-release path applied the pending Prisma migrations, API probes passed, and the
-current-main redeploy is READY. See `V1_000_DEPLOYMENT_INVESTIGATION.md`.
-
-The recommended next task is `V1-001 — Restore a trustworthy E2E gate`; do not
-start it without selecting that scoped task.
+`V1-000`, `V1-001`, `V1-002` (temporary test users), and `V1-004` are complete.
+`V1-003` is PARTIAL: agent-reachable production smoke passed; Cristian must
+finish the OPERATOR_REQUIRED interactive/Safari rows in
+`V1_003_RELEASE_SMOKE.md`. Do not start `V1.2-001` until that remaining
+operator evidence is recorded.
 
 ## Normalization completion check
 
@@ -150,4 +149,4 @@ start it without selecting that scoped task.
 | What is out of scope? | Master PRD + roadmap phase boundaries |
 | What rules cannot break? | Master PRD + engineering/deploy documents |
 | How is a change verified? | `AGENT_WORKFLOW.md` + task tests + baseline |
-| What is the next task? | Select `V1-001 — Restore a trustworthy E2E gate` |
+| What is the next task? | Finish remaining `V1-003` OPERATOR_REQUIRED rows |
