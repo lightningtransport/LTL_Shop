@@ -1,5 +1,9 @@
 # Migración: una Category por Work Order → Categories por Job
 
+> ⚠️ HISTORICAL DOCUMENT
+> This document is preserved for historical/reference purposes and is not current product authority.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 ## Estado inicial, destino y estado implementado
 
 ```text

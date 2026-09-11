@@ -1,5 +1,9 @@
 # Shop Admin Integration Blueprint
 
+> ⚠️ HISTORICAL DOCUMENT
+> This document is preserved for historical/reference purposes and is not current product authority.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 ## 1. Propósito
 
 Este documento define cómo incorporar la experiencia **Shop Admin** al sistema real **LTL Shop Mechanics**. Está dirigido a otro ingeniero o agente que trabaje dentro de este repositorio y debe ser suficiente para planificar e implementar la integración sin consultar el historial de la conversación que originó el prototipo.

@@ -1,5 +1,9 @@
 # Lightning Shop Developer Handoff — 2026-09-10
 
+> ⚠️ HISTORICAL DOCUMENT
+> This document is preserved for historical/reference purposes and is not current product authority.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 ## Scope and repository state
 
 - Canonical starting point: `main` at merge commit `3a9fb10` (PR #47).

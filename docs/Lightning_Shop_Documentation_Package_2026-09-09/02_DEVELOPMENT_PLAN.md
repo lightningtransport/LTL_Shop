@@ -1,5 +1,9 @@
 # Plan de desarrollo incremental y backward-compatible
 
+> ⚠️ HISTORICAL DOCUMENT
+> This document is preserved for historical/reference purposes and is not current product authority.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 ## Principios de entrega
 
 - Un PR por capacidad coherente; migraciones y UI expansivas no se mezclan sin necesidad.
