@@ -35,7 +35,7 @@ test.describe('Shop Admin Phase 2A', () => {
       expect(overflow).toBe(false);
     }
 
-    await page.getByRole('button', { name: /Language: English/ }).click();
+    await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
     await expect(page.getByText('Operación actual desde Supabase PostgreSQL')).toBeVisible();
   });
@@ -51,8 +51,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/status=waiting_paused/);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await expect(page.getByText('WO-0101').first()).toBeVisible();
-    await page.getByText('WO-0101').first().click();
+    await expect(page.getByRole('link', { name: 'WO-0101' }).first()).toBeVisible();
+    await page.getByRole('link', { name: 'WO-0101' }).first().click();
     await expect(page.getByRole('heading', { name: 'WO-0101' })).toBeVisible();
     await expect(page.getByText('Read only')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Truck details' })).toBeVisible();
@@ -166,7 +166,7 @@ test.describe('Shop Admin Phase 2A', () => {
       await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
       await page.getByRole('link', { name: 'Back to Shop Admin' }).click();
 
-      await page.getByRole('button', { name: /Language: English/ }).click();
+      await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
       await expect(page.getByRole('heading', { name: 'Espacios de trabajo' })).toBeVisible();
       await page.getByRole('link', { name: 'Abrir Mecánico PM' }).click();
       await expect(page).toHaveURL(/\/mechanic\/pm$/);

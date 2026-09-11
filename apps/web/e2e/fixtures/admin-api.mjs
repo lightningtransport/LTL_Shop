@@ -576,7 +576,23 @@ createServer(async (request, response) => {
     const categoryId = params.get('categoryId');
     const excludeWorkOrderId = params.get('excludeWorkOrderId');
     const truck = workOrders.find((item) => item.truck.id === historyMatch[1])?.truck;
-    const historyItems = excludeWorkOrderId === workOrders[3].id ? [] : [{ workOrderId: workOrders[3].id, displayId: workOrders[3].displayId, date: workOrders[3].completedAt, primaryCategoryName: 'Brakes', truckNumber: truck?.truckNumber ?? 'T-101', mechanicNames: ['Alejandro 1'], mileage: 119500, jobs: ['Inspect brake chamber'] }];
+    const historyItems = excludeWorkOrderId === workOrders[3].id ? [] : [{
+      workOrderId: workOrders[3].id,
+      displayId: workOrders[3].displayId,
+      date: workOrders[3].completedAt,
+      primaryCategoryName: 'Brakes',
+      truckNumber: truck?.truckNumber ?? 'T-101',
+      mechanicNames: ['Alejandro 1'],
+      mileage: 119500,
+      jobs: ['Inspect brake chamber'],
+      jobDetails: [{
+        id: '00000000-0000-4000-8000-000000000801',
+        categoryId: '00000000-0000-4000-8000-000000000301',
+        category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },
+        displayName: 'Inspect brake chamber',
+        status: 'completed',
+      }],
+    }];
     json(response, 200, {
       truck: truck ?? { id: historyMatch[1], truckNumber: 'Unknown', make: null, model: null, year: null, mileage: null, company: null, owner: null },
       items: categoryId && categoryId !== '00000000-0000-4000-8000-000000000301' ? [] : historyItems,
@@ -650,6 +666,7 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status) {
       customDescription: null,
       category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },
       status: status === 'in_progress' || status === 'completed' ? 'completed' : 'to_do',
+      assignedMechanic: null,
     }],
     returnedToServiceAt: null,
   };
