@@ -119,4 +119,26 @@ describe('Work Order Job Category readers', () => {
       expect.objectContaining({ id: 'job-team', assignedMechanic: null }),
     ]));
   });
+
+  it('does not treat a reported blocker as the current official pause', () => {
+    const reportedAt = new Date('2026-09-11T15:00:00.000Z');
+    const wo: WorkOrderWithRelations = {
+      ...base,
+      jobs: [job('job-brakes', 'category-brakes', 'Brakes', 'Inspect brakes')],
+      pauseEvents: [{
+        id: 'report-1',
+        workOrderId: 'wo-1',
+        reason: 'waiting_for_parts',
+        notes: 'Air line ordered',
+        startedAt: reportedAt,
+        endedAt: reportedAt,
+        durationMs: 0n,
+        isOfficialPause: false,
+        reportedBy: { id: 'mechanic-1', name: 'Alex Mechanic' },
+      }],
+    };
+
+    expect(toWorkOrderSummary(wo).currentPauseReason).toBeNull();
+    expect(toWorkOrderDetail(wo).currentPause).toBeNull();
+  });
 });

@@ -37,6 +37,31 @@ describe('work-order.timing', () => {
     expect(totals.totalWaitingMs).toBe(3 * 60 * 60 * 1000);
   });
 
+  it('excludes report-only pause events from waiting totals', () => {
+    const totals = computeTotals({
+      sessions: [
+        {
+          startedAt: new Date('2026-01-01T08:00:00Z'),
+          endedAt: new Date('2026-01-01T10:00:00Z'),
+        },
+      ],
+      pauses: [
+        {
+          startedAt: new Date('2026-01-01T10:00:00Z'),
+          endedAt: new Date('2026-01-01T13:00:00Z'),
+          isOfficialPause: true,
+        },
+        {
+          startedAt: new Date('2026-01-01T09:00:00Z'),
+          endedAt: new Date('2026-01-01T12:00:00Z'),
+          isOfficialPause: false,
+        },
+      ],
+    });
+    expect(totals.totalActiveLaborMs).toBe(2 * 60 * 60 * 1000);
+    expect(totals.totalWaitingMs).toBe(3 * 60 * 60 * 1000);
+  });
+
   it('requires resume before completing jobs while paused', () => {
     const result = canCompleteJob('waiting_paused');
     expect(result.ok).toBe(false);

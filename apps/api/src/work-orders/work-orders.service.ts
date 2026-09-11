@@ -461,6 +461,9 @@ export class WorkOrdersService {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
       this.assertMechanicAccess(user, wo);
+      if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
+        throw new BadRequestException('Cannot report a blocker on a closed Work Order');
+      }
       const now = new Date();
       await tx.pauseEvent.create({
         data: {
@@ -517,6 +520,7 @@ export class WorkOrdersService {
           notes: parsed.data.notes,
           startedAt: now,
           createdById: user.id,
+          isOfficialPause: true,
         },
       });
       const updated = await tx.workOrder.update({
@@ -550,7 +554,7 @@ export class WorkOrdersService {
         throw new BadRequestException('Work Order is not paused');
       }
       const openPause = await tx.pauseEvent.findFirst({
-        where: { workOrderId: id, endedAt: null },
+        where: { workOrderId: id, endedAt: null, isOfficialPause: true },
         orderBy: { startedAt: 'desc' },
       });
       if (!openPause) throw new BadRequestException('No open pause event');
@@ -568,6 +572,7 @@ export class WorkOrdersService {
           notes: parsed.data.notes,
           startedAt: now,
           createdById: user.id,
+          isOfficialPause: true,
         },
       });
       const updated = await tx.workOrder.update({
@@ -597,7 +602,7 @@ export class WorkOrdersService {
       }
       const now = new Date();
       const openPause = await tx.pauseEvent.findFirst({
-        where: { workOrderId: id, endedAt: null },
+        where: { workOrderId: id, endedAt: null, isOfficialPause: true },
         orderBy: { startedAt: 'desc' },
       });
       if (openPause) {
