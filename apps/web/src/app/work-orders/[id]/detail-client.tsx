@@ -173,9 +173,6 @@ export default function WorkOrderDetailPage() {
   const done = wo.jobs.filter((j) => j.status === 'completed');
   const myTodo = todo.filter((job) => isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
   const otherTodo = todo.filter((job) => !isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
-  const coworkers = wo.mechanics.filter(
-    (assignment) => assignment.mechanicId !== wo.createdById,
-  );
   const finishBlocked = busy || todo.length > 0;
 
   return (
@@ -423,14 +420,6 @@ export default function WorkOrderDetailPage() {
       </section>
 
       <section className="card space-y-3">
-        {coworkers.length ? (
-          <div>
-          <p className="section-label">Working With</p>
-          <p className="mt-1 text-sm">
-            {coworkers.map((m) => m.mechanicName).join(' / ')}
-          </p>
-          </div>
-        ) : null}
         <div>
           <Label className="section-label" htmlFor="wo-notes">
             Notes
