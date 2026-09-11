@@ -126,6 +126,7 @@ export interface CreateAdminWorkOrderInput {
     categoryId: string;
     displayName: string;
     customDescription?: string;
+    assignedMechanicId?: string;
   }>;
 }
 
