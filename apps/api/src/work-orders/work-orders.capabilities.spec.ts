@@ -98,6 +98,37 @@ describe('Work Order workspace capabilities', () => {
     ).rejects.toThrow('PM stays in the mechanic flow');
   });
 
+  it('rejects invalid per-job assignees when a Manager creates a Work Order', async () => {
+    const truckId = '11111111-1111-4111-8111-111111111111';
+    const categoryId = '33333333-3333-4333-8333-333333333333';
+    const mechanicId = '22222222-2222-4222-8222-222222222222';
+    const prisma = {
+      workOrder: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },
+      jobCategory: {
+        findUnique: vi.fn().mockResolvedValue({ id: categoryId, name: 'Brakes' }),
+        findMany: vi.fn().mockResolvedValue([{ id: categoryId, name: 'Brakes' }]),
+      },
+      user: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new WorkOrdersService(prisma as never, { log: vi.fn() } as never);
+
+    await expect(
+      service.createByManager(user([AppCapability.WORK_ORDERS_MANAGE, AppCapability.ADMIN_ACCESS]), {
+        truckId,
+        primaryCategoryId: categoryId,
+        jobs: [{
+          categoryId,
+          displayName: 'Brake inspection',
+          assignedMechanicId: mechanicId,
+        }],
+      }),
+    ).rejects.toThrow('One or more selected mechanics cannot perform standard work');
+  });
+
   it('requires notes when a reported blocker uses the Other reason', async () => {
     const service = new WorkOrdersService({} as never, { log: vi.fn() } as never);
     await expect(

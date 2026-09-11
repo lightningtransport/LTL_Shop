@@ -225,6 +225,8 @@ export const createWorkOrderJobSchema = z.object({
   categoryId: z.string().uuid(),
   displayName: z.string().min(1).max(200),
   customDescription: z.string().min(1).max(500).optional(),
+  // Manager-first ownership: optional per-Job assignee at create time.
+  assignedMechanicId: z.string().uuid().optional(),
 });
 
 export const createWorkOrderSchema = z.object({

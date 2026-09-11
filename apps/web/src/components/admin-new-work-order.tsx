@@ -1,17 +1,22 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppCapability, Priority, type AdminCatalogJobDto } from '@ltl-shop/shared';
+import {
+  AppCapability,
+  Priority,
+  type AdminTruckSummaryDto,
+  type JobAliasOptionDto,
+} from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import {
   createAdminWorkOrder,
-  useAdminCatalogCategories,
-  useAdminCatalogCategory,
   useAdminMechanics,
   useAdminTrucks,
 } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { canonicalAliasOptions } from '@/lib/job-catalog';
+import { useAliasOptions, useCategories } from '@/lib/shop-data';
 import {
   Badge,
   Button,
@@ -23,7 +28,6 @@ import {
   EmptyState,
   InlineAlert,
   Input,
-  Label,
   Select,
   Textarea,
 } from './ui';
@@ -35,7 +39,12 @@ type DraftJob = {
   categoryName: string;
   displayName: string;
   customDescription?: string;
+  assignedMechanicId?: string;
 };
+
+function normalizeJobName(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
 
 export function AdminNewWorkOrder({
   locale,
@@ -47,24 +56,34 @@ export function AdminNewWorkOrder({
   void locale;
   const router = useRouter();
   const [truckQuery, setTruckQuery] = useState('');
-  const [truckId, setTruckId] = useState('');
+  const [debouncedTruckQuery, setDebouncedTruckQuery] = useState('');
+  const [selectedTruck, setSelectedTruck] = useState<AdminTruckSummaryDto | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeResult, setActiveResult] = useState(-1);
   const [categoryId, setCategoryId] = useState('');
+  const [jobQuery, setJobQuery] = useState('');
   const [jobs, setJobs] = useState<DraftJob[]>([]);
   const [priority, setPriority] = useState<Priority>(Priority.NORMAL);
   const [notes, setNotes] = useState('');
-  const [assignees, setAssignees] = useState<string[]>([]);
   const [customName, setCustomName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: truckPages } = useAdminTrucks(truckQuery ? `q=${encodeURIComponent(truckQuery)}` : '');
-  const { data: categories } = useAdminCatalogCategories();
-  const { data: categoryDetail } = useAdminCatalogCategory(categoryId);
-  const { data: mechanicPages } = useAdminMechanics('');
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedTruckQuery(truckQuery.trim()), 250);
+    return () => window.clearTimeout(handle);
+  }, [truckQuery]);
+
+  const truckSearch = debouncedTruckQuery && !selectedTruck
+    ? `search=${encodeURIComponent(debouncedTruckQuery)}`
+    : '';
+  const { data: truckPages, error: truckError, isLoading: trucksLoading } = useAdminTrucks(truckSearch);
+  const { data: categories, error: categoriesError, isLoading: categoriesLoading } = useCategories(true);
+  const { data: aliasData, error: jobsError, isLoading: jobsLoading } = useAliasOptions(categoryId, Boolean(categoryId));
+  const { data: mechanicPages, error: mechanicsError } = useAdminMechanics('');
 
   const trucks = truckPages?.flatMap((page) => page.items) ?? [];
-  const selectedTruck = trucks.find((item) => item.truck.id === truckId) ?? null;
-  const standardCategories = (categories ?? []).filter((category) => category.name !== 'PM' && category.status === 'active');
+  const standardCategories = (categories ?? []).filter((category) => category.name !== 'PM');
   const selectedCategory = standardCategories.find((category) => category.id === categoryId) ?? null;
   const assignableMechanics = useMemo(
     () => (mechanicPages?.flatMap((page) => page.items) ?? []).filter(
@@ -73,36 +92,77 @@ export function AdminNewWorkOrder({
     [mechanicPages],
   );
 
-  const catalogJobs: AdminCatalogJobDto[] = (categoryDetail?.jobs ?? []).filter(
-    (job) => job.status === 'active' && !jobs.some((draft) => draft.catalogJobId === job.id),
+  const catalogJobs = useMemo(
+    () => canonicalAliasOptions(aliasData ?? [], jobQuery).filter(
+      (option) => !jobs.some((draft) => draft.catalogJobId === option.catalogJobId),
+    ),
+    [aliasData, jobQuery, jobs],
   );
 
+  const resultsOpen = searchOpen && Boolean(debouncedTruckQuery) && !selectedTruck;
   const primaryCategoryId = jobs[0]?.categoryId ?? categoryId;
-  const canSubmit = Boolean(truckId) && jobs.length > 0 && !selectedTruck?.openWorkOrder && !busy;
+  const canSubmit = Boolean(selectedTruck) && jobs.length > 0 && !selectedTruck?.openWorkOrder && !busy;
 
-  function addCatalogJob(job: AdminCatalogJobDto) {
+  useEffect(() => {
+    setActiveResult(trucks.length ? 0 : -1);
+  }, [trucks]);
+
+  useEffect(() => {
+    setJobQuery('');
+    setCustomName('');
+  }, [categoryId]);
+
+  function selectTruck(item: AdminTruckSummaryDto) {
+    setSelectedTruck(item);
+    setTruckQuery(item.truck.truckNumber);
+    setSearchOpen(false);
+    setError(null);
+  }
+
+  function clearTruck() {
+    setSelectedTruck(null);
+    setTruckQuery('');
+    setSearchOpen(false);
+  }
+
+  function addCatalogJob(option: JobAliasOptionDto) {
     if (!selectedCategory) return;
-    setJobs((current) => current.some((draft) => draft.catalogJobId === job.id)
-      ? current
-      : [...current, {
-          key: crypto.randomUUID(),
-          catalogJobId: job.id,
-          categoryId: selectedCategory.id,
-          categoryName: selectedCategory.name,
-          displayName: job.displayName,
-        }]);
+    setJobs((current) => {
+      if (current.some((draft) => draft.catalogJobId === option.catalogJobId)) return current;
+      return [...current, {
+        key: crypto.randomUUID(),
+        catalogJobId: option.catalogJobId,
+        categoryId: selectedCategory.id,
+        categoryName: selectedCategory.name,
+        displayName: option.displayName,
+      }];
+    });
   }
 
   function addCustomJob() {
     if (!selectedCategory || !customName.trim()) return;
-    setJobs((current) => [...current, {
-      key: crypto.randomUUID(),
-      categoryId: selectedCategory.id,
-      categoryName: selectedCategory.name,
-      displayName: customName.trim(),
-      customDescription: customName.trim(),
-    }]);
+    const name = customName.trim();
+    setJobs((current) => {
+      if (current.some((draft) => !draft.catalogJobId && normalizeJobName(draft.displayName) === normalizeJobName(name))) {
+        return current;
+      }
+      return [...current, {
+        key: crypto.randomUUID(),
+        categoryId: selectedCategory.id,
+        categoryName: selectedCategory.name,
+        displayName: name,
+        customDescription: name,
+      }];
+    });
     setCustomName('');
+  }
+
+  function setJobAssignee(key: string, mechanicId: string) {
+    setJobs((current) => current.map((job) => (
+      job.key === key
+        ? { ...job, assignedMechanicId: mechanicId || undefined }
+        : job
+    )));
   }
 
   const jobsByCategory = useMemo(() => {
@@ -115,22 +175,28 @@ export function AdminNewWorkOrder({
     return [...groups.entries()];
   }, [jobs]);
 
+  const teamMechanicIds = useMemo(
+    () => Array.from(new Set(jobs.map((job) => job.assignedMechanicId).filter((id): id is string => Boolean(id)))),
+    [jobs],
+  );
+
   async function submit() {
-    if (!canSubmit) return;
+    if (!canSubmit || !selectedTruck) return;
     setBusy(true);
     setError(null);
     try {
       const created = await createAdminWorkOrder({
-        truckId,
+        truckId: selectedTruck.truck.id,
         primaryCategoryId,
         priority,
         notes: notes.trim() || undefined,
-        mechanicIds: assignees,
+        mechanicIds: teamMechanicIds,
         jobs: jobs.map((job) => ({
           catalogJobId: job.catalogJobId,
           categoryId: job.categoryId,
           displayName: job.displayName,
           customDescription: job.customDescription,
+          assignedMechanicId: job.assignedMechanicId,
         })),
       });
       router.push(`/admin/work-orders/${created.id}`);
@@ -151,24 +217,89 @@ export function AdminNewWorkOrder({
       <Card>
         <CardHeader><CardTitle>{messages.selectTruckLabel}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <Input
-            aria-label={messages.searchTrucksLabel}
-            placeholder={messages.searchTrucksLabel}
-            value={truckQuery}
-            onChange={(event) => setTruckQuery(event.target.value)}
-          />
-          {trucks.length ? (
-            <Select aria-label={messages.selectTruckLabel} value={truckId} onChange={(event) => setTruckId(event.target.value)}>
-              <option value="">{messages.selectTruckLabel}</option>
-              {trucks.map((item) => (
-                <option key={item.truck.id} value={item.truck.id}>
-                  #{item.truck.truckNumber} · {item.truck.make} {item.truck.model}
-                </option>
-              ))}
-            </Select>
-          ) : truckQuery ? (
-            <EmptyState>{messages.noTrucksFound}</EmptyState>
+          <div className="relative">
+            <Input
+              aria-label={messages.searchTrucksLabel}
+              placeholder={messages.searchTrucksLabel}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={resultsOpen}
+              aria-controls="admin-truck-search-results"
+              aria-activedescendant={
+                resultsOpen && activeResult >= 0
+                  ? `admin-truck-result-${trucks[activeResult]?.truck.id}`
+                  : undefined
+              }
+              value={truckQuery}
+              onFocus={() => setSearchOpen(true)}
+              onKeyDown={(event) => {
+                if (!resultsOpen) return;
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  setActiveResult((current) => Math.min(current + 1, trucks.length - 1));
+                } else if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  setActiveResult((current) => Math.max(current - 1, 0));
+                } else if (event.key === 'Enter' && activeResult >= 0) {
+                  event.preventDefault();
+                  const active = trucks[activeResult];
+                  if (active) selectTruck(active);
+                } else if (event.key === 'Escape') {
+                  setSearchOpen(false);
+                }
+              }}
+              onChange={(event) => {
+                setTruckQuery(event.target.value);
+                setSelectedTruck(null);
+                setSearchOpen(true);
+                setError(null);
+              }}
+            />
+            {resultsOpen ? (
+              <ul
+                id="admin-truck-search-results"
+                role="listbox"
+                className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-xl border bg-popover shadow-lg"
+              >
+                {trucksLoading ? (
+                  <li className="px-4 py-3 text-sm text-muted-foreground">{messages.searchingTrucks}</li>
+                ) : truckError ? (
+                  <li className="px-4 py-3 text-sm text-destructive">{messages.loadError}</li>
+                ) : trucks.length ? trucks.map((item, index) => (
+                  <li key={item.truck.id} role="presentation">
+                    <Button
+                      id={`admin-truck-result-${item.truck.id}`}
+                      type="button"
+                      role="option"
+                      aria-selected={activeResult === index}
+                      variant="ghost"
+                      className="w-full justify-start rounded-none px-4 py-3 text-left font-normal"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectTruck(item)}
+                    >
+                      #{item.truck.truckNumber} · {item.truck.make} {item.truck.model}
+                      {item.openWorkOrder ? ` · ${item.openWorkOrder.displayId}` : ''}
+                    </Button>
+                  </li>
+                )) : (
+                  <li className="px-4 py-3 text-sm text-muted-foreground">{messages.noTrucksFound}</li>
+                )}
+              </ul>
+            ) : null}
+          </div>
+
+          {selectedTruck ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">{messages.selectedTruckLabel}</p>
+                <p className="font-medium">
+                  #{selectedTruck.truck.truckNumber} · {selectedTruck.truck.make} {selectedTruck.truck.model}
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={clearTruck}>{messages.removeJobAction}</Button>
+            </div>
           ) : null}
+
           {selectedTruck?.openWorkOrder ? (
             <InlineAlert>{messages.openWoWarning}</InlineAlert>
           ) : null}
@@ -181,56 +312,100 @@ export function AdminNewWorkOrder({
           <CardDescription>{messages.noJobsYet}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="space-y-1">
+          {categoriesError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
+          {categoriesLoading && !categories ? (
+            <p className="text-sm text-muted-foreground">{messages.loadingCategories}</p>
+          ) : null}
+          {!categoriesLoading && !categoriesError && standardCategories.length === 0 ? (
+            <EmptyState>{messages.noCategoriesAvailable}</EmptyState>
+          ) : null}
+
+          {standardCategories.length ? (
+            <label className="block space-y-1">
               <span className="text-xs font-medium text-muted-foreground">{messages.category}</span>
-              <Select aria-label={messages.category} value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+              <Select
+                aria-label={messages.category}
+                value={categoryId}
+                onChange={(event) => setCategoryId(event.target.value)}
+              >
                 <option value="">{messages.category}</option>
                 {standardCategories.map((category) => (
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </Select>
             </label>
-          </div>
+          ) : null}
 
           {selectedCategory ? (
             <div className="space-y-2">
-              <ul className="max-h-56 space-y-1 overflow-auto">
+              <Input
+                aria-label={messages.searchJobsLabel}
+                placeholder={messages.searchJobsLabel}
+                value={jobQuery}
+                onChange={(event) => setJobQuery(event.target.value)}
+              />
+              {jobsError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
+              {jobsLoading && !aliasData ? (
+                <p className="text-sm text-muted-foreground">{messages.loadingJobs}</p>
+              ) : null}
+              <ul className="max-h-56 space-y-1 overflow-auto" aria-label={`${messages.addJobsLabel}: ${selectedCategory.name}`}>
                 {catalogJobs.length ? catalogJobs.map((job) => (
-                  <li key={job.id}>
+                  <li key={job.catalogJobId}>
                     <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => addCatalogJob(job)}>
                       {job.displayName}
                     </Button>
                   </li>
-                )) : (
+                )) : !jobsLoading ? (
                   <li className="text-sm text-muted-foreground">{messages.noJobsYet}</li>
-                )}
+                ) : null}
               </ul>
               <div className="flex flex-wrap items-center gap-2">
                 <Input
-                  aria-label={messages.addJobsLabel}
+                  aria-label={messages.customJobPlaceholder}
                   className="flex-1"
-                  placeholder={messages.addJobsLabel}
+                  placeholder={messages.customJobPlaceholder}
                   value={customName}
                   onChange={(event) => setCustomName(event.target.value)}
                 />
-                <Button type="button" disabled={!customName.trim()} onClick={addCustomJob}>+</Button>
+                <Button type="button" disabled={!customName.trim()} onClick={addCustomJob}>
+                  {messages.addCustomJob}
+                </Button>
               </div>
             </div>
           ) : null}
 
           <div className="space-y-3">
-            <p className="text-sm font-medium">{messages.jobsInPlan}</p>
+            <p className="text-sm font-medium">{messages.workPlanTitle}</p>
             {jobs.length ? jobsByCategory.map(([categoryName, group]) => (
-              <div key={categoryName} className="space-y-1">
+              <div key={categoryName} className="space-y-2">
                 <Badge variant="outline">{categoryName}</Badge>
-                <ul className="divide-y">
+                <ul className="divide-y rounded-xl border">
                   {group.map((job) => (
-                    <li key={job.key} className="flex items-center justify-between py-2 text-sm">
-                      <span>{job.displayName}</span>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => setJobs((current) => current.filter((item) => item.key !== job.key))}>
-                        ✕
-                      </Button>
+                    <li key={job.key} className="space-y-2 px-3 py-3">
+                      <div className="flex items-center justify-between gap-2 text-sm">
+                        <span className="font-medium">{job.displayName}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setJobs((current) => current.filter((item) => item.key !== job.key))}
+                        >
+                          {messages.removeJobAction}
+                        </Button>
+                      </div>
+                      <label className="block space-y-1">
+                        <span className="text-xs font-medium text-muted-foreground">{messages.assignJobOnCreate}</span>
+                        <Select
+                          aria-label={`${messages.assignJobOnCreate}: ${job.displayName}`}
+                          value={job.assignedMechanicId ?? ''}
+                          onChange={(event) => setJobAssignee(job.key, event.target.value)}
+                        >
+                          <option value="">{messages.assignJobPlaceholder}</option>
+                          {assignableMechanics.map((mechanic) => (
+                            <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
+                          ))}
+                        </Select>
+                      </label>
                     </li>
                   ))}
                 </ul>
@@ -238,29 +413,14 @@ export function AdminNewWorkOrder({
             )) : (
               <EmptyState>{messages.noJobsYet}</EmptyState>
             )}
+            {mechanicsError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>{messages.assigneesLabel}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{messages.priority}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {assignableMechanics.map((mechanic) => {
-              const selected = assignees.includes(mechanic.id);
-              return (
-                <Button
-                  key={mechanic.id}
-                  type="button"
-                  variant={selected ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setAssignees((current) => selected ? current.filter((id) => id !== mechanic.id) : [...current, mechanic.id])}
-                >
-                  {mechanic.name}
-                </Button>
-              );
-            })}
-          </div>
           <label className="block space-y-1">
             <span className="text-xs font-medium text-muted-foreground">{messages.priority}</span>
             <Select aria-label={messages.priority} value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>

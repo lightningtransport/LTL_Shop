@@ -154,6 +154,7 @@ export class WorkOrdersService {
     if (!category) throw new BadRequestException('Invalid primary category');
 
     const isPm = category.name === 'PM';
+    let teamMechanicIds = [...input.mechanicIds];
     if (isPm) {
       if (actorKind === 'manager') {
         throw new BadRequestException(
@@ -173,18 +174,25 @@ export class WorkOrdersService {
       if (actorKind === 'mechanic') {
         this.assertCapability(user, AppCapability.MECHANIC_STANDARD, 'standard mechanic');
       }
-      if (!input.mechanicIds.length) {
-        // The creator is assigned below.
-      } else {
+      const jobAssigneeIds = input.jobs
+        .map((job) => job.assignedMechanicId)
+        .filter((id): id is string => Boolean(id));
+      if (actorKind === 'mechanic' && jobAssigneeIds.length) {
+        throw new BadRequestException('Per-job assignment is only available when a Manager creates the Work Order');
+      }
+      // Team = explicit mechanicIds union per-job assignees so WO membership
+      // stays consistent with Job ownership.
+      teamMechanicIds = Array.from(new Set([...input.mechanicIds, ...jobAssigneeIds]));
+      if (teamMechanicIds.length) {
         const selectedMechanics = await this.prisma.user.findMany({
           where: {
-            id: { in: input.mechanicIds },
+            id: { in: teamMechanicIds },
             active: true,
             capabilities: { some: { capability: 'MECHANIC_STANDARD' } },
           },
           select: { id: true },
         });
-        if (selectedMechanics.length !== new Set(input.mechanicIds).size) {
+        if (selectedMechanics.length !== teamMechanicIds.length) {
           throw new BadRequestException('One or more selected mechanics cannot perform standard work');
         }
       }
@@ -200,10 +208,11 @@ export class WorkOrdersService {
     });
 
     // A Manager is not a mechanic and is never auto-assigned to the Work Order.
-    // Mechanics remain auto-assigned as the creator/executor.
+    // Mechanics remain auto-assigned as the creator/executor. Team already
+    // includes any per-job assignees (unioned above for standard WOs).
     const mechanicIds = actorKind === 'manager'
-      ? Array.from(new Set(input.mechanicIds))
-      : Array.from(new Set([user.id, ...input.mechanicIds]));
+      ? Array.from(new Set(teamMechanicIds))
+      : Array.from(new Set([user.id, ...teamMechanicIds]));
 
     let wo: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>;
     try {
@@ -286,6 +295,7 @@ export class WorkOrdersService {
                 isCustom: !job.catalogJobId,
                 reviewStatus: job.catalogJobId ? null : 'pending_review',
                 addedById: user.id,
+                assignedMechanicId: actorKind === 'manager' ? job.assignedMechanicId : undefined,
                 status: 'to_do',
               })),
             },
