@@ -1,5 +1,9 @@
 # PRD — Lightning Shop Mechanic App
 
+> ⚠️ HISTORICAL DOCUMENT
+> This document is preserved for historical/reference purposes and is not current product authority.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 ## Status overlay — 2026-09-09
 
 This PRD preserves the original product history. For implementation status,
@@ -73,7 +77,7 @@ El mecánico crea la Work Order seleccionando:
 
 Ejemplo:
 
-**WO #905 — Truck #905**  
+**WO #905 — Truck #905**
 Category: Suspension
 
 Jobs:
@@ -338,9 +342,9 @@ Cada Job tiene ID permanente.
 
 Ejemplo:
 
-**JOB-0042**  
-Display Name: **3 in 1**  
-Category: **Suspension**  
+**JOB-0042**
+Display Name: **3 in 1**
+Category: **Suspension**
 Status: **Active**
 
 Las métricas usan Job ID, no únicamente Display Name.
@@ -1296,25 +1300,25 @@ El contexto operacional debe permanecer siempre alrededor de la intervención de
 
 Usar estas definiciones como referencia transversal del producto:
 
-**Truck**  
+**Truck**
 Activo físico sobre el cual se trabaja.
 
-**Work Order**  
+**Work Order**
 Intervención completa realizada sobre el Truck.
 
-**Job**  
+**Job**
 Tarea específica dentro de la Work Order.
 
-**Mechanic**  
+**Mechanic**
 Persona que participa en la intervención.
 
-**Pause Event**  
+**Pause Event**
 Periodo en el que la Work Order deja de acumular Active Labor y registra una causa de espera.
 
-**Activity Log**  
+**Activity Log**
 Historial cronológico de acciones y cambios.
 
-**Job Catalog**  
+**Job Catalog**
 Taxonomía estandarizada de trabajos permitidos.
 
 ---

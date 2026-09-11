@@ -1,6 +1,22 @@
-# Lightning Shop — Mechanic App (P0)
+# Lightning Shop
 
-Greenfield monorepo for the Lightning Shop Mechanic Work Order experience.
+Operational Shop, Yard, and fleet-readiness application for Lightning
+Transport.
+
+## Documentation authority
+
+Read in this order before implementation:
+
+1. [`docs/LIGHTNING_SHOP_MASTER_PRD.md`](docs/LIGHTNING_SHOP_MASTER_PRD.md) —
+   canonical TARGET product and domain.
+2. [`docs/CURRENT_PRODUCT_STATUS.md`](docs/CURRENT_PRODUCT_STATUS.md) — behavior
+   implemented now.
+3. [`docs/ENGINEERING_PRACTICES.md`](docs/ENGINEERING_PRACTICES.md) — technical
+   rules.
+4. [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md) — classification
+   of all other documents.
+
+Historical PRDs and plans do not override these sources.
 
 ## Stack
 
@@ -28,14 +44,15 @@ Greenfield monorepo for the Lightning Shop Mechanic Work Order experience.
 - **CURRENT:** a Work Order is the complete service intervention for one Truck.
   Standard creation and Add Job permit multiple non-PM Job Categories without
   removing legacy readers or `primaryCategoryId`.
-- **TARGET (ownership migration in progress):** the **Shop Manager** plans and
-  controls the intervention (creates the Work Order, sets priority, adds Jobs,
-  assigns work, pauses/resumes, manages blockers). The **Mechanic** executes
-  assigned work. Mechanic-created standard Work Orders and mechanic global pause
-  are **legacy in transition** and kept working during a soft cutover. The new
-  Manager capability is `work_orders.manage`. See
-  [`docs/WORK_ORDER_OWNERSHIP_MIGRATION.md`](docs/WORK_ORDER_OWNERSHIP_MIGRATION.md)
-  and its [audit](docs/audits/WORK_ORDER_OWNERSHIP_AUDIT_2026-09-11.md).
+- **CURRENT soft cutover:** a Manager with `admin.access` and
+  `work_orders.manage` can create/plan Standard Work Orders, assign Jobs, and
+  pause/resume. Standard mechanics see assignment-centered UI and can report
+  blockers, while legacy Standard create and some pause/resume behavior remain.
+  PM remains specialized. See
+  [`docs/CURRENT_PRODUCT_STATUS.md`](docs/CURRENT_PRODUCT_STATUS.md).
+- **TARGET:** the Manager normally plans and controls the Standard intervention;
+  the mechanic executes assigned work. See the canonical Master PRD and
+  [`docs/audit/CURRENT_VS_TARGET.md`](docs/audit/CURRENT_VS_TARGET.md).
 - **LOCKED:** one open Work Order per Truck; a later visit or distinct service
   event creates a new Work Order. A Yard Phase is not a Category and never
   creates another Work Order.
@@ -43,12 +60,15 @@ Greenfield monorepo for the Lightning Shop Mechanic Work Order experience.
   specialized `mechanic.pm` exception. Completing a Job does not complete the
   Work Order, and Work Order `Completed` does not mean `Ready to Go` or
   `Returned to Service`.
-- **DEFERRED:** Job-level timers/assignments, a configurable rules engine,
-  unconfirmed external integrations, multiple open Work Orders per Truck, and
-  removal of `primaryCategoryId`.
+- **DEFERRED:** Job-level timers, a configurable rules engine, unconfirmed
+  external integrations, multiple open Work Orders per Truck, and removal of
+  `primaryCategoryId`. Per-Job assignment exists and is pending operational
+  validation.
 
-The approved migration sequence and current-code audit are indexed in
-[`docs/Lightning_Shop_Documentation_Package_2026-09-09/00_INDEX.md`](docs/Lightning_Shop_Documentation_Package_2026-09-09/00_INDEX.md).
+Use the current
+[`development roadmap`](docs/DEVELOPMENT_ROADMAP.md),
+[`implementation queue`](docs/IMPLEMENTATION_QUEUE.md), and
+[`CURRENT/TARGET audit`](docs/audit/CURRENT_VS_TARGET.md) for sequencing.
 
 ## Quick start (local)
 
@@ -71,7 +91,7 @@ export $(grep -v '^#' .env | xargs)
 # 4) Build shared + migrate + seed
 npm run build:shared
 npm run db:generate
-npm exec --workspace=@ltl-shop/api -- prisma migrate dev --name init
+npm exec --workspace=@ltl-shop/api -- prisma migrate deploy
 npm run db:seed
 
 # 5) Run (two terminals)
@@ -79,8 +99,8 @@ npm run dev:api
 npm run dev:web
 ```
 
-- Web: http://localhost:3000  
-- API: http://localhost:3001/api/health  
+- Web: http://localhost:3000
+- API: http://localhost:3001/api/health
 
 ### Cursor Cloud Agents (Docker-less setup)
 
@@ -137,8 +157,11 @@ The local seed also includes `daniel@lightning.local` with the PM-only capabilit
 | `/admin/yard-operations` | Admin Yard Operations and readiness view; mutations require `yard.operations.manage` |
 | `/mechanic/standard` | Standard mechanic workspace for users with `mechanic.standard` |
 | `/mechanic/pm` | PM mechanic workspace for users with `mechanic.pm` |
-| `docs/PRD_Lightning_Shop_Mechanic_P0.md` | Full PRD |
-| `docs/CURRENT_PRODUCT_STATUS.md` | Implemented workflows, operating configuration, and explicit next steps |
+| `docs/LIGHTNING_SHOP_MASTER_PRD.md` | Canonical product and domain TARGET |
+| `docs/CURRENT_PRODUCT_STATUS.md` | Implemented workflows and operating configuration |
+| `docs/DOCUMENTATION_INDEX.md` | Authority and classification for every relevant document |
+| `docs/DEVELOPMENT_ROADMAP.md` | NOW/NEXT/LATER sequencing |
+| `docs/IMPLEMENTATION_QUEUE.md` | Scoped, ordered implementation tasks |
 | `docs/pm-daniel.md` | PM authorization and future assignment-policy note |
 | `docs/ENGINEERING_PRACTICES.md` | Data-flow, caching, mutation, and performance rules |
 | `docs/PERFORMANCE.md` | Production measurements and performance targets |
@@ -173,6 +196,7 @@ npm run test:e2e --workspace=@ltl-shop/web   # requires running app
 
 ## Deferred beyond the current release
 
-Ninox live integration, per-Job timers/assignments, purchasing/costing,
-configurable rules, unconfirmed Samsara/Dispatch/McLeod integrations, and
-permanent dual-write.
+Ninox live integration, per-Job timers, purchasing/costing, configurable
+rules, unconfirmed Samsara/Dispatch/McLeod integrations, and permanent
+dual-write. Per-Job assignment is already implemented and must be stabilized,
+not rebuilt.

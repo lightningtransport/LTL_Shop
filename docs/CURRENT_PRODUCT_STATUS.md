@@ -1,12 +1,17 @@
 # Current product status
 
-This document describes the implemented mechanic experience as of the current
-release branch. It is an operational summary, not a replacement for the P0
-PRD.
+**Classification:** CURRENT STATE
+**Audited commit:** `2a77d4e`
+**Updated:** 2026-09-11
+
+This document describes only behavior implemented in the audited code. It does
+not define TARGET behavior. Product direction lives exclusively in
+`LIGHTNING_SHOP_MASTER_PRD.md`; gaps and sequencing live in
+`audit/CURRENT_VS_TARGET.md` and `DEVELOPMENT_ROADMAP.md`.
 
 ## What is implemented
 
-### Shop Admin read-only operations
+### Shop Admin operations
 
 - Active users with `admin.access` can enter the server-protected `/admin`
   shell; users without that capability receive a secure 403 response and no
@@ -90,10 +95,10 @@ PRD.
   `/admin/trucks/[id]`. Presence is explicitly `UNKNOWN`; Incoming Trucks and
   Upcoming Departures are unavailable because no telematics, gate, or Dispatch
   source is connected.
-- Users with `yard.operations.manage` can start or close a readiness
-  assessment, update its six requirements, and explicitly mark it Ready when
-  the rules pass. These mutations use server authorization, optimistic version
-  checks, idempotency, and Activity Log records.
+- Users with both `admin.access` and `yard.operations.manage` can start or close
+  a readiness assessment, update its six requirements, and explicitly mark it
+  Ready when the rules pass. These mutations use server authorization,
+  optimistic version checks, idempotency, and Activity Log records.
 - Yard Phase is derived for presentation from assessment and Work Order
   evidence. It is not a persisted Work Order status, not a Job Category, and
   does not create another Work Order.
@@ -158,23 +163,34 @@ PRD.
 
 ### Work Order ownership and permissions
 
-- **CURRENT:** creating a Work Order requires a mechanic capability
-  (`mechanic.standard` or `mechanic.pm`); `admin.access` alone cannot create.
-  Priority is set by the mechanic at creation and changed afterward only by an
-  `admin.access` PATCH. Pause/resume are mechanic actions on the whole Work
-  Order; there is no manager pause. Assignment is Work-Order-level via
-  `MechanicAssignment` (no per-Job assignee).
-- **TARGET (ownership migration):** the **Shop Manager** (`work_orders.manage`,
-  additive capability) plans and controls the intervention — creates the Work
-  Order, sets priority, adds Jobs, assigns work per Job, pauses/resumes, and
-  manages blockers. The **Mechanic** executes assigned work, reports blockers,
-  and no longer sets priority or globally pauses. Mechanic-created standard Work
-  Orders and mechanic global pause stay working during a soft cutover and are
-  removed in a later, explicit slice. PM stays untouched: the PM mechanic keeps
-  self-creating the PM service. Full plan:
-  [`WORK_ORDER_OWNERSHIP_MIGRATION.md`](./WORK_ORDER_OWNERSHIP_MIGRATION.md);
-  current-state audit:
-  [`audits/WORK_ORDER_OWNERSHIP_AUDIT_2026-09-11.md`](./audits/WORK_ORDER_OWNERSHIP_AUDIT_2026-09-11.md).
+- Ownership is currently a **soft-cutover hybrid**.
+- A Standard mechanic with `mechanic.standard` can still create a Standard Work
+  Order, choose its initial priority, and use the legacy Standard create route.
+  The Home screen is titled “My Assigned Work,” but the Standard Create CTA
+  remains available in a secondary style.
+- A Manager with both `admin.access` and `work_orders.manage` can create a
+  Standard Work Order from `/admin/work-orders/new`, select a Truck, add
+  multi-category catalog or Custom Jobs, set priority/notes, and optionally
+  assign individual Jobs. Manager-created Standard work is `created`, not
+  auto-started. Managers cannot create PM through this route.
+- `MechanicAssignment` remains the Work Order-level general team.
+  `WorkOrderJob.assignedMechanicId` is an optional per-Job assignment. Manager
+  create unions Job assignees into the general team; Manager detail can
+  assign/unassign a Job with version and idempotency checks. An unassigned Job
+  has no persisted per-Job owner and may be presented as inheriting the general
+  team.
+- Managers with `work_orders.manage` can officially pause/resume a Standard
+  Work Order from Admin. Standard mechanics can report a blocker without
+  changing Work Order status or waiting totals. The blocker is stored as a
+  closed, zero-duration non-official `PauseEvent` and writes
+  `blocker_reported`.
+- Legacy mechanic pause/resume endpoints still exist. Standard detail presents
+  Report Blocker while in progress, but a paused Work Order still exposes
+  resume/change-reason behavior. PM retains its specialized pause behavior.
+- Admin users can patch priority/notes on open Work Orders. There is no general
+  permission-management UI.
+- The persisted capabilities are `admin.access`, `mechanic.standard`,
+  `mechanic.pm`, `yard.operations.manage`, and `work_orders.manage`.
 
 ### PM workflow
 
@@ -217,39 +233,23 @@ the work order. Completed PM records are read-only.
 - The Supabase Reset Password email template must use
   `{{ .ConfirmationURL }}`.
 - Prisma is the sole schema-migration authority. Do not add a parallel
-  migration history under `supabase/migrations`.
+  migration history under `supabase/migrations`. The existing
+  `supabase/migrations/20260825140000_init_domain.sql` is a preserved legacy
+  snapshot, not an active or extensible migration source.
 
-## Explicit next steps
+## Known current limitations
 
-These are deliberately outside the current implementation:
-
-1. Create and invite production Supabase Auth users for each mechanic, then
-   connect their Auth IDs to the existing application users.
-2. Perform a production smoke test with a real reset-password email and a real
-   Safari mobile device.
-3. Remove the compatibility-only `pmAuthorized` column after production
-   stability is confirmed; a general permission-management UI remains deferred.
-4. Off Duty entry/exit and downtime metrics stay deferred. Keep Yard/readiness
-   mutations scoped to `yard.operations.manage`. Do not invent Catalog writes,
-   Custom Job mapping, or Job Performance until those contracts exist.
-5. Integrate live Ninox data only after its adapter contract and write model
-   are approved.
-6. Keep release discipline: merge only after CI and both Vercel deployments
-   pass, then run the production smoke test.
-
-## Verification baseline
-
-The release branch is expected to pass:
-
-```bash
-npm run lint
-npm run test --workspace=@ltl-shop/shared
-npm run test --workspace=@ltl-shop/api
-npm run test --workspace=@ltl-shop/web
-npm run test:e2e --workspace=@ltl-shop/web -- admin-shell.spec.ts
-npm run build
-git diff --check
-```
-
-The web E2E suite additionally validates mobile interactions, PM behavior,
-job duplication protection, and page-scroll restoration.
+- Physical Yard Presence is always `UNKNOWN`; Samsara, McLeod, Dispatch,
+  Incoming, and Departures are not connected.
+- Yard Phase is derived for presentation; no persisted Yard Phase event exists.
+- Ready to Go, Returned to Service, and Work Order completion are separate
+  implemented concepts.
+- Admin Catalog is read-only. Catalog writes, Custom Job review/mapping, Job
+  performance, and a general permission UI do not exist.
+- Ninox is not an operational source. The code has only a placeholder/status
+  integration surface, and `DATA_SOURCE=supabase` is the current mode.
+- `pmAuthorized` remains in the schema for compatibility but does not grant PM
+  authority.
+- The complete local Playwright baseline currently has existing
+  failures/timeouts. Exact verification evidence is recorded in
+  `audit/BASELINE_VERIFICATION.md`.

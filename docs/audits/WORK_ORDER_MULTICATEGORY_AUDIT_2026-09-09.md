@@ -1,5 +1,9 @@
 # Work Order multi-Category audit — 2026-09-09
 
+> ⚠️ HISTORICAL DOCUMENT
+> This document is preserved for historical/reference purposes and is not current product authority.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 ## 1. Checkout and scope
 
 - Branch audited: `codex/work-order-multicategory-docs`, created from refreshed

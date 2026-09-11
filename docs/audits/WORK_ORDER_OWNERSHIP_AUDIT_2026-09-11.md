@@ -1,5 +1,9 @@
 # Work Order Ownership Audit — 2026-09-11
 
+> ⚠️ HISTORICAL DOCUMENT
+> This document is preserved for historical/reference purposes and is not current product authority.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 Read-only audit of the current implementation, written before any ownership
 migration code. It answers the questions required by the ownership change
 request (who creates Work Orders, what conflicts with a Manager-first model,

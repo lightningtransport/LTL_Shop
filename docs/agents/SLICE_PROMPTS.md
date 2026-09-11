@@ -1,5 +1,9 @@
 # Slice Prompts — Work Order Ownership Migration
 
+> ⚠️ DEPRECATED
+> Do not use this document for new implementation decisions.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 Copy-paste prompts for running each slice with a subagent on a cheaper model, in
 a loop. Each prompt is self-contained: it names the goal, the files, the
 acceptance criteria, and the verification commands. Run one slice per PR, in

@@ -1,5 +1,9 @@
 # Prompts listos para Codex
 
+> ⚠️ DEPRECATED
+> Do not use this document for new implementation decisions.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 Usar en orden. Reemplazar solo los valores entre corchetes. No combinar auditoría e implementación en una sola ejecución.
 
 ## Prompt 1 — Auditoría previa sin cambios

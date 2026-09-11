@@ -1,5 +1,9 @@
 # Work Order Ownership Migration — Master Plan
 
+> ⚠️ HISTORICAL DOCUMENT
+> This document is preserved for historical/reference purposes and is not current product authority.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 Target experience:
 
 > Managers plan and control the intervention. Mechanics execute assigned work.

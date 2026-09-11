@@ -1,5 +1,9 @@
 # Lightning Shop — paquete de dirección de producto y evolución
 
+> ⚠️ HISTORICAL DOCUMENT
+> This document is preserved for historical/reference purposes and is not current product authority.
+> See `docs/LIGHTNING_SHOP_MASTER_PRD.md`.
+
 Estado: dirección aprobada; implementación Standard multicategoría CURRENT
 Fecha: 2026-09-09
 Idioma normativo: los términos `Truck`, `Work Order` y `Job` se mantienen canónicos.
