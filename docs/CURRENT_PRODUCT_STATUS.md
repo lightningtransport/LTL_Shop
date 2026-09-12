@@ -1,15 +1,15 @@
 # Current product status
 
 **Classification:** CURRENT STATE
-**Audited commit:** `fe40f7d`
-**Updated:** 2026-09-11
+**Audited commit:** V2-002 TARGET cutover (this branch)
+**Updated:** 2026-09-12
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
 `LIGHTNING_SHOP_MASTER_PRD.md`; gaps and sequencing live in
-`audit/CURRENT_VS_TARGET.md` and `DEVELOPMENT_ROADMAP.md`. The proposed V2
-ownership cutover (not implemented) is `OWNERSHIP_CUTOVER_CONTRACT.md` and
-is pending Cristian’s approval.
+`audit/CURRENT_VS_TARGET.md` and `DEVELOPMENT_ROADMAP.md`. The approved V2
+ownership contract is `OWNERSHIP_CUTOVER_CONTRACT.md`. V2-002 implemented that
+TARGET authorization/UX.
 
 ## What is implemented
 
@@ -43,30 +43,34 @@ is pending Cristian’s approval.
   make, model, year, mileage, company, and owner; and provides category-filtered,
   cursor-paginated recent completed repair history. Work Order timing, Jobs,
   pause history, and Activity Log remain visible. On an open Standard
-  Work Order, users with `admin.access` can add or soft-remove assigned
-  mechanics; per-Job assign/unassign also requires `work_orders.manage`.
+  Work Order, users with `admin.access` and `work_orders.manage` can add or
+  soft-remove assigned mechanics and add Jobs after create; per-Job
+  assign/unassign also requires `work_orders.manage`.
   PM Work Orders stay assigned to their creator. Assignments keep at
   least one active mechanic, use Work Order versioning and idempotency, and
   write `mechanic_added` / `mechanic_removed` Activity Log events. On any open
-  Work Order, including PM, managers can cancel it with a required reason. Cancel
+  Work Order, including PM, Managers with `work_orders.manage` can cancel it
+  with a required reason. Cancel
   stops open labor and wait time, sets status `cancelled`, and records a
   `manager_correction` Activity Log event. Jobs are not cancelled separately.
-  On an in-progress Work Order, managers can complete it with the same finish
-  rules as the mechanic workspace: Standard Jobs cannot still be `to_do`, PM
+  On an in-progress Work Order, Managers with `work_orders.manage` can complete
+  it: Standard Jobs cannot still be `to_do`, PM
   still needs observed mileage and at least one part, and completion writes
-  `work_order_completed`. Managers can reopen a completed or cancelled Work
+  `work_order_completed`. Users with `admin.access` can reopen a completed or cancelled Work
   Order with a required reason when the Truck has no other open Work Order.
   Reopen restores `in_progress` if work had started, otherwise `created`,
   clears completion metadata, and records a `manager_correction` event. Jobs
-  are not reopened separately. On any open Work Order, managers can PATCH
+  are not reopened separately.   On any open Work Order, Managers with `work_orders.manage` can PATCH
   allowed fields: `priority` and `notes`. Empty notes store as null. PM
   priority stays `normal`. Closed Work Orders stay read-only for these fields.
   Field edits use versioning and idempotency and write `priority_changed`
-  and/or `notes_updated`. Managers can correct a closed labor session or wait
+  and/or `notes_updated`. Users with `admin.access` can correct a closed labor session or wait
   interval with a required reason. Totals are recalculated from those segments;
   open time is not edited here. The correction writes `manager_correction` with
-  `time_corrected`. On an open Standard Work Order, managers can cancel a to-do
-  Job or reopen a cancelled Job with a required reason. Cancel writes
+  `time_corrected`. On an open Standard Work Order, Managers with
+  `work_orders.manage` can cancel a to-do
+  Job with a required reason. Reopening a cancelled Job stays
+  `admin.access`. Cancel writes
   `job_cancelled`; reopen writes `manager_correction` with `job_reopened`.
   Completed Jobs stay as they are. PM Work Orders have no Jobs. After a Work
   Order is completed, managers can mark the Truck **Returned to Service** with
@@ -125,22 +129,21 @@ is pending Cristian’s approval.
 
 ### Standard mechanic work orders
 
-- A mechanic selects a truck, a non-PM category, one or more jobs, optional
-  collaborators, priority, and optional notes.
-- PM is not offered to a user without `mechanic.pm`. Collaborators are
-  optional and never default to the work-order creator.
-- On creation, choosing a non-PM category immediately lists its catalog jobs
-  inline. “Job not listed” switches to an exclusive custom-job form. A Standard
-  Work Order may contain Jobs from multiple non-PM Categories; changing the
-  Initial/Primary Category never silently removes selected Jobs. Existing
-  orders use a picker that can add a Job from another Standard Category.
+- A Standard mechanic does **not** create Work Orders, choose Priority, add
+  Jobs, globally pause/resume, or finish the Work Order. Those actions require
+  `work_orders.manage` on the Admin path and return API 403 for the mechanic
+  Standard routes. The Standard Create CTA and `/mechanic/standard/new` form
+  are gone; the deep link asks the mechanic to contact their Shop Manager.
+- An assigned Standard mechanic can start work, complete assigned or
+  inherited-team Jobs, report a blocker, and save execution notes (including
+  additional work for the Manager to add as a Job).
+- PM is not offered to a user without `mechanic.pm`.
 - Catalog aliases resolve to one canonical result; a catalog job or normalized
-  custom job cannot be added twice.
-- Work can start, pause only while a job remains pending, resume, and finish
-  after all required jobs are complete.
-- Finished work returns to Home and is available from the completed-work
-  section. Active and paused work remain separate. The Standard empty active
-  list reads “No assigned work in progress.”
+  custom job cannot be added twice when a Manager adds work.
+- Finished work remains available from the completed-work section. Active and
+  paused work remain separate. The Standard empty active list reads “No
+  assigned work in progress.” A paused Standard Work Order tells the mechanic
+  the Manager will resume it.
 
 ### Work Order multi-Category implementation
 
@@ -167,53 +170,46 @@ is pending Cristian’s approval.
 
 ### Work Order ownership and permissions
 
-- Ownership is currently a **soft-cutover hybrid**.
-- A Standard mechanic with `mechanic.standard` can still create a Standard Work
-  Order, choose its initial priority, and use the legacy Standard create route.
-  The Home screen is titled “My Assigned Work,” but the Standard Create CTA
-  remains available in a secondary style. Standard Home cards and Work Order
-  detail show the Work Order team and label each Job as assigned to the signed-in
-  mechanic, assigned to another mechanic, or unassigned and inheriting the team.
-  Detail groups remaining work into My Jobs (assigned to the mechanic or
-  unassigned) and Other work on this Truck. PM Home and PM detail do not use
-  these labels.
-- A Manager with both `admin.access` and `work_orders.manage` can create a
-  Standard Work Order from `/admin/work-orders/new`, select a Truck, add
-  multi-category catalog or Custom Jobs, set priority/notes, and optionally
-  assign individual Jobs. Manager-created Standard work is `created`, not
-  auto-started. Managers cannot create PM through this route.
+- Ownership is the approved V2 TARGET model (V2-002). UI and API change
+  together. There is no W1 compatibility soak.
+- A Standard mechanic with `mechanic.standard` executes assigned work. Home
+  remains “My Assigned Work.” Standard Create, global pause/resume/change-reason,
+  Add Job, and Finish Work Order are hidden. Those mechanic APIs return 403.
+  The mechanic can start work, complete assigned or inherited-team Jobs, report
+  a blocker, and save execution notes so the Manager can add discovered work.
+  Unassigned Jobs remain executable by the general Work Order team; a specific
+  Job assignee takes priority in presentation.
+- A Manager with both `admin.access` and `work_orders.manage` creates Standard
+  Work Orders from `/admin/work-orders/new`, adds Jobs after create, sets
+  priority/notes, assigns the team and per-Job mechanics, officially
+  pauses/resumes, and completes or cancels the Work Order. Manager-created
+  Standard work is `created`, not auto-started. Managers cannot create PM
+  through this route. The Admin Create CTA is hidden without
+  `work_orders.manage`; the API returns 403.
 - `MechanicAssignment` remains the Work Order-level general team.
   `WorkOrderJob.assignedMechanicId` is an optional per-Job assignment. Manager
   create unions Job assignees into the general team; Manager detail assign also
   adds or reactivates that mechanic on the general team. Assign/unassign keep
   version and idempotency checks. An unassigned Job has no persisted per-Job
-  owner and is presented as inheriting the general team. Mechanic list and
-  detail DTOs include `assignedMechanic` and the active team. A mechanic can
+  owner and is presented as inheriting the general team. A mechanic can
   read a Work Order when they created it, are an active team member, or are the
   per-Job assignee.
-- Managers with `work_orders.manage` can officially pause/resume a Standard
-  Work Order from Admin. Standard mechanics can report a blocker without
+- Managers with `work_orders.manage` officially pause/resume a Standard
+  Work Order from Admin. Standard mechanics report a blocker without
   changing Work Order status or waiting totals. The blocker is stored as a
   closed, zero-duration non-official `PauseEvent` and writes
   `blocker_reported` with actor and reason. Admin list/detail show the latest
   report separately from the current official pause; pause history and time
   correction use official pauses only. Waiting totals exclude report-only
   events even if a report later has a non-zero duration.
-- Legacy mechanic pause/resume endpoints still exist. Standard detail presents
-  Report Blocker while in progress, but a paused Work Order still exposes
-  resume/change-reason behavior. PM retains its specialized pause behavior.
-- Users with `admin.access` can patch priority/notes on open Work Orders and
-  perform the other V1 Admin corrections (cancel/complete/reopen, Job
-  cancel/reopen, time correction, Returned to Service). Official pause/resume,
-  Manager create, and per-Job assignment require `work_orders.manage` in
-  addition. There is no general permission-management UI.
+- PM retains its specialized create-start, pause, resume, and finish behavior.
+- Reopen Work Order, time correction, reopen Job, and Returned to Service stay
+  on `admin.access`. There is no general permission-management UI.
 - The persisted capabilities are `admin.access`, `mechanic.standard`,
   `mechanic.pm`, `yard.operations.manage`, and `work_orders.manage`. The
   endpoint/capability matrix is in `audit/CAPABILITY_BOUNDARY_AUDIT.md`.
-- V2-001 published `OWNERSHIP_CUTOVER_CONTRACT.md` for product approval.
-  CURRENT runtime behavior is unchanged: this is still the soft-cutover
-  hybrid. Do not hide or 403 legacy Standard create/pause because the
-  contract exists.
+- Ops still must grant `work_orders.manage` to the real Shop Manager roster
+  and System Admin (contract Q14). That is not a code task.
 
 ### PM workflow
 
@@ -269,9 +265,10 @@ the work order. Completed PM records are read-only.
   implemented concepts.
 - Admin Catalog is read-only. Catalog writes, Custom Job review/mapping, Job
   performance, and a general permission UI do not exist.
-- Shop Manager and System Admin still share the Admin shell. V1-004 documents
-  the HTTP capability matrix; it does not split remaining `admin.access`
-  corrections onto `work_orders.manage`.
+- Shop Manager and System Admin still share the Admin shell, now
+  capability-differentiated: planning/complete/cancel/team/priority/notes/add
+  Job require `work_orders.manage`; reopen WO, time correction, Job reopen,
+  and Returned to Service stay on `admin.access`.
 - Ninox is not an operational source. The code has only a placeholder/status
   integration surface, and `DATA_SOURCE=supabase` is the current mode.
 - `pmAuthorized` remains in the schema for compatibility but does not grant PM

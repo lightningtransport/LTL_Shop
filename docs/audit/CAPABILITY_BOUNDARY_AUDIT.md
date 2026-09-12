@@ -3,7 +3,9 @@
 **Classification:** AUDIT EVIDENCE
 **Task:** V1-004
 **Audited commit:** see `CURRENT_PRODUCT_STATUS.md`
-**Updated:** 2026-09-11
+**Updated:** 2026-09-12 — V2-002 TARGET enforcement applied. Historical V1
+wording below is superseded by the executable matrix in
+`capability-boundary.matrix.ts`.
 
 This is a read-first authorization matrix for Lightning Shop V1. It records
 what each Admin, Work Order, and Yard mutation **declares**, what the public
