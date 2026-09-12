@@ -87,7 +87,6 @@ export default function HomePage() {
           title={mode === MechanicMode.PM
             ? (messages.locale === 'es' ? 'Mecánico de PM' : 'PM Mechanic')
             : (messages.locale === 'es' ? 'Mi trabajo asignado' : 'My Assigned Work')}
-          subtitle={messages.workspaceUnavailable}
         />
         <EmptyState>
           <p>{messages.workspaceUnavailable}</p>
