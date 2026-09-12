@@ -169,12 +169,11 @@ export class WorkOrdersService {
       if (input.mechanicIds.some((id) => id !== user.id)) {
         throw new BadRequestException('PM Work Orders can only be assigned to their creator');
       }
+    } else if (actorKind === 'mechanic') {
+      throw new ForbiddenException('Standard Work Orders are created by a Shop Manager.');
     } else if (!input.jobs.length) {
       throw new BadRequestException('At least one job is required for this Work Order');
     } else {
-      if (actorKind === 'mechanic') {
-        this.assertCapability(user, AppCapability.MECHANIC_STANDARD, 'standard mechanic');
-      }
       const jobAssigneeIds = input.jobs
         .map((job) => job.assignedMechanicId)
         .filter((id): id is string => Boolean(id));
@@ -504,7 +503,10 @@ export class WorkOrdersService {
 
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      if (!options.managerActor) this.assertMechanicAccess(user, wo);
+      if (!options.managerActor) {
+        this.assertMechanicAccess(user, wo);
+        this.assertStandardPlanningDenied(wo, 'Standard pause and resume are Manager-owned.');
+      }
       if (wo.status !== 'in_progress') {
         throw new BadRequestException('Only in-progress Work Orders can be paused');
       }
@@ -550,6 +552,7 @@ export class WorkOrdersService {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
       this.assertMechanicAccess(user, wo);
+      this.assertStandardPlanningDenied(wo, 'Standard pause and resume are Manager-owned.');
       if (wo.status !== 'waiting_paused') {
         throw new BadRequestException('Work Order is not paused');
       }
@@ -596,7 +599,10 @@ export class WorkOrdersService {
   async resume(user: AuthUser, id: string, options: { managerActor?: boolean } = {}) {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      if (!options.managerActor) this.assertMechanicAccess(user, wo);
+      if (!options.managerActor) {
+        this.assertMechanicAccess(user, wo);
+        this.assertStandardPlanningDenied(wo, 'Standard pause and resume are Manager-owned.');
+      }
       if (wo.status !== 'waiting_paused') {
         throw new BadRequestException('Only paused Work Orders can be resumed');
       }
@@ -632,10 +638,28 @@ export class WorkOrdersService {
     });
   }
 
-  async addJob(user: AuthUser, id: string, raw: unknown) {
+  async addJobByManager(user: AuthUser, id: string, raw: unknown) {
+    return this.addJob(user, id, raw, { managerActor: true });
+  }
+
+  async addJob(
+    user: AuthUser,
+    id: string,
+    raw: unknown,
+    options: { managerActor?: boolean } = {},
+  ) {
     const parsed = addJobSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     const input = parsed.data;
+    if (!options.managerActor) {
+      const existingWo = await this.prisma.workOrder.findUnique({
+        where: { id },
+        include: { primaryCategory: true, mechanics: true, jobs: { select: { assignedMechanicId: true } } },
+      });
+      if (!existingWo) throw new NotFoundException('Work Order not found');
+      this.assertMechanicAccess(user, existingWo);
+      this.assertStandardPlanningDenied(existingWo, 'Standard Jobs are added by a Shop Manager.');
+    }
     const operation = 'add_job';
     const payloadHash = idempotencyFingerprint({ workOrderId: id, ...input });
     const existing = await this.findAddJobIdempotent(
@@ -661,7 +685,7 @@ export class WorkOrdersService {
           user.id,
         );
         if (replay) return replay;
-        this.assertMechanicAccess(user, wo);
+        if (!options.managerActor) this.assertMechanicAccess(user, wo);
         if (wo.primaryCategory.name === 'PM') {
           throw new BadRequestException('PM Work Orders do not use jobs');
         }
@@ -949,6 +973,7 @@ export class WorkOrdersService {
       });
       if (!wo) throw new NotFoundException('Work Order not found');
       this.assertMechanicAccess(user, wo);
+      this.assertStandardPlanningDenied(wo, 'Standard Work Orders are completed by a Shop Manager.');
       if (wo.status !== 'in_progress') {
         throw new BadRequestException('Work Order must be in progress to finish');
       }
@@ -1148,6 +1173,14 @@ export class WorkOrdersService {
     if (!hasCapability(user, capability)) {
       throw new ForbiddenException(`You do not have access to the ${workspace} workspace.`);
     }
+  }
+
+  private assertStandardPlanningDenied(
+    wo: { primaryCategory: { name: string } },
+    message: string,
+  ) {
+    if (wo.primaryCategory.name === 'PM') return;
+    throw new ForbiddenException(message);
   }
 
   private isAssigned(

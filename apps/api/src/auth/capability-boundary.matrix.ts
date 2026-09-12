@@ -23,7 +23,7 @@ const STANDARD = AppCapability.MECHANIC_STANDARD;
 const PM = AppCapability.MECHANIC_PM;
 
 /**
- * V1 expected capabilities for every Admin / Work Order / Yard mutation.
+ * TARGET expected capabilities for every Admin / Work Order / Yard mutation.
  * Admin reads inherit class-level `admin.access` and are listed separately
  * so the matrix stays complete without implying they are mutations.
  */
@@ -42,9 +42,9 @@ export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     path: '/admin/work-orders/:id',
     handler: 'patchWorkOrder',
     controller: 'admin',
-    expected: [ADMIN],
+    expected: [ADMIN, WORK_ORDERS],
     enforcement: 'http_guard',
-    notes: 'V1 Admin correction: priority/notes on an open Work Order.',
+    notes: 'TARGET Q4: priority and operational notes require work_orders.manage.',
   },
   {
     method: 'POST',
@@ -68,8 +68,9 @@ export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     path: '/admin/jobs/:id/cancel',
     handler: 'cancelJob',
     controller: 'admin',
-    expected: [ADMIN],
+    expected: [ADMIN, WORK_ORDERS],
     enforcement: 'http_guard',
+    notes: 'TARGET Q7: Manager may cancel a pending Job.',
   },
   {
     method: 'POST',
@@ -92,16 +93,18 @@ export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     path: '/admin/work-orders/:id/complete',
     handler: 'completeWorkOrder',
     controller: 'admin',
-    expected: [ADMIN],
+    expected: [ADMIN, WORK_ORDERS],
     enforcement: 'http_guard',
+    notes: 'TARGET Q5: Manager completes the Standard Work Order.',
   },
   {
     method: 'POST',
     path: '/admin/work-orders/:id/cancel',
     handler: 'cancelWorkOrder',
     controller: 'admin',
-    expected: [ADMIN],
+    expected: [ADMIN, WORK_ORDERS],
     enforcement: 'http_guard',
+    notes: 'TARGET Q5: Manager cancels the Standard Work Order.',
   },
   {
     method: 'POST',
@@ -126,18 +129,27 @@ export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     path: '/admin/work-orders/:id/mechanics',
     handler: 'addWorkOrderMechanic',
     controller: 'admin',
-    expected: [ADMIN],
+    expected: [ADMIN, WORK_ORDERS],
     enforcement: 'http_guard',
-    notes: 'Work Order-level team assignment. Sibling Job assign requires work_orders.manage; V1 keeps this on admin.access.',
+    notes: 'TARGET Q3: Work Order team add requires work_orders.manage.',
   },
   {
     method: 'DELETE',
     path: '/admin/work-orders/:id/mechanics/:mechanicId',
     handler: 'removeWorkOrderMechanic',
     controller: 'admin',
-    expected: [ADMIN],
+    expected: [ADMIN, WORK_ORDERS],
     enforcement: 'http_guard',
-    notes: 'Work Order-level team unassignment. Same V1 admin.access rule as add.',
+    notes: 'TARGET Q3: Work Order team remove requires work_orders.manage.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/work-orders/:id/jobs',
+    handler: 'addWorkOrderJob',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'http_guard',
+    notes: 'TARGET Q8: Manager Add Job after create.',
   },
   {
     method: 'POST',
@@ -214,7 +226,7 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     controller: 'work-orders',
     expected: [STANDARD],
     enforcement: 'service',
-    notes: 'PM create uses mechanic.pm instead. Controller has AuthGuard only. Legacy mechanic create is intentionally kept.',
+    notes: 'PM create uses mechanic.pm instead. TARGET Q9: Standard create is Manager-owned and returns 403.',
   },
   {
     method: 'POST',
@@ -232,7 +244,7 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     controller: 'work-orders',
     expected: [STANDARD],
     enforcement: 'service',
-    notes: 'Legacy mechanic pause. Soft-cutover; do not remove in V1.',
+    notes: 'TARGET Q12: Standard pause is Manager-owned. PM pause remains authorized.',
   },
   {
     method: 'POST',
@@ -241,6 +253,7 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     controller: 'work-orders',
     expected: [STANDARD],
     enforcement: 'service',
+    notes: 'TARGET Q12: Standard change-reason is Manager-owned. PM remains authorized.',
   },
   {
     method: 'POST',
@@ -249,6 +262,7 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     controller: 'work-orders',
     expected: [STANDARD],
     enforcement: 'service',
+    notes: 'TARGET Q12: Standard resume is Manager-owned. PM remains authorized.',
   },
   {
     method: 'POST',
@@ -265,6 +279,7 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     controller: 'work-orders',
     expected: [STANDARD],
     enforcement: 'service',
+    notes: 'TARGET Q5: Standard complete is Manager-owned. PM finish remains authorized.',
   },
   {
     method: 'POST',
@@ -273,6 +288,7 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     controller: 'work-orders',
     expected: [STANDARD],
     enforcement: 'service',
+    notes: 'TARGET Q8: Mechanic Add Job is denied. Manager uses POST /admin/work-orders/:id/jobs.',
   },
   {
     method: 'POST',
