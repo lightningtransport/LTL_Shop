@@ -5,7 +5,8 @@ import type { PmServiceDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
 import { shopKeys, usePmService } from '@/lib/shop-data';
-import { Button, Card, Input, Label, Select } from '@/components/ui';
+import { Button, Card, Input, Label, LoadFailure, Select } from '@/components/ui';
+import { useShopLocale } from '@/lib/locale-context';
 
 export type PmDraftState = {
   ready: boolean;
@@ -40,6 +41,7 @@ export function PmServiceCard({
   workOrderId: string;
   onDraftStateChange?: (state: PmDraftState) => void;
 }) {
+  const { messages } = useShopLocale();
   const { data, error, mutate } = usePmService(workOrderId, true);
   const [mileage, setMileage] = useState('');
   const [selections, setSelections] = useState<Record<string, string>>({});
@@ -130,8 +132,16 @@ export function PmServiceCard({
     });
   }, [data, dirty, draft.selections.length, mileage, onDraftStateChange, saveError, saving]);
 
-  if (error instanceof Error) {
-    return <p className="mb-4 text-sm text-destructive" role="alert">Unable to load PM service details.</p>;
+  if (error) {
+    return (
+      <div className="mb-4">
+        <LoadFailure
+          message={messages.pmServiceLoadError}
+          retryLabel={messages.retry}
+          onRetry={() => void mutate()}
+        />
+      </div>
+    );
   }
   if (!data) return <Card className="mb-4 text-sm text-muted-foreground">Loading PM service details…</Card>;
 

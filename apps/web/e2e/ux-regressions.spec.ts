@@ -280,6 +280,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await page.getByRole('button', { name: /Try again|Retry work orders/i }).click();
     await expect(timeoutAlert).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Start Work/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Start Work WO-1001, truck 905' })).toBeVisible();
   });
 
   test('keeps Home controls exclusive and uses logical back destinations', async ({ page }) => {

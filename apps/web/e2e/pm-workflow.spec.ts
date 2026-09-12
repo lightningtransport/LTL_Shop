@@ -124,4 +124,30 @@ test.describe('Daniel PM workflow', () => {
     await oil.selectOption(oilPart);
     await expect(oil).toHaveValue(oilPart);
   });
+
+  test('PM-only mechanic leaving /mechanic/standard gets an access exit', async ({ page }) => {
+    await mockPmApi(page);
+    await login(page);
+    await page.goto('/mechanic/standard', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('status', { name: /Restoring session|Loading work orders/i })).toHaveCount(0);
+    await expect(page.getByText(/not available for your account/i)).toBeVisible();
+    await page.getByRole('link', { name: /Go to your Shop home/i }).click();
+    await expect(page).toHaveURL(/\/mechanic\/pm$/);
+    await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
+  });
+
+  test('PM service load failure uses shared retry', async ({ page }) => {
+    await mockPmApi(page);
+    await page.route(`**/api/work-orders/${woId}/pm`, async (route) => {
+      if (route.request().method() === 'GET') {
+        await fulfill(route, { message: 'Unable to load PM service details.' }, 500);
+        return;
+      }
+      return route.fallback();
+    });
+    await login(page);
+    await page.goto(`/work-orders/${woId}`);
+    await expect(page.getByRole('alert').filter({ hasText: /Unable to load PM service details/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Try again|Retry/i })).toBeVisible();
+  });
 });

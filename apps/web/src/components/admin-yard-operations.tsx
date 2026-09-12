@@ -8,7 +8,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatAdminDate, formatDuration } from '@/lib/admin-format';
 import { useAdminYardOperations } from '@/lib/admin-data';
 import { buildYardOperationsQuery, DEFAULT_YARD_OPERATIONS_FILTERS, readYardOperationsFilters, YARD_PHASES, YARD_PRIORITIES, YARD_READINESS_FILTERS, YARD_WORK_ORDER_STATUSES, type YardOperationsFilters } from '@/lib/yard-operations-routing';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, Input, LoadFailure, PageSkeleton, Select } from './ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, PageSkeleton, Select } from './ui';
 import type { YardOperationsTruckDto } from '@ltl-shop/shared';
 
 const phaseMessageKey = {
@@ -142,7 +142,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           <div className="mb-3"><h2 id="yard-board-title" className="font-display text-xl font-semibold">{messages.yardBoard}</h2></div>
           <div className="overflow-x-auto rounded-xl border bg-muted/40 p-3">
             <div className="grid min-w-[1530px] grid-cols-9 gap-3">
-              {YARD_PHASES.map((phase) => <div key={phase} className="min-w-0" data-phase={phase}><div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-display text-sm font-semibold">{messages[phaseMessageKey[phase]]}</h3><span className="text-xs text-muted-foreground">{items.filter((item) => item.phase === phase).length}</span></div><div className="space-y-3">{items.filter((item) => item.phase === phase).map((item) => <YardTruckCard key={item.truck.id} item={item} locale={locale} messages={messages} now={now} />)}{items.every((item) => item.phase !== phase) ? <p className="rounded-lg border border-dashed bg-card/50 p-3 text-xs text-muted-foreground">{messages.noYardOperations}</p> : null}</div></div>)}
+              {YARD_PHASES.map((phase) => <div key={phase} className="min-w-0" data-phase={phase}><div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-display text-sm font-semibold">{messages[phaseMessageKey[phase]]}</h3><span className="text-xs text-muted-foreground">{items.filter((item) => item.phase === phase).length}</span></div><div className="space-y-3">{items.filter((item) => item.phase === phase).map((item) => <YardTruckCard key={item.truck.id} item={item} locale={locale} messages={messages} now={now} />)}{items.every((item) => item.phase !== phase) ? <CompactEmpty>{messages.noTrucksInPhase}</CompactEmpty> : null}</div></div>)}
             </div>
           </div>
         </section>
