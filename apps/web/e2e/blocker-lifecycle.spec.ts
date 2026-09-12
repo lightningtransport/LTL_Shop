@@ -13,7 +13,7 @@ test.describe('V1.2-002 blocker lifecycle', () => {
   test('mechanic report stays visible to Manager without pausing; official pause/resume works', async ({ page }) => {
     test.setTimeout(90_000);
     await devLogin(page, 'mechanic@lightning.local');
-    await expect(page.getByRole('link', { name: /Create New Work Order/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     await page.goto(`/work-orders/${BLOCKER_WO_ID}`);
     await expect(page.getByRole('heading', { name: 'WO-0106' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/In Progress/i)).toBeVisible();
