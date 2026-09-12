@@ -39,7 +39,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!sessionLoading && !token && !sessionError) router.replace('/login');
-    if (!sessionLoading && token && user && (!mode || !user.capabilities.includes(requiredCapability))) {
+    if (!sessionLoading && token && user && !mode) {
       router.replace(defaultWorkspacePath(user));
     }
   }, [sessionLoading, token, sessionError, user, mode, requiredCapability, router]);

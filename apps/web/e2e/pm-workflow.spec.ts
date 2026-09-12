@@ -128,14 +128,10 @@ test.describe('Daniel PM workflow', () => {
   test('PM-only mechanic leaving /mechanic/standard gets an access exit', async ({ page }) => {
     await mockPmApi(page);
     await login(page);
-    await page.goto('/mechanic/standard');
+    await page.goto('/mechanic/standard', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('status', { name: /Restoring session|Loading work orders/i })).toHaveCount(0);
-    const accessState = page.getByText(/not available for your account/i);
-    const pmHome = page.getByRole('heading', { name: 'PM Mechanic' });
-    await expect(accessState.or(pmHome)).toBeVisible();
-    if (await accessState.isVisible()) {
-      await page.getByRole('link', { name: /Go to your Shop home/i }).click();
-    }
+    await expect(page.getByText(/not available for your account/i)).toBeVisible();
+    await page.getByRole('link', { name: /Go to your Shop home/i }).click();
     await expect(page).toHaveURL(/\/mechanic\/pm$/);
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
   });
