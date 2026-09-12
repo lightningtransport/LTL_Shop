@@ -690,6 +690,31 @@ describe('AdminService', () => {
       data: expect.objectContaining({ status: 'in_progress', completedAt: null, completedById: null }),
     }));
     expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.MANAGER_CORRECTION }));
+    expect(tx.truckReadinessAssessment.findFirst).toHaveBeenCalled();
+    expect(tx.truckReadinessAssessment.update).not.toHaveBeenCalled();
+
+    const readyTx = assignmentTx(completed);
+    readyTx.workOrder.findUnique
+      .mockResolvedValueOnce(completed)
+      .mockResolvedValueOnce(completed)
+      .mockResolvedValueOnce(detailRow({ status: 'in_progress', version: 2, startedAt: completed.startedAt, completedAt: null }));
+    readyTx.truckReadinessAssessment.findFirst.mockResolvedValue({
+      id: '00000000-0000-4000-8000-000000000501',
+      status: 'ready',
+      version: 3,
+      approvedById: manager.id,
+    });
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof readyTx) => unknown) => callback(readyTx));
+    await expect(service.reopenWorkOrder(manager, completed.id, {
+      ...body,
+      idempotencyKey: '00000000-0000-4000-8000-000000001006',
+    })).resolves.toMatchObject({ status: 'in_progress' });
+    expect(readyTx.truckReadinessAssessment.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'under_review', readyAt: null, approvedById: null }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(readyTx, expect.objectContaining({
+      eventType: ActivityEventType.READINESS_APPROVAL_INVALIDATED,
+    }));
 
     const cancelled = detailRow({ status: 'cancelled', startedAt: null, completedAt: new Date() });
     const createdTx = assignmentTx(cancelled);
@@ -1300,6 +1325,10 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
       create: vi.fn(),
     },
     pmService: { findUnique: vi.fn().mockResolvedValue(null) },
+    truckReadinessAssessment: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      update: vi.fn(),
+    },
     truck: { update: vi.fn() },
     truckMileageAdjustment: { create: vi.fn() },
     ...extra,

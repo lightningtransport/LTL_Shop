@@ -18,10 +18,19 @@ export const READINESS_REQUIREMENT_TYPES: ReadinessRequirementType[] = [
   ReadinessRequirementType.QUALITY_CHECK,
 ];
 
+const GATE_PHASES: [ReadinessRequirementType, ReadinessPhase][] = [
+  [ReadinessRequirementType.INSPECTION, ReadinessPhase.INSPECTION],
+  [ReadinessRequirementType.REQUIRED_REPAIRS, ReadinessPhase.REQUIRED_WORK],
+  [ReadinessRequirementType.PM, ReadinessPhase.PM],
+  [ReadinessRequirementType.ALIGNMENT, ReadinessPhase.ALIGNMENT],
+  [ReadinessRequirementType.DETAILING, ReadinessPhase.DETAILING],
+  [ReadinessRequirementType.QUALITY_CHECK, ReadinessPhase.QUALITY_CHECK],
+];
+
 type DerivationWorkOrder = Pick<AdminWorkOrderSummaryDto, 'id' | 'status' | 'priority' | 'category' | 'currentPause'>;
 
 export interface ReadinessDerivationInput {
-  assessment: Pick<ReadinessAssessmentDto, 'status' | 'requirements'> | null;
+  assessment: Pick<ReadinessAssessmentDto, 'status' | 'requirements' | 'readyAt'> | null;
   linkedWorkOrders: DerivationWorkOrder[];
 }
 
@@ -31,12 +40,27 @@ export interface ReadinessDerivationResult {
   readiness: 'not_started' | ReadinessAssessmentStatus;
 }
 
-const isUnresolvedRequired = (outcome: ReadinessRequirementOutcome | undefined) =>
-  outcome === ReadinessRequirementOutcome.REQUIRED;
+const isUnresolvedGate = (outcome: ReadinessRequirementOutcome | undefined) =>
+  !outcome
+  || outcome === ReadinessRequirementOutcome.NOT_EVALUATED
+  || outcome === ReadinessRequirementOutcome.REQUIRED;
+
+export function isResidualReady(assessment: { status: string; readyAt?: string | null } | null | undefined) {
+  return assessment?.status === 'closed' && Boolean(assessment.readyAt);
+}
+
+function isApprovedReady(
+  assessment: Pick<ReadinessAssessmentDto, 'status' | 'readyAt'>,
+  openWorkOrders: DerivationWorkOrder[],
+) {
+  if (openWorkOrders.length) return false;
+  return assessment.status === 'ready' || isResidualReady(assessment);
+}
 
 /**
- * Derive the operational phase from maintenance evidence only. In particular,
- * no Work Order status is interpreted as yard presence or a visit.
+ * Derive the board column as the next unresolved readiness gate.
+ * An open Work Order is a blocker, not a phase by itself, and does not
+ * infer yard presence.
  */
 export function deriveReadiness({ assessment, linkedWorkOrders }: ReadinessDerivationInput): ReadinessDerivationResult {
   if (!assessment) {
@@ -70,46 +94,28 @@ export function deriveReadiness({ assessment, linkedWorkOrders }: ReadinessDeriv
     });
   }
 
-  const requiredRepairs = byType.get(ReadinessRequirementType.REQUIRED_REPAIRS);
-  const unresolvedRequired = requirements.filter((requirement) => isUnresolvedRequired(requirement?.outcome));
+  const unresolvedRequired = requirements.filter((requirement) =>
+    requirement?.outcome === ReadinessRequirementOutcome.REQUIRED,
+  );
   for (const requirement of unresolvedRequired) {
     blockers.push({ kind: 'required_requirement', requirementType: requirement!.type });
   }
 
-  if (assessment.status === 'ready' && openWorkOrders.length) {
+  if ((assessment.status === 'ready' || isResidualReady(assessment)) && openWorkOrders.length) {
     blockers.push({ kind: 'approval_conflict', message: 'A Work Order is open after approval.' });
   }
 
-  const hasUnevaluated = requirements.some((requirement) =>
-    !requirement || requirement.outcome === ReadinessRequirementOutcome.NOT_EVALUATED,
-  );
-  if (hasUnevaluated) {
-    return { phase: ReadinessPhase.NEEDS_EVALUATION, blockers, readiness: assessment.status };
-  }
-  if (requirements[0] && isUnresolvedRequired(requirements[0]!.outcome)) {
-    return { phase: ReadinessPhase.INSPECTION, blockers, readiness: assessment.status };
-  }
-  if (openWorkOrders.length || (requiredRepairs && isUnresolvedRequired(requiredRepairs.outcome))) {
-    return { phase: ReadinessPhase.REQUIRED_WORK, blockers, readiness: assessment.status };
+  if (isApprovedReady(assessment, openWorkOrders)) {
+    return { phase: ReadinessPhase.READY_TO_GO, blockers, readiness: assessment.status };
   }
 
-  const phaseRequirements: [ReadinessRequirementType, ReadinessPhase][] = [
-    [ReadinessRequirementType.PM, ReadinessPhase.PM],
-    [ReadinessRequirementType.ALIGNMENT, ReadinessPhase.ALIGNMENT],
-    [ReadinessRequirementType.DETAILING, ReadinessPhase.DETAILING],
-    [ReadinessRequirementType.QUALITY_CHECK, ReadinessPhase.QUALITY_CHECK],
-  ];
-  for (const [type, phase] of phaseRequirements) {
-    if (isUnresolvedRequired(byType.get(type)?.outcome)) {
+  for (const [type, phase] of GATE_PHASES) {
+    if (isUnresolvedGate(byType.get(type)?.outcome)) {
       return { phase, blockers, readiness: assessment.status };
     }
   }
 
-  if (assessment.status === 'ready' && !openWorkOrders.length && !blockers.length) {
-    return { phase: ReadinessPhase.READY_TO_GO, blockers, readiness: assessment.status };
-  }
-
-  return { phase: ReadinessPhase.NEEDS_EVALUATION, blockers, readiness: assessment.status };
+  return { phase: ReadinessPhase.READY_FOR_APPROVAL, blockers, readiness: assessment.status };
 }
 
 export function toReadinessAssessmentDto(row: {

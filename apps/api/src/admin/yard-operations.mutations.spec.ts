@@ -241,4 +241,102 @@ describe('Yard Operations readiness mutations', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000000021',
     })).rejects.toThrow('linked to this readiness assessment');
   });
+
+  it('does not withdraw Ready when only the waiver reason changes', async () => {
+    const waived = requirements.map((requirement) => (
+      requirement.type === ReadinessRequirementType.DETAILING
+        ? { ...requirement, outcome: ReadinessRequirementOutcome.WAIVED, waiverReason: 'wash later' }
+        : { ...requirement, outcome: ReadinessRequirementOutcome.NOT_REQUIRED }
+    ));
+    const readyAssessment = {
+      ...assessment,
+      status: ReadinessAssessmentStatus.READY,
+      readyAt: new Date('2026-09-12T12:00:00.000Z'),
+      approvedById: user.id,
+      requirements: waived,
+    };
+    const updated = { ...readyAssessment, version: 2, requirements: waived };
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      truckReadinessAssessment: {
+        findUnique: vi.fn()
+          .mockResolvedValueOnce({ truckId })
+          .mockResolvedValueOnce(readyAssessment),
+        update: vi.fn().mockResolvedValue(updated),
+      },
+      readinessRequirement: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      readinessMutation: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    };
+    const activity = { log: vi.fn().mockResolvedValue(undefined) };
+    const prisma = {
+      readinessMutation: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    };
+    const service = new YardOperationsService(prisma as never, {} as never, activity as never);
+
+    await service.updateRequirement(user, assessmentId, ReadinessRequirementType.DETAILING, {
+      outcome: ReadinessRequirementOutcome.WAIVED,
+      waiverReason: 'detailing scheduled tonight',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000030',
+    });
+
+    expect(tx.truckReadinessAssessment.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.not.objectContaining({ status: ReadinessAssessmentStatus.UNDER_REVIEW }),
+    }));
+    expect(activity.log).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      eventType: ActivityEventType.READINESS_APPROVAL_INVALIDATED,
+    }));
+  });
+
+  it('withdraws Ready when a resolved requirement becomes unresolved', async () => {
+    const completed = requirements.map((requirement) => ({
+      ...requirement,
+      outcome: ReadinessRequirementOutcome.NOT_REQUIRED,
+    }));
+    const readyAssessment = {
+      ...assessment,
+      status: ReadinessAssessmentStatus.READY,
+      readyAt: new Date('2026-09-12T12:00:00.000Z'),
+      approvedById: user.id,
+      requirements: completed,
+    };
+    const updated = {
+      ...readyAssessment,
+      status: ReadinessAssessmentStatus.UNDER_REVIEW,
+      readyAt: null,
+      approvedById: null,
+      version: 2,
+    };
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      truckReadinessAssessment: {
+        findUnique: vi.fn()
+          .mockResolvedValueOnce({ truckId })
+          .mockResolvedValueOnce(readyAssessment),
+        update: vi.fn().mockResolvedValue(updated),
+      },
+      readinessRequirement: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      readinessMutation: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    };
+    const activity = { log: vi.fn().mockResolvedValue(undefined) };
+    const prisma = {
+      readinessMutation: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    };
+    const service = new YardOperationsService(prisma as never, {} as never, activity as never);
+
+    await service.updateRequirement(user, assessmentId, ReadinessRequirementType.QUALITY_CHECK, {
+      outcome: ReadinessRequirementOutcome.REQUIRED,
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000031',
+    });
+
+    expect(tx.truckReadinessAssessment.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: ReadinessAssessmentStatus.UNDER_REVIEW, readyAt: null, approvedById: null }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      eventType: ActivityEventType.READINESS_APPROVAL_INVALIDATED,
+    }));
+  });
 });

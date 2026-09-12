@@ -41,9 +41,17 @@ import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import {
   deriveReadiness,
+  isResidualReady,
   READINESS_REQUIREMENT_TYPES,
   toReadinessAssessmentDto,
 } from './yard-operations-derivation';
+
+const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
+  OR: [
+    { status: { in: [ReadinessAssessmentStatus.UNDER_REVIEW, ReadinessAssessmentStatus.READY] } },
+    { status: ReadinessAssessmentStatus.CLOSED, readyAt: { not: null } },
+  ],
+};
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -70,9 +78,7 @@ const yardTruckInclude = {
     orderBy: { createdAt: 'desc' as const },
   },
   readinessAssessments: {
-    where: {
-      status: { in: ['under_review', 'ready'] },
-    },
+    where: ACTIVE_OR_RESIDUAL_READY,
     orderBy: { updatedAt: 'desc' as const },
     take: 1,
     include: {
@@ -130,8 +136,10 @@ type YardTruckRow = {
 };
 
 type YardOperationsCountRow = {
+  workOrders: Array<{ id: string; status: string }>;
   readinessAssessments: Array<{
     status: string;
+    readyAt: Date | string | null;
     requirements: Array<{ type: string; outcome: string }>;
     workOrders: Array<{ id: string; status: string }>;
   }>;
@@ -336,7 +344,11 @@ export class YardOperationsService {
           });
           if (!updatedRequirement.count) throw this.versionConflict('Requirement version changed');
 
-          const invalidated = assessment.status === ReadinessAssessmentStatus.READY;
+          const outcomeBecameUnresolved = [
+            ReadinessRequirementOutcome.REQUIRED,
+            ReadinessRequirementOutcome.NOT_EVALUATED,
+          ].includes(input.outcome);
+          const invalidated = assessment.status === ReadinessAssessmentStatus.READY && outcomeBecameUnresolved;
           const updatedAssessment = await tx.truckReadinessAssessment.update({
             where: { id: assessmentId },
             data: {
@@ -716,8 +728,13 @@ export class YardOperationsService {
         outcome: requirement.outcome as never,
       })),
     }) : null;
-    const linkedWorkOrders = assessment?.workOrders.map(toAdminWorkOrderSummary) ?? [];
-    const derivation = deriveReadiness({ assessment: mappedAssessment, linkedWorkOrders });
+    const linkedWorkOrders = (assessment?.workOrders.length ? assessment.workOrders : row.workOrders)
+      .map(toAdminWorkOrderSummary);
+    const openOnTruck = row.workOrders.map(toAdminWorkOrderSummary);
+    const derivation = deriveReadiness({
+      assessment: mappedAssessment,
+      linkedWorkOrders: openOnTruck.length ? openOnTruck : linkedWorkOrders,
+    });
     const activeWorkOrder = row.workOrders[0] ? toAdminWorkOrderSummary(row.workOrders[0]) : null;
     const latestService = row.serviceStatusEvents[0];
     const operationalStatus = latestService?.status === 'in_service'
@@ -738,7 +755,11 @@ export class YardOperationsService {
   }
 
   private matchesDerivedFilters(item: YardOperationsTruckDto, query: AdminYardOperationsQuery) {
-    const readiness = item.assessment?.status ?? YardReadinessFilter.NOT_STARTED;
+    const readiness = item.assessment?.status === 'ready' || isResidualReady(item.assessment)
+      ? YardReadinessFilter.READY
+      : item.assessment?.status === 'under_review'
+        ? YardReadinessFilter.UNDER_REVIEW
+        : YardReadinessFilter.NOT_STARTED;
     const blocked = item.blockers.length > 0;
     return (!query.readiness || query.readiness.includes(readiness as YardReadinessFilter))
       && (!query.phase || query.phase.includes(item.phase))
@@ -770,12 +791,23 @@ export class YardOperationsService {
     if (query.readiness) {
       const readinessFilters: Prisma.TruckWhereInput[] = [];
       if (query.readiness.includes(YardReadinessFilter.NOT_STARTED)) {
-        readinessFilters.push({ readinessAssessments: { none: { status: { in: ['under_review', 'ready'] } } } });
+        readinessFilters.push({ readinessAssessments: { none: ACTIVE_OR_RESIDUAL_READY } });
       }
-      const activeStatuses = query.readiness
-        .filter((value): value is YardReadinessFilter.UNDER_REVIEW | YardReadinessFilter.READY => value !== YardReadinessFilter.NOT_STARTED)
-        .map((value) => value as unknown as ReadinessAssessmentStatus);
-      if (activeStatuses.length) readinessFilters.push({ readinessAssessments: { some: { status: { in: activeStatuses } } } });
+      if (query.readiness.includes(YardReadinessFilter.UNDER_REVIEW)) {
+        readinessFilters.push({ readinessAssessments: { some: { status: ReadinessAssessmentStatus.UNDER_REVIEW } } });
+      }
+      if (query.readiness.includes(YardReadinessFilter.READY)) {
+        readinessFilters.push({
+          readinessAssessments: {
+            some: {
+              OR: [
+                { status: ReadinessAssessmentStatus.READY },
+                { status: ReadinessAssessmentStatus.CLOSED, readyAt: { not: null } },
+              ],
+            },
+          },
+        });
+      }
       if (readinessFilters.length) filters.push({ OR: readinessFilters });
     }
     if (cursor) {
@@ -803,14 +835,19 @@ export class YardOperationsService {
     const [presenceUnknown, rows] = await Promise.all([
       this.prisma.truck.count(),
       this.prisma.truck.findMany({
-        where: { readinessAssessments: { some: { status: { in: ['under_review', 'ready'] } } } },
+        where: { readinessAssessments: { some: ACTIVE_OR_RESIDUAL_READY } },
         select: {
+          workOrders: {
+            where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+            select: { id: true, status: true },
+          },
           readinessAssessments: {
-            where: { status: { in: ['under_review', 'ready'] } },
+            where: ACTIVE_OR_RESIDUAL_READY,
             orderBy: { updatedAt: 'desc' },
             take: 1,
             select: {
               status: true,
+              readyAt: true,
               requirements: { select: { type: true, outcome: true } },
               workOrders: {
                 where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
@@ -833,9 +870,10 @@ export class YardOperationsService {
       const hasBlockingRequirement = !hasAllRequirements || assessment.requirements.some((requirement) =>
         requirement.outcome === 'not_evaluated' || requirement.outcome === 'required',
       );
-      const hasOpenWorkOrder = assessment.workOrders.length > 0;
+      const hasOpenWorkOrder = (row.workOrders?.length ?? 0) > 0 || assessment.workOrders.length > 0;
       if (hasBlockingRequirement || hasOpenWorkOrder) blocked += 1;
-      if (assessment.status === 'ready' && !hasBlockingRequirement && !hasOpenWorkOrder) readyToGo += 1;
+      const residualReady = assessment.status === 'closed' && Boolean(assessment.readyAt);
+      if ((assessment.status === 'ready' || residualReady) && !hasBlockingRequirement && !hasOpenWorkOrder) readyToGo += 1;
     }
     return { underReview, readyToGo, blocked, presenceUnknown };
   }

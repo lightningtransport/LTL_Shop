@@ -1001,6 +1001,37 @@ export class AdminService {
           newValue: { status: nextStatus, reason: input.reason },
           relevantValue: { action: 'work_order_reopened', reason: input.reason },
         });
+        const activeAssessment = tx.truckReadinessAssessment
+          ? await tx.truckReadinessAssessment.findFirst({
+              where: { truckId: wo.truckId, status: { in: ['under_review', 'ready'] } },
+              orderBy: { updatedAt: 'desc' },
+              select: { id: true, status: true, version: true, approvedById: true },
+            })
+          : null;
+        if (activeAssessment?.status === 'ready') {
+          await tx.truckReadinessAssessment.update({
+            where: { id: activeAssessment.id },
+            data: {
+              status: 'under_review',
+              readyAt: null,
+              approvedById: null,
+              version: { increment: 1 },
+            },
+          });
+          await this.activity.log(tx, {
+            eventType: SharedActivityEventType.READINESS_APPROVAL_INVALIDATED,
+            entityType: 'readiness_assessment',
+            entityId: activeAssessment.id,
+            userId: user.id,
+            previousValue: {
+              status: activeAssessment.status,
+              version: activeAssessment.version,
+              approvedById: activeAssessment.approvedById,
+            },
+            newValue: { status: 'under_review', approvedById: null },
+            relevantValue: { reason: 'work_order_reopened', workOrderId },
+          });
+        }
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,

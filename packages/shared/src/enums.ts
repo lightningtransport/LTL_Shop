@@ -134,6 +134,7 @@ export enum ReadinessPhase {
   ALIGNMENT = 'alignment',
   DETAILING = 'detailing',
   QUALITY_CHECK = 'quality_check',
+  READY_FOR_APPROVAL = 'ready_for_approval',
   READY_TO_GO = 'ready_to_go',
 }
 
