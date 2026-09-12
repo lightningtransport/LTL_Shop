@@ -2,9 +2,9 @@
 
 **Classification:** PRODUCT DECISION CONTRACT
 **Task:** V2-001
-**Status:** PENDING CRISTIAN APPROVAL — this document does **not** authorize
-implementation, schema changes, or endpoint removal
-**Date:** 2026-09-11
+**Status:** APPROVED 2026-09-12 — Cristian recorded Q1–Q18. Direct TARGET
+implementation is authorized. No W1 soft-cutover window.
+**Date:** 2026-09-12
 **Owner:** Product (Cristian)
 **Product:** Lightning Shop (`LTL_Shop`)
 
@@ -28,12 +28,18 @@ before any V2 implementation starts.
 
 1. `LIGHTNING_SHOP_MASTER_PRD.md` remains TARGET authority.
 2. `CURRENT_PRODUCT_STATUS.md` plus tested code remain CURRENT authority.
-3. This contract is the cutover *proposal*. Approved answers must be copied
-   into the Master PRD decision log before V2 code work starts.
+3. Approved answers are in §11 and the Master PRD decision log
+   (2026-09-12). Those answers authorize direct TARGET implementation.
 4. Historical ownership docs (`WORK_ORDER_OWNERSHIP_MIGRATION.md`,
    `audits/WORK_ORDER_OWNERSHIP_AUDIT_2026-09-11.md`) are not authority.
 
-**This task did not change application code or schema.**
+**Approved compatibility rule (2026-09-12):** preserve existing data,
+historical Work Orders, PM, Activity Log, Prisma migrations, and database
+integrity. Do **not** preserve the unused Standard mechanic-owned planning
+workflow. V1 was never adopted as the Shop’s real production flow.
+
+**This V2-001 PR is the approval contract plus CURRENT/V1.2 doc alignment.
+TARGET code is a follow-on implementation task (V2-002).**
 
 ---
 
@@ -124,9 +130,14 @@ and that **backend permission enforcement changes together with UI**.
 
 ---
 
-# 4. Compatibility window — PROPOSED, needs approval
+# 4. Compatibility window — APPROVED: no W1 soak
 
-V2 is not a single deploy. Cristian must approve the window shape (Q1, Q2).
+**Approved 2026-09-12 (Q1, Q18):** do not wait X days of W1 before W2. Do
+not keep two Standard operating models. Path is current code → TARGET
+implementation → tests/staging → production pilot → production.
+
+The W1/W2 stages below are the original proposal, retained as history. They
+are **not** a gate.
 
 ## Proposed stages
 
@@ -891,122 +902,43 @@ change.
 
 ---
 
-# 11. Decisions Cristian must make before V2 implementation
+# 11. Decisions — APPROVED 2026-09-12
 
-Do not treat recommendations as approvals. Implementation starts only after
-these are written into the Master PRD decision log.
+Cristian recorded these answers. They authorize direct TARGET
+implementation. No further product questions block V2-002.
 
-### Q1 — How long is W1?
-
-How many Shop operating days (or what usage evidence) before W2 403s Standard
-create/pause/resume/change-reason?
-
-### Q2 — Who may roll back, and how is the Shop told?
-
-Name the rollback owner and the communication path (Shop group, radio, etc.).
-
-### Q3 — Work Order team add/remove capability
-
-Keep `POST/DELETE .../mechanics` on `admin.access`, or require
-`work_orders.manage` (and therefore grant manage to everyone who assigns the
-team today)?
-
-### Q4 — PATCH Priority / notes capability
-
-Keep on `admin.access`, move to `work_orders.manage`, or split (Priority =
-manage, notes = either)?
-
-### Q5 — Who completes or cancels a Standard Work Order?
-
-Options: mechanic finish stays + Admin complete/cancel stay; Manager becomes
-the only completer/canceller; cancel is Admin-only and complete stays with
-the mechanic.
-
-### Q6 — Which corrections stay System Admin-only?
-
-Confirm or reject the recommendation that **reopen Work Order** and **time
-correction** stay `admin.access` and are not required for daily Manager
-planning.
-
-### Q7 — Job cancel / reopen
-
-Daily Manager tool (`work_orders.manage`) or elevated Admin correction?
-
-### Q8 — Who adds a Job after create?
-
-Mechanics keep Add Job; Manager gains Add Job and mechanics lose it; or both
-keep it. If mechanics lose it, Manager Add Job is a W2 prerequisite.
-
-### Q9 — Is there any Standard create exception?
-
-Road service, after-hours, or a named mechanic who may still create? If yes,
-name the capability/exception. If no, W2 is a hard 403.
-
-### Q10 — May a mechanic execute an unassigned (team-inherited) Job?
-
-CURRENT yes. TARGET says “assigned work.” Decide: inherited team is enough,
-or every executable Job must have `assignedMechanicId`.
-
-### Q11 — Mechanic notes after cutover?
-
-Keep `POST /work-orders/:id/notes` or Manager-only notes?
-
-### Q12 — Who resumes Standard Work Orders already paused at W1?
-
-Recommendation: Manager only, as soon as Resume is hidden. Confirm, and
-confirm Managers will be on shift when W1 deploys.
-
-### Q13 — Reconfirm PM is out of V2
-
-Confirm PM self-create, pause, resume, parts, and mileage stay exactly as
-CURRENT. A “no” is a different project, not a silent V2 slice.
-
-### Q14 — Who receives `work_orders.manage` in production?
-
-List real Shop Managers. Temporary V1 test users are insufficient. Also
-decide whether Cristian/ibrain admin accounts that lack manage should gain
-it, stay Admin-only, or lose operational CTAs (Q16).
-
-### Q15 — Shared Admin shell in V2?
-
-Recommendation: keep one `/admin` shell. A separate Manager app is out of
-scope unless Cristian orders it.
-
-### Q16 — Hide Admin Create without `work_orders.manage`?
-
-V1-004 F4. Recommendation: yes, as part of W1 (UI only; API already 403s).
-
-### Q17 — Keep `MechanicAssignment` as the general team?
-
-Recommendation: yes for V2. Do not delete. Per-Job assignee stays optional.
-
-### Q18 — Is V1.2 evidence enough to enter W1?
-
-V1.2-001/002 validated fixtures and seeded local flows. Production Safari
-mobile remains OPERATOR_REQUIRED (V1-003). Real Shop roster is still
-pending. Cristian must say whether that is enough to start W1 or whether a
-production mechanic+Manager day on the real roster is a gate.
+| Q | Decision |
+|---|---|
+| Q1 | Does not apply. No W1 soak. Validate the complete TARGET model in staging/pilot, then production. |
+| Q2 | Technical rollback is System Admin / authorized Engineering only. The Shop Manager requests if there is a problem; Engineering tells the Shop. |
+| Q3 | Work Order team add/remove requires `work_orders.manage`, not only `admin.access`. |
+| Q4 | Priority and operational notes require `work_orders.manage`. Historical/sensitive corrections stay elevated and audited. |
+| Q5 | Manager completes/closes or cancels the global Standard Work Order. Mechanic completes Jobs. |
+| Q6 | Reopen Work Order and time correction remain System Admin-only (`admin.access`). |
+| Q7 | Manager may cancel a pending Job with reason + Activity Log. Reopen of a completed/cancelled Job stays System Admin-only initially. |
+| Q8 | Manager must be able to add Jobs after create (required for this release). Mechanic does not add Jobs directly; mechanic reports additional work for the Manager to incorporate. |
+| Q9 | No Standard-create exceptions. Standard WO create requires `work_orders.manage`. Do not hardcode users by name/email. |
+| Q10 | Yes. If a Job has no specific assignment, a mechanic on the general `MechanicAssignment` team may execute it. Job-specific assignment has priority. |
+| Q11 | Keep mechanic execution notes. |
+| Q12 | Manager controls Pause/Resume of Standard Work Orders. |
+| Q13 | PM remains exactly as CURRENT during this migration (`mechanic.pm`, self-create/start, mileage, parts, pause/resume, finish). |
+| Q14 | Grant `work_orders.manage` to the real Shop Manager roster and to System Admin for support. Do not use test users as the final roster. **Ops still must apply the real names in production.** |
+| Q15 | Keep the shared `/admin` shell. Shop Managers and System Admin use the same shell with different capabilities. |
+| Q16 | Hide Create without `work_orders.manage` and protect the API with 403. |
+| Q17 | Keep `MechanicAssignment` as the general WO team. Job-specific assignment is additive, not a destructive replacement. |
+| Q18 | Not a W1→W2 gate. Path: current code → TARGET implementation → tests/staging → production pilot → production. Do not keep two operating models in parallel. |
 
 ---
 
-# 12. Recommended sequence after approval (not authorized)
+# 12. Approved implementation sequence
 
-Only after §11 is recorded:
-
-1. **Docs:** copy approved answers into the Master PRD decision log and this
-   contract’s status line.
-2. **Grants (ops):** Q14 capability grants in production. No code.
-3. **W1 UI slice:** hide Standard planning controls; optional Q16 CTA filter;
-   EN/ES; tests in §10.3. Legacy APIs stay.
-4. **W1 soak:** usage log + Shop validation for Q1.
-5. **W2 API slice:** 403 Standard create/pause/resume/pause-reason; PM
-   untouched; matrix tests updated.
-6. **Optional hardening:** service-layer re-assert (F2); Q3–Q7 capability
-   moves as separately approved slices.
-7. **Never in this sequence:** Yard, Samsara, schema drops, PM rewrite.
-
-Each slice is its own queue task. This contract is not a combined
-implementation ticket.
+1. **Docs (this PR):** record Q1–Q18 and keep V1.2 CURRENT accurate.
+2. **V2-002:** implement TARGET UI + API together. No W1 soak.
+3. **Tests / staging / production pilot / production.**
+4. **Ops (Q14):** grant `work_orders.manage` to the real Shop Manager roster
+   and System Admin. Not a code task.
+5. **Never in this sequence:** Yard, Samsara, schema drops, PM rewrite, or
+   two parallel Standard operating models.
 
 ---
 
@@ -1015,13 +947,13 @@ implementation ticket.
 Copy into the Master PRD decision log when Product decides.
 
 ```text
-YYYY-MM-DD
+2026-09-12
 Decision: V2 ownership cutover contract
-Approved window: W1 duration = ___ ; W2 owner = ___
-Rollback owner: ___
-Answers: Q1…Q18 (approve / reject / defer)
-Reason:
-Impact: Authorizes / does not authorize W1 implementation
+Approved window: none — direct TARGET; no W1 soak
+Rollback owner: System Admin / authorized Engineering; Manager requests; Engineering tells the Shop
+Answers: Q1–Q18 approved as recorded in §11
+Reason: Lightning Shop V1 was never adopted as a real production flow
+Impact: Authorizes direct TARGET implementation (V2-002). Preserve data/PM/history/migrations.
 Phase: V2
 ```
 

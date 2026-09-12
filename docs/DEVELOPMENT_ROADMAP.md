@@ -70,10 +70,10 @@ small, additive, and selected from the implementation queue.
 
 Begin only after V1/V1.2 production validation and an explicit product decision.
 
-The approval artifact is `OWNERSHIP_CUTOVER_CONTRACT.md`. It is **not**
-implementation authority. W1 (UI hide, APIs live) and W2 (Standard
-create/pause/resume/change-reason 403) start only after Cristian records
-the contract’s §11 answers in the Master PRD decision log.
+The approval artifact is `OWNERSHIP_CUTOVER_CONTRACT.md`. Cristian approved
+Q1–Q18 on 2026-09-12: implement TARGET directly. There is no W1 soak and no
+parallel Standard operating model. Preserve data, PM, Activity Log, and
+migrations. V2-002 is the implementation task.
 
 Manager:
 

@@ -4,9 +4,9 @@
 **Updated:** 2026-09-11
 **Selection rule:** Take the first unblocked task in milestone order. Do not
 combine tasks or start a later milestone without the roadmap gate.
-**V2 gate:** Ownership cutover implementation stays blocked until Cristian
-approves `OWNERSHIP_CUTOVER_CONTRACT.md` (§11 decisions recorded in the
-Master PRD decision log).
+**V2 gate:** Cristian approved the V2-001 contract on 2026-09-12 (direct
+TARGET; no W1 window). Implementation follows `OWNERSHIP_CUTOVER_CONTRACT.md`
+and the Master PRD decision log.
 
 ## V1-000 — Investigate failed Vercel API deployment
 
@@ -192,11 +192,29 @@ Acceptance Criteria: Every mechanic/Manager/PM action has CURRENT, post-cutover,
 migration, and rollback behavior.
 Tests: Test plan only.
 Risk: HIGH.
-Status: READY FOR PRODUCT APPROVAL — contract in
-`docs/OWNERSHIP_CUTOVER_CONTRACT.md`. No code or schema was changed.
-Implementation of W1/W2 remains GATED until Cristian records §11 answers
-in the Master PRD decision log. Do not merge as an implementation
-authorization.
+Status: APPROVED 2026-09-12 — Cristian recorded Q1–Q18. Direct TARGET
+implementation is authorized (no W1 soak). See
+`docs/OWNERSHIP_CUTOVER_CONTRACT.md` and the Master PRD decision log.
+
+## V2-002 — Implement approved TARGET ownership cutover
+
+ID: V2-002
+Milestone: V2 — Ownership Cutover
+Problem: Approved TARGET ownership is still a hybrid: Standard mechanics can
+plan, complete, and globally pause Work Orders.
+Outcome: Manager plans/controls Standard work; mechanic executes assigned
+Jobs and reports blockers/additional work; PM is unchanged.
+Scope: UI + API together. Standard create/pause/resume/add-job/complete-WO
+become Manager (`work_orders.manage`). Mechanic reports additional work.
+Out of Scope: Yard, Samsara, catalog writes, PM rewrite, dropping
+`MechanicAssignment` or historical data.
+Dependencies: V2-001 approvals (2026-09-12).
+Files likely affected: Admin/Work Order controllers and services, mechanic
+Home/detail, Admin list/detail, shared schemas, capability matrix, tests.
+Acceptance Criteria: Matches approved Q3–Q13, Q16–Q17. PM regression-free.
+Tests: Capability matrix, API unit, focused Playwright.
+Risk: HIGH — authorization and Work Order lifecycle.
+Status: READY.
 
 ## V2.1-001 — Validate the Yard Phase persistence gap
 

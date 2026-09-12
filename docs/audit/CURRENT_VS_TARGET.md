@@ -41,5 +41,6 @@ direction, not implemented behavior. “Planned Phase” follows
   planning slices landed before this normalization and now require validation.
 - PM, Activity Log, existing Work Orders, historical Categories, and Prisma
   migration history are protected during every cutover.
-- V2 implementation is gated on product approval of
-  `../OWNERSHIP_CUTOVER_CONTRACT.md`. The contract does not change CURRENT.
+- V2-001 is approved (2026-09-12). CURRENT on this branch still matches
+  merged V1.2 (`a56344a`) until V2-002 lands. The contract authorizes
+  direct TARGET implementation; it does not by itself change runtime.
