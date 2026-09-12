@@ -17,6 +17,7 @@ yet (Table / Tabs / Sheet). Do not treat those as current exports.
 2. `components.md` — `apps/web/src/components/ui.tsx` exports and shells
 3. `patterns.md` — loading, failure, and empty states
 4. `glossary-en-es.md` — English / Spanish domain terms
+5. `patterns.md` — Location vs Presence display rule (LTR-13)
 
 Spanish operators should use `glossary-en-es.md` for Shop language. Admin and
 mechanic catalogs already ship bilingual copy; this glossary records the

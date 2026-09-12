@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { Ban, CircleHelp, ClipboardCheck, Clock3, MapPin, ShieldCheck, Truck, Warehouse } from 'lucide-react';
+import { Ban, ClipboardCheck, MapPin, ShieldCheck, Truck, Warehouse } from 'lucide-react';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatAdminDate, formatDuration } from '@/lib/admin-format';
 import { useAdminYardOperations } from '@/lib/admin-data';
@@ -99,8 +99,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         <Warehouse aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning-foreground" />
         <div><CardTitle id="yard-phase-1-title" className="text-base">{messages.yardOperationsPhase1}</CardTitle><CardDescription className="mt-1 text-warning-foreground">{messages.yardOperationsPhase1Body}</CardDescription></div>
       </CardHeader>
-      <CardContent className="grid gap-2 p-0 sm:grid-cols-2 xl:grid-cols-4">
-        <UnavailableStatus icon={MapPin} label={messages.physicalPresenceUnavailable} unavailableLabel={messages.unavailableLabel} />
+      <CardContent className="grid gap-2 p-0 sm:grid-cols-3">
         <UnavailableStatus icon={Truck} label={messages.workLocationUnavailable} unavailableLabel={messages.unavailableLabel} />
         <UnavailableStatus icon={Truck} label={messages.incomingTrucksUnavailable} unavailable={incomingUnavailable} unavailableLabel={messages.unavailableLabel} />
         <UnavailableStatus icon={ShieldCheck} label={messages.upcomingDeparturesUnavailable} unavailable={departuresUnavailable} unavailableLabel={messages.unavailableLabel} />
@@ -110,11 +109,10 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
     {isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : <>
       <section aria-labelledby="yard-summary-title">
         <div className="mb-3"><h2 id="yard-summary-title" className="font-display text-xl font-semibold">{messages.yardSummaryMetrics}</h2></div>
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
           <SummaryMetric label={messages.underReview} value={counts?.underReview ?? 0} Icon={ClipboardCheck} />
           <SummaryMetric label={messages.readyToGo} value={counts?.readyToGo ?? 0} Icon={ShieldCheck} />
           <SummaryMetric label={messages.blocked} value={counts?.blocked ?? 0} Icon={Ban} />
-          <SummaryMetric label={messages.presenceUnknown} value={counts?.presenceUnknown ?? 0} Icon={CircleHelp} />
         </div>
       </section>
 
@@ -173,7 +171,7 @@ function YardTruckCard({ item, locale, messages, now }: { item: YardOperationsTr
     <div className="flex items-start justify-between gap-2"><Link className="font-display text-base font-semibold text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link><Badge variant={item.blockers.length ? 'warning' : 'success'}>{messages[phaseMessageKey[item.phase]]}</Badge></div>
     <p className="text-xs text-muted-foreground">{[item.truck.year, item.truck.make, item.truck.model].filter(Boolean).join(' ') || messages.noValue}</p>
     <dl className="space-y-2 text-xs"><div className="flex items-center justify-between gap-2"><dt className="text-muted-foreground">{messages.timeInAssessment}</dt><dd className="font-medium">{assessmentDuration}</dd></div><div className="flex items-center justify-between gap-2"><dt className="text-muted-foreground">{messages.linkedWorkOrder}</dt><dd>{workOrder ? <Link className="text-primary hover:underline" href={`/admin/work-orders/${workOrder.id}`}>{workOrder.displayId}</Link> : <span>{messages.noActiveWorkOrder}</span>}</dd></div><div className="flex items-center justify-between gap-2"><dt className="text-muted-foreground">{messages.priority}</dt><dd>{workOrder ? <LocalizedPriority priority={workOrder.priority} messages={messages} /> : '—'}</dd></div><div><dt className="text-muted-foreground">{messages.mechanicsLabel}</dt><dd className="mt-1 truncate">{workOrder?.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noMechanicsAssigned}</dd></div><div><dt className="text-muted-foreground">{messages.firstBlocker}</dt><dd className="mt-1 line-clamp-2">{blockerText}</dd></div></dl>
-    <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 aria-hidden="true" className="size-3" />{messages.presenceUnknown}: {messages.presenceUnknownDetail}</p>
+    <p className="flex items-start gap-1 text-[11px] text-muted-foreground"><MapPin aria-hidden="true" className="mt-0.5 size-3 shrink-0" /><span>{messages.lastReportedLocation}: {item.truck.location ?? messages.noValue}</span></p>
     <p className="sr-only">{formatAdminDate(item.assessment?.startedAt ?? null, locale)}</p>
   </Card>;
 }

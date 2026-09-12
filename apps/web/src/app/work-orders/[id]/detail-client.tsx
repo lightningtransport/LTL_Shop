@@ -172,7 +172,7 @@ export default function WorkOrderDetailPage() {
       <WorkspaceNav mode={MechanicMode.STANDARD} />
       <ScreenHeader
         title={wo.displayId}
-        subtitle={`#${wo.truckNumber} · ${statusLabel(wo.status)}`}
+        subtitle={`#${wo.truckNumber} · ${messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}`}
         backHref="/mechanic/standard"
       />
 
@@ -598,7 +598,7 @@ function PmWorkOrderDetail({
       <WorkspaceNav mode={MechanicMode.PM} />
       <ScreenHeader
         title={wo.displayId}
-        subtitle={`#${wo.truckNumber} · ${statusLabel(wo.status)}`}
+        subtitle={`#${wo.truckNumber} · ${messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}`}
         backHref="/mechanic/pm"
       />
 

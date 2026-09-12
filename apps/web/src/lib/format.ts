@@ -10,7 +10,8 @@ export function priorityLabel(p: Priority | string) {
   return String(p).toUpperCase();
 }
 
-export function statusLabel(status: string) {
+export function statusLabel(status: string, labels?: Record<string, string>) {
+  if (labels?.[status]) return labels[status];
   switch (status) {
     case 'created':
       return 'Created';
@@ -20,6 +21,8 @@ export function statusLabel(status: string) {
       return 'Paused';
     case 'completed':
       return 'Completed';
+    case 'cancelled':
+      return 'Cancelled';
     default:
       return status;
   }

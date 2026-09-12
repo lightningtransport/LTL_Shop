@@ -28,7 +28,8 @@ Truck, Job, PM). Mechanic ES copy sometimes uses *unidad* for Truck. Do not
 | Ready to Go | Ready to Go / Listo para salir | Explicit readiness approval |
 | Ready for Approval | Listo para aprobación | All requirements resolved; not yet approved |
 | Return to Service | Return to Service (ES keeps the English name) | Post-completion truck service event |
-| Presence | Presencia | Physical in-yard evidence; Phase 1 is UNKNOWN |
+| Last reported location | Ubicación reportada | Display-only address (`location` / `locationUpdatedOn`). Not Presence. Never “in yard”. |
+| Presence | Presencia | Physical in-yard evidence. CURRENT UI hides this (Phase 1 is always UNKNOWN). Do not rename Presence → Ubicación. |
 | Incoming Trucks | Incoming Trucks / Trucks entrantes | Unavailable (no Dispatch source) |
 | Upcoming Departures | Upcoming Departures / Próximas salidas | Unavailable (no Dispatch source) |
 | Blocker | Bloqueo | Mechanic report or readiness gate |

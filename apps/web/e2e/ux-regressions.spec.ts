@@ -19,6 +19,9 @@ const truck = {
   mileage: 120_000,
   company: 'Lightning Transport',
   owner: 'Lightning Transport',
+  vin: '1FUJGLDR8CSBA0905',
+  location: '4802 Orient Road, Tampa, FL',
+  locationUpdatedOn: '2026-09-11',
 };
 
 const categories = [
@@ -344,6 +347,36 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('combobox', { name: /Category/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Create (new )?Work Order/i })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  });
+
+  test('legacy /work-orders/new is EmptyState for Standard, not a dead form', async ({ page }) => {
+    await login(page);
+    await page.goto('/work-orders/new');
+    await expect(page.getByText(/Ask your Shop Manager to create a Work Order/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('combobox', { name: /Truck/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Create (new )?Work Order/i })).toHaveCount(0);
+  });
+
+  test('Mechanic status chips and location copy follow the locale catalog', async ({ page }) => {
+    await login(page);
+    const createdCard = page.locator('article').filter({ hasText: 'WO-1001' });
+    await expect(createdCard.getByText('Created')).toBeVisible();
+    const activeCard = page.locator('article').filter({ hasText: 'WO-ACTIVE-1' });
+    await expect(activeCard.getByText('In Progress')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Switch to Spanish' }).click();
+    await expect(page.getByRole('heading', { name: 'Mi trabajo asignado' })).toBeVisible();
+    await expect(createdCard.getByText('Creado')).toBeVisible();
+    await expect(createdCard.getByText('Created')).toHaveCount(0);
+    await expect(activeCard.getByText('En progreso')).toBeVisible();
+    await expect(activeCard.getByText('In Progress')).toHaveCount(0);
+
+    await createdCard.getByRole('link', { name: /Start Work|Iniciar/i }).click();
+    await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
+    await page.getByRole('button', { name: /Truck Information|Información/i }).click();
+    await expect(page.getByText('Ubicación reportada')).toBeVisible();
+    await expect(page.getByText('4802 Orient Road, Tampa, FL')).toBeVisible();
+    await expect(page.getByText(/in yard|en el yard/i)).toHaveCount(0);
   });
 
   test('signing out returns to login and removes the local session', async ({ page }) => {
