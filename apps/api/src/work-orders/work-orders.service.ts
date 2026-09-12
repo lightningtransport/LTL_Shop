@@ -177,9 +177,6 @@ export class WorkOrdersService {
       const jobAssigneeIds = input.jobs
         .map((job) => job.assignedMechanicId)
         .filter((id): id is string => Boolean(id));
-      if (actorKind === 'mechanic' && jobAssigneeIds.length) {
-        throw new BadRequestException('Per-job assignment is only available when a Manager creates the Work Order');
-      }
       // Team = explicit mechanicIds union per-job assignees so WO membership
       // stays consistent with Job ownership.
       teamMechanicIds = Array.from(new Set([...input.mechanicIds, ...jobAssigneeIds]));

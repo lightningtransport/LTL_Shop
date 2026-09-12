@@ -952,6 +952,7 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status, options = {
     }],
     jobs: [{
       id: `00000000-0000-4000-8000-0000000005${id.slice(-2)}`,
+      catalogJobId: '00000000-0000-4000-8000-000000000801',
       displayName: 'Inspect brake chamber',
       customDescription: null,
       category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },

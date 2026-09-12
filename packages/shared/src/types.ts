@@ -220,6 +220,7 @@ export interface AdminActivityLogDto {
 
 export interface AdminWorkOrderJobDto {
   id: string;
+  catalogJobId: string | null;
   displayName: string;
   customDescription: string | null;
   category: JobCategoryReferenceDto;

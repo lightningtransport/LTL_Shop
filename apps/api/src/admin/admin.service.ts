@@ -1761,6 +1761,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
   const summary = toAdminSummary(row);
   const jobs = row.primaryCategory.name === 'PM' ? [] : row.jobs.map((job) => ({
     id: job.id,
+    catalogJobId: job.catalogJobId ?? null,
     displayName: job.displayName,
     customDescription: job.customDescription,
     status: job.status as SharedJobStatus,
