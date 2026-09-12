@@ -11,6 +11,7 @@ import { jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
+  Button,
   CardListSkeleton,
   EmptyState,
   HomeTopBar,
@@ -59,6 +60,41 @@ export default function HomePage() {
         <HomeTopBar mode={mode ?? undefined} />
         <ScreenHeader title={messages.home} subtitle={messages.locale === 'es' ? 'Jobs actuales, Work Orders y trabajo reciente.' : 'Current jobs, work orders, and recent work.'} />
         <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
+      </div>
+    );
+  }
+
+  if (!sessionLoading && token && !user) {
+    return (
+      <div>
+        <HomeTopBar />
+        <ScreenHeader title={messages.home} subtitle={messages.locale === 'es' ? 'Jobs actuales, Work Orders y trabajo reciente.' : 'Current jobs, work orders, and recent work.'} />
+        <LoadFailure
+          message={sessionError ?? (messages.locale === 'es' ? 'No se pudo cargar tu perfil.' : 'Unable to load your profile.')}
+          onRetry={retrySession}
+          retryLabel={messages.retry}
+        />
+      </div>
+    );
+  }
+
+  if (!sessionLoading && user && (!mode || !hasWorkspaceAccess)) {
+    const allowedHome = defaultWorkspacePath(user);
+    return (
+      <div>
+        <HomeTopBar />
+        <ScreenHeader
+          title={mode === MechanicMode.PM
+            ? (messages.locale === 'es' ? 'Mecánico de PM' : 'PM Mechanic')
+            : (messages.locale === 'es' ? 'Mi trabajo asignado' : 'My Assigned Work')}
+          subtitle={messages.workspaceUnavailable}
+        />
+        <EmptyState>
+          <p>{messages.workspaceUnavailable}</p>
+          <Button asChild variant="outline" className="mt-4">
+            <Link href={allowedHome}>{messages.openAllowedHome}</Link>
+          </Button>
+        </EmptyState>
       </div>
     );
   }
@@ -245,53 +281,52 @@ function WorkOrderCard({
       ) : null}
       <div className="flex gap-2">
         {mode === 'completed' ? (
-          <Link href={`/work-orders/${wo.id}`} className="btn-secondary flex-1">
-            View completed work
-          </Link>
+          <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="View completed work" wo={wo} className="btn-secondary flex-1" />
         ) : mode === 'paused' ? (
           isPm ? (
             <>
-              <Link href={`/work-orders/${wo.id}`} className="btn-secondary flex-1">
-                View Details
-              </Link>
-              <Link href={`/work-orders/${wo.id}?action=resume`} className="btn-primary flex-1">
-                Resume Work
-              </Link>
+              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="View Details" wo={wo} className="btn-secondary flex-1" />
+              <WorkOrderActionLink href={`/work-orders/${wo.id}?action=resume`} action="Resume Work" wo={wo} className="btn-primary flex-1" />
             </>
           ) : (
-            <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
-              View Details
-            </Link>
+            <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="View Details" wo={wo} className="btn-primary w-full" />
           )
         ) : mode === 'created' ? (
-          <Link href={`/work-orders/${wo.id}`} className="btn-primary flex-1">
-            Start Work
-          </Link>
+          <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="Start Work" wo={wo} className="btn-primary flex-1" />
         ) : (
           isPm && wo.jobs.some((job) => job.status === 'to_do') ? <>
               {/* Global pause stays a PM control only; standard mechanics report
                   blockers from the detail view instead of pausing the WO. */}
-              <Link href={`/work-orders/${wo.id}?action=pause`} className="btn-secondary flex-1">
-                Pause Work
-              </Link>
-              <Link href={`/work-orders/${wo.id}`} className="btn-primary flex-1">
-                View Work
-              </Link>
+              <WorkOrderActionLink href={`/work-orders/${wo.id}?action=pause`} action="Pause Work" wo={wo} className="btn-secondary flex-1" />
+              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="View Work" wo={wo} className="btn-primary flex-1" />
             </> : !isPm && wo.jobs.some((job) => job.status === 'to_do') ? (
-              <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
-                View Work
-              </Link>
+              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="View Work" wo={wo} className="btn-primary w-full" />
             ) : isPm ? (
-              <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
-                Finish Work
-              </Link>
+              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="Finish Work" wo={wo} className="btn-primary w-full" />
             ) : (
-              <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
-                View Work
-              </Link>
+              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="View Work" wo={wo} className="btn-primary w-full" />
             )
         )}
       </div>
     </article>
+  );
+}
+
+function WorkOrderActionLink({
+  href,
+  action,
+  wo,
+  className,
+}: {
+  href: string;
+  action: string;
+  wo: WorkOrderSummaryDto;
+  className: string;
+}) {
+  const { messages } = useShopLocale();
+  return (
+    <Link href={href} className={className} aria-label={messages.workOrderAction(action, wo.displayId, wo.truckNumber)}>
+      {action}
+    </Link>
   );
 }

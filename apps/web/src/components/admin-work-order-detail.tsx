@@ -18,6 +18,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CompactEmpty,
   EmptyState,
   LoadFailure,
   PageSkeleton,
@@ -104,7 +105,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     <header>
       <Button asChild variant="ghost" size="sm" className="mb-3"><Link href="/admin/work-orders">← {messages.backToWorkOrders}</Link></Button>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><p className="section-label">{messages.readOnly}</p><h1 className="mt-2 font-display text-3xl font-bold">{data.displayId}</h1><p className="mt-2 text-muted-foreground"><Link className="text-primary hover:underline" href={`/admin/trucks/${truck.id}`}>{truck.truckNumber}</Link> · {data.category.name}</p><p className="mt-1 text-xs text-muted-foreground">{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</p></div>
+        <div><p className="section-label">{messages.eyebrow}</p><h1 className="mt-2 font-display text-3xl font-bold">{data.displayId}</h1><p className="mt-2 text-muted-foreground"><Link className="text-primary hover:underline" href={`/admin/trucks/${truck.id}`}>{truck.truckNumber}</Link> · {data.category.name}</p><p className="mt-1 text-xs text-muted-foreground">{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</p></div>
         <div className="flex gap-2"><PriorityBadge priority={data.priority} /><Badge variant="outline">{humanize(data.status)}</Badge></div>
       </div>
     </header>
@@ -780,7 +781,6 @@ function activityValue(entry: AdminWorkOrderDetailDto['activityLog'][number]) {
   return null;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
-function CompactEmpty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>; }
 function formatAge(value: string, locale: AdminLocale) { const elapsed = Math.max(0, Date.now() - new Date(value).getTime()); const hours = Math.floor(elapsed / 3_600_000); const number = new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US'); if (hours < 24) return `${number.format(hours)}h`; const days = Math.floor(hours / 24); return `${number.format(days)}d ${number.format(hours % 24)}h`; }
 function Pause({ pause, locale }: { pause: { reason: string; notes: string | null; startedAt: string; endedAt: string | null; durationMs: number | null }; locale: AdminLocale }) { return <div><p className="font-medium">{humanize(pause.reason)}</p><p className="text-sm text-muted-foreground">{formatAdminDate(pause.startedAt, locale)} → {formatAdminDate(pause.endedAt, locale)}{pause.durationMs !== null ? ` · ${formatDuration(pause.durationMs)}` : ''}</p>{pause.notes ? <p className="mt-1 text-sm">{pause.notes}</p> : null}</div>; }
 function NotFound({ messages }: { messages: AdminMessages }) { return <EmptyState><p>{messages.workOrderNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/work-orders">{messages.backToWorkOrders}</Link></Button></EmptyState>; }
