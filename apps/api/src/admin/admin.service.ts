@@ -56,6 +56,7 @@ import type { AuthUser } from '../auth/auth.guard';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
+import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
@@ -1874,7 +1875,7 @@ function toMechanicSummary(row: {
     email: row.email,
     role: row.role as import('@ltl-shop/shared').UserRole,
     active: row.active,
-    capabilities: row.capabilities.map((item) => item.capability as import('@ltl-shop/shared').AppCapability),
+    capabilities: row.capabilities.map((item) => toSharedCapability(item.capability)),
     openWorkOrderCount: currentAssignments.length,
     currentAssignments,
   };

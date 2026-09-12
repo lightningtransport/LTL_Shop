@@ -96,7 +96,7 @@ export class WorkOrdersService {
       include: workOrderDetailInclude,
     });
     if (!wo) throw new NotFoundException('Work Order not found');
-    this.assertMechanicAccess(user, wo);
+    this.assertCanViewWorkOrder(user, wo);
     return toWorkOrderDetail(wo);
   }
 
@@ -1061,7 +1061,7 @@ export class WorkOrdersService {
     });
     if (!wo) throw new NotFoundException('Work Order not found');
     if (wo.primaryCategory.name !== 'PM') throw new BadRequestException('Work Order is not a PM service');
-    this.assertMechanicAccess(user, wo);
+    this.assertCanViewWorkOrder(user, wo);
 
     const [categories, lastCompletedPm] = await Promise.all([
       this.prisma.partCategory.findMany({
@@ -1081,6 +1081,7 @@ export class WorkOrdersService {
             truckId: wo.truckId,
             primaryCategory: { name: 'PM' },
             status: 'completed',
+            completedAt: { not: null },
             id: { not: wo.id },
           },
         },
@@ -1101,7 +1102,7 @@ export class WorkOrdersService {
         ? {
             workOrderId: lastCompletedPm.workOrderId,
             displayId: lastCompletedPm.workOrder.displayId,
-            completedAt: lastCompletedPm.workOrder.completedAt!.toISOString(),
+            completedAt: (lastCompletedPm.workOrder.completedAt ?? lastCompletedPm.workOrder.createdAt).toISOString(),
             observedMileage: lastCompletedPm.observedMileage,
           }
         : null,
@@ -1191,6 +1192,19 @@ export class WorkOrdersService {
     return wo.createdById === user.id
       || !!wo.mechanics?.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt)
       || !!wo.jobs?.some((job) => job.assignedMechanicId === user.id);
+  }
+
+  private assertCanViewWorkOrder(
+    user: AuthUser,
+    wo: {
+      createdById: string;
+      primaryCategory: { name: string };
+      mechanics?: { mechanicId: string; removedAt: Date | null }[];
+      jobs?: { assignedMechanicId?: string | null }[];
+    },
+  ) {
+    if (hasCapability(user, AppCapability.ADMIN_ACCESS)) return;
+    this.assertMechanicAccess(user, wo);
   }
 
   private assertMechanicAccess(
