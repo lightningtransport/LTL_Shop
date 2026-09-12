@@ -234,11 +234,12 @@ Acceptance Criteria: Concrete cases, source owner, audit needs, and migration
 requirements are documented.
 Tests: Proposed only if implementation is later approved.
 Risk: MEDIUM.
-Status: COMPLETE — 2026-09-12. Decision: do not persist Yard Phase yet.
-Evidence, cases, owners, audit needs, and later-migration notes are in
-`audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`. No `YardPhaseEvent` schema
-or code. A live Operational Yard pilot must still confirm the product
-questions in that doc before any derivation-copy or persistence follow-on.
+Status: COMPLETE — 2026-09-12. Decision: do not persist Yard Phase.
+Cristian recorded the board-column answers the same day. Implementation
+uses derived state + UI/copy only: next unresolved gate, Ready for
+Approval, Detailing/QC with an open Work Order, residual Ready after
+close, and waiver-text edits that do not withdraw Ready. Evidence:
+`audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`. No `YardPhaseEvent`.
 
 ## V3-001 — Define integration source contracts
 

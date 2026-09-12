@@ -5,21 +5,21 @@
 **Audited commit:** `bbd315f` (latest `main`, V2-002 TARGET ownership cutover merged)
 **Date:** 2026-09-12
 **Owner:** Product (Cristian) for go/no-go; Engineering for derivation facts
-**Status:** COMPLETE as an evidence/decision artifact. No `YardPhaseEvent`
-schema or code was added.
+**Status:** COMPLETE. No `YardPhaseEvent` schema. Cristian answered §8 on
+2026-09-12. The approved derivation + EN/ES copy is implemented on this
+branch.
 
 ## Recommendation
 
-**Do not persist Yard Phase yet.**
+**Do not persist Yard Phase.** Board column = next unresolved readiness gate.
 
-Confidence: **high** that a new event model is not justified by current code
-and Phase 1 evidence. Confidence: **medium** on live operational claims,
-because no Operational Yard pilot records exist and this audit does not invent
-them.
+Cristian approved the derivation/copy follow-on the same day. Implemented
+rules: Ready for Approval; Detailing while a later gate is unevaluated;
+Detailing/QC with an open Work Order; residual Ready after close; waiver
+text does not withdraw Ready.
 
-A **narrow derivation + UI-copy follow-on** is justified independently of
-persistence. It can wait for Cristian’s answers in §8. It must not become
-`YardPhaseEvent`.
+A live Operational Yard pilot may still refine copy. It does not reopen
+persistence unless operators later prove they need a manually claimed stage.
 
 ---
 
@@ -470,8 +470,9 @@ Pilot records must be real Shop assessments, labeled as such. Fixture
    task only. If Q1 is “operator-claimed stage,” authorize a **new**
    persistence-design task (still no silent schema). Do not mix them.
 
-Until those answers are in this Decision Log, do not implement
-`YardPhaseEvent` and do not change `deriveReadiness` in a drive-by.
+**Answered 2026-09-12.** Implemented as derived state + UI/copy. Do not
+add `YardPhaseEvent` unless a later live pilot proves a claimed-stage
+model is required.
 
 ---
 

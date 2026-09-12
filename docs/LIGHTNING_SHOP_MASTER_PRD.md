@@ -1581,21 +1581,30 @@ Approved answers:
 
 ### 2026-09-12 — V2.1-001 Yard Phase persistence (do not persist yet)
 
-Decision: Do not add `YardPhaseEvent`. Yard Phase stays derived from the
-Phase 1 readiness assessment and linked Work Order evidence. Detailing and
-Quality Check are already persisted as manual requirement outcomes; Ready
-to Go is already an explicit approval. A new event model is not justified
-until Cristian answers whether the board means “next unresolved gate” or
-“operator-claimed stage,” and a live Operational Yard pilot confirms the
-remaining questions.
+Decision: Do not add `YardPhaseEvent`. The board column is the **next
+unresolved readiness gate**, derived from the six requirements and current
+open Work Order state.
 
-Reason: Master PRD §40 prefers derivation when reliable. The cases that
-look “stuck” (unevaluated short-circuit, all-resolved fallthrough, reopen
-without invalidation) are derivation/mutation gaps, not missing events.
+Cristian’s answers:
 
-Impact: V2.1-001 is complete as a decision artifact
-(`audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`). No schema. Follow-on
-implementation waits for the Decision Log answers in that audit §8.
+- Q1: Next unresolved gate. Do not persist an operator-claimed stage.
+- Q2: All six resolved, Mark Ready not pressed → **Ready for Approval**.
+  Ready to Go remains the explicit approval.
+- Q3: Detailing required + Quality Check `not_evaluated` → **Detailing**.
+  Later unevaluated gates do not send the Truck to Needs evaluation.
+- Q4: A Truck may be in Detailing or Quality Check while the linked Work
+  Order is still open.
+- Q5: Close after Ready keeps **Ready to Go** until something invalidates
+  it or a future presence/service event starts a new cycle.
+- Q6: Editing only the waiver reason does not withdraw Ready. Withdraw
+  only on unresolved/failed requirements, new open work, or an explicit
+  authorized withdraw.
+
+Reason: Master PRD §40 prefers derivation when reliable. Detailing and
+Quality Check are already manual requirement outcomes.
+
+Impact: Implemented as derived state + EN/ES copy. No `YardPhaseEvent`
+schema. See `audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`.
 
 Phase: V2.1
 

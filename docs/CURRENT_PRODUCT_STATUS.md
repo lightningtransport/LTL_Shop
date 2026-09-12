@@ -106,9 +106,12 @@ TARGET authorization/UX.
   a readiness assessment, update its six requirements, and explicitly mark it
   Ready when the rules pass. These mutations use server authorization,
   optimistic version checks, idempotency, and Activity Log records.
-- Yard Phase is derived for presentation from assessment and Work Order
-  evidence. It is not a persisted Work Order status, not a Job Category, and
-  does not create another Work Order.
+- Yard Phase is derived for presentation as the next unresolved readiness
+  gate. It is not a persisted Work Order status, not a Job Category, and
+  does not create another Work Order. An open Work Order is a blocker, not
+  the phase. All-resolved assessments that are not yet approved show
+  **Ready for Approval**. `Ready to Go` is the explicit approval, and a
+  closed Ready assessment stays in that column until new open work appears.
 - `Ready to Go` is an explicit readiness approval. Completing a Work Order does
   not establish physical presence, departure, or return to service.
 
@@ -261,9 +264,9 @@ the work order. Completed PM records are read-only.
 - Physical Yard Presence is always `UNKNOWN`; Samsara, McLeod, Dispatch,
   Incoming, and Departures are not connected.
 - Yard Phase is derived for presentation; no persisted Yard Phase event
-  exists. V2.1-001 (`audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`) decided
-  not to add `YardPhaseEvent` until a live Operational Yard pilot answers
-  the product questions in that document.
+  exists. V2.1-001 recorded Cristian’s 2026-09-12 answers and implemented
+  the next-unresolved-gate derivation plus **Ready for Approval**. See
+  `audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`.
 - Ready to Go, Returned to Service, and Work Order completion are separate
   implemented concepts.
 - Admin Catalog is read-only. Catalog writes, Custom Job review/mapping, Job
