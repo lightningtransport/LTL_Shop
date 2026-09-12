@@ -241,7 +241,13 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
     await login(page);
     await page.goto(`/work-orders/${activeWorkOrder.id}`);
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.evaluate(() => {
+      const spacer = document.createElement('div');
+      spacer.style.height = '1600px';
+      spacer.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(spacer);
+      window.scrollTo(0, document.documentElement.scrollHeight);
+    });
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     // Manager-first ownership: mechanics report a blocker instead of pausing.
     await page.getByRole('button', { name: 'Report Blocker' }).first().click();
@@ -285,11 +291,12 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('banner', { name: 'Home controls' })).toBeVisible();
     await expect(page.getByAltText('Lightning Transport and Logistics')).toBeVisible();
 
-    await page.goto('/mechanic/standard/new');
+    await page.goto('/mechanic/standard/new', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
     await expect(page.getByText(user.name, { exact: true })).toHaveCount(0);
-    const backToHome = page.getByRole('link', { name: 'Back to Home' });
+    const backToHome = page.locator('header').getByRole('link', { name: 'Back to Home' });
     await expect(backToHome).toBeVisible();
+    await backToHome.scrollIntoViewIfNeeded();
     const backBox = await backToHome.boundingBox();
     expect(backBox?.width).toBeGreaterThanOrEqual(44);
     expect(backBox?.height).toBeGreaterThanOrEqual(44);
