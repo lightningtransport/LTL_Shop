@@ -36,6 +36,11 @@ export interface TruckDto {
   mileage: number | null;
   company: string | null;
   owner: string | null;
+  vin: string | null;
+  /** Last reported human address from `trucks.samsara_truck_location`. Not Yard Presence. */
+  location: string | null;
+  /** ISO date (`YYYY-MM-DD`) from `trucks.samsara_last_connected_date`. */
+  locationUpdatedOn: string | null;
 }
 
 export interface JobCategoryDto {
