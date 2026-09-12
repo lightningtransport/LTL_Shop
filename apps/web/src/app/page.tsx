@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { useWorkOrders } from '@/lib/shop-data';
-import { pauseLabel, priorityLabel } from '@/lib/format';
+import { pauseLabel, priorityLabel, statusLabel } from '@/lib/format';
 import { jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
@@ -165,7 +165,16 @@ export default function HomePage() {
             </p>
             {!data.active.length ? (
               <EmptyState>
-                {isPm && messages.locale === 'es' ? 'No hay servicios de PM activos asignados a ti.' : isPm ? 'No active PM services assigned to you.' : messages.noActiveJobs}
+                {isPm && messages.locale === 'es' ? (
+                  'No hay servicios de PM activos asignados a ti.'
+                ) : isPm ? (
+                  'No active PM services assigned to you.'
+                ) : (
+                  <>
+                    <p>{messages.noActiveJobs}</p>
+                    <p className="mt-2 text-sm">{messages.askManagerToCreate}</p>
+                  </>
+                )}
               </EmptyState>
             ) : (
               <div className="space-y-3">
@@ -234,11 +243,7 @@ function WorkOrderCard({
             #{wo.truckNumber} · {!isPm ? `${priorityLabel(wo.priority)} · ` : ''}
             {mode === 'paused'
               ? pauseLabel(wo.currentPauseReason)
-              : mode === 'created'
-                ? 'Created'
-                : mode === 'completed'
-                  ? 'Completed'
-                  : 'In Progress'}
+              : messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}
           </p>
         </div>
         {!isPm ? <PriorityBadge priority={wo.priority} /> : null}

@@ -108,7 +108,7 @@ const copy: Record<ShopLocale, Copy> = {
     openAllowedHome: 'Go to your Shop home',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, truck ${truckNumber}`,
     pmServiceLoadError: 'Unable to load PM service details.',
-    status: { created: 'Created', in_progress: 'In progress', waiting_paused: 'Paused', completed: 'Completed' },
+    status: { created: 'Created', in_progress: 'In Progress', waiting_paused: 'Paused', completed: 'Completed', cancelled: 'Cancelled' },
   },
   es: {
     locale: 'es', language: 'Idioma', switchTo: 'Cambiar a inglés', home: 'Inicio',
@@ -151,7 +151,7 @@ const copy: Record<ShopLocale, Copy> = {
     openAllowedHome: 'Ir a tu Inicio del Shop',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, unidad ${truckNumber}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',
-    status: { created: 'Creado', in_progress: 'En progreso', waiting_paused: 'Pausado', completed: 'Completado' },
+    status: { created: 'Creado', in_progress: 'En progreso', waiting_paused: 'Pausado', completed: 'Completado', cancelled: 'Cancelado' },
   },
 };
 

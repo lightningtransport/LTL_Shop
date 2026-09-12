@@ -34,7 +34,13 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('es').nextPhaseBody).toContain('unidades');
     expect(getAdminMessages('en').lastReportedLocation).toBe('Last reported location');
     expect(getAdminMessages('es').lastReportedLocation).toBe('Ubicación reportada');
+    expect(getAdminMessages('en').locationUpdatedOn).toBe('Last reported on');
+    expect(getAdminMessages('es').locationUpdatedOn).toBe('Reportada el');
     expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('in yard');
     expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('en el yard');
+    expect(getAdminMessages('en').locationUpdatedOn.toLowerCase()).not.toContain('in yard');
+    expect(getAdminMessages('es').locationUpdatedOn.toLowerCase()).not.toContain('en el yard');
+    expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('presence');
+    expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('presencia');
   });
 });

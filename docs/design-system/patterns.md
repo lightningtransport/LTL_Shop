@@ -58,6 +58,21 @@ slots; the helper now lives in `ui.tsx` so Yard and Admin share it.
    destination, not a skeleton.
 5. Do not invent a third dashed style.
 
+## Location vs Presence (LTR-13)
+
+CURRENT UI hides Yard Presence (`UNKNOWN`, “Presence unknown”,
+“Presencia desconocida”) on Admin Truck detail and Yard cards/board stubs.
+Show only last reported location (`location` / `locationUpdatedOn` from the
+Truck DTO). Do not rename Presence → Ubicación: `location` ≠ Presence.
+
+| Field | CURRENT display | Do not |
+|---|---|---|
+| `location` / `locationUpdatedOn` | “Last reported location” / “Ubicación reportada” | “in yard”, “en el yard”, Presence |
+| Yard Presence | Hidden until a real geofence exists (TARGET V3) | Presence UNKNOWN chips, “Presencia desconocida” rows |
+
+Mechanic surfaces already show location only. Keep that. Copy catalogs live in
+`apps/web/src/lib/admin-messages.ts` and `apps/web/src/lib/locale-context.tsx`.
+
 ## Access and permission chrome
 
 - Catalog remains a read-only view (`catalogDescription`). There is no

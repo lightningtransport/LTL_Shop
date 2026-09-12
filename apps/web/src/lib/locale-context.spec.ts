@@ -11,7 +11,17 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('en').workOrderAction('Start Work', 'WO-1001', '905')).toBe('Start Work WO-1001, truck 905');
     expect(getShopCopy('en').lastReportedLocation).toBe('Last reported location');
     expect(getShopCopy('es').lastReportedLocation).toBe('Ubicación reportada');
+    expect(getShopCopy('en').locationUpdatedOn).toBe('Last reported on');
+    expect(getShopCopy('es').locationUpdatedOn).toBe('Reportada el');
     expect(getShopCopy('en').lastReportedLocation.toLowerCase()).not.toContain('yard');
     expect(getShopCopy('es').lastReportedLocation.toLowerCase()).not.toContain('yard');
+    expect(getShopCopy('en').locationUpdatedOn.toLowerCase()).not.toContain('yard');
+    expect(getShopCopy('es').locationUpdatedOn.toLowerCase()).not.toContain('yard');
+    expect(getShopCopy('en').status.created).toBe('Created');
+    expect(getShopCopy('en').status.in_progress).toBe('In Progress');
+    expect(getShopCopy('es').status.created).toBe('Creado');
+    expect(getShopCopy('es').status.in_progress).toBe('En progreso');
+    expect(getShopCopy('es').status.waiting_paused).toBe('Pausado');
+    expect(getShopCopy('es').status.completed).toBe('Completado');
   });
 });

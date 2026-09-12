@@ -259,7 +259,22 @@ export default function NewWorkOrderPage() {
   }
 
   if (!user.capabilities.includes(requiredCapability)) {
-    return <PageSkeleton label="Opening your workspace" />;
+    const allowedHome = defaultWorkspacePath(user);
+    return (
+      <div>
+        <ScreenHeader
+          title={isPmMechanic ? messages.newPmService : messages.newWorkOrder}
+          subtitle={messages.workspaceUnavailable}
+          backHref={allowedHome}
+        />
+        <EmptyState>
+          <p>{messages.workspaceUnavailable}</p>
+          <Button asChild variant="outline" className="mt-4">
+            <Link href={allowedHome}>{messages.openAllowedHome}</Link>
+          </Button>
+        </EmptyState>
+      </div>
+    );
   }
 
   if (!isPmMechanic) {
@@ -440,7 +455,7 @@ export default function NewWorkOrderPage() {
             {messages.workOrderOpen(truck?.truckNumber ?? '')}
           </p>
           <p className="mt-1 text-sm">
-            {messages.workOrderSummary(openWo.displayId, messages.status[openWo.status] ?? statusLabel(openWo.status), openWo.jobsCompleted, openWo.jobsTotal)}
+            {messages.workOrderSummary(openWo.displayId, messages.status[openWo.status] ?? statusLabel(openWo.status, messages.status), openWo.jobsCompleted, openWo.jobsTotal)}
           </p>
           {openWo.primaryCategoryName === 'PM' && !user.pmAuthorized && user.role !== 'admin' ? (
             <div className="mt-3 space-y-2">

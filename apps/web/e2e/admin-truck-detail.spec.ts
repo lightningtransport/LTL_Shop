@@ -15,6 +15,10 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await page.getByRole('link', { name: 'Y-101' }).click();
     await expect(page).toHaveURL(/\/admin\/trucks\/.*001001/);
     await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByText('Last reported location')).toBeVisible();
+    await expect(page.getByText('Presence unknown')).toHaveCount(0);
+    await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
+    await expect(page.getByText(/in yard/i)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Current Work' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Blockers' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Repair history' })).toBeVisible();
@@ -47,6 +51,8 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
     await page.getByRole('button', { name: 'Switch to Spanish' }).click();
     await expect(page.getByRole('heading', { name: 'Resumen' })).toBeVisible();
+    await expect(page.getByText('Ubicación reportada')).toBeVisible();
+    await expect(page.getByText('Presencia desconocida')).toHaveCount(0);
     await expect(page.getByText(/no tienes permiso para cambiar/i)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Iniciar evaluación' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Guardar requisito/i })).toHaveCount(0);
