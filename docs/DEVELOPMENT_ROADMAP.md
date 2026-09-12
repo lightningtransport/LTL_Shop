@@ -97,7 +97,9 @@ Cutover requirements:
 
 ## V2.1 — Yard Operations maturity
 
-- validate whether derived Yard Phase is insufficient before persisting events;
+- V2.1-001 decided not to persist Yard Phase yet; confirm remaining
+  product questions on a live Operational Yard pilot before any
+  derivation-copy or later event-model task;
 - mature Truck Detail, Readiness, Quality Check, Detailing, blockers, and Ready
   to Go;
 - preserve separation among Yard Phase, Category, Job status, Work Order

@@ -260,7 +260,10 @@ the work order. Completed PM records are read-only.
 
 - Physical Yard Presence is always `UNKNOWN`; Samsara, McLeod, Dispatch,
   Incoming, and Departures are not connected.
-- Yard Phase is derived for presentation; no persisted Yard Phase event exists.
+- Yard Phase is derived for presentation; no persisted Yard Phase event
+  exists. V2.1-001 (`audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`) decided
+  not to add `YardPhaseEvent` until a live Operational Yard pilot answers
+  the product questions in that document.
 - Ready to Go, Returned to Service, and Work Order completion are separate
   implemented concepts.
 - Admin Catalog is read-only. Catalog writes, Custom Job review/mapping, Job

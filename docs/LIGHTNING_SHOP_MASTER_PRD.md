@@ -1579,6 +1579,26 @@ Approved answers:
 - Q18: Path is current code → TARGET implementation → tests/staging →
   production pilot → production. No two operating models in parallel.
 
+### 2026-09-12 — V2.1-001 Yard Phase persistence (do not persist yet)
+
+Decision: Do not add `YardPhaseEvent`. Yard Phase stays derived from the
+Phase 1 readiness assessment and linked Work Order evidence. Detailing and
+Quality Check are already persisted as manual requirement outcomes; Ready
+to Go is already an explicit approval. A new event model is not justified
+until Cristian answers whether the board means “next unresolved gate” or
+“operator-claimed stage,” and a live Operational Yard pilot confirms the
+remaining questions.
+
+Reason: Master PRD §40 prefers derivation when reliable. The cases that
+look “stuck” (unevaluated short-circuit, all-resolved fallthrough, reopen
+without invalidation) are derivation/mutation gaps, not missing events.
+
+Impact: V2.1-001 is complete as a decision artifact
+(`audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`). No schema. Follow-on
+implementation waits for the Decision Log answers in that audit §8.
+
+Phase: V2.1
+
 ---
 
 # 49. Instructions for Cursor / Codex
