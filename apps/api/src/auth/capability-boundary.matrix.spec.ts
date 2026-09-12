@@ -12,8 +12,10 @@ import {
   ADMIN_MUTATION_BOUNDARIES,
   ADMIN_READ_BOUNDARIES,
   WORK_ORDER_MUTATION_BOUNDARIES,
+  WORK_ORDER_READ_BOUNDARIES,
   adminHandler,
   declaredHttpCapabilities,
+  workOrderHandler,
 } from './capability-boundary.matrix';
 
 const WO_ID = '11111111-1111-4111-8111-111111111111';
@@ -163,10 +165,8 @@ describe('TARGET capability boundary matrix', () => {
 
   it('does not put a Capabilities decorator on the mechanic Work Order controller', () => {
     expect(declaredHttpCapabilities(WorkOrdersController, undefined)).toEqual([]);
-    for (const entry of WORK_ORDER_MUTATION_BOUNDARIES) {
-      const handler = WorkOrdersController.prototype[entry.handler as keyof WorkOrdersController] as (
-        ...args: never[]
-      ) => unknown;
+    for (const entry of [...WORK_ORDER_MUTATION_BOUNDARIES, ...WORK_ORDER_READ_BOUNDARIES]) {
+      const handler = workOrderHandler(entry.handler);
       expect(declaredHttpCapabilities(WorkOrdersController, handler)).toEqual([]);
     }
   });

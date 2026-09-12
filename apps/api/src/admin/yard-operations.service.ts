@@ -130,6 +130,9 @@ type YardTruckRow = {
   mileage: number | null;
   company: string | null;
   owner: string | null;
+  vin?: string | null;
+  samsaraTruckLocation?: string | null;
+  samsaraLastConnectedDate?: Date | null;
   workOrders: SummaryWorkOrderRow[];
   readinessAssessments: YardAssessmentRow[];
   serviceStatusEvents: Array<{ status: string; occurredAt: Date }>;

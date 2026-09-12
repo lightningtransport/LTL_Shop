@@ -218,6 +218,27 @@ export const ADMIN_READ_BOUNDARIES: CapabilityBoundaryEntry[] = [
   { method: 'GET', path: '/admin/trucks/:id/repair-history', handler: 'repairHistory', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
 ];
 
+export const WORK_ORDER_READ_BOUNDARIES: CapabilityBoundaryEntry[] = [
+  {
+    method: 'GET',
+    path: '/work-orders/:id',
+    handler: 'get',
+    controller: 'work-orders',
+    expected: [STANDARD],
+    enforcement: 'service',
+    notes: 'Assigned mechanic.standard/pm can read. admin.access may also read. Mutations stay on assertMechanicAccess.',
+  },
+  {
+    method: 'GET',
+    path: '/work-orders/:id/pm',
+    handler: 'getPm',
+    controller: 'work-orders',
+    expected: [PM],
+    enforcement: 'service',
+    notes: 'Assigned mechanic.pm can read. admin.access may also read. canEdit and POST stay mechanic.pm + assigned.',
+  },
+];
+
 export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
   {
     method: 'POST',

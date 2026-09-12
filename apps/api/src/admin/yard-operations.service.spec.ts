@@ -139,6 +139,30 @@ describe('YardOperationsService', () => {
     expect(page.counts.presenceUnknown).toBe(1);
   });
 
+  it('loads Truck detail with location separate from Phase 1 presence', async () => {
+    const prisma = createPrisma();
+    const row = {
+      ...truck('608', '00000000-0000-4000-8000-000000000608'),
+      vin: '1M1AN4GY5RM045983',
+      samsaraTruckLocation: 'US 301, Bradford County, FL',
+      samsaraLastConnectedDate: new Date('2026-09-12T00:00:00.000Z'),
+    };
+    prisma.truck.findUnique.mockResolvedValue(row);
+    const trucks = { getRepairHistory: vi.fn().mockResolvedValue({ items: [], nextCursor: null }) };
+    const service = new YardOperationsService(prisma as never, trucks as never, { log: vi.fn() } as never);
+
+    await expect(service.detail('00000000-0000-4000-8000-000000000608')).resolves.toMatchObject({
+      truck: {
+        truckNumber: '608',
+        vin: '1M1AN4GY5RM045983',
+        location: 'US 301, Bradford County, FL',
+        locationUpdatedOn: '2026-09-12',
+      },
+      presence: { state: 'unknown', provenance: 'phase_1_unavailable' },
+      repairHistory: { items: [], nextCursor: null },
+    });
+  });
+
   it('returns not found for a missing Truck detail', async () => {
     const prisma = createPrisma();
     prisma.truck.findUnique.mockResolvedValue(null);
