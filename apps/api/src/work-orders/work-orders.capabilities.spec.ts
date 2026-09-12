@@ -138,6 +138,93 @@ describe('Work Order workspace capabilities', () => {
     ).rejects.toThrow('Notes are required when reason is Other');
   });
 
+  it('lets an Admin-only user read a PM Work Order they are not assigned to', async () => {
+    const workOrder = assignedReadWorkOrder({
+      createdById: 'pm-1',
+      primaryCategory: { id: 'pm-category', name: 'PM' },
+      mechanics: [{ mechanicId: 'pm-1', addedAt: new Date('2026-09-09T12:00:00.000Z'), removedAt: null, mechanic: { name: 'Cristian' } }],
+      jobs: [],
+    });
+    const service = new WorkOrdersService(
+      { workOrder: { findUnique: vi.fn().mockResolvedValue(workOrder) } } as never,
+      { log: vi.fn() } as never,
+    );
+
+    await expect(service.getById(user([AppCapability.ADMIN_ACCESS], 'admin-1'), 'wo-1'))
+      .resolves.toMatchObject({ id: 'wo-1', primaryCategoryName: 'PM' });
+  });
+
+  it('lets an Admin-only user read PM service details without gaining edit', async () => {
+    const workOrder = {
+      id: 'wo-1',
+      truckId: 'truck-1',
+      createdById: 'pm-1',
+      status: 'in_progress',
+      primaryCategory: { name: 'PM' },
+      mechanics: [{ mechanicId: 'pm-1', removedAt: null }],
+      truck: { mileage: 142500, make: 'Volvo', model: 'VNL' },
+      pmService: { observedMileage: 140000, parts: [] },
+    };
+    const service = new WorkOrdersService(
+      {
+        workOrder: { findUnique: vi.fn().mockResolvedValue(workOrder) },
+        partCategory: { findMany: vi.fn().mockResolvedValue([]) },
+        pmService: { findFirst: vi.fn().mockResolvedValue({
+          workOrderId: 'wo-prior',
+          observedMileage: 120000,
+          workOrder: { displayId: 'WO-001', completedAt: null, createdAt: new Date('2026-08-01T00:00:00.000Z') },
+        }) },
+      } as never,
+      { log: vi.fn() } as never,
+    );
+
+    await expect(service.getPmService(user([AppCapability.ADMIN_ACCESS], 'admin-1'), 'wo-1'))
+      .resolves.toMatchObject({
+        workOrderId: 'wo-1',
+        canEdit: false,
+        observedMileage: 140000,
+        lastCompletedPm: {
+          workOrderId: 'wo-prior',
+          displayId: 'WO-001',
+          completedAt: '2026-08-01T00:00:00.000Z',
+          observedMileage: 120000,
+        },
+      });
+  });
+
+  it('still denies PM service updates for an Admin-only user', async () => {
+    const service = new WorkOrdersService(
+      {
+        workOrder: { findUnique: vi.fn().mockResolvedValue({
+          id: 'wo-1',
+          createdById: 'pm-1',
+          status: 'in_progress',
+          primaryCategory: { name: 'PM' },
+          mechanics: [{ mechanicId: 'pm-1', removedAt: null }],
+          truck: { make: 'Volvo', model: 'VNL' },
+        }) },
+        $transaction: vi.fn(async (callback: (tx: { workOrder: { findUnique: ReturnType<typeof vi.fn> } }) => unknown) =>
+          callback({
+            workOrder: { findUnique: vi.fn().mockResolvedValue({
+              id: 'wo-1',
+              createdById: 'pm-1',
+              status: 'in_progress',
+              primaryCategory: { name: 'PM' },
+              mechanics: [{ mechanicId: 'pm-1', removedAt: null }],
+              truck: { make: 'Volvo', model: 'VNL' },
+            }) },
+          }),
+        ),
+      } as never,
+      { log: vi.fn() } as never,
+    );
+
+    await expect(service.updatePmService(user([AppCapability.ADMIN_ACCESS], 'admin-1'), 'wo-1', {
+      observedMileage: 1000,
+      selections: [],
+    })).rejects.toThrow('You do not have access to the PM mechanic workspace.');
+  });
+
   it('blocks direct mechanic access to a Work Order owned by someone else', async () => {
     const workOrder = {
       id: 'wo-1',
@@ -225,6 +312,7 @@ function mappedJob(overrides: { assignedMechanic: { id: string; name: string } |
 
 function assignedReadWorkOrder(overrides: {
   createdById: string;
+  primaryCategory?: { id: string; name: string };
   mechanics: {
     mechanicId: string;
     addedAt: Date;
@@ -237,7 +325,7 @@ function assignedReadWorkOrder(overrides: {
     id: 'wo-1',
     displayId: 'WO-0001',
     truckId: 'truck-1',
-    primaryCategoryId: 'category-brakes',
+    primaryCategoryId: overrides.primaryCategory?.id ?? 'category-brakes',
     status: 'in_progress' as const,
     priority: 'normal' as const,
     notes: null,
@@ -253,7 +341,7 @@ function assignedReadWorkOrder(overrides: {
       id: 'truck-1', truckNumber: '905', make: null, model: null, year: null,
       mileage: null, company: null, owner: null,
     },
-    primaryCategory: { id: 'category-brakes', name: 'Brakes' },
+    primaryCategory: overrides.primaryCategory ?? { id: 'category-brakes', name: 'Brakes' },
     pauseEvents: [],
     mechanics: overrides.mechanics,
     jobs: overrides.jobs,

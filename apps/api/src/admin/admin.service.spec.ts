@@ -202,6 +202,26 @@ describe('AdminService', () => {
     await expect(service.mechanicDetail(baseRow.createdById)).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('maps Prisma capability keys onto shared capability values', async () => {
+    const prisma = createPrisma();
+    prisma.user.findMany.mockResolvedValue([{
+      id: '00000000-0000-4000-8000-000000000201',
+      name: 'Cristian',
+      email: 'cristian@ltransl.com',
+      role: 'mechanic',
+      active: true,
+      capabilities: [{ capability: 'MECHANIC_PM' }, { capability: 'MECHANIC_STANDARD' }],
+      mechanicAssignments: [],
+    }]);
+    const service = createService(prisma);
+    await expect(service.listMechanics({})).resolves.toEqual({
+      items: [expect.objectContaining({
+        capabilities: [AppCapability.MECHANIC_PM, AppCapability.MECHANIC_STANDARD],
+      })],
+      nextCursor: null,
+    });
+  });
+
   it('defaults History to completed and cancelled Work Orders', async () => {
     const prisma = createPrisma();
     prisma.workOrder.findMany.mockResolvedValue([]);
