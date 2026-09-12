@@ -7,6 +7,7 @@ import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop
 import { useAuth } from '@/lib/auth-context';
 import { useWorkOrders } from '@/lib/shop-data';
 import { pauseLabel, priorityLabel } from '@/lib/format';
+import { jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
@@ -122,7 +123,7 @@ export default function HomePage() {
               </p>
               <div className="space-y-3">
                 {data.created.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="created" />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="created" currentUserId={user.id} />
                 ))}
               </div>
             </section>
@@ -140,7 +141,7 @@ export default function HomePage() {
             ) : (
               <div className="space-y-3">
                 {data.active.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="active" />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="active" currentUserId={user.id} />
                 ))}
               </div>
             )}
@@ -158,7 +159,7 @@ export default function HomePage() {
             ) : (
               <div className="space-y-3">
                 {data.paused.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="paused" />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="paused" currentUserId={user.id} />
                 ))}
               </div>
             )}
@@ -171,7 +172,7 @@ export default function HomePage() {
               </summary>
               <div className="mt-3 space-y-3">
                 {data.completed.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="completed" />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="completed" currentUserId={user.id} />
                 ))}
               </div>
             </details>
@@ -185,10 +186,13 @@ export default function HomePage() {
 function WorkOrderCard({
   wo,
   mode,
+  currentUserId,
 }: {
   wo: WorkOrderSummaryDto;
   mode: 'created' | 'active' | 'paused' | 'completed';
+  currentUserId: string;
 }) {
+  const { messages } = useShopLocale();
   const isPm = wo.primaryCategoryName === 'PM';
   return (
     <article className="card space-y-3">
@@ -213,25 +217,33 @@ function WorkOrderCard({
       <p className="text-sm text-shop-muted">
         {isPm ? 'PM Service' : `${wo.primaryCategoryName} · ${wo.jobsCompleted} of ${wo.jobsTotal} jobs done`}
       </p>
-      {!isPm && (mode === 'active' || mode === 'paused') && wo.jobs.length > 0 ? (
-        <ul className="space-y-1 text-sm">
+      {!isPm ? (
+        <p className="text-xs text-shop-muted">{workOrderTeamLabel(wo.mechanics, messages)}</p>
+      ) : null}
+      {!isPm && mode !== 'completed' && wo.jobs.length > 0 ? (
+        <ul className="space-y-2 text-sm">
           {wo.jobs.map((job) => (
-            <li key={job.id} className="flex items-center gap-2">
+            <li key={job.id} className="flex items-start gap-2">
               <span
                 className={
                   job.status === 'completed'
-                    ? 'text-shop-success'
-                    : 'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-shop-border text-[10px] text-shop-muted'
+                    ? 'mt-0.5 text-shop-success'
+                    : 'mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-shop-border text-[10px] text-shop-muted'
                 }
               >
                 {job.status === 'completed' ? '✓' : '○'}
               </span>
-              <span
-                className={
-                  job.status === 'completed' ? 'text-shop-muted line-through' : ''
-                }
-              >
-                {job.displayName}
+              <span className="min-w-0">
+                <span
+                  className={`block ${
+                    job.status === 'completed' ? 'text-shop-muted line-through' : ''
+                  }`}
+                >
+                  {job.displayName}
+                </span>
+                <span className="block text-xs text-shop-muted">
+                  {jobAssignmentLabel(job.assignedMechanic, currentUserId, messages)}
+                </span>
               </span>
             </li>
           ))}

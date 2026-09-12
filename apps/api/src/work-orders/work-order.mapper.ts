@@ -17,6 +17,7 @@ type JobRow = {
   status: JobStatus;
   completedAt: Date | null;
   completedById: string | null;
+  assignedMechanic?: { id: string; name: string } | null;
 };
 
 type PauseRow = {
@@ -27,6 +28,8 @@ type PauseRow = {
   startedAt: Date;
   endedAt: Date | null;
   durationMs: bigint | null;
+  isOfficialPause?: boolean;
+  reportedBy?: { id: string; name: string } | null;
 };
 
 type MechanicRow = {
@@ -81,8 +84,15 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     category: j.category,
     displayName: j.displayName,
     status: j.status,
+    assignedMechanic: j.assignedMechanic ?? null,
   }));
-  const currentPause = wo.pauseEvents?.find((p) => !p.endedAt) ?? null;
+  const currentPause = currentOfficialPause(wo.pauseEvents);
+  const mechanics = (wo.mechanics ?? [])
+    .filter((m) => !m.removedAt)
+    .map((m) => ({
+      mechanicId: m.mechanicId,
+      mechanicName: m.mechanic.name,
+    }));
   return {
     id: wo.id,
     displayId: wo.displayId,
@@ -95,6 +105,7 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     jobsCompleted,
     jobsTotal,
     jobs,
+    mechanics,
     currentPauseReason: currentPause?.reason ?? null,
     createdAt: wo.createdAt.toISOString(),
     startedAt: wo.startedAt?.toISOString() ?? null,
@@ -103,7 +114,7 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
 
 export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
   const summary = toWorkOrderSummary(wo);
-  const currentPause = wo.pauseEvents?.find((p) => !p.endedAt) ?? null;
+  const currentPause = currentOfficialPause(wo.pauseEvents);
   return {
     ...summary,
     notes: wo.notes,
@@ -124,6 +135,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
       status: j.status,
       completedAt: j.completedAt?.toISOString() ?? null,
       completedById: j.completedById,
+      assignedMechanic: j.assignedMechanic ?? null,
     })),
     mechanics: (wo.mechanics ?? [])
       .filter((m) => !m.removedAt)
@@ -133,19 +145,27 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
         addedAt: m.addedAt.toISOString(),
         removedAt: m.removedAt?.toISOString() ?? null,
       })),
-    currentPause: currentPause
-      ? {
-          id: currentPause.id,
-          workOrderId: currentPause.workOrderId,
-          reason: currentPause.reason,
-          notes: currentPause.notes,
-          startedAt: currentPause.startedAt.toISOString(),
-          endedAt: currentPause.endedAt?.toISOString() ?? null,
-          durationMs: currentPause.durationMs
-            ? Number(currentPause.durationMs)
-            : null,
-        }
-      : null,
+    currentPause: currentPause ? toPauseEventDto(currentPause) : null,
+  };
+}
+
+function currentOfficialPause(pauses?: PauseRow[]) {
+  return pauses?.find((pause) => !pause.endedAt && pause.isOfficialPause !== false) ?? null;
+}
+
+export function toPauseEventDto(pause: PauseRow) {
+  return {
+    id: pause.id,
+    workOrderId: pause.workOrderId,
+    reason: pause.reason,
+    notes: pause.notes,
+    startedAt: pause.startedAt.toISOString(),
+    endedAt: pause.endedAt?.toISOString() ?? null,
+    durationMs: pause.durationMs === null || pause.durationMs === undefined
+      ? null
+      : Number(pause.durationMs),
+    isOfficialPause: pause.isOfficialPause !== false,
+    reportedBy: pause.reportedBy ?? null,
   };
 }
 
@@ -153,10 +173,16 @@ export const workOrderDetailInclude = {
   truck: true,
   primaryCategory: true,
   jobs: {
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      assignedMechanic: { select: { id: true, name: true } },
+    },
     orderBy: { addedAt: 'asc' as const },
   },
-  pauseEvents: { orderBy: { startedAt: 'desc' as const } },
+  pauseEvents: {
+    include: { reportedBy: { select: { id: true, name: true } } },
+    orderBy: { startedAt: 'desc' as const },
+  },
   mechanics: {
     include: { mechanic: true },
     orderBy: { addedAt: 'asc' as const },

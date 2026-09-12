@@ -69,7 +69,7 @@ No V2 implementation slice may start until those approvals are recorded.
 | Source | What it proves |
 |---|---|
 | `main` at `9121df9` (PR #76) | V1 Stable Shop Core on the default branch when this contract was written. |
-| PRs #77 (V1.2-001) and #78 (V1.2-002) | Assigned-work presentation and blocker lifecycle validation. The user instructed this task to treat V1.2 as accepted. If those PRs are not yet on `main` when this is reviewed, merge them (or equivalent) before starting V2 implementation. |
+| PRs #77 (V1.2-001) and #78 (V1.2-002) | Assigned-work presentation and blocker lifecycle validation. Merged to `main` (`a56344a`). This contract treats that V1.2 behavior as accepted CURRENT. |
 | `audit/CAPABILITY_BOUNDARY_AUDIT.md` (V1-004) | Declared vs HTTP-enforced vs V1-expected capabilities. |
 | `CURRENT_PRODUCT_STATUS.md` | Soft-cutover hybrid: Manager planning exists; Standard Create and legacy pause APIs remain. |
 | Master PRD §§3, 29–30, 43 (V2) | TARGET: Manager plans; mechanic executes; UI and API change together; PM stays specialized. |

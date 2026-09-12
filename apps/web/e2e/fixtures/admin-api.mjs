@@ -63,6 +63,7 @@ const workOrders = [
   makeWorkOrder('00000000-0000-4000-8000-000000000103', 'WO-0103', 'T-103', 'normal', 'created'),
   makeWorkOrder('00000000-0000-4000-8000-000000000104', 'WO-0104', 'T-104', 'normal', 'completed'),
   makeWorkOrder('00000000-0000-4000-8000-000000000105', 'WO-0105', 'T-105', 'normal', 'cancelled'),
+  makeWorkOrder('00000000-0000-4000-8000-000000000106', 'WO-0106', 'T-106', 'high', 'in_progress', { pendingJob: true }),
 ];
 
 const yardOperations = [
@@ -360,7 +361,12 @@ createServer(async (request, response) => {
     if (!String(body.reason ?? '').trim()) { json(response, 400, { message: 'A time correction reason is required.' }); return; }
     if (body.expectedVersion !== summary.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
     const session = (summary.laborSessions ?? []).find((item) => item.id === body.targetId);
-    const pause = summary.currentPause?.id === body.targetId ? summary.currentPause : null;
+    const pause = (summary.pauseHistory ?? []).find((item) => item.id === body.targetId)
+      ?? (summary.currentPause?.id === body.targetId ? summary.currentPause : null);
+    if (body.targetType === 'pause_event' && pause?.isOfficialPause === false) {
+      json(response, 400, { message: 'Cannot correct a reported blocker' });
+      return;
+    }
     const segment = body.targetType === 'work_session' ? session : pause;
     if (!segment) { json(response, 404, { message: 'Time segment not found' }); return; }
     if (!segment.endedAt) { json(response, 400, { message: 'Cannot correct an open time segment' }); return; }
@@ -600,8 +606,137 @@ createServer(async (request, response) => {
     });
     return;
   }
+  const adminPauseMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/pause$/i);
+  if (adminPauseMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === adminPauseMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (summary.status !== 'in_progress') { json(response, 400, { message: 'Only in-progress Work Orders can be paused' }); return; }
+    const now = '2026-09-11T16:00:00.000Z';
+    summary.status = 'waiting_paused';
+    summary.currentPause = {
+      id: '00000000-0000-4000-8000-000000000411',
+      workOrderId: summary.id,
+      reason: body?.reason ?? 'waiting_for_parts',
+      notes: body?.notes ?? null,
+      startedAt: now,
+      endedAt: null,
+      durationMs: null,
+      isOfficialPause: true,
+      reportedBy: null,
+    };
+    summary.pauseHistory = [
+      { ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } },
+      ...(summary.pauseHistory ?? []),
+    ];
+    summary.version += 1;
+    summary.activityLog = [
+      {
+        id: '00000000-0000-4000-8000-000000000612',
+        eventType: 'work_paused',
+        entityType: 'work_order',
+        entityId: summary.id,
+        user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name },
+        previousValue: null,
+        newValue: { reason: summary.currentPause.reason },
+        relevantValue: null,
+        createdAt: now,
+      },
+      ...(summary.activityLog ?? []),
+    ];
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
+  const adminResumeMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/resume$/i);
+  if (adminResumeMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === adminResumeMatch[1]);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (summary.status !== 'waiting_paused') { json(response, 400, { message: 'Only paused Work Orders can be resumed' }); return; }
+    const now = '2026-09-11T16:30:00.000Z';
+    if (summary.currentPause) {
+      const closed = { ...summary.currentPause, endedAt: now, durationMs: 1_800_000 };
+      summary.pauseHistory = (summary.pauseHistory ?? []).map((pause) => (
+        pause.id === closed.id ? { ...pause, ...closed } : pause
+      ));
+    }
+    summary.status = 'in_progress';
+    summary.currentPause = null;
+    summary.version += 1;
+    summary.activityLog = [
+      {
+        id: '00000000-0000-4000-8000-000000000613',
+        eventType: 'work_resumed',
+        entityType: 'work_order',
+        entityId: summary.id,
+        user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name },
+        previousValue: null,
+        newValue: { status: 'in_progress' },
+        relevantValue: null,
+        createdAt: now,
+      },
+      ...(summary.activityLog ?? []),
+    ];
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
+  const blockerMatch = request.url?.match(/^\/api\/work-orders\/([0-9a-f-]+)\/blockers$/i);
+  if (blockerMatch && request.method === 'POST') {
+    if (!user.capabilities.includes('mechanic.standard')) {
+      json(response, 403, { message: 'standard mechanic required' });
+      return;
+    }
+    const summary = workOrders.find((item) => item.id === blockerMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!['created', 'in_progress', 'waiting_paused'].includes(summary.status)) {
+      json(response, 400, { message: 'Cannot report a blocker on a closed Work Order' });
+      return;
+    }
+    const now = '2026-09-11T15:00:00.000Z';
+    const report = {
+      id: '00000000-0000-4000-8000-000000000902',
+      workOrderId: summary.id,
+      reason: body?.reason ?? 'waiting_for_parts',
+      notes: body?.notes ?? null,
+      startedAt: now,
+      endedAt: now,
+      durationMs: 0,
+      isOfficialPause: false,
+      reportedBy: { id: user.id, name: user.name },
+      createdBy: { id: user.id, name: user.name },
+    };
+    summary.latestReportedBlocker = report;
+    summary.reportedBlockers = [report, ...(summary.reportedBlockers ?? [])];
+    summary.version += 1;
+    summary.activityLog = [
+      {
+        id: '00000000-0000-4000-8000-000000000611',
+        eventType: 'blocker_reported',
+        entityType: 'work_order',
+        entityId: summary.id,
+        user: { id: user.id, name: user.name },
+        previousValue: null,
+        newValue: { reason: report.reason, notes: report.notes },
+        relevantValue: null,
+        createdAt: now,
+      },
+      ...(summary.activityLog ?? []),
+    ];
+    json(response, 200, fixtureMechanicWorkOrderDetail(summary));
+    return;
+  }
+  const mechanicDetailMatch = request.url?.match(/^\/api\/work-orders\/([0-9a-f-]+)$/i);
+  if (mechanicDetailMatch && request.method === 'GET') {
+    const summary = workOrders.find((item) => item.id === mechanicDetailMatch[1]);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    json(response, 200, fixtureMechanicWorkOrderDetail(summary));
+    return;
+  }
   if (request.url?.startsWith('/api/work-orders')) {
-    json(response, 200, { created: [], active: [], paused: [], completed: [] });
+    const active = workOrders
+      .filter((item) => item.status === 'in_progress' && item.displayId === 'WO-0106')
+      .map(toMechanicSummary);
+    json(response, 200, { created: [], active, paused: [], completed: [] });
     return;
   }
 
@@ -619,9 +754,65 @@ function fixtureWorkOrderDetail(summary) {
     totalWaitingMs: 1800000,
     jobs: summary.jobs,
     laborSessions: summary.laborSessions ?? [],
-    pauseHistory: summary.currentPause ? [{ ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } }] : [],
-    activityLog: [{ id: '00000000-0000-4000-8000-000000000601', eventType: 'work_order_created', entityType: 'work_order', entityId: summary.id, user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name }, previousValue: null, newValue: null, relevantValue: { displayId: summary.displayId }, createdAt: summary.createdAt }],
+    latestReportedBlocker: summary.latestReportedBlocker ?? null,
+    pauseHistory: summary.pauseHistory ?? (summary.currentPause ? [{ ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } }] : []),
+    reportedBlockers: summary.reportedBlockers ?? [],
+    activityLog: summary.activityLog ?? [{ id: '00000000-0000-4000-8000-000000000601', eventType: 'work_order_created', entityType: 'work_order', entityId: summary.id, user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name }, previousValue: null, newValue: null, relevantValue: { displayId: summary.displayId }, createdAt: summary.createdAt }],
     returnedToServiceAt: summary.returnedToServiceAt ?? null,
+  };
+}
+
+function fixtureMechanicWorkOrderDetail(summary) {
+  return {
+    ...toMechanicSummary(summary),
+    notes: summary.notes ?? null,
+    createdById: users['mechanic@lightning.local'].id,
+    completedAt: summary.completedAt,
+    totalActiveLaborMs: 5_400_000,
+    totalWaitingMs: summary.totalWaitingMs ?? 1_800_000,
+    version: summary.version,
+    truck: { ...summary.truck, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' },
+    jobs: (summary.jobs ?? []).map((job) => ({
+      id: job.id,
+      workOrderId: summary.id,
+      catalogJobId: job.catalogJobId ?? null,
+      categoryId: job.category.id,
+      category: job.category,
+      displayName: job.displayName,
+      customDescription: job.customDescription ?? null,
+      status: job.status,
+      completedAt: null,
+      completedById: null,
+      assignedMechanic: job.assignedMechanic ?? null,
+    })),
+    currentPause: summary.currentPause,
+  };
+}
+
+function toMechanicSummary(summary) {
+  return {
+    id: summary.id,
+    displayId: summary.displayId,
+    truckId: summary.truck.id,
+    truckNumber: summary.truck.truckNumber,
+    primaryCategoryId: summary.category.id,
+    primaryCategoryName: summary.category.name,
+    status: summary.status,
+    priority: summary.priority,
+    jobsCompleted: summary.jobsCompleted,
+    jobsTotal: summary.jobsTotal,
+    jobs: (summary.jobs ?? []).map((job) => ({
+      id: job.id,
+      categoryId: job.category.id,
+      category: job.category,
+      displayName: job.displayName,
+      status: job.status,
+      assignedMechanic: job.assignedMechanic ?? null,
+    })),
+    mechanics: summary.mechanics,
+    currentPauseReason: summary.currentPause?.reason ?? null,
+    createdAt: summary.createdAt,
+    startedAt: summary.startedAt,
   };
 }
 
@@ -640,17 +831,23 @@ function readJson(request) {
   });
 }
 
-function makeWorkOrder(id, displayId, truckNumber, priority, status) {
+function makeWorkOrder(id, displayId, truckNumber, priority, status, options = {}) {
   const paused = status === 'waiting_paused';
+  const pendingJob = options.pendingJob === true;
   const createdAt = displayId === 'WO-0101' ? '2026-09-04T15:00:00.000Z' : '2026-09-06T15:00:00.000Z';
   const completedAt = status === 'completed' ? '2026-09-06T18:00:00.000Z' : null;
   return {
     id, displayId,
     truck: { id: `00000000-0000-4000-8001-${id.slice(-12)}`, truckNumber, make: 'Volvo', model: 'VNL', year: 2024, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' },
     category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },
-    status, priority, jobsCompleted: status === 'in_progress' || status === 'completed' ? 1 : 0, jobsTotal: 1,
+    status, priority, jobsCompleted: pendingJob ? 0 : (status === 'in_progress' || status === 'completed' ? 1 : 0), jobsTotal: 1,
     mechanics: status === 'created' ? [] : [{ mechanicId: users['mechanic@lightning.local'].id, mechanicName: users['mechanic@lightning.local'].name, addedAt: '2026-09-06T16:00:00.000Z', removedAt: null }],
-    currentPause: paused ? { id: '00000000-0000-4000-8000-000000000401', workOrderId: id, reason: 'waiting_for_parts', notes: 'Air line ordered', startedAt: '2026-09-06T17:00:00.000Z', endedAt: null, durationMs: null } : null,
+    currentPause: paused ? { id: '00000000-0000-4000-8000-000000000401', workOrderId: id, reason: 'waiting_for_parts', notes: 'Air line ordered', startedAt: '2026-09-06T17:00:00.000Z', endedAt: null, durationMs: null, isOfficialPause: true, reportedBy: null } : null,
+    latestReportedBlocker: null,
+    reportedBlockers: [],
+    pauseHistory: [],
+    activityLog: [],
+    totalWaitingMs: 1_800_000,
     createdAt, startedAt: status === 'created' ? null : '2026-09-06T16:00:00.000Z', completedAt, updatedAt: '2026-09-06T18:00:00.000Z',
     version: 1,
     notes: 'Inspect brake chamber before release.',
@@ -665,7 +862,7 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status) {
       displayName: 'Inspect brake chamber',
       customDescription: null,
       category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },
-      status: status === 'in_progress' || status === 'completed' ? 'completed' : 'to_do',
+      status: pendingJob ? 'to_do' : (status === 'in_progress' || status === 'completed' ? 'completed' : 'to_do'),
       assignedMechanic: null,
     }],
     returnedToServiceAt: null,

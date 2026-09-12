@@ -112,6 +112,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           <Info label={messages.progress} value={`${data.jobsCompleted}/${data.jobsTotal}`} />
           <Info label={messages.mechanicsLabel} value={activeMechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noValue} />
           <Info label={messages.currentPause} value={data.currentPause ? `${humanize(data.currentPause.reason)} · ${formatAdminDate(data.currentPause.startedAt, locale)}` : messages.noCurrentPause} />
+          <Info label={messages.latestReportedBlocker} value={data.latestReportedBlocker ? `${humanize(data.latestReportedBlocker.reason)}${data.latestReportedBlocker.reportedBy ? ` · ${data.latestReportedBlocker.reportedBy.name}` : ''}` : messages.noLatestReportedBlocker} />
         </dl></CardContent>
       </Card>
       <Card>
@@ -175,6 +176,25 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             <Button type="submit" disabled={!selectedMechanic || Boolean(pendingAction)}>{messages.addMechanic}</Button>
           </form>
         ) : null}
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>{messages.reportedBlockers}</CardTitle>
+        <CardDescription>{messages.reportedBlockersDescription}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {(data.reportedBlockers ?? []).length ? (
+          <ul className="divide-y">
+            {(data.reportedBlockers ?? []).map((blocker) => (
+              <li key={blocker.id} className="py-3 first:pt-0">
+                <Pause pause={blocker} locale={locale} />
+                <p className="mt-1 text-xs text-muted-foreground">{blocker.reportedBy?.name ?? blocker.createdBy.name}</p>
+              </li>
+            ))}
+          </ul>
+        ) : <CompactEmpty>{messages.noReportedBlockers}</CompactEmpty>}
       </CardContent>
     </Card>
 
@@ -642,7 +662,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent>{data.currentPause ? <Pause pause={data.currentPause} locale={locale} /> : <CompactEmpty>{messages.noCurrentPause}</CompactEmpty>}</CardContent></Card>
       <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
     </section>
-    <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{humanize(entry.eventType)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name} · {entry.entityType}</p>{entry.relevantValue !== null ? <pre className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs">{JSON.stringify(entry.relevantValue)}</pre> : null}</li>)}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</CardContent></Card>
+    <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{humanize(entry.eventType)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name} · {entry.entityType}</p>{activityValue(entry) !== null ? <pre className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs">{JSON.stringify(activityValue(entry))}</pre> : null}</li>)}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</CardContent></Card>
   </div>;
 }
 
@@ -700,7 +720,7 @@ function closedTimeSegments(data: AdminWorkOrderDetailDto) {
     .filter((session) => session.endedAt)
     .map((session) => ({ ...session, targetType: 'work_session' as const, endedAt: session.endedAt! }));
   const pauses = data.pauseHistory
-    .filter((pause) => pause.endedAt)
+    .filter((pause) => pause.endedAt && pause.isOfficialPause !== false)
     .map((pause) => ({ id: pause.id, startedAt: pause.startedAt, endedAt: pause.endedAt!, targetType: 'pause_event' as const }));
   return [...sessions, ...pauses];
 }
@@ -718,6 +738,11 @@ function jobChangeError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.jobChangeGenericError;
+}
+function activityValue(entry: AdminWorkOrderDetailDto['activityLog'][number]) {
+  if (entry.relevantValue !== null && entry.relevantValue !== undefined) return entry.relevantValue;
+  if (entry.newValue !== null && entry.newValue !== undefined) return entry.newValue;
+  return null;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function CompactEmpty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>; }

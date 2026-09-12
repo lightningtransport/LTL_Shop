@@ -71,6 +71,8 @@ export interface WorkOrderJobDto {
   status: JobStatus;
   completedAt: string | null;
   completedById: string | null;
+  // Null means the Job inherits the Work Order general mechanic team.
+  assignedMechanic: { id: string; name: string } | null;
 }
 
 export interface PauseEventDto {
@@ -81,6 +83,10 @@ export interface PauseEventDto {
   startedAt: string;
   endedAt: string | null;
   durationMs: number | null;
+  // Official Manager/legacy pauses are true. Mechanic reports are false and
+  // must not drive currentPause, waiting totals, or time correction.
+  isOfficialPause?: boolean;
+  reportedBy?: { id: string; name: string } | null;
 }
 
 export interface MechanicAssignmentDto {
@@ -101,7 +107,8 @@ export interface WorkOrderSummaryDto {
   priority: Priority;
   jobsCompleted: number;
   jobsTotal: number;
-  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status'>[];
+  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic'>[];
+  mechanics: Pick<MechanicAssignmentDto, 'mechanicId' | 'mechanicName'>[];
   currentPauseReason: PauseReason | null;
   createdAt: string;
   startedAt: string | null;
@@ -192,6 +199,7 @@ export interface AdminWorkOrderSummaryDto {
   jobsTotal: number;
   mechanics: MechanicAssignmentDto[];
   currentPause: PauseEventDto | null;
+  latestReportedBlocker: PauseEventDto | null;
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
@@ -232,6 +240,9 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   jobs: AdminWorkOrderJobDto[];
   laborSessions: AdminTimeSegmentDto[];
   pauseHistory: (PauseEventDto & {
+    createdBy: { id: string; name: string };
+  })[];
+  reportedBlockers: (PauseEventDto & {
     createdBy: { id: string; name: string };
   })[];
   activityLog: AdminActivityLogDto[];

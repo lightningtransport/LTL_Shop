@@ -142,11 +142,12 @@ Acceptance Criteria: Assigned/unassigned Jobs and Work Order team inheritance
 are clear at mobile size; existing PM remains unchanged.
 Tests: Mobile Chromium/WebKit assignment flows plus API access tests.
 Risk: MEDIUM.
-Status: COMPLETE — validation evidence in PR #77 (V1.2-001). Mechanic
-list/detail label assigned vs inherited-team Jobs; Job assignees can read
-the Work Order on that branch; PM Home unchanged. This V2-001 contract
-treats V1.2 assigned-work UX as accepted. Merge #77 (or equivalent) before
-any W1 UI slice if it is not yet on `main`.
+Status: COMPLETE — merged PR #77. Mechanic list/detail label assigned vs
+inherited-team Jobs; Job assignees can read the Work Order; Manager assign
+unions the assignee into the team; PM Home remains unchanged. Evidence:
+focused API/web unit tests, `ADMIN_E2E_FIXTURE=1` Playwright assignment
+cases on mobile-chromium and mobile-webkit, and seeded local mobile
+verification. This V2-001 contract treats V1.2 assigned-work UX as accepted.
 
 ## V1.2-002 — Validate blocker lifecycle and visibility
 
@@ -166,12 +167,13 @@ Acceptance Criteria: Report does not pause; official pause does; actor/reason
 are auditable; totals exclude report-only events.
 Tests: API transaction/timing tests and both-role E2E.
 Risk: HIGH — timing and operational status.
-Status: COMPLETE — validation evidence in PR #78 (V1.2-002, includes #77).
-Reports stay `in_progress` with `blocker_reported`; official pause/resume
-still change status; waiting totals exclude report-only events; Admin
-list/detail surface the report. This V2-001 contract treats blocker
-lifecycle as accepted. Merge #78 (or equivalent) before any W1 UI slice
-if it is not yet on `main`.
+Status: COMPLETE — merged PR #78 (includes #77). Reports stay `in_progress`
+with `blocker_reported` actor/reason audit; official Manager pause/resume
+still change status; waiting totals and time correction exclude report-only
+`PauseEvent`s; Admin detail/list surface the report as a distinct,
+actionable blocker. Evidence: focused API timing/mapping tests, both-role
+Playwright fixture coverage, lint/unit/build. This V2-001 contract treats
+blocker lifecycle as accepted.
 
 ## V2-001 — Approve ownership cutover contract
 

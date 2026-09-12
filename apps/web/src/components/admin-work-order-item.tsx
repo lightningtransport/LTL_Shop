@@ -26,6 +26,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false }: 
       </dl>
       {compact ? <div className="mt-3 hidden min-w-0 text-right xl:block"><div className="flex justify-end gap-2"><PriorityBadge priority={item.priority} /><Badge variant="outline">{humanize(item.status)}</Badge></div><p className="mt-2 text-xs text-muted-foreground">{formatAdminDate(item.updatedAt, locale)}</p></div> : null}
       {item.currentPause ? <p className={cn('mt-3 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground', compact && 'xl:col-span-3 xl:mt-0')}>{messages.currentPause}: {humanize(item.currentPause.reason)}</p> : null}
+      {!item.currentPause && item.latestReportedBlocker ? <p className={cn('mt-3 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground', compact && 'xl:col-span-3 xl:mt-0')}>{messages.reportedBlockerLabel}: {humanize(item.latestReportedBlocker.reason)}</p> : null}
       {!compact ? <Button asChild variant="outline" size="sm" className="mt-4"><Link href={`/admin/work-orders/${item.id}`}>{messages.details}</Link></Button> : null}
     </article>
   );

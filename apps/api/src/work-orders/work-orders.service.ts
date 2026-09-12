@@ -74,6 +74,7 @@ export class WorkOrdersService {
         OR: [
           { createdById: user.id },
           { mechanics: { some: { mechanicId: user.id, removedAt: null } } },
+          { jobs: { some: { assignedMechanicId: user.id } } },
         ],
       },
       include: workOrderDetailInclude,
@@ -460,6 +461,9 @@ export class WorkOrdersService {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
       this.assertMechanicAccess(user, wo);
+      if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
+        throw new BadRequestException('Cannot report a blocker on a closed Work Order');
+      }
       const now = new Date();
       await tx.pauseEvent.create({
         data: {
@@ -516,6 +520,7 @@ export class WorkOrdersService {
           notes: parsed.data.notes,
           startedAt: now,
           createdById: user.id,
+          isOfficialPause: true,
         },
       });
       const updated = await tx.workOrder.update({
@@ -549,7 +554,7 @@ export class WorkOrdersService {
         throw new BadRequestException('Work Order is not paused');
       }
       const openPause = await tx.pauseEvent.findFirst({
-        where: { workOrderId: id, endedAt: null },
+        where: { workOrderId: id, endedAt: null, isOfficialPause: true },
         orderBy: { startedAt: 'desc' },
       });
       if (!openPause) throw new BadRequestException('No open pause event');
@@ -567,6 +572,7 @@ export class WorkOrdersService {
           notes: parsed.data.notes,
           startedAt: now,
           createdById: user.id,
+          isOfficialPause: true,
         },
       });
       const updated = await tx.workOrder.update({
@@ -596,7 +602,7 @@ export class WorkOrdersService {
       }
       const now = new Date();
       const openPause = await tx.pauseEvent.findFirst({
-        where: { workOrderId: id, endedAt: null },
+        where: { workOrderId: id, endedAt: null, isOfficialPause: true },
         orderBy: { startedAt: 'desc' },
       });
       if (openPause) {
@@ -1146,10 +1152,15 @@ export class WorkOrdersService {
 
   private isAssigned(
     user: AuthUser,
-    wo: { createdById: string; mechanics?: { mechanicId: string; removedAt: Date | null }[] },
+    wo: {
+      createdById: string;
+      mechanics?: { mechanicId: string; removedAt: Date | null }[];
+      jobs?: { assignedMechanicId?: string | null }[];
+    },
   ) {
-    return wo.createdById === user.id ||
-      !!wo.mechanics?.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt);
+    return wo.createdById === user.id
+      || !!wo.mechanics?.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt)
+      || !!wo.jobs?.some((job) => job.assignedMechanicId === user.id);
   }
 
   private assertMechanicAccess(
@@ -1158,6 +1169,7 @@ export class WorkOrdersService {
       createdById: string;
       primaryCategory: { name: string };
       mechanics?: { mechanicId: string; removedAt: Date | null }[];
+      jobs?: { assignedMechanicId?: string | null }[];
     },
   ) {
     const isPm = wo.primaryCategory.name === 'PM';

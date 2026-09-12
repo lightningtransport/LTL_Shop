@@ -153,4 +153,109 @@ describe('Work Order workspace capabilities', () => {
     await expect(service.getById(user([AppCapability.MECHANIC_STANDARD]), 'wo-1'))
       .rejects.toThrow('This Work Order is not assigned to you.');
   });
+
+  it('lists Work Orders when the mechanic is a per-Job assignee even if not on the general team', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const service = new WorkOrdersService({ workOrder: { findMany } } as never, { log: vi.fn() } as never);
+
+    await service.listForMechanic(user([AppCapability.MECHANIC_STANDARD]), MechanicMode.STANDARD);
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        OR: [
+          { createdById: 'user-1' },
+          { mechanics: { some: { mechanicId: 'user-1', removedAt: null } } },
+          { jobs: { some: { assignedMechanicId: 'user-1' } } },
+        ],
+      }),
+    }));
+  });
+
+  it('allows a team mechanic to read a Work Order when Jobs are assigned to someone else', async () => {
+    const workOrder = assignedReadWorkOrder({
+      createdById: 'manager-1',
+      mechanics: [{ mechanicId: 'user-1', addedAt: new Date('2026-09-09T12:00:00.000Z'), removedAt: null, mechanic: { name: 'Alex' } }],
+      jobs: [mappedJob({ assignedMechanic: { id: 'other-mechanic', name: 'Jamie' } })],
+    });
+    const service = new WorkOrdersService(
+      { workOrder: { findUnique: vi.fn().mockResolvedValue(workOrder) } } as never,
+      { log: vi.fn() } as never,
+    );
+
+    await expect(service.getById(user([AppCapability.MECHANIC_STANDARD]), 'wo-1'))
+      .resolves.toMatchObject({
+        jobs: [expect.objectContaining({ assignedMechanic: { id: 'other-mechanic', name: 'Jamie' } })],
+      });
+  });
+
+  it('allows a per-Job assignee to read a Work Order without general-team membership', async () => {
+    const workOrder = assignedReadWorkOrder({
+      createdById: 'manager-1',
+      mechanics: [],
+      jobs: [mappedJob({ assignedMechanic: { id: 'user-1', name: 'Alex' } })],
+    });
+    const service = new WorkOrdersService(
+      { workOrder: { findUnique: vi.fn().mockResolvedValue(workOrder) } } as never,
+      { log: vi.fn() } as never,
+    );
+
+    await expect(service.getById(user([AppCapability.MECHANIC_STANDARD]), 'wo-1'))
+      .resolves.toMatchObject({
+        jobs: [expect.objectContaining({ assignedMechanic: { id: 'user-1', name: 'Alex' } })],
+      });
+  });
 });
+
+function mappedJob(overrides: { assignedMechanic: { id: string; name: string } | null }) {
+  return {
+    id: 'job-1',
+    workOrderId: 'wo-1',
+    catalogJobId: 'catalog-1',
+    categoryId: 'category-brakes',
+    category: { id: 'category-brakes', name: 'Brakes' },
+    displayName: 'Inspect brakes',
+    customDescription: null,
+    status: 'to_do' as const,
+    completedAt: null,
+    completedById: null,
+    assignedMechanicId: overrides.assignedMechanic?.id ?? null,
+    assignedMechanic: overrides.assignedMechanic,
+  };
+}
+
+function assignedReadWorkOrder(overrides: {
+  createdById: string;
+  mechanics: {
+    mechanicId: string;
+    addedAt: Date;
+    removedAt: Date | null;
+    mechanic: { name: string };
+  }[];
+  jobs: ReturnType<typeof mappedJob>[];
+}) {
+  return {
+    id: 'wo-1',
+    displayId: 'WO-0001',
+    truckId: 'truck-1',
+    primaryCategoryId: 'category-brakes',
+    status: 'in_progress' as const,
+    priority: 'normal' as const,
+    notes: null,
+    createdAt: new Date('2026-09-09T12:00:00.000Z'),
+    createdById: overrides.createdById,
+    startedAt: new Date('2026-09-09T12:05:00.000Z'),
+    completedAt: null,
+    completedById: null,
+    totalActiveLaborMs: 0n,
+    totalWaitingMs: 0n,
+    version: 1,
+    truck: {
+      id: 'truck-1', truckNumber: '905', make: null, model: null, year: null,
+      mileage: null, company: null, owner: null,
+    },
+    primaryCategory: { id: 'category-brakes', name: 'Brakes' },
+    pauseEvents: [],
+    mechanics: overrides.mechanics,
+    jobs: overrides.jobs,
+  };
+}

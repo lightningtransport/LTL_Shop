@@ -114,9 +114,17 @@ const summaryInclude = {
     orderBy: { addedAt: 'asc' as const },
   },
   pauseEvents: {
-    where: { endedAt: null },
+    where: {
+      OR: [
+        { endedAt: null },
+        { isOfficialPause: false },
+      ],
+    },
+    include: {
+      createdBy: { select: { id: true, name: true } },
+      reportedBy: { select: { id: true, name: true } },
+    },
     orderBy: { startedAt: 'desc' as const },
-    take: 1,
   },
 };
 
@@ -135,7 +143,10 @@ const detailInclude = {
     orderBy: { startedAt: 'asc' as const },
   },
   pauseEvents: {
-    include: { createdBy: { select: { id: true, name: true } } },
+    include: {
+      createdBy: { select: { id: true, name: true } },
+      reportedBy: { select: { id: true, name: true } },
+    },
     orderBy: { startedAt: 'desc' as const },
   },
   activityLogs: {
@@ -590,6 +601,19 @@ export class AdminService {
           select: { id: true, name: true },
         });
         if (!mechanic) throw new BadRequestException('This mechanic cannot perform standard work');
+        const teamAssignment = await tx.mechanicAssignment.findUnique({
+          where: { workOrderId_mechanicId: { workOrderId, mechanicId: input.mechanicId } },
+        });
+        if (teamAssignment?.removedAt) {
+          await tx.mechanicAssignment.update({
+            where: { id: teamAssignment.id },
+            data: { removedAt: null, addedAt: new Date(), addedById: user.id },
+          });
+        } else if (!teamAssignment) {
+          await tx.mechanicAssignment.create({
+            data: { workOrderId, mechanicId: input.mechanicId, addedById: user.id },
+          });
+        }
         await tx.workOrderJob.update({
           where: { id: jobId },
           data: { assignedMechanicId: input.mechanicId },
@@ -733,7 +757,7 @@ export class AdminService {
           await tx.workSession.update({ where: { id: openSession.id }, data: { endedAt: now } });
         }
         const openPause = await tx.pauseEvent.findFirst({
-          where: { workOrderId, endedAt: null },
+          where: { workOrderId, endedAt: null, isOfficialPause: true },
           orderBy: { startedAt: 'desc' },
         });
         if (openPause) {
@@ -1202,6 +1226,9 @@ export class AdminService {
           : await tx.pauseEvent.findUnique({ where: { id: input.targetId } });
         if (!segment || segment.workOrderId !== workOrderId) {
           throw new NotFoundException('Time segment not found');
+        }
+        if (input.targetType === 'pause_event' && 'isOfficialPause' in segment && segment.isOfficialPause === false) {
+          throw new BadRequestException('Cannot correct a reported blocker');
         }
         if (!segment.endedAt) {
           throw new BadRequestException('Cannot correct an open time segment');
@@ -1692,7 +1719,8 @@ export class AdminService {
 
 function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
   const jobs = row.primaryCategory.name === 'PM' ? [] : row.jobs.filter((job) => job.status !== 'cancelled');
-  const currentPause = row.pauseEvents[0] ?? null;
+  const currentPause = row.pauseEvents.find((pause) => !pause.endedAt && pause.isOfficialPause !== false) ?? null;
+  const latestReportedBlocker = row.pauseEvents.find((pause) => pause.isOfficialPause === false) ?? null;
   return {
     id: row.id,
     displayId: row.displayId,
@@ -1715,6 +1743,7 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       removedAt: null,
     })),
     currentPause: currentPause ? mapPause(currentPause) : null,
+    latestReportedBlocker: latestReportedBlocker ? mapPause(latestReportedBlocker) : null,
     createdAt: row.createdAt.toISOString(),
     startedAt: row.startedAt?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
@@ -1750,7 +1779,12 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       endedAt: session.endedAt?.toISOString() ?? null,
       durationMs: sessionDurationMs(session.startedAt, session.endedAt),
     })),
-    pauseHistory: row.pauseEvents.map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
+    pauseHistory: row.pauseEvents
+      .filter((pause) => pause.isOfficialPause !== false)
+      .map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
+    reportedBlockers: row.pauseEvents
+      .filter((pause) => pause.isOfficialPause === false)
+      .map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
     activityLog: row.activityLogs.map((entry) => ({
       id: entry.id,
       eventType: entry.eventType as SharedActivityEventType,
@@ -1878,6 +1912,8 @@ function toCatalogCategorySummary(row: {
 function mapPause(pause: {
   id: string; workOrderId: string; reason: PauseReason; notes: string | null;
   startedAt: Date; endedAt: Date | null; durationMs: bigint | null;
+  isOfficialPause?: boolean;
+  reportedBy?: { id: string; name: string } | null;
 }) {
   return {
     id: pause.id,
@@ -1887,5 +1923,7 @@ function mapPause(pause: {
     startedAt: pause.startedAt.toISOString(),
     endedAt: pause.endedAt?.toISOString() ?? null,
     durationMs: pause.durationMs === null ? null : Number(pause.durationMs),
+    isOfficialPause: pause.isOfficialPause !== false,
+    reportedBy: pause.reportedBy ?? null,
   };
 }
