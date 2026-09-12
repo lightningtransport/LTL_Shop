@@ -18,7 +18,7 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { isMyAssignedOrInheritedJob, jobAssignmentLabel } from '@/lib/job-assignment';
-import { shopKeys, useCategories, useWorkOrder } from '@/lib/shop-data';
+import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import {
   Button,
   Card,
@@ -35,7 +35,6 @@ import {
   WorkspaceNav,
 } from '@/components/ui';
 import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
-import { JobPickerDialog } from '@/components/job-picker-dialog';
 
 function isWorkOrderListKey(key: unknown): key is string {
   return typeof key === 'string' && (key === '/api/work-orders' || key.startsWith('/api/work-orders?'));
@@ -62,19 +61,13 @@ export default function WorkOrderDetailPage() {
     id: string;
     name: string;
   } | null>(null);
-  const [finishOpen, setFinishOpen] = useState(false);
   const [pauseOpen, setPauseOpen] = useState(false);
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [pauseNotes, setPauseNotes] = useState('');
-  const [changeReason, setChangeReason] = useState<PauseReason | ''>('');
-  const [addOpen, setAddOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [notesDirty, setNotesDirty] = useState(false);
-  const { data: categories = [] } = useCategories(!!token);
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
-  const addJobTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
-  const finishWorkTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!sessionLoading && !token) router.replace('/login');
@@ -173,7 +166,6 @@ export default function WorkOrderDetailPage() {
   const done = wo.jobs.filter((j) => j.status === 'completed');
   const myTodo = todo.filter((job) => isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
   const otherTodo = todo.filter((job) => !isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
-  const finishBlocked = busy || todo.length > 0;
 
   return (
     <div>
@@ -222,85 +214,21 @@ export default function WorkOrderDetailPage() {
             Start Work
           </Button>
         ) : null}
-        {wo.status === 'in_progress' ? (
-          <div className={todo.length ? 'grid grid-cols-2 gap-2' : undefined}>
-            {/* Manager-first ownership: mechanics report blockers instead of
-                pausing the whole Work Order. The Manager decides to pause. */}
-            {todo.length ? <Button
-              ref={pauseTriggerRef}
-              variant="secondary"
-              disabled={busy}
-              onClick={() => setPauseOpen(true)}
-            >
-              Report Blocker
-            </Button> : null}
-            <Button
-              ref={finishWorkTriggerRef}
-              className="w-full"
-              disabled={finishBlocked}
-              onClick={() => setFinishOpen(true)}
-            >
-              Finish Work
-            </Button>
-          </div>
-        ) : null}
-        {wo.status === 'in_progress' && todo.length > 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Complete all remaining jobs before finishing this Work Order.
-          </p>
-        ) : null}
-        {wo.status === 'waiting_paused' ? (
+        {wo.status === 'in_progress' && todo.length ? (
           <Button
-            className="w-full"
-            disabled={busy}
-            onClick={() =>
-              run(() =>
-                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/resume`, {
-                  method: 'POST',
-                }),
-              )
-            }
-          >
-            Resume Work
-          </Button>
-        ) : null}
-      </section>
-
-      {wo.status === 'waiting_paused' ? (
-        <section className="card mb-4 space-y-3">
-          <Label className="section-label" htmlFor="change-pause-reason">
-            Change Pause Reason
-          </Label>
-          <Select
-              id="change-pause-reason"
-              value={changeReason || wo.currentPauseReason || ''}
-              onChange={(e) => setChangeReason(e.target.value as PauseReason)}
-            >
-              {Object.values(PauseReason).map((r) => (
-                <option key={r} value={r}>
-                  {PAUSE_REASON_LABELS[r]}
-                </option>
-              ))}
-          </Select>
-          <Button
+            ref={pauseTriggerRef}
             variant="secondary"
             className="w-full"
             disabled={busy}
-            onClick={() =>
-              run(() =>
-                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause-reason`, {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    reason: changeReason || wo.currentPauseReason,
-                  }),
-                }),
-              )
-            }
+            onClick={() => setPauseOpen(true)}
           >
-            Update Pause
+            Report Blocker
           </Button>
-        </section>
-      ) : null}
+        ) : null}
+        {wo.status === 'waiting_paused' ? (
+          <p className="text-sm text-muted-foreground">{messages.pausedAskManager}</p>
+        ) : null}
+      </section>
 
       <section className="card mb-4">
         <Button
@@ -383,14 +311,7 @@ export default function WorkOrderDetailPage() {
           </>
         ) : null}
         {wo.status !== 'completed' && wo.status !== 'cancelled' ? (
-          <Button
-            ref={addJobTriggerRef}
-            variant="secondary"
-            className="w-full"
-            onClick={() => setAddOpen(true)}
-          >
-            Add job +
-          </Button>
+          <p className="text-sm text-muted-foreground">{messages.additionalWorkHint}</p>
         ) : null}
       </section>
 
@@ -427,7 +348,7 @@ export default function WorkOrderDetailPage() {
           <Textarea
             id="wo-notes"
             className="mt-2"
-            placeholder="Add notes (optional)"
+            placeholder={messages.additionalWorkHint}
             value={notes}
             onChange={(e) => {
               setNotes(e.target.value);
@@ -515,42 +436,6 @@ export default function WorkOrderDetailPage() {
       </Modal>
 
       <Modal
-        open={finishOpen}
-        title="FINISH WORK ORDER"
-        onClose={() => setFinishOpen(false)}
-        returnFocusRef={finishWorkTriggerRef}
-      >
-        <p className="mb-2 text-lg">{wo.displayId} · Truck #{wo.truckNumber}</p>
-        <p className="mb-4 text-sm text-shop-muted">
-          All {wo.jobsTotal} {wo.jobsTotal === 1 ? 'job is' : 'jobs are'} complete. Finish this Work Order?
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setFinishOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            disabled={busy}
-            onClick={() => {
-              setFinishOpen(false);
-              void run(
-                () =>
-                  apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, {
-                    method: 'POST',
-                  }),
-                undefined,
-                () => router.replace('/mechanic/standard', { scroll: true }),
-              );
-            }}
-          >
-            Finish Work
-          </Button>
-        </div>
-      </Modal>
-
-      <Modal
         open={pauseOpen}
         title="REPORT BLOCKER"
         onClose={() => setPauseOpen(false)}
@@ -612,33 +497,6 @@ export default function WorkOrderDetailPage() {
           </Button>
         </div>
       </Modal>
-
-      <JobPickerDialog
-        open={addOpen}
-        defaultCategoryId={wo.primaryCategoryId}
-        primaryCategoryName={wo.primaryCategoryName}
-        categories={categories}
-        existingCatalogJobIds={wo.jobs
-          .filter((job) => job.status !== 'cancelled' && job.catalogJobId)
-          .map((job) => job.catalogJobId!)}
-        existingCustomDisplayNames={wo.jobs
-          .filter((job) => job.status !== 'cancelled' && !job.catalogJobId)
-          .map((job) => job.displayName)}
-        onClose={() => setAddOpen(false)}
-        onAdd={(body) =>
-          run(() =>
-            apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/jobs`, {
-              method: 'POST',
-              body: JSON.stringify({
-                ...body,
-                expectedVersion: wo.version,
-                idempotencyKey: crypto.randomUUID(),
-              }),
-            }),
-          )
-        }
-        returnFocusRef={addJobTriggerRef}
-      />
     </div>
   );
 }
