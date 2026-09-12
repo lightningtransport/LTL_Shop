@@ -9,5 +9,9 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('en').workspaceUnavailable).toMatch(/not available/);
     expect(getShopCopy('es').openAllowedHome).toMatch(/Inicio/);
     expect(getShopCopy('en').workOrderAction('Start Work', 'WO-1001', '905')).toBe('Start Work WO-1001, truck 905');
+    expect(getShopCopy('en').lastReportedLocation).toBe('Last reported location');
+    expect(getShopCopy('es').lastReportedLocation).toBe('Ubicación reportada');
+    expect(getShopCopy('en').lastReportedLocation.toLowerCase()).not.toContain('yard');
+    expect(getShopCopy('es').lastReportedLocation.toLowerCase()).not.toContain('yard');
   });
 });

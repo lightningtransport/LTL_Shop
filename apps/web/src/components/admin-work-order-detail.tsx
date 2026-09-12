@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
-import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
+import { formatAdminDate, formatAdminDateOnly, formatDuration, humanize } from '@/lib/admin-format';
 import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
@@ -134,6 +134,9 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           <Info label={messages.mileage} value={truck.mileage === null ? messages.noValue : new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(truck.mileage)} />
           <Info label={messages.company} value={truck.company ?? messages.noValue} />
           <Info label={messages.owner} value={truck.owner ?? messages.noValue} />
+          <Info label={messages.vin} value={truck.vin ?? messages.noValue} />
+          <Info label={messages.lastReportedLocation} value={truck.location ?? messages.noValue} />
+          <Info label={messages.locationUpdatedOn} value={formatAdminDateOnly(truck.locationUpdatedOn, locale)} />
         </dl></CardContent>
       </Card>
     </section>

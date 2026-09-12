@@ -175,6 +175,14 @@ model Truck {
   company         String?
   owner           String?
   ninoxExternalId String?  @map("ninox_external_id")
+  /// Live production column. Kept on the Prisma model so migrate cannot DROP it.
+  /// Not exposed on TruckDto (debug/internal only).
+  samsaraId                Decimal?  @map("samsara_id") @db.Decimal
+  /// Date-only last-connected value already stored on public.trucks. Display-only.
+  samsaraLastConnectedDate DateTime? @map("samsara_last_connected_date") @db.Date
+  /// Human address string (not lat/lng). Display-only. Never Yard Presence.
+  samsaraTruckLocation     String?   @map("samsara_truck_location")
+  vin                      String?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 

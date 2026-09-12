@@ -30,6 +30,9 @@ type Copy = {
   retryWorkOrderCheck: string;
   truckInformation: string;
   selectTruck: string;
+  vin: string;
+  lastReportedLocation: string;
+  locationUpdatedOn: string;
   repairHistory: string;
   openWorkOrder: string;
   noAccessToPmWorkOrder: string;
@@ -75,6 +78,7 @@ const copy: Record<ShopLocale, Copy> = {
     searchTruck: 'Search truck number (for example, #905)', noTrucks: 'No trucks found.',
     checkingOpenWorkOrder: 'Checking for an open Work Order.', retryWorkOrderCheck: 'Retry Work Order check',
     truckInformation: 'Truck information', selectTruck: 'Select a truck to show its details.',
+    vin: 'VIN', lastReportedLocation: 'Last reported location', locationUpdatedOn: 'Last reported on',
     repairHistory: 'View truck repair history', openWorkOrder: 'View open Work Order',
     noAccessToPmWorkOrder: 'You do not have access to this PM Work Order.',
     chooseAnotherWorkOrder: 'Choose another Work Order',
@@ -117,6 +121,7 @@ const copy: Record<ShopLocale, Copy> = {
     searchTruck: 'Buscar número de unidad (por ejemplo, #905)', noTrucks: 'No se encontraron unidades.',
     checkingOpenWorkOrder: 'Verificando si hay un Work Order abierto.', retryWorkOrderCheck: 'Reintentar la verificación del Work Order',
     truckInformation: 'Información de la unidad', selectTruck: 'Selecciona una unidad para ver sus detalles.',
+    vin: 'VIN', lastReportedLocation: 'Ubicación reportada', locationUpdatedOn: 'Reportada el',
     repairHistory: 'Ver historial de reparaciones de la unidad', openWorkOrder: 'Ver Work Order abierto',
     noAccessToPmWorkOrder: 'No tienes acceso a este Work Order de PM.',
     chooseAnotherWorkOrder: 'Elegir otro Work Order',

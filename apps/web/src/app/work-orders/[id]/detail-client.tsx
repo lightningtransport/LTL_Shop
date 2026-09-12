@@ -16,7 +16,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
-import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
+import { formatIsoDate, formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { isMyAssignedOrInheritedJob, jobAssignmentLabel } from '@/lib/job-assignment';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import {
@@ -253,6 +253,9 @@ export default function WorkOrderDetailPage() {
               <Info label="Mileage" value={formatMileage(wo.truck.mileage)} />
               <Info label="Company" value={wo.truck.company} />
               <Info label="Owner" value={wo.truck.owner} />
+              <Info label={messages.vin} value={wo.truck.vin} />
+              <Info label={messages.lastReportedLocation} value={wo.truck.location} />
+              <Info label={messages.locationUpdatedOn} value={formatIsoDate(wo.truck.locationUpdatedOn, messages.locale)} />
             </div>
             <Button asChild variant="secondary" className="w-full">
               <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
@@ -508,6 +511,7 @@ function PmWorkOrderDetail({
   wo: WorkOrderDetailDto;
   onUpdated: (updated: WorkOrderDetailDto) => Promise<void>;
 }) {
+  const { messages } = useShopLocale();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -609,6 +613,9 @@ function PmWorkOrderDetail({
           <Info label="Mileage" value={formatMileage(wo.truck.mileage)} />
           <Info label="Company" value={wo.truck.company} />
           <Info label="Owner" value={wo.truck.owner} />
+          <Info label={messages.vin} value={wo.truck.vin} />
+          <Info label={messages.lastReportedLocation} value={wo.truck.location} />
+          <Info label={messages.locationUpdatedOn} value={formatIsoDate(wo.truck.locationUpdatedOn, messages.locale)} />
         </div>
         <Button asChild variant="secondary" className="w-full">
           <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>

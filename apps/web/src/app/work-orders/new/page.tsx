@@ -15,7 +15,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import { ApiError, apiFetch } from '@/lib/api';
-import { formatMileage } from '@/lib/format';
+import { formatIsoDate, formatMileage } from '@/lib/format';
 import {
   shopKeys,
   useAliasOptions,
@@ -416,6 +416,9 @@ export default function NewWorkOrderPage() {
                 <Info label="Mileage" value={formatMileage(truck.mileage)} />
                 <Info label="Company" value={truck.company} />
                 <Info label="Owner" value={truck.owner} />
+                <Info label={messages.vin} value={truck.vin} />
+                <Info label={messages.lastReportedLocation} value={truck.location} />
+                <Info label={messages.locationUpdatedOn} value={formatIsoDate(truck.locationUpdatedOn, messages.locale)} />
               </div>
               <Button asChild variant="secondary" className="w-full">
                 <Link href={`/trucks/${truck.id}/history?from=${encodeURIComponent(pathname)}`}>
