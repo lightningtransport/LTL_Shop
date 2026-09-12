@@ -32,5 +32,9 @@ describe('Shop Admin routing and messages', () => {
     expect(Object.keys(getAdminMessages('en'))).toEqual(Object.keys(getAdminMessages('es')));
     expect(getAdminMessages('es').nextPhaseBody).toContain('Work Orders');
     expect(getAdminMessages('es').nextPhaseBody).toContain('unidades');
+    expect(getAdminMessages('en').lastReportedLocation).toBe('Last reported location');
+    expect(getAdminMessages('es').lastReportedLocation).toBe('Ubicación reportada');
+    expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('in yard');
+    expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('en el yard');
   });
 });

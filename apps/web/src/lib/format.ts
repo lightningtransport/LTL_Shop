@@ -34,3 +34,13 @@ export function formatMileage(n: number | null | undefined) {
   if (n == null) return '—';
   return `${n.toLocaleString()} mi`;
 }
+
+export function formatIsoDate(value: string | null | undefined, locale: 'en' | 'es' = 'en') {
+  if (!value) return '—';
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return '—';
+  return new Intl.DateTimeFormat(locale === 'es' ? 'es-US' : 'en-US', {
+    timeZone: 'UTC',
+    dateStyle: 'medium',
+  }).format(new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))));
+}
