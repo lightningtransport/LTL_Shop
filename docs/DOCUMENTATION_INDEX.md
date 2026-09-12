@@ -1,7 +1,7 @@
 # Documentation index
 
 **Classification:** CANONICAL DOCUMENTATION MAP
-**Updated:** 2026-09-11
+**Updated:** 2026-09-12
 
 This index resolves documentation authority. A document not marked canonical
 does not override `LIGHTNING_SHOP_MASTER_PRD.md`, tested code, or the current
@@ -54,6 +54,7 @@ V2-002 implements TARGET directly.
 | `audit/V1_003_RELEASE_SMOKE.md` | REFERENCE | Release evidence | Production smoke checklist, deployment ids, health probes, and operator-required remaining rows | ACTIVE |
 | `audit/NORMALIZATION_REPORT.md` | REFERENCE | Handoff | Final normalization result and next task | ACTIVE |
 | `audit/CAPABILITY_BOUNDARY_AUDIT.md` | AUDIT EVIDENCE | V1-004 authorization matrix | Declared vs enforced vs V1 expected capabilities for Admin, Work Order, and Yard mutations | ACTIVE |
+| `audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md` | PRODUCT DECISION / AUDIT | V2.1-001 Yard Phase | Derivation cases and no-go on `YardPhaseEvent` until a live Operational Yard pilot answers the product questions | ACTIVE |
 | `Lightning_Shop_Documentation_Package_2026-09-09/00_INDEX.md` | HISTORICAL | None | Index of the superseded dated package | PRESERVED |
 | `Lightning_Shop_Documentation_Package_2026-09-09/01_PRODUCT_DIRECTION_AND_DOMAIN_MODEL.md` | HISTORICAL | None | Earlier product/domain direction | PRESERVED |
 | `Lightning_Shop_Documentation_Package_2026-09-09/02_DEVELOPMENT_PLAN.md` | HISTORICAL | None | Earlier development plan | PRESERVED |

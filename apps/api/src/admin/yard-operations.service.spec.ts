@@ -85,11 +85,11 @@ describe('YardOperationsService', () => {
       .mockResolvedValueOnce([]);
     const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
 
-    const page = await service.list({ phase: 'needs_evaluation', blocked: 'true' });
+    const page = await service.list({ phase: 'ready_for_approval', blocked: 'true' });
     expect(page.items).toHaveLength(0);
     expect(prisma.truck.findMany).toHaveBeenCalled();
 
-    const noBlockers = await service.list({ phase: 'needs_evaluation', blocked: 'false' });
+    const noBlockers = await service.list({ phase: 'ready_for_approval', blocked: 'false' });
     expect(noBlockers.items).toHaveLength(1);
   });
 

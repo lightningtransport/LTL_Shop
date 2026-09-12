@@ -11,7 +11,7 @@ import { formatAdminDate } from '@/lib/admin-format';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, Input, LoadFailure, PageSkeleton, Select, Textarea } from './ui';
 
-const phaseKey = { needs_evaluation: 'needsEvaluation', inspection: 'inspection', required_work: 'requiredWork', pm: 'pm', alignment: 'alignment', detailing: 'detailing', quality_check: 'qualityCheck', ready_to_go: 'readyToGo' } as const;
+const phaseKey = { needs_evaluation: 'needsEvaluation', inspection: 'inspection', required_work: 'requiredWork', pm: 'pm', alignment: 'alignment', detailing: 'detailing', quality_check: 'qualityCheck', ready_for_approval: 'readyForApproval', ready_to_go: 'readyToGo' } as const;
 const requirementKey = { inspection: 'inspection', required_repairs: 'requiredWork', pm: 'pm', alignment: 'alignment', detailing: 'detailing', quality_check: 'qualityCheck' } as const;
 const outcomeKey = { not_evaluated: 'notEvaluatedOutcome', required: 'requiredOutcome', not_required: 'notRequiredOutcome', completed: 'completedOutcome', waived: 'waivedOutcome' } as const;
 const statusKey = { created: 'created', in_progress: 'inProgress', waiting_paused: 'waitingPaused', completed: 'completed', cancelled: 'cancelled' } as const;

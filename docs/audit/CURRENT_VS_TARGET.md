@@ -22,7 +22,7 @@ direction, not implemented behavior. “Planned Phase” follows
 | PM | Specialized create-start, observed mileage, parts/fitment, notes, pause and completion rules; authorized by `mechanic.pm`. | Preserve specialized PM unless an approved migration says otherwise. | `pmAuthorized` compatibility column remains; removal waits for production stability. | NOW cleanup later |
 | Admin | Dashboard, Work Orders, corrections, assignments, cancel/complete/reopen, priority/notes, time corrections, Returned to Service, read-only Trucks/Mechanics/History/Catalog. V1-004 matrix: corrections and WO-level team assignment stay on `admin.access`; Manager create/pause/Job assign need `work_orders.manage`. | System Admin handles administration; Shop Manager handles operations without requiring System Admin. | Boundaries overlap by design in V1; catalog writes and permission UI remain deferred. | V1-004 audit done; LATER where approved |
 | Truck Detail | Admin Truck Detail shows identity, active readiness, derived phase/blockers, active WO, and history links/data. | Canonical Truck view with overview, work, readiness, and history. | Validate completeness and avoid parallel history. | V2.1 |
-| Yard Operations | Phase 1 implemented: Truck-centric list/board, readiness assessments, derived phases and blockers. | Mature Yard progression independent of Category and WO status. | Persist Yard Phase only if validated derivation is insufficient; Detailing/Quality Check maturity remains. | V2.1 |
+| Yard Operations | Phase 1 plus V2.1-001 derivation: next unresolved gate, Ready for Approval, residual Ready after close. | Mature Yard progression independent of Category and WO status. | Do not persist Yard Phase. Live Operational Yard pilot may still refine copy. See `V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`. | V2.1 |
 | Readiness | Six persisted assessment requirements with evidence/waivers and optimistic/idempotent mutations. | Explain all remaining requirements and blockers reliably. | Operational validation and stronger evidence rules where real data requires them. | V2.1 |
 | Ready to Go | Explicit authorized readiness approval; separate from WO completion and Returned to Service. | Same conceptual separation. | Validate operational approval/invalidations in production. | NOW/V2.1 |
 | Yard Presence | Always `UNKNOWN`; no inferred location. | `IN_YARD`, `OUTSIDE_YARD`, or `UNKNOWN` from reliable evidence. | No source integration. | V3 |
@@ -41,6 +41,6 @@ direction, not implemented behavior. “Planned Phase” follows
   planning slices landed before this normalization and now require validation.
 - PM, Activity Log, existing Work Orders, historical Categories, and Prisma
   migration history are protected during every cutover.
-- V2-001 is approved (2026-09-12). CURRENT on this branch still matches
-  merged V1.2 (`a56344a`) until V2-002 lands. The contract authorizes
-  direct TARGET implementation; it does not by itself change runtime.
+- V2-001 is approved (2026-09-12). V2-002 TARGET ownership is implemented
+  on `main` (`bbd315f`). V2.1-001 decided not to persist Yard Phase yet
+  (`V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`).

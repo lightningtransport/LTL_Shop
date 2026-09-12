@@ -71,26 +71,34 @@ Readiness rules:
    `waiting_paused`).
 4. Approval is explicit, identifies the real user, and is recorded in
    `ActivityLog`; it is not inferred from a green UI card.
-5. Changing a requirement or creating/linking a new Work Order invalidates a
-   prior approval in the same transaction.
+5. A prior approval is invalidated in the same transaction when a requirement
+   becomes unresolved, a new blocking Work Order is created, or an authorized
+   user reopens work. Editing only a waiver reason is an audited metadata
+   change and does not withdraw Ready.
 6. Closing an assessment never marks a Truck as departed, returned, or
    physically present.
 
 ## Derived operational view
 
 The API may derive a current phase for display; phase is not a second persisted
-Work Order status. Use the first applicable phase in this order:
+Work Order status. The board column is the **next unresolved readiness gate**.
+`not_required`, `completed`, and `waived` gates are skipped. An open Work Order
+is a blocker, not a phase, so a Truck may sit in Detailing or Quality Check
+while linked work remains open.
 
-1. `Needs evaluation` — no active assessment, or no assessment requirement
-   has been evaluated.
-2. `Inspection` — Inspection is required and unresolved.
-3. `Required Work` — a linked Work Order is open or a required repair is
-   unresolved.
-4. `PM` — PM is required and unresolved.
-5. `Alignment` — Alignment is required and unresolved.
-6. `Detailing` — Detailing is required and unresolved.
-7. `Quality Check` — Quality Check is required and unresolved.
-8. `Ready to Go` — the assessment is `READY`.
+Use the first applicable phase in this order:
+
+1. `Needs evaluation` — no assessment and no residual Ready result.
+2. `Inspection` — Inspection is `required` or `not_evaluated`.
+3. `Required Work` — Required Repairs is `required` or `not_evaluated`.
+4. `PM` — PM is `required` or `not_evaluated`.
+5. `Alignment` — Alignment is `required` or `not_evaluated`.
+6. `Detailing` — Detailing is `required` or `not_evaluated`.
+7. `Quality Check` — Quality Check is `required` or `not_evaluated`.
+8. `Ready for Approval` — every required gate is resolved and Mark Ready has
+   not been approved, or Ready was withdrawn by new open work.
+9. `Ready to Go` — Mark Ready has been approved, or a closed assessment still
+   has a valid Ready result (`readyAt`) and no new open work has started.
 
 Blockers are derived and should include only actionable evidence:
 
@@ -102,7 +110,8 @@ Blockers are derived and should include only actionable evidence:
 
 Do not derive a blocker from an assumed location, a missing telematics value,
 or an unverified prototype label. `Ready to Go` must never be shown while an
-open Work Order remains linked.
+open Work Order remains on the Truck. Editing only a waiver reason does not
+withdraw Ready.
 
 The existing invariant remains unchanged: a Truck can have only one open Work
 Order. New readiness logic must reuse `OPEN_WORK_ORDER_STATUSES` and existing
@@ -164,6 +173,7 @@ translating enum values ad hoc:
 | Yard Operations | Operaciones del patio |
 | Under review | En revisión |
 | Ready to Go | Listo para salir |
+| Ready for Approval | Listo para aprobación |
 | Needs evaluation | Requiere evaluación |
 | Required Work | Trabajo requerido |
 | Inspection | Inspección |
