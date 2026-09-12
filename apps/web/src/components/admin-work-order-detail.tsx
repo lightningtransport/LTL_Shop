@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatDuration, humanize } from '@/lib/admin-format';
-import { addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { useAuth } from '@/lib/auth-context';
 import { useCategories } from '@/lib/shop-data';
+import { JobPickerDialog } from './job-picker-dialog';
 import {
   Badge,
   Button,
@@ -26,7 +28,10 @@ import {
 } from './ui';
 
 export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
+  const { user } = useAuth();
   const { data, error, isLoading, mutate } = useAdminWorkOrder(id);
+  const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
+  const [addJobOpen, setAddJobOpen] = useState(false);
   const [historyCategory, setHistoryCategory] = useState('');
   const [selectedMechanic, setSelectedMechanic] = useState('');
   const [cancelReason, setCancelReason] = useState('');
@@ -68,12 +73,15 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const activeMechanics = data.mechanics.filter((mechanic) => !mechanic.removedAt);
   const truck = data.truck;
   const isOpen = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status);
-  const canManageAssignments = isOpen && data.category.name !== 'PM';
-  const canCancelWorkOrder = isOpen;
-  const canCompleteWorkOrder = data.status === 'in_progress';
+  const canManageAssignments = canManageWorkOrders && isOpen && data.category.name !== 'PM';
+  const canCancelWorkOrder = canManageWorkOrders && isOpen;
+  const canCompleteWorkOrder = canManageWorkOrders && data.status === 'in_progress';
   const canReopenWorkOrder = data.status === 'completed' || data.status === 'cancelled';
   const canReturnToService = data.status === 'completed' && !data.returnedToServiceAt;
-  const canManageJobs = isOpen && data.category.name !== 'PM';
+  const canManageJobs = canManageWorkOrders && isOpen && data.category.name !== 'PM';
+  const canReopenJob = isOpen && data.category.name !== 'PM';
+  const canEditFields = canManageWorkOrders && isOpen;
+  const canOfficialPause = canManageWorkOrders && isOpen && data.category.name !== 'PM';
   const hasIncompleteJobs = data.category.name !== 'PM' && data.jobs.some((job) => job.status === 'to_do');
   const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
 
@@ -198,7 +206,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </CardContent>
     </Card>
 
-    {isOpen && data.category.name !== 'PM' ? (
+    {canOfficialPause ? (
       <Card>
         <CardHeader>
           <CardTitle>{data.status === 'waiting_paused' ? messages.resumeWorkOrderAction : messages.pauseWorkOrderAction}</CardTitle>
@@ -382,7 +390,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </Card>
     ) : null}
 
-    {isOpen ? (
+    {canEditFields ? (
       <Card>
         <CardHeader>
           <CardTitle>{messages.fieldUpdatesTitle}</CardTitle>
@@ -530,7 +538,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                       {messages.cancelJobConfirm}
                     </Button>
                   ) : null}
-                  {canManageJobs && job.status === 'cancelled' ? (
+                  {canReopenJob && job.status === 'cancelled' ? (
                     <Button
                       type="button"
                       size="sm"
@@ -558,6 +566,11 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           <EmptyState>{messages.noJobs}</EmptyState>
         )}
         {canManageJobs ? (
+          <Button type="button" variant="outline" onClick={() => setAddJobOpen(true)}>
+            {messages.addJobAction}
+          </Button>
+        ) : null}
+        {canManageJobs || canReopenJob ? (
           <label className="block space-y-1">
             <span className="text-sm font-medium">{messages.jobChangeReason}</span>
             <Textarea
@@ -663,6 +676,28 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
     </section>
     <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{humanize(entry.eventType)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name} · {entry.entityType}</p>{activityValue(entry) !== null ? <pre className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs">{JSON.stringify(activityValue(entry))}</pre> : null}</li>)}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</CardContent></Card>
+    {canManageJobs ? (
+      <JobPickerDialog
+        open={addJobOpen}
+        defaultCategoryId={data.category.id}
+        primaryCategoryName={data.category.name}
+        categories={categoryData?.length ? categoryData : categories.map((category) => ({ ...category, sortOrder: 0 }))}
+        existingCatalogJobIds={data.jobs
+          .filter((job) => job.status !== 'cancelled' && job.catalogJobId)
+          .map((job) => job.catalogJobId!)}
+        existingCustomDisplayNames={data.jobs
+          .filter((job) => job.status !== 'cancelled' && !job.catalogJobId)
+          .map((job) => job.displayName)}
+        onClose={() => setAddJobOpen(false)}
+        onAdd={async (body) => {
+          await runMutation('add-job', messages.addJobSuccess, () => addAdminWorkOrderJob(data.id, {
+            ...body,
+            expectedVersion: data.version,
+          }), () => messages.addJobFailed);
+          setAddJobOpen(false);
+        }}
+      />
+    ) : null}
   </div>;
 }
 

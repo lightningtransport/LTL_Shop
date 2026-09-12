@@ -190,6 +190,23 @@ export function unassignAdminWorkOrderJob(
   });
 }
 
+export function addAdminWorkOrderJob(
+  workOrderId: string,
+  input: {
+    catalogJobId?: string;
+    categoryId: string;
+    displayName: string;
+    customDescription?: string;
+    expectedVersion: number;
+  },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/jobs`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
 export function pauseAdminWorkOrder(
   workOrderId: string,
   input: { reason: string; notes?: string },

@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { AppCapability } from '@ltl-shop/shared';
 import { AdminWorkOrderItem } from './admin-work-order-item';
 import { Badge, Button, Card, EmptyState, Input, LoadFailure, PageSkeleton, PriorityBadge, Select } from './ui';
 import { formatAdminDate, humanize } from '@/lib/admin-format';
 import { useAdminWorkOrders } from '@/lib/admin-data';
+import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 const OPEN_STATUSES = 'created,in_progress,waiting_paused';
@@ -26,7 +28,9 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
   const [priority, setPriority] = useState(searchParams.get('priority') ?? 'all');
   const [sort, setSort] = useState(searchParams.get('sort') ?? 'updatedAt');
   const [direction, setDirection] = useState(searchParams.get('direction') ?? 'desc');
+  const { user } = useAuth();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminWorkOrders(query);
+  const canCreateWorkOrder = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
 
   useEffect(() => {
     setSearch(searchParams.get('search') ?? '');
@@ -64,7 +68,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
         <h1 className="mt-2 font-display text-3xl font-bold tracking-wide">{messages.workOrdersTitle}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{messages.workOrdersDescription}</p>
       </div>
-      <Button asChild><Link href="/admin/work-orders/new">{messages.newWorkOrderCta}</Link></Button>
+      {canCreateWorkOrder ? <Button asChild><Link href="/admin/work-orders/new">{messages.newWorkOrderCta}</Link></Button> : null}
     </header>
     <Card>
       <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-12" onSubmit={applyFilters}>

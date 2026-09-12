@@ -166,7 +166,7 @@ describe('PM Work Order authorization', () => {
         categoryId: '00000000-0000-4000-8000-000000000003',
         displayName: 'Brake Inspection',
       }],
-    })).rejects.toThrow('You do not have access to the standard mechanic workspace');
+    })).rejects.toThrow('Standard Work Orders are created by a Shop Manager.');
   });
 
   it('rejects a job checklist on a PM Work Order', async () => {
@@ -192,24 +192,33 @@ describe('PM Work Order authorization', () => {
     })).rejects.toThrow('PM Work Orders do not use jobs');
   });
 
-  it('keeps at least one job mandatory for non-PM Work Orders', async () => {
+  it('keeps at least one job mandatory for Manager-created Standard Work Orders', async () => {
     const prisma = {
       workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null) },
       truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-1' }) },
       jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'brakes-category', name: 'Brakes' }) },
     } as never;
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
-
-    await expect(service.create({
-      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
-    }, {
+    const manager = {
+      id: 'manager-id', email: 'manager@lightning.local', name: 'Shop Manager',
+      role: 'manager' as const, active: true, pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
+    };
+    const payload = {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000003',
       priority: Priority.NORMAL,
       mechanicIds: [],
       jobs: [],
-    })).rejects.toThrow('At least one job is required for this Work Order');
+    };
+
+    await expect(service.create({
+      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
+      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    }, payload)).rejects.toThrow('Standard Work Orders are created by a Shop Manager.');
+    await expect(service.createByManager(manager, payload)).rejects.toThrow(
+      'At least one job is required for this Work Order',
+    );
   });
 
   it('rejects a duplicate job on an open standard Work Order', async () => {
@@ -234,9 +243,10 @@ describe('PM Work Order authorization', () => {
     } as never;
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
 
-    await expect(service.addJob({
-      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    await expect(service.addJobByManager({
+      id: 'manager-id', email: 'manager@lightning.local', name: 'Shop Manager',
+      role: 'manager', active: true, pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     }, '00000000-0000-4000-8000-000000000011', {
       catalogJobId: '00000000-0000-4000-8000-000000000012',
       categoryId: '00000000-0000-4000-8000-000000000003',
@@ -284,9 +294,9 @@ describe('PM Work Order authorization', () => {
     const activity = { log: vi.fn().mockResolvedValue(undefined) };
     const service = new WorkOrdersService(prisma, activity as never);
 
-    const result = await service.addJob({
-      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1', role: 'mechanic', active: true,
-      pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    const result = await service.addJobByManager({
+      id: 'manager-id', email: 'manager@lightning.local', name: 'Shop Manager', role: 'manager', active: true,
+      pmAuthorized: false, capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     }, wo.id, {
       catalogJobId: '00000000-0000-4000-8000-000000000022',
       categoryId: '00000000-0000-4000-8000-000000000004', displayName: 'Inspect shocks',
@@ -355,9 +365,10 @@ describe('PM Work Order authorization', () => {
     };
     const service = new WorkOrdersService(prisma as never, { log: vi.fn() } as never);
 
-    await expect(service.addJob({
-      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    await expect(service.addJobByManager({
+      id: 'alex-id', email: 'manager@lightning.local', name: 'Shop Manager',
+      role: 'manager', active: true, pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     }, '00000000-0000-4000-8000-000000000011', {
       categoryId: '00000000-0000-4000-8000-000000000003',
       displayName: 'Brake Inspection', expectedVersion: 3,
@@ -375,9 +386,10 @@ describe('PM Work Order authorization', () => {
     } as never;
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
 
-    await expect(service.addJob({
-      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    await expect(service.addJobByManager({
+      id: 'alex-id', email: 'manager@lightning.local', name: 'Shop Manager',
+      role: 'manager', active: true, pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     }, '00000000-0000-4000-8000-000000000011', {
       categoryId: '00000000-0000-4000-8000-000000000003',
       displayName: 'Brake Inspection', expectedVersion: 3,
@@ -391,9 +403,10 @@ describe('PM Work Order authorization', () => {
     } as never;
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
 
-    await expect(service.create({
-      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    await expect(service.createByManager({
+      id: 'manager-id', email: 'manager@lightning.local', name: 'Shop Manager',
+      role: 'manager', active: true, pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     }, {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000003',
@@ -419,8 +432,9 @@ describe('PM Work Order authorization', () => {
     const prisma = { $transaction: vi.fn((callback: (transaction: typeof tx) => unknown) => callback(tx)) } as never;
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
 
-    await expect(service.pause({
-      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1', role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    await expect(service.pauseByManager({
+      id: 'manager-id', email: 'manager@lightning.local', name: 'Shop Manager', role: 'manager', active: true,
+      pmAuthorized: false, capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     }, '00000000-0000-4000-8000-000000000011', { reason: 'waiting_for_parts' })).rejects.toMatchObject({
       response: { message: 'A Work Order without pending jobs cannot be paused' },
     });
@@ -435,9 +449,10 @@ describe('PM Work Order authorization', () => {
     } as never;
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
 
-    await expect(service.create({
-      id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
-      role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+    await expect(service.createByManager({
+      id: 'manager-id', email: 'manager@lightning.local', name: 'Shop Manager',
+      role: 'manager', active: true, pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     }, {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000003',

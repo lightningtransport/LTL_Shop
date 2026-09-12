@@ -262,6 +262,20 @@ export default function NewWorkOrderPage() {
     return <PageSkeleton label="Opening your workspace" />;
   }
 
+  if (!isPmMechanic) {
+    return (
+      <div>
+        <WorkspaceNav mode={mechanicMode} />
+        <ScreenHeader
+          title={messages.newWorkOrder}
+          subtitle={messages.askManagerToCreateHint}
+          backHref={`/mechanic/${mechanicMode}`}
+        />
+        <EmptyState>{messages.askManagerToCreate}</EmptyState>
+      </div>
+    );
+  }
+
   const referenceError = categoryError || mechanicError || truckError;
   if (referenceError || !categoryData || !mechanicData || !truckData) {
     return (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   AppCapability,
@@ -9,6 +10,7 @@ import {
   type JobAliasOptionDto,
 } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import {
   createAdminWorkOrder,
   useAdminMechanics,
@@ -55,6 +57,8 @@ export function AdminNewWorkOrder({
 }) {
   void locale;
   const router = useRouter();
+  const { user } = useAuth();
+  const canCreateWorkOrder = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const [truckQuery, setTruckQuery] = useState('');
   const [debouncedTruckQuery, setDebouncedTruckQuery] = useState('');
   const [selectedTruck, setSelectedTruck] = useState<AdminTruckSummaryDto | null>(null);
@@ -205,6 +209,17 @@ export function AdminNewWorkOrder({
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!canCreateWorkOrder) {
+    return (
+      <div className="space-y-4">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/admin/work-orders">← {messages.backToWorkOrders}</Link>
+        </Button>
+        <EmptyState>{messages.createRequiresManage}</EmptyState>
+      </div>
+    );
   }
 
   return (

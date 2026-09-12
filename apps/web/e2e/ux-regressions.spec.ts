@@ -173,20 +173,10 @@ async function login(page: Page) {
   await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
 }
 
-async function openNewWorkOrder(page: Page) {
+async function openStandardCreateBlocked(page: Page) {
   await login(page);
-  await page.getByRole('link', { name: /Create New Work Order/i }).click();
-  await expect(page.getByRole('heading', { name: /New Work Order/i })).toBeVisible({ timeout: 15_000 });
-}
-
-async function selectTruck(page: Page) {
-  const truckInput = page.getByRole('combobox', { name: /Truck/i }).or(
-    page.getByPlaceholder(/Search Truck Number/i),
-  ).first();
-  await truckInput.fill('905');
-  await expect(page.getByRole('option', { name: /905/i }).first()).toBeVisible();
-  await page.getByRole('option', { name: /905/i }).first().click();
-  await expect(page.getByText(/Truck Information/i)).toBeVisible();
+  await page.goto('/mechanic/standard/new');
+  await expect(page.getByText(/Ask your Shop Manager to create a Work Order/i)).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
@@ -219,12 +209,12 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await login(page);
     await page.evaluate(() => window.scrollTo(0, 1200));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-    await page.getByRole('link', { name: /Create New Work Order/i }).click();
-    await expect(page.getByRole('heading', { name: /New Work Order/i })).toBeVisible();
+    await page.getByRole('link', { name: /Start Work/i }).first().click();
+    await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-    const newHeader = await page.getByRole('heading', { name: /New Work Order/i }).boundingBox();
-    expect(newHeader?.y).toBeGreaterThanOrEqual(0);
-    expect(newHeader?.y).toBeLessThan(await page.evaluate(() => window.innerHeight));
+    const detailHeader = await page.getByRole('heading', { name: workOrder.displayId }).boundingBox();
+    expect(detailHeader?.y).toBeGreaterThanOrEqual(0);
+    expect(detailHeader?.y).toBeLessThan(await page.evaluate(() => window.innerHeight));
     await expect(page.locator('main')).toBeFocused();
 
     await page.getByRole('link', { name: /Back/i }).click();
@@ -251,7 +241,13 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
     await login(page);
     await page.goto(`/work-orders/${activeWorkOrder.id}`);
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.evaluate(() => {
+      const spacer = document.createElement('div');
+      spacer.style.height = '1600px';
+      spacer.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(spacer);
+      window.scrollTo(0, document.documentElement.scrollHeight);
+    });
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     // Manager-first ownership: mechanics report a blocker instead of pausing.
     await page.getByRole('button', { name: 'Report Blocker' }).first().click();
@@ -295,21 +291,16 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('banner', { name: 'Home controls' })).toBeVisible();
     await expect(page.getByAltText('Lightning Transport and Logistics')).toBeVisible();
 
-    await page.getByRole('link', { name: /Create New Work Order/i }).click();
+    await page.goto('/mechanic/standard/new', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
     await expect(page.getByText(user.name, { exact: true })).toHaveCount(0);
-    const backToHome = page.getByRole('link', { name: 'Back to Home' });
+    const backToHome = page.locator('header').getByRole('link', { name: 'Back to Home' });
     await expect(backToHome).toBeVisible();
+    await backToHome.scrollIntoViewIfNeeded();
     const backBox = await backToHome.boundingBox();
     expect(backBox?.width).toBeGreaterThanOrEqual(44);
     expect(backBox?.height).toBeGreaterThanOrEqual(44);
-
-    await selectTruck(page);
-    await page.getByRole('link', { name: /View truck repair history|See Truck Repair History/i }).click();
-    await expect(page.getByRole('heading', { name: 'REPAIR HISTORY' })).toBeVisible();
-    await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
-    await page.getByRole('link', { name: 'Back to New Work Order' }).click();
-    await expect(page.getByRole('heading', { name: 'New Work Order' })).toBeVisible();
+    await expect(page.getByText(/Ask your Shop Manager to create a Work Order/i)).toBeVisible();
 
     await page.getByRole('link', { name: 'Back to Home' }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
@@ -346,92 +337,12 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     }))).toEqual(after);
   });
 
-  test('select controls expose labels and a stable non-native chevron layout', async ({ page }) => {
-    await openNewWorkOrder(page);
-    await selectTruck(page);
-    const category = page.getByRole('combobox', { name: /Category/i });
-    await expect(category).toBeVisible();
-    await expect(category).toHaveAccessibleName(/Category/i);
-    const box = await category.boundingBox();
-    expect(box?.height).toBeGreaterThanOrEqual(40);
-    expect(await category.evaluate((node) => getComputedStyle(node).appearance)).toMatch(/none|auto/);
-    expect(await category.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(16);
+  test('Standard create route asks the Manager and hides planning controls', async ({ page }) => {
+    await openStandardCreateBlocked(page);
+    await expect(page.getByRole('combobox', { name: /Truck/i })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: /Category/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Create (new )?Work Order/i })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
-  });
-
-  test('Working With supports accessible multi-selection', async ({ page }) => {
-    await openNewWorkOrder(page);
-    await selectTruck(page);
-    const control = page.getByRole('button', { name: /Working With/i });
-    await control.click();
-    const dialog = page.getByRole('dialog', { name: /Working With/i });
-    await expect(dialog).toBeVisible();
-    const jamie = dialog.getByRole('checkbox', { name: /Jamie Technician/i });
-    await jamie.check();
-    await expect(jamie).toBeChecked();
-    await dialog.getByRole('button', { name: /Done/i }).click();
-    await expect(control).toContainText(/Jamie|more/i);
-  });
-
-  test('lists category jobs inline and keeps custom jobs separate from the catalog', async ({ page }) => {
-    await openNewWorkOrder(page);
-    await selectTruck(page);
-    await page.getByRole('combobox', { name: /Category/i }).selectOption(categories[0].id);
-    const listedJobs = page.getByRole('list', { name: /Listed jobs for Brakes/i });
-    const option = listedJobs.getByRole('button', { name: 'Brake inspection' });
-    await expect(option).toHaveCount(1);
-    const box = await option.boundingBox();
-    expect(box?.height).toBeGreaterThanOrEqual(44);
-    await option.click();
-    await expect(page.getByText('Brake inspection', { exact: true })).toHaveCount(1);
-    await page.getByRole('button', { name: 'Job not listed' }).click();
-    await expect(listedJobs).toBeHidden();
-    await expect(page.getByLabel('Custom job description')).toBeVisible();
-    await page.getByRole('button', { name: 'Back to listed jobs' }).click();
-    await expect(listedJobs).toBeVisible();
-  });
-
-  test('creates a Standard Work Order with Jobs from multiple Categories without dropping the initial Job', async ({ page }) => {
-    await openNewWorkOrder(page);
-    await selectTruck(page);
-    const category = page.getByRole('combobox', { name: /Category/i });
-    await category.selectOption(categories[0].id);
-    await page.getByRole('list', { name: /Listed jobs for Brakes/i })
-      .getByRole('button', { name: 'Brake inspection' }).click();
-    await category.selectOption(categories[1].id);
-    await expect(page.getByText('Brake inspection', { exact: true })).toBeVisible();
-    await page.getByRole('list', { name: /Listed jobs for Engine/i })
-      .getByRole('button', { name: 'Engine diagnostic' }).click();
-
-    const request = page.waitForRequest((candidate) =>
-      candidate.url().endsWith('/api/work-orders') && candidate.method() === 'POST',
-    );
-    await page.getByRole('button', { name: /Create (new )?Work Order/i }).click();
-    const payload = JSON.parse((await request).postData() ?? '{}');
-    expect(payload.primaryCategoryId).toBe(categories[1].id);
-    expect(payload.jobs).toEqual(expect.arrayContaining([
-      expect.objectContaining({ catalogJobId: 'catalog-brake-inspection', categoryId: categories[0].id }),
-      expect.objectContaining({ catalogJobId: 'catalog-engine-diagnostic', categoryId: categories[1].id }),
-    ]));
-  });
-
-  test('ranks truck prefixes before contains matches and labels fallback results', async ({ page }) => {
-    truckFixtures = [
-      truck,
-      { ...truck, id: 'truck-609', truckNumber: '609' },
-      { ...truck, id: 'truck-797', truckNumber: '797' },
-      { ...truck, id: 'truck-899', truckNumber: '899' },
-      { ...truck, id: 'truck-901', truckNumber: '901' },
-    ];
-    await openNewWorkOrder(page);
-    const input = page.getByRole('combobox', { name: /Truck/i });
-    await input.fill('9');
-    const options = page.getByRole('option');
-    await expect(options.first()).toContainText('#901');
-    await expect(page.getByRole('option', { name: /#609/i })).toHaveCount(0);
-    await input.fill('05');
-    await expect(page.getByRole('status')).toContainText(/Showing numbers that contain it/i);
-    await expect(page.getByRole('option', { name: /905/i })).toBeVisible();
   });
 
   test('signing out returns to login and removes the local session', async ({ page }) => {
@@ -523,33 +434,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     });
   });
 
-  test('keeps selected Jobs when changing the primary Category on a 320px viewport', async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 568 });
-    await openNewWorkOrder(page);
-    await selectTruck(page);
-    const category = page.getByRole('combobox', { name: /Category/i });
-    await category.selectOption(categories[0].id);
-    await page.getByRole('list', { name: /Listed jobs for Brakes/i }).getByRole('button', { name: 'Brake inspection' }).click();
-    await category.selectOption(categories[1].id);
-    await expect(page.getByRole('dialog', { name: 'Change category?' })).toHaveCount(0);
-    await expect(page.getByText('Brake inspection', { exact: true })).toBeVisible();
-    await expect(page.getByRole('list', { name: /Listed jobs for Engine/i })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
-  });
-
-  test('truck combobox supports keyboard selection and exposes state', async ({ page }) => {
-    await openNewWorkOrder(page);
-    const input = page.getByRole('combobox', { name: /Truck/i }).first();
-    await expect(input).toHaveAttribute('aria-expanded', /true|false/);
-    await input.fill('90');
-    await expect(page.getByRole('option', { name: /905/i }).first()).toBeVisible();
-    await input.press('ArrowDown');
-    await input.press('Enter');
-    await expect(input).toHaveValue(/905/);
-    await expect(input).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  test('requires confirmation before finishing a standard Work Order', async ({ page }) => {
+  test('Standard detail hides Finish Work and Add Job after cutover', async ({ page }) => {
     const completedJobs = {
       ...workOrder,
       status: 'in_progress',
@@ -557,7 +442,6 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       jobs: [{ ...workOrder.jobs[0], status: 'completed' }],
       startedAt: '2026-01-01T12:01:00.000Z',
     };
-    let completeCalls = 0;
 
     await page.route(`**/api/work-orders/${workOrder.id}`, async (route) => {
       await json(route, {
@@ -573,39 +457,13 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
         version: 1,
       });
     });
-    await page.route(`**/api/work-orders/${workOrder.id}/complete`, async (route) => {
-      completeCalls += 1;
-      await json(route, { ...completedJobs, status: 'completed' });
-    });
 
     await login(page);
     await page.goto(`/work-orders/${workOrder.id}`);
-    await page.getByRole('button', { name: 'Finish Work' }).click();
-    const dialog = page.getByRole('dialog', { name: 'FINISH WORK ORDER' });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByText(/All 1 job is complete/i)).toBeVisible();
-    expect(completeCalls).toBe(0);
-
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
-    await expect(dialog).toBeHidden();
-    expect(completeCalls).toBe(0);
-
-    await page.getByRole('button', { name: 'Finish Work' }).click();
-    await dialog.getByRole('button', { name: 'Finish Work', exact: true }).click();
-    await expect.poll(() => completeCalls).toBe(1);
-  });
-
-  test('priority choices expose pressed state and form fields have labels', async ({ page }) => {
-    await openNewWorkOrder(page);
-    await selectTruck(page);
-    await expect(page.getByRole('group', { name: /Priority/i }).or(page.getByText(/Priority/i).first())).toBeVisible();
-    const normal = page.getByRole('button', { name: /NORMAL/i });
-    await expect(normal).toHaveAttribute('aria-pressed', 'true');
-    const high = page.getByRole('button', { name: /HIGH/i });
-    await high.click();
-    await expect(high).toHaveAttribute('aria-pressed', 'true');
-    await expect(normal).toHaveAttribute('aria-pressed', 'false');
-    await expect(page.getByRole('textbox', { name: /Notes/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Finish Work' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Add job/i })).toHaveCount(0);
+    await expect(page.getByText(/Need additional work on this Truck/i)).toBeVisible();
   });
 });
 

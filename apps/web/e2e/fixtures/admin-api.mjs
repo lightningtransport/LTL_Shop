@@ -115,9 +115,32 @@ createServer(async (request, response) => {
     ]);
     return;
   }
+  if (request.url?.startsWith('/api/catalog/aliases') || request.url?.startsWith('/api/catalog/jobs')) {
+    json(response, 200, [
+      {
+        aliasText: 'inspect brake chamber',
+        catalogJobId: '00000000-0000-4000-8000-000000000801',
+        categoryId: '00000000-0000-4000-8000-000000000301',
+        displayName: 'Inspect brake chamber',
+      },
+      {
+        aliasText: 'inspect shocks',
+        catalogJobId: '00000000-0000-4000-8000-000000000802',
+        categoryId: '00000000-0000-4000-8000-000000000302',
+        displayName: 'Inspect shocks',
+      },
+    ]);
+    return;
+  }
   if (request.url?.startsWith('/api/admin/') && !user.capabilities.includes('admin.access')) {
     json(response, 403, { message: 'You do not have access to Shop Admin.' });
     return;
+  }
+  const canManageWorkOrders = user.capabilities.includes('work_orders.manage');
+  function denyUnlessManage() {
+    if (canManageWorkOrders) return false;
+    json(response, 403, { message: 'You do not have access to manage Work Orders.' });
+    return true;
   }
   if (request.url === '/api/admin/catalog/categories') {
     json(response, 200, [
@@ -312,6 +335,28 @@ createServer(async (request, response) => {
     });
     return;
   }
+  if (request.url === '/api/admin/work-orders' && request.method === 'POST') {
+    if (denyUnlessManage()) return;
+    const body = await readJson(request);
+    if (!body?.truckId || !body?.primaryCategoryId || !body?.jobs?.length) {
+      json(response, 400, { message: 'Truck, category, and at least one Job are required.' });
+      return;
+    }
+    const created = makeWorkOrder('00000000-0000-4000-8000-000000000199', 'WO-0199', 'T-199', body.priority ?? 'normal', 'created');
+    created.notes = body.notes ?? null;
+    created.jobs = body.jobs.map((job, index) => ({
+      id: `00000000-0000-4000-8000-0000000008${String(index).padStart(2, '0')}`,
+      displayName: job.displayName,
+      customDescription: job.customDescription ?? null,
+      category: { id: job.categoryId, name: job.categoryId.endsWith('302') ? 'Suspension' : 'Brakes' },
+      status: 'to_do',
+      assignedMechanic: null,
+    }));
+    syncJobCounts(created);
+    workOrders.unshift(created);
+    json(response, 201, created);
+    return;
+  }
   if (request.url?.startsWith('/api/admin/work-orders?')) {
     const url = new URL(request.url, 'http://fixture.local');
     const cursor = url.searchParams.get('cursor');
@@ -378,6 +423,7 @@ createServer(async (request, response) => {
   }
   const cancelJobMatch = request.url?.match(/^\/api\/admin\/jobs\/([0-9a-f-]+)\/cancel$/i);
   if (cancelJobMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
     const found = findFixtureJob(cancelJobMatch[1]);
     const body = await readJson(request);
     if (!found) { json(response, 404, { message: 'Job not found' }); return; }
@@ -462,6 +508,7 @@ createServer(async (request, response) => {
   }
   const completeMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/complete$/i);
   if (completeMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
     const summary = workOrders.find((item) => item.id === completeMatch[1]);
     const body = await readJson(request);
     if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
@@ -484,6 +531,7 @@ createServer(async (request, response) => {
   }
   const cancelMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/cancel$/i);
   if (cancelMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
     const summary = workOrders.find((item) => item.id === cancelMatch[1]);
     const body = await readJson(request);
     if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
@@ -501,8 +549,44 @@ createServer(async (request, response) => {
     json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
+  const addJobMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/jobs$/i);
+  if (addJobMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
+    const summary = workOrders.find((item) => item.id === addJobMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    if (!body?.idempotencyKey || body.expectedVersion === undefined) {
+      json(response, 400, { message: 'expectedVersion and idempotencyKey are required.' });
+      return;
+    }
+    if (body.expectedVersion !== summary.version) {
+      json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' });
+      return;
+    }
+    if (!['created', 'in_progress', 'waiting_paused'].includes(summary.status)) {
+      json(response, 400, { message: 'Cannot add jobs to a closed Work Order' });
+      return;
+    }
+    summary.jobs.push({
+      id: `00000000-0000-4000-8000-0000000009${summary.jobs.length}${summary.id.slice(-1)}`,
+      displayName: body.displayName ?? 'Added job',
+      customDescription: body.customDescription ?? null,
+      catalogJobId: body.catalogJobId ?? null,
+      category: {
+        id: body.categoryId ?? summary.category.id,
+        name: body.categoryId?.endsWith('302') ? 'Suspension' : summary.category.name,
+      },
+      status: 'to_do',
+      assignedMechanic: null,
+    });
+    syncJobCounts(summary);
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   const addMechanicMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/mechanics$/i);
   if (addMechanicMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
     const summary = workOrders.find((item) => item.id === addMechanicMatch[1]);
     const body = await readJson(request);
     if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
@@ -524,6 +608,7 @@ createServer(async (request, response) => {
   }
   const removeMechanicMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/mechanics\/([0-9a-f-]+)$/i);
   if (removeMechanicMatch && request.method === 'DELETE') {
+    if (denyUnlessManage()) return;
     const summary = workOrders.find((item) => item.id === removeMechanicMatch[1]);
     const body = await readJson(request);
     if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
@@ -540,6 +625,7 @@ createServer(async (request, response) => {
   }
   const detailMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)$/i);
   if (detailMatch && request.method === 'PATCH') {
+    if (denyUnlessManage()) return;
     const summary = workOrders.find((item) => item.id === detailMatch[1]);
     const body = await readJson(request);
     if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
@@ -608,6 +694,7 @@ createServer(async (request, response) => {
   }
   const adminPauseMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/pause$/i);
   if (adminPauseMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
     const summary = workOrders.find((item) => item.id === adminPauseMatch[1]);
     const body = await readJson(request);
     if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
@@ -649,6 +736,7 @@ createServer(async (request, response) => {
   }
   const adminResumeMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/resume$/i);
   if (adminResumeMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
     const summary = workOrders.find((item) => item.id === adminResumeMatch[1]);
     if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
     if (summary.status !== 'waiting_paused') { json(response, 400, { message: 'Only paused Work Orders can be resumed' }); return; }
@@ -723,6 +811,11 @@ createServer(async (request, response) => {
       ...(summary.activityLog ?? []),
     ];
     json(response, 200, fixtureMechanicWorkOrderDetail(summary));
+    return;
+  }
+  const mechanicPlanningMatch = request.url?.match(/^\/api\/work-orders(?:\/([0-9a-f-]+)\/(pause|pause-reason|resume|complete|jobs))?$/i);
+  if (request.method === 'POST' && mechanicPlanningMatch && (request.url === '/api/work-orders' || mechanicPlanningMatch[2])) {
+    json(response, 403, { message: 'Standard planning is Manager-owned.' });
     return;
   }
   const mechanicDetailMatch = request.url?.match(/^\/api\/work-orders\/([0-9a-f-]+)$/i);
@@ -859,6 +952,7 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status, options = {
     }],
     jobs: [{
       id: `00000000-0000-4000-8000-0000000005${id.slice(-2)}`,
+      catalogJobId: '00000000-0000-4000-8000-000000000801',
       displayName: 'Inspect brake chamber',
       customDescription: null,
       category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },

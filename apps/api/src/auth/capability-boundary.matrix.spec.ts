@@ -88,7 +88,7 @@ function workOrderService(workOrder: object) {
   );
 }
 
-describe('V1 capability boundary matrix', () => {
+describe('TARGET capability boundary matrix', () => {
   const reflector = new Reflector();
   const guard = new CapabilitiesGuard(reflector);
 
@@ -284,5 +284,56 @@ describe('Mechanic Work Order mutation capability enforcement', () => {
       mechanics: [{ mechanicId: 'other', removedAt: null }],
     });
     await expect(service.start(standard, WO_ID)).rejects.toThrow('This Work Order is not assigned to you.');
+  });
+
+  it('denies Standard create for an assigned Standard mechanic', async () => {
+    const service = new WorkOrdersService(
+      {
+        workOrder: { findUnique: vi.fn().mockResolvedValue(null) },
+        truck: { findUnique: vi.fn().mockResolvedValue({ id: TRUCK_ID }) },
+        jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: CATEGORY_ID, name: 'Brakes' }) },
+      } as never,
+      { log: vi.fn() } as never,
+    );
+    await expect(
+      service.create(standard, {
+        truckId: TRUCK_ID,
+        primaryCategoryId: CATEGORY_ID,
+        jobs: [{ categoryId: CATEGORY_ID, displayName: 'Inspect pads' }],
+      }),
+    ).rejects.toThrow('Standard Work Orders are created by a Shop Manager.');
+  });
+
+  it.each([
+    ['pause', (service: WorkOrdersService) => service.pause(standard, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS })],
+    [
+      'changePauseReason',
+      (service: WorkOrdersService) =>
+        service.changePauseReason(standard, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS }),
+    ],
+    ['resume', (service: WorkOrdersService) => service.resume(standard, WO_ID)],
+    ['complete', (service: WorkOrdersService) => service.complete(standard, WO_ID)],
+    [
+      'addJob',
+      (service: WorkOrdersService) =>
+        service.addJob(standard, WO_ID, {
+          categoryId: CATEGORY_ID,
+          displayName: 'Inspect pads',
+          expectedVersion: 1,
+          idempotencyKey: '55555555-5555-4555-8555-555555555555',
+        }),
+    ],
+  ] as const)('denies Standard %s for an assigned Standard mechanic', async (_name, invoke) => {
+    const service = workOrderService(assignedStandardWorkOrder());
+    await expect(invoke(service)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('still lets an assigned PM mechanic pass PM pause authorization', async () => {
+    const service = workOrderService(assignedPmWorkOrder());
+    try {
+      await service.pause(pm, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS });
+    } catch (error) {
+      expect(error).not.toBeInstanceOf(ForbiddenException);
+    }
   });
 });

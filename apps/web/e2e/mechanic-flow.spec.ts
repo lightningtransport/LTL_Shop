@@ -10,12 +10,13 @@ test.describe('Mechanic P0 critical path', () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 
-  test('login → home shows create CTA', async ({ page }) => {
+  test('login → home shows assigned work without create CTA', async ({ page }) => {
     await page.goto('/login');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await expect(page.getByRole('link', { name: /Create New Work Order/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({
       timeout: 15000,
     });
+    await expect(page.getByRole('link', { name: /Create New Work Order/i })).toHaveCount(0);
   });
 
   test('restored session verifies current capabilities before loading work orders', async ({
@@ -23,9 +24,7 @@ test.describe('Mechanic P0 critical path', () => {
   }) => {
     await page.goto('/login');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await expect(
-      page.getByRole('link', { name: /Create New Work Order/i }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
 
     let releaseProfile!: () => void;
     const profileBlocked = new Promise<void>((resolve) => {
@@ -50,7 +49,8 @@ test.describe('Mechanic P0 critical path', () => {
     const profileResponse = page.waitForResponse('**/api/auth/me');
     releaseProfile();
     await Promise.all([profileResponse, workOrdersRequest]);
-    await expect(page.getByRole('link', { name: /Create New Work Order/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Create New Work Order/i })).toHaveCount(0);
   });
 
   test('navigation reuses the fresh work-order cache', async ({ page }) => {
@@ -66,15 +66,11 @@ test.describe('Mechanic P0 critical path', () => {
 
     await page.goto('/login');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await expect(
-      page.getByRole('link', { name: /Create New Work Order/i }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     expect(workOrderReads).toBe(1);
 
-    await page.getByRole('link', { name: /Create New Work Order/i }).click();
-    await expect(
-      page.getByRole('heading', { name: /New Work Order/i }),
-    ).toBeVisible();
+    await page.getByRole('link', { name: /View Work|Start Work/i }).first().click();
+    await expect(page.getByRole('heading', { name: /WO-/i })).toBeVisible();
     await page.getByRole('link', { name: /Back/i }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     expect(workOrderReads).toBe(1);
@@ -92,9 +88,7 @@ test.describe('Mechanic P0 critical path', () => {
 
     await page.goto('/login');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await expect(
-      page.getByRole('link', { name: /Create New Work Order/i }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     await expect(
       page.getByRole('status', { name: /Loading work orders/i }),
     ).toBeVisible();

@@ -57,6 +57,7 @@ export class AdminController {
   }
 
   @Patch('work-orders/:id')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   patchWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.patchWorkOrder(request.user!, id, body);
   }
@@ -72,6 +73,7 @@ export class AdminController {
   }
 
   @Post('jobs/:id/cancel')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   cancelJob(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.cancelJob(request.user!, id, body);
   }
@@ -87,11 +89,13 @@ export class AdminController {
   }
 
   @Post('work-orders/:id/complete')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   completeWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.completeWorkOrder(request.user!, id, body);
   }
 
   @Post('work-orders/:id/cancel')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   cancelWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.cancelWorkOrder(request.user!, id, body);
   }
@@ -108,12 +112,20 @@ export class AdminController {
     return this.admin.resumeWorkOrder(request.user!, id);
   }
 
+  @Post('work-orders/:id/jobs')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  addWorkOrderJob(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.admin.addJob(request.user!, id, body);
+  }
+
   @Post('work-orders/:id/mechanics')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   addWorkOrderMechanic(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.addMechanic(request.user!, id, body);
   }
 
   @Delete('work-orders/:id/mechanics/:mechanicId')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   removeWorkOrderMechanic(
     @Req() request: Request,
     @Param('id') id: string,

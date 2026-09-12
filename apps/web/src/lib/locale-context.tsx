@@ -50,6 +50,10 @@ type Copy = {
   noWorkOrderTeam: string;
   noMyJobs: string;
   createWorkOrder: string;
+  askManagerToCreate: string;
+  askManagerToCreateHint: string;
+  additionalWorkHint: string;
+  pausedAskManager: string;
   createPmService: string;
   viewCompletedWork: (count: number) => string;
   status: Record<string, string>;
@@ -85,7 +89,12 @@ const copy: Record<ShopLocale, Copy> = {
     workOrderTeam: 'Work Order team',
     noWorkOrderTeam: 'No Work Order team assigned',
     noMyJobs: 'No jobs assigned to you. Unassigned jobs inherit the Work Order team.',
-    createWorkOrder: 'Create new Work Order', createPmService: 'Create PM service',
+    createWorkOrder: 'Create new Work Order',
+    askManagerToCreate: 'Ask your Shop Manager to create a Work Order.',
+    askManagerToCreateHint: 'Managers plan Standard work. Your Home lists Work Orders assigned to you.',
+    additionalWorkHint: 'Need additional work on this Truck? Write it here so your Manager can add the Job.',
+    pausedAskManager: 'This Work Order is paused. Your Shop Manager will resume it.',
+    createPmService: 'Create PM service',
     viewCompletedWork: (count) => `View completed work (${count})`,
     status: { created: 'Created', in_progress: 'In progress', waiting_paused: 'Paused', completed: 'Completed' },
   },
@@ -118,7 +127,12 @@ const copy: Record<ShopLocale, Copy> = {
     workOrderTeam: 'Equipo de la Work Order',
     noWorkOrderTeam: 'No hay equipo asignado a la Work Order',
     noMyJobs: 'No tienes Jobs asignados. Los Jobs sin asignar heredan el equipo de la Work Order.',
-    createWorkOrder: 'Crear nuevo Work Order', createPmService: 'Crear servicio de PM',
+    createWorkOrder: 'Crear nuevo Work Order',
+    askManagerToCreate: 'Pide a tu Shop Manager que cree el Work Order.',
+    askManagerToCreateHint: 'El Manager planifica el trabajo Standard. En Inicio ves los Work Orders asignados a ti.',
+    additionalWorkHint: '¿Hace falta trabajo adicional en esta unidad? Anótalo aquí para que el Manager agregue el Job.',
+    pausedAskManager: 'Este Work Order está pausado. Tu Shop Manager lo reanudará.',
+    createPmService: 'Crear servicio de PM',
     viewCompletedWork: (count) => `Ver trabajo completado (${count})`,
     status: { created: 'Creado', in_progress: 'En progreso', waiting_paused: 'Pausado', completed: 'Completado' },
   },

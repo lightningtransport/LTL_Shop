@@ -1,7 +1,7 @@
 # Implementation queue
 
 **Classification:** IMPLEMENTATION PLAN
-**Updated:** 2026-09-11
+**Updated:** 2026-09-12
 **Selection rule:** Take the first unblocked task in milestone order. Do not
 combine tasks or start a later milestone without the roadmap gate.
 **V2 gate:** Cristian approved the V2-001 contract on 2026-09-12 (direct
@@ -214,7 +214,9 @@ Home/detail, Admin list/detail, shared schemas, capability matrix, tests.
 Acceptance Criteria: Matches approved Q3–Q13, Q16–Q17. PM regression-free.
 Tests: Capability matrix, API unit, focused Playwright.
 Risk: HIGH — authorization and Work Order lifecycle.
-Status: READY.
+Status: COMPLETE — TARGET UI + API shipped together (no W1 soak). Standard
+create/pause/resume/add-job/complete-WO require `work_orders.manage`. Mechanic
+executes Jobs, reports blockers, and notes additional work. PM unchanged.
 
 ## V2.1-001 — Validate the Yard Phase persistence gap
 

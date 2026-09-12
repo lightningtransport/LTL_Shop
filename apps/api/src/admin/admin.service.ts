@@ -193,6 +193,12 @@ export class AdminService {
     return this.detail(workOrderId);
   }
 
+  async addJob(user: AuthUser, workOrderId: string, body: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    await this.workOrders.addJobByManager(user, workOrderId, body);
+    return this.detail(workOrderId);
+  }
+
   async dashboard(): Promise<AdminDashboardDto> {
     const openWhere: Prisma.WorkOrderWhereInput = {
       status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] },
@@ -1755,6 +1761,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
   const summary = toAdminSummary(row);
   const jobs = row.primaryCategory.name === 'PM' ? [] : row.jobs.map((job) => ({
     id: job.id,
+    catalogJobId: job.catalogJobId ?? null,
     displayName: job.displayName,
     customDescription: job.customDescription,
     status: job.status as SharedJobStatus,

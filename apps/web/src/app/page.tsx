@@ -77,10 +77,6 @@ export default function HomePage() {
         subtitle={isPm ? (messages.locale === 'es' ? 'Servicios de PM asignados a ti.' : 'PM services assigned to you.') : (messages.locale === 'es' ? 'Work Orders y Jobs que te asignó el Manager.' : 'Work Orders and Jobs the Manager assigned to you.')}
       />
 
-      {/* Manager-first ownership (soft cutover): the PM mechanic keeps creating
-          the PM service (PM untouched). Standard creation is moving to the
-          Manager; the legacy standard CTA stays available but demoted until the
-          Manager creation flow is verified, then it is removed in a later slice. */}
       {isPm ? (
         <>
           <Link href={`/mechanic/${mode}/new`} className="btn-primary mb-6 w-full">
@@ -91,9 +87,7 @@ export default function HomePage() {
           </p>
         </>
       ) : (
-        <Link href={`/mechanic/${mode}/new`} className="btn-secondary mb-6 w-full">
-          {messages.createWorkOrder}
-        </Link>
+        <p className="mb-6 text-sm text-shop-muted">{messages.askManagerToCreateHint}</p>
       )}
 
       {error ? (
@@ -255,14 +249,20 @@ function WorkOrderCard({
             View completed work
           </Link>
         ) : mode === 'paused' ? (
-          <>
-            <Link href={`/work-orders/${wo.id}`} className="btn-secondary flex-1">
+          isPm ? (
+            <>
+              <Link href={`/work-orders/${wo.id}`} className="btn-secondary flex-1">
+                View Details
+              </Link>
+              <Link href={`/work-orders/${wo.id}?action=resume`} className="btn-primary flex-1">
+                Resume Work
+              </Link>
+            </>
+          ) : (
+            <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
               View Details
             </Link>
-            <Link href={`/work-orders/${wo.id}?action=resume`} className="btn-primary flex-1">
-              Resume Work
-            </Link>
-          </>
+          )
         ) : mode === 'created' ? (
           <Link href={`/work-orders/${wo.id}`} className="btn-primary flex-1">
             Start Work
@@ -281,9 +281,15 @@ function WorkOrderCard({
               <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
                 View Work
               </Link>
-            ) : <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
-              Finish Work
-            </Link>
+            ) : isPm ? (
+              <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
+                Finish Work
+              </Link>
+            ) : (
+              <Link href={`/work-orders/${wo.id}`} className="btn-primary w-full">
+                View Work
+              </Link>
+            )
         )}
       </div>
     </article>
