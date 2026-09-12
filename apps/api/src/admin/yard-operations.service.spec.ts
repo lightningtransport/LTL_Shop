@@ -113,6 +113,32 @@ describe('YardOperationsService', () => {
     expect(page.counts).toEqual({ underReview: 1, readyToGo: 1, blocked: 1, presenceUnknown: 10 });
   });
 
+  it('does not treat a stored address as yard presence', async () => {
+    const prisma = createPrisma();
+    const row = {
+      ...truck('100', '00000000-0000-4000-8000-000000000001'),
+      vin: '1XKYD49X0LJ123456',
+      samsaraTruckLocation: 'West Main Street, Woodville, OH, 43469',
+      samsaraLastConnectedDate: new Date('2026-09-11T00:00:00.000Z'),
+    };
+    prisma.truck.findMany
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([]);
+    prisma.truck.count.mockResolvedValue(1);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 1 });
+    expect(page.items[0].truck).toMatchObject({
+      vin: '1XKYD49X0LJ123456',
+      location: 'West Main Street, Woodville, OH, 43469',
+      locationUpdatedOn: '2026-09-11',
+    });
+    expect(page.items[0].presence).toEqual({ state: 'unknown', provenance: 'phase_1_unavailable' });
+    expect(page.counts.presenceUnknown).toBe(1);
+  });
+
   it('returns not found for a missing Truck detail', async () => {
     const prisma = createPrisma();
     prisma.truck.findUnique.mockResolvedValue(null);

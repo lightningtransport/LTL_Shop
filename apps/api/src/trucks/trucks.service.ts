@@ -203,6 +203,9 @@ export function toTruckDto(truck: {
   mileage: number | null;
   company: string | null;
   owner: string | null;
+  vin?: string | null;
+  samsaraTruckLocation?: string | null;
+  samsaraLastConnectedDate?: Date | null;
 }) {
   return {
     id: truck.id,
@@ -213,7 +216,23 @@ export function toTruckDto(truck: {
     mileage: truck.mileage,
     company: truck.company,
     owner: truck.owner,
+    vin: emptyToNull(truck.vin),
+    location: emptyToNull(truck.samsaraTruckLocation),
+    locationUpdatedOn: toIsoDate(truck.samsaraLastConnectedDate),
   };
+}
+
+function emptyToNull(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function toIsoDate(value: Date | null | undefined) {
+  if (!value) return null;
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(value.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 const workOrderSummaryInclude = {

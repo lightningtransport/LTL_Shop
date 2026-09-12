@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { formatMileage } from '@/lib/format';
+import { formatIsoDate, formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
 import { Button, Card, EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui';
 import { useShopLocale } from '@/lib/locale-context';
@@ -60,6 +60,13 @@ export default function RepairHistoryPage() {
         </p>
         <p className="text-shop-muted">
           {formatMileage(truck.mileage)} | {truck.company} | {truck.owner}
+        </p>
+        <p className="text-shop-muted">
+          {messages.vin}: {truck.vin || '—'}
+        </p>
+        <p className="text-shop-muted">
+          {messages.lastReportedLocation}: {truck.location || '—'}
+          {truck.locationUpdatedOn ? ` · ${messages.locationUpdatedOn} ${formatIsoDate(truck.locationUpdatedOn, messages.locale)}` : ''}
         </p>
       </Card>
 

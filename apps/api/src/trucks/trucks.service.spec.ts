@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { TrucksService } from './trucks.service';
+import { toTruckDto, TrucksService } from './trucks.service';
 
 const truck = (truckNumber: string) => ({
   id: `truck-${truckNumber}`,
@@ -45,6 +45,56 @@ describe('TrucksService search', () => {
     expect(findMany.mock.calls[1][0]).toEqual(expect.objectContaining({
       where: { truckNumber: { contains: '05', mode: 'insensitive' } },
     }));
+  });
+
+  it('maps live identity columns onto the current TruckDto without exposing samsaraId', () => {
+    const dto = toTruckDto({
+      id: 'truck-1',
+      truckNumber: '905',
+      make: 'Peterbilt',
+      model: '579',
+      year: 2025,
+      mileage: 155000,
+      company: 'CTC',
+      owner: 'Cristian',
+      vin: ' 1XKYD49X0LJ123456 ',
+      samsaraTruckLocation: 'West Main Street, Woodville, OH, 43469',
+      samsaraLastConnectedDate: new Date('2026-09-11T00:00:00.000Z'),
+      ...({ samsaraId: 281474976710656 } as { samsaraId?: number }),
+    });
+
+    expect(dto).toEqual({
+      id: 'truck-1',
+      truckNumber: '905',
+      make: 'Peterbilt',
+      model: '579',
+      year: 2025,
+      mileage: 155000,
+      company: 'CTC',
+      owner: 'Cristian',
+      vin: '1XKYD49X0LJ123456',
+      location: 'West Main Street, Woodville, OH, 43469',
+      locationUpdatedOn: '2026-09-11',
+    });
+    expect(dto).not.toHaveProperty('samsaraId');
+    expect(dto).not.toHaveProperty('samsaraTruckLocation');
+    expect(dto).not.toHaveProperty('ninoxExternalId');
+  });
+
+  it('keeps miles and owners when live identity columns are absent', () => {
+    expect(toTruckDto(truck('905'))).toEqual({
+      id: 'truck-905',
+      truckNumber: '905',
+      make: null,
+      model: null,
+      year: null,
+      mileage: null,
+      company: null,
+      owner: null,
+      vin: null,
+      location: null,
+      locationUpdatedOn: null,
+    });
   });
 
   it('returns completed repair history with bounded cursor pagination', async () => {
