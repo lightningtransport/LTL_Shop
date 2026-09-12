@@ -965,6 +965,11 @@ Mechanic no longer:
 
 Backend permission enforcement changes together with UI.
 
+The product-approval contract for this phase is
+`OWNERSHIP_CUTOVER_CONTRACT.md` (V2-001). It proposes a W1 UI window and a
+W2 API-enforcement stage plus rollback. It does **not** authorize
+implementation until the Decision Log records Cristian’s answers.
+
 ---
 
 # 31. Manager UX Principles
@@ -1364,6 +1369,9 @@ Mechanic becomes execution-focused.
 
 Remove legacy controls only after backend authorization and migration are complete.
 
+Approval artifact: `OWNERSHIP_CUTOVER_CONTRACT.md`. Implementation stays
+gated until the Decision Log records Cristian’s §11 answers.
+
 ---
 
 ## V2.1 — Yard Operations Maturity
@@ -1519,6 +1527,57 @@ Manager plans and controls the intervention; Mechanic executes assigned work.
 ### 2026-09-11 — Ownership migration
 
 Do not destructively cut over. Introduce Manager workflow additively, validate, then retire Mechanic planning controls.
+
+### 2026-09-11 — V2-001 cutover contract drafted (not approved)
+
+A product-approval contract is published at `OWNERSHIP_CUTOVER_CONTRACT.md`.
+It documents CURRENT, post-cutover, migration, and rollback for every
+Standard mechanic, PM, Manager, and Admin action, and lists decisions that
+require Cristian’s answer. **This entry does not approve cutover and does
+not authorize V2 implementation.**
+
+### 2026-09-12 — V2 ownership cutover approved (direct TARGET)
+
+Cristian approved the V2-001 contract. Lightning Shop V1 was never adopted as
+a real Shop production flow, so the unused Standard mechanic-owned planning
+workflow is not preserved. Backward compatibility remains mandatory for
+existing data, historical Work Orders, PM, Activity Log, migrations, and
+database integrity.
+
+Approved answers:
+
+- Q1: No W1 soak. Validate the complete TARGET model in staging/pilot, then
+  production.
+- Q2: Technical rollback is System Admin / authorized Engineering. The Shop
+  Manager requests if there is a problem; Engineering tells the Shop.
+- Q3: Work Order team add/remove requires `work_orders.manage`.
+- Q4: Priority and operational notes require `work_orders.manage`.
+  Historical/sensitive corrections stay elevated and audited.
+- Q5: Manager completes/cancels the Standard Work Order. Mechanic completes
+  Jobs.
+- Q6: Reopen Work Order and time correction stay System Admin
+  (`admin.access`).
+- Q7: Manager may cancel a pending Job (reason + Activity Log). Job reopen
+  stays System Admin initially.
+- Q8: Manager Add Job after create is required. Mechanic reports additional
+  work; Manager incorporates it. Mechanic does not add Jobs directly.
+- Q9: No Standard-create exceptions. Create requires `work_orders.manage`.
+  Do not hardcode users by name/email.
+- Q10: An unassigned Job may be executed by any active Work Order team
+  member. Job-specific assignment has priority.
+- Q11: Keep mechanic execution notes.
+- Q12: Manager owns Standard pause/resume.
+- Q13: PM stays exactly as CURRENT (`mechanic.pm`, self-create/start,
+  mileage, parts, pause/resume, finish).
+- Q14: Grant `work_orders.manage` to the real Shop Manager roster and to
+  System Admin for support. Not test users.
+- Q15: Keep the shared `/admin` shell; capabilities distinguish Manager vs
+  System Admin.
+- Q16: Hide Create without `work_orders.manage` and 403 the API.
+- Q17: Keep `MechanicAssignment` as the general team. Per-Job assignment is
+  additive.
+- Q18: Path is current code → TARGET implementation → tests/staging →
+  production pilot → production. No two operating models in parallel.
 
 ---
 

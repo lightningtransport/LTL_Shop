@@ -4,6 +4,9 @@
 **Updated:** 2026-09-11
 **Selection rule:** Take the first unblocked task in milestone order. Do not
 combine tasks or start a later milestone without the roadmap gate.
+**V2 gate:** Cristian approved the V2-001 contract on 2026-09-12 (direct
+TARGET; no W1 window). Implementation follows `OWNERSHIP_CUTOVER_CONTRACT.md`
+and the Master PRD decision log.
 
 ## V1-000 — Investigate failed Vercel API deployment
 
@@ -139,12 +142,12 @@ Acceptance Criteria: Assigned/unassigned Jobs and Work Order team inheritance
 are clear at mobile size; existing PM remains unchanged.
 Tests: Mobile Chromium/WebKit assignment flows plus API access tests.
 Risk: MEDIUM.
-Status: COMPLETE — mechanic list/detail now label assigned vs inherited-team
-Jobs; Job assignees can read the Work Order; Manager assign unions the
-assignee into the team; PM Home remains unchanged. Evidence: focused API/web
-unit tests, `ADMIN_E2E_FIXTURE=1` Playwright assignment cases on
-mobile-chromium and mobile-webkit, and seeded local mobile verification.
-PR #77. Do not merge from this task.
+Status: COMPLETE — merged PR #77. Mechanic list/detail label assigned vs
+inherited-team Jobs; Job assignees can read the Work Order; Manager assign
+unions the assignee into the team; PM Home remains unchanged. Evidence:
+focused API/web unit tests, `ADMIN_E2E_FIXTURE=1` Playwright assignment
+cases on mobile-chromium and mobile-webkit, and seeded local mobile
+verification. This V2-001 contract treats V1.2 assigned-work UX as accepted.
 
 ## V1.2-002 — Validate blocker lifecycle and visibility
 
@@ -164,12 +167,13 @@ Acceptance Criteria: Report does not pause; official pause does; actor/reason
 are auditable; totals exclude report-only events.
 Tests: API transaction/timing tests and both-role E2E.
 Risk: HIGH — timing and operational status.
-Status: COMPLETE — reports stay `in_progress` with `blocker_reported` actor/reason
-audit; official Manager pause/resume still change status; waiting totals and time
-correction exclude report-only `PauseEvent`s; Admin detail/list surface the
-report as a distinct, actionable blocker. Evidence: focused API timing/mapping
-tests, both-role Playwright fixture coverage, lint/unit/build. Do not merge
-from this task.
+Status: COMPLETE — merged PR #78 (includes #77). Reports stay `in_progress`
+with `blocker_reported` actor/reason audit; official Manager pause/resume
+still change status; waiting totals and time correction exclude report-only
+`PauseEvent`s; Admin detail/list surface the report as a distinct,
+actionable blocker. Evidence: focused API timing/mapping tests, both-role
+Playwright fixture coverage, lint/unit/build. This V2-001 contract treats
+blocker lifecycle as accepted.
 
 ## V2-001 — Approve ownership cutover contract
 
@@ -183,12 +187,34 @@ Scope: Decision document and audited impact; no implementation in this task.
 Out of Scope: Code/schema changes.
 Dependencies: V1 and V1.2 acceptance evidence.
 Files likely affected: Master PRD decision log, Current vs Target, roadmap,
-queue.
+queue; cutover contract under `docs/`.
 Acceptance Criteria: Every mechanic/Manager/PM action has CURRENT, post-cutover,
 migration, and rollback behavior.
 Tests: Test plan only.
 Risk: HIGH.
-Status: GATED.
+Status: APPROVED 2026-09-12 — Cristian recorded Q1–Q18. Direct TARGET
+implementation is authorized (no W1 soak). See
+`docs/OWNERSHIP_CUTOVER_CONTRACT.md` and the Master PRD decision log.
+
+## V2-002 — Implement approved TARGET ownership cutover
+
+ID: V2-002
+Milestone: V2 — Ownership Cutover
+Problem: Approved TARGET ownership is still a hybrid: Standard mechanics can
+plan, complete, and globally pause Work Orders.
+Outcome: Manager plans/controls Standard work; mechanic executes assigned
+Jobs and reports blockers/additional work; PM is unchanged.
+Scope: UI + API together. Standard create/pause/resume/add-job/complete-WO
+become Manager (`work_orders.manage`). Mechanic reports additional work.
+Out of Scope: Yard, Samsara, catalog writes, PM rewrite, dropping
+`MechanicAssignment` or historical data.
+Dependencies: V2-001 approvals (2026-09-12).
+Files likely affected: Admin/Work Order controllers and services, mechanic
+Home/detail, Admin list/detail, shared schemas, capability matrix, tests.
+Acceptance Criteria: Matches approved Q3–Q13, Q16–Q17. PM regression-free.
+Tests: Capability matrix, API unit, focused Playwright.
+Risk: HIGH — authorization and Work Order lifecycle.
+Status: READY.
 
 ## V2.1-001 — Validate the Yard Phase persistence gap
 
