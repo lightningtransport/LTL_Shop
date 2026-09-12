@@ -21,15 +21,21 @@ export function sumDurationsMs(
   );
 }
 
+export function officialPausesForTotals<T extends { isOfficialPause?: boolean | null }>(
+  pauses: T[],
+): T[] {
+  return pauses.filter((pause) => pause.isOfficialPause !== false);
+}
+
 export function computeTotals(input: {
   sessions: { startedAt: Date; endedAt: Date | null }[];
-  pauses: { startedAt: Date; endedAt: Date | null }[];
+  pauses: { startedAt: Date; endedAt: Date | null; isOfficialPause?: boolean | null }[];
   now?: Date;
 }): { totalActiveLaborMs: number; totalWaitingMs: number } {
   const now = input.now ?? new Date();
   return {
     totalActiveLaborMs: sumDurationsMs(input.sessions, now),
-    totalWaitingMs: sumDurationsMs(input.pauses, now),
+    totalWaitingMs: sumDurationsMs(officialPausesForTotals(input.pauses), now),
   };
 }
 

@@ -903,6 +903,20 @@ describe('AdminService', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000001303',
     })).rejects.toBeInstanceOf(BadRequestException);
 
+    tx.pauseEvent.findUnique.mockResolvedValue({
+      id: '00000000-0000-4000-8000-000000000901',
+      workOrderId: baseRow.id,
+      startedAt: new Date('2026-09-11T15:00:00.000Z'),
+      endedAt: new Date('2026-09-11T15:00:00.000Z'),
+      isOfficialPause: false,
+    });
+    await expect(service.correctTime(manager, {
+      ...body,
+      targetType: 'pause_event',
+      targetId: '00000000-0000-4000-8000-000000000901',
+      idempotencyKey: '00000000-0000-4000-8000-000000001305',
+    })).rejects.toThrow('Cannot correct a reported blocker');
+
     const stored = { id: baseRow.id, version: 3 };
     prisma.workOrderMutation.findUnique.mockResolvedValueOnce({
       workOrderId: baseRow.id,
@@ -1188,6 +1202,45 @@ describe('AdminService', () => {
     expect(unassignTx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
       data: { assignedMechanicId: null },
     }));
+  });
+
+  it('shows a reported blocker without treating it as the current pause', async () => {
+    const reportedAt = new Date('2026-09-11T15:00:00.000Z');
+    const report = {
+      id: '00000000-0000-4000-8000-000000000901',
+      workOrderId: baseRow.id,
+      reason: 'waiting_for_parts',
+      notes: 'Air line ordered',
+      startedAt: reportedAt,
+      endedAt: reportedAt,
+      durationMs: 0n,
+      isOfficialPause: false,
+      createdBy: { id: '00000000-0000-4000-8000-000000000001', name: 'Alejandro 1' },
+      reportedBy: { id: '00000000-0000-4000-8000-000000000001', name: 'Alejandro 1' },
+    };
+    const prisma = createPrisma();
+    prisma.workOrder.findUnique.mockResolvedValue(detailRow({
+      status: 'in_progress',
+      totalWaitingMs: 0n,
+      pauseEvents: [report],
+    }));
+    const service = createService(prisma);
+
+    const detail = await service.detail(baseRow.id);
+    expect(detail.status).toBe('in_progress');
+    expect(detail.currentPause).toBeNull();
+    expect(detail.latestReportedBlocker).toMatchObject({
+      reason: 'waiting_for_parts',
+      isOfficialPause: false,
+      reportedBy: { id: '00000000-0000-4000-8000-000000000001', name: 'Alejandro 1' },
+    });
+    expect(detail.pauseHistory).toEqual([]);
+    expect(detail.reportedBlockers).toHaveLength(1);
+    expect(detail.reportedBlockers[0]).toMatchObject({
+      reason: 'waiting_for_parts',
+      createdBy: { id: '00000000-0000-4000-8000-000000000001', name: 'Alejandro 1' },
+    });
+    expect(detail.totalWaitingMs).toBe(0);
   });
 });
 

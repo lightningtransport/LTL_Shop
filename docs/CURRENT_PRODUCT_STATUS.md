@@ -193,7 +193,10 @@ not define TARGET behavior. Product direction lives exclusively in
   Work Order from Admin. Standard mechanics can report a blocker without
   changing Work Order status or waiting totals. The blocker is stored as a
   closed, zero-duration non-official `PauseEvent` and writes
-  `blocker_reported`.
+  `blocker_reported` with actor and reason. Admin list/detail show the latest
+  report separately from the current official pause; pause history and time
+  correction use official pauses only. Waiting totals exclude report-only
+  events even if a report later has a non-zero duration.
 - Legacy mechanic pause/resume endpoints still exist. Standard detail presents
   Report Blocker while in progress, but a paused Work Order still exposes
   resume/change-reason behavior. PM retains its specialized pause behavior.

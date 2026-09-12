@@ -164,7 +164,12 @@ Acceptance Criteria: Report does not pause; official pause does; actor/reason
 are auditable; totals exclude report-only events.
 Tests: API transaction/timing tests and both-role E2E.
 Risk: HIGH — timing and operational status.
-Status: PENDING.
+Status: COMPLETE — reports stay `in_progress` with `blocker_reported` actor/reason
+audit; official Manager pause/resume still change status; waiting totals and time
+correction exclude report-only `PauseEvent`s; Admin detail/list surface the
+report as a distinct, actionable blocker. Evidence: focused API timing/mapping
+tests, both-role Playwright fixture coverage, lint/unit/build. Do not merge
+from this task.
 
 ## V2-001 — Approve ownership cutover contract
 

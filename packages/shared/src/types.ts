@@ -83,6 +83,10 @@ export interface PauseEventDto {
   startedAt: string;
   endedAt: string | null;
   durationMs: number | null;
+  // Official Manager/legacy pauses are true. Mechanic reports are false and
+  // must not drive currentPause, waiting totals, or time correction.
+  isOfficialPause?: boolean;
+  reportedBy?: { id: string; name: string } | null;
 }
 
 export interface MechanicAssignmentDto {
@@ -195,6 +199,7 @@ export interface AdminWorkOrderSummaryDto {
   jobsTotal: number;
   mechanics: MechanicAssignmentDto[];
   currentPause: PauseEventDto | null;
+  latestReportedBlocker: PauseEventDto | null;
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
@@ -235,6 +240,9 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   jobs: AdminWorkOrderJobDto[];
   laborSessions: AdminTimeSegmentDto[];
   pauseHistory: (PauseEventDto & {
+    createdBy: { id: string; name: string };
+  })[];
+  reportedBlockers: (PauseEventDto & {
     createdBy: { id: string; name: string };
   })[];
   activityLog: AdminActivityLogDto[];
