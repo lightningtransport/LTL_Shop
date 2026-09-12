@@ -7,6 +7,9 @@ combine tasks or start a later milestone without the roadmap gate.
 **V2 gate:** Cristian approved the V2-001 contract on 2026-09-12 (direct
 TARGET; no W1 window). Implementation follows `OWNERSHIP_CUTOVER_CONTRACT.md`
 and the Master PRD decision log.
+**Truck identity guardrail:** V3 stays deferred. CURRENT truck search +
+Shop-owned miles/owners/make/model/year/company must remain green — see
+`audit/TRUCK_IDENTITY_AND_MILEAGE_CURRENT.md`.
 
 ## V1-000 — Investigate failed Vercel API deployment
 
@@ -257,4 +260,6 @@ Acceptance Criteria: Each field has source, freshness, owner, fallback, audit,
 and test strategy.
 Tests: Contract test plan.
 Risk: HIGH.
-Status: GATED.
+Status: GATED. Do not start. V3 stays deferred. CURRENT truck
+identity/search/miles/owners must remain green
+(`audit/TRUCK_IDENTITY_AND_MILEAGE_CURRENT.md`).
