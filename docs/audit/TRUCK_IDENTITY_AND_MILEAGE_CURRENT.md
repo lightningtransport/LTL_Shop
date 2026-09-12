@@ -1,0 +1,146 @@
+# Truck identity and mileage — CURRENT
+
+**Classification:** CURRENT STATE / AUDIT
+**Audited commit:** `b8bfc8e` (latest `main` as of 2026-09-12)
+**Date:** 2026-09-12
+**Owner:** Product (Cristian) for keep-working constraint; Engineering for
+path facts
+**Status:** CURRENT. No Samsara, McLeod, Dispatch, or live Ninox in this
+path. Do not implement those integrations from this document.
+
+Cristian constraint: **keep truck search and truck information working.**
+He sees miles and owners in the UI. That path is Shop-owned Postgres
+columns, not telematics.
+
+---
+
+## 1. One-page CURRENT map
+
+1. **Source of truth** is `public.trucks` in Supabase PostgreSQL
+   (`schema.prisma` model `Truck`). The UI never reads Samsara, McLeod,
+   Dispatch, or Ninox for identity or miles.
+2. **Search is Shop-local.** Mechanic pickers load `GET /api/trucks` and
+   filter `truckNumber` in the browser. Admin Trucks / Admin New WO search
+   `GET /api/admin/trucks?search=`. Yard searches
+   `GET /api/admin/yard-operations?search=`.
+3. **Truck Information** (make, model, year, mileage, company, owner) is
+   `toTruckDto()` from those same columns. Miles and owners appear on
+   mechanic create/detail/history and Admin Truck Detail / Admin WO
+   Detail — not on the Admin Trucks list or Yard cards.
+4. **Who writes identity today:** there is **no Admin truck editor**.
+   Make/model/year/company/owner are not writable through the running
+   Shop API. Production rows were loaded historically (159 of 162 have
+   `ninox_external_id`). Local `prisma/seed.ts` upserts three demo
+   numbers only.
+5. **Who writes mileage today:** only **PM Work Order complete**, when
+   saved observed mileage differs from `trucks.mileage`. That writes
+   `trucks.mileage`, `truck_mileage_adjustments`, and Activity Log
+   `truck_mileage_corrected`. Draft observed mileage lives on
+   `pm_services` and does **not** move the truck until finish.
+6. **V3 stays deferred.** Presence is always `UNKNOWN`. Incoming /
+   Departures are unavailable. Wiring Samsara or McLeod into search,
+   miles, or owners is out of scope until an approved V3-001 contract.
+
+---
+
+## 2. End-to-end surfaces
+
+| UI | Route | API | What the user searches / sees |
+|---|---|---|---|
+| Mechanic / PM New WO picker | `/work-orders/new`, `/mechanic/standard/new`, `/mechanic/pm/new` (same page) | `GET /api/trucks` (full list, any authenticated Shop user) then client `rankTruckResults` | Search **truck number only** (strips `#`, prefix then contains, max 20). After select: Make / Model / Year / Mileage / Company / Owner from `TruckDto`. Then `GET /api/trucks/:id/open-work-order`. |
+| Admin New WO picker | `/admin/work-orders/new` | `GET /api/admin/trucks?search=` (`admin.access`) | Server contains on **truckNumber, make, model, company**. Result shows `#number · make model`. Does **not** search owner, year, or mileage. |
+| Admin Trucks list | `/admin/trucks` | same `GET /api/admin/trucks` | Same search. Table: number, year/model subtitle, operational status, make, company, open WO. **No miles, no owner.** |
+| Yard board / list | `/admin/yard-operations` | `GET /api/admin/yard-operations?search=` | Contains on truckNumber, make, model, plus open-WO displayId / category / mechanic. **Not** owner or company. Cards show number + year/make/model. Phase/blockers are **derived**; they do not store identity. |
+| Admin Truck Detail | `/admin/trucks/[id]` | `GET /api/admin/trucks/:id` (Yard detail) | Overview **does** show number, make, model, year, mileage, company, owner, plus derived operational status and `UNKNOWN` presence. |
+| Admin WO Detail | `/admin/work-orders/[id]` | Admin WO detail (`truck: toTruckDto`) | Truck Details: number, make, model, year, mileage, company, owner. |
+| Mechanic WO Detail | `/work-orders/[id]` | `GET /api/work-orders/:id` (`truck: toTruckDto`) | Truck Information panel: make, model, year, mileage, company, owner. |
+| Mechanic / Admin repair history | `/trucks/[id]/history`; Admin Truck Detail history | `GET /api/trucks/:id/repair-history` and `GET /api/admin/trucks/:id/repair-history` | Header uses current `TruckDto`. Per-item mileage is `pmService.observedMileage ?? trucks.mileage`. |
+| Admin WO / History / Mechanic lists | various | WO summaries | Usually **truckNumber** (and sometimes make/model/year). Not a second identity store. |
+
+`GET /api/trucks/search?q=` exists (`TrucksService.search`) and is covered
+by unit tests. **No current web client calls it.** Keep `@Get('search')`
+registered **before** `@Get(':id')` or `/search` will be parsed as an id.
+
+DTO used everywhere identity is shown:
+
+`id`, `truckNumber`, `make`, `model`, `year`, `mileage`, `company`, `owner`
+
+(`toTruckDto` in `apps/api/src/trucks/trucks.service.ts`).
+`ninoxExternalId` stays in the database and is **not** sent to the UI.
+
+---
+
+## 3. Field ledger
+
+| Field | DB column | Source of truth | Who writes it | When it updates |
+|---|---|---|---|---|
+| `truckNumber` | `trucks.truck_number` UNIQUE + indexed | Shop | Historical load / seed upsert. **No API writer.** | Search, WO create (`truckId`), and one-open-WO rules all key off this. Changing uniqueness or the number blanks pickers. |
+| `make` | `trucks.make` | Shop | Historical load / seed. **No API writer.** | Shown in Truck Information; PM part fitment matches normalized make/model. |
+| `model` | `trucks.model` | Shop | Same | Same. Cascadia-style fitment needs this string. |
+| `year` | `trucks.year` | Shop | Same | Display only. Not searchable. |
+| `mileage` | `trucks.mileage` nullable int | Shop current odometer | **PM complete only** in the running app (`work-orders.service.complete` and `admin.service` complete). Seed upsert can overwrite locally. | Draft: `pm_services.observed_mileage`. Finish: copy onto `trucks.mileage` if different; append `truck_mileage_adjustments`; log `truck_mileage_corrected`. History rows prefer that PM’s observed miles. There is **no** monotonic guard (production has recorded a decrease). |
+| `company` | `trucks.company` | Shop | Historical load / seed. **No API writer.** | Display + Admin/Admin-create search. Production companies observed 2026-09-12: CTC, CDT, LTL, Lightning. |
+| `owner` | `trucks.owner` | Shop (person/label string, not a User FK) | Historical load / seed. **No API writer.** | Display on Truck Information / Admin Detail. **Not searchable** on any current list. |
+| `ninoxExternalId` | `trucks.ninox_external_id` | Import leftover | Not read or written by live adapters | Traceability only. Ninox client is a stub (`DATA_SOURCE=supabase`). |
+| Operational status | latest `truck_service_status_events` | Shop events | Returned to Service (`in_service`) | Not identity. Unknown if no event. Off Duty has no mutation yet. |
+| Presence | always `UNKNOWN` | none | nobody | Yard Phase 1. Not a truck column. |
+
+Production read (2026-09-12, Lightning Shop Supabase, read-only):
+**162 trucks**; every row has make, model, year, mileage, company, and
+owner; **159** have `ninox_external_id`; **5** `truck_mileage_adjustments`
+from PM complete. Three demo-shaped rows (`9050`, `9220`, `9680`) have
+no Ninox id. Fleet numbers `905` / `922` / `968` are **CTC** production
+rows, not the seed demo values.
+
+---
+
+## 4. Dead / misleading claims
+
+Treat these as **not CURRENT** for search or identity:
+
+| Claim | CURRENT fact |
+|---|---|
+| Samsara supplies miles, location, or search | Not imported. Master PRD §17 lists Samsara mileage as a **future** PM input. Phase 1 presence banner is explicit `UNKNOWN`. |
+| McLeod / Dispatch populate Incoming, Departures, or owners | Unavailable stubs on Yard list/detail. V3-001 is GATED. |
+| Ninox is the live truck source | Adapter ping only (`apps/api/src/integrations/ninox`). `ninox_external_id` is leftover. |
+| Admin Trucks search includes owner | Placeholder copy says “truck number, make, model, or company”. Owner is **not** in `buildTruckWhere`. |
+| `GET /api/trucks/search` is the mechanic picker | Unused by web. Picker uses the full list + local rank (see `ENGINEERING_PRACTICES.md` bounded reference data). |
+| Historical P0 PRD “Ninox is P0 SoT for Trucks” | `docs/PRD_Lightning_Shop_Mechanic_P0.md` is HISTORICAL. Code + this audit win. |
+
+---
+
+## 5. What not to break
+
+1. **Do not drop or null `owner` / `mileage` / `company` on `TruckDto` or
+   `GET /api/trucks`.** Mechanic Truck Information would go blank even if
+   Admin lists still render.
+2. **Do not put `GET /api/trucks` behind `admin.access`.** PM/Standard
+   pickers would 403.
+3. **Do not filter the truck catalog by Yard Presence or derived Phase.**
+   Presence is always `UNKNOWN`; that filter would hide the fleet.
+4. **Do not run `prisma/seed.ts` against production.** Seed `upsert`s
+   `905`, `968`, `922` with demo make/model/year/mileage/company/owner
+   and would overwrite live CTC rows (including PM-updated miles).
+5. **Do not add a second mileage writer** (Samsara poll, import overwrite,
+   Admin silent PATCH) without an approved contract. PM complete +
+   `truck_mileage_adjustments` is the only audited Shop write.
+6. **Do not change `truck_number` uniqueness, rename the column, or
+   require a telematics id for search.** Pickers and WO create use Shop
+   `id` + `truckNumber`.
+7. **Yard derivation / readiness mutations must not rewrite identity
+   columns.** They lock the truck for assessment/WO races
+   (`lockTruckMutation`); they should stay off make/owner/miles.
+8. **Keep `ninox_external_id` until an approved cleanup.** 159 production
+   rows use it for import traceability (`CODE_CLEANUP_CANDIDATES.md`).
+
+No application bug found that currently blanks search, miles, or owners.
+Docs-only; no code change.
+
+---
+
+## 6. Queue note
+
+V3-001 (Samsara / McLeod / Dispatch contracts) stays **GATED**. Any later
+integration work must leave this CURRENT path green: Shop-owned
+`trucks.*` identity, mechanic/Admin/Yard search as documented, and PM
+complete as the only app mileage writer.
