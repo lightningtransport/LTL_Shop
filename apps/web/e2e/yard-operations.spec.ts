@@ -36,10 +36,10 @@ test.describe('Yard Operations Phase 1', () => {
     }
   });
 
-  test('shows all eight phases in the desktop board and paginates', async ({ page }) => {
+  test('shows all derived phases in the desktop board and paginates', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1024 });
     await expect(page.getByRole('heading', { name: 'Readiness board' })).toBeVisible();
-    for (const phase of ['Needs evaluation', 'Inspection', 'Required Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to Go']) {
+    for (const phase of ['Needs evaluation', 'Inspection', 'Required Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready for Approval', 'Ready to Go']) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
     await page.getByRole('button', { name: 'List' }).click();

@@ -45,6 +45,7 @@ export const YARD_PHASES = [
   ReadinessPhase.ALIGNMENT,
   ReadinessPhase.DETAILING,
   ReadinessPhase.QUALITY_CHECK,
+  ReadinessPhase.READY_FOR_APPROVAL,
   ReadinessPhase.READY_TO_GO,
 ] as const;
 

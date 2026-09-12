@@ -74,6 +74,7 @@ const yardOperations = [
   makeYardItem('00000000-0000-4000-8000-000000001005', 'Y-105', 'alignment', 'normal', 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001006', 'Y-106', 'detailing', 'low', 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001007', 'Y-107', 'quality_check', 'normal', 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001009', 'Y-109', 'ready_for_approval', null, 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001008', 'Y-108', 'ready_to_go', null, 'ready'),
 ];
 
@@ -260,7 +261,7 @@ createServer(async (request, response) => {
       if (!item) { json(response, 404, { message: 'Truck not found' }); return; }
       if (item.assessment) { json(response, 409, { code: 'ACTIVE_READINESS_ASSESSMENT_EXISTS', message: 'Truck already has an active readiness assessment.' }); return; }
       item.assessment = makeAssessment(item);
-      item.phase = 'needs_evaluation';
+      item.phase = 'inspection';
       item.blockers = [{ kind: 'unevaluated_requirement', requirementType: 'inspection' }];
       json(response, 200, { assessment: item.assessment, linkedWorkOrderId: item.activeWorkOrder?.id ?? null });
       return;
@@ -329,7 +330,7 @@ createServer(async (request, response) => {
     json(response, 200, {
       items: hasCursor ? items.slice(0, 4) : items,
       nextCursor: hasCursor ? 'yard-page-2' : null,
-      counts: { underReview: 6, readyToGo: 1, blocked: 6, presenceUnknown: 8 },
+      counts: { underReview: 7, readyToGo: 1, blocked: 6, presenceUnknown: 9 },
       incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' },
       upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' },
     });
