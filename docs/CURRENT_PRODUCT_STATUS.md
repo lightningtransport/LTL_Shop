@@ -1,7 +1,7 @@
 # Current product status
 
 **Classification:** CURRENT STATE
-**Audited commit:** `4d25876`
+**Audited commit:** `fe40f7d`
 **Updated:** 2026-09-11
 
 This document describes only behavior implemented in the audited code. It does
@@ -137,7 +137,8 @@ not define TARGET behavior. Product direction lives exclusively in
 - Work can start, pause only while a job remains pending, resume, and finish
   after all required jobs are complete.
 - Finished work returns to Home and is available from the completed-work
-  section. Active and paused work remain separate.
+  section. Active and paused work remain separate. The Standard empty active
+  list reads “No assigned work in progress.”
 
 ### Work Order multi-Category implementation
 
@@ -168,7 +169,12 @@ not define TARGET behavior. Product direction lives exclusively in
 - A Standard mechanic with `mechanic.standard` can still create a Standard Work
   Order, choose its initial priority, and use the legacy Standard create route.
   The Home screen is titled “My Assigned Work,” but the Standard Create CTA
-  remains available in a secondary style.
+  remains available in a secondary style. Standard Home cards and Work Order
+  detail show the Work Order team and label each Job as assigned to the signed-in
+  mechanic, assigned to another mechanic, or unassigned and inheriting the team.
+  Detail groups remaining work into My Jobs (assigned to the mechanic or
+  unassigned) and Other work on this Truck. PM Home and PM detail do not use
+  these labels.
 - A Manager with both `admin.access` and `work_orders.manage` can create a
   Standard Work Order from `/admin/work-orders/new`, select a Truck, add
   multi-category catalog or Custom Jobs, set priority/notes, and optionally
@@ -176,10 +182,13 @@ not define TARGET behavior. Product direction lives exclusively in
   auto-started. Managers cannot create PM through this route.
 - `MechanicAssignment` remains the Work Order-level general team.
   `WorkOrderJob.assignedMechanicId` is an optional per-Job assignment. Manager
-  create unions Job assignees into the general team; Manager detail can
-  assign/unassign a Job with version and idempotency checks. An unassigned Job
-  has no persisted per-Job owner and may be presented as inheriting the general
-  team.
+  create unions Job assignees into the general team; Manager detail assign also
+  adds or reactivates that mechanic on the general team. Assign/unassign keep
+  version and idempotency checks. An unassigned Job has no persisted per-Job
+  owner and is presented as inheriting the general team. Mechanic list and
+  detail DTOs include `assignedMechanic` and the active team. A mechanic can
+  read a Work Order when they created it, are an active team member, or are the
+  per-Job assignee.
 - Managers with `work_orders.manage` can officially pause/resume a Standard
   Work Order from Admin. Standard mechanics can report a blocker without
   changing Work Order status or waiting totals. The blocker is stored as a

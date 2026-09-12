@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
@@ -11,11 +11,13 @@ import {
   PAUSE_REASON_LABELS,
   PauseReason,
   type WorkOrderDetailDto,
+  type WorkOrderJobDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
+import { isMyAssignedOrInheritedJob, jobAssignmentLabel } from '@/lib/job-assignment';
 import { shopKeys, useCategories, useWorkOrder } from '@/lib/shop-data';
 import {
   Button,
@@ -169,9 +171,8 @@ export default function WorkOrderDetailPage() {
 
   const todo = wo.jobs.filter((j) => j.status === 'to_do');
   const done = wo.jobs.filter((j) => j.status === 'completed');
-  const coworkers = wo.mechanics.filter(
-    (assignment) => assignment.mechanicId !== wo.createdById,
-  );
+  const myTodo = todo.filter((job) => isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
+  const otherTodo = todo.filter((job) => !isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
   const finishBlocked = busy || todo.length > 0;
 
   return (
@@ -335,34 +336,52 @@ export default function WorkOrderDetailPage() {
       </section>
 
       <section className="mb-4">
-        <p className="section-label mb-2">Jobs To Do</p>
-        {todo.length === 0 ? (
-          <EmptyState>No pending jobs</EmptyState>
+        <p className="section-label mb-2">{messages.workOrderTeam}</p>
+        <p className="mb-3 text-sm text-muted-foreground">
+          {wo.mechanics.length
+            ? wo.mechanics.map((assignment) => assignment.mechanicName).join(' / ')
+            : messages.noWorkOrderTeam}
+        </p>
+        <p className="section-label mb-2">{messages.myJobs}</p>
+        {myTodo.length === 0 ? (
+          <EmptyState>{todo.length === 0 ? 'No pending jobs' : messages.noMyJobs}</EmptyState>
         ) : (
           <ul className="mb-3 space-y-2">
-            {todo.map((job) => (
+            {myTodo.map((job) => (
               <li key={job.id}>
-                <Button
-                  variant="outline"
-                  className="h-auto w-full justify-start gap-3 p-4 text-left font-normal"
+                <JobTodoButton
+                  job={job}
+                  currentUserId={user?.id ?? ''}
                   disabled={busy || wo.status !== 'in_progress'}
-                  onClick={(event) => {
+                  onSelect={(event) => {
                     finishJobTriggerRef.current = event.currentTarget;
                     setFinishJob({ id: job.id, name: job.displayName });
                   }}
-                >
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-shop-border text-xs">
-                    ○
-                  </span>
-                  <span>
-                    <span className="block">{job.displayName}</span>
-                    <span className="block text-xs text-muted-foreground">{job.category.name}</span>
-                  </span>
-                </Button>
+                />
               </li>
             ))}
           </ul>
         )}
+        {otherTodo.length ? (
+          <>
+            <p className="section-label mb-2">{messages.otherWorkOnThisTruck}</p>
+            <ul className="mb-3 space-y-2">
+              {otherTodo.map((job) => (
+                <li key={job.id}>
+                  <JobTodoButton
+                    job={job}
+                    currentUserId={user?.id ?? ''}
+                    disabled={busy || wo.status !== 'in_progress'}
+                    onSelect={(event) => {
+                      finishJobTriggerRef.current = event.currentTarget;
+                      setFinishJob({ id: job.id, name: job.displayName });
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
         {wo.status !== 'completed' && wo.status !== 'cancelled' ? (
           <Button
             ref={addJobTriggerRef}
@@ -384,12 +403,15 @@ export default function WorkOrderDetailPage() {
             {done.map((job) => (
               <li
                 key={job.id}
-                className="card flex items-center gap-3 text-shop-success"
+                className="card flex items-start gap-3 text-shop-success"
               >
-                <span>✓</span>
-                <span>
+                <span className="mt-0.5">✓</span>
+                <span className="min-w-0">
                   <span className="block">{job.displayName}</span>
                   <span className="block text-xs text-muted-foreground">{job.category.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {jobAssignmentLabel(job.assignedMechanic, user?.id ?? '', messages)}
+                  </span>
                 </span>
               </li>
             ))}
@@ -398,14 +420,6 @@ export default function WorkOrderDetailPage() {
       </section>
 
       <section className="card space-y-3">
-        {coworkers.length ? (
-          <div>
-          <p className="section-label">Working With</p>
-          <p className="mt-1 text-sm">
-            {coworkers.map((m) => m.mechanicName).join(' / ')}
-          </p>
-          </div>
-        ) : null}
         <div>
           <Label className="section-label" htmlFor="wo-notes">
             Notes
@@ -870,6 +884,39 @@ function PmWorkOrderDetail({
         </div>
       </Modal>
     </div>
+  );
+}
+
+function JobTodoButton({
+  job,
+  currentUserId,
+  disabled,
+  onSelect,
+}: {
+  job: WorkOrderJobDto;
+  currentUserId: string;
+  disabled: boolean;
+  onSelect: (event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const { messages } = useShopLocale();
+  return (
+    <Button
+      variant="outline"
+      className="h-auto w-full justify-start gap-3 p-4 text-left font-normal"
+      disabled={disabled}
+      onClick={onSelect}
+    >
+      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-shop-border text-xs">
+        ○
+      </span>
+      <span className="min-w-0">
+        <span className="block">{job.displayName}</span>
+        <span className="block text-xs text-muted-foreground">{job.category.name}</span>
+        <span className="block text-xs text-muted-foreground">
+          {jobAssignmentLabel(job.assignedMechanic, currentUserId, messages)}
+        </span>
+      </span>
+    </Button>
   );
 }
 

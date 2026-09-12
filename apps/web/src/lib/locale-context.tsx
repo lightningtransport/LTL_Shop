@@ -41,6 +41,14 @@ type Copy = {
   pausedJobs: (count: number) => string;
   noActiveJobs: string;
   noPausedJobs: string;
+  assignedToYou: string;
+  assignedTo: (name: string) => string;
+  jobUnassignedInheritsTeam: string;
+  myJobs: string;
+  otherWorkOnThisTruck: string;
+  workOrderTeam: string;
+  noWorkOrderTeam: string;
+  noMyJobs: string;
   createWorkOrder: string;
   createPmService: string;
   viewCompletedWork: (count: number) => string;
@@ -67,8 +75,16 @@ const copy: Record<ShopLocale, Copy> = {
     truckResults: (count) => `${count} ${count === 1 ? 'truck result' : 'truck results'} available.`,
     activeJobs: (count) => `${count} ${count === 1 ? 'active job' : 'active jobs'}`,
     pausedJobs: (count) => `${count} ${count === 1 ? 'paused job' : 'paused jobs'}`,
-    noActiveJobs: 'No active jobs. Create a Work Order, then Start Work to begin labor.',
+    noActiveJobs: 'No assigned work in progress.',
     noPausedJobs: 'No paused jobs. Paused work will appear here until it is resumed.',
+    assignedToYou: 'Assigned to you',
+    assignedTo: (name) => `Assigned to ${name}`,
+    jobUnassignedInheritsTeam: 'Unassigned — inherits the Work Order team',
+    myJobs: 'My Jobs',
+    otherWorkOnThisTruck: 'Other work on this Truck',
+    workOrderTeam: 'Work Order team',
+    noWorkOrderTeam: 'No Work Order team assigned',
+    noMyJobs: 'No jobs assigned to you. Unassigned jobs inherit the Work Order team.',
     createWorkOrder: 'Create new Work Order', createPmService: 'Create PM service',
     viewCompletedWork: (count) => `View completed work (${count})`,
     status: { created: 'Created', in_progress: 'In progress', waiting_paused: 'Paused', completed: 'Completed' },
@@ -92,8 +108,16 @@ const copy: Record<ShopLocale, Copy> = {
     truckResults: (count) => `${count} ${count === 1 ? 'resultado de unidad disponible.' : 'resultados de unidades disponibles.'}`,
     activeJobs: (count) => `${count} ${count === 1 ? 'Job activo' : 'Jobs activos'}`,
     pausedJobs: (count) => `${count} ${count === 1 ? 'Job pausado' : 'Jobs pausados'}`,
-    noActiveJobs: 'No hay Jobs activos. Crea un Work Order y luego inicia el trabajo para registrar tiempo.',
+    noActiveJobs: 'No hay trabajo asignado en progreso.',
     noPausedJobs: 'No hay Jobs pausados. El trabajo pausado aparecerá aquí hasta que se reanude.',
+    assignedToYou: 'Asignado a ti',
+    assignedTo: (name) => `Asignado a ${name}`,
+    jobUnassignedInheritsTeam: 'Sin asignar — hereda el equipo de la Work Order',
+    myJobs: 'Mis Jobs',
+    otherWorkOnThisTruck: 'Otro trabajo en esta unidad',
+    workOrderTeam: 'Equipo de la Work Order',
+    noWorkOrderTeam: 'No hay equipo asignado a la Work Order',
+    noMyJobs: 'No tienes Jobs asignados. Los Jobs sin asignar heredan el equipo de la Work Order.',
     createWorkOrder: 'Crear nuevo Work Order', createPmService: 'Crear servicio de PM',
     viewCompletedWork: (count) => `Ver trabajo completado (${count})`,
     status: { created: 'Creado', in_progress: 'En progreso', waiting_paused: 'Pausado', completed: 'Completado' },

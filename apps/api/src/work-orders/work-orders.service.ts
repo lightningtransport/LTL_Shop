@@ -74,6 +74,7 @@ export class WorkOrdersService {
         OR: [
           { createdById: user.id },
           { mechanics: { some: { mechanicId: user.id, removedAt: null } } },
+          { jobs: { some: { assignedMechanicId: user.id } } },
         ],
       },
       include: workOrderDetailInclude,
@@ -1146,10 +1147,15 @@ export class WorkOrdersService {
 
   private isAssigned(
     user: AuthUser,
-    wo: { createdById: string; mechanics?: { mechanicId: string; removedAt: Date | null }[] },
+    wo: {
+      createdById: string;
+      mechanics?: { mechanicId: string; removedAt: Date | null }[];
+      jobs?: { assignedMechanicId?: string | null }[];
+    },
   ) {
-    return wo.createdById === user.id ||
-      !!wo.mechanics?.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt);
+    return wo.createdById === user.id
+      || !!wo.mechanics?.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt)
+      || !!wo.jobs?.some((job) => job.assignedMechanicId === user.id);
   }
 
   private assertMechanicAccess(
@@ -1158,6 +1164,7 @@ export class WorkOrdersService {
       createdById: string;
       primaryCategory: { name: string };
       mechanics?: { mechanicId: string; removedAt: Date | null }[];
+      jobs?: { assignedMechanicId?: string | null }[];
     },
   ) {
     const isPm = wo.primaryCategory.name === 'PM';

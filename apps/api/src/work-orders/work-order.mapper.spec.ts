@@ -26,7 +26,13 @@ const base = {
   mechanics: [],
 };
 
-function job(id: string, categoryId: string, categoryName: string, displayName: string) {
+function job(
+  id: string,
+  categoryId: string,
+  categoryName: string,
+  displayName: string,
+  assignedMechanic: { id: string; name: string } | null = null,
+) {
   return {
     id,
     workOrderId: 'wo-1',
@@ -38,6 +44,7 @@ function job(id: string, categoryId: string, categoryName: string, displayName: 
     status: 'to_do' as const,
     completedAt: null,
     completedById: null,
+    assignedMechanic,
   };
 }
 
@@ -74,6 +81,42 @@ describe('Work Order Job Category readers', () => {
     expect(detail.jobs).toEqual(expect.arrayContaining([
       expect.objectContaining({ categoryId: 'category-brakes', category: { id: 'category-brakes', name: 'Brakes' } }),
       expect.objectContaining({ categoryId: 'category-electrical', category: { id: 'category-electrical', name: 'Electrical' } }),
+    ]));
+  });
+
+  it('maps per-Job assignees and inherited-team unassigned Jobs on summary and detail', () => {
+    const wo: WorkOrderWithRelations = {
+      ...base,
+      mechanics: [{
+        mechanicId: 'mechanic-1',
+        addedAt: new Date('2026-09-09T12:00:00.000Z'),
+        removedAt: null,
+        mechanic: { name: 'Alex Mechanic' },
+      }],
+      jobs: [
+        job('job-assigned', 'category-brakes', 'Brakes', 'Replace pads', {
+          id: 'mechanic-2', name: 'Jamie Technician',
+        }),
+        job('job-team', 'category-brakes', 'Brakes', 'Bleed brakes'),
+      ],
+    };
+
+    expect(toWorkOrderSummary(wo)).toMatchObject({
+      mechanics: [{ mechanicId: 'mechanic-1', mechanicName: 'Alex Mechanic' }],
+      jobs: [
+        expect.objectContaining({
+          id: 'job-assigned',
+          assignedMechanic: { id: 'mechanic-2', name: 'Jamie Technician' },
+        }),
+        expect.objectContaining({ id: 'job-team', assignedMechanic: null }),
+      ],
+    });
+    expect(toWorkOrderDetail(wo).jobs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'job-assigned',
+        assignedMechanic: { id: 'mechanic-2', name: 'Jamie Technician' },
+      }),
+      expect.objectContaining({ id: 'job-team', assignedMechanic: null }),
     ]));
   });
 });

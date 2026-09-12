@@ -1156,6 +1156,9 @@ describe('AdminService', () => {
       where: { id: jobId },
       data: { assignedMechanicId: mechanicId },
     }));
+    expect(tx.mechanicAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: { workOrderId: wo.id, mechanicId, addedById: manager.id },
+    }));
     expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({
       eventType: ActivityEventType.MECHANIC_ADDED,
       entityType: 'work_order_job',

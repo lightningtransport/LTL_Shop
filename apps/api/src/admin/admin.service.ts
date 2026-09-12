@@ -590,6 +590,19 @@ export class AdminService {
           select: { id: true, name: true },
         });
         if (!mechanic) throw new BadRequestException('This mechanic cannot perform standard work');
+        const teamAssignment = await tx.mechanicAssignment.findUnique({
+          where: { workOrderId_mechanicId: { workOrderId, mechanicId: input.mechanicId } },
+        });
+        if (teamAssignment?.removedAt) {
+          await tx.mechanicAssignment.update({
+            where: { id: teamAssignment.id },
+            data: { removedAt: null, addedAt: new Date(), addedById: user.id },
+          });
+        } else if (!teamAssignment) {
+          await tx.mechanicAssignment.create({
+            data: { workOrderId, mechanicId: input.mechanicId, addedById: user.id },
+          });
+        }
         await tx.workOrderJob.update({
           where: { id: jobId },
           data: { assignedMechanicId: input.mechanicId },
