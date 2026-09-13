@@ -1,4 +1,18 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+
+const WORK_ORDER_FILTERS_BUTTON = /^(Filters|Filtros)( \(\d+\))?$/;
+
+async function workOrderFilterPanel(page: Page): Promise<Locator> {
+  const dialog = page.getByRole('dialog');
+  if (await dialog.isVisible()) return dialog;
+  const openFilters = page.getByRole('button', { name: WORK_ORDER_FILTERS_BUTTON });
+  if (await openFilters.isVisible()) {
+    await openFilters.click();
+    await expect(dialog).toBeVisible();
+    return dialog;
+  }
+  return page.getByRole('search');
+}
 
 test.describe('Shop Admin Phase 2A', () => {
   test('login landmark does not show a focus ring while controls keep focus styles', async ({ page }) => {
@@ -21,7 +35,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
-    await expect(page.getByText('Current operations from Supabase PostgreSQL')).toBeVisible();
+    await expect(page.getByText('Current shop operations')).toBeVisible();
+    await expect(page.getByText(/^Updated /)).toHaveCount(1);
+    await expect(page.getByText('Created, in progress, or waiting / paused')).toBeVisible();
+    await expect(page.getByText(/supabase|postgres|Source:|Generated/i)).toHaveCount(0);
     await expect(page.getByText('Open Work Orders').first()).toBeVisible();
 
     for (const viewport of [
@@ -44,7 +61,9 @@ test.describe('Shop Admin Phase 2A', () => {
 
     await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
-    await expect(page.getByText('Operación actual desde Supabase PostgreSQL')).toBeVisible();
+    await expect(page.getByText('Operaciones actuales del Shop')).toBeVisible();
+    await expect(page.getByText(/^Actualizado /)).toHaveCount(1);
+    await expect(page.getByText(/supabase|postgres|Fuente:|Generado/i)).toHaveCount(0);
   });
 
   test('mobile Admin navigation is a one-column sheet with every Admin link', async ({ page }) => {
@@ -54,7 +73,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Current operations' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Current shop operations' })).toBeVisible();
 
     const openNav = page.getByRole('button', { name: 'Open Shop Admin navigation' });
     await expect(openNav).toBeVisible();
@@ -80,11 +99,13 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/login');
     await page.getByLabel('Email').fill('manager@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await page.getByRole('link', { name: 'Work Orders' }).first().click();
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.goto('/admin/work-orders');
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await expect(page.getByRole('heading', { name: 'Work Orders' })).toBeVisible();
-    await page.getByLabel('Status').selectOption('waiting_paused');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
+    const filters = await workOrderFilterPanel(page);
+    await filters.getByLabel('Status').selectOption('waiting_paused');
+    await filters.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/status=waiting_paused/);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('link', { name: 'WO-0101' }).first()).toBeVisible();
@@ -155,7 +176,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goBack();
 
     const verifyMetric = async (name: RegExp, expected: Record<string, string>) => {
-      await page.getByRole('region', { name: 'Current operations' }).getByRole('link', { name }).click();
+      await page.getByRole('region', { name: 'Current shop operations' }).getByRole('link', { name }).click();
       await page.waitForURL((url) => Object.entries(expected).every(([key, value]) => url.searchParams.get(key) === value));
       const url = new URL(page.url());
       for (const [key, value] of Object.entries(expected)) expect(url.searchParams.get(key)).toBe(value);
@@ -168,10 +189,11 @@ test.describe('Shop Admin Phase 2A', () => {
     await verifyMetric(/Completed today/, { status: 'completed', completedFrom: '2026-09-06T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
     await verifyMetric(/Completed in the last 7 days/, { status: 'completed', completedFrom: '2026-08-31T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
 
-    await page.getByRole('link', { name: 'Work Orders' }).first().click();
+    await page.goto('/admin/work-orders');
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
-    await expect(page.getByLabel('Status')).toHaveValue('all');
-    await page.getByRole('button', { name: 'Clear' }).click();
+    const clearPanel = await workOrderFilterPanel(page);
+    await expect(clearPanel.getByLabel('Status')).toHaveValue('all');
+    await clearPanel.getByRole('button', { name: 'Clear' }).click();
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await expect(page.getByText('WO-0101').first()).toBeVisible();
     await page.getByRole('button', { name: 'Load more' }).click();
@@ -190,7 +212,8 @@ test.describe('Shop Admin Phase 2A', () => {
 
     const search = page.getByLabel('Search Work Order, Truck, category, or Mechanic');
     await search.fill('9');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
+    const applySearch = await workOrderFilterPanel(page);
+    await applySearch.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/search=9/);
     await expect(page.getByRole('link', { name: 'WO-0009', exact: true }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'WO-0905', exact: true }).first()).toBeVisible();
@@ -204,17 +227,20 @@ test.describe('Shop Admin Phase 2A', () => {
     expect(ids.indexOf('WO-0422')).toBeLessThan(ids.indexOf('WO-0609'));
 
     await search.fill('zzz-no-match');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
+    const applyEmpty = await workOrderFilterPanel(page);
+    await applyEmpty.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/search=zzz-no-match/);
     await expect(page.getByText('No Work Orders match these filters.')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Clear' }).click();
+    const clearSearch = await workOrderFilterPanel(page);
+    await clearSearch.getByRole('button', { name: 'Clear' }).click();
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await expect(page.getByText('WO-0101').first()).toBeVisible();
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await search.fill('9');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
+    const desktopApply = await workOrderFilterPanel(page);
+    await desktopApply.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page.locator('table').getByRole('link', { name: 'WO-0009', exact: true })).toBeVisible();
     await expect(page.locator('table').getByRole('link', { name: 'WO-0422', exact: true })).toBeVisible();
     await expect(page.locator('table').getByText('WO-0101')).toHaveCount(0);
@@ -224,11 +250,55 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('WO-0101').first()).toBeVisible();
     await search.fill('9644');
     await expect(search).toHaveValue('9644');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
+    const mobileApply = await workOrderFilterPanel(page);
+    await mobileApply.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/search=9644/);
     await expect(page.getByRole('link', { name: 'WO-0422', exact: true }).first()).toBeVisible();
     await expect(page.getByText('9644').first()).toBeVisible();
     await expect(page.getByText('WO-0101')).toHaveCount(0);
+  });
+
+  test('work order filters stay collapsed on mobile and compact on desktop', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.goto('/admin/work-orders');
+    await expect(page.getByRole('heading', { name: 'Work Orders' })).toBeVisible();
+    await expect(page.getByText('WO-0101').first()).toBeVisible();
+
+    await expect(page.getByRole('button', { name: WORK_ORDER_FILTERS_BUTTON })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByLabel('Status')).toBeHidden();
+    await expect(page.getByRole('link', { name: 'WO-0101' }).first()).toBeInViewport();
+
+    const sheet = await workOrderFilterPanel(page);
+    await expect(sheet.getByLabel('Status')).toBeVisible();
+    await expect(sheet.getByLabel('Priority')).toBeVisible();
+    await expect(sheet.getByLabel('Sort')).toBeVisible();
+    await expect(sheet.getByLabel('Direction')).toBeVisible();
+    await sheet.getByLabel('Status').selectOption('waiting_paused');
+    await sheet.getByRole('button', { name: 'Apply filters' }).click();
+    await expect(page).toHaveURL(/status=waiting_paused/);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Filters \(1\)/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'WO-0101' }).first()).toBeInViewport();
+
+    for (const width of [768, 1280, 1366, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.getByRole('button', { name: WORK_ORDER_FILTERS_BUTTON })).toBeHidden();
+      const toolbar = page.getByRole('search');
+      await expect(toolbar.getByLabel('Status')).toBeVisible();
+      await expect(toolbar.getByLabel('Priority')).toBeVisible();
+      await expect(toolbar.getByLabel('Sort')).toBeVisible();
+      await expect(toolbar.getByLabel('Direction')).toBeVisible();
+      await expect(toolbar.getByRole('button', { name: 'Clear' })).toBeVisible();
+      await expect(toolbar.getByRole('button', { name: 'Apply filters' })).toBeVisible();
+      const box = await toolbar.boundingBox();
+      expect(box?.height, `desktop toolbar wraps at ${width}px`).toBeLessThan(110);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      expect(overflow, `horizontal overflow at ${width}px`).toBe(false);
+    }
   });
 
   test('admin role can load dashboard and pagination completes', async ({ page }) => {

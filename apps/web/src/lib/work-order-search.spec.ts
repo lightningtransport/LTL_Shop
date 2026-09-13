@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAdminWorkOrdersQuery,
+  countActiveAdminWorkOrderFilters,
+  DEFAULT_ADMIN_WORK_ORDER_FILTERS,
   hrefWithQuery,
   rankWorkOrderResults,
   readAdminWorkOrdersFilters,
@@ -65,6 +67,24 @@ describe('Admin Work Order search query', () => {
       sort: 'updatedAt',
       direction: 'desc',
     }).toString()).toBe('');
+  });
+
+  it('counts non-default filters and ignores search', () => {
+    expect(countActiveAdminWorkOrderFilters(DEFAULT_ADMIN_WORK_ORDER_FILTERS)).toBe(0);
+    expect(countActiveAdminWorkOrderFilters({
+      ...DEFAULT_ADMIN_WORK_ORDER_FILTERS,
+      status: 'open',
+      priority: 'high',
+    })).toBe(2);
+    expect(countActiveAdminWorkOrderFilters({
+      ...DEFAULT_ADMIN_WORK_ORDER_FILTERS,
+      sort: 'displayId',
+      direction: 'asc',
+    }, new URLSearchParams('createdBefore=2026-09-05T18:30:00.000Z'))).toBe(3);
+    expect(countActiveAdminWorkOrderFilters({
+      ...DEFAULT_ADMIN_WORK_ORDER_FILTERS,
+      search: '9',
+    })).toBe(0);
   });
 });
 

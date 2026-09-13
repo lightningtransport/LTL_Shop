@@ -30,6 +30,15 @@ describe('Shop Admin routing and messages', () => {
 
   it('keeps one typed message shape for English and Spanish', () => {
     expect(Object.keys(getAdminMessages('en'))).toEqual(Object.keys(getAdminMessages('es')));
+    expect(getAdminMessages('en').filters).toBe('Filters');
+    expect(getAdminMessages('es').filters).toBe('Filtros');
+    expect(getAdminMessages('en').currentOperations).toBe('Current shop operations');
+    expect(getAdminMessages('es').currentOperations).toBe('Operaciones actuales del Shop');
+    expect(getAdminMessages('en').generatedAtLabel).toBe('Updated');
+    expect(getAdminMessages('es').generatedAtLabel).toBe('Actualizado');
+    for (const locale of ['en', 'es'] as const) {
+      expect(getAdminMessages(locale).currentOperations.toLowerCase()).not.toMatch(/supabase|postgres/);
+    }
     expect(getAdminMessages('es').nextPhaseBody).toContain('Work Orders');
     expect(getAdminMessages('es').nextPhaseBody).toContain('unidades');
     expect(getAdminMessages('en').lastReportedLocation).toBe('Last reported location');
