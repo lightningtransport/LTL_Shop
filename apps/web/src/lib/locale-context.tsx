@@ -61,6 +61,8 @@ type Copy = {
   viewCompletedWork: (count: number) => string;
   workspaceUnavailable: string;
   openAllowedHome: string;
+  startWork: string;
+  pauseWorkOrder: string;
   workOrderAction: (action: string, displayId: string, truckNumber: string) => string;
   pmServiceLoadError: string;
   status: Record<string, string>;
@@ -106,6 +108,8 @@ const copy: Record<ShopLocale, Copy> = {
     viewCompletedWork: (count) => `View completed work (${count})`,
     workspaceUnavailable: 'This mechanic workspace is not available for your account.',
     openAllowedHome: 'Go to your Shop home',
+    startWork: 'Start Work',
+    pauseWorkOrder: 'Pause Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, truck ${truckNumber}`,
     pmServiceLoadError: 'Unable to load PM service details.',
     status: { created: 'Created', in_progress: 'In Progress', waiting_paused: 'Paused', completed: 'Completed', cancelled: 'Cancelled' },
@@ -149,6 +153,8 @@ const copy: Record<ShopLocale, Copy> = {
     viewCompletedWork: (count) => `Ver trabajo completado (${count})`,
     workspaceUnavailable: 'Este espacio de mecánico no está disponible para tu cuenta.',
     openAllowedHome: 'Ir a tu Inicio del Shop',
+    startWork: 'Iniciar trabajo',
+    pauseWorkOrder: 'Pausar Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, unidad ${truckNumber}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',
     status: { created: 'Creado', in_progress: 'En progreso', waiting_paused: 'Pausado', completed: 'Completado', cancelled: 'Cancelado' },

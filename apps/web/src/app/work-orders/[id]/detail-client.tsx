@@ -211,7 +211,7 @@ export default function WorkOrderDetailPage() {
               )
             }
           >
-            Start Work
+            {messages.startWork}
           </Button>
         ) : null}
         {wo.status === 'in_progress' && todo.length ? (
@@ -637,7 +637,7 @@ function PmWorkOrderDetail({
               )
             }
           >
-            Start Work
+            {messages.startWork}
           </Button>
         </section>
       ) : (
@@ -696,7 +696,7 @@ function PmWorkOrderDetail({
       <section className="mb-4 space-y-2" aria-label="PM work actions">
         {wo.status === 'in_progress' ? (
           <div className="grid grid-cols-2 gap-2">
-            <Button ref={pauseTriggerRef} variant="secondary" disabled={busy} onClick={() => setPauseOpen(true)}>Pause Work</Button>
+            <Button ref={pauseTriggerRef} variant="secondary" disabled={busy} onClick={() => setPauseOpen(true)}>{messages.pauseWorkOrder}</Button>
             <Button disabled={finishBlocked} onClick={() => setFinishOpen(true)}>Finish Work</Button>
           </div>
         ) : null}
@@ -726,7 +726,7 @@ function PmWorkOrderDetail({
         </div>
       </Modal>
 
-      <Modal open={pauseOpen} title="PAUSE WORK ORDER" onClose={() => setPauseOpen(false)} returnFocusRef={pauseTriggerRef}>
+      <Modal open={pauseOpen} title={messages.pauseWorkOrder} onClose={() => setPauseOpen(false)} returnFocusRef={pauseTriggerRef}>
         <Label className="section-label mb-2 block" htmlFor="pm-pause-reason">Pause reason</Label>
         <div className="mb-3">
           <Select id="pm-pause-reason" value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
@@ -745,7 +745,7 @@ function PmWorkOrderDetail({
               method: 'POST',
               body: JSON.stringify({ reason: pauseReason, notes: pauseNotes || undefined }),
             }));
-          }}>Pause Work</Button>
+          }}>{messages.pauseWorkOrder}</Button>
         </div>
       </Modal>
     </div>

@@ -370,6 +370,8 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(createdCard.getByText('Created')).toHaveCount(0);
     await expect(activeCard.getByText('En progreso')).toBeVisible();
     await expect(activeCard.getByText('In Progress')).toHaveCount(0);
+    await expect(createdCard.getByRole('link', { name: 'Iniciar trabajo WO-1001, unidad 905' })).toBeVisible();
+    await expect(createdCard.getByRole('link', { name: /Start Work/i })).toHaveCount(0);
 
     await createdCard.getByRole('link', { name: /Start Work|Iniciar/i }).click();
     await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();

@@ -8,7 +8,12 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').jobUnassignedInheritsTeam).toContain('hereda el equipo');
     expect(getShopCopy('en').workspaceUnavailable).toMatch(/not available/);
     expect(getShopCopy('es').openAllowedHome).toMatch(/Inicio/);
+    expect(getShopCopy('en').startWork).toBe('Start Work');
+    expect(getShopCopy('es').startWork).toBe('Iniciar trabajo');
+    expect(getShopCopy('en').pauseWorkOrder).toBe('Pause Work Order');
+    expect(getShopCopy('es').pauseWorkOrder).toBe('Pausar Work Order');
     expect(getShopCopy('en').workOrderAction('Start Work', 'WO-1001', '905')).toBe('Start Work WO-1001, truck 905');
+    expect(getShopCopy('es').workOrderAction(getShopCopy('es').startWork, 'WO-1001', '905')).toBe('Iniciar trabajo WO-1001, unidad 905');
     expect(getShopCopy('en').lastReportedLocation).toBe('Last reported location');
     expect(getShopCopy('es').lastReportedLocation).toBe('Ubicación reportada');
     expect(getShopCopy('en').locationUpdatedOn).toBe('Last reported on');
