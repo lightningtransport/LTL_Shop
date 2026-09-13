@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Button, EmptyState, Input, LoadFailure, PageSkeleton, Select } from './ui';
+import { Button, EmptyState, Input, LoadFailure, PageSkeleton, Select, WorkOrderStatusBadge } from './ui';
 import { formatAdminDate } from '@/lib/admin-format';
 import { useAdminHistory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { workOrderStatusLabel } from '@/lib/status-chips';
 
 export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
@@ -44,8 +45,8 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchHistory} aria-label={messages.searchHistory} />
         <Select aria-label={messages.status} value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="all">{messages.closedStatuses}</option>
-          <option value="completed">{messages.completed}</option>
-          <option value="cancelled">{messages.cancelled}</option>
+          <option value="completed">{messages.woStatusCompleted}</option>
+          <option value="cancelled">{messages.woStatusCancelled}</option>
         </Select>
         <div className="flex gap-2">
           <Button type="button" variant="ghost" onClick={() => router.replace('/admin/history')}>{messages.clearFilters}</Button>
@@ -73,7 +74,7 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
                   <td className="p-3 font-semibold"><Link className="text-primary hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td>
                   <td className="p-3">{item.truck.truckNumber}</td>
                   <td className="p-3">{item.category.name}</td>
-                  <td className="p-3"><Badge variant="outline">{item.status === 'cancelled' ? messages.cancelled : messages.completed}</Badge></td>
+                  <td className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></td>
                   <td className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</td>
                 </tr>
               ))}

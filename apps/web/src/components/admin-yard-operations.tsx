@@ -8,7 +8,8 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatAdminDate, formatDuration } from '@/lib/admin-format';
 import { useAdminYardOperations } from '@/lib/admin-data';
 import { buildYardOperationsQuery, DEFAULT_YARD_OPERATIONS_FILTERS, readYardOperationsFilters, YARD_PHASES, YARD_PRIORITIES, YARD_READINESS_FILTERS, YARD_WORK_ORDER_STATUSES, type YardOperationsFilters } from '@/lib/yard-operations-routing';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, PageSkeleton, Select } from './ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
+import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import type { YardOperationsTruckDto } from '@ltl-shop/shared';
 
 const phaseMessageKey = {
@@ -27,14 +28,6 @@ const readinessMessageKey = {
   not_started: 'notStarted',
   under_review: 'underReview',
   ready: 'readyToGo',
-} as const;
-
-const statusMessageKey = {
-  created: 'created',
-  in_progress: 'inProgress',
-  waiting_paused: 'waitingPaused',
-  completed: 'completed',
-  cancelled: 'cancelled',
 } as const;
 
 const priorityMessageKey = { low: 'lowPriority', normal: 'normalPriority', high: 'highPriority', critical: 'criticalPriority' } as const;
@@ -122,7 +115,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           <label className="space-y-1 xl:col-span-2"><span className="text-sm font-medium">{messages.search}</span><Input aria-label={messages.search} value={filters.search} onChange={(event) => updateFilter('search', event.target.value)} /></label>
           <label className="space-y-1"><span className="text-sm font-medium">{messages.readiness}</span><Select aria-label={messages.readiness} value={filters.readiness} onChange={(event) => updateFilter('readiness', event.target.value)}><option value="">{messages.allReadiness}</option>{YARD_READINESS_FILTERS.map((value) => <option key={value} value={value}>{messages[readinessMessageKey[value]]}</option>)}</Select></label>
           <label className="space-y-1"><span className="text-sm font-medium">{messages.phase}</span><Select aria-label={messages.phase} value={filters.phase} onChange={(event) => updateFilter('phase', event.target.value)}><option value="">{messages.allPhases}</option>{YARD_PHASES.map((value) => <option key={value} value={value}>{messages[phaseMessageKey[value]]}</option>)}</Select></label>
-          <label className="space-y-1"><span className="text-sm font-medium">{messages.workOrderStatus}</span><Select aria-label={messages.workOrderStatus} value={filters.workOrderStatus} onChange={(event) => updateFilter('workOrderStatus', event.target.value)}><option value="">{messages.allWorkOrderStatuses}</option>{YARD_WORK_ORDER_STATUSES.map((value) => <option key={value} value={value}>{messages[statusMessageKey[value]]}</option>)}</Select></label>
+          <label className="space-y-1"><span className="text-sm font-medium">{messages.workOrderStatus}</span><Select aria-label={messages.workOrderStatus} value={filters.workOrderStatus} onChange={(event) => updateFilter('workOrderStatus', event.target.value)}><option value="">{messages.allWorkOrderStatuses}</option>{YARD_WORK_ORDER_STATUSES.map((value) => <option key={value} value={value}>{workOrderStatusLabel(value, messages)}</option>)}</Select></label>
           <label className="space-y-1"><span className="text-sm font-medium">{messages.priority}</span><Select aria-label={messages.priority} value={filters.priority} onChange={(event) => updateFilter('priority', event.target.value)}><option value="">{messages.allPriorities}</option>{YARD_PRIORITIES.map((value) => <option key={value} value={value}>{messages[priorityMessageKey[value]]}</option>)}</Select></label>
           <label className="space-y-1"><span className="text-sm font-medium">{messages.blockedFilter}</span><Select aria-label={messages.blockedFilter} value={filters.blocked} onChange={(event) => updateFilter('blocked', event.target.value)}><option value="">{messages.allBlockerStates}</option><option value="true">{messages.blockedOnly}</option><option value="false">{messages.unblockedOnly}</option></Select></label>
           <div className="flex items-end justify-end gap-2 border-t pt-3 md:col-span-2 xl:col-span-6"><Button type="button" variant="ghost" onClick={clearFilters}>{messages.yardClearFilters}</Button><Button type="submit">{messages.yardApplyFilters}</Button></div>
@@ -140,7 +133,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           <div className="mb-3"><h2 id="yard-board-title" className="font-display text-xl font-semibold">{messages.yardBoard}</h2></div>
           <div className="overflow-x-auto rounded-xl border bg-muted/40 p-3">
             <div className="grid min-w-[1530px] grid-cols-9 gap-3">
-              {YARD_PHASES.map((phase) => <div key={phase} className="min-w-0" data-phase={phase}><div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-display text-sm font-semibold">{messages[phaseMessageKey[phase]]}</h3><span className="text-xs text-muted-foreground">{items.filter((item) => item.phase === phase).length}</span></div><div className="space-y-3">{items.filter((item) => item.phase === phase).map((item) => <YardTruckCard key={item.truck.id} item={item} locale={locale} messages={messages} now={now} />)}{items.every((item) => item.phase !== phase) ? <CompactEmpty>{messages.noTrucksInPhase}</CompactEmpty> : null}</div></div>)}
+              {YARD_PHASES.map((phase) => <div key={phase} className="min-w-0" data-phase={phase}><div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-display text-sm font-semibold">{phaseLabel(phase, messages)}</h3><Badge variant="secondary">{items.filter((item) => item.phase === phase).length}</Badge></div><div className="space-y-3">{items.filter((item) => item.phase === phase).map((item) => <YardTruckCard key={item.truck.id} item={item} locale={locale} messages={messages} now={now} />)}{items.every((item) => item.phase !== phase) ? <CompactEmpty>{messages.noTrucksInPhase}</CompactEmpty> : null}</div></div>)}
             </div>
           </div>
         </section>
@@ -166,16 +159,13 @@ function YardTruckCard({ item, locale, messages, now }: { item: YardOperationsTr
   const workOrder = item.activeWorkOrder;
   const assessmentDuration = item.assessment && now !== null ? formatDuration(Math.max(0, now - new Date(item.assessment.startedAt).getTime())) : '—';
   const firstBlocker = item.blockers[0];
-  const blockerText = firstBlocker ? `${messages[blockerMessageKey[firstBlocker.kind]]}${firstBlocker.categoryName ? ` ${firstBlocker.categoryName}` : ''}${firstBlocker.status ? ` · ${messages[statusMessageKey[firstBlocker.status]]}` : ''}` : messages.noBlockerRecorded;
+  const blockerText = firstBlocker ? `${messages[blockerMessageKey[firstBlocker.kind]]}${firstBlocker.categoryName ? ` ${firstBlocker.categoryName}` : ''}${firstBlocker.status ? ` · ${workOrderStatusLabel(firstBlocker.status, messages)}` : ''}` : messages.noBlockerRecorded;
   return <Card className="space-y-3 p-3" data-testid="yard-truck-card">
-    <div className="flex items-start justify-between gap-2"><Link className="font-display text-base font-semibold text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link><Badge variant={item.blockers.length ? 'warning' : 'success'}>{messages[phaseMessageKey[item.phase]]}</Badge></div>
+    <div className="flex items-start justify-between gap-2"><Link className="font-display text-base font-semibold text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link><PhaseBadge phase={item.phase}>{phaseLabel(item.phase, messages)}</PhaseBadge></div>
     <p className="text-xs text-muted-foreground">{[item.truck.year, item.truck.make, item.truck.model].filter(Boolean).join(' ') || messages.noValue}</p>
-    <dl className="space-y-2 text-xs"><div className="flex items-center justify-between gap-2"><dt className="text-muted-foreground">{messages.timeInAssessment}</dt><dd className="font-medium">{assessmentDuration}</dd></div><div className="flex items-center justify-between gap-2"><dt className="text-muted-foreground">{messages.linkedWorkOrder}</dt><dd>{workOrder ? <Link className="text-primary hover:underline" href={`/admin/work-orders/${workOrder.id}`}>{workOrder.displayId}</Link> : <span>{messages.noActiveWorkOrder}</span>}</dd></div><div className="flex items-center justify-between gap-2"><dt className="text-muted-foreground">{messages.priority}</dt><dd>{workOrder ? <LocalizedPriority priority={workOrder.priority} messages={messages} /> : '—'}</dd></div><div><dt className="text-muted-foreground">{messages.mechanicsLabel}</dt><dd className="mt-1 truncate">{workOrder?.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noMechanicsAssigned}</dd></div><div><dt className="text-muted-foreground">{messages.firstBlocker}</dt><dd className="mt-1 line-clamp-2">{blockerText}</dd></div></dl>
+    <dl className="space-y-2 text-xs"><div className="flex items-center justify-between gap-2"><dt className="text-muted-foreground">{messages.timeInAssessment}</dt><dd className="font-medium">{assessmentDuration}</dd></div><div className="flex items-center justify-between gap-2"><dt className="text-muted-foreground">{messages.linkedWorkOrder}</dt><dd>{workOrder ? <Link className="text-primary hover:underline" href={`/admin/work-orders/${workOrder.id}`}>{workOrder.displayId}</Link> : <span>{messages.noActiveWorkOrder}</span>}</dd></div><div className="flex items-center justify-between gap-2"><dt className="text-muted-foreground">{messages.priority}</dt><dd>{workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : '—'}</dd></div><div><dt className="text-muted-foreground">{messages.mechanicsLabel}</dt><dd className="mt-1 truncate">{workOrder?.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noMechanicsAssigned}</dd></div><div><dt className="text-muted-foreground">{messages.firstBlocker}</dt><dd className="mt-1 line-clamp-2">{blockerText}</dd></div></dl>
     <p className="flex items-start gap-1 text-[11px] text-muted-foreground"><MapPin aria-hidden="true" className="mt-0.5 size-3 shrink-0" /><span>{messages.lastReportedLocation}: {item.truck.location ?? messages.noValue}</span></p>
     <p className="sr-only">{formatAdminDate(item.assessment?.startedAt ?? null, locale)}</p>
   </Card>;
 }
 
-function LocalizedPriority({ priority, messages }: { priority: keyof typeof priorityMessageKey; messages: AdminMessages }) {
-  return <span className="rounded-md border border-shop-accent/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide">{messages[priorityMessageKey[priority]]}</span>;
-}

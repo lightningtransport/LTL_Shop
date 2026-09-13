@@ -75,6 +75,38 @@ type Copy = {
   pauseWorkOrder: string;
   workOrderAction: (action: string, displayId: string, truckNumber: string) => string;
   pmServiceLoadError: string;
+  restoringSession: string;
+  loadingWorkOrders: string;
+  loadingWorkOrder: string;
+  retryWorkOrder: string;
+  unableToLoadProfile: string;
+  unableToLoadWorkOrders: string;
+  homeSubtitle: string;
+  pmHomeTitle: string;
+  standardHomeTitle: string;
+  pmHomeSubtitle: string;
+  standardHomeSubtitle: string;
+  readyToStart: string;
+  ordersReadyToStart: (count: number) => string;
+  noActivePmServices: string;
+  pmServicesStartImmediately: string;
+  viewDetails: string;
+  resumeWork: string;
+  viewWork: string;
+  finishWork: string;
+  viewCompletedWorkAction: string;
+  jobsDone: (completed: number, total: number) => string;
+  pmServiceLabel: string;
+  noPendingJobs: string;
+  noCompletedJobs: string;
+  chooseAnotherOrHome: string;
+  multiSelectDone: string;
+  backToShopAdmin: string;
+  workspaceStandard: string;
+  workspacePm: string;
+  shopWorkspaces: string;
+  priority: Record<string, string>;
+  jobStatus: Record<string, string>;
   status: Record<string, string>;
   pauseReason: Record<PauseReason, string>;
 };
@@ -132,6 +164,38 @@ const copy: Record<ShopLocale, Copy> = {
     pauseWorkOrder: 'Pause Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, truck ${truckNumber}`,
     pmServiceLoadError: 'Unable to load PM service details.',
+    restoringSession: 'Restoring session',
+    loadingWorkOrders: 'Loading work orders',
+    loadingWorkOrder: 'Loading work order',
+    retryWorkOrder: 'Retry work order',
+    unableToLoadProfile: 'Unable to load your profile.',
+    unableToLoadWorkOrders: 'Unable to load work orders',
+    homeSubtitle: 'Current jobs, work orders, and recent work.',
+    pmHomeTitle: 'PM Mechanic',
+    standardHomeTitle: 'My Assigned Work',
+    pmHomeSubtitle: 'PM services assigned to you.',
+    standardHomeSubtitle: 'Work Orders and Jobs the Manager assigned to you.',
+    readyToStart: 'Ready to Start',
+    ordersReadyToStart: (count) => `${count} ${count === 1 ? 'order' : 'orders'} ready to Start Work`,
+    noActivePmServices: 'No active PM services assigned to you.',
+    pmServicesStartImmediately: 'PM services start immediately after creation.',
+    viewDetails: 'View Details',
+    resumeWork: 'Resume Work',
+    viewWork: 'View Work',
+    finishWork: 'Finish Work',
+    viewCompletedWorkAction: 'View completed work',
+    jobsDone: (completed, total) => `${completed} of ${total} jobs done`,
+    pmServiceLabel: 'PM Service',
+    noPendingJobs: 'No pending jobs',
+    noCompletedJobs: 'No completed jobs',
+    chooseAnotherOrHome: 'Choose another Work Order or return to Home.',
+    multiSelectDone: 'Done',
+    backToShopAdmin: 'Back to Shop Admin',
+    workspaceStandard: 'Standard',
+    workspacePm: 'PM',
+    shopWorkspaces: 'Shop workspaces',
+    priority: { low: 'Low', normal: 'Normal', high: 'High', critical: 'Critical' },
+    jobStatus: { to_do: 'To do', completed: 'Completed', cancelled: 'Cancelled' },
     status: { created: 'Created', in_progress: 'In Progress', waiting_paused: 'Paused', completed: 'Completed', cancelled: 'Cancelled' },
     pauseReason: {
       [PauseReason.WAITING_FOR_PARTS]: 'Waiting for Parts',
@@ -199,6 +263,38 @@ const copy: Record<ShopLocale, Copy> = {
     pauseWorkOrder: 'Pausar Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, unidad ${truckNumber}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',
+    restoringSession: 'Restaurando sesión',
+    loadingWorkOrders: 'Cargando Work Orders',
+    loadingWorkOrder: 'Cargando Work Order',
+    retryWorkOrder: 'Reintentar Work Order',
+    unableToLoadProfile: 'No se pudo cargar tu perfil.',
+    unableToLoadWorkOrders: 'No se pudieron cargar los Work Orders',
+    homeSubtitle: 'Jobs actuales, Work Orders y trabajo reciente.',
+    pmHomeTitle: 'Mecánico de PM',
+    standardHomeTitle: 'Mi trabajo asignado',
+    pmHomeSubtitle: 'Servicios de PM asignados a ti.',
+    standardHomeSubtitle: 'Work Orders y Jobs que te asignó el Manager.',
+    readyToStart: 'Listos para iniciar',
+    ordersReadyToStart: (count) => `${count} ${count === 1 ? 'orden lista' : 'órdenes listas'} para Iniciar trabajo`,
+    noActivePmServices: 'No hay servicios de PM activos asignados a ti.',
+    pmServicesStartImmediately: 'Los servicios de PM comienzan inmediatamente después de crearse.',
+    viewDetails: 'Ver detalles',
+    resumeWork: 'Reanudar trabajo',
+    viewWork: 'Ver trabajo',
+    finishWork: 'Terminar trabajo',
+    viewCompletedWorkAction: 'Ver trabajo completado',
+    jobsDone: (completed, total) => `${completed} de ${total} Jobs completados`,
+    pmServiceLabel: 'Servicio de PM',
+    noPendingJobs: 'No hay Jobs pendientes',
+    noCompletedJobs: 'No hay Jobs completados',
+    chooseAnotherOrHome: 'Elige otro Work Order o vuelve a Inicio.',
+    multiSelectDone: 'Listo',
+    backToShopAdmin: 'Volver a Shop Admin',
+    workspaceStandard: 'Standard',
+    workspacePm: 'PM',
+    shopWorkspaces: 'Espacios del Shop',
+    priority: { low: 'Baja', normal: 'Normal', high: 'Alta', critical: 'Crítica' },
+    jobStatus: { to_do: 'Por hacer', completed: 'Completado', cancelled: 'Cancelado' },
     status: { created: 'Creado', in_progress: 'En progreso', waiting_paused: 'Pausado', completed: 'Completado', cancelled: 'Cancelado' },
     pauseReason: {
       [PauseReason.WAITING_FOR_PARTS]: 'En espera de piezas',

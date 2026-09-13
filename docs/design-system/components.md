@@ -11,18 +11,21 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 
 | Export | CURRENT use |
 |---|---|
-| `Button` | CVA variants `default`, `secondary`, `outline`, `ghost`, `destructive`; sizes `default`, `sm`, `lg`, `icon`; `asChild` Slot |
+| `Button` | CVA variants `default`, `secondary`, `outline`, `ghost`, `destructive`; sizes `default`, `sm`, `lg`, `icon`; `asChild` Slot. Touch / mobile controls stay `min-h-11` (44px). Desktop chrome may use `sm`. Do not use deprecated `.btn-*` classes |
 | `Input` | Text fields (`.field`) |
 | `Textarea` | Notes and reasons |
 | `Label` | Programmatically associated labels |
 | `Select` | Native `<select>` with Lucide chevron |
 | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Grouped content |
 | `InlineAlert` | Assertive inline error |
-| `Badge` | Variants `default`, `secondary`, `outline`, `destructive`, `success`, `warning` |
+| `Badge` | Single chip primitive. Variants `default`, `secondary`, `outline`, `destructive`, `success`, `warning`. Status / priority / phase chips use this only — no ad-hoc `<span>` chips |
 | `Dialog`, `DialogTrigger`, `DialogClose`, `DialogContent`, `DialogTitle`, `DialogDescription` | Radix dialog (sheet-like on mobile, centered on `sm+`) |
 | `MultiSelect` | Accessible checkbox multi-select dialog |
 | `Modal` | Focus-managed dialog wrapper used by mechanic flows |
-| `PriorityBadge` | Work Order priority chip |
+| `PriorityBadge` | `Badge` wrapper. Variant from `priorityVariant` (`low=secondary`, `normal=outline`, `high=warning`, `critical=destructive`). Always pass a catalog label (never raw / UPPERCASE enum) |
+| `WorkOrderStatusBadge` | `Badge` wrapper. `created=outline`, `in_progress=default`, `waiting_paused=warning`, `completed=success`, `cancelled=secondary` |
+| `JobStatusBadge` | `Badge` wrapper. `to_do=outline`, `completed=success`, `cancelled=secondary` |
+| `PhaseBadge` | `Badge` wrapper. Color by `ReadinessPhase` only (`needs_evaluation=warning`, mid-gates=`outline`, `ready_for_approval=warning`, `ready_to_go=success`). Blockers are text/icon, not chip color |
 | `ThemeToggle` | Light / dark |
 | `AppHeaderActions` | Theme + profile |
 | `HomeTopBar` | Mechanic logo, locale, profile |

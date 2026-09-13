@@ -46,8 +46,9 @@ Yard Operations board columns used a one-off
 (“No Trucks match these filters.”). That is now `CompactEmpty` +
 `noTrucksInPhase`.
 
-Admin Work Order detail already used the CompactEmpty visual for in-card
-slots; the helper now lives in `ui.tsx` so Yard and Admin share it.
+Admin Work Order detail, Truck detail (current work / readiness empty /
+blockers / history), and Yard board columns use `CompactEmpty` for in-card
+slots. The helper lives in `ui.tsx`.
 
 ### Rule going forward
 
@@ -57,6 +58,16 @@ slots; the helper now lives in `ui.tsx` so Yard and Admin share it.
 4. Missing capability on an otherwise valid route → `EmptyState` with a
    destination, not a skeleton.
 5. Do not invent a third dashed style.
+
+## Status, priority, and phase chips (LTR-23)
+
+Use the helpers in `apps/web/src/lib/status-chips.ts` plus the `Badge`
+wrappers in `ui.tsx`. Do **not** call `humanize()` for status, priority,
+pause reason, or activity event chips. Filter `<option>` labels use the
+same catalog keys as the chips (singular Created/Creado … Paused/Pausado).
+
+Activity Log lines are `eventType` → catalog label + timestamp + actor.
+Never render `relevantValue` / `newValue` JSON to the operator.
 
 ## Location vs Presence (LTR-13)
 

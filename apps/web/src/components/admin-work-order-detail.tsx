@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
-import { formatAdminDate, formatAdminDateOnly, formatDuration, humanize } from '@/lib/admin-format';
+import { ChevronLeft } from 'lucide-react';
+import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
+import { adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
@@ -17,12 +19,15 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  CardListSkeleton,
   CardTitle,
   CompactEmpty,
   EmptyState,
+  JobStatusBadge,
   LoadFailure,
   PageSkeleton,
   PriorityBadge,
+  WorkOrderStatusBadge,
   Input,
   Select,
   Textarea,
@@ -103,10 +108,15 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
 
   return <div className="space-y-5">
     <header>
-      <Button asChild variant="ghost" size="sm" className="mb-3"><Link href="/admin/work-orders">← {messages.backToWorkOrders}</Link></Button>
+      <Button asChild variant="ghost" className="mb-3 -ml-3">
+        <Link href="/admin/work-orders">
+          <ChevronLeft aria-hidden="true" className="size-4" />
+          {messages.backToWorkOrders}
+        </Link>
+      </Button>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><p className="section-label">{messages.eyebrow}</p><h1 className="mt-2 font-display text-3xl font-bold">{data.displayId}</h1><p className="mt-2 text-muted-foreground"><Link className="text-primary hover:underline" href={`/admin/trucks/${truck.id}`}>{truck.truckNumber}</Link> · {data.category.name}</p><p className="mt-1 text-xs text-muted-foreground">{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</p></div>
-        <div className="flex gap-2"><PriorityBadge priority={data.priority} /><Badge variant="outline">{humanize(data.status)}</Badge></div>
+        <div className="flex gap-2"><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></div>
       </div>
     </header>
     {feedback ? <p className={feedback.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'} role="status">{feedback.message}</p> : null}
@@ -115,8 +125,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <Card>
         <CardHeader><CardTitle>{messages.operationalSummary}</CardTitle><CardDescription>{messages.operationalSummaryDescription}</CardDescription></CardHeader>
         <CardContent><dl className="grid gap-4 sm:grid-cols-2">
-          <Info label={messages.status} value={humanize(data.status)} />
-          <Info label={messages.priority} value={humanize(data.priority)} />
+          <Info label={messages.status} value={workOrderStatusLabel(data.status, messages)} />
+          <Info label={messages.priority} value={adminPriorityLabel(data.priority, messages)} />
           <Info label={messages.age} value={formatAge(data.createdAt, locale)} />
           <Info label={messages.progress} value={`${data.jobsCompleted}/${data.jobsTotal}`} />
           <Info label={messages.mechanicsLabel} value={activeMechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noValue} />
@@ -166,7 +176,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               </li>
             ))}
           </ul>
-        ) : <EmptyState>{messages.noMechanics}</EmptyState>}
+        ) : <CompactEmpty>{messages.noMechanics}</CompactEmpty>}
         {canManageAssignments ? (
           <form
             className="flex flex-col gap-3 sm:flex-row"
@@ -459,115 +469,134 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <CardContent className="space-y-4">
         {data.jobs.length ? (
           <ul className="divide-y">
-            {data.jobs.map((job) => (
-              <li key={job.id} className="flex flex-col gap-3 py-3 first:pt-0 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="font-medium">{job.displayName}</p>
-                  <p className="text-xs text-muted-foreground">{job.category.name}</p>
-                  {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {job.assignedMechanic
-                      ? `${messages.jobAssignee}: ${job.assignedMechanic.name}`
-                      : messages.jobUnassignedInheritsTeam}
-                  </p>
-                  {canManageJobs && job.status !== 'cancelled' ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {job.assignedMechanic ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={Boolean(pendingAction)}
-                          onClick={() => {
-                            void runMutation(`unassign-job-${job.id}`, messages.unassignJobSuccess, async () => {
-                              await unassignAdminWorkOrderJob(id, job.id, data.version);
-                            }, (failure) => jobChangeError(failure, messages));
-                          }}
-                        >
-                          {messages.unassignJobAction}
-                        </Button>
-                      ) : (
-                        <>
-                          <Select
-                            aria-label={messages.assignJobPlaceholder}
-                            className="w-48"
-                            value={assignDrafts[job.id] ?? ''}
-                            onChange={(event) => setAssignDrafts((prev) => ({ ...prev, [job.id]: event.target.value }))}
-                          >
-                            <option value="">{messages.assignJobPlaceholder}</option>
-                            {assignableMechanics.map((mechanic) => (
-                              <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
-                            ))}
-                          </Select>
+            {data.jobs.map((job) => {
+              const isToDo = job.status === 'to_do';
+              const isTerminal = job.status === 'completed' || job.status === 'cancelled';
+              return (
+                <li key={job.id} className="py-3 first:pt-0">
+                  {isTerminal ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium">{job.displayName}</p>
+                        <p className="text-xs text-muted-foreground">{job.category.name}</p>
+                        {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
+                        {canReopenJob && job.status === 'cancelled' ? (
                           <Button
                             type="button"
                             size="sm"
-                            disabled={Boolean(pendingAction) || !assignDrafts[job.id]}
+                            disabled={Boolean(pendingAction)}
                             onClick={() => {
-                              const mechanicId = assignDrafts[job.id];
-                              if (!mechanicId) return;
-                              void runMutation(`assign-job-${job.id}`, messages.assignJobSuccess, async () => {
-                                await assignAdminWorkOrderJob(id, job.id, { mechanicId, expectedVersion: data.version });
-                                setAssignDrafts((prev) => ({ ...prev, [job.id]: '' }));
+                              const reason = jobReason.trim();
+                              if (!reason) {
+                                setFeedback({ kind: 'error', message: messages.jobChangeReasonRequired });
+                                return;
+                              }
+                              void runMutation(`reopen-job-${job.id}`, messages.reopenJobSuccess, async () => {
+                                await reopenAdminJob(job.id, { reason, expectedVersion: data.version });
+                                setJobReason('');
                               }, (failure) => jobChangeError(failure, messages));
                             }}
                           >
-                            {messages.assignJobAction}
+                            {messages.reopenJobConfirm}
                           </Button>
-                        </>
-                      )}
+                        ) : null}
+                      </div>
                     </div>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={job.status === 'completed' ? 'success' : 'outline'}>{humanize(job.status)}</Badge>
-                  {canManageJobs && job.status === 'to_do' ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      disabled={Boolean(pendingAction)}
-                      onClick={() => {
-                        const reason = jobReason.trim();
-                        if (!reason) {
-                          setFeedback({ kind: 'error', message: messages.jobChangeReasonRequired });
-                          return;
-                        }
-                        void runMutation(`cancel-job-${job.id}`, messages.cancelJobSuccess, async () => {
-                          await cancelAdminJob(job.id, { reason, expectedVersion: data.version });
-                          setJobReason('');
-                        }, (failure) => jobChangeError(failure, messages));
-                      }}
-                    >
-                      {messages.cancelJobConfirm}
-                    </Button>
-                  ) : null}
-                  {canReopenJob && job.status === 'cancelled' ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={Boolean(pendingAction)}
-                      onClick={() => {
-                        const reason = jobReason.trim();
-                        if (!reason) {
-                          setFeedback({ kind: 'error', message: messages.jobChangeReasonRequired });
-                          return;
-                        }
-                        void runMutation(`reopen-job-${job.id}`, messages.reopenJobSuccess, async () => {
-                          await reopenAdminJob(job.id, { reason, expectedVersion: data.version });
-                          setJobReason('');
-                        }, (failure) => jobChangeError(failure, messages));
-                      }}
-                    >
-                      {messages.reopenJobConfirm}
-                    </Button>
-                  ) : null}
-                </div>
-              </li>
-            ))}
+                  ) : (
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="min-w-0">
+                        <p className="font-medium">{job.displayName}</p>
+                        <p className="text-xs text-muted-foreground">{job.category.name}</p>
+                        {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {job.assignedMechanic
+                            ? `${messages.jobAssignee}: ${job.assignedMechanic.name}`
+                            : messages.jobUnassignedInheritsTeam}
+                        </p>
+                      </div>
+                      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
+                        {canManageJobs && isToDo ? (
+                          job.assignedMechanic ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={Boolean(pendingAction)}
+                              onClick={() => {
+                                void runMutation(`unassign-job-${job.id}`, messages.unassignJobSuccess, async () => {
+                                  await unassignAdminWorkOrderJob(id, job.id, data.version);
+                                }, (failure) => jobChangeError(failure, messages));
+                              }}
+                            >
+                              {messages.unassignJobAction}
+                            </Button>
+                          ) : (
+                            <>
+                              <Select
+                                aria-label={messages.assignJobPlaceholder}
+                                className="w-full sm:w-48"
+                                value={assignDrafts[job.id] ?? ''}
+                                onChange={(event) => setAssignDrafts((prev) => ({ ...prev, [job.id]: event.target.value }))}
+                              >
+                                <option value="">{messages.assignJobPlaceholder}</option>
+                                {assignableMechanics.map((mechanic) => (
+                                  <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
+                                ))}
+                              </Select>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={Boolean(pendingAction) || !assignDrafts[job.id]}
+                                onClick={() => {
+                                  const mechanicId = assignDrafts[job.id];
+                                  if (!mechanicId) return;
+                                  void runMutation(`assign-job-${job.id}`, messages.assignJobSuccess, async () => {
+                                    await assignAdminWorkOrderJob(id, job.id, { mechanicId, expectedVersion: data.version });
+                                    setAssignDrafts((prev) => ({ ...prev, [job.id]: '' }));
+                                  }, (failure) => jobChangeError(failure, messages));
+                                }}
+                              >
+                                {messages.assignJobAction}
+                              </Button>
+                            </>
+                          )
+                        ) : null}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
+                          {canManageJobs && isToDo ? (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              disabled={Boolean(pendingAction)}
+                              onClick={() => {
+                                const reason = jobReason.trim();
+                                if (!reason) {
+                                  setFeedback({ kind: 'error', message: messages.jobChangeReasonRequired });
+                                  return;
+                                }
+                                void runMutation(`cancel-job-${job.id}`, messages.cancelJobSuccess, async () => {
+                                  await cancelAdminJob(job.id, { reason, expectedVersion: data.version });
+                                  setJobReason('');
+                                }, (failure) => jobChangeError(failure, messages));
+                              }}
+                            >
+                              {messages.cancelJobConfirm}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         ) : (
-          <EmptyState>{messages.noJobs}</EmptyState>
+          <CompactEmpty>{messages.noJobs}</CompactEmpty>
         )}
         {canManageJobs ? (
           <Button type="button" variant="outline" onClick={() => setAddJobOpen(true)}>
@@ -591,7 +620,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
 
     <Card>
       <CardHeader className="gap-3 sm:flex sm:flex-row sm:items-start sm:justify-between"><div><CardTitle>{messages.recentRepairHistory}</CardTitle><CardDescription>{messages.repairHistoryDescription}</CardDescription></div><label className="w-full space-y-1 sm:w-56"><span className="text-xs font-medium text-muted-foreground">{messages.filterByCategory}</span><Select aria-label={messages.filterByCategory} value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}><option value="">{messages.allCategories}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></label></CardHeader>
-      <CardContent>{historyQuery.error ? <LoadFailure message={messages.repairHistoryLoadError} retryLabel={messages.retry} onRetry={() => void historyQuery.mutate()} /> : historyQuery.isLoading ? <p className="text-sm text-muted-foreground" role="status">{messages.loadingRepairHistory}…</p> : historyItems.length ? <><ul className="divide-y">{historyItems.map((item) => <li key={item.workOrderId} className="py-3 first:pt-0"><div className="flex flex-wrap items-start justify-between gap-2"><div><Link href={`/admin/work-orders/${item.workOrderId}`} className="font-semibold text-primary hover:underline">{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p></div>{item.mileage !== null ? <Badge variant="outline">{messages.mileage}: {new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(item.mileage)}</Badge> : null}</div>{item.mechanicNames.length ? <p className="mt-1 text-sm text-muted-foreground">{messages.performedBy}: {item.mechanicNames.join(', ')}</p> : null}{item.jobDetails?.length ? <p className="mt-1 text-sm">{messages.repairJobs}: {item.jobDetails.map((job) => `${job.category.name}: ${job.displayName}`).join(' · ')}</p> : item.jobs?.length ? <p className="mt-1 text-sm">{messages.repairJobs}: {item.jobs.join(', ')}</p> : null}</li>)}</ul>{historyHasMore ? <Button variant="outline" className="mt-4 w-full" disabled={historyQuery.isValidating} onClick={() => void historyQuery.setSize(historyQuery.size + 1)}>{historyQuery.isValidating ? `${messages.loadMoreRepairs}…` : messages.loadMoreRepairs}</Button> : null}</> : <EmptyState>{messages.noRepairHistory}</EmptyState>}</CardContent>
+      <CardContent>{historyQuery.error ? <LoadFailure message={messages.repairHistoryLoadError} retryLabel={messages.retry} onRetry={() => void historyQuery.mutate()} /> : historyQuery.isLoading ? <CardListSkeleton count={2} /> : historyItems.length ? <><ul className="divide-y">{historyItems.map((item) => <li key={item.workOrderId} className="py-3 first:pt-0"><div className="flex flex-wrap items-start justify-between gap-2"><div><Link href={`/admin/work-orders/${item.workOrderId}`} className="font-semibold text-primary hover:underline">{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p></div>{item.mileage !== null ? <p className="text-xs text-muted-foreground">{messages.mileage}: {new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(item.mileage)}</p> : null}</div>{item.mechanicNames.length ? <p className="mt-1 text-sm text-muted-foreground">{messages.performedBy}: {item.mechanicNames.join(', ')}</p> : null}{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : item.jobs?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobs.map((job) => <Badge key={`${item.workOrderId}-${job}`} variant="outline">{job}</Badge>)}</div> : null}</li>)}</ul>{historyHasMore ? <Button variant="outline" className="mt-4 w-full" disabled={historyQuery.isValidating} onClick={() => void historyQuery.setSize(historyQuery.size + 1)}>{historyQuery.isValidating ? `${messages.loadMoreRepairs}…` : messages.loadMoreRepairs}</Button> : null}</> : <CompactEmpty>{messages.noRepairHistory}</CompactEmpty>}</CardContent>
     </Card>
 
     <Card><CardHeader><CardTitle>{messages.workOrderTimes}</CardTitle></CardHeader><CardContent><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info label={messages.created} value={formatAdminDate(data.createdAt, locale)} /><Info label={messages.started} value={formatAdminDate(data.startedAt, locale)} /><Info label={messages.completed} value={formatAdminDate(data.completedAt, locale)} /><Info label={messages.updated} value={formatAdminDate(data.updatedAt, locale)} /><Info label={messages.activeLabor} value={formatDuration(data.totalActiveLaborMs)} /><Info label={messages.waitingTime} value={formatDuration(data.totalWaitingMs)} /></dl></CardContent></Card>
@@ -679,7 +708,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent>{data.currentPause ? <Pause pause={data.currentPause} locale={locale} messages={messages} /> : <CompactEmpty>{messages.noCurrentPause}</CompactEmpty>}</CardContent></Card>
       <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} messages={messages} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
     </section>
-    <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{humanize(entry.eventType)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name} · {entry.entityType}</p>{activityValue(entry) !== null ? <pre className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs">{JSON.stringify(activityValue(entry))}</pre> : null}</li>)}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</CardContent></Card>
+    <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{adminActivityEventLabel(entry.eventType, messages)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name}</p></li>)}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</CardContent></Card>
     {canManageJobs ? (
       <JobPickerDialog
         open={addJobOpen}
@@ -778,11 +807,6 @@ function jobChangeError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.jobChangeGenericError;
-}
-function activityValue(entry: AdminWorkOrderDetailDto['activityLog'][number]) {
-  if (entry.relevantValue !== null && entry.relevantValue !== undefined) return entry.relevantValue;
-  if (entry.newValue !== null && entry.newValue !== undefined) return entry.newValue;
-  return null;
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function formatAge(value: string, locale: AdminLocale) { const elapsed = Math.max(0, Date.now() - new Date(value).getTime()); const hours = Math.floor(elapsed / 3_600_000); const number = new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US'); if (hours < 24) return `${number.format(hours)}h`; const days = Math.floor(hours / 24); return `${number.format(days)}d ${number.format(hours % 24)}h`; }

@@ -1,13 +1,9 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { PAUSE_REASON_LABELS, type PauseReason, type Priority } from '@ltl-shop/shared';
+import { PAUSE_REASON_LABELS, type PauseReason } from '@ltl-shop/shared';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}
-
-export function priorityLabel(p: Priority | string) {
-  return String(p).toUpperCase();
 }
 
 export function statusLabel(status: string, labels?: Record<string, string>) {

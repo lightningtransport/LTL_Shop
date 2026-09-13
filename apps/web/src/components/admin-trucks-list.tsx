@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus } from '@ltl-shop/shared';
-import { Badge, Button, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
 import { useAdminTrucks } from '@/lib/admin-data';
-import { humanize } from '@/lib/admin-format';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { workOrderStatusLabel } from '@/lib/status-chips';
 
 export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
@@ -82,7 +82,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
                     {item.openWorkOrder ? (
                       <>
                         <Link className="font-medium text-primary hover:underline" href={`/admin/work-orders/${item.openWorkOrder.id}`}>{item.openWorkOrder.displayId}</Link>
-                        <p className="text-muted-foreground">{item.openWorkOrder.primaryCategoryName} · <Badge variant="outline">{humanize(item.openWorkOrder.status)}</Badge></p>
+                        <p className="text-muted-foreground">{item.openWorkOrder.primaryCategoryName} · <WorkOrderStatusBadge status={item.openWorkOrder.status}>{workOrderStatusLabel(item.openWorkOrder.status, messages)}</WorkOrderStatusBadge></p>
                       </>
                     ) : (
                       <span className="text-muted-foreground">{messages.noOpenWorkOrder}</span>

@@ -129,7 +129,7 @@ export default function WorkOrderDetailPage() {
         <div className="space-y-3">
           <InlineAlert>{messages.noAccessToPmWorkOrder}</InlineAlert>
           <p className="text-sm text-muted-foreground">
-            {messages.locale === 'es' ? 'Elige otro Work Order o vuelve a Inicio.' : 'Choose another Work Order or return to Home.'}
+            {messages.chooseAnotherOrHome}
           </p>
           <Button asChild variant="secondary" className="w-full">
             <Link href="/">{messages.backToHome}</Link>
@@ -138,9 +138,9 @@ export default function WorkOrderDetailPage() {
       );
     }
     if (loadError instanceof Error) {
-      return <LoadFailure message={loadError.message} onRetry={() => void mutateWorkOrder()} retryLabel="Retry work order" />;
+      return <LoadFailure message={loadError.message} onRetry={() => void mutateWorkOrder()} retryLabel={messages.retryWorkOrder} />;
     }
-    return <PageSkeleton label="Loading work order" />;
+    return <PageSkeleton label={messages.loadingWorkOrder} />;
   }
 
   if (wo.primaryCategoryName === 'PM') {
@@ -177,7 +177,7 @@ export default function WorkOrderDetailPage() {
 
       <div className="card mb-4 space-y-2">
         <div className="flex items-center justify-between">
-          <PriorityBadge priority={wo.priority} />
+          <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge>
           <span className="text-sm text-shop-muted">
             Primary: {wo.primaryCategoryName} — {wo.jobsCompleted} of {wo.jobsTotal}{' '}
             jobs
@@ -274,7 +274,7 @@ export default function WorkOrderDetailPage() {
         </p>
         <p className="section-label mb-2">{messages.myJobs}</p>
         {myTodo.length === 0 ? (
-          <EmptyState>{todo.length === 0 ? 'No pending jobs' : messages.noMyJobs}</EmptyState>
+          <EmptyState>{todo.length === 0 ? messages.noPendingJobs : messages.noMyJobs}</EmptyState>
         ) : (
           <ul className="mb-3 space-y-2">
             {myTodo.map((job) => (
@@ -320,7 +320,7 @@ export default function WorkOrderDetailPage() {
       <section className="mb-4">
         <p className="section-label mb-2">Completed</p>
         {done.length === 0 ? (
-          <EmptyState>No completed jobs</EmptyState>
+          <EmptyState>{messages.noCompletedJobs}</EmptyState>
         ) : (
           <ul className="space-y-2">
             {done.map((job) => (

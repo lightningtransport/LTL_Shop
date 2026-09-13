@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ChevronLeft } from 'lucide-react';
 import {
   AppCapability,
   Priority,
@@ -238,8 +239,11 @@ export function AdminNewWorkOrder({
   if (!canCreateWorkOrder) {
     return (
       <div className="space-y-4">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/admin/work-orders">← {messages.backToWorkOrders}</Link>
+        <Button asChild variant="ghost">
+          <Link href="/admin/work-orders">
+            <ChevronLeft aria-hidden="true" className="size-4" />
+            {messages.backToWorkOrders}
+          </Link>
         </Button>
         <EmptyState>{messages.createRequiresManage}</EmptyState>
       </div>
