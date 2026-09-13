@@ -166,7 +166,25 @@ async function mockShopApi(page: Page) {
       });
     }
     if (path === '/api/catalog/categories') return json(route, categories);
-    if (path === '/api/catalog/aliases' || path === '/api/catalog/jobs') return json(route, aliases);
+    if (path === '/api/catalog/aliases') return json(route, aliases);
+    if (path === '/api/catalog/jobs') {
+      const categoryId = url.searchParams.get('categoryId');
+      const jobs = [
+        {
+          id: 'catalog-brake-inspection',
+          categoryId: categories[0].id,
+          displayName: 'Brake inspection',
+          aliases: ['brake inspection', 'brake check'],
+        },
+        {
+          id: 'catalog-engine-diagnostic',
+          categoryId: categories[1].id,
+          displayName: 'Engine diagnostic',
+          aliases: ['engine diagnostic'],
+        },
+      ].filter((job) => !categoryId || job.categoryId === categoryId);
+      return json(route, jobs);
+    }
     if (path === '/api/mechanics') return json(route, mechanics);
     if (path === '/api/trucks') return json(route, truckFixtures);
     if (path === '/api/admin/session') return json(route, {});
@@ -591,7 +609,8 @@ test.describe('My Assigned Work presentation', () => {
   test('labels assigned, unassigned inherited-team, and other Jobs at mobile size', async ({ page }) => {
     await page.route('**/api/**', async (route) => {
       const request = route.request();
-      const path = new URL(request.url()).pathname;
+      const url = new URL(request.url());
+      const path = url.pathname;
       if (path === '/api/auth/me') return json(route, { user });
       if (path === '/api/work-orders' && request.method() === 'GET') {
         return json(route, { created: [], active: [assignedWorkOrder], paused: [], completed: [] });
@@ -609,7 +628,25 @@ test.describe('My Assigned Work presentation', () => {
         });
       }
       if (path === '/api/catalog/categories') return json(route, categories);
-      if (path === '/api/catalog/aliases' || path === '/api/catalog/jobs') return json(route, aliases);
+      if (path === '/api/catalog/aliases') return json(route, aliases);
+      if (path === '/api/catalog/jobs') {
+        const categoryId = url.searchParams.get('categoryId');
+        const jobs = [
+          {
+            id: 'catalog-brake-inspection',
+            categoryId: categories[0].id,
+            displayName: 'Brake inspection',
+            aliases: ['brake inspection', 'brake check'],
+          },
+          {
+            id: 'catalog-engine-diagnostic',
+            categoryId: categories[1].id,
+            displayName: 'Engine diagnostic',
+            aliases: ['engine diagnostic'],
+          },
+        ].filter((job) => !categoryId || job.categoryId === categoryId);
+        return json(route, jobs);
+      }
       if (path === '/api/mechanics') return json(route, mechanics);
       if (path === '/api/trucks') return json(route, [truck]);
       return route.continue();

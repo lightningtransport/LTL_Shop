@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   AppCapability,
   Priority,
-  type JobAliasOptionDto,
+  type CatalogJobDto,
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
@@ -17,8 +17,8 @@ import {
   useAdminMechanics,
 } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { canonicalAliasOptions } from '@/lib/job-catalog';
-import { useAliasOptions, useCategories, useTrucks } from '@/lib/shop-data';
+import { useCatalogJobs, useCategories, useTrucks } from '@/lib/shop-data';
+import { CategoryJobList } from './category-job-list';
 import { rankTruckResults } from '@/lib/truck-search';
 import {
   Badge,
@@ -86,7 +86,7 @@ export function AdminNewWorkOrder({
 
   const { data: truckData, error: truckError, isLoading: trucksLoading } = useTrucks(true);
   const { data: categories, error: categoriesError, isLoading: categoriesLoading } = useCategories(true);
-  const { data: aliasData, error: jobsError, isLoading: jobsLoading } = useAliasOptions(categoryId, Boolean(categoryId));
+  const { data: catalogJobs, error: jobsError, isLoading: jobsLoading } = useCatalogJobs(categoryId, Boolean(categoryId));
   const { data: mechanicPages, error: mechanicsError } = useAdminMechanics('');
 
   const trucks = useMemo(
@@ -104,11 +104,9 @@ export function AdminNewWorkOrder({
     [mechanicPages],
   );
 
-  const catalogJobs = useMemo(
-    () => canonicalAliasOptions(aliasData ?? [], jobQuery).filter(
-      (option) => !jobs.some((draft) => draft.catalogJobId === option.catalogJobId),
-    ),
-    [aliasData, jobQuery, jobs],
+  const selectedCatalogJobIds = useMemo(
+    () => jobs.flatMap((job) => (job.catalogJobId ? [job.catalogJobId] : [])),
+    [jobs],
   );
 
   const resultsOpen = searchOpen && Boolean(debouncedTruckQuery) && !selectedTruck;
@@ -153,16 +151,18 @@ export function AdminNewWorkOrder({
     setSearchOpen(false);
   }
 
-  function addCatalogJob(option: JobAliasOptionDto) {
+  function toggleCatalogJob(job: CatalogJobDto) {
     if (!selectedCategory) return;
     setJobs((current) => {
-      if (current.some((draft) => draft.catalogJobId === option.catalogJobId)) return current;
+      if (current.some((draft) => draft.catalogJobId === job.id)) {
+        return current.filter((draft) => draft.catalogJobId !== job.id);
+      }
       return [...current, {
         key: crypto.randomUUID(),
-        catalogJobId: option.catalogJobId,
+        catalogJobId: job.id,
         categoryId: selectedCategory.id,
         categoryName: selectedCategory.name,
-        displayName: option.displayName,
+        displayName: job.displayName,
       }];
     });
   }
@@ -376,27 +376,25 @@ export function AdminNewWorkOrder({
 
           {selectedCategory ? (
             <div className="space-y-2">
-              <Input
-                aria-label={messages.searchJobsLabel}
-                placeholder={messages.searchJobsLabel}
-                value={jobQuery}
-                onChange={(event) => setJobQuery(event.target.value)}
+              <CategoryJobList
+                categoryName={selectedCategory.name}
+                jobs={catalogJobs ?? []}
+                isLoading={jobsLoading}
+                error={Boolean(jobsError)}
+                query={jobQuery}
+                onQueryChange={setJobQuery}
+                selectedIds={selectedCatalogJobIds}
+                onSelect={toggleCatalogJob}
+                copy={{
+                  searchLabel: messages.searchJobsLabel,
+                  loading: messages.loadingJobs,
+                  loadError: messages.loadError,
+                  emptyCategory: messages.noJobsInCategory,
+                  noMatches: messages.noMatchingCategoryJobs,
+                  listLabel: messages.categoryJobsLabel,
+                  addJob: messages.addCatalogJob,
+                }}
               />
-              {jobsError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
-              {jobsLoading && !aliasData ? (
-                <p className="text-sm text-muted-foreground">{messages.loadingJobs}</p>
-              ) : null}
-              <ul className="max-h-56 space-y-1 overflow-auto" aria-label={`${messages.addJobsLabel}: ${selectedCategory.name}`}>
-                {catalogJobs.length ? catalogJobs.map((job) => (
-                  <li key={job.catalogJobId}>
-                    <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => addCatalogJob(job)}>
-                      {job.displayName}
-                    </Button>
-                  </li>
-                )) : !jobsLoading ? (
-                  <li className="text-sm text-muted-foreground">{messages.noJobsYet}</li>
-                ) : null}
-              </ul>
               <div className="flex flex-wrap items-center gap-2">
                 <Input
                   aria-label={messages.customJobPlaceholder}

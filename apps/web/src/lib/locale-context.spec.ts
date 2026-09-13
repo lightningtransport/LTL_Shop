@@ -3,12 +3,24 @@ import { adminPauseReasonLabel, getAdminMessages } from './admin-messages';
 import { getShopCopy } from './locale-context';
 
 describe('shop locale catalogs', () => {
+  it('keeps English and Spanish Admin New WO job-picker keys in parity', () => {
+    expect(Object.keys(getAdminMessages('en'))).toEqual(Object.keys(getAdminMessages('es')));
+    expect(getAdminMessages('en').noJobsInCategory).toMatch(/Category/);
+    expect(getAdminMessages('es').noJobsInCategory).toMatch(/Category/);
+    expect(getAdminMessages('en').addCatalogJob).toBe('Add');
+    expect(getAdminMessages('es').addCatalogJob).toBe('Agregar');
+  });
+
   it('keeps English and Spanish mechanic assignment keys in parity', () => {
     expect(Object.keys(getShopCopy('en'))).toEqual(Object.keys(getShopCopy('es')));
     expect(getShopCopy('en').jobUnassignedInheritsTeam).toContain('inherits the Work Order team');
     expect(getShopCopy('es').jobUnassignedInheritsTeam).toContain('hereda el equipo');
     expect(getShopCopy('en').workspaceUnavailable).toMatch(/not available/);
     expect(getShopCopy('es').openAllowedHome).toMatch(/Inicio/);
+    expect(getShopCopy('en').searchJobsLabel).toBe('Search jobs in this category');
+    expect(getShopCopy('es').noJobsInCategory).toMatch(/Category/);
+    expect(getShopCopy('en').addCatalogJob).toBe('Add');
+    expect(getShopCopy('es').addCustomJob).toMatch(/personalizado/);
     expect(getShopCopy('en').startWork).toBe('Start Work');
     expect(getShopCopy('es').startWork).toBe('Iniciar trabajo');
     expect(getShopCopy('en').pauseWorkOrder).toBe('Pause Work Order');
