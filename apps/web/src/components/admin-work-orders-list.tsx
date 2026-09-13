@@ -85,43 +85,46 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
       </div>
       {canCreateWorkOrder ? <Button asChild><Link href="/admin/work-orders/new">{messages.newWorkOrderCta}</Link></Button> : null}
     </header>
-    <Card className="p-3">
-      <form role="search" className="flex flex-wrap items-end gap-2" onSubmit={applyFilters}>
-        <label className="min-w-0 flex-1 space-y-1 md:min-w-[14rem]">
-          <span className="sr-only md:not-sr-only md:text-xs md:font-medium">{messages.search}</span>
-          <Input
-            type="search"
-            autoComplete="off"
-            enterKeyHint="search"
-            aria-label={messages.search}
-            value={filters.search}
-            onChange={(event) => updateFilter('search', event.target.value)}
-          />
-        </label>
-        <div className="hidden md:contents">
-          <WorkOrderFilterFields filters={filters} messages={messages} onChange={updateFilter} compact />
-          {hasDashboardRange ? <p className="basis-full rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">{messages.dashboardRangeActive}</p> : null}
-          <div className="flex shrink-0 gap-2">
-            <Button type="button" variant="ghost" onClick={clearFilters}>{messages.clearFilters}</Button>
-            <Button type="submit">{messages.applyFilters}</Button>
+    <Card className="min-w-0 p-3">
+      <form role="search" className="min-w-0" onSubmit={applyFilters}>
+        <div className="flex min-w-0 items-end gap-2 md:flex-nowrap md:gap-1.5">
+          <label className="min-w-0 flex-1 space-y-1 md:flex-[1.35]">
+            <span className="sr-only md:not-sr-only md:block md:truncate md:text-xs md:font-medium" title={messages.search}>{messages.search}</span>
+            <Input
+              type="search"
+              autoComplete="off"
+              enterKeyHint="search"
+              aria-label={messages.search}
+              className="md:min-h-9 md:px-3"
+              value={filters.search}
+              onChange={(event) => updateFilter('search', event.target.value)}
+            />
+          </label>
+          <div className="hidden min-w-0 md:contents">
+            <WorkOrderFilterFields filters={filters} messages={messages} onChange={updateFilter} compact />
+            <div className="flex shrink-0 gap-1.5">
+              <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={clearFilters}>{messages.clearFilters}</Button>
+              <Button type="submit" size="sm" className="shrink-0">{messages.applyFilters}</Button>
+            </div>
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 md:hidden"
+            aria-label={filtersButtonLabel}
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(true)}
+          >
+            <SlidersHorizontal aria-hidden="true" className="size-4" />
+            {messages.filters}
+            {activeFilterCount > 0 ? (
+              <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            ) : null}
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="shrink-0 md:hidden"
-          aria-label={filtersButtonLabel}
-          aria-expanded={filtersOpen}
-          onClick={() => setFiltersOpen(true)}
-        >
-          <SlidersHorizontal aria-hidden="true" className="size-4" />
-          {messages.filters}
-          {activeFilterCount > 0 ? (
-            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-              {activeFilterCount}
-            </span>
-          ) : null}
-        </Button>
+        {hasDashboardRange ? <p className="mt-2 hidden rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground md:block">{messages.dashboardRangeActive}</p> : null}
       </form>
     </Card>
     <Modal
@@ -161,15 +164,16 @@ function WorkOrderFilterFields({
   onChange: <K extends keyof AdminWorkOrdersFilters>(key: K, value: AdminWorkOrdersFilters[K]) => void;
   compact?: boolean;
 }) {
-  const fieldClass = compact ? 'w-[9.5rem] min-w-0 space-y-1' : 'space-y-1';
-  const labelClass = compact ? 'text-xs font-medium' : 'text-sm font-medium';
+  const fieldClass = compact ? 'min-w-0 flex-1 space-y-1' : 'space-y-1';
+  const labelClass = compact ? 'block truncate text-xs font-medium' : 'text-sm font-medium';
+  const controlClass = compact ? 'min-h-9 px-3 pr-9' : undefined;
 
   return <>
-    <label className={fieldClass}><span className={labelClass}>{messages.status}</span><Select aria-label={messages.status} value={filters.status} onChange={(event) => onChange('status', event.target.value)}>
+    <label className={fieldClass}><span className={labelClass} title={messages.status}>{messages.status}</span><Select className={controlClass} aria-label={messages.status} value={filters.status} onChange={(event) => onChange('status', event.target.value)}>
       <option value="open">{messages.openStatuses}</option><option value="all">{messages.allStatuses}</option><option value="created">{messages.created}</option><option value="in_progress">{messages.inProgress}</option><option value="waiting_paused">{messages.waitingPaused}</option><option value="completed">{messages.completed}</option><option value="cancelled">{messages.cancelled}</option>
     </Select></label>
-    <label className={fieldClass}><span className={labelClass}>{messages.priority}</span><Select aria-label={messages.priority} value={filters.priority} onChange={(event) => onChange('priority', event.target.value)}><option value="all">{messages.allPriorities}</option><option value="high,critical">{messages.highCritical}</option><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option></Select></label>
-    <label className={fieldClass}><span className={labelClass}>{messages.sort}</span><Select aria-label={messages.sort} value={filters.sort} onChange={(event) => onChange('sort', event.target.value)}><option value="updatedAt">{messages.updatedAt}</option><option value="createdAt">{messages.createdAt}</option><option value="displayId">{messages.displayId}</option></Select></label>
-    <label className={fieldClass}><span className={labelClass}>{messages.direction}</span><Select aria-label={messages.direction} value={filters.direction} onChange={(event) => onChange('direction', event.target.value)}><option value="desc">{messages.newestFirst}</option><option value="asc">{messages.oldestFirst}</option></Select></label>
+    <label className={fieldClass}><span className={labelClass} title={messages.priority}>{messages.priority}</span><Select className={controlClass} aria-label={messages.priority} value={filters.priority} onChange={(event) => onChange('priority', event.target.value)}><option value="all">{messages.allPriorities}</option><option value="high,critical">{messages.highCritical}</option><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option></Select></label>
+    <label className={fieldClass}><span className={labelClass} title={messages.sort}>{messages.sort}</span><Select className={controlClass} aria-label={messages.sort} value={filters.sort} onChange={(event) => onChange('sort', event.target.value)}><option value="updatedAt">{messages.updatedAt}</option><option value="createdAt">{messages.createdAt}</option><option value="displayId">{messages.displayId}</option></Select></label>
+    <label className={fieldClass}><span className={labelClass} title={messages.direction}>{messages.direction}</span><Select className={controlClass} aria-label={messages.direction} value={filters.direction} onChange={(event) => onChange('direction', event.target.value)}><option value="desc">{messages.newestFirst}</option><option value="asc">{messages.oldestFirst}</option></Select></label>
   </>;
 }

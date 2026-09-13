@@ -284,12 +284,21 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('button', { name: /Filters \(1\)/ })).toBeVisible();
     await expect(page.getByRole('link', { name: 'WO-0101' }).first()).toBeInViewport();
 
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await expect(page.getByRole('button', { name: WORK_ORDER_FILTERS_BUTTON })).toBeHidden();
-    await expect(page.getByRole('search').getByLabel('Status')).toBeVisible();
-    await expect(page.getByRole('search').getByRole('button', { name: 'Apply filters' })).toBeVisible();
-    const toolbar = await page.getByRole('search').boundingBox();
-    expect(toolbar?.height).toBeLessThan(120);
+    for (const width of [768, 1280, 1366, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.getByRole('button', { name: WORK_ORDER_FILTERS_BUTTON })).toBeHidden();
+      const toolbar = page.getByRole('search');
+      await expect(toolbar.getByLabel('Status')).toBeVisible();
+      await expect(toolbar.getByLabel('Priority')).toBeVisible();
+      await expect(toolbar.getByLabel('Sort')).toBeVisible();
+      await expect(toolbar.getByLabel('Direction')).toBeVisible();
+      await expect(toolbar.getByRole('button', { name: 'Clear' })).toBeVisible();
+      await expect(toolbar.getByRole('button', { name: 'Apply filters' })).toBeVisible();
+      const box = await toolbar.boundingBox();
+      expect(box?.height, `desktop toolbar wraps at ${width}px`).toBeLessThan(110);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      expect(overflow, `horizontal overflow at ${width}px`).toBe(false);
+    }
   });
 
   test('admin role can load dashboard and pagination completes', async ({ page }) => {
