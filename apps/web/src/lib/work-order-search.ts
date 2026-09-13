@@ -67,6 +67,20 @@ export function hrefWithQuery(path: string, params: URLSearchParams) {
   return query ? `${path}?${query}` : path;
 }
 
+/** Count of Status/Priority/Sort/Direction/dashboard-range values that are not defaults. Search is excluded. */
+export function countActiveAdminWorkOrderFilters(
+  filters: Pick<AdminWorkOrdersFilters, 'status' | 'priority' | 'sort' | 'direction'>,
+  extras?: { has(name: string): boolean },
+) {
+  let count = 0;
+  if (filters.status !== DEFAULT_ADMIN_WORK_ORDER_FILTERS.status) count += 1;
+  if (filters.priority !== DEFAULT_ADMIN_WORK_ORDER_FILTERS.priority) count += 1;
+  if (filters.sort !== DEFAULT_ADMIN_WORK_ORDER_FILTERS.sort) count += 1;
+  if (filters.direction !== DEFAULT_ADMIN_WORK_ORDER_FILTERS.direction) count += 1;
+  if (extras && DASHBOARD_RANGE_KEYS.some((key) => extras.has(key))) count += 1;
+  return count;
+}
+
 function normalizeUnit(value: string) {
   return value.replace(/\s+/g, '').toLocaleLowerCase('en-US');
 }
