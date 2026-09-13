@@ -701,12 +701,14 @@ export function Modal({
   children,
   onClose,
   returnFocusRef,
+  closeLabel,
 }: {
   open: boolean;
   title: string;
   children: React.ReactNode;
   onClose: () => void;
   returnFocusRef?: React.RefObject<HTMLElement | null>;
+  closeLabel?: string;
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const capturedFocusRef = React.useRef<HTMLElement | null>(null);
@@ -742,7 +744,7 @@ export function Modal({
         <div className="mb-4 flex items-center justify-between">
           <DialogTitle>{title}</DialogTitle>
           <DialogPrimitive.Close asChild>
-            <Button variant="ghost" size="icon" aria-label={`Close ${title}`}>
+            <Button variant="ghost" size="icon" aria-label={closeLabel ?? `Close ${title}`}>
               <X aria-hidden="true" className="size-5" />
             </Button>
           </DialogPrimitive.Close>
