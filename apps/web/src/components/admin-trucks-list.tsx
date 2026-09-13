@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { TruckOperationalStatus } from '@ltl-shop/shared';
+import { rankTruckSearchResults, TruckOperationalStatus } from '@ltl-shop/shared';
 import { Badge, Button, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useAdminTrucks } from '@/lib/admin-data';
 import { humanize } from '@/lib/admin-format';
@@ -20,7 +20,13 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
     setSearch(searchParams.get('search') ?? '');
   }, [searchParams]);
 
-  const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
+  const searchTerm = searchParams.get('search') ?? '';
+  const items = useMemo(() => {
+    const all = data?.flatMap((page) => page.items) ?? [];
+    return searchTerm
+      ? rankTruckSearchResults(all, searchTerm, (item) => item.truck)
+      : all;
+  }, [data, searchTerm]);
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (

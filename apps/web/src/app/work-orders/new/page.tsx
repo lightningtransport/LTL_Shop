@@ -9,6 +9,8 @@ import {
   AppCapability,
   MechanicMode,
   Priority,
+  rankTruckSearchResults,
+  truckSearchTier,
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
@@ -117,9 +119,13 @@ export default function NewWorkOrderPage() {
   );
 
   const { results, isFallback } = useMemo(() => {
-    const term = normalizeTruckSearch(query);
-    if (!term || truck) return { results: [], isFallback: false };
-    return rankTruckResults(truckData ?? [], term);
+    if (!query.trim() || truck) return { results: [], isFallback: false };
+    const ranked = rankTruckSearchResults(truckData ?? [], query).slice(0, 20);
+    const hasExactOrPrefix = ranked.some((item) => {
+      const tier = truckSearchTier(item, query);
+      return tier === 'exact' || tier === 'prefix';
+    });
+    return { results: ranked, isFallback: ranked.length > 0 && !hasExactOrPrefix };
   }, [query, truck, truckData]);
 
   const hasSearchTerm = query.trim().replace(/^#/, '').length > 0;
@@ -388,7 +394,7 @@ export default function NewWorkOrderPage() {
               ))}
               {isFallback ? (
                 <li className="px-4 pt-3 text-xs text-shop-muted" role="status">
-                  No truck starts with #{normalizeTruckSearch(query)}. Showing numbers that contain it.
+                  No truck starts with #{query.trim().replace(/^#\s*/, '')}. Showing numbers that contain it.
                 </li>
               ) : null}
               {!results.length ? (
@@ -787,26 +793,4 @@ function Info({ label, value }: { label: string; value?: string | null }) {
 
 function normalizeJobName(name: string) {
   return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
-}
-
-function normalizeTruckSearch(query: string) {
-  return query.trim().replace(/^#\s*/, '').replace(/\s+/g, '').toLocaleLowerCase('en-US');
-}
-
-function rankTruckResults(trucks: TruckDto[], term: string) {
-  const naturalCompare = (left: TruckDto, right: TruckDto) =>
-    left.truckNumber.localeCompare(right.truckNumber, undefined, { numeric: true, sensitivity: 'base' });
-  const exact = trucks.filter((truck) => truck.truckNumber.toLocaleLowerCase('en-US') === term).sort(naturalCompare);
-  const prefix = trucks
-    .filter((truck) => truck.truckNumber.toLocaleLowerCase('en-US').startsWith(term) && !exact.some((match) => match.id === truck.id))
-    .sort(naturalCompare);
-  const primary = [...exact, ...prefix];
-  if (primary.length) return { results: primary.slice(0, 20), isFallback: false };
-  return {
-    results: trucks
-      .filter((truck) => truck.truckNumber.toLocaleLowerCase('en-US').includes(term))
-      .sort(naturalCompare)
-      .slice(0, 20),
-    isFallback: true,
-  };
 }

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   AppCapability,
   Priority,
+  rankTruckSearchResults,
   type AdminTruckSummaryDto,
   type JobAliasOptionDto,
 } from '@ltl-shop/shared';
@@ -86,7 +87,11 @@ export function AdminNewWorkOrder({
   const { data: aliasData, error: jobsError, isLoading: jobsLoading } = useAliasOptions(categoryId, Boolean(categoryId));
   const { data: mechanicPages, error: mechanicsError } = useAdminMechanics('');
 
-  const trucks = truckPages?.flatMap((page) => page.items) ?? [];
+  const trucks = rankTruckSearchResults(
+    truckPages?.flatMap((page) => page.items) ?? [],
+    debouncedTruckQuery,
+    (item) => item.truck,
+  );
   const standardCategories = (categories ?? []).filter((category) => category.name !== 'PM');
   const selectedCategory = standardCategories.find((category) => category.id === categoryId) ?? null;
   const assignableMechanics = useMemo(

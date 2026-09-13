@@ -49,6 +49,7 @@ import {
   type AdminWorkOrderSummaryDto,
   type AdminWorkOrdersQuery,
   CatalogStatus,
+  rankTruckSearchResults,
   TruckOperationalStatus,
 } from '@ltl-shop/shared';
 import { ActivityLogService } from '../activity-log/activity-log.service';
@@ -303,20 +304,38 @@ export class AdminService {
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     const query = parsed.data;
     const cursor = query.cursor ? this.decodeTruckCursor(query.cursor, query) : null;
+    const include = {
+      workOrders: {
+        where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+        include: { primaryCategory: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' as const },
+        take: 1,
+      },
+      serviceStatusEvents: {
+        orderBy: { occurredAt: 'desc' as const },
+        take: 1,
+      },
+    };
+
+    if (query.search) {
+      const matches = await this.prisma.truck.findMany({
+        where: this.buildTruckWhere(query, null),
+        include,
+      });
+      const ranked = rankTruckSearchResults(matches, query.search);
+      const cursorIndex = cursor ? ranked.findIndex((row) => row.id === cursor.id) : -1;
+      const start = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+      const pageRows = ranked.slice(start, start + query.limit);
+      const hasNext = start + query.limit < ranked.length;
+      return {
+        items: pageRows.map(toTruckSummary),
+        nextCursor: hasNext ? this.encodeTruckCursor(pageRows[pageRows.length - 1], query) : null,
+      };
+    }
+
     const rows = await this.prisma.truck.findMany({
       where: this.buildTruckWhere(query, cursor),
-      include: {
-        workOrders: {
-          where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
-          include: { primaryCategory: { select: { name: true } } },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-        serviceStatusEvents: {
-          orderBy: { occurredAt: 'desc' },
-          take: 1,
-        },
-      },
+      include,
       orderBy: [{ truckNumber: query.direction }, { id: query.direction }],
       take: query.limit + 1,
     });
