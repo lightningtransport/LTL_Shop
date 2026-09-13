@@ -3,7 +3,6 @@ import {
   AppCapability,
   JobStatus,
   OPEN_WORK_ORDER_STATUSES,
-  rankTruckSearchResults,
   type AdminRepairHistoryDto,
 } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -181,7 +180,18 @@ function encodeRepairHistoryCursor(row: { id: string; completedAt: Date | null }
 }
 
 function rankTruckMatches<T extends { truckNumber: string }>(trucks: T[], term: string) {
-  return rankTruckSearchResults(trucks, term).slice(0, 20);
+  const normalizedTerm = term.toLocaleLowerCase('en-US');
+  return [...trucks]
+    .sort((left, right) => {
+      const leftExact = left.truckNumber.toLocaleLowerCase('en-US') === normalizedTerm;
+      const rightExact = right.truckNumber.toLocaleLowerCase('en-US') === normalizedTerm;
+      if (leftExact !== rightExact) return leftExact ? -1 : 1;
+      return left.truckNumber.localeCompare(right.truckNumber, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+    })
+    .slice(0, 20);
 }
 
 export function toTruckDto(truck: {

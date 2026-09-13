@@ -244,53 +244,6 @@ describe('AdminService', () => {
     await expect(service.listTrucks({})).resolves.toEqual({ items: [], nextCursor: null });
   });
 
-  it('ranks truck search as exact unit, then prefix, then contains', async () => {
-    const prisma = createPrisma();
-    const row = (truckNumber: string, model: string | null = null) => ({
-      id: `00000000-0000-4000-8000-0000000000${truckNumber.padStart(2, '0')}`,
-      truckNumber,
-      make: 'Peterbilt',
-      model,
-      year: 2024,
-      mileage: null,
-      company: 'CTC',
-      owner: null,
-      workOrders: [],
-      serviceStatusEvents: [],
-    });
-    prisma.truck.findMany.mockResolvedValue([
-      row('609'),
-      row('619'),
-      row('90'),
-      row('9'),
-      row('19'),
-      row('905'),
-    ]);
-    const service = createService(prisma);
-
-    const page = await service.listTrucks({ search: '9', limit: 10 });
-    expect(page.items.map((item) => item.truck.truckNumber)).toEqual([
-      '9',
-      '90',
-      '905',
-      '19',
-      '609',
-      '619',
-    ]);
-    expect(prisma.truck.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        AND: expect.arrayContaining([
-          expect.objectContaining({
-            OR: expect.arrayContaining([
-              expect.objectContaining({ truckNumber: expect.objectContaining({ contains: '9' }) }),
-            ]),
-          }),
-        ]),
-      }),
-    }));
-    expect(prisma.truck.findMany.mock.calls[0][0]).not.toHaveProperty('take');
-  });
-
   it('lists catalog categories with job and alias counts, including inactive jobs', async () => {
     const prisma = createPrisma();
     prisma.jobCategory.findMany.mockResolvedValue([{

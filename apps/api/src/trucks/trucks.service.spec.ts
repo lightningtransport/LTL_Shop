@@ -33,12 +33,12 @@ describe('TrucksService search', () => {
   it('uses contains matches only when no truck begins with the search', async () => {
     const findMany = vi.fn()
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([truck('905'), truck('105'), truck('205')]);
+      .mockResolvedValueOnce([truck('905'), truck('609'), truck('899')]);
     const service = new TrucksService({ truck: { findMany } } as never);
 
     await expect(service.search('05')).resolves.toMatchObject([
-      { truckNumber: '105' },
-      { truckNumber: '205' },
+      { truckNumber: '609' },
+      { truckNumber: '899' },
       { truckNumber: '905' },
     ]);
     expect(findMany).toHaveBeenCalledTimes(2);

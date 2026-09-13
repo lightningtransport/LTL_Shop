@@ -6,20 +6,20 @@ import { useRouter } from 'next/navigation';
 import {
   AppCapability,
   Priority,
-  rankTruckSearchResults,
-  type AdminTruckSummaryDto,
   type JobAliasOptionDto,
+  type TruckDto,
+  type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
-import { ApiError } from '@/lib/api';
+import { ApiError, apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import {
   createAdminWorkOrder,
   useAdminMechanics,
-  useAdminTrucks,
 } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { canonicalAliasOptions } from '@/lib/job-catalog';
-import { useAliasOptions, useCategories } from '@/lib/shop-data';
+import { useAliasOptions, useCategories, useTrucks } from '@/lib/shop-data';
+import { rankTruckResults } from '@/lib/truck-search';
 import {
   Badge,
   Button,
@@ -45,6 +45,11 @@ type DraftJob = {
   assignedMechanicId?: string;
 };
 
+type SelectedTruck = {
+  truck: TruckDto;
+  openWorkOrder: { id: string; displayId: string } | null;
+};
+
 function normalizeJobName(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -62,7 +67,7 @@ export function AdminNewWorkOrder({
   const canCreateWorkOrder = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const [truckQuery, setTruckQuery] = useState('');
   const [debouncedTruckQuery, setDebouncedTruckQuery] = useState('');
-  const [selectedTruck, setSelectedTruck] = useState<AdminTruckSummaryDto | null>(null);
+  const [selectedTruck, setSelectedTruck] = useState<SelectedTruck | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(-1);
   const [categoryId, setCategoryId] = useState('');
@@ -79,18 +84,16 @@ export function AdminNewWorkOrder({
     return () => window.clearTimeout(handle);
   }, [truckQuery]);
 
-  const truckSearch = debouncedTruckQuery && !selectedTruck
-    ? `search=${encodeURIComponent(debouncedTruckQuery)}`
-    : '';
-  const { data: truckPages, error: truckError, isLoading: trucksLoading } = useAdminTrucks(truckSearch);
+  const { data: truckData, error: truckError, isLoading: trucksLoading } = useTrucks(true);
   const { data: categories, error: categoriesError, isLoading: categoriesLoading } = useCategories(true);
   const { data: aliasData, error: jobsError, isLoading: jobsLoading } = useAliasOptions(categoryId, Boolean(categoryId));
   const { data: mechanicPages, error: mechanicsError } = useAdminMechanics('');
 
-  const trucks = rankTruckSearchResults(
-    truckPages?.flatMap((page) => page.items) ?? [],
-    debouncedTruckQuery,
-    (item) => item.truck,
+  const trucks = useMemo(
+    () => (debouncedTruckQuery && !selectedTruck
+      ? rankTruckResults(truckData ?? [], debouncedTruckQuery).results
+      : []),
+    [debouncedTruckQuery, selectedTruck, truckData],
   );
   const standardCategories = (categories ?? []).filter((category) => category.name !== 'PM');
   const selectedCategory = standardCategories.find((category) => category.id === categoryId) ?? null;
@@ -121,11 +124,27 @@ export function AdminNewWorkOrder({
     setCustomName('');
   }, [categoryId]);
 
-  function selectTruck(item: AdminTruckSummaryDto) {
-    setSelectedTruck(item);
-    setTruckQuery(item.truck.truckNumber);
+  function selectTruck(item: TruckDto) {
+    setSelectedTruck({ truck: item, openWorkOrder: null });
+    setTruckQuery(item.truckNumber);
     setSearchOpen(false);
     setError(null);
+    void apiFetch<{ exists: false } | { exists: true; workOrder?: WorkOrderSummaryDto }>(
+      `/api/trucks/${item.id}/open-work-order`,
+    ).then((open) => {
+      setSelectedTruck((current) => (
+        current?.truck.id === item.id
+          ? {
+            truck: item,
+            openWorkOrder: open.exists && open.workOrder
+              ? { id: open.workOrder.id, displayId: open.workOrder.displayId }
+              : null,
+          }
+          : current
+      ));
+    }).catch(() => {
+      setError(messages.loadError);
+    });
   }
 
   function clearTruck() {
@@ -247,7 +266,7 @@ export function AdminNewWorkOrder({
               aria-controls="admin-truck-search-results"
               aria-activedescendant={
                 resultsOpen && activeResult >= 0
-                  ? `admin-truck-result-${trucks[activeResult]?.truck.id}`
+                  ? `admin-truck-result-${trucks[activeResult]?.id}`
                   : undefined
               }
               value={truckQuery}
@@ -286,9 +305,9 @@ export function AdminNewWorkOrder({
                 ) : truckError ? (
                   <li className="px-4 py-3 text-sm text-destructive">{messages.loadError}</li>
                 ) : trucks.length ? trucks.map((item, index) => (
-                  <li key={item.truck.id} role="presentation">
+                  <li key={item.id} role="presentation">
                     <Button
-                      id={`admin-truck-result-${item.truck.id}`}
+                      id={`admin-truck-result-${item.id}`}
                       type="button"
                       role="option"
                       aria-selected={activeResult === index}
@@ -297,8 +316,7 @@ export function AdminNewWorkOrder({
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => selectTruck(item)}
                     >
-                      #{item.truck.truckNumber} · {item.truck.make} {item.truck.model}
-                      {item.openWorkOrder ? ` · ${item.openWorkOrder.displayId}` : ''}
+                      #{item.truckNumber} · {item.make} {item.model}
                     </Button>
                   </li>
                 )) : (

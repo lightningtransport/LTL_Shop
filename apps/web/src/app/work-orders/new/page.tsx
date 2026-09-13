@@ -9,11 +9,10 @@ import {
   AppCapability,
   MechanicMode,
   Priority,
-  rankTruckSearchResults,
-  truckSearchTier,
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
+import { normalizeTruckSearch, rankTruckResults } from '@/lib/truck-search';
 import { useAuth } from '@/lib/auth-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import { ApiError, apiFetch } from '@/lib/api';
@@ -120,12 +119,7 @@ export default function NewWorkOrderPage() {
 
   const { results, isFallback } = useMemo(() => {
     if (!query.trim() || truck) return { results: [], isFallback: false };
-    const ranked = rankTruckSearchResults(truckData ?? [], query).slice(0, 20);
-    const hasExactOrPrefix = ranked.some((item) => {
-      const tier = truckSearchTier(item, query);
-      return tier === 'exact' || tier === 'prefix';
-    });
-    return { results: ranked, isFallback: ranked.length > 0 && !hasExactOrPrefix };
+    return rankTruckResults(truckData ?? [], query);
   }, [query, truck, truckData]);
 
   const hasSearchTerm = query.trim().replace(/^#/, '').length > 0;
@@ -394,7 +388,7 @@ export default function NewWorkOrderPage() {
               ))}
               {isFallback ? (
                 <li className="px-4 pt-3 text-xs text-shop-muted" role="status">
-                  No truck starts with #{query.trim().replace(/^#\s*/, '')}. Showing numbers that contain it.
+                  No truck starts with #{normalizeTruckSearch(query)}. Showing numbers that contain it.
                 </li>
               ) : null}
               {!results.length ? (
