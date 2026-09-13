@@ -179,6 +179,47 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('WO-0105').first()).toBeVisible();
   });
 
+  test('work order search 9 + Apply returns ranked WO/truck matches and EmptyState', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await page.getByRole('link', { name: 'Work Orders' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/work-orders$/);
+    await expect(page.getByText('WO-0101').first()).toBeVisible();
+
+    const search = page.getByLabel('Search Work Order, Truck, category, or Mechanic');
+    await search.fill('9');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await expect(page).toHaveURL(/search=9/);
+    await expect(page.getByRole('link', { name: 'WO-0009' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'WO-0905' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'WO-0422' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'WO-0609' }).first()).toBeVisible();
+    await expect(page.getByText('WO-0101')).toHaveCount(0);
+
+    const ids = await page.getByRole('link', { name: /^WO-/ }).allTextContents();
+    expect(ids.indexOf('WO-0009')).toBeLessThan(ids.indexOf('WO-0905'));
+    expect(ids.indexOf('WO-0905')).toBeLessThan(ids.indexOf('WO-0422'));
+    expect(ids.indexOf('WO-0422')).toBeLessThan(ids.indexOf('WO-0609'));
+
+    await search.fill('zzz-no-match');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await expect(page).toHaveURL(/search=zzz-no-match/);
+    await expect(page.getByText('No Work Orders match these filters.')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Clear' }).click();
+    await expect(page).toHaveURL(/\/admin\/work-orders$/);
+    await expect(page.getByText('WO-0101').first()).toBeVisible();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await search.fill('9644');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await expect(page).toHaveURL(/search=9644/);
+    await expect(page.getByRole('link', { name: 'WO-0422' }).first()).toBeVisible();
+    await expect(page.getByText('9644').first()).toBeVisible();
+    await expect(page.getByText('WO-0101')).toHaveCount(0);
+  });
+
   test('admin role can load dashboard and pagination completes', async ({ page }) => {
     await page.goto('/login');
     await page.getByLabel('Email').fill('admin@lightning.local');
