@@ -69,7 +69,7 @@ export function hrefWithQuery(path: string, params: URLSearchParams) {
 
 /** Count of Status/Priority/Sort/Direction/dashboard-range values that are not defaults. Search is excluded. */
 export function countActiveAdminWorkOrderFilters(
-  filters: Pick<AdminWorkOrdersFilters, 'status' | 'priority' | 'sort' | 'direction'>,
+  filters: AdminWorkOrdersFilters,
   extras?: { has(name: string): boolean },
 ) {
   let count = 0;
