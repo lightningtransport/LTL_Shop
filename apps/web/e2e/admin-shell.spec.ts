@@ -183,21 +183,22 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/login');
     await page.getByLabel('Email').fill('manager@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await page.getByRole('link', { name: 'Work Orders' }).first().click();
-    await expect(page).toHaveURL(/\/admin\/work-orders$/);
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.goto('/admin/work-orders');
+    await expect(page.getByRole('heading', { name: 'Work Orders' })).toBeVisible();
     await expect(page.getByText('WO-0101').first()).toBeVisible();
 
     const search = page.getByLabel('Search Work Order, Truck, category, or Mechanic');
     await search.fill('9');
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/search=9/);
-    await expect(page.getByRole('link', { name: 'WO-0009' }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: 'WO-0905' }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: 'WO-0422' }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: 'WO-0609' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'WO-0009', exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'WO-0905', exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'WO-0422', exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'WO-0609', exact: true }).first()).toBeVisible();
     await expect(page.getByText('WO-0101')).toHaveCount(0);
 
-    const ids = await page.getByRole('link', { name: /^WO-/ }).allTextContents();
+    const ids = await page.getByRole('link', { name: /^WO-\d+$/ }).allTextContents();
     expect(ids.indexOf('WO-0009')).toBeLessThan(ids.indexOf('WO-0905'));
     expect(ids.indexOf('WO-0905')).toBeLessThan(ids.indexOf('WO-0422'));
     expect(ids.indexOf('WO-0422')).toBeLessThan(ids.indexOf('WO-0609'));
@@ -211,11 +212,21 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await expect(page.getByText('WO-0101').first()).toBeVisible();
 
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await search.fill('9');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await expect(page.locator('table').getByRole('link', { name: 'WO-0009', exact: true })).toBeVisible();
+    await expect(page.locator('table').getByRole('link', { name: 'WO-0422', exact: true })).toBeVisible();
+    await expect(page.locator('table').getByText('WO-0101')).toHaveCount(0);
+
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/admin/work-orders');
+    await expect(page.getByText('WO-0101').first()).toBeVisible();
     await search.fill('9644');
+    await expect(search).toHaveValue('9644');
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/search=9644/);
-    await expect(page.getByRole('link', { name: 'WO-0422' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'WO-0422', exact: true }).first()).toBeVisible();
     await expect(page.getByText('9644').first()).toBeVisible();
     await expect(page.getByText('WO-0101')).toHaveCount(0);
   });
