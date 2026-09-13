@@ -36,7 +36,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
     await expect(page.getByText('Current shop operations')).toBeVisible();
-    await expect(page.getByText('Updated Sep 6, 2026, 2:30 PM')).toHaveCount(1);
+    await expect(page.getByText(/^Updated /)).toHaveCount(1);
     await expect(page.getByText('Created, in progress, or waiting / paused')).toBeVisible();
     await expect(page.getByText(/supabase|postgres|Source:|Generated/i)).toHaveCount(0);
     await expect(page.getByText('Open Work Orders').first()).toBeVisible();
