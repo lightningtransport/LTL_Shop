@@ -242,7 +242,7 @@ function WorkOrderCard({
           <p className="text-sm text-shop-muted">
             #{wo.truckNumber} · {!isPm ? `${priorityLabel(wo.priority)} · ` : ''}
             {mode === 'paused'
-              ? pauseLabel(wo.currentPauseReason)
+              ? pauseLabel(wo.currentPauseReason, messages.pauseReason)
               : messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}
           </p>
         </div>

@@ -8,7 +8,6 @@ import { useSWRConfig } from 'swr';
 import {
   JobStatus,
   MechanicMode,
-  PAUSE_REASON_LABELS,
   PauseReason,
   type WorkOrderDetailDto,
   type WorkOrderJobDto,
@@ -186,7 +185,7 @@ export default function WorkOrderDetailPage() {
         </div>
         {wo.currentPauseReason ? (
           <p className="text-sm font-medium text-warning-foreground">
-            {pauseLabel(wo.currentPauseReason)}
+            {pauseLabel(wo.currentPauseReason, messages.pauseReason)}
           </p>
         ) : null}
       </div>
@@ -456,7 +455,7 @@ export default function WorkOrderDetailPage() {
             <option value="">Select an option</option>
             {Object.values(PauseReason).map((r) => (
               <option key={r} value={r}>
-                {PAUSE_REASON_LABELS[r]}
+                {messages.pauseReason[r]}
               </option>
             ))}
           </Select>
@@ -653,7 +652,7 @@ function PmWorkOrderDetail({
               onChange={(event) => setChangeReason(event.target.value as PauseReason)}
             >
               {Object.values(PauseReason).map((reason) => (
-                <option key={reason} value={reason}>{PAUSE_REASON_LABELS[reason]}</option>
+                <option key={reason} value={reason}>{messages.pauseReason[reason]}</option>
               ))}
           </Select>
           <Button
@@ -690,7 +689,7 @@ function PmWorkOrderDetail({
       </section>
 
       {wo.currentPauseReason ? (
-        <p className="mb-3 text-sm font-medium text-warning-foreground">{pauseLabel(wo.currentPauseReason)}</p>
+        <p className="mb-3 text-sm font-medium text-warning-foreground">{pauseLabel(wo.currentPauseReason, messages.pauseReason)}</p>
       ) : null}
 
       <section className="mb-4 space-y-2" aria-label="PM work actions">
@@ -731,7 +730,7 @@ function PmWorkOrderDetail({
         <div className="mb-3">
           <Select id="pm-pause-reason" value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
             <option value="">Select an option</option>
-            {Object.values(PauseReason).map((reason) => <option key={reason} value={reason}>{PAUSE_REASON_LABELS[reason]}</option>)}
+            {Object.values(PauseReason).map((reason) => <option key={reason} value={reason}>{messages.pauseReason[reason]}</option>)}
           </Select>
         </div>
         {pauseReason === PauseReason.OTHER ? (

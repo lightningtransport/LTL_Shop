@@ -135,7 +135,18 @@ async function mockShopApi(page: Page) {
         workOrdersMode = 'normal';
         return;
       }
-      return json(route, { created: [workOrder], active: activeWorkOrders, paused: [], completed: [] });
+      return json(route, {
+        created: [workOrder],
+        active: activeWorkOrders,
+        paused: [{
+          ...workOrder,
+          id: 'wo-paused-1',
+          displayId: 'WO-PAUSED-1',
+          status: 'waiting_paused',
+          currentPauseReason: 'waiting_for_parts',
+        }],
+        completed: [],
+      });
     }
     if (path === '/api/work-orders' && request.method() === 'POST') {
       return json(route, { id: workOrder.id }, 201);
@@ -363,6 +374,8 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(createdCard.getByText('Created')).toBeVisible();
     const activeCard = page.locator('article').filter({ hasText: 'WO-ACTIVE-1' });
     await expect(activeCard.getByText('In Progress')).toBeVisible();
+    const pausedCard = page.locator('article').filter({ hasText: 'WO-PAUSED-1' });
+    await expect(pausedCard.getByText('Waiting for Parts')).toBeVisible();
 
     await page.getByRole('button', { name: 'Switch to Spanish' }).click();
     await expect(page.getByRole('heading', { name: 'Mi trabajo asignado' })).toBeVisible();
@@ -370,6 +383,8 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(createdCard.getByText('Created')).toHaveCount(0);
     await expect(activeCard.getByText('En progreso')).toBeVisible();
     await expect(activeCard.getByText('In Progress')).toHaveCount(0);
+    await expect(pausedCard.getByText('En espera de piezas')).toBeVisible();
+    await expect(pausedCard.getByText('Waiting for Parts')).toHaveCount(0);
     await expect(createdCard.getByRole('link', { name: 'Iniciar trabajo WO-1001, unidad 905' })).toBeVisible();
     await expect(createdCard.getByRole('link', { name: /Start Work/i })).toHaveCount(0);
 

@@ -901,6 +901,26 @@ const messages = {
 
 export type AdminMessages = (typeof messages)[AdminLocale];
 
+export const ADMIN_PAUSE_REASON_KEY = {
+  waiting_for_parts: 'waitingForParts',
+  waiting_for_approval: 'waitingForApproval',
+  waiting_for_vendor: 'waitingForVendor',
+  waiting_for_equipment: 'waitingForEquipment',
+  waiting_for_bay: 'waitingForBay',
+  waiting_for_driver: 'waitingForDriver',
+  truck_unavailable: 'truckUnavailable',
+  working_on_another_wo: 'workingOnAnotherWorkOrder',
+  break: 'breakPause',
+  end_of_shift: 'endOfShift',
+  other: 'otherPause',
+} as const;
+
+export function adminPauseReasonLabel(reason: string, catalog: AdminMessages): string {
+  return reason in ADMIN_PAUSE_REASON_KEY
+    ? catalog[ADMIN_PAUSE_REASON_KEY[reason as keyof typeof ADMIN_PAUSE_REASON_KEY]]
+    : reason;
+}
+
 export function getAdminMessages(locale: AdminLocale): AdminMessages {
   return messages[locale];
 }

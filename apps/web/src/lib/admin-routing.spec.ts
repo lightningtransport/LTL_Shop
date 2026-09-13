@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AppCapability } from '@ltl-shop/shared';
 import { postLoginPath } from './admin-routing';
-import { getAdminMessages } from './admin-messages';
+import { adminPauseReasonLabel, getAdminMessages } from './admin-messages';
 
 describe('Shop Admin routing and messages', () => {
   const admin = { capabilities: [AppCapability.ADMIN_ACCESS] };
@@ -50,5 +50,10 @@ describe('Shop Admin routing and messages', () => {
     );
     expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
     expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');
+    expect(adminPauseReasonLabel('waiting_for_parts', getAdminMessages('en'))).toBe('Waiting for Parts');
+    expect(adminPauseReasonLabel('waiting_for_parts', getAdminMessages('es'))).toBe('En espera de piezas');
+    expect(adminPauseReasonLabel('waiting_for_equipment', getAdminMessages('en'))).toBe('Waiting for Equipment / Tool');
+    expect(adminPauseReasonLabel('working_on_another_wo', getAdminMessages('es'))).toBe('Trabajando en otro Work Order');
+    expect(adminPauseReasonLabel('other', getAdminMessages('es'))).toBe('Otro');
   });
 });

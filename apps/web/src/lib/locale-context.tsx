@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { PauseReason } from '@ltl-shop/shared';
 
 export type ShopLocale = 'en' | 'es';
 
@@ -66,6 +67,7 @@ type Copy = {
   workOrderAction: (action: string, displayId: string, truckNumber: string) => string;
   pmServiceLoadError: string;
   status: Record<string, string>;
+  pauseReason: Record<PauseReason, string>;
 };
 
 const copy: Record<ShopLocale, Copy> = {
@@ -113,6 +115,19 @@ const copy: Record<ShopLocale, Copy> = {
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, truck ${truckNumber}`,
     pmServiceLoadError: 'Unable to load PM service details.',
     status: { created: 'Created', in_progress: 'In Progress', waiting_paused: 'Paused', completed: 'Completed', cancelled: 'Cancelled' },
+    pauseReason: {
+      [PauseReason.WAITING_FOR_PARTS]: 'Waiting for Parts',
+      [PauseReason.WAITING_FOR_APPROVAL]: 'Waiting for Approval',
+      [PauseReason.WAITING_FOR_VENDOR]: 'Waiting for Vendor',
+      [PauseReason.WAITING_FOR_EQUIPMENT]: 'Waiting for Equipment / Tool',
+      [PauseReason.WAITING_FOR_BAY]: 'Waiting for Bay',
+      [PauseReason.WAITING_FOR_DRIVER]: 'Waiting for Driver',
+      [PauseReason.TRUCK_UNAVAILABLE]: 'Truck Unavailable',
+      [PauseReason.WORKING_ON_ANOTHER_WO]: 'Working on Another Work Order',
+      [PauseReason.BREAK]: 'Break',
+      [PauseReason.END_OF_SHIFT]: 'End of Shift',
+      [PauseReason.OTHER]: 'Other',
+    },
   },
   es: {
     locale: 'es', language: 'Idioma', switchTo: 'Cambiar a inglés', home: 'Inicio',
@@ -158,6 +173,19 @@ const copy: Record<ShopLocale, Copy> = {
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, unidad ${truckNumber}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',
     status: { created: 'Creado', in_progress: 'En progreso', waiting_paused: 'Pausado', completed: 'Completado', cancelled: 'Cancelado' },
+    pauseReason: {
+      [PauseReason.WAITING_FOR_PARTS]: 'En espera de piezas',
+      [PauseReason.WAITING_FOR_APPROVAL]: 'En espera de aprobación',
+      [PauseReason.WAITING_FOR_VENDOR]: 'En espera del proveedor',
+      [PauseReason.WAITING_FOR_EQUIPMENT]: 'En espera de equipo o herramienta',
+      [PauseReason.WAITING_FOR_BAY]: 'En espera de bahía',
+      [PauseReason.WAITING_FOR_DRIVER]: 'En espera del conductor',
+      [PauseReason.TRUCK_UNAVAILABLE]: 'Truck no disponible',
+      [PauseReason.WORKING_ON_ANOTHER_WO]: 'Trabajando en otro Work Order',
+      [PauseReason.BREAK]: 'Descanso',
+      [PauseReason.END_OF_SHIFT]: 'Fin del turno',
+      [PauseReason.OTHER]: 'Otro',
+    },
   },
 };
 

@@ -28,9 +28,12 @@ export function statusLabel(status: string, labels?: Record<string, string>) {
   }
 }
 
-export function pauseLabel(reason: PauseReason | string | null | undefined) {
+export function pauseLabel(
+  reason: PauseReason | string | null | undefined,
+  labels?: Record<string, string>,
+) {
   if (!reason) return null;
-  return PAUSE_REASON_LABELS[reason as PauseReason] ?? String(reason);
+  return labels?.[reason] ?? PAUSE_REASON_LABELS[reason as PauseReason] ?? String(reason);
 }
 
 export function formatMileage(n: number | null | undefined) {

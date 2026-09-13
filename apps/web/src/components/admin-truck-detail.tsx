@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessment, updateAdminTruckRequirement, useAdminTruck } from '@/lib/admin-data';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { ADMIN_PAUSE_REASON_KEY, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, Input, LoadFailure, PageSkeleton, Select, Textarea } from './ui';
 
 const phaseKey = { needs_evaluation: 'needsEvaluation', inspection: 'inspection', required_work: 'requiredWork', pm: 'pm', alignment: 'alignment', detailing: 'detailing', quality_check: 'qualityCheck', ready_for_approval: 'readyForApproval', ready_to_go: 'readyToGo' } as const;
@@ -16,7 +16,7 @@ const requirementKey = { inspection: 'inspection', required_repairs: 'requiredWo
 const outcomeKey = { not_evaluated: 'notEvaluatedOutcome', required: 'requiredOutcome', not_required: 'notRequiredOutcome', completed: 'completedOutcome', waived: 'waivedOutcome' } as const;
 const statusKey = { created: 'created', in_progress: 'inProgress', waiting_paused: 'waitingPaused', completed: 'completed', cancelled: 'cancelled' } as const;
 const priorityKey = { low: 'lowPriority', normal: 'normalPriority', high: 'highPriority', critical: 'criticalPriority' } as const;
-const pauseKey = { waiting_for_parts: 'waitingForParts', waiting_for_approval: 'waitingForApproval', waiting_for_vendor: 'waitingForVendor', waiting_for_equipment: 'waitingForEquipment', waiting_for_bay: 'waitingForBay', waiting_for_driver: 'waitingForDriver', truck_unavailable: 'truckUnavailable', working_on_another_wo: 'workingOnAnotherWorkOrder', break: 'breakPause', end_of_shift: 'endOfShift', other: 'otherPause' } as const;
+const pauseKey = ADMIN_PAUSE_REASON_KEY;
 const requirementTypes = Object.values(ReadinessRequirementType) as ReadinessRequirementType[];
 const outcomes = Object.values(ReadinessRequirementOutcome) as ReadinessRequirementOutcome[];
 
