@@ -13,6 +13,8 @@ test.describe('Yard Operations Phase 1', () => {
 
   test('shows Phase 1 unavailable boundary and real URL filters', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible();
+    await expect(page.getByText('Work location, incoming Trucks, and upcoming departures are not connected yet. This view shows maintenance readiness only — not physical yard presence or dispatch.')).toBeVisible();
+    await expect(page.getByText(/in the yard|en el patio/i)).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
     await expect(page.getByLabel('Readiness list').getByText('Last reported location').first()).toBeVisible();

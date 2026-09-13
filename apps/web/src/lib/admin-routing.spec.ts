@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AppCapability } from '@ltl-shop/shared';
 import { postLoginPath } from './admin-routing';
-import { getAdminMessages } from './admin-messages';
+import { adminPauseReasonLabel, getAdminMessages } from './admin-messages';
 
 describe('Shop Admin routing and messages', () => {
   const admin = { capabilities: [AppCapability.ADMIN_ACCESS] };
@@ -42,5 +42,18 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('es').locationUpdatedOn.toLowerCase()).not.toContain('en el yard');
     expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('presence');
     expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('presencia');
+    expect(getAdminMessages('en').yardOperationsPhase1Body).toBe(
+      'Work location, incoming Trucks, and upcoming departures are not connected yet. This view shows maintenance readiness only — not physical yard presence or dispatch.',
+    );
+    expect(getAdminMessages('es').yardOperationsPhase1Body).toBe(
+      'La ubicación de trabajo, llegadas y próximas salidas aún no están conectadas. Esta vista muestra solo readiness de mantenimiento — no presencia física en el yard ni despacho.',
+    );
+    expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
+    expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');
+    expect(adminPauseReasonLabel('waiting_for_parts', getAdminMessages('en'))).toBe('Waiting for Parts');
+    expect(adminPauseReasonLabel('waiting_for_parts', getAdminMessages('es'))).toBe('En espera de piezas');
+    expect(adminPauseReasonLabel('waiting_for_equipment', getAdminMessages('en'))).toBe('Waiting for Equipment / Tool');
+    expect(adminPauseReasonLabel('working_on_another_wo', getAdminMessages('es'))).toBe('Trabajando en otro Work Order');
+    expect(adminPauseReasonLabel('other', getAdminMessages('es'))).toBe('Otro');
   });
 });

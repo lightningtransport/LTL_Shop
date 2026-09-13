@@ -6,7 +6,7 @@ import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type Ad
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration, humanize } from '@/lib/admin-format';
 import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
 import { useCategories } from '@/lib/shop-data';
 import { JobPickerDialog } from './job-picker-dialog';
@@ -120,8 +120,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           <Info label={messages.age} value={formatAge(data.createdAt, locale)} />
           <Info label={messages.progress} value={`${data.jobsCompleted}/${data.jobsTotal}`} />
           <Info label={messages.mechanicsLabel} value={activeMechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noValue} />
-          <Info label={messages.currentPause} value={data.currentPause ? `${humanize(data.currentPause.reason)} · ${formatAdminDate(data.currentPause.startedAt, locale)}` : messages.noCurrentPause} />
-          <Info label={messages.latestReportedBlocker} value={data.latestReportedBlocker ? `${humanize(data.latestReportedBlocker.reason)}${data.latestReportedBlocker.reportedBy ? ` · ${data.latestReportedBlocker.reportedBy.name}` : ''}` : messages.noLatestReportedBlocker} />
+          <Info label={messages.currentPause} value={data.currentPause ? `${adminPauseReasonLabel(data.currentPause.reason, messages)} · ${formatAdminDate(data.currentPause.startedAt, locale)}` : messages.noCurrentPause} />
+          <Info label={messages.latestReportedBlocker} value={data.latestReportedBlocker ? `${adminPauseReasonLabel(data.latestReportedBlocker.reason, messages)}${data.latestReportedBlocker.reportedBy ? ` · ${data.latestReportedBlocker.reportedBy.name}` : ''}` : messages.noLatestReportedBlocker} />
         </dl></CardContent>
       </Card>
       <Card>
@@ -201,7 +201,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           <ul className="divide-y">
             {(data.reportedBlockers ?? []).map((blocker) => (
               <li key={blocker.id} className="py-3 first:pt-0">
-                <Pause pause={blocker} locale={locale} />
+                <Pause pause={blocker} locale={locale} messages={messages} />
                 <p className="mt-1 text-xs text-muted-foreground">{blocker.reportedBy?.name ?? blocker.createdBy.name}</p>
               </li>
             ))}
@@ -234,7 +234,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             >
               <Select aria-label={messages.pauseReasonLabel} value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
                 {Object.values(PauseReason).map((reason) => (
-                  <option key={reason} value={reason}>{humanize(reason)}</option>
+                  <option key={reason} value={reason}>{adminPauseReasonLabel(reason, messages)}</option>
                 ))}
               </Select>
               <Button type="submit" disabled={Boolean(pendingAction)}>{messages.pauseWorkOrderAction}</Button>
@@ -676,8 +676,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </CardContent>
     </Card>
     <section className="grid gap-4 lg:grid-cols-2">
-      <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent>{data.currentPause ? <Pause pause={data.currentPause} locale={locale} /> : <CompactEmpty>{messages.noCurrentPause}</CompactEmpty>}</CardContent></Card>
-      <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
+      <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent>{data.currentPause ? <Pause pause={data.currentPause} locale={locale} messages={messages} /> : <CompactEmpty>{messages.noCurrentPause}</CompactEmpty>}</CardContent></Card>
+      <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} messages={messages} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
     </section>
     <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{humanize(entry.eventType)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name} · {entry.entityType}</p>{activityValue(entry) !== null ? <pre className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs">{JSON.stringify(activityValue(entry))}</pre> : null}</li>)}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</CardContent></Card>
     {canManageJobs ? (
@@ -785,5 +785,5 @@ function activityValue(entry: AdminWorkOrderDetailDto['activityLog'][number]) {
 }
 function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
 function formatAge(value: string, locale: AdminLocale) { const elapsed = Math.max(0, Date.now() - new Date(value).getTime()); const hours = Math.floor(elapsed / 3_600_000); const number = new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US'); if (hours < 24) return `${number.format(hours)}h`; const days = Math.floor(hours / 24); return `${number.format(days)}d ${number.format(hours % 24)}h`; }
-function Pause({ pause, locale }: { pause: { reason: string; notes: string | null; startedAt: string; endedAt: string | null; durationMs: number | null }; locale: AdminLocale }) { return <div><p className="font-medium">{humanize(pause.reason)}</p><p className="text-sm text-muted-foreground">{formatAdminDate(pause.startedAt, locale)} → {formatAdminDate(pause.endedAt, locale)}{pause.durationMs !== null ? ` · ${formatDuration(pause.durationMs)}` : ''}</p>{pause.notes ? <p className="mt-1 text-sm">{pause.notes}</p> : null}</div>; }
+function Pause({ pause, locale, messages }: { pause: { reason: string; notes: string | null; startedAt: string; endedAt: string | null; durationMs: number | null }; locale: AdminLocale; messages: AdminMessages }) { return <div><p className="font-medium">{adminPauseReasonLabel(pause.reason, messages)}</p><p className="text-sm text-muted-foreground">{formatAdminDate(pause.startedAt, locale)} → {formatAdminDate(pause.endedAt, locale)}{pause.durationMs !== null ? ` · ${formatDuration(pause.durationMs)}` : ''}</p>{pause.notes ? <p className="mt-1 text-sm">{pause.notes}</p> : null}</div>; }
 function NotFound({ messages }: { messages: AdminMessages }) { return <EmptyState><p>{messages.workOrderNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/work-orders">{messages.backToWorkOrders}</Link></Button></EmptyState>; }

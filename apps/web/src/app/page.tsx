@@ -242,7 +242,7 @@ function WorkOrderCard({
           <p className="text-sm text-shop-muted">
             #{wo.truckNumber} · {!isPm ? `${priorityLabel(wo.priority)} · ` : ''}
             {mode === 'paused'
-              ? pauseLabel(wo.currentPauseReason)
+              ? pauseLabel(wo.currentPauseReason, messages.pauseReason)
               : messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}
           </p>
         </div>
@@ -296,12 +296,12 @@ function WorkOrderCard({
             <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="View Details" wo={wo} className="btn-primary w-full" />
           )
         ) : mode === 'created' ? (
-          <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="Start Work" wo={wo} className="btn-primary flex-1" />
+          <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.startWork} wo={wo} className="btn-primary flex-1" />
         ) : (
           isPm && wo.jobs.some((job) => job.status === 'to_do') ? <>
               {/* Global pause stays a PM control only; standard mechanics report
                   blockers from the detail view instead of pausing the WO. */}
-              <WorkOrderActionLink href={`/work-orders/${wo.id}?action=pause`} action="Pause Work" wo={wo} className="btn-secondary flex-1" />
+              <WorkOrderActionLink href={`/work-orders/${wo.id}?action=pause`} action={messages.pauseWorkOrder} wo={wo} className="btn-secondary flex-1" />
               <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="View Work" wo={wo} className="btn-primary flex-1" />
             </> : !isPm && wo.jobs.some((job) => job.status === 'to_do') ? (
               <WorkOrderActionLink href={`/work-orders/${wo.id}`} action="View Work" wo={wo} className="btn-primary w-full" />
