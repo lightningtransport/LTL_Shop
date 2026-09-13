@@ -1,6 +1,34 @@
 import type { CatalogJobDto, JobAliasOptionDto } from '@ltl-shop/shared';
 import { apiFetch } from './api';
 
+export function catalogJobsPath(categoryId: string) {
+  const params = new URLSearchParams({ categoryId });
+  return `/api/catalog/jobs?${params}`;
+}
+
+export function matchesCatalogText(value: string, query: string) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  const needleNorm = needle.replace(/[^a-z0-9]/g, '');
+  const text = value.toLowerCase();
+  const textNorm = text.replace(/[^a-z0-9]/g, '');
+  return text.includes(needle) || (Boolean(needleNorm) && textNorm.includes(needleNorm));
+}
+
+/** Client-side filter of a category's already-loaded catalog jobs. Does not call the API. */
+export function filterCatalogJobs(jobs: CatalogJobDto[], q: string): CatalogJobDto[] {
+  const query = q.trim();
+  if (!query) return jobs;
+  return jobs.filter((job) =>
+    matchesCatalogText(job.displayName, query)
+    || (job.aliases ?? []).some((alias) => matchesCatalogText(alias, query)),
+  );
+}
+
+export async function fetchCatalogJobs(categoryId: string): Promise<CatalogJobDto[]> {
+  return apiFetch<CatalogJobDto[]>(catalogJobsPath(categoryId));
+}
+
 export function flattenJobAliases(jobs: CatalogJobDto[]): JobAliasOptionDto[] {
   const rows: JobAliasOptionDto[] = [];
   for (const job of jobs) {

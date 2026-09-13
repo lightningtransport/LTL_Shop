@@ -692,6 +692,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         existingCustomDisplayNames={data.jobs
           .filter((job) => job.status !== 'cancelled' && !job.catalogJobId)
           .map((job) => job.displayName)}
+        messages={messages}
         onClose={() => setAddJobOpen(false)}
         onAdd={async (body) => {
           await runMutation('add-job', messages.addJobSuccess, () => addAdminWorkOrderJob(data.id, {

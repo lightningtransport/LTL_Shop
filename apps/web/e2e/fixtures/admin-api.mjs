@@ -117,10 +117,49 @@ createServer(async (request, response) => {
       { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes', sortOrder: 1 },
       { id: '00000000-0000-4000-8000-000000000302', name: 'Suspension', sortOrder: 2 },
       { id: '00000000-0000-4000-8000-000000000303', name: 'PM', sortOrder: 3 },
+      { id: '00000000-0000-4000-8000-000000000304', name: 'Alignment', sortOrder: 4 },
     ]);
     return;
   }
-  if (request.url?.startsWith('/api/catalog/aliases') || request.url?.startsWith('/api/catalog/jobs')) {
+  if (request.url?.startsWith('/api/catalog/jobs')) {
+    const url = new URL(request.url, 'http://fixture.local');
+    const categoryId = url.searchParams.get('categoryId');
+    const jobs = [
+      {
+        id: '00000000-0000-4000-8000-000000000801',
+        categoryId: '00000000-0000-4000-8000-000000000301',
+        displayName: 'Inspect brake chamber',
+        aliases: ['inspect brake chamber', 'Brake chamber'],
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000803',
+        categoryId: '00000000-0000-4000-8000-000000000301',
+        displayName: 'Brake Inspection',
+        aliases: ['brake inspect'],
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000802',
+        categoryId: '00000000-0000-4000-8000-000000000302',
+        displayName: 'Inspect shocks',
+        aliases: ['inspect shocks'],
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000804',
+        categoryId: '00000000-0000-4000-8000-000000000302',
+        displayName: 'Suspension Inspection',
+        aliases: ['suspension inspect'],
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000805',
+        categoryId: '00000000-0000-4000-8000-000000000302',
+        displayName: '3 in 1',
+        aliases: ['3in1', '3-in-1'],
+      },
+    ].filter((job) => !categoryId || job.categoryId === categoryId);
+    json(response, 200, jobs);
+    return;
+  }
+  if (request.url?.startsWith('/api/catalog/aliases')) {
     json(response, 200, [
       {
         aliasText: 'inspect brake chamber',
@@ -135,6 +174,22 @@ createServer(async (request, response) => {
         displayName: 'Inspect shocks',
       },
     ]);
+    return;
+  }
+  if (request.url === '/api/trucks') {
+    const trucks = [...new Map(workOrders.map((item) => [item.truck.id, item.truck])).values()];
+    json(response, 200, trucks);
+    return;
+  }
+  const openWorkOrderMatch = request.url?.match(/^\/api\/trucks\/([0-9a-f-]+)\/open-work-order$/i);
+  if (openWorkOrderMatch) {
+    const open = workOrders.find((item) => (
+      item.truck.id === openWorkOrderMatch[1]
+      && ['created', 'in_progress', 'waiting_paused'].includes(item.status)
+    ));
+    json(response, 200, open
+      ? { exists: true, workOrder: toMechanicSummary(open) }
+      : { exists: false });
     return;
   }
   if (request.url?.startsWith('/api/admin/') && !user.capabilities.includes('admin.access')) {

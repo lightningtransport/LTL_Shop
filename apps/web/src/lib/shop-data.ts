@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import useSWR from 'swr';
 import type {
   AppCapability,
+  CatalogJobDto,
   JobAliasOptionDto,
   JobCategoryDto,
   PmServiceDto,
@@ -12,7 +13,7 @@ import type {
   WorkOrderDetailDto,
   WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
-import { fetchAliasOptions } from './job-catalog';
+import { catalogJobsPath, fetchAliasOptions } from './job-catalog';
 
 export type HomeLists = {
   created: WorkOrderSummaryDto[];
@@ -52,6 +53,7 @@ export const shopKeys = {
   pmService: (workOrderId: string) => `/api/work-orders/${workOrderId}/pm`,
   aliases: (categoryId?: string) =>
     `shop:aliases:${categoryId || 'all'}`,
+  catalogJobs: (categoryId: string) => catalogJobsPath(categoryId),
 };
 
 export function useWorkOrders(enabled: boolean, mode?: 'standard' | 'pm') {
@@ -121,4 +123,12 @@ export function useAliasOptions(categoryId: string, enabled: boolean) {
   );
 
   return { ...response, data };
+}
+
+/** Full in-category catalog list. Omits `q` so Search can filter locally. */
+export function useCatalogJobs(categoryId: string, enabled: boolean) {
+  return useSWR<CatalogJobDto[]>(
+    enabled && categoryId ? shopKeys.catalogJobs(categoryId) : null,
+    { dedupingInterval: 5 * 60_000, revalidateOnFocus: false },
+  );
 }

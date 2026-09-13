@@ -9,6 +9,7 @@ import {
   AppCapability,
   MechanicMode,
   Priority,
+  type CatalogJobDto,
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
@@ -19,13 +20,13 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { formatIsoDate, formatMileage } from '@/lib/format';
 import {
   shopKeys,
-  useAliasOptions,
+  useCatalogJobs,
   useCategories,
   useMechanics,
   useTrucks,
   type Mechanic,
 } from '@/lib/shop-data';
-import { canonicalAliasOptions } from '@/lib/job-catalog';
+import { CategoryJobList } from '@/components/category-job-list';
 import {
   Button,
   CardListSkeleton,
@@ -87,7 +88,6 @@ export default function NewWorkOrderPage() {
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [customJobOpen, setCustomJobOpen] = useState(false);
   const [customJobName, setCustomJobName] = useState('');
   const [jobQuery, setJobQuery] = useState('');
   const [workingWithOpen, setWorkingWithOpen] = useState(false);
@@ -98,7 +98,10 @@ export default function NewWorkOrderPage() {
   >('idle');
   const openWoRequest = useRef(0);
   const workingWithTriggerRef = useRef<HTMLButtonElement>(null);
-  const { data: aliasData } = useAliasOptions(categoryId, !!token && !!categoryId && !isPmMechanic);
+  const { data: catalogJobData, error: catalogJobsError, isLoading: catalogJobsLoading } = useCatalogJobs(
+    categoryId,
+    !!token && !!categoryId && !isPmMechanic,
+  );
 
   useEffect(() => {
     if (!sessionLoading && !token && !sessionError) router.replace('/login');
@@ -135,11 +138,9 @@ export default function NewWorkOrderPage() {
         ? 'Add a job to continue'
         : messages.createWorkOrder;
   const selectedCategory = standardCategories.find((category) => category.id === categoryId);
-  const catalogJobs = useMemo(
-    () => canonicalAliasOptions(aliasData ?? [], jobQuery).filter(
-      (option) => !jobs.some((job) => job.catalogJobId === option.catalogJobId),
-    ),
-    [aliasData, jobQuery, jobs],
+  const selectedCatalogJobIds = useMemo(
+    () => jobs.flatMap((job) => (job.catalogJobId ? [job.catalogJobId] : [])),
+    [jobs],
   );
 
   useEffect(() => {
@@ -148,7 +149,6 @@ export default function NewWorkOrderPage() {
 
   useEffect(() => {
     setJobQuery('');
-    setCustomJobOpen(false);
     setCustomJobName('');
   }, [categoryId]);
 
@@ -158,6 +158,20 @@ export default function NewWorkOrderPage() {
         ? current.some((existing) => existing.catalogJobId === job.catalogJobId)
         : current.some((existing) => !existing.catalogJobId && normalizeJobName(existing.displayName) === normalizeJobName(job.displayName));
       return duplicate ? current : [...current, { ...job, key: crypto.randomUUID() }];
+    });
+  }
+
+  function toggleCatalogJob(job: CatalogJobDto) {
+    setJobs((current) => {
+      if (current.some((existing) => existing.catalogJobId === job.id)) {
+        return current.filter((existing) => existing.catalogJobId !== job.id);
+      }
+      return [...current, {
+        key: crypto.randomUUID(),
+        catalogJobId: job.id,
+        categoryId: job.categoryId,
+        displayName: job.displayName,
+      }];
     });
   }
 
@@ -539,70 +553,44 @@ export default function NewWorkOrderPage() {
               ) : null}
               {categoryId ? (
                 <div className="space-y-2">
-                  {!customJobOpen && catalogJobs.length > 6 ? (
-                    <div>
-                      <Label className="section-label block" htmlFor="new-work-order-job-search">Search job or alias</Label>
-                      <Input
-                        id="new-work-order-job-search"
-                        className="mt-2"
-                        placeholder="Search job / alias"
-                        value={jobQuery}
-                        onChange={(event) => setJobQuery(event.target.value)}
-                      />
-                    </div>
-                  ) : null}
-                  {!customJobOpen ? (
-                    <ul className="max-h-64 space-y-1 overflow-auto" aria-label={`Listed jobs for ${selectedCategory?.name ?? 'selected category'}`}>
-                      {catalogJobs.length ? catalogJobs.map((option) => (
-                        <li key={option.catalogJobId}>
-                          <Button
-                            variant="secondary"
-                            className="w-full justify-between px-3 text-left font-normal"
-                            onClick={() => addJob({
-                              catalogJobId: option.catalogJobId,
-                              categoryId: option.categoryId,
-                              displayName: option.displayName,
-                            })}
-                          >
-                            <span>{option.displayName}</span>
-                            <Check aria-hidden="true" className="size-4 shrink-0" />
-                          </Button>
-                        </li>
-                      )) : (
-                        <li className="rounded-xl border border-dashed border-shop-border px-3 py-3 text-sm text-muted-foreground">
-                          {jobQuery.trim() ? 'No matching listed jobs.' : `No listed jobs are available for ${selectedCategory?.name ?? 'this category'}.`}
-                        </li>
-                      )}
-                    </ul>
-                  ) : (
-                    <div className="space-y-2 rounded-xl border border-shop-border p-3">
-                      <p className="text-sm text-muted-foreground">Add a custom job to {selectedCategory?.name ?? 'this category'}.</p>
-                      <Label className="section-label block" htmlFor="new-work-order-custom-job">Custom job description</Label>
-                      <Input
-                        id="new-work-order-custom-job"
-                        placeholder="Describe the job"
-                        value={customJobName}
-                        onChange={(event) => setCustomJobName(event.target.value)}
-                      />
-                      <Button
-                        className="w-full"
-                        disabled={!customJobName.trim() || jobs.some((job) => !job.catalogJobId && normalizeJobName(job.displayName) === normalizeJobName(customJobName))}
-                        onClick={() => {
-                          addJob({ categoryId, displayName: customJobName.trim(), customDescription: customJobName.trim() });
-                          setCustomJobName('');
-                        }}
-                      >
-                        Add custom job
-                      </Button>
-                    </div>
-                  )}
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    onClick={() => setCustomJobOpen((current) => !current)}
-                  >
-                    {customJobOpen ? 'Back to listed jobs' : 'Job not listed'}
-                  </Button>
+                  <CategoryJobList
+                    categoryName={selectedCategory?.name ?? ''}
+                    jobs={catalogJobData ?? []}
+                    isLoading={catalogJobsLoading}
+                    error={Boolean(catalogJobsError)}
+                    query={jobQuery}
+                    onQueryChange={setJobQuery}
+                    selectedIds={selectedCatalogJobIds}
+                    onSelect={toggleCatalogJob}
+                    copy={{
+                      searchLabel: messages.searchJobsLabel,
+                      loading: messages.loadingJobs,
+                      loadError: messages.loadError,
+                      emptyCategory: messages.noJobsInCategory,
+                      noMatches: messages.noMatchingCategoryJobs,
+                      listLabel: messages.categoryJobsLabel,
+                      addJob: messages.addCatalogJob,
+                    }}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      id="new-work-order-custom-job"
+                      aria-label={messages.customJobPlaceholder}
+                      className="flex-1"
+                      placeholder={messages.customJobPlaceholder}
+                      value={customJobName}
+                      onChange={(event) => setCustomJobName(event.target.value)}
+                    />
+                    <Button
+                      disabled={!customJobName.trim() || jobs.some((job) => !job.catalogJobId && normalizeJobName(job.displayName) === normalizeJobName(customJobName))}
+                      onClick={() => {
+                        addJob({ categoryId, displayName: customJobName.trim(), customDescription: customJobName.trim() });
+                        setCustomJobName('');
+                      }}
+                    >
+                      {messages.addCustomJob}
+                    </Button>
+                  </div>
                 </div>
               ) : null}
             </div> : null}

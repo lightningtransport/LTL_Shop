@@ -54,6 +54,15 @@ type Copy = {
   noWorkOrderTeam: string;
   noMyJobs: string;
   createWorkOrder: string;
+  searchJobsLabel: string;
+  categoryJobsLabel: string;
+  noJobsInCategory: string;
+  noMatchingCategoryJobs: string;
+  loadingJobs: string;
+  loadError: string;
+  customJobPlaceholder: string;
+  addCustomJob: string;
+  addCatalogJob: string;
   askManagerToCreate: string;
   askManagerToCreateHint: string;
   additionalWorkHint: string;
@@ -102,6 +111,15 @@ const copy: Record<ShopLocale, Copy> = {
     noWorkOrderTeam: 'No Work Order team assigned',
     noMyJobs: 'No jobs assigned to you. Unassigned jobs inherit the Work Order team.',
     createWorkOrder: 'Create new Work Order',
+    searchJobsLabel: 'Search jobs in this category',
+    categoryJobsLabel: 'Jobs in this Category',
+    noJobsInCategory: 'No Jobs are listed for this Category.',
+    noMatchingCategoryJobs: 'No Jobs match this search.',
+    loadingJobs: 'Loading jobs…',
+    loadError: 'Unable to load this screen.',
+    customJobPlaceholder: 'Custom job name',
+    addCustomJob: 'Add custom job',
+    addCatalogJob: 'Add',
     askManagerToCreate: 'Ask your Shop Manager to create a Work Order.',
     askManagerToCreateHint: 'Managers plan Standard work. Your Home lists Work Orders assigned to you.',
     additionalWorkHint: 'Need additional work on this Truck? Write it here so your Manager can add the Job.',
@@ -160,6 +178,15 @@ const copy: Record<ShopLocale, Copy> = {
     noWorkOrderTeam: 'No hay equipo asignado a la Work Order',
     noMyJobs: 'No tienes Jobs asignados. Los Jobs sin asignar heredan el equipo de la Work Order.',
     createWorkOrder: 'Crear nuevo Work Order',
+    searchJobsLabel: 'Buscar jobs en esta categoría',
+    categoryJobsLabel: 'Jobs en esta Category',
+    noJobsInCategory: 'No hay Jobs listados en esta Category.',
+    noMatchingCategoryJobs: 'Ningún Job coincide con esta búsqueda.',
+    loadingJobs: 'Cargando jobs…',
+    loadError: 'No se pudo cargar esta pantalla.',
+    customJobPlaceholder: 'Nombre de job personalizado',
+    addCustomJob: 'Agregar job personalizado',
+    addCatalogJob: 'Agregar',
     askManagerToCreate: 'Pide a tu Shop Manager que cree el Work Order.',
     askManagerToCreateHint: 'El Manager planifica el trabajo Standard. En Inicio ves los Work Orders asignados a ti.',
     additionalWorkHint: '¿Hace falta trabajo adicional en esta unidad? Anótalo aquí para que el Manager agregue el Job.',
