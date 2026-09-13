@@ -94,7 +94,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/login');
     await page.getByLabel('Email').fill('manager@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await page.getByRole('link', { name: 'Work Orders' }).first().click();
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.goto('/admin/work-orders');
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await expect(page.getByRole('heading', { name: 'Work Orders' })).toBeVisible();
     const filters = await workOrderFilterPanel(page);
