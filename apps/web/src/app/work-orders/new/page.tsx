@@ -12,6 +12,7 @@ import {
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
+import { normalizeTruckSearch, rankTruckResults } from '@/lib/truck-search';
 import { useAuth } from '@/lib/auth-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import { ApiError, apiFetch } from '@/lib/api';
@@ -117,9 +118,8 @@ export default function NewWorkOrderPage() {
   );
 
   const { results, isFallback } = useMemo(() => {
-    const term = normalizeTruckSearch(query);
-    if (!term || truck) return { results: [], isFallback: false };
-    return rankTruckResults(truckData ?? [], term);
+    if (!query.trim() || truck) return { results: [], isFallback: false };
+    return rankTruckResults(truckData ?? [], query);
   }, [query, truck, truckData]);
 
   const hasSearchTerm = query.trim().replace(/^#/, '').length > 0;
@@ -787,26 +787,4 @@ function Info({ label, value }: { label: string; value?: string | null }) {
 
 function normalizeJobName(name: string) {
   return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
-}
-
-function normalizeTruckSearch(query: string) {
-  return query.trim().replace(/^#\s*/, '').replace(/\s+/g, '').toLocaleLowerCase('en-US');
-}
-
-function rankTruckResults(trucks: TruckDto[], term: string) {
-  const naturalCompare = (left: TruckDto, right: TruckDto) =>
-    left.truckNumber.localeCompare(right.truckNumber, undefined, { numeric: true, sensitivity: 'base' });
-  const exact = trucks.filter((truck) => truck.truckNumber.toLocaleLowerCase('en-US') === term).sort(naturalCompare);
-  const prefix = trucks
-    .filter((truck) => truck.truckNumber.toLocaleLowerCase('en-US').startsWith(term) && !exact.some((match) => match.id === truck.id))
-    .sort(naturalCompare);
-  const primary = [...exact, ...prefix];
-  if (primary.length) return { results: primary.slice(0, 20), isFallback: false };
-  return {
-    results: trucks
-      .filter((truck) => truck.truckNumber.toLocaleLowerCase('en-US').includes(term))
-      .sort(naturalCompare)
-      .slice(0, 20),
-    isFallback: true,
-  };
 }

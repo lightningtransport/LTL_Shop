@@ -33,11 +33,47 @@ test.describe('Shop Admin Phase 2A', () => {
       await page.setViewportSize(viewport);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(overflow).toBe(false);
+      await expect(page.locator('nav.grid.grid-cols-2')).toHaveCount(0);
+      if (viewport.width < 768) {
+        await expect(page.getByRole('button', { name: 'Open Shop Admin navigation' })).toBeVisible();
+        await expect(page.getByRole('complementary', { name: 'Shop Admin navigation' })).toHaveCount(0);
+      } else {
+        await expect(page.getByRole('complementary', { name: 'Shop Admin navigation' })).toBeVisible();
+      }
     }
 
     await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
     await expect(page.getByText('Operación actual desde Supabase PostgreSQL')).toBeVisible();
+  });
+
+  test('mobile Admin navigation is a one-column sheet with every Admin link', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Current operations' })).toBeVisible();
+
+    const openNav = page.getByRole('button', { name: 'Open Shop Admin navigation' });
+    await expect(openNav).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await openNav.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    const mobileNav = dialog.getByRole('navigation', { name: 'Shop Admin mobile navigation' });
+    await expect(mobileNav).toBeVisible();
+    await expect(mobileNav).not.toHaveClass(/grid-cols-2/);
+    for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'Mechanics', 'Job Catalog', 'History']) {
+      await expect(mobileNav.getByRole('link', { name })).toBeVisible();
+    }
+
+    await mobileNav.getByRole('link', { name: 'Trucks' }).click();
+    await expect(page).toHaveURL(/\/admin\/trucks$/);
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Trucks' })).toBeVisible();
   });
 
   test('manager navigates Dashboard to filtered list, pagination, and read-only detail', async ({ page }) => {
