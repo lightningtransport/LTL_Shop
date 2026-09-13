@@ -64,6 +64,10 @@ const workOrders = [
   makeWorkOrder('00000000-0000-4000-8000-000000000104', 'WO-0104', 'T-104', 'normal', 'completed'),
   makeWorkOrder('00000000-0000-4000-8000-000000000105', 'WO-0105', 'T-105', 'normal', 'cancelled'),
   makeWorkOrder('00000000-0000-4000-8000-000000000106', 'WO-0106', 'T-106', 'high', 'in_progress', { pendingJob: true }),
+  makeWorkOrder('00000000-0000-4000-8000-000000000191', 'WO-0009', '9', 'normal', 'in_progress'),
+  makeWorkOrder('00000000-0000-4000-8000-000000000192', 'WO-0422', '9644', 'normal', 'in_progress'),
+  makeWorkOrder('00000000-0000-4000-8000-000000000193', 'WO-0905', '905', 'normal', 'created'),
+  makeWorkOrder('00000000-0000-4000-8000-000000000194', 'WO-0609', '609', 'normal', 'created'),
 ];
 
 const yardOperations = [
