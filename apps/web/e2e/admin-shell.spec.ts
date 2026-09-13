@@ -35,7 +35,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
-    await expect(page.getByText('Current operations from Supabase PostgreSQL')).toBeVisible();
+    await expect(page.getByText('Current shop operations')).toBeVisible();
+    await expect(page.getByText('Updated Sep 6, 2026, 2:30 PM')).toHaveCount(1);
+    await expect(page.getByText('Created, in progress, or waiting / paused')).toBeVisible();
+    await expect(page.getByText(/supabase|postgres|Source:|Generated/i)).toHaveCount(0);
     await expect(page.getByText('Open Work Orders').first()).toBeVisible();
 
     for (const viewport of [
@@ -58,7 +61,9 @@ test.describe('Shop Admin Phase 2A', () => {
 
     await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
-    await expect(page.getByText('Operación actual desde Supabase PostgreSQL')).toBeVisible();
+    await expect(page.getByText('Operaciones actuales del Shop')).toBeVisible();
+    await expect(page.getByText(/^Actualizado /)).toHaveCount(1);
+    await expect(page.getByText(/supabase|postgres|Fuente:|Generado/i)).toHaveCount(0);
   });
 
   test('mobile Admin navigation is a one-column sheet with every Admin link', async ({ page }) => {
@@ -68,7 +73,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Current operations' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Current shop operations' })).toBeVisible();
 
     const openNav = page.getByRole('button', { name: 'Open Shop Admin navigation' });
     await expect(openNav).toBeVisible();
@@ -171,7 +176,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goBack();
 
     const verifyMetric = async (name: RegExp, expected: Record<string, string>) => {
-      await page.getByRole('region', { name: 'Current operations' }).getByRole('link', { name }).click();
+      await page.getByRole('region', { name: 'Current shop operations' }).getByRole('link', { name }).click();
       await page.waitForURL((url) => Object.entries(expected).every(([key, value]) => url.searchParams.get(key) === value));
       const url = new URL(page.url());
       for (const [key, value] of Object.entries(expected)) expect(url.searchParams.get(key)).toBe(value);

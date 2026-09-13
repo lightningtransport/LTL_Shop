@@ -38,7 +38,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
       <p className="section-label">{messages.eyebrow}</p>
       <h1 className="mt-2 font-display text-3xl font-bold tracking-wide sm:text-4xl">{messages.title}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{messages.currentOperations}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{messages.generatedAt}: {formatAdminDate(data.generatedAt, locale)} · {messages.sourceLabel}: {data.source}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{messages.generatedAtLabel} {formatAdminDate(data.generatedAt, locale)}</p>
     </header>
     {canStandard || canPm ? (
       <section aria-labelledby="admin-workspaces-title">
@@ -64,9 +64,9 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
     ) : null}
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-6" aria-label={messages.currentOperations}>
       {metrics.map(({ label, description, value, Icon, href }) => <Link key={label} href={href} className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-        <Card className="flex h-full min-h-36 flex-col justify-between p-3 transition group-hover:border-primary/50 group-hover:shadow-md sm:p-4">
+        <Card className="flex h-full min-h-28 flex-col justify-between p-3 transition group-hover:border-primary/50 group-hover:shadow-md sm:p-4">
           <CardContent className="flex items-start justify-between gap-2 p-0"><div className="min-w-0"><p className="text-xs leading-5 text-muted-foreground sm:text-sm">{label}</p><p className="mt-2 font-display text-2xl font-bold sm:text-3xl">{value}</p></div><Icon aria-hidden="true" className="size-4 shrink-0 text-primary sm:size-5" /></CardContent>
-          <div className="mt-3 space-y-1"><p className="text-[11px] leading-4 text-muted-foreground">{description}</p><p className="text-[10px] leading-4 text-muted-foreground">{messages.metricUpdated}: {formatAdminDate(data.generatedAt, locale)}</p><p className="text-[10px] leading-4 text-muted-foreground">{messages.sourceLabel}: {data.source}</p></div>
+          <p className="mt-3 text-[11px] leading-4 text-muted-foreground">{description}</p>
         </Card>
       </Link>)}
     </section>
