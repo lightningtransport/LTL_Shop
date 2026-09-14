@@ -3,21 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "nest start --watch",
-    "build": "node ../../node_modules/typescript/lib/tsc.js -p ../../packages/shared/tsconfig.json && prisma generate && nest build",
+    "dev": "../../node_modules/.bin/nest start --watch",
+    "build": "node ../../node_modules/typescript/lib/tsc.js -p ../../packages/shared/tsconfig.json && ../../node_modules/.bin/prisma generate && ../../node_modules/.bin/nest build",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
-    "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts",
-    "prisma:apply-catalog": "tsx prisma/apply-job-catalog.ts",
-    "prisma:release-status": "tsx src/release/run-prisma-release-gate.ts --status --require-up-to-date",
-    "prisma:release-deploy": "tsx src/release/run-prisma-release-gate.ts --deploy --verify-api",
-    "prisma:release-gate": "tsx src/release/run-prisma-release-gate.ts --vercel-build",
-    "prisma:release-verify": "tsx src/release/run-prisma-release-gate.ts --verify-api"
+    "lint": "../../node_modules/.bin/tsc -p tsconfig.json --noEmit",
+    "test": "../../node_modules/.bin/vitest run",
+    "test:watch": "../../node_modules/.bin/vitest",
+    "prisma:generate": "../../node_modules/.bin/prisma generate",
+    "prisma:migrate": "../../node_modules/.bin/prisma migrate dev",
+    "prisma:seed": "../../node_modules/.bin/tsx prisma/seed.ts",
+    "prisma:apply-catalog": "../../node_modules/.bin/tsx prisma/apply-job-catalog.ts",
+    "prisma:release-status": "../../node_modules/.bin/tsx src/release/run-prisma-release-gate.ts --status --require-up-to-date",
+    "prisma:release-deploy": "../../node_modules/.bin/tsx src/release/run-prisma-release-gate.ts --deploy --verify-api",
+    "prisma:release-gate": "../../node_modules/.bin/tsx src/release/run-prisma-release-gate.ts --vercel-build",
+    "prisma:release-verify": "../../node_modules/.bin/tsx src/release/run-prisma-release-gate.ts --verify-api"
   },
   "dependencies": {
     "@ltl-shop/shared": "*",
@@ -46,6 +46,6 @@
     "vitest": "^2.1.8"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "../../node_modules/.bin/tsx prisma/seed.ts"
   }
 }

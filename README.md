@@ -102,6 +102,8 @@ npm run dev:web
 - Web: http://localhost:3000
 - API: http://localhost:3001/api/health
 
+On this Mac, the repo folder name contains `:` (`LTL SHOP : ADMIN : MECHANICS`), which breaks `PATH` lookups for `nest` / `next` / `prisma`. Prefer `./start-local.sh` (or `npm run start:local`). Scripts in `package.json` call those binaries by relative path so `npm run db:generate`, `db:seed`, and `dev` still work from this folder.
+
 ### Cursor Cloud Agents (Docker-less setup)
 
 The repo ships a versioned Cursor environment in `.cursor/` so Cloud Agents boot
