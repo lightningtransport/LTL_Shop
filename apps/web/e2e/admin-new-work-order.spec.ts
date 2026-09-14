@@ -14,11 +14,11 @@ test.describe('LTR-21 New WO category jobs', () => {
     await openNewWorkOrder(page);
 
     const category = page.getByLabel('Category').first();
-    await category.selectOption({ label: 'Brakes' });
+    await category.selectOption({ label: 'Air & Brake System' });
     await expect(page.getByRole('button', { name: /Add (Brake Inspection|Inspect brake chamber)/i })).toBeVisible();
 
-    await category.selectOption({ label: 'Suspension' });
-    const suspensionJobs = page.getByRole('list', { name: /Jobs in this Category: Suspension/i });
+    await category.selectOption({ label: 'Suspension & Steering' });
+    const suspensionJobs = page.getByRole('list', { name: /Jobs in this Category: Suspension & Steering/i });
     await expect(suspensionJobs.getByRole('button').first()).toBeVisible();
     const listedCount = await suspensionJobs.getByRole('button').count();
     expect(listedCount).toBeGreaterThan(1);
@@ -34,15 +34,17 @@ test.describe('LTR-21 New WO category jobs', () => {
     await expect(page.getByRole('heading', { name: 'Work Plan' }).or(page.getByText('Work Plan'))).toBeVisible();
   });
 
-  test('empty Category shows EmptyState and custom job still adds', async ({ page }) => {
+  test('search with no matches still allows a custom job', async ({ page }) => {
     await openNewWorkOrder(page);
 
-    await page.getByLabel('Category').first().selectOption({ label: 'Alignment' });
-    await expect(page.getByText('No Jobs are listed for this Category.')).toBeVisible();
+    await page.getByLabel('Category').first().selectOption({ label: 'Trailer' });
+    await expect(page.getByRole('button', { name: /Add Trailer Repair/i })).toBeVisible();
+
+    await page.getByLabel('Search jobs in this category').fill('zzzz-no-such-job');
+    await expect(page.getByText('No Jobs match this search.')).toBeVisible();
 
     await page.getByLabel('Custom job name').fill('Road test after alignment');
     await page.getByRole('button', { name: 'Add custom job' }).click();
     await expect(page.getByText('Road test after alignment')).toBeVisible();
-    await expect(page.getByText('No Jobs are listed for this Category.')).toBeVisible();
   });
 });
