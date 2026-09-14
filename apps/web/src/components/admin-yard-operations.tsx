@@ -13,6 +13,7 @@ import {
   countOverflowYardOperationsFilters,
   DEFAULT_YARD_OPERATIONS_FILTERS,
   readYardOperationsFilters,
+  YARD_FILTER_KEYS,
   YARD_OVERFLOW_FILTER_KEYS,
   YARD_PHASES,
   YARD_PRIORITIES,
@@ -98,7 +99,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 
-  return <div className="space-y-3">
+  return <div className="min-w-0 space-y-3">
     <header>
       <p className="section-label">{messages.eyebrow}</p>
       <h1 className="mt-1 font-display text-2xl font-bold tracking-wide sm:text-3xl">{messages.yardOperationsTitle}</h1>
@@ -138,7 +139,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
         </div>
       </section>
 
-      <Card className="min-w-0 p-3">
+      <Card className="min-w-0 overflow-hidden p-3">
         <form role="search" className="min-w-0" onSubmit={applyFilters}>
           <div className="flex min-w-0 items-end gap-2 md:flex-nowrap md:gap-1.5">
             <label className="min-w-0 flex-1 space-y-1 md:flex-[1.35]">
@@ -285,8 +286,10 @@ function YardFilterFields({
   }
 
   return <>
-    <div className="space-y-3 md:hidden">{YARD_TOOLBAR_FILTER_KEYS.map(render)}</div>
-    {YARD_OVERFLOW_FILTER_KEYS.map(render)}
+    {YARD_FILTER_KEYS.map((key) => {
+      const overflow = (YARD_OVERFLOW_FILTER_KEYS as readonly string[]).includes(key);
+      return <div key={key} className={overflow ? undefined : 'md:hidden'}>{render(key)}</div>;
+    })}
   </>;
 }
 

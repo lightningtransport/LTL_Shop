@@ -37,7 +37,7 @@ export function buildYardOperationsQuery(filters: YardOperationsFilters) {
   return params;
 }
 
-const YARD_FILTER_KEYS = ['readiness', 'phase', 'workOrderStatus', 'priority', 'blocked'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
+export const YARD_FILTER_KEYS = ['readiness', 'phase', 'workOrderStatus', 'priority', 'blocked'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
 export const YARD_TOOLBAR_FILTER_KEYS = ['readiness', 'phase', 'blocked'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
 export const YARD_OVERFLOW_FILTER_KEYS = ['workOrderStatus', 'priority'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
 
