@@ -96,7 +96,8 @@ test.describe('Yard Operations Phase 1', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Clear' }).click();
     await expect(page).not.toHaveURL(/phase=/);
 
-    const y101 = page.getByTestId('yard-truck-card').filter({ hasText: 'Y-101' });
+    const list = page.getByLabel('Readiness list');
+    const y101 = list.getByTestId('yard-truck-card').filter({ hasText: 'Y-101' });
     await expect(y101).toBeVisible();
     await expect(y101.getByText('No open Work Order')).toBeVisible();
     await expect(y101.getByText('Needs evaluation')).toBeVisible();
@@ -109,7 +110,7 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(y101.getByText('Last reported location')).toHaveCount(0);
     await expect(y101.getByText('—')).toHaveCount(0);
 
-    const y102 = page.getByTestId('yard-truck-card').filter({ hasText: 'Y-102' });
+    const y102 = list.getByTestId('yard-truck-card').filter({ hasText: 'Y-102' });
     await expect(y102.getByText('WO-102')).toBeVisible();
     await expect(y102.getByText('High')).toBeVisible();
     await expect(y102.getByText('Blocked')).toBeVisible();
