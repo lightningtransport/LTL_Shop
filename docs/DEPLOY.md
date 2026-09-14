@@ -19,8 +19,8 @@ applied. Use this path before application traffic depends on a new schema.
    - Enable **Run prisma migrate deploy** only after review. That is the only
      approved production `migrate deploy` path (`PRISMA_APPROVED_RELEASE_PATH=1`).
    - The same job then runs `prisma:apply-catalog` (idempotent LTR-24 categories
-     + discrete jobs). Merging the seed PR does not update the live shop until
-     this path runs.
+     + discrete jobs, including LTR-35 Detailing). Merging the seed PR does not
+     update the live shop until this path runs.
    - The gate fails the job on pending, failed, or drifted migrations.
 3. Optional production build enforcement: set Vercel env `PRISMA_RELEASE_GATE=1`
    on `ltl-shop-api`. The API build then runs the same status check and refuses

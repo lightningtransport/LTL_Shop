@@ -51,7 +51,7 @@ jobs:
         env:
           PRISMA_APPROVED_RELEASE_PATH: '1'
         run: npm exec --workspace=@ltl-shop/api -- tsx src/release/run-prisma-release-gate.ts --deploy
-      - name: Apply signed job catalog (LTR-24)
+      - name: Apply signed job catalog (LTR-24 / LTR-35)
         if: ${{ inputs.apply_migrations }}
         run: npm run prisma:apply-catalog --workspace=@ltl-shop/api
       - name: Verify API health and root reads
