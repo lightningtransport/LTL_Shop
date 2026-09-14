@@ -110,3 +110,45 @@ production promotion.
   `apps/api` as its root and `main` as its production branch.
 
 No environment variables were changed during promotion or verification.
+
+## LTR-19 — PWA iOS home-screen hang (2026-09-14)
+
+Cristian (iPhone): Add to Home Screen left the app on loading. Chrome web was
+sometimes slow. Warm API `/api/health` is 170–180 ms TTFB and does not explain
+an indefinite hang.
+
+### Repro
+
+1. iOS Safari → Share → Add to Home Screen (manifest `start_url` is `/`).
+2. Open the home-screen icon (standalone). Unauthenticated or with a saved
+   `ltl_shop_token` whose profile request never completes.
+3. Desktop Chrome: open `/` or `/login` with a cold JS bundle and no token.
+
+There is **no service worker** in `apps/web`. Stale SW cache was ruled out.
+
+### What actually blocked the shell
+
+- `/` rendered an indefinite “Restoring session” skeleton while
+  `router.replace('/login')` ran. iOS standalone often never finishes that
+  client redirect, so the splash/skeleton never cleared.
+- Login hid the form for `sessionLoading || (token && !sessionError)`, so a
+  hung `/api/auth/me` or `/api/admin/session` (no timeout on the session POST)
+  looked like a permanent hang.
+- Session init awaited Supabase before painting login when no local token
+  existed (up to two 5 s deadlines).
+- Home treated `token && !user` as a profile failure while `/api/auth/me` was
+  still in flight.
+
+Cold-start API 2–5 s after idle can still delay *data*, but the shell must not
+wait on it. This change stays in `apps/web`.
+
+### What changed
+
+- Login paints immediately when there is no token.
+- `/` shows a Sign in control (full `<a href="/login">`) if the session is
+  empty, instead of only a client redirect.
+- Standalone/home-screen uses `location.replace` for auth redirects.
+- Profile restore and `/api/admin/session` have an 8 s deadline; retry
+  replaces an indefinite skeleton.
+- Manifest/icons/`viewport-fit=cover` so iOS splash matches the navy shell.
+  No service worker was added.

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
+import { replaceAppLocation } from '@/lib/session-restore';
 import { formatIsoDate, formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
 import { Button, Card, EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui';
@@ -33,8 +35,12 @@ export default function RepairHistoryPage() {
       : messages.backToHome;
 
   useEffect(() => {
-    if (!sessionLoading && !token) router.replace('/login');
+    if (!sessionLoading && !token) replaceAppLocation('/login', router);
   }, [sessionLoading, token, router]);
+
+  if (!sessionLoading && !token) {
+    return <SessionSignInFallback />;
+  }
 
   if (!truck) {
     if (error instanceof Error) {

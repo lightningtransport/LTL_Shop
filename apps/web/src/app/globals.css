@@ -104,6 +104,16 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* iOS home-screen webview: paint the splash color immediately so the shell is not a blank white hang. */
+html[data-display='standalone'] {
+  background-color: #0f1720;
+  min-height: 100%;
+}
+
+html[data-display='standalone'] body {
+  min-height: 100dvh;
+}
+
 body {
   @apply min-h-screen bg-background font-body text-foreground antialiased;
   letter-spacing: var(--tracking-normal);

@@ -27,6 +27,10 @@ export const metadata: Metadata = {
   title: 'Lightning Shop — Mechanic',
   description: 'Lightning Shop Mechanic Work Order app',
   manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -38,6 +42,7 @@ export const viewport: Viewport = {
   themeColor: '#0f1720',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -50,7 +55,9 @@ export default function RootLayout({
       <body>
         <script
           dangerouslySetInnerHTML={{
-            __html: "if ('scrollRestoration' in history) history.scrollRestoration = 'manual';",
+            __html:
+              "if ('scrollRestoration' in history) history.scrollRestoration = 'manual';" +
+              "try{var s=navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches||window.matchMedia('(display-mode: fullscreen)').matches;if(s)document.documentElement.dataset.display='standalone';}catch(e){}",
           }}
         />
         <ThemeProvider>

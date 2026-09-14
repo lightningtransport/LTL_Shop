@@ -13,6 +13,8 @@ import {
   type WorkOrderJobDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
+import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
+import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
@@ -70,7 +72,7 @@ export default function WorkOrderDetailPage() {
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!sessionLoading && !token) router.replace('/login');
+    if (!sessionLoading && !token) replaceAppLocation('/login', router);
   }, [sessionLoading, token, router]);
 
   useEffect(() => {
@@ -121,6 +123,10 @@ export default function WorkOrderDetailPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!sessionLoading && !token) {
+    return <SessionSignInFallback />;
   }
 
   if (sessionLoading || !token || !wo) {

@@ -16,6 +16,8 @@ import {
 import { normalizeTruckSearch, rankTruckResults } from '@/lib/truck-search';
 import { useAuth } from '@/lib/auth-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
+import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
+import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import {
@@ -104,9 +106,9 @@ export default function NewWorkOrderPage() {
   );
 
   useEffect(() => {
-    if (!sessionLoading && !token && !sessionError) router.replace('/login');
+    if (!sessionLoading && !token && !sessionError) replaceAppLocation('/login', router);
     if (!sessionLoading && token && user && !user.capabilities.includes(requiredCapability)) {
-      router.replace(defaultWorkspacePath(user));
+      replaceAppLocation(defaultWorkspacePath(user), router);
     }
   }, [sessionLoading, token, sessionError, user, requiredCapability, router]);
 
@@ -257,7 +259,7 @@ export default function NewWorkOrderPage() {
   }
 
   if (!token) {
-    return <PageSkeleton label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />;
+    return <SessionSignInFallback />;
   }
 
   if (profileLoading || !user) {
