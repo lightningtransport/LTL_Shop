@@ -17,7 +17,7 @@ import { normalizeTruckSearch, rankTruckResults } from '@/lib/truck-search';
 import { useAuth } from '@/lib/auth-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import { ApiError, apiFetch } from '@/lib/api';
-import { formatIsoDate, formatMileage } from '@/lib/format';
+import { TruckInformationFields } from '@/components/truck-information-fields';
 import {
   shopKeys,
   useCatalogJobs,
@@ -438,17 +438,7 @@ export default function NewWorkOrderPage() {
             <EmptyState>{messages.selectTruck}</EmptyState>
           ) : (
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <Info label="Make" value={truck.make} />
-                <Info label="Model" value={truck.model} />
-                <Info label="Year" value={truck.year?.toString()} />
-                <Info label="Mileage" value={formatMileage(truck.mileage)} />
-                <Info label="Company" value={truck.company} />
-                <Info label="Owner" value={truck.owner} />
-                <Info label={messages.vin} value={truck.vin} />
-                <Info label={messages.lastReportedLocation} value={truck.location} />
-                <Info label={messages.locationUpdatedOn} value={formatIsoDate(truck.locationUpdatedOn, messages.locale)} />
-              </div>
+              <TruckInformationFields truck={truck} locale={messages.locale} />
               <Button asChild variant="secondary" className="w-full">
                 <Link href={`/trucks/${truck.id}/history?from=${encodeURIComponent(pathname)}`}>
                   {messages.repairHistory}
@@ -759,17 +749,6 @@ function WorkingWithModal({
         Done
       </Button>
     </Modal>
-  );
-}
-
-function Info({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div>
-      <p className="text-[11px] uppercase tracking-wide text-shop-muted">
-        {label}
-      </p>
-      <p className="font-medium">{value || '—'}</p>
-    </div>
   );
 }
 
