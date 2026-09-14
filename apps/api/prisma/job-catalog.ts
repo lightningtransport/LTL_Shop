@@ -1,14 +1,21 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 
 /**
- * LTR-24 Cristian / PD job catalog (2026-09-14).
+ * LTR-24 Cristian / PD job catalog (2026-09-14) plus LTR-35 Detailing.
  *
  * CRITICAL: JobCategory.name for Preventive Maintenance MUST stay exactly `PM`.
  * API and Admin UI detect PM with `category.name === 'PM'`. The longer EN/ES
  * labels live on `displayNameEn` / `displayNameEs` for a future Frontend map.
  * Schema has a single `name` column — do not write the long string into it.
+ *
+ * LTR-35: category + job `Detailing` stay identical EN/ES (PO 2026-09-14).
+ * Catalog UUIDs are per-environment; Frontend should look up by these names:
+ *   GET /api/catalog/categories → name === Detailing
+ *   GET /api/catalog/jobs?categoryId= → displayName === Detailing
  */
 export const PM_CATEGORY_NAME = 'PM';
+export const DETAILING_CATEGORY_NAME = 'Detailing';
+export const DETAILING_JOB_DISPLAY_NAME = 'Detailing';
 
 export type CatalogJobDefinition = {
   displayName: string;
@@ -242,8 +249,18 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
     ],
   },
   {
-    name: 'Other',
+    name: DETAILING_CATEGORY_NAME,
     sortOrder: 14,
+    legacyNames: [],
+    displayNameEn: DETAILING_CATEGORY_NAME,
+    displayNameEs: DETAILING_CATEGORY_NAME,
+    jobs: [
+      { displayName: DETAILING_JOB_DISPLAY_NAME, aliases: [] },
+    ],
+  },
+  {
+    name: 'Other',
+    sortOrder: 15,
     legacyNames: [],
     displayNameEn: 'Other',
     displayNameEs: 'Otro',
@@ -255,6 +272,7 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
 
 const JOB_RELOCATIONS: Array<{ displayName: string; toCategory: string }> = [
   { displayName: 'Cooling System', toCategory: 'Cooling System' },
+  { displayName: DETAILING_JOB_DISPLAY_NAME, toCategory: DETAILING_CATEGORY_NAME },
 ];
 
 export function listCatalogJobAliasTexts(job: CatalogJobDefinition) {

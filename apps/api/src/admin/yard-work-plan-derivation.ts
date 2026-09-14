@@ -40,13 +40,31 @@ function normalize(value: string) {
   return value.trim().toLowerCase();
 }
 
+/** LTR-35 catalog keys. UUIDs are per-environment; match by these stable names. */
+export const DETAILING_CATALOG_CATEGORY_NAME = 'Detailing';
+export const DETAILING_CATALOG_JOB_NAME = 'Detailing';
+
+/**
+ * Match the seeded Detailing catalog category/job by name, plus LTR-34 custom jobs.
+ */
+export function isDetailingWorkPlanJob(categoryName: string, displayName: string) {
+  const category = normalize(categoryName);
+  const name = normalize(displayName);
+  return (
+    category === normalize(DETAILING_CATALOG_CATEGORY_NAME)
+    || name === normalize(DETAILING_CATALOG_JOB_NAME)
+    || category.includes('detailing')
+    || name.includes('detailing')
+  );
+}
+
 export function classifyWorkPlanLane(
   categoryName: string,
   displayName: string,
 ): WorkPlanJobLane {
   const category = normalize(categoryName);
   const name = normalize(displayName);
-  if (category.includes('detailing') || name === 'detailing' || name.includes('detailing')) {
+  if (isDetailingWorkPlanJob(categoryName, displayName)) {
     return WorkPlanJobLane.DETAILING;
   }
   if (category.includes('alignment') || name === 'alignment') {

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DETAILING_CATALOG_CATEGORY_NAME,
+  DETAILING_CATALOG_JOB_NAME,
+} from '../admin/yard-work-plan-derivation';
+import {
+  DETAILING_CATEGORY_NAME,
+  DETAILING_JOB_DISPLAY_NAME,
   flattenCatalogAliasNorms,
   JOB_CATALOG_CATEGORIES,
   listCatalogJobAliasTexts,
@@ -32,7 +38,7 @@ describe('LTR-24 job catalog target', () => {
     expect(JOB_CATALOG_CATEGORIES.some((category) => category.name === 'Preventive Maintenance (PM)')).toBe(false);
   });
 
-  it('defines the 15 signed categories in Cristian / PD order', () => {
+  it('defines the 15 signed categories in Cristian / PD order plus LTR-35 Detailing', () => {
     expect(JOB_CATALOG_CATEGORIES.map((category) => category.name)).toEqual([
       'PM',
       'Inspection',
@@ -48,11 +54,27 @@ describe('LTR-24 job catalog target', () => {
       'Cab, Body & Glass',
       'Trailer',
       'Road Service & Towing',
+      'Detailing',
       'Other',
     ]);
     expect(JOB_CATALOG_CATEGORIES.map((category) => category.sortOrder)).toEqual([
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
     ]);
+  });
+
+  it('keeps Detailing identical in EN and ES and does not rename PM', () => {
+    const detailing = JOB_CATALOG_CATEGORIES.find((category) => category.name === DETAILING_CATEGORY_NAME);
+    expect(detailing).toMatchObject({
+      name: 'Detailing',
+      displayNameEn: 'Detailing',
+      displayNameEs: 'Detailing',
+      sortOrder: 14,
+      jobs: [{ displayName: DETAILING_JOB_DISPLAY_NAME, aliases: [] }],
+    });
+    expect(PM_CATEGORY_NAME).toBe('PM');
+    expect(JOB_CATALOG_CATEGORIES[0].name).toBe('PM');
+    expect(DETAILING_CATEGORY_NAME).toBe(DETAILING_CATALOG_CATEGORY_NAME);
+    expect(DETAILING_JOB_DISPLAY_NAME).toBe(DETAILING_CATALOG_JOB_NAME);
   });
 
   it('remaps every CURRENT category name onto a target row', () => {
@@ -153,6 +175,7 @@ describe('LTR-24 job catalog target', () => {
       'Winch Out',
       'Lockout',
     ]);
+    expect(jobsByCategory.Detailing).toEqual(['Detailing']);
     expect(jobsByCategory.Other).toEqual(['Uncategorized']);
     expect(JOB_CATALOG_CATEGORIES.every((category) => category.jobs.length >= 1)).toBe(true);
   });

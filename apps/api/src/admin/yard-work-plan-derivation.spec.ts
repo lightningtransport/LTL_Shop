@@ -14,6 +14,7 @@ import {
 import {
   classifyWorkPlanLane,
   deriveWorkPlan,
+  isDetailingWorkPlanJob,
   toWorkPlanJobUiStatus,
 } from './yard-work-plan-derivation';
 
@@ -22,9 +23,10 @@ const job = (
   displayName: string,
   categoryName: string,
   status: JobStatus = JobStatus.TO_DO,
+  catalogJobId: string | null = null,
 ) => ({
   id,
-  catalogJobId: null,
+  catalogJobId,
   displayName,
   customDescription: null,
   category: { id: `cat-${categoryName}`, name: categoryName },
@@ -36,7 +38,12 @@ describe('work plan lane classification', () => {
     expect(classifyWorkPlanLane('Suspension & Steering', 'Alignment')).toBe(WorkPlanJobLane.ALIGNMENT);
   });
 
-  it('treats Detailing by category or display name because the catalog has no Detailing row yet', () => {
+  it('treats the LTR-35 Detailing catalog category and job as the Detailing lane', () => {
+    expect(classifyWorkPlanLane('Detailing', 'Detailing')).toBe(WorkPlanJobLane.DETAILING);
+    expect(isDetailingWorkPlanJob('Detailing', 'Detailing')).toBe(true);
+  });
+
+  it('still treats custom Detailing names as the Detailing lane', () => {
     expect(classifyWorkPlanLane('Other', 'Detailing')).toBe(WorkPlanJobLane.DETAILING);
     expect(classifyWorkPlanLane('Detailing', 'Wash')).toBe(WorkPlanJobLane.DETAILING);
   });
@@ -116,6 +123,28 @@ describe('work plan derivation', () => {
     expect(result.readyReason).toBe(WorkPlanNotReadyReason.PLAN_COMPLETE);
     expect(result.remainingJobCount).toBe(0);
     expect(result.mandatory.alignment.status).toBe(WorkPlanMandatoryStatus.COMPLETE);
+    expect(result.mandatory.detailing.status).toBe(WorkPlanMandatoryStatus.COMPLETE);
+  });
+
+  it('auto-marks Ready from the LTR-35 Detailing catalog job, not only a custom name', () => {
+    const result = deriveWorkPlan({
+      workOrder: {
+        id: 'wo-1',
+        displayId: 'WO-1',
+        status: WorkOrderStatus.IN_PROGRESS,
+        version: 4,
+        primaryCategoryName: 'Detailing',
+      },
+      jobs: [
+        job('j1', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED),
+        job('j2', 'Detailing', 'Detailing', JobStatus.COMPLETED, 'catalog-detailing'),
+      ],
+      inspectionRequirementOutcome: ReadinessRequirementOutcome.COMPLETED,
+    });
+    expect(result.jobs[1].catalogJobId).toBe('catalog-detailing');
+    expect(result.jobs[1].lane).toBe(WorkPlanJobLane.DETAILING);
+    expect(result.phase).toBe(WorkPlanPhase.READY_TO_GO);
+    expect(result.readiness).toBe(WorkPlanReadiness.READY);
     expect(result.mandatory.detailing.status).toBe(WorkPlanMandatoryStatus.COMPLETE);
   });
 
