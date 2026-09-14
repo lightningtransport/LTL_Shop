@@ -68,7 +68,7 @@ const activeWorkOrders = Array.from({ length: 5 }, (_, index) => ({
 
 let workOrdersMode: 'normal' | 'stall-once' = 'normal';
 let profileBarrier: Promise<void> | null = null;
-let profileMode: 'normal' | 'error' = 'normal';
+let profileMode: 'normal' | 'error' | 'stall' = 'normal';
 let truckFixtures = [truck];
 
 const aliases = [
@@ -126,6 +126,7 @@ async function mockShopApi(page: Page) {
     const path = url.pathname;
 
     if (path === '/api/auth/me') {
+      if (profileMode === 'stall') return;
       if (profileBarrier) await profileBarrier;
       if (profileMode === 'error') return json(route, { message: 'Profile unavailable' }, 503);
       return json(route, { user });
@@ -316,12 +317,13 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
   });
 
   test('stalled profile restore on login surfaces retry instead of hanging', async ({ page }) => {
-    profileBarrier = new Promise(() => undefined);
+    profileMode = 'stall';
     await page.addInitScript(() => localStorage.setItem('ltl_shop_token', 'dev:mechanic@example.com'));
     await page.goto('/login');
     await expect(page.getByRole('status', { name: /Restoring session/i })).toBeVisible();
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 12_000 });
-    await expect(page.getByRole('button', { name: /Try again|Reintentar/i })).toBeVisible();
+    const timeoutAlert = page.getByRole('alert').filter({ hasText: /took too long|Unable to restore|Unable to reach/i });
+    await expect(timeoutAlert).toBeVisible({ timeout: 12_000 });
+    await expect(timeoutAlert.getByRole('button', { name: /Try again|Reintentar/i })).toBeVisible();
     await expect(page.getByRole('status', { name: /Restoring session/i })).toHaveCount(0);
   });
 
@@ -334,12 +336,13 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
   });
 
   test('stalled profile restore on Home surfaces retry instead of hanging', async ({ page }) => {
-    profileBarrier = new Promise(() => undefined);
+    profileMode = 'stall';
     await page.addInitScript(() => localStorage.setItem('ltl_shop_token', 'dev:mechanic@example.com'));
     await page.goto('/');
     await expect(page.getByRole('status', { name: /Restoring session/i })).toBeVisible();
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 12_000 });
-    await expect(page.getByRole('button', { name: /Try again|Reintentar/i })).toBeVisible();
+    const timeoutAlert = page.getByRole('alert').filter({ hasText: /took too long|Unable to restore|Unable to reach/i });
+    await expect(timeoutAlert).toBeVisible({ timeout: 12_000 });
+    await expect(timeoutAlert.getByRole('button', { name: /Try again|Reintentar/i })).toBeVisible();
   });
 
   test('shows recovery actions when a saved session profile cannot be restored', async ({ page }) => {
