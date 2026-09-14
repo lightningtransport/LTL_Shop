@@ -31,7 +31,6 @@ import {
   READINESS_REQUIREMENT_TYPES,
   readinessGateDomId,
   requiredNeedsWorkOrder,
-  rowBlockerForType,
   withGateName,
   type CompletedWorkOrderOption,
 } from '@/lib/admin-truck-readiness';
@@ -215,7 +214,6 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
                       truckId={truckId}
                       currentWork={currentWork ? { id: currentWork.id, displayId: currentWork.displayId } : null}
                       completedWorkOrders={completedWorkOrders}
-                      rowBlocker={rowBlockerForType(rowBlockers, requirement.type)}
                       onChange={(patch) => updateDraft(requirement, patch)}
                       onSave={() => void handleRequirement(requirement)}
                     />
@@ -303,7 +301,6 @@ function RequirementEditor({
   truckId,
   currentWork,
   completedWorkOrders,
-  rowBlocker,
   onChange,
   onSave,
 }: {
@@ -315,7 +312,6 @@ function RequirementEditor({
   truckId: string;
   currentWork: { id: string; displayId: string } | null;
   completedWorkOrders: CompletedWorkOrderOption[];
-  rowBlocker: AdminTruckDetailDto['blockers'][number] | null;
   onChange: (patch: Partial<RequirementDraft>) => void;
   onSave: () => void;
 }) {
@@ -323,7 +319,11 @@ function RequirementEditor({
   const help = outcomeHelp(requirement.type, draft.outcome, messages);
   const savedRequired = requirement.outcome === ReadinessRequirementOutcome.REQUIRED;
   const showNextStep = savedRequired && draft.outcome === ReadinessRequirementOutcome.REQUIRED;
-  const blockerCopy = rowBlocker ? localizeReadinessBlocker(rowBlocker, messages).text : null;
+  const blockerCopy = requirement.outcome === ReadinessRequirementOutcome.REQUIRED
+    ? withGateName(messages.gateRequiredUnfinished, gateLabel(requirement.type, messages))
+    : requirement.outcome === ReadinessRequirementOutcome.NOT_EVALUATED
+      ? withGateName(messages.gateNotEvaluatedYet, gateLabel(requirement.type, messages))
+      : null;
   const pickerIds = new Set(completedWorkOrders.map((item) => item.id));
 
   return (

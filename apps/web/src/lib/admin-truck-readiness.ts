@@ -132,10 +132,3 @@ export function collapseReadinessBlockers(blockers: ReadonlyArray<ReadinessBlock
   const listBlockers = blockers.filter((blocker) => !gateKinds.has(blocker.kind));
   return { rowBlockers, listBlockers };
 }
-
-export function rowBlockerForType(
-  blockers: ReadonlyArray<ReadinessBlockerDto>,
-  type: ReadinessRequirementType,
-) {
-  return blockers.find((blocker) => blocker.requirementType === type) ?? null;
-}
