@@ -1,11 +1,8 @@
 import { AppCapability, PrismaClient } from '@prisma/client';
+import { applyJobCatalog } from './job-catalog';
 import { loadCanonicalPmParts, PM_PART_CATEGORIES } from './pm-parts';
 
 const prisma = new PrismaClient();
-
-function norm(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
 
 async function main() {
   const mechanic = await prisma.user.upsert({
@@ -180,86 +177,7 @@ async function main() {
     });
   }
 
-  const categories = [
-    'PM',
-    'Suspension',
-    'Brakes',
-    'Electrical',
-    'Engine',
-    'Alignment',
-    'Air System',
-    'Tires',
-    'Transmission',
-    'Other',
-  ];
-
-  const categoryIds: Record<string, string> = {};
-  for (let i = 0; i < categories.length; i++) {
-    const name = categories[i];
-    const row = await prisma.jobCategory.upsert({
-      where: { name },
-      update: { sortOrder: i, status: 'active' },
-      create: { name, sortOrder: i, status: 'active' },
-    });
-    categoryIds[name] = row.id;
-  }
-
-  const catalog: { category: string; name: string; aliases?: string[] }[] = [
-    {
-      category: 'Suspension',
-      name: 'Suspension Inspection',
-      aliases: ['suspension inspect', 'inspect suspension'],
-    },
-    {
-      category: 'Suspension',
-      name: '3 in 1',
-      aliases: ['3in1', '3-in-1', '3 in one', 'three in one'],
-    },
-    { category: 'Suspension', name: 'Air Bag Replacement' },
-    { category: 'Suspension', name: 'Shock Replacement' },
-    { category: 'Suspension', name: 'Leveling Valve' },
-    { category: 'Suspension', name: 'Torque Rod' },
-    { category: 'Air System', name: 'Inspect Air System' },
-    { category: 'Air System', name: 'Replace Air Hose' },
-    { category: 'Electrical', name: 'ABS Sensor Replacement' },
-    { category: 'Brakes', name: 'Brake Inspection' },
-    { category: 'PM', name: 'PM A Service' },
-    { category: 'PM', name: 'PM B Service' },
-    { category: 'Engine', name: 'Cooling System' },
-  ];
-
-  for (const item of catalog) {
-    const existing = await prisma.catalogJob.findFirst({
-      where: {
-        displayName: item.name,
-        categoryId: categoryIds[item.category],
-      },
-    });
-    const job =
-      existing ??
-      (await prisma.catalogJob.create({
-        data: {
-          displayName: item.name,
-          categoryId: categoryIds[item.category],
-          status: 'active',
-          createdById: mechanic.id,
-        },
-      }));
-
-    const aliases = [item.name, ...(item.aliases ?? [])];
-    for (const alias of aliases) {
-      const aliasNorm = norm(alias);
-      await prisma.jobAlias.upsert({
-        where: { aliasNorm },
-        update: { aliasText: alias, catalogJobId: job.id },
-        create: {
-          catalogJobId: job.id,
-          aliasText: alias,
-          aliasNorm,
-        },
-      });
-    }
-  }
+  const catalog = await applyJobCatalog(prisma, { createdById: mechanic.id });
 
   const partCategories: Record<string, string> = {};
   for (let index = 0; index < PM_PART_CATEGORIES.length; index += 1) {
@@ -293,8 +211,8 @@ async function main() {
     additionalMechanics: additionalMechanics.length,
     multiWorkspaceAdmins: multiWorkspaceAdmins.map(({ email }) => email),
     trucks: trucks.map((t) => t.truckNumber),
-    categories: categories.length,
-    catalogJobs: catalog.length,
+    categories: catalog.categories,
+    catalogJobs: catalog.catalogJobs,
     pmParts: partsToSeed.length,
   });
 }
