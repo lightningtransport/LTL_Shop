@@ -58,9 +58,11 @@ function normalizeJobName(value: string) {
 export function AdminNewWorkOrder({
   locale,
   messages,
+  preselectTruckId,
 }: {
   locale: AdminLocale;
   messages: AdminMessages;
+  preselectTruckId?: string;
 }) {
   void locale;
   const router = useRouter();
@@ -79,6 +81,7 @@ export function AdminNewWorkOrder({
   const [customName, setCustomName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preselectApplied, setPreselectApplied] = useState(false);
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedTruckQuery(truckQuery.trim()), 250);
@@ -145,6 +148,14 @@ export function AdminNewWorkOrder({
       setError(messages.loadError);
     });
   }
+
+  useEffect(() => {
+    if (preselectApplied || !preselectTruckId || !truckData?.length) return;
+    const match = truckData.find((item) => item.id === preselectTruckId);
+    if (!match) return;
+    selectTruck(match);
+    setPreselectApplied(true);
+  }, [preselectApplied, preselectTruckId, truckData]);
 
   function clearTruck() {
     setSelectedTruck(null);

@@ -66,5 +66,10 @@ describe('Shop Admin routing and messages', () => {
     expect(adminPauseReasonLabel('waiting_for_equipment', getAdminMessages('en'))).toBe('Waiting for Equipment / Tool');
     expect(adminPauseReasonLabel('working_on_another_wo', getAdminMessages('es'))).toBe('Trabajando en otro Work Order');
     expect(adminPauseReasonLabel('other', getAdminMessages('es'))).toBe('Otro');
+    expect(getAdminMessages('en').closeAssessment).toBe('End review');
+    expect(getAdminMessages('es').closeAssessment).toBe('Terminar revisión');
+    expect(getAdminMessages('en').unevaluatedGatesBanner).toContain('Not required');
+    expect(getAdminMessages('es').outcomeHelpRequired).toContain('Ready to Go');
+    expect(getAdminMessages('es').requiredNextStepNeedsWo).toContain('Work Order');
   });
 });

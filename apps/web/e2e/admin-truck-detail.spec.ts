@@ -38,9 +38,44 @@ test.describe('Admin Truck detail and readiness controls', () => {
     }
     await page.getByRole('button', { name: 'Mark Ready to Go' }).click();
     await expect(page.getByText('Truck marked Ready to Go.')).toBeVisible();
-    await page.getByRole('button', { name: 'Close assessment' }).click();
-    await page.getByLabel('Reason for closing').fill('Returned to service');
-    await page.getByRole('button', { name: 'Confirm closure' }).click();
+    await page.getByRole('button', { name: 'End review', exact: true }).click();
+    await page.getByLabel('Reason for ending review').fill('Returned to service');
+    await page.getByRole('button', { name: 'Confirm end review' }).click();
+    await expect(page.getByText('Readiness assessment closed.')).toBeVisible();
+  });
+
+  test('Required outcome explains next step and why Mark Ready stays disabled', async ({ page }) => {
+    await login(page, 'manager@lightning.local');
+    await page.getByRole('link', { name: 'Yard Operations' }).first().click();
+    await page.getByRole('link', { name: 'Y-101' }).click();
+    const start = page.getByRole('button', { name: 'Start assessment' });
+    if (await start.count()) {
+      page.on('dialog', (dialog) => void dialog.accept());
+      await start.click();
+      await expect(page.getByText('Readiness assessment started.')).toBeVisible();
+    }
+    await expect(page.getByText('Ready to Go needs a decision on every gate — including Not required.')).toBeVisible();
+    await page.getByLabel('Outcome: Inspection').selectOption('required');
+    await page.getByRole('button', { name: 'Save requirement' }).first().click();
+    await expect(page.getByText('Requirement updated.')).toBeVisible();
+    await expect(page.getByText('This still has to happen. Ready to Go stays blocked until Completed or Waived.')).toBeVisible();
+    await expect(page.getByText('When finished, set Outcome to Completed and Save.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toBeDisabled();
+    await expect(page.getByText('Resolve every readiness requirement before marking Ready to Go.')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Start with Inspection.' })).toBeVisible();
+    await expect(page.getByText('Inspection is required and not finished — mark Completed or Waived.')).toBeVisible();
+    await page.getByLabel('Outcome: Required Work').selectOption('required');
+    await page.getByRole('button', { name: 'Save requirement' }).nth(1).click();
+    await expect(page.getByText('Required does not create a Work Order. Create/finish the WO, then set Completed.')).toBeVisible();
+    const endReview = page.getByRole('button', { name: 'End review', exact: true });
+    await endReview.click();
+    await expect(page.getByLabel('Reason for ending review')).toBeVisible();
+    await expect(page.getByText('Ends the checklist. Does not mark Ready to Go.')).toBeVisible();
+    await endReview.click();
+    await expect(page.getByLabel('Reason for ending review')).toBeVisible();
+    page.on('dialog', (dialog) => void dialog.accept());
+    await page.getByLabel('Reason for ending review').fill('Leaving after readiness UX check');
+    await page.getByRole('button', { name: 'Confirm end review' }).click();
     await expect(page.getByText('Readiness assessment closed.')).toBeVisible();
   });
 
