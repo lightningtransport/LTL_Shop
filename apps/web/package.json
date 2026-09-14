@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "WATCHPACK_POLLING=true next dev --hostname 127.0.0.1 --port 3000",
-    "build": "next build",
-    "start": "next start --hostname 127.0.0.1 --port 3000",
-    "dev:3005": "WATCHPACK_POLLING=true next dev --hostname 127.0.0.1 --port 3005",
-    "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests --exclude 'e2e/**'",
-    "test:e2e": "playwright test"
+    "dev": "WATCHPACK_POLLING=true ../../node_modules/.bin/next dev --hostname 127.0.0.1 --port 3000",
+    "build": "../../node_modules/.bin/next build",
+    "start": "../../node_modules/.bin/next start --hostname 127.0.0.1 --port 3000",
+    "dev:3005": "WATCHPACK_POLLING=true ../../node_modules/.bin/next dev --hostname 127.0.0.1 --port 3005",
+    "lint": "../../node_modules/.bin/tsc -p tsconfig.json --noEmit",
+    "test": "../../node_modules/.bin/vitest run --passWithNoTests --exclude 'e2e/**'",
+    "test:e2e": "../../node_modules/.bin/playwright test"
   },
   "dependencies": {
     "@ltl-shop/shared": "*",
