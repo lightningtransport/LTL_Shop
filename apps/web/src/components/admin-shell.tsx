@@ -39,8 +39,8 @@ export function AdminShell({
   }, [pathname]);
 
   return (
-    <div className="min-h-dvh bg-background md:grid md:h-dvh md:grid-cols-[220px_minmax(0,1fr)] md:overflow-hidden xl:grid-cols-[240px_minmax(0,1fr)]">
-      <aside className="hidden h-dvh min-h-0 border-r bg-card px-3 py-4 md:flex md:flex-col xl:px-4" aria-label={messages.navigation}>
+    <div className="app-safe-x app-safe-bottom min-h-dvh bg-background md:grid md:h-dvh md:grid-cols-[220px_minmax(0,1fr)] md:overflow-hidden xl:grid-cols-[240px_minmax(0,1fr)]">
+      <aside className="app-safe-top hidden h-dvh min-h-0 border-r bg-card px-3 py-4 md:flex md:flex-col xl:px-4" aria-label={messages.navigation}>
         <div className="shrink-0 px-1"><AdminBrand /></div>
         <nav className="mt-6 min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1">
           {activeNavigation.map(({ message, icon: Icon, href }) => {
@@ -59,7 +59,7 @@ export function AdminShell({
       </aside>
 
       <div className="min-w-0 md:grid md:h-dvh md:min-h-0 md:grid-rows-[auto_minmax(0,1fr)] md:overflow-hidden">
-        <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur md:static" aria-label="Shop Admin controls">
+        <header className="app-safe-top sticky top-0 z-40 border-b bg-card/95 backdrop-blur md:static" aria-label="Shop Admin controls">
           <div className="flex min-h-16 items-center justify-between gap-3 px-4 md:px-5 xl:px-6">
             <div className="flex items-center gap-2 md:hidden">
               <Button
