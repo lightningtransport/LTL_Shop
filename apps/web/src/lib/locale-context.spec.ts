@@ -15,6 +15,10 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('es').woStatusPaused).toBe('Pausado');
     expect(getAdminMessages('en').jobStatusToDo).toBe('To do');
     expect(getAdminMessages('es').jobStatusToDo).toBe('Por hacer');
+    expect(getAdminMessages('en').workPlanIssuesFound).toBe('Issues found');
+    expect(getAdminMessages('es').workPlanNoIssuesFound).toMatch(/issues/i);
+    expect(getAdminMessages('en').workPlanNotReadyRemaining).toContain('{count}');
+    expect(getAdminMessages('es').workPlanReady).toBe('Ready to Go');
     expect(getAdminMessages('en').activityPmDetailsUpdated).toBe('PM details updated');
     expect(getAdminMessages('es').activityBlockerReported).toBe('Bloqueo reportado');
   });

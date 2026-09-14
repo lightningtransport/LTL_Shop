@@ -11,12 +11,14 @@ import {
   TruckOperationalStatus,
   type AdminTruckDetailDto,
   type ReadinessRequirementDto,
+  type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessment, updateAdminTruckRequirement, useAdminTruck } from '@/lib/admin-data';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
+import { isWorkPlanSliceEnabled } from '@/lib/work-plan';
 import {
   collapseReadinessBlockers,
   evidenceRequired,
@@ -35,6 +37,7 @@ import {
   type CompletedWorkOrderOption,
 } from '@/lib/admin-truck-readiness';
 import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
+import { AdminTruckWorkPlan } from './admin-truck-work-plan';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, Select, Textarea, WorkOrderStatusBadge } from './ui';
 
 type Feedback = { kind: 'success' | 'error'; message: string };
@@ -56,6 +59,8 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
 
   const assessment = data.assessment;
   const truckId = data.truck.id;
+  const workPlan = data.workPlan;
+  const slice1 = isWorkPlanSliceEnabled(data);
   const isActive = assessment?.status === ReadinessAssessmentStatus.UNDER_REVIEW || assessment?.status === ReadinessAssessmentStatus.READY;
   const currentWork = data.activeWorkOrder;
   const completedWorkOrders: CompletedWorkOrderOption[] = data.repairHistory.items.map((item) => ({
@@ -160,13 +165,23 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
     setCloseReason('');
   }
 
+  async function handleWorkPlanUpdated(next: TruckWorkPlanDto) {
+    await mutate((current) => (current ? { ...current, workPlan: next } : current), { revalidate: true });
+  }
+
   return <div className="space-y-5">
     <AdminBackLink href="/admin/yard-operations">{messages.backToYardOperations}</AdminBackLink>
     <AdminPageHeader
       eyebrow={messages.yardOperationsTitle}
       title={data.truck.truckNumber}
       subtitle={[data.truck.year, data.truck.make, data.truck.model].filter(Boolean).join(' ') || messages.noValue}
-      badges={<PhaseBadge phase={data.phase}>{phaseLabel(data.phase, messages)}</PhaseBadge>}
+      badges={slice1 && workPlan ? (
+        <Badge variant={workPlan.readiness === 'ready' ? 'success' : 'warning'} className="normal-case tracking-normal">
+          {workPlan.readiness === 'ready' ? messages.workPlanReady : messages.workPlanNotReady}
+        </Badge>
+      ) : (
+        <PhaseBadge phase={data.phase}>{phaseLabel(data.phase, messages)}</PhaseBadge>
+      )}
     />
 
     {feedback ? <div className={feedback.kind === 'error' ? 'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive' : 'rounded-xl border border-shop-success/30 bg-shop-success/10 px-3 py-2 text-sm text-shop-success'} role={feedback.kind === 'error' ? 'alert' : 'status'} aria-live="polite">{feedback.message}{feedback.kind === 'error' && messageIsConflict(feedback.message, messages) ? <Button type="button" variant="outline" size="sm" className="ml-3" onClick={() => void mutate()}>{messages.reloadTruck}</Button> : null}</div> : null}
@@ -176,6 +191,14 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
       <Card><CardHeader><CardTitle>{messages.currentWork}</CardTitle><CardDescription>{messages.currentWorkDescription}</CardDescription></CardHeader><CardContent>{currentWork ? <div className="space-y-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${currentWork.id}`}>{currentWork.displayId}</Link><div className="flex gap-2"><WorkOrderStatusBadge status={currentWork.status}>{workOrderStatusLabel(currentWork.status, messages)}</WorkOrderStatusBadge><PriorityBadge priority={currentWork.priority}>{adminPriorityLabel(currentWork.priority, messages)}</PriorityBadge></div></div><Info label={messages.category} value={currentWork.category.name} /><Info label={messages.mechanicsLabel} value={currentWork.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noMechanicsAssigned} />{currentWork.currentPause ? <p className="rounded-lg bg-muted px-3 py-2 text-muted-foreground">{messages.currentPause}: {adminPauseReasonLabel(currentWork.currentPause.reason, messages)} · {formatAdminDate(currentWork.currentPause.startedAt, locale)}</p> : null}</div> : <CompactEmpty>{messages.noCurrentWork}</CompactEmpty>}</CardContent></Card>
     </section>
 
+    {slice1 && workPlan ? (
+      <AdminTruckWorkPlan
+        truckId={truckId}
+        plan={workPlan}
+        messages={messages}
+        onPlanUpdated={handleWorkPlanUpdated}
+      />
+    ) : (
     <section aria-labelledby="truck-readiness-title">
       <Card>
         <CardHeader>
@@ -262,7 +285,9 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
         </CardContent>
       </Card>
     </section>
+    )}
 
+    {slice1 ? null : (
     <section aria-labelledby="truck-blockers-title">
       <Card>
         <CardHeader>
@@ -288,6 +313,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
         </CardContent>
       </Card>
     </section>
+    )}
 
     <section aria-labelledby="truck-history-title"><Card><CardHeader><CardTitle id="truck-history-title">{messages.repairHistorySection}</CardTitle><CardDescription>{messages.repairHistorySectionDescription}</CardDescription></CardHeader><CardContent>{data.repairHistory.items.length ? <ul className="divide-y">{data.repairHistory.items.map((item) => <li key={item.workOrderId} className="flex items-start justify-between gap-3 py-3 first:pt-0"><div className="min-w-0 flex-1"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${item.workOrderId}`}>{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p>{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : null}</div><div className="shrink-0 text-right text-xs text-muted-foreground">{item.mileage === null ? messages.noValue : <><span className="block">{messages.mileage}</span><span className="mt-1 block font-medium text-foreground">{formatNumber(item.mileage, locale, messages)}</span></>}</div></li>)}</ul> : <CompactEmpty>{messages.noRepairHistoryForTruck}</CompactEmpty>}</CardContent></Card></section>
   </div>;

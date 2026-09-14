@@ -15,12 +15,15 @@ import type {
   ReadinessAssessmentDto,
   ReadinessRequirementOutcome,
   ReadinessRequirementType,
+  RecordWorkPlanInspectionInput,
   AdminCatalogCategoryDetailDto,
   AdminCatalogCategorySummaryDto,
   YardOperationsPageDto,
   WorkOrderDetailDto,
+  TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { apiFetch } from './api';
+import type { WorkPlanJobDraft } from './work-plan';
 
 export function useAdminDashboard() {
   return useSWR<AdminDashboardDto>('/api/admin/dashboard', { dedupingInterval: 10_000, refreshInterval: 30_000 });
@@ -349,6 +352,35 @@ export function closeAdminTruckAssessment(assessmentId: string, expectedVersion:
   return apiFetch<{ assessment: ReadinessAssessmentDto }>(`/api/admin/readiness-assessments/${assessmentId}/close`, {
     method: 'POST',
     body: JSON.stringify({ expectedVersion, reason, idempotencyKey }),
+  });
+}
+
+export function recordAdminWorkPlanInspection(
+  truckId: string,
+  outcome: RecordWorkPlanInspectionInput['outcome'],
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<TruckWorkPlanDto>(`/api/admin/trucks/${truckId}/work-plan/inspection`, {
+    method: 'POST',
+    body: JSON.stringify({ outcome, idempotencyKey }),
+  });
+}
+
+export function addAdminWorkPlanJobs(
+  truckId: string,
+  input: {
+    jobs: Array<Pick<WorkPlanJobDraft, 'catalogJobId' | 'categoryId' | 'displayName' | 'customDescription'>>;
+    expectedVersion?: number;
+  },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<TruckWorkPlanDto>(`/api/admin/trucks/${truckId}/work-plan/jobs`, {
+    method: 'POST',
+    body: JSON.stringify({
+      idempotencyKey,
+      jobs: input.jobs,
+      ...(input.expectedVersion === undefined ? {} : { expectedVersion: input.expectedVersion }),
+    }),
   });
 }
 

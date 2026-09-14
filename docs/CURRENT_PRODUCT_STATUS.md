@@ -106,6 +106,14 @@ TARGET authorization/UX.
   a readiness assessment, update its six requirements, and explicitly mark it
   Ready when the rules pass. These mutations use server authorization,
   optimistic version checks, idempotency, and Activity Log records.
+- When the API flag `YARD_WORK_PLAN_SLICE1` is on, Truck Detail replaces the
+  six-gate Readiness editor with Inspection discovery (**No issues found** /
+  **Issues found**) and a Work Plan of jobs on the open Work Order. Ready is
+  derived from `readyReason` plus mandatory Alignment and Detailing (QC only
+  if a QC job is on the plan). Mark Ready is not the Manager path in that
+  UI. With the flag off, Phase 1 six-gate Readiness is unchanged. Board
+  columns stay on the six-gate derivation until a later cutover. The hooks
+  live at `GET/POST /api/admin/trucks/:id/work-plan*` (LTR-34 / PR #103).
 - Yard Phase is derived for presentation as the next unresolved readiness
   gate. It is not a persisted Work Order status, not a Job Category, and
   does not create another Work Order. An open Work Order is a blocker, not
@@ -114,13 +122,13 @@ TARGET authorization/UX.
   closed Ready assessment stays in that column until new open work appears.
 - `Ready to Go` is an explicit readiness approval. Completing a Work Order does
   not establish physical presence, departure, or return to service.
-- Additive LTR-34 Slice 1 Work Plan hooks exist for Frontend (LTR-33) and do
-  **not** replace Phase 1. `GET/POST /api/admin/trucks/:id/work-plan*` read the
-  open Work Order jobs and derive Ready automatically (Alignment + Detailing
-  always required; Shop Work is a Work Plan phase). `YARD_WORK_PLAN_SLICE1`
-  (default off) is required before Truck Detail also returns `workPlan`.
-  `updateRequirement` / Mark Ready stay in place. See
-  `docs/LTR-34_WORK_PLAN_SLICE1_PROPOSAL.md` (awaiting PM+PD ack).
+- Additive LTR-34 Slice 1 Work Plan hooks are on main (PR #103) for Frontend
+  (LTR-33) and do **not** replace Phase 1. `GET/POST
+  /api/admin/trucks/:id/work-plan*` read the open Work Order jobs and derive
+  Ready automatically (Alignment + Detailing always required; Shop Work is a
+  Work Plan phase). `YARD_WORK_PLAN_SLICE1` (default off) is required before
+  Truck Detail also returns `workPlan`. `updateRequirement` / Mark Ready stay
+  in place. See `docs/LTR-34_WORK_PLAN_SLICE1_PROPOSAL.md`.
 
 ### Authentication and profile
 
