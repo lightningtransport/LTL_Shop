@@ -12,6 +12,12 @@ import {
 import { AppCapability, type UserDto } from '@ltl-shop/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError, apiFetch, AUTH_TOKEN_KEY, setAuthToken } from './api';
+import {
+  fetchWithDeadline,
+  PROFILE_RESTORE_TIMEOUT_MS,
+  SESSION_RESTORE_TIMEOUT_MS,
+  withDeadline,
+} from './session-restore';
 import { passwordResetRedirectUrl } from './site-url';
 
 type AuthState = {
@@ -99,11 +105,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         applyToken(tok);
         try {
           const [res, serverSession] = await Promise.all([
-            apiFetch<{ user: UserDto }>('/api/auth/me'),
-            fetch('/api/admin/session', {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${tok}` },
-            }),
+            apiFetch<{ user: UserDto }>('/api/auth/me', { timeoutMs: PROFILE_RESTORE_TIMEOUT_MS }),
+            fetchWithDeadline(
+              '/api/admin/session',
+              {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${tok}` },
+              },
+              PROFILE_RESTORE_TIMEOUT_MS,
+            ).catch(() => new Response(null, { status: 503 })),
           ]);
           if (!serverSession.ok) {
             if (res.user.capabilities.includes(AppCapability.ADMIN_ACCESS)) {
@@ -142,6 +152,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [clearSession]);
 
   useEffect(() => {
+    if (!sessionError) return;
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) retrySession();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, [sessionError, retrySession]);
+
+  useEffect(() => {
     let cancelled = false;
     let saved: string | null = null;
 
@@ -154,20 +173,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           applyToken(saved);
           if (!cancelled) setSessionLoading(false);
           void loadProfile(saved).catch(() => undefined);
+        } else if (!cancelled) {
+          // Do not block first paint or the login form on Supabase / network.
+          setSessionLoading(false);
         }
 
         if (canUseSupabase()) {
-          const supabase = await withDeadline(getSupabaseClient(), 5_000);
+          const supabase = await withDeadline(getSupabaseClient(), SESSION_RESTORE_TIMEOUT_MS);
           const {
             data: { session },
-          } = await withDeadline(supabase.auth.getSession(), 5_000);
+          } = await withDeadline(supabase.auth.getSession(), SESSION_RESTORE_TIMEOUT_MS);
 
           if (session?.access_token) {
             applyToken(session.access_token);
             if (!cancelled) setSessionLoading(false);
             void loadProfile(session.access_token).catch(() => undefined);
-          } else if (!saved && !cancelled) {
-            setSessionLoading(false);
           }
 
           if (cancelled) return;
@@ -187,10 +207,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           return () => subscription.unsubscribe();
         }
-
-        if (!saved && !cancelled) setSessionLoading(false);
       } catch (initError) {
-        if (!cancelled && !saved) {
+        // Background Supabase restore must not hide the login form. Only keep an
+        // error when a saved app token still needs a visible retry.
+        if (!cancelled && saved) {
           setSessionError(
             initError instanceof Error
               ? initError.message
@@ -305,22 +325,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-async function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timeout: number | undefined;
-  const deadline = new Promise<never>((_, reject) => {
-    timeout = window.setTimeout(
-      () => reject(new Error('Session restoration timed out. Please try again.')),
-      timeoutMs,
-    );
-  });
-
-  try {
-    return await Promise.race([promise, deadline]);
-  } finally {
-    if (timeout) window.clearTimeout(timeout);
-  }
 }
 
 export function useAuth() {

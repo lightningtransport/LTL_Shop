@@ -291,6 +291,57 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       .toBe(true);
   });
 
+  test('login form paints without waiting for session restore when no token exists', async ({ page }) => {
+    await page.goto('/login');
+    await expect(page.getByRole('button', { name: /^Sign in$/i })).toBeVisible();
+    await expect(page.getByLabel('Email')).toBeVisible();
+    await expect(page.getByRole('status', { name: /Restoring session/i })).toHaveCount(0);
+  });
+
+  test('root without a session reaches login instead of hanging on restore', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/login$/, { timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /^Sign in$/i })).toBeVisible();
+    await expect(page.getByRole('status', { name: /Restoring session/i })).toHaveCount(0);
+  });
+
+  test('standalone home-screen display reaches login without staying on the restore skeleton', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'standalone', { configurable: true, get: () => true });
+    });
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/login$/, { timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /^Sign in$/i })).toBeVisible();
+    await expect(page.getByRole('status', { name: /Restoring session/i })).toHaveCount(0);
+  });
+
+  test('stalled profile restore on login surfaces retry instead of hanging', async ({ page }) => {
+    profileBarrier = new Promise(() => undefined);
+    await page.addInitScript(() => localStorage.setItem('ltl_shop_token', 'dev:mechanic@example.com'));
+    await page.goto('/login');
+    await expect(page.getByRole('status', { name: /Restoring session/i })).toBeVisible();
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 12_000 });
+    await expect(page.getByRole('button', { name: /Try again|Reintentar/i })).toBeVisible();
+    await expect(page.getByRole('status', { name: /Restoring session/i })).toHaveCount(0);
+  });
+
+  test('authenticated root leaves restore and opens the mechanic workspace', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('ltl_shop_token', 'dev:mechanic@example.com'));
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/\/mechanic\/standard$/);
+    await expect(page.getByRole('status', { name: /Restoring session/i })).toHaveCount(0);
+  });
+
+  test('stalled profile restore on Home surfaces retry instead of hanging', async ({ page }) => {
+    profileBarrier = new Promise(() => undefined);
+    await page.addInitScript(() => localStorage.setItem('ltl_shop_token', 'dev:mechanic@example.com'));
+    await page.goto('/');
+    await expect(page.getByRole('status', { name: /Restoring session/i })).toBeVisible();
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 12_000 });
+    await expect(page.getByRole('button', { name: /Try again|Reintentar/i })).toBeVisible();
+  });
+
   test('shows recovery actions when a saved session profile cannot be restored', async ({ page }) => {
     profileMode = 'error';
     await page.addInitScript(() => localStorage.setItem('ltl_shop_token', 'dev:mechanic@example.com'));

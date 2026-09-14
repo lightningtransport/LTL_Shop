@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
+import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
+import { replaceAppLocation } from '@/lib/session-restore';
 import { useWorkOrders } from '@/lib/shop-data';
 import { pauseLabel, statusLabel } from '@/lib/format';
 import { jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
@@ -40,47 +42,66 @@ export default function HomePage() {
   const { data, error, mutate } = useWorkOrders(!!token && hasWorkspaceAccess, mode ?? undefined);
 
   useEffect(() => {
-    if (!sessionLoading && !token && !sessionError) router.replace('/login');
+    if (!sessionLoading && !token && !sessionError) replaceAppLocation('/login', router);
     if (!sessionLoading && token && user && !mode) {
-      router.replace(defaultWorkspacePath(user));
+      replaceAppLocation(defaultWorkspacePath(user), router);
     }
   }, [sessionLoading, token, sessionError, user, mode, requiredCapability, router]);
 
-  if (sessionLoading && !token) {
-    return (
-      <div>
-        <HomeTopBar mode={mode ?? undefined} />
-        <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
-        <PageSkeleton label={messages.restoringSession} />
-      </div>
-    );
+  if (!token) {
+    if (sessionError) {
+      return (
+        <div>
+          <HomeTopBar mode={mode ?? undefined} />
+          <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
+          <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
+        </div>
+      );
+    }
+    if (sessionLoading) {
+      return (
+        <div>
+          <HomeTopBar mode={mode ?? undefined} />
+          <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
+          <PageSkeleton label={messages.restoringSession} />
+        </div>
+      );
+    }
+    return <SessionSignInFallback />;
   }
 
-  if (!token && sessionError) {
-    return (
-      <div>
-        <HomeTopBar mode={mode ?? undefined} />
-        <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
-        <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
-      </div>
-    );
-  }
-
-  if (!sessionLoading && token && !user) {
+  if (!user) {
     return (
       <div>
         <HomeTopBar />
         <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
-        <LoadFailure
-          message={sessionError ?? messages.unableToLoadProfile}
-          onRetry={retrySession}
-          retryLabel={messages.retry}
-        />
+        {sessionError ? (
+          <LoadFailure
+            message={sessionError}
+            onRetry={retrySession}
+            retryLabel={messages.retry}
+          />
+        ) : (
+          <PageSkeleton label={messages.restoringSession} />
+        )}
       </div>
     );
   }
 
-  if (!sessionLoading && user && (!mode || !hasWorkspaceAccess)) {
+  if (!mode) {
+    const allowedHome = defaultWorkspacePath(user);
+    return (
+      <div>
+        <HomeTopBar />
+        <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
+        <Button asChild className="w-full">
+          <Link href={allowedHome}>{messages.openAllowedHome}</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (!hasWorkspaceAccess) {
     const allowedHome = defaultWorkspacePath(user);
     return (
       <div>
@@ -96,10 +117,6 @@ export default function HomePage() {
         </EmptyState>
       </div>
     );
-  }
-
-  if (!token || !user || !mode || !hasWorkspaceAccess) {
-    return <PageSkeleton label={messages.restoringSession} />;
   }
 
   const isPm = mode === MechanicMode.PM;

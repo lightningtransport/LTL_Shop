@@ -15,6 +15,7 @@ import {
 } from '@/components/ui';
 import { postLoginPath } from '@/lib/admin-routing';
 import { useShopLocale } from '@/lib/locale-context';
+import { replaceAppLocation } from '@/lib/session-restore';
 
 export default function LoginPage() {
   const { login, loginDev, requestPasswordReset, logout, passwordRecovery, user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
@@ -45,12 +46,15 @@ export default function LoginPage() {
       !navigationStarted.current
     ) {
       navigationStarted.current = true;
-      router.replace(postLoginPath(user, requestedPath()), { scroll: true });
+      replaceAppLocation(postLoginPath(user, requestedPath()), router, { scroll: true });
     }
   }, [passwordRecovery, busy, error, sessionError, sessionLoading, profileLoading, token, user, router]);
 
-  if (sessionLoading || (token && !sessionError)) {
-    return <PageSkeleton label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />;
+  const restoringSession = Boolean(
+    token && !sessionError && (sessionLoading || profileLoading || !user),
+  );
+  if (restoringSession) {
+    return <PageSkeleton label={messages.restoringSession} />;
   }
 
   async function onSubmit(e: FormEvent) {
@@ -60,7 +64,7 @@ export default function LoginPage() {
     try {
       const signedInUser = await login(email, password);
       navigationStarted.current = true;
-      router.replace(postLoginPath(signedInUser, requestedPath()), { scroll: true });
+      replaceAppLocation(postLoginPath(signedInUser, requestedPath()), router, { scroll: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : (messages.locale === 'es' ? 'No se pudo iniciar sesión.' : 'Sign in failed.'));
     } finally {
@@ -74,7 +78,7 @@ export default function LoginPage() {
     try {
       const signedInUser = await loginDev(email);
       navigationStarted.current = true;
-      router.replace(postLoginPath(signedInUser, requestedPath()), { scroll: true });
+      replaceAppLocation(postLoginPath(signedInUser, requestedPath()), router, { scroll: true });
     } catch (err) {
       setError(
         err instanceof Error
