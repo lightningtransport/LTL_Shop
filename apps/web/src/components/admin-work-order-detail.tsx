@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
-import { ChevronLeft } from 'lucide-react';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
@@ -13,6 +12,8 @@ import { useAuth } from '@/lib/auth-context';
 import { useCategories } from '@/lib/shop-data';
 import { JobPickerDialog } from './job-picker-dialog';
 import {
+  AdminBackLink,
+  AdminPageHeader,
   Badge,
   Button,
   Card,
@@ -107,18 +108,14 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   }
 
   return <div className="space-y-5">
-    <header>
-      <Button asChild variant="ghost" className="mb-3 -ml-3">
-        <Link href="/admin/work-orders">
-          <ChevronLeft aria-hidden="true" className="size-4" />
-          {messages.backToWorkOrders}
-        </Link>
-      </Button>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><p className="section-label">{messages.eyebrow}</p><h1 className="mt-2 font-display text-3xl font-bold">{data.displayId}</h1><p className="mt-2 text-muted-foreground"><Link className="text-primary hover:underline" href={`/admin/trucks/${truck.id}`}>{truck.truckNumber}</Link> · {data.category.name}</p><p className="mt-1 text-xs text-muted-foreground">{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</p></div>
-        <div className="flex gap-2"><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></div>
-      </div>
-    </header>
+    <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
+    <AdminPageHeader
+      eyebrow={messages.eyebrow}
+      title={data.displayId}
+      subtitle={<><Link className="text-primary hover:underline" href={`/admin/trucks/${truck.id}`}>{truck.truckNumber}</Link> · {data.category.name}</>}
+      meta={<>{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</>}
+      badges={<><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></>}
+    />
     {feedback ? <p className={feedback.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'} role="status">{feedback.message}</p> : null}
 
     <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]" aria-label={messages.operationalSummary}>

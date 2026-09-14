@@ -143,16 +143,16 @@ export function PmServiceCard({
       </div>
     );
   }
-  if (!data) return <Card className="mb-4 text-sm text-muted-foreground">Loading PM service details…</Card>;
+  if (!data) return <Card className="mb-4 text-sm text-muted-foreground">{messages.loadingPmService}</Card>;
 
   const canEdit = data.canEdit;
   const hasValidObservedMileage = /^\d+$/.test(mileage);
   const hasHistoricalParts = !canEdit && data.selections.length > 0;
   const showParts = hasValidObservedMileage || hasHistoricalParts;
   const lastPmValue = !data.lastCompletedPm
-    ? 'No prior PM recorded'
+    ? messages.noPriorPm
     : data.lastCompletedPm.observedMileage === null
-      ? 'Mileage not recorded'
+      ? messages.mileageNotRecorded
       : formatMileage(data.lastCompletedPm.observedMileage);
 
   return (
@@ -161,17 +161,17 @@ export function PmServiceCard({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Label htmlFor="pm-current-mileage">Current truck mileage</Label>
+          <Label htmlFor="pm-current-mileage">{messages.currentTruckMileage}</Label>
           <Input id="pm-current-mileage" className="mt-2" readOnly value={formatMileage(data.currentTruckMileage)} />
         </div>
         <div>
-          <Label htmlFor="pm-last-record">Last completed PM</Label>
+          <Label htmlFor="pm-last-record">{messages.lastCompletedPm}</Label>
           <Input id="pm-last-record" className="mt-2" readOnly value={lastPmValue} />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="pm-observed-mileage">Observed mileage</Label>
+        <Label htmlFor="pm-observed-mileage">{messages.observedMileage}</Label>
         <div className="mt-2 flex items-center gap-2">
           <Input
             id="pm-observed-mileage"
@@ -194,13 +194,13 @@ export function PmServiceCard({
         </div>
         {!showParts ? (
           <p className="mt-2 text-sm text-muted-foreground" id="pm-parts-instruction">
-            Enter the observed mileage to record parts used.
+            {messages.enterMileageHint}
           </p>
         ) : null}
       </div>
 
       {showParts ? <div className="space-y-3">
-        <p className="section-label">Parts used</p>
+        <p className="section-label">{messages.partsUsed}</p>
         {data.categories.map((category) => (
           <div key={category.id}>
             <Label htmlFor={`pm-part-${category.id}`}>{category.name}</Label>
@@ -219,7 +219,7 @@ export function PmServiceCard({
                   void persist(payloadFor(mileage, nextSelections));
                 }}
               >
-                <option value="">No part used</option>
+                <option value="">{messages.noPartUsed}</option>
                 {category.parts.map((part) => (
                   <option key={part.id} value={part.id}>
                     {part.partNumber ? `${part.partNumber} — ${part.displayName}` : part.displayName}
@@ -227,8 +227,8 @@ export function PmServiceCard({
                 ))}
               </Select>
             ) : (
-              <Select id={`pm-part-${category.id}`} className="mt-2" value="" disabled aria-label={`${category.name}: no compatible parts for this truck`}>
-                <option>No compatible parts for this truck</option>
+              <Select id={`pm-part-${category.id}`} className="mt-2" value="" disabled aria-label={`${category.name}: ${messages.noCompatibleParts}`}>
+                <option>{messages.noCompatibleParts}</option>
               </Select>
             )}
           </div>
@@ -236,12 +236,12 @@ export function PmServiceCard({
       </div> : null}
 
       <div className="min-h-5 text-sm" aria-live="polite">
-        {saving ? <span className="text-muted-foreground">Saving…</span> : null}
-        {!saving && !dirty && !saveError && hydrated ? <span className="text-muted-foreground">Saved</span> : null}
+        {saving ? <span className="text-muted-foreground">{messages.saving}</span> : null}
+        {!saving && !dirty && !saveError && hydrated ? <span className="text-muted-foreground">{messages.saved}</span> : null}
         {saveError ? (
           <span className="text-destructive" role="alert">
             {saveError}{' '}
-            <Button variant="ghost" className="px-1 underline" onClick={() => persist(draft)}>Retry</Button>
+          <Button variant="ghost" className="ml-1 px-2 underline" onClick={() => persist(draft)}>Retry</Button>
           </span>
         ) : null}
       </div>

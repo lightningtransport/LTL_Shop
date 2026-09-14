@@ -7,7 +7,7 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { formatIsoDate, formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
-import { Button, Card, EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui';
 import { useShopLocale } from '@/lib/locale-context';
 
 export default function RepairHistoryPage() {
@@ -54,7 +54,7 @@ export default function RepairHistoryPage() {
   return (
     <div>
       <ScreenHeader
-        title={messages.locale === 'es' ? 'HISTORIAL DE REPARACIONES' : 'REPAIR HISTORY'}
+        title={messages.locale === 'es' ? 'Historial de reparaciones' : 'Repair history'}
         subtitle={`#${truck.truckNumber}`}
         backHref={backHref}
         backLabel={backLabel}
@@ -100,34 +100,31 @@ export default function RepairHistoryPage() {
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
-            <article key={item.workOrderId} className="card space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold uppercase tracking-wide">
-                  {new Date(item.date).toLocaleDateString(messages.locale === 'es' ? 'es-US' : 'en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </span>
-                <span className="text-shop-muted">#{item.truckNumber}</span>
+            <article key={item.workOrderId} className="card space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{item.primaryCategoryName}</p>
+                  <p className="mt-1 text-sm text-shop-muted">
+                    {new Date(item.date).toLocaleDateString(messages.locale === 'es' ? 'es-US' : 'en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })} · #{item.truckNumber}
+                  </p>
+                  <p className="mt-1 text-sm text-shop-muted">
+                    {messages.locale === 'es' ? 'Mecánico' : 'Mechanic'}: {item.mechanicNames.join(' / ') || '—'}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right text-xs text-shop-muted">
+                  <span className="block">{messages.locale === 'es' ? 'Millaje' : 'Mileage'}</span>
+                  <span className="mt-1 block font-medium text-foreground">{formatMileage(item.mileage)}</span>
+                </div>
               </div>
-              <p>{item.primaryCategoryName}</p>
-              <p className="text-sm text-shop-muted">
-                {messages.locale === 'es' ? 'Mecánico' : 'Mechanic'}: {item.mechanicNames.join(' / ') || '—'}
-              </p>
-              <p className="text-sm text-shop-muted">
-                {messages.locale === 'es' ? 'Millaje' : 'Mileage'}: {formatMileage(item.mileage)}
-              </p>
               <div>
-                <p className="section-label mb-2">{messages.locale === 'es' ? 'TRABAJO REALIZADO' : 'WORK PERFORMED'}</p>
+                <p className="section-label mb-2">{messages.locale === 'es' ? 'Trabajo realizado' : 'Work performed'}</p>
                 {item.jobs.length ? <div className="flex flex-wrap gap-2">
                   {item.jobs.map((j) => (
-                    <span
-                      key={j}
-                      className="rounded-lg border border-shop-border px-2 py-1 text-xs"
-                    >
-                      {j}
-                    </span>
+                    <Badge key={j} variant="outline">{j}</Badge>
                   ))}
                 </div> : <p className="text-sm text-shop-muted">{messages.locale === 'es' ? 'No se registraron detalles del trabajo.' : 'No work details were recorded.'}</p>}
               </div>

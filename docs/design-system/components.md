@@ -32,6 +32,8 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 | `WorkspaceNav` | Standard / PM / Back to Shop Admin |
 | `AuthBrandHeader` | Login / access-denied brand block |
 | `ScreenHeader` | Title, subtitle, optional back control |
+| `AdminPageHeader` | Admin eyebrow, page title, description, metadata, badges, and actions |
+| `AdminBackLink` | Consistent labeled back navigation with icon and 44px target |
 
 ## Loading, empty, failure (see `patterns.md`)
 
@@ -52,6 +54,14 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 
 Feature screens (dashboard, Yard board, Work Order detail, catalog) compose
 these primitives. They are not a second component library.
+
+## Admin composition rules
+
+- Every Admin page uses `AdminPageHeader`; do not hand-roll a second eyebrow/title hierarchy.
+- Use `AdminBackLink` for labeled back navigation. Keep the icon, label, and target area together.
+- Primary and filter actions use `Button`; labels remain on one line. Action groups wrap as a group at narrow widths rather than allowing individual buttons to become two-line controls.
+- Search and filter controls live in a bordered surface with consistent padding. Simple forms may omit the mobile modal, but they must preserve the same control heights and action alignment.
+- For list metadata, use a left column with `min-w-0 flex-1` and a right metadata column with `shrink-0 text-right`. Do not use an unbounded `justify-between` row with wrapping content.
 
 ## TARGET gaps (Master PRD §33 only)
 

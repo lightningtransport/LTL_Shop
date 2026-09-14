@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Dialog as DialogPrimitive, Slot } from 'radix-ui';
-import { ArrowLeft, Check, ChevronDown, Gauge, Languages, Moon, Sun, Wrench, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, Languages, Moon, Sun, Wrench, X } from 'lucide-react';
 import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
@@ -15,7 +15,7 @@ import { jobStatusVariant, phaseVariant, priorityVariant, workOrderStatusVariant
 import { cn } from '@/lib/utils';
 
 export const buttonVariants = cva(
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -625,6 +625,88 @@ export function ScreenHeader({
         content
       )}
     </header>
+  );
+}
+
+export function AdminPageHeader({
+  eyebrow,
+  title,
+  subtitle,
+  meta,
+  badges,
+  actions,
+  className,
+}: {
+  eyebrow: string;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  meta?: React.ReactNode;
+  badges?: React.ReactNode;
+  actions?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <header className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
+      <div className="min-w-0">
+        <p className="section-label">{eyebrow}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <h1 className="min-w-0 font-display text-3xl font-bold tracking-wide">{title}</h1>
+          {badges}
+        </div>
+        {subtitle ? <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p> : null}
+        {meta ? <div className="mt-1 text-xs text-muted-foreground">{meta}</div> : null}
+      </div>
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+    </header>
+  );
+}
+
+export function AdminBackLink({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Button asChild variant="ghost" className={cn('-ml-3 gap-2', className)}>
+      <Link href={href}>
+        <ChevronLeft aria-hidden="true" className="size-4 shrink-0" />
+        <span>{children}</span>
+      </Link>
+    </Button>
+  );
+}
+
+export function AdminFilterToolbar({
+  children,
+  onSubmit,
+  onClear,
+  clearLabel,
+  applyLabel,
+  className,
+}: {
+  children: React.ReactNode;
+  onSubmit: React.FormEventHandler<HTMLFormElement>;
+  onClear: () => void;
+  clearLabel: string;
+  applyLabel: string;
+  className?: string;
+}) {
+  return (
+    <form
+      role="search"
+      className={cn('flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-end', className)}
+      onSubmit={onSubmit}
+    >
+      <div className="min-w-0 flex-1">{children}</div>
+      <div className="flex shrink-0 gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={onClear}>{clearLabel}</Button>
+        <Button type="submit" size="sm">{applyLabel}</Button>
+      </div>
+    </form>
   );
 }
 

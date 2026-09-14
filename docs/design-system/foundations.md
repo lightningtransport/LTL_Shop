@@ -48,6 +48,11 @@ Use them as `bg-shop-panel`, `text-shop-muted`, `border-shop-border`,
 | Section label | `.section-label` — 12px, semibold, uppercase, `0.14em` tracking |
 | Body / helper | `text-sm text-muted-foreground` or `text-shop-muted` |
 
+Admin pages use the same hierarchy everywhere: `.section-label` eyebrow, one
+`text-3xl font-bold` page title, then a `text-sm` description. Do not switch
+between title case/uppercase eyebrows or `text-2xl font-semibold` page titles
+for convenience on individual screens.
+
 ## Spacing and radius
 
 | Token | CURRENT value |
@@ -68,6 +73,10 @@ Interactive controls use Tailwind `min-h-11` (2.75rem / 44px):
 
 Do not ship new tappable controls below 44px. The 2026-09-01 UX audit recorded
 this as a CURRENT rule (`docs/audit/ux-theme/README.md`).
+
+Buttons also use `whitespace-nowrap`; if an action group does not fit, the
+group wraps or stacks. Individual action labels must never be allowed to form
+an accidental two-line button.
 
 ## Layout shells
 

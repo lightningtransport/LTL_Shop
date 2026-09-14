@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { CatalogStatus } from '@ltl-shop/shared';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { ApiError } from '@/lib/api';
 import { useAdminCatalogCategory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -16,13 +16,14 @@ export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: strin
   if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
   return (
-    <div className="space-y-4">
-      <Button asChild variant="ghost" size="sm" className="-ml-3"><Link href="/admin/catalog">{messages.backToCatalog}</Link></Button>
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="font-display text-2xl font-semibold">{data.name}</h1>
-        {data.status === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}
-      </div>
-      <p className="text-sm text-muted-foreground">{messages.catalogDescription}</p>
+    <div className="space-y-5">
+      <AdminBackLink href="/admin/catalog">{messages.backToCatalog}</AdminBackLink>
+      <AdminPageHeader
+        eyebrow={messages.eyebrow}
+        title={data.name}
+        subtitle={messages.catalogDescription}
+        badges={data.status === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}
+      />
       <Card>
         <CardHeader>
           <CardTitle>{messages.catalogJobsColumn}</CardTitle>

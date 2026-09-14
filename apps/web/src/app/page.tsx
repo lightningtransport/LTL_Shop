@@ -14,6 +14,7 @@ import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
   Button,
+  Card,
   CardListSkeleton,
   EmptyState,
   HomeTopBar,
@@ -248,7 +249,7 @@ function WorkOrderCard({
   const { messages } = useShopLocale();
   const isPm = wo.primaryCategoryName === 'PM';
   return (
-    <article className="card space-y-3">
+    <Card className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-display text-xl font-bold tracking-wide">
@@ -298,7 +299,7 @@ function WorkOrderCard({
           ))}
         </ul>
       ) : null}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         {mode === 'completed' ? (
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewCompletedWorkAction} wo={wo} variant="secondary" className="flex-1" />
         ) : mode === 'paused' ? (
@@ -325,7 +326,7 @@ function WorkOrderCard({
             )
         )}
       </div>
-    </article>
+    </Card>
   );
 }
 
