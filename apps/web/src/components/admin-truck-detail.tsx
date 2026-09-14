@@ -1,23 +1,45 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+<<<<<<< HEAD
+import { useState, type FormEvent } from 'react';
 import { AlertTriangle, Info as InfoIcon, ShieldCheck } from 'lucide-react';
-import { AppCapability, ReadinessAssessmentStatus, ReadinessRequirementOutcome, ReadinessRequirementType, TruckOperationalStatus, type AdminTruckDetailDto, type ReadinessRequirementDto } from '@ltl-shop/shared';
+import {
+  AppCapability,
+  ReadinessAssessmentStatus,
+  ReadinessRequirementOutcome,
+  ReadinessRequirementType,
+  TruckOperationalStatus,
+  type AdminTruckDetailDto,
+  type ReadinessRequirementDto,
+} from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessment, updateAdminTruckRequirement, useAdminTruck } from '@/lib/admin-data';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
+import {
+  collapseReadinessBlockers,
+  evidenceRequired,
+  gateLabel,
+  hasUnevaluatedGate,
+  localizeReadinessBlocker,
+  markReadyBlockState,
+  newWorkOrderHref,
+  outcomeHelp,
+  OUTCOME_MESSAGE_KEY,
+  READINESS_OUTCOMES,
+  READINESS_REQUIREMENT_TYPES,
+  readinessGateDomId,
+  requiredNeedsWorkOrder,
+  withGateName,
+  type CompletedWorkOrderOption,
+} from '@/lib/admin-truck-readiness';
 import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, Select, Textarea, WorkOrderStatusBadge } from './ui';
 
-const requirementKey = { inspection: 'inspection', required_repairs: 'requiredWork', pm: 'pm', alignment: 'alignment', detailing: 'detailing', quality_check: 'qualityCheck' } as const;
-const outcomeKey = { not_evaluated: 'notEvaluatedOutcome', required: 'requiredOutcome', not_required: 'notRequiredOutcome', completed: 'completedOutcome', waived: 'waivedOutcome' } as const;
-const requirementTypes = Object.values(ReadinessRequirementType) as ReadinessRequirementType[];
-const outcomes = Object.values(ReadinessRequirementOutcome) as ReadinessRequirementOutcome[];
-
 type Feedback = { kind: 'success' | 'error'; message: string };
+type RequirementDraft = { outcome: ReadinessRequirementOutcome; waiverReason: string; evidenceWorkOrderId: string };
 
 export function AdminTruckDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
@@ -27,7 +49,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [closeOpen, setCloseOpen] = useState(false);
   const [closeReason, setCloseReason] = useState('');
-  const [drafts, setDrafts] = useState<Record<string, { outcome: ReadinessRequirementOutcome; waiverReason: string; evidenceWorkOrderId: string }>>({});
+  const [drafts, setDrafts] = useState<Record<string, RequirementDraft>>({});
 
   if (isLoading) return <PageSkeleton label={messages.loadingTruck} />;
   if (error instanceof ApiError && error.status === 404) return <TruckNotFound messages={messages} />;
@@ -37,13 +59,28 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
   const truckId = data.truck.id;
   const isActive = assessment?.status === ReadinessAssessmentStatus.UNDER_REVIEW || assessment?.status === ReadinessAssessmentStatus.READY;
   const currentWork = data.activeWorkOrder;
-  const readinessIncomplete = Boolean(assessment?.requirements.some((requirement) => [ReadinessRequirementOutcome.NOT_EVALUATED, ReadinessRequirementOutcome.REQUIRED].includes(requirement.outcome)));
+  const completedWorkOrders: CompletedWorkOrderOption[] = data.repairHistory.items.map((item) => ({
+    id: item.workOrderId,
+    displayId: item.displayId,
+  }));
+  const readyState = markReadyBlockState(assessment?.requirements ?? [], Boolean(currentWork));
+  const showUnevaluatedBanner = Boolean(
+    assessment
+    && assessment.status === ReadinessAssessmentStatus.UNDER_REVIEW
+    && hasUnevaluatedGate(assessment.requirements),
+  );
+  const { rowBlockers, listBlockers } = collapseReadinessBlockers(data.blockers);
+  const blockerList = listBlockers.length ? listBlockers : rowBlockers;
 
-  function draftFor(requirement: ReadinessRequirementDto) {
-    return drafts[requirement.id] ?? { outcome: requirement.outcome, waiverReason: requirement.waiverReason ?? '', evidenceWorkOrderId: requirement.evidenceWorkOrderId ?? '' };
+  function draftFor(requirement: ReadinessRequirementDto): RequirementDraft {
+    return drafts[requirement.id] ?? {
+      outcome: requirement.outcome,
+      waiverReason: requirement.waiverReason ?? '',
+      evidenceWorkOrderId: requirement.evidenceWorkOrderId ?? '',
+    };
   }
 
-  function updateDraft(requirement: ReadinessRequirementDto, patch: Partial<ReturnType<typeof draftFor>>) {
+  function updateDraft(requirement: ReadinessRequirementDto, patch: Partial<RequirementDraft>) {
     setDrafts((current) => ({
       ...current,
       [requirement.id]: {
@@ -107,11 +144,11 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
   }
 
   async function handleReady() {
-    if (!assessment || !window.confirm(messages.markReadyConfirmation)) return;
+    if (!assessment || readyState.disabled || !window.confirm(messages.markReadyConfirmation)) return;
     await runMutation('ready', messages.readySuccess, () => markAdminTruckReady(assessment.id, assessment.version));
   }
 
-  async function handleClose(event: React.FormEvent) {
+  async function handleClose(event: FormEvent) {
     event.preventDefault();
     if (!assessment) return;
     if (!closeReason.trim()) {
@@ -140,26 +177,286 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
       <Card><CardHeader><CardTitle>{messages.currentWork}</CardTitle><CardDescription>{messages.currentWorkDescription}</CardDescription></CardHeader><CardContent>{currentWork ? <div className="space-y-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${currentWork.id}`}>{currentWork.displayId}</Link><div className="flex gap-2"><WorkOrderStatusBadge status={currentWork.status}>{workOrderStatusLabel(currentWork.status, messages)}</WorkOrderStatusBadge><PriorityBadge priority={currentWork.priority}>{adminPriorityLabel(currentWork.priority, messages)}</PriorityBadge></div></div><Info label={messages.category} value={currentWork.category.name} /><Info label={messages.mechanicsLabel} value={currentWork.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noMechanicsAssigned} />{currentWork.currentPause ? <p className="rounded-lg bg-muted px-3 py-2 text-muted-foreground">{messages.currentPause}: {adminPauseReasonLabel(currentWork.currentPause.reason, messages)} · {formatAdminDate(currentWork.currentPause.startedAt, locale)}</p> : null}</div> : <CompactEmpty>{messages.noCurrentWork}</CompactEmpty>}</CardContent></Card>
     </section>
 
-    <section aria-labelledby="truck-readiness-title"><Card><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle id="truck-readiness-title">{messages.readinessSection}</CardTitle><CardDescription>{messages.readinessDescription}</CardDescription></div>{canManage && !assessment ? <Button type="button" onClick={() => void handleStart()} disabled={Boolean(pendingAction)}>{pendingAction === 'start' ? messages.starting : messages.startAssessment}</Button> : null}</div></CardHeader><CardContent>{assessment ? <div className="space-y-4"><div className="flex flex-wrap items-center gap-2 text-sm"><Badge variant={assessment.status === ReadinessAssessmentStatus.READY ? 'success' : 'outline'}>{localizedAssessmentStatus(assessment.status, messages)}</Badge><span className="text-muted-foreground">{messages.startedAtLabel}: {formatAdminDate(assessment.startedAt, locale)}</span><span className="text-muted-foreground">v{assessment.version}</span></div><div className="space-y-3">{requirementTypes.map((type) => { const requirement = assessment.requirements.find((candidate) => candidate.type === type); return requirement ? <RequirementEditor key={requirement.id} requirement={requirement} messages={messages} canManage={canManage && assessment.status !== ReadinessAssessmentStatus.CLOSED} draft={draftFor(requirement)} disabled={Boolean(pendingAction)} onChange={(patch) => updateDraft(requirement, patch)} onSave={() => void handleRequirement(requirement)} /> : null; })}</div>{canManage && isActive ? <div className="flex flex-wrap gap-2 border-t pt-4">{assessment.status === ReadinessAssessmentStatus.UNDER_REVIEW ? <Button type="button" onClick={() => void handleReady()} disabled={Boolean(pendingAction) || !assessment.requirements.every((requirement) => ![ReadinessRequirementOutcome.NOT_EVALUATED, ReadinessRequirementOutcome.REQUIRED].includes(requirement.outcome)) || Boolean(currentWork)}>{pendingAction === 'ready' ? messages.saving : messages.markReady}</Button> : null}<Button type="button" variant="destructive" onClick={() => setCloseOpen((current) => !current)} disabled={Boolean(pendingAction)}>{messages.closeAssessment}</Button></div> : null}{closeOpen ? <form className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3" onSubmit={handleClose}><label className="block space-y-1"><span className="text-sm font-medium">{messages.closeAssessmentReason}</span><Textarea required value={closeReason} onChange={(event) => setCloseReason(event.target.value)} aria-describedby="close-assessment-help" /><span id="close-assessment-help" className="text-xs text-muted-foreground">{messages.closeAssessmentDescription}</span></label><div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setCloseOpen(false)}>{messages.cancel}</Button><Button type="submit" variant="destructive" disabled={Boolean(pendingAction)}>{pendingAction === 'close' ? messages.saving : messages.confirmCloseAssessment}</Button></div></form> : null}</div> : <CompactEmpty><p>{messages.noRequirements}</p>{!canManage ? <p className="mt-2">{messages.permissionReadOnly}</p> : null}</CompactEmpty>}{!canManage && assessment ? <p className="mt-4 flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground"><InfoIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />{messages.permissionReadOnly}</p> : null}</CardContent></Card></section>
+    <section aria-labelledby="truck-readiness-title">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle id="truck-readiness-title">{messages.readinessSection}</CardTitle>
+              <CardDescription>{messages.readinessDescription}</CardDescription>
+            </div>
+            {canManage && !assessment ? <Button type="button" onClick={() => void handleStart()} disabled={Boolean(pendingAction)}>{pendingAction === 'start' ? messages.starting : messages.startAssessment}</Button> : null}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {assessment ? (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant={assessment.status === ReadinessAssessmentStatus.READY ? 'success' : 'outline'}>{localizedAssessmentStatus(assessment.status, messages)}</Badge>
+                <span className="text-muted-foreground">{messages.startedAtLabel}: {formatAdminDate(assessment.startedAt, locale)}</span>
+                <span className="text-muted-foreground">v{assessment.version}</span>
+              </div>
+              {showUnevaluatedBanner ? (
+                <p className="flex items-start gap-2 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status">
+                  <InfoIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                  {messages.unevaluatedGatesBanner}
+                </p>
+              ) : null}
+              <div className="space-y-3">
+                {READINESS_REQUIREMENT_TYPES.map((type) => {
+                  const requirement = assessment.requirements.find((candidate) => candidate.type === type);
+                  return requirement ? (
+                    <RequirementEditor
+                      key={requirement.id}
+                      requirement={requirement}
+                      messages={messages}
+                      canManage={canManage && assessment.status !== ReadinessAssessmentStatus.CLOSED}
+                      draft={draftFor(requirement)}
+                      disabled={Boolean(pendingAction)}
+                      truckId={truckId}
+                      currentWork={currentWork ? { id: currentWork.id, displayId: currentWork.displayId } : null}
+                      completedWorkOrders={completedWorkOrders}
+                      onChange={(patch) => updateDraft(requirement, patch)}
+                      onSave={() => void handleRequirement(requirement)}
+                    />
+                  ) : null;
+                })}
+              </div>
+              {canManage && isActive ? (
+                <div className="space-y-3 border-t pt-4">
+                  {assessment.status === ReadinessAssessmentStatus.UNDER_REVIEW ? (
+                    <MarkReadyControl
+                      messages={messages}
+                      readyState={readyState}
+                      currentWork={currentWork}
+                      pending={pendingAction === 'ready'}
+                      disabled={Boolean(pendingAction) || readyState.disabled}
+                      onReady={() => void handleReady()}
+                    />
+                  ) : null}
+                  <Button type="button" variant="destructive" onClick={() => setCloseOpen(true)} disabled={Boolean(pendingAction)} aria-expanded={closeOpen} aria-controls="end-review-form">
+                    {messages.closeAssessment}
+                  </Button>
+                </div>
+              ) : null}
+              {closeOpen ? (
+                <form id="end-review-form" className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3" onSubmit={handleClose}>
+                  <label className="block space-y-1">
+                    <span className="text-sm font-medium">{messages.closeAssessmentReason}</span>
+                    <Textarea required value={closeReason} onChange={(event) => setCloseReason(event.target.value)} aria-describedby="close-assessment-help" />
+                    <span id="close-assessment-help" className="text-xs text-muted-foreground">{messages.closeAssessmentDescription}</span>
+                  </label>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setCloseOpen(false)}>{messages.cancel}</Button>
+                    <Button type="submit" variant="destructive" disabled={Boolean(pendingAction)}>{pendingAction === 'close' ? messages.saving : messages.confirmCloseAssessment}</Button>
+                  </div>
+                </form>
+              ) : null}
+            </div>
+          ) : (
+            <CompactEmpty>
+              <p>{messages.noRequirements}</p>
+              {!canManage ? <p className="mt-2">{messages.permissionReadOnly}</p> : null}
+            </CompactEmpty>
+          )}
+          {!canManage && assessment ? <p className="mt-4 flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground"><InfoIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />{messages.permissionReadOnly}</p> : null}
+        </CardContent>
+      </Card>
+    </section>
 
-    <section aria-labelledby="truck-blockers-title"><Card><CardHeader><CardTitle id="truck-blockers-title">{messages.blockersSection}</CardTitle><CardDescription>{messages.blockersDescription}</CardDescription></CardHeader><CardContent>{data.blockers.length ? <ul className="space-y-2">{data.blockers.map((blocker, index) => <li key={`${blocker.kind}-${index}`} className="flex items-start gap-2 text-sm"><AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning-foreground" /><span>{localizeBlocker(blocker, messages)}</span></li>)}</ul> : <CompactEmpty><ShieldCheck aria-hidden="true" className="mb-1 inline size-4 text-shop-success" /> {messages.noBlockerRecorded}</CompactEmpty>}</CardContent></Card></section>
+    <section aria-labelledby="truck-blockers-title">
+      <Card>
+        <CardHeader>
+          <CardTitle id="truck-blockers-title">{messages.blockersSection}</CardTitle>
+          <CardDescription>{messages.blockersDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {blockerList.length ? (
+            <ul className="space-y-2">
+              {blockerList.map((blocker, index) => {
+                const item = localizeReadinessBlocker(blocker, messages);
+                return (
+                  <li key={`${blocker.kind}-${index}`} className="flex items-start gap-2 text-sm">
+                    <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning-foreground" />
+                    {item.href ? <Link className="text-primary hover:underline" href={item.href}>{item.text}</Link> : <span>{item.text}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <CompactEmpty><ShieldCheck aria-hidden="true" className="mb-1 inline size-4 text-shop-success" /> {messages.noBlockerRecorded}</CompactEmpty>
+          )}
+        </CardContent>
+      </Card>
+    </section>
 
     <section aria-labelledby="truck-history-title"><Card><CardHeader><CardTitle id="truck-history-title">{messages.repairHistorySection}</CardTitle><CardDescription>{messages.repairHistorySectionDescription}</CardDescription></CardHeader><CardContent>{data.repairHistory.items.length ? <ul className="divide-y">{data.repairHistory.items.map((item) => <li key={item.workOrderId} className="flex items-start justify-between gap-3 py-3 first:pt-0"><div className="min-w-0 flex-1"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${item.workOrderId}`}>{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p>{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : null}</div><div className="shrink-0 text-right text-xs text-muted-foreground">{item.mileage === null ? messages.noValue : <><span className="block">{messages.mileage}</span><span className="mt-1 block font-medium text-foreground">{formatNumber(item.mileage, locale, messages)}</span></>}</div></li>)}</ul> : <CompactEmpty>{messages.noRepairHistoryForTruck}</CompactEmpty>}</CardContent></Card></section>
   </div>;
 }
 
-function RequirementEditor({ requirement, messages, canManage, draft, disabled, onChange, onSave }: { requirement: ReadinessRequirementDto; messages: AdminMessages; canManage: boolean; draft: { outcome: ReadinessRequirementOutcome; waiverReason: string; evidenceWorkOrderId: string }; disabled: boolean; onChange: (patch: Partial<{ outcome: ReadinessRequirementOutcome; waiverReason: string; evidenceWorkOrderId: string }>) => void; onSave: () => void }) {
+function RequirementEditor({
+  requirement,
+  messages,
+  canManage,
+  draft,
+  disabled,
+  truckId,
+  currentWork,
+  completedWorkOrders,
+  onChange,
+  onSave,
+}: {
+  requirement: ReadinessRequirementDto;
+  messages: AdminMessages;
+  canManage: boolean;
+  draft: RequirementDraft;
+  disabled: boolean;
+  truckId: string;
+  currentWork: { id: string; displayId: string } | null;
+  completedWorkOrders: CompletedWorkOrderOption[];
+  onChange: (patch: Partial<RequirementDraft>) => void;
+  onSave: () => void;
+}) {
   const isEvidence = evidenceRequired(requirement.type, draft.outcome);
-  return <div className="rounded-xl border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-medium">{messages[requirementKey[requirement.type]]}</h3><p className="text-xs text-muted-foreground">{messages.requirementOutcome}: {messages[outcomeKey[draft.outcome]]} · v{requirement.version}</p></div>{!canManage ? <Badge variant="outline">{messages.readOnly}</Badge> : null}</div>{canManage ? <div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="space-y-1"><span className="text-xs font-medium">{messages.requirementOutcome}</span><Select aria-label={`${messages.requirementOutcome}: ${messages[requirementKey[requirement.type]]}`} value={draft.outcome} disabled={disabled} onChange={(event) => onChange({ outcome: event.target.value as ReadinessRequirementOutcome })}>{outcomes.map((outcome) => <option key={outcome} value={outcome}>{messages[outcomeKey[outcome]]}</option>)}</Select></label>{draft.outcome === ReadinessRequirementOutcome.WAIVED ? <label className="space-y-1"><span className="text-xs font-medium">{messages.waiverReason}</span><Input value={draft.waiverReason} disabled={disabled} onChange={(event) => onChange({ waiverReason: event.target.value })} required aria-describedby={`waiver-help-${requirement.id}`} /><span id={`waiver-help-${requirement.id}`} className="text-xs text-muted-foreground">{messages.waiverReasonRequired}</span></label> : null}{isEvidence ? <label className="space-y-1 sm:col-span-2"><span className="text-xs font-medium">{messages.evidenceWorkOrderId}</span><Input value={draft.evidenceWorkOrderId} disabled={disabled} onChange={(event) => onChange({ evidenceWorkOrderId: event.target.value })} required aria-describedby={`evidence-help-${requirement.id}`} /><span id={`evidence-help-${requirement.id}`} className="text-xs text-muted-foreground">{messages.evidenceWorkOrderHelp}</span></label> : null}<div className="flex justify-end sm:col-span-2"><Button type="button" size="sm" onClick={onSave} disabled={disabled}>{disabled ? messages.saving : messages.updateRequirement}</Button></div></div> : null}</div>;
+  const help = outcomeHelp(requirement.type, draft.outcome, messages);
+  const savedRequired = requirement.outcome === ReadinessRequirementOutcome.REQUIRED;
+  const showNextStep = savedRequired && draft.outcome === ReadinessRequirementOutcome.REQUIRED;
+  const blockerCopy = requirement.outcome === ReadinessRequirementOutcome.REQUIRED
+    ? withGateName(messages.gateRequiredUnfinished, gateLabel(requirement.type, messages))
+    : requirement.outcome === ReadinessRequirementOutcome.NOT_EVALUATED
+      ? withGateName(messages.gateNotEvaluatedYet, gateLabel(requirement.type, messages))
+      : null;
+  const pickerIds = new Set(completedWorkOrders.map((item) => item.id));
+
+  return (
+    <div id={readinessGateDomId(requirement.type)} className="scroll-mt-24 rounded-xl border p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="font-medium">{gateLabel(requirement.type, messages)}</h3>
+          <p className="text-xs text-muted-foreground">{messages.requirementOutcome}: {messages[OUTCOME_MESSAGE_KEY[draft.outcome]]} · v{requirement.version}</p>
+        </div>
+        {!canManage ? <Badge variant="outline">{messages.readOnly}</Badge> : null}
+      </div>
+      {blockerCopy ? <p className="mt-2 text-sm text-muted-foreground">{blockerCopy}</p> : null}
+      {canManage ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="space-y-1">
+            <span className="text-xs font-medium">{messages.requirementOutcome}</span>
+            <Select aria-label={`${messages.requirementOutcome}: ${gateLabel(requirement.type, messages)}`} value={draft.outcome} disabled={disabled} onChange={(event) => onChange({ outcome: event.target.value as ReadinessRequirementOutcome })}>
+              {READINESS_OUTCOMES.map((outcome) => <option key={outcome} value={outcome}>{messages[OUTCOME_MESSAGE_KEY[outcome]]}</option>)}
+            </Select>
+            {help ? <span className="block text-xs text-muted-foreground">{help}</span> : null}
+          </label>
+          {draft.outcome === ReadinessRequirementOutcome.WAIVED ? (
+            <label className="space-y-1">
+              <span className="text-xs font-medium">{messages.waiverReason}</span>
+              <Input value={draft.waiverReason} disabled={disabled} onChange={(event) => onChange({ waiverReason: event.target.value })} required aria-describedby={`waiver-help-${requirement.id}`} />
+              <span id={`waiver-help-${requirement.id}`} className="text-xs text-muted-foreground">{messages.waiverReasonRequired}</span>
+            </label>
+          ) : null}
+          {showNextStep ? (
+            <div className="space-y-2 rounded-lg bg-muted px-3 py-2 text-sm sm:col-span-2">
+              <p>{requiredNeedsWorkOrder(requirement.type) ? messages.requiredNextStepNeedsWo : messages.requiredNextStepNoWo}</p>
+              {requiredNeedsWorkOrder(requirement.type) ? (
+                <div className="flex flex-wrap gap-2">
+                  {currentWork ? (
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/admin/work-orders/${currentWork.id}`}>{messages.openWorkOrderForGate}: {currentWork.displayId}</Link>
+                    </Button>
+                  ) : (
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={newWorkOrderHref(truckId)}>{messages.newWorkOrderCta}</Link>
+                    </Button>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {isEvidence ? (
+            <div className="space-y-3 sm:col-span-2">
+              {completedWorkOrders.length ? (
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium">{messages.evidenceWorkOrderPicker}</span>
+                  <Select
+                    aria-label={messages.evidenceWorkOrderPicker}
+                    value={pickerIds.has(draft.evidenceWorkOrderId) ? draft.evidenceWorkOrderId : ''}
+                    disabled={disabled}
+                    onChange={(event) => onChange({ evidenceWorkOrderId: event.target.value })}
+                  >
+                    <option value="">{messages.evidenceWorkOrderPickerPlaceholder}</option>
+                    {completedWorkOrders.map((item) => <option key={item.id} value={item.id}>{item.displayId}</option>)}
+                  </Select>
+                </label>
+              ) : null}
+              <label className="block space-y-1">
+                <span className="text-xs font-medium">{completedWorkOrders.length ? messages.evidenceWorkOrderPaste : messages.evidenceWorkOrderId}</span>
+                <Input
+                  value={draft.evidenceWorkOrderId}
+                  disabled={disabled}
+                  onChange={(event) => onChange({ evidenceWorkOrderId: event.target.value })}
+                  required
+                  aria-describedby={`evidence-help-${requirement.id}`}
+                />
+                <span id={`evidence-help-${requirement.id}`} className="text-xs text-muted-foreground">{messages.evidenceWorkOrderHelp}</span>
+              </label>
+            </div>
+          ) : null}
+          <div className="flex justify-end sm:col-span-2">
+            <Button type="button" size="sm" onClick={onSave} disabled={disabled}>{disabled ? messages.saving : messages.updateRequirement}</Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
-function evidenceRequired(type: ReadinessRequirementType, outcome: ReadinessRequirementOutcome) {
-  return outcome === ReadinessRequirementOutcome.COMPLETED && [ReadinessRequirementType.PM, ReadinessRequirementType.ALIGNMENT, ReadinessRequirementType.REQUIRED_REPAIRS].includes(type);
-}
-
-function localizeBlocker(blocker: AdminTruckDetailDto['blockers'][number], messages: AdminMessages) {
-  const base = blocker.kind === 'open_work_order' ? messages.openWorkOrderBlocker : blocker.kind === 'required_requirement' ? messages.requiredRequirementBlocker : blocker.kind === 'unevaluated_requirement' ? messages.unevaluatedRequirementBlocker : messages.approvalConflictBlocker;
-  return `${base}${blocker.categoryName ? ` ${blocker.categoryName}` : ''}${blocker.status ? ` · ${workOrderStatusLabel(blocker.status, messages)}` : ''}${blocker.requirementType ? ` · ${messages[requirementKey[blocker.requirementType]]}` : ''}`;
+function MarkReadyControl({
+  messages,
+  readyState,
+  currentWork,
+  pending,
+  disabled,
+  onReady,
+}: {
+  messages: AdminMessages;
+  readyState: ReturnType<typeof markReadyBlockState>;
+  currentWork: AdminTruckDetailDto['activeWorkOrder'];
+  pending: boolean;
+  disabled: boolean;
+  onReady: () => void;
+}) {
+  const reasonId = 'mark-ready-why';
+  const firstGate = readyState.firstUnresolved ? gateLabel(readyState.firstUnresolved, messages) : null;
+  return (
+    <div className="space-y-2">
+      <Button type="button" onClick={onReady} disabled={disabled} aria-describedby={readyState.disabled ? reasonId : undefined}>
+        {pending ? messages.saving : messages.markReady}
+      </Button>
+      {readyState.disabled ? (
+        <div id={reasonId} className="space-y-1 text-sm text-muted-foreground" role="status">
+          {readyState.incomplete ? <p>{messages.readyRequirementsIncomplete}</p> : null}
+          {firstGate && readyState.firstUnresolved ? (
+            <p>
+              <Link className="text-primary hover:underline" href={`#${readinessGateDomId(readyState.firstUnresolved)}`}>
+                {withGateName(messages.readyFirstUnresolvedGate, firstGate)}
+              </Link>
+            </p>
+          ) : null}
+          {readyState.hasOpenWorkOrder ? (
+            <p>
+              {messages.readyOpenWorkOrder}
+              {currentWork ? (
+                <>
+                  {' '}
+                  <Link className="text-primary hover:underline" href={`/admin/work-orders/${currentWork.id}`}>{currentWork.displayId}</Link>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function localizedAssessmentStatus(value: ReadinessAssessmentStatus, messages: AdminMessages) {
@@ -177,5 +474,5 @@ function formatNumber(value: number | null, locale: AdminLocale, messages: Admin
 }
 
 function messageIsConflict(message: string, messages: AdminMessages) { return message === messages.mutationConflict; }
-function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
+function Info({ label, value }: { label: string; value: string }) { return <div className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium">{value}</dd></div>; }
 function TruckNotFound({ messages }: { messages: AdminMessages }) { return <EmptyState><p>{messages.notFoundTruck}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/yard-operations">{messages.backToYardOperations}</Link></Button></EmptyState>; }

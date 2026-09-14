@@ -321,7 +321,7 @@ createServer(async (request, response) => {
       if (item.assessment) { json(response, 409, { code: 'ACTIVE_READINESS_ASSESSMENT_EXISTS', message: 'Truck already has an active readiness assessment.' }); return; }
       item.assessment = makeAssessment(item);
       item.phase = 'inspection';
-      item.blockers = [{ kind: 'unevaluated_requirement', requirementType: 'inspection' }];
+      syncYardBlockers(item);
       json(response, 200, { assessment: item.assessment, linkedWorkOrderId: item.activeWorkOrder?.id ?? null });
       return;
     }
@@ -339,6 +339,7 @@ createServer(async (request, response) => {
       requirement.evidenceWorkOrderId = body.outcome === 'completed' ? (body.evidenceWorkOrderId ?? null) : null;
       requirement.version += 1;
       item.assessment.version += 1;
+      syncYardBlockers(item);
       json(response, 200, { assessment: item.assessment, requirement });
       return;
     }
@@ -1052,4 +1053,29 @@ function makeYardItem(truckId, truckNumber, phase, priority, assessmentStatus) {
 function makeAssessment(item) {
   const requirements = ['inspection', 'required_repairs', 'pm', 'alignment', 'detailing', 'quality_check'].map((type, index) => ({ id: `${item.truck.id.slice(0, -3)}${String(500 + index).padStart(3, '0')}`, type, outcome: 'not_evaluated', waiverReason: null, evidenceWorkOrderId: null, evaluatedById: null, evaluatedAt: null, version: 1 }));
   return { id: `${item.truck.id.slice(0, -3)}600`, truckId: item.truck.id, status: 'under_review', version: 1, startedAt: '2026-09-06T12:00:00.000Z', startedById: users['manager@lightning.local'].id, readyAt: null, approvedById: null, closedAt: null, closedById: null, closedReason: null, requirements };
+}
+
+function syncYardBlockers(item) {
+  if (!item.assessment || item.assessment.status === 'closed') {
+    item.blockers = [];
+    return;
+  }
+  const blockers = [];
+  for (const requirement of item.assessment.requirements) {
+    if (requirement.outcome === 'not_evaluated') {
+      blockers.push({ kind: 'unevaluated_requirement', requirementType: requirement.type });
+    } else if (requirement.outcome === 'required') {
+      blockers.push({ kind: 'required_requirement', requirementType: requirement.type });
+    }
+  }
+  if (item.activeWorkOrder) {
+    blockers.push({
+      kind: 'open_work_order',
+      workOrderId: item.activeWorkOrder.id,
+      status: item.activeWorkOrder.status,
+      priority: item.activeWorkOrder.priority,
+      categoryName: item.activeWorkOrder.category.name,
+    });
+  }
+  item.blockers = blockers;
 }
