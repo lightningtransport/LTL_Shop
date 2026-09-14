@@ -638,8 +638,8 @@ export function EmptyState({ children }: { children: React.ReactNode }) {
 }
 
 /** Compact dashed empty for in-card or in-column slots. Use EmptyState for page/section empties. */
-export function CompactEmpty({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</div>;
+export function CompactEmpty({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn('rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground', className)}>{children}</div>;
 }
 
 export function PageSkeleton({ label = 'Loading page' }: { label?: string }) {
@@ -791,9 +791,11 @@ export function JobStatusBadge({
 export function PhaseBadge({
   phase,
   children,
+  className,
 }: {
   phase: string;
   children: React.ReactNode;
+  className?: string;
 }) {
-  return <Badge variant={phaseVariant(phase)}>{children}</Badge>;
+  return <Badge variant={phaseVariant(phase)} className={cn('normal-case tracking-normal', className)}>{children}</Badge>;
 }
