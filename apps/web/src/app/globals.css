@@ -49,6 +49,30 @@
   --shop-muted: 0.5544 0.0407 257.4166;
   --shop-danger: 0.6368 0.2078 25.3313;
   --shop-success: 0.57 0.14 151;
+
+  /* PWA / notched devices. 0 on desktop and browser tabs (env() is 0 without a notch). */
+  --app-safe-top: 0px;
+  --app-safe-right: 0px;
+  --app-safe-bottom: 0px;
+  --app-safe-left: 0px;
+}
+
+@supports (padding-top: constant(safe-area-inset-top)) {
+  :root {
+    --app-safe-top: constant(safe-area-inset-top);
+    --app-safe-right: constant(safe-area-inset-right);
+    --app-safe-bottom: constant(safe-area-inset-bottom);
+    --app-safe-left: constant(safe-area-inset-left);
+  }
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  :root {
+    --app-safe-top: env(safe-area-inset-top, 0px);
+    --app-safe-right: env(safe-area-inset-right, 0px);
+    --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --app-safe-left: env(safe-area-inset-left, 0px);
+  }
 }
 
 .dark {
@@ -131,11 +155,26 @@ body {
   outline: none;
 }
 
+@layer utilities {
+  .app-safe-top {
+    padding-top: var(--app-safe-top);
+  }
+  .app-safe-bottom {
+    padding-bottom: var(--app-safe-bottom);
+  }
+  .app-safe-x {
+    padding-left: var(--app-safe-left);
+    padding-right: var(--app-safe-right);
+  }
+}
+
 @layer components {
   .app-shell {
-    @apply mx-auto min-h-screen w-full max-w-md px-4 outline-none md:max-w-xl;
-    padding-top: max(1.5rem, env(safe-area-inset-top));
-    padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+    @apply mx-auto min-h-screen w-full max-w-md outline-none md:max-w-xl;
+    padding-top: max(1.5rem, var(--app-safe-top));
+    padding-right: max(1rem, var(--app-safe-right));
+    padding-bottom: max(2.5rem, var(--app-safe-bottom));
+    padding-left: max(1rem, var(--app-safe-left));
   }
   /* Deprecated: use Button from ui.tsx. Kept only so leftover class names do not unstyle. */
   .btn {

@@ -325,7 +325,7 @@ export default function NewWorkOrderPage() {
   }
 
   return (
-    <div className={truck && !hasOpenWo ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : undefined}>
+    <div className={truck && !hasOpenWo ? 'pb-[calc(6rem+var(--app-safe-bottom))]' : undefined}>
       <WorkspaceNav mode={mechanicMode} />
       <ScreenHeader
         title={isPmMechanic ? messages.newPmService : messages.newWorkOrder}
@@ -640,7 +640,7 @@ export default function NewWorkOrderPage() {
             <InlineAlert className="mb-3">{error}</InlineAlert>
           ) : null}
 
-          <div className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto max-w-[calc(28rem-2rem)] rounded-xl border border-shop-border bg-background/95 p-2 shadow-lg backdrop-blur">
+          <div className="fixed inset-x-4 bottom-[max(1rem,var(--app-safe-bottom))] z-30 mx-auto max-w-[calc(28rem-2rem)] rounded-xl border border-shop-border bg-background/95 p-2 shadow-lg backdrop-blur">
             <Button
               className="w-full"
               disabled={createBlocked}
