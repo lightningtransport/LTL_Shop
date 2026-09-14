@@ -6,10 +6,11 @@ import { WorkOrdersModule } from '../work-orders/work-orders.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
+import { YardWorkPlanService } from './yard-work-plan.service';
 
 @Module({
   imports: [AuthModule, TrucksModule, ActivityLogModule, WorkOrdersModule],
   controllers: [AdminController],
-  providers: [AdminService, YardOperationsService],
+  providers: [AdminService, YardOperationsService, YardWorkPlanService],
 })
 export class AdminModule {}

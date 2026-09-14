@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-12
+**Updated:** 2026-09-14
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -114,6 +114,13 @@ TARGET authorization/UX.
   closed Ready assessment stays in that column until new open work appears.
 - `Ready to Go` is an explicit readiness approval. Completing a Work Order does
   not establish physical presence, departure, or return to service.
+- Additive LTR-34 Slice 1 Work Plan hooks exist for Frontend (LTR-33) and do
+  **not** replace Phase 1. `GET/POST /api/admin/trucks/:id/work-plan*` read the
+  open Work Order jobs and derive Ready automatically (Alignment + Detailing
+  always required; Shop Work is a Work Plan phase). `YARD_WORK_PLAN_SLICE1`
+  (default off) is required before Truck Detail also returns `workPlan`.
+  `updateRequirement` / Mark Ready stay in place. See
+  `docs/LTR-34_WORK_PLAN_SLICE1_PROPOSAL.md` (awaiting PM+PD ack).
 
 ### Authentication and profile
 

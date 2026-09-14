@@ -138,6 +138,61 @@ export enum ReadinessPhase {
   READY_TO_GO = 'ready_to_go',
 }
 
+/**
+ * Slice 1 Work Plan board/detail phase. Separate from Phase 1 `ReadinessPhase`
+ * so Yard Operations stays on the six-gate derivation until cutover.
+ * Shop Work is one phase; jobs live on the Truck Detail Work Plan.
+ */
+export enum WorkPlanPhase {
+  INSPECTION = 'inspection',
+  SHOP_WORK = 'shop_work',
+  ALIGNMENT = 'alignment',
+  DETAILING = 'detailing',
+  QUALITY_CHECK = 'quality_check',
+  READY_TO_GO = 'ready_to_go',
+}
+
+export enum WorkPlanInspectionOutcome {
+  NOT_STARTED = 'not_started',
+  ISSUES_FOUND = 'issues_found',
+  NO_ISSUES_FOUND = 'no_issues_found',
+}
+
+export enum WorkPlanJobUiStatus {
+  PENDING = 'pending',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+
+export enum WorkPlanJobLane {
+  SHOP_WORK = 'shop_work',
+  ALIGNMENT = 'alignment',
+  DETAILING = 'detailing',
+  QUALITY_CHECK = 'quality_check',
+}
+
+export enum WorkPlanMandatoryStatus {
+  PENDING = 'pending',
+  IN_PROGRESS = 'in_progress',
+  COMPLETE = 'complete',
+  NOT_APPLICABLE = 'not_applicable',
+}
+
+export enum WorkPlanReadiness {
+  NOT_READY = 'not_ready',
+  READY = 'ready',
+}
+
+export enum WorkPlanNotReadyReason {
+  INSPECTION_PENDING = 'inspection_pending',
+  JOBS_REMAINING = 'jobs_remaining',
+  ALIGNMENT_PENDING = 'alignment_pending',
+  DETAILING_PENDING = 'detailing_pending',
+  QC_PENDING = 'qc_pending',
+  PLAN_COMPLETE = 'plan_complete',
+}
+
 export enum TruckServiceStatus {
   IN_SERVICE = 'in_service',
   OFF_DUTY = 'off_duty',

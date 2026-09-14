@@ -19,6 +19,8 @@ import { CapabilitiesGuard } from '../auth/capabilities.guard';
 import { TrucksService } from '../trucks/trucks.service';
 import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
+import { YardWorkPlanService } from './yard-work-plan.service';
+import { isYardWorkPlanSlice1Enabled } from './yard-work-plan-flag';
 
 @Controller('admin')
 @UseGuards(AuthGuard, CapabilitiesGuard)
@@ -28,6 +30,7 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly trucks: TrucksService,
     private readonly yardOperations: YardOperationsService,
+    private readonly workPlan: YardWorkPlanService,
   ) {}
 
   @Get('access')
@@ -193,8 +196,27 @@ export class AdminController {
   }
 
   @Get('trucks/:id')
-  yardTruck(@Param('id') id: string) {
-    return this.yardOperations.detail(id);
+  async yardTruck(@Req() request: Request, @Param('id') id: string) {
+    const detail = await this.yardOperations.detail(id);
+    if (!isYardWorkPlanSlice1Enabled()) return detail;
+    return { ...detail, workPlan: await this.workPlan.get(request.user!, id) };
+  }
+
+  @Get('trucks/:id/work-plan')
+  getWorkPlan(@Req() request: Request, @Param('id') id: string) {
+    return this.workPlan.get(request.user!, id);
+  }
+
+  @Post('trucks/:id/work-plan/jobs')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  addWorkPlanJobs(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.workPlan.addJobs(request.user!, id, body);
+  }
+
+  @Post('trucks/:id/work-plan/inspection')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
+  recordWorkPlanInspection(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.workPlan.recordInspection(request.user!, id, body);
   }
 
   @Post('trucks/:id/readiness-assessments')
