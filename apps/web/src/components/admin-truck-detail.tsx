@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { AlertTriangle, ArrowLeft, Info as InfoIcon, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Info as InfoIcon, ShieldCheck } from 'lucide-react';
 import { AppCapability, ReadinessAssessmentStatus, ReadinessRequirementOutcome, ReadinessRequirementType, TruckOperationalStatus, type AdminTruckDetailDto, type ReadinessRequirementDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
@@ -10,7 +10,7 @@ import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessme
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, Select, Textarea, WorkOrderStatusBadge } from './ui';
+import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, Select, Textarea, WorkOrderStatusBadge } from './ui';
 
 const requirementKey = { inspection: 'inspection', required_repairs: 'requiredWork', pm: 'pm', alignment: 'alignment', detailing: 'detailing', quality_check: 'qualityCheck' } as const;
 const outcomeKey = { not_evaluated: 'notEvaluatedOutcome', required: 'requiredOutcome', not_required: 'notRequiredOutcome', completed: 'completedOutcome', waived: 'waivedOutcome' } as const;
@@ -125,12 +125,13 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
   }
 
   return <div className="space-y-5">
-    <div><Button asChild variant="ghost" className="-ml-3"><Link href="/admin/yard-operations"><ArrowLeft aria-hidden="true" className="size-4" />{messages.backToYardOperations}</Link></Button></div>
-    <header>
-      <p className="section-label">{messages.yardOperationsTitle}</p>
-      <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="font-display text-3xl font-bold tracking-wide">{data.truck.truckNumber}</h1><PhaseBadge phase={data.phase}>{phaseLabel(data.phase, messages)}</PhaseBadge></div>
-      <p className="mt-2 text-sm text-muted-foreground">{[data.truck.year, data.truck.make, data.truck.model].filter(Boolean).join(' ') || messages.noValue}</p>
-    </header>
+    <AdminBackLink href="/admin/yard-operations">{messages.backToYardOperations}</AdminBackLink>
+    <AdminPageHeader
+      eyebrow={messages.yardOperationsTitle}
+      title={data.truck.truckNumber}
+      subtitle={[data.truck.year, data.truck.make, data.truck.model].filter(Boolean).join(' ') || messages.noValue}
+      badges={<PhaseBadge phase={data.phase}>{phaseLabel(data.phase, messages)}</PhaseBadge>}
+    />
 
     {feedback ? <div className={feedback.kind === 'error' ? 'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive' : 'rounded-xl border border-shop-success/30 bg-shop-success/10 px-3 py-2 text-sm text-shop-success'} role={feedback.kind === 'error' ? 'alert' : 'status'} aria-live="polite">{feedback.message}{feedback.kind === 'error' && messageIsConflict(feedback.message, messages) ? <Button type="button" variant="outline" size="sm" className="ml-3" onClick={() => void mutate()}>{messages.reloadTruck}</Button> : null}</div> : null}
 
@@ -143,7 +144,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
 
     <section aria-labelledby="truck-blockers-title"><Card><CardHeader><CardTitle id="truck-blockers-title">{messages.blockersSection}</CardTitle><CardDescription>{messages.blockersDescription}</CardDescription></CardHeader><CardContent>{data.blockers.length ? <ul className="space-y-2">{data.blockers.map((blocker, index) => <li key={`${blocker.kind}-${index}`} className="flex items-start gap-2 text-sm"><AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning-foreground" /><span>{localizeBlocker(blocker, messages)}</span></li>)}</ul> : <CompactEmpty><ShieldCheck aria-hidden="true" className="mb-1 inline size-4 text-shop-success" /> {messages.noBlockerRecorded}</CompactEmpty>}</CardContent></Card></section>
 
-    <section aria-labelledby="truck-history-title"><Card><CardHeader><CardTitle id="truck-history-title">{messages.repairHistorySection}</CardTitle><CardDescription>{messages.repairHistorySectionDescription}</CardDescription></CardHeader><CardContent>{data.repairHistory.items.length ? <ul className="divide-y">{data.repairHistory.items.map((item) => <li key={item.workOrderId} className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0"><div><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${item.workOrderId}`}>{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p>{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : null}</div><div className="text-right text-xs text-muted-foreground">{item.mileage === null ? messages.noValue : `${messages.mileage}: ${formatNumber(item.mileage, locale, messages)}`}</div></li>)}</ul> : <CompactEmpty>{messages.noRepairHistoryForTruck}</CompactEmpty>}</CardContent></Card></section>
+    <section aria-labelledby="truck-history-title"><Card><CardHeader><CardTitle id="truck-history-title">{messages.repairHistorySection}</CardTitle><CardDescription>{messages.repairHistorySectionDescription}</CardDescription></CardHeader><CardContent>{data.repairHistory.items.length ? <ul className="divide-y">{data.repairHistory.items.map((item) => <li key={item.workOrderId} className="flex items-start justify-between gap-3 py-3 first:pt-0"><div className="min-w-0 flex-1"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${item.workOrderId}`}>{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p>{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : null}</div><div className="shrink-0 text-right text-xs text-muted-foreground">{item.mileage === null ? messages.noValue : <><span className="block">{messages.mileage}</span><span className="mt-1 block font-medium text-foreground">{formatNumber(item.mileage, locale, messages)}</span></>}</div></li>)}</ul> : <CompactEmpty>{messages.noRepairHistoryForTruck}</CompactEmpty>}</CardContent></Card></section>
   </div>;
 }
 

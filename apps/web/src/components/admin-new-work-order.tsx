@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
 import {
   AppCapability,
   Priority,
@@ -22,6 +21,8 @@ import { useCatalogJobs, useCategories, useTrucks } from '@/lib/shop-data';
 import { CategoryJobList } from './category-job-list';
 import { rankTruckResults } from '@/lib/truck-search';
 import {
+  AdminBackLink,
+  AdminPageHeader,
   Badge,
   Button,
   Card,
@@ -238,24 +239,17 @@ export function AdminNewWorkOrder({
 
   if (!canCreateWorkOrder) {
     return (
-      <div className="space-y-4">
-        <Button asChild variant="ghost">
-          <Link href="/admin/work-orders">
-            <ChevronLeft aria-hidden="true" className="size-4" />
-            {messages.backToWorkOrders}
-          </Link>
-        </Button>
+      <div className="space-y-5">
+        <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
         <EmptyState>{messages.createRequiresManage}</EmptyState>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">{messages.newWorkOrderTitle}</h1>
-        <p className="text-sm text-muted-foreground">{messages.newWorkOrderSubtitle}</p>
-      </div>
+    <div className="space-y-5">
+      <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
+      <AdminPageHeader eyebrow={messages.eyebrow} title={messages.newWorkOrderTitle} subtitle={messages.newWorkOrderSubtitle} />
 
       <Card>
         <CardHeader><CardTitle>{messages.selectTruckLabel}</CardTitle></CardHeader>

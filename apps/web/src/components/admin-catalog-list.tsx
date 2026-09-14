@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { CatalogStatus } from '@ltl-shop/shared';
-import { Badge, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { AdminPageHeader, Badge, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useAdminCatalogCategories } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
@@ -18,13 +18,13 @@ export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; me
   }, [data, search]);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">{messages.eyebrow}</p>
-        <h1 className="font-display text-2xl font-semibold">{messages.catalogTitle}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{messages.catalogDescription}</p>
-      </div>
-      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchCatalog} aria-label={messages.searchCatalog} />
+    <div className="space-y-5">
+      <AdminPageHeader eyebrow={messages.eyebrow} title={messages.catalogTitle} subtitle={messages.catalogDescription} />
+      <Card className="p-3">
+        <CardContent>
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchCatalog} aria-label={messages.searchCatalog} />
+        </CardContent>
+      </Card>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.catalogTitle} /> : null}
       {!isLoading && !error && items.length === 0 ? (

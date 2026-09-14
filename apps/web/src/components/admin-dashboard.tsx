@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { AlertTriangle, CalendarCheck, ClipboardCheck, ClipboardList, Clock3, History, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminWorkOrderItem } from './admin-work-order-item';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminPageHeader, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { formatAdminDate } from '@/lib/admin-format';
 import { useAdminDashboard } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -34,12 +34,12 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
   const canPm = !!user?.capabilities.includes(AppCapability.MECHANIC_PM);
 
   return <div className="space-y-5">
-    <header>
-      <p className="section-label">{messages.eyebrow}</p>
-      <h1 className="mt-2 font-display text-3xl font-bold tracking-wide sm:text-4xl">{messages.title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{messages.currentOperations}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{messages.generatedAtLabel} {formatAdminDate(data.generatedAt, locale)}</p>
-    </header>
+    <AdminPageHeader
+      eyebrow={messages.eyebrow}
+      title={messages.title}
+      subtitle={messages.currentOperations}
+      meta={<>{messages.generatedAtLabel} {formatAdminDate(data.generatedAt, locale)}</>}
+    />
     {canStandard || canPm ? (
       <section aria-labelledby="admin-workspaces-title">
         <div className="mb-3">

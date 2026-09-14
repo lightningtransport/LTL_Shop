@@ -17,6 +17,22 @@ Use this matrix before adding a new wait, error, or empty treatment.
 | In-card or in-column slot is empty while siblings have content | `CompactEmpty` | Page-sized `EmptyState` that blows the column |
 | User is signed in but lacks this workspace | `EmptyState` + link to `defaultWorkspacePath` (and redirect) | Skeleton that never ends |
 
+## Screen chrome and responsive actions
+
+- Admin screens use `AdminPageHeader` for the eyebrow, title, description,
+  metadata, badges, and header actions. The eyebrow is always the shared
+  `section-label`; individual pages must not introduce a second casing or
+  title scale.
+- Use `AdminBackLink` for labeled Admin back navigation. The control keeps a
+  44px target and a non-wrapping label.
+- Filter forms use a bordered surface and keep Clear / Apply as a `shrink-0`
+  action group. On narrow screens the group may stack, but an individual
+  button must not wrap its label.
+- Rows that combine primary content and secondary metadata use
+  `min-w-0 flex-1` for the primary column and `shrink-0 text-right` for the
+  metadata column. This keeps mileage, dates, and statuses intentional on
+  both desktop and mobile.
+
 ## CURRENT call sites
 
 - Mechanic Home (`apps/web/src/app/page.tsx`, `/mechanic/standard`,

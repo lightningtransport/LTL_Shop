@@ -63,6 +63,9 @@ type Copy = {
   customJobPlaceholder: string;
   addCustomJob: string;
   addCatalogJob: string;
+  checkingTruck: string;
+  chooseCategory: string;
+  addJobToContinue: string;
   askManagerToCreate: string;
   askManagerToCreateHint: string;
   additionalWorkHint: string;
@@ -75,6 +78,18 @@ type Copy = {
   pauseWorkOrder: string;
   workOrderAction: (action: string, displayId: string, truckNumber: string) => string;
   pmServiceLoadError: string;
+  loadingPmService: string;
+  currentTruckMileage: string;
+  lastCompletedPm: string;
+  noPriorPm: string;
+  mileageNotRecorded: string;
+  observedMileage: string;
+  enterMileageHint: string;
+  partsUsed: string;
+  noPartUsed: string;
+  noCompatibleParts: string;
+  saving: string;
+  saved: string;
   restoringSession: string;
   loadingWorkOrders: string;
   loadingWorkOrder: string;
@@ -152,6 +167,9 @@ const copy: Record<ShopLocale, Copy> = {
     customJobPlaceholder: 'Custom job name',
     addCustomJob: 'Add custom job',
     addCatalogJob: 'Add',
+    checkingTruck: 'Checking truck…',
+    chooseCategory: 'Choose a category',
+    addJobToContinue: 'Add a job to continue',
     askManagerToCreate: 'Ask your Shop Manager to create a Work Order.',
     askManagerToCreateHint: 'Managers plan Standard work. Your Home lists Work Orders assigned to you.',
     additionalWorkHint: 'Need additional work on this Truck? Write it here so your Manager can add the Job.',
@@ -164,6 +182,18 @@ const copy: Record<ShopLocale, Copy> = {
     pauseWorkOrder: 'Pause Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, truck ${truckNumber}`,
     pmServiceLoadError: 'Unable to load PM service details.',
+    loadingPmService: 'Loading PM service details…',
+    currentTruckMileage: 'Current truck mileage',
+    lastCompletedPm: 'Last completed PM',
+    noPriorPm: 'No prior PM recorded',
+    mileageNotRecorded: 'Mileage not recorded',
+    observedMileage: 'Observed mileage',
+    enterMileageHint: 'Enter the observed mileage to record parts used.',
+    partsUsed: 'Parts used',
+    noPartUsed: 'No part used',
+    noCompatibleParts: 'No compatible parts for this truck',
+    saving: 'Saving…',
+    saved: 'Saved',
     restoringSession: 'Restoring session',
     loadingWorkOrders: 'Loading work orders',
     loadingWorkOrder: 'Loading work order',
@@ -251,6 +281,9 @@ const copy: Record<ShopLocale, Copy> = {
     customJobPlaceholder: 'Nombre de job personalizado',
     addCustomJob: 'Agregar job personalizado',
     addCatalogJob: 'Agregar',
+    checkingTruck: 'Verificando camión…',
+    chooseCategory: 'Elige una categoría',
+    addJobToContinue: 'Agrega un job para continuar',
     askManagerToCreate: 'Pide a tu Shop Manager que cree el Work Order.',
     askManagerToCreateHint: 'El Manager planifica el trabajo Standard. En Inicio ves los Work Orders asignados a ti.',
     additionalWorkHint: '¿Hace falta trabajo adicional en esta unidad? Anótalo aquí para que el Manager agregue el Job.',
@@ -263,6 +296,18 @@ const copy: Record<ShopLocale, Copy> = {
     pauseWorkOrder: 'Pausar Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, unidad ${truckNumber}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',
+    loadingPmService: 'Cargando detalles del servicio de PM…',
+    currentTruckMileage: 'Millaje actual del camión',
+    lastCompletedPm: 'Último PM completado',
+    noPriorPm: 'No hay PM anterior registrado',
+    mileageNotRecorded: 'Millaje no registrado',
+    observedMileage: 'Millaje observado',
+    enterMileageHint: 'Ingresa el millaje observado para registrar las piezas usadas.',
+    partsUsed: 'Piezas usadas',
+    noPartUsed: 'No se usó ninguna pieza',
+    noCompatibleParts: 'No hay piezas compatibles para este camión',
+    saving: 'Guardando…',
+    saved: 'Guardado',
     restoringSession: 'Restaurando sesión',
     loadingWorkOrders: 'Cargando Work Orders',
     loadingWorkOrder: 'Cargando Work Order',

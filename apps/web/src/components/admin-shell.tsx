@@ -123,9 +123,21 @@ export function AdminShell({
 
 function AdminBrand({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="flex shrink-0 items-center gap-3">
-      <Image src="/ltl-logo.png" alt="Lightning Transport and Logistics" width={1536} height={894} priority className={compact ? 'h-auto w-12 sm:w-16' : 'h-auto w-[4.5rem]'} />
-      {!compact ? <div><p className="font-display text-sm font-bold tracking-wide">LTL SHOP</p><p className="text-xs text-muted-foreground">ADMIN</p></div> : null}
+    <div className="flex min-h-10 shrink-0 items-center gap-3">
+      <Image
+        src="/ltl-logo.png"
+        alt="Lightning Transport and Logistics"
+        width={1536}
+        height={894}
+        priority
+        className={compact ? 'h-8 w-12 object-contain sm:h-9 sm:w-14' : 'h-10 w-16 object-contain'}
+      />
+      {!compact ? (
+        <div className="leading-none">
+          <p className="font-display text-sm font-bold tracking-wide">LTL SHOP</p>
+          <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminWorkOrderItem } from './admin-work-order-item';
-import { Button, Card, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PriorityBadge, Select, WorkOrderStatusBadge } from './ui';
+import { AdminPageHeader, Button, Card, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PriorityBadge, Select, WorkOrderStatusBadge } from './ui';
 import { formatAdminDate } from '@/lib/admin-format';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { useAdminWorkOrders } from '@/lib/admin-data';
@@ -78,14 +78,12 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
     : messages.filters;
 
   return <div className="space-y-5">
-    <header className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <p className="section-label">{messages.eyebrow}</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-wide">{messages.workOrdersTitle}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{messages.workOrdersDescription}</p>
-      </div>
-      {canCreateWorkOrder ? <Button asChild><Link href="/admin/work-orders/new">{messages.newWorkOrderCta}</Link></Button> : null}
-    </header>
+    <AdminPageHeader
+      eyebrow={messages.eyebrow}
+      title={messages.workOrdersTitle}
+      subtitle={messages.workOrdersDescription}
+      actions={canCreateWorkOrder ? <Button asChild><Link href="/admin/work-orders/new">{messages.newWorkOrderCta}</Link></Button> : null}
+    />
     <Card className="min-w-0 p-3">
       <form role="search" className="min-w-0" onSubmit={applyFilters}>
         <div className="flex min-w-0 items-end gap-2 md:flex-nowrap md:gap-1.5">

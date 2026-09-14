@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Check } from 'lucide-react';
 import type { CatalogJobDto } from '@ltl-shop/shared';
 import { filterCatalogJobs } from '@/lib/job-catalog';
-import { Button, CompactEmpty, EmptyState, InlineAlert, Input } from './ui';
+import { Button, Card, CompactEmpty, EmptyState, InlineAlert, Input } from './ui';
 
 export type CategoryJobListCopy = {
   searchLabel: string;
@@ -42,7 +42,7 @@ export function CategoryJobList({
 
   if (error) return <InlineAlert>{copy.loadError}</InlineAlert>;
   if (isLoading && !jobs.length) {
-    return <p className="text-sm text-muted-foreground">{copy.loading}</p>;
+    return <Card className="text-sm text-muted-foreground">{copy.loading}</Card>;
   }
   if (!jobs.length) {
     return <EmptyState>{copy.emptyCategory}</EmptyState>;
@@ -68,7 +68,6 @@ export function CategoryJobList({
                 <Button
                   type="button"
                   variant={isSelected ? 'default' : 'secondary'}
-                  size="sm"
                   aria-pressed={isSelected}
                   aria-label={`${copy.addJob} ${job.displayName}`}
                   className="max-w-full"

@@ -63,7 +63,7 @@ function Info({
 }) {
   return (
     <div className={cn(truckInformationFieldClass, className)}>
-      <p className="text-[11px] uppercase tracking-wide text-shop-muted">{label}</p>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className={cn('font-medium', valueClassName)} title={value || undefined}>
         {value || '—'}
       </p>

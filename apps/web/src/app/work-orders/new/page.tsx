@@ -132,12 +132,12 @@ export default function NewWorkOrderPage() {
   const createBlocked = busy || hasOpenWo || openWoCheck !== 'verified' || !categoryId || (!isPmMechanic && jobs.length === 0);
   const createActionLabel = isPmMechanic
     ? openWoCheck === 'checking'
-      ? 'Checking truck…'
+      ? messages.checkingTruck
       : messages.createPmService
     : !categoryId
-      ? 'Choose a category'
+      ? messages.chooseCategory
       : jobs.length === 0
-        ? 'Add a job to continue'
+        ? messages.addJobToContinue
         : messages.createWorkOrder;
   const selectedCategory = standardCategories.find((category) => category.id === categoryId);
   const selectedCatalogJobIds = useMemo(

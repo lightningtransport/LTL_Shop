@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus } from '@ltl-shop/shared';
-import { Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { AdminFilterToolbar, AdminPageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
 import { useAdminTrucks } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
@@ -24,14 +24,12 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">{messages.eyebrow}</p>
-        <h1 className="font-display text-2xl font-semibold">{messages.trucksTitle}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{messages.trucksDescription}</p>
-      </div>
-      <form
-        className="flex flex-col gap-3 sm:flex-row"
+    <div className="space-y-5">
+      <AdminPageHeader eyebrow={messages.eyebrow} title={messages.trucksTitle} subtitle={messages.trucksDescription} />
+      <AdminFilterToolbar
+        onClear={() => router.replace('/admin/trucks')}
+        clearLabel={messages.clearFilters}
+        applyLabel={messages.applyFilters}
         onSubmit={(event) => {
           event.preventDefault();
           const next = new URLSearchParams();
@@ -40,11 +38,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
         }}
       >
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchTrucks} aria-label={messages.searchTrucks} />
-        <div className="flex gap-2">
-          <Button type="button" variant="ghost" onClick={() => router.replace('/admin/trucks')}>{messages.clearFilters}</Button>
-          <Button type="submit">{messages.applyFilters}</Button>
-        </div>
-      </form>
+      </AdminFilterToolbar>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.trucksTitle} /> : null}
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p></EmptyState> : null}
