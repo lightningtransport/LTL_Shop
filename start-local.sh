@@ -2,6 +2,15 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Folder names that contain ':' split PATH, so npm cannot find nest/next/prisma.
+ROOT="$(pwd -P)"
+if [[ "$ROOT" == *:* ]]; then
+  ln -sfn "$ROOT" /tmp/ltl-shop
+  export PATH="/tmp/ltl-shop/node_modules/.bin:${PATH}"
+else
+  export PATH="${ROOT}/node_modules/.bin:${PATH}"
+fi
+
 echo "Freeing ports 3000 / 3001 / 3005..."
 for port in 3000 3001 3005; do
   pids=$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
