@@ -18,6 +18,9 @@ applied. Use this path before application traffic depends on a new schema.
      unauthenticated `GET /api/health` and `GET /` must return `{ ok: true }`.
    - Enable **Run prisma migrate deploy** only after review. That is the only
      approved production `migrate deploy` path (`PRISMA_APPROVED_RELEASE_PATH=1`).
+   - The same job then runs `prisma:apply-catalog` (idempotent LTR-24 categories
+     + discrete jobs). Merging the seed PR does not update the live shop until
+     this path runs.
    - The gate fails the job on pending, failed, or drifted migrations.
 3. Optional production build enforcement: set Vercel env `PRISMA_RELEASE_GATE=1`
    on `ltl-shop-api`. The API build then runs the same status check and refuses
@@ -36,7 +39,7 @@ the production release path.
 - [ ] Supabase project created (separate from Production)
 - [ ] `DATABASE_URL` + `DIRECT_URL` set (pooler + direct)
 - [ ] Prisma migrate deploy applied
-- [ ] Seed categories/catalog (or import from Shop)
+- [ ] Seed categories/catalog via `prisma:apply-catalog` (or full `db:seed` in local/dev)
 - [ ] Mechanic users inserted in `users` with matching Supabase Auth emails
 - [ ] `AUTH_DEV_BYPASS=false`
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` set on Vercel

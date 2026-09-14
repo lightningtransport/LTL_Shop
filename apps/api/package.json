@@ -13,6 +13,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:apply-catalog": "tsx prisma/apply-job-catalog.ts",
     "prisma:release-status": "tsx src/release/run-prisma-release-gate.ts --status --require-up-to-date",
     "prisma:release-deploy": "tsx src/release/run-prisma-release-gate.ts --deploy --verify-api",
     "prisma:release-gate": "tsx src/release/run-prisma-release-gate.ts --vercel-build",
