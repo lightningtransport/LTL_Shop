@@ -127,6 +127,7 @@ body {
     padding-top: max(1.5rem, env(safe-area-inset-top));
     padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
   }
+  /* Deprecated: use Button from ui.tsx. Kept only so leftover class names do not unstyle. */
   .btn {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
   }

@@ -36,19 +36,20 @@ test.describe('V1.2-002 blocker lifecycle', () => {
     await expect(page.getByRole('heading', { name: 'WO-0106' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('In Progress').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Reported blockers' })).toBeVisible();
-    await expect(page.getByText('Waiting For Parts').first()).toBeVisible();
+    await expect(page.getByText('Waiting for Parts').first()).toBeVisible();
     await expect(page.getByText('Alejandro 1').first()).toBeVisible();
     await expect(page.getByText('This Work Order is not currently paused.').first()).toBeVisible();
-    await expect(page.getByText('Blocker Reported')).toBeVisible();
-    await expect(page.getByText(/waiting_for_parts/)).toBeVisible();
+    await expect(page.getByText('Blocker reported')).toBeVisible();
+    await expect(page.locator('pre')).toHaveCount(0);
+    await expect(page.getByText(/waiting_for_parts/)).toHaveCount(0);
 
     await page.getByLabel('Pause reason').selectOption('waiting_for_approval');
     await page.getByRole('button', { name: 'Pause Work Order' }).click();
     await expect(page.getByText('Work Order paused.')).toBeVisible();
-    await expect(page.getByText('Waiting Paused').first()).toBeVisible();
+    await expect(page.getByText('Paused').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Resume Work Order' })).toBeVisible();
-    await expect(page.getByText('Waiting For Approval').first()).toBeVisible();
-    await expect(page.getByText('Waiting For Parts').first()).toBeVisible();
+    await expect(page.getByText('Waiting for Approval').first()).toBeVisible();
+    await expect(page.getByText('Waiting for Parts').first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Resume Work Order' }).click();
     await expect(page.getByText('Work Order resumed.')).toBeVisible();

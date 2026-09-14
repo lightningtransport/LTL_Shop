@@ -11,9 +11,10 @@ import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
+import { jobStatusVariant, phaseVariant, priorityVariant, workOrderStatusVariant } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
 
-const buttonVariants = cva(
+export const buttonVariants = cva(
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
@@ -243,6 +244,7 @@ export function MultiSelect({
   placeholder?: string;
   className?: string;
 }) {
+  const { messages } = useShopLocale();
   const [open, setOpen] = React.useState(false);
   const selected = options.filter((option) => value.includes(option.value));
   const summary = selected.length === 0 ? placeholder : selected.map((option) => option.label).join(', ');
@@ -306,7 +308,7 @@ export function MultiSelect({
           })}
         </div>
         <Button className="mt-5 w-full" onClick={() => setOpen(false)}>
-          Done
+          {messages.multiSelectDone}
         </Button>
       </DialogContent>
     </DialogPrimitive.Root>
@@ -526,6 +528,7 @@ export function HomeTopBar({ mode }: { mode?: MechanicMode }) {
 
 export function WorkspaceNav({ mode }: { mode: MechanicMode }) {
   const { user } = useAuth();
+  const { messages } = useShopLocale();
   if (!user) return null;
   const canAdmin = user.capabilities.includes(AppCapability.ADMIN_ACCESS);
   const canStandard = user.capabilities.includes(AppCapability.MECHANIC_STANDARD);
@@ -533,23 +536,23 @@ export function WorkspaceNav({ mode }: { mode: MechanicMode }) {
   if (!canAdmin && Number(canStandard) + Number(canPm) < 2) return null;
 
   return (
-    <nav className="mb-5 flex gap-2 overflow-x-auto pb-1" aria-label="Shop workspaces">
+    <nav className="mb-5 flex gap-2 overflow-x-auto pb-1" aria-label={messages.shopWorkspaces}>
       {canAdmin ? (
         <Button asChild variant="outline" size="sm" className="shrink-0">
-          <Link href="/admin"><Gauge aria-hidden="true" className="size-4" />Back to Shop Admin</Link>
+          <Link href="/admin"><Gauge aria-hidden="true" className="size-4" />{messages.backToShopAdmin}</Link>
         </Button>
       ) : null}
       {canStandard ? (
         <Button asChild variant={mode === MechanicMode.STANDARD ? 'secondary' : 'ghost'} size="sm" className="shrink-0">
           <Link href="/mechanic/standard" aria-current={mode === MechanicMode.STANDARD ? 'page' : undefined}>
-            <Wrench aria-hidden="true" className="size-4" />Standard
+            <Wrench aria-hidden="true" className="size-4" />{messages.workspaceStandard}
           </Link>
         </Button>
       ) : null}
       {canPm ? (
         <Button asChild variant={mode === MechanicMode.PM ? 'secondary' : 'ghost'} size="sm" className="shrink-0">
           <Link href="/mechanic/pm" aria-current={mode === MechanicMode.PM ? 'page' : undefined}>
-            <Wrench aria-hidden="true" className="size-4" />PM
+            <Wrench aria-hidden="true" className="size-4" />{messages.workspacePm}
           </Link>
         </Button>
       ) : null}
@@ -636,7 +639,7 @@ export function EmptyState({ children }: { children: React.ReactNode }) {
 
 /** Compact dashed empty for in-card or in-column slots. Use EmptyState for page/section empties. */
 export function CompactEmpty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</p>;
+  return <div className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">{children}</div>;
 }
 
 export function PageSkeleton({ label = 'Loading page' }: { label?: string }) {
@@ -755,20 +758,42 @@ export function Modal({
   );
 }
 
-export function PriorityBadge({ priority }: { priority: string }) {
-  const color =
-    priority === 'critical'
-      ? 'border-destructive/40 text-destructive'
-      : priority === 'high'
-        ? 'border-shop-accent/40 text-shop-accent'
-        : priority === 'low'
-          ? 'border-border text-muted-foreground'
-          : 'border-shop-accent/40 text-shop-accent';
-  return (
-    <span
-      className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${color}`}
-    >
-      {priority}
-    </span>
-  );
+export function PriorityBadge({
+  priority,
+  children,
+}: {
+  priority: string;
+  children: React.ReactNode;
+}) {
+  return <Badge variant={priorityVariant(priority)}>{children}</Badge>;
+}
+
+export function WorkOrderStatusBadge({
+  status,
+  children,
+}: {
+  status: string;
+  children: React.ReactNode;
+}) {
+  return <Badge variant={workOrderStatusVariant(status)}>{children}</Badge>;
+}
+
+export function JobStatusBadge({
+  status,
+  children,
+}: {
+  status: string;
+  children: React.ReactNode;
+}) {
+  return <Badge variant={jobStatusVariant(status)}>{children}</Badge>;
+}
+
+export function PhaseBadge({
+  phase,
+  children,
+}: {
+  phase: string;
+  children: React.ReactNode;
+}) {
+  return <Badge variant={phaseVariant(phase)}>{children}</Badge>;
 }

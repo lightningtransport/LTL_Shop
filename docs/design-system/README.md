@@ -1,7 +1,7 @@
 # Design system
 
 **Classification:** CURRENT STATE
-**Updated:** 2026-09-12
+**Updated:** 2026-09-13
 
 This folder inventories the Lightning Shop UI that exists in `apps/web` today.
 It is not a target kit and does not invent primitives.

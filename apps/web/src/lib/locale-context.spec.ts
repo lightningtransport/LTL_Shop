@@ -9,6 +9,14 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('es').noJobsInCategory).toMatch(/Category/);
     expect(getAdminMessages('en').addCatalogJob).toBe('Add');
     expect(getAdminMessages('es').addCatalogJob).toBe('Agregar');
+    expect(getAdminMessages('en').jobPickerCategoryLabel).toBe('Job Category');
+    expect(getAdminMessages('es').jobPickerCategoryLabel).toBe('Categoría de Job');
+    expect(getAdminMessages('en').woStatusPaused).toBe('Paused');
+    expect(getAdminMessages('es').woStatusPaused).toBe('Pausado');
+    expect(getAdminMessages('en').jobStatusToDo).toBe('To do');
+    expect(getAdminMessages('es').jobStatusToDo).toBe('Por hacer');
+    expect(getAdminMessages('en').activityPmDetailsUpdated).toBe('PM details updated');
+    expect(getAdminMessages('es').activityBlockerReported).toBe('Bloqueo reportado');
   });
 
   it('keeps English and Spanish mechanic assignment keys in parity', () => {
@@ -21,6 +29,8 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').noJobsInCategory).toMatch(/Category/);
     expect(getShopCopy('en').addCatalogJob).toBe('Add');
     expect(getShopCopy('es').addCustomJob).toMatch(/personalizado/);
+    expect(getShopCopy('en').multiSelectDone).toBe('Done');
+    expect(getShopCopy('es').multiSelectDone).toBe('Listo');
     expect(getShopCopy('en').startWork).toBe('Start Work');
     expect(getShopCopy('es').startWork).toBe('Iniciar trabajo');
     expect(getShopCopy('en').pauseWorkOrder).toBe('Pause Work Order');
@@ -35,6 +45,14 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').lastReportedLocation.toLowerCase()).not.toContain('yard');
     expect(getShopCopy('en').locationUpdatedOn.toLowerCase()).not.toContain('yard');
     expect(getShopCopy('es').locationUpdatedOn.toLowerCase()).not.toContain('yard');
+    expect(getShopCopy('en').loadingWorkOrder).toBe('Loading work order');
+    expect(getShopCopy('es').retryWorkOrder).toBe('Reintentar Work Order');
+    expect(getShopCopy('en').viewWork).toBe('View Work');
+    expect(getShopCopy('es').viewDetails).toBe('Ver detalles');
+    expect(getShopCopy('en').priority.low).toBe('Low');
+    expect(getShopCopy('es').priority.critical).toBe('Crítica');
+    expect(getShopCopy('en').jobStatus.to_do).toBe('To do');
+    expect(getShopCopy('es').jobStatus.to_do).toBe('Por hacer');
     expect(getShopCopy('en').status.created).toBe('Created');
     expect(getShopCopy('en').status.in_progress).toBe('In Progress');
     expect(getShopCopy('es').status.created).toBe('Creado');
