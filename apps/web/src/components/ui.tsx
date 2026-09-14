@@ -409,7 +409,6 @@ function ProfileDialog() {
       <DialogTrigger asChild>
         <Button
           variant="secondary"
-          size="sm"
           className="max-w-28 justify-between gap-1.5 sm:max-w-44"
           aria-label={messages.locale === 'es' ? `Abrir perfil de ${user.name}` : `Open profile for ${user.name}`}
         >

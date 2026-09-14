@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const webSrc = resolve(__dirname);
 
-describe('PWA safe-area shell', () => {
+describe('LTR-28 PWA safe-area shell', () => {
   it('keeps viewport-fit=cover and shared inset tokens', () => {
     const layout = readFileSync(resolve(webSrc, 'layout.tsx'), 'utf8');
     const css = readFileSync(resolve(webSrc, 'globals.css'), 'utf8');

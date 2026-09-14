@@ -57,6 +57,7 @@ test.describe('Shop Admin Phase 2A', () => {
     expect(logoBox?.y).toBeGreaterThanOrEqual(59);
     expect(profileBox?.y).toBeGreaterThanOrEqual(59);
     expect(menuBox?.height).toBeGreaterThanOrEqual(44);
+    expect(profileBox?.height).toBeGreaterThanOrEqual(44);
 
     await menu.click();
     const dialog = page.getByRole('dialog');
