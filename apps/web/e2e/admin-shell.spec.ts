@@ -15,7 +15,7 @@ async function workOrderFilterPanel(page: Page): Promise<Locator> {
 }
 
 test.describe('Shop Admin Phase 2A', () => {
-  test('mechanic and Admin shells honor shared safe-area tokens under viewport-fit=cover', async ({ page }) => {
+  test('mechanic shell uses shared safe-area tokens under viewport-fit=cover', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/login');
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /viewport-fit=cover/);
@@ -27,7 +27,11 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.addStyleTag({ content: ':root { --app-safe-top: 59px; --app-safe-bottom: 48px; }' });
     await expect.poll(async () => mechanicShell.evaluate((element) => getComputedStyle(element).paddingTop)).toBe('59px');
     await expect.poll(async () => mechanicShell.evaluate((element) => getComputedStyle(element).paddingBottom)).toBe('48px');
+  });
 
+  test('Admin sticky header and bottom sheet honor shared safe-area tokens', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/login');
     await page.getByLabel('Email').fill('manager@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page).toHaveURL(/\/admin$/);
@@ -53,7 +57,6 @@ test.describe('Shop Admin Phase 2A', () => {
     expect(logoBox?.y).toBeGreaterThanOrEqual(59);
     expect(profileBox?.y).toBeGreaterThanOrEqual(59);
     expect(menuBox?.height).toBeGreaterThanOrEqual(44);
-    expect(profileBox?.height).toBeGreaterThanOrEqual(44);
 
     await menu.click();
     const dialog = page.getByRole('dialog');
