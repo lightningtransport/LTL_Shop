@@ -37,6 +37,19 @@ export function buildYardOperationsQuery(filters: YardOperationsFilters) {
   return params;
 }
 
+const YARD_FILTER_KEYS = ['readiness', 'phase', 'workOrderStatus', 'priority', 'blocked'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
+export const YARD_TOOLBAR_FILTER_KEYS = ['readiness', 'phase', 'blocked'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
+export const YARD_OVERFLOW_FILTER_KEYS = ['workOrderStatus', 'priority'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
+
+/** Count of readiness/phase/WO status/priority/blocked values that are not defaults. Search is excluded. */
+export function countActiveYardOperationsFilters(filters: YardOperationsFilters) {
+  return YARD_FILTER_KEYS.filter((key) => filters[key] !== DEFAULT_YARD_OPERATIONS_FILTERS[key]).length;
+}
+
+export function countOverflowYardOperationsFilters(filters: YardOperationsFilters) {
+  return YARD_OVERFLOW_FILTER_KEYS.filter((key) => filters[key] !== DEFAULT_YARD_OPERATIONS_FILTERS[key]).length;
+}
+
 export const YARD_PHASES = [
   ReadinessPhase.NEEDS_EVALUATION,
   ReadinessPhase.INSPECTION,

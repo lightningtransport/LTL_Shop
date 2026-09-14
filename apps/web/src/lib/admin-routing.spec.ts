@@ -32,6 +32,8 @@ describe('Shop Admin routing and messages', () => {
     expect(Object.keys(getAdminMessages('en'))).toEqual(Object.keys(getAdminMessages('es')));
     expect(getAdminMessages('en').filters).toBe('Filters');
     expect(getAdminMessages('es').filters).toBe('Filtros');
+    expect(getAdminMessages('en').moreFilters).toBe('More filters');
+    expect(getAdminMessages('es').moreFilters).toBe('Más filtros');
     expect(getAdminMessages('en').currentOperations).toBe('Current shop operations');
     expect(getAdminMessages('es').currentOperations).toBe('Operaciones actuales del Shop');
     expect(getAdminMessages('en').generatedAtLabel).toBe('Updated');
