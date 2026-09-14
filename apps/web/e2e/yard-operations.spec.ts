@@ -52,7 +52,7 @@ test.describe('Yard Operations Phase 1', () => {
       await expect(page.getByRole('heading', { name: 'Readiness board' })).toBeHidden();
       await expect(page.getByRole('link', { name: 'Y-101', exact: true })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
-      expect(overflow).toBe(false);
+      expect(overflow, `horizontal overflow at ${viewport.width}px`).toBe(false);
     }
   });
 
@@ -77,11 +77,11 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByRole('heading', { name: 'Readiness list' })).toBeVisible();
     await expect(page.getByRole('button', { name: YARD_FILTERS_BUTTON })).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.getByLabel('Readiness')).toBeHidden();
+    await expect(page.getByRole('search').getByLabel('Readiness', { exact: true })).toBeHidden();
     await expect(page.getByRole('link', { name: 'Y-101', exact: true })).toBeInViewport();
 
     const sheet = await yardFilterPanel(page);
-    await expect(sheet.getByLabel('Readiness')).toBeVisible();
+    await expect(sheet.getByLabel('Readiness', { exact: true })).toBeVisible();
     await expect(sheet.getByLabel('Phase', { exact: true })).toBeVisible();
     await expect(sheet.getByLabel('Work Order status')).toBeVisible();
     await expect(sheet.getByLabel('Priority')).toBeVisible();
@@ -123,7 +123,7 @@ test.describe('Yard Operations Phase 1', () => {
       await page.setViewportSize({ width, height: 900 });
       await expect(page.getByRole('button', { name: YARD_FILTERS_BUTTON })).toBeHidden();
       const toolbar = page.getByRole('search');
-      await expect(toolbar.getByLabel('Readiness')).toBeVisible();
+      await expect(toolbar.getByLabel('Readiness', { exact: true })).toBeVisible();
       await expect(toolbar.getByLabel('Phase', { exact: true })).toBeVisible();
       await expect(toolbar.getByLabel('Blockers')).toBeVisible();
       await expect(toolbar.getByLabel('Work Order status')).toBeHidden();

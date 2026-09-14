@@ -120,7 +120,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
       </button>
       <div id="yard-phase-1-details" className="mt-2 space-y-2">
         {phase1Open ? <CardDescription className="text-warning-foreground">{messages.yardOperationsPhase1Body}</CardDescription> : null}
-        <div className="grid gap-1.5 sm:grid-cols-3">
+        <div className="grid min-w-0 gap-1.5 sm:grid-cols-3">
           <UnavailableStatus icon={Truck} label={messages.workLocationUnavailable} unavailableLabel={messages.unavailableLabel} />
           <UnavailableStatus icon={Truck} label={messages.incomingTrucksUnavailable} unavailable={incomingUnavailable} unavailableLabel={messages.unavailableLabel} />
           <UnavailableStatus icon={ShieldCheck} label={messages.upcomingDeparturesUnavailable} unavailable={departuresUnavailable} unavailableLabel={messages.unavailableLabel} />
@@ -131,7 +131,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
     {isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : <>
       <section aria-labelledby="yard-summary-title">
         <h2 id="yard-summary-title" className="sr-only">{messages.yardSummaryMetrics}</h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid min-w-0 grid-cols-3 gap-2">
           <SummaryMetric label={messages.underReview} value={counts?.underReview ?? 0} Icon={ClipboardCheck} />
           <SummaryMetric label={messages.readyToGo} value={counts?.readyToGo ?? 0} Icon={ShieldCheck} />
           <SummaryMetric label={messages.blocked} value={counts?.blocked ?? 0} Icon={Ban} />
@@ -148,7 +148,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
                 autoComplete="off"
                 enterKeyHint="search"
                 aria-label={messages.search}
-                className="md:min-h-9 md:px-3"
+                className="min-w-0 md:min-h-9 md:px-3"
                 value={filters.search}
                 onChange={(event) => updateFilter('search', event.target.value)}
               />
@@ -325,7 +325,7 @@ function YardFilterField({
 
 function SummaryMetric({ label, value, Icon }: { label: string; value: number; Icon: typeof ClipboardCheck }) {
   return (
-    <Card className="flex items-center justify-between gap-1.5 px-2.5 py-1.5">
+    <Card className="flex min-w-0 items-center justify-between gap-1.5 overflow-hidden px-2.5 py-1.5">
       <div className="min-w-0">
         <p className="truncate text-[11px] text-muted-foreground">{label}</p>
         <p className="font-display text-lg font-bold leading-tight">{value}</p>
@@ -336,7 +336,7 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
 }
 
 function UnavailableStatus({ icon: Icon, label, unavailable = true, unavailableLabel }: { icon: typeof Truck; label: string; unavailable?: boolean; unavailableLabel: string }) {
-  return <div className="flex items-center gap-2 rounded-lg border bg-card/70 px-2 py-1.5 text-[11px] text-muted-foreground"><Icon aria-hidden="true" className="size-3.5 shrink-0" /><span className="min-w-0 truncate">{label}</span>{unavailable ? <Badge variant="secondary" className="ml-auto shrink-0">{unavailableLabel}</Badge> : null}</div>;
+  return <div className="flex min-w-0 items-center gap-2 overflow-hidden rounded-lg border bg-card/70 px-2 py-1.5 text-[11px] text-muted-foreground"><Icon aria-hidden="true" className="size-3.5 shrink-0" /><span className="min-w-0 truncate">{label}</span>{unavailable ? <Badge variant="secondary" className="ml-auto shrink-0">{unavailableLabel}</Badge> : null}</div>;
 }
 
 function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messages: AdminMessages }) {
