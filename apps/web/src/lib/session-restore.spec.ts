@@ -29,23 +29,22 @@ describe('session restore helpers', () => {
   it('detects iOS standalone and display-mode standalone', () => {
     expect(
       isStandaloneDisplay({
-        navigator: { standalone: true } as Navigator,
-        matchMedia: () => ({ matches: false }) as MediaQueryList,
+        navigator: { standalone: true },
+        matchMedia: () => ({ matches: false }),
       }),
     ).toBe(true);
 
     expect(
       isStandaloneDisplay({
-        navigator: {} as Navigator,
-        matchMedia: (query: string) =>
-          ({ matches: query.includes('standalone') }) as MediaQueryList,
+        navigator: {},
+        matchMedia: (query: string) => ({ matches: query.includes('standalone') }),
       }),
     ).toBe(true);
 
     expect(
       isStandaloneDisplay({
-        navigator: {} as Navigator,
-        matchMedia: () => ({ matches: false }) as MediaQueryList,
+        navigator: {},
+        matchMedia: () => ({ matches: false }),
       }),
     ).toBe(false);
   });
@@ -55,17 +54,17 @@ describe('session restore helpers', () => {
     const router = { replace: vi.fn() };
 
     replaceAppLocation('/login', router, { scroll: true }, {
-      location: { pathname: '/', search: '', replace } as unknown as Location,
-      navigator: { standalone: true } as Navigator,
-      matchMedia: () => ({ matches: false }) as MediaQueryList,
+      location: { pathname: '/', search: '', replace },
+      navigator: { standalone: true },
+      matchMedia: () => ({ matches: false }),
     });
     expect(replace).toHaveBeenCalledWith('/login');
     expect(router.replace).not.toHaveBeenCalled();
 
     replaceAppLocation('/login', router, { scroll: true }, {
-      location: { pathname: '/', search: '', replace } as unknown as Location,
-      navigator: {} as Navigator,
-      matchMedia: () => ({ matches: false }) as MediaQueryList,
+      location: { pathname: '/', search: '', replace },
+      navigator: {},
+      matchMedia: () => ({ matches: false }),
     });
     expect(router.replace).toHaveBeenCalledWith('/login', { scroll: true });
   });
@@ -89,12 +88,12 @@ describe('session restore helpers', () => {
   it('does not navigate when the path is already current', () => {
     const replace = vi.fn();
     replaceAppLocation('/login', { replace }, undefined, {
-      location: { pathname: '/login', search: '', replace } as unknown as Location,
-      navigator: { standalone: true } as Navigator,
-      matchMedia: () => ({ matches: false }) as MediaQueryList,
+      location: { pathname: '/login', search: '', replace },
+      navigator: { standalone: true },
+      matchMedia: () => ({ matches: false }),
     });
     expect(replace).not.toHaveBeenCalled();
-    expect(currentAppPath({ location: { pathname: '/login', search: '?next=/admin' } as Location })).toBe(
+    expect(currentAppPath({ location: { pathname: '/login', search: '?next=/admin', replace } })).toBe(
       '/login?next=/admin',
     );
   });

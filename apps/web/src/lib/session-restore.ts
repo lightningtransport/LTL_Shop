@@ -39,16 +39,24 @@ export async function fetchWithDeadline(
   }
 }
 
-export function isStandaloneDisplay(win: Pick<Window, 'navigator' | 'matchMedia'> = window): boolean {
-  const nav = win.navigator as Navigator & { standalone?: boolean };
-  if (nav.standalone === true) return true;
+export type StandaloneProbe = {
+  navigator: { standalone?: boolean };
+  matchMedia?: (query: string) => Pick<MediaQueryList, 'matches'>;
+};
+
+export type DisplayWindow = StandaloneProbe & {
+  location: Pick<Location, 'pathname' | 'search' | 'replace'>;
+};
+
+export function isStandaloneDisplay(win: StandaloneProbe = window as unknown as StandaloneProbe): boolean {
+  if (win.navigator.standalone === true) return true;
   return (
     win.matchMedia?.('(display-mode: standalone)').matches === true ||
     win.matchMedia?.('(display-mode: fullscreen)').matches === true
   );
 }
 
-export function currentAppPath(win: Pick<Window, 'location'> = window): string {
+export function currentAppPath(win: Pick<DisplayWindow, 'location'> = window as unknown as DisplayWindow): string {
   return `${win.location.pathname}${win.location.search}`;
 }
 
@@ -57,9 +65,9 @@ export function replaceAppLocation(
   path: string,
   router?: { replace: (href: string, options?: { scroll?: boolean }) => void },
   options?: { scroll?: boolean },
-  win: Pick<Window, 'location' | 'navigator' | 'matchMedia'> = typeof window === 'undefined' ? (undefined as never) : window,
+  win: DisplayWindow | undefined = typeof window === 'undefined' ? undefined : (window as unknown as DisplayWindow),
 ): void {
-  if (typeof window === 'undefined') {
+  if (!win?.location) {
     router?.replace(path, options);
     return;
   }
