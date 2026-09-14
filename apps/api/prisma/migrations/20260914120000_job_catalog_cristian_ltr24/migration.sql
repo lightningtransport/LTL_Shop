@@ -198,13 +198,14 @@ CREATE TEMP TABLE catalog_target_aliases (
 ) ON COMMIT DROP;
 
 INSERT INTO catalog_target_aliases (category, display_name, alias_text, alias_norm)
-SELECT
+SELECT DISTINCT ON (lower(regexp_replace(alias.alias_text, '[^a-zA-Z0-9]', '', 'g')))
   target.category,
   target.display_name,
   alias.alias_text,
   lower(regexp_replace(alias.alias_text, '[^a-zA-Z0-9]', '', 'g'))
 FROM catalog_target_jobs target
-CROSS JOIN LATERAL unnest(array_prepend(target.display_name, target.aliases)) AS alias(alias_text);
+CROSS JOIN LATERAL unnest(array_prepend(target.display_name, target.aliases)) AS alias(alias_text)
+ORDER BY lower(regexp_replace(alias.alias_text, '[^a-zA-Z0-9]', '', 'g')), alias.alias_text;
 
 INSERT INTO job_aliases (id, catalog_job_id, alias_text, alias_norm)
 SELECT gen_random_uuid(), job.id, alias.alias_text, alias.alias_norm
