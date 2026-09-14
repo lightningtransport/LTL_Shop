@@ -9,6 +9,6 @@ describe('LTR-24 catalog release path', () => {
       'utf8',
     );
     expect(workflow).toContain('prisma:apply-catalog');
-    expect(workflow).toContain('Apply signed job catalog (LTR-24)');
+    expect(workflow).toContain('Apply signed job catalog (LTR-24 / LTR-35)');
   });
 });
