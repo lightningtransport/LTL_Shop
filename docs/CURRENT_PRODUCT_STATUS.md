@@ -106,6 +106,14 @@ TARGET authorization/UX.
   a readiness assessment, update its six requirements, and explicitly mark it
   Ready when the rules pass. These mutations use server authorization,
   optimistic version checks, idempotency, and Activity Log records.
+- When the API flag `YARD_WORK_PLAN_SLICE1` is on, Truck Detail replaces the
+  six-gate Readiness editor with Inspection discovery (**No issues found** /
+  **Issues found**) and a Work Plan of jobs on the open Work Order. Ready is
+  derived from `readyReason` plus mandatory Alignment and Detailing (QC only
+  if a QC job is on the plan). Mark Ready is not the Manager path in that
+  UI. With the flag off, Phase 1 six-gate Readiness is unchanged. Board
+  columns stay on the six-gate derivation until a later cutover. The hooks
+  live at `GET/POST /api/admin/trucks/:id/work-plan*` (LTR-34 / PR #103).
 - Yard Phase is derived for presentation as the next unresolved readiness
   gate. It is not a persisted Work Order status, not a Job Category, and
   does not create another Work Order. An open Work Order is a blocker, not

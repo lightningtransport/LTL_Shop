@@ -74,5 +74,12 @@ describe('apiFetch', () => {
       status: 500,
       route: '/api/work-orders/:id',
     });
+    await expect(
+      apiFetch('/api/admin/trucks/d2262a20-0862-4f18-a6c8-184a88a42f78/work-plan/jobs', { method: 'POST' }),
+    ).rejects.toMatchObject({
+      status: 500,
+      route: '/api/admin/trucks/:id/work-plan/jobs',
+      method: 'POST',
+    });
   });
 });

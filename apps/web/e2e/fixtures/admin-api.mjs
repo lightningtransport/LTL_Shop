@@ -82,6 +82,42 @@ const yardOperations = [
   makeYardItem('00000000-0000-4000-8000-000000001008', 'Y-108', 'ready_to_go', null, 'ready'),
 ];
 
+const workPlanByTruck = new Map();
+const yardWorkPlanSlice1 = process.env.YARD_WORK_PLAN_SLICE1 === 'true';
+
+function emptyFixtureWorkPlan() {
+  return {
+    sliceEnabled: yardWorkPlanSlice1,
+    inspection: { outcome: 'not_started' },
+    workOrder: null,
+    jobs: [],
+    remainingJobCount: 0,
+    readiness: 'not_ready',
+    readyReason: 'inspection_pending',
+    phase: 'inspection',
+    mandatory: {
+      alignment: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
+      detailing: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
+      qualityCheck: { required: false, status: 'not_applicable', jobCount: 0, remainingCount: 0 },
+    },
+    capabilities: { canRead: true, canAddWork: false, canRecordInspection: false },
+    phase1: { assessmentId: null, gatesRemainDefault: true },
+  };
+}
+
+function fixtureWorkPlan(item, currentUser) {
+  const current = workPlanByTruck.get(item.truck.id) ?? emptyFixtureWorkPlan();
+  current.sliceEnabled = yardWorkPlanSlice1;
+  current.capabilities = {
+    canRead: true,
+    canAddWork: currentUser.capabilities.includes('work_orders.manage'),
+    canRecordInspection: currentUser.capabilities.includes('yard.operations.manage'),
+  };
+  current.phase1 = { assessmentId: item.assessment?.id ?? null, gatesRemainDefault: true };
+  workPlanByTruck.set(item.truck.id, current);
+  return current;
+}
+
 createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
@@ -154,6 +190,12 @@ createServer(async (request, response) => {
         categoryId: '00000000-0000-4000-8000-000000000302',
         displayName: '3 in 1',
         aliases: ['3in1', '3-in-1'],
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000806',
+        categoryId: '00000000-0000-4000-8000-000000000302',
+        displayName: 'Alignment',
+        aliases: ['alignment'],
       },
     ].filter((job) => !categoryId || job.categoryId === categoryId);
     json(response, 200, jobs);
@@ -295,10 +337,94 @@ createServer(async (request, response) => {
     return;
   }
   const truckDetailMatch = request.url?.match(/^\/api\/admin\/trucks\/([0-9a-f-]+)$/i);
+  const workPlanMatch = request.url?.match(/^\/api\/admin\/trucks\/([0-9a-f-]+)\/work-plan(?:\/(inspection|jobs))?$/i);
+  if (workPlanMatch) {
+    const item = yardOperations.find((candidate) => candidate.truck.id === workPlanMatch[1]);
+    if (!item) { json(response, 404, { message: 'Truck not found' }); return; }
+    const plan = fixtureWorkPlan(item, user);
+    if (request.method === 'GET' && !workPlanMatch[2]) {
+      json(response, 200, plan);
+      return;
+    }
+    const body = await readJson(request);
+    if (workPlanMatch[2] === 'inspection' && request.method === 'POST') {
+      if (!user.capabilities.includes('yard.operations.manage')) {
+        json(response, 403, { message: 'Yard readiness management is not available for this account.' });
+        return;
+      }
+      if (body?.outcome !== 'issues_found' && body?.outcome !== 'no_issues_found') {
+        json(response, 400, { message: 'Inspection outcome is required.' });
+        return;
+      }
+      plan.inspection.outcome = body.outcome;
+      if (body.outcome === 'no_issues_found') {
+        plan.readyReason = 'alignment_pending';
+        plan.phase = 'alignment';
+      } else {
+        plan.readyReason = plan.remainingJobCount ? 'jobs_remaining' : 'alignment_pending';
+        plan.phase = plan.jobs.length ? 'shop_work' : 'inspection';
+      }
+      json(response, 200, plan);
+      return;
+    }
+    if (workPlanMatch[2] === 'jobs' && request.method === 'POST') {
+      if (!user.capabilities.includes('work_orders.manage')) {
+        json(response, 403, { message: 'Work Order management is not available for this account.' });
+        return;
+      }
+      const jobs = Array.isArray(body?.jobs) ? body.jobs : [];
+      if (!jobs.length) { json(response, 400, { message: 'At least one Job is required.' }); return; }
+      if (plan.workOrder && body?.expectedVersion !== undefined && body.expectedVersion !== plan.workOrder.version) {
+        json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.', version: plan.workOrder.version });
+        return;
+      }
+      if (!plan.workOrder) {
+        plan.workOrder = {
+          id: '00000000-0000-4000-8000-00000000ccc1',
+          displayId: 'WO-WP-FIX',
+          status: 'created',
+          version: 1,
+          primaryCategoryName: jobs[0].displayName ? 'Air & Brake System' : 'Other',
+        };
+      }
+      for (const job of jobs) {
+        const lane = /alignment/i.test(job.displayName ?? '')
+          ? 'alignment'
+          : /detailing/i.test(job.displayName ?? '')
+            ? 'detailing'
+            : 'shop_work';
+        plan.jobs.push({
+          id: `job-${plan.jobs.length + 1}`,
+          catalogJobId: job.catalogJobId ?? null,
+          displayName: job.displayName,
+          customDescription: job.customDescription ?? null,
+          category: { id: job.categoryId, name: lane === 'alignment' ? 'Suspension & Steering' : 'Air & Brake System' },
+          status: 'to_do',
+          uiStatus: 'pending',
+          lane,
+        });
+        if (lane === 'alignment') plan.mandatory.alignment = { required: true, status: 'pending', jobCount: 1, remainingCount: 1 };
+        if (lane === 'detailing') plan.mandatory.detailing = { required: true, status: 'pending', jobCount: 1, remainingCount: 1 };
+      }
+      plan.workOrder.version += 1;
+      plan.inspection.outcome = 'issues_found';
+      plan.remainingJobCount = plan.jobs.filter((job) => job.status === 'to_do').length;
+      plan.readiness = 'not_ready';
+      plan.readyReason = 'jobs_remaining';
+      plan.phase = 'shop_work';
+      json(response, 200, plan);
+      return;
+    }
+    json(response, 405, { message: 'Method not allowed' });
+    return;
+  }
   if (truckDetailMatch) {
     const item = yardOperations.find((candidate) => candidate.truck.id === truckDetailMatch[1]);
     if (!item) json(response, 404, { message: 'Truck not found' });
-    else json(response, 200, { ...item, repairHistory: { items: [], nextCursor: null }, repairHistoryUrl: `/api/admin/trucks/${item.truck.id}/repair-history`, incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' }, upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' } });
+    else {
+      const detail = { ...item, repairHistory: { items: [], nextCursor: null }, repairHistoryUrl: `/api/admin/trucks/${item.truck.id}/repair-history`, incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' }, upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' } };
+      json(response, 200, yardWorkPlanSlice1 ? { ...detail, workPlan: fixtureWorkPlan(item, user) } : detail);
+    }
     return;
   }
   const startAssessmentMatch = request.url?.match(/^\/api\/admin\/trucks\/([0-9a-f-]+)\/readiness-assessments$/i);

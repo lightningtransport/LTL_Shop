@@ -70,6 +70,9 @@ export function endpointFamily(path: string) {
   if (/^\/api\/trucks\/[^/]+/.test(pathname)) {
     return pathname.replace(/^\/api\/trucks\/[^/]+/, '/api/trucks/:id');
   }
+  if (/^\/api\/admin\/trucks\/[^/]+/.test(pathname)) {
+    return pathname.replace(/^\/api\/admin\/trucks\/[^/]+/, '/api/admin/trucks/:id');
+  }
   return pathname;
 }
 
