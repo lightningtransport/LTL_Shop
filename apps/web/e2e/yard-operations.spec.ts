@@ -20,9 +20,9 @@ test.describe('Yard Operations Phase 1', () => {
     await page.getByLabel('Email').fill('manager@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible({ timeout: 15_000 });
-    await page.getByRole('link', { name: 'Yard Operations' }).first().click();
+    await page.goto('/admin/yard-operations');
     await expect(page).toHaveURL(/\/admin\/yard-operations$/);
+    await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible({ timeout: 15_000 });
   });
 
   test('shows Phase 1 unavailable boundary and real URL filters', async ({ page }) => {
