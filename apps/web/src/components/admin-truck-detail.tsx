@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-<<<<<<< HEAD
 import { useState, type FormEvent } from 'react';
 import { AlertTriangle, Info as InfoIcon, ShieldCheck } from 'lucide-react';
 import {

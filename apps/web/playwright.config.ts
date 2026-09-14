@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import { existsSync } from 'node:fs';
+
+const localChromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const chromiumExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH
+  ?? (process.platform === 'darwin' && existsSync(localChromePath) ? localChromePath : undefined);
 
 export default defineConfig({
   testDir: './e2e',
@@ -11,7 +16,16 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    { name: 'mobile-chromium', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
+    {
+      name: 'mobile-chromium',
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'chromium',
+        launchOptions: {
+          executablePath: chromiumExecutablePath,
+        },
+      },
+    },
     { name: 'mobile-webkit', use: { ...devices['iPhone 13'], browserName: 'webkit' } },
   ],
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
