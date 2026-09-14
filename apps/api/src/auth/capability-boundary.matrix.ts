@@ -200,6 +200,24 @@ export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     expected: [ADMIN, YARD],
     enforcement: 'http_guard',
   },
+  {
+    method: 'POST',
+    path: '/admin/trucks/:id/work-plan/jobs',
+    handler: 'addWorkPlanJobs',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'http_guard',
+    notes: 'LTR-34 Slice 1: create or add jobs on the one open Work Order from Truck Detail. Reuses Manager create/add-job.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/trucks/:id/work-plan/inspection',
+    handler: 'recordWorkPlanInspection',
+    controller: 'admin',
+    expected: [ADMIN, YARD],
+    enforcement: 'http_guard',
+    notes: 'LTR-34 Slice 1: Inspection discovery. Dual-run writes the Phase 1 Inspection requirement; does not delete gates.',
+  },
 ];
 
 export const ADMIN_READ_BOUNDARIES: CapabilityBoundaryEntry[] = [
@@ -215,6 +233,7 @@ export const ADMIN_READ_BOUNDARIES: CapabilityBoundaryEntry[] = [
   { method: 'GET', path: '/admin/trucks', handler: 'listTrucks', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/yard-operations', handler: 'yardOperationsList', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/trucks/:id', handler: 'yardTruck', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/trucks/:id/work-plan', handler: 'getWorkPlan', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/trucks/:id/repair-history', handler: 'repairHistory', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
 ];
 

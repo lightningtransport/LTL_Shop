@@ -13,6 +13,13 @@ import type {
   WorkOrderStatus,
   TruckOperationalStatus,
   CatalogStatus,
+  WorkPlanPhase,
+  WorkPlanInspectionOutcome,
+  WorkPlanJobUiStatus,
+  WorkPlanJobLane,
+  WorkPlanMandatoryStatus,
+  WorkPlanReadiness,
+  WorkPlanNotReadyReason,
 } from './enums';
 
 export type AdminDataSource = 'supabase_postgres';
@@ -371,6 +378,62 @@ export interface AdminTruckDetailDto extends YardOperationsTruckDto {
   repairHistoryUrl: string;
   incomingTrucks: YardOperationsUnavailableDto;
   upcomingDepartures: YardOperationsUnavailableDto;
+  /**
+   * Additive Slice 1 Work Plan. Present only when `YARD_WORK_PLAN_SLICE1` is
+   * enabled. Phase 1 `assessment` / `phase` / `blockers` remain canonical.
+   */
+  workPlan?: TruckWorkPlanDto;
+}
+
+export interface WorkPlanJobDto {
+  id: string;
+  catalogJobId: string | null;
+  displayName: string;
+  customDescription: string | null;
+  category: JobCategoryReferenceDto;
+  status: JobStatus;
+  uiStatus: WorkPlanJobUiStatus;
+  lane: WorkPlanJobLane;
+}
+
+export interface WorkPlanMandatoryPhaseDto {
+  required: boolean;
+  status: WorkPlanMandatoryStatus;
+  jobCount: number;
+  remainingCount: number;
+}
+
+export interface WorkPlanCapabilitiesDto {
+  canRead: boolean;
+  canAddWork: boolean;
+  canRecordInspection: boolean;
+}
+
+export interface TruckWorkPlanDto {
+  sliceEnabled: boolean;
+  inspection: { outcome: WorkPlanInspectionOutcome };
+  workOrder: {
+    id: string;
+    displayId: string;
+    status: WorkOrderStatus;
+    version: number;
+    primaryCategoryName: string;
+  } | null;
+  jobs: WorkPlanJobDto[];
+  remainingJobCount: number;
+  readiness: WorkPlanReadiness;
+  readyReason: WorkPlanNotReadyReason;
+  phase: WorkPlanPhase;
+  mandatory: {
+    alignment: WorkPlanMandatoryPhaseDto;
+    detailing: WorkPlanMandatoryPhaseDto;
+    qualityCheck: WorkPlanMandatoryPhaseDto;
+  };
+  capabilities: WorkPlanCapabilitiesDto;
+  phase1: {
+    assessmentId: string | null;
+    gatesRemainDefault: true;
+  };
 }
 
 export interface YardOperationsUnavailableDto {

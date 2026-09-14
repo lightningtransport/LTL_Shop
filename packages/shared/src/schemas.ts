@@ -8,6 +8,7 @@ import {
   ReadinessPhase,
   YardReadinessFilter,
   WorkOrderStatus,
+  WorkPlanInspectionOutcome,
 } from './enums';
 
 export const mechanicModeSchema = z.nativeEnum(MechanicMode);
@@ -287,6 +288,20 @@ export const addJobSchema = z.object({
   idempotencyKey: z.string().uuid(),
 });
 
+export const addWorkPlanJobsSchema = z.object({
+  idempotencyKey: z.string().uuid(),
+  expectedVersion: z.number().int().nonnegative().optional(),
+  jobs: z.array(createWorkOrderJobSchema).min(1).max(50),
+});
+
+export const recordWorkPlanInspectionSchema = z.object({
+  outcome: z.enum([
+    WorkPlanInspectionOutcome.ISSUES_FOUND,
+    WorkPlanInspectionOutcome.NO_ISSUES_FOUND,
+  ]),
+  idempotencyKey: z.string().uuid(),
+});
+
 export const searchTrucksSchema = z.object({
   q: z.string().min(1).max(50),
 });
@@ -328,3 +343,5 @@ export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessm
 export type UpdateReadinessRequirementInput = z.infer<typeof updateReadinessRequirementSchema>;
 export type MarkReadinessReadyInput = z.infer<typeof markReadinessReadySchema>;
 export type CloseReadinessAssessmentInput = z.infer<typeof closeReadinessAssessmentSchema>;
+export type AddWorkPlanJobsInput = z.infer<typeof addWorkPlanJobsSchema>;
+export type RecordWorkPlanInspectionInput = z.infer<typeof recordWorkPlanInspectionSchema>;

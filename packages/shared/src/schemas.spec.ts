@@ -5,6 +5,7 @@ import {
   ReadinessRequirementOutcome,
   ReadinessRequirementType,
   WorkOrderStatus,
+  WorkPlanInspectionOutcome,
 } from './enums';
 import {
   adminListQuerySchema,
@@ -28,6 +29,8 @@ import {
   updateReadinessRequirementSchema,
   addJobSchema,
   createWorkOrderSchema,
+  addWorkPlanJobsSchema,
+  recordWorkPlanInspectionSchema,
 } from './schemas';
 
 describe('shared contracts', () => {
@@ -253,5 +256,29 @@ describe('shared contracts', () => {
     });
     expect(adminYardOperationsQuerySchema.parse({ blocked: 'false' }).blocked).toBe(false);
     expect(adminYardOperationsQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
+  });
+
+  it('accepts Work Plan add-job batches and inspection discovery outcomes', () => {
+    const idempotencyKey = '00000000-0000-4000-8000-000000000021';
+    expect(addWorkPlanJobsSchema.safeParse({
+      idempotencyKey,
+      jobs: [{
+        categoryId: '00000000-0000-4000-8000-000000000001',
+        displayName: 'Alignment',
+      }],
+    }).success).toBe(true);
+    expect(addWorkPlanJobsSchema.safeParse({ idempotencyKey, jobs: [] }).success).toBe(false);
+    expect(recordWorkPlanInspectionSchema.safeParse({
+      outcome: WorkPlanInspectionOutcome.ISSUES_FOUND,
+      idempotencyKey,
+    }).success).toBe(true);
+    expect(recordWorkPlanInspectionSchema.safeParse({
+      outcome: WorkPlanInspectionOutcome.NO_ISSUES_FOUND,
+      idempotencyKey,
+    }).success).toBe(true);
+    expect(recordWorkPlanInspectionSchema.safeParse({
+      outcome: WorkPlanInspectionOutcome.NOT_STARTED,
+      idempotencyKey,
+    }).success).toBe(false);
   });
 });
