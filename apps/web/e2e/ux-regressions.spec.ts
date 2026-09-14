@@ -414,6 +414,52 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByText(/in yard|en el yard/i)).toHaveCount(0);
   });
 
+  test('Truck Information VIN does not overlay location on a 390px viewport', async ({ page }) => {
+    const longVinTruck = {
+      ...truck,
+      truckNumber: '907',
+      year: 2026,
+      mileage: 269_216,
+      company: 'CTTC',
+      owner: 'Jorge',
+      vin: '3AKJHHDR7TSWN2540',
+      location: 'East Sligh Avenue, Orient Park, FL, 33592',
+      locationUpdatedOn: '2026-09-13',
+    };
+    truckFixtures = [longVinTruck];
+    const daniel = {
+      ...user,
+      id: 'daniel-1',
+      email: 'daniel@lightning.local',
+      name: 'Daniel',
+      pmAuthorized: true,
+      capabilities: ['mechanic.pm'],
+    };
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route('**/api/auth/me', async (route) => json(route, { user: daniel }));
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
+    await page.goto('/mechanic/pm/new');
+    await page.getByRole('combobox', { name: /Truck/i }).fill('907');
+    await page.getByRole('option', { name: /#907/ }).click();
+    const vin = page.getByText(longVinTruck.vin, { exact: true });
+    const location = page.getByText(longVinTruck.location, { exact: true });
+    await expect(vin).toBeVisible();
+    await expect(location).toBeVisible();
+    const vinBox = await vin.boundingBox();
+    const locationBox = await location.boundingBox();
+    expect(vinBox).toBeTruthy();
+    expect(locationBox).toBeTruthy();
+    const overlaps =
+      vinBox!.x < locationBox!.x + locationBox!.width &&
+      vinBox!.x + vinBox!.width > locationBox!.x &&
+      vinBox!.y < locationBox!.y + locationBox!.height &&
+      vinBox!.y + vinBox!.height > locationBox!.y;
+    expect(overlaps).toBe(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  });
+
   test('signing out returns to login and removes the local session', async ({ page }) => {
     await login(page);
     await page.getByRole('button', { name: /Open profile/i }).click();

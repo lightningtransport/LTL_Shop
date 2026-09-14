@@ -15,7 +15,8 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
-import { formatIsoDate, formatMileage, pauseLabel, statusLabel } from '@/lib/format';
+import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
+import { TruckInformationFields } from '@/components/truck-information-fields';
 import { isMyAssignedOrInheritedJob, jobAssignmentLabel } from '@/lib/job-assignment';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import {
@@ -245,17 +246,15 @@ export default function WorkOrderDetailPage() {
         </Button>
         {truckOpen ? (
           <div id="truck-information-panel" className="mt-3 space-y-3">
-            <div className="grid grid-cols-3 gap-2 text-sm">
-              <Info label="Make" value={wo.truck.make} />
-              <Info label="Model" value={wo.truck.model} />
-              <Info label="Year" value={wo.truck.year?.toString()} />
-              <Info label="Mileage" value={formatMileage(wo.truck.mileage)} />
-              <Info label="Company" value={wo.truck.company} />
-              <Info label="Owner" value={wo.truck.owner} />
-              <Info label={messages.vin} value={wo.truck.vin} />
-              <Info label={messages.lastReportedLocation} value={wo.truck.location} />
-              <Info label={messages.locationUpdatedOn} value={formatIsoDate(wo.truck.locationUpdatedOn, messages.locale)} />
-            </div>
+            <TruckInformationFields
+              truck={wo.truck}
+              labels={{
+                vin: messages.vin,
+                lastReportedLocation: messages.lastReportedLocation,
+                locationUpdatedOn: messages.locationUpdatedOn,
+                locale: messages.locale,
+              }}
+            />
             <Button asChild variant="secondary" className="w-full">
               <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
                 See Truck Repair History
@@ -605,17 +604,15 @@ function PmWorkOrderDetail({
 
       <section className="card mb-4 space-y-3" aria-labelledby="pm-truck-information">
         <h2 id="pm-truck-information" className="section-label">Truck Information</h2>
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          <Info label="Make" value={wo.truck.make} />
-          <Info label="Model" value={wo.truck.model} />
-          <Info label="Year" value={wo.truck.year?.toString()} />
-          <Info label="Mileage" value={formatMileage(wo.truck.mileage)} />
-          <Info label="Company" value={wo.truck.company} />
-          <Info label="Owner" value={wo.truck.owner} />
-          <Info label={messages.vin} value={wo.truck.vin} />
-          <Info label={messages.lastReportedLocation} value={wo.truck.location} />
-          <Info label={messages.locationUpdatedOn} value={formatIsoDate(wo.truck.locationUpdatedOn, messages.locale)} />
-        </div>
+        <TruckInformationFields
+          truck={wo.truck}
+          labels={{
+            vin: messages.vin,
+            lastReportedLocation: messages.lastReportedLocation,
+            locationUpdatedOn: messages.locationUpdatedOn,
+            locale: messages.locale,
+          }}
+        />
         <Button asChild variant="secondary" className="w-full">
           <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
             See Truck Repair History
@@ -781,16 +778,5 @@ function JobTodoButton({
         </span>
       </span>
     </Button>
-  );
-}
-
-function Info({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div>
-      <p className="text-[11px] uppercase tracking-wide text-shop-muted">
-        {label}
-      </p>
-      <p className="font-medium">{value || '—'}</p>
-    </div>
   );
 }
