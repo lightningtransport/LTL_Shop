@@ -11,13 +11,14 @@ import {
   TruckOperationalStatus,
   type AdminTruckDetailDto,
   type ReadinessRequirementDto,
+  type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessment, updateAdminTruckRequirement, useAdminTruck } from '@/lib/admin-data';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
-import { isWorkPlanSliceEnabled, type TruckWorkPlanDto } from '@/lib/work-plan';
+import { isWorkPlanSliceEnabled } from '@/lib/work-plan';
 import {
   collapseReadinessBlockers,
   evidenceRequired,

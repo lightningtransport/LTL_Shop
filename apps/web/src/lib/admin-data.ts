@@ -8,24 +8,22 @@ import type {
   AdminMechanicSummaryDto,
   AdminPage,
   AdminRepairHistoryDto,
+  AdminTruckDetailDto,
   AdminTruckSummaryDto,
   AdminWorkOrderDetailDto,
   AdminWorkOrderSummaryDto,
   ReadinessAssessmentDto,
   ReadinessRequirementOutcome,
   ReadinessRequirementType,
+  RecordWorkPlanInspectionInput,
   AdminCatalogCategoryDetailDto,
   AdminCatalogCategorySummaryDto,
   YardOperationsPageDto,
   WorkOrderDetailDto,
+  TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { apiFetch } from './api';
-import type {
-  AdminTruckDetailWithWorkPlan,
-  TruckWorkPlanDto,
-  WorkPlanInspectionOutcome,
-  WorkPlanJobDraft,
-} from './work-plan';
+import type { WorkPlanJobDraft } from './work-plan';
 
 export function useAdminDashboard() {
   return useSWR<AdminDashboardDto>('/api/admin/dashboard', { dedupingInterval: 10_000, refreshInterval: 30_000 });
@@ -92,7 +90,7 @@ export function useAdminYardOperations(query: string) {
 }
 
 export function useAdminTruck(id: string) {
-  return useSWR<AdminTruckDetailWithWorkPlan>(id ? `/api/admin/trucks/${id}` : null, { dedupingInterval: 10_000 });
+  return useSWR<AdminTruckDetailDto>(id ? `/api/admin/trucks/${id}` : null, { dedupingInterval: 10_000 });
 }
 
 export function useAdminCatalogCategories() {
@@ -359,7 +357,7 @@ export function closeAdminTruckAssessment(assessmentId: string, expectedVersion:
 
 export function recordAdminWorkPlanInspection(
   truckId: string,
-  outcome: Exclude<WorkPlanInspectionOutcome, 'not_started'>,
+  outcome: RecordWorkPlanInspectionInput['outcome'],
   idempotencyKey = adminMutationIdempotencyKey(),
 ) {
   return apiFetch<TruckWorkPlanDto>(`/api/admin/trucks/${truckId}/work-plan/inspection`, {

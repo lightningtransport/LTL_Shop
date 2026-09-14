@@ -1,87 +1,7 @@
-import type { AdminTruckDetailDto, JobStatus, WorkOrderStatus } from '@ltl-shop/shared';
+import { JobStatus, type AdminTruckDetailDto, type TruckWorkPlanDto } from '@ltl-shop/shared';
 import type { AdminMessages } from './admin-messages';
 import type { ChipVariant } from './status-chips';
 import { phaseLabel } from './status-chips';
-
-/**
- * LTR-33 / LTR-34 Slice 1 Work Plan DTOs.
- * Mirrors PR #103 (`@ltl-shop/shared`) so this UI can merge before the API
- * branch. Switch imports to shared after that PR lands.
- */
-export type WorkPlanInspectionOutcome = 'not_started' | 'issues_found' | 'no_issues_found';
-export type WorkPlanJobUiStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
-export type WorkPlanJobLane = 'shop_work' | 'alignment' | 'detailing' | 'quality_check';
-export type WorkPlanMandatoryStatus = 'pending' | 'in_progress' | 'complete' | 'not_applicable';
-export type WorkPlanReadiness = 'not_ready' | 'ready';
-export type WorkPlanNotReadyReason =
-  | 'inspection_pending'
-  | 'jobs_remaining'
-  | 'alignment_pending'
-  | 'detailing_pending'
-  | 'qc_pending'
-  | 'plan_complete';
-export type WorkPlanPhase =
-  | 'inspection'
-  | 'shop_work'
-  | 'alignment'
-  | 'detailing'
-  | 'quality_check'
-  | 'ready_to_go';
-
-export interface WorkPlanJobDto {
-  id: string;
-  catalogJobId: string | null;
-  displayName: string;
-  customDescription: string | null;
-  category: { id: string; name: string };
-  status: JobStatus | `${JobStatus}`;
-  uiStatus: WorkPlanJobUiStatus;
-  lane: WorkPlanJobLane;
-}
-
-export interface WorkPlanMandatoryPhaseDto {
-  required: boolean;
-  status: WorkPlanMandatoryStatus;
-  jobCount: number;
-  remainingCount: number;
-}
-
-export interface WorkPlanCapabilitiesDto {
-  canRead: boolean;
-  canAddWork: boolean;
-  canRecordInspection: boolean;
-}
-
-export interface TruckWorkPlanDto {
-  sliceEnabled: boolean;
-  inspection: { outcome: WorkPlanInspectionOutcome };
-  workOrder: {
-    id: string;
-    displayId: string;
-    status: WorkOrderStatus | `${WorkOrderStatus}`;
-    version: number;
-    primaryCategoryName: string;
-  } | null;
-  jobs: WorkPlanJobDto[];
-  remainingJobCount: number;
-  readiness: WorkPlanReadiness;
-  readyReason: WorkPlanNotReadyReason;
-  phase: WorkPlanPhase;
-  mandatory: {
-    alignment: WorkPlanMandatoryPhaseDto;
-    detailing: WorkPlanMandatoryPhaseDto;
-    qualityCheck: WorkPlanMandatoryPhaseDto;
-  };
-  capabilities: WorkPlanCapabilitiesDto;
-  phase1: {
-    assessmentId: string | null;
-    gatesRemainDefault: true;
-  };
-}
-
-export type AdminTruckDetailWithWorkPlan = AdminTruckDetailDto & {
-  workPlan?: TruckWorkPlanDto;
-};
 
 export type WorkPlanJobDraft = {
   key: string;
@@ -93,7 +13,7 @@ export type WorkPlanJobDraft = {
 };
 
 export function isWorkPlanSliceEnabled(
-  detail: Pick<AdminTruckDetailWithWorkPlan, 'workPlan'> | null | undefined,
+  detail: Pick<AdminTruckDetailDto, 'workPlan'> | null | undefined,
 ) {
   return detail?.workPlan?.sliceEnabled === true;
 }
@@ -150,13 +70,13 @@ function normalizeJobName(value: string) {
 
 export function existingWorkPlanCatalogJobIds(plan: TruckWorkPlanDto) {
   return plan.jobs
-    .filter((job) => job.status !== 'cancelled' && job.catalogJobId)
+    .filter((job) => job.status !== JobStatus.CANCELLED && job.catalogJobId)
     .map((job) => job.catalogJobId as string);
 }
 
 export function existingWorkPlanCustomNames(plan: TruckWorkPlanDto) {
   return plan.jobs
-    .filter((job) => job.status !== 'cancelled' && !job.catalogJobId)
+    .filter((job) => job.status !== JobStatus.CANCELLED && !job.catalogJobId)
     .map((job) => job.displayName);
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { CatalogJobDto } from '@ltl-shop/shared';
+import type { CatalogJobDto, TruckWorkPlanDto } from '@ltl-shop/shared';
 import type { AdminMessages } from '@/lib/admin-messages';
 import {
   draftContainsCatalogJob,
@@ -9,7 +9,6 @@ import {
   existingWorkPlanCatalogJobIds,
   existingWorkPlanCustomNames,
   isDuplicateCustomOnPlan,
-  type TruckWorkPlanDto,
   type WorkPlanJobDraft,
 } from '@/lib/work-plan';
 import { useCatalogJobs, useCategories } from '@/lib/shop-data';

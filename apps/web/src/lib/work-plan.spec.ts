@@ -1,3 +1,14 @@
+import {
+  JobStatus,
+  WorkPlanInspectionOutcome,
+  WorkPlanJobLane,
+  WorkPlanJobUiStatus,
+  WorkPlanMandatoryStatus,
+  WorkPlanNotReadyReason,
+  WorkPlanPhase,
+  WorkPlanReadiness,
+  type TruckWorkPlanDto,
+} from '@ltl-shop/shared';
 import { describe, expect, it } from 'vitest';
 import { getAdminMessages } from './admin-messages';
 import {
@@ -14,7 +25,6 @@ import {
   workPlanPhaseLabel,
   workPlanReadyReasonMessage,
   workPlanRemainingSummary,
-  type TruckWorkPlanDto,
 } from './work-plan';
 
 const en = getAdminMessages('en');
@@ -23,17 +33,17 @@ const es = getAdminMessages('es');
 function plan(overrides: Partial<TruckWorkPlanDto> = {}): TruckWorkPlanDto {
   return {
     sliceEnabled: true,
-    inspection: { outcome: 'not_started' },
+    inspection: { outcome: WorkPlanInspectionOutcome.NOT_STARTED },
     workOrder: null,
     jobs: [],
     remainingJobCount: 0,
-    readiness: 'not_ready',
-    readyReason: 'inspection_pending',
-    phase: 'inspection',
+    readiness: WorkPlanReadiness.NOT_READY,
+    readyReason: WorkPlanNotReadyReason.INSPECTION_PENDING,
+    phase: WorkPlanPhase.INSPECTION,
     mandatory: {
-      alignment: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
-      detailing: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
-      qualityCheck: { required: false, status: 'not_applicable', jobCount: 0, remainingCount: 0 },
+      alignment: { required: true, status: WorkPlanMandatoryStatus.PENDING, jobCount: 0, remainingCount: 0 },
+      detailing: { required: true, status: WorkPlanMandatoryStatus.PENDING, jobCount: 0, remainingCount: 0 },
+      qualityCheck: { required: false, status: WorkPlanMandatoryStatus.NOT_APPLICABLE, jobCount: 0, remainingCount: 0 },
     },
     capabilities: { canRead: true, canAddWork: true, canRecordInspection: true },
     phase1: { assessmentId: null, gatesRemainDefault: true },
@@ -60,9 +70,9 @@ describe('LTR-33 Work Plan copy helpers', () => {
     expect(shouldShowQualityCheckMandatory(plan())).toBe(false);
     expect(shouldShowQualityCheckMandatory(plan({
       mandatory: {
-        alignment: { required: true, status: 'complete', jobCount: 1, remainingCount: 0 },
-        detailing: { required: true, status: 'complete', jobCount: 1, remainingCount: 0 },
-        qualityCheck: { required: true, status: 'pending', jobCount: 1, remainingCount: 1 },
+        alignment: { required: true, status: WorkPlanMandatoryStatus.COMPLETE, jobCount: 1, remainingCount: 0 },
+        detailing: { required: true, status: WorkPlanMandatoryStatus.COMPLETE, jobCount: 1, remainingCount: 0 },
+        qualityCheck: { required: true, status: WorkPlanMandatoryStatus.PENDING, jobCount: 1, remainingCount: 1 },
       },
     }))).toBe(true);
   });
@@ -98,9 +108,9 @@ describe('LTR-33 Work Plan copy helpers', () => {
           displayName: 'Brake Inspection',
           customDescription: null,
           category: { id: 'c1', name: 'Air & Brake System' },
-          status: 'to_do',
-          uiStatus: 'pending',
-          lane: 'shop_work',
+          status: JobStatus.TO_DO,
+          uiStatus: WorkPlanJobUiStatus.PENDING,
+          lane: WorkPlanJobLane.SHOP_WORK,
         },
         {
           id: 'j2',
@@ -108,9 +118,9 @@ describe('LTR-33 Work Plan copy helpers', () => {
           displayName: 'Detailing',
           customDescription: 'Detailing',
           category: { id: 'c2', name: 'Other' },
-          status: 'to_do',
-          uiStatus: 'pending',
-          lane: 'detailing',
+          status: JobStatus.TO_DO,
+          uiStatus: WorkPlanJobUiStatus.PENDING,
+          lane: WorkPlanJobLane.DETAILING,
         },
       ],
     });

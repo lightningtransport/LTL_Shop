@@ -2,6 +2,12 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import {
+  WorkPlanInspectionOutcome,
+  type RecordWorkPlanInspectionInput,
+  type TruckWorkPlanDto,
+  type WorkPlanMandatoryPhaseDto,
+} from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { addAdminWorkPlanJobs, recordAdminWorkPlanInspection } from '@/lib/admin-data';
 import type { AdminMessages } from '@/lib/admin-messages';
@@ -14,10 +20,7 @@ import {
   workPlanPhaseLabel,
   workPlanReadyReasonMessage,
   workPlanRemainingSummary,
-  type TruckWorkPlanDto,
-  type WorkPlanInspectionOutcome,
   type WorkPlanJobDraft,
-  type WorkPlanMandatoryPhaseDto,
 } from '@/lib/work-plan';
 import { WorkPlanAddWork } from './work-plan-add-work';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty } from './ui';
@@ -37,7 +40,7 @@ export function AdminTruckWorkPlan({
 }) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [addWorkOpen, setAddWorkOpen] = useState(plan.inspection.outcome === 'issues_found' && plan.jobs.length === 0);
+  const [addWorkOpen, setAddWorkOpen] = useState(plan.inspection.outcome === WorkPlanInspectionOutcome.ISSUES_FOUND && plan.jobs.length === 0);
   const canInspect = plan.capabilities.canRecordInspection;
   const canAddWork = plan.capabilities.canAddWork;
   const ready = plan.readiness === 'ready';
@@ -67,12 +70,12 @@ export function AdminTruckWorkPlan({
     }
   }
 
-  async function handleInspection(outcome: Exclude<WorkPlanInspectionOutcome, 'not_started'>) {
+  async function handleInspection(outcome: RecordWorkPlanInspectionInput['outcome']) {
     try {
       const next = await run('inspection', () => recordAdminWorkPlanInspection(truckId, outcome));
       if (!next) return;
       await onPlanUpdated(next);
-      if (outcome === 'issues_found') setAddWorkOpen(true);
+      if (outcome === WorkPlanInspectionOutcome.ISSUES_FOUND) setAddWorkOpen(true);
       setFeedback({ kind: 'success', message: messages.workPlanInspectionRecorded });
     } catch (errorValue) {
       setFeedback({
@@ -219,7 +222,7 @@ function InspectionPanel({
   messages: AdminMessages;
   canInspect: boolean;
   pending: boolean;
-  onRecord: (outcome: Exclude<WorkPlanInspectionOutcome, 'not_started'>) => void;
+  onRecord: (outcome: RecordWorkPlanInspectionInput['outcome']) => void;
 }) {
   const outcome = plan.inspection.outcome;
   return (
@@ -240,7 +243,7 @@ function InspectionPanel({
             variant={outcome === 'no_issues_found' ? 'secondary' : 'outline'}
             disabled={pending}
             aria-pressed={outcome === 'no_issues_found'}
-            onClick={() => onRecord('no_issues_found')}
+            onClick={() => onRecord(WorkPlanInspectionOutcome.NO_ISSUES_FOUND)}
           >
             {messages.workPlanNoIssuesFound}
           </Button>
@@ -249,7 +252,7 @@ function InspectionPanel({
             variant={outcome === 'issues_found' ? 'default' : 'outline'}
             disabled={pending}
             aria-pressed={outcome === 'issues_found'}
-            onClick={() => onRecord('issues_found')}
+            onClick={() => onRecord(WorkPlanInspectionOutcome.ISSUES_FOUND)}
           >
             {messages.workPlanIssuesFound}
           </Button>
