@@ -1,4 +1,5 @@
 import type { TruckDto } from '@ltl-shop/shared';
+import { getAdminMessages, type AdminLocale } from '@/lib/admin-messages';
 import { formatIsoDate, formatMileage } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
@@ -12,43 +13,37 @@ type TruckInformationTruck = Pick<
   'make' | 'model' | 'year' | 'mileage' | 'company' | 'owner' | 'vin' | 'location' | 'locationUpdatedOn'
 >;
 
-type TruckInformationLabels = {
-  vin: string;
-  lastReportedLocation: string;
-  locationUpdatedOn: string;
-  locale: 'en' | 'es';
-};
-
 export function TruckInformationFields({
   truck,
-  labels,
+  locale,
 }: {
   truck: TruckInformationTruck;
-  labels: TruckInformationLabels;
+  locale: AdminLocale;
 }) {
+  const messages = getAdminMessages(locale);
   return (
     <div className={truckInformationGridClass}>
-      <Info label="Make" value={truck.make} />
-      <Info label="Model" value={truck.model} />
-      <Info label="Year" value={truck.year?.toString()} />
-      <Info label="Mileage" value={formatMileage(truck.mileage)} />
-      <Info label="Company" value={truck.company} />
-      <Info label="Owner" value={truck.owner} />
+      <Info label={messages.make} value={truck.make} />
+      <Info label={messages.model} value={truck.model} />
+      <Info label={messages.year} value={truck.year?.toString()} />
+      <Info label={messages.mileage} value={formatMileage(truck.mileage)} />
+      <Info label={messages.company} value={truck.company} />
+      <Info label={messages.owner} value={truck.owner} />
       <Info
-        label={labels.vin}
+        label={messages.vin}
         value={truck.vin}
         className={truckInformationLongFieldClass}
         valueClassName="break-all"
       />
       <Info
-        label={labels.lastReportedLocation}
+        label={messages.lastReportedLocation}
         value={truck.location}
         className={truckInformationLongFieldClass}
         valueClassName="break-words"
       />
       <Info
-        label={labels.locationUpdatedOn}
-        value={formatIsoDate(truck.locationUpdatedOn, labels.locale)}
+        label={messages.locationUpdatedOn}
+        value={formatIsoDate(truck.locationUpdatedOn, locale)}
         className={truckInformationLongFieldClass}
       />
     </div>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getAdminMessages } from '../lib/admin-messages';
 import {
   truckInformationFieldClass,
   truckInformationGridClass,
@@ -22,5 +23,18 @@ describe('TruckInformationFields layout', () => {
     expect(truckInformationLongFieldClass).toMatch(/\bmd:col-span-1\b/);
     expect(truckInformationLongFieldClass).toMatch(/\bmin-w-0\b/);
     expect(truckInformationLongFieldClass).toMatch(/\boverflow-hidden\b/);
+  });
+
+  it('uses existing admin-messages keys for truck field labels', () => {
+    const en = getAdminMessages('en');
+    const es = getAdminMessages('es');
+    expect(en.vin).toBe('VIN');
+    expect(en.lastReportedLocation).toBe('Last reported location');
+    expect(en.locationUpdatedOn).toBe('Last reported on');
+    expect(es.vin).toBe('VIN');
+    expect(es.lastReportedLocation).toBe('Ubicación reportada');
+    expect(es.locationUpdatedOn).toBe('Reportada el');
+    expect(en.make).toBe('Make');
+    expect(es.make).toBe('Marca');
   });
 });

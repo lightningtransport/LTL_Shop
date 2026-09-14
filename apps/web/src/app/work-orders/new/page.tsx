@@ -438,15 +438,7 @@ export default function NewWorkOrderPage() {
             <EmptyState>{messages.selectTruck}</EmptyState>
           ) : (
             <div className="space-y-3">
-              <TruckInformationFields
-                truck={truck}
-                labels={{
-                  vin: messages.vin,
-                  lastReportedLocation: messages.lastReportedLocation,
-                  locationUpdatedOn: messages.locationUpdatedOn,
-                  locale: messages.locale,
-                }}
-              />
+              <TruckInformationFields truck={truck} locale={messages.locale} />
               <Button asChild variant="secondary" className="w-full">
                 <Link href={`/trucks/${truck.id}/history?from=${encodeURIComponent(pathname)}`}>
                   {messages.repairHistory}

@@ -246,15 +246,7 @@ export default function WorkOrderDetailPage() {
         </Button>
         {truckOpen ? (
           <div id="truck-information-panel" className="mt-3 space-y-3">
-            <TruckInformationFields
-              truck={wo.truck}
-              labels={{
-                vin: messages.vin,
-                lastReportedLocation: messages.lastReportedLocation,
-                locationUpdatedOn: messages.locationUpdatedOn,
-                locale: messages.locale,
-              }}
-            />
+            <TruckInformationFields truck={wo.truck} locale={messages.locale} />
             <Button asChild variant="secondary" className="w-full">
               <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
                 See Truck Repair History
@@ -604,15 +596,7 @@ function PmWorkOrderDetail({
 
       <section className="card mb-4 space-y-3" aria-labelledby="pm-truck-information">
         <h2 id="pm-truck-information" className="section-label">Truck Information</h2>
-        <TruckInformationFields
-          truck={wo.truck}
-          labels={{
-            vin: messages.vin,
-            lastReportedLocation: messages.lastReportedLocation,
-            locationUpdatedOn: messages.locationUpdatedOn,
-            locale: messages.locale,
-          }}
-        />
+        <TruckInformationFields truck={wo.truck} locale={messages.locale} />
         <Button asChild variant="secondary" className="w-full">
           <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
             See Truck Repair History
