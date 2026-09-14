@@ -232,7 +232,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByRole('heading', { name: 'Readiness' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Start assessment' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Work Plan', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Issues found' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Issues found', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
   });
 
@@ -249,14 +249,14 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByLabel('Outcome: Inspection')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Issues found' }).click();
+    await page.getByRole('button', { name: 'Issues found', exact: true }).click();
     await expect(page.getByText('Inspection recorded.')).toBeVisible();
     await page.getByLabel('Job Category').selectOption({ label: 'Air & Brake System' });
     await page.getByRole('button', { name: 'Add Brake Inspection' }).click();
     await page.getByRole('button', { name: 'Add to Work Plan' }).click();
 
     await expect(page.getByText('Work Plan updated.')).toBeVisible();
-    const planList = page.getByRole('list', { name: 'Work Plan' });
+    const planList = page.getByRole('list', { name: 'Jobs in this Work Order' });
     await expect(planList.getByText('Brake Inspection')).toBeVisible();
     await expect(planList.getByText('Pending')).toBeVisible();
     await expect(page.getByText('Not Ready — 1 remaining')).toBeVisible();

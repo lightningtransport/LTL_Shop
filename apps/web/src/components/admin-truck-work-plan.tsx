@@ -171,9 +171,9 @@ export function AdminTruckWorkPlan({
           <WorkPlanSummary plan={plan} messages={messages} ready={ready} />
 
           <div>
-            <h3 className="mb-2 font-medium">{messages.workPlanSection}</h3>
+            <h3 className="mb-2 font-medium">{messages.jobsInPlan}</h3>
             {plan.jobs.length ? (
-              <ul className="divide-y rounded-xl border" aria-label={messages.workPlanSection}>
+              <ul className="divide-y rounded-xl border" aria-label={messages.jobsInPlan}>
                 {plan.jobs.map((job) => (
                   <li key={job.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm">
                     <div className="min-w-0">
@@ -230,11 +230,9 @@ function InspectionPanel({
       </div>
       {outcome === 'not_started' ? (
         <p className="text-sm">{messages.workPlanInspectionNotStarted}</p>
-      ) : (
-        <p className="text-sm">
-          {outcome === 'issues_found' ? messages.workPlanIssuesFoundHelp : messages.workPlanNoIssuesFoundHelp}
-        </p>
-      )}
+      ) : outcome === 'no_issues_found' ? (
+        <p className="text-sm">{messages.workPlanNoIssuesFoundHelp}</p>
+      ) : null}
       {canInspect ? (
         <div className="flex flex-wrap gap-2">
           <Button
