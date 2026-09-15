@@ -24,7 +24,7 @@ import {
   PageSkeleton,
   PriorityBadge,
   WorkOrderStatusBadge,
-} from './ui';
+} from './ui/composites';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';

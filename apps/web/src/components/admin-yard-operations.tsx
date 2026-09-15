@@ -23,7 +23,7 @@ import {
 } from '@/lib/yard-operations-routing';
 import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { formatVehicleYmm } from '@/lib/format';
-import { AdminPageHeader, CompactEmpty, EmptyState, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge } from './ui';
+import { AdminPageHeader, CompactEmpty, EmptyState, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge } from './ui/composites';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardDescription, CardTitle } from './ui/card';
@@ -108,9 +108,10 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
     <AdminPageHeader eyebrow={messages.eyebrow} title={messages.yardOperationsTitle} subtitle={messages.yardOperationsDescription} />
 
     <Card className="border-warning/50 bg-warning-surface p-3" role="region" aria-labelledby="yard-phase-1-title">
-      <button
+      <Button
         type="button"
-        className="flex w-full items-start gap-2 text-left"
+        variant="ghost"
+        className="h-auto w-full items-start justify-start gap-2 px-0 py-0 text-left hover:bg-transparent"
         aria-label={messages.yardOperationsPhase1}
         aria-expanded={phase1Open}
         aria-controls="yard-phase-1-details"
@@ -119,7 +120,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
         <Warehouse aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning-foreground" />
         <CardTitle id="yard-phase-1-title" className="min-w-0 flex-1 text-sm">{messages.yardOperationsPhase1}</CardTitle>
         <ChevronDown aria-hidden="true" className={`mt-0.5 size-4 shrink-0 text-warning-foreground transition-transform ${phase1Open ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
       <div id="yard-phase-1-details" className="mt-2 space-y-2">
         {phase1Open ? <CardDescription className="text-warning-foreground">{messages.yardOperationsPhase1Body}</CardDescription> : null}
         <div className="grid min-w-0 grid-cols-1 gap-1.5 xl:grid-cols-3">
@@ -378,28 +379,30 @@ function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messa
   const showBlocker = item.blockers.length > 0;
 
   return (
-    <Link
-      href={`/admin/trucks/${item.truck.id}`}
-      aria-label={item.truck.truckNumber}
-      className="card block space-y-1.5 p-2 hover:bg-accent/40"
-      data-testid="yard-truck-card"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="truncate font-display text-sm font-semibold text-primary">{item.truck.truckNumber}</span>
-        <PhaseBadge phase={item.phase}>{phaseLabel(item.phase, messages)}</PhaseBadge>
-      </div>
-      {vehicle ? <p className="truncate text-xs text-muted-foreground" title={vehicle}>{vehicle}</p> : null}
-      {workOrder ? (
-        <p className="truncate text-xs font-medium">{workOrder.displayId}</p>
-      ) : (
-        <CompactEmpty className="px-2 py-1 text-xs">{messages.noOpenWorkOrder}</CompactEmpty>
-      )}
-      {showPriority || showBlocker ? (
-        <div className="flex flex-wrap items-center gap-1">
-          {showPriority && workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : null}
-          {showBlocker ? <Badge variant="warning" className="normal-case tracking-normal">{messages.blocked}</Badge> : null}
+    <Card className="p-0">
+      <Link
+        href={`/admin/trucks/${item.truck.id}`}
+        aria-label={item.truck.truckNumber}
+        className="flex flex-col gap-1.5 rounded-xl p-2 hover:bg-accent/40"
+        data-testid="yard-truck-card"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <span className="truncate font-display text-sm font-semibold text-primary">{item.truck.truckNumber}</span>
+          <PhaseBadge phase={item.phase}>{phaseLabel(item.phase, messages)}</PhaseBadge>
         </div>
-      ) : null}
-    </Link>
+        {vehicle ? <p className="truncate text-xs text-muted-foreground" title={vehicle}>{vehicle}</p> : null}
+        {workOrder ? (
+          <p className="truncate text-xs font-medium">{workOrder.displayId}</p>
+        ) : (
+          <CompactEmpty className="px-2 py-1 text-xs">{messages.noOpenWorkOrder}</CompactEmpty>
+        )}
+        {showPriority || showBlocker ? (
+          <div className="flex flex-wrap items-center gap-1">
+            {showPriority && workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : null}
+            {showBlocker ? <Badge variant="warning" className="normal-case tracking-normal">{messages.blocked}</Badge> : null}
+          </div>
+        ) : null}
+      </Link>
+    </Card>
   );
 }

@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import { AdminTrucksList } from '@/components/admin-trucks-list';
-import { PageSkeleton } from '@/components/ui';
+import { PageSkeleton } from '@/components/ui/composites';
 import { getAdminMessages, isAdminLocale } from '@/lib/admin-messages';
 import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
 

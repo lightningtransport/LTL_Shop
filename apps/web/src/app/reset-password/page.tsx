@@ -3,7 +3,11 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { AuthBrandHeader, Button, Card, InlineAlert, Input, Label, PageSkeleton } from '@/components/ui';
+import { AuthBrandHeader, InlineAlert, PageSkeleton } from '@/components/ui/composites';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useShopLocale } from '@/lib/locale-context';
 
 export default function ResetPasswordPage() {

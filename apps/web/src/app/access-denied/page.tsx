@@ -1,6 +1,7 @@
 'use client';
 
-import { AuthBrandHeader, AppHeaderActions, Card } from '@/components/ui';
+import { AppHeaderActions, AuthBrandHeader } from '@/components/ui/composites';
+import { Card } from '@/components/ui/card';
 
 export default function AccessDeniedPage() {
   return (

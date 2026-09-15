@@ -11,10 +11,10 @@ import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { jobStatusVariant, phaseVariant, priorityVariant, workOrderStatusVariant } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Card } from './ui/card';
-import { Alert, AlertAction, AlertDescription } from './ui/alert';
+import { Badge } from './badge';
+import { Button } from './button';
+import { Card } from './card';
+import { Alert, AlertAction, AlertDescription } from './alert';
 import {
   Dialog,
   DialogClose,
@@ -22,70 +22,14 @@ import {
   DialogDescription,
   DialogTitle,
   DialogTrigger,
-} from './ui/dialog';
-import { Empty } from './ui/empty';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from './ui/field';
-import { Input } from './ui/input';
-import { NativeSelect } from './ui/native-select';
-import { Separator } from './ui/separator';
-import { Skeleton } from './ui/skeleton';
-import { Textarea } from './ui/textarea';
-
-export { Alert, AlertAction, AlertDescription, AlertTitle, alertVariants } from './ui/alert';
-export { Badge, badgeVariants, type BadgeProps } from './ui/badge';
-export { Button, buttonVariants, type ButtonProps } from './ui/button';
-export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-export {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogOverlay,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
-} from './ui/dialog';
-export { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
-export {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSeparator,
-  FieldSet,
-  FieldTitle,
-} from './ui/field';
-export { Input } from './ui/input';
-export { Label } from './ui/label';
-export {
-  NativeSelect,
-  NativeSelectOptGroup,
-  NativeSelectOption,
-  type NativeSelectProps,
-} from './ui/native-select';
-export { Separator } from './ui/separator';
-export {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetOverlay,
-  SheetPortal,
-  SheetTitle,
-  SheetTrigger,
-} from './ui/sheet';
-export { Skeleton } from './ui/skeleton';
-export { Textarea } from './ui/textarea';
-
-/** @deprecated Import NativeSelect from `@/components/ui/native-select`. */
-export const Select = NativeSelect;
+} from './dialog';
+import { Empty } from './empty';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from './field';
+import { Input } from './input';
+import { NativeSelect } from './native-select';
+import { Separator } from './separator';
+import { Skeleton } from './skeleton';
+import { Textarea } from './textarea';
 
 export function InlineAlert({
   children,
@@ -283,11 +227,12 @@ function ProfileDialog() {
       <DialogTrigger asChild>
         <Button
           variant="secondary"
-          className="max-w-28 justify-between gap-1.5 sm:max-w-44"
+          className="size-11 shrink-0 p-0 sm:size-auto sm:max-w-44 sm:justify-between sm:gap-1.5 sm:px-4"
           aria-label={messages.locale === 'es' ? `Abrir perfil de ${user.name}` : `Open profile for ${user.name}`}
         >
-          <span className="truncate">{user.name}</span>
-          <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+          <span aria-hidden="true" className="font-semibold sm:hidden">{user.name.charAt(0).toUpperCase()}</span>
+          <span className="hidden truncate sm:block">{user.name}</span>
+          <ChevronDown aria-hidden="true" className="hidden size-4 shrink-0 text-muted-foreground sm:block" />
         </Button>
       </DialogTrigger>
       <DialogContent aria-describedby="profile-description">

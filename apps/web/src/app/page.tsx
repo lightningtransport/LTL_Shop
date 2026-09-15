@@ -13,8 +13,6 @@ import { jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
-  Button,
-  Card,
   CardListSkeleton,
   EmptyState,
   HomeTopBar,
@@ -22,8 +20,9 @@ import {
   PageSkeleton,
   PriorityBadge,
   ScreenHeader,
-  buttonVariants,
-} from '@/components/ui';
+} from '@/components/ui/composites';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 export default function HomePage() {

@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import WorkOrderDetailPage from './detail-client';
-import { PageSkeleton } from '@/components/ui';
+import { PageSkeleton } from '@/components/ui/composites';
 import { useShopLocale } from '@/lib/locale-context';
 
 function WorkOrderFallback() {

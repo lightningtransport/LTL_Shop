@@ -30,20 +30,21 @@ import {
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { CategoryJobList } from '@/components/category-job-list';
 import {
-  Button,
   CardListSkeleton,
   EmptyState,
   InlineAlert,
-  Input,
-  Label,
   LoadFailure,
   Modal,
   PageSkeleton,
   ScreenHeader,
-  Select,
-  Textarea,
   WorkspaceNav,
-} from '@/components/ui';
+} from '@/components/ui/composites';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect as Select } from '@/components/ui/native-select';
+import { Textarea } from '@/components/ui/textarea';
 import { useShopLocale } from '@/lib/locale-context';
 import { statusLabel } from '@/lib/format';
 
@@ -333,7 +334,7 @@ export default function NewWorkOrderPage() {
         backHref={`/mechanic/${mechanicMode}`}
       />
 
-      <section className="card mb-4 space-y-3">
+      <Card className="mb-4 flex flex-col gap-3">
         <Label className="section-label" htmlFor="truck-search">
           {messages.truck}
         </Label>
@@ -449,7 +450,7 @@ export default function NewWorkOrderPage() {
             </div>
           )}
         </div>
-      </section>
+      </Card>
 
       {openWo ? (
         <div
@@ -486,7 +487,7 @@ export default function NewWorkOrderPage() {
 
       {truck && !hasOpenWo ? (
         <>
-          {!isPmMechanic ? <section className="card mb-4 space-y-4">
+          {!isPmMechanic ? <Card className="mb-4 flex flex-col gap-4">
             {!isPmMechanic ? (
               <div>
                 <Label className="section-label" htmlFor="work-order-category">
@@ -634,7 +635,7 @@ export default function NewWorkOrderPage() {
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div> : null}
-          </section> : null}
+          </Card> : null}
 
           {error ? (
             <InlineAlert className="mb-3">{error}</InlineAlert>

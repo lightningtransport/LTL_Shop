@@ -65,7 +65,7 @@ V2-002 implements TARGET directly. For `apps/web` UI work, read
 | `Lightning_Shop_Documentation_Package_2026-09-09/04_YARD_OPERATIONS_READINESS_TRUCK_DETAIL.md` | HISTORICAL | None | Earlier Yard/Readiness plan | PRESERVED |
 | `Lightning_Shop_Documentation_Package_2026-09-09/05_CODEX_PROMPTS.md` | DEPRECATED | None | Historical implementation prompts | PRESERVED |
 | `Lightning_Shop_Documentation_Package_2026-09-09/06_FLEETIO_BENCHMARK_AND_SCOPE_FILTER.md` | REFERENCE | None | Competitor benchmark; not a feature backlog | PRESERVED |
-| `design-system/README.md` | CURRENT STATE | Implemented UI inventory | Tokens, `ui.tsx` exports, loading/empty/failure rules, EN/ES glossary | ACTIVE |
+| `design-system/README.md` | CURRENT STATE | Implemented UI inventory | Tokens, direct shadcn modules, loading/empty/failure rules, EN/ES glossary | ACTIVE |
 | `README.md` | REFERENCE | Repository onboarding | Setup, stack, commands, and links to authoritative docs | ACTIVE |
 | `.github/pull_request_template.md` | ENGINEERING | Review process | Verification and data-flow review checklist | ACTIVE |
 

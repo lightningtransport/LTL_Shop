@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { AuthBrandHeader, Button } from '@/components/ui';
+import { AuthBrandHeader } from '@/components/ui/composites';
+import { Button } from '@/components/ui/button';
 import { useShopLocale } from '@/lib/locale-context';
 
 export function SessionSignInFallback() {

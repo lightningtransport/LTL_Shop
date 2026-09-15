@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Button, LoadFailure, ScreenHeader } from '@/components/ui';
+import { LoadFailure, ScreenHeader } from '@/components/ui/composites';
+import { Button } from '@/components/ui/button';
 
 export default function RouteError({
   error,

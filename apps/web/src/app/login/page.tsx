@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import {
   AuthBrandHeader,
-  Button,
-  Card,
   InlineAlert,
   LoadFailure,
   PageSkeleton,
-} from '@/components/ui';
+} from '@/components/ui/composites';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { postLoginPath } from '@/lib/admin-routing';

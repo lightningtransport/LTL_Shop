@@ -14,7 +14,7 @@ yet (Table / Tabs / Sheet). Do not treat those as current exports.
 
 1. `foundations.md` — tokens from `apps/web/src/app/globals.css` and
    `apps/web/tailwind.config.js`
-2. `components.md` — `apps/web/src/components/ui.tsx` exports and shells
+2. `components.md` — direct `apps/web/src/components/ui/*` modules, product compositions, and shells
 3. `patterns.md` — loading, failure, and empty states
 4. `glossary-en-es.md` — English / Spanish domain terms
 5. `patterns.md` — Location vs Presence display rule (LTR-13)

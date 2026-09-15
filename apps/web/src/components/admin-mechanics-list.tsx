@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { AdminFilterToolbar, AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminFilterToolbar, AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui/composites';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';

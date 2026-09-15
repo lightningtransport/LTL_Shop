@@ -3,7 +3,7 @@
 import { Languages } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/ui/button';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { CatalogStatus } from '@ltl-shop/shared';
-import { AdminBackLink, AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminBackLink, AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui/composites';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';

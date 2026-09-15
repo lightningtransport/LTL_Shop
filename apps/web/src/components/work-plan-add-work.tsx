@@ -14,14 +14,14 @@ import {
 import { useCatalogJobs, useCategories } from '@/lib/shop-data';
 import { CategoryJobList } from './category-job-list';
 import {
-  Badge,
-  Button,
   CompactEmpty,
   EmptyState,
   InlineAlert,
-  Input,
-  Select,
-} from './ui';
+} from './ui/composites';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { NativeSelect as Select } from './ui/native-select';
 
 export function WorkPlanAddWork({
   plan,

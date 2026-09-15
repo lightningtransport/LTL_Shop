@@ -41,7 +41,7 @@ import {
 } from '@/lib/admin-truck-readiness';
 import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { AdminTruckWorkPlan } from './admin-truck-work-plan';
-import { AdminBackLink, AdminPageHeader, CompactEmpty, EmptyState, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, WorkOrderStatusBadge } from './ui';
+import { AdminBackLink, AdminPageHeader, CompactEmpty, EmptyState, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, WorkOrderStatusBadge } from './ui/composites';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';

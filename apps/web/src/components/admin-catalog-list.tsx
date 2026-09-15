@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { CatalogStatus } from '@ltl-shop/shared';
-import { AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui/composites';
 import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';

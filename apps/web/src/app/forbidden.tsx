@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { ShieldX } from 'lucide-react';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useShopLocale } from '@/lib/locale-context';
 
 export default function Forbidden() {

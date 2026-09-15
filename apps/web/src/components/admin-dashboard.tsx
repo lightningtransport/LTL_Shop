@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { AlertTriangle, CalendarCheck, ClipboardCheck, ClipboardList, Clock3, History, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminWorkOrderItem } from './admin-work-order-item';
-import { AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui/composites';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { formatAdminDate } from '@/lib/admin-format';

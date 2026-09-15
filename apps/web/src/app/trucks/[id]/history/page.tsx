@@ -7,7 +7,10 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { formatIsoDate, formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
-import { Badge, Button, Card, EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui';
+import { EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui/composites';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { useShopLocale } from '@/lib/locale-context';
 
 export default function RepairHistoryPage() {
@@ -98,9 +101,9 @@ export default function RepairHistoryPage() {
       {!items.length ? (
         <EmptyState>{messages.locale === 'es' ? 'No hay historial de reparaciones.' : 'No repair history.'}</EmptyState>
       ) : (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {items.map((item) => (
-            <article key={item.workOrderId} className="card space-y-3">
+            <Card key={item.workOrderId} className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{item.primaryCategoryName}</p>
@@ -128,7 +131,7 @@ export default function RepairHistoryPage() {
                   ))}
                 </div> : <p className="text-sm text-shop-muted">{messages.locale === 'es' ? 'No se registraron detalles del trabajo.' : 'No work details were recorded.'}</p>}
               </div>
-            </article>
+            </Card>
           ))}
         </div>
       )}

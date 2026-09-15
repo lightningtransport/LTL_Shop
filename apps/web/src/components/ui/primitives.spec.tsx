@@ -24,7 +24,7 @@ describe('shadcn primitives', () => {
     const markup = renderToStaticMarkup(<Badge variant="success">Completed</Badge>);
 
     expect(markup).toContain('text-shop-success');
-    expect(badgeVariants({ variant: 'warning' })).toContain('text-shop-accentDark');
+    expect(badgeVariants({ variant: 'warning' })).toContain('text-warning-foreground');
   });
 
   it('keeps the existing Card spacing and semantic title structure', () => {

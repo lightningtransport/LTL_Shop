@@ -23,20 +23,20 @@ import { isMyAssignedOrInheritedJob, jobAssignmentLabel } from '@/lib/job-assign
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
-  Button,
-  Card,
   EmptyState,
   InlineAlert,
-  Label,
   LoadFailure,
   Modal,
   PageSkeleton,
   PriorityBadge,
   ScreenHeader,
-  Select,
-  Textarea,
   WorkspaceNav,
-} from '@/components/ui';
+} from '@/components/ui/composites';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { NativeSelect as Select } from '@/components/ui/native-select';
+import { Textarea } from '@/components/ui/textarea';
 import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
 
 export default function WorkOrderDetailPage() {
@@ -179,7 +179,7 @@ export default function WorkOrderDetailPage() {
         backHref="/mechanic/standard"
       />
 
-      <div className="card mb-4 space-y-2">
+      <Card className="mb-4 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge>
           <span className="text-sm text-shop-muted">
@@ -192,7 +192,7 @@ export default function WorkOrderDetailPage() {
             {pauseLabel(wo.currentPauseReason, messages.pauseReason)}
           </p>
         ) : null}
-      </div>
+      </Card>
 
       {error ? (
         <InlineAlert className="mb-3">{error}</InlineAlert>
@@ -233,7 +233,7 @@ export default function WorkOrderDetailPage() {
         ) : null}
       </section>
 
-      <section className="card mb-4">
+      <Card className="mb-4">
         <Button
           variant="ghost"
           className="w-full justify-between px-0"
@@ -257,7 +257,7 @@ export default function WorkOrderDetailPage() {
             </Button>
           </div>
         ) : null}
-      </section>
+      </Card>
 
       <section className="mb-4">
         <p className="section-label mb-2">{messages.workOrderTeam}</p>
@@ -318,25 +318,24 @@ export default function WorkOrderDetailPage() {
         ) : (
           <ul className="space-y-2">
             {done.map((job) => (
-              <li
-                key={job.id}
-                className="card flex items-start gap-3 text-shop-success"
-              >
-                <span className="mt-0.5">✓</span>
-                <span className="min-w-0">
-                  <span className="block">{job.displayName}</span>
-                  <span className="block text-xs text-muted-foreground">{job.category.name}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {jobAssignmentLabel(job.assignedMechanic, user?.id ?? '', messages)}
+              <li key={job.id}>
+                <Card className="flex items-start gap-3 text-shop-success">
+                  <span className="mt-0.5">✓</span>
+                  <span className="min-w-0">
+                    <span className="block">{job.displayName}</span>
+                    <span className="block text-xs text-muted-foreground">{job.category.name}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {jobAssignmentLabel(job.assignedMechanic, user?.id ?? '', messages)}
+                    </span>
                   </span>
-                </span>
+                </Card>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <section className="card space-y-3">
+      <Card className="flex flex-col gap-3">
         <div>
           <Label className="section-label" htmlFor="wo-notes">
             Notes
@@ -374,7 +373,7 @@ export default function WorkOrderDetailPage() {
             </Button>
           ) : null}
         </div>
-      </section>
+      </Card>
 
       <Modal
         open={!!finishJob}
@@ -597,7 +596,7 @@ function PmWorkOrderDetail({
 
       {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
-      <section className="card mb-4 space-y-3" aria-labelledby="pm-truck-information">
+      <Card className="mb-4 flex flex-col gap-3" aria-labelledby="pm-truck-information">
         <h2 id="pm-truck-information" className="section-label">Truck Information</h2>
         <TruckInformationFields truck={wo.truck} locale={messages.locale} />
         <Button asChild variant="secondary" className="w-full">
@@ -605,7 +604,7 @@ function PmWorkOrderDetail({
             See Truck Repair History
           </Link>
         </Button>
-      </section>
+      </Card>
 
       {wo.status === 'created' ? (
         <section className="mb-4">
@@ -628,7 +627,7 @@ function PmWorkOrderDetail({
       )}
 
       {wo.status === 'waiting_paused' ? (
-        <section className="card mb-4 space-y-3">
+        <Card className="mb-4 flex flex-col gap-3">
           <Label className="section-label" htmlFor="pm-change-pause-reason">Change Pause Reason</Label>
           <Select
               id="pm-change-pause-reason"
@@ -650,10 +649,10 @@ function PmWorkOrderDetail({
           >
             Update Pause
           </Button>
-        </section>
+        </Card>
       ) : null}
 
-      <section className="card mb-4 space-y-2">
+      <Card className="mb-4 flex flex-col gap-2">
         <Label className="section-label" htmlFor="pm-notes">Notes</Label>
         <Textarea
           id="pm-notes"
@@ -670,7 +669,7 @@ function PmWorkOrderDetail({
         <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
           {notesSaving ? 'Saving…' : notesError ? <><span className="text-destructive">{notesError} </span><Button variant="ghost" className="px-1 underline" onClick={() => void saveNotes()}>Retry</Button></> : notesDirty ? 'Saving…' : 'Saved'}
         </p>
-      </section>
+      </Card>
 
       {wo.currentPauseReason ? (
         <p className="mb-3 text-sm font-medium text-warning-foreground">{pauseLabel(wo.currentPauseReason, messages.pauseReason)}</p>

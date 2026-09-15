@@ -1,18 +1,18 @@
 # Components
 
 **Classification:** CURRENT STATE
-**Source:** `apps/web/src/components/ui/`, `apps/web/src/components/ui.tsx`,
+**Source:** `apps/web/src/components/ui/`,
 `apps/web/src/components/admin-shell.tsx`,
 `apps/web/src/components/app-frame.tsx`
 
 All new screens must reuse these exports. Do not copy prototype CSS.
 
-## Official primitives and compatibility barrel
+## Official primitives and product compositions
 
-Primitive source files live in `apps/web/src/components/ui/`. During the
-incremental migration, `ui.tsx` reexports them and continues to host product
-compositions so existing screens do not need a single high-risk rewrite.
-New code imports primitives from their direct `@/components/ui/*` module.
+Primitive source files live in `apps/web/src/components/ui/` and are imported
+from their direct `@/components/ui/*` modules. Product-level compositions live
+in `@/components/ui/composites`; that module does not reexport primitives.
+There is no compatibility barrel.
 
 | Export | CURRENT use |
 |---|---|
@@ -20,11 +20,15 @@ New code imports primitives from their direct `@/components/ui/*` module.
 | `Input` | Text fields with the existing 44px branded control treatment |
 | `Textarea` | Notes and reasons |
 | `Label` | Programmatically associated labels |
-| `Select` | Native `<select>` with Lucide chevron |
+| `NativeSelect` | Native `<select>` with Lucide chevron; preserve the mobile picker |
 | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Grouped content; preserve full semantic composition when a title or actions exist |
 | `InlineAlert` | Assertive inline error |
 | `Badge` | Single chip primitive. Variants `default`, `secondary`, `outline`, `destructive`, `success`, `warning`. Status / priority / phase chips use this only — no ad-hoc `<span>` chips |
 | `Dialog`, `DialogTrigger`, `DialogClose`, `DialogContent`, `DialogTitle`, `DialogDescription` | Radix dialog (sheet-like on mobile, centered on `sm+`) |
+| `Sheet` | Navigation and filter surfaces that complement the current screen |
+| `Table` | Semantic Admin data tables with a horizontal overflow boundary |
+| `ScrollArea` | Bounded supplemental regions where a native page scroll is not sufficient |
+| `Skeleton`, `Separator` | Loading geometry and visual separation |
 | `MultiSelect` | Accessible checkbox multi-select dialog |
 | `Modal` | Focus-managed dialog wrapper used by mechanic flows |
 | `PriorityBadge` | `Badge` wrapper. Variant from `priorityVariant` (`low=secondary`, `normal=outline`, `high=warning`, `critical=destructive`). Always pass a catalog label (never raw / UPPERCASE enum) |
@@ -68,18 +72,9 @@ these primitives. They are not a second component library.
 - Search and filter controls live in a bordered surface with consistent padding. Simple forms may omit the mobile modal, but they must preserve the same control heights and action alignment.
 - For list metadata, use a left column with `min-w-0 flex-1` and a right metadata column with `shrink-0 text-right`. Do not use an unbounded `justify-between` row with wrapping content.
 
-## TARGET gaps (Master PRD §33 only)
+## Adding or updating a primitive
 
-The Master PRD lists primitives that are **not** standalone `ui.tsx` exports
-today. Marked TARGET so nobody documents them as existing:
-
-| PRD name | CURRENT substitute | TARGET |
-|---|---|---|
-| Table | Ad-hoc `<table>` in Admin list/catalog | Shared Table primitive |
-| Tabs | Separate routes or view toggle buttons (Yard Board/List) | Shared Tabs |
-| Sheet | `DialogContent` is bottom-sheet on small screens | Dedicated Sheet |
-| Dropdown | Profile and MultiSelect use Dialog, not a menu | Shared Dropdown |
-| Skeleton | `PageSkeleton` / `CardListSkeleton` | Official primitive available; migrate product compositions incrementally |
-
-Do not build those TARGET primitives in a UI-only pass unless a queue task
-asks for them.
+Run the shadcn CLI from `apps/web`. Inspect `shadcn add --dry-run` and
+`shadcn diff` before editing, then preserve the documented brand tokens and
+44px mobile targets. Add a render/variant test and extend the browser
+accessibility baseline when the component changes interaction or layout.

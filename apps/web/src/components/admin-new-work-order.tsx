@@ -28,7 +28,7 @@ import {
   AdminPageHeader,
   EmptyState,
   InlineAlert,
-} from './ui';
+} from './ui/composites';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -656,10 +656,11 @@ function FlowStep({
 
   return (
     <li className="min-w-0">
-      <button
+      <Button
         type="button"
+        variant="outline"
         className={cn(
-          'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-xl border bg-card px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+          'h-auto min-h-11 w-full min-w-0 justify-start gap-2 whitespace-normal rounded-xl bg-card px-3 py-2 text-left',
           state === 'current' && 'border-primary bg-primary/10',
         )}
         aria-current={state === 'current' ? 'step' : undefined}
@@ -672,7 +673,7 @@ function FlowStep({
           <span className="block truncate text-sm font-medium">{label}</span>
           <span className="hidden text-xs text-muted-foreground sm:block">{stateLabel}</span>
         </span>
-      </button>
+      </Button>
     </li>
   );
 }

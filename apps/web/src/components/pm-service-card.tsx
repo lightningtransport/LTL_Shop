@@ -5,7 +5,12 @@ import type { PmServiceDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
 import { shopKeys, usePmService } from '@/lib/shop-data';
-import { Button, Card, Input, Label, LoadFailure, Select } from '@/components/ui';
+import { LoadFailure } from '@/components/ui/composites';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { NativeSelect as Select } from '@/components/ui/native-select';
 import { useShopLocale } from '@/lib/locale-context';
 
 export type PmDraftState = {

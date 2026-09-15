@@ -4,7 +4,10 @@ import { useMemo } from 'react';
 import { Check } from 'lucide-react';
 import type { CatalogJobDto } from '@ltl-shop/shared';
 import { filterCatalogJobs } from '@/lib/job-catalog';
-import { Button, Card, CompactEmpty, EmptyState, InlineAlert, Input } from './ui';
+import { CompactEmpty, EmptyState, InlineAlert } from './ui/composites';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Input } from './ui/input';
 
 export type CategoryJobListCopy = {
   searchLabel: string;

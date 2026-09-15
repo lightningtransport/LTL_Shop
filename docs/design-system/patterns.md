@@ -1,7 +1,7 @@
 # Patterns
 
 **Classification:** CURRENT STATE
-**Source:** `apps/web/src/components/ui.tsx` plus call sites in
+**Source:** `apps/web/src/components/ui/` plus call sites in
 `apps/web/src/app` and `apps/web/src/components`
 
 Use this matrix before adding a new wait, error, or empty treatment.
@@ -64,7 +64,7 @@ Yard Operations board columns used a one-off
 
 Admin Work Order detail, Truck detail (current work / readiness empty /
 blockers / history), and Yard board columns use `CompactEmpty` for in-card
-slots. The helper lives in `ui.tsx`.
+slots. Product compositions live in `ui/composites.tsx`.
 
 ### Rule going forward
 
@@ -78,7 +78,7 @@ slots. The helper lives in `ui.tsx`.
 ## Status, priority, and phase chips (LTR-23)
 
 Use the helpers in `apps/web/src/lib/status-chips.ts` plus the `Badge`
-wrappers in `ui.tsx`. Do **not** call `humanize()` for status, priority,
+wrappers in `ui/composites.tsx`. Do **not** call `humanize()` for status, priority,
 pause reason, or activity event chips. Filter `<option>` labels use the
 same catalog keys as the chips (singular Created/Creado … Paused/Pausado).
 

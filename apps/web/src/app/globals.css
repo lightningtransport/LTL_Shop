@@ -176,31 +176,7 @@ body {
     padding-bottom: max(2.5rem, var(--app-safe-bottom));
     padding-left: max(1rem, var(--app-safe-left));
   }
-  /* Deprecated: use Button from ui.tsx. Kept only so leftover class names do not unstyle. */
-  .btn {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
-  }
-  .btn-primary {
-    @apply btn bg-primary text-primary-foreground hover:opacity-90;
-  }
-  .btn-secondary {
-    @apply btn border bg-card text-card-foreground hover:bg-accent;
-  }
-  .btn-danger {
-    @apply btn border border-destructive bg-destructive text-destructive-foreground hover:opacity-90;
-  }
-  .field {
-    @apply min-h-11 w-full rounded-lg border bg-background px-4 py-2.5 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring md:text-sm;
-  }
-  .card {
-    @apply rounded-xl border bg-card p-4 text-card-foreground shadow-soft;
-  }
   .section-label {
     @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground;
   }
-}
-
-select.field {
-  appearance: none;
-  padding-right: 2.75rem;
 }
