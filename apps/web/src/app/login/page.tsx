@@ -8,11 +8,12 @@ import {
   Button,
   Card,
   InlineAlert,
-  Input,
-  Label,
   LoadFailure,
   PageSkeleton,
 } from '@/components/ui';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { postLoginPath } from '@/lib/admin-routing';
 import { useShopLocale } from '@/lib/locale-context';
 import { replaceAppLocation } from '@/lib/session-restore';
@@ -110,7 +111,7 @@ export default function LoginPage() {
         subtitle={messages.signInHint}
       />
       {sessionError ? (
-        <div className="mb-4 space-y-2">
+        <div className="mb-4 flex flex-col gap-2">
           <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
           {token ? (
             <Button variant="secondary" className="w-full" onClick={() => void logout()}>
@@ -120,35 +121,16 @@ export default function LoginPage() {
         </div>
       ) : null}
       <form onSubmit={onSubmit}>
-        <Card className="space-y-4">
-        <div>
-          <Label className="section-label" htmlFor="login-email">
-            {messages.email}
-          </Label>
-          <Input
-            id="login-email"
-            className="mt-2"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </div>
-        <div>
-          <Label className="section-label" htmlFor="login-password">
-            {messages.password}
-          </Label>
-          <Input
-            id="login-password"
-            className="mt-2"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
-        </div>
+        <Card>
+        <FieldGroup>
+        <Field>
+          <FieldLabel className="section-label" htmlFor="login-email">{messages.email}</FieldLabel>
+          <Input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+        </Field>
+        <Field>
+          <FieldLabel className="section-label" htmlFor="login-password">{messages.password}</FieldLabel>
+          <Input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+        </Field>
         {error ? (
           <InlineAlert>{error}</InlineAlert>
         ) : null}
@@ -164,9 +146,9 @@ export default function LoginPage() {
           {messages.resetPassword}
         </Button>
         {resetSent ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            {messages.locale === 'es' ? 'Si este correo tiene una cuenta, se envió un enlace para restablecer la contraseña.' : 'If this email has an account, a password-reset link has been sent.'}
-          </p>
+          <Alert variant="success" role="status">
+            <AlertDescription>{messages.locale === 'es' ? 'Si este correo tiene una cuenta, se envió un enlace para restablecer la contraseña.' : 'If this email has an account, a password-reset link has been sent.'}</AlertDescription>
+          </Alert>
         ) : null}
         {process.env.NODE_ENV !== 'production' ? (
           <Button
@@ -178,6 +160,7 @@ export default function LoginPage() {
             {messages.devLogin}
           </Button>
         ) : null}
+        </FieldGroup>
         </Card>
       </form>
     </div>

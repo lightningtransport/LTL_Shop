@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminWorkOrderItem } from './admin-work-order-item';
-import { AdminPageHeader, Button, Card, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PriorityBadge, Select, WorkOrderStatusBadge } from './ui';
+import { AdminPageHeader, Button, Card, EmptyState, Input, LoadFailure, PageSkeleton, PriorityBadge, Select, WorkOrderStatusBadge } from './ui';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
 import { formatAdminDate } from '@/lib/admin-format';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { useAdminWorkOrders } from '@/lib/admin-data';
@@ -30,6 +31,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
   const [filters, setFilters] = useState(() => readAdminWorkOrdersFilters(searchParams));
   const [appliedQuery, setAppliedQuery] = useState(urlQuery);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersButtonRef = useRef<HTMLButtonElement>(null);
   const { user } = useAuth();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminWorkOrders(appliedQuery);
   const canCreateWorkOrder = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
@@ -107,6 +109,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
             </div>
           </div>
           <Button
+            ref={filtersButtonRef}
             type="button"
             variant="outline"
             className="shrink-0 md:hidden"
@@ -126,12 +129,20 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
         {hasDashboardRange ? <p className="mt-2 hidden rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground md:block">{messages.dashboardRangeActive}</p> : null}
       </form>
     </Card>
-    <Modal
-      open={filtersOpen}
-      title={messages.filters}
-      onClose={() => setFiltersOpen(false)}
-    >
-      <form className="space-y-3" onSubmit={applyFilters}>
+    <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+      <SheetContent
+        side="bottom"
+        closeLabel={messages.closeFilters}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          filtersButtonRef.current?.focus();
+        }}
+      >
+      <SheetHeader className="mb-4">
+        <SheetTitle>{messages.filters}</SheetTitle>
+        <SheetDescription>{messages.workOrdersDescription}</SheetDescription>
+      </SheetHeader>
+      <form className="flex flex-col gap-3" onSubmit={applyFilters}>
         <WorkOrderFilterFields filters={filters} messages={messages} onChange={updateFilter} />
         {hasDashboardRange ? <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">{messages.dashboardRangeActive}</p> : null}
         <div className="flex items-end justify-end gap-2 border-t pt-3">
@@ -139,7 +150,8 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
           <Button type="submit">{messages.applyFilters}</Button>
         </div>
       </form>
-    </Modal>
+      </SheetContent>
+    </Sheet>
     {isLoading ? <PageSkeleton label={messages.workOrdersTitle} /> : error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : items.length === 0 ? <EmptyState><p>{messages.noWorkOrders}</p></EmptyState> : <>
       <div className="space-y-3 xl:hidden">{items.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} />)}</div>
       <div className="hidden min-h-60 max-h-[calc(100dvh-22rem)] overflow-auto rounded-xl border bg-card xl:block">

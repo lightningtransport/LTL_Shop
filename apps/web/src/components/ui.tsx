@@ -4,7 +4,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { Dialog as DialogPrimitive } from 'radix-ui';
 import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, Languages, Moon, Sun, Wrench, X } from 'lucide-react';
 import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
@@ -15,96 +14,89 @@ import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import { Alert, AlertAction, AlertDescription } from './ui/alert';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+import { Empty } from './ui/empty';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from './ui/field';
 import { Input } from './ui/input';
-import { Label } from './ui/label';
+import { NativeSelect } from './ui/native-select';
+import { Separator } from './ui/separator';
+import { Skeleton } from './ui/skeleton';
 import { Textarea } from './ui/textarea';
 
+export { Alert, AlertAction, AlertDescription, AlertTitle, alertVariants } from './ui/alert';
 export { Badge, badgeVariants, type BadgeProps } from './ui/badge';
 export { Button, buttonVariants, type ButtonProps } from './ui/button';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
+export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+export { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
+export {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSeparator,
+  FieldSet,
+  FieldTitle,
+} from './ui/field';
 export { Input } from './ui/input';
 export { Label } from './ui/label';
+export {
+  NativeSelect,
+  NativeSelectOptGroup,
+  NativeSelectOption,
+  type NativeSelectProps,
+} from './ui/native-select';
 export { Separator } from './ui/separator';
+export {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetOverlay,
+  SheetPortal,
+  SheetTitle,
+  SheetTrigger,
+} from './ui/sheet';
 export { Skeleton } from './ui/skeleton';
 export { Textarea } from './ui/textarea';
 
-export const Select = React.forwardRef<
-  HTMLSelectElement,
-  React.SelectHTMLAttributes<HTMLSelectElement>
->(({ className, children, ...props }, ref) => (
-  <div className="relative w-full min-w-0">
-    <select
-      ref={ref}
-      className={cn('field appearance-none pr-11', className)}
-      {...props}
-    >
-      {children}
-    </select>
-    <ChevronDown
-      aria-hidden="true"
-      className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-    />
-  </div>
-));
-Select.displayName = 'Select';
+/** @deprecated Import NativeSelect from `@/components/ui/native-select`. */
+export const Select = NativeSelect;
 
 export function InlineAlert({
   children,
   className,
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p
-      className={cn(
-        'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive',
-        className,
-      )}
-      role="alert"
-      aria-live="assertive"
-    >
-      {children}
-    </p>
+    <Alert variant="destructive" className={className} aria-live="assertive">
+      <AlertDescription>{children}</AlertDescription>
+    </Alert>
   );
 }
-
-export const Dialog = DialogPrimitive.Root;
-export const DialogTrigger = DialogPrimitive.Trigger;
-export const DialogClose = DialogPrimitive.Close;
-
-export const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        'fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-1rem-var(--app-safe-top)-var(--app-safe-bottom))] overflow-y-auto rounded-t-xl border bg-popover p-5 pb-[calc(1.25rem+var(--app-safe-bottom))] text-popover-foreground shadow-xl focus:outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-4 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:pb-5 sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=closed]:zoom-out-95',
-        className,
-      )}
-      {...props}
-    >
-      {children}
-    </DialogPrimitive.Content>
-  </DialogPrimitive.Portal>
-));
-DialogContent.displayName = 'DialogContent';
-
-export const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title ref={ref} className={cn('font-display text-2xl font-bold tracking-wide', className)} {...props} />
-));
-DialogTitle.displayName = 'DialogTitle';
-
-export const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
-));
-DialogDescription.displayName = 'DialogDescription';
 
 export type MultiSelectOption = { label: string; value: string; disabled?: boolean };
 
@@ -137,23 +129,26 @@ export function MultiSelect({
   }
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
-      <DialogPrimitive.Trigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button variant="outline" className={cn('w-full justify-between text-left font-normal', className)}>
           <span className={selected.length === 0 ? 'text-muted-foreground' : undefined}>{summary}</span>
           <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         </Button>
-      </DialogPrimitive.Trigger>
-      <DialogContent aria-describedby={undefined}>
+      </DialogTrigger>
+      <DialogContent>
         <div className="mb-4 flex items-start justify-between gap-4">
-          <DialogTitle>{label}</DialogTitle>
-          <DialogPrimitive.Close asChild>
+          <div className="flex min-w-0 flex-col gap-1">
+            <DialogTitle>{label}</DialogTitle>
+            <DialogDescription className="sr-only">{placeholder}</DialogDescription>
+          </div>
+          <DialogClose asChild>
             <Button variant="ghost" size="icon" aria-label={`Close ${label}`}>
               <X aria-hidden="true" className="size-5" />
             </Button>
-          </DialogPrimitive.Close>
+          </DialogClose>
         </div>
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {options.map((option) => {
             const checked = value.includes(option.value);
             return (
@@ -190,7 +185,7 @@ export function MultiSelect({
           {messages.multiSelectDone}
         </Button>
       </DialogContent>
-    </DialogPrimitive.Root>
+    </Dialog>
   );
 }
 
@@ -310,9 +305,10 @@ function ProfileDialog() {
           </DialogClose>
         </div>
 
-        <form className="space-y-4" onSubmit={handlePasswordUpdate}>
-          <div className="space-y-2">
-            <Label htmlFor="profile-new-password">{messages.locale === 'es' ? 'Nueva contraseña' : 'New password'}</Label>
+        <form onSubmit={handlePasswordUpdate}>
+          <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="profile-new-password">{messages.locale === 'es' ? 'Nueva contraseña' : 'New password'}</FieldLabel>
             <Input
               id="profile-new-password"
               type="password"
@@ -322,9 +318,10 @@ function ProfileDialog() {
               onChange={(event) => setNewPassword(event.target.value)}
               required
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="profile-confirm-password">{messages.locale === 'es' ? 'Confirmar nueva contraseña' : 'Confirm new password'}</Label>
+            <FieldDescription>{messages.locale === 'es' ? 'Usa al menos 8 caracteres.' : 'Use at least 8 characters.'}</FieldDescription>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="profile-confirm-password">{messages.locale === 'es' ? 'Confirmar nueva contraseña' : 'Confirm new password'}</FieldLabel>
             <Input
               id="profile-confirm-password"
               type="password"
@@ -334,18 +331,19 @@ function ProfileDialog() {
               onChange={(event) => setConfirmPassword(event.target.value)}
               required
             />
-          </div>
+          </Field>
 
-          <p className="text-sm text-muted-foreground">{messages.locale === 'es' ? 'Usa al menos 8 caracteres.' : 'Use at least 8 characters.'}</p>
-          {status ? <p className="text-sm font-medium text-shop-success" role="status">{status}</p> : null}
-          {error ? <p className="text-sm font-medium text-destructive" role="alert">{error}</p> : null}
+          {status ? <Alert variant="success" role="status"><AlertDescription>{status}</AlertDescription></Alert> : null}
+          {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
 
           <Button className="w-full" type="submit" disabled={isUpdatingPassword || isLoggingOut}>
             {isUpdatingPassword ? (messages.locale === 'es' ? 'Actualizando contraseña…' : 'Updating password…') : (messages.locale === 'es' ? 'Actualizar contraseña' : 'Update password')}
           </Button>
+          </FieldGroup>
         </form>
 
-        <div className="mt-5 border-t pt-5">
+        <Separator className="my-5" />
+        <div>
           <Button
             className="w-full"
             variant="destructive"
@@ -591,33 +589,33 @@ export function AdminFilterToolbar({
 
 export function EmptyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-shop-border px-4 py-8 text-center text-sm text-shop-muted">
+    <Empty className="gap-0 rounded-2xl border border-dashed border-shop-border px-4 py-8 text-sm text-shop-muted">
       {children}
-    </div>
+    </Empty>
   );
 }
 
 /** Compact dashed empty for in-card or in-column slots. Use EmptyState for page/section empties. */
 export function CompactEmpty({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('whitespace-normal text-pretty rounded-lg border border-dashed px-3 py-2 text-sm leading-snug text-muted-foreground', className)}>
+    <Empty className={cn('items-stretch gap-0 whitespace-normal rounded-lg border border-dashed px-3 py-2 text-left text-pretty text-sm leading-snug text-muted-foreground', className)}>
       {children}
-    </div>
+    </Empty>
   );
 }
 
 export function PageSkeleton({ label = 'Loading page' }: { label?: string }) {
   return (
     <div
-      className="animate-pulse space-y-6"
+      className="flex flex-col gap-6"
       role="status"
       aria-label={label}
       aria-live="polite"
     >
-      <div className="space-y-3">
-        <div className="h-3 w-24 rounded bg-shop-border" />
-        <div className="h-9 w-2/3 rounded-lg bg-shop-panel" />
-        <div className="h-4 w-full rounded bg-shop-panel" />
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-9 w-2/3 rounded-lg" />
+        <Skeleton className="h-4 w-full" />
       </div>
       <CardListSkeleton />
       <span className="sr-only">{label}</span>
@@ -635,28 +633,26 @@ export function LoadFailure({
   retryLabel?: string;
 }) {
   return (
-    <div
-      className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
-      role="alert"
-      aria-live="assertive"
-    >
-      <p>{message}</p>
-      <Button type="button" variant="secondary" className="mt-3 w-full" onClick={onRetry}>
-        {retryLabel}
-      </Button>
-    </div>
+    <Alert variant="destructive" aria-live="assertive">
+      <AlertDescription>{message}</AlertDescription>
+      <AlertAction>
+        <Button type="button" variant="secondary" className="w-full" onClick={onRetry}>
+          {retryLabel}
+        </Button>
+      </AlertAction>
+    </Alert>
   );
 }
 
 export function CardListSkeleton({ count = 3 }: { count?: number }) {
   return (
-    <div className="animate-pulse space-y-3" aria-hidden="true">
+    <div className="flex flex-col gap-3" aria-hidden="true">
       {Array.from({ length: count }, (_, index) => (
-        <div key={index} className="card space-y-3">
-          <div className="h-5 w-1/3 rounded bg-shop-border" />
-          <div className="h-4 w-3/4 rounded bg-shop-border/70" />
-          <div className="h-10 w-full rounded-xl bg-shop-border/60" />
-        </div>
+        <Card key={index} className="flex flex-col gap-3">
+          <Skeleton className="h-5 w-1/3" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-10 w-full rounded-xl" />
+        </Card>
       ))}
     </div>
   );
@@ -665,6 +661,7 @@ export function CardListSkeleton({ count = 3 }: { count?: number }) {
 export function Modal({
   open,
   title,
+  description,
   children,
   onClose,
   returnFocusRef,
@@ -672,6 +669,7 @@ export function Modal({
 }: {
   open: boolean;
   title: string;
+  description?: string;
   children: React.ReactNode;
   onClose: () => void;
   returnFocusRef?: React.RefObject<HTMLElement | null>;
@@ -689,10 +687,9 @@ export function Modal({
   }, [open]);
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         ref={contentRef}
-        aria-describedby={undefined}
         onOpenAutoFocus={(event) => {
           const initialControl = contentRef.current?.querySelector<HTMLElement>(
             'input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
@@ -708,17 +705,22 @@ export function Modal({
           focusTarget.focus();
         }}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogPrimitive.Close asChild>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription className={description ? undefined : 'sr-only'}>
+              {description ?? title}
+            </DialogDescription>
+          </div>
+          <DialogClose asChild>
             <Button variant="ghost" size="icon" aria-label={closeLabel ?? `Close ${title}`}>
               <X aria-hidden="true" className="size-5" />
             </Button>
-          </DialogPrimitive.Close>
+          </DialogClose>
         </div>
         {children}
       </DialogContent>
-    </DialogPrimitive.Root>
+    </Dialog>
   );
 }
 

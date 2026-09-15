@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { CatalogJobDto, JobCategoryDto } from '@ltl-shop/shared';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { useCatalogJobs } from '@/lib/shop-data';
-import { Button, Input, Label, Modal } from '@/components/ui';
+import { Button, Input, Modal } from '@/components/ui';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { NativeSelect } from '@/components/ui/native-select';
 import { CategoryJobList } from './category-job-list';
 
 export type PickedJob = {
@@ -103,14 +105,13 @@ export function JobPickerDialog({
   }
 
   return (
-    <Modal open={open} title={messages.jobPickerTitle} onClose={onClose} returnFocusRef={returnFocusRef}>
-      <div className="space-y-3">
+    <Modal open={open} title={messages.jobPickerTitle} description={messages.addJobsLabel} onClose={onClose} returnFocusRef={returnFocusRef}>
+      <div className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">{messages.addJobsLabel}</p>
-        <div>
-          <Label className="section-label block" htmlFor="job-picker-category">{messages.jobPickerCategoryLabel}</Label>
-          <select
+        <Field>
+          <FieldLabel className="section-label" htmlFor="job-picker-category">{messages.jobPickerCategoryLabel}</FieldLabel>
+          <NativeSelect
             id="job-picker-category"
-            className="mt-2 flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={categoryId}
             onChange={(event) => {
               setCategoryId(event.target.value);
@@ -122,8 +123,8 @@ export function JobPickerDialog({
             {standardCategories.map((category) => (
               <option key={category.id} value={category.id}>{category.name}</option>
             ))}
-          </select>
-        </div>
+          </NativeSelect>
+        </Field>
         {!customOpen ? (
           <CategoryJobList
             categoryName={selectedCategory?.name ?? primaryCategoryName}
@@ -155,15 +156,18 @@ export function JobPickerDialog({
           {customOpen ? messages.backToListedJobs : messages.jobNotListed}
         </Button>
         {customOpen ? (
-          <div id="job-not-listed-form" className="space-y-2">
-            <p className="text-xs text-muted-foreground">{selectedCategory?.name ?? primaryCategoryName}</p>
-            <Label className="section-label block" htmlFor="job-picker-custom">{messages.customJobPlaceholder}</Label>
+          <FieldGroup id="job-not-listed-form" className="gap-2">
+            <Field>
+            <FieldLabel className="section-label" htmlFor="job-picker-custom">{messages.customJobPlaceholder}</FieldLabel>
+            <FieldDescription>{selectedCategory?.name ?? primaryCategoryName}</FieldDescription>
             <Input
               id="job-picker-custom"
               placeholder={messages.customJobPlaceholder}
               value={customName}
               onChange={(event) => setCustomName(event.target.value)}
             />
+            {customIsDuplicate ? <FieldDescription role="status">{messages.jobsInPlan}</FieldDescription> : null}
+            </Field>
             <Button
               className="w-full"
               disabled={!customName.trim() || customIsDuplicate || submittingIds.has('custom')}
@@ -175,8 +179,7 @@ export function JobPickerDialog({
             >
               {messages.addCustomJob}
             </Button>
-            {customIsDuplicate ? <p className="text-sm text-muted-foreground" role="status">{messages.jobsInPlan}</p> : null}
-          </div>
+          </FieldGroup>
         ) : null}
       </div>
     </Modal>

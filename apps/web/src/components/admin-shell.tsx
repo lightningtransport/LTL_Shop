@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ClipboardList, Gauge, History, Library, Menu, Truck, UsersRound, Warehouse } from 'lucide-react';
 import { AdminLocaleSwitcher } from './admin-locale-switcher';
-import { AppHeaderActions, Button, Modal } from './ui';
+import { AppHeaderActions, Button } from './ui';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 const activeNavigation = [
@@ -84,13 +85,22 @@ export function AdminShell({
         <main className="mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-5 md:min-h-0 md:overflow-y-auto md:overscroll-contain md:py-6 xl:px-6">{children}</main>
       </div>
 
-      <Modal
+      <Sheet
         open={mobileNavOpen}
-        title={messages.navigation}
-        onClose={() => setMobileNavOpen(false)}
-        returnFocusRef={menuButtonRef}
-        closeLabel={messages.closeMobileNavigation}
+        onOpenChange={setMobileNavOpen}
       >
+        <SheetContent
+          side="bottom"
+          closeLabel={messages.closeMobileNavigation}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            menuButtonRef.current?.focus();
+          }}
+        >
+        <SheetHeader className="mb-4">
+          <SheetTitle>{messages.navigation}</SheetTitle>
+          <SheetDescription className="sr-only">{messages.mobileNavigation}</SheetDescription>
+        </SheetHeader>
         <nav
           id="admin-mobile-navigation"
           className="flex flex-col gap-1"
@@ -116,7 +126,8 @@ export function AdminShell({
             );
           })}
         </nav>
-      </Modal>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

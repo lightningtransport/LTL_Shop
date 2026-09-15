@@ -37,9 +37,10 @@ import {
   EmptyState,
   InlineAlert,
   Input,
-  Select,
   Textarea,
 } from './ui';
+import { Field, FieldGroup, FieldLabel } from './ui/field';
+import { NativeSelect } from './ui/native-select';
 
 type DraftJob = {
   key: string;
@@ -342,10 +343,10 @@ export function AdminNewWorkOrder({
                   <Button type="button" variant="outline" size="sm" onClick={clearTruck}>{messages.changeTruckAction}</Button>
                 </div>
               ) : (
-                <div className="relative">
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="admin-truck-search">
+                <Field className="relative">
+                  <FieldLabel className="text-xs text-muted-foreground" htmlFor="admin-truck-search">
                     {messages.searchTrucksLabel}
-                  </label>
+                  </FieldLabel>
                   <Input
                     id="admin-truck-search"
                     placeholder={messages.searchTruckPlaceholder}
@@ -415,7 +416,7 @@ export function AdminNewWorkOrder({
                       )}
                     </ul>
                   ) : null}
-                </div>
+                </Field>
               )}
 
               {openWorkOrderCheck === 'error' && selectedTruck ? (
@@ -455,9 +456,10 @@ export function AdminNewWorkOrder({
               ) : null}
 
               {standardCategories.length ? (
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs font-medium text-muted-foreground">{messages.category}</span>
-                  <Select
+                <Field>
+                  <FieldLabel className="text-xs text-muted-foreground" htmlFor="admin-work-order-category">{messages.category}</FieldLabel>
+                  <NativeSelect
+                    id="admin-work-order-category"
                     aria-label={messages.category}
                     value={categoryId}
                     onChange={(event) => setCategoryId(event.target.value)}
@@ -466,8 +468,8 @@ export function AdminNewWorkOrder({
                     {standardCategories.map((category) => (
                       <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
-                  </Select>
-                </label>
+                  </NativeSelect>
+                </Field>
               ) : null}
 
               {selectedCategory ? (
@@ -492,9 +494,10 @@ export function AdminNewWorkOrder({
                       addJob: messages.addCatalogJob,
                     }}
                   />
-                  <div className="flex flex-col gap-2 sm:flex-row">
+                  <Field className="sm:flex-row sm:items-center sm:*:w-auto">
+                    <FieldLabel className="sr-only" htmlFor="admin-custom-job">{messages.customJobPlaceholder}</FieldLabel>
                     <Input
-                      aria-label={messages.customJobPlaceholder}
+                      id="admin-custom-job"
                       className="min-w-0 flex-1"
                       placeholder={messages.customJobPlaceholder}
                       value={customName}
@@ -503,7 +506,7 @@ export function AdminNewWorkOrder({
                     <Button type="button" variant="outline" disabled={!customName.trim()} onClick={addCustomJob}>
                       {messages.addCustomJob}
                     </Button>
-                  </div>
+                  </Field>
                 </div>
               ) : (
                 <EmptyState>{messages.chooseCategoryFirst}</EmptyState>
@@ -545,9 +548,10 @@ export function AdminNewWorkOrder({
                               {messages.removeJobAction}
                             </Button>
                           </div>
-                          <label className="flex flex-col gap-1">
-                            <span className="text-xs font-medium text-muted-foreground">{messages.assignJobOnCreate}</span>
-                            <Select
+                          <Field>
+                            <FieldLabel className="text-xs text-muted-foreground" htmlFor={`admin-job-assignee-${job.key}`}>{messages.assignJobOnCreate}</FieldLabel>
+                            <NativeSelect
+                              id={`admin-job-assignee-${job.key}`}
                               aria-label={`${messages.assignJobOnCreate}: ${job.displayName}`}
                               value={job.assignedMechanicId ?? ''}
                               onChange={(event) => setJobAssignee(job.key, event.target.value)}
@@ -556,8 +560,8 @@ export function AdminNewWorkOrder({
                               {assignableMechanics.map((mechanic) => (
                                 <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
                               ))}
-                            </Select>
-                          </label>
+                            </NativeSelect>
+                          </Field>
                         </li>
                       ))}
                     </ul>
@@ -569,27 +573,27 @@ export function AdminNewWorkOrder({
             )}
             {mechanicsError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-muted-foreground">{messages.priority}</span>
-                <Select aria-label={messages.priority} value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
+            <FieldGroup className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <Field>
+                <FieldLabel className="text-xs text-muted-foreground" htmlFor="admin-work-order-priority">{messages.priority}</FieldLabel>
+                <NativeSelect id="admin-work-order-priority" value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
                   {Object.values(Priority).map((value) => (
                     <option key={value} value={value}>{value.toUpperCase()}</option>
                   ))}
-                </Select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-muted-foreground">{messages.notesOptional}</span>
+                </NativeSelect>
+              </Field>
+              <Field>
+                <FieldLabel className="text-xs text-muted-foreground" htmlFor="admin-work-order-notes">{messages.notesOptional}</FieldLabel>
                 <Textarea
-                  aria-label={messages.notesOptional}
+                  id="admin-work-order-notes"
                   className="min-h-20"
                   placeholder={messages.notesPlaceholder}
                   value={notes}
                   maxLength={2000}
                   onChange={(event) => setNotes(event.target.value)}
                 />
-              </label>
-            </div>
+              </Field>
+            </FieldGroup>
             {error ? <InlineAlert>{error}</InlineAlert> : null}
           </CardContent>
           <CardFooter className="hidden border-t pt-4 xl:flex">

@@ -32,9 +32,11 @@ import {
   PriorityBadge,
   WorkOrderStatusBadge,
   Input,
-  Select,
   Textarea,
 } from './ui';
+import { Alert, AlertDescription } from './ui/alert';
+import { Field, FieldGroup, FieldLabel } from './ui/field';
+import { NativeSelect } from './ui/native-select';
 
 export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
@@ -120,7 +122,11 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       meta={<>{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</>}
       badges={<><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></>}
     />
-    {feedback ? <p className={feedback.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'} role="status">{feedback.message}</p> : null}
+    {feedback ? (
+      <Alert variant={feedback.kind === 'error' ? 'destructive' : 'success'} role="status">
+        <AlertDescription>{feedback.message}</AlertDescription>
+      </Alert>
+    ) : null}
 
     <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]" aria-label={messages.operationalSummary}>
       <Card>
@@ -190,12 +196,12 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               }, (failure) => assignmentError(failure, messages));
             }}
           >
-            <Select aria-label={messages.selectMechanic} value={selectedMechanic} onChange={(event) => setSelectedMechanic(event.target.value)}>
+            <NativeSelect aria-label={messages.selectMechanic} value={selectedMechanic} onChange={(event) => setSelectedMechanic(event.target.value)}>
               <option value="">{messages.selectMechanic}</option>
               {availableMechanics.map((mechanic) => (
                 <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
               ))}
-            </Select>
+            </NativeSelect>
             <Button type="submit" disabled={!selectedMechanic || Boolean(pendingAction)}>{messages.addMechanic}</Button>
           </form>
         ) : null}
@@ -243,11 +249,11 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 void runMutation('pause-wo', messages.pauseWorkOrderSuccess, () => pauseAdminWorkOrder(data.id, { reason: pauseReason }), (failure) => assignmentError(failure, messages));
               }}
             >
-              <Select aria-label={messages.pauseReasonLabel} value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
+              <NativeSelect aria-label={messages.pauseReasonLabel} value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
                 {Object.values(PauseReason).map((reason) => (
                   <option key={reason} value={reason}>{adminPauseReasonLabel(reason, messages)}</option>
                 ))}
-              </Select>
+              </NativeSelect>
               <Button type="submit" disabled={Boolean(pendingAction)}>{messages.pauseWorkOrderAction}</Button>
             </form>
           )}
@@ -283,7 +289,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         </CardHeader>
         <CardContent>
           <form
-            className="space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
               const reason = cancelReason.trim();
@@ -427,10 +432,11 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               }, (failure) => fieldUpdateError(failure, messages));
             }}
           >
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">{messages.priority}</span>
-              <Select
-                aria-label={messages.priority}
+            <FieldGroup>
+            <Field data-disabled={data.category.name === 'PM' || Boolean(pendingAction)}>
+              <FieldLabel htmlFor="work-order-priority">{messages.priority}</FieldLabel>
+              <NativeSelect
+                id="work-order-priority"
                 value={draftPriority}
                 disabled={data.category.name === 'PM' || Boolean(pendingAction)}
                 onChange={(event) => setDraftPriority(event.target.value as Priority)}
@@ -439,20 +445,22 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 <option value={Priority.NORMAL}>{messages.normalPriority}</option>
                 <option value={Priority.HIGH}>{messages.highPriority}</option>
                 <option value={Priority.CRITICAL}>{messages.criticalPriority}</option>
-              </Select>
-            </label>
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">{messages.notes}</span>
+              </NativeSelect>
+            </Field>
+            <Field data-disabled={Boolean(pendingAction)}>
+              <FieldLabel htmlFor="work-order-notes">{messages.notes}</FieldLabel>
               <Textarea
+                id="work-order-notes"
                 aria-label={messages.workOrderNotes}
                 value={draftNotes}
                 onChange={(event) => setDraftNotes(event.target.value)}
                 maxLength={2000}
               />
-            </label>
+            </Field>
             <Button type="submit" disabled={Boolean(pendingAction)}>
               {messages.updatePriorityAndNotes}
             </Button>
+            </FieldGroup>
           </form>
         </CardContent>
       </Card>
@@ -536,7 +544,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                             </Button>
                           ) : (
                             <>
-                              <Select
+                              <NativeSelect
                                 aria-label={messages.assignJobPlaceholder}
                                 className="w-full sm:w-48"
                                 value={assignDrafts[job.id] ?? ''}
@@ -546,7 +554,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                                 {assignableMechanics.map((mechanic) => (
                                   <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
                                 ))}
-                              </Select>
+                              </NativeSelect>
                               <Button
                                 type="button"
                                 size="sm"
@@ -620,7 +628,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     </Card>
 
     <Card>
-      <CardHeader className="gap-3 sm:flex sm:flex-row sm:items-start sm:justify-between"><div><CardTitle>{messages.recentRepairHistory}</CardTitle><CardDescription>{messages.repairHistoryDescription}</CardDescription></div><label className="w-full space-y-1 sm:w-56"><span className="text-xs font-medium text-muted-foreground">{messages.filterByCategory}</span><Select aria-label={messages.filterByCategory} value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}><option value="">{messages.allCategories}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></label></CardHeader>
+      <CardHeader className="gap-3 sm:flex sm:flex-row sm:items-start sm:justify-between"><div><CardTitle>{messages.recentRepairHistory}</CardTitle><CardDescription>{messages.repairHistoryDescription}</CardDescription></div><Field className="w-full sm:w-56"><FieldLabel className="text-xs text-muted-foreground" htmlFor="repair-history-category">{messages.filterByCategory}</FieldLabel><NativeSelect id="repair-history-category" value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}><option value="">{messages.allCategories}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</NativeSelect></Field></CardHeader>
       <CardContent>{historyQuery.error ? <LoadFailure message={messages.repairHistoryLoadError} retryLabel={messages.retry} onRetry={() => void historyQuery.mutate()} /> : historyQuery.isLoading ? <CardListSkeleton count={2} /> : historyItems.length ? <><ul className="divide-y">{historyItems.map((item) => <li key={item.workOrderId} className="py-3 first:pt-0"><div className="flex flex-wrap items-start justify-between gap-2"><div><Link href={`/admin/work-orders/${item.workOrderId}`} className="font-semibold text-primary hover:underline">{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p></div>{item.mileage !== null ? <p className="text-xs text-muted-foreground">{messages.mileage}: {new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(item.mileage)}</p> : null}</div>{item.mechanicNames.length ? <p className="mt-1 text-sm text-muted-foreground">{messages.performedBy}: {item.mechanicNames.join(', ')}</p> : null}{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : item.jobs?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobs.map((job) => <Badge key={`${item.workOrderId}-${job}`} variant="outline">{job}</Badge>)}</div> : null}</li>)}</ul>{historyHasMore ? <Button variant="outline" className="mt-4 w-full" disabled={historyQuery.isValidating} onClick={() => void historyQuery.setSize(historyQuery.size + 1)}>{historyQuery.isValidating ? `${messages.loadMoreRepairs}…` : messages.loadMoreRepairs}</Button> : null}</> : <CompactEmpty>{messages.noRepairHistory}</CompactEmpty>}</CardContent>
     </Card>
 
@@ -662,7 +670,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           >
             <label className="block space-y-1">
               <span className="text-sm font-medium">{messages.timeCorrectionSegment}</span>
-              <Select
+              <NativeSelect
                 aria-label={messages.timeCorrectionSegment}
                 value={timeTarget}
                 onChange={(event) => {
@@ -681,7 +689,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                     {segment.targetType === 'work_session' ? messages.activeLabor : messages.waitingTime} · {formatAdminDate(segment.startedAt, locale)}
                   </option>
                 ))}
-              </Select>
+              </NativeSelect>
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1">
