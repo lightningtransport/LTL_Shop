@@ -7,6 +7,11 @@
 Lightning Shop uses one OKLCH semantic theme (light + `.dark`) and Tailwind 3.
 Do not add a second token set.
 
+`apps/web/components.json` is the official shadcn/ui configuration. It uses
+the Radix base, Lucide icons, CSS variables, and the `@/components/ui` alias.
+Registry components must be reviewed with `shadcn add --dry-run` and
+`shadcn add --diff` before an existing file is updated.
+
 ## Color tokens (`:root` / `.dark`)
 
 Defined as CSS custom properties in `apps/web/src/app/globals.css`:
@@ -58,9 +63,14 @@ for convenience on individual screens.
 | Token | CURRENT value |
 |---|---|
 | `--radius` | `0.375rem` |
-| Card | `.card` — `rounded-xl`, `p-4` |
-| Stack gaps | typically `space-y-3` / `space-y-5` / `mb-6` |
+| Card | `Card` — `rounded-xl`, `p-4` |
+| Stack gaps | `flex flex-col gap-*`; use margins only for deliberate separation |
 | Page gutters | `.app-shell` `px-4`; Admin `px-4 md:px-5 xl:px-6` |
+
+Tailwind's `rounded-lg`, `rounded-md`, and `rounded-sm` values derive from
+`--radius`. The larger `rounded-xl` card silhouette, 44px control baseline,
+Inter typography, compact density, soft shadow, and OKLCH palette are
+intentional Lightning brand customizations retained on top of shadcn/ui.
 
 ## 44px control baseline
 

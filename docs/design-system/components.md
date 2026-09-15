@@ -1,22 +1,27 @@
 # Components
 
 **Classification:** CURRENT STATE
-**Source:** `apps/web/src/components/ui.tsx`,
+**Source:** `apps/web/src/components/ui/`, `apps/web/src/components/ui.tsx`,
 `apps/web/src/components/admin-shell.tsx`,
 `apps/web/src/components/app-frame.tsx`
 
 All new screens must reuse these exports. Do not copy prototype CSS.
 
-## `ui.tsx` primitives
+## Official primitives and compatibility barrel
+
+Primitive source files live in `apps/web/src/components/ui/`. During the
+incremental migration, `ui.tsx` reexports them and continues to host product
+compositions so existing screens do not need a single high-risk rewrite.
+New code imports primitives from their direct `@/components/ui/*` module.
 
 | Export | CURRENT use |
 |---|---|
 | `Button` | CVA variants `default`, `secondary`, `outline`, `ghost`, `destructive`; sizes `default`, `sm`, `lg`, `icon`; `asChild` Slot. Touch / mobile controls stay `min-h-11` (44px). Desktop chrome may use `sm`. Do not use deprecated `.btn-*` classes |
-| `Input` | Text fields (`.field`) |
+| `Input` | Text fields with the existing 44px branded control treatment |
 | `Textarea` | Notes and reasons |
 | `Label` | Programmatically associated labels |
 | `Select` | Native `<select>` with Lucide chevron |
-| `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Grouped content |
+| `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Grouped content; preserve full semantic composition when a title or actions exist |
 | `InlineAlert` | Assertive inline error |
 | `Badge` | Single chip primitive. Variants `default`, `secondary`, `outline`, `destructive`, `success`, `warning`. Status / priority / phase chips use this only — no ad-hoc `<span>` chips |
 | `Dialog`, `DialogTrigger`, `DialogClose`, `DialogContent`, `DialogTitle`, `DialogDescription` | Radix dialog (sheet-like on mobile, centered on `sm+`) |
@@ -74,7 +79,7 @@ today. Marked TARGET so nobody documents them as existing:
 | Tabs | Separate routes or view toggle buttons (Yard Board/List) | Shared Tabs |
 | Sheet | `DialogContent` is bottom-sheet on small screens | Dedicated Sheet |
 | Dropdown | Profile and MultiSelect use Dialog, not a menu | Shared Dropdown |
-| Skeleton | `PageSkeleton` / `CardListSkeleton` | Already covered; no extra kit |
+| Skeleton | `PageSkeleton` / `CardListSkeleton` | Official primitive available; migrate product compositions incrementally |
 
 Do not build those TARGET primitives in a UI-only pass unless a queue task
 asks for them.

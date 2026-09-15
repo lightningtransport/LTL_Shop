@@ -4,8 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { Dialog as DialogPrimitive, Slot } from 'radix-ui';
+import { Dialog as DialogPrimitive } from 'radix-ui';
 import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, Languages, Moon, Sun, Wrench, X } from 'lucide-react';
 import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
@@ -13,78 +12,21 @@ import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { jobStatusVariant, phaseVariant, priorityVariant, workOrderStatusVariant } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 
-export const buttonVariants = cva(
-  'inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
-  {
-    variants: {
-      variant: {
-        default: 'bg-primary text-primary-foreground hover:opacity-90',
-        secondary: 'border bg-card text-card-foreground hover:bg-accent',
-        outline: 'border bg-background text-foreground hover:bg-accent',
-        ghost: 'text-foreground hover:bg-accent',
-        destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
-      },
-      size: {
-        default: 'min-h-11',
-        sm: 'min-h-9 px-3 py-2 text-xs',
-        lg: 'min-h-12 px-5 py-3 text-base',
-        icon: 'size-11 p-0',
-      },
-    },
-    defaultVariants: { variant: 'default', size: 'default' },
-  },
-);
-
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean;
-  };
-
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, type = 'button', asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot.Root : 'button';
-
-    return (
-      <Comp
-        ref={ref}
-        {...(!asChild ? { type } : {})}
-        className={cn(buttonVariants({ variant, size }), className)}
-        {...props}
-      />
-    );
-  },
-);
-Button.displayName = 'Button';
-
-export const Input = React.forwardRef<
-  HTMLInputElement,
-  React.InputHTMLAttributes<HTMLInputElement>
->(({ className, type, ...props }, ref) => (
-  <input
-    ref={ref}
-    type={type}
-    className={cn('field', className)}
-    {...props}
-  />
-));
-Input.displayName = 'Input';
-
-export const Textarea = React.forwardRef<
-  HTMLTextAreaElement,
-  React.TextareaHTMLAttributes<HTMLTextAreaElement>
->(({ className, ...props }, ref) => (
-  <textarea ref={ref} className={cn('field min-h-28 resize-y', className)} {...props} />
-));
-Textarea.displayName = 'Textarea';
-
-export const Label = React.forwardRef<
-  HTMLLabelElement,
-  React.LabelHTMLAttributes<HTMLLabelElement>
->(({ className, ...props }, ref) => (
-  <label ref={ref} className={cn('text-sm font-medium text-foreground', className)} {...props} />
-));
-Label.displayName = 'Label';
+export { Badge, badgeVariants, type BadgeProps } from './ui/badge';
+export { Button, buttonVariants, type ButtonProps } from './ui/button';
+export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
+export { Input } from './ui/input';
+export { Label } from './ui/label';
+export { Separator } from './ui/separator';
+export { Skeleton } from './ui/skeleton';
+export { Textarea } from './ui/textarea';
 
 export const Select = React.forwardRef<
   HTMLSelectElement,
@@ -106,46 +48,6 @@ export const Select = React.forwardRef<
 ));
 Select.displayName = 'Select';
 
-export const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => <div ref={ref} className={cn('card', className)} {...props} />);
-Card.displayName = 'Card';
-
-export const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => <div ref={ref} className={cn('mb-4 space-y-1.5', className)} {...props} />);
-CardHeader.displayName = 'CardHeader';
-
-export const CardTitle = React.forwardRef<
-  HTMLHeadingElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3 ref={ref} className={cn('font-display text-lg font-semibold tracking-wide', className)} {...props} />
-));
-CardTitle.displayName = 'CardTitle';
-
-export const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
-));
-CardDescription.displayName = 'CardDescription';
-
-export const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => <div ref={ref} className={cn(className)} {...props} />);
-CardContent.displayName = 'CardContent';
-
-export const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => <div ref={ref} className={cn('mt-4 flex items-center', className)} {...props} />);
-CardFooter.displayName = 'CardFooter';
-
 export function InlineAlert({
   children,
   className,
@@ -164,29 +66,6 @@ export function InlineAlert({
   );
 }
 
-const badgeVariants = cva(
-  'inline-flex min-h-6 items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
-  {
-    variants: {
-      variant: {
-        default: 'border-primary bg-primary text-primary-foreground',
-        secondary: 'border-border bg-muted text-muted-foreground',
-        outline: 'border-border text-foreground',
-        destructive: 'border-destructive bg-destructive text-destructive-foreground',
-        success: 'border-shop-success/40 bg-shop-success/15 text-shop-success',
-        warning: 'border-shop-accent/40 bg-shop-accent/15 text-shop-accent',
-      },
-    },
-    defaultVariants: { variant: 'default' },
-  },
-);
-
-export type BadgeProps = React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof badgeVariants>;
-
-export function Badge({ className, variant, ...props }: BadgeProps) {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
-}
-
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogClose = DialogPrimitive.Close;
@@ -196,11 +75,11 @@ export const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-1rem-var(--app-safe-top)-var(--app-safe-bottom))] overflow-y-auto rounded-t-xl border bg-popover p-5 pb-[calc(1.25rem+var(--app-safe-bottom))] text-popover-foreground shadow-xl focus:outline-none sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:pb-5',
+        'fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-1rem-var(--app-safe-top)-var(--app-safe-bottom))] overflow-y-auto rounded-t-xl border bg-popover p-5 pb-[calc(1.25rem+var(--app-safe-bottom))] text-popover-foreground shadow-xl focus:outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-4 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:pb-5 sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=closed]:zoom-out-95',
         className,
       )}
       {...props}
