@@ -21,13 +21,13 @@ import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import {
-  shopKeys,
   useCatalogJobs,
   useCategories,
   useMechanics,
   useTrucks,
   type Mechanic,
 } from '@/lib/shop-data';
+import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { CategoryJobList } from '@/components/category-job-list';
 import {
   Button,
@@ -230,7 +230,7 @@ export default function NewWorkOrderPage() {
           idempotencyKey: crypto.randomUUID(),
         }),
       });
-      void mutate(shopKeys.workOrders(mechanicMode));
+      void mutate(isWorkOrderRelatedListKey);
       router.push(`/work-orders/${wo.id}`, { scroll: true });
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {

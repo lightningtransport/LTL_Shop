@@ -39,6 +39,9 @@ const adminReadRetry = {
 const adminInfiniteOptions = {
   revalidateFirstPage: false,
   persistSize: false,
+  // Infinite lists default to revalidateOnMount: false, so client navigation
+  // back from create/detail would keep the previous page of rows until a hard refresh.
+  revalidateOnMount: true,
   ...adminReadRetry,
 } as const;
 
@@ -231,7 +234,7 @@ export interface CreateAdminWorkOrderInput {
 
 // Manager-first ownership: create a Work Order via the admin surface. The API
 // enforces work_orders.manage, the truck advisory lock, idempotency, and the
-// one-open-WO-per-Truck rule. Callers should revalidate the admin WO list after.
+// one-open-WO-per-Truck rule. Callers revalidate WO-related list keys after create.
 export function createAdminWorkOrder(
   input: CreateAdminWorkOrderInput,
   idempotencyKey = adminMutationIdempotencyKey(),
