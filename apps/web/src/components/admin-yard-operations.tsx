@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { Ban, ChevronDown, ClipboardCheck, ShieldCheck, SlidersHorizontal, Truck, Warehouse } from 'lucide-react';
+import { Ban, ChevronDown, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal, Truck, Warehouse } from 'lucide-react';
 import { Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useAdminYardOperations } from '@/lib/admin-data';
@@ -117,7 +117,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
       </button>
       <div id="yard-phase-1-details" className="mt-2 space-y-2">
         {phase1Open ? <CardDescription className="text-warning-foreground">{messages.yardOperationsPhase1Body}</CardDescription> : null}
-        <div className="grid min-w-0 gap-1.5 sm:grid-cols-3">
+        <div className="grid min-w-0 grid-cols-1 gap-1.5 xl:grid-cols-3">
           <UnavailableStatus icon={Truck} label={messages.yardWorkLocation} fullLabel={messages.workLocationUnavailable} unavailableLabel={messages.unavailableLabel} />
           <UnavailableStatus icon={Truck} label={messages.yardIncomingTrucks} fullLabel={messages.incomingTrucksUnavailable} unavailable={incomingUnavailable} unavailableLabel={messages.unavailableLabel} />
           <UnavailableStatus icon={ShieldCheck} label={messages.yardUpcomingDepartures} fullLabel={messages.upcomingDeparturesUnavailable} unavailable={departuresUnavailable} unavailableLabel={messages.unavailableLabel} />
@@ -137,22 +137,25 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
 
       <Card className="min-w-0 p-3">
         <form role="search" className="min-w-0" onSubmit={applyFilters}>
-          <div className="flex min-w-0 items-end gap-2 md:flex-nowrap md:gap-1.5">
-            <label className="min-w-0 flex-1 space-y-1 md:flex-[1.35]">
+          <div className="flex min-w-0 flex-wrap items-end gap-2 xl:flex-nowrap xl:gap-1.5">
+            <label className="min-w-0 flex-1 space-y-1 xl:flex-[1.35]">
               <span className="sr-only">{messages.yardSearch}</span>
-              <Input
-                type="search"
-                autoComplete="off"
-                enterKeyHint="search"
-                aria-label={messages.yardSearch}
-                title={messages.yardSearch}
-                placeholder={messages.yardSearch}
-                className="min-w-0 md:min-h-9 md:px-3"
-                value={filters.search}
-                onChange={(event) => updateFilter('search', event.target.value)}
-              />
+              <span className="relative block min-w-0">
+                <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground xl:hidden" />
+                <Input
+                  type="search"
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  aria-label={messages.yardSearch}
+                  title={messages.yardSearch}
+                  placeholder={messages.yardSearch}
+                  className="min-w-0 pl-9 max-xl:placeholder:text-transparent xl:min-h-9 xl:px-3 xl:pl-3"
+                  value={filters.search}
+                  onChange={(event) => updateFilter('search', event.target.value)}
+                />
+              </span>
             </label>
-            <div className="hidden min-w-0 md:contents">
+            <div className="hidden min-w-0 xl:contents">
               <YardFilterFields filters={filters} messages={messages} onChange={updateFilter} variant="toolbar" compact />
               <Button
                 type="button"
@@ -178,7 +181,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
             <Button
               type="button"
               variant="outline"
-              className="shrink-0 md:hidden"
+              className="shrink-0 xl:hidden"
               aria-label={filtersButtonLabel}
               aria-expanded={filtersOpen}
               onClick={() => setFiltersOpen(true)}
@@ -275,7 +278,7 @@ function YardFilterFields({
   compact?: boolean;
 }) {
   const fieldClass = compact ? 'min-w-0 flex-1 space-y-1' : 'space-y-1';
-  const labelClass = compact ? 'block truncate text-xs font-medium' : 'text-sm font-medium';
+  const labelClass = compact ? 'block text-xs font-medium' : 'text-sm font-medium';
   const controlClass = compact ? 'min-h-9 px-3 pr-9' : undefined;
   const render = (key: keyof YardOperationsFilters) => (
     <YardFilterField key={key} fieldKey={key} filters={filters} messages={messages} onChange={onChange} fieldClass={fieldClass} labelClass={labelClass} controlClass={controlClass} />
@@ -286,7 +289,7 @@ function YardFilterFields({
   }
 
   return <>
-    <div className="space-y-3 md:hidden">{YARD_TOOLBAR_FILTER_KEYS.map(render)}</div>
+    <div className="space-y-3 xl:hidden">{YARD_TOOLBAR_FILTER_KEYS.map(render)}</div>
     {YARD_OVERFLOW_FILTER_KEYS.map(render)}
   </>;
 }
@@ -351,14 +354,14 @@ function UnavailableStatus({
 }) {
   return (
     <div
-      className="flex min-w-0 items-center gap-2 rounded-lg border bg-card/70 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground"
+      className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border bg-card/70 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground"
       role="status"
       title={fullLabel}
       aria-label={fullLabel}
     >
       <Icon aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="min-w-0 flex-1 whitespace-normal text-pretty">{label}</span>
-      {unavailable ? <Badge variant="secondary" className="ml-auto shrink-0">{unavailableLabel}</Badge> : null}
+      <span className="min-w-0 flex-1 basis-24 whitespace-normal break-words">{label}</span>
+      {unavailable ? <Badge variant="secondary" className="shrink-0">{unavailableLabel}</Badge> : null}
     </div>
   );
 }
