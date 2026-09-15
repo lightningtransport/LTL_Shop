@@ -6,6 +6,14 @@ import { ApiError, apiFetch } from './api';
 import { useAuth } from './auth-context';
 import { captureException } from './observability';
 
+export function sessionCacheAction(
+  previousToken: string | null,
+  nextToken: string | null,
+): 'none' | 'clear' | 'revalidate' {
+  if (!previousToken || previousToken === nextToken) return 'none';
+  return nextToken ? 'revalidate' : 'clear';
+}
+
 const config = {
   fetcher: apiFetch,
   dedupingInterval: 5_000,
@@ -39,10 +47,15 @@ function SessionCacheReset({ children }: { children: React.ReactNode }) {
   const previousToken = useRef(token);
 
   useEffect(() => {
-    if (previousToken.current && previousToken.current !== token) {
-      void mutate(() => true, undefined, { revalidate: false });
-    }
+    const action = sessionCacheAction(previousToken.current, token);
     previousToken.current = token;
+    if (action === 'clear') {
+      void mutate(() => true, undefined, { revalidate: false });
+    } else if (action === 'revalidate') {
+      // Keep cached rows visible while the Bearer token rotates (Supabase refresh).
+      // Clearing with revalidate:false made Admin `error || !data` paint LoadFailure.
+      void mutate(() => true);
+    }
   }, [token, mutate]);
 
   return children;

@@ -22,95 +22,191 @@ import type {
   WorkOrderDetailDto,
   TruckWorkPlanDto,
 } from '@ltl-shop/shared';
-import { apiFetch } from './api';
+import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
+import { useAuth } from './auth-context';
 import type { WorkPlanJobDraft } from './work-plan';
 
+export function adminReadFetcher<T>(path: string) {
+  return apiFetch<T>(path, { timeoutMs: ADMIN_READ_TIMEOUT_MS });
+}
+
+const adminReadRetry = {
+  errorRetryCount: 1,
+  errorRetryInterval: 400,
+  shouldRetryOnError: isTransientApiError,
+} as const;
+
+const adminInfiniteOptions = {
+  revalidateFirstPage: false,
+  persistSize: false,
+  ...adminReadRetry,
+} as const;
+
+export function withAdminReadPending<T extends { isLoading: boolean; isValidating: boolean; data: unknown }>(
+  token: string | null,
+  swr: T,
+): T {
+  return {
+    ...swr,
+    isLoading: !token || swr.isLoading || (swr.isValidating && swr.data === undefined),
+  };
+}
+
 export function useAdminDashboard() {
-  return useSWR<AdminDashboardDto>('/api/admin/dashboard', { dedupingInterval: 10_000, refreshInterval: 30_000 });
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminDashboardDto>(token ? '/api/admin/dashboard' : null, adminReadFetcher, {
+      dedupingInterval: 10_000,
+      refreshInterval: 30_000,
+      ...adminReadRetry,
+    }),
+  );
 }
 
 export function useAdminWorkOrders(query: string) {
-  return useSWRInfinite<AdminPage<AdminWorkOrderSummaryDto>>(
-    (pageIndex, previous) => {
-      if (previous && !previous.nextCursor) return null;
-      const params = new URLSearchParams(query);
-      params.set('limit', '25');
-      if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
-      return `/api/admin/work-orders?${params.toString()}`;
-    },
-    { revalidateFirstPage: false, persistSize: false },
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWRInfinite<AdminPage<AdminWorkOrderSummaryDto>>(
+      (pageIndex, previous) => {
+        if (!token || (previous && !previous.nextCursor)) return null;
+        const params = new URLSearchParams(query);
+        params.set('limit', '25');
+        if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
+        return `/api/admin/work-orders?${params.toString()}`;
+      },
+      adminReadFetcher,
+      adminInfiniteOptions,
+    ),
   );
 }
 
 export function useAdminWorkOrder(id: string) {
-  return useSWR<AdminWorkOrderDetailDto>(id ? `/api/admin/work-orders/${id}` : null, { dedupingInterval: 10_000 });
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminWorkOrderDetailDto>(token && id ? `/api/admin/work-orders/${id}` : null, adminReadFetcher, {
+      dedupingInterval: 10_000,
+      ...adminReadRetry,
+    }),
+  );
 }
 
 export function useAdminMechanics(query: string) {
-  return useSWRInfinite<AdminPage<AdminMechanicSummaryDto>>(
-    (pageIndex, previous) => {
-      if (previous && !previous.nextCursor) return null;
-      const params = new URLSearchParams(query);
-      params.set('limit', '25');
-      if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
-      return `/api/admin/mechanics?${params.toString()}`;
-    },
-    { revalidateFirstPage: false, persistSize: false },
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWRInfinite<AdminPage<AdminMechanicSummaryDto>>(
+      (pageIndex, previous) => {
+        if (!token || (previous && !previous.nextCursor)) return null;
+        const params = new URLSearchParams(query);
+        params.set('limit', '25');
+        if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
+        return `/api/admin/mechanics?${params.toString()}`;
+      },
+      adminReadFetcher,
+      adminInfiniteOptions,
+    ),
   );
 }
 
 export function useAdminMechanic(id: string) {
-  return useSWR<AdminMechanicDetailDto>(id ? `/api/admin/mechanics/${id}` : null, { dedupingInterval: 10_000 });
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminMechanicDetailDto>(token && id ? `/api/admin/mechanics/${id}` : null, adminReadFetcher, {
+      dedupingInterval: 10_000,
+      ...adminReadRetry,
+    }),
+  );
 }
 
 export function useAdminHistory(query: string) {
-  return useSWRInfinite<AdminPage<AdminWorkOrderSummaryDto>>(
-    (pageIndex, previous) => {
-      if (previous && !previous.nextCursor) return null;
-      const params = new URLSearchParams(query);
-      params.set('limit', '25');
-      if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
-      return `/api/admin/history?${params.toString()}`;
-    },
-    { revalidateFirstPage: false, persistSize: false },
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWRInfinite<AdminPage<AdminWorkOrderSummaryDto>>(
+      (pageIndex, previous) => {
+        if (!token || (previous && !previous.nextCursor)) return null;
+        const params = new URLSearchParams(query);
+        params.set('limit', '25');
+        if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
+        return `/api/admin/history?${params.toString()}`;
+      },
+      adminReadFetcher,
+      adminInfiniteOptions,
+    ),
   );
 }
 
 export function useAdminYardOperations(query: string) {
-  return useSWRInfinite<YardOperationsPageDto>(
-    (pageIndex, previous) => {
-      if (previous && !previous.nextCursor) return null;
-      const params = new URLSearchParams(query);
-      params.set('limit', '25');
-      if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
-      return `/api/admin/yard-operations?${params.toString()}`;
-    },
-    { revalidateFirstPage: false, persistSize: false },
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWRInfinite<YardOperationsPageDto>(
+      (pageIndex, previous) => {
+        if (!token || (previous && !previous.nextCursor)) return null;
+        const params = new URLSearchParams(query);
+        params.set('limit', '25');
+        if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
+        return `/api/admin/yard-operations?${params.toString()}`;
+      },
+      adminReadFetcher,
+      adminInfiniteOptions,
+    ),
   );
 }
 
 export function useAdminTruck(id: string) {
-  return useSWR<AdminTruckDetailDto>(id ? `/api/admin/trucks/${id}` : null, { dedupingInterval: 10_000 });
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminTruckDetailDto>(token && id ? `/api/admin/trucks/${id}` : null, adminReadFetcher, {
+      dedupingInterval: 10_000,
+      ...adminReadRetry,
+    }),
+  );
 }
 
 export function useAdminCatalogCategories() {
-  return useSWR<AdminCatalogCategorySummaryDto[]>('/api/admin/catalog/categories', { dedupingInterval: 30_000 });
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminCatalogCategorySummaryDto[]>(token ? '/api/admin/catalog/categories' : null, adminReadFetcher, {
+      dedupingInterval: 30_000,
+      ...adminReadRetry,
+    }),
+  );
 }
 
 export function useAdminCatalogCategory(id: string) {
-  return useSWR<AdminCatalogCategoryDetailDto>(id ? `/api/admin/catalog/categories/${id}` : null, { dedupingInterval: 30_000 });
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminCatalogCategoryDetailDto>(
+      token && id ? `/api/admin/catalog/categories/${id}` : null,
+      adminReadFetcher,
+      { dedupingInterval: 30_000, ...adminReadRetry },
+    ),
+  );
 }
 
 export function useAdminTrucks(query: string) {
-  return useSWRInfinite<AdminPage<AdminTruckSummaryDto>>(
-    (pageIndex, previous) => {
-      if (previous && !previous.nextCursor) return null;
-      const params = new URLSearchParams(query);
-      params.set('limit', '25');
-      if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
-      return `/api/admin/trucks?${params.toString()}`;
-    },
-    { revalidateFirstPage: false, persistSize: false },
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWRInfinite<AdminPage<AdminTruckSummaryDto>>(
+      (pageIndex, previous) => {
+        if (!token || (previous && !previous.nextCursor)) return null;
+        const params = new URLSearchParams(query);
+        params.set('limit', '25');
+        if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
+        return `/api/admin/trucks?${params.toString()}`;
+      },
+      adminReadFetcher,
+      adminInfiniteOptions,
+    ),
   );
 }
 
@@ -385,15 +481,20 @@ export function addAdminWorkPlanJobs(
 }
 
 export function useAdminRepairHistory(truckId: string, excludeWorkOrderId: string, categoryId?: string) {
-  return useSWRInfinite<AdminRepairHistoryDto>(
-    (pageIndex, previous) => {
-      if (!truckId || (previous && !previous.nextCursor)) return null;
-      const params = new URLSearchParams({ limit: '5' });
-      if (excludeWorkOrderId) params.set('excludeWorkOrderId', excludeWorkOrderId);
-      if (categoryId) params.set('categoryId', categoryId);
-      if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
-      return `/api/admin/trucks/${truckId}/repair-history?${params.toString()}`;
-    },
-    { revalidateFirstPage: false, persistSize: false },
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWRInfinite<AdminRepairHistoryDto>(
+      (pageIndex, previous) => {
+        if (!token || !truckId || (previous && !previous.nextCursor)) return null;
+        const params = new URLSearchParams({ limit: '5' });
+        if (excludeWorkOrderId) params.set('excludeWorkOrderId', excludeWorkOrderId);
+        if (categoryId) params.set('categoryId', categoryId);
+        if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
+        return `/api/admin/trucks/${truckId}/repair-history?${params.toString()}`;
+      },
+      adminReadFetcher,
+      adminInfiniteOptions,
+    ),
   );
 }

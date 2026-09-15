@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { apiFetch } from './api';
+import {
+  ADMIN_READ_TIMEOUT_MS,
+  ApiError,
+  apiFetch,
+  DEFAULT_READ_TIMEOUT_MS,
+  isTransientApiError,
+} from './api';
 
 function installBrowserGlobals() {
   const storage = {
@@ -45,6 +51,19 @@ describe('apiFetch', () => {
       route: '/api/work-orders',
       method: 'GET',
     });
+  });
+
+  it('keeps the default GET budget at 8s and exposes a longer Admin read budget', () => {
+    expect(DEFAULT_READ_TIMEOUT_MS).toBe(8_000);
+    expect(ADMIN_READ_TIMEOUT_MS).toBe(20_000);
+  });
+
+  it('treats timeout and network ApiErrors as transient, not HTTP failures', () => {
+    expect(isTransientApiError(new ApiError('slow', 0, null, 'timeout'))).toBe(true);
+    expect(isTransientApiError(new ApiError('offline', 0, null, 'network'))).toBe(true);
+    expect(isTransientApiError(new ApiError('nope', 401, null, 'http'))).toBe(false);
+    expect(isTransientApiError(new ApiError('boom', 500, null, 'http'))).toBe(false);
+    expect(isTransientApiError(new Error('nope'))).toBe(false);
   });
 
   it('records a templated route on HTTP failures without leaking IDs', async () => {

@@ -55,8 +55,17 @@ export type ApiFetchOptions = RequestInit & {
   timeoutMs?: number;
 };
 
+export const DEFAULT_READ_TIMEOUT_MS = 8_000;
+export const DEFAULT_MUTATION_TIMEOUT_MS = 15_000;
+/** Admin list/detail reads: cold Nest/Prisma + Work Plan can exceed the default 8s GET budget. */
+export const ADMIN_READ_TIMEOUT_MS = 20_000;
+
 function defaultTimeout(method?: string) {
-  return !method || method.toUpperCase() === 'GET' ? 8_000 : 15_000;
+  return !method || method.toUpperCase() === 'GET' ? DEFAULT_READ_TIMEOUT_MS : DEFAULT_MUTATION_TIMEOUT_MS;
+}
+
+export function isTransientApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError && (error.kind === 'timeout' || error.kind === 'network');
 }
 
 export function endpointFamily(path: string) {
