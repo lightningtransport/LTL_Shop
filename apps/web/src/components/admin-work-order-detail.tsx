@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { adminResourceLoadState } from '@/lib/admin-query';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
 import { useCategories } from '@/lib/shop-data';
@@ -62,6 +63,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     () => (mechanicPages?.flatMap((page) => page.items) ?? []).filter((mechanic) => mechanic.active && mechanic.capabilities.includes(AppCapability.MECHANIC_STANDARD)),
     [mechanicPages],
   );
+  const loadState = adminResourceLoadState({ isLoading, data, error });
 
   useEffect(() => {
     if (!data) return;
@@ -69,9 +71,9 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     setDraftNotes(data.notes ?? '');
   }, [data]);
 
-  if (isLoading) return <PageSkeleton label={messages.workOrdersTitle} />;
+  if (loadState === 'loading') return <PageSkeleton label={messages.workOrdersTitle} />;
   if (error instanceof ApiError && error.status === 404) return <NotFound messages={messages} />;
-  if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
+  if (loadState === 'error' || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
   const historyItems = historyQuery.data?.flatMap((page) => page.items) ?? [];
   const historyHasMore = Boolean(historyQuery.data?.[historyQuery.data.length - 1]?.nextCursor);

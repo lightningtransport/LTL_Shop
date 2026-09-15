@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { apiFetch } from './api';
+import { ApiError, apiFetch, apiFetchWithRetry, isTransientApiError, setAuthToken } from './api';
 
 function installBrowserGlobals() {
   const storage = {
@@ -8,8 +8,8 @@ function installBrowserGlobals() {
     removeItem: vi.fn(),
   };
   vi.stubGlobal('window', {
-    setTimeout: globalThis.setTimeout.bind(globalThis),
-    clearTimeout: globalThis.clearTimeout.bind(globalThis),
+    setTimeout: ((...args: Parameters<typeof setTimeout>) => globalThis.setTimeout(...args)) as typeof setTimeout,
+    clearTimeout: ((...args: Parameters<typeof clearTimeout>) => globalThis.clearTimeout(...args)) as typeof clearTimeout,
     dispatchEvent: vi.fn(),
   });
   vi.stubGlobal('localStorage', storage);
@@ -17,8 +17,10 @@ function installBrowserGlobals() {
 
 describe('apiFetch', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    setAuthToken(null);
   });
 
   it('returns a parsed successful response', async () => {
@@ -81,5 +83,69 @@ describe('apiFetch', () => {
       route: '/api/admin/trucks/:id/work-plan/jobs',
       method: 'POST',
     });
+  });
+});
+
+describe('apiFetchWithRetry', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    setAuthToken(null);
+  });
+
+  it('treats network, timeout, and 503 as transient', () => {
+    expect(isTransientApiError(new ApiError('n', 0, null, 'network'))).toBe(true);
+    expect(isTransientApiError(new ApiError('t', 0, null, 'timeout'))).toBe(true);
+    expect(isTransientApiError(new ApiError('cold', 503, null, 'http'))).toBe(true);
+    expect(isTransientApiError(new ApiError('nope', 401, null, 'http'))).toBe(false);
+    expect(isTransientApiError(new ApiError('missing', 404, null, 'http'))).toBe(false);
+  });
+
+  it('retries a transient GET then succeeds without a manual Retry', async () => {
+    installBrowserGlobals();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ message: 'cold' }), { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.useFakeTimers();
+
+    const pending = apiFetchWithRetry<{ items: unknown[] }>('/api/admin/work-orders?limit=25');
+    await vi.advanceTimersByTimeAsync(400);
+    await expect(pending).resolves.toEqual({ items: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry 401 or mutations', async () => {
+    installBrowserGlobals();
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: 'no' }), { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(apiFetchWithRetry('/api/admin/work-orders')).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ message: 'cold' }), { status: 503 }));
+    await expect(apiFetchWithRetry('/api/admin/work-orders', { method: 'POST' })).rejects.toMatchObject({
+      status: 503,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws after GET retries are exhausted so LoadFailure can show', async () => {
+    installBrowserGlobals();
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ message: 'down' }), { status: 503 })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.useFakeTimers();
+
+    const pending = apiFetchWithRetry('/api/admin/trucks/abc');
+    const assertion = expect(pending).rejects.toMatchObject({ status: 503, kind: 'http' });
+    await vi.advanceTimersByTimeAsync(400);
+    await vi.advanceTimersByTimeAsync(1_200);
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

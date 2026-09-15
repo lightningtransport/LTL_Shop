@@ -10,6 +10,7 @@ import { AdminPageHeader, Button, Card, EmptyState, Input, LoadFailure, Modal, P
 import { formatAdminDate } from '@/lib/admin-format';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { useAdminWorkOrders } from '@/lib/admin-data';
+import { adminPagedLoadState } from '@/lib/admin-query';
 import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import {
@@ -33,6 +34,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
   const { user } = useAuth();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminWorkOrders(appliedQuery);
   const canCreateWorkOrder = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
+  const loadState = adminPagedLoadState({ isLoading, data, error });
 
   useEffect(() => {
     const params = new URLSearchParams(urlQuery);
@@ -140,7 +142,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
         </div>
       </form>
     </Modal>
-    {isLoading ? <PageSkeleton label={messages.workOrdersTitle} /> : error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : items.length === 0 ? <EmptyState><p>{messages.noWorkOrders}</p></EmptyState> : <>
+    {loadState === 'loading' ? <PageSkeleton label={messages.workOrdersTitle} /> : loadState === 'error' ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : items.length === 0 ? <EmptyState><p>{messages.noWorkOrders}</p></EmptyState> : <>
       <div className="space-y-3 xl:hidden">{items.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} />)}</div>
       <div className="hidden min-h-60 max-h-[calc(100dvh-22rem)] overflow-auto rounded-xl border bg-card xl:block">
         <table className="w-full min-w-[900px] text-left text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-3">{messages.displayId}</th><th className="p-3">{messages.truck}</th><th className="p-3">{messages.category}</th><th className="p-3">{messages.status}</th><th className="p-3">{messages.priority}</th><th className="p-3">{messages.progress}</th><th className="p-3">{messages.mechanicsLabel}</th><th className="p-3">{messages.updated}</th></tr></thead>

@@ -2,13 +2,15 @@
 
 import { useEffect, useRef } from 'react';
 import { SWRConfig, useSWRConfig } from 'swr';
-import { ApiError, apiFetch } from './api';
+import { ApiError, apiFetchWithRetry } from './api';
 import { useAuth } from './auth-context';
 import { captureException } from './observability';
 
 const config = {
-  fetcher: apiFetch,
+  fetcher: apiFetchWithRetry,
   dedupingInterval: 5_000,
+  // Transient GET retries live in apiFetchWithRetry so the UI stays on the
+  // skeleton instead of flashing LoadFailure between SWR errorRetry attempts.
   errorRetryCount: 0,
   revalidateOnFocus: true,
   shouldRetryOnError: () => false,
@@ -39,8 +41,11 @@ function SessionCacheReset({ children }: { children: React.ReactNode }) {
   const previousToken = useRef(token);
 
   useEffect(() => {
-    if (previousToken.current && previousToken.current !== token) {
-      void mutate(() => true, undefined, { revalidate: false });
+    const previous = previousToken.current;
+    if (previous && previous !== token) {
+      // Drop the previous session's cache. Refetch when a new token is present
+      // so a JWT rotation does not leave `!data` as a first-load LoadFailure.
+      void mutate(() => true, undefined, { revalidate: Boolean(token) });
     }
     previousToken.current = token;
   }, [token, mutate]);

@@ -55,8 +55,66 @@ export type ApiFetchOptions = RequestInit & {
   timeoutMs?: number;
 };
 
+/** Client GET budget. API cold TTFB above this still needs an Eng/API fix. */
+export const API_GET_TIMEOUT_MS = 8_000;
+export const API_MUTATION_TIMEOUT_MS = 15_000;
+/** Longer timeout on automatic retries so a waking API can finish after the first 8s abort. */
+export const API_RETRY_GET_TIMEOUT_MS = 15_000;
+export const TRANSIENT_RETRY_DELAYS_MS = [400, 1_200] as const;
+
 function defaultTimeout(method?: string) {
-  return !method || method.toUpperCase() === 'GET' ? 8_000 : 15_000;
+  return !method || method.toUpperCase() === 'GET' ? API_GET_TIMEOUT_MS : API_MUTATION_TIMEOUT_MS;
+}
+
+export function isTransientApiError(error: unknown) {
+  if (!(error instanceof ApiError)) return false;
+  if (error.kind === 'network' || error.kind === 'timeout') return true;
+  return [408, 425, 429, 500, 502, 503, 504].includes(error.status);
+}
+
+function sleep(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+    const timer = window.setTimeout(resolve, ms);
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+/**
+ * SWR fetcher: GET-only backoff for cold start / network blips.
+ * Mutations stay single-shot. Exhausted retries still throw so LoadFailure + Retry remain.
+ */
+export async function apiFetchWithRetry<T>(
+  path: string,
+  init: ApiFetchOptions = {},
+): Promise<T> {
+  const method = (init.method ?? 'GET').toUpperCase();
+  const retryDelays = method === 'GET' ? TRANSIENT_RETRY_DELAYS_MS : [];
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
+    try {
+      const timeoutMs =
+        init.timeoutMs ?? (attempt === 0 ? defaultTimeout(init.method) : API_RETRY_GET_TIMEOUT_MS);
+      return await apiFetch<T>(path, { ...init, timeoutMs });
+    } catch (error) {
+      lastError = error;
+      const delay = retryDelays[attempt];
+      if (init.signal?.aborted || delay === undefined || !isTransientApiError(error)) {
+        throw error;
+      }
+      await sleep(delay, init.signal ?? undefined);
+    }
+  }
+
+  throw lastError;
 }
 
 export function endpointFamily(path: string) {

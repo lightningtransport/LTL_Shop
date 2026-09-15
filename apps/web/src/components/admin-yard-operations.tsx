@@ -7,6 +7,7 @@ import { Ban, ChevronDown, ClipboardCheck, ShieldCheck, SlidersHorizontal, Truck
 import { Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useAdminYardOperations } from '@/lib/admin-data';
+import { adminPagedLoadState } from '@/lib/admin-query';
 import {
   buildYardOperationsQuery,
   countActiveYardOperationsFilters,
@@ -53,6 +54,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
   const [phase1Open, setPhase1Open] = useState(false);
   const query = searchParams.toString();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminYardOperations(query);
+  const loadState = adminPagedLoadState({ isLoading, data, error });
 
   useEffect(() => {
     setFilters(readYardOperationsFilters(searchParams));
@@ -124,7 +126,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
       </div>
     </Card>
 
-    {isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : <>
+    {loadState === 'loading' ? <PageSkeleton label={messages.loadingYardOperations} /> : loadState === 'error' ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : <>
       <section aria-labelledby="yard-summary-title">
         <h2 id="yard-summary-title" className="sr-only">{messages.yardSummaryMetrics}</h2>
         <div className="grid min-w-0 grid-cols-3 gap-2">

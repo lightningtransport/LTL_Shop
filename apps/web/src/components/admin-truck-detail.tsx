@@ -15,7 +15,8 @@ import {
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
-import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessment, updateAdminTruckRequirement, useAdminTruck } from '@/lib/admin-data';
+import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessment, updateAdminTruckRequirement, useAdminTruck, useAdminTruckWorkPlan } from '@/lib/admin-data';
+import { adminResourceLoadState } from '@/lib/admin-query';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { isWorkPlanSliceEnabled } from '@/lib/work-plan';
@@ -46,21 +47,23 @@ type RequirementDraft = { outcome: ReadinessRequirementOutcome; waiverReason: st
 export function AdminTruckDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
   const { data, error, isLoading, mutate } = useAdminTruck(id);
+  const workPlanQuery = useAdminTruckWorkPlan(id);
   const canManage = Boolean(user?.capabilities.includes(AppCapability.YARD_OPERATIONS_MANAGE));
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [closeOpen, setCloseOpen] = useState(false);
   const [closeReason, setCloseReason] = useState('');
   const [drafts, setDrafts] = useState<Record<string, RequirementDraft>>({});
+  const loadState = adminResourceLoadState({ isLoading, data, error });
 
-  if (isLoading) return <PageSkeleton label={messages.loadingTruck} />;
+  if (loadState === 'loading') return <PageSkeleton label={messages.loadingTruck} />;
   if (error instanceof ApiError && error.status === 404) return <TruckNotFound messages={messages} />;
-  if (error || !data) return <LoadFailure message={messages.yardLoadError} retryLabel={messages.retryTruck} onRetry={() => void mutate()} />;
+  if (loadState === 'error' || !data) return <LoadFailure message={messages.yardLoadError} retryLabel={messages.retryTruck} onRetry={() => void mutate()} />;
 
   const assessment = data.assessment;
   const truckId = data.truck.id;
-  const workPlan = data.workPlan;
-  const slice1 = isWorkPlanSliceEnabled(data);
+  const workPlan = workPlanQuery.data ?? data.workPlan;
+  const slice1 = isWorkPlanSliceEnabled({ workPlan });
   const isActive = assessment?.status === ReadinessAssessmentStatus.UNDER_REVIEW || assessment?.status === ReadinessAssessmentStatus.READY;
   const currentWork = data.activeWorkOrder;
   const completedWorkOrders: CompletedWorkOrderOption[] = data.repairHistory.items.map((item) => ({
@@ -166,7 +169,10 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
   }
 
   async function handleWorkPlanUpdated(next: TruckWorkPlanDto) {
-    await mutate((current) => (current ? { ...current, workPlan: next } : current), { revalidate: true });
+    await Promise.all([
+      mutate((current) => (current ? { ...current, workPlan: next } : current), { revalidate: true }),
+      workPlanQuery.mutate(next, { revalidate: true }),
+    ]);
   }
 
   return <div className="space-y-5">

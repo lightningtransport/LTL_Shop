@@ -4,15 +4,17 @@ import Link from 'next/link';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { ApiError } from '@/lib/api';
 import { useAdminMechanic } from '@/lib/admin-data';
+import { adminResourceLoadState } from '@/lib/admin-query';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 export function AdminMechanicDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { data, error, isLoading, mutate } = useAdminMechanic(id);
-  if (isLoading) return <PageSkeleton label={messages.mechanicsTitle} />;
+  const loadState = adminResourceLoadState({ isLoading, data, error });
+  if (loadState === 'loading') return <PageSkeleton label={messages.mechanicsTitle} />;
   if (error instanceof ApiError && error.status === 404) {
     return <EmptyState><p>{messages.mechanicNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/mechanics">{messages.backToMechanics}</Link></Button></EmptyState>;
   }
-  if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
+  if (loadState === 'error' || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
   return (
     <div className="space-y-5">

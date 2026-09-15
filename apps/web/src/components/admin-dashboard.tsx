@@ -7,14 +7,16 @@ import { AdminWorkOrderItem } from './admin-work-order-item';
 import { AdminPageHeader, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { formatAdminDate } from '@/lib/admin-format';
 import { useAdminDashboard } from '@/lib/admin-data';
+import { adminResourceLoadState } from '@/lib/admin-query';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
 
 export function AdminDashboard({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
   const { data, error, isLoading, mutate } = useAdminDashboard();
-  if (isLoading) return <PageSkeleton label={messages.currentOperations} />;
-  if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
+  const loadState = adminResourceLoadState({ isLoading, data, error });
+  if (loadState === 'loading') return <PageSkeleton label={messages.currentOperations} />;
+  if (loadState === 'error' || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
   const windows = data.windows;
   const openStatuses = 'created,in_progress,waiting_paused';
