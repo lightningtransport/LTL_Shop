@@ -19,6 +19,15 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('es').workPlanNoIssuesFound).toMatch(/issues/i);
     expect(getAdminMessages('en').workPlanNotReadyRemaining).toContain('{count}');
     expect(getAdminMessages('es').workPlanReady).toBe('Ready to Go');
+    expect(getAdminMessages('es').readyToGo).toBe('Ready to Go');
+    expect(getAdminMessages('en').yardSearch).toMatch(/Truck/);
+    expect(getAdminMessages('es').yardSearch).toMatch(/Truck/);
+    expect(getAdminMessages('en').noTrucksInPhase).toMatch(/this phase/);
+    expect(getAdminMessages('es').noTrucksInPhase).toMatch(/esta fase/);
+    expect(getAdminMessages('es').workPlanJobPending).toBe('Pendiente');
+    expect(getAdminMessages('es').workPlanInspectionTitle).toBe('Inspección');
+    expect(getAdminMessages('es').emptyCategoryCustomHint).toMatch(/Job/);
+    expect(getAdminMessages('en').emptyCategoryCustomHint).toMatch(/custom Job/);
     expect(getAdminMessages('en').activityPmDetailsUpdated).toBe('PM details updated');
     expect(getAdminMessages('es').activityBlockerReported).toBe('Bloqueo reportado');
   });

@@ -720,7 +720,11 @@ export function EmptyState({ children }: { children: React.ReactNode }) {
 
 /** Compact dashed empty for in-card or in-column slots. Use EmptyState for page/section empties. */
 export function CompactEmpty({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn('rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground', className)}>{children}</div>;
+  return (
+    <div className={cn('whitespace-normal text-pretty rounded-lg border border-dashed px-3 py-2 text-sm leading-snug text-muted-foreground', className)}>
+      {children}
+    </div>
+  );
 }
 
 export function PageSkeleton({ label = 'Loading page' }: { label?: string }) {

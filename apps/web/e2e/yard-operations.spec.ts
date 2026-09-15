@@ -32,9 +32,12 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByText(/in the yard|en el patio/i)).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
-    await expect(page.getByText('Incoming Trucks unavailable')).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Incoming Trucks unavailable' })).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Upcoming Departures unavailable' })).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Incoming Trucks unavailable' }).getByText('Incoming Trucks', { exact: true })).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Upcoming Departures unavailable' }).getByText('Upcoming Departures', { exact: true })).toBeVisible();
     await expect(page.getByTestId('yard-truck-card').getByText('Last reported location')).toHaveCount(0);
-    await page.getByLabel('Search Work Order, Truck, category, or Mechanic').fill('Y-103');
+    await page.getByLabel('Search Truck or Work Order').fill('Y-103');
     const filters = await yardFilterPanel(page);
     await filters.getByLabel('Phase', { exact: true }).selectOption('required_work');
     await filters.getByLabel('Blockers').selectOption('true');
@@ -62,6 +65,7 @@ test.describe('Yard Operations Phase 1', () => {
     for (const phase of ['Needs evaluation', 'Inspection', 'Required Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready for Approval', 'Ready to Go']) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
+    await expect(page.getByText('No Trucks in this phase.')).toBeVisible();
     await page.getByRole('button', { name: 'List' }).click();
     await expect(page).toHaveURL(/view=list/);
     await expect(page.getByRole('heading', { name: 'Readiness list' })).toBeVisible();
@@ -103,6 +107,7 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(y101.getByText('Needs evaluation')).toBeVisible();
     await expect(y101.getByText('Needs evaluation')).toHaveCSS('text-transform', 'none');
     await expect(y101.getByText('2024 Volvo VNL')).toBeVisible();
+    await expect(y101.getByText(/PETERBILT PETERBILT/i)).toHaveCount(0);
     await expect(y101.getByText('Time in assessment')).toHaveCount(0);
     await expect(y101.getByText('No active Work Order')).toHaveCount(0);
     await expect(y101.getByText('No mechanics assigned')).toHaveCount(0);

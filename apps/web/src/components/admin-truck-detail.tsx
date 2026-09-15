@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessment, updateAdminTruckRequirement, useAdminTruck } from '@/lib/admin-data';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
+import { formatVehicleYmm } from '@/lib/format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { isWorkPlanSliceEnabled } from '@/lib/work-plan';
 import {
@@ -174,7 +175,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
     <AdminPageHeader
       eyebrow={messages.yardOperationsTitle}
       title={data.truck.truckNumber}
-      subtitle={[data.truck.year, data.truck.make, data.truck.model].filter(Boolean).join(' ') || messages.noValue}
+      subtitle={formatVehicleYmm(data.truck) || messages.noValue}
       badges={slice1 && workPlan ? (
         <Badge variant={workPlan.readiness === 'ready' ? 'success' : 'warning'} className="normal-case tracking-normal">
           {workPlan.readiness === 'ready' ? messages.workPlanReady : messages.workPlanNotReady}

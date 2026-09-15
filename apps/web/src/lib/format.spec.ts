@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatIsoDate, pauseLabel, statusLabel } from './format';
+import { formatIsoDate, formatVehicleYmm, pauseLabel, statusLabel } from './format';
 import { formatAdminDateOnly } from './admin-format';
 import { getShopCopy } from './locale-context';
 
@@ -16,6 +16,17 @@ describe('date-only identity formatters', () => {
     expect(statusLabel('in_progress')).toBe('In Progress');
     expect(statusLabel('created', getShopCopy('es').status)).toBe('Creado');
     expect(statusLabel('in_progress', getShopCopy('es').status)).toBe('En progreso');
+  });
+
+  it('formats year/make/model without duplicating make when model already includes it', () => {
+    expect(formatVehicleYmm({ year: 2024, make: 'PETERBILT', model: 'PETERBILT 579' })).toBe('2024 PETERBILT 579');
+    expect(formatVehicleYmm({ year: 2024, make: 'Peterbilt', model: 'PETERBILT 579' })).toBe('2024 PETERBILT 579');
+    expect(formatVehicleYmm({ year: 2024, make: 'Volvo', model: 'VNL' })).toBe('2024 Volvo VNL');
+    expect(formatVehicleYmm({ year: 2022, make: 'Freightliner', model: 'Cascadia' })).toBe('2022 Freightliner Cascadia');
+    expect(formatVehicleYmm({ year: 2024, make: 'Peterbilt', model: 'Peterbilt' })).toBe('2024 Peterbilt');
+    expect(formatVehicleYmm({ year: null, make: 'Volvo', model: 'VNL' })).toBe('Volvo VNL');
+    expect(formatVehicleYmm({ year: 2024, make: null, model: null })).toBe('2024');
+    expect(formatVehicleYmm({ year: null, make: null, model: null })).toBe('');
   });
 
   it('localizes pause reasons from the shop catalog', () => {

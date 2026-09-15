@@ -22,6 +22,7 @@ import {
   type YardOperationsFilters,
 } from '@/lib/yard-operations-routing';
 import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
+import { formatVehicleYmm } from '@/lib/format';
 import { AdminPageHeader, Badge, Button, Card, CardDescription, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
 
 const phaseMessageKey = {
@@ -117,9 +118,9 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
       <div id="yard-phase-1-details" className="mt-2 space-y-2">
         {phase1Open ? <CardDescription className="text-warning-foreground">{messages.yardOperationsPhase1Body}</CardDescription> : null}
         <div className="grid min-w-0 gap-1.5 sm:grid-cols-3">
-          <UnavailableStatus icon={Truck} label={messages.workLocationUnavailable} unavailableLabel={messages.unavailableLabel} />
-          <UnavailableStatus icon={Truck} label={messages.incomingTrucksUnavailable} unavailable={incomingUnavailable} unavailableLabel={messages.unavailableLabel} />
-          <UnavailableStatus icon={ShieldCheck} label={messages.upcomingDeparturesUnavailable} unavailable={departuresUnavailable} unavailableLabel={messages.unavailableLabel} />
+          <UnavailableStatus icon={Truck} label={messages.yardWorkLocation} fullLabel={messages.workLocationUnavailable} unavailableLabel={messages.unavailableLabel} />
+          <UnavailableStatus icon={Truck} label={messages.yardIncomingTrucks} fullLabel={messages.incomingTrucksUnavailable} unavailable={incomingUnavailable} unavailableLabel={messages.unavailableLabel} />
+          <UnavailableStatus icon={ShieldCheck} label={messages.yardUpcomingDepartures} fullLabel={messages.upcomingDeparturesUnavailable} unavailable={departuresUnavailable} unavailableLabel={messages.unavailableLabel} />
         </div>
       </div>
     </Card>
@@ -138,12 +139,14 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
         <form role="search" className="min-w-0" onSubmit={applyFilters}>
           <div className="flex min-w-0 items-end gap-2 md:flex-nowrap md:gap-1.5">
             <label className="min-w-0 flex-1 space-y-1 md:flex-[1.35]">
-              <span className="sr-only md:not-sr-only md:block md:truncate md:text-xs md:font-medium" title={messages.search}>{messages.search}</span>
+              <span className="sr-only">{messages.yardSearch}</span>
               <Input
                 type="search"
                 autoComplete="off"
                 enterKeyHint="search"
-                aria-label={messages.search}
+                aria-label={messages.yardSearch}
+                title={messages.yardSearch}
+                placeholder={messages.yardSearch}
                 className="min-w-0 md:min-h-9 md:px-3"
                 value={filters.search}
                 onChange={(event) => updateFilter('search', event.target.value)}
@@ -227,7 +230,9 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
                     </div>
                     <div className="space-y-2">
                       {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} />)}
-                      {phaseItems.length === 0 ? <CompactEmpty>{messages.noTrucksInPhase}</CompactEmpty> : null}
+                      {phaseItems.length === 0 ? (
+                        <CompactEmpty className="text-xs">{messages.noTrucksInPhase}</CompactEmpty>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -323,7 +328,7 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
   return (
     <Card className="flex min-w-0 items-center justify-between gap-1.5 overflow-hidden px-2.5 py-1.5">
       <div className="min-w-0">
-        <p className="truncate text-[11px] text-muted-foreground">{label}</p>
+        <p className="truncate text-[11px] text-muted-foreground" title={label}>{label}</p>
         <p className="font-display text-lg font-bold leading-tight">{value}</p>
       </div>
       <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
@@ -331,13 +336,36 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
   );
 }
 
-function UnavailableStatus({ icon: Icon, label, unavailable = true, unavailableLabel }: { icon: typeof Truck; label: string; unavailable?: boolean; unavailableLabel: string }) {
-  return <div className="flex min-w-0 items-center gap-2 overflow-hidden rounded-lg border bg-card/70 px-2 py-1.5 text-[11px] text-muted-foreground"><Icon aria-hidden="true" className="size-3.5 shrink-0" /><span className="min-w-0 truncate">{label}</span>{unavailable ? <Badge variant="secondary" className="ml-auto shrink-0">{unavailableLabel}</Badge> : null}</div>;
+function UnavailableStatus({
+  icon: Icon,
+  label,
+  fullLabel,
+  unavailable = true,
+  unavailableLabel,
+}: {
+  icon: typeof Truck;
+  label: string;
+  fullLabel: string;
+  unavailable?: boolean;
+  unavailableLabel: string;
+}) {
+  return (
+    <div
+      className="flex min-w-0 items-center gap-2 rounded-lg border bg-card/70 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground"
+      role="status"
+      title={fullLabel}
+      aria-label={fullLabel}
+    >
+      <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+      <span className="min-w-0 flex-1 whitespace-normal text-pretty">{label}</span>
+      {unavailable ? <Badge variant="secondary" className="ml-auto shrink-0">{unavailableLabel}</Badge> : null}
+    </div>
+  );
 }
 
 function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messages: AdminMessages }) {
   const workOrder = item.activeWorkOrder;
-  const vehicle = [item.truck.year, item.truck.make, item.truck.model].filter(Boolean).join(' ');
+  const vehicle = formatVehicleYmm(item.truck);
   const showPriority = Boolean(workOrder && workOrder.priority !== Priority.NORMAL);
   const showBlocker = item.blockers.length > 0;
 
@@ -352,7 +380,7 @@ function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messa
         <span className="truncate font-display text-sm font-semibold text-primary">{item.truck.truckNumber}</span>
         <PhaseBadge phase={item.phase}>{phaseLabel(item.phase, messages)}</PhaseBadge>
       </div>
-      {vehicle ? <p className="truncate text-xs text-muted-foreground">{vehicle}</p> : null}
+      {vehicle ? <p className="truncate text-xs text-muted-foreground" title={vehicle}>{vehicle}</p> : null}
       {workOrder ? (
         <p className="truncate text-xs font-medium">{workOrder.displayId}</p>
       ) : (
