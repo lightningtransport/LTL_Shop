@@ -105,7 +105,6 @@ export function WorkPlanAddWork({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{messages.workPlanIssuesFoundHelp}</p>
-      <p className="text-xs text-muted-foreground">{messages.workPlanDetailingHint}</p>
       {categoriesError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
       {categoriesLoading && !categories ? (
         <p className="text-sm text-muted-foreground">{messages.loadingCategories}</p>
@@ -135,6 +134,9 @@ export function WorkPlanAddWork({
       ) : null}
       {selectedCategory ? (
         <div className="space-y-2">
+          {selectedCategory.name === 'Detailing' ? (
+            <p className="text-xs text-muted-foreground">{messages.workPlanDetailingHint}</p>
+          ) : null}
           <CategoryJobList
             categoryName={selectedCategory.name}
             jobs={availableJobs}
@@ -149,6 +151,7 @@ export function WorkPlanAddWork({
               loading: messages.loadingJobs,
               loadError: messages.loadError,
               emptyCategory: messages.noJobsInCategory,
+              emptyCategoryHint: messages.emptyCategoryCustomHint,
               noMatches: messages.noMatchingCategoryJobs,
               listLabel: messages.categoryJobsLabel,
               addJob: messages.addCatalogJob,

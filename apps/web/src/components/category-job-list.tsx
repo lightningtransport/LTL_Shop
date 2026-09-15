@@ -11,6 +11,7 @@ export type CategoryJobListCopy = {
   loading: string;
   loadError: string;
   emptyCategory: string;
+  emptyCategoryHint?: string;
   noMatches: string;
   listLabel: string;
   addJob: string;
@@ -45,7 +46,12 @@ export function CategoryJobList({
     return <Card className="text-sm text-muted-foreground">{copy.loading}</Card>;
   }
   if (!jobs.length) {
-    return <EmptyState>{copy.emptyCategory}</EmptyState>;
+    return (
+      <EmptyState>
+        <p>{copy.emptyCategory}</p>
+        {copy.emptyCategoryHint ? <p className="mt-2 text-sm">{copy.emptyCategoryHint}</p> : null}
+      </EmptyState>
+    );
   }
 
   return (

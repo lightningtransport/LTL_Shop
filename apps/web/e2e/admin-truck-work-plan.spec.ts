@@ -15,6 +15,7 @@ const categories = [
   { id: '00000000-0000-4000-8000-000000000301', name: 'Air & Brake System', sortOrder: 1 },
   { id: '00000000-0000-4000-8000-000000000302', name: 'Suspension & Steering', sortOrder: 2 },
   { id: '00000000-0000-4000-8000-000000000303', name: 'PM', sortOrder: 3 },
+  { id: '00000000-0000-4000-8000-000000000304', name: 'Detailing', sortOrder: 4 },
 ];
 
 const catalogJobs = [
@@ -274,5 +275,26 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByText('Alignment is required and not complete.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Required Work' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
+  });
+
+  test('flag on: Detailing with no catalog Jobs shows EmptyState and keeps Custom available', async ({ page }) => {
+    await mockWorkPlanApi(page, emptyPlan());
+    await loginManager(page);
+    await page.goto(`/admin/trucks/${truckId}`);
+    await page.getByRole('button', { name: 'Issues found', exact: true }).click();
+    await expect(page.getByText('Inspection recorded.')).toBeVisible();
+    await page.getByLabel('Job Category').selectOption({ label: 'Detailing' });
+    await expect(page.getByText('No Jobs are listed for this Category.')).toBeVisible();
+    await expect(page.getByText('You can still add a custom Job.')).toBeVisible();
+    await expect(page.getByText('Detailing is required. If no catalog Job is listed, add a custom Job.')).toBeVisible();
+    const customName = page.getByLabel('Custom job name');
+    await expect(customName).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Add custom job' })).toBeDisabled();
+    await customName.fill('Cab wash');
+    await expect(page.getByRole('button', { name: 'Add custom job' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Add custom job' }).click();
+    await page.getByRole('button', { name: 'Add to Work Plan' }).click();
+    await expect(page.getByText('Work Plan updated.')).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Jobs in this Work Order' }).getByText('Cab wash')).toBeVisible();
   });
 });

@@ -85,7 +85,7 @@ describe('LTR-33 Work Plan copy helpers', () => {
     expect(workPlanJobUiStatusLabel('pending', en)).toBe('Pending');
     expect(workPlanJobUiStatusLabel('in_progress', en)).toBe('In Progress');
     expect(workPlanJobUiStatusLabel('completed', en)).toBe('Completed');
-    expect(workPlanJobUiStatusLabel('pending', es)).toBe('Pending');
+    expect(workPlanJobUiStatusLabel('pending', es)).toBe('Pendiente');
     expect(workPlanPhaseLabel('shop_work', en)).toBe('Shop Work');
     expect(workPlanPhaseLabel('inspection', es)).toBe('Inspección');
   });
@@ -97,6 +97,12 @@ describe('LTR-33 Work Plan copy helpers', () => {
     expect(es.workPlanOpenWorkOrder).toContain('Work Order');
     expect(es.workPlanReady).toBe('Ready to Go');
     expect(es.workPlanIssuesFoundHelp).toContain('Truck');
+    expect(es.workPlanInspectionTitle).toBe('Inspección');
+    expect(es.workPlanJobPending).toBe('Pendiente');
+    expect(es.workPlanJobInProgress).toBe('En progreso');
+    expect(es.yardSearch).toContain('Truck');
+    expect(es.yardLoadMore).toContain('Trucks');
+    expect(es.readyToGo).toBe('Ready to Go');
   });
 
   it('treats catalog and custom drafts as duplicates against the open plan', () => {

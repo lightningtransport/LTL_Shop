@@ -32,9 +32,12 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByText(/in the yard|en el patio/i)).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
-    await expect(page.getByText('Incoming Trucks unavailable')).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Incoming Trucks unavailable' })).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Upcoming Departures unavailable' })).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Incoming Trucks unavailable' }).getByText('Incoming Trucks', { exact: true })).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Upcoming Departures unavailable' }).getByText('Upcoming Departures', { exact: true })).toBeVisible();
     await expect(page.getByTestId('yard-truck-card').getByText('Last reported location')).toHaveCount(0);
-    await page.getByLabel('Search Work Order, Truck, category, or Mechanic').fill('Y-103');
+    await page.getByLabel('Search Truck or Work Order').fill('Y-103');
     const filters = await yardFilterPanel(page);
     await filters.getByLabel('Phase', { exact: true }).selectOption('required_work');
     await filters.getByLabel('Blockers').selectOption('true');
@@ -62,6 +65,7 @@ test.describe('Yard Operations Phase 1', () => {
     for (const phase of ['Needs evaluation', 'Inspection', 'Required Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready for Approval', 'Ready to Go']) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
+    await expect(page.getByText('No Trucks in this phase.').first()).toBeVisible();
     await page.getByRole('button', { name: 'List' }).click();
     await expect(page).toHaveURL(/view=list/);
     await expect(page.getByRole('heading', { name: 'Readiness list' })).toBeVisible();
@@ -114,13 +118,19 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(y102.getByText('WO-102')).toBeVisible();
     await expect(y102.getByText('High')).toBeVisible();
     await expect(y102.getByText('Blocked')).toBeVisible();
+    await expect(y102.getByText('2024 PETERBILT 579')).toBeVisible();
+    await expect(y102.getByText(/PETERBILT PETERBILT/i)).toHaveCount(0);
 
     await y101.click();
     await expect(page).toHaveURL(/\/admin\/trucks\/.*001001/);
     await page.goBack();
     await expect(page).toHaveURL(/\/admin\/yard-operations/);
 
-    for (const width of [768, 1280, 1366, 1440]) {
+    await page.setViewportSize({ width: 768, height: 900 });
+    await expect(page.getByRole('button', { name: YARD_FILTERS_BUTTON })).toBeVisible();
+    await expect(page.getByRole('search').getByLabel('Readiness', { exact: true })).toBeHidden();
+
+    for (const width of [1280, 1366, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(page.getByRole('button', { name: YARD_FILTERS_BUTTON })).toBeHidden();
       const toolbar = page.getByRole('search');
@@ -147,5 +157,31 @@ test.describe('Yard Operations Phase 1', () => {
     await more.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/priority=critical/);
     await expect(page.getByRole('button', { name: /More filters \(1\)/ })).toBeVisible();
+  });
+
+  test('does not clip Yard search or unavailable chips below xl', async ({ page }) => {
+    async function assertLabelUnclipped(locator: Locator, label: string, width: number) {
+      await expect(locator).toBeVisible();
+      const clipped = await locator.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+      expect(clipped, `${label} clips at ${width}px`).toBe(false);
+    }
+
+    for (const width of [390, 768]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.getByRole('button', { name: YARD_FILTERS_BUTTON })).toBeVisible();
+      await expect(page.getByRole('search').getByLabel('Readiness', { exact: true })).toBeHidden();
+
+      const search = page.getByRole('searchbox', { name: 'Search Truck or Work Order' });
+      await expect(search).toBeVisible();
+      const searchClipped = await search.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+      expect(searchClipped, `search field clips at ${width}px`).toBe(false);
+
+      const workLocation = page.getByRole('status', { name: 'Work location is not connected' }).getByText('Work location', { exact: true });
+      const incoming = page.getByRole('status', { name: 'Incoming Trucks unavailable' }).getByText('Incoming Trucks', { exact: true });
+      const departures = page.getByRole('status', { name: 'Upcoming Departures unavailable' }).getByText('Upcoming Departures', { exact: true });
+      await assertLabelUnclipped(workLocation, 'Work location', width);
+      await assertLabelUnclipped(incoming, 'Incoming Trucks', width);
+      await assertLabelUnclipped(departures, 'Upcoming Departures', width);
+    }
   });
 });
