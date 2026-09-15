@@ -55,7 +55,7 @@ export function CategoryJobList({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <Input
         aria-label={copy.searchLabel}
         placeholder={copy.searchLabel}
