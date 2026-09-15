@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSWRConfig } from 'swr';
 import {
   AppCapability,
   Priority,
@@ -20,6 +21,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCatalogJobs, useCategories, useTrucks } from '@/lib/shop-data';
 import { CategoryJobList } from './category-job-list';
 import { rankTruckResults } from '@/lib/truck-search';
+import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
   AdminBackLink,
   AdminPageHeader,
@@ -67,6 +69,7 @@ export function AdminNewWorkOrder({
 }) {
   void locale;
   const router = useRouter();
+  const { mutate } = useSWRConfig();
   const { user } = useAuth();
   const canCreateWorkOrder = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const [truckQuery, setTruckQuery] = useState('');
@@ -240,6 +243,7 @@ export function AdminNewWorkOrder({
           assignedMechanicId: job.assignedMechanicId,
         })),
       });
+      void mutate(isWorkOrderRelatedListKey);
       router.push(`/admin/work-orders/${created.id}`);
     } catch (failure) {
       setError(failure instanceof ApiError && failure.message ? failure.message : messages.createWorkOrderFailed);

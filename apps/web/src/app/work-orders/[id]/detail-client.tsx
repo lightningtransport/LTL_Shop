@@ -21,6 +21,7 @@ import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import { isMyAssignedOrInheritedJob, jobAssignmentLabel } from '@/lib/job-assignment';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
+import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
   Button,
   Card,
@@ -37,10 +38,6 @@ import {
   WorkspaceNav,
 } from '@/components/ui';
 import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
-
-function isWorkOrderListKey(key: unknown): key is string {
-  return typeof key === 'string' && (key === '/api/work-orders' || key.startsWith('/api/work-orders?'));
-}
 
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
@@ -106,7 +103,7 @@ export default function WorkOrderDetailPage() {
       const updated = await action();
       await mutateWorkOrder(updated, { revalidate: false });
       void Promise.all([
-        mutateGlobal(isWorkOrderListKey),
+        mutateGlobal(isWorkOrderRelatedListKey),
         mutateGlobal(
           (key) =>
             typeof key === 'string' && key.includes('/repair-history'),
@@ -157,7 +154,7 @@ export default function WorkOrderDetailPage() {
         onUpdated={async (updated) => {
           await mutateWorkOrder(updated, { revalidate: false });
           void Promise.all([
-            mutateGlobal(isWorkOrderListKey),
+            mutateGlobal(isWorkOrderRelatedListKey),
             mutateGlobal(
               (key) => typeof key === 'string' && key.includes('/repair-history'),
             ),

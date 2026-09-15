@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useSWRConfig } from 'swr';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
@@ -9,6 +10,7 @@ import { adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderS
 import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
+import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { useCategories } from '@/lib/shop-data';
 import { JobPickerDialog } from './job-picker-dialog';
 import {
@@ -36,6 +38,7 @@ import {
 
 export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
+  const { mutate: mutateRelated } = useSWRConfig();
   const { data, error, isLoading, mutate } = useAdminWorkOrder(id);
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const [addJobOpen, setAddJobOpen] = useState(false);
@@ -99,6 +102,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     try {
       await operation();
       await mutate();
+      void mutateRelated(isWorkOrderRelatedListKey);
       setFeedback({ kind: 'success', message: successMessage });
     } catch (failure) {
       setFeedback({ kind: 'error', message: onError(failure) });

@@ -13,8 +13,10 @@ import {
   type ReadinessRequirementDto,
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
+import { useSWRConfig } from 'swr';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
+import { isYardRelatedListKey } from '@/lib/swr-cache-keys';
 import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessment, updateAdminTruckRequirement, useAdminTruck } from '@/lib/admin-data';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
 import { formatVehicleYmm } from '@/lib/format';
@@ -46,6 +48,7 @@ type RequirementDraft = { outcome: ReadinessRequirementOutcome; waiverReason: st
 
 export function AdminTruckDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
+  const { mutate: mutateRelated } = useSWRConfig();
   const { data, error, isLoading, mutate } = useAdminTruck(id);
   const canManage = Boolean(user?.capabilities.includes(AppCapability.YARD_OPERATIONS_MANAGE));
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -116,6 +119,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
     try {
       await operation();
       await mutate();
+      void mutateRelated(isYardRelatedListKey);
       setFeedback({ kind: 'success', message: successMessage });
     } catch (mutationFailure) {
       setFeedback({ kind: 'error', message: mutationError(mutationFailure) });
@@ -168,6 +172,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
 
   async function handleWorkPlanUpdated(next: TruckWorkPlanDto) {
     await mutate((current) => (current ? { ...current, workPlan: next } : current), { revalidate: true });
+    void mutateRelated(isYardRelatedListKey);
   }
 
   return <div className="space-y-5">
