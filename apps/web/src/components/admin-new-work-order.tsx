@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSWRConfig } from 'swr';
@@ -21,6 +21,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCatalogJobs, useCategories, useTrucks } from '@/lib/shop-data';
 import { CategoryJobList } from './category-job-list';
 import { rankTruckResults } from '@/lib/truck-search';
+import { cn } from '@/lib/utils';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
   AdminBackLink,
@@ -30,6 +31,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   EmptyState,
@@ -54,8 +56,14 @@ type SelectedTruck = {
   openWorkOrder: { id: string; displayId: string } | null;
 };
 
+type OpenWorkOrderCheck = 'idle' | 'checking' | 'verified' | 'error';
+
 function normalizeJobName(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function formatCountMessage(template: string, count: number) {
+  return template.replace('{count}', String(count));
 }
 
 export function AdminNewWorkOrder({
@@ -86,6 +94,9 @@ export function AdminNewWorkOrder({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preselectApplied, setPreselectApplied] = useState(false);
+  const [openWorkOrderCheck, setOpenWorkOrderCheck] = useState<OpenWorkOrderCheck>('idle');
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
+  const openWorkOrderRequest = useRef(0);
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedTruckQuery(truckQuery.trim()), 250);
@@ -119,7 +130,11 @@ export function AdminNewWorkOrder({
 
   const resultsOpen = searchOpen && Boolean(debouncedTruckQuery) && !selectedTruck;
   const primaryCategoryId = jobs[0]?.categoryId ?? categoryId;
-  const canSubmit = Boolean(selectedTruck) && jobs.length > 0 && !selectedTruck?.openWorkOrder && !busy;
+  const canSubmit = Boolean(selectedTruck)
+    && openWorkOrderCheck === 'verified'
+    && jobs.length > 0
+    && !selectedTruck?.openWorkOrder
+    && !busy;
 
   useEffect(() => {
     setActiveResult(trucks.length ? 0 : -1);
@@ -131,13 +146,16 @@ export function AdminNewWorkOrder({
   }, [categoryId]);
 
   function selectTruck(item: TruckDto) {
+    const requestId = ++openWorkOrderRequest.current;
     setSelectedTruck({ truck: item, openWorkOrder: null });
     setTruckQuery(item.truckNumber);
     setSearchOpen(false);
     setError(null);
+    setOpenWorkOrderCheck('checking');
     void apiFetch<{ exists: false } | { exists: true; workOrder?: WorkOrderSummaryDto }>(
       `/api/trucks/${item.id}/open-work-order`,
     ).then((open) => {
+      if (requestId !== openWorkOrderRequest.current) return;
       setSelectedTruck((current) => (
         current?.truck.id === item.id
           ? {
@@ -148,8 +166,10 @@ export function AdminNewWorkOrder({
           }
           : current
       ));
+      setOpenWorkOrderCheck('verified');
     }).catch(() => {
-      setError(messages.loadError);
+      if (requestId !== openWorkOrderRequest.current) return;
+      setOpenWorkOrderCheck('error');
     });
   }
 
@@ -162,9 +182,12 @@ export function AdminNewWorkOrder({
   }, [preselectApplied, preselectTruckId, truckData]);
 
   function clearTruck() {
+    openWorkOrderRequest.current += 1;
     setSelectedTruck(null);
     setTruckQuery('');
     setSearchOpen(false);
+    setOpenWorkOrderCheck('idle');
+    setActiveStep(1);
   }
 
   function toggleCatalogJob(job: CatalogJobDto) {
@@ -207,6 +230,11 @@ export function AdminNewWorkOrder({
         ? { ...job, assignedMechanicId: mechanicId || undefined }
         : job
     )));
+  }
+
+  function removeJob(key: string) {
+    setJobs((current) => current.filter((item) => item.key !== key));
+    if (jobs.length === 1 && activeStep === 3) setActiveStep(2);
   }
 
   const jobsByCategory = useMemo(() => {
@@ -254,7 +282,7 @@ export function AdminNewWorkOrder({
 
   if (!canCreateWorkOrder) {
     return (
-      <div className="space-y-5">
+      <div className="flex flex-col gap-5">
         <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
         <EmptyState>{messages.createRequiresManage}</EmptyState>
       </div>
@@ -262,234 +290,390 @@ export function AdminNewWorkOrder({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-4 pb-24 xl:pb-0">
       <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
       <AdminPageHeader eyebrow={messages.eyebrow} title={messages.newWorkOrderTitle} subtitle={messages.newWorkOrderSubtitle} />
 
-      <Card>
-        <CardHeader><CardTitle>{messages.selectTruckLabel}</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="relative">
-            <Input
-              aria-label={messages.searchTrucksLabel}
-              placeholder={messages.searchTrucksLabel}
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={resultsOpen}
-              aria-controls="admin-truck-search-results"
-              aria-activedescendant={
-                resultsOpen && activeResult >= 0
-                  ? `admin-truck-result-${trucks[activeResult]?.id}`
-                  : undefined
-              }
-              value={truckQuery}
-              onFocus={() => setSearchOpen(true)}
-              onKeyDown={(event) => {
-                if (!resultsOpen) return;
-                if (event.key === 'ArrowDown') {
-                  event.preventDefault();
-                  setActiveResult((current) => Math.min(current + 1, trucks.length - 1));
-                } else if (event.key === 'ArrowUp') {
-                  event.preventDefault();
-                  setActiveResult((current) => Math.max(current - 1, 0));
-                } else if (event.key === 'Enter' && activeResult >= 0) {
-                  event.preventDefault();
-                  const active = trucks[activeResult];
-                  if (active) selectTruck(active);
-                } else if (event.key === 'Escape') {
-                  setSearchOpen(false);
-                }
-              }}
-              onChange={(event) => {
-                setTruckQuery(event.target.value);
-                setSelectedTruck(null);
-                setSearchOpen(true);
-                setError(null);
-              }}
-            />
-            {resultsOpen ? (
-              <ul
-                id="admin-truck-search-results"
-                role="listbox"
-                className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-xl border bg-popover shadow-lg"
-              >
-                {trucksLoading ? (
-                  <li className="px-4 py-3 text-sm text-muted-foreground">{messages.searchingTrucks}</li>
-                ) : truckError ? (
-                  <li className="px-4 py-3 text-sm text-destructive">{messages.loadError}</li>
-                ) : trucks.length ? trucks.map((item, index) => (
-                  <li key={item.id} role="presentation">
-                    <Button
-                      id={`admin-truck-result-${item.id}`}
-                      type="button"
-                      role="option"
-                      aria-selected={activeResult === index}
-                      variant="ghost"
-                      className="w-full justify-start rounded-none px-4 py-3 text-left font-normal"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => selectTruck(item)}
+      <ol className="grid grid-cols-3 gap-2" aria-label={messages.createFlowLabel}>
+        <FlowStep
+          number={1}
+          label={messages.createStepTruck}
+          state={activeStep === 1 ? 'current' : 'complete'}
+          messages={messages}
+          onClick={() => setActiveStep(1)}
+        />
+        <FlowStep
+          number={2}
+          label={messages.createStepWork}
+          state={activeStep === 2 ? 'current' : activeStep > 2 ? 'complete' : 'upcoming'}
+          messages={messages}
+          disabled={!selectedTruck || Boolean(selectedTruck.openWorkOrder)}
+          onClick={() => setActiveStep(2)}
+        />
+        <FlowStep
+          number={3}
+          label={messages.createStepReview}
+          state={activeStep === 3 ? 'current' : 'upcoming'}
+          messages={messages}
+          disabled={!selectedTruck || jobs.length === 0 || Boolean(selectedTruck.openWorkOrder)}
+          onClick={() => setActiveStep(3)}
+        />
+      </ol>
+
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <Card className={cn(activeStep !== 1 && 'hidden xl:block')}>
+            <CardHeader>
+              <CardTitle>{messages.createStepTruck}</CardTitle>
+              <CardDescription>{messages.selectTruckHelp}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {selectedTruck ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3 py-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground">{messages.selectedTruckLabel}</p>
+                    <p className="truncate font-semibold">
+                      #{selectedTruck.truck.truckNumber} · {selectedTruck.truck.make} {selectedTruck.truck.model}
+                    </p>
+                    {openWorkOrderCheck === 'checking' ? (
+                      <p className="mt-1 text-xs text-muted-foreground" role="status">{messages.checkingOpenWorkOrder}</p>
+                    ) : null}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={clearTruck}>{messages.changeTruckAction}</Button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="admin-truck-search">
+                    {messages.searchTrucksLabel}
+                  </label>
+                  <Input
+                    id="admin-truck-search"
+                    placeholder={messages.searchTruckPlaceholder}
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={resultsOpen}
+                    aria-controls="admin-truck-search-results"
+                    aria-activedescendant={
+                      resultsOpen && activeResult >= 0
+                        ? `admin-truck-result-${trucks[activeResult]?.id}`
+                        : undefined
+                    }
+                    value={truckQuery}
+                    onFocus={() => setSearchOpen(true)}
+                    onKeyDown={(event) => {
+                      if (!resultsOpen) return;
+                      if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        setActiveResult((current) => Math.min(current + 1, trucks.length - 1));
+                      } else if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        setActiveResult((current) => Math.max(current - 1, 0));
+                      } else if (event.key === 'Enter' && activeResult >= 0) {
+                        event.preventDefault();
+                        const active = trucks[activeResult];
+                        if (active) selectTruck(active);
+                      } else if (event.key === 'Escape') {
+                        setSearchOpen(false);
+                      }
+                    }}
+                    onChange={(event) => {
+                      openWorkOrderRequest.current += 1;
+                      setTruckQuery(event.target.value);
+                      setSelectedTruck(null);
+                      setOpenWorkOrderCheck('idle');
+                      setSearchOpen(true);
+                      setError(null);
+                    }}
+                  />
+                  {resultsOpen ? (
+                    <ul
+                      id="admin-truck-search-results"
+                      role="listbox"
+                      className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-xl border bg-popover shadow-lg"
                     >
-                      #{item.truckNumber} · {item.make} {item.model}
+                      {trucksLoading ? (
+                        <li className="px-4 py-3 text-sm text-muted-foreground">{messages.searchingTrucks}</li>
+                      ) : truckError ? (
+                        <li className="px-4 py-3 text-sm text-destructive">{messages.loadError}</li>
+                      ) : trucks.length ? trucks.map((item, index) => (
+                        <li key={item.id} role="presentation">
+                          <Button
+                            id={`admin-truck-result-${item.id}`}
+                            type="button"
+                            role="option"
+                            aria-selected={activeResult === index}
+                            variant="ghost"
+                            className="w-full justify-start rounded-none px-4 py-3 text-left font-normal"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => selectTruck(item)}
+                          >
+                            #{item.truckNumber} · {item.make} {item.model}
+                          </Button>
+                        </li>
+                      )) : (
+                        <li className="px-4 py-3 text-sm text-muted-foreground">{messages.noTrucksFound}</li>
+                      )}
+                    </ul>
+                  ) : null}
+                </div>
+              )}
+
+              {openWorkOrderCheck === 'error' && selectedTruck ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <InlineAlert className="min-w-0 flex-1">{messages.verifyOpenWorkOrderError}</InlineAlert>
+                  <Button type="button" variant="outline" size="sm" onClick={() => selectTruck(selectedTruck.truck)}>
+                    {messages.retry}
+                  </Button>
+                </div>
+              ) : null}
+
+              {selectedTruck?.openWorkOrder ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <InlineAlert className="min-w-0 flex-1">{messages.openWoWarning}</InlineAlert>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/admin/work-orders/${selectedTruck.openWorkOrder.id}`}>
+                      {messages.openExistingWorkOrder} {selectedTruck.openWorkOrder.displayId}
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card className={cn(activeStep !== 2 && 'hidden xl:block')}>
+            <CardHeader>
+              <CardTitle>{messages.createStepWork}</CardTitle>
+              <CardDescription>{messages.addJobsHelp}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {categoriesError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
+              {categoriesLoading && !categories ? (
+                <p className="text-sm text-muted-foreground">{messages.loadingCategories}</p>
+              ) : null}
+              {!categoriesLoading && !categoriesError && standardCategories.length === 0 ? (
+                <EmptyState>{messages.noCategoriesAvailable}</EmptyState>
+              ) : null}
+
+              {standardCategories.length ? (
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">{messages.category}</span>
+                  <Select
+                    aria-label={messages.category}
+                    value={categoryId}
+                    onChange={(event) => setCategoryId(event.target.value)}
+                  >
+                    <option value="">{messages.selectCategoryPlaceholder}</option>
+                    {standardCategories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </Select>
+                </label>
+              ) : null}
+
+              {selectedCategory ? (
+                <div className="flex flex-col gap-3">
+                  <CategoryJobList
+                    categoryName={selectedCategory.name}
+                    jobs={catalogJobs ?? []}
+                    isLoading={jobsLoading}
+                    error={Boolean(jobsError)}
+                    query={jobQuery}
+                    onQueryChange={setJobQuery}
+                    selectedIds={selectedCatalogJobIds}
+                    onSelect={toggleCatalogJob}
+                    copy={{
+                      searchLabel: messages.searchJobsLabel,
+                      loading: messages.loadingJobs,
+                      loadError: messages.loadError,
+                      emptyCategory: messages.noJobsInCategory,
+                      emptyCategoryHint: messages.emptyCategoryCustomHint,
+                      noMatches: messages.noMatchingCategoryJobs,
+                      listLabel: messages.categoryJobsLabel,
+                      addJob: messages.addCatalogJob,
+                    }}
+                  />
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      aria-label={messages.customJobPlaceholder}
+                      className="min-w-0 flex-1"
+                      placeholder={messages.customJobPlaceholder}
+                      value={customName}
+                      onChange={(event) => setCustomName(event.target.value)}
+                    />
+                    <Button type="button" variant="outline" disabled={!customName.trim()} onClick={addCustomJob}>
+                      {messages.addCustomJob}
                     </Button>
-                  </li>
-                )) : (
-                  <li className="px-4 py-3 text-sm text-muted-foreground">{messages.noTrucksFound}</li>
-                )}
-              </ul>
-            ) : null}
-          </div>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState>{messages.chooseCategoryFirst}</EmptyState>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-          {selectedTruck ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
+        <Card className={cn('min-w-0 xl:sticky xl:top-4', activeStep !== 3 && 'hidden xl:block')}>
+          <CardHeader>
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="text-xs font-medium text-muted-foreground">{messages.selectedTruckLabel}</p>
-                <p className="font-medium">
-                  #{selectedTruck.truck.truckNumber} · {selectedTruck.truck.make} {selectedTruck.truck.model}
-                </p>
+                <CardTitle>{messages.createStepReview}</CardTitle>
+                <CardDescription>{messages.reviewWorkOrderHelp}</CardDescription>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={clearTruck}>{messages.removeJobAction}</Button>
+              <Badge variant={jobs.length ? 'secondary' : 'outline'}>
+                {formatCountMessage(jobs.length === 1 ? messages.selectedJobCount : messages.selectedJobsCount, jobs.length)}
+              </Badge>
             </div>
-          ) : null}
-
-          {selectedTruck?.openWorkOrder ? (
-            <InlineAlert>{messages.openWoWarning}</InlineAlert>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{messages.addJobsLabel}</CardTitle>
-          <CardDescription>{messages.noJobsYet}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {categoriesError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
-          {categoriesLoading && !categories ? (
-            <p className="text-sm text-muted-foreground">{messages.loadingCategories}</p>
-          ) : null}
-          {!categoriesLoading && !categoriesError && standardCategories.length === 0 ? (
-            <EmptyState>{messages.noCategoriesAvailable}</EmptyState>
-          ) : null}
-
-          {standardCategories.length ? (
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">{messages.category}</span>
-              <Select
-                aria-label={messages.category}
-                value={categoryId}
-                onChange={(event) => setCategoryId(event.target.value)}
-              >
-                <option value="">{messages.category}</option>
-                {standardCategories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {jobs.length ? (
+              <div className="max-h-[38dvh] overflow-y-auto overscroll-contain rounded-xl border">
+                {jobsByCategory.map(([categoryName, group]) => (
+                  <section key={categoryName} className="border-b p-3 last:border-b-0">
+                    <Badge variant="outline">{categoryName}</Badge>
+                    <ul className="mt-2 divide-y">
+                      {group.map((job) => (
+                        <li key={job.key} className="flex flex-col gap-2 py-3 first:pt-1 last:pb-1">
+                          <div className="flex items-start justify-between gap-2 text-sm">
+                            <span className="min-w-0 font-medium">{job.displayName}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0"
+                              onClick={() => removeJob(job.key)}
+                            >
+                              {messages.removeJobAction}
+                            </Button>
+                          </div>
+                          <label className="flex flex-col gap-1">
+                            <span className="text-xs font-medium text-muted-foreground">{messages.assignJobOnCreate}</span>
+                            <Select
+                              aria-label={`${messages.assignJobOnCreate}: ${job.displayName}`}
+                              value={job.assignedMechanicId ?? ''}
+                              onChange={(event) => setJobAssignee(job.key, event.target.value)}
+                            >
+                              <option value="">{messages.assignJobPlaceholder}</option>
+                              {assignableMechanics.map((mechanic) => (
+                                <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
+                              ))}
+                            </Select>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-              </Select>
-            </label>
-          ) : null}
-
-          {selectedCategory ? (
-            <div className="space-y-2">
-              <CategoryJobList
-                categoryName={selectedCategory.name}
-                jobs={catalogJobs ?? []}
-                isLoading={jobsLoading}
-                error={Boolean(jobsError)}
-                query={jobQuery}
-                onQueryChange={setJobQuery}
-                selectedIds={selectedCatalogJobIds}
-                onSelect={toggleCatalogJob}
-                copy={{
-                  searchLabel: messages.searchJobsLabel,
-                  loading: messages.loadingJobs,
-                  loadError: messages.loadError,
-                  emptyCategory: messages.noJobsInCategory,
-                  noMatches: messages.noMatchingCategoryJobs,
-                  listLabel: messages.categoryJobsLabel,
-                  addJob: messages.addCatalogJob,
-                }}
-              />
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  aria-label={messages.customJobPlaceholder}
-                  className="flex-1"
-                  placeholder={messages.customJobPlaceholder}
-                  value={customName}
-                  onChange={(event) => setCustomName(event.target.value)}
-                />
-                <Button type="button" disabled={!customName.trim()} onClick={addCustomJob}>
-                  {messages.addCustomJob}
-                </Button>
               </div>
-            </div>
-          ) : null}
-
-          <div className="space-y-3">
-            <p className="text-sm font-medium">{messages.workPlanTitle}</p>
-            {jobs.length ? jobsByCategory.map(([categoryName, group]) => (
-              <div key={categoryName} className="space-y-2">
-                <Badge variant="outline">{categoryName}</Badge>
-                <ul className="divide-y rounded-xl border">
-                  {group.map((job) => (
-                    <li key={job.key} className="space-y-2 px-3 py-3">
-                      <div className="flex items-center justify-between gap-2 text-sm">
-                        <span className="font-medium">{job.displayName}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setJobs((current) => current.filter((item) => item.key !== job.key))}
-                        >
-                          {messages.removeJobAction}
-                        </Button>
-                      </div>
-                      <label className="block space-y-1">
-                        <span className="text-xs font-medium text-muted-foreground">{messages.assignJobOnCreate}</span>
-                        <Select
-                          aria-label={`${messages.assignJobOnCreate}: ${job.displayName}`}
-                          value={job.assignedMechanicId ?? ''}
-                          onChange={(event) => setJobAssignee(job.key, event.target.value)}
-                        >
-                          <option value="">{messages.assignJobPlaceholder}</option>
-                          {assignableMechanics.map((mechanic) => (
-                            <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
-                          ))}
-                        </Select>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )) : (
-              <EmptyState>{messages.noJobsYet}</EmptyState>
+            ) : (
+              <EmptyState>{messages.noSelectedJobs}</EmptyState>
             )}
             {mechanicsError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
-          </div>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader><CardTitle>{messages.priority}</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <label className="block space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">{messages.priority}</span>
-            <Select aria-label={messages.priority} value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
-              {Object.values(Priority).map((value) => (
-                <option key={value} value={value}>{value.toUpperCase()}</option>
-              ))}
-            </Select>
-          </label>
-          <label className="block space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">{messages.notes}</span>
-            <Textarea aria-label={messages.notes} value={notes} maxLength={2000} onChange={(event) => setNotes(event.target.value)} />
-          </label>
-        </CardContent>
-      </Card>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-muted-foreground">{messages.priority}</span>
+                <Select aria-label={messages.priority} value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
+                  {Object.values(Priority).map((value) => (
+                    <option key={value} value={value}>{value.toUpperCase()}</option>
+                  ))}
+                </Select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-muted-foreground">{messages.notesOptional}</span>
+                <Textarea
+                  aria-label={messages.notesOptional}
+                  className="min-h-20"
+                  placeholder={messages.notesPlaceholder}
+                  value={notes}
+                  maxLength={2000}
+                  onChange={(event) => setNotes(event.target.value)}
+                />
+              </label>
+            </div>
+            {error ? <InlineAlert>{error}</InlineAlert> : null}
+          </CardContent>
+          <CardFooter className="hidden border-t pt-4 xl:flex">
+            <Button type="button" className="w-full" disabled={!canSubmit} onClick={submit}>
+              {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
 
-      {error ? <InlineAlert>{error}</InlineAlert> : null}
-
-      <Button type="button" className="w-full" disabled={!canSubmit} onClick={submit}>
-        {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
-      </Button>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[calc(0.75rem+var(--app-safe-bottom))] pt-3 backdrop-blur md:left-[220px] xl:hidden">
+        <div className="mx-auto flex max-w-xl items-center gap-3">
+          <p className="min-w-0 flex-1 text-sm text-muted-foreground">
+            {formatCountMessage(jobs.length === 1 ? messages.selectedJobCount : messages.selectedJobsCount, jobs.length)}
+          </p>
+          {activeStep === 1 ? (
+            <Button
+              type="button"
+              className="shrink-0"
+              disabled={!selectedTruck || openWorkOrderCheck !== 'verified' || Boolean(selectedTruck.openWorkOrder)}
+              onClick={() => setActiveStep(2)}
+            >
+              {messages.continueToWork}
+            </Button>
+          ) : activeStep === 2 ? (
+            <Button
+              type="button"
+              className="shrink-0"
+              disabled={!selectedTruck || jobs.length === 0 || Boolean(selectedTruck.openWorkOrder)}
+              onClick={() => setActiveStep(3)}
+            >
+              {messages.reviewWorkOrderAction}
+            </Button>
+          ) : (
+            <Button type="button" className="shrink-0" disabled={!canSubmit} onClick={submit}>
+              {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function FlowStep({
+  number,
+  label,
+  state,
+  messages,
+  disabled = false,
+  onClick,
+}: {
+  number: number;
+  label: string;
+  state: 'complete' | 'current' | 'upcoming';
+  messages: AdminMessages;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const stateLabel = state === 'complete'
+    ? messages.createStepComplete
+    : state === 'current'
+      ? messages.createStepCurrent
+      : messages.createStepUpcoming;
+
+  return (
+    <li className="min-w-0">
+      <button
+        type="button"
+        className={cn(
+          'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-xl border bg-card px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+          state === 'current' && 'border-primary bg-primary/10',
+        )}
+        aria-current={state === 'current' ? 'step' : undefined}
+        aria-label={`${number}. ${label}: ${stateLabel}`}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        <Badge variant={state === 'complete' ? 'secondary' : state === 'current' ? 'default' : 'outline'}>{number}</Badge>
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium">{label}</span>
+          <span className="hidden text-xs text-muted-foreground sm:block">{stateLabel}</span>
+        </span>
+      </button>
+    </li>
   );
 }

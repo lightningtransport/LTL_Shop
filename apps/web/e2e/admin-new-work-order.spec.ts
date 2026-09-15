@@ -10,6 +10,29 @@ async function openNewWorkOrder(page: Page) {
 }
 
 test.describe('LTR-21 New WO category jobs', () => {
+  test('mobile wizard keeps one task visible and requires review before create', async ({ page }) => {
+    await openNewWorkOrder(page);
+
+    await expect(page.getByRole('heading', { name: 'Truck', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Work', exact: true })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Review', exact: true })).toBeHidden();
+
+    await page.getByLabel('Truck number').fill('104');
+    await page.getByRole('option', { name: /T-104/ }).click();
+    await page.getByRole('button', { name: 'Continue to work' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Truck', exact: true })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Work', exact: true })).toBeVisible();
+    await page.getByLabel('Category').selectOption({ index: 1 });
+    await page.getByLabel('Custom job name').fill('Road test after repair');
+    await page.getByRole('button', { name: 'Add custom job' }).click();
+    await page.getByRole('button', { name: 'Review Work Order' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Review', exact: true })).toBeVisible();
+    await expect(page.getByText('Road test after repair')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Create Work Order' })).toBeEnabled();
+  });
+
   test('selecting a Category lists catalog jobs and Search filters that list', async ({ page }) => {
     await openNewWorkOrder(page);
 
