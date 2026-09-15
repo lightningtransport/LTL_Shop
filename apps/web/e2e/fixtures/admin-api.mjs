@@ -72,7 +72,7 @@ const workOrders = [
 
 const yardOperations = [
   makeYardItem('00000000-0000-4000-8000-000000001001', 'Y-101', 'needs_evaluation', null, null),
-  makeYardItem('00000000-0000-4000-8000-000000001002', 'Y-102', 'inspection', 'high', 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001002', 'Y-102', 'inspection', 'high', 'under_review', { make: 'PETERBILT', model: 'PETERBILT 579' }),
   makeYardItem('00000000-0000-4000-8000-000000001003', 'Y-103', 'required_work', 'critical', 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001004', 'Y-104', 'pm', 'normal', 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001005', 'Y-105', 'alignment', 'normal', 'under_review'),
@@ -1164,7 +1164,7 @@ function syncJobCounts(workOrder) {
   workOrder.jobsCompleted = active.filter((job) => job.status === 'completed').length;
 }
 
-function makeYardItem(truckId, truckNumber, phase, priority, assessmentStatus) {
+function makeYardItem(truckId, truckNumber, phase, priority, assessmentStatus, vehicle = {}) {
   const hasWorkOrder = Boolean(priority);
   const workOrderId = truckId.replace('100', '200');
   const activeWorkOrder = hasWorkOrder ? makeWorkOrder(workOrderId, `WO-${truckNumber.slice(2)}`, truckNumber, priority, phase === 'required_work' ? 'in_progress' : 'created') : null;
@@ -1173,7 +1173,7 @@ function makeYardItem(truckId, truckNumber, phase, priority, assessmentStatus) {
   const requirementType = phase === 'inspection' ? 'inspection' : phase === 'required_work' ? 'required_repairs' : phase === 'pm' ? 'pm' : phase === 'alignment' ? 'alignment' : phase === 'detailing' ? 'detailing' : phase === 'quality_check' ? 'quality_check' : null;
   const assessment = assessmentStatus ? { id: truckId.replace('100', '300'), truckId, status: assessmentStatus, version: 1, startedAt: '2026-09-06T12:00:00.000Z', startedById: users['manager@lightning.local'].id, readyAt: assessmentStatus === 'ready' ? now : null, approvedById: assessmentStatus === 'ready' ? users['manager@lightning.local'].id : null, closedAt: null, closedById: null, closedReason: null, requirements: requirementType ? [{ id: truckId.replace('100', '400'), type: requirementType, outcome: 'required', waiverReason: null, evidenceWorkOrderId: null, evaluatedById: null, evaluatedAt: null, version: 1 }] : [] } : null;
   const blockers = phase === 'ready_to_go' || !assessment ? [] : [{ kind: activeWorkOrder ? 'open_work_order' : 'unevaluated_requirement', requirementType, workOrderId: activeWorkOrder?.id, status: activeWorkOrder?.status, priority: activeWorkOrder?.priority, categoryName: activeWorkOrder?.category.name, message: activeWorkOrder ? 'Open Work Order remains linked.' : 'Assessment requires evaluation.' }];
-  return { truck: { id: truckId, truckNumber, make: 'Volvo', model: 'VNL', year: 2024, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport', vin: '4V4NC9EH0RN123456', location: '4802 Orient Road, Tampa, FL', locationUpdatedOn: '2026-09-11' }, presence: { state: 'unknown', provenance: 'phase_1_unavailable' }, operationalStatus: 'unknown', operationalStatusAt: null, assessment, phase, blockers, activeWorkOrder };
+  return { truck: { id: truckId, truckNumber, make: vehicle.make ?? 'Volvo', model: vehicle.model ?? 'VNL', year: vehicle.year ?? 2024, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport', vin: '4V4NC9EH0RN123456', location: '4802 Orient Road, Tampa, FL', locationUpdatedOn: '2026-09-11' }, presence: { state: 'unknown', provenance: 'phase_1_unavailable' }, operationalStatus: 'unknown', operationalStatusAt: null, assessment, phase, blockers, activeWorkOrder };
 }
 
 function makeAssessment(item) {

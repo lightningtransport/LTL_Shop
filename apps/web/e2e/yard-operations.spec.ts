@@ -65,7 +65,7 @@ test.describe('Yard Operations Phase 1', () => {
     for (const phase of ['Needs evaluation', 'Inspection', 'Required Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready for Approval', 'Ready to Go']) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
-    await expect(page.getByText('No Trucks in this phase.')).toBeVisible();
+    await expect(page.getByText('No Trucks in this phase.').first()).toBeVisible();
     await page.getByRole('button', { name: 'List' }).click();
     await expect(page).toHaveURL(/view=list/);
     await expect(page.getByRole('heading', { name: 'Readiness list' })).toBeVisible();
@@ -107,7 +107,6 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(y101.getByText('Needs evaluation')).toBeVisible();
     await expect(y101.getByText('Needs evaluation')).toHaveCSS('text-transform', 'none');
     await expect(y101.getByText('2024 Volvo VNL')).toBeVisible();
-    await expect(y101.getByText(/PETERBILT PETERBILT/i)).toHaveCount(0);
     await expect(y101.getByText('Time in assessment')).toHaveCount(0);
     await expect(y101.getByText('No active Work Order')).toHaveCount(0);
     await expect(y101.getByText('No mechanics assigned')).toHaveCount(0);
@@ -119,6 +118,8 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(y102.getByText('WO-102')).toBeVisible();
     await expect(y102.getByText('High')).toBeVisible();
     await expect(y102.getByText('Blocked')).toBeVisible();
+    await expect(y102.getByText('2024 PETERBILT 579')).toBeVisible();
+    await expect(y102.getByText(/PETERBILT PETERBILT/i)).toHaveCount(0);
 
     await y101.click();
     await expect(page).toHaveURL(/\/admin\/trucks\/.*001001/);
