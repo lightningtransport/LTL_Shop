@@ -16,14 +16,7 @@ import { JobPickerDialog } from './job-picker-dialog';
 import {
   AdminBackLink,
   AdminPageHeader,
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
   CardListSkeleton,
-  CardTitle,
   CompactEmpty,
   EmptyState,
   JobStatusBadge,
@@ -31,12 +24,15 @@ import {
   PageSkeleton,
   PriorityBadge,
   WorkOrderStatusBadge,
-  Input,
-  Textarea,
 } from './ui';
 import { Alert, AlertDescription } from './ui/alert';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Field, FieldGroup, FieldLabel } from './ui/field';
+import { Input } from './ui/input';
 import { NativeSelect } from './ui/native-select';
+import { Textarea } from './ui/textarea';
 
 export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
@@ -113,7 +109,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     }
   }
 
-  return <div className="space-y-5">
+  return <div className="flex flex-col gap-5">
     <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
     <AdminPageHeader
       eyebrow={messages.eyebrow}

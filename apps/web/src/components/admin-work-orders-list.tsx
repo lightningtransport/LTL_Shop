@@ -6,8 +6,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminWorkOrderItem } from './admin-work-order-item';
-import { AdminPageHeader, Button, Card, EmptyState, Input, LoadFailure, PageSkeleton, PriorityBadge, Select, WorkOrderStatusBadge } from './ui';
+import { AdminPageHeader, EmptyState, LoadFailure, PageSkeleton, PriorityBadge, WorkOrderStatusBadge } from './ui';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Input } from './ui/input';
+import { NativeSelect as Select } from './ui/native-select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { formatAdminDate } from '@/lib/admin-format';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { useAdminWorkOrders } from '@/lib/admin-data';
@@ -79,7 +84,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
     ? `${messages.filters} (${activeFilterCount})`
     : messages.filters;
 
-  return <div className="space-y-5">
+  return <div className="flex flex-col gap-5">
     <AdminPageHeader
       eyebrow={messages.eyebrow}
       title={messages.workOrdersTitle}
@@ -153,11 +158,34 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
       </SheetContent>
     </Sheet>
     {isLoading ? <PageSkeleton label={messages.workOrdersTitle} /> : error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : items.length === 0 ? <EmptyState><p>{messages.noWorkOrders}</p></EmptyState> : <>
-      <div className="space-y-3 xl:hidden">{items.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} />)}</div>
+      <div className="flex flex-col gap-3 xl:hidden">{items.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} />)}</div>
       <div className="hidden min-h-60 max-h-[calc(100dvh-22rem)] overflow-auto rounded-xl border bg-card xl:block">
-        <table className="w-full min-w-[900px] text-left text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-3">{messages.displayId}</th><th className="p-3">{messages.truck}</th><th className="p-3">{messages.category}</th><th className="p-3">{messages.status}</th><th className="p-3">{messages.priority}</th><th className="p-3">{messages.progress}</th><th className="p-3">{messages.mechanicsLabel}</th><th className="p-3">{messages.updated}</th></tr></thead>
-          <tbody>{items.map((item) => <tr key={item.id} className="border-t"><td className="p-3 font-semibold"><Link className="text-primary hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td><td className="p-3"><Link className="text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link></td><td className="p-3">{item.category.name}</td><td className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></td><td className="p-3"><PriorityBadge priority={item.priority}>{adminPriorityLabel(item.priority, messages)}</PriorityBadge></td><td className="p-3">{item.jobsCompleted}/{item.jobsTotal}</td><td className="max-w-48 truncate p-3">{item.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || '—'}</td><td className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</td></tr>)}</tbody>
-        </table>
+        <Table className="min-w-[900px]">
+          <TableHeader className="sticky top-0 bg-muted">
+            <TableRow>
+              <TableHead className="px-3">{messages.displayId}</TableHead>
+              <TableHead className="px-3">{messages.truck}</TableHead>
+              <TableHead className="px-3">{messages.category}</TableHead>
+              <TableHead className="px-3">{messages.status}</TableHead>
+              <TableHead className="px-3">{messages.priority}</TableHead>
+              <TableHead className="px-3">{messages.progress}</TableHead>
+              <TableHead className="px-3">{messages.mechanicsLabel}</TableHead>
+              <TableHead className="px-3">{messages.updated}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>{items.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell className="p-3 font-semibold"><Link className="text-primary hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></TableCell>
+              <TableCell className="p-3"><Link className="text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link></TableCell>
+              <TableCell className="p-3">{item.category.name}</TableCell>
+              <TableCell className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></TableCell>
+              <TableCell className="p-3"><PriorityBadge priority={item.priority}>{adminPriorityLabel(item.priority, messages)}</PriorityBadge></TableCell>
+              <TableCell className="p-3">{item.jobsCompleted}/{item.jobsTotal}</TableCell>
+              <TableCell className="max-w-48 truncate p-3">{item.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || '—'}</TableCell>
+              <TableCell className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</TableCell>
+            </TableRow>
+          ))}</TableBody>
+        </Table>
       </div>
       {hasMore ? <Button variant="outline" className="w-full" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.loadMore}…` : messages.loadMore}</Button> : null}
     </>}

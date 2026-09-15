@@ -6,7 +6,9 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from './empty';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from './field';
 import { Input } from './input';
 import { NativeSelect, NativeSelectOption } from './native-select';
+import { ScrollArea } from './scroll-area';
 import { sheetVariants } from './sheet';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './table';
 
 describe('shadcn form and feedback compositions', () => {
   it('associates fields, descriptions, invalid controls, and errors', () => {
@@ -59,5 +61,21 @@ describe('shadcn form and feedback compositions', () => {
   it('supports directional Sheet variants without manual overlay styles', () => {
     expect(sheetVariants({ side: 'bottom' })).toContain('slide-in-from-bottom-4');
     expect(sheetVariants({ side: 'right' })).toContain('slide-in-from-right-4');
+  });
+
+  it('provides semantic, scroll-safe data compositions', () => {
+    const markup = renderToStaticMarkup(
+      <ScrollArea className="h-48">
+        <Table>
+          <TableHeader><TableRow><TableHead>Truck</TableHead></TableRow></TableHeader>
+          <TableBody><TableRow><TableCell>104</TableCell></TableRow></TableBody>
+        </Table>
+      </ScrollArea>,
+    );
+
+    expect(markup).toContain('<table');
+    expect(markup).toContain('<th');
+    expect(markup).toContain('<td');
+    expect(markup).toContain('data-radix-scroll-area-viewport');
   });
 });

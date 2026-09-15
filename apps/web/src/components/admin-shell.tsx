@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ClipboardList, Gauge, History, Library, Menu, Truck, UsersRound, Warehouse } from 'lucide-react';
 import { AdminLocaleSwitcher } from './admin-locale-switcher';
-import { AppHeaderActions, Button } from './ui';
+import { AppHeaderActions } from './ui';
+import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 

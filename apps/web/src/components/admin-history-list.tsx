@@ -3,7 +3,11 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { AdminFilterToolbar, AdminPageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, Select, WorkOrderStatusBadge } from './ui';
+import { AdminFilterToolbar, AdminPageHeader, EmptyState, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { NativeSelect } from './ui/native-select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { formatAdminDate } from '@/lib/admin-format';
 import { useAdminHistory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -26,7 +30,7 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
       <AdminPageHeader eyebrow={messages.eyebrow} title={messages.historyTitle} subtitle={messages.historyDescription} />
       <AdminFilterToolbar
         className="md:flex-row"
@@ -43,40 +47,40 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
       >
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchHistory} aria-label={messages.searchHistory} />
-          <Select aria-label={messages.status} value={status} onChange={(event) => setStatus(event.target.value)}>
+          <NativeSelect aria-label={messages.status} value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="all">{messages.closedStatuses}</option>
             <option value="completed">{messages.woStatusCompleted}</option>
             <option value="cancelled">{messages.woStatusCancelled}</option>
-          </Select>
+          </NativeSelect>
         </div>
       </AdminFilterToolbar>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.historyTitle} /> : null}
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noHistory}</p></EmptyState> : null}
       {items.length ? (
-        <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[48rem] text-left text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="p-3 font-medium">{messages.displayId}</th>
-                <th className="p-3 font-medium">{messages.truck}</th>
-                <th className="p-3 font-medium">{messages.category}</th>
-                <th className="p-3 font-medium">{messages.status}</th>
-                <th className="p-3 font-medium">{messages.updatedAt}</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="rounded-xl border">
+          <Table className="min-w-[48rem]">
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="px-3">{messages.displayId}</TableHead>
+                <TableHead className="px-3">{messages.truck}</TableHead>
+                <TableHead className="px-3">{messages.category}</TableHead>
+                <TableHead className="px-3">{messages.status}</TableHead>
+                <TableHead className="px-3">{messages.updatedAt}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="p-3 font-semibold"><Link className="text-primary hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td>
-                  <td className="p-3">{item.truck.truckNumber}</td>
-                  <td className="p-3">{item.category.name}</td>
-                  <td className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></td>
-                  <td className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</td>
-                </tr>
+                <TableRow key={item.id}>
+                  <TableCell className="p-3 font-semibold"><Link className="text-primary hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></TableCell>
+                  <TableCell className="p-3">{item.truck.truckNumber}</TableCell>
+                  <TableCell className="p-3">{item.category.name}</TableCell>
+                  <TableCell className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></TableCell>
+                  <TableCell className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       ) : null}
       {hasMore ? <Button type="button" variant="outline" disabled={isValidating} onClick={() => setSize(size + 1)}>{messages.loadMore}</Button> : null}

@@ -41,7 +41,13 @@ import {
 } from '@/lib/admin-truck-readiness';
 import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { AdminTruckWorkPlan } from './admin-truck-work-plan';
-import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, Select, Textarea, WorkOrderStatusBadge } from './ui';
+import { AdminBackLink, AdminPageHeader, CompactEmpty, EmptyState, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, WorkOrderStatusBadge } from './ui';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Input } from './ui/input';
+import { NativeSelect as Select } from './ui/native-select';
+import { Textarea } from './ui/textarea';
 
 type Feedback = { kind: 'success' | 'error'; message: string };
 type RequirementDraft = { outcome: ReadinessRequirementOutcome; waiverReason: string; evidenceWorkOrderId: string };
@@ -175,7 +181,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
     void mutateRelated(isYardRelatedListKey);
   }
 
-  return <div className="space-y-5">
+  return <div className="flex flex-col gap-5">
     <AdminBackLink href="/admin/yard-operations">{messages.backToYardOperations}</AdminBackLink>
     <AdminPageHeader
       eyebrow={messages.yardOperationsTitle}

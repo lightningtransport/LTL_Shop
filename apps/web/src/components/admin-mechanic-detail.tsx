@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminBackLink, AdminPageHeader, CompactEmpty, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { ApiError } from '@/lib/api';
 import { useAdminMechanic } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -15,7 +18,7 @@ export function AdminMechanicDetail({ id, locale, messages }: { id: string; loca
   if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
       <AdminBackLink href="/admin/mechanics">{messages.backToMechanics}</AdminBackLink>
       <AdminPageHeader
         eyebrow={messages.eyebrow}

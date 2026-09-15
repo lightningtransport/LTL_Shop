@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { CatalogStatus } from '@ltl-shop/shared';
-import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminBackLink, AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ApiError } from '@/lib/api';
 import { useAdminCatalogCategory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -16,7 +19,7 @@ export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: strin
   if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
       <AdminBackLink href="/admin/catalog">{messages.backToCatalog}</AdminBackLink>
       <AdminPageHeader
         eyebrow={messages.eyebrow}

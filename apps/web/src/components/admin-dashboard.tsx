@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { AlertTriangle, CalendarCheck, ClipboardCheck, ClipboardList, Clock3, History, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminWorkOrderItem } from './admin-work-order-item';
-import { AdminPageHeader, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminPageHeader, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { formatAdminDate } from '@/lib/admin-format';
 import { useAdminDashboard } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -33,7 +35,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
   const canStandard = !!user?.capabilities.includes(AppCapability.MECHANIC_STANDARD);
   const canPm = !!user?.capabilities.includes(AppCapability.MECHANIC_PM);
 
-  return <div className="space-y-5">
+  return <div className="flex flex-col gap-5">
     <AdminPageHeader
       eyebrow={messages.eyebrow}
       title={messages.title}

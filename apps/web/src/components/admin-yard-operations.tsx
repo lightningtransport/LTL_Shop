@@ -23,7 +23,12 @@ import {
 } from '@/lib/yard-operations-routing';
 import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { formatVehicleYmm } from '@/lib/format';
-import { AdminPageHeader, Badge, Button, Card, CardDescription, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
+import { AdminPageHeader, CompactEmpty, EmptyState, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge } from './ui';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardDescription, CardTitle } from './ui/card';
+import { Input } from './ui/input';
+import { NativeSelect as Select } from './ui/native-select';
 
 const phaseMessageKey = {
   needs_evaluation: 'needsEvaluation',
@@ -99,7 +104,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 
-  return <div className="space-y-5">
+  return <div className="flex flex-col gap-5">
     <AdminPageHeader eyebrow={messages.eyebrow} title={messages.yardOperationsTitle} subtitle={messages.yardOperationsDescription} />
 
     <Card className="border-warning/50 bg-warning-surface p-3" role="region" aria-labelledby="yard-phase-1-title">

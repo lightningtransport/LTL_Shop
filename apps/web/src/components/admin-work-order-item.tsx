@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import type { AdminWorkOrderSummaryDto } from '@ltl-shop/shared';
-import { Button, PriorityBadge, WorkOrderStatusBadge } from './ui';
+import { PriorityBadge, WorkOrderStatusBadge } from './ui';
+import { Button } from './ui/button';
 import { formatAdminDate } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';

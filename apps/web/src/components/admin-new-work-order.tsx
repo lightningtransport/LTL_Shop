@@ -26,21 +26,16 @@ import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
   AdminBackLink,
   AdminPageHeader,
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
   EmptyState,
   InlineAlert,
-  Input,
-  Textarea,
 } from './ui';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Field, FieldGroup, FieldLabel } from './ui/field';
+import { Input } from './ui/input';
 import { NativeSelect } from './ui/native-select';
+import { Textarea } from './ui/textarea';
 
 type DraftJob = {
   key: string;

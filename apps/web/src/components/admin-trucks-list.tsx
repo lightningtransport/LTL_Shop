@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus } from '@ltl-shop/shared';
-import { AdminFilterToolbar, AdminPageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { AdminFilterToolbar, AdminPageHeader, EmptyState, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { useAdminTrucks } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
@@ -24,7 +27,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
       <AdminPageHeader eyebrow={messages.eyebrow} title={messages.trucksTitle} subtitle={messages.trucksDescription} />
       <AdminFilterToolbar
         onClear={() => router.replace('/admin/trucks')}
@@ -43,36 +46,36 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
       {isLoading && !data ? <PageSkeleton label={messages.trucksTitle} /> : null}
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p></EmptyState> : null}
       {items.length ? (
-        <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[40rem] text-left text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="p-3 font-medium">{messages.trucks}</th>
-                <th className="p-3 font-medium">{messages.operationalStatus}</th>
-                <th className="p-3 font-medium">{messages.make}</th>
-                <th className="p-3 font-medium">{messages.company}</th>
-                <th className="p-3 font-medium">{messages.currentWorkOrder}</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="rounded-xl border">
+          <Table className="min-w-[40rem]">
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="px-3">{messages.trucks}</TableHead>
+                <TableHead className="px-3">{messages.operationalStatus}</TableHead>
+                <TableHead className="px-3">{messages.make}</TableHead>
+                <TableHead className="px-3">{messages.company}</TableHead>
+                <TableHead className="px-3">{messages.currentWorkOrder}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {items.map((item) => (
-                <tr key={item.truck.id} className="border-t">
-                  <td className="p-3">
+                <TableRow key={item.truck.id}>
+                  <TableCell className="p-3">
                     <Link className="font-semibold text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link>
                     <p className="text-muted-foreground">
                       {[item.truck.year, item.truck.model].filter(Boolean).join(' ') || '—'}
                     </p>
-                  </td>
-                  <td className="p-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="p-3 text-muted-foreground">
                     {item.operationalStatus === TruckOperationalStatus.IN_SERVICE
                       ? messages.operationalStatusInService
                       : item.operationalStatus === TruckOperationalStatus.OFF_DUTY
                         ? messages.operationalStatusOffDuty
                         : messages.operationalStatusUnknown}
-                  </td>
-                  <td className="p-3 text-muted-foreground">{item.truck.make ?? '—'}</td>
-                  <td className="p-3 text-muted-foreground">{item.truck.company ?? '—'}</td>
-                  <td className="p-3">
+                  </TableCell>
+                  <TableCell className="p-3 text-muted-foreground">{item.truck.make ?? '—'}</TableCell>
+                  <TableCell className="p-3 text-muted-foreground">{item.truck.company ?? '—'}</TableCell>
+                  <TableCell className="p-3">
                     {item.openWorkOrder ? (
                       <>
                         <Link className="font-medium text-primary hover:underline" href={`/admin/work-orders/${item.openWorkOrder.id}`}>{item.openWorkOrder.displayId}</Link>
@@ -81,11 +84,11 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
                     ) : (
                       <span className="text-muted-foreground">{messages.noOpenWorkOrder}</span>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       ) : null}
       {hasMore ? <Button type="button" variant="outline" disabled={isValidating} onClick={() => setSize(size + 1)}>{messages.loadMore}</Button> : null}

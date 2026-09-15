@@ -23,7 +23,10 @@ import {
   type WorkPlanJobDraft,
 } from '@/lib/work-plan';
 import { WorkPlanAddWork } from './work-plan-add-work';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty } from './ui';
+import { CompactEmpty } from './ui';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 
 type Feedback = { kind: 'success' | 'error'; message: string };
 
