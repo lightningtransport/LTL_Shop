@@ -224,7 +224,8 @@ Changes:
   Priority, Notes, Confirm.
 - Manager WO detail: Work Plan grouped by Category with per-Job status,
   assignee, blocker; inline assignment; Add Job; Pause/Resume; Update Priority.
-- Use only `apps/web/src/components/ui.tsx` primitives and semantic tokens.
+- Use only direct `apps/web/src/components/ui/*` primitives, documented
+  compositions in `ui/composites.tsx`, and semantic tokens.
 - EN/ES messages; keep parity test green.
 
 Acceptance:

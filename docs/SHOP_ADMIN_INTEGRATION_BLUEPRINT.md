@@ -49,7 +49,7 @@ En LTL Shop Mechanics:
 - `apps/api/src/auth/auth.guard.ts`
 - `apps/api/src/work-orders/work-orders.controller.ts`
 - `apps/api/src/work-orders/work-orders.service.ts`
-- `apps/web/src/components/ui.tsx`
+- `apps/web/src/components/ui/`
 - `apps/web/src/app/globals.css`
 - `apps/web/tailwind.config.js`
 - `apps/web/src/app/layout.tsx`
@@ -90,7 +90,7 @@ el estado CURRENT.
 
 El frontend ya mantiene un sistema shadcn implementado como código fuente local, no como una dependencia visual externa. Su base verificada incluye:
 
-- primitives compartidos en `apps/web/src/components/ui.tsx`;
+- primitives compartidos en `apps/web/src/components/ui/` y composiciones en `ui/composites.tsx`;
 - Radix para comportamiento accesible y `class-variance-authority` para variantes;
 - `cn()` con `clsx` y `tailwind-merge`;
 - Lucide para iconografía;
@@ -452,7 +452,7 @@ No mezclar historial Ninox y datos LTL en un mismo KPI sin mapping, deduplicaci�
 ## 12. UX y diseño
 
 - El sistema de diseño shadcn vigente de LTL Shop Mechanics es la única fuente de primitives, tokens y estilos para Shop Admin.
-- Reutilizar primero los componentes exportados por `apps/web/src/components/ui.tsx`, incluidos Button, Input, Textarea, Label, Select, Card, Badge y Dialog, además de los patterns compartidos de loading, error y navegación existentes.
+- Reutilizar primero los primitives directos en `apps/web/src/components/ui/` (`Button`, `Input`, `Textarea`, `Label`, `NativeSelect`, `Card`, `Badge`, `Dialog`, `Sheet`, `Table`) y las composiciones documentadas en `ui/composites.tsx`, además de los patterns compartidos de loading, error y navegación existentes.
 - Crear nuevos primitives shadcn compartidos solamente cuando no exista un equivalente adecuado; no construir copias locales por pantalla ni controles raw si existe un primitive apropiado.
 - Usar exclusivamente las variables semánticas de `globals.css` y sus mappings de Tailwind. No introducir colores hex/OKLCH aislados en pantallas Admin ni copiar los tokens navy/amber del prototipo.
 - Conservar Inter, JetBrains Mono, radios, sombras, focus ring, light/dark theme y densidad visual actual. No sustituirlos por Geist u otra tipografía del prototipo.

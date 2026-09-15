@@ -204,7 +204,8 @@ Do:
 - Manager WO detail (apps/web/src/components/admin-work-order-detail.tsx): Work
   Plan grouped by Category with per-Job status, assignee, blocker; inline
   assignment; Add Job; Pause/Resume; Update Priority.
-- Use only apps/web/src/components/ui.tsx primitives and semantic tokens.
+- Use only direct `apps/web/src/components/ui/*` primitives, documented
+  compositions in `ui/composites.tsx`, and semantic tokens.
 - EN/ES messages; keep the parity test green.
 
 Acceptance:

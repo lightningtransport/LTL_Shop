@@ -168,7 +168,7 @@ existing admin mutation keep working during soft cutover.
   progressive disclosure.
 - Manager WO detail ([apps/web/src/components/admin-work-order-detail.tsx](../../apps/web/src/components/admin-work-order-detail.tsx)):
   Work Plan grouped by Category, inline assignment, pause/resume.
-- All UI uses existing primitives in [apps/web/src/components/ui.tsx](../../apps/web/src/components/ui.tsx). EN/ES
+- All UI uses existing primitives in [`apps/web/src/components/ui/`](../../apps/web/src/components/ui/) and documented compositions in [`ui/composites.tsx`](../../apps/web/src/components/ui/composites.tsx). EN/ES
   message parity is enforced by
   [apps/web/src/lib/admin-routing.spec.ts](../../apps/web/src/lib/admin-routing.spec.ts) L31-35.
 
