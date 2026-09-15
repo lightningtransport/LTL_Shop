@@ -197,9 +197,12 @@ export class AdminController {
 
   @Get('trucks/:id')
   async yardTruck(@Req() request: Request, @Param('id') id: string) {
-    const detail = await this.yardOperations.detail(id);
-    if (!isYardWorkPlanSlice1Enabled()) return detail;
-    return { ...detail, workPlan: await this.workPlan.get(request.user!, id) };
+    if (!isYardWorkPlanSlice1Enabled()) return this.yardOperations.detail(id);
+    const [detail, workPlan] = await Promise.all([
+      this.yardOperations.detail(id),
+      this.workPlan.get(request.user!, id),
+    ]);
+    return { ...detail, workPlan };
   }
 
   @Get('trucks/:id/work-plan')
