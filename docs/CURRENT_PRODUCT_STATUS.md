@@ -118,8 +118,12 @@ TARGET authorization/UX.
   Work Plan jobs from Admin (LTR-38).
 - When `YARD_WORK_PLAN_SLICE2` is on, Yard board/list top-level `phase` and
   Ready filters/counts use the **same** `deriveWorkPlan` rules as Truck
-  Detail (including `shop_work`). Flag off leaves Phase 1 six-gate board
-  behavior. Gate mutation APIs stay live; UI cutover is LTR-40.
+  Detail (including `shop_work`). The page DTO also sets
+  `workPlanBoardCutover`, and Admin Kanban/list columns switch to Work Plan
+  phases (Inspection → Shop Work → Alignment → Detailing → Ready; QC only
+  when present). Flag off leaves Phase 1 six-gate board behavior. Gate
+  mutation APIs stay live; Truck Detail six-gate editor stays hidden when
+  Slice 1 `workPlan` is present.
 - Yard Phase (Phase 1 / Slice 2 off) is derived for presentation as the next
   unresolved readiness gate. It is not a persisted Work Order status, not a
   Job Category, and does not create another Work Order. An open Work Order is

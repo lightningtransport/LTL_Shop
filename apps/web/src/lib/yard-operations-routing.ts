@@ -1,4 +1,4 @@
-import { Priority, ReadinessPhase, YardReadinessFilter, WorkOrderStatus } from '@ltl-shop/shared';
+import { Priority, ReadinessPhase, WorkPlanPhase, YardReadinessFilter, WorkOrderStatus } from '@ltl-shop/shared';
 
 export type YardOperationsFilters = {
   search: string;
@@ -50,6 +50,7 @@ export function countOverflowYardOperationsFilters(filters: YardOperationsFilter
   return YARD_OVERFLOW_FILTER_KEYS.filter((key) => filters[key] !== DEFAULT_YARD_OPERATIONS_FILTERS[key]).length;
 }
 
+/** Phase 1 six-gate board columns (flag off). */
 export const YARD_PHASES = [
   ReadinessPhase.NEEDS_EVALUATION,
   ReadinessPhase.INSPECTION,
@@ -61,6 +62,36 @@ export const YARD_PHASES = [
   ReadinessPhase.READY_FOR_APPROVAL,
   ReadinessPhase.READY_TO_GO,
 ] as const;
+
+/**
+ * Slice 2 Work Plan board columns (opción A). QC is appended only when at least
+ * one truck is currently in that phase.
+ */
+export const WORK_PLAN_YARD_PHASES = [
+  WorkPlanPhase.INSPECTION,
+  WorkPlanPhase.SHOP_WORK,
+  WorkPlanPhase.ALIGNMENT,
+  WorkPlanPhase.DETAILING,
+  WorkPlanPhase.READY_TO_GO,
+] as const;
+
+export type YardBoardColumnPhase =
+  | (typeof YARD_PHASES)[number]
+  | (typeof WORK_PLAN_YARD_PHASES)[number]
+  | typeof WorkPlanPhase.QUALITY_CHECK;
+
+export function yardPhasesForBoard(options: {
+  workPlanBoardCutover: boolean;
+  itemPhases?: ReadonlyArray<string>;
+}): YardBoardColumnPhase[] {
+  if (!options.workPlanBoardCutover) return [...YARD_PHASES];
+  const phases: YardBoardColumnPhase[] = [...WORK_PLAN_YARD_PHASES];
+  if (options.itemPhases?.some((phase) => phase === WorkPlanPhase.QUALITY_CHECK)) {
+    const readyIndex = phases.indexOf(WorkPlanPhase.READY_TO_GO);
+    phases.splice(readyIndex, 0, WorkPlanPhase.QUALITY_CHECK);
+  }
+  return phases;
+}
 
 export const YARD_READINESS_FILTERS = [
   YardReadinessFilter.NOT_STARTED,

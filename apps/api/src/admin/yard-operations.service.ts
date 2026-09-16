@@ -729,6 +729,7 @@ export class YardOperationsService {
       counts,
       incomingTrucks: this.unavailable(),
       upcomingDepartures: this.unavailable(),
+      workPlanBoardCutover: isYardWorkPlanSlice2Enabled(),
     };
   }
 

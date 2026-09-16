@@ -21,7 +21,7 @@ import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessme
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
 import { formatVehicleYmm } from '@/lib/format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
-import { isWorkPlanSliceEnabled } from '@/lib/work-plan';
+import { isWorkPlanSliceEnabled, workPlanPhaseLabel } from '@/lib/work-plan';
 import {
   collapseReadinessBlockers,
   evidenceRequired,
@@ -39,7 +39,7 @@ import {
   withGateName,
   type CompletedWorkOrderOption,
 } from '@/lib/admin-truck-readiness';
-import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
+import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { AdminTruckWorkPlan } from './admin-truck-work-plan';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, PageSkeleton, PhaseBadge, PriorityBadge, Select, Textarea, WorkOrderStatusBadge } from './ui';
 
@@ -186,7 +186,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
           {workPlan.readiness === 'ready' ? messages.workPlanReady : messages.workPlanNotReady}
         </Badge>
       ) : (
-        <PhaseBadge phase={data.phase}>{phaseLabel(data.phase, messages)}</PhaseBadge>
+        <PhaseBadge phase={data.phase}>{workPlanPhaseLabel(data.phase, messages)}</PhaseBadge>
       )}
     />
 

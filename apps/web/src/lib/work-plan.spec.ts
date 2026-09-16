@@ -87,6 +87,7 @@ describe('LTR-33 Work Plan copy helpers', () => {
     expect(workPlanJobUiStatusLabel('completed', en)).toBe('Completed');
     expect(workPlanJobUiStatusLabel('pending', es)).toBe('Pendiente');
     expect(workPlanPhaseLabel('shop_work', en)).toBe('Shop Work');
+    expect(workPlanPhaseLabel('shop_work', es)).toBe('Trabajo de taller');
     expect(workPlanPhaseLabel('inspection', es)).toBe('Inspección');
   });
 

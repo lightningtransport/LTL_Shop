@@ -364,6 +364,11 @@ export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto>
   counts: YardOperationsCountsDto;
   incomingTrucks: YardOperationsUnavailableDto;
   upcomingDepartures: YardOperationsUnavailableDto;
+  /**
+   * Slice 2 board cutover (`YARD_WORK_PLAN_SLICE2`). When true, board columns
+   * follow Work Plan phases (incl. `shop_work`) instead of Phase 1 gates.
+   */
+  workPlanBoardCutover?: boolean;
 }
 
 export interface AdminTruckSummaryDto {
