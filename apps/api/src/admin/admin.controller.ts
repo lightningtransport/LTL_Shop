@@ -81,6 +81,12 @@ export class AdminController {
     return this.admin.cancelJob(request.user!, id, body);
   }
 
+  @Post('jobs/:id/complete')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  completeJob(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.admin.completeJob(request.user!, id, body);
+  }
+
   @Post('work-orders/:id/reopen')
   reopenWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.reopenWorkOrder(request.user!, id, body);

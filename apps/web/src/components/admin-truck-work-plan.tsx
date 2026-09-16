@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import {
+  JobStatus,
   WorkPlanInspectionOutcome,
   type RecordWorkPlanInspectionInput,
   type TruckWorkPlanDto,
   type WorkPlanMandatoryPhaseDto,
 } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
-import { addAdminWorkPlanJobs, recordAdminWorkPlanInspection } from '@/lib/admin-data';
+import { addAdminWorkPlanJobs, completeAdminJob, fetchAdminTruckWorkPlan, recordAdminWorkPlanInspection } from '@/lib/admin-data';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -110,6 +111,21 @@ export function AdminTruckWorkPlan({
     }
   }
 
+  async function handleCompleteJob(jobId: string) {
+    if (!plan.workOrder) return;
+    try {
+      await run(`complete-${jobId}`, () => completeAdminJob(jobId, { expectedVersion: plan.workOrder!.version }));
+      const next = await fetchAdminTruckWorkPlan(truckId);
+      await onPlanUpdated(next);
+      setFeedback({ kind: 'success', message: messages.workPlanJobCompleted });
+    } catch (errorValue) {
+      setFeedback({
+        kind: 'error',
+        message: mutationError(errorValue, messages.workPlanCompleteJobFailed, messages.workPlanCompleteJobForbidden),
+      });
+    }
+  }
+
   return (
     <section aria-labelledby="truck-work-plan-title">
       <Card>
@@ -183,9 +199,21 @@ export function AdminTruckWorkPlan({
                       <p className="font-medium">{job.displayName}</p>
                       <p className="text-xs text-muted-foreground">{job.category.name}</p>
                     </div>
-                    <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)} className="normal-case tracking-normal">
-                      {workPlanJobUiStatusLabel(job.uiStatus, messages)}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)} className="normal-case tracking-normal">
+                        {workPlanJobUiStatusLabel(job.uiStatus, messages)}
+                      </Badge>
+                      {canAddWork && plan.workOrder && job.status === JobStatus.TO_DO ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={Boolean(pendingAction)}
+                          onClick={() => void handleCompleteJob(job.id)}
+                        >
+                          {messages.completeJobAction}
+                        </Button>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>
