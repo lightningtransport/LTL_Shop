@@ -14,8 +14,12 @@ import {
   YardPresenceState,
   YardReadinessFilter,
   TruckOperationalStatus,
+  WorkPlanNotReadyReason,
+  WorkPlanPhase,
+  WorkPlanReadiness,
   type AdminTruckDetailDto,
   type AdminWorkOrderSummaryDto,
+  type ReadinessBlockerDto,
   type YardOperationsPageDto,
   type YardOperationsTruckDto,
   type YardOperationsUnavailableDto,
@@ -45,6 +49,11 @@ import {
   READINESS_REQUIREMENT_TYPES,
   toReadinessAssessmentDto,
 } from './yard-operations-derivation';
+import {
+  deriveWorkPlan,
+  type WorkPlanDerivationInput,
+} from './yard-work-plan-derivation';
+import { isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
 
 const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
   OR: [
@@ -58,7 +67,11 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const summaryWorkOrderInclude = {
   truck: true,
   primaryCategory: true,
-  jobs: { select: { status: true } },
+  // Slice 2 board derivation needs category/name; Phase 1 summary only uses status.
+  jobs: {
+    include: { category: { select: { id: true, name: true } } },
+    orderBy: { addedAt: 'asc' as const },
+  },
   mechanics: {
     where: { removedAt: null },
     include: { mechanic: { select: { id: true, name: true } } },
@@ -139,7 +152,21 @@ type YardTruckRow = {
 };
 
 type YardOperationsCountRow = {
-  workOrders: Array<{ id: string; status: string }>;
+  workOrders: Array<{
+    id: string;
+    displayId?: string;
+    status: string;
+    version?: number;
+    primaryCategory?: { id: string; name: string };
+    jobs?: Array<{
+      id: string;
+      catalogJobId: string | null;
+      displayName: string;
+      customDescription: string | null;
+      status: string;
+      category: { id: string; name: string };
+    }>;
+  }>;
   readinessAssessments: Array<{
     status: string;
     readyAt: Date | string | null;
@@ -734,10 +761,7 @@ export class YardOperationsService {
     const linkedWorkOrders = (assessment?.workOrders.length ? assessment.workOrders : row.workOrders)
       .map(toAdminWorkOrderSummary);
     const openOnTruck = row.workOrders.map(toAdminWorkOrderSummary);
-    const derivation = deriveReadiness({
-      assessment: mappedAssessment,
-      linkedWorkOrders: openOnTruck.length ? openOnTruck : linkedWorkOrders,
-    });
+    const linkedForDerivation = openOnTruck.length ? openOnTruck : linkedWorkOrders;
     const activeWorkOrder = row.workOrders[0] ? toAdminWorkOrderSummary(row.workOrders[0]) : null;
     const latestService = row.serviceStatusEvents[0];
     const operationalStatus = latestService?.status === 'in_service'
@@ -745,6 +769,25 @@ export class YardOperationsService {
       : latestService?.status === 'off_duty'
         ? TruckOperationalStatus.OFF_DUTY
         : TruckOperationalStatus.UNKNOWN;
+
+    if (isYardWorkPlanSlice2Enabled()) {
+      const workPlan = deriveWorkPlan(workPlanInputFromYardRow(row));
+      return {
+        truck: toTruckDto(row),
+        presence: { state: YardPresenceState.UNKNOWN, provenance: 'phase_1_unavailable' },
+        operationalStatus,
+        operationalStatusAt: latestService?.occurredAt.toISOString() ?? null,
+        assessment: mappedAssessment,
+        phase: workPlan.phase,
+        blockers: workPlanBoardBlockers(workPlan, linkedForDerivation),
+        activeWorkOrder,
+      };
+    }
+
+    const derivation = deriveReadiness({
+      assessment: mappedAssessment,
+      linkedWorkOrders: linkedForDerivation,
+    });
     return {
       truck: toTruckDto(row),
       presence: { state: YardPresenceState.UNKNOWN, provenance: 'phase_1_unavailable' },
@@ -758,14 +801,16 @@ export class YardOperationsService {
   }
 
   private matchesDerivedFilters(item: YardOperationsTruckDto, query: AdminYardOperationsQuery) {
-    const readiness = item.assessment?.status === 'ready' || isResidualReady(item.assessment)
-      ? YardReadinessFilter.READY
-      : item.assessment?.status === 'under_review'
-        ? YardReadinessFilter.UNDER_REVIEW
-        : YardReadinessFilter.NOT_STARTED;
+    const readiness = isYardWorkPlanSlice2Enabled()
+      ? workPlanBoardReadinessFilter(item.phase)
+      : item.assessment?.status === 'ready' || isResidualReady(item.assessment)
+        ? YardReadinessFilter.READY
+        : item.assessment?.status === 'under_review'
+          ? YardReadinessFilter.UNDER_REVIEW
+          : YardReadinessFilter.NOT_STARTED;
     const blocked = item.blockers.length > 0;
     return (!query.readiness || query.readiness.includes(readiness as YardReadinessFilter))
-      && (!query.phase || query.phase.includes(item.phase))
+      && (!query.phase || (query.phase as string[]).includes(item.phase))
       && (query.blocked === undefined || query.blocked === blocked);
   }
 
@@ -791,7 +836,8 @@ export class YardOperationsService {
     if (query.mechanicId) {
       filters.push({ workOrders: { some: { mechanics: { some: { mechanicId: query.mechanicId, removedAt: null } } } } });
     }
-    if (query.readiness) {
+    // Slice 2 Ready is Work Plan derived — assessment Prisma filters would miss auto-Ready trucks.
+    if (query.readiness && !isYardWorkPlanSlice2Enabled()) {
       const readinessFilters: Prisma.TruckWhereInput[] = [];
       if (query.readiness.includes(YardReadinessFilter.NOT_STARTED)) {
         readinessFilters.push({ readinessAssessments: { none: ACTIVE_OR_RESIDUAL_READY } });
@@ -835,6 +881,10 @@ export class YardOperationsService {
   }
 
   private async getCounts() {
+    if (isYardWorkPlanSlice2Enabled()) {
+      return this.getWorkPlanBoardCounts();
+    }
+
     const [presenceUnknown, rows] = await Promise.all([
       this.prisma.truck.count(),
       this.prisma.truck.findMany({
@@ -881,9 +931,96 @@ export class YardOperationsService {
     return { underReview, readyToGo, blocked, presenceUnknown };
   }
 
+  private async getWorkPlanBoardCounts() {
+    const [presenceUnknown, rows] = await Promise.all([
+      this.prisma.truck.count(),
+      this.prisma.truck.findMany({
+        include: yardTruckInclude as never,
+      }) as unknown as Promise<YardTruckRow[]>,
+    ]);
+
+    let underReview = 0;
+    let readyToGo = 0;
+    let blocked = 0;
+    for (const row of rows) {
+      const workPlan = deriveWorkPlan(workPlanInputFromYardRow(row));
+      const readiness = workPlanBoardReadinessFilter(workPlan.phase);
+      if (readiness === YardReadinessFilter.UNDER_REVIEW) underReview += 1;
+      if (readiness === YardReadinessFilter.READY) readyToGo += 1;
+      const openSummaries = row.workOrders.map(toAdminWorkOrderSummary);
+      if (workPlanBoardBlockers(workPlan, openSummaries).length > 0) blocked += 1;
+    }
+    return { underReview, readyToGo, blocked, presenceUnknown };
+  }
+
   private unavailable(): YardOperationsUnavailableDto {
     return { status: 'unavailable', reason: 'integration_not_connected' };
   }
+}
+
+function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
+  const workOrder = row.workOrders[0] ?? null;
+  const assessment = row.readinessAssessments[0] ?? null;
+  const inspectionRequirement = assessment?.requirements.find(
+    (requirement) => requirement.type === ReadinessRequirementType.INSPECTION,
+  );
+  return {
+    workOrder: workOrder
+      ? {
+          id: workOrder.id,
+          displayId: workOrder.displayId,
+          status: workOrder.status as WorkOrderStatus,
+          version: workOrder.version,
+          primaryCategoryName: workOrder.primaryCategory.name,
+        }
+      : null,
+    jobs: workOrder?.primaryCategory.name === 'PM'
+      ? []
+      : (workOrder?.jobs ?? []).map((job) => ({
+          id: job.id,
+          catalogJobId: job.catalogJobId,
+          displayName: job.displayName,
+          customDescription: job.customDescription,
+          category: job.category,
+          status: job.status as never,
+        })),
+    inspectionRequirementOutcome: (inspectionRequirement?.outcome as ReadinessRequirementOutcome | undefined) ?? null,
+  };
+}
+
+function workPlanBoardReadinessFilter(phase: string): YardReadinessFilter {
+  if (phase === WorkPlanPhase.READY_TO_GO) return YardReadinessFilter.READY;
+  if (phase === WorkPlanPhase.INSPECTION) return YardReadinessFilter.NOT_STARTED;
+  return YardReadinessFilter.UNDER_REVIEW;
+}
+
+function workPlanBoardBlockers(
+  workPlan: ReturnType<typeof deriveWorkPlan>,
+  openWorkOrders: AdminWorkOrderSummaryDto[],
+): ReadinessBlockerDto[] {
+  if (workPlan.readiness === WorkPlanReadiness.READY) return [];
+
+  const blockers: ReadinessBlockerDto[] = openWorkOrders.map((workOrder) => ({
+    kind: 'open_work_order',
+    workOrderId: workOrder.id,
+    status: workOrder.status,
+    priority: workOrder.priority,
+    categoryName: workOrder.category.name,
+    pauseReason: workOrder.currentPause?.reason ?? null,
+  }));
+
+  const reasonType: Partial<Record<WorkPlanNotReadyReason, ReadinessRequirementType>> = {
+    [WorkPlanNotReadyReason.INSPECTION_PENDING]: ReadinessRequirementType.INSPECTION,
+    [WorkPlanNotReadyReason.JOBS_REMAINING]: ReadinessRequirementType.REQUIRED_REPAIRS,
+    [WorkPlanNotReadyReason.ALIGNMENT_PENDING]: ReadinessRequirementType.ALIGNMENT,
+    [WorkPlanNotReadyReason.DETAILING_PENDING]: ReadinessRequirementType.DETAILING,
+    [WorkPlanNotReadyReason.QC_PENDING]: ReadinessRequirementType.QUALITY_CHECK,
+  };
+  const requirementType = reasonType[workPlan.readyReason];
+  if (requirementType) {
+    blockers.push({ kind: 'required_requirement', requirementType });
+  }
+  return blockers;
 }
 
 function toAdminWorkOrderSummary(row: SummaryWorkOrderRow): AdminWorkOrderSummaryDto {

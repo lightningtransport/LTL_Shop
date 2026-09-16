@@ -112,23 +112,32 @@ TARGET authorization/UX.
   derived from `readyReason` plus mandatory Alignment and Detailing (QC only
   if a QC job is on the plan). Mark Ready is not the Manager path in that
   UI. With the flag off, Phase 1 six-gate Readiness is unchanged. Board
-  columns stay on the six-gate derivation until a later cutover. The hooks
-  live at `GET/POST /api/admin/trucks/:id/work-plan*` (LTR-34 / PR #103).
-- Yard Phase is derived for presentation as the next unresolved readiness
-  gate. It is not a persisted Work Order status, not a Job Category, and
-  does not create another Work Order. An open Work Order is a blocker, not
-  the phase. All-resolved assessments that are not yet approved show
-  **Ready for Approval**. `Ready to Go` is the explicit approval, and a
-  closed Ready assessment stays in that column until new open work appears.
-- `Ready to Go` is an explicit readiness approval. Completing a Work Order does
-  not establish physical presence, departure, or return to service.
+  columns stay on the six-gate derivation until `YARD_WORK_PLAN_SLICE2` is
+  on (LTR-39). The hooks live at `GET/POST /api/admin/trucks/:id/work-plan*`
+  (LTR-34 / PR #103). Managers with `work_orders.manage` can complete open
+  Work Plan jobs from Admin (LTR-38).
+- When `YARD_WORK_PLAN_SLICE2` is on, Yard board/list top-level `phase` and
+  Ready filters/counts use the **same** `deriveWorkPlan` rules as Truck
+  Detail (including `shop_work`). Flag off leaves Phase 1 six-gate board
+  behavior. Gate mutation APIs stay live; UI cutover is LTR-40.
+- Yard Phase (Phase 1 / Slice 2 off) is derived for presentation as the next
+  unresolved readiness gate. It is not a persisted Work Order status, not a
+  Job Category, and does not create another Work Order. An open Work Order is
+  a blocker, not the phase. All-resolved assessments that are not yet
+  approved show **Ready for Approval**. `Ready to Go` is the explicit
+  approval, and a closed Ready assessment stays in that column until new open
+  work appears.
+- `Ready to Go` is an explicit readiness approval under Phase 1. Completing a
+  Work Order does not establish physical presence, departure, or return to
+  service. Under Slice 2, Ready on the board is automatic from the Work Plan.
 - Additive LTR-34 Slice 1 Work Plan hooks are on main (PR #103) for Frontend
-  (LTR-33) and do **not** replace Phase 1. `GET/POST
+  (LTR-33) and do **not** replace Phase 1 until Slice 2. `GET/POST
   /api/admin/trucks/:id/work-plan*` read the open Work Order jobs and derive
   Ready automatically (Alignment + Detailing always required; Shop Work is a
   Work Plan phase). `YARD_WORK_PLAN_SLICE1` (default off) is required before
-  Truck Detail also returns `workPlan`. `updateRequirement` / Mark Ready stay
-  in place. See `docs/LTR-34_WORK_PLAN_SLICE1_PROPOSAL.md`.
+  Truck Detail also returns `workPlan`. `YARD_WORK_PLAN_SLICE2` (default off)
+  cuts board/list phase over to that derivation. `updateRequirement` / Mark
+  Ready stay in place. See `docs/LTR-34_WORK_PLAN_SLICE1_PROPOSAL.md`.
 
 ### Authentication and profile
 
