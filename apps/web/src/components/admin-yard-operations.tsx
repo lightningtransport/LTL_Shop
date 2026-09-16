@@ -14,14 +14,16 @@ import {
   DEFAULT_YARD_OPERATIONS_FILTERS,
   readYardOperationsFilters,
   YARD_OVERFLOW_FILTER_KEYS,
-  YARD_PHASES,
   YARD_PRIORITIES,
   YARD_READINESS_FILTERS,
   YARD_TOOLBAR_FILTER_KEYS,
   YARD_WORK_ORDER_STATUSES,
+  yardPhasesForBoard,
+  type YardBoardColumnPhase,
   type YardOperationsFilters,
 } from '@/lib/yard-operations-routing';
-import { adminPriorityLabel, phaseLabel, workOrderStatusLabel } from '@/lib/status-chips';
+import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
+import { workPlanPhaseLabel } from '@/lib/work-plan';
 import { formatVehicleYmm } from '@/lib/format';
 import { AdminPageHeader, Badge, Button, Card, CardDescription, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
 
@@ -35,7 +37,8 @@ const phaseMessageKey = {
   quality_check: 'qualityCheck',
   ready_for_approval: 'readyForApproval',
   ready_to_go: 'readyToGo',
-} as const satisfies Record<(typeof YARD_PHASES)[number], keyof AdminMessages>;
+  shop_work: 'shopWork',
+} as const satisfies Record<YardBoardColumnPhase, keyof AdminMessages>;
 
 const readinessMessageKey = {
   not_started: 'notStarted',
@@ -64,6 +67,14 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
   const lastPage = data?.[data.length - 1];
   const hasMore = Boolean(lastPage?.nextCursor);
   const counts = data?.[0]?.counts;
+  const workPlanBoardCutover = data?.[0]?.workPlanBoardCutover === true;
+  const boardPhases = useMemo(
+    () => yardPhasesForBoard({
+      workPlanBoardCutover,
+      itemPhases: items.map((item) => item.phase),
+    }),
+    [workPlanBoardCutover, items],
+  );
   const incomingUnavailable = data?.[0]?.incomingTrucks.status === 'unavailable';
   const departuresUnavailable = data?.[0]?.upcomingDepartures.status === 'unavailable';
   const appliedFilters = useMemo(() => readYardOperationsFilters(searchParams), [searchParams]);
@@ -156,7 +167,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
               </span>
             </label>
             <div className="hidden min-w-0 xl:contents">
-              <YardFilterFields filters={filters} messages={messages} onChange={updateFilter} variant="toolbar" compact />
+              <YardFilterFields filters={filters} messages={messages} onChange={updateFilter} variant="toolbar" compact boardPhases={boardPhases} />
               <Button
                 type="button"
                 variant="outline"
@@ -204,7 +215,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
         onClose={() => setFiltersOpen(false)}
       >
         <form className="space-y-3" onSubmit={applyFilters}>
-          <YardFilterFields filters={filters} messages={messages} onChange={updateFilter} variant="sheet" />
+          <YardFilterFields filters={filters} messages={messages} onChange={updateFilter} variant="sheet" boardPhases={boardPhases} />
           <div className="flex items-end justify-end gap-2 border-t pt-3">
             <Button type="button" variant="ghost" onClick={clearFilters}>{messages.clearFilters}</Button>
             <Button type="submit">{messages.applyFilters}</Button>
@@ -222,13 +233,20 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
         <section className={view === 'board' ? 'hidden xl:block' : 'hidden'} aria-labelledby="yard-board-title">
           <div className="mb-2"><h2 id="yard-board-title" className="font-display text-lg font-semibold">{messages.yardBoard}</h2></div>
           <div className="overflow-x-auto rounded-xl border bg-muted/40 p-2">
-            <div className="grid min-w-[1530px] grid-cols-9 gap-2">
-              {YARD_PHASES.map((phase) => {
+            <div
+              className="grid gap-2"
+              style={{
+                gridTemplateColumns: `repeat(${boardPhases.length}, minmax(160px, 1fr))`,
+                minWidth: `${boardPhases.length * 170}px`,
+              }}
+              data-work-plan-board={workPlanBoardCutover ? 'true' : 'false'}
+            >
+              {boardPhases.map((phase) => {
                 const phaseItems = items.filter((item) => item.phase === phase);
                 return (
                   <div key={phase} className="min-w-0" data-phase={phase}>
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <h3 className="font-display text-sm font-semibold">{phaseLabel(phase, messages)}</h3>
+                      <h3 className="font-display text-sm font-semibold">{workPlanPhaseLabel(phase, messages)}</h3>
                       <Badge variant="secondary">{phaseItems.length}</Badge>
                     </div>
                     <div className="space-y-2">
@@ -245,7 +263,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
         </section>
         <section className={view === 'list' ? 'space-y-3' : 'space-y-3 xl:hidden'} aria-labelledby="yard-list-title">
           <div><h2 id="yard-list-title" className="font-display text-lg font-semibold">{messages.yardGroupedList}</h2></div>
-          {YARD_PHASES.map((phase) => {
+          {boardPhases.map((phase) => {
             const phaseItems = items.filter((item) => item.phase === phase);
             return phaseItems.length ? (
               <section key={phase} aria-labelledby={`yard-group-${phase}`}>
@@ -270,18 +288,20 @@ function YardFilterFields({
   onChange,
   variant,
   compact = false,
+  boardPhases,
 }: {
   filters: YardOperationsFilters;
   messages: AdminMessages;
   onChange: (key: keyof YardOperationsFilters, value: string) => void;
   variant: 'toolbar' | 'sheet';
   compact?: boolean;
+  boardPhases: ReadonlyArray<YardBoardColumnPhase>;
 }) {
   const fieldClass = compact ? 'min-w-0 flex-1 space-y-1' : 'space-y-1';
   const labelClass = compact ? 'block text-xs font-medium' : 'text-sm font-medium';
   const controlClass = compact ? 'min-h-9 px-3 pr-9' : undefined;
   const render = (key: keyof YardOperationsFilters) => (
-    <YardFilterField key={key} fieldKey={key} filters={filters} messages={messages} onChange={onChange} fieldClass={fieldClass} labelClass={labelClass} controlClass={controlClass} />
+    <YardFilterField key={key} fieldKey={key} filters={filters} messages={messages} onChange={onChange} fieldClass={fieldClass} labelClass={labelClass} controlClass={controlClass} boardPhases={boardPhases} />
   );
 
   if (variant === 'toolbar') {
@@ -302,6 +322,7 @@ function YardFilterField({
   fieldClass,
   labelClass,
   controlClass,
+  boardPhases,
 }: {
   fieldKey: keyof YardOperationsFilters;
   filters: YardOperationsFilters;
@@ -310,13 +331,14 @@ function YardFilterField({
   fieldClass: string;
   labelClass: string;
   controlClass?: string;
+  boardPhases: ReadonlyArray<YardBoardColumnPhase>;
 }) {
   if (fieldKey === 'search') return null;
   if (fieldKey === 'readiness') {
     return <label className={fieldClass}><span className={labelClass} title={messages.readiness}>{messages.readiness}</span><Select className={controlClass} aria-label={messages.readiness} value={filters.readiness} onChange={(event) => onChange('readiness', event.target.value)}><option value="">{messages.allReadiness}</option>{YARD_READINESS_FILTERS.map((value) => <option key={value} value={value}>{messages[readinessMessageKey[value]]}</option>)}</Select></label>;
   }
   if (fieldKey === 'phase') {
-    return <label className={fieldClass}><span className={labelClass} title={messages.phase}>{messages.phase}</span><Select className={controlClass} aria-label={messages.phase} value={filters.phase} onChange={(event) => onChange('phase', event.target.value)}><option value="">{messages.allPhases}</option>{YARD_PHASES.map((value) => <option key={value} value={value}>{messages[phaseMessageKey[value]]}</option>)}</Select></label>;
+    return <label className={fieldClass}><span className={labelClass} title={messages.phase}>{messages.phase}</span><Select className={controlClass} aria-label={messages.phase} value={filters.phase} onChange={(event) => onChange('phase', event.target.value)}><option value="">{messages.allPhases}</option>{boardPhases.map((value) => <option key={value} value={value}>{messages[phaseMessageKey[value]]}</option>)}</Select></label>;
   }
   if (fieldKey === 'workOrderStatus') {
     return <label className={fieldClass}><span className={labelClass} title={messages.workOrderStatus}>{messages.workOrderStatus}</span><Select className={controlClass} aria-label={messages.workOrderStatus} value={filters.workOrderStatus} onChange={(event) => onChange('workOrderStatus', event.target.value)}><option value="">{messages.allWorkOrderStatuses}</option>{YARD_WORK_ORDER_STATUSES.map((value) => <option key={value} value={value}>{workOrderStatusLabel(value, messages)}</option>)}</Select></label>;
@@ -381,7 +403,7 @@ function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messa
     >
       <div className="flex items-start justify-between gap-2">
         <span className="truncate font-display text-sm font-semibold text-primary">{item.truck.truckNumber}</span>
-        <PhaseBadge phase={item.phase}>{phaseLabel(item.phase, messages)}</PhaseBadge>
+        <PhaseBadge phase={item.phase}>{workPlanPhaseLabel(item.phase, messages)}</PhaseBadge>
       </div>
       {vehicle ? <p className="truncate text-xs text-muted-foreground" title={vehicle}>{vehicle}</p> : null}
       {workOrder ? (

@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { WorkPlanPhase } from '@ltl-shop/shared';
 import {
   buildYardOperationsQuery,
   countActiveYardOperationsFilters,
   countOverflowYardOperationsFilters,
   DEFAULT_YARD_OPERATIONS_FILTERS,
   readYardOperationsFilters,
+  WORK_PLAN_YARD_PHASES,
+  YARD_PHASES,
+  yardPhasesForBoard,
 } from './yard-operations-routing';
 
 describe('Yard Operations URL filters', () => {
@@ -36,5 +40,29 @@ describe('Yard Operations URL filters', () => {
       workOrderStatus: 'in_progress',
       priority: 'critical',
     })).toBe(2);
+  });
+});
+
+describe('yardPhasesForBoard', () => {
+  it('keeps Phase 1 nine columns when cutover is off', () => {
+    expect(yardPhasesForBoard({ workPlanBoardCutover: false })).toEqual([...YARD_PHASES]);
+  });
+
+  it('uses Work Plan opción A columns when cutover is on', () => {
+    expect(yardPhasesForBoard({ workPlanBoardCutover: true })).toEqual([...WORK_PLAN_YARD_PHASES]);
+  });
+
+  it('inserts Quality Check only when a truck is in that phase', () => {
+    expect(yardPhasesForBoard({
+      workPlanBoardCutover: true,
+      itemPhases: [WorkPlanPhase.QUALITY_CHECK, WorkPlanPhase.SHOP_WORK],
+    })).toEqual([
+      WorkPlanPhase.INSPECTION,
+      WorkPlanPhase.SHOP_WORK,
+      WorkPlanPhase.ALIGNMENT,
+      WorkPlanPhase.DETAILING,
+      WorkPlanPhase.QUALITY_CHECK,
+      WorkPlanPhase.READY_TO_GO,
+    ]);
   });
 });

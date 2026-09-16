@@ -1119,7 +1119,7 @@ const messages = {
     pauseReasonLabel: 'Motivo de pausa',
     jobChangeBadRequest: 'Este Job no se puede cambiar.',
     jobChangeGenericError: 'No se pudo actualizar este Job. Inténtalo de nuevo.',
-    shopWork: 'Shop Work',
+    shopWork: 'Trabajo de taller',
     workPlanSection: 'Work Plan',
     workPlanDescription: 'Jobs en la Work Order abierta de este Truck. Ready to Go se deriva automáticamente.',
     workPlanInspectionTitle: 'Inspección',

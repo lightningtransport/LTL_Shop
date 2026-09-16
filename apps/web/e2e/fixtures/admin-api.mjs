@@ -84,6 +84,7 @@ const yardOperations = [
 
 const workPlanByTruck = new Map();
 const yardWorkPlanSlice1 = process.env.YARD_WORK_PLAN_SLICE1 === 'true';
+const yardWorkPlanSlice2 = process.env.YARD_WORK_PLAN_SLICE2 === 'true';
 
 function emptyFixtureWorkPlan() {
   return {
@@ -519,6 +520,7 @@ createServer(async (request, response) => {
       counts: { underReview: 7, readyToGo: 1, blocked: 6, presenceUnknown: 9 },
       incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' },
       upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' },
+      workPlanBoardCutover: yardWorkPlanSlice2,
     });
     return;
   }

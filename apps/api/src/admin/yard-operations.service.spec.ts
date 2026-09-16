@@ -262,6 +262,7 @@ describe('YardOperationsService', () => {
 
     const page = await service.list({ limit: 25 });
     expect(page.items).toHaveLength(1);
+    expect(page.workPlanBoardCutover).toBe(true);
     expect(page.items[0].phase).toBe(WorkPlanPhase.ALIGNMENT);
     expect(page.items[0].phase).toBe(expected.phase);
 
@@ -313,6 +314,7 @@ describe('YardOperationsService', () => {
     const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
 
     const page = await service.list({ limit: 1 });
+    expect(page.workPlanBoardCutover).toBe(false);
     expect(page.items[0].phase).toBe('inspection');
     expect(page.items[0].phase).not.toBe(WorkPlanPhase.SHOP_WORK);
   });

@@ -4,6 +4,7 @@ import {
   Priority,
   ReadinessPhase,
   WorkOrderStatus,
+  WorkPlanPhase,
 } from '@ltl-shop/shared';
 import type { AdminMessages } from './admin-messages';
 
@@ -40,7 +41,8 @@ export const PHASE_VARIANT = {
   [ReadinessPhase.QUALITY_CHECK]: 'outline',
   [ReadinessPhase.READY_FOR_APPROVAL]: 'warning',
   [ReadinessPhase.READY_TO_GO]: 'success',
-} as const satisfies Record<ReadinessPhase, ChipVariant>;
+  [WorkPlanPhase.SHOP_WORK]: 'outline',
+} as const satisfies Record<ReadinessPhase | typeof WorkPlanPhase.SHOP_WORK, ChipVariant>;
 
 export const ADMIN_WO_STATUS_KEY = {
   [WorkOrderStatus.CREATED]: 'woStatusCreated',
@@ -121,7 +123,7 @@ export function priorityVariant(priority: string): ChipVariant {
 
 export function phaseVariant(phase: string): ChipVariant {
   return phase in PHASE_VARIANT
-    ? PHASE_VARIANT[phase as ReadinessPhase]
+    ? PHASE_VARIANT[phase as keyof typeof PHASE_VARIANT]
     : 'outline';
 }
 
