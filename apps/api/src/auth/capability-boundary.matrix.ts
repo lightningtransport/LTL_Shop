@@ -74,6 +74,15 @@ export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
   },
   {
     method: 'POST',
+    path: '/admin/jobs/:id/complete',
+    handler: 'completeJob',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'http_guard',
+    notes: 'LTR-38: Manager may mark a Work Plan Job complete.',
+  },
+  {
+    method: 'POST',
     path: '/admin/work-orders/:id/reopen',
     handler: 'reopenWorkOrder',
     controller: 'admin',

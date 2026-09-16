@@ -1044,6 +1044,37 @@ describe('AdminService', () => {
     await expect(service.cancelJob(manager, jobId, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000001204' }))
       .rejects.toBeInstanceOf(BadRequestException);
 
+    const completeOpen = detailRow({ status: 'created' });
+    const completeTx = assignmentTx(completeOpen);
+    completeTx.workOrder.findUnique
+      .mockResolvedValueOnce(completeOpen)
+      .mockResolvedValueOnce(completeOpen)
+      .mockResolvedValueOnce(detailRow({
+        status: 'created',
+        version: 2,
+        jobs: [{ ...completeOpen.jobs[0], status: 'completed' }],
+      }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof completeTx) => unknown) => callback(completeTx));
+    await expect(service.completeJob(manager, jobId, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001210',
+    })).resolves.toMatchObject({ version: 2 });
+    expect(completeTx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'completed', completedById: manager.id }),
+    }));
+    expect(activity.log).toHaveBeenCalledWith(completeTx, expect.objectContaining({ eventType: ActivityEventType.JOB_COMPLETED }));
+
+    const alreadyCompleted = detailRow({
+      status: 'in_progress',
+      jobs: [{ ...open.jobs[0], status: 'completed' }],
+    });
+    const alreadyCompletedTx = assignmentTx(alreadyCompleted);
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof alreadyCompletedTx) => unknown) => callback(alreadyCompletedTx));
+    await expect(service.completeJob(manager, jobId, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001211',
+    })).rejects.toBeInstanceOf(BadRequestException);
+
     const cancelled = detailRow({
       status: 'in_progress',
       jobs: [{ ...open.jobs[0], status: 'cancelled' }],

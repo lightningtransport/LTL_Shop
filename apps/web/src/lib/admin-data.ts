@@ -410,6 +410,17 @@ export function cancelAdminJob(
   });
 }
 
+export function completeAdminJob(
+  jobId: string,
+  input: { expectedVersion: number },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/jobs/${jobId}/complete`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
 export function reopenAdminJob(
   jobId: string,
   input: { reason: string; expectedVersion: number },
@@ -419,6 +430,10 @@ export function reopenAdminJob(
     method: 'POST',
     body: JSON.stringify({ ...input, idempotencyKey }),
   });
+}
+
+export function fetchAdminTruckWorkPlan(truckId: string) {
+  return apiFetch<TruckWorkPlanDto>(`/api/admin/trucks/${truckId}/work-plan`);
 }
 
 export function startAdminTruckAssessment(truckId: string, idempotencyKey = adminMutationIdempotencyKey()) {

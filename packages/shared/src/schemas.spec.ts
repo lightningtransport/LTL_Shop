@@ -19,6 +19,7 @@ import {
   adminPatchWorkOrderSchema,
   adminTimeCorrectionSchema,
   adminCancelJobSchema,
+  adminCompleteJobSchema,
   adminReopenJobSchema,
   adminReturnToServiceSchema,
   adminMutationMetaSchema,
@@ -195,6 +196,13 @@ describe('shared contracts', () => {
     expect(adminCancelJobSchema.safeParse({
       expectedVersion: 1,
       idempotencyKey: '00000000-0000-4000-8000-000000000009',
+    }).success).toBe(false);
+    expect(adminCompleteJobSchema.safeParse({
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000019',
+    }).success).toBe(true);
+    expect(adminCompleteJobSchema.safeParse({
+      expectedVersion: 1,
     }).success).toBe(false);
     expect(adminReopenJobSchema.safeParse({
       reason: 'Job is still required',

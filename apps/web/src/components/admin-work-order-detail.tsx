@@ -7,7 +7,7 @@ import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type Ad
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
@@ -567,6 +567,20 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                         ) : null}
                         <div className="flex flex-wrap items-center gap-2">
                           <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
+                          {canManageJobs && isToDo ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={Boolean(pendingAction)}
+                              onClick={() => {
+                                void runMutation(`complete-job-${job.id}`, messages.completeJobSuccess, async () => {
+                                  await completeAdminJob(job.id, { expectedVersion: data.version });
+                                }, (failure) => jobChangeError(failure, messages));
+                              }}
+                            >
+                              {messages.completeJobAction}
+                            </Button>
+                          ) : null}
                           {canManageJobs && isToDo ? (
                             <Button
                               type="button"

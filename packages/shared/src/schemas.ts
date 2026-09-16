@@ -179,6 +179,8 @@ export const adminCancelJobSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),
 });
 
+export const adminCompleteJobSchema = adminMutationMetaSchema;
+
 export const adminReopenJobSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),
 });
@@ -337,6 +339,7 @@ export type AdminReopenWorkOrderInput = z.infer<typeof adminReopenWorkOrderSchem
 export type AdminPatchWorkOrderInput = z.infer<typeof adminPatchWorkOrderSchema>;
 export type AdminTimeCorrectionInput = z.infer<typeof adminTimeCorrectionSchema>;
 export type AdminCancelJobInput = z.infer<typeof adminCancelJobSchema>;
+export type AdminCompleteJobInput = z.infer<typeof adminCompleteJobSchema>;
 export type AdminReopenJobInput = z.infer<typeof adminReopenJobSchema>;
 export type AdminReturnToServiceInput = z.infer<typeof adminReturnToServiceSchema>;
 export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessmentSchema>;
