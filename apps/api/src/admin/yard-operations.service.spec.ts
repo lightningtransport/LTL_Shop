@@ -1,8 +1,16 @@
 import { NotFoundException } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
-import { ReadinessAssessmentStatus, ReadinessRequirementOutcome, ReadinessRequirementType } from '@ltl-shop/shared';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  JobStatus,
+  ReadinessAssessmentStatus,
+  ReadinessRequirementOutcome,
+  ReadinessRequirementType,
+  WorkOrderStatus,
+  WorkPlanPhase,
+} from '@ltl-shop/shared';
 import { YardOperationsService } from './yard-operations.service';
 import { READINESS_REQUIREMENT_TYPES } from './yard-operations-derivation';
+import { deriveWorkPlan } from './yard-work-plan-derivation';
 
 const truck = (number: string, id: string) => ({
   id,
@@ -48,7 +56,61 @@ function createPrisma() {
   };
 }
 
+function slice2WorkOrderRow() {
+  return {
+    id: '00000000-0000-4000-8000-000000000201',
+    displayId: 'WO-201',
+    status: WorkOrderStatus.CREATED,
+    version: 3,
+    priority: 'normal',
+    createdAt: new Date('2026-09-16T12:00:00.000Z'),
+    startedAt: null,
+    completedAt: null,
+    updatedAt: new Date('2026-09-16T12:00:00.000Z'),
+    truck: {
+      id: '00000000-0000-4000-8000-000000000001',
+      truckNumber: '277',
+      make: 'Peterbilt',
+      model: '579',
+      year: 2022,
+    },
+    primaryCategory: { id: '00000000-0000-4000-8000-000000000301', name: 'Alignment' },
+    jobs: [
+      {
+        id: '00000000-0000-4000-8000-000000000400',
+        catalogJobId: '00000000-0000-4000-8000-000000000500',
+        displayName: 'Brake Inspection',
+        customDescription: null,
+        status: JobStatus.COMPLETED,
+        category: { id: '00000000-0000-4000-8000-000000000300', name: 'Air & Brake System' },
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000401',
+        catalogJobId: '00000000-0000-4000-8000-000000000501',
+        displayName: 'Alignment',
+        customDescription: null,
+        status: JobStatus.TO_DO,
+        category: { id: '00000000-0000-4000-8000-000000000301', name: 'Alignment' },
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000402',
+        catalogJobId: '00000000-0000-4000-8000-000000000502',
+        displayName: 'Detailing',
+        customDescription: null,
+        status: JobStatus.TO_DO,
+        category: { id: '00000000-0000-4000-8000-000000000302', name: 'Detailing' },
+      },
+    ],
+    mechanics: [],
+    pauseEvents: [],
+  };
+}
+
 describe('YardOperationsService', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('returns stable cursor pages and explicit unavailable integrations', async () => {
     const prisma = createPrisma();
     const first = truck('100', '00000000-0000-4000-8000-000000000001');
@@ -168,5 +230,90 @@ describe('YardOperationsService', () => {
     prisma.truck.findUnique.mockResolvedValue(null);
     const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
     await expect(service.detail('00000000-0000-4000-8000-000000000001')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('Slice 2: board phase matches Work Plan derivation without Mark Ready', async () => {
+    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+    const prisma = createPrisma();
+    const row = truck('277', '00000000-0000-4000-8000-000000000001');
+    const assessment = readiness(ReadinessRequirementOutcome.NOT_EVALUATED);
+    assessment.requirements = assessment.requirements.map((requirement) =>
+      requirement.type === ReadinessRequirementType.INSPECTION
+        ? { ...requirement, outcome: ReadinessRequirementOutcome.COMPLETED }
+        : requirement,
+    );
+    row.readinessAssessments = [assessment];
+    row.workOrders = [slice2WorkOrderRow()];
+    prisma.truck.findMany.mockResolvedValue([row]);
+    prisma.truck.count.mockResolvedValue(1);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const expected = deriveWorkPlan({
+      workOrder: {
+        id: row.workOrders[0].id,
+        displayId: row.workOrders[0].displayId,
+        status: row.workOrders[0].status,
+        version: row.workOrders[0].version,
+        primaryCategoryName: row.workOrders[0].primaryCategory.name,
+      },
+      jobs: row.workOrders[0].jobs,
+      inspectionRequirementOutcome: ReadinessRequirementOutcome.COMPLETED,
+    });
+
+    const page = await service.list({ limit: 25 });
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0].phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(page.items[0].phase).toBe(expected.phase);
+
+    const filtered = await service.list({ phase: 'alignment' });
+    expect(filtered.items).toHaveLength(1);
+
+    const shopOnly = await service.list({ phase: 'shop_work' });
+    expect(shopOnly.items).toHaveLength(0);
+  });
+
+  it('Slice 2: completing Alignment + Detailing yields ready_to_go on board', async () => {
+    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+    const prisma = createPrisma();
+    const row = truck('277', '00000000-0000-4000-8000-000000000001');
+    const assessment = readiness(ReadinessRequirementOutcome.NOT_EVALUATED);
+    assessment.requirements = assessment.requirements.map((requirement) =>
+      requirement.type === ReadinessRequirementType.INSPECTION
+        ? { ...requirement, outcome: ReadinessRequirementOutcome.COMPLETED }
+        : requirement,
+    );
+    row.readinessAssessments = [assessment];
+    const workOrder = slice2WorkOrderRow();
+    workOrder.jobs = workOrder.jobs.map((job) => ({ ...job, status: JobStatus.COMPLETED }));
+    row.workOrders = [workOrder];
+    prisma.truck.findMany.mockResolvedValue([row]);
+    prisma.truck.count.mockResolvedValue(1);
+    prisma.truck.findUnique.mockResolvedValue(row);
+    const trucks = { getRepairHistory: vi.fn().mockResolvedValue({ items: [], nextCursor: null }) };
+    const service = new YardOperationsService(prisma as never, trucks as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ readiness: 'ready' });
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0].phase).toBe(WorkPlanPhase.READY_TO_GO);
+    expect(page.counts.readyToGo).toBe(1);
+
+    const detail = await service.detail(row.id);
+    expect(detail.phase).toBe(WorkPlanPhase.READY_TO_GO);
+  });
+
+  it('Slice 2 off: board stays on six-gate phase even with Work Plan jobs present', async () => {
+    const prisma = createPrisma();
+    const row = truck('277', '00000000-0000-4000-8000-000000000001');
+    row.readinessAssessments = [readiness(ReadinessRequirementOutcome.NOT_EVALUATED)];
+    row.workOrders = [slice2WorkOrderRow()];
+    prisma.truck.findMany
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([]);
+    prisma.truck.count.mockResolvedValue(1);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 1 });
+    expect(page.items[0].phase).toBe('inspection');
+    expect(page.items[0].phase).not.toBe(WorkPlanPhase.SHOP_WORK);
   });
 });

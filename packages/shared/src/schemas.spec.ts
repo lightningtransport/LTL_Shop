@@ -262,6 +262,7 @@ describe('shared contracts', () => {
       priority: ['high', 'critical'],
       blocked: true,
     });
+    expect(adminYardOperationsQuerySchema.parse({ phase: 'shop_work' }).phase).toEqual(['shop_work']);
     expect(adminYardOperationsQuerySchema.parse({ blocked: 'false' }).blocked).toBe(false);
     expect(adminYardOperationsQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
   });

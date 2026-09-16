@@ -6,6 +6,7 @@ import type {
   Priority,
   ReadinessAssessmentStatus,
   ReadinessPhase,
+  YardBoardPhase,
   ReadinessRequirementOutcome,
   ReadinessRequirementType,
   UserRole,
@@ -343,7 +344,11 @@ export interface YardOperationsTruckDto {
   operationalStatus: TruckOperationalStatus;
   operationalStatusAt: string | null;
   assessment: ReadinessAssessmentDto | null;
-  phase: ReadinessPhase;
+  /**
+   * Phase 1: `ReadinessPhase`. Slice 2 board cutover: `WorkPlanPhase`
+   * (includes `shop_work`). Overlapping string values are intentional.
+   */
+  phase: YardBoardPhase | ReadinessPhase | WorkPlanPhase;
   blockers: ReadinessBlockerDto[];
   activeWorkOrder: AdminWorkOrderSummaryDto | null;
 }

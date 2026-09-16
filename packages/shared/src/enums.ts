@@ -139,9 +139,9 @@ export enum ReadinessPhase {
 }
 
 /**
- * Slice 1 Work Plan board/detail phase. Separate from Phase 1 `ReadinessPhase`
- * so Yard Operations stays on the six-gate derivation until cutover.
- * Shop Work is one phase; jobs live on the Truck Detail Work Plan.
+ * Work Plan phase for Truck Detail and (when `YARD_WORK_PLAN_SLICE2` is on)
+ * Yard board/list. Separate from Phase 1 `ReadinessPhase` so six-gate stays
+ * canonical until cutover. Shop Work is one phase; jobs live on Truck Detail.
  */
 export enum WorkPlanPhase {
   INSPECTION = 'inspection',
@@ -151,6 +151,17 @@ export enum WorkPlanPhase {
   QUALITY_CHECK = 'quality_check',
   READY_TO_GO = 'ready_to_go',
 }
+
+/**
+ * Yard board `phase` query values: Phase 1 columns plus Work Plan `shop_work`
+ * so Slice 2 filters validate without dropping dual-run Phase 1 values.
+ */
+export const YardBoardPhase = {
+  ...ReadinessPhase,
+  SHOP_WORK: WorkPlanPhase.SHOP_WORK,
+} as const;
+
+export type YardBoardPhase = (typeof YardBoardPhase)[keyof typeof YardBoardPhase];
 
 export enum WorkPlanInspectionOutcome {
   NOT_STARTED = 'not_started',
