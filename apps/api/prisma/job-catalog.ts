@@ -1,7 +1,8 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 
 /**
- * LTR-24 Cristian / PD job catalog (2026-09-14) plus LTR-35 Detailing.
+ * LTR-24 Cristian / PD job catalog (2026-09-14) plus LTR-35 Detailing and
+ * LTR-41 Quality Check.
  *
  * CRITICAL: JobCategory.name for Preventive Maintenance MUST stay exactly `PM`.
  * API and Admin UI detect PM with `category.name === 'PM'`. The longer EN/ES
@@ -9,13 +10,16 @@ import type { Prisma, PrismaClient } from '@prisma/client';
  * Schema has a single `name` column — do not write the long string into it.
  *
  * LTR-35: category + job `Detailing` stay identical EN/ES (PO 2026-09-14).
+ * LTR-41: category + job `Quality Check` stay identical EN/ES.
  * Catalog UUIDs are per-environment; Frontend should look up by these names:
- *   GET /api/catalog/categories → name === Detailing
- *   GET /api/catalog/jobs?categoryId= → displayName === Detailing
+ *   GET /api/catalog/categories → name === Detailing | Quality Check
+ *   GET /api/catalog/jobs?categoryId= → displayName === Detailing | Quality Check
  */
 export const PM_CATEGORY_NAME = 'PM';
 export const DETAILING_CATEGORY_NAME = 'Detailing';
 export const DETAILING_JOB_DISPLAY_NAME = 'Detailing';
+export const QUALITY_CHECK_CATEGORY_NAME = 'Quality Check';
+export const QUALITY_CHECK_JOB_DISPLAY_NAME = 'Quality Check';
 
 export type CatalogJobDefinition = {
   displayName: string;
@@ -259,8 +263,21 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
     ],
   },
   {
-    name: 'Other',
+    name: QUALITY_CHECK_CATEGORY_NAME,
     sortOrder: 15,
+    legacyNames: [],
+    displayNameEn: QUALITY_CHECK_CATEGORY_NAME,
+    displayNameEs: QUALITY_CHECK_CATEGORY_NAME,
+    jobs: [
+      {
+        displayName: QUALITY_CHECK_JOB_DISPLAY_NAME,
+        aliases: ['QC', 'quality_check', 'chequeo de calidad'],
+      },
+    ],
+  },
+  {
+    name: 'Other',
+    sortOrder: 16,
     legacyNames: [],
     displayNameEn: 'Other',
     displayNameEs: 'Otro',
@@ -273,6 +290,7 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
 const JOB_RELOCATIONS: Array<{ displayName: string; toCategory: string }> = [
   { displayName: 'Cooling System', toCategory: 'Cooling System' },
   { displayName: DETAILING_JOB_DISPLAY_NAME, toCategory: DETAILING_CATEGORY_NAME },
+  { displayName: QUALITY_CHECK_JOB_DISPLAY_NAME, toCategory: QUALITY_CHECK_CATEGORY_NAME },
 ];
 
 export function listCatalogJobAliasTexts(job: CatalogJobDefinition) {

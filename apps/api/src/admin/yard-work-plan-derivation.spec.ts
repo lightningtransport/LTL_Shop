@@ -43,6 +43,10 @@ describe('work plan lane classification', () => {
     expect(isDetailingWorkPlanJob('Detailing', 'Detailing')).toBe(true);
   });
 
+  it('treats the LTR-41 Quality Check catalog category and job as the QC lane', () => {
+    expect(classifyWorkPlanLane('Quality Check', 'Quality Check')).toBe(WorkPlanJobLane.QUALITY_CHECK);
+  });
+
   it('still treats custom Detailing names as the Detailing lane', () => {
     expect(classifyWorkPlanLane('Other', 'Detailing')).toBe(WorkPlanJobLane.DETAILING);
     expect(classifyWorkPlanLane('Detailing', 'Wash')).toBe(WorkPlanJobLane.DETAILING);
