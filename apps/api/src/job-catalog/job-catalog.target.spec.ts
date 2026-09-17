@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   DETAILING_CATALOG_CATEGORY_NAME,
   DETAILING_CATALOG_JOB_NAME,
+  QUALITY_CHECK_CATALOG_CATEGORY_NAME,
+  QUALITY_CHECK_CATALOG_JOB_NAME,
 } from '../admin/yard-work-plan-derivation';
 import {
   DETAILING_CATEGORY_NAME,
@@ -11,6 +13,8 @@ import {
   listCatalogJobAliasTexts,
   normalizeCatalogAlias,
   PM_CATEGORY_NAME,
+  QUALITY_CHECK_CATEGORY_NAME,
+  QUALITY_CHECK_JOB_DISPLAY_NAME,
 } from '../../prisma/job-catalog';
 
 const CURRENT_CATEGORY_NAMES = [
@@ -38,7 +42,7 @@ describe('LTR-24 job catalog target', () => {
     expect(JOB_CATALOG_CATEGORIES.some((category) => category.name === 'Preventive Maintenance (PM)')).toBe(false);
   });
 
-  it('defines the 15 signed categories in Cristian / PD order plus LTR-35 Detailing', () => {
+  it('defines the 15 signed categories in Cristian / PD order plus LTR-35 Detailing and LTR-41 Quality Check', () => {
     expect(JOB_CATALOG_CATEGORIES.map((category) => category.name)).toEqual([
       'PM',
       'Inspection',
@@ -55,14 +59,15 @@ describe('LTR-24 job catalog target', () => {
       'Trailer',
       'Road Service & Towing',
       'Detailing',
+      'Quality Check',
       'Other',
     ]);
     expect(JOB_CATALOG_CATEGORIES.map((category) => category.sortOrder)).toEqual([
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
     ]);
   });
 
-  it('keeps Detailing identical in EN and ES and does not rename PM', () => {
+  it('keeps Detailing and Quality Check identical in EN and ES and does not rename PM', () => {
     const detailing = JOB_CATALOG_CATEGORIES.find((category) => category.name === DETAILING_CATEGORY_NAME);
     expect(detailing).toMatchObject({
       name: 'Detailing',
@@ -71,10 +76,20 @@ describe('LTR-24 job catalog target', () => {
       sortOrder: 14,
       jobs: [{ displayName: DETAILING_JOB_DISPLAY_NAME, aliases: [] }],
     });
+    const qualityCheck = JOB_CATALOG_CATEGORIES.find((category) => category.name === QUALITY_CHECK_CATEGORY_NAME);
+    expect(qualityCheck).toMatchObject({
+      name: 'Quality Check',
+      displayNameEn: 'Quality Check',
+      displayNameEs: 'Quality Check',
+      sortOrder: 15,
+      jobs: [{ displayName: QUALITY_CHECK_JOB_DISPLAY_NAME }],
+    });
     expect(PM_CATEGORY_NAME).toBe('PM');
     expect(JOB_CATALOG_CATEGORIES[0].name).toBe('PM');
     expect(DETAILING_CATEGORY_NAME).toBe(DETAILING_CATALOG_CATEGORY_NAME);
     expect(DETAILING_JOB_DISPLAY_NAME).toBe(DETAILING_CATALOG_JOB_NAME);
+    expect(QUALITY_CHECK_CATEGORY_NAME).toBe(QUALITY_CHECK_CATALOG_CATEGORY_NAME);
+    expect(QUALITY_CHECK_JOB_DISPLAY_NAME).toBe(QUALITY_CHECK_CATALOG_JOB_NAME);
   });
 
   it('remaps every CURRENT category name onto a target row', () => {
@@ -176,6 +191,7 @@ describe('LTR-24 job catalog target', () => {
       'Lockout',
     ]);
     expect(jobsByCategory.Detailing).toEqual(['Detailing']);
+    expect(jobsByCategory['Quality Check']).toEqual(['Quality Check']);
     expect(jobsByCategory.Other).toEqual(['Uncategorized']);
     expect(JOB_CATALOG_CATEGORIES.every((category) => category.jobs.length >= 1)).toBe(true);
   });

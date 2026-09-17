@@ -40,9 +40,11 @@ function normalize(value: string) {
   return value.trim().toLowerCase();
 }
 
-/** LTR-35 catalog keys. UUIDs are per-environment; match by these stable names. */
+/** LTR-35 / LTR-41 catalog keys. UUIDs are per-environment; match by these stable names. */
 export const DETAILING_CATALOG_CATEGORY_NAME = 'Detailing';
 export const DETAILING_CATALOG_JOB_NAME = 'Detailing';
+export const QUALITY_CHECK_CATALOG_CATEGORY_NAME = 'Quality Check';
+export const QUALITY_CHECK_CATALOG_JOB_NAME = 'Quality Check';
 
 /**
  * Match the seeded Detailing catalog category/job by name, plus LTR-34 custom jobs.
@@ -71,7 +73,9 @@ export function classifyWorkPlanLane(
     return WorkPlanJobLane.ALIGNMENT;
   }
   if (
-    category.includes('quality check')
+    category === normalize(QUALITY_CHECK_CATALOG_CATEGORY_NAME)
+    || name === normalize(QUALITY_CHECK_CATALOG_JOB_NAME)
+    || category.includes('quality check')
     || category.includes('quality_check')
     || name === 'qc'
     || name.includes('quality check')

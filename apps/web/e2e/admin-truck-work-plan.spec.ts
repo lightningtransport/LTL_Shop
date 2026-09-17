@@ -286,7 +286,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await page.getByLabel('Job Category').selectOption({ label: 'Detailing' });
     await expect(page.getByText('No Jobs are listed for this Category.')).toBeVisible();
     await expect(page.getByText('You can still add a custom Job.')).toBeVisible();
-    await expect(page.getByText('Detailing is required. If no catalog Job is listed, add a custom Job.')).toBeVisible();
+    await expect(page.getByText('Detailing is required. Choose the Detailing catalog Job, or add a custom Job.')).toBeVisible();
     const customName = page.getByLabel('Custom job name');
     await expect(customName).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Add custom job' })).toBeDisabled();

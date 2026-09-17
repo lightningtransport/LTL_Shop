@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { applyJobCatalog } from './job-catalog';
 
-/** Production apply path: Release safety `prisma:apply-catalog` (LTR-24 / LTR-35). */
+/** Production apply path: Release safety `prisma:apply-catalog` (LTR-24 / LTR-35 / LTR-41). */
 
 const prisma = new PrismaClient();
 

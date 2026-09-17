@@ -18,6 +18,8 @@ import {
   workPlanJobUiStatusLabel,
   workPlanJobUiStatusVariant,
   workPlanMandatoryStatusLabel,
+  workPlanNextStepCategoryName,
+  workPlanNextStepCtaLabel,
   workPlanPhaseLabel,
   workPlanReadyReasonMessage,
   workPlanRemainingSummary,
@@ -42,10 +44,16 @@ export function AdminTruckWorkPlan({
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [addWorkOpen, setAddWorkOpen] = useState(plan.inspection.outcome === WorkPlanInspectionOutcome.ISSUES_FOUND && plan.jobs.length === 0);
+  const [preferredCategoryName, setPreferredCategoryName] = useState<string | null>(null);
   const canInspect = plan.capabilities.canRecordInspection;
   const canAddWork = plan.capabilities.canAddWork;
   const ready = plan.readiness === 'ready';
   useCategories(true);
+
+  function openAddWork(categoryName?: string | null) {
+    setPreferredCategoryName(categoryName ?? null);
+    setAddWorkOpen(true);
+  }
 
   function mutationError(errorValue: unknown, fallback: string, forbidden: string) {
     if (errorValue instanceof ApiError) {
@@ -76,7 +84,7 @@ export function AdminTruckWorkPlan({
       const next = await run('inspection', () => recordAdminWorkPlanInspection(truckId, outcome));
       if (!next) return;
       await onPlanUpdated(next);
-      if (outcome === WorkPlanInspectionOutcome.ISSUES_FOUND) setAddWorkOpen(true);
+      if (outcome === WorkPlanInspectionOutcome.ISSUES_FOUND) openAddWork(null);
       setFeedback({ kind: 'success', message: messages.workPlanInspectionRecorded });
     } catch (errorValue) {
       setFeedback({
@@ -139,7 +147,14 @@ export function AdminTruckWorkPlan({
               <Button
                 type="button"
                 variant={addWorkOpen ? 'secondary' : 'default'}
-                onClick={() => setAddWorkOpen((open) => !open)}
+                onClick={() => {
+                  if (addWorkOpen) {
+                    setAddWorkOpen(false);
+                    setPreferredCategoryName(null);
+                  } else {
+                    openAddWork(workPlanNextStepCategoryName(plan.readyReason));
+                  }
+                }}
                 disabled={Boolean(pendingAction)}
                 aria-expanded={addWorkOpen}
                 aria-controls="work-plan-add-work"
@@ -182,12 +197,19 @@ export function AdminTruckWorkPlan({
                 messages={messages}
                 disabled={Boolean(pendingAction)}
                 submitting={pendingAction === 'add-work'}
+                preferredCategoryName={preferredCategoryName}
                 onSubmit={handleAddWork}
               />
             </div>
           ) : null}
 
-          <WorkPlanSummary plan={plan} messages={messages} ready={ready} />
+          <WorkPlanSummary
+            plan={plan}
+            messages={messages}
+            ready={ready}
+            canAddWork={canAddWork}
+            onAddWorkStep={(categoryName) => openAddWork(categoryName)}
+          />
 
           <div>
             <h3 className="mb-2 font-medium">{messages.jobsInPlan}</h3>
@@ -294,11 +316,18 @@ function WorkPlanSummary({
   plan,
   messages,
   ready,
+  canAddWork,
+  onAddWorkStep,
 }: {
   plan: TruckWorkPlanDto;
   messages: AdminMessages;
   ready: boolean;
+  canAddWork: boolean;
+  onAddWorkStep: (categoryName: string | null) => void;
 }) {
+  const nextStepLabel = workPlanNextStepCtaLabel(plan.readyReason, messages);
+  const nextStepCategory = workPlanNextStepCategoryName(plan.readyReason);
+
   return (
     <div className="space-y-3 rounded-xl border p-3" aria-live="polite">
       <div className="flex flex-wrap items-center gap-2">
@@ -315,6 +344,11 @@ function WorkPlanSummary({
         <p className="text-sm font-medium">{workPlanRemainingSummary(plan.remainingJobCount, messages)}</p>
       )}
       <p className="text-sm text-muted-foreground">{workPlanReadyReasonMessage(plan.readyReason, messages)}</p>
+      {!ready && canAddWork && nextStepLabel ? (
+        <Button type="button" size="sm" variant="outline" onClick={() => onAddWorkStep(nextStepCategory)}>
+          {nextStepLabel}
+        </Button>
+      ) : null}
       <div>
         <p className="text-xs font-medium text-muted-foreground">{messages.workPlanMandatoryTitle}</p>
         <ul className="mt-2 space-y-1 text-sm">

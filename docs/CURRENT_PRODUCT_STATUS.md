@@ -110,12 +110,15 @@ TARGET authorization/UX.
   six-gate Readiness editor with Inspection discovery (**No issues found** /
   **Issues found**) and a Work Plan of jobs on the open Work Order. Ready is
   derived from `readyReason` plus mandatory Alignment and Detailing (QC only
-  if a QC job is on the plan). Mark Ready is not the Manager path in that
-  UI. With the flag off, Phase 1 six-gate Readiness is unchanged. Board
-  columns stay on the six-gate derivation until `YARD_WORK_PLAN_SLICE2` is
-  on (LTR-39). The hooks live at `GET/POST /api/admin/trucks/:id/work-plan*`
-  (LTR-34 / PR #103). Managers with `work_orders.manage` can complete open
-  Work Plan jobs from Admin (LTR-38).
+  if a QC job is on the plan). Catalog includes a seeded **Quality Check**
+  category/job (LTR-41) so managers can add optional QC the same way as
+  Detailing. Work Plan CTAs open Add work pre-focused on the next pending
+  mandatory step. Mark Ready is not the Manager path in that UI. With the
+  flag off, Phase 1 six-gate Readiness is unchanged. Board columns stay on
+  the six-gate derivation until `YARD_WORK_PLAN_SLICE2` is on (LTR-39). The
+  hooks live at `GET/POST /api/admin/trucks/:id/work-plan*` (LTR-34 /
+  PR #103). Managers with `work_orders.manage` can complete open Work Plan
+  jobs from Admin (LTR-38).
 - When `YARD_WORK_PLAN_SLICE2` is on, Yard board/list top-level `phase` and
   Ready filters/counts use the **same** `deriveWorkPlan` rules as Truck
   Detail (including `shop_work`). The page DTO also sets

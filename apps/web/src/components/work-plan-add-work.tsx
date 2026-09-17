@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CatalogJobDto, TruckWorkPlanDto } from '@ltl-shop/shared';
 import type { AdminMessages } from '@/lib/admin-messages';
 import {
@@ -28,12 +28,14 @@ export function WorkPlanAddWork({
   messages,
   disabled,
   submitting,
+  preferredCategoryName,
   onSubmit,
 }: {
   plan: TruckWorkPlanDto;
   messages: AdminMessages;
   disabled: boolean;
   submitting: boolean;
+  preferredCategoryName?: string | null;
   onSubmit: (jobs: WorkPlanJobDraft[]) => Promise<boolean | void> | boolean | void;
 }) {
   const [categoryId, setCategoryId] = useState('');
@@ -63,6 +65,15 @@ export function WorkPlanAddWork({
       draftContainsCustomName(drafts, customName)
       || isDuplicateCustomOnPlan(existingCustomNames, customName)
     );
+
+  useEffect(() => {
+    if (!preferredCategoryName || !standardCategories.length) return;
+    const match = standardCategories.find((category) => category.name === preferredCategoryName);
+    if (!match) return;
+    setCategoryId(match.id);
+    setJobQuery('');
+    setCustomName('');
+  }, [preferredCategoryName, standardCategories]);
 
   function toggleCatalogJob(job: CatalogJobDto) {
     if (!selectedCategory || disabled) return;
@@ -136,6 +147,12 @@ export function WorkPlanAddWork({
         <div className="space-y-2">
           {selectedCategory.name === 'Detailing' ? (
             <p className="text-xs text-muted-foreground">{messages.workPlanDetailingHint}</p>
+          ) : null}
+          {selectedCategory.name === 'Suspension & Steering' ? (
+            <p className="text-xs text-muted-foreground">{messages.workPlanAlignmentHint}</p>
+          ) : null}
+          {selectedCategory.name === 'Quality Check' ? (
+            <p className="text-xs text-muted-foreground">{messages.workPlanQcHint}</p>
           ) : null}
           <CategoryJobList
             categoryName={selectedCategory.name}
