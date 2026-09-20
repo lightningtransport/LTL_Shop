@@ -1,7 +1,7 @@
 # Documentation index
 
 **Classification:** CANONICAL DOCUMENTATION MAP
-**Updated:** 2026-09-14
+**Updated:** 2026-09-20
 
 This index resolves documentation authority. A document not marked canonical
 does not override `LIGHTNING_SHOP_MASTER_PRD.md`, tested code, or the current
@@ -30,6 +30,8 @@ V2-002 implements TARGET directly. For `apps/web` UI work, read
 | `ENGINEERING_PRACTICES.md` | ENGINEERING | Technical practices | Data flow, performance, mutation, authorization, verification rules | ACTIVE |
 | `PERFORMANCE.md` | ENGINEERING | Measured performance | Performance targets and historical measurements | ACTIVE |
 | `DEPLOY.md` | ENGINEERING | Deployment | Prisma release and deployment safety | ACTIVE |
+| `NINOX_SHOP_MAPPING.md` | CURRENT STATE / INTEGRATION BOUNDARY | Verified Ninox IDs | MappingTool scan: `E` / `E.A` / `E.TA` only; UC trailer unresolved; no live client | ACTIVE |
+| `GO_LIVE_CHECKLIST_ES.md` | CURRENT STATE / LAUNCH | Shop go-live | Spanish DONE / Ninox / product / engineering checklist for real users | ACTIVE |
 | `DEVELOPMENT_ROADMAP.md` | IMPLEMENTATION PLAN | Sequencing only | NOW/NEXT/LATER milestones derived from canonical target and current gaps | ACTIVE |
 | `IMPLEMENTATION_QUEUE.md` | IMPLEMENTATION PLAN | Task execution | Small, scoped tasks with acceptance criteria and tests | ACTIVE |
 | `OWNERSHIP_CUTOVER_CONTRACT.md` | PRODUCT DECISION CONTRACT | Approved V2 cutover | Action matrix, rollback, test plan, and Cristian Q1–Q18. Authorizes direct TARGET implementation (no W1) | ACTIVE — APPROVED 2026-09-12 |

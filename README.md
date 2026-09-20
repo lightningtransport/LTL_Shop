@@ -24,7 +24,12 @@ Historical PRDs and plans do not override these sources.
 - **API:** NestJS + Prisma (`apps/api`)
 - **Shared:** Domain types / Zod schemas (`packages/shared`)
 - **DB / Auth:** Supabase Postgres + Supabase Auth (local Postgres via Docker for development)
-- **Ninox:** Deferred — adapter stub only (`DATA_SOURCE=supabase`)
+- **Ninox:** Deferred — adapter stub only (`DATA_SOURCE=supabase`). MappingTool
+  closed the truck join: Shop `truckNumber` ↔ `trucks.truck_number` ↔ Ninox
+  TrucksDB `E.A`. `E.TA` is Ninox `mechanic_status`, not Yard phase. UC trailer
+  IDs are unresolved (do not invent). See
+  [`docs/NINOX_SHOP_MAPPING.md`](docs/NINOX_SHOP_MAPPING.md) and the Spanish
+  go-live list [`docs/GO_LIVE_CHECKLIST_ES.md`](docs/GO_LIVE_CHECKLIST_ES.md).
 
 ## Locked product rules
 
@@ -146,6 +151,12 @@ The local seed also includes `daniel@lightning.local` with the PM-only capabilit
 3. Create Auth users whose emails match rows in `users`.
 4. Point `DATABASE_URL` / `DIRECT_URL` at the Supabase Postgres connection strings.
 5. Run Prisma migrations against Supabase.
+6. Keep `DATA_SOURCE=supabase`. Leave `AUTH_DEV_BYPASS` unset or `false`.
+7. Do **not** run `npm run db:seed` against production (it upserts demo trucks
+   `905` / `922` / `968`). Use the approved catalog release path instead.
+
+Shop trucks are **not** loaded from Ninox at runtime. If you later reconcile
+the fleet with Ninox, match on `truckNumber` = Ninox `E.A` only.
 
 ## Apps
 
@@ -161,6 +172,8 @@ The local seed also includes `daniel@lightning.local` with the PM-only capabilit
 | `/mechanic/pm` | PM mechanic workspace for users with `mechanic.pm` |
 | `docs/LIGHTNING_SHOP_MASTER_PRD.md` | Canonical product and domain TARGET |
 | `docs/CURRENT_PRODUCT_STATUS.md` | Implemented workflows and operating configuration |
+| `docs/GO_LIVE_CHECKLIST_ES.md` | Spanish Shop launch checklist (Ninox scan closed for trucks) |
+| `docs/NINOX_SHOP_MAPPING.md` | Verified Ninox IDs only: `E` / `E.A` / `E.TA`; UC trailer unresolved |
 | `docs/DOCUMENTATION_INDEX.md` | Authority and classification for every relevant document |
 | `docs/DEVELOPMENT_ROADMAP.md` | NOW/NEXT/LATER sequencing |
 | `docs/IMPLEMENTATION_QUEUE.md` | Scoped, ordered implementation tasks |
@@ -201,4 +214,5 @@ npm run test:e2e --workspace=@ltl-shop/web   # requires running app
 Ninox live integration, per-Job timers, purchasing/costing, configurable
 rules, unconfirmed Samsara/Dispatch/McLeod integrations, and permanent
 dual-write. Per-Job assignment is already implemented and must be stabilized,
-not rebuilt.
+not rebuilt. MappingTool discovery for the truck number is **done**; a live
+Ninox adapter is still deferred and is not a Shop launch blocker.

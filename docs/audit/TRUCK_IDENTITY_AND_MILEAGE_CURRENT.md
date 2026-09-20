@@ -130,7 +130,7 @@ Treat these as **not CURRENT** for search, miles, or presence:
 | Samsara API supplies miles, live location, or search | Shop does **not** call Samsara. Miles stay Shop `trucks.mileage`. VIN / last-reported address / last-connected date are **already stored** on `public.trucks` and are display-only. Search is unchanged. |
 | A stored address means the truck is in the yard | False. Presence is always Phase 1 `UNKNOWN`. Copy is “last reported location”, never “in yard”. |
 | McLeod / Dispatch populate Incoming, Departures, or owners | Unavailable stubs on Yard list/detail. V3-001 is GATED. |
-| Ninox is the live truck source | Adapter ping only (`apps/api/src/integrations/ninox`). `ninox_external_id` is leftover. |
+| Ninox is the live truck source | Adapter ping only (`apps/api/src/integrations/ninox`). `ninox_external_id` is leftover. MappingTool verified the **future** join only: Shop `truckNumber` ↔ Ninox `E.A`. `E.TA` is mechanic_status, not Yard phase. UC trailer IDs are unresolved. |
 | Admin Trucks search includes owner or location | Placeholder copy says “truck number, make, model, or company”. Owner, VIN, and location are **not** in `buildTruckWhere`. |
 | `GET /api/trucks/search` is the mechanic picker | Unused by web. Picker uses the full list + local rank (see `ENGINEERING_PRACTICES.md` bounded reference data). |
 | Historical P0 PRD “Ninox is P0 SoT for Trucks” | `docs/PRD_Lightning_Shop_Mechanic_P0.md` is HISTORICAL. Code + this audit win. |

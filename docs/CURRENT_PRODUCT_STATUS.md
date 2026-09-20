@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-14
+**Updated:** 2026-09-20
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -308,6 +308,13 @@ the work order. Completed PM records are read-only.
   and Returned to Service stay on `admin.access`.
 - Ninox is not an operational source. The code has only a placeholder/status
   integration surface, and `DATA_SOURCE=supabase` is the current mode.
+  MappingTool against `lightningtransport.ninoxdb.com` verified TrucksDB=`E`
+  (117 fields), truck number=`E.A`, mechanic_status=`E.TA`. Shop join is
+  business key only: `truckNumber` ↔ `trucks.truck_number` ↔ `E.A`. Yard
+  Work Plan phases are not `E.TA`. The UC trailer Ninox target is unresolved;
+  do not invent IDs. Prisma stores no Ninox table IDs. See
+  `NINOX_SHOP_MAPPING.md` and `GO_LIVE_CHECKLIST_ES.md`. The MappingTool
+  scan does not block Shop launch; a live adapter is still deferred.
 - `pmAuthorized` remains in the schema for compatibility but does not grant PM
   authority.
 - The V1-001 Playwright fixture gate is restored (PR #73, 86 cases). The
