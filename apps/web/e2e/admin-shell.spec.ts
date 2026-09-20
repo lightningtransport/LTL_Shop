@@ -170,6 +170,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Recent repair history' })).toBeVisible();
     await expect(page.getByText('WO-0104').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeVisible();
+    await expect(page.getByText('Inspect brake chamber before release.').first()).toBeVisible();
+    await expect(page.getByText('Replaced pads after road test')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Priority and notes' })).toBeVisible();
     await page.getByLabel('Work Order notes').fill('Check the leak again');
     await page.getByRole('button', { name: 'Update priority and notes' }).click();

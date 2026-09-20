@@ -718,6 +718,11 @@ test.describe('My Assigned Work presentation', () => {
       if (path === `/api/work-orders/${assignedWorkOrder.id}`) {
         return json(route, assignedWorkOrder);
       }
+      if (path === `/api/work-orders/${assignedWorkOrder.id}/notes` && request.method() === 'POST') {
+        const body = request.postDataJSON() as { notes?: string };
+        assignedWorkOrder.notes = body.notes ?? null;
+        return json(route, { ...assignedWorkOrder, notes: assignedWorkOrder.notes });
+      }
       if (path === `/api/work-orders/${assignedWorkOrder.id}/jobs/job-mine/complete`) {
         return json(route, {
           ...assignedWorkOrder,
@@ -779,7 +784,9 @@ test.describe('My Assigned Work presentation', () => {
 
     await page.getByRole('button', { name: /Replace pads/ }).click();
     await expect(page.getByRole('dialog', { name: 'JOB FINISHED' })).toBeVisible();
+    await page.getByLabel('Finish comment').fill('Replaced pads and checked rotor');
     await page.getByRole('button', { name: 'Complete Job' }).click();
     await expect(page.getByText('Replace pads')).toBeVisible();
+    await expect(page.getByLabel('Notes')).toHaveValue(/Replaced pads and checked rotor/);
   });
 });
