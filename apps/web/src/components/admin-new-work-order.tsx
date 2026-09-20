@@ -22,7 +22,8 @@ import { useCatalogJobs, useCategories, useTrucks } from '@/lib/shop-data';
 import { CategoryJobList } from './category-job-list';
 import { rankTruckResults } from '@/lib/truck-search';
 import { cn } from '@/lib/utils';
-import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
+import { isAdminWorkOrdersListKey, isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
+import { prependAdminWorkOrderPage, WORK_ORDER_LIST_REVALIDATE } from '@/lib/swr-work-order-cache';
 import {
   AdminBackLink,
   AdminPageHeader,
@@ -271,7 +272,15 @@ export function AdminNewWorkOrder({
           assignedMechanicId: job.assignedMechanicId,
         })),
       });
-      void mutate(isWorkOrderRelatedListKey);
+      await mutate(
+        isAdminWorkOrdersListKey,
+        (current) => prependAdminWorkOrderPage(
+          Array.isArray(current) ? current : undefined,
+          created,
+        ) ?? current,
+        { revalidate: true },
+      );
+      void mutate(isWorkOrderRelatedListKey, undefined, WORK_ORDER_LIST_REVALIDATE);
       router.push(`/admin/work-orders/${created.id}`);
     } catch (failure) {
       setError(failure instanceof ApiError && failure.message ? failure.message : messages.createWorkOrderFailed);

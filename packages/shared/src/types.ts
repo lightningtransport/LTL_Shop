@@ -84,6 +84,7 @@ export interface WorkOrderJobDto {
   status: JobStatus;
   completedAt: string | null;
   completedById: string | null;
+  completionNotes: string | null;
   // Null means the Job inherits the Work Order general mechanic team.
   assignedMechanic: { id: string; name: string } | null;
 }
@@ -241,6 +242,9 @@ export interface AdminWorkOrderJobDto {
   // Manager-first ownership: optional per-Job assignment. Null means the Job
   // inherits the Work Order general mechanic team.
   assignedMechanic: { id: string; name: string } | null;
+  completedAt: string | null;
+  completedBy: { id: string; name: string } | null;
+  completionNotes: string | null;
 }
 
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {

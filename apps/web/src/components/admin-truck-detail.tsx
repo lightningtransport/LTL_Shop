@@ -119,7 +119,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
     try {
       await operation();
       await mutate();
-      void mutateRelated(isYardRelatedListKey);
+      void mutateRelated(isYardRelatedListKey, undefined, { revalidate: true, populateCache: false });
       setFeedback({ kind: 'success', message: successMessage });
     } catch (mutationFailure) {
       setFeedback({ kind: 'error', message: mutationError(mutationFailure) });
@@ -172,7 +172,7 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
 
   async function handleWorkPlanUpdated(next: TruckWorkPlanDto) {
     await mutate((current) => (current ? { ...current, workPlan: next } : current), { revalidate: true });
-    void mutateRelated(isYardRelatedListKey);
+    void mutateRelated(isYardRelatedListKey, undefined, { revalidate: true, populateCache: false });
   }
 
   return <div className="space-y-5">

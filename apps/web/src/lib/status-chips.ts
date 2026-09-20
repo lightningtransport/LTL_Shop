@@ -156,3 +156,16 @@ export function adminActivityEventLabel(eventType: string, catalog: AdminMessage
     ? catalog[ADMIN_ACTIVITY_EVENT_KEY[eventType as ActivityEventType]]
     : catalog.activityUnknown;
 }
+
+function activityString(value: unknown, key: string): string | null {
+  if (!value || typeof value !== 'object') return null;
+  const field = (value as Record<string, unknown>)[key];
+  return typeof field === 'string' && field.trim() ? field : null;
+}
+
+export function adminActivityEventDetail(entry: { newValue: unknown; previousValue?: unknown }): string | null {
+  const displayName = activityString(entry.newValue, 'displayName');
+  const notes = activityString(entry.newValue, 'notes') ?? activityString(entry.previousValue, 'notes');
+  const parts = [displayName, notes].filter(Boolean);
+  return parts.length ? parts.join(' — ') : null;
+}

@@ -179,7 +179,9 @@ export const adminCancelJobSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),
 });
 
-export const adminCompleteJobSchema = adminMutationMetaSchema;
+export const adminCompleteJobSchema = adminMutationMetaSchema.extend({
+  notes: z.string().trim().max(2000).optional(),
+});
 
 export const adminReopenJobSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),
@@ -270,6 +272,10 @@ export const updateWorkOrderNotesSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
+export const completeJobSchema = z.object({
+  notes: z.string().trim().max(2000).optional(),
+});
+
 export const updatePmServiceSchema = z.object({
   observedMileage: z.number().int().nonnegative().nullable(),
   selections: z.array(z.object({
@@ -317,6 +323,7 @@ export type CreateWorkOrderInput = z.infer<typeof createWorkOrderSchema>;
 export type PauseWorkOrderInput = z.infer<typeof pauseWorkOrderSchema>;
 export type ChangePauseReasonInput = z.infer<typeof changePauseReasonSchema>;
 export type UpdateWorkOrderNotesInput = z.infer<typeof updateWorkOrderNotesSchema>;
+export type CompleteJobInput = z.infer<typeof completeJobSchema>;
 export type AddJobInput = z.infer<typeof addJobSchema>;
 export type UpdatePmServiceInput = z.infer<typeof updatePmServiceSchema>;
 export type AdminListQuery = z.infer<typeof adminListQuerySchema>;
