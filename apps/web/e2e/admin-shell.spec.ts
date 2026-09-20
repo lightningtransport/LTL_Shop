@@ -92,6 +92,20 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Created, in progress, or waiting / paused')).toBeVisible();
     await expect(page.getByText(/supabase|postgres|Source:|Generated/i)).toHaveCount(0);
     await expect(page.getByText('Open Work Orders').first()).toBeVisible();
+    await expect(page.getByText('Jobs ready to close first')).toBeVisible();
+    await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
+    await page.getByRole('link', { name: 'WO-0102' }).first().click();
+    await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
+    const completeHeading = page.getByRole('heading', { name: 'Complete Work Order' });
+    const summaryHeading = page.getByRole('heading', { name: 'Operational summary' });
+    await expect(completeHeading).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm completion' })).toBeVisible();
+    await expect(summaryHeading).toBeVisible();
+    const completeBox = await completeHeading.boundingBox();
+    const summaryBox = await summaryHeading.boundingBox();
+    expect(completeBox && summaryBox && completeBox.y < summaryBox.y).toBe(true);
+    await page.goto('/admin');
+    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
 
     for (const viewport of [
       { width: 320, height: 568 },
@@ -114,6 +128,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
     await expect(page.getByText('Operaciones actuales del Shop')).toBeVisible();
+    await expect(page.getByText('Primero los listos para cerrar')).toBeVisible();
     await expect(page.getByText(/^Actualizado /)).toHaveCount(1);
     await expect(page.getByText(/supabase|postgres|Fuente:|Generado/i)).toHaveCount(0);
   });
@@ -192,6 +207,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('link', { name: 'Back to Work Orders' }).click();
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
+    await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm completion' })).toBeVisible();
     await page.getByLabel('Time segment').selectOption({ index: 1 });
     await page.getByLabel('Corrected end time').fill('2026-09-06T17:00');
     await page.getByLabel('Reason for time correction').fill('Clock was wrong');

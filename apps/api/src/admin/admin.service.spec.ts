@@ -89,7 +89,29 @@ describe('AdminService', () => {
       attention: [],
     });
     expect(prisma.workOrder.count).toHaveBeenCalledTimes(6);
-    expect(prisma.workOrder.findMany).toHaveBeenCalledTimes(4);
+    expect(prisma.workOrder.findMany).toHaveBeenCalledTimes(5);
+    expect(prisma.workOrder.findMany.mock.calls[4][0].where).toMatchObject({
+      status: 'in_progress',
+      jobs: { none: { status: 'to_do' } },
+    });
+    expect(prisma.workOrder.findMany.mock.calls[4][0].orderBy).toEqual([{ updatedAt: 'desc' }, { id: 'desc' }]);
+  });
+
+  it('ranks ready-to-close Work Orders ahead of critical ones in needs attention', async () => {
+    const prisma = createPrisma();
+    [0, 0, 0, 0, 0, 0].forEach((value) => prisma.workOrder.count.mockResolvedValueOnce(value));
+    const ready = { ...baseRow, id: 'ready-id', displayId: 'WO-READY', status: 'in_progress', jobs: [{ status: 'completed' }] };
+    const critical = { ...baseRow, id: 'crit-id', displayId: 'WO-CRIT', priority: 'critical' };
+    prisma.workOrder.findMany
+      .mockResolvedValueOnce([critical])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([ready, critical]);
+    const service = createService(prisma);
+
+    const result = await service.dashboard();
+    expect(result.attention.map((item) => item.displayId)).toEqual(['WO-READY', 'WO-CRIT']);
   });
 
   it('returns the exact UTC cutoff used by the older-than-24-hours count', async () => {
