@@ -53,7 +53,10 @@ the production release path.
 
 - [ ] Branch protection + CI green
 - [ ] No `AUTH_DEV_BYPASS`
+- [ ] `DATA_SOURCE=supabase` (Ninox adapter is a stub; do not set `ninox`)
 - [ ] Secrets only in host env (never `NEXT_PUBLIC_` for service role)
+- [ ] Ninox live sync is **not** required for Shop go-live. Truck join, if a
+      future sync is approved, is `truckNumber` ↔ Ninox `E.A` only.
 - [ ] Staging acceptance signed off
 - [ ] Rollback plan: previous Vercel web and API deployments
 - [ ] Release safety workflow green: Prisma migrate status (deploy only via that workflow) and API health/root reads
