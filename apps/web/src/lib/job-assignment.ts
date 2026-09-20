@@ -29,3 +29,14 @@ export function workOrderTeamLabel(
   if (!names.length) return copy.noWorkOrderTeam;
   return `${copy.workOrderTeam}: ${names.join(' / ')}`;
 }
+
+/** Standard jobs are done; the Work Order stays in progress until a Manager closes it. */
+export function isStandardWorkWaitingOnManager(wo: {
+  status: string;
+  primaryCategoryName: string;
+  jobs: Array<{ status: string }>;
+}): boolean {
+  if (wo.primaryCategoryName === 'PM') return false;
+  if (wo.status !== 'in_progress') return false;
+  return wo.jobs.every((job) => job.status !== 'to_do');
+}
