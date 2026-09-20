@@ -25,7 +25,7 @@ test.describe('V1.2-002 blocker lifecycle', () => {
     await dialog.getByRole('button', { name: 'Report Blocker', exact: true }).click();
 
     await expect(page.getByRole('heading', { name: 'WO-0106' })).toBeVisible();
-    await expect(page.getByText(/In Progress/i)).toBeVisible();
+    await expect(page.getByText('#T-106 · In Progress')).toBeVisible();
     await expect(page.getByText(/^Paused$/)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Resume Work' })).toHaveCount(0);
 
@@ -45,14 +45,14 @@ test.describe('V1.2-002 blocker lifecycle', () => {
 
     await page.getByLabel('Pause reason').selectOption('waiting_for_approval');
     await page.getByRole('button', { name: 'Pause Work Order' }).click();
-    await expect(page.getByText('Work Order paused.')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Work Order paused.' }).first()).toBeVisible();
     await expect(page.getByText('Paused').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Resume Work Order' })).toBeVisible();
     await expect(page.getByText('Waiting for Approval').first()).toBeVisible();
     await expect(page.getByText('Waiting for Parts').first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Resume Work Order' }).click();
-    await expect(page.getByText('Work Order resumed.')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Work Order resumed.' }).first()).toBeVisible();
     await expect(page.getByText('In Progress').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Pause Work Order' })).toBeVisible();
     await expect(page.getByText('This Work Order is not currently paused.').first()).toBeVisible();

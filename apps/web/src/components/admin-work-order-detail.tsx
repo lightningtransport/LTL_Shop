@@ -12,6 +12,7 @@ import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/l
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { useCategories } from '@/lib/shop-data';
+import { useActionToast } from './action-toast';
 import { JobPickerDialog } from './job-picker-dialog';
 import {
   AdminBackLink,
@@ -38,6 +39,7 @@ import {
 
 export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
+  const { showToast } = useActionToast();
   const { mutate: mutateRelated } = useSWRConfig();
   const { data, error, isLoading, mutate } = useAdminWorkOrder(id);
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
@@ -104,8 +106,11 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       await mutate();
       void mutateRelated(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
       setFeedback({ kind: 'success', message: successMessage });
+      showToast('success', successMessage);
     } catch (failure) {
-      setFeedback({ kind: 'error', message: onError(failure) });
+      const message = onError(failure);
+      setFeedback({ kind: 'error', message });
+      showToast('error', message);
     } finally {
       setPendingAction(null);
     }
@@ -120,7 +125,19 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       meta={<>{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</>}
       badges={<><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></>}
     />
-    {feedback ? <p className={feedback.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'} role="status">{feedback.message}</p> : null}
+    {feedback ? (
+      <p
+        className={
+          feedback.kind === 'error'
+            ? 'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive'
+            : 'rounded-xl border border-shop-success/30 bg-shop-success/10 px-3 py-2 text-sm text-shop-success'
+        }
+        role={feedback.kind === 'error' ? 'alert' : 'status'}
+        aria-live="polite"
+      >
+        {feedback.message}
+      </p>
+    ) : null}
 
     <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]" aria-label={messages.operationalSummary}>
       <Card>
@@ -584,7 +601,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                                 }, (failure) => jobChangeError(failure, messages));
                               }}
                             >
-                              {messages.completeJobAction}
+                              {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.completeJobAction}
                             </Button>
                           ) : null}
                           {canManageJobs && isToDo ? (

@@ -44,8 +44,12 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').addCustomJob).toMatch(/personalizado/);
     expect(getShopCopy('en').multiSelectDone).toBe('Done');
     expect(getShopCopy('es').multiSelectDone).toBe('Listo');
-    expect(getShopCopy('en').startWork).toBe('Start Work');
-    expect(getShopCopy('es').startWork).toBe('Iniciar trabajo');
+    expect(getShopCopy('en').jobFinishedSuccess).toBe('Job marked complete.');
+    expect(getShopCopy('es').jobFinishedWithNoteSuccess).toMatch(/nota/);
+    expect(getShopCopy('en').workStartedSuccess).toBe('Work started.');
+    expect(getShopCopy('es').blockerReportedSuccess).toMatch(/pausado/);
+    expect(getAdminMessages('en').createWorkOrderSuccess).toContain('{id}');
+    expect(getAdminMessages('es').createWorkOrderSuccess).toContain('{id}');
     expect(getShopCopy('en').pauseWorkOrder).toBe('Pause Work Order');
     expect(getShopCopy('es').pauseWorkOrder).toBe('Pausar Work Order');
     expect(getShopCopy('en').workOrderAction('Start Work', 'WO-1001', '905')).toBe('Start Work WO-1001, truck 905');
