@@ -97,7 +97,7 @@ test.describe('LTR-21 New WO category jobs', () => {
     await expect(page.getByRole('button', { name: /Creating|Creando/ })).toBeVisible();
 
     await expect(page).toHaveURL(/\/admin\/work-orders\/[0-9a-f-]+/);
-    await expect(page.getByRole('status', { name: /Work Order created\.|Work Order creada\./ })).toBeVisible();
+    await expect(page.getByText(/Work Order created\.|Work Order creada\./)).toBeVisible();
     await expect(page.getByRole('heading', { name: /WO-/ })).toBeVisible();
   });
 });

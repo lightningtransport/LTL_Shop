@@ -243,17 +243,18 @@ export default function HomePage() {
 
 function WorkspaceFlash() {
   const search = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
   const { messages } = useShopLocale();
-  const [visible, setVisible] = useState(false);
   const finished = search.get('finished') === '1';
+  const [visible, setVisible] = useState(finished);
 
   useEffect(() => {
     if (!finished) return;
     setVisible(true);
-    router.replace(pathname, { scroll: false });
-  }, [finished, pathname, router]);
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('finished')) return;
+    url.searchParams.delete('finished');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [finished]);
 
   if (!visible) return null;
   return <ActionFeedback className="mb-4">{messages.finishWorkSuccess}</ActionFeedback>;

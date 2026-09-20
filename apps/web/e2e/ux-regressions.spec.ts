@@ -606,7 +606,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       selections: [{ partCategoryId: 'part-cat-oil', partId: 'part-oil' }],
     });
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
-    await expect(page.getByRole('status', { name: /Work completed\.|Trabajo terminado\./ })).toBeVisible();
+    await expect(page.getByText(/Work completed\.|Trabajo terminado\./)).toBeVisible();
   });
 
   test('Standard detail hides Finish Work and Add Job after cutover', async ({ page }) => {
@@ -765,7 +765,7 @@ test.describe('My Assigned Work presentation', () => {
     await page.goto('/login');
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
-    const assignedCard = page.locator('article').filter({ hasText: 'WO-ASSIGN-1' });
+    const assignedCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
     await expect(assignedCard.getByText('Work Order team: Alex Mechanic / Jamie Technician')).toBeVisible();
     await expect(assignedCard.getByText('Replace pads')).toBeVisible();
     await expect(assignedCard.getByText('Assigned to you')).toBeVisible();
@@ -792,7 +792,7 @@ test.describe('My Assigned Work presentation', () => {
     await page.getByLabel('Completion note').fill('Pads replaced, rotor looks good');
     await page.getByRole('button', { name: 'Complete Job' }).click();
     await expect(page.getByRole('button', { name: /Completing|Completando/ })).toBeVisible();
-    await expect(page.getByRole('status', { name: /Job completed\.|Job completado\./ })).toBeVisible();
+    await expect(page.getByText(/Job completed\.|Job completado\./)).toBeVisible();
     await expect(page.getByText('Replace pads')).toBeVisible();
     await expect(page.getByText('Pads replaced, rotor looks good')).toBeVisible();
   });

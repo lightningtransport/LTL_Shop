@@ -173,6 +173,7 @@ export function ActionFeedback({
   kind?: 'success' | 'error';
   className?: string;
 }) {
+  const label = typeof children === 'string' ? children : undefined;
   return (
     <p
       className={cn(
@@ -184,6 +185,7 @@ export function ActionFeedback({
       )}
       role={kind === 'error' ? 'alert' : 'status'}
       aria-live="polite"
+      aria-label={label}
     >
       {children}
     </p>
