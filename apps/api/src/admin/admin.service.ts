@@ -138,6 +138,7 @@ const detailInclude = {
     include: {
       category: { select: { name: true } },
       assignedMechanic: { select: { id: true, name: true } },
+      completedBy: { select: { id: true, name: true } },
     },
     orderBy: { addedAt: 'asc' as const },
   },
@@ -178,7 +179,8 @@ export class AdminService {
   // idempotency, one-open-WO-per-Truck, multi-category Jobs) with a Manager
   // actor so no mechanic capability is required and PM is rejected.
   async createWorkOrder(user: AuthUser, body: unknown) {
-    return this.workOrders.createByManager(user, body);
+    const created = await this.workOrders.createByManager(user, body);
+    return this.detail(created.id);
   }
 
   // Manager-first ownership: the Manager pauses/resumes the Work Order. Reuses
@@ -1440,10 +1442,12 @@ export class AdminService {
     if (!preview) throw new NotFoundException('Job not found');
     const workOrderId = preview.workOrderId;
     const operation = 'admin_complete_job';
+    const notes = input.notes?.trim() || null;
     const payloadHash = idempotencyFingerprint({
       jobId,
       workOrderId,
       expectedVersion: input.expectedVersion,
+      notes,
     });
     const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
     if (existing) return existing;
@@ -1490,8 +1494,8 @@ export class AdminService {
           entityId: jobId,
           userId: user.id,
           previousValue: { status: job.status, displayName: job.displayName },
-          newValue: { status: JobStatus.completed, displayName: job.displayName },
-          relevantValue: { action: 'job_completed', displayName: job.displayName, actor: 'admin' },
+          newValue: { status: JobStatus.completed, displayName: job.displayName, notes },
+          relevantValue: { action: 'job_completed', displayName: job.displayName, notes, actor: 'admin' },
         });
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
@@ -1869,6 +1873,17 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
   };
 }
 
+function jobCompletionNotes(
+  activityLogs: Array<{ eventType: string; entityId: string | null; newValue: unknown }>,
+  jobId: string,
+): string | null {
+  const entry = activityLogs.find((event) => (
+    event.eventType === SharedActivityEventType.JOB_COMPLETED && event.entityId === jobId
+  ));
+  const notes = (entry?.newValue as { notes?: unknown } | null)?.notes;
+  return typeof notes === 'string' && notes.trim() ? notes : null;
+}
+
 function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
   const summary = toAdminSummary(row);
   const jobs = row.primaryCategory.name === 'PM' ? [] : row.jobs.map((job) => ({
@@ -1881,6 +1896,9 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     assignedMechanic: job.assignedMechanic
       ? { id: job.assignedMechanic.id, name: job.assignedMechanic.name }
       : null,
+    completedAt: job.completedAt?.toISOString() ?? null,
+    completedBy: job.completedBy ?? null,
+    completionNotes: jobCompletionNotes(row.activityLogs, job.id),
   }));
   return {
     ...summary,

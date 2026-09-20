@@ -540,6 +540,9 @@ createServer(async (request, response) => {
       category: { id: job.categoryId, name: job.categoryId.endsWith('302') ? 'Suspension' : 'Brakes' },
       status: 'to_do',
       assignedMechanic: null,
+      completedAt: null,
+      completedBy: null,
+      completionNotes: null,
     }));
     syncJobCounts(created);
     workOrders.unshift(created);
@@ -610,6 +613,43 @@ createServer(async (request, response) => {
     json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
+  const completeJobMatch = request.url?.match(/^\/api\/admin\/jobs\/([0-9a-f-]+)\/complete$/i);
+  if (completeJobMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
+    const found = findFixtureJob(completeJobMatch[1]);
+    const body = await readJson(request);
+    if (!found) { json(response, 404, { message: 'Job not found' }); return; }
+    if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
+    if (found.workOrder.category?.name === 'PM') { json(response, 400, { message: 'PM Work Orders do not use jobs' }); return; }
+    if (!['created', 'in_progress', 'waiting_paused'].includes(found.workOrder.status)) {
+      json(response, 400, { message: 'Cannot change Jobs on a closed Work Order' });
+      return;
+    }
+    if (found.job.status !== 'to_do') { json(response, 400, { message: 'Job is not in To Do status' }); return; }
+    if (body.expectedVersion !== found.workOrder.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
+    found.job.status = 'completed';
+    found.job.completedAt = '2026-09-20T02:41:00.000Z';
+    found.job.completedBy = { id: users['mechanic@lightning.local'].id, name: users['mechanic@lightning.local'].name };
+    found.job.completionNotes = typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim() : null;
+    found.workOrder.activityLog = [
+      {
+        id: `log-${found.job.id}`,
+        eventType: 'job_completed',
+        entityType: 'work_order_job',
+        entityId: found.job.id,
+        user: found.job.completedBy,
+        previousValue: null,
+        newValue: { displayName: found.job.displayName, status: 'completed', notes: found.job.completionNotes },
+        relevantValue: null,
+        createdAt: found.job.completedAt,
+      },
+      ...(found.workOrder.activityLog ?? []),
+    ];
+    found.workOrder.version += 1;
+    syncJobCounts(found.workOrder);
+    json(response, 200, fixtureWorkOrderDetail(found.workOrder));
+    return;
+  }
   const cancelJobMatch = request.url?.match(/^\/api\/admin\/jobs\/([0-9a-f-]+)\/cancel$/i);
   if (cancelJobMatch && request.method === 'POST') {
     if (denyUnlessManage()) return;
@@ -626,6 +666,7 @@ createServer(async (request, response) => {
     if (found.job.status !== 'to_do') { json(response, 400, { message: 'Job is not in To Do status' }); return; }
     if (body.expectedVersion !== found.workOrder.version) { json(response, 409, { code: 'VERSION_CONFLICT', message: 'Work Order was updated.' }); return; }
     found.job.status = 'cancelled';
+    found.job.completionNotes = null;
     found.workOrder.version += 1;
     syncJobCounts(found.workOrder);
     json(response, 200, fixtureWorkOrderDetail(found.workOrder));
@@ -1065,6 +1106,7 @@ function fixtureMechanicWorkOrderDetail(summary) {
       status: job.status,
       completedAt: null,
       completedById: null,
+      completionNotes: job.completionNotes ?? null,
       assignedMechanic: job.assignedMechanic ?? null,
     })),
     currentPause: summary.currentPause,
@@ -1147,6 +1189,9 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status, options = {
       category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },
       status: pendingJob ? 'to_do' : (status === 'in_progress' || status === 'completed' ? 'completed' : 'to_do'),
       assignedMechanic: null,
+      completedAt: pendingJob ? null : (status === 'in_progress' || status === 'completed' ? '2026-09-06T17:30:00.000Z' : null),
+      completedBy: pendingJob ? null : (status === 'in_progress' || status === 'completed' ? { id: users['mechanic@lightning.local'].id, name: users['mechanic@lightning.local'].name } : null),
+      completionNotes: null,
     }],
     returnedToServiceAt: null,
   };

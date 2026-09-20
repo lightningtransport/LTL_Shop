@@ -135,6 +135,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
       status: j.status,
       completedAt: j.completedAt?.toISOString() ?? null,
       completedById: j.completedById,
+      completionNotes: null,
       assignedMechanic: j.assignedMechanic ?? null,
     })),
     mechanics: (wo.mechanics ?? [])

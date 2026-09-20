@@ -19,7 +19,6 @@ import type {
   AdminCatalogCategoryDetailDto,
   AdminCatalogCategorySummaryDto,
   YardOperationsPageDto,
-  WorkOrderDetailDto,
   TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
@@ -37,12 +36,16 @@ const adminReadRetry = {
 } as const;
 
 const adminInfiniteOptions = {
-  revalidateFirstPage: false,
+  revalidateFirstPage: true,
   persistSize: false,
-  // Infinite lists default to revalidateOnMount: false, so client navigation
-  // back from create/detail would keep the previous page of rows until a hard refresh.
   revalidateOnMount: true,
+  dedupingInterval: 1_000,
   ...adminReadRetry,
+} as const;
+
+const adminWorkOrderListOptions = {
+  ...adminInfiniteOptions,
+  refreshInterval: 15_000,
 } as const;
 
 export function withAdminReadPending<T extends { isLoading: boolean; isValidating: boolean; data: unknown }>(
@@ -80,7 +83,7 @@ export function useAdminWorkOrders(query: string) {
         return `/api/admin/work-orders?${params.toString()}`;
       },
       adminReadFetcher,
-      adminInfiniteOptions,
+      adminWorkOrderListOptions,
     ),
   );
 }
@@ -90,7 +93,8 @@ export function useAdminWorkOrder(id: string) {
   return withAdminReadPending(
     token,
     useSWR<AdminWorkOrderDetailDto>(token && id ? `/api/admin/work-orders/${id}` : null, adminReadFetcher, {
-      dedupingInterval: 10_000,
+      dedupingInterval: 2_000,
+      refreshInterval: 15_000,
       ...adminReadRetry,
     }),
   );
@@ -239,7 +243,7 @@ export function createAdminWorkOrder(
   input: CreateAdminWorkOrderInput,
   idempotencyKey = adminMutationIdempotencyKey(),
 ) {
-  return apiFetch<WorkOrderDetailDto>('/api/admin/work-orders', {
+  return apiFetch<AdminWorkOrderDetailDto>('/api/admin/work-orders', {
     method: 'POST',
     body: JSON.stringify({ ...input, idempotencyKey }),
   });
@@ -412,7 +416,7 @@ export function cancelAdminJob(
 
 export function completeAdminJob(
   jobId: string,
-  input: { expectedVersion: number },
+  input: { expectedVersion: number; notes?: string },
   idempotencyKey = adminMutationIdempotencyKey(),
 ) {
   return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/jobs/${jobId}/complete`, {

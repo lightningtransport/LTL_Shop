@@ -60,6 +60,7 @@ export default function WorkOrderDetailPage() {
     id: string;
     name: string;
   } | null>(null);
+  const [finishNotes, setFinishNotes] = useState('');
   const [pauseOpen, setPauseOpen] = useState(false);
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [pauseNotes, setPauseNotes] = useState('');
@@ -103,10 +104,12 @@ export default function WorkOrderDetailPage() {
       const updated = await action();
       await mutateWorkOrder(updated, { revalidate: false });
       void Promise.all([
-        mutateGlobal(isWorkOrderRelatedListKey),
+        mutateGlobal(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false }),
         mutateGlobal(
           (key) =>
             typeof key === 'string' && key.includes('/repair-history'),
+          undefined,
+          { revalidate: true, populateCache: false },
         ),
       ]).catch(() => undefined);
       onSuccess?.();
@@ -279,6 +282,7 @@ export default function WorkOrderDetailPage() {
                   disabled={busy || wo.status !== 'in_progress'}
                   onSelect={(event) => {
                     finishJobTriggerRef.current = event.currentTarget;
+                    setFinishNotes('');
                     setFinishJob({ id: job.id, name: job.displayName });
                   }}
                 />
@@ -298,6 +302,7 @@ export default function WorkOrderDetailPage() {
                     disabled={busy || wo.status !== 'in_progress'}
                     onSelect={(event) => {
                       finishJobTriggerRef.current = event.currentTarget;
+                      setFinishNotes('');
                       setFinishJob({ id: job.id, name: job.displayName });
                     }}
                   />
@@ -329,6 +334,9 @@ export default function WorkOrderDetailPage() {
                   <span className="block text-xs text-muted-foreground">
                     {jobAssignmentLabel(job.assignedMechanic, user?.id ?? '', messages)}
                   </span>
+                  {job.completionNotes ? (
+                    <span className="mt-1 block text-sm text-foreground">{job.completionNotes}</span>
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -379,14 +387,31 @@ export default function WorkOrderDetailPage() {
       <Modal
         open={!!finishJob}
         title="JOB FINISHED"
-        onClose={() => setFinishJob(null)}
+        onClose={() => {
+          setFinishJob(null);
+          setFinishNotes('');
+        }}
         returnFocusRef={finishJobTriggerRef}
       >
         <p className="mb-4 text-lg">{finishJob?.name}</p>
+        <Label className="section-label mb-2 block" htmlFor="finish-job-notes">
+          {messages.jobFinishNotes}
+        </Label>
+        <Textarea
+          id="finish-job-notes"
+          className="mb-4"
+          placeholder={messages.jobFinishNotesPlaceholder}
+          value={finishNotes}
+          onChange={(event) => setFinishNotes(event.target.value)}
+          maxLength={2000}
+        />
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="secondary"
-            onClick={() => setFinishJob(null)}
+            onClick={() => {
+              setFinishJob(null);
+              setFinishNotes('');
+            }}
           >
             Cancel
           </Button>
@@ -395,12 +420,17 @@ export default function WorkOrderDetailPage() {
             onClick={() => {
               if (!finishJob) return;
               const jobId = finishJob.id;
+              const notesToSave = finishNotes.trim() || undefined;
               setFinishJob(null);
+              setFinishNotes('');
               run(
                 () =>
                   apiFetch<WorkOrderDetailDto>(
                     `/api/work-orders/${wo.id}/jobs/${jobId}/complete`,
-                    { method: 'POST' },
+                    {
+                      method: 'POST',
+                      body: JSON.stringify({ notes: notesToSave }),
+                    },
                   ),
                 (current) => {
                   const completedAt = new Date().toISOString();
@@ -411,6 +441,7 @@ export default function WorkOrderDetailPage() {
                           status: JobStatus.COMPLETED,
                           completedAt,
                           completedById: user?.id ?? null,
+                          completionNotes: notesToSave ?? null,
                         }
                       : job,
                   );

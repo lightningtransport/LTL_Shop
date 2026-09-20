@@ -20,6 +20,7 @@ import {
   adminTimeCorrectionSchema,
   adminCancelJobSchema,
   adminCompleteJobSchema,
+  completeJobSchema,
   adminReopenJobSchema,
   adminReturnToServiceSchema,
   adminMutationMetaSchema,
@@ -138,6 +139,14 @@ describe('shared contracts', () => {
       expectedVersion: 1,
       idempotencyKey: '00000000-0000-4000-8000-000000000005',
     }).success).toBe(true);
+    expect(adminCompleteJobSchema.safeParse({
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000015',
+      notes: 'Replaced the hose',
+    }).success).toBe(true);
+    expect(completeJobSchema.safeParse({ notes: 'Replaced the hose' }).success).toBe(true);
+    expect(completeJobSchema.safeParse({}).success).toBe(true);
+    expect(completeJobSchema.safeParse({ notes: 'x'.repeat(2001) }).success).toBe(false);
     expect(adminCompleteWorkOrderSchema.safeParse({
       idempotencyKey: '00000000-0000-4000-8000-000000000005',
     }).success).toBe(false);

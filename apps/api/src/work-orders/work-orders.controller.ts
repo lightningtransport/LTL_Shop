@@ -85,8 +85,9 @@ export class WorkOrdersController {
     @Req() req: Request,
     @Param('id') id: string,
     @Param('jobId') jobId: string,
+    @Body() body: unknown,
   ) {
-    return this.workOrders.completeJob(req.user!, id, jobId);
+    return this.workOrders.completeJob(req.user!, id, jobId, body ?? {});
   }
 
   @Get(':id/pm')

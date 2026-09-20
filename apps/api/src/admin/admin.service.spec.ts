@@ -121,6 +121,70 @@ describe('AdminService', () => {
     expect(prisma.workOrder.findMany.mock.calls[0][0].where).toEqual({});
   });
 
+  it('returns the Admin detail DTO after Manager create so the list can refresh without a full reload', async () => {
+    const created = detailRow();
+    const prisma = createPrisma();
+    prisma.workOrder.findUnique.mockResolvedValue(created);
+    const workOrders = { createByManager: vi.fn().mockResolvedValue({ id: created.id }) };
+    const service = new AdminService(prisma as never, { log: vi.fn() } as never, workOrders as never);
+
+    await expect(service.createWorkOrder({
+      id: created.createdById,
+      email: 'manager@lightning.local',
+      name: 'Shop Manager',
+      role: 'manager',
+      active: true,
+      pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE],
+      supabaseAuthId: null,
+    }, { truckId: created.truckId })).resolves.toMatchObject({
+      id: created.id,
+      displayId: created.displayId,
+      notes: null,
+      activityLog: [],
+    });
+    expect(workOrders.createByManager).toHaveBeenCalled();
+    expect(prisma.workOrder.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: created.id } }));
+  });
+
+  it('exposes mechanic finish notes on Admin Job rows and Activity Log', async () => {
+    const jobId = '00000000-0000-4000-8000-000000000501';
+    const created = detailRow({
+      jobs: [{
+        ...detailRow().jobs[0],
+        status: 'completed',
+        completedAt: new Date('2026-09-19T22:41:00.000Z'),
+        completedBy: { id: 'mech-1', name: 'Alejandro' },
+      }],
+      activityLogs: [{
+        id: 'log-1',
+        eventType: ActivityEventType.JOB_COMPLETED,
+        entityType: 'work_order_job',
+        entityId: jobId,
+        user: { id: 'mech-1', name: 'Alejandro' },
+        previousValue: null,
+        newValue: { displayName: 'Inspect', status: 'completed', notes: 'Replaced the air hose' },
+        relevantValue: null,
+        createdAt: new Date('2026-09-19T22:41:00.000Z'),
+      }],
+    });
+    const prisma = createPrisma();
+    prisma.workOrder.findUnique.mockResolvedValue(created);
+    const service = createService(prisma);
+
+    await expect(service.detail(created.id)).resolves.toMatchObject({
+      jobs: [expect.objectContaining({
+        status: 'completed',
+        completedBy: { id: 'mech-1', name: 'Alejandro' },
+        completionNotes: 'Replaced the air hose',
+      })],
+      activityLog: [expect.objectContaining({
+        eventType: ActivityEventType.JOB_COMPLETED,
+        newValue: expect.objectContaining({ notes: 'Replaced the air hose' }),
+      })],
+    });
+  });
+
   it('uses a stable sort-value plus UUID cursor without repeating the boundary row', async () => {
     const prisma = createPrisma();
     const nextRow = {
@@ -1327,6 +1391,7 @@ function detailRow(overrides: Record<string, unknown> = {}) {
     completedBy: null,
     jobs: [{
       id: '00000000-0000-4000-8000-000000000501',
+      catalogJobId: null,
       displayName: 'Inspect',
       customDescription: null,
       status: 'to_do',
@@ -1334,6 +1399,8 @@ function detailRow(overrides: Record<string, unknown> = {}) {
       category: { name: 'Engine' },
       assignedMechanicId: null,
       assignedMechanic: null,
+      completedAt: null,
+      completedBy: null,
     }],
     pauseEvents: [],
     sessions: [],

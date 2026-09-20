@@ -13,6 +13,7 @@ import {
   PauseReason,
   addJobSchema,
   changePauseReasonSchema,
+  completeJobSchema,
   createWorkOrderSchema,
   pauseWorkOrderSchema,
   reportBlockerSchema,
@@ -910,7 +911,11 @@ export class WorkOrdersService {
     });
   }
 
-  async completeJob(user: AuthUser, workOrderId: string, jobId: string) {
+  async completeJob(user: AuthUser, workOrderId: string, jobId: string, raw: unknown = {}) {
+    const parsed = completeJobSchema.safeParse(raw ?? {});
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const notes = parsed.data.notes?.trim() || null;
+
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, workOrderId);
       this.assertMechanicAccess(user, wo);
@@ -951,9 +956,15 @@ export class WorkOrdersService {
         entityType: 'work_order_job',
         entityId: jobId,
         userId: user.id,
-        newValue: { displayName: job.displayName, status: 'completed' },
+        newValue: { displayName: job.displayName, status: 'completed', notes },
       });
-      return toWorkOrderDetail(updated);
+      const detail = toWorkOrderDetail(updated);
+      return {
+        ...detail,
+        jobs: detail.jobs.map((item) =>
+          item.id === jobId ? { ...item, completionNotes: notes } : item,
+        ),
+      };
     });
   }
 
