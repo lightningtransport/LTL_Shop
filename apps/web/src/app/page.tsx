@@ -9,7 +9,7 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { useWorkOrders } from '@/lib/shop-data';
 import { pauseLabel, statusLabel } from '@/lib/format';
-import { jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
+import { isStandardWorkWaitingOnManager, jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
@@ -121,6 +121,8 @@ export default function HomePage() {
   }
 
   const isPm = mode === MechanicMode.PM;
+  const waitingOnManager = data && !isPm ? data.active.filter(isStandardWorkWaitingOnManager) : [];
+  const activeWork = data ? (isPm ? data.active : data.active.filter((wo) => !isStandardWorkWaitingOnManager(wo))) : [];
 
   return (
     <div>
@@ -176,12 +178,26 @@ export default function HomePage() {
             </section>
           ) : null}
 
+          {waitingOnManager.length ? (
+            <section className="mb-6">
+              <h2 className="section-label mb-2">{messages.waitingOnManager}</h2>
+              <p className="mb-3 text-sm text-shop-muted">
+                {messages.waitingOnManagerHint(waitingOnManager.length)}
+              </p>
+              <div className="space-y-3">
+                {waitingOnManager.map((wo) => (
+                  <WorkOrderCard key={wo.id} wo={wo} mode="waiting_on_manager" currentUserId={user.id} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className="mb-6">
-              <h2 className="section-label mb-2">{messages.locale === 'es' ? 'Jobs activos' : 'Active Jobs'}</h2>
+              <h2 className="section-label mb-2">{messages.activeJobsTitle}</h2>
             <p className="mb-3 text-sm text-shop-muted">
-              {messages.activeJobs(data.active.length)}
+              {messages.activeJobs(activeWork.length)}
             </p>
-            {!data.active.length ? (
+            {!activeWork.length ? (
               <EmptyState>
                 {isPm ? (
                   messages.noActivePmServices
@@ -194,7 +210,7 @@ export default function HomePage() {
               </EmptyState>
             ) : (
               <div className="space-y-3">
-                {data.active.map((wo) => (
+                {activeWork.map((wo) => (
                   <WorkOrderCard key={wo.id} wo={wo} mode="active" currentUserId={user.id} />
                 ))}
               </div>
@@ -202,7 +218,7 @@ export default function HomePage() {
           </section>
 
           <section>
-            <h2 className="section-label mb-2">{messages.locale === 'es' ? 'Jobs pausados' : 'Paused Jobs'}</h2>
+            <h2 className="section-label mb-2">{messages.pausedJobsTitle}</h2>
             <p className="mb-3 text-sm text-shop-muted">
               {messages.pausedJobs(data.paused.length)}
             </p>
@@ -243,7 +259,7 @@ function WorkOrderCard({
   currentUserId,
 }: {
   wo: WorkOrderSummaryDto;
-  mode: 'created' | 'active' | 'paused' | 'completed';
+  mode: 'created' | 'active' | 'waiting_on_manager' | 'paused' | 'completed';
   currentUserId: string;
 }) {
   const { messages } = useShopLocale();
@@ -311,6 +327,8 @@ function WorkOrderCard({
           ) : (
             <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewDetails} wo={wo} className="w-full" />
           )
+        ) : mode === 'waiting_on_manager' ? (
+          <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewDetails} wo={wo} className="w-full" />
         ) : mode === 'created' ? (
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.startWork} wo={wo} className="flex-1" />
         ) : (

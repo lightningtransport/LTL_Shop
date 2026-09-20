@@ -66,6 +66,10 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').retryWorkOrder).toBe('Reintentar Work Order');
     expect(getShopCopy('en').viewWork).toBe('View Work');
     expect(getShopCopy('es').viewDetails).toBe('Ver detalles');
+    expect(getShopCopy('en').waitingOnManager).toBe('Waiting on Manager');
+    expect(getShopCopy('es').waitingOnManagerBody).toMatch(/Manager cierra/);
+    expect(getShopCopy('en').workOptions).toBe('Work Options');
+    expect(getShopCopy('es').activeJobsTitle).toBe('Jobs activos');
     expect(getShopCopy('en').priority.low).toBe('Low');
     expect(getShopCopy('es').priority.critical).toBe('Crítica');
     expect(getShopCopy('en').jobStatus.to_do).toBe('To do');

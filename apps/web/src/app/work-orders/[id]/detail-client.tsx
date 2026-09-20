@@ -20,7 +20,7 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
-import { isMyAssignedOrInheritedJob, jobAssignmentLabel } from '@/lib/job-assignment';
+import { isMyAssignedOrInheritedJob, isStandardWorkWaitingOnManager, jobAssignmentLabel } from '@/lib/job-assignment';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
@@ -77,7 +77,7 @@ export default function WorkOrderDetailPage() {
 
   useEffect(() => {
     const action = search.get('action');
-    if (action === 'pause' && wo?.primaryCategoryName !== 'PM' && wo?.status === 'in_progress' && wo.jobs.some((job) => job.status === 'to_do')) {
+    if (action === 'pause' && wo?.primaryCategoryName !== 'PM' && wo?.status === 'in_progress') {
       setPauseOpen(true);
     }
   }, [search, wo]);
@@ -174,6 +174,7 @@ export default function WorkOrderDetailPage() {
   const done = wo.jobs.filter((j) => j.status === 'completed');
   const myTodo = todo.filter((job) => isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
   const otherTodo = todo.filter((job) => !isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
+  const waitingOnManager = isStandardWorkWaitingOnManager(wo);
 
   return (
     <div>
@@ -188,8 +189,7 @@ export default function WorkOrderDetailPage() {
         <div className="flex items-center justify-between">
           <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge>
           <span className="text-sm text-shop-muted">
-            Primary: {wo.primaryCategoryName} — {wo.jobsCompleted} of {wo.jobsTotal}{' '}
-            jobs
+            {wo.primaryCategoryName} · {messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)}
           </span>
         </div>
         {wo.currentPauseReason ? (
@@ -199,6 +199,12 @@ export default function WorkOrderDetailPage() {
         ) : null}
       </div>
 
+      {waitingOnManager ? (
+        <p className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status">
+          {messages.waitingOnManagerBody}
+        </p>
+      ) : null}
+
       {error && !finishJob && !pauseOpen ? (
         <InlineAlert className="mb-3">{error}</InlineAlert>
       ) : null}
@@ -206,7 +212,7 @@ export default function WorkOrderDetailPage() {
       {wo.primaryCategoryName === 'PM' ? <PmServiceCard workOrderId={wo.id} /> : null}
 
       <section className="mb-4 space-y-2">
-        <p className="section-label">Work Options</p>
+        <p className="section-label">{messages.workOptions}</p>
         {wo.status === 'created' ? (
           <Button
             className="w-full"
@@ -225,7 +231,7 @@ export default function WorkOrderDetailPage() {
             {busy ? messages.startingWork : messages.startWork}
           </Button>
         ) : null}
-        {wo.status === 'in_progress' && todo.length ? (
+        {wo.status === 'in_progress' ? (
           <Button
             ref={pauseTriggerRef}
             variant="secondary"
@@ -249,7 +255,7 @@ export default function WorkOrderDetailPage() {
           aria-expanded={truckOpen}
           aria-controls="truck-information-panel"
         >
-          <span className="section-label">Truck Information</span>
+          <span className="section-label">{messages.truckInformation}</span>
           <ChevronDown
             className={`h-5 w-5 transition-transform ${truckOpen ? 'rotate-180' : ''}`}
             aria-hidden="true"
@@ -260,7 +266,7 @@ export default function WorkOrderDetailPage() {
             <TruckInformationFields truck={wo.truck} locale={messages.locale} />
             <Button asChild variant="secondary" className="w-full">
               <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
-                See Truck Repair History
+                {messages.repairHistory}
               </Link>
             </Button>
           </div>
@@ -322,7 +328,7 @@ export default function WorkOrderDetailPage() {
       </section>
 
       <section className="mb-4">
-        <p className="section-label mb-2">Completed</p>
+        <p className="section-label mb-2">{messages.jobStatus.completed}</p>
         {done.length === 0 ? (
           <EmptyState>{messages.noCompletedJobs}</EmptyState>
         ) : (

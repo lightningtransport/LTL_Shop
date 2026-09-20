@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isMyAssignedOrInheritedJob,
+  isStandardWorkWaitingOnManager,
   jobAssignmentLabel,
   workOrderTeamLabel,
 } from './job-assignment';
@@ -32,5 +33,28 @@ describe('job assignment presentation', () => {
       { mechanicName: 'Jamie Technician' },
     ], copy)).toBe('Work Order team: Alex Mechanic / Jamie Technician');
     expect(workOrderTeamLabel([], copy)).toBe('No Work Order team assigned');
+  });
+
+  it('treats in-progress Standard Work Orders with no to-do Jobs as waiting on the Manager', () => {
+    expect(isStandardWorkWaitingOnManager({
+      status: 'in_progress',
+      primaryCategoryName: 'Inspection',
+      jobs: [{ status: 'completed' }],
+    })).toBe(true);
+    expect(isStandardWorkWaitingOnManager({
+      status: 'in_progress',
+      primaryCategoryName: 'Inspection',
+      jobs: [{ status: 'to_do' }, { status: 'completed' }],
+    })).toBe(false);
+    expect(isStandardWorkWaitingOnManager({
+      status: 'in_progress',
+      primaryCategoryName: 'PM',
+      jobs: [],
+    })).toBe(false);
+    expect(isStandardWorkWaitingOnManager({
+      status: 'created',
+      primaryCategoryName: 'Inspection',
+      jobs: [{ status: 'completed' }],
+    })).toBe(false);
   });
 });

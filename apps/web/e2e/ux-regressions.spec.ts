@@ -632,6 +632,8 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Finish Work' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add job/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Report Blocker' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: /Jobs are done.*Manager closes this Work Order/i })).toBeVisible();
     await expect(page.getByText(/Need additional work on this Truck/i)).toBeVisible();
   });
 });
@@ -783,5 +785,36 @@ test.describe('My Assigned Work presentation', () => {
     await finishDialog.getByRole('button', { name: 'Complete job', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: /Job marked complete|Job marcado como completado/i })).toBeVisible();
     await expect(page.getByText('Replace pads')).toBeVisible();
+  });
+
+  test('moves Standard Work Orders with no to-do Jobs out of Active Jobs', async ({ page }) => {
+    const readyToClose = {
+      ...assignedWorkOrder,
+      id: 'wo-ready-close',
+      displayId: 'WO-READY-1',
+      jobsCompleted: 3,
+      jobs: assignedWorkOrder.jobs.map((job) => ({ ...job, status: 'completed' })),
+    };
+    await page.route('**/api/**', async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path === '/api/auth/me') return json(route, { user });
+      if (path === '/api/work-orders' && request.method() === 'GET') {
+        return json(route, { created: [], active: [assignedWorkOrder, readyToClose], paused: [], completed: [] });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Waiting on Manager' })).toBeVisible();
+    await expect(page.getByText('1 Work Order is ready for the Manager to close')).toBeVisible();
+    const waitingCard = page.locator('.card').filter({ hasText: 'WO-READY-1' });
+    await expect(waitingCard.getByRole('link', { name: /View Details WO-READY-1/ })).toBeVisible();
+    const activeCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
+    await expect(page.getByRole('heading', { name: 'Active Jobs' })).toBeVisible();
+    await expect(page.getByText('1 active job')).toBeVisible();
+    await expect(activeCard.getByRole('link', { name: /View Work WO-ASSIGN-1/ })).toBeVisible();
   });
 });

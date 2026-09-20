@@ -45,6 +45,12 @@ type Copy = {
   pausedJobs: (count: number) => string;
   noActiveJobs: string;
   noPausedJobs: string;
+  activeJobsTitle: string;
+  pausedJobsTitle: string;
+  waitingOnManager: string;
+  waitingOnManagerHint: (count: number) => string;
+  waitingOnManagerBody: string;
+  workOptions: string;
   assignedToYou: string;
   assignedTo: (name: string) => string;
   jobUnassignedInheritsTeam: string;
@@ -166,6 +172,11 @@ const copy: Record<ShopLocale, Copy> = {
     pausedJobs: (count) => `${count} ${count === 1 ? 'paused job' : 'paused jobs'}`,
     noActiveJobs: 'No assigned work in progress.',
     noPausedJobs: 'No paused jobs. Paused work will appear here until it is resumed.',
+    activeJobsTitle: 'Active Jobs',
+    pausedJobsTitle: 'Paused Jobs',
+    waitingOnManager: 'Waiting on Manager',
+    waitingOnManagerHint: (count) => `${count} ${count === 1 ? 'Work Order is' : 'Work Orders are'} ready for the Manager to close`,
+    waitingOnManagerBody: 'Jobs are done. Your Shop Manager closes this Work Order. You can still report a blocker if something is stopping the Truck.',
     assignedToYou: 'Assigned to you',
     assignedTo: (name) => `Assigned to ${name}`,
     jobUnassignedInheritsTeam: 'Unassigned — inherits the Work Order team',
@@ -189,6 +200,7 @@ const copy: Record<ShopLocale, Copy> = {
     addJobToContinue: 'Add a job to continue',
     askManagerToCreate: 'Ask your Shop Manager to create a Work Order.',
     askManagerToCreateHint: 'Managers plan Standard work. Your Home lists Work Orders assigned to you.',
+    workOptions: 'Work Options',
     additionalWorkHint: 'Need additional work on this Truck? Write it here so your Manager can add the Job.',
     jobFinishNotes: 'Completion note',
     jobFinishNotesPlaceholder: 'What did you do? The Manager will see this.',
@@ -297,6 +309,13 @@ const copy: Record<ShopLocale, Copy> = {
     pausedJobs: (count) => `${count} ${count === 1 ? 'Job pausado' : 'Jobs pausados'}`,
     noActiveJobs: 'No hay trabajo asignado en progreso.',
     noPausedJobs: 'No hay Jobs pausados. El trabajo pausado aparecerá aquí hasta que se reanude.',
+    activeJobsTitle: 'Jobs activos',
+    pausedJobsTitle: 'Jobs pausados',
+    waitingOnManager: 'Espera al Manager',
+    waitingOnManagerHint: (count) => count === 1
+      ? '1 Work Order listo para que el Manager lo cierre'
+      : `${count} Work Orders listos para que el Manager los cierre`,
+    waitingOnManagerBody: 'Los Jobs están hechos. El Shop Manager cierra este Work Order. Si algo detiene la unidad, aún puedes reportar un bloqueo.',
     assignedToYou: 'Asignado a ti',
     assignedTo: (name) => `Asignado a ${name}`,
     jobUnassignedInheritsTeam: 'Sin asignar — hereda el equipo de la Work Order',
@@ -320,6 +339,7 @@ const copy: Record<ShopLocale, Copy> = {
     addJobToContinue: 'Agrega un job para continuar',
     askManagerToCreate: 'Pide a tu Shop Manager que cree el Work Order.',
     askManagerToCreateHint: 'El Manager planifica el trabajo Standard. En Inicio ves los Work Orders asignados a ti.',
+    workOptions: 'Opciones de trabajo',
     additionalWorkHint: '¿Hace falta trabajo adicional en esta unidad? Anótalo aquí para que el Manager agregue el Job.',
     jobFinishNotes: 'Nota al completar',
     jobFinishNotesPlaceholder: '¿Qué hiciste? El Manager verá esta nota.',
