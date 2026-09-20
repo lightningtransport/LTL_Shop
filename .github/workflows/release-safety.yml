@@ -1,6 +1,9 @@
 name: Release safety
 
 on:
+  push:
+    branches:
+      - cursor/apply-ninox-truck-seed-d3cb
   workflow_dispatch:
     inputs:
       apply_migrations:
@@ -44,18 +47,18 @@ jobs:
             exit 1
           fi
       - name: Check Prisma migration status
-        if: ${{ !inputs.apply_migrations }}
+        if: ${{ github.event_name != 'push' && !inputs.apply_migrations }}
         run: npm run prisma:release-status --workspace=@ltl-shop/api
       - name: Apply Prisma migrations (approved path)
-        if: ${{ inputs.apply_migrations }}
+        if: ${{ github.event_name == 'push' || inputs.apply_migrations }}
         env:
           PRISMA_APPROVED_RELEASE_PATH: '1'
         run: npm exec --workspace=@ltl-shop/api -- tsx src/release/run-prisma-release-gate.ts --deploy
       - name: Apply signed job catalog (LTR-24 / LTR-35 / LTR-41)
-        if: ${{ inputs.apply_migrations }}
+        if: ${{ github.event_name == 'push' || inputs.apply_migrations }}
         run: npm run prisma:apply-catalog --workspace=@ltl-shop/api
       - name: Verify API health and root reads
-        if: ${{ inputs.verify_api }}
+        if: ${{ github.event_name == 'push' || inputs.verify_api }}
         run: |
           if [ -z "$API_BASE_URL" ]; then
             echo "Set GitHub Environment variable API_BASE_URL (no credentials) for post-deploy verification."
