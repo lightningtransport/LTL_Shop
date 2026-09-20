@@ -69,6 +69,12 @@ type Copy = {
   askManagerToCreate: string;
   askManagerToCreateHint: string;
   additionalWorkHint: string;
+  notes: string;
+  saveNotes: string;
+  jobFinishedTitle: string;
+  completeJob: string;
+  finishComment: string;
+  finishCommentPlaceholder: string;
   pausedAskManager: string;
   createPmService: string;
   viewCompletedWork: (count: number) => string;
@@ -173,6 +179,12 @@ const copy: Record<ShopLocale, Copy> = {
     askManagerToCreate: 'Ask your Shop Manager to create a Work Order.',
     askManagerToCreateHint: 'Managers plan Standard work. Your Home lists Work Orders assigned to you.',
     additionalWorkHint: 'Need additional work on this Truck? Write it here so your Manager can add the Job.',
+    notes: 'Notes',
+    saveNotes: 'Save Notes',
+    jobFinishedTitle: 'JOB FINISHED',
+    completeJob: 'Complete Job',
+    finishComment: 'Finish comment',
+    finishCommentPlaceholder: 'What did you do? The Manager will see this.',
     pausedAskManager: 'This Work Order is paused. Your Shop Manager will resume it.',
     createPmService: 'Create PM service',
     viewCompletedWork: (count) => `View completed work (${count})`,
@@ -287,6 +299,12 @@ const copy: Record<ShopLocale, Copy> = {
     askManagerToCreate: 'Pide a tu Shop Manager que cree el Work Order.',
     askManagerToCreateHint: 'El Manager planifica el trabajo Standard. En Inicio ves los Work Orders asignados a ti.',
     additionalWorkHint: '¿Hace falta trabajo adicional en esta unidad? Anótalo aquí para que el Manager agregue el Job.',
+    notes: 'Notas',
+    saveNotes: 'Guardar notas',
+    jobFinishedTitle: 'JOB TERMINADO',
+    completeJob: 'Completar Job',
+    finishComment: 'Comentario al terminar',
+    finishCommentPlaceholder: '¿Qué hiciste? El Manager lo verá.',
     pausedAskManager: 'Este Work Order está pausado. Tu Shop Manager lo reanudará.',
     createPmService: 'Crear servicio de PM',
     viewCompletedWork: (count) => `Ver trabajo completado (${count})`,

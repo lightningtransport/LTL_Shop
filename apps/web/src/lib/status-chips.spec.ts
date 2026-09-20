@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { ActivityEventType, JobStatus, Priority, ReadinessPhase, WorkOrderStatus } from '@ltl-shop/shared';
 import { getAdminMessages } from './admin-messages';
 import {
+  activityEventDetail,
   adminActivityEventLabel,
   adminPriorityLabel,
   jobStatusLabel,
   jobStatusVariant,
+  latestActivityNotes,
   phaseLabel,
   phaseVariant,
   priorityVariant,
@@ -67,5 +69,17 @@ describe('LTR-23 status chips', () => {
     expect(adminActivityEventLabel('unknown_event', en)).toBe('Activity recorded');
     expect(adminActivityEventLabel('unknown_event', es)).toBe('Actividad registrada');
     expect(adminActivityEventLabel(ActivityEventType.PM_DETAILS_UPDATED, en)).not.toMatch(/_/);
+  });
+
+  it('renders finish notes and job names from activity newValue', () => {
+    expect(activityEventDetail({
+      newValue: { notes: 'Replaced pads', displayName: 'Brake inspection' },
+    })).toBe('Brake inspection — Replaced pads');
+    expect(activityEventDetail({ newValue: { reason: 'waiting_for_parts' } })).toBe('waiting_for_parts');
+    expect(activityEventDetail({ newValue: { status: 'completed' } })).toBeNull();
+    expect(latestActivityNotes([
+      { eventType: ActivityEventType.JOB_COMPLETED, newValue: { displayName: 'Pads' } },
+      { eventType: ActivityEventType.NOTES_UPDATED, newValue: { notes: 'Replaced pads' } },
+    ])).toBe('Replaced pads');
   });
 });

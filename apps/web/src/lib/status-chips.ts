@@ -156,3 +156,38 @@ export function adminActivityEventLabel(eventType: string, catalog: AdminMessage
     ? catalog[ADMIN_ACTIVITY_EVENT_KEY[eventType as ActivityEventType]]
     : catalog.activityUnknown;
 }
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function textField(value: Record<string, unknown>, key: string): string {
+  const raw = value[key];
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+/** Job name, reason, or note text stored on an activity `newValue`. */
+export function activityEventDetail(entry: { newValue?: unknown }): string | null {
+  const value = asRecord(entry.newValue);
+  if (!value) return null;
+  const parts = [textField(value, 'displayName'), textField(value, 'reason'), textField(value, 'notes')]
+    .filter(Boolean);
+  return parts.length ? parts.join(' — ') : null;
+}
+
+export function latestActivityNotes(
+  entries: Array<{ eventType: string; newValue?: unknown }>,
+): string | null {
+  const fromNotesUpdated = entries.find((entry) => {
+    if (entry.eventType !== ActivityEventType.NOTES_UPDATED) return false;
+    return Boolean(textField(asRecord(entry.newValue) ?? {}, 'notes'));
+  });
+  if (fromNotesUpdated) return textField(asRecord(fromNotesUpdated.newValue) ?? {}, 'notes');
+  for (const entry of entries) {
+    const notes = textField(asRecord(entry.newValue) ?? {}, 'notes');
+    if (notes) return notes;
+  }
+  return null;
+}

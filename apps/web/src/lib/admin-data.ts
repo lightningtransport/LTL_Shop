@@ -37,7 +37,11 @@ const adminReadRetry = {
 } as const;
 
 const adminInfiniteOptions = {
-  revalidateFirstPage: false,
+  // Global mutate() does not set SWR Infinite `_i` (force all pages). With
+  // revalidateFirstPage:false the first page is reused from cache, so create/
+  // finish look like a no-op until a hard reload. Refetch page 1 on mutate
+  // and on Load more so Manager lists stay current.
+  revalidateFirstPage: true,
   persistSize: false,
   // Infinite lists default to revalidateOnMount: false, so client navigation
   // back from create/detail would keep the previous page of rows until a hard refresh.
@@ -80,7 +84,10 @@ export function useAdminWorkOrders(query: string) {
         return `/api/admin/work-orders?${params.toString()}`;
       },
       adminReadFetcher,
-      adminInfiniteOptions,
+      {
+        ...adminInfiniteOptions,
+        refreshInterval: 15_000,
+      },
     ),
   );
 }
@@ -91,6 +98,7 @@ export function useAdminWorkOrder(id: string) {
     token,
     useSWR<AdminWorkOrderDetailDto>(token && id ? `/api/admin/work-orders/${id}` : null, adminReadFetcher, {
       dedupingInterval: 10_000,
+      refreshInterval: 15_000,
       ...adminReadRetry,
     }),
   );

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   cacheKeyPath,
+  isAdminWorkOrderDetailKey,
   isAdminWorkOrdersListKey,
+  isMechanicWorkOrderDetailKey,
   isMechanicWorkOrdersListKey,
   isWorkOrderRelatedListKey,
+  isWorkOrderRelatedViewKey,
   isYardRelatedListKey,
 } from './swr-cache-keys';
 
@@ -35,6 +38,17 @@ describe('swr cache key matchers', () => {
     expect(isWorkOrderRelatedListKey('/api/admin/trucks/truck-1/repair-history?limit=5')).toBe(true);
     expect(isWorkOrderRelatedListKey('/api/admin/work-orders/wo-1')).toBe(false);
     expect(isWorkOrderRelatedListKey('/api/admin/catalog/categories')).toBe(false);
+  });
+
+  it('matches Admin and mechanic WO detail without list or nested mutation paths', () => {
+    expect(isAdminWorkOrderDetailKey('/api/admin/work-orders/wo-1')).toBe(true);
+    expect(isMechanicWorkOrderDetailKey('/api/work-orders/wo-1')).toBe(true);
+    expect(isAdminWorkOrderDetailKey('/api/admin/work-orders?limit=25')).toBe(false);
+    expect(isMechanicWorkOrderDetailKey('/api/work-orders/wo-1/notes')).toBe(false);
+    expect(isWorkOrderRelatedViewKey('/api/admin/work-orders/wo-1')).toBe(true);
+    expect(isWorkOrderRelatedViewKey('/api/work-orders/wo-1')).toBe(true);
+    expect(isWorkOrderRelatedViewKey('/api/admin/work-orders?limit=25')).toBe(true);
+    expect(isWorkOrderRelatedViewKey('/api/admin/catalog/categories')).toBe(false);
   });
 
   it('scopes Yard invalidation to yard, dashboard, trucks list, and WO list', () => {

@@ -22,7 +22,7 @@ import { useCatalogJobs, useCategories, useTrucks } from '@/lib/shop-data';
 import { CategoryJobList } from './category-job-list';
 import { rankTruckResults } from '@/lib/truck-search';
 import { cn } from '@/lib/utils';
-import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
+import { isWorkOrderRelatedViewKey } from '@/lib/swr-cache-keys';
 import {
   AdminBackLink,
   AdminPageHeader,
@@ -271,7 +271,7 @@ export function AdminNewWorkOrder({
           assignedMechanicId: job.assignedMechanicId,
         })),
       });
-      void mutate(isWorkOrderRelatedListKey);
+      await mutate(isWorkOrderRelatedViewKey);
       router.push(`/admin/work-orders/${created.id}`);
     } catch (failure) {
       setError(failure instanceof ApiError && failure.message ? failure.message : messages.createWorkOrderFailed);

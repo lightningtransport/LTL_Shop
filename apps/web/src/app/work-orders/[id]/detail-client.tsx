@@ -21,7 +21,8 @@ import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import { isMyAssignedOrInheritedJob, jobAssignmentLabel } from '@/lib/job-assignment';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
-import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
+import { isWorkOrderRelatedViewKey } from '@/lib/swr-cache-keys';
+import { mergeWorkOrderNotes } from '@/lib/work-order-notes';
 import {
   Button,
   Card,
@@ -65,6 +66,7 @@ export default function WorkOrderDetailPage() {
   const [pauseNotes, setPauseNotes] = useState('');
   const [notes, setNotes] = useState('');
   const [notesDirty, setNotesDirty] = useState(false);
+  const [finishComment, setFinishComment] = useState('');
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -103,7 +105,7 @@ export default function WorkOrderDetailPage() {
       const updated = await action();
       await mutateWorkOrder(updated, { revalidate: false });
       void Promise.all([
-        mutateGlobal(isWorkOrderRelatedListKey),
+        mutateGlobal(isWorkOrderRelatedViewKey),
         mutateGlobal(
           (key) =>
             typeof key === 'string' && key.includes('/repair-history'),
@@ -154,7 +156,7 @@ export default function WorkOrderDetailPage() {
         onUpdated={async (updated) => {
           await mutateWorkOrder(updated, { revalidate: false });
           void Promise.all([
-            mutateGlobal(isWorkOrderRelatedListKey),
+            mutateGlobal(isWorkOrderRelatedViewKey),
             mutateGlobal(
               (key) => typeof key === 'string' && key.includes('/repair-history'),
             ),
@@ -339,7 +341,7 @@ export default function WorkOrderDetailPage() {
       <section className="card space-y-3">
         <div>
           <Label className="section-label" htmlFor="wo-notes">
-            Notes
+            {messages.notes}
           </Label>
           <Textarea
             id="wo-notes"
@@ -370,7 +372,7 @@ export default function WorkOrderDetailPage() {
                 })
               }
             >
-              Save Notes
+              {messages.saveNotes}
             </Button>
           ) : null}
         </div>
@@ -378,15 +380,32 @@ export default function WorkOrderDetailPage() {
 
       <Modal
         open={!!finishJob}
-        title="JOB FINISHED"
-        onClose={() => setFinishJob(null)}
+        title={messages.jobFinishedTitle}
+        onClose={() => {
+          setFinishJob(null);
+          setFinishComment('');
+        }}
         returnFocusRef={finishJobTriggerRef}
       >
         <p className="mb-4 text-lg">{finishJob?.name}</p>
+        <Label className="section-label mb-2 block" htmlFor="finish-comment">
+          {messages.finishComment}
+        </Label>
+        <Textarea
+          id="finish-comment"
+          className="mb-4"
+          placeholder={messages.finishCommentPlaceholder}
+          value={finishComment}
+          onChange={(event) => setFinishComment(event.target.value)}
+          maxLength={2000}
+        />
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="secondary"
-            onClick={() => setFinishJob(null)}
+            onClick={() => {
+              setFinishJob(null);
+              setFinishComment('');
+            }}
           >
             Cancel
           </Button>
@@ -395,13 +414,29 @@ export default function WorkOrderDetailPage() {
             onClick={() => {
               if (!finishJob) return;
               const jobId = finishJob.id;
+              const comment = finishComment.trim();
+              const baseNotes = notesDirty ? notes : (wo.notes ?? '');
+              const mergedNotes = mergeWorkOrderNotes(baseNotes, comment);
               setFinishJob(null);
+              setFinishComment('');
               run(
-                () =>
-                  apiFetch<WorkOrderDetailDto>(
+                async () => {
+                  if (mergedNotes !== (wo.notes ?? '').trim()) {
+                    const withNotes = await apiFetch<WorkOrderDetailDto>(
+                      `/api/work-orders/${wo.id}/notes`,
+                      {
+                        method: 'POST',
+                        body: JSON.stringify({ notes: mergedNotes || undefined }),
+                      },
+                    );
+                    setNotes(withNotes.notes ?? '');
+                    setNotesDirty(false);
+                  }
+                  return apiFetch<WorkOrderDetailDto>(
                     `/api/work-orders/${wo.id}/jobs/${jobId}/complete`,
                     { method: 'POST' },
-                  ),
+                  );
+                },
                 (current) => {
                   const completedAt = new Date().toISOString();
                   const jobs = current.jobs.map((job) =>
@@ -416,6 +451,7 @@ export default function WorkOrderDetailPage() {
                   );
                   return {
                     ...current,
+                    notes: mergedNotes || current.notes,
                     jobs,
                     jobsCompleted: jobs.filter(
                       (job) => job.status === 'completed',
@@ -426,7 +462,7 @@ export default function WorkOrderDetailPage() {
               );
             }}
           >
-            Complete Job
+            {messages.completeJob}
           </Button>
         </div>
       </Modal>

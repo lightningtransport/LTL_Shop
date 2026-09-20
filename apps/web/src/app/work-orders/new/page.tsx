@@ -27,7 +27,7 @@ import {
   useTrucks,
   type Mechanic,
 } from '@/lib/shop-data';
-import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
+import { isWorkOrderRelatedViewKey } from '@/lib/swr-cache-keys';
 import { CategoryJobList } from '@/components/category-job-list';
 import {
   Button,
@@ -230,7 +230,7 @@ export default function NewWorkOrderPage() {
           idempotencyKey: crypto.randomUUID(),
         }),
       });
-      void mutate(isWorkOrderRelatedListKey);
+      await mutate(isWorkOrderRelatedViewKey);
       router.push(`/work-orders/${wo.id}`, { scroll: true });
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {

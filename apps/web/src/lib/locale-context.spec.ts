@@ -30,6 +30,8 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('en').emptyCategoryCustomHint).toMatch(/custom Job/);
     expect(getAdminMessages('en').activityPmDetailsUpdated).toBe('PM details updated');
     expect(getAdminMessages('es').activityBlockerReported).toBe('Bloqueo reportado');
+    expect(getAdminMessages('en').mechanicNotes).toBe('Mechanic notes');
+    expect(getAdminMessages('es').mechanicNotes).toBe('Notas del mecánico');
   });
 
   it('keeps English and Spanish mechanic assignment keys in parity', () => {
@@ -46,6 +48,10 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').multiSelectDone).toBe('Listo');
     expect(getShopCopy('en').startWork).toBe('Start Work');
     expect(getShopCopy('es').startWork).toBe('Iniciar trabajo');
+    expect(getShopCopy('en').finishComment).toBe('Finish comment');
+    expect(getShopCopy('es').finishComment).toBe('Comentario al terminar');
+    expect(getShopCopy('en').jobFinishedTitle).toBe('JOB FINISHED');
+    expect(getShopCopy('es').completeJob).toBe('Completar Job');
     expect(getShopCopy('en').pauseWorkOrder).toBe('Pause Work Order');
     expect(getShopCopy('es').pauseWorkOrder).toBe('Pausar Work Order');
     expect(getShopCopy('en').workOrderAction('Start Work', 'WO-1001', '905')).toBe('Start Work WO-1001, truck 905');
