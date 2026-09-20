@@ -33,6 +33,23 @@ test.describe('LTR-21 New WO category jobs', () => {
     await expect(page.getByRole('button', { name: 'Create Work Order' })).toBeEnabled();
   });
 
+  test('create Work Order shows a success toast and opens the new detail', async ({ page }) => {
+    await openNewWorkOrder(page);
+
+    await page.getByLabel('Truck number').fill('105');
+    await page.getByRole('option', { name: /T-105/ }).click();
+    await page.getByRole('button', { name: 'Continue to work' }).click();
+
+    await page.getByLabel('Category').first().selectOption({ label: 'Brakes' });
+    await page.getByRole('button', { name: /Add (Brake Inspection|Inspect brake chamber)/i }).first().click();
+    await page.getByRole('button', { name: 'Review Work Order' }).click();
+    await page.getByRole('button', { name: 'Create Work Order' }).click();
+
+    await expect(page).toHaveURL(/\/admin\/work-orders\/00000000-0000-4000-8000-000000000199/);
+    await expect(page.getByRole('heading', { name: 'WO-0199' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: /WO-0199 created|WO-0199 creada/i })).toBeVisible();
+  });
+
   test('selecting a Category lists catalog jobs and Search filters that list', async ({ page }) => {
     await openNewWorkOrder(page);
 

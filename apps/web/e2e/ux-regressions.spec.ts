@@ -755,7 +755,7 @@ test.describe('My Assigned Work presentation', () => {
     await page.goto('/login');
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
-    const assignedCard = page.locator('article').filter({ hasText: 'WO-ASSIGN-1' });
+    const assignedCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
     await expect(assignedCard.getByText('Work Order team: Alex Mechanic / Jamie Technician')).toBeVisible();
     await expect(assignedCard.getByText('Replace pads')).toBeVisible();
     await expect(assignedCard.getByText('Assigned to you')).toBeVisible();
@@ -778,8 +778,10 @@ test.describe('My Assigned Work presentation', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
     await page.getByRole('button', { name: /Replace pads/ }).click();
-    await expect(page.getByRole('dialog', { name: 'JOB FINISHED' })).toBeVisible();
-    await page.getByRole('button', { name: 'Complete Job' }).click();
+    const finishDialog = page.getByRole('dialog', { name: /Complete job|Completar Job/i });
+    await expect(finishDialog).toBeVisible();
+    await finishDialog.getByRole('button', { name: 'Complete job', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: /Job marked complete|Job marcado como completado/i })).toBeVisible();
     await expect(page.getByText('Replace pads')).toBeVisible();
   });
 });

@@ -26,6 +26,7 @@ import {
   type WorkPlanJobDraft,
 } from '@/lib/work-plan';
 import { WorkPlanAddWork } from './work-plan-add-work';
+import { useActionToast } from './action-toast';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty } from './ui';
 
 type Feedback = { kind: 'success' | 'error'; message: string };
@@ -43,6 +44,7 @@ export function AdminTruckWorkPlan({
 }) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const { showToast } = useActionToast();
   const [addWorkOpen, setAddWorkOpen] = useState(plan.inspection.outcome === WorkPlanInspectionOutcome.ISSUES_FOUND && plan.jobs.length === 0);
   const [preferredCategoryName, setPreferredCategoryName] = useState<string | null>(null);
   const canInspect = plan.capabilities.canRecordInspection;
@@ -86,6 +88,7 @@ export function AdminTruckWorkPlan({
       await onPlanUpdated(next);
       if (outcome === WorkPlanInspectionOutcome.ISSUES_FOUND) openAddWork(null);
       setFeedback({ kind: 'success', message: messages.workPlanInspectionRecorded });
+      showToast('success', messages.workPlanInspectionRecorded);
     } catch (errorValue) {
       setFeedback({
         kind: 'error',
@@ -109,6 +112,7 @@ export function AdminTruckWorkPlan({
       await onPlanUpdated(next);
       setAddWorkOpen(false);
       setFeedback({ kind: 'success', message: messages.workPlanJobsAdded });
+      showToast('success', messages.workPlanJobsAdded);
       return true;
     } catch (errorValue) {
       setFeedback({
@@ -126,6 +130,7 @@ export function AdminTruckWorkPlan({
       const next = await fetchAdminTruckWorkPlan(truckId);
       await onPlanUpdated(next);
       setFeedback({ kind: 'success', message: messages.workPlanJobCompleted });
+      showToast('success', messages.workPlanJobCompleted);
     } catch (errorValue) {
       setFeedback({
         kind: 'error',

@@ -13,6 +13,7 @@ import {
 } from '@ltl-shop/shared';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useActionToast } from './action-toast';
 import {
   createAdminWorkOrder,
   useAdminMechanics,
@@ -78,6 +79,7 @@ export function AdminNewWorkOrder({
 }) {
   void locale;
   const router = useRouter();
+  const { showToast } = useActionToast();
   const { mutate } = useSWRConfig();
   const { user } = useAuth();
   const canCreateWorkOrder = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
@@ -281,11 +283,11 @@ export function AdminNewWorkOrder({
         { revalidate: true },
       );
       void mutate(isWorkOrderRelatedListKey, undefined, WORK_ORDER_LIST_REVALIDATE);
+      showToast('success', messages.createWorkOrderSuccess.replace('{id}', created.displayId));
       router.push(`/admin/work-orders/${created.id}`);
     } catch (failure) {
-      setError(failure instanceof ApiError && failure.message ? failure.message : messages.createWorkOrderFailed);
-    } finally {
       setBusy(false);
+      setError(failure instanceof ApiError && failure.message ? failure.message : messages.createWorkOrderFailed);
     }
   }
 

@@ -9,6 +9,7 @@ import { PathScrollReset } from '@/components/path-scroll-reset';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ObservabilityProvider } from '@/components/observability-provider';
 import { AppFrame } from '@/components/app-frame';
+import { ActionToastProvider } from '@/components/action-toast';
 import { ShopLocaleProvider } from '@/lib/locale-context';
 
 const bodyFont = Inter({
@@ -66,11 +67,13 @@ export default function RootLayout({
           </Suspense>
           <ObservabilityProvider />
           <ShopLocaleProvider>
-            <AuthProvider>
-              <DataProvider>
-                <AppFrame>{children}</AppFrame>
-              </DataProvider>
-            </AuthProvider>
+            <ActionToastProvider>
+              <AuthProvider>
+                <DataProvider>
+                  <AppFrame>{children}</AppFrame>
+                </DataProvider>
+              </AuthProvider>
+            </ActionToastProvider>
           </ShopLocaleProvider>
         </ThemeProvider>
         <SpeedInsights />

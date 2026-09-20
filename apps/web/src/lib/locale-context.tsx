@@ -77,6 +77,18 @@ type Copy = {
   workspaceUnavailable: string;
   openAllowedHome: string;
   startWork: string;
+  startingWork: string;
+  workStartedSuccess: string;
+  reportBlocker: string;
+  reportingBlocker: string;
+  blockerReportedSuccess: string;
+  blockerReason: string;
+  jobFinishTitle: string;
+  jobFinishConfirm: string;
+  completingJob: string;
+  jobFinishedSuccess: string;
+  jobFinishedWithNoteSuccess: string;
+  dismissNotice: string;
   pauseWorkOrder: string;
   workOrderAction: (action: string, displayId: string, truckNumber: string) => string;
   pmServiceLoadError: string;
@@ -111,12 +123,15 @@ type Copy = {
   resumeWork: string;
   viewWork: string;
   finishWork: string;
+  finishingWork: string;
+  pmFinishedSuccess: string;
   viewCompletedWorkAction: string;
   jobsDone: (completed: number, total: number) => string;
   pmServiceLabel: string;
   noPendingJobs: string;
   noCompletedJobs: string;
   chooseAnotherOrHome: string;
+  cancelAction: string;
   multiSelectDone: string;
   backToShopAdmin: string;
   workspaceStandard: string;
@@ -183,6 +198,18 @@ const copy: Record<ShopLocale, Copy> = {
     workspaceUnavailable: 'This mechanic workspace is not available for your account.',
     openAllowedHome: 'Go to your Shop home',
     startWork: 'Start Work',
+    startingWork: 'Starting…',
+    workStartedSuccess: 'Work started.',
+    reportBlocker: 'Report Blocker',
+    reportingBlocker: 'Reporting…',
+    blockerReportedSuccess: 'Blocker reported. The Work Order is not paused.',
+    blockerReason: 'Blocker reason',
+    jobFinishTitle: 'Complete job',
+    jobFinishConfirm: 'Complete job',
+    completingJob: 'Completing…',
+    jobFinishedSuccess: 'Job marked complete.',
+    jobFinishedWithNoteSuccess: 'Job marked complete. Your note is saved.',
+    dismissNotice: 'Dismiss',
     pauseWorkOrder: 'Pause Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, truck ${truckNumber}`,
     pmServiceLoadError: 'Unable to load PM service details.',
@@ -217,12 +244,15 @@ const copy: Record<ShopLocale, Copy> = {
     resumeWork: 'Resume Work',
     viewWork: 'View Work',
     finishWork: 'Finish Work',
+    finishingWork: 'Finishing…',
+    pmFinishedSuccess: 'PM service completed.',
     viewCompletedWorkAction: 'View completed work',
     jobsDone: (completed, total) => `${completed} of ${total} jobs done`,
     pmServiceLabel: 'PM Service',
     noPendingJobs: 'No pending jobs',
     noCompletedJobs: 'No completed jobs',
     chooseAnotherOrHome: 'Choose another Work Order or return to Home.',
+    cancelAction: 'Cancel',
     multiSelectDone: 'Done',
     backToShopAdmin: 'Back to Shop Admin',
     workspaceStandard: 'Standard',
@@ -299,6 +329,18 @@ const copy: Record<ShopLocale, Copy> = {
     workspaceUnavailable: 'Este espacio de mecánico no está disponible para tu cuenta.',
     openAllowedHome: 'Ir a tu Inicio del Shop',
     startWork: 'Iniciar trabajo',
+    startingWork: 'Iniciando…',
+    workStartedSuccess: 'Trabajo iniciado.',
+    reportBlocker: 'Reportar bloqueo',
+    reportingBlocker: 'Reportando…',
+    blockerReportedSuccess: 'Bloqueo reportado. El Work Order no está pausado.',
+    blockerReason: 'Motivo del bloqueo',
+    jobFinishTitle: 'Completar Job',
+    jobFinishConfirm: 'Completar Job',
+    completingJob: 'Completando…',
+    jobFinishedSuccess: 'Job marcado como completado.',
+    jobFinishedWithNoteSuccess: 'Job marcado como completado. Tu nota quedó guardada.',
+    dismissNotice: 'Cerrar',
     pauseWorkOrder: 'Pausar Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, unidad ${truckNumber}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',
@@ -333,12 +375,15 @@ const copy: Record<ShopLocale, Copy> = {
     resumeWork: 'Reanudar trabajo',
     viewWork: 'Ver trabajo',
     finishWork: 'Terminar trabajo',
+    finishingWork: 'Terminando…',
+    pmFinishedSuccess: 'Servicio de PM completado.',
     viewCompletedWorkAction: 'Ver trabajo completado',
     jobsDone: (completed, total) => `${completed} de ${total} Jobs completados`,
     pmServiceLabel: 'Servicio de PM',
     noPendingJobs: 'No hay Jobs pendientes',
     noCompletedJobs: 'No hay Jobs completados',
     chooseAnotherOrHome: 'Elige otro Work Order o vuelve a Inicio.',
+    cancelAction: 'Cancelar',
     multiSelectDone: 'Listo',
     backToShopAdmin: 'Volver a Shop Admin',
     workspaceStandard: 'Standard',

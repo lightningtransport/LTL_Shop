@@ -13,6 +13,7 @@ import {
   type WorkOrderJobDto,
 } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
+import { useActionToast } from '@/components/action-toast';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
@@ -42,6 +43,7 @@ import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
   const { messages } = useShopLocale();
+  const { showToast } = useActionToast();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
@@ -197,7 +199,7 @@ export default function WorkOrderDetailPage() {
         ) : null}
       </div>
 
-      {error ? (
+      {error && !finishJob && !pauseOpen ? (
         <InlineAlert className="mb-3">{error}</InlineAlert>
       ) : null}
 
@@ -210,14 +212,17 @@ export default function WorkOrderDetailPage() {
             className="w-full"
             disabled={busy}
             onClick={() =>
-              run(() =>
-                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
-                  method: 'POST',
-                }),
+              run(
+                () =>
+                  apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
+                    method: 'POST',
+                  }),
+                undefined,
+                () => showToast('success', messages.workStartedSuccess),
               )
             }
           >
-            {messages.startWork}
+            {busy ? messages.startingWork : messages.startWork}
           </Button>
         ) : null}
         {wo.status === 'in_progress' && todo.length ? (
@@ -228,7 +233,7 @@ export default function WorkOrderDetailPage() {
             disabled={busy}
             onClick={() => setPauseOpen(true)}
           >
-            Report Blocker
+            {messages.reportBlocker}
           </Button>
         ) : null}
         {wo.status === 'waiting_paused' ? (
@@ -386,13 +391,15 @@ export default function WorkOrderDetailPage() {
 
       <Modal
         open={!!finishJob}
-        title="JOB FINISHED"
+        title={messages.jobFinishTitle}
         onClose={() => {
+          if (busy) return;
           setFinishJob(null);
           setFinishNotes('');
         }}
         returnFocusRef={finishJobTriggerRef}
       >
+        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
         <p className="mb-4 text-lg">{finishJob?.name}</p>
         <Label className="section-label mb-2 block" htmlFor="finish-job-notes">
           {messages.jobFinishNotes}
@@ -408,22 +415,22 @@ export default function WorkOrderDetailPage() {
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="secondary"
+            disabled={busy}
             onClick={() => {
+              if (busy) return;
               setFinishJob(null);
               setFinishNotes('');
             }}
           >
-            Cancel
+            {messages.cancelAction}
           </Button>
           <Button
             disabled={busy}
             onClick={() => {
-              if (!finishJob) return;
+              if (!finishJob || busy) return;
               const jobId = finishJob.id;
               const notesToSave = finishNotes.trim() || undefined;
-              setFinishJob(null);
-              setFinishNotes('');
-              run(
+              void run(
                 () =>
                   apiFetch<WorkOrderDetailDto>(
                     `/api/work-orders/${wo.id}/jobs/${jobId}/complete`,
@@ -454,30 +461,43 @@ export default function WorkOrderDetailPage() {
                     version: current.version + 1,
                   };
                 },
+                () => {
+                  setFinishJob(null);
+                  setFinishNotes('');
+                  showToast(
+                    'success',
+                    notesToSave ? messages.jobFinishedWithNoteSuccess : messages.jobFinishedSuccess,
+                  );
+                },
               );
             }}
           >
-            Complete Job
+            {busy ? messages.completingJob : messages.jobFinishConfirm}
           </Button>
         </div>
       </Modal>
 
       <Modal
         open={pauseOpen}
-        title="REPORT BLOCKER"
-        onClose={() => setPauseOpen(false)}
+        title={messages.reportBlocker}
+        onClose={() => {
+          if (busy) return;
+          setPauseOpen(false);
+        }}
         returnFocusRef={pauseTriggerRef}
       >
+        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
         <Label className="section-label mb-2 block" htmlFor="pause-reason">
-          Blocker reason
+          {messages.blockerReason}
         </Label>
         <div className="mb-3">
           <Select
             id="pause-reason"
             value={pauseReason}
             onChange={(e) => setPauseReason(e.target.value as PauseReason)}
+            disabled={busy}
           >
-            <option value="">Select an option</option>
+            <option value="">{messages.locale === 'es' ? 'Selecciona una opción' : 'Select an option'}</option>
             {Object.values(PauseReason).map((r) => (
               <option key={r} value={r}>
                 {messages.pauseReason[r]}
@@ -488,39 +508,52 @@ export default function WorkOrderDetailPage() {
         {pauseReason === PauseReason.OTHER ? (
           <div className="mb-3">
             <Label className="section-label mb-2 block" htmlFor="pause-notes">
-              Additional details
+              {messages.locale === 'es' ? 'Detalles adicionales' : 'Additional details'}
             </Label>
             <Textarea
               id="pause-notes"
-              placeholder="Reason required for Other"
+              placeholder={messages.locale === 'es' ? 'Motivo obligatorio para Otro' : 'Reason required for Other'}
               value={pauseNotes}
               onChange={(e) => setPauseNotes(e.target.value)}
+              disabled={busy}
             />
           </div>
         ) : null}
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="secondary"
-            onClick={() => setPauseOpen(false)}
+            disabled={busy}
+            onClick={() => {
+              if (busy) return;
+              setPauseOpen(false);
+            }}
           >
-            Cancel
+            {messages.cancelAction}
           </Button>
           <Button
             disabled={!pauseReason || busy}
             onClick={() => {
-              setPauseOpen(false);
-              run(() =>
-                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers`, {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    reason: pauseReason,
-                    notes: pauseNotes || undefined,
+              if (busy) return;
+              void run(
+                () =>
+                  apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      reason: pauseReason,
+                      notes: pauseNotes || undefined,
+                    }),
                   }),
-                }),
+                undefined,
+                () => {
+                  setPauseOpen(false);
+                  setPauseReason('');
+                  setPauseNotes('');
+                  showToast('success', messages.blockerReportedSuccess);
+                },
               );
             }}
           >
-            Report Blocker
+            {busy ? messages.reportingBlocker : messages.reportBlocker}
           </Button>
         </div>
       </Modal>
@@ -536,6 +569,7 @@ function PmWorkOrderDetail({
   onUpdated: (updated: WorkOrderDetailDto) => Promise<void>;
 }) {
   const { messages } = useShopLocale();
+  const { showToast } = useActionToast();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -711,7 +745,7 @@ function PmWorkOrderDetail({
         {wo.status === 'in_progress' ? (
           <div className="grid grid-cols-2 gap-2">
             <Button ref={pauseTriggerRef} variant="secondary" disabled={busy} onClick={() => setPauseOpen(true)}>{messages.pauseWorkOrder}</Button>
-            <Button disabled={finishBlocked} onClick={() => setFinishOpen(true)}>Finish Work</Button>
+            <Button disabled={finishBlocked} onClick={() => setFinishOpen(true)}>{messages.finishWork}</Button>
           </div>
         ) : null}
         {wo.status === 'waiting_paused' ? (
@@ -722,21 +756,26 @@ function PmWorkOrderDetail({
         ) : null}
       </section>
 
-      <Modal open={finishOpen} title="Finish PM service" onClose={() => setFinishOpen(false)}>
+      <Modal open={finishOpen} title={messages.finishWork} onClose={() => { if (!busy) setFinishOpen(false); }}>
+        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
         <p className="mb-4 text-sm text-muted-foreground">
           {mileageChangesTruck
             ? `This will update the truck mileage from ${formatMileage(wo.truck.mileage)} to ${formatMileage(mileage)} and create an audit record.`
             : 'This will complete the PM service.'}
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={() => setFinishOpen(false)}>Cancel</Button>
+          <Button variant="secondary" disabled={busy} onClick={() => { if (!busy) setFinishOpen(false); }}>{messages.cancelAction}</Button>
           <Button disabled={busy} onClick={() => {
-            setFinishOpen(false);
+            if (busy) return;
             void run(
               () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, { method: 'POST' }),
-              () => router.replace('/mechanic/pm', { scroll: true }),
+              () => {
+                setFinishOpen(false);
+                showToast('success', messages.pmFinishedSuccess);
+                router.replace('/mechanic/pm', { scroll: true });
+              },
             );
-          }}>Finish Work</Button>
+          }}>{busy ? messages.finishingWork : messages.finishWork}</Button>
         </div>
       </Modal>
 
