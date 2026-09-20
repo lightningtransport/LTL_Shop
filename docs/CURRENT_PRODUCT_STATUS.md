@@ -308,13 +308,13 @@ the work order. Completed PM records are read-only.
   and Returned to Service stay on `admin.access`.
 - Ninox is not an operational source. The code has only a placeholder/status
   integration surface, and `DATA_SOURCE=supabase` is the current mode.
-  MappingTool against `lightningtransport.ninoxdb.com` verified TrucksDB=`E`
-  (117 fields), truck number=`E.A`, mechanic_status=`E.TA`. Shop join is
-  business key only: `truckNumber` ↔ `trucks.truck_number` ↔ `E.A`. Yard
-  Work Plan phases are not `E.TA`. The UC trailer Ninox target is unresolved;
-  do not invent IDs. Prisma stores no Ninox table IDs. See
-  `NINOX_SHOP_MAPPING.md` and `GO_LIVE_CHECKLIST_ES.md`. The MappingTool
-  scan does not block Shop launch; a live adapter is still deferred.
+  MappingTool declared catalog maps TrucksDB=`E` (truck number `E.A`,
+  odometer `E.OF`, yard_location `E.X1`/`E.AN`, mechanic_status `E.TA`/`E.Y1`,
+  plus the other declared truck fields). Shop join is business key only:
+  `truckNumber` ↔ `E.A`. Yard Work Plan phases are not `E.TA`. UC trailer
+  remains unresolved. The running API still does not call Ninox. Monday
+  fleet load is the one-shot `prisma:seed-ninox-trucks` job (insert NEW
+  rows, then never query Ninox again). See `NINOX_TRUCK_SEED.md`.
 - `pmAuthorized` remains in the schema for compatibility but does not grant PM
   authority.
 - The V1-001 Playwright fixture gate is restored (PR #73, 86 cases). The

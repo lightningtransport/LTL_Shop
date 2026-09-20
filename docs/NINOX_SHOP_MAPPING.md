@@ -20,14 +20,19 @@ target still unresolved) or a live status sync of `E.TA`.
 
 ## Verified IDs only
 
+Declared-catalog TrucksDB fields (MappingTool) plus Monday-launch fallbacks
+`E.AN` / `E.Y1`. Full persist map: `docs/NINOX_TRUCK_SEED.md`.
+
 | Ninox path | Meaning | Shop counterpart |
 |---|---|---|
 | Table `E` | TrucksDB (117 fields; workspace has 163 tables) | `public.trucks` |
 | `E.A` | truck number | `Truck.truckNumber` / `trucks.truck_number` |
-| `E.TA` | mechanic_status | **None.** Not Yard Work Plan phase. Not `TruckServiceStatusEvent`. |
+| `E.OF` | odometer_miles | `mileage` (insert of **new** rows only) |
+| `E.X1` / `E.AN` | yard_location | `yardLocation` — **not** Presence |
+| `E.TA` / `E.Y1` | mechanic_status | `ninoxMechanicStatus` — **not** Yard phase |
+| `E.DG` | make display | `make` (`model` stays unresolved) |
 
-Do not add other table or field IDs to Prisma, env files, or this document
-until a new live scan confirms them.
+Do not add other table or field IDs until a new live scan confirms them.
 
 ## Unresolved
 

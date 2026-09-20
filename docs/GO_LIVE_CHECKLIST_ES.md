@@ -9,11 +9,22 @@
 Esta lista cierra lo que falta para que **personas reales** usen LTL_Shop.
 No pide otro escaneo de MappingTool para camiones.
 
+## Semilla de camiones (lunes)
+
+Hay un job **de una sola vez**: baja TrucksDB `E` por API (solo GET),
+crea camiones **nuevos** en Supabase por `truckNumber` = `E.A`, y **no
+vuelve a preguntar a Ninox**. Nunca escribe en Ninox.
+
+Comando: `npm run prisma:seed-ninox-trucks --workspace=@ltl-shop/api`
+
+Detalle: `docs/NINOX_TRUCK_SEED.md`.
+
 ## ¿Con el scan de MappingTool hecho, puede lanzar el Shop?
 
-**Sí, por el lado de Ninox / mapper.** El Shop ya no depende de descubrir
-tablas para funcionar. Hoy el Shop lee y escribe **Supabase / Prisma**. El
-cliente de Ninox es un stub: no sincroniza nada.
+**Casi: el mapper ya no bloquea.** El Shop funciona con **Supabase / Prisma**.
+El cliente Ninox de la API sigue siendo un stub. Para el lunes falta **correr
+una vez** la semilla (migración + credenciales Ninox + script) si la flota
+de producción no está completa.
 
 La única llave de negocio que hacía falta ya está confirmada:
 
@@ -109,8 +120,11 @@ Nada de esto bloquea abrir el Shop de **camiones** como está hoy.
   el taller va a buscar. El cruce futuro con Ninox es **solo** `E.A`.
   Tres filas con pinta de demo (`9050`, `9220`, `9680`) no tienen id
   Ninox leftover; no son los CTC `905` / `922` / `968`.
-- **No implementar** el adapter Ninox para el día 1. Si `DATA_SOURCE=ninox`,
-  el ping falla: el adapter no existe.
+- Aplicar la migración `20260920020000_ninox_truck_seed` y correr
+  **una vez** `prisma:seed-ninox-trucks` con `NINOX_*` de servidor.
+  Después borrar el token. No usar `db:seed` de demo en producción.
+- **No implementar** el adapter Ninox en la API para el día 1. Si
+  `DATA_SOURCE=ninox`, el ping de runtime falla: el adapter no existe.
 - Smoke con un Manager y un mecánico reales: login → crear OT → Start
   Work → completar job → blocker → PM si aplica → patio.
 - Migraciones Prisma solo por el workflow de Release safety. Un deploy

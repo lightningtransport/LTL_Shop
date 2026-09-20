@@ -1,0 +1,26 @@
+{
+  "source": "MappingTool config/declared-catalog.json trucks table (data-reporting-kit SCHEMA_VERSION 3.2.0, scanVerifiedAt 2026-09-20)",
+  "tableId": "E",
+  "tableName": "TrucksDB",
+  "fields": [
+    { "reportField": "truck_number", "fieldId": "A", "shop": "truckNumber" },
+    { "reportField": "dispatcher", "fieldId": "YF", "shop": "dispatcher" },
+    { "reportField": "insurance", "fieldId": "Y4", "shop": "insurance", "alsoFills": "company" },
+    { "reportField": "vin", "fieldId": "CG", "shop": "vin" },
+    { "reportField": "make", "fieldId": "DG", "shop": "make" },
+    { "reportField": "odometer_miles", "fieldId": "OF", "shop": "mileage" },
+    { "reportField": "owner", "fieldId": "VF", "shop": "owner" },
+    { "reportField": "last_known_address", "fieldId": "PF", "shop": "samsaraTruckLocation" },
+    { "reportField": "model_year", "fieldId": "IJ", "shop": "year" },
+    { "reportField": "license_plate", "fieldId": "HJ", "shop": "licensePlate" },
+    { "reportField": "yard_location", "fieldId": "X1", "shop": "yardLocation" },
+    { "reportField": "samsara_last_connected_at", "fieldId": "SF", "shop": "samsaraLastConnectedDate" },
+    { "reportField": "samsara_vehicle_id", "fieldId": "BM", "shop": "samsaraId" },
+    { "reportField": "mechanic_status", "fieldId": "TA", "shop": "ninoxMechanicStatus" }
+  ],
+  "launchBriefFallbacks": [
+    { "reportField": "yard_location", "fieldId": "AN", "shop": "yardLocation", "when": "E.X1 empty" },
+    { "reportField": "mechanic_status", "fieldId": "Y1", "shop": "ninoxMechanicStatus", "when": "E.TA empty" }
+  ],
+  "unresolved": ["model", "ucTrailer"]
+}

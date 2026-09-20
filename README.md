@@ -24,12 +24,11 @@ Historical PRDs and plans do not override these sources.
 - **API:** NestJS + Prisma (`apps/api`)
 - **Shared:** Domain types / Zod schemas (`packages/shared`)
 - **DB / Auth:** Supabase Postgres + Supabase Auth (local Postgres via Docker for development)
-- **Ninox:** Deferred — adapter stub only (`DATA_SOURCE=supabase`). MappingTool
-  closed the truck join: Shop `truckNumber` ↔ `trucks.truck_number` ↔ Ninox
-  TrucksDB `E.A`. `E.TA` is Ninox `mechanic_status`, not Yard phase. UC trailer
-  IDs are unresolved (do not invent). See
-  [`docs/NINOX_SHOP_MAPPING.md`](docs/NINOX_SHOP_MAPPING.md) and the Spanish
-  go-live list [`docs/GO_LIVE_CHECKLIST_ES.md`](docs/GO_LIVE_CHECKLIST_ES.md).
+- **Ninox:** Runtime adapter is still a stub (`DATA_SOURCE=supabase`). Monday
+  fleet load is a **one-shot** CLI (`npm run prisma:seed-ninox-trucks`) that
+  GETs TrucksDB `E` and inserts **new** Shop rows by `truckNumber` (`E.A`).
+  It never writes Ninox and will not query Ninox again after a completed run.
+  See [`docs/NINOX_TRUCK_SEED.md`](docs/NINOX_TRUCK_SEED.md).
 
 ## Locked product rules
 

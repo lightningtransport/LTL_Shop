@@ -10,9 +10,11 @@ import { getNinoxMappingSummary } from './ninox.mapping';
  * `E.TA` is Ninox `mechanic_status` and is not Yard Work Plan phase.
  * The UC trailer target is unresolved in Ninox.
  *
- * Do not set `DATA_SOURCE=ninox` until a real adapter exists behind
- * repository interfaces. Current code has no NINOX_* env readers and
- * no Prisma table-id columns.
+ * The Monday launch seed is a separate one-shot CLI
+ * (`prisma/seed-ninox-trucks.ts`). It GETs TrucksDB E once, inserts NEW
+ * Shop rows, then refuses to query Ninox again. It never writes to Ninox.
+ *
+ * Do not set `DATA_SOURCE=ninox` for the running API.
  */
 @Injectable()
 export class NinoxClient {

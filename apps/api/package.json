@@ -13,6 +13,7 @@
     "prisma:generate": "../../node_modules/.bin/prisma generate",
     "prisma:migrate": "../../node_modules/.bin/prisma migrate dev",
     "prisma:seed": "../../node_modules/.bin/tsx prisma/seed.ts",
+    "prisma:seed-ninox-trucks": "../../node_modules/.bin/tsx prisma/seed-ninox-trucks.ts",
     "prisma:apply-catalog": "../../node_modules/.bin/tsx prisma/apply-job-catalog.ts",
     "prisma:release-status": "../../node_modules/.bin/tsx src/release/run-prisma-release-gate.ts --status --require-up-to-date",
     "prisma:release-deploy": "../../node_modules/.bin/tsx src/release/run-prisma-release-gate.ts --deploy --verify-api",

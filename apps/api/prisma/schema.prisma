@@ -183,6 +183,14 @@ model Truck {
   /// Human address string (not lat/lng). Display-only. Never Yard Presence.
   samsaraTruckLocation     String?   @map("samsara_truck_location")
   vin                      String?
+  /// Ninox E.X1 yard_location (fallback E.AN). Not Yard Presence.
+  yardLocation             String?   @map("yard_location")
+  /// Ninox E.TA mechanic_status (fallback E.Y1). Not a Yard Work Plan phase.
+  ninoxMechanicStatus      String?   @map("ninox_mechanic_status")
+  dispatcher               String?
+  /// Declared catalog insurance E.Y4. Also used to fill `company` on first insert.
+  insurance                String?
+  licensePlate             String?   @map("license_plate")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -591,4 +599,23 @@ model ActivityLog {
 
   @@index([workOrderId, createdAt])
   @@map("activity_logs")
+}
+
+/// One-shot Monday TrucksDB E seed ledger. A completed row means the job
+/// must not query Ninox again.
+model NinoxTruckSeedRun {
+  id                String    @id @default(uuid()) @db.Uuid
+  sourceTableId     String    @map("source_table_id")
+  status            String
+  recordsRead       Int       @map("records_read")
+  insertedCount     Int       @map("inserted_count")
+  skippedCount      Int       @map("skipped_count")
+  skippedNinoxQuery Boolean   @default(false) @map("skipped_ninox_query")
+  notes             String?
+  startedAt         DateTime  @map("started_at")
+  finishedAt        DateTime? @map("finished_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([status, sourceTableId])
+  @@map("ninox_truck_seed_runs")
 }

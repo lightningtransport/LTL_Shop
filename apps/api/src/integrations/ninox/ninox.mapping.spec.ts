@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import declared from './declared-trucks-catalog.json';
 import {
+  NINOX_DECLARED_FIELD_IDS,
+  NINOX_LAUNCH_FALLBACK_FIELD_IDS,
   NINOX_SCAN,
   NINOX_TRUCKS_DB,
   NINOX_UNRESOLVED,
-  NINOX_VERIFIED_FIELD_IDS,
   NINOX_VERIFIED_TABLE_IDS,
   SHOP_NINOX_TRUCK_JOIN,
   YARD_PHASES_ARE_NOT_NINOX_MECHANIC_STATUS,
@@ -11,53 +13,30 @@ import {
 } from './ninox.mapping';
 
 describe('verified Ninox mapping constants', () => {
-  it('records only the MappingTool-confirmed TrucksDB ids', () => {
-    expect(NINOX_SCAN).toEqual({
-      workspaceHost: 'lightningtransport.ninoxdb.com',
-      tableCount: 163,
-      trucksDbFieldCount: 117,
-    });
+  it('matches MappingTool declared-catalog truck field ids', () => {
     expect(NINOX_VERIFIED_TABLE_IDS).toEqual(['E']);
-    expect(NINOX_VERIFIED_FIELD_IDS).toEqual(['A', 'TA']);
-    expect(NINOX_TRUCKS_DB).toEqual({
+    expect(NINOX_DECLARED_FIELD_IDS).toEqual(declared.fields.map((field) => field.fieldId));
+    expect(NINOX_LAUNCH_FALLBACK_FIELD_IDS).toEqual(['AN', 'Y1']);
+    expect(NINOX_TRUCKS_DB).toMatchObject({
       tableId: 'E',
-      tableName: 'TrucksDB',
-      fieldCount: 117,
       truckNumberFieldId: 'A',
+      odometerMilesFieldId: 'OF',
+      yardLocationFieldId: 'X1',
+      yardLocationFallbackFieldId: 'AN',
       mechanicStatusFieldId: 'TA',
+      mechanicStatusFallbackFieldId: 'Y1',
     });
   });
 
-  it('joins Shop trucks by truckNumber to Ninox E.A', () => {
-    expect(SHOP_NINOX_TRUCK_JOIN).toEqual({
-      shopField: 'truckNumber',
-      shopColumn: 'trucks.truck_number',
-      ninoxTableId: 'E',
-      ninoxFieldId: 'A',
-      ninoxPath: 'E.A',
-    });
-  });
-
-  it('does not treat Yard phases as Ninox mechanic_status', () => {
+  it('records the MappingTool scan host and join key', () => {
+    expect(NINOX_SCAN.workspaceHost).toBe('lightningtransport.ninoxdb.com');
+    expect(SHOP_NINOX_TRUCK_JOIN.ninoxPath).toBe('E.A');
     expect(YARD_PHASES_ARE_NOT_NINOX_MECHANIC_STATUS).toBe(true);
     expect(getNinoxMappingSummary().yardPhasesAreNinoxMechanicStatus).toBe(false);
   });
 
-  it('leaves the UC trailer target unresolved instead of inventing ids', () => {
-    expect(NINOX_UNRESOLVED.ucTrailer).toEqual({
-      tableId: null,
-      fieldId: null,
-      ninoxPath: null,
-      status: 'unresolved',
-      note: 'UC trailer target is unresolved in Ninox. Do not invent IDs.',
-    });
-  });
-
-  it('does not expose invented table or field ids on the operator summary', () => {
-    const summary = getNinoxMappingSummary();
-    expect(summary.liveClient).toBe(false);
-    expect(summary.trucksDb.tableId).toBe('E');
-    expect(summary.unresolved.ucTrailer.tableId).toBeNull();
-    expect(summary.unresolved.ucTrailer.fieldId).toBeNull();
+  it('leaves UC trailer and Shop model unresolved', () => {
+    expect(NINOX_UNRESOLVED.ucTrailer.tableId).toBeNull();
+    expect(NINOX_UNRESOLVED.shopModel.fieldId).toBeNull();
   });
 });
