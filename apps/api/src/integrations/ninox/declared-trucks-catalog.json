@@ -1,26 +1,34 @@
 {
-  "source": "MappingTool config/declared-catalog.json trucks table (data-reporting-kit SCHEMA_VERSION 3.2.0, scanVerifiedAt 2026-09-20)",
+  "source": "Product-owner seed contract 2026-09-20 + MappingTool declared-catalog TrucksDB E IDs",
   "tableId": "E",
   "tableName": "TrucksDB",
-  "fields": [
-    { "reportField": "truck_number", "fieldId": "A", "shop": "truckNumber" },
-    { "reportField": "dispatcher", "fieldId": "YF", "shop": "dispatcher" },
-    { "reportField": "insurance", "fieldId": "Y4", "shop": "insurance", "alsoFills": "company" },
-    { "reportField": "vin", "fieldId": "CG", "shop": "vin" },
-    { "reportField": "make", "fieldId": "DG", "shop": "make" },
-    { "reportField": "odometer_miles", "fieldId": "OF", "shop": "mileage" },
-    { "reportField": "owner", "fieldId": "VF", "shop": "owner" },
-    { "reportField": "last_known_address", "fieldId": "PF", "shop": "samsaraTruckLocation" },
-    { "reportField": "model_year", "fieldId": "IJ", "shop": "year" },
-    { "reportField": "license_plate", "fieldId": "HJ", "shop": "licensePlate" },
-    { "reportField": "yard_location", "fieldId": "X1", "shop": "yardLocation" },
-    { "reportField": "samsara_last_connected_at", "fieldId": "SF", "shop": "samsaraLastConnectedDate" },
-    { "reportField": "samsara_vehicle_id", "fieldId": "BM", "shop": "samsaraId" },
-    { "reportField": "mechanic_status", "fieldId": "TA", "shop": "ninoxMechanicStatus" }
+  "shopNameAuthority": "apps/api/prisma/schema.prisma model Truck",
+  "mustHave": [
+    { "shop": "truckNumber", "ninox": "E.A" },
+    { "shop": "vin", "ninox": "E.CG", "when": "present" },
+    { "shop": "make", "ninox": "E.DG", "when": "present" },
+    { "shop": "model", "ninox": null, "when": "present — no declared Ninox field ID" },
+    { "shop": "year", "ninox": "E.IJ", "when": "present" },
+    { "shop": "licensePlate", "ninox": "E.HJ", "when": "present" },
+    { "shop": "mileage", "ninox": "E.OF" },
+    { "shop": "samsaraTruckLocation", "dto": "location", "ninox": "E.X1 / E.AN", "not": "Yard Presence" },
+    { "shop": "samsaraLastConnectedDate", "dto": "locationUpdatedOn", "ninox": "E.X1 / E.AN if date-shaped" },
+    { "shop": "company", "ninox": null, "when": "present — no declared Ninox field ID" },
+    { "shop": "owner", "ninox": "E.VF", "when": "present" }
   ],
-  "launchBriefFallbacks": [
-    { "reportField": "yard_location", "fieldId": "AN", "shop": "yardLocation", "when": "E.X1 empty" },
-    { "reportField": "mechanic_status", "fieldId": "Y1", "shop": "ninoxMechanicStatus", "when": "E.TA empty" }
+  "identity": {
+    "uniqueWriteKey": "truckNumber",
+    "preferredMatch": ["vin", "truckNumber"]
+  },
+  "optionalMetadataNeverReadiness": [
+    { "ninox": "E.Y1", "meaning": "Shop Status", "shop": "ninoxMechanicStatus" },
+    { "ninox": "E.TA", "meaning": "OutWork", "shop": null },
+    { "ninox": "E.T5", "meaning": "unspecified optional", "shop": null },
+    { "ninox": "E.BM", "meaning": "samsara vehicle id", "shop": "samsaraId" }
   ],
-  "unresolved": ["model", "ucTrailer"]
+  "doNot": [
+    "Set Presence / IN_YARD from E.X1",
+    "Sync E.Y1 / E.TA / E.T5 / E.BM as board phases or Ready",
+    "Import Work Order or job history"
+  ]
 }

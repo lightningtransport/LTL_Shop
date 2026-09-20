@@ -5,24 +5,22 @@ export type NinoxRecordLike = {
   fields?: Record<string, unknown>;
 };
 
+/** Shop Prisma Truck field names. Ninox is values only. */
 export type ShopTruckSeedRow = {
   truckNumber: string;
+  vin: string | null;
   make: string | null;
   model: string | null;
   year: number | null;
+  licensePlate: string | null;
   mileage: number | null;
-  company: string | null;
-  owner: string | null;
-  vin: string | null;
   samsaraTruckLocation: string | null;
   samsaraLastConnectedDate: Date | null;
-  samsaraId: string | null;
+  company: string | null;
+  owner: string | null;
   ninoxExternalId: string | null;
-  yardLocation: string | null;
   ninoxMechanicStatus: string | null;
-  dispatcher: string | null;
-  insurance: string | null;
-  licensePlate: string | null;
+  samsaraId: string | null;
 };
 
 export function asDisplayString(value: unknown): string | null {
@@ -55,14 +53,12 @@ export function asInteger(value: unknown): number | null {
   return Math.round(parsed);
 }
 
+/** Accept only explicit date-like values. Location labels must not become dates. */
 export function asDate(value: unknown): Date | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    const fromEpoch = new Date(value);
-    return Number.isNaN(fromEpoch.getTime()) ? null : fromEpoch;
-  }
   const text = asDisplayString(value);
   if (!text) return null;
+  if (!/^\d{4}-\d{2}-\d{2}/.test(text) && !/^\d{4}\/\d{2}\/\d{2}/.test(text)) return null;
   const parsed = new Date(text);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
@@ -72,51 +68,71 @@ export function fieldValue(fields: Record<string, unknown> | undefined, fieldId:
   return fields[fieldId];
 }
 
-function firstString(fields: Record<string, unknown> | undefined, ...fieldIds: string[]): string | null {
-  for (const fieldId of fieldIds) {
-    const text = asDisplayString(fieldValue(fields, fieldId));
-    if (text) return text;
-  }
-  return null;
+/**
+ * Last-reported location + locationUpdatedOn from E.X1 / E.AN.
+ * Text → samsaraTruckLocation (DTO `location`). Date-shaped → samsaraLastConnectedDate
+ * (DTO `locationUpdatedOn`). Never Presence / IN_YARD.
+ */
+export function locationFromX1An(fields: Record<string, unknown> | undefined): {
+  samsaraTruckLocation: string | null;
+  samsaraLastConnectedDate: Date | null;
+} {
+  const primary = fieldValue(fields, NINOX_TRUCKS_DB.locationFieldId);
+  const alt = fieldValue(fields, NINOX_TRUCKS_DB.locationAltFieldId);
+  const primaryDate = asDate(primary);
+  const altDate = asDate(alt);
+  const primaryText = primaryDate ? null : asDisplayString(primary);
+  const altText = altDate ? null : asDisplayString(alt);
+  return {
+    samsaraTruckLocation: primaryText ?? altText,
+    samsaraLastConnectedDate: altDate ?? primaryDate,
+  };
 }
 
 /**
- * Map one TrucksDB record to a Shop truck row.
- * Returns null when E.A is missing — that row cannot be upserted.
+ * Map one TrucksDB record onto Shop Truck columns.
+ * Returns null when E.A is missing — that row has no ops key.
  */
 export function transformTrucksDbRecord(record: NinoxRecordLike): ShopTruckSeedRow | null {
   const fields = record.fields;
   const truckNumber = asTruckNumber(fieldValue(fields, NINOX_TRUCKS_DB.truckNumberFieldId));
   if (!truckNumber) return null;
 
-  const insurance = firstString(fields, NINOX_TRUCKS_DB.insuranceFieldId);
+  const location = locationFromX1An(fields);
   const ninoxExternalId = record.id == null || record.id === '' ? null : String(record.id);
 
   return {
     truckNumber,
-    make: firstString(fields, NINOX_TRUCKS_DB.makeFieldId),
+    vin: asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.vinFieldId)),
+    make: asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.makeFieldId)),
     model: null,
     year: asInteger(fieldValue(fields, NINOX_TRUCKS_DB.modelYearFieldId)),
+    licensePlate: asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.licensePlateFieldId)),
     mileage: asInteger(fieldValue(fields, NINOX_TRUCKS_DB.odometerMilesFieldId)),
-    company: insurance,
-    owner: firstString(fields, NINOX_TRUCKS_DB.ownerFieldId),
-    vin: firstString(fields, NINOX_TRUCKS_DB.vinFieldId),
-    samsaraTruckLocation: firstString(fields, NINOX_TRUCKS_DB.lastKnownAddressFieldId),
-    samsaraLastConnectedDate: asDate(fieldValue(fields, NINOX_TRUCKS_DB.samsaraLastConnectedFieldId)),
-    samsaraId: firstString(fields, NINOX_TRUCKS_DB.samsaraVehicleIdFieldId),
+    samsaraTruckLocation: location.samsaraTruckLocation,
+    samsaraLastConnectedDate: location.samsaraLastConnectedDate,
+    company: null,
+    owner: asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.ownerFieldId)),
     ninoxExternalId,
-    yardLocation: firstString(
-      fields,
-      NINOX_TRUCKS_DB.yardLocationFieldId,
-      NINOX_TRUCKS_DB.yardLocationFallbackFieldId,
-    ),
-    ninoxMechanicStatus: firstString(
-      fields,
-      NINOX_TRUCKS_DB.mechanicStatusFieldId,
-      NINOX_TRUCKS_DB.mechanicStatusFallbackFieldId,
-    ),
-    dispatcher: firstString(fields, NINOX_TRUCKS_DB.dispatcherFieldId),
-    insurance,
-    licensePlate: firstString(fields, NINOX_TRUCKS_DB.licensePlateFieldId),
+    ninoxMechanicStatus: asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.shopStatusFieldId)),
+    samsaraId: asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.samsaraVehicleIdFieldId)),
   };
+}
+
+export function presentShopFields(row: ShopTruckSeedRow): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+  if (row.vin) data.vin = row.vin;
+  if (row.make) data.make = row.make;
+  if (row.model) data.model = row.model;
+  if (row.year != null) data.year = row.year;
+  if (row.licensePlate) data.licensePlate = row.licensePlate;
+  if (row.mileage != null) data.mileage = row.mileage;
+  if (row.samsaraTruckLocation) data.samsaraTruckLocation = row.samsaraTruckLocation;
+  if (row.samsaraLastConnectedDate) data.samsaraLastConnectedDate = row.samsaraLastConnectedDate;
+  if (row.company) data.company = row.company;
+  if (row.owner) data.owner = row.owner;
+  if (row.ninoxExternalId) data.ninoxExternalId = row.ninoxExternalId;
+  if (row.ninoxMechanicStatus) data.ninoxMechanicStatus = row.ninoxMechanicStatus;
+  if (row.samsaraId) data.samsaraId = row.samsaraId;
+  return data;
 }

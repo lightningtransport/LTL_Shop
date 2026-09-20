@@ -1,18 +1,23 @@
 /**
- * Verified Ninox IDs from MappingTool declared-catalog + live scan of
- * lightningtransport.ninoxdb.com.
+ * Product-owner seed contract (2026-09-20).
+ * Shop Prisma `Truck` names are authority. Ninox only supplies values.
+ * Do not invent table/field IDs or yard/readiness rules.
  *
- * Do not invent table or field IDs. Add a value here only from
- * MappingTool `config/declared-catalog.json` or an equivalent live scan.
+ * Must-have value sources:
+ *   truckNumber ← E.A
+ *   vin ← E.CG
+ *   make ← E.DG (kit: make/model display; no separate model ID)
+ *   year ← E.IJ
+ *   licensePlate ← E.HJ
+ *   mileage ← E.OF
+ *   location / locationUpdatedOn ← E.X1 / E.AN
+ *     (shop columns samsaraTruckLocation / samsaraLastConnectedDate)
+ *   owner ← E.VF
  *
- * Declared TrucksDB (E) fields:
- * A truck_number, YF dispatcher, Y4 insurance, CG vin, DG make,
- * OF odometer_miles, VF owner, PF last_known_address, IJ model_year,
- * HJ license_plate, X1 yard_location, SF samsara_last_connected_at,
- * BM samsara_vehicle_id, TA mechanic_status.
+ * Optional metadata only (never Presence, Ready, or Work Plan):
+ *   E.Y1 Shop Status, E.TA OutWork, E.T5, E.BM
  *
- * Monday-launch brief also documents location fallback E.AN and
- * mechanic_status fallback E.Y1. UC trailer remains unresolved.
+ * Unresolved (do not invent): company Ninox ID, model Ninox ID, UC trailer.
  */
 
 export const NINOX_SCAN = {
@@ -21,10 +26,8 @@ export const NINOX_SCAN = {
   trucksDbFieldCount: 117,
 } as const;
 
-/** Only table IDs confirmed by MappingTool. */
 export const NINOX_VERIFIED_TABLE_IDS = ['E'] as const;
 
-/** Declared-catalog TrucksDB field IDs (MappingTool trucks table). */
 export const NINOX_DECLARED_FIELD_IDS = [
   'A',
   'YF',
@@ -42,15 +45,12 @@ export const NINOX_DECLARED_FIELD_IDS = [
   'TA',
 ] as const;
 
-/**
- * Extra live IDs from the Monday-launch brief. Not in declared-catalog.json.
- * Used only as empty-primary fallbacks. Do not treat as a second source of truth.
- */
-export const NINOX_LAUNCH_FALLBACK_FIELD_IDS = ['AN', 'Y1'] as const;
+/** Live/product-owner IDs not in declared-catalog.json. */
+export const NINOX_CONTRACT_FIELD_IDS = ['AN', 'Y1', 'T5'] as const;
 
 export const NINOX_VERIFIED_FIELD_IDS = [
   ...NINOX_DECLARED_FIELD_IDS,
-  ...NINOX_LAUNCH_FALLBACK_FIELD_IDS,
+  ...NINOX_CONTRACT_FIELD_IDS,
 ] as const;
 
 export const NINOX_TRUCKS_DB = {
@@ -58,27 +58,31 @@ export const NINOX_TRUCKS_DB = {
   tableName: 'TrucksDB',
   fieldCount: 117,
   truckNumberFieldId: 'A',
-  odometerMilesFieldId: 'OF',
-  yardLocationFieldId: 'X1',
-  yardLocationFallbackFieldId: 'AN',
-  mechanicStatusFieldId: 'TA',
-  mechanicStatusFallbackFieldId: 'Y1',
-  dispatcherFieldId: 'YF',
-  insuranceFieldId: 'Y4',
   vinFieldId: 'CG',
   makeFieldId: 'DG',
-  ownerFieldId: 'VF',
-  lastKnownAddressFieldId: 'PF',
   modelYearFieldId: 'IJ',
   licensePlateFieldId: 'HJ',
-  samsaraLastConnectedFieldId: 'SF',
+  odometerMilesFieldId: 'OF',
+  locationFieldId: 'X1',
+  locationAltFieldId: 'AN',
+  ownerFieldId: 'VF',
+  shopStatusFieldId: 'Y1',
+  outWorkFieldId: 'TA',
+  optionalT5FieldId: 'T5',
   samsaraVehicleIdFieldId: 'BM',
 } as const;
 
 /**
- * Shop business-key join. Shop never uses a Ninox record id as truck identity.
- * Shop `truckNumber` ↔ kit `trucks.truck_number` ↔ Ninox `E.A`.
+ * Upsert identity (product owner): prefer VIN + truckNumber.
+ * Shop unique write key remains `truckNumber`. VIN is the preferred match
+ * when exactly one Shop row has that VIN.
  */
+export const SHOP_TRUCK_SEED_IDENTITY = {
+  uniqueWriteKey: 'truckNumber',
+  preferredMatch: ['vin', 'truckNumber'],
+  note: 'Match one Shop row by VIN when VIN is present and unique; otherwise match truckNumber. Insert when neither hits. Do not import Work Orders.',
+} as const;
+
 export const SHOP_NINOX_TRUCK_JOIN = {
   shopField: 'truckNumber',
   shopColumn: 'trucks.truck_number',
@@ -87,26 +91,27 @@ export const SHOP_NINOX_TRUCK_JOIN = {
   ninoxPath: 'E.A',
 } as const;
 
-/**
- * Yard Work Plan / Phase 1 readiness phases are derived in Shop Postgres.
- * They are not Ninox `E.TA` / `E.Y1` (mechanic_status).
- */
 export const YARD_PHASES_ARE_NOT_NINOX_MECHANIC_STATUS = true;
+export const NINOX_LOCATION_IS_NOT_YARD_PRESENCE = true;
 
 export const NINOX_UNRESOLVED = {
   ucTrailer: {
     tableId: null,
     fieldId: null,
-    ninoxPath: null,
     status: 'unresolved',
-    note: 'UC trailer target is unresolved in Ninox. Do not invent IDs.',
+    note: 'UC trailer target is unresolved in Ninox. Do not invent IDs. This seed does not import trailers or WO history.',
   },
   shopModel: {
-    tableId: 'E',
+    shopField: 'model',
     fieldId: null,
-    ninoxPath: null,
     status: 'unresolved',
-    note: 'Shop `model` has no declared Ninox field. E.DG is make/model display and is stored on make.',
+    note: 'No declared Ninox model field. E.DG is make/model display and maps to shop make only.',
+  },
+  shopCompany: {
+    shopField: 'company',
+    fieldId: null,
+    status: 'unresolved',
+    note: 'No declared Ninox company field. E.Y4 is insurance and is not mapped to company.',
   },
 } as const;
 
@@ -114,12 +119,11 @@ export type NinoxMappingSummary = {
   liveClient: false;
   scan: typeof NINOX_SCAN;
   trucksDb: typeof NINOX_TRUCKS_DB;
+  identity: typeof SHOP_TRUCK_SEED_IDENTITY;
   truckJoin: typeof SHOP_NINOX_TRUCK_JOIN;
   yardPhasesAreNinoxMechanicStatus: false;
-  unresolved: {
-    ucTrailer: typeof NINOX_UNRESOLVED.ucTrailer;
-    shopModel: typeof NINOX_UNRESOLVED.shopModel;
-  };
+  locationIsYardPresence: false;
+  unresolved: typeof NINOX_UNRESOLVED;
 };
 
 export function getNinoxMappingSummary(): NinoxMappingSummary {
@@ -127,11 +131,10 @@ export function getNinoxMappingSummary(): NinoxMappingSummary {
     liveClient: false,
     scan: NINOX_SCAN,
     trucksDb: NINOX_TRUCKS_DB,
+    identity: SHOP_TRUCK_SEED_IDENTITY,
     truckJoin: SHOP_NINOX_TRUCK_JOIN,
     yardPhasesAreNinoxMechanicStatus: false,
-    unresolved: {
-      ucTrailer: NINOX_UNRESOLVED.ucTrailer,
-      shopModel: NINOX_UNRESOLVED.shopModel,
-    },
+    locationIsYardPresence: false,
+    unresolved: NINOX_UNRESOLVED,
   };
 }

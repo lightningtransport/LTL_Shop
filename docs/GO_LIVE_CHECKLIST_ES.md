@@ -11,9 +11,11 @@ No pide otro escaneo de MappingTool para camiones.
 
 ## Semilla de camiones (lunes)
 
-Hay un job **de una sola vez**: baja TrucksDB `E` por API (solo GET),
-crea camiones **nuevos** en Supabase por `truckNumber` = `E.A`, y **no
-vuelve a preguntar a Ninox**. Nunca escribe en Ninox.
+Hay un job **de una sola vez**: baja TrucksDB `E` (solo GET), hace
+**upsert** en Supabase por VIN + `truckNumber` (`E.A` / `E.CG`), y **no
+vuelve a preguntar a Ninox**. Nunca escribe en Ninox. `E.X1`/`E.AN` van
+a la ubicación reportada, **no** a Presence. `E.Y1`/`E.TA` no mueven el
+tablero.
 
 Comando: `npm run prisma:seed-ninox-trucks --workspace=@ltl-shop/api`
 

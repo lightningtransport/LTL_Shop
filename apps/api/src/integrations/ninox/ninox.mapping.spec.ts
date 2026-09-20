@@ -1,42 +1,51 @@
 import { describe, expect, it } from 'vitest';
-import declared from './declared-trucks-catalog.json';
 import {
-  NINOX_DECLARED_FIELD_IDS,
-  NINOX_LAUNCH_FALLBACK_FIELD_IDS,
-  NINOX_SCAN,
+  NINOX_LOCATION_IS_NOT_YARD_PRESENCE,
   NINOX_TRUCKS_DB,
   NINOX_UNRESOLVED,
   NINOX_VERIFIED_TABLE_IDS,
-  SHOP_NINOX_TRUCK_JOIN,
+  SHOP_TRUCK_SEED_IDENTITY,
   YARD_PHASES_ARE_NOT_NINOX_MECHANIC_STATUS,
   getNinoxMappingSummary,
 } from './ninox.mapping';
 
-describe('verified Ninox mapping constants', () => {
-  it('matches MappingTool declared-catalog truck field ids', () => {
+describe('product-owner Ninox seed contract', () => {
+  it('keeps Shop column names as authority and documents the upsert key', () => {
     expect(NINOX_VERIFIED_TABLE_IDS).toEqual(['E']);
-    expect(NINOX_DECLARED_FIELD_IDS).toEqual(declared.fields.map((field) => field.fieldId));
-    expect(NINOX_LAUNCH_FALLBACK_FIELD_IDS).toEqual(['AN', 'Y1']);
+    expect(SHOP_TRUCK_SEED_IDENTITY).toEqual({
+      uniqueWriteKey: 'truckNumber',
+      preferredMatch: ['vin', 'truckNumber'],
+      note: 'Match one Shop row by VIN when VIN is present and unique; otherwise match truckNumber. Insert when neither hits. Do not import Work Orders.',
+    });
     expect(NINOX_TRUCKS_DB).toMatchObject({
-      tableId: 'E',
       truckNumberFieldId: 'A',
+      vinFieldId: 'CG',
+      makeFieldId: 'DG',
+      modelYearFieldId: 'IJ',
+      licensePlateFieldId: 'HJ',
       odometerMilesFieldId: 'OF',
-      yardLocationFieldId: 'X1',
-      yardLocationFallbackFieldId: 'AN',
-      mechanicStatusFieldId: 'TA',
-      mechanicStatusFallbackFieldId: 'Y1',
+      locationFieldId: 'X1',
+      locationAltFieldId: 'AN',
+      ownerFieldId: 'VF',
+      shopStatusFieldId: 'Y1',
+      outWorkFieldId: 'TA',
+      optionalT5FieldId: 'T5',
+      samsaraVehicleIdFieldId: 'BM',
     });
   });
 
-  it('records the MappingTool scan host and join key', () => {
-    expect(NINOX_SCAN.workspaceHost).toBe('lightningtransport.ninoxdb.com');
-    expect(SHOP_NINOX_TRUCK_JOIN.ninoxPath).toBe('E.A');
+  it('forbids using Ninox status/location as Presence or Ready', () => {
     expect(YARD_PHASES_ARE_NOT_NINOX_MECHANIC_STATUS).toBe(true);
-    expect(getNinoxMappingSummary().yardPhasesAreNinoxMechanicStatus).toBe(false);
+    expect(NINOX_LOCATION_IS_NOT_YARD_PRESENCE).toBe(true);
+    expect(getNinoxMappingSummary()).toMatchObject({
+      yardPhasesAreNinoxMechanicStatus: false,
+      locationIsYardPresence: false,
+    });
   });
 
-  it('leaves UC trailer and Shop model unresolved', () => {
-    expect(NINOX_UNRESOLVED.ucTrailer.tableId).toBeNull();
+  it('leaves company, model, and UC trailer unresolved instead of inventing ids', () => {
+    expect(NINOX_UNRESOLVED.shopCompany.fieldId).toBeNull();
     expect(NINOX_UNRESOLVED.shopModel.fieldId).toBeNull();
+    expect(NINOX_UNRESOLVED.ucTrailer.tableId).toBeNull();
   });
 });

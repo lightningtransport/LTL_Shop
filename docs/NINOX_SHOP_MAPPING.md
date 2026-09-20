@@ -16,7 +16,7 @@ only business key needed to relate a Shop truck to Ninox later is already
 known: `truckNumber` ↔ `E.A`. Remaining launch work is Shop product,
 engineering, auth, seed/ops, and environment — not another MappingTool scan
 — unless product later requires trailers as first-class Ninox assets (UC
-target still unresolved) or a live status sync of `E.TA`.
+target still unresolved). `E.TA` / `E.Y1` are not live board/Ready sync.
 
 ## Verified IDs only
 
@@ -26,11 +26,13 @@ Declared-catalog TrucksDB fields (MappingTool) plus Monday-launch fallbacks
 | Ninox path | Meaning | Shop counterpart |
 |---|---|---|
 | Table `E` | TrucksDB (117 fields; workspace has 163 tables) | `public.trucks` |
-| `E.A` | truck number | `Truck.truckNumber` / `trucks.truck_number` |
-| `E.OF` | odometer_miles | `mileage` (insert of **new** rows only) |
-| `E.X1` / `E.AN` | yard_location | `yardLocation` — **not** Presence |
-| `E.TA` / `E.Y1` | mechanic_status | `ninoxMechanicStatus` — **not** Yard phase |
-| `E.DG` | make display | `make` (`model` stays unresolved) |
+| `E.A` | truck number | `truckNumber` (ops key; upsert with VIN) |
+| `E.CG` | vin | `vin` when present |
+| `E.OF` | odometer | `mileage` |
+| `E.X1` / `E.AN` | last-reported location | `samsaraTruckLocation` / date-shaped `samsaraLastConnectedDate` — **not** Presence |
+| `E.Y1` | Shop Status | optional `ninoxMechanicStatus` — **not** Ready or board phase |
+| `E.TA` / `E.T5` | OutWork / optional | not written onto operational Shop columns |
+| `E.DG` | make display | `make` (`model` unresolved — no Ninox ID) |
 
 Do not add other table or field IDs until a new live scan confirms them.
 

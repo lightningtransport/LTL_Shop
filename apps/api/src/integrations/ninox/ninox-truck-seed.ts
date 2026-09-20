@@ -1,7 +1,11 @@
 import type { PrismaClient } from '@prisma/client';
-import { NINOX_TRUCKS_DB } from './ninox.mapping';
+import { NINOX_TRUCKS_DB, SHOP_TRUCK_SEED_IDENTITY } from './ninox.mapping';
 import type { NinoxReadOnlyClient } from './ninox.read-only-client';
-import { transformTrucksDbRecord, type ShopTruckSeedRow } from './ninox-truck-transform';
+import {
+  presentShopFields,
+  transformTrucksDbRecord,
+  type ShopTruckSeedRow,
+} from './ninox-truck-transform';
 
 export const NINOX_TRUCK_SEED_COMPLETED_STATUS = 'completed';
 
@@ -10,11 +14,14 @@ export type NinoxTruckSeedResult = {
   status: 'completed' | 'already-completed' | 'dry-run';
   recordsRead: number;
   insertedCount: number;
-  skippedExistingCount: number;
+  updatedCount: number;
   skippedMissingNumberCount: number;
+  ambiguousVinCount: number;
   sourceTableId: string;
+  identity: typeof SHOP_TRUCK_SEED_IDENTITY;
 };
 
+type SeedTruck = { id: string; truckNumber: string; vin: string | null };
 type SeedPrisma = Pick<PrismaClient, 'ninoxTruckSeedRun' | 'truck'>;
 
 export async function hasCompletedNinoxTruckSeed(prisma: SeedPrisma): Promise<boolean> {
@@ -25,11 +32,32 @@ export async function hasCompletedNinoxTruckSeed(prisma: SeedPrisma): Promise<bo
   return Boolean(existing);
 }
 
+export async function resolveSeedIdentity(
+  prisma: SeedPrisma,
+  row: ShopTruckSeedRow,
+): Promise<{ existing: SeedTruck | null; ambiguousVin: boolean }> {
+  if (row.vin) {
+    const byVin = await prisma.truck.findMany({
+      where: { vin: row.vin },
+      select: { id: true, truckNumber: true, vin: true },
+    });
+    if (byVin.length === 1) return { existing: byVin[0], ambiguousVin: false };
+    if (byVin.length > 1) {
+      const sameNumber = byVin.find((truck) => truck.truckNumber === row.truckNumber) ?? null;
+      return { existing: sameNumber, ambiguousVin: !sameNumber };
+    }
+  }
+  const byNumber = await prisma.truck.findUnique({
+    where: { truckNumber: row.truckNumber },
+    select: { id: true, truckNumber: true, vin: true },
+  });
+  return { existing: byNumber, ambiguousVin: false };
+}
+
 /**
- * One-shot TrucksDB E → Shop trucks seed.
- * Reads Ninox only when no completed run exists.
- * Persists NEW rows keyed by truckNumber. Existing numbers are left untouched.
- * Never writes to Ninox.
+ * One-shot TrucksDB E → Shop trucks upsert.
+ * Never writes Ninox. After a completed run, never queries Ninox again.
+ * Does not import Work Orders / jobs and does not set Presence or Ready.
  */
 export async function runNinoxTruckSeed(options: {
   prisma: SeedPrisma;
@@ -41,15 +69,7 @@ export async function runNinoxTruckSeed(options: {
   const now = options.now ?? new Date();
   const alreadyDone = await hasCompletedNinoxTruckSeed(options.prisma);
   if (alreadyDone && !options.allowRerun) {
-    return {
-      queriedNinox: false,
-      status: 'already-completed',
-      recordsRead: 0,
-      insertedCount: 0,
-      skippedExistingCount: 0,
-      skippedMissingNumberCount: 0,
-      sourceTableId: NINOX_TRUCKS_DB.tableId,
-    };
+    return emptyResult('already-completed', false);
   }
 
   const records = await options.client.listTrucksDbRecords();
@@ -66,31 +86,34 @@ export async function runNinoxTruckSeed(options: {
 
   if (options.dryRun) {
     return {
-      queriedNinox: true,
-      status: 'dry-run',
+      ...emptyResult('dry-run', true),
       recordsRead: records.length,
-      insertedCount: 0,
-      skippedExistingCount: 0,
       skippedMissingNumberCount,
-      sourceTableId: NINOX_TRUCKS_DB.tableId,
     };
   }
 
   let insertedCount = 0;
-  let skippedExistingCount = 0;
+  let updatedCount = 0;
+  let ambiguousVinCount = 0;
   for (const row of rows) {
-    const existing = await options.prisma.truck.findUnique({
-      where: { truckNumber: row.truckNumber },
-      select: { id: true },
-    });
+    const { existing, ambiguousVin } = await resolveSeedIdentity(options.prisma, row);
+    if (ambiguousVin) {
+      ambiguousVinCount += 1;
+      continue;
+    }
+    const fields = presentShopFields(row);
     if (existing) {
-      skippedExistingCount += 1;
+      await options.prisma.truck.update({
+        where: { id: existing.id },
+        data: fields,
+      });
+      updatedCount += 1;
       continue;
     }
     await options.prisma.truck.upsert({
       where: { truckNumber: row.truckNumber },
-      create: toCreateData(row),
-      update: {},
+      create: { truckNumber: row.truckNumber, ...fields },
+      update: fields,
     });
     insertedCount += 1;
   }
@@ -101,9 +124,9 @@ export async function runNinoxTruckSeed(options: {
       status: NINOX_TRUCK_SEED_COMPLETED_STATUS,
       recordsRead: records.length,
       insertedCount,
-      skippedCount: skippedExistingCount + skippedMissingNumberCount,
+      skippedCount: skippedMissingNumberCount + ambiguousVinCount,
       skippedNinoxQuery: false,
-      notes: 'Initial TrucksDB E seed. Insert-only by truckNumber. No Ninox writes.',
+      notes: 'One-shot TrucksDB E upsert by VIN+truckNumber. No Ninox writes. No WO/history. Presence stays UNKNOWN.',
       startedAt: now,
       finishedAt: new Date(),
     },
@@ -114,30 +137,27 @@ export async function runNinoxTruckSeed(options: {
     status: 'completed',
     recordsRead: records.length,
     insertedCount,
-    skippedExistingCount,
+    updatedCount,
     skippedMissingNumberCount,
+    ambiguousVinCount,
     sourceTableId: NINOX_TRUCKS_DB.tableId,
+    identity: SHOP_TRUCK_SEED_IDENTITY,
   };
 }
 
-function toCreateData(row: ShopTruckSeedRow) {
+function emptyResult(
+  status: NinoxTruckSeedResult['status'],
+  queriedNinox: boolean,
+): NinoxTruckSeedResult {
   return {
-    truckNumber: row.truckNumber,
-    make: row.make,
-    model: row.model,
-    year: row.year,
-    mileage: row.mileage,
-    company: row.company,
-    owner: row.owner,
-    vin: row.vin,
-    samsaraTruckLocation: row.samsaraTruckLocation,
-    samsaraLastConnectedDate: row.samsaraLastConnectedDate,
-    samsaraId: row.samsaraId,
-    ninoxExternalId: row.ninoxExternalId,
-    yardLocation: row.yardLocation,
-    ninoxMechanicStatus: row.ninoxMechanicStatus,
-    dispatcher: row.dispatcher,
-    insurance: row.insurance,
-    licensePlate: row.licensePlate,
+    queriedNinox,
+    status,
+    recordsRead: 0,
+    insertedCount: 0,
+    updatedCount: 0,
+    skippedMissingNumberCount: 0,
+    ambiguousVinCount: 0,
+    sourceTableId: NINOX_TRUCKS_DB.tableId,
+    identity: SHOP_TRUCK_SEED_IDENTITY,
   };
 }

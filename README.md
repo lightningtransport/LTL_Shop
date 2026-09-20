@@ -26,7 +26,7 @@ Historical PRDs and plans do not override these sources.
 - **DB / Auth:** Supabase Postgres + Supabase Auth (local Postgres via Docker for development)
 - **Ninox:** Runtime adapter is still a stub (`DATA_SOURCE=supabase`). Monday
   fleet load is a **one-shot** CLI (`npm run prisma:seed-ninox-trucks`) that
-  GETs TrucksDB `E` and inserts **new** Shop rows by `truckNumber` (`E.A`).
+  GETs TrucksDB `E` and upserts Shop rows by VIN + `truckNumber` (`E.CG` / `E.A`).
   It never writes Ninox and will not query Ninox again after a completed run.
   See [`docs/NINOX_TRUCK_SEED.md`](docs/NINOX_TRUCK_SEED.md).
 

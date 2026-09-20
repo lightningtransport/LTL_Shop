@@ -31,7 +31,7 @@ V2-002 implements TARGET directly. For `apps/web` UI work, read
 | `PERFORMANCE.md` | ENGINEERING | Measured performance | Performance targets and historical measurements | ACTIVE |
 | `DEPLOY.md` | ENGINEERING | Deployment | Prisma release and deployment safety | ACTIVE |
 | `NINOX_SHOP_MAPPING.md` | CURRENT STATE / INTEGRATION BOUNDARY | Verified Ninox IDs | MappingTool declared TrucksDB fields; UC trailer unresolved; runtime stub | ACTIVE |
-| `NINOX_TRUCK_SEED.md` | ENGINEERING / LAUNCH | Monday ETL | One-shot GET TrucksDB E → insert-only Shop trucks; no Ninox write; no re-query | ACTIVE |
+| `NINOX_TRUCK_SEED.md` | ENGINEERING / LAUNCH | Monday ETL | One-shot GET TrucksDB E → upsert VIN+truckNumber; no Presence/Ready; no Ninox write | ACTIVE |
 | `GO_LIVE_CHECKLIST_ES.md` | CURRENT STATE / LAUNCH | Shop go-live | Spanish DONE / Ninox / product / engineering checklist for real users | ACTIVE |
 | `DEVELOPMENT_ROADMAP.md` | IMPLEMENTATION PLAN | Sequencing only | NOW/NEXT/LATER milestones derived from canonical target and current gaps | ACTIVE |
 | `IMPLEMENTATION_QUEUE.md` | IMPLEMENTATION PLAN | Task execution | Small, scoped tasks with acceptance criteria and tests | ACTIVE |
