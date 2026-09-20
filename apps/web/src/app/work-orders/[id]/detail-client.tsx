@@ -398,6 +398,7 @@ export default function WorkOrderDetailPage() {
       <Modal
         open={!!finishJob}
         title={messages.jobFinishTitle}
+        closeLabel={messages.closeDialog}
         onClose={() => {
           if (busy) return;
           setFinishJob(null);
@@ -486,6 +487,7 @@ export default function WorkOrderDetailPage() {
       <Modal
         open={pauseOpen}
         title={messages.reportBlocker}
+        closeLabel={messages.closeDialog}
         onClose={() => {
           if (busy) return;
           setPauseOpen(false);
@@ -762,7 +764,7 @@ function PmWorkOrderDetail({
         ) : null}
       </section>
 
-      <Modal open={finishOpen} title={messages.finishWork} onClose={() => { if (!busy) setFinishOpen(false); }}>
+      <Modal open={finishOpen} title={messages.finishWork} closeLabel={messages.closeDialog} onClose={() => { if (!busy) setFinishOpen(false); }}>
         {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
         <p className="mb-4 text-sm text-muted-foreground">
           {mileageChangesTruck
@@ -785,7 +787,7 @@ function PmWorkOrderDetail({
         </div>
       </Modal>
 
-      <Modal open={pauseOpen} title={messages.pauseWorkOrder} onClose={() => setPauseOpen(false)} returnFocusRef={pauseTriggerRef}>
+      <Modal open={pauseOpen} title={messages.pauseWorkOrder} closeLabel={messages.closeDialog} onClose={() => setPauseOpen(false)} returnFocusRef={pauseTriggerRef}>
         <Label className="section-label mb-2 block" htmlFor="pm-pause-reason">Pause reason</Label>
         <div className="mb-3">
           <Select id="pm-pause-reason" value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>

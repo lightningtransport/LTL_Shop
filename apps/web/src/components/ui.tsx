@@ -832,7 +832,7 @@ export function Modal({
         <div className="mb-4 flex items-center justify-between">
           <DialogTitle>{title}</DialogTitle>
           <DialogPrimitive.Close asChild>
-            <Button variant="ghost" size="icon" aria-label={closeLabel ?? `Close ${title}`}>
+            <Button variant="ghost" size="icon" aria-label={closeLabel ?? 'Close'}>
               <X aria-hidden="true" className="size-5" />
             </Button>
           </DialogPrimitive.Close>

@@ -95,6 +95,7 @@ type Copy = {
   jobFinishedSuccess: string;
   jobFinishedWithNoteSuccess: string;
   dismissNotice: string;
+  closeDialog: string;
   pauseWorkOrder: string;
   workOrderAction: (action: string, displayId: string, truckNumber: string) => string;
   pmServiceLoadError: string;
@@ -222,6 +223,7 @@ const copy: Record<ShopLocale, Copy> = {
     jobFinishedSuccess: 'Job marked complete.',
     jobFinishedWithNoteSuccess: 'Job marked complete. Your note is saved.',
     dismissNotice: 'Dismiss',
+    closeDialog: 'Close',
     pauseWorkOrder: 'Pause Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, truck ${truckNumber}`,
     pmServiceLoadError: 'Unable to load PM service details.',
@@ -361,6 +363,7 @@ const copy: Record<ShopLocale, Copy> = {
     jobFinishedSuccess: 'Job marcado como completado.',
     jobFinishedWithNoteSuccess: 'Job marcado como completado. Tu nota quedó guardada.',
     dismissNotice: 'Cerrar',
+    closeDialog: 'Cerrar',
     pauseWorkOrder: 'Pausar Work Order',
     workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, unidad ${truckNumber}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',

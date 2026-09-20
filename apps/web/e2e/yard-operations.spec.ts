@@ -38,6 +38,7 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByRole('status', { name: 'Upcoming Departures unavailable' }).getByText('Upcoming Departures', { exact: true })).toBeVisible();
     await expect(page.getByTestId('yard-truck-card').getByText('Last reported location')).toHaveCount(0);
     await page.getByLabel('Search Truck or Work Order').fill('Y-103');
+    await expect(page).toHaveURL(/search=Y-103/, { timeout: 5_000 });
     const filters = await yardFilterPanel(page);
     await filters.getByLabel('Phase', { exact: true }).selectOption('required_work');
     await filters.getByLabel('Blockers').selectOption('true');

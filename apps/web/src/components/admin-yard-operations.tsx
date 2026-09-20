@@ -51,16 +51,20 @@ const priorityMessageKey = { low: 'lowPriority', normal: 'normalPriority', high:
 export function AdminYardOperations({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [filters, setFilters] = useState<YardOperationsFilters>(DEFAULT_YARD_OPERATIONS_FILTERS);
-  const [view, setView] = useState<'board' | 'list'>('board');
+  const [filters, setFilters] = useState<YardOperationsFilters>(() => readYardOperationsFilters(searchParams));
+  const [view, setView] = useState<'board' | 'list'>(() => searchParams.get('view') === 'list' ? 'list' : 'board');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [phase1Open, setPhase1Open] = useState(false);
   const query = searchParams.toString();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminYardOperations(query);
 
   useEffect(() => {
-    setFilters(readYardOperationsFilters(searchParams));
+    const fromUrl = readYardOperationsFilters(searchParams);
     setView(searchParams.get('view') === 'list' ? 'list' : 'board');
+    setFilters((current) => ({
+      ...fromUrl,
+      search: current.search !== fromUrl.search ? current.search : fromUrl.search,
+    }));
   }, [searchParams]);
 
   const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
@@ -87,13 +91,25 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
     setFilters((current) => ({ ...current, [key]: value }));
   }
 
-  function applyFilters(event: React.FormEvent) {
-    event.preventDefault();
-    const params = buildYardOperationsQuery(filters);
+  function commitFilters(next: YardOperationsFilters) {
+    const params = buildYardOperationsQuery(next);
     if (view === 'list') params.set('view', 'list');
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
+  }
+
+  function applyFilters(event: React.FormEvent) {
+    event.preventDefault();
+    commitFilters(filters);
     setFiltersOpen(false);
   }
+
+  useEffect(() => {
+    if (filters.search === appliedFilters.search) return undefined;
+    const handle = window.setTimeout(() => {
+      commitFilters({ ...appliedFilters, search: filters.search });
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [appliedFilters, filters.search, view, router]);
 
   function clearFilters() {
     setFilters(DEFAULT_YARD_OPERATIONS_FILTERS);
@@ -212,6 +228,7 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
       <Modal
         open={filtersOpen}
         title={messages.filters}
+        closeLabel={messages.closeDialog}
         onClose={() => setFiltersOpen(false)}
       >
         <form className="space-y-3" onSubmit={applyFilters}>
