@@ -20,7 +20,8 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('en').workPlanNotReadyRemaining).toContain('{count}');
     expect(getAdminMessages('es').workPlanReady).toBe('Ready to Go');
     expect(getAdminMessages('es').readyToGo).toBe('Ready to Go');
-    expect(getAdminMessages('en').yardSearch).toMatch(/Truck/);
+    expect(getAdminMessages('en').closeDialog).toBe('Close');
+    expect(getAdminMessages('es').closeDialog).toBe('Cerrar');
     expect(getAdminMessages('es').yardSearch).toMatch(/Truck/);
     expect(getAdminMessages('en').noTrucksInPhase).toMatch(/this phase/);
     expect(getAdminMessages('es').noTrucksInPhase).toMatch(/esta fase/);
@@ -66,7 +67,8 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').retryWorkOrder).toBe('Reintentar Work Order');
     expect(getShopCopy('en').viewWork).toBe('View Work');
     expect(getShopCopy('es').viewDetails).toBe('Ver detalles');
-    expect(getShopCopy('en').waitingOnManager).toBe('Waiting on Manager');
+    expect(getShopCopy('en').closeDialog).toBe('Close');
+    expect(getShopCopy('es').closeDialog).toBe('Cerrar');
     expect(getShopCopy('es').waitingOnManagerBody).toMatch(/Manager cierra/);
     expect(getShopCopy('en').workOptions).toBe('Work Options');
     expect(getShopCopy('es').activeJobsTitle).toBe('Jobs activos');

@@ -782,6 +782,9 @@ test.describe('My Assigned Work presentation', () => {
     await page.getByRole('button', { name: /Replace pads/ }).click();
     const finishDialog = page.getByRole('dialog', { name: /Complete job|Completar Job/i });
     await expect(finishDialog).toBeVisible();
+    await expect(finishDialog.getByRole('button', { name: 'Close Complete job' })).toHaveCount(0);
+    await expect(finishDialog.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
+    await expect(finishDialog.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
     await finishDialog.getByRole('button', { name: 'Complete job', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: /Job marked complete|Job marcado como completado/i })).toBeVisible();
     await expect(page.getByText('Replace pads')).toBeVisible();
