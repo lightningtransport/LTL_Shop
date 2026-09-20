@@ -14,6 +14,7 @@ import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { useCategories } from '@/lib/shop-data';
 import { JobPickerDialog } from './job-picker-dialog';
 import {
+  ActionFeedback,
   AdminBackLink,
   AdminPageHeader,
   Badge,
@@ -36,7 +37,17 @@ import {
   Textarea,
 } from './ui';
 
-export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
+export function AdminWorkOrderDetail({
+  id,
+  locale,
+  messages,
+  justCreated = false,
+}: {
+  id: string;
+  locale: AdminLocale;
+  messages: AdminMessages;
+  justCreated?: boolean;
+}) {
   const { user } = useAuth();
   const { mutate: mutateRelated } = useSWRConfig();
   const { data, error, isLoading, mutate } = useAdminWorkOrder(id);
@@ -57,7 +68,9 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [timeEndedAt, setTimeEndedAt] = useState('');
   const [timeReason, setTimeReason] = useState('');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(
+    justCreated ? { kind: 'success', message: messages.createWorkOrderSuccess } : null,
+  );
   const { data: categoryData } = useCategories(true);
   const historyQuery = useAdminRepairHistory(data?.truck.id ?? '', id, historyCategory || undefined);
   const { data: mechanicPages } = useAdminMechanics('');
@@ -71,6 +84,14 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     setDraftPriority(data.priority);
     setDraftNotes(data.notes ?? '');
   }, [data]);
+
+  useEffect(() => {
+    if (!justCreated || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('created')) return;
+    url.searchParams.delete('created');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [justCreated]);
 
   if (isLoading) return <PageSkeleton label={messages.workOrdersTitle} />;
   if (error instanceof ApiError && error.status === 404) return <NotFound messages={messages} />;
@@ -120,7 +141,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       meta={<>{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</>}
       badges={<><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></>}
     />
-    {feedback ? <p className={feedback.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'} role="status">{feedback.message}</p> : null}
+    {feedback ? <ActionFeedback kind={feedback.kind}>{feedback.message}</ActionFeedback> : null}
 
     <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]" aria-label={messages.operationalSummary}>
       <Card>

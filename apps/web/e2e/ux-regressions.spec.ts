@@ -565,11 +565,14 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       }
       await json(route, { ...pmDetails, observedMileage: savedMileage, selections: savedSelections });
     });
-    await page.route(`**/api/work-orders/${workOrder.id}/complete`, async (route) => json(route, {
-      ...pmWorkOrder, status: 'completed', notes: null, createdById: daniel.id,
-      completedAt: '2026-01-01T14:00:00.000Z', totalActiveLaborMs: 1, totalWaitingMs: 0,
-      mechanics: [], currentPause: null, truck, version: 2,
-    }));
+    await page.route(`**/api/work-orders/${workOrder.id}/complete`, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await json(route, {
+        ...pmWorkOrder, status: 'completed', notes: null, createdById: daniel.id,
+        completedAt: '2026-01-01T14:00:00.000Z', totalActiveLaborMs: 1, totalWaitingMs: 0,
+        mechanics: [], currentPause: null, truck, version: 2,
+      });
+    });
     await page.goto('/login');
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
@@ -597,10 +600,13 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await page.getByRole('button', { name: 'Finish Work' }).click();
     await expect(page.getByRole('heading', { name: 'Finish PM service' })).toBeVisible();
     await page.getByRole('button', { name: 'Finish Work' }).last().click();
+    await expect(page.getByRole('button', { name: /Finishing|Terminando/ })).toBeVisible();
     await expect.poll(() => savedBody).toEqual({
       observedMileage: 120500,
       selections: [{ partCategoryId: 'part-cat-oil', partId: 'part-oil' }],
     });
+    await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
+    await expect(page.getByRole('status', { name: /Work completed\.|Trabajo terminado\./ })).toBeVisible();
   });
 
   test('Standard detail hides Finish Work and Add Job after cutover', async ({ page }) => {
@@ -719,11 +725,15 @@ test.describe('My Assigned Work presentation', () => {
         return json(route, assignedWorkOrder);
       }
       if (path === `/api/work-orders/${assignedWorkOrder.id}/jobs/job-mine/complete`) {
+        const body = request.postDataJSON() as { notes?: string };
+        await new Promise((resolve) => setTimeout(resolve, 400));
         return json(route, {
           ...assignedWorkOrder,
           jobsCompleted: 1,
           jobs: assignedWorkOrder.jobs.map((job) => (
-            job.id === 'job-mine' ? { ...job, status: 'completed' } : job
+            job.id === 'job-mine'
+              ? { ...job, status: 'completed', completionNotes: body?.notes ?? null }
+              : job
           )),
         });
       }
@@ -779,7 +789,11 @@ test.describe('My Assigned Work presentation', () => {
 
     await page.getByRole('button', { name: /Replace pads/ }).click();
     await expect(page.getByRole('dialog', { name: 'JOB FINISHED' })).toBeVisible();
+    await page.getByLabel('Completion note').fill('Pads replaced, rotor looks good');
     await page.getByRole('button', { name: 'Complete Job' }).click();
+    await expect(page.getByRole('button', { name: /Completing|Completando/ })).toBeVisible();
+    await expect(page.getByRole('status', { name: /Job completed\.|Job completado\./ })).toBeVisible();
     await expect(page.getByText('Replace pads')).toBeVisible();
+    await expect(page.getByText('Pads replaced, rotor looks good')).toBeVisible();
   });
 });

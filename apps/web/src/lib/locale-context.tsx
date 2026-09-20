@@ -71,6 +71,11 @@ type Copy = {
   additionalWorkHint: string;
   jobFinishNotes: string;
   jobFinishNotesPlaceholder: string;
+  completeJob: string;
+  completingJob: string;
+  jobFinishSuccess: string;
+  finishingWork: string;
+  finishWorkSuccess: string;
   pausedAskManager: string;
   createPmService: string;
   viewCompletedWork: (count: number) => string;
@@ -177,6 +182,11 @@ const copy: Record<ShopLocale, Copy> = {
     additionalWorkHint: 'Need additional work on this Truck? Write it here so your Manager can add the Job.',
     jobFinishNotes: 'Completion note',
     jobFinishNotesPlaceholder: 'What did you do? The Manager will see this.',
+    completeJob: 'Complete Job',
+    completingJob: 'Completing…',
+    jobFinishSuccess: 'Job completed.',
+    finishingWork: 'Finishing…',
+    finishWorkSuccess: 'Work completed.',
     pausedAskManager: 'This Work Order is paused. Your Shop Manager will resume it.',
     createPmService: 'Create PM service',
     viewCompletedWork: (count) => `View completed work (${count})`,
@@ -293,6 +303,11 @@ const copy: Record<ShopLocale, Copy> = {
     additionalWorkHint: '¿Hace falta trabajo adicional en esta unidad? Anótalo aquí para que el Manager agregue el Job.',
     jobFinishNotes: 'Nota al completar',
     jobFinishNotesPlaceholder: '¿Qué hiciste? El Manager verá esta nota.',
+    completeJob: 'Completar Job',
+    completingJob: 'Completando…',
+    jobFinishSuccess: 'Job completado.',
+    finishingWork: 'Terminando…',
+    finishWorkSuccess: 'Trabajo terminado.',
     pausedAskManager: 'Este Work Order está pausado. Tu Shop Manager lo reanudará.',
     createPmService: 'Crear servicio de PM',
     viewCompletedWork: (count) => `Ver trabajo completado (${count})`,

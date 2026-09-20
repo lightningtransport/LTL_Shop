@@ -70,4 +70,34 @@ test.describe('LTR-21 New WO category jobs', () => {
     await page.getByRole('button', { name: 'Add custom job' }).click();
     await expect(page.getByText('Road test after alignment')).toBeVisible();
   });
+
+  test('create Work Order shows a success toast and opens the new detail', async ({ page }) => {
+    await openNewWorkOrder(page);
+
+    await page.getByLabel('Truck number').fill('104');
+    await page.getByRole('option', { name: /T-104/ }).click();
+    await page.getByRole('button', { name: 'Continue to work' }).click();
+
+    await page.getByLabel('Category').selectOption({ index: 1 });
+    await page.getByLabel('Custom job name').fill('LTR-44 visible create feedback');
+    await page.getByRole('button', { name: 'Add custom job' }).click();
+    await page.getByRole('button', { name: 'Review Work Order' }).click();
+
+    await page.route('**/api/admin/work-orders', async (route) => {
+      if (route.request().method() === 'POST') {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+      await route.continue();
+    });
+
+    const create = page.getByRole('button', { name: 'Create Work Order' });
+    await expect(create).toBeEnabled();
+    await create.click();
+    await expect(create).toBeDisabled();
+    await expect(page.getByRole('button', { name: /Creating|Creando/ })).toBeVisible();
+
+    await expect(page).toHaveURL(/\/admin\/work-orders\/[0-9a-f-]+/);
+    await expect(page.getByRole('status', { name: /Work Order created\.|Work Order creada\./ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /WO-/ })).toBeVisible();
+  });
 });

@@ -272,6 +272,7 @@ export function AdminNewWorkOrder({
           assignedMechanicId: job.assignedMechanicId,
         })),
       });
+      await mutate(`/api/admin/work-orders/${created.id}`, created, { revalidate: false });
       await mutate(
         isAdminWorkOrdersListKey,
         (current) => prependAdminWorkOrderPage(
@@ -281,7 +282,7 @@ export function AdminNewWorkOrder({
         { revalidate: true },
       );
       void mutate(isWorkOrderRelatedListKey, undefined, WORK_ORDER_LIST_REVALIDATE);
-      router.push(`/admin/work-orders/${created.id}`);
+      router.push(`/admin/work-orders/${created.id}?created=1`);
     } catch (failure) {
       setError(failure instanceof ApiError && failure.message ? failure.message : messages.createWorkOrderFailed);
     } finally {
@@ -602,7 +603,7 @@ export function AdminNewWorkOrder({
             {error ? <InlineAlert>{error}</InlineAlert> : null}
           </CardContent>
           <CardFooter className="hidden border-t pt-4 xl:flex">
-            <Button type="button" className="w-full" disabled={!canSubmit} onClick={submit}>
+            <Button type="button" className="w-full" disabled={!canSubmit} aria-busy={busy} onClick={submit}>
               {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
             </Button>
           </CardFooter>
@@ -633,7 +634,7 @@ export function AdminNewWorkOrder({
               {messages.reviewWorkOrderAction}
             </Button>
           ) : (
-            <Button type="button" className="shrink-0" disabled={!canSubmit} onClick={submit}>
+            <Button type="button" className="shrink-0" disabled={!canSubmit} aria-busy={busy} onClick={submit}>
               {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
             </Button>
           )}

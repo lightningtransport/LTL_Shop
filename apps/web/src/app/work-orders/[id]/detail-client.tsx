@@ -23,6 +23,7 @@ import { isMyAssignedOrInheritedJob, jobAssignmentLabel } from '@/lib/job-assign
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
+  ActionFeedback,
   Button,
   Card,
   EmptyState,
@@ -54,6 +55,7 @@ export default function WorkOrderDetailPage() {
   } = useWorkOrder(id, !!token);
 
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [truckOpen, setTruckOpen] = useState(false);
   const [finishJob, setFinishJob] = useState<{
@@ -95,6 +97,7 @@ export default function WorkOrderDetailPage() {
     const snapshot = wo;
     setBusy(true);
     setError(null);
+    setSuccess(null);
     if (snapshot && optimisticUpdate) {
       await mutateWorkOrder(optimisticUpdate(snapshot), {
         revalidate: false,
@@ -199,6 +202,9 @@ export default function WorkOrderDetailPage() {
 
       {error ? (
         <InlineAlert className="mb-3">{error}</InlineAlert>
+      ) : null}
+      {success ? (
+        <ActionFeedback className="mb-3">{success}</ActionFeedback>
       ) : null}
 
       {wo.primaryCategoryName === 'PM' ? <PmServiceCard workOrderId={wo.id} /> : null}
@@ -388,6 +394,7 @@ export default function WorkOrderDetailPage() {
         open={!!finishJob}
         title="JOB FINISHED"
         onClose={() => {
+          if (busy) return;
           setFinishJob(null);
           setFinishNotes('');
         }}
@@ -404,10 +411,13 @@ export default function WorkOrderDetailPage() {
           value={finishNotes}
           onChange={(event) => setFinishNotes(event.target.value)}
           maxLength={2000}
+          disabled={busy}
         />
+        {error && finishJob ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="secondary"
+            disabled={busy}
             onClick={() => {
               setFinishJob(null);
               setFinishNotes('');
@@ -417,13 +427,12 @@ export default function WorkOrderDetailPage() {
           </Button>
           <Button
             disabled={busy}
+            aria-busy={busy}
             onClick={() => {
               if (!finishJob) return;
               const jobId = finishJob.id;
               const notesToSave = finishNotes.trim() || undefined;
-              setFinishJob(null);
-              setFinishNotes('');
-              run(
+              void run(
                 () =>
                   apiFetch<WorkOrderDetailDto>(
                     `/api/work-orders/${wo.id}/jobs/${jobId}/complete`,
@@ -454,10 +463,15 @@ export default function WorkOrderDetailPage() {
                     version: current.version + 1,
                   };
                 },
+                () => {
+                  setFinishJob(null);
+                  setFinishNotes('');
+                  setSuccess(messages.jobFinishSuccess);
+                },
               );
             }}
           >
-            Complete Job
+            {busy ? messages.completingJob : messages.completeJob}
           </Button>
         </div>
       </Modal>
@@ -711,7 +725,7 @@ function PmWorkOrderDetail({
         {wo.status === 'in_progress' ? (
           <div className="grid grid-cols-2 gap-2">
             <Button ref={pauseTriggerRef} variant="secondary" disabled={busy} onClick={() => setPauseOpen(true)}>{messages.pauseWorkOrder}</Button>
-            <Button disabled={finishBlocked} onClick={() => setFinishOpen(true)}>Finish Work</Button>
+            <Button disabled={finishBlocked} onClick={() => setFinishOpen(true)}>{messages.finishWork}</Button>
           </div>
         ) : null}
         {wo.status === 'waiting_paused' ? (
@@ -722,21 +736,21 @@ function PmWorkOrderDetail({
         ) : null}
       </section>
 
-      <Modal open={finishOpen} title="Finish PM service" onClose={() => setFinishOpen(false)}>
+      <Modal open={finishOpen} title="Finish PM service" onClose={() => { if (!busy) setFinishOpen(false); }}>
         <p className="mb-4 text-sm text-muted-foreground">
           {mileageChangesTruck
             ? `This will update the truck mileage from ${formatMileage(wo.truck.mileage)} to ${formatMileage(mileage)} and create an audit record.`
             : 'This will complete the PM service.'}
         </p>
+        {error && finishOpen ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={() => setFinishOpen(false)}>Cancel</Button>
-          <Button disabled={busy} onClick={() => {
-            setFinishOpen(false);
+          <Button variant="secondary" disabled={busy} onClick={() => setFinishOpen(false)}>Cancel</Button>
+          <Button disabled={busy} aria-busy={busy} onClick={() => {
             void run(
               () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, { method: 'POST' }),
-              () => router.replace('/mechanic/pm', { scroll: true }),
+              () => router.replace('/mechanic/pm?finished=1', { scroll: true }),
             );
-          }}>Finish Work</Button>
+          }}>{busy ? messages.finishingWork : messages.finishWork}</Button>
         </div>
       </Modal>
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
@@ -13,6 +13,7 @@ import { jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
+  ActionFeedback,
   Button,
   Card,
   CardListSkeleton,
@@ -129,6 +130,9 @@ export default function HomePage() {
         title={isPm ? messages.pmHomeTitle : messages.standardHomeTitle}
         subtitle={isPm ? messages.pmHomeSubtitle : messages.standardHomeSubtitle}
       />
+      <Suspense fallback={null}>
+        <WorkspaceFlash />
+      </Suspense>
 
       {isPm ? (
         <>
@@ -235,6 +239,24 @@ export default function HomePage() {
       ) : null}
     </div>
   );
+}
+
+function WorkspaceFlash() {
+  const search = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { messages } = useShopLocale();
+  const [visible, setVisible] = useState(false);
+  const finished = search.get('finished') === '1';
+
+  useEffect(() => {
+    if (!finished) return;
+    setVisible(true);
+    router.replace(pathname, { scroll: false });
+  }, [finished, pathname, router]);
+
+  if (!visible) return null;
+  return <ActionFeedback className="mb-4">{messages.finishWorkSuccess}</ActionFeedback>;
 }
 
 function WorkOrderCard({

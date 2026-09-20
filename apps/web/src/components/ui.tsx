@@ -164,6 +164,32 @@ export function InlineAlert({
   );
 }
 
+export function ActionFeedback({
+  children,
+  kind = 'success',
+  className,
+}: {
+  children: React.ReactNode;
+  kind?: 'success' | 'error';
+  className?: string;
+}) {
+  return (
+    <p
+      className={cn(
+        'rounded-xl border px-3 py-2 text-sm',
+        kind === 'error'
+          ? 'border-destructive/30 bg-destructive/10 text-destructive'
+          : 'border-shop-success/30 bg-shop-success/10 text-shop-success',
+        className,
+      )}
+      role={kind === 'error' ? 'alert' : 'status'}
+      aria-live="polite"
+    >
+      {children}
+    </p>
+  );
+}
+
 const badgeVariants = cva(
   'inline-flex min-h-6 items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
   {

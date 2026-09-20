@@ -9,6 +9,8 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('es').noJobsInCategory).toMatch(/Category/);
     expect(getAdminMessages('en').addCatalogJob).toBe('Add');
     expect(getAdminMessages('es').addCatalogJob).toBe('Agregar');
+    expect(getAdminMessages('en').createWorkOrderSuccess).toBe('Work Order created.');
+    expect(getAdminMessages('es').createWorkOrderSuccess).toBe('Work Order creada.');
     expect(getAdminMessages('en').jobPickerCategoryLabel).toBe('Job Category');
     expect(getAdminMessages('es').jobPickerCategoryLabel).toBe('Categoría de Job');
     expect(getAdminMessages('en').woStatusPaused).toBe('Paused');
@@ -46,6 +48,14 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').multiSelectDone).toBe('Listo');
     expect(getShopCopy('en').startWork).toBe('Start Work');
     expect(getShopCopy('es').startWork).toBe('Iniciar trabajo');
+    expect(getShopCopy('en').completeJob).toBe('Complete Job');
+    expect(getShopCopy('es').completeJob).toBe('Completar Job');
+    expect(getShopCopy('en').jobFinishSuccess).toBe('Job completed.');
+    expect(getShopCopy('es').jobFinishSuccess).toBe('Job completado.');
+    expect(getShopCopy('en').finishWorkSuccess).toBe('Work completed.');
+    expect(getShopCopy('es').finishWorkSuccess).toBe('Trabajo terminado.');
+    expect(getShopCopy('en').completingJob).toBe('Completing…');
+    expect(getShopCopy('es').finishingWork).toBe('Terminando…');
     expect(getShopCopy('en').pauseWorkOrder).toBe('Pause Work Order');
     expect(getShopCopy('es').pauseWorkOrder).toBe('Pausar Work Order');
     expect(getShopCopy('en').workOrderAction('Start Work', 'WO-1001', '905')).toBe('Start Work WO-1001, truck 905');
