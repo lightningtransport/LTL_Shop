@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
+import { apiFetch } from '@/lib/api';
 import { useWorkOrders } from '@/lib/shop-data';
+import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { pauseLabel, statusLabel } from '@/lib/format';
+import { useSWRConfig } from 'swr';
 import { isStandardWorkWaitingOnManager, jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
@@ -18,6 +21,7 @@ import {
   CardListSkeleton,
   EmptyState,
   HomeTopBar,
+  InlineAlert,
   LoadFailure,
   PageSkeleton,
   PriorityBadge,
@@ -193,9 +197,9 @@ export default function HomePage() {
           ) : null}
 
           <section className="mb-6">
-              <h2 className="section-label mb-2">{messages.activeJobsTitle}</h2>
+              <h2 className="section-label mb-2">{isPm ? messages.pmActiveTitle : messages.activeJobsTitle}</h2>
             <p className="mb-3 text-sm text-shop-muted">
-              {messages.activeJobs(activeWork.length)}
+              {isPm ? messages.activePmServices(activeWork.length) : messages.activeJobs(activeWork.length)}
             </p>
             {!activeWork.length ? (
               <EmptyState>
@@ -204,7 +208,9 @@ export default function HomePage() {
                 ) : (
                   <>
                     <p>{messages.noActiveJobs}</p>
-                    <p className="mt-2 text-sm">{messages.askManagerToCreate}</p>
+                    {!data.created.length && !waitingOnManager.length ? (
+                      <p className="mt-2 text-sm">{messages.askManagerToCreate}</p>
+                    ) : null}
                   </>
                 )}
               </EmptyState>
@@ -218,13 +224,13 @@ export default function HomePage() {
           </section>
 
           <section>
-            <h2 className="section-label mb-2">{messages.pausedJobsTitle}</h2>
+            <h2 className="section-label mb-2">{isPm ? messages.pmPausedTitle : messages.pausedJobsTitle}</h2>
             <p className="mb-3 text-sm text-shop-muted">
-              {messages.pausedJobs(data.paused.length)}
+              {isPm ? messages.pausedPmServices(data.paused.length) : messages.pausedJobs(data.paused.length)}
             </p>
             {!data.paused.length ? (
               <EmptyState>
-                {messages.noPausedJobs}
+                {isPm ? messages.noPausedPmServices : messages.noPausedJobs}
               </EmptyState>
             ) : (
               <div className="space-y-3">
@@ -330,7 +336,7 @@ function WorkOrderCard({
         ) : mode === 'waiting_on_manager' ? (
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewDetails} wo={wo} className="w-full" />
         ) : mode === 'created' ? (
-          <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.startWork} wo={wo} className="flex-1" />
+          <StartWorkAction wo={wo} className="flex-1" />
         ) : (
           isPm && wo.jobs.some((job) => job.status === 'to_do') ? <>
               <WorkOrderActionLink href={`/work-orders/${wo.id}?action=pause`} action={messages.pauseWorkOrder} wo={wo} variant="secondary" className="flex-1" />
@@ -345,6 +351,48 @@ function WorkOrderCard({
         )}
       </div>
     </Card>
+  );
+}
+
+function StartWorkAction({
+  wo,
+  className,
+}: {
+  wo: WorkOrderSummaryDto;
+  className?: string;
+}) {
+  const { messages } = useShopLocale();
+  const router = useRouter();
+  const { mutate } = useSWRConfig();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function startLabor() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/work-orders/${wo.id}/start`, { method: 'POST' });
+      await mutate(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
+      router.push(`/work-orders/${wo.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : messages.loadError);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={className}>
+      {error ? <InlineAlert className="mb-2">{error}</InlineAlert> : null}
+      <Button
+        className="w-full"
+        disabled={busy}
+        aria-label={messages.workOrderAction(messages.startWork, wo.displayId, wo.truckNumber)}
+        onClick={() => void startLabor()}
+      >
+        {busy ? messages.startingWork : messages.startWork}
+      </Button>
+    </div>
   );
 }
 

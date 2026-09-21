@@ -131,6 +131,12 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Primero los listos para cerrar')).toBeVisible();
     await expect(page.getByText(/^Actualizado /)).toHaveCount(1);
     await expect(page.getByText(/supabase|postgres|Fuente:|Generado/i)).toHaveCount(0);
+    const esNav = page.getByRole('complementary', { name: 'Navegación de Shop Admin' });
+    await expect(esNav.getByRole('link', { name: 'Operaciones', exact: true })).toBeVisible();
+    await expect(esNav.getByRole('link', { name: 'Work Orders', exact: true })).toBeVisible();
+    await expect(esNav.getByRole('link', { name: 'Operaciones del patio', exact: true })).toBeVisible();
+    await expect(esNav.getByRole('link', { name: 'Unidades', exact: true })).toBeVisible();
+    await expect(esNav.getByRole('link', { name: 'Dashboard', exact: true })).toHaveCount(0);
   });
 
   test('mobile Admin navigation is a one-column sheet with every Admin link', async ({ page }) => {
@@ -153,13 +159,23 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(mobileNav).toBeVisible();
     await expect(mobileNav).not.toHaveClass(/grid-cols-2/);
     for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'Mechanics', 'Job Catalog', 'History']) {
-      await expect(mobileNav.getByRole('link', { name })).toBeVisible();
+      await expect(mobileNav.getByRole('link', { name, exact: true })).toBeVisible();
     }
 
-    await mobileNav.getByRole('link', { name: 'Trucks' }).click();
+    await page.getByRole('button', { name: 'Close Shop Admin navigation' }).click();
+    await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
+    await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
+    await page.getByRole('button', { name: 'Abrir navegación de Shop Admin' }).click();
+    const esMobileNav = page.getByRole('dialog').getByRole('navigation', { name: 'Navegación móvil de Shop Admin' });
+    for (const name of ['Operaciones', 'Work Orders', 'Operaciones del patio', 'Unidades', 'Mecánicos', 'Catálogo de Jobs', 'Historial']) {
+      await expect(esMobileNav.getByRole('link', { name, exact: true })).toBeVisible();
+    }
+    await expect(esMobileNav.getByRole('link', { name: 'Dashboard', exact: true })).toHaveCount(0);
+
+    await esMobileNav.getByRole('link', { name: 'Unidades', exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/trucks$/);
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Trucks' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Unidades' })).toBeVisible();
   });
 
   test('manager navigates Dashboard to filtered list, pagination, and read-only detail', async ({ page }) => {

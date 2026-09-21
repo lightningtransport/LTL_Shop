@@ -358,7 +358,7 @@ export default function WorkOrderDetailPage() {
       <section className="card space-y-3">
         <div>
           <Label className="section-label" htmlFor="wo-notes">
-            Notes
+            {messages.notes}
           </Label>
           <Textarea
             id="wo-notes"
@@ -389,7 +389,7 @@ export default function WorkOrderDetailPage() {
                 })
               }
             >
-              Save Notes
+              {messages.saveNotes}
             </Button>
           ) : null}
         </div>
@@ -505,7 +505,7 @@ export default function WorkOrderDetailPage() {
             onChange={(e) => setPauseReason(e.target.value as PauseReason)}
             disabled={busy}
           >
-            <option value="">{messages.locale === 'es' ? 'Selecciona una opción' : 'Select an option'}</option>
+            <option value="">{messages.selectOption}</option>
             {Object.values(PauseReason).map((r) => (
               <option key={r} value={r}>
                 {messages.pauseReason[r]}
@@ -516,11 +516,11 @@ export default function WorkOrderDetailPage() {
         {pauseReason === PauseReason.OTHER ? (
           <div className="mb-3">
             <Label className="section-label mb-2 block" htmlFor="pause-notes">
-              {messages.locale === 'es' ? 'Detalles adicionales' : 'Additional details'}
+              {messages.additionalDetails}
             </Label>
             <Textarea
               id="pause-notes"
-              placeholder={messages.locale === 'es' ? 'Motivo obligatorio para Otro' : 'Reason required for Other'}
+              placeholder={messages.reasonRequiredForOther}
               value={pauseNotes}
               onChange={(e) => setPauseNotes(e.target.value)}
               disabled={busy}
@@ -632,7 +632,7 @@ function PmWorkOrderDetail({
       setNotesDirty(false);
       await onUpdated(updated);
     } catch (err) {
-      setNotesError(err instanceof Error ? err.message : 'Unable to save notes.');
+      setNotesError(err instanceof Error ? err.message : messages.unableToSaveNotes);
     } finally {
       setNotesSaving(false);
     }
@@ -671,11 +671,11 @@ function PmWorkOrderDetail({
       {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
       <section className="card mb-4 space-y-3" aria-labelledby="pm-truck-information">
-        <h2 id="pm-truck-information" className="section-label">Truck Information</h2>
+        <h2 id="pm-truck-information" className="section-label">{messages.truckInformation}</h2>
         <TruckInformationFields truck={wo.truck} locale={messages.locale} />
         <Button asChild variant="secondary" className="w-full">
           <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
-            See Truck Repair History
+            {messages.repairHistory}
           </Link>
         </Button>
       </section>
@@ -727,10 +727,10 @@ function PmWorkOrderDetail({
       ) : null}
 
       <section className="card mb-4 space-y-2">
-        <Label className="section-label" htmlFor="pm-notes">Notes</Label>
+        <Label className="section-label" htmlFor="pm-notes">{messages.notes}</Label>
         <Textarea
           id="pm-notes"
-          placeholder="Add notes (optional)"
+          placeholder={messages.pmNotesPlaceholder}
           disabled={wo.status === 'completed' || wo.status === 'cancelled'}
           value={notes}
           onChange={(event) => {
@@ -741,7 +741,7 @@ function PmWorkOrderDetail({
           onBlur={() => void saveNotes()}
         />
         <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
-          {notesSaving ? 'Saving…' : notesError ? <><span className="text-destructive">{notesError} </span><Button variant="ghost" className="px-1 underline" onClick={() => void saveNotes()}>Retry</Button></> : notesDirty ? 'Saving…' : 'Saved'}
+          {notesSaving ? messages.saving : notesError ? <><span className="text-destructive">{notesError} </span><Button variant="ghost" className="px-1 underline" onClick={() => void saveNotes()}>{messages.retry}</Button></> : notesDirty ? messages.saving : messages.saved}
         </p>
       </section>
 
@@ -788,18 +788,18 @@ function PmWorkOrderDetail({
       </Modal>
 
       <Modal open={pauseOpen} title={messages.pauseWorkOrder} closeLabel={messages.closeDialog} onClose={() => setPauseOpen(false)} returnFocusRef={pauseTriggerRef}>
-        <Label className="section-label mb-2 block" htmlFor="pm-pause-reason">Pause reason</Label>
+        <Label className="section-label mb-2 block" htmlFor="pm-pause-reason">{messages.pauseReasonLabel}</Label>
         <div className="mb-3">
           <Select id="pm-pause-reason" value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
-            <option value="">Select an option</option>
+            <option value="">{messages.selectOption}</option>
             {Object.values(PauseReason).map((reason) => <option key={reason} value={reason}>{messages.pauseReason[reason]}</option>)}
           </Select>
         </div>
         {pauseReason === PauseReason.OTHER ? (
-          <Textarea className="mb-3" placeholder="Reason required for Other" value={pauseNotes} onChange={(event) => setPauseNotes(event.target.value)} />
+          <Textarea className="mb-3" placeholder={messages.reasonRequiredForOther} value={pauseNotes} onChange={(event) => setPauseNotes(event.target.value)} />
         ) : null}
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={() => setPauseOpen(false)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setPauseOpen(false)}>{messages.cancelAction}</Button>
           <Button disabled={!pauseReason || busy} onClick={() => {
             setPauseOpen(false);
             void run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause`, {

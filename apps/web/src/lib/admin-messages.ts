@@ -5,6 +5,7 @@ const messages = {
     eyebrow: 'Shop Admin',
     title: 'Shop Operations',
     description: 'Secure manager workspace for the Lightning Shop.',
+    // Nav chrome: EN product labels. Domain nouns stay PRD English.
     dashboard: 'Dashboard',
     workOrders: 'Work Orders',
     yardOperations: 'Yard Operations',
@@ -596,7 +597,8 @@ const messages = {
     eyebrow: 'Shop Admin',
     title: 'Operaciones del Shop',
     description: 'Espacio seguro para el equipo de gestión del Lightning Shop.',
-    dashboard: 'Dashboard',
+    // Nav chrome: localize chrome; keep PRD domain nouns (Work Order) in English.
+    dashboard: 'Operaciones',
     workOrders: 'Work Orders',
     yardOperations: 'Operaciones del patio',
     trucks: 'Unidades',

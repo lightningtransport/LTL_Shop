@@ -43,6 +43,17 @@ describe('Shop Admin routing and messages', () => {
     }
     expect(getAdminMessages('es').nextPhaseBody).toContain('Work Orders');
     expect(getAdminMessages('es').nextPhaseBody).toContain('unidades');
+    expect(getAdminMessages('en').dashboard).toBe('Dashboard');
+    expect(getAdminMessages('en').workOrders).toBe('Work Orders');
+    expect(getAdminMessages('en').yardOperations).toBe('Yard Operations');
+    expect(getAdminMessages('en').trucks).toBe('Trucks');
+    expect(getAdminMessages('es').dashboard).toBe('Operaciones');
+    expect(getAdminMessages('es').workOrders).toBe('Work Orders');
+    expect(getAdminMessages('es').yardOperations).toBe('Operaciones del patio');
+    expect(getAdminMessages('es').trucks).toBe('Unidades');
+    expect(getAdminMessages('es').mechanics).toBe('Mecánicos');
+    expect(getAdminMessages('es').jobCatalog).toBe('Catálogo de Jobs');
+    expect(getAdminMessages('es').history).toBe('Historial');
     expect(getAdminMessages('en').lastReportedLocation).toBe('Last reported location');
     expect(getAdminMessages('es').lastReportedLocation).toBe('Ubicación reportada');
     expect(getAdminMessages('en').locationUpdatedOn).toBe('Last reported on');
