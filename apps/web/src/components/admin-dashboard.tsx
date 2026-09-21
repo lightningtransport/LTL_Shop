@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { AlertTriangle, CalendarCheck, ClipboardCheck, ClipboardList, Clock3, History, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
+import { AdminNavLink } from './admin-nav-link';
 import { AdminWorkOrderItem } from './admin-work-order-item';
 import { AdminPageHeader, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { formatAdminDate } from '@/lib/admin-format';
@@ -73,7 +74,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
     <Card className="overflow-hidden p-0">
       <CardHeader className="mb-0 border-b p-4 sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div><CardTitle>{messages.attention}</CardTitle><CardDescription>{messages.attentionBody}</CardDescription></div>
-        <Button asChild variant="outline" size="sm"><Link href="/admin/work-orders">{messages.viewAll}</Link></Button>
+        <Button asChild variant="outline" size="sm"><AdminNavLink href="/admin/work-orders">{messages.viewAll}</AdminNavLink></Button>
       </CardHeader>
       <CardContent className="space-y-2 p-2 sm:p-3">
         {data.attention.length ? data.attention.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} compact />) : <EmptyState>{messages.noAttention}</EmptyState>}

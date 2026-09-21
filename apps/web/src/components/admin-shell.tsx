@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ClipboardList, Gauge, History, Library, Menu, Truck, UsersRound, Warehouse } from 'lucide-react';
 import { AdminLocaleSwitcher } from './admin-locale-switcher';
+import { AdminNavLink } from './admin-nav-link';
 import { AppHeaderActions, Button, Modal } from './ui';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
@@ -46,9 +46,9 @@ export function AdminShell({
           {activeNavigation.map(({ message, icon: Icon, href }) => {
             const active = href === '/admin' ? pathname === href : pathname.startsWith(href);
             return <Button key={href} asChild variant={active ? 'secondary' : 'ghost'} className="w-full justify-start">
-              <Link href={href} aria-current={active ? 'page' : undefined}>
+              <AdminNavLink href={href} aria-current={active ? 'page' : undefined}>
                 <Icon aria-hidden="true" className="size-4" />{messages[message]}
-              </Link>
+              </AdminNavLink>
             </Button>;
           })}
         </nav>
@@ -105,13 +105,13 @@ export function AdminShell({
                 variant={active ? 'secondary' : 'ghost'}
                 className="h-11 w-full min-h-11 justify-start"
               >
-                <Link
+                <AdminNavLink
                   href={href}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => setMobileNavOpen(false)}
                 >
                   <Icon aria-hidden="true" className="size-4" />{messages[message]}
-                </Link>
+                </AdminNavLink>
               </Button>
             );
           })}
