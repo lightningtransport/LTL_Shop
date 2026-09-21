@@ -1,6 +1,42 @@
 import { describe, expect, it } from 'vitest';
+import { ADMIN_LOCALE_COOKIE } from './admin-session';
 import { adminPauseReasonLabel, getAdminMessages } from './admin-messages';
 import { getShopCopy } from './locale-context';
+import {
+  parseShopLocale,
+  SHOP_LOCALE_COOKIE,
+  SHOP_LOCALE_COOKIE_MAX_AGE,
+  shopLocaleCookieWrite,
+  shopLocaleFromCookieHeader,
+} from './shop-locale';
+
+describe('shared shop locale cookie', () => {
+  it('uses one cookie name for mechanic and Admin', () => {
+    expect(SHOP_LOCALE_COOKIE).toBe('ltl_shop_locale');
+    expect(ADMIN_LOCALE_COOKIE).toBe(SHOP_LOCALE_COOKIE);
+  });
+
+  it('parses only en and es, defaulting unknown values to en', () => {
+    expect(parseShopLocale('es')).toBe('es');
+    expect(parseShopLocale('en')).toBe('en');
+    expect(parseShopLocale('fr')).toBe('en');
+    expect(parseShopLocale(undefined)).toBe('en');
+  });
+
+  it('reads the shared cookie from a document cookie header', () => {
+    expect(shopLocaleFromCookieHeader(`${SHOP_LOCALE_COOKIE}=es; other=1`)).toBe('es');
+    expect(shopLocaleFromCookieHeader(`${SHOP_LOCALE_COOKIE}=en`)).toBe('en');
+    expect(shopLocaleFromCookieHeader('unrelated=es')).toBe('en');
+  });
+
+  it('writes Path=/ and a long Max-Age so login, Home, and Admin share the same cookie', () => {
+    expect(shopLocaleCookieWrite('es')).toBe(
+      `${SHOP_LOCALE_COOKIE}=es; Path=/; Max-Age=${SHOP_LOCALE_COOKIE_MAX_AGE}; SameSite=Lax`,
+    );
+    expect(shopLocaleCookieWrite('en')).toContain('Path=/');
+    expect(SHOP_LOCALE_COOKIE_MAX_AGE).toBeGreaterThanOrEqual(31_536_000);
+  });
+});
 
 describe('shop locale catalogs', () => {
   it('keeps English and Spanish Admin New WO job-picker keys in parity', () => {

@@ -511,6 +511,7 @@ export function HomeTopBar({ mode }: { mode?: MechanicMode }) {
           <Button
             variant="outline"
             size="sm"
+            className="min-w-16"
             aria-label={messages.switchTo}
             onClick={() => setLocale(messages.locale === 'en' ? 'es' : 'en')}
           >

@@ -2,10 +2,16 @@
 
 import * as React from 'react';
 import { PauseReason } from '@ltl-shop/shared';
+import {
+  parseShopLocale,
+  shopLocaleChangeEvent,
+  shopLocaleCookieWrite,
+  shopLocaleFromCookieHeader,
+  type ShopLocale,
+} from './shop-locale';
 
-export type ShopLocale = 'en' | 'es';
-
-export const SHOP_LOCALE_COOKIE = 'ltl_shop_locale';
+export type { ShopLocale } from './shop-locale';
+export { SHOP_LOCALE_COOKIE, parseShopLocale, shopLocaleCookieWrite } from './shop-locale';
 
 type Copy = {
   locale: ShopLocale;
@@ -496,13 +502,13 @@ export function ShopLocaleProvider({
       window.addEventListener('ltl-shop-locale-change', onStoreChange);
       return () => window.removeEventListener('ltl-shop-locale-change', onStoreChange);
     },
-    () => document.cookie.split('; ').find((item) => item.startsWith(`${SHOP_LOCALE_COOKIE}=`))?.split('=')[1] === 'es' ? 'es' : 'en',
-    () => initialLocale,
+    () => shopLocaleFromCookieHeader(document.cookie),
+    () => parseShopLocale(initialLocale),
   );
   const setLocale = React.useCallback((nextLocale: ShopLocale) => {
-    document.cookie = `${SHOP_LOCALE_COOKIE}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    document.cookie = shopLocaleCookieWrite(nextLocale);
     document.documentElement.lang = nextLocale;
-    window.dispatchEvent(new Event('ltl-shop-locale-change'));
+    window.dispatchEvent(shopLocaleChangeEvent());
   }, []);
 
   React.useEffect(() => { document.documentElement.lang = locale; }, [locale]);

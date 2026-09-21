@@ -636,6 +636,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await page.goto(`/work-orders/${workOrder.id}`);
     await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Finish Work' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Confirm completion|Complete Work Order|Completar Work Order/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add job/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Report Blocker' })).toBeVisible();
     await expect(page.getByRole('status').filter({ hasText: /Jobs are done.*Manager closes this Work Order/i })).toBeVisible();
