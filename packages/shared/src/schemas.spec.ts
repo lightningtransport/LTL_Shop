@@ -7,6 +7,7 @@ import {
   WorkOrderStatus,
   WorkPlanInspectionOutcome,
 } from './enums';
+import type { YardDataBoundaryDto } from './types';
 import {
   adminListQuerySchema,
   adminHistoryQuerySchema,
@@ -298,5 +299,24 @@ describe('shared contracts', () => {
       outcome: WorkPlanInspectionOutcome.NOT_STARTED,
       idempotencyKey,
     }).success).toBe(false);
+  });
+
+  it('exports the Yard data-boundary DTO used by Admin Phase 1 cards', () => {
+    const unavailable: YardDataBoundaryDto = {
+      asOf: '2026-09-21T16:00:00.000Z',
+      windows: {
+        timeZone: 'America/New_York',
+        thisWeek: { from: '2026-09-21', to: '2026-09-27' },
+        nextWeek: { from: '2026-09-28', to: '2026-10-04' },
+      },
+      workLocation: { status: 'unavailable', items: [], message: 'missing key' },
+      incomingTrucks: { status: 'error', items: [], message: 'upstream' },
+      upcomingDepartures: {
+        status: 'ok',
+        items: [{ truckNumber: '905', outDate: '2026-09-23', window: 'this_week' }],
+      },
+    };
+    expect(unavailable.workLocation.items).toEqual([]);
+    expect(unavailable.upcomingDepartures.items[0]?.truckNumber).toBe('905');
   });
 });

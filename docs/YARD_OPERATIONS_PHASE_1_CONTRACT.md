@@ -23,11 +23,13 @@ message catalogs.
 - Presence is an explicit `UNKNOWN` value. Phase 1 has no Samsara, telematics,
   gate, dispatch, or yard-check-in source and must not claim that a Truck is
   physically in the yard.
-- Work location (bay, yard, road, vendor, or customer) is not available and
-  is not inferred from a Work Order, pause reason, or status.
-- Incoming Trucks and Upcoming Departures are integration states, not lists.
-  Their API/UI representation is `unavailable`; no dates, counts, or fixture
-  rows may be presented as operational data.
+- Work location on the Yard board list remains disconnected. Live
+  `yard_location` text from agent-reporting (`report=trucks`) is exposed only
+  on `GET /api/admin/yard/data-boundary` and is not Yard Presence.
+- Incoming Trucks and Upcoming Departures stay `unavailable` on
+  `GET /api/admin/yard-operations`. The dedicated data-boundary proxy maps
+  expected returns and planned outs from agent-reporting when the API has
+  `AGENT_REPORTING_KEY`. See `docs/YARD_DATA_BOUNDARY.md`.
 - A Work Order being open means work is recorded in the Shop system. It is not
   evidence of physical presence, arrival, departure, or readiness.
 - Prisma and `apps/api/prisma/migrations` remain the only schema migration
@@ -141,7 +143,8 @@ live in `packages/shared`.
 
 | Method and route | Purpose | Availability |
 | --- | --- | --- |
-| `GET /api/admin/yard-operations` | Cursor-paginated Truck rows with search, readiness/phase/WO/priority/mechanic/blocked filters. | `admin.access` |
+| `GET /api/admin/yard-operations` | Cursor-paginated Truck rows with search, readiness/phase/WO/priority/mechanic/blocked filters. Incoming/Departures stubs remain `unavailable`. | `admin.access` |
+| `GET /api/admin/yard/data-boundary` | Server-side agent-reporting proxy for Work location, Incoming Trucks, and Upcoming Departures. HTTP 200 with per-section `ok` / `unavailable` / `error`. Presence is not included. | `admin.access` |
 | `GET /api/admin/trucks/:id` | Canonical Truck detail with presence provenance, active assessment, derived phase, blockers, active Work Order, and existing history link/data. | `admin.access` |
 | `POST /api/admin/trucks/:id/readiness-assessments` | Start the one active assessment and link the existing open Work Order when present. | `yard.operations.manage` |
 | `PATCH /api/admin/readiness-assessments/:id/requirements/:type` | Set a requirement outcome and required waiver/evidence fields. | `yard.operations.manage` |

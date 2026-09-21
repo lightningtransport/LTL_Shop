@@ -455,6 +455,66 @@ export interface YardOperationsUnavailableDto {
   reason: 'integration_not_connected';
 }
 
+/** Phase 1 card source status from `GET /api/admin/yard/data-boundary`. */
+export type YardDataBoundaryStatus = 'ok' | 'unavailable' | 'error';
+
+/**
+ * Calendar bucket for Incoming Trucks / Upcoming Departures.
+ * Weeks are Monday–Sunday in `America/New_York`.
+ */
+export type YardMovementWindow = 'this_week' | 'next_week' | 'undated';
+
+export interface YardDataBoundaryWindowsDto {
+  timeZone: 'America/New_York';
+  thisWeek: { from: string; to: string };
+  nextWeek: { from: string; to: string };
+}
+
+export interface YardWorkLocationItemDto {
+  truckNumber: string;
+  location: string | null;
+}
+
+export interface YardIncomingTruckItemDto {
+  truckNumber: string;
+  returnDate: string | null;
+  drivers?: string[];
+  window?: YardMovementWindow;
+}
+
+export interface YardUpcomingDepartureItemDto {
+  truckNumber: string;
+  outDate: string | null;
+  drivers?: string[];
+  window?: YardMovementWindow;
+}
+
+export interface YardDataBoundarySectionDto<T> {
+  status: YardDataBoundaryStatus;
+  items: T[];
+  message?: string;
+}
+
+export interface YardWorkLocationSectionDto extends YardDataBoundarySectionDto<YardWorkLocationItemDto> {
+  /**
+   * Set when one non-empty `yard_location` accounts for strictly more than
+   * half of `items` (the compact Admin-card headline).
+   */
+  summary?: string;
+}
+
+/**
+ * Server-side agent-reporting proxy for Admin Yard Phase 1 cards.
+ * Presence / geofence is intentionally absent.
+ */
+export interface YardDataBoundaryDto {
+  asOf: string;
+  windows: YardDataBoundaryWindowsDto;
+  workLocation: YardWorkLocationSectionDto;
+  incomingTrucks: YardDataBoundarySectionDto<YardIncomingTruckItemDto>;
+  upcomingDepartures: YardDataBoundarySectionDto<YardUpcomingDepartureItemDto>;
+}
+
 export interface PmPartDto {
   id: string;
   partNumber: string | null;

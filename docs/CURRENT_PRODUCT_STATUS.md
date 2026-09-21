@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-20
+**Updated:** 2026-09-21
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -99,9 +99,13 @@ TARGET authorization/UX.
 ### Yard Operations and readiness Phase 1
 
 - Users with `admin.access` can read `/admin/yard-operations` and
-  `/admin/trucks/[id]`. Presence is explicitly `UNKNOWN`; Incoming Trucks and
-  Upcoming Departures are unavailable because no telematics, gate, or Dispatch
-  source is connected.
+  `/admin/trucks/[id]`. Presence is explicitly `UNKNOWN`. Incoming Trucks,
+  Upcoming Departures, and Work location on the board list remain
+  disconnected until Frontend wires `GET /api/admin/yard/data-boundary`
+  (`docs/YARD_DATA_BOUNDARY.md`). That Nest proxy maps agent-reporting
+  `returns`, `driver_pay`, and `trucks.yard_location` when
+  `AGENT_REPORTING_KEY` is set on the API; it never exposes the key to the
+  web app. Schedule_Teams is not unioned yet.
 - Users with both `admin.access` and `yard.operations.manage` can start or close
   a readiness assessment, update its six requirements, and explicitly mark it
   Ready when the rules pass. These mutations use server authorization,
@@ -292,8 +296,11 @@ the work order. Completed PM records are read-only.
 
 ## Known current limitations
 
-- Physical Yard Presence is always `UNKNOWN`; Samsara, McLeod, Dispatch,
-  Incoming, and Departures are not connected.
+- Physical Yard Presence is always `UNKNOWN`; Samsara geofence is not connected.
+  Incoming Trucks, Upcoming Departures, and Work location have a Nest
+  agent-reporting proxy (`GET /api/admin/yard/data-boundary`) that stays
+  `unavailable` until `AGENT_REPORTING_KEY` is set on the API. The Admin UI
+  cards are not wired yet. McLeod / Dispatch / Schedule_Teams are not used.
 - Yard Phase is derived for presentation; no persisted Yard Phase event
   exists. V2.1-001 recorded Cristian’s 2026-09-12 answers and implemented
   the next-unresolved-gate derivation plus **Ready for Approval**. See
