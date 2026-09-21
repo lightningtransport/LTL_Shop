@@ -3,11 +3,10 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { Ban, ChevronDown, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal, Warehouse } from 'lucide-react';
-import { Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
+import { Ban, ChevronDown, ClipboardCheck, LogOut, Search, ShieldCheck, SlidersHorizontal, Truck, Wrench } from 'lucide-react';
+import { Priority, type YardFeedDto, type YardFeedItemDto, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
-import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
+import { useAdminYardOperations } from '@/lib/admin-data';
 import {
   buildYardOperationsQuery,
   countActiveYardOperationsFilters,
@@ -49,20 +48,14 @@ const readinessMessageKey = {
 
 const priorityMessageKey = { low: 'lowPriority', normal: 'normalPriority', high: 'highPriority', critical: 'criticalPriority' } as const;
 
-export function AdminYardOperations({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+export function AdminYardOperations({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<YardOperationsFilters>(() => readYardOperationsFilters(searchParams));
   const [view, setView] = useState<'board' | 'list'>(() => searchParams.get('view') === 'list' ? 'list' : 'board');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [phase1Open, setPhase1Open] = useState(false);
   const query = searchParams.toString();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminYardOperations(query);
-  const {
-    data: boundary,
-    error: boundaryError,
-    isLoading: boundaryLoading,
-  } = useAdminYardDataBoundary();
 
   useEffect(() => {
     const fromUrl = readYardOperationsFilters(searchParams);
@@ -85,6 +78,9 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
     }),
     [workPlanBoardCutover, items],
   );
+  const incoming = data?.[0]?.incomingTrucks;
+  const departures = data?.[0]?.upcomingDepartures;
+  const workLocation = data?.[0]?.workLocation;
   const appliedFilters = useMemo(() => readYardOperationsFilters(searchParams), [searchParams]);
   const activeFilterCount = countActiveYardOperationsFilters(appliedFilters);
   const overflowFilterCount = countOverflowYardOperationsFilters(appliedFilters);
@@ -133,33 +129,41 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   return <div className="space-y-5">
     <AdminPageHeader eyebrow={messages.eyebrow} title={messages.yardOperationsTitle} subtitle={messages.yardOperationsDescription} />
 
-    <Card className="border-warning/50 bg-warning-surface p-3" role="region" aria-labelledby="yard-phase-1-title">
-      <button
-        type="button"
-        className="flex w-full items-start gap-2 text-left"
-        aria-label={messages.yardOperationsPhase1}
-        aria-expanded={phase1Open}
-        aria-controls="yard-phase-1-details"
-        onClick={() => setPhase1Open((open) => !open)}
-      >
-        <Warehouse aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning-foreground" />
-        <CardTitle id="yard-phase-1-title" className="min-w-0 flex-1 text-sm">{messages.yardOperationsPhase1}</CardTitle>
-        <ChevronDown aria-hidden="true" className={`mt-0.5 size-4 shrink-0 text-warning-foreground transition-transform ${phase1Open ? 'rotate-180' : ''}`} />
-      </button>
-      <div id="yard-phase-1-details" className="mt-2 space-y-2">
-        {phase1Open ? <CardDescription className="text-warning-foreground">{messages.yardOperationsPhase1Body}</CardDescription> : null}
-        <AdminYardDataBoundaryCards
-          locale={locale}
-          boundary={boundary}
-          loading={boundaryLoading && !boundary}
-          fetchFailed={Boolean(boundaryError) && !boundary}
-          expanded={phase1Open}
+    {isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : <div className="flex flex-col gap-5">
+    <Card className="order-3 p-3 xl:order-none" role="region" aria-labelledby="yard-movement-title">
+      <div className="mb-2 space-y-1">
+        <CardTitle id="yard-movement-title" className="text-sm">{messages.yardOperationsPhase1}</CardTitle>
+        <CardDescription className="line-clamp-2">{messages.yardOperationsPhase1Body}</CardDescription>
+      </div>
+      <div className="grid min-w-0 grid-cols-1 gap-1.5 xl:grid-cols-3 xl:gap-2">
+        <YardFeedCard
+          icon={Wrench}
+          title={messages.yardWorkLocation}
+          emptyLabel={messages.workLocationEmpty}
+          unavailableLabel={messages.workLocationUnavailable}
+          feed={workLocation}
+          messages={messages}
+        />
+        <YardFeedCard
+          icon={Truck}
+          title={messages.yardIncomingTrucks}
+          emptyLabel={messages.incomingEmpty}
+          unavailableLabel={messages.incomingTrucksUnavailable}
+          feed={incoming}
+          messages={messages}
+        />
+        <YardFeedCard
+          icon={LogOut}
+          title={messages.yardUpcomingDepartures}
+          emptyLabel={messages.departuresEmpty}
+          unavailableLabel={messages.upcomingDeparturesUnavailable}
+          feed={departures}
+          messages={messages}
         />
       </div>
     </Card>
 
-    {isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : <>
-      <section aria-labelledby="yard-summary-title">
+      <section className="order-1 xl:order-none" aria-labelledby="yard-summary-title">
         <h2 id="yard-summary-title" className="sr-only">{messages.yardSummaryMetrics}</h2>
         <div className="grid min-w-0 grid-cols-3 gap-2">
           <SummaryMetric label={messages.underReview} value={counts?.underReview ?? 0} Icon={ClipboardCheck} />
@@ -168,7 +172,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         </div>
       </section>
 
-      <Card className="min-w-0 p-3">
+      <Card className="order-1 min-w-0 p-3 xl:order-none">
         <form role="search" className="min-w-0" onSubmit={applyFilters}>
           <div className="flex min-w-0 flex-wrap items-end gap-2 xl:flex-nowrap xl:gap-1.5">
             <label className="min-w-0 flex-1 space-y-1 xl:flex-[1.35]">
@@ -252,7 +256,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         <Button type="button" variant={view === 'list' ? 'secondary' : 'ghost'} size="sm" aria-pressed={view === 'list'} onClick={() => updateView('list')}>{messages.listView}</Button>
       </div>
 
-      {items.length === 0 ? <EmptyState><p>{messages.noYardOperations}</p><p className="mt-1 text-sm text-muted-foreground">{messages.noYardOperationsBody}</p></EmptyState> : <>
+      {items.length === 0 ? <div className="order-2 xl:order-none"><EmptyState><p>{messages.noYardOperations}</p><p className="mt-1 text-sm text-muted-foreground">{messages.noYardOperationsBody}</p></EmptyState></div> : <>
         <section className={view === 'board' ? 'hidden xl:block' : 'hidden'} aria-labelledby="yard-board-title">
           <div className="mb-2"><h2 id="yard-board-title" className="font-display text-lg font-semibold">{messages.yardBoard}</h2></div>
           <div className="overflow-x-auto rounded-xl border bg-muted/40 p-2">
@@ -284,7 +288,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             </div>
           </div>
         </section>
-        <section className={view === 'list' ? 'space-y-3' : 'space-y-3 xl:hidden'} aria-labelledby="yard-list-title">
+        <section className={view === 'list' ? 'order-2 space-y-3 xl:order-none' : 'order-2 space-y-3 xl:order-none xl:hidden'} aria-labelledby="yard-list-title">
           <div><h2 id="yard-list-title" className="font-display text-lg font-semibold">{messages.yardGroupedList}</h2></div>
           {boardPhases.map((phase) => {
             const phaseItems = items.filter((item) => item.phase === phase);
@@ -300,8 +304,8 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           })}
         </section>
       </>}
-      {hasMore ? <Button variant="outline" className="w-full" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.yardLoadMore}…` : messages.yardLoadMore}</Button> : null}
-    </>}
+      {hasMore ? <Button variant="outline" className="order-2 w-full xl:order-none" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.yardLoadMore}…` : messages.yardLoadMore}</Button> : null}
+    </div>}
   </div>;
 }
 
@@ -382,6 +386,96 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
       <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
     </Card>
   );
+}
+
+function YardFeedCard({
+  icon: Icon,
+  title,
+  emptyLabel,
+  unavailableLabel,
+  feed,
+  messages,
+}: {
+  icon: typeof Truck;
+  title: string;
+  emptyLabel: string;
+  unavailableLabel: string;
+  feed: YardFeedDto | undefined;
+  messages: AdminMessages;
+}) {
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const unavailable = !feed || feed.status === 'unavailable';
+  const items = feed?.items ?? [];
+  const visible = expanded ? items : items.slice(0, 8);
+
+  return (
+    <div className="min-w-0 rounded-lg border bg-muted/30 p-2" aria-labelledby={`${title}-feed-title`}>
+      <button
+        type="button"
+        className="flex min-h-11 w-full min-w-0 items-center gap-2 text-left xl:pointer-events-none xl:min-h-0"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
+        <h3 id={`${title}-feed-title`} className="min-w-0 flex-1 text-sm font-semibold leading-snug">{title}</h3>
+        {unavailable ? (
+          <Badge variant="secondary">{messages.unavailableLabel}</Badge>
+        ) : (
+          <Badge variant="outline">{feed.total}</Badge>
+        )}
+        <ChevronDown aria-hidden="true" className={`size-4 shrink-0 text-muted-foreground transition-transform xl:hidden ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <div className={open ? 'mt-2 block' : 'mt-2 hidden xl:block'}>
+      {unavailable ? (
+        <CompactEmpty className="px-2 py-2 text-xs">{unavailableLabel}</CompactEmpty>
+      ) : items.length === 0 ? (
+        <CompactEmpty className="px-2 py-2 text-xs">{emptyLabel}</CompactEmpty>
+      ) : (
+        <ul className="max-h-48 space-y-1 overflow-y-auto xl:max-h-60">
+          {visible.map((item) => (
+            <li key={`${item.source}-${item.truckNumber}`}>
+              <YardFeedRow item={item} messages={messages} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {items.length > 8 ? (
+        <Button type="button" variant="ghost" size="sm" className="mt-1 h-9 w-full" onClick={() => setExpanded((current) => !current)}>
+          {expanded ? messages.showLessFeed : `${messages.showAllFeed} (${items.length})`}
+        </Button>
+      ) : null}
+      </div>
+    </div>
+  );
+}
+
+function YardFeedRow({ item, messages }: { item: YardFeedItemDto; messages: AdminMessages }) {
+  const sourceLabel = item.source === 'open_work_order'
+    ? [messages.openWorkOrderSource, item.detail].filter(Boolean).join(' · ')
+    : item.source === 'reported_yard'
+      ? messages.reportedYardSource
+      : [formatFeedDate(item.scheduledOn), item.detail].filter(Boolean).join(' · ') || (
+        item.source === 'expected_return' ? messages.incomingSource : messages.departureSource
+      );
+  const content = (
+    <>
+      <span className="font-display text-sm font-semibold text-primary">{item.truckNumber}</span>
+      <span className="truncate text-xs text-muted-foreground">{sourceLabel}</span>
+    </>
+  );
+  const className = 'flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-md px-1.5 py-1 hover:bg-accent/40';
+  if (item.truckId) {
+    return <Link href={`/admin/trucks/${item.truckId}`} className={className} aria-label={item.truckNumber}>{content}</Link>;
+  }
+  return <div className={className}>{content}</div>;
+}
+
+function formatFeedDate(value: string | null) {
+  if (!value) return null;
+  const parsed = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messages: AdminMessages }) {

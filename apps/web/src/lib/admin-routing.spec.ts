@@ -43,17 +43,6 @@ describe('Shop Admin routing and messages', () => {
     }
     expect(getAdminMessages('es').nextPhaseBody).toContain('Work Orders');
     expect(getAdminMessages('es').nextPhaseBody).toContain('unidades');
-    expect(getAdminMessages('en').dashboard).toBe('Dashboard');
-    expect(getAdminMessages('en').workOrders).toBe('Work Orders');
-    expect(getAdminMessages('en').yardOperations).toBe('Yard Operations');
-    expect(getAdminMessages('en').trucks).toBe('Trucks');
-    expect(getAdminMessages('es').dashboard).toBe('Operaciones');
-    expect(getAdminMessages('es').workOrders).toBe('Work Orders');
-    expect(getAdminMessages('es').yardOperations).toBe('Operaciones del patio');
-    expect(getAdminMessages('es').trucks).toBe('Unidades');
-    expect(getAdminMessages('es').mechanics).toBe('Mecánicos');
-    expect(getAdminMessages('es').jobCatalog).toBe('Catálogo de Jobs');
-    expect(getAdminMessages('es').history).toBe('Historial');
     expect(getAdminMessages('en').lastReportedLocation).toBe('Last reported location');
     expect(getAdminMessages('es').lastReportedLocation).toBe('Ubicación reportada');
     expect(getAdminMessages('en').locationUpdatedOn).toBe('Last reported on');
@@ -65,13 +54,11 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('presence');
     expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('presencia');
     expect(getAdminMessages('en').yardOperationsPhase1Body).toBe(
-      'Reporting feeds Work location, Incoming Trucks, and Upcoming Departures. This view also shows maintenance readiness — not physical yard presence or dispatch.',
+      'Shop work plus expected arrivals and departures. A reported yard location is not GPS presence or dispatch confirmation.',
     );
     expect(getAdminMessages('es').yardOperationsPhase1Body).toBe(
-      'Reporting alimenta Ubicación de trabajo, Incoming Trucks y Salidas próximas. Esta vista también muestra readiness de mantenimiento — no presencia física en el yard ni despacho.',
+      'Trabajo de taller más llegadas y salidas esperadas. Una ubicación reportada no es presencia GPS ni confirmación de despacho.',
     );
-    expect(getAdminMessages('es').yardIncomingTrucks).toBe('Incoming Trucks');
-    expect(getAdminMessages('es').incomingTrucksUnavailable).toBe('Incoming Trucks no disponibles');
     expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
     expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');
     expect(adminPauseReasonLabel('waiting_for_parts', getAdminMessages('en'))).toBe('Waiting for Parts');

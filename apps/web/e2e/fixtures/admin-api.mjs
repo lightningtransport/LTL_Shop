@@ -551,8 +551,29 @@ createServer(async (request, response) => {
       items: hasCursor ? items.slice(0, 4) : items,
       nextCursor: hasCursor ? 'yard-page-2' : null,
       counts: { underReview: 7, readyToGo: 1, blocked: 6, presenceUnknown: 9 },
-      incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' },
-      upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' },
+      workLocation: {
+        status: 'ok',
+        total: 2,
+        items: [
+          { truckNumber: 'Y-102', truckId: '00000000-0000-4000-8000-000000001002', detail: 'WO-0102', scheduledOn: null, source: 'open_work_order' },
+          { truckNumber: 'Y-103', truckId: '00000000-0000-4000-8000-000000001003', detail: null, scheduledOn: null, source: 'reported_yard' },
+        ],
+      },
+      incomingTrucks: {
+        status: 'ok',
+        total: 2,
+        items: [
+          { truckNumber: '609', truckId: null, detail: 'MARITZA HERNANDEZ', scheduledOn: '2026-09-21', source: 'expected_return' },
+          { truckNumber: '828', truckId: null, detail: 'FRANCISCO', scheduledOn: '2026-09-22', source: 'expected_return' },
+        ],
+      },
+      upcomingDepartures: {
+        status: 'ok',
+        total: 1,
+        items: [
+          { truckNumber: '614', truckId: null, detail: 'LEYDER ESTRADA', scheduledOn: '2026-09-21', source: 'planned_out' },
+        ],
+      },
       workPlanBoardCutover: yardWorkPlanSlice2,
     });
     return;
