@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { Ban, ChevronDown, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal, Truck, Warehouse } from 'lucide-react';
+import { Ban, ChevronDown, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal, Warehouse } from 'lucide-react';
 import { Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { useAdminYardOperations } from '@/lib/admin-data';
+import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
+import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
 import {
   buildYardOperationsQuery,
   countActiveYardOperationsFilters,
@@ -48,7 +49,7 @@ const readinessMessageKey = {
 
 const priorityMessageKey = { low: 'lowPriority', normal: 'normalPriority', high: 'highPriority', critical: 'criticalPriority' } as const;
 
-export function AdminYardOperations({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
+export function AdminYardOperations({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<YardOperationsFilters>(() => readYardOperationsFilters(searchParams));
@@ -57,6 +58,11 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
   const [phase1Open, setPhase1Open] = useState(false);
   const query = searchParams.toString();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminYardOperations(query);
+  const {
+    data: boundary,
+    error: boundaryError,
+    isLoading: boundaryLoading,
+  } = useAdminYardDataBoundary();
 
   useEffect(() => {
     const fromUrl = readYardOperationsFilters(searchParams);
@@ -79,8 +85,6 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
     }),
     [workPlanBoardCutover, items],
   );
-  const incomingUnavailable = data?.[0]?.incomingTrucks.status === 'unavailable';
-  const departuresUnavailable = data?.[0]?.upcomingDepartures.status === 'unavailable';
   const appliedFilters = useMemo(() => readYardOperationsFilters(searchParams), [searchParams]);
   const activeFilterCount = countActiveYardOperationsFilters(appliedFilters);
   const overflowFilterCount = countOverflowYardOperationsFilters(appliedFilters);
@@ -144,11 +148,12 @@ export function AdminYardOperations({ messages }: { locale: AdminLocale; message
       </button>
       <div id="yard-phase-1-details" className="mt-2 space-y-2">
         {phase1Open ? <CardDescription className="text-warning-foreground">{messages.yardOperationsPhase1Body}</CardDescription> : null}
-        <div className="grid min-w-0 grid-cols-1 gap-1.5 xl:grid-cols-3">
-          <UnavailableStatus icon={Truck} label={messages.yardWorkLocation} fullLabel={messages.workLocationUnavailable} unavailableLabel={messages.unavailableLabel} />
-          <UnavailableStatus icon={Truck} label={messages.yardIncomingTrucks} fullLabel={messages.incomingTrucksUnavailable} unavailable={incomingUnavailable} unavailableLabel={messages.unavailableLabel} />
-          <UnavailableStatus icon={ShieldCheck} label={messages.yardUpcomingDepartures} fullLabel={messages.upcomingDeparturesUnavailable} unavailable={departuresUnavailable} unavailableLabel={messages.unavailableLabel} />
-        </div>
+        <AdminYardDataBoundaryCards
+          locale={locale}
+          boundary={boundary}
+          loading={boundaryLoading && !boundary}
+          fetchFailed={Boolean(boundaryError) && !boundary}
+        />
       </div>
     </Card>
 
@@ -375,33 +380,6 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
       </div>
       <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
     </Card>
-  );
-}
-
-function UnavailableStatus({
-  icon: Icon,
-  label,
-  fullLabel,
-  unavailable = true,
-  unavailableLabel,
-}: {
-  icon: typeof Truck;
-  label: string;
-  fullLabel: string;
-  unavailable?: boolean;
-  unavailableLabel: string;
-}) {
-  return (
-    <div
-      className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border bg-card/70 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground"
-      role="status"
-      title={fullLabel}
-      aria-label={fullLabel}
-    >
-      <Icon aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="min-w-0 flex-1 basis-24 whitespace-normal break-words">{label}</span>
-      {unavailable ? <Badge variant="secondary" className="shrink-0">{unavailableLabel}</Badge> : null}
-    </div>
   );
 }
 
