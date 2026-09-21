@@ -70,6 +70,10 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('en').emptyCategoryCustomHint).toMatch(/custom Job/);
     expect(getAdminMessages('en').activityPmDetailsUpdated).toBe('PM details updated');
     expect(getAdminMessages('es').activityBlockerReported).toBe('Bloqueo reportado');
+    expect(getAdminMessages('en').pauseWorkOrderBadRequest).toMatch(/pending Jobs cannot be paused/);
+    expect(getAdminMessages('es').pauseWorkOrderBadRequest).toMatch(/Jobs pendientes/);
+    expect(getAdminMessages('en').pauseWorkOrderBadRequest).not.toBe(getAdminMessages('en').assignmentBadRequest);
+    expect(getAdminMessages('es').pauseWorkOrderBadRequest).not.toBe(getAdminMessages('es').assignmentBadRequest);
   });
 
   it('keeps English and Spanish mechanic assignment keys in parity', () => {

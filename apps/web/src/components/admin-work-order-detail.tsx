@@ -277,7 +277,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             <Button
               type="button"
               disabled={Boolean(pendingAction)}
-              onClick={() => void runMutation('resume-wo', messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(data.id), (failure) => assignmentError(failure, messages))}
+              onClick={() => void runMutation('resume-wo', messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(data.id), (failure) => pauseResumeError(failure, messages))}
             >
               {messages.resumeWorkOrderAction}
             </Button>
@@ -286,7 +286,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               className="flex flex-col gap-3 sm:flex-row"
               onSubmit={(event) => {
                 event.preventDefault();
-                void runMutation('pause-wo', messages.pauseWorkOrderSuccess, () => pauseAdminWorkOrder(data.id, { reason: pauseReason }), (failure) => assignmentError(failure, messages));
+                void runMutation('pause-wo', messages.pauseWorkOrderSuccess, () => pauseAdminWorkOrder(data.id, { reason: pauseReason }), (failure) => pauseResumeError(failure, messages));
               }}
             >
               <Select aria-label={messages.pauseReasonLabel} value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
@@ -833,6 +833,19 @@ function assignmentError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.assignmentGenericError;
+}
+export function pauseResumeError(errorValue: unknown, messages: AdminMessages) {
+  if (errorValue instanceof ApiError) {
+    if (errorValue.status === 400) {
+      const apiMessage = errorValue.message.trim();
+      if (/without pending jobs cannot be paused/i.test(apiMessage)) {
+        return messages.pauseWorkOrderBadRequest;
+      }
+      return apiMessage || messages.pauseWorkOrderBadRequest;
+    }
+    if (errorValue.status === 409) return messages.assignmentConflict;
+  }
+  return messages.pauseWorkOrderGenericError;
 }
 function cancelError(errorValue: unknown, messages: AdminMessages) {
   if (errorValue instanceof ApiError) {
