@@ -54,7 +54,7 @@ import {
   type WorkPlanDerivationInput,
 } from './yard-work-plan-derivation';
 import { isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
-import { buildYardMovementFeeds, unavailableFeed, type AgentReportingReports, type ShopMovementTruck } from './yard-movement-feeds';
+import { buildYardMovementFeeds, type AgentReportingReports, type ShopMovementTruck } from './yard-movement-feeds';
 import { AgentReportingClient, getAgentReportingConfig } from '../integrations/agent-reporting/agent-reporting.client';
 
 const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
@@ -963,65 +963,71 @@ export class YardOperationsService {
   }
 
   private async movementFeeds() {
-    try {
-      const [openWork, reporting] = await Promise.all([
-        this.prisma.workOrder.findMany({
-          where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+    const shop = await this.loadShopMovementTrucks();
+    const reporting = await this.loadReportingReports();
+    return buildYardMovementFeeds({ shop, reporting });
+  }
+
+  private async loadShopMovementTrucks(): Promise<ShopMovementTruck[]> {
+    const openWork = await this.prisma.workOrder.findMany({
+      where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+      select: {
+        displayId: true,
+        truck: {
           select: {
-            displayId: true,
-            truck: {
-              select: {
-                id: true,
-                truckNumber: true,
-                yardLocation: true,
-                samsaraTruckLocation: true,
-              },
-            },
+            id: true,
+            truckNumber: true,
+            yardLocation: true,
+            samsaraTruckLocation: true,
           },
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.loadReportingReports(),
-      ]);
-      const seen = new Set<string>();
-      const shop: ShopMovementTruck[] = [];
-      for (const row of openWork) {
-        if (!row.truck || seen.has(row.truck.id)) continue;
-        seen.add(row.truck.id);
-        shop.push({
-          id: row.truck.id,
-          truckNumber: row.truck.truckNumber,
-          yardLocation: row.truck.yardLocation,
-          samsaraTruckLocation: row.truck.samsaraTruckLocation,
-          workOrders: [{ displayId: row.displayId }],
-        });
-      }
-      return buildYardMovementFeeds({ shop, reporting });
-    } catch {
-      return {
-        workLocation: unavailableFeed('upstream_error'),
-        incomingTrucks: unavailableFeed('upstream_error'),
-        upcomingDepartures: unavailableFeed('upstream_error'),
-      };
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const seen = new Set<string>();
+    const shop: ShopMovementTruck[] = [];
+    for (const row of openWork) {
+      if (!row.truck || seen.has(row.truck.id)) continue;
+      seen.add(row.truck.id);
+      shop.push({
+        id: row.truck.id,
+        truckNumber: row.truck.truckNumber,
+        yardLocation: row.truck.yardLocation,
+        samsaraTruckLocation: row.truck.samsaraTruckLocation,
+        workOrders: [{ displayId: row.displayId }],
+      });
     }
+    return shop;
   }
 
   private async loadReportingReports(): Promise<AgentReportingReports> {
-    const config = getAgentReportingConfig();
-    if (!config) {
+    try {
+      const config = getAgentReportingConfig();
+      if (!config) {
+        return { available: false, trucks: null, returns: null, driverPay: null };
+      }
+      const client = new AgentReportingClient(config);
+      const [trucks, returns, driverPay] = await Promise.all([
+        this.loadReportRows(client, 'trucks'),
+        this.loadReportRows(client, 'returns'),
+        this.loadReportRows(client, 'driver_pay'),
+      ]);
+      return { available: true, trucks, returns, driverPay };
+    } catch {
       return { available: false, trucks: null, returns: null, driverPay: null };
     }
-    const client = new AgentReportingClient(config);
-    const [trucks, returns, driverPay] = await Promise.all([
-      client.listAll('trucks'),
-      client.listAll('returns'),
-      client.listAll('driver_pay'),
-    ]);
-    return {
-      available: true,
-      trucks: trucks.rows,
-      returns: returns.rows,
-      driverPay: driverPay.rows,
-    };
+  }
+
+  private async loadReportRows(
+    client: AgentReportingClient,
+    report: 'trucks' | 'returns' | 'driver_pay',
+  ): Promise<unknown> {
+    try {
+      const { rows } = await client.listAll(report);
+      return rows;
+    } catch {
+      return null;
+    }
   }
 }
 

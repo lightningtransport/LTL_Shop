@@ -112,13 +112,27 @@ export function buildYardMovementFeeds(input: {
 
   return {
     workLocation,
-    incomingTrucks: input.reporting.available
-      ? okFeed(filterIncoming(extractMovementRows(input.reporting.returns ?? []), today, atShop, shopByNumber))
-      : unavailableFeed(),
-    upcomingDepartures: input.reporting.available
-      ? okFeed(filterUpcoming(extractMovementRows(input.reporting.driverPay ?? []), today, shopByNumber))
-      : unavailableFeed(),
+    incomingTrucks: movementReportFeed(
+      input.reporting.available,
+      input.reporting.returns,
+      (rows) => filterIncoming(rows, today, atShop, shopByNumber),
+    ),
+    upcomingDepartures: movementReportFeed(
+      input.reporting.available,
+      input.reporting.driverPay,
+      (rows) => filterUpcoming(rows, today, shopByNumber),
+    ),
   };
+}
+
+function movementReportFeed(
+  available: boolean,
+  payload: unknown,
+  filter: (rows: RawMovementRow[]) => YardFeedItemDto[],
+): YardFeedDto {
+  if (!available) return unavailableFeed();
+  if (payload == null) return unavailableFeed('upstream_error');
+  return okFeed(filter(extractMovementRows(payload)));
 }
 
 function buildWorkLocation(shop: ShopMovementTruck[], reported: RawMovementRow[]): YardFeedDto {
