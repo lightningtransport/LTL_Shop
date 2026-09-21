@@ -963,8 +963,10 @@ export class YardOperationsService {
   }
 
   private async movementFeeds() {
-    const shop = await this.loadShopMovementTrucks();
-    const reporting = await this.loadReportingReports();
+    const [shop, reporting] = await Promise.all([
+      this.loadShopMovementTrucks(),
+      this.loadReportingReports(),
+    ]);
     return buildYardMovementFeeds({ shop, reporting });
   }
 
