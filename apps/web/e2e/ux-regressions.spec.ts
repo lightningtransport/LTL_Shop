@@ -442,11 +442,11 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
   test('Mechanic status chips and location copy follow the locale catalog', async ({ page }) => {
     await login(page);
-    const createdCard = page.locator('article').filter({ hasText: 'WO-1001' });
+    const createdCard = page.locator('.card').filter({ hasText: 'WO-1001' });
     await expect(createdCard.getByText('Created')).toBeVisible();
-    const activeCard = page.locator('article').filter({ hasText: 'WO-ACTIVE-1' });
+    const activeCard = page.locator('.card').filter({ hasText: 'WO-ACTIVE-1' });
     await expect(activeCard.getByText('In Progress')).toBeVisible();
-    const pausedCard = page.locator('article').filter({ hasText: 'WO-PAUSED-1' });
+    const pausedCard = page.locator('.card').filter({ hasText: 'WO-PAUSED-1' });
     await expect(pausedCard.getByText('Waiting for Parts')).toBeVisible();
 
     await page.getByRole('button', { name: 'Switch to Spanish' }).click();
