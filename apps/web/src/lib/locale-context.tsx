@@ -43,10 +43,27 @@ type Copy = {
   truckResults: (count: number) => string;
   activeJobs: (count: number) => string;
   pausedJobs: (count: number) => string;
+  activePmServices: (count: number) => string;
+  pausedPmServices: (count: number) => string;
   noActiveJobs: string;
   noPausedJobs: string;
+  noPausedPmServices: string;
   activeJobsTitle: string;
   pausedJobsTitle: string;
+  pmActiveTitle: string;
+  pmPausedTitle: string;
+  notes: string;
+  saveNotes: string;
+  notesOptional: string;
+  notesPlaceholder: string;
+  pmNotesPlaceholder: string;
+  unableToSaveNotes: string;
+  priorityLabel: string;
+  pauseReasonLabel: string;
+  selectOption: string;
+  reasonRequiredForOther: string;
+  additionalDetails: string;
+  unableToSavePmDetails: string;
   waitingOnManager: string;
   waitingOnManagerHint: (count: number) => string;
   waitingOnManagerBody: string;
@@ -161,7 +178,7 @@ const copy: Record<ShopLocale, Copy> = {
     pmServiceHint: 'Select a truck to create a PM service.', truck: 'Truck',
     searchTruck: 'Search truck number (for example, #905)', noTrucks: 'No trucks found.',
     checkingOpenWorkOrder: 'Checking for an open Work Order.', retryWorkOrderCheck: 'Retry Work Order check',
-    truckInformation: 'Truck information', selectTruck: 'Select a truck to show its details.',
+    truckInformation: 'Truck Information', selectTruck: 'Select a truck to show its details.',
     vin: 'VIN', lastReportedLocation: 'Last reported location', locationUpdatedOn: 'Last reported on',
     repairHistory: 'View truck repair history', openWorkOrder: 'View open Work Order',
     noAccessToPmWorkOrder: 'You do not have access to this PM Work Order.',
@@ -171,10 +188,27 @@ const copy: Record<ShopLocale, Copy> = {
     truckResults: (count) => `${count} ${count === 1 ? 'truck result' : 'truck results'} available.`,
     activeJobs: (count) => `${count} ${count === 1 ? 'active job' : 'active jobs'}`,
     pausedJobs: (count) => `${count} ${count === 1 ? 'paused job' : 'paused jobs'}`,
+    activePmServices: (count) => `${count} ${count === 1 ? 'active PM service' : 'active PM services'}`,
+    pausedPmServices: (count) => `${count} ${count === 1 ? 'paused PM service' : 'paused PM services'}`,
     noActiveJobs: 'No assigned work in progress.',
     noPausedJobs: 'No paused jobs. Paused work will appear here until it is resumed.',
+    noPausedPmServices: 'No paused PM services. Paused work will appear here until it is resumed.',
     activeJobsTitle: 'Active Jobs',
     pausedJobsTitle: 'Paused Jobs',
+    pmActiveTitle: 'Active PM services',
+    pmPausedTitle: 'Paused PM services',
+    notes: 'Notes',
+    saveNotes: 'Save Notes',
+    notesOptional: 'Notes (optional)',
+    notesPlaceholder: 'Describe or add any information needed to perform the work',
+    pmNotesPlaceholder: 'Add notes (optional)',
+    unableToSaveNotes: 'Unable to save notes.',
+    priorityLabel: 'Priority',
+    pauseReasonLabel: 'Pause reason',
+    selectOption: 'Select an option',
+    reasonRequiredForOther: 'Reason required for Other',
+    additionalDetails: 'Additional details',
+    unableToSavePmDetails: 'Unable to save PM service details.',
     waitingOnManager: 'Waiting on Manager',
     waitingOnManagerHint: (count) => `${count} ${count === 1 ? 'Work Order is' : 'Work Orders are'} ready for the Manager to close`,
     waitingOnManagerBody: 'Jobs are done. Your Shop Manager closes this Work Order. You can still report a blocker if something is stopping the Truck.',
@@ -309,10 +343,27 @@ const copy: Record<ShopLocale, Copy> = {
     truckResults: (count) => `${count} ${count === 1 ? 'resultado de unidad disponible.' : 'resultados de unidades disponibles.'}`,
     activeJobs: (count) => `${count} ${count === 1 ? 'Job activo' : 'Jobs activos'}`,
     pausedJobs: (count) => `${count} ${count === 1 ? 'Job pausado' : 'Jobs pausados'}`,
+    activePmServices: (count) => `${count} ${count === 1 ? 'servicio de PM activo' : 'servicios de PM activos'}`,
+    pausedPmServices: (count) => `${count} ${count === 1 ? 'servicio de PM pausado' : 'servicios de PM pausados'}`,
     noActiveJobs: 'No hay trabajo asignado en progreso.',
     noPausedJobs: 'No hay Jobs pausados. El trabajo pausado aparecerá aquí hasta que se reanude.',
+    noPausedPmServices: 'No hay servicios de PM pausados. El trabajo pausado aparecerá aquí hasta que se reanude.',
     activeJobsTitle: 'Jobs activos',
     pausedJobsTitle: 'Jobs pausados',
+    pmActiveTitle: 'Servicios de PM activos',
+    pmPausedTitle: 'Servicios de PM pausados',
+    notes: 'Notas',
+    saveNotes: 'Guardar notas',
+    notesOptional: 'Notas (opcional)',
+    notesPlaceholder: 'Describe o agrega cualquier información necesaria para realizar el trabajo',
+    pmNotesPlaceholder: 'Agrega notas (opcional)',
+    unableToSaveNotes: 'No se pudieron guardar las notas.',
+    priorityLabel: 'Prioridad',
+    pauseReasonLabel: 'Motivo de pausa',
+    selectOption: 'Selecciona una opción',
+    reasonRequiredForOther: 'Motivo obligatorio para Otro',
+    additionalDetails: 'Detalles adicionales',
+    unableToSavePmDetails: 'No se pudieron guardar los detalles del servicio de PM.',
     waitingOnManager: 'Espera al Manager',
     waitingOnManagerHint: (count) => count === 1
       ? '1 Work Order listo para que el Manager lo cierre'
