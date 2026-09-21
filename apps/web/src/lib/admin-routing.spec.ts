@@ -65,11 +65,13 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('presence');
     expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('presencia');
     expect(getAdminMessages('en').yardOperationsPhase1Body).toBe(
-      'Work location, incoming Trucks, and upcoming departures are not connected yet. This view shows maintenance readiness only — not physical yard presence or dispatch.',
+      'Reporting feeds Work location, Incoming Trucks, and Upcoming Departures. This view also shows maintenance readiness — not physical yard presence or dispatch.',
     );
     expect(getAdminMessages('es').yardOperationsPhase1Body).toBe(
-      'La ubicación de trabajo, llegadas y próximas salidas aún no están conectadas. Esta vista muestra solo readiness de mantenimiento — no presencia física en el yard ni despacho.',
+      'Reporting alimenta Ubicación de trabajo, Incoming Trucks y Salidas próximas. Esta vista también muestra readiness de mantenimiento — no presencia física en el yard ni despacho.',
     );
+    expect(getAdminMessages('es').yardIncomingTrucks).toBe('Incoming Trucks');
+    expect(getAdminMessages('es').incomingTrucksUnavailable).toBe('Incoming Trucks no disponibles');
     expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
     expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');
     expect(adminPauseReasonLabel('waiting_for_parts', getAdminMessages('en'))).toBe('Waiting for Parts');

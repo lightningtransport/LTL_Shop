@@ -18,9 +18,11 @@ import type {
   RecordWorkPlanInspectionInput,
   AdminCatalogCategoryDetailDto,
   AdminCatalogCategorySummaryDto,
+  YardDataBoundaryDto,
   YardOperationsPageDto,
   TruckWorkPlanDto,
 } from '@ltl-shop/shared';
+import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
 import { useAuth } from './auth-context';
 import type { WorkPlanJobDraft } from './work-plan';
@@ -162,6 +164,18 @@ export function useAdminYardOperations(query: string) {
       adminReadFetcher,
       adminInfiniteOptions,
     ),
+  );
+}
+
+export function useAdminYardDataBoundary() {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<YardDataBoundaryDto>(token ? ADMIN_YARD_DATA_BOUNDARY_PATH : null, adminReadFetcher, {
+      dedupingInterval: 10_000,
+      refreshInterval: 30_000,
+      ...adminReadRetry,
+    }),
   );
 }
 

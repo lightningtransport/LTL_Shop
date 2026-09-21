@@ -497,6 +497,35 @@ createServer(async (request, response) => {
     json(response, 200, { assessment: item.assessment });
     return;
   }
+  if (request.url?.split('?')[0] === '/api/admin/yard/data-boundary') {
+    json(response, 200, {
+      asOf: '2026-09-21T16:00:00.000Z',
+      windows: {
+        timeZone: 'America/New_York',
+        thisWeek: { from: '2026-09-21', to: '2026-09-27' },
+        nextWeek: { from: '2026-09-28', to: '2026-10-04' },
+      },
+      workLocation: {
+        status: 'ok',
+        summary: '301 Yard',
+        items: [
+          { truckNumber: '277', location: '301 Yard' },
+          { truckNumber: '905', location: '301 Yard' },
+        ],
+      },
+      incomingTrucks: {
+        status: 'ok',
+        items: [
+          { truckNumber: '277', returnDate: '2026-09-22', window: 'this_week', drivers: ['Ana', 'Luis'] },
+        ],
+      },
+      upcomingDepartures: {
+        status: 'ok',
+        items: [],
+      },
+    });
+    return;
+  }
   if (request.url?.startsWith('/api/admin/yard-operations')) {
     const url = new URL(request.url, 'http://fixture.local');
     const cursor = url.searchParams.get('cursor');
