@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
+import { shopLocaleChangeEvent, shopLocaleCookieWrite } from '@/lib/shop-locale';
 
 export function AdminLocaleSwitcher({
   locale,
@@ -19,18 +19,18 @@ export function AdminLocaleSwitcher({
 
   useEffect(() => {
     document.documentElement.lang = locale;
-    return () => {
-      document.documentElement.lang = 'en';
-    };
   }, [locale]);
 
   return (
     <Button
       variant="outline"
       size="sm"
+      className="min-w-16"
       aria-label={locale === 'en' ? 'Switch to Spanish' : 'Cambiar a inglés'}
       onClick={() => {
-        document.cookie = `${ADMIN_LOCALE_COOKIE}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+        document.cookie = shopLocaleCookieWrite(nextLocale);
+        document.documentElement.lang = nextLocale;
+        window.dispatchEvent(shopLocaleChangeEvent());
         router.refresh();
       }}
     >

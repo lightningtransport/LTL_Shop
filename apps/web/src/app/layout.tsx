@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
@@ -11,6 +12,7 @@ import { ObservabilityProvider } from '@/components/observability-provider';
 import { AppFrame } from '@/components/app-frame';
 import { ActionToastProvider } from '@/components/action-toast';
 import { ShopLocaleProvider } from '@/lib/locale-context';
+import { parseShopLocale, SHOP_LOCALE_COOKIE } from '@/lib/shop-locale';
 
 const bodyFont = Inter({
   subsets: ['latin'],
@@ -46,13 +48,16 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieLocale = (await cookies()).get(SHOP_LOCALE_COOKIE)?.value;
+  const locale = parseShopLocale(cookieLocale);
+
   return (
-    <html lang="en" suppressHydrationWarning className={`${bodyFont.variable} ${monoFont.variable}`}>
+    <html lang={locale} suppressHydrationWarning className={`${bodyFont.variable} ${monoFont.variable}`}>
       <body>
         <script
           dangerouslySetInnerHTML={{
@@ -66,7 +71,7 @@ export default function RootLayout({
             <PathScrollReset />
           </Suspense>
           <ObservabilityProvider />
-          <ShopLocaleProvider>
+          <ShopLocaleProvider initialLocale={locale}>
             <ActionToastProvider>
               <AuthProvider>
                 <DataProvider>
