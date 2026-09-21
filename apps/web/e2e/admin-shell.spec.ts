@@ -99,7 +99,8 @@ test.describe('Shop Admin Phase 2A', () => {
     const completeHeading = page.getByRole('heading', { name: 'Complete Work Order' });
     const summaryHeading = page.getByRole('heading', { name: 'Operational summary' });
     await expect(completeHeading).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Confirm completion' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm completion' }).first()).toBeVisible();
+    await expect(page.getByTestId('admin-wo-next-action').getByRole('button', { name: 'Confirm completion' })).toBeVisible();
     await expect(summaryHeading).toBeVisible();
     const completeBox = await completeHeading.boundingBox();
     const summaryBox = await summaryHeading.boundingBox();
@@ -224,13 +225,13 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
     await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Confirm completion' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm completion' }).first()).toBeVisible();
     await page.getByLabel('Time segment').selectOption({ index: 1 });
     await page.getByLabel('Corrected end time').fill('2026-09-06T17:00');
     await page.getByLabel('Reason for time correction').fill('Clock was wrong');
     await page.getByRole('button', { name: 'Apply time correction' }).click();
     await expect(page.getByText('Time correction saved.')).toBeVisible();
-    await page.getByRole('button', { name: 'Confirm completion' }).click();
+    await page.getByTestId('admin-wo-next-action').getByRole('button', { name: 'Confirm completion' }).click();
     await expect(page.getByText('Work Order completed.')).toBeVisible();
     await page.getByLabel('Reason for Return to Service').fill('Repairs verified');
     await page.getByRole('button', { name: 'Confirm Return to Service' }).click();
@@ -469,5 +470,108 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Brake chamber, Chamber')).toBeVisible();
     await expect(page.getByText('Retired brake job')).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
+  });
+
+  test('login and Admin SSR the shared ltl_shop_locale cookie without an EN/ES flash', async ({ page }) => {
+    await page.goto('/login');
+    await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'es', url: page.url(), path: '/' }]);
+
+    const loginEs = await page.request.get('/login');
+    const loginEsHtml = await loginEs.text();
+    expect(loginEsHtml).toContain('lang="es"');
+    expect(loginEsHtml).toMatch(/<h1[^>]*>Iniciar sesión<\/h1>/);
+    expect(loginEsHtml).not.toMatch(/<h1[^>]*>Sign in<\/h1>/);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+    await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);
+
+    await page.getByLabel('Correo electrónico').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Acceso de desarrollo/i }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+    const adminEs = await page.request.get('/admin');
+    const adminEsHtml = await adminEs.text();
+    expect(adminEsHtml).toContain('Operaciones del Shop');
+    expect(adminEsHtml).not.toContain('Shop Operations');
+    await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
+
+    await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'en', url: page.url(), path: '/' }]);
+    const loginEn = await page.request.get('/login');
+    const loginEnHtml = await loginEn.text();
+    expect(loginEnHtml).toContain('lang="en"');
+    expect(loginEnHtml).toMatch(/<h1[^>]*>Sign in<\/h1>/);
+    expect(loginEnHtml).not.toMatch(/<h1[^>]*>Iniciar sesión<\/h1>/);
+
+    await page.goto('/admin');
+    await page.getByRole('button', { name: /Switch to Spanish|Cambiar a inglés/ }).click();
+    const localeCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'ltl_shop_locale');
+    expect(localeCookie?.value).toMatch(/^(en|es)$/);
+    expect(localeCookie?.path).toBe('/');
+    expect(localeCookie?.expires ?? 0).toBeGreaterThan(Date.now() / 1000 + 30_000_000);
+  });
+
+  test('Dashboard Work Orders and View all navigate on the first click ten times', async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await page.goto('/admin');
+      await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+      await page.getByRole('complementary', { name: 'Shop Admin navigation' }).getByRole('link', { name: 'Work Orders', exact: true }).click();
+      await expect(page).toHaveURL(/\/admin\/work-orders$/);
+    }
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await page.goto('/admin');
+      await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+      await page.getByRole('link', { name: 'View all Work Orders' }).click();
+      await expect(page).toHaveURL(/\/admin\/work-orders$/);
+    }
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await page.goto('/admin');
+      await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+      await page.getByRole('button', { name: 'Open Shop Admin navigation' }).click();
+      await page.getByRole('dialog').getByRole('link', { name: 'Work Orders', exact: true }).click();
+      await expect(page).toHaveURL(/\/admin\/work-orders$/);
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+    }
+  });
+
+  test('Admin WO detail keeps Confirm completion sticky when Jobs are done', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
+    await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
+    const nextAction = page.getByTestId('admin-wo-next-action');
+    await expect(nextAction).toBeVisible();
+    const stickyButton = nextAction.getByRole('button', { name: 'Confirm completion' });
+    await expect(stickyButton).toBeVisible();
+    const stickyBox = await stickyButton.boundingBox();
+    expect(stickyBox?.height).toBeGreaterThanOrEqual(44);
+
+    await page.getByRole('heading', { name: 'Activity Log' }).scrollIntoViewIfNeeded();
+    await expect(nextAction).toBeInViewport();
+    await expect(stickyButton).toBeInViewport();
+    const pauseBox = await page.getByRole('heading', { name: /Pause Work Order|Resume Work Order/ }).first().boundingBox();
+    const completeCardBox = await page.getByRole('heading', { name: 'Complete Work Order' }).boundingBox();
+    expect(completeCardBox && pauseBox && completeCardBox.y < pauseBox.y).toBe(true);
+
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
+    await expect(page.getByRole('heading', { name: 'WO-0101' })).toBeVisible();
+    await expect(page.getByTestId('admin-wo-next-action')).toHaveCount(0);
+
+    await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
+    await expect(page.getByTestId('admin-wo-next-action').getByRole('button', { name: 'Confirmar finalización' })).toBeVisible();
   });
 });
