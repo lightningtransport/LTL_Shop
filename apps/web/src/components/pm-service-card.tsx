@@ -101,14 +101,14 @@ export function PmServiceCard({
       setDirty(false);
       setSaveError(null);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Unable to save PM service details.');
+      setSaveError(err instanceof Error ? err.message : messages.unableToSavePmDetails);
       dirtyRef.current = true;
       setDirty(true);
     } finally {
       savingRef.current = false;
       setSaving(false);
     }
-  }, [data?.canEdit, mutate, workOrderId]);
+  }, [data?.canEdit, messages.unableToSavePmDetails, mutate, workOrderId]);
 
   const persist = useCallback((payload: Payload) => {
     if (!data?.canEdit) return;
@@ -157,7 +157,7 @@ export function PmServiceCard({
 
   return (
     <Card className="mb-4 space-y-4" aria-labelledby="pm-service-title">
-      <h2 id="pm-service-title" className="section-label">PM Service</h2>
+      <h2 id="pm-service-title" className="section-label">{messages.pmServiceLabel}</h2>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
@@ -241,7 +241,7 @@ export function PmServiceCard({
         {saveError ? (
           <span className="text-destructive" role="alert">
             {saveError}{' '}
-          <Button variant="ghost" className="ml-1 px-2 underline" onClick={() => persist(draft)}>Retry</Button>
+          <Button variant="ghost" className="ml-1 px-2 underline" onClick={() => persist(draft)}>{messages.retry}</Button>
           </span>
         ) : null}
       </div>

@@ -473,6 +473,77 @@ export interface YardFeedDto {
   total: number;
 }
 
+/** Phase 1 card source status from `GET /api/admin/yard/data-boundary`. */
+export type YardDataBoundaryStatus = 'ok' | 'unavailable' | 'error';
+
+/**
+ * Calendar bucket for Incoming Trucks / Upcoming Departures.
+ * Weeks are Monday–Sunday in `America/New_York`.
+ */
+export type YardMovementWindow = 'this_week' | 'next_week' | 'undated';
+
+export interface YardDataBoundaryWindowsDto {
+  timeZone: 'America/New_York';
+  thisWeek: { from: string; to: string };
+  nextWeek: { from: string; to: string };
+}
+
+export interface YardWorkLocationItemDto {
+  truckNumber: string;
+  location: string | null;
+}
+
+export interface YardIncomingTruckItemDto {
+  truckNumber: string;
+  returnDate: string | null;
+  drivers?: string[];
+  window?: YardMovementWindow;
+}
+
+export interface YardUpcomingDepartureItemDto {
+  truckNumber: string;
+  outDate: string | null;
+  drivers?: string[];
+  window?: YardMovementWindow;
+}
+
+export interface YardDataBoundarySectionDto<T> {
+  status: YardDataBoundaryStatus;
+  items: T[];
+  /**
+   * Set only for `unavailable` and `error`. Nest sends the English PD string
+   * `YARD_DATA_BOUNDARY_COPY.en.unavailable` ("Data unavailable.").
+   * FE localizes labels, empty states, and the UNAVAILABLE badge from
+   * `YARD_DATA_BOUNDARY_COPY`. Do not send empty-state copy when `status` is
+   * `ok` and `items` is empty.
+   */
+  message?: string;
+}
+
+export interface YardWorkLocationSectionDto extends YardDataBoundarySectionDto<YardWorkLocationItemDto> {
+  /**
+   * Set when one non-empty `yard_location` accounts for strictly more than
+   * half of `items` (the compact Admin-card headline).
+   */
+  summary?: string;
+}
+
+/**
+ * Server-side agent-reporting proxy for Admin Yard Phase 1 cards.
+ * Presence / geofence is intentionally absent.
+ *
+ * Card copy (PD 2026-09-21) lives in `YARD_DATA_BOUNDARY_COPY`:
+ * labels, empty (`ok` + 0 rows), unavailable/error, and the UNAVAILABLE badge.
+ * Canonical English in ES UI: Work Order, Jobs, Incoming Trucks.
+ */
+export interface YardDataBoundaryDto {
+  asOf: string;
+  windows: YardDataBoundaryWindowsDto;
+  workLocation: YardWorkLocationSectionDto;
+  incomingTrucks: YardDataBoundarySectionDto<YardIncomingTruckItemDto>;
+  upcomingDepartures: YardDataBoundarySectionDto<YardUpcomingDepartureItemDto>;
+}
+
 export interface PmPartDto {
   id: string;
   partNumber: string | null;

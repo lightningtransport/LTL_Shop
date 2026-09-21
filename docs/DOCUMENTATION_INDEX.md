@@ -1,7 +1,7 @@
 # Documentation index
 
 **Classification:** CANONICAL DOCUMENTATION MAP
-**Updated:** 2026-09-20
+**Updated:** 2026-09-21
 
 This index resolves documentation authority. A document not marked canonical
 does not override `LIGHTNING_SHOP_MASTER_PRD.md`, tested code, or the current
@@ -38,6 +38,7 @@ V2-002 implements TARGET directly. For `apps/web` UI work, read
 | `OWNERSHIP_CUTOVER_CONTRACT.md` | PRODUCT DECISION CONTRACT | Approved V2 cutover | Action matrix, rollback, test plan, and Cristian Q1–Q18. Authorizes direct TARGET implementation (no W1) | ACTIVE — APPROVED 2026-09-12 |
 | `AGENT_WORKFLOW.md` | ENGINEERING | Delivery process | Context, agent responsibility, and development-loop rules | ACTIVE |
 | `YARD_OPERATIONS_PHASE_1_CONTRACT.md` | CURRENT STATE | Module contract | Implemented readiness Phase 1 boundary | ACTIVE |
+| `YARD_DATA_BOUNDARY.md` | CURRENT STATE / INTEGRATION BOUNDARY | Admin Yard Phase 1 cards | Nest `GET /api/admin/yard/data-boundary` → agent-reporting; FE DTO; no browser key | ACTIVE |
 | `LTR-34_WORK_PLAN_SLICE1_PROPOSAL.md` | PROPOSAL | Dual-run Work Plan API | LTR-34 Slice 1 hooks + TARGET derivation; awaiting PM+PD ack before merge/cutover | DRAFT |
 | `pm-daniel.md` | REFERENCE | PM-specific context | PM authorization and compatibility notes | ACTIVE |
 | `PRD_V1_SHIP.md` | DEPRECATED | None | Superseded V1 draft supplied during normalization | PRESERVED |

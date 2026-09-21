@@ -9,6 +9,8 @@ import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admi
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
+import { pauseResumeError } from './pause-resume-error';
+import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { useCategories } from '@/lib/shop-data';
@@ -95,6 +97,12 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const canEditFields = canManageWorkOrders && isOpen;
   const canOfficialPause = canManageWorkOrders && isOpen && data.category.name !== 'PM';
   const hasIncompleteJobs = data.category.name !== 'PM' && data.jobs.some((job) => job.status === 'to_do');
+  const readyToClose = isAdminWorkOrderReadyToClose({
+    canManageWorkOrders,
+    status: data.status,
+    categoryName: data.category.name,
+    jobs: data.jobs,
+  });
   const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
 
   async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
@@ -116,7 +124,27 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     }
   }
 
-  return <div className="space-y-5">
+  const completeCard = canCompleteWorkOrder ? (
+    <Card className={readyToClose ? 'border-shop-accent/50 bg-shop-accent/5' : undefined}>
+      <CardHeader>
+        <CardTitle>{messages.completeWorkOrderTitle}</CardTitle>
+        <CardDescription>{messages.completeWorkOrderDescription}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {data.category.name === 'PM' ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
+        {hasIncompleteJobs ? <p className="text-sm text-destructive">{messages.completeWorkOrderIncompleteJobs}</p> : null}
+        {readyToClose ? <p className="text-sm font-medium">{messages.readyToCloseHint}</p> : null}
+        <CompleteWorkOrderButton
+          messages={messages}
+          pending={Boolean(pendingAction)}
+          disabled={hasIncompleteJobs}
+          onConfirm={() => void runMutation('complete', messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(data.id, data.version), (failure) => completeError(failure, messages))}
+        />
+      </CardContent>
+    </Card>
+  ) : null;
+
+  return <div className={readyToClose ? 'space-y-5 pb-24' : 'space-y-5'}>
     <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
     <AdminPageHeader
       eyebrow={messages.eyebrow}
@@ -138,6 +166,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         {feedback.message}
       </p>
     ) : null}
+
+    {readyToClose ? completeCard : null}
 
     <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]" aria-label={messages.operationalSummary}>
       <Card>
@@ -248,7 +278,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             <Button
               type="button"
               disabled={Boolean(pendingAction)}
-              onClick={() => void runMutation('resume-wo', messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(data.id), (failure) => assignmentError(failure, messages))}
+              onClick={() => void runMutation('resume-wo', messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(data.id), (failure) => pauseResumeError(failure, messages))}
             >
               {messages.resumeWorkOrderAction}
             </Button>
@@ -257,7 +287,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               className="flex flex-col gap-3 sm:flex-row"
               onSubmit={(event) => {
                 event.preventDefault();
-                void runMutation('pause-wo', messages.pauseWorkOrderSuccess, () => pauseAdminWorkOrder(data.id, { reason: pauseReason }), (failure) => assignmentError(failure, messages));
+                void runMutation('pause-wo', messages.pauseWorkOrderSuccess, () => pauseAdminWorkOrder(data.id, { reason: pauseReason }), (failure) => pauseResumeError(failure, messages));
               }}
             >
               <Select aria-label={messages.pauseReasonLabel} value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
@@ -272,25 +302,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </Card>
     ) : null}
 
-    {canCompleteWorkOrder ? (
-      <Card>
-        <CardHeader>
-          <CardTitle>{messages.completeWorkOrderTitle}</CardTitle>
-          <CardDescription>{messages.completeWorkOrderDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {data.category.name === 'PM' ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
-          {hasIncompleteJobs ? <p className="text-sm text-destructive">{messages.completeWorkOrderIncompleteJobs}</p> : null}
-          <Button
-            type="button"
-            disabled={Boolean(pendingAction) || hasIncompleteJobs}
-            onClick={() => void runMutation('complete', messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(data.id, data.version), (failure) => completeError(failure, messages))}
-          >
-            {messages.completeWorkOrderConfirm}
-          </Button>
-        </CardContent>
-      </Card>
-    ) : null}
+    {!readyToClose ? completeCard : null}
 
     {canCancelWorkOrder ? (
       <Card>
@@ -773,7 +785,47 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         }}
       />
     ) : null}
+    {readyToClose ? (
+      <div
+        role="region"
+        aria-label={messages.completeWorkOrderTitle}
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-shop-accent/40 bg-card/95 px-4 py-3 backdrop-blur app-safe-bottom md:left-[220px] xl:left-[240px]"
+        data-testid="admin-wo-next-action"
+      >
+        <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium">{messages.readyToCloseHint}</p>
+          <CompleteWorkOrderButton
+            messages={messages}
+            pending={Boolean(pendingAction)}
+            onConfirm={() => void runMutation('complete', messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(data.id, data.version), (failure) => completeError(failure, messages))}
+          />
+        </div>
+      </div>
+    ) : null}
   </div>;
+}
+
+function CompleteWorkOrderButton({
+  messages,
+  pending,
+  disabled = false,
+  onConfirm,
+}: {
+  messages: AdminMessages;
+  pending: boolean;
+  disabled?: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      className="min-h-11 w-full sm:w-auto"
+      disabled={pending || disabled}
+      onClick={onConfirm}
+    >
+      {messages.completeWorkOrderConfirm}
+    </Button>
+  );
 }
 
 function assignmentError(errorValue: unknown, messages: AdminMessages) {

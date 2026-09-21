@@ -167,18 +167,15 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByRole('button', { name: /More filters \(1\)/ })).toBeVisible();
   });
 
-  test('does not clip Yard search or unavailable chips below xl', async ({ page }) => {
+  test('does not clip Yard search or data-boundary labels at 390 and desktop', async ({ page }) => {
     async function assertLabelUnclipped(locator: Locator, label: string, width: number) {
       await expect(locator).toBeVisible();
       const clipped = await locator.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
       expect(clipped, `${label} clips at ${width}px`).toBe(false);
     }
 
-    for (const width of [390, 768]) {
+    for (const width of [390, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
-      await expect(page.getByRole('button', { name: YARD_FILTERS_BUTTON })).toBeVisible();
-      await expect(page.getByRole('search').getByLabel('Readiness', { exact: true })).toBeHidden();
-
       const search = page.getByRole('searchbox', { name: 'Search Truck or Work Order' });
       await expect(search).toBeVisible();
       const searchClipped = await search.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
@@ -190,6 +187,20 @@ test.describe('Yard Operations Phase 1', () => {
       await assertLabelUnclipped(workLocation, 'Work location', width);
       await assertLabelUnclipped(incoming, 'Incoming Trucks', width);
       await assertLabelUnclipped(departures, 'Upcoming Departures', width);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      expect(overflow, `horizontal overflow at ${width}px`).toBe(false);
     }
+  });
+
+  test('renders ES yard movement copy without claiming GPS presence', async ({ page }) => {
+    const cookieUrl = `${new URL(page.url()).origin}/`;
+    await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'es', url: cookieUrl }]);
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Operaciones del patio', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Movimiento del yard' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'En taller / en el yard' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Llegadas de Trucks' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Próximas salidas' })).toBeVisible();
+    await expect(page.getByText(/en el patio/i)).toHaveCount(0);
   });
 });

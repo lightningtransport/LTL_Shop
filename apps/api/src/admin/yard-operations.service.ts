@@ -54,8 +54,8 @@ import {
   type WorkPlanDerivationInput,
 } from './yard-work-plan-derivation';
 import { isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
-import { buildYardMovementFeeds, unavailableFeed, type ShopMovementTruck } from './yard-movement-feeds';
-import { AgentReportingClient } from '../integrations/agent-reporting/agent-reporting.client';
+import { buildYardMovementFeeds, unavailableFeed, type AgentReportingReports, type ShopMovementTruck } from './yard-movement-feeds';
+import { AgentReportingClient, getAgentReportingConfig } from '../integrations/agent-reporting/agent-reporting.client';
 
 const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
   OR: [
@@ -183,7 +183,6 @@ export class YardOperationsService {
     private readonly prisma: PrismaService,
     private readonly trucks: TrucksService,
     private readonly activity: ActivityLogService,
-    private readonly reporting = new AgentReportingClient(),
   ) {}
 
   async startAssessment(user: AuthUser, truckId: string, raw: unknown) {
@@ -981,7 +980,7 @@ export class YardOperationsService {
           },
           orderBy: { createdAt: 'desc' },
         }),
-        this.reporting.fetchReports(),
+        this.loadReportingReports(),
       ]);
       const seen = new Set<string>();
       const shop: ShopMovementTruck[] = [];
@@ -1004,6 +1003,25 @@ export class YardOperationsService {
         upcomingDepartures: unavailableFeed('upstream_error'),
       };
     }
+  }
+
+  private async loadReportingReports(): Promise<AgentReportingReports> {
+    const config = getAgentReportingConfig();
+    if (!config) {
+      return { available: false, trucks: null, returns: null, driverPay: null };
+    }
+    const client = new AgentReportingClient(config);
+    const [trucks, returns, driverPay] = await Promise.all([
+      client.listAll('trucks'),
+      client.listAll('returns'),
+      client.listAll('driver_pay'),
+    ]);
+    return {
+      available: true,
+      trucks: trucks.rows,
+      returns: returns.rows,
+      driverPay: driverPay.rows,
+    };
   }
 }
 

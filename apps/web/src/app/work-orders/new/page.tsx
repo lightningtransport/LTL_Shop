@@ -607,7 +607,7 @@ export default function NewWorkOrderPage() {
             </div> : null}
 
             {!isPmMechanic ? <div>
-              <p className="section-label mb-2">Priority</p>
+              <p className="section-label mb-2">{messages.priorityLabel}</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {Object.values(Priority).map((p) => (
                   <Button
@@ -616,7 +616,7 @@ export default function NewWorkOrderPage() {
                     variant={priority === p ? 'default' : 'secondary'}
                     onClick={() => setPriority(p)}
                   >
-                    {p.toUpperCase()}
+                    {messages.priority[p] ?? p}
                   </Button>
                 ))}
               </div>
@@ -624,12 +624,12 @@ export default function NewWorkOrderPage() {
 
             {!isPmMechanic ? <div>
               <Label className="section-label" htmlFor="work-order-notes">
-                Notes (Optional)
+                {messages.notesOptional}
               </Label>
               <Textarea
                 id="work-order-notes"
                 className="mt-2"
-                placeholder="Describe or add any information needed to perform the work"
+                placeholder={messages.notesPlaceholder}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />

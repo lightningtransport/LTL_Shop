@@ -316,7 +316,11 @@ createServer(async (request, response) => {
         openOlderThan24h: { before: '2026-09-05T18:30:00.000Z' },
       },
       counts: { open: 3, waitingPaused: 1, highCriticalOpen: 2, openOlderThan24h: 1, completedToday: 1, completedLast7Days: 1 },
-      attention: workOrders.slice(0, 3),
+      attention: [
+        workOrders.find((item) => item.displayId === 'WO-0102'),
+        workOrders.find((item) => item.displayId === 'WO-0101'),
+        workOrders.find((item) => item.displayId === 'WO-0103'),
+      ],
     });
     return;
   }
@@ -491,6 +495,35 @@ createServer(async (request, response) => {
     item.assessment.closedReason = body.reason;
     item.assessment.version += 1;
     json(response, 200, { assessment: item.assessment });
+    return;
+  }
+  if (request.url?.split('?')[0] === '/api/admin/yard/data-boundary') {
+    json(response, 200, {
+      asOf: '2026-09-21T16:00:00.000Z',
+      windows: {
+        timeZone: 'America/New_York',
+        thisWeek: { from: '2026-09-21', to: '2026-09-27' },
+        nextWeek: { from: '2026-09-28', to: '2026-10-04' },
+      },
+      workLocation: {
+        status: 'ok',
+        summary: '301 Yard',
+        items: [
+          { truckNumber: '277', location: '301 Yard' },
+          { truckNumber: '905', location: '301 Yard' },
+        ],
+      },
+      incomingTrucks: {
+        status: 'ok',
+        items: [
+          { truckNumber: '277', returnDate: '2026-09-22', window: 'this_week', drivers: ['Ana', 'Luis'] },
+        ],
+      },
+      upcomingDepartures: {
+        status: 'ok',
+        items: [],
+      },
+    });
     return;
   }
   if (request.url?.startsWith('/api/admin/yard-operations')) {

@@ -1,12 +1,13 @@
 # Glossary (EN / ES)
 
 **Classification:** CURRENT STATE
-**Updated:** 2026-09-12
+**Updated:** 2026-09-21
 
 Domain words stay in English in much of the Admin ES catalog (Work Order,
-Truck, Job, PM). Mechanic ES copy sometimes uses *unidad* for Truck. Do not
-“fix” that in a UI polish pass; keep catalogs consistent with
-`apps/web/src/lib/admin-messages.ts` and `apps/web/src/lib/locale-context.tsx`.
+Truck, Job, Jobs, Incoming Trucks, PM). Mechanic ES copy sometimes uses
+*unidad* for Truck. Do not “fix” that in a UI polish pass; keep catalogs
+consistent with `YARD_DATA_BOUNDARY_COPY` for Yard Phase 1 cards and with
+`apps/web/src/lib/admin-messages.ts` / `apps/web/src/lib/locale-context.tsx`.
 
 | English (UI) | Spanish (CURRENT catalogs) | Meaning |
 |---|---|---|
@@ -30,8 +31,9 @@ Truck, Job, PM). Mechanic ES copy sometimes uses *unidad* for Truck. Do not
 | Return to Service | Return to Service (ES keeps the English name) | Post-completion truck service event |
 | Last reported location | Ubicación reportada | Display-only address (`location` / `locationUpdatedOn`). Not Presence. Never “in yard”. |
 | Presence | Presencia | Physical in-yard evidence. CURRENT UI hides this (Phase 1 is always UNKNOWN). Do not rename Presence → Ubicación. |
-| Incoming Trucks | Incoming Trucks / Trucks entrantes | Unavailable (no Dispatch source) |
-| Upcoming Departures | Upcoming Departures / Próximas salidas | Unavailable (no Dispatch source) |
+| Incoming Trucks | Incoming Trucks | Canonical English in ES UI (same as nav). Phase 1 card via `YARD_DATA_BOUNDARY_COPY`. |
+| Work location | Ubicación de trabajo | Yard Phase 1 card. Empty: “No work location yet.” / “Aún no hay ubicación de trabajo.” Not Presence. |
+| Upcoming Departures | Salidas próximas | Yard Phase 1 card. Empty: “No upcoming departures.” / “No hay salidas próximas.” |
 | Blocker | Bloqueo | Mechanic report or readiness gate |
 | Official pause | Pausa oficial | Manager pause; changes waiting time |
 | Reported blocker | Bloqueo reportado | Mechanic report; does not pause the WO |

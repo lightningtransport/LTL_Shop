@@ -242,7 +242,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await login(page);
     await page.evaluate(() => window.scrollTo(0, 1200));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-    await page.getByRole('link', { name: /Start Work/i }).first().click();
+    await page.getByRole('button', { name: /Start Work/i }).first().click();
     await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     const detailHeader = await page.getByRole('heading', { name: workOrder.displayId }).boundingBox();
@@ -365,8 +365,8 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(timeoutAlert).toBeVisible({ timeout: 12_000 });
     await page.getByRole('button', { name: /Try again|Retry work orders/i }).click();
     await expect(timeoutAlert).toHaveCount(0);
-    await expect(page.getByRole('link', { name: /Start Work/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Start Work WO-1001, truck 905' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Start Work/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start Work WO-1001, truck 905' })).toBeVisible();
   });
 
   test('keeps Home controls exclusive and uses logical back destinations', async ({ page }) => {
@@ -391,7 +391,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
     await page.getByRole('link', { name: 'Back to Home' }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
-    await page.getByRole('link', { name: /Start Work/i }).click();
+    await page.getByRole('button', { name: /Start Work/i }).click();
     await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
     await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
     await page.getByRole('link', { name: 'Back to Home' }).click();
@@ -442,11 +442,11 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
   test('Mechanic status chips and location copy follow the locale catalog', async ({ page }) => {
     await login(page);
-    const createdCard = page.locator('article').filter({ hasText: 'WO-1001' });
+    const createdCard = page.locator('.card').filter({ hasText: 'WO-1001' });
     await expect(createdCard.getByText('Created')).toBeVisible();
-    const activeCard = page.locator('article').filter({ hasText: 'WO-ACTIVE-1' });
+    const activeCard = page.locator('.card').filter({ hasText: 'WO-ACTIVE-1' });
     await expect(activeCard.getByText('In Progress')).toBeVisible();
-    const pausedCard = page.locator('article').filter({ hasText: 'WO-PAUSED-1' });
+    const pausedCard = page.locator('.card').filter({ hasText: 'WO-PAUSED-1' });
     await expect(pausedCard.getByText('Waiting for Parts')).toBeVisible();
 
     await page.getByRole('button', { name: 'Switch to Spanish' }).click();
@@ -457,10 +457,15 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(activeCard.getByText('In Progress')).toHaveCount(0);
     await expect(pausedCard.getByText('En espera de piezas')).toBeVisible();
     await expect(pausedCard.getByText('Waiting for Parts')).toHaveCount(0);
-    await expect(createdCard.getByRole('link', { name: 'Iniciar trabajo WO-1001, unidad 905' })).toBeVisible();
-    await expect(createdCard.getByRole('link', { name: /Start Work/i })).toHaveCount(0);
+    await expect(createdCard.getByRole('button', { name: 'Iniciar trabajo WO-1001, unidad 905' })).toBeVisible();
+    await expect(createdCard.getByRole('button', { name: /Start Work/i })).toHaveCount(0);
 
-    await createdCard.getByRole('link', { name: /Start Work|Iniciar/i }).click();
+    const started = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return request.method() === 'POST' && url.pathname === `/api/work-orders/${workOrder.id}/start`;
+    });
+    await createdCard.getByRole('button', { name: /Start Work|Iniciar trabajo/i }).click();
+    await started;
     await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
     await page.getByRole('button', { name: /Truck Information|Información/i }).click();
     await expect(page.getByText('Ubicación reportada')).toBeVisible();
@@ -631,6 +636,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await page.goto(`/work-orders/${workOrder.id}`);
     await expect(page.getByRole('heading', { name: workOrder.displayId })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Finish Work' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Confirm completion|Complete Work Order|Completar Work Order/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add job/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Report Blocker' })).toBeVisible();
     await expect(page.getByRole('status').filter({ hasText: /Jobs are done.*Manager closes this Work Order/i })).toBeVisible();
@@ -819,5 +825,66 @@ test.describe('My Assigned Work presentation', () => {
     await expect(page.getByRole('heading', { name: 'Active Jobs' })).toBeVisible();
     await expect(page.getByText('1 active job')).toBeVisible();
     await expect(activeCard.getByRole('link', { name: /View Work WO-ASSIGN-1/ })).toBeVisible();
+  });
+
+  test('Active Jobs empty does not ask Standard to create when work is ready or waiting on Manager', async ({ page }) => {
+    const readyToClose = {
+      ...assignedWorkOrder,
+      id: 'wo-ready-close',
+      displayId: 'WO-READY-1',
+      jobsCompleted: 3,
+      jobs: assignedWorkOrder.jobs.map((job) => ({ ...job, status: 'completed' })),
+    };
+    await page.route('**/api/**', async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path === '/api/auth/me') return json(route, { user });
+      if (path === '/api/work-orders' && request.method() === 'GET') {
+        return json(route, { created: [workOrder], active: [readyToClose], paused: [], completed: [] });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Ready to Start' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Waiting on Manager' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Active Jobs' })).toBeVisible();
+    await expect(page.getByText('No assigned work in progress.')).toBeVisible();
+    await expect(page.getByText(/Ask your Shop Manager to create a Work Order/i)).toHaveCount(0);
+  });
+
+  test('PM paused empty and count talk about services, not Jobs', async ({ page }) => {
+    const daniel = {
+      ...user,
+      id: 'daniel-1',
+      email: 'daniel@lightning.local',
+      name: 'Daniel',
+      pmAuthorized: true,
+      capabilities: ['mechanic.pm'],
+    };
+    await page.route('**/api/**', async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path === '/api/auth/me') return json(route, { user: daniel });
+      if (path === '/api/work-orders' && request.method() === 'GET') {
+        return json(route, { created: [], active: [], paused: [], completed: [] });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Active PM services' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Paused PM services' })).toBeVisible();
+    await expect(page.getByText('0 paused PM services')).toBeVisible();
+    await expect(page.getByText('No paused PM services. Paused work will appear here until it is resumed.')).toBeVisible();
+    await expect(page.getByText(/paused jobs/i)).toHaveCount(0);
+    await page.getByRole('button', { name: 'Switch to Spanish' }).click();
+    await expect(page.getByRole('heading', { name: 'Servicios de PM pausados' })).toBeVisible();
+    await expect(page.getByText('0 servicios de PM pausados')).toBeVisible();
+    await expect(page.getByText(/Jobs pausados/i)).toHaveCount(0);
   });
 });

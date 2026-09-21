@@ -7,11 +7,11 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
 import { YardWorkPlanService } from './yard-work-plan.service';
-import { AgentReportingClient } from '../integrations/agent-reporting/agent-reporting.client';
+import { YardDataBoundaryService } from './yard-data-boundary.service';
 
 @Module({
   imports: [AuthModule, TrucksModule, ActivityLogModule, WorkOrdersModule],
   controllers: [AdminController],
-  providers: [AdminService, YardOperationsService, YardWorkPlanService, AgentReportingClient],
+  providers: [AdminService, YardOperationsService, YardWorkPlanService, YardDataBoundaryService],
 })
 export class AdminModule {}

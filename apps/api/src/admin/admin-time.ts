@@ -79,3 +79,32 @@ export function getShopDashboardWindows(now = new Date()) {
     },
   } as const;
 }
+
+export function formatShopIsoDate(localDate: LocalDate): string {
+  return `${String(localDate.year).padStart(4, '0')}-${String(localDate.month).padStart(2, '0')}-${String(localDate.day).padStart(2, '0')}`;
+}
+
+/**
+ * Monday–Sunday calendar weeks in the Shop timezone. `from`/`to` are inclusive
+ * ISO dates (`YYYY-MM-DD`) for agent-reporting `out_from` / `out_to` filters.
+ */
+export function getShopWeekWindows(now = new Date()) {
+  const today = getShopLocalDate(now);
+  const weekday = new Date(Date.UTC(today.year, today.month - 1, today.day)).getUTCDay();
+  const daysFromMonday = weekday === 0 ? 6 : weekday - 1;
+  const thisMonday = addLocalDays(today, -daysFromMonday);
+  const thisSunday = addLocalDays(thisMonday, 6);
+  const nextMonday = addLocalDays(thisMonday, 7);
+  const nextSunday = addLocalDays(thisMonday, 13);
+  return {
+    timeZone: SHOP_TIME_ZONE,
+    thisWeek: {
+      from: formatShopIsoDate(thisMonday),
+      to: formatShopIsoDate(thisSunday),
+    },
+    nextWeek: {
+      from: formatShopIsoDate(nextMonday),
+      to: formatShopIsoDate(nextSunday),
+    },
+  } as const;
+}
