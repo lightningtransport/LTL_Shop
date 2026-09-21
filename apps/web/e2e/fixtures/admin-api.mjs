@@ -316,7 +316,11 @@ createServer(async (request, response) => {
         openOlderThan24h: { before: '2026-09-05T18:30:00.000Z' },
       },
       counts: { open: 3, waitingPaused: 1, highCriticalOpen: 2, openOlderThan24h: 1, completedToday: 1, completedLast7Days: 1 },
-      attention: workOrders.slice(0, 3),
+      attention: [
+        workOrders.find((item) => item.displayId === 'WO-0102'),
+        workOrders.find((item) => item.displayId === 'WO-0101'),
+        workOrders.find((item) => item.displayId === 'WO-0103'),
+      ],
     });
     return;
   }

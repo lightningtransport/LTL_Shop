@@ -95,6 +95,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const canEditFields = canManageWorkOrders && isOpen;
   const canOfficialPause = canManageWorkOrders && isOpen && data.category.name !== 'PM';
   const hasIncompleteJobs = data.category.name !== 'PM' && data.jobs.some((job) => job.status === 'to_do');
+  const readyToClose = canCompleteWorkOrder && !hasIncompleteJobs;
   const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
 
   async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
@@ -115,6 +116,27 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       setPendingAction(null);
     }
   }
+
+  const completeCard = canCompleteWorkOrder ? (
+    <Card className={readyToClose ? 'border-shop-accent/50 bg-shop-accent/5' : undefined}>
+      <CardHeader>
+        <CardTitle>{messages.completeWorkOrderTitle}</CardTitle>
+        <CardDescription>{messages.completeWorkOrderDescription}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {data.category.name === 'PM' ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
+        {hasIncompleteJobs ? <p className="text-sm text-destructive">{messages.completeWorkOrderIncompleteJobs}</p> : null}
+        {readyToClose ? <p className="text-sm font-medium">{messages.readyToCloseHint}</p> : null}
+        <Button
+          type="button"
+          disabled={Boolean(pendingAction) || hasIncompleteJobs}
+          onClick={() => void runMutation('complete', messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(data.id, data.version), (failure) => completeError(failure, messages))}
+        >
+          {messages.completeWorkOrderConfirm}
+        </Button>
+      </CardContent>
+    </Card>
+  ) : null;
 
   return <div className="space-y-5">
     <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
@@ -138,6 +160,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         {feedback.message}
       </p>
     ) : null}
+
+    {readyToClose ? completeCard : null}
 
     <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]" aria-label={messages.operationalSummary}>
       <Card>
@@ -272,25 +296,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </Card>
     ) : null}
 
-    {canCompleteWorkOrder ? (
-      <Card>
-        <CardHeader>
-          <CardTitle>{messages.completeWorkOrderTitle}</CardTitle>
-          <CardDescription>{messages.completeWorkOrderDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {data.category.name === 'PM' ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
-          {hasIncompleteJobs ? <p className="text-sm text-destructive">{messages.completeWorkOrderIncompleteJobs}</p> : null}
-          <Button
-            type="button"
-            disabled={Boolean(pendingAction) || hasIncompleteJobs}
-            onClick={() => void runMutation('complete', messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(data.id, data.version), (failure) => completeError(failure, messages))}
-          >
-            {messages.completeWorkOrderConfirm}
-          </Button>
-        </CardContent>
-      </Card>
-    ) : null}
+    {!readyToClose ? completeCard : null}
 
     {canCancelWorkOrder ? (
       <Card>

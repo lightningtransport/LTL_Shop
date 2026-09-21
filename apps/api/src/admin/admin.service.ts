@@ -69,6 +69,20 @@ function isUuid(id: string) {
   return UUID_RE.test(id);
 }
 
+function uniqueWorkOrders<T extends { id: string }>(groups: T[][], limit: number): T[] {
+  const seen = new Set<string>();
+  const selected: T[] = [];
+  for (const group of groups) {
+    for (const row of group) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      selected.push(row);
+      if (selected.length === limit) return selected;
+    }
+  }
+  return selected;
+}
+
 const mechanicCapabilityWhere: Prisma.UserWhereInput = {
   capabilities: {
     some: { capability: { in: [AppCapability.MECHANIC_STANDARD, AppCapability.MECHANIC_PM] } },
@@ -1685,7 +1699,7 @@ export class AdminService {
 
   private async getAttention(openWhere: Prisma.WorkOrderWhereInput) {
     const base = { include: summaryInclude, take: ATTENTION_LIMIT } as const;
-    const [critical, high, paused, stale] = await Promise.all([
+    const [critical, high, paused, stale, readyToClose] = await Promise.all([
       this.prisma.workOrder.findMany({
         ...base,
         where: { ...openWhere, priority: Priority.critical },
@@ -1714,9 +1728,17 @@ export class AdminService {
         },
         orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
       }),
+      this.prisma.workOrder.findMany({
+        ...base,
+        where: {
+          ...openWhere,
+          status: WorkOrderStatus.in_progress,
+          jobs: { none: { status: JobStatus.to_do } },
+        },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      }),
     ]);
-    return [...critical, ...high, ...paused, ...stale]
-      .slice(0, ATTENTION_LIMIT)
+    return uniqueWorkOrders([readyToClose, critical, high, paused, stale], ATTENTION_LIMIT)
       .map(toAdminSummary);
   }
 

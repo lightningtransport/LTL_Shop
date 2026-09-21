@@ -22,6 +22,9 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('es').readyToGo).toBe('Ready to Go');
     expect(getAdminMessages('en').closeDialog).toBe('Close');
     expect(getAdminMessages('es').closeDialog).toBe('Cerrar');
+    expect(getAdminMessages('en').readyToCloseHint).toMatch(/Confirm completion/);
+    expect(getAdminMessages('es').readyToCloseHint).toMatch(/finalización/);
+    expect(getAdminMessages('en').attentionBody).toMatch(/ready to close/);
     expect(getAdminMessages('es').yardSearch).toMatch(/Truck/);
     expect(getAdminMessages('en').noTrucksInPhase).toMatch(/this phase/);
     expect(getAdminMessages('es').noTrucksInPhase).toMatch(/esta fase/);
