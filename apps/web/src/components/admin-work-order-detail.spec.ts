@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../lib/api';
 import { getAdminMessages } from '../lib/admin-messages';
-import { pauseResumeError } from './admin-work-order-detail';
+import { pauseResumeError } from './pause-resume-error';
 
 describe('pauseResumeError', () => {
   const en = getAdminMessages('en');

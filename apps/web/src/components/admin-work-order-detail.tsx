@@ -9,6 +9,7 @@ import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admi
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
+import { pauseResumeError } from './pause-resume-error';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
@@ -833,19 +834,6 @@ function assignmentError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.assignmentGenericError;
-}
-export function pauseResumeError(errorValue: unknown, messages: AdminMessages) {
-  if (errorValue instanceof ApiError) {
-    if (errorValue.status === 400) {
-      const apiMessage = errorValue.message.trim();
-      if (/without pending jobs cannot be paused/i.test(apiMessage)) {
-        return messages.pauseWorkOrderBadRequest;
-      }
-      return apiMessage || messages.pauseWorkOrderBadRequest;
-    }
-    if (errorValue.status === 409) return messages.assignmentConflict;
-  }
-  return messages.pauseWorkOrderGenericError;
 }
 function cancelError(errorValue: unknown, messages: AdminMessages) {
   if (errorValue instanceof ApiError) {
