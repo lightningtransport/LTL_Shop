@@ -9,7 +9,9 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { apiFetch } from '@/lib/api';
 import { useWorkOrders } from '@/lib/shop-data';
+import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { pauseLabel, statusLabel } from '@/lib/format';
+import { useSWRConfig } from 'swr';
 import { isStandardWorkWaitingOnManager, jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
@@ -361,6 +363,7 @@ function StartWorkAction({
 }) {
   const { messages } = useShopLocale();
   const router = useRouter();
+  const { mutate } = useSWRConfig();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -370,6 +373,7 @@ function StartWorkAction({
     setError(null);
     try {
       await apiFetch(`/api/work-orders/${wo.id}/start`, { method: 'POST' });
+      await mutate(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
       router.push(`/work-orders/${wo.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : messages.loadError);
