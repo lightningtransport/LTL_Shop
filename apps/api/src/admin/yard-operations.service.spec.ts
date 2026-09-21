@@ -112,6 +112,7 @@ function slice2WorkOrderRow() {
 describe('YardOperationsService', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it('returns stable cursor pages and explicit unavailable integrations', async () => {
@@ -138,6 +139,30 @@ describe('YardOperationsService', () => {
     expect(next.items.map((item) => item.truck.truckNumber)).toEqual(['200']);
     expect(next.nextCursor).toBeNull();
     expect(JSON.stringify(prisma.truck.findMany.mock.calls[2][0].where)).toContain('100');
+  });
+
+  it('keeps open Work Orders in work location when agent-reporting fails', async () => {
+    vi.stubEnv('AGENT_REPORTING_KEY', 'secret');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('upstream')));
+    const prisma = createPrisma();
+    prisma.truck.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    prisma.workOrder.findMany.mockResolvedValue([{
+      displayId: 'WO-1',
+      truck: {
+        id: '00000000-0000-4000-8000-000000000001',
+        truckNumber: '600',
+        yardLocation: '301 Yard',
+        samsaraTruckLocation: null,
+      },
+    }]);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 1 });
+    expect(page.workLocation.items).toEqual([
+      expect.objectContaining({ truckNumber: '600', source: 'open_work_order', detail: 'WO-1' }),
+    ]);
+    expect(page.incomingTrucks).toMatchObject({ status: 'unavailable', reason: 'upstream_error' });
+    expect(page.upcomingDepartures).toMatchObject({ status: 'unavailable', reason: 'upstream_error' });
   });
 
   it('applies evidence-backed filters after deriving phase and blockers', async () => {

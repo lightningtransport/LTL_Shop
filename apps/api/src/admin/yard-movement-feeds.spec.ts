@@ -91,6 +91,17 @@ describe('yard movement feeds', () => {
     expect(feeds.workLocation.items).toHaveLength(1);
   });
 
+  it('keeps shop work when a reporting payload is missing after the key is present', () => {
+    const feeds = buildYardMovementFeeds({
+      shop: [{ id: '1', truckNumber: '600', workOrders: [{ displayId: 'WO-1' }] }],
+      reporting: { available: true, trucks: null, returns: null, driverPay: [] },
+    });
+    expect(feeds.workLocation.items.map((item) => item.truckNumber)).toEqual(['600']);
+    expect(feeds.incomingTrucks).toEqual(unavailableFeed('upstream_error'));
+    expect(feeds.upcomingDepartures.status).toBe('ok');
+    expect(feeds.upcomingDepartures.items).toEqual([]);
+  });
+
   it('reads nested reporting arrays', () => {
     expect(extractMovementRows({ rows: [{ unit: '602', date: '2026-09-21' }] }).map((row) => row.truckNumber)).toEqual(['602']);
   });
