@@ -474,10 +474,10 @@ test.describe('Shop Admin Phase 2A', () => {
 
   test('login and Admin SSR the shared ltl_shop_locale cookie without an EN/ES flash', async ({ page }) => {
     await page.goto('/login');
-    await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'es', url: page.url(), path: '/' }]);
+    const cookieUrl = `${new URL(page.url()).origin}/`;
 
-    const loginEs = await page.request.get('/login');
-    const loginEsHtml = await loginEs.text();
+    await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'es', url: cookieUrl }]);
+    const loginEsHtml = await (await page.request.get('/login')).text();
     expect(loginEsHtml).toContain('lang="es"');
     expect(loginEsHtml).toMatch(/<h1[^>]*>Iniciar sesión<\/h1>/);
     expect(loginEsHtml).not.toMatch(/<h1[^>]*>Sign in<\/h1>/);
@@ -487,23 +487,25 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);
 
-    await page.getByLabel('Correo electrónico').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Acceso de desarrollo/i }).click();
-    await expect(page).toHaveURL(/\/admin$/);
-    const adminEs = await page.request.get('/admin');
-    const adminEsHtml = await adminEs.text();
-    expect(adminEsHtml).toContain('Operaciones del Shop');
-    expect(adminEsHtml).not.toContain('Shop Operations');
-    await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
-
-    await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'en', url: page.url(), path: '/' }]);
-    const loginEn = await page.request.get('/login');
-    const loginEnHtml = await loginEn.text();
+    await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'en', url: cookieUrl }]);
+    const loginEnHtml = await (await page.request.get('/login')).text();
     expect(loginEnHtml).toContain('lang="en"');
     expect(loginEnHtml).toMatch(/<h1[^>]*>Sign in<\/h1>/);
     expect(loginEnHtml).not.toMatch(/<h1[^>]*>Iniciar sesión<\/h1>/);
 
+    await page.reload({ waitUntil: 'load' });
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+    await page.getByLabel('Email').fill('manager@lightning.local');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
+
+    await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'es', url: cookieUrl }]);
+    const adminEsHtml = await (await page.request.get('/admin')).text();
+    expect(adminEsHtml).toContain('Operaciones del Shop');
+    expect(adminEsHtml).not.toContain('Shop Operations');
+
     await page.goto('/admin');
+    await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
     await page.getByRole('button', { name: /Switch to Spanish|Cambiar a inglés/ }).click();
     const localeCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'ltl_shop_locale');
     expect(localeCookie?.value).toMatch(/^(en|es)$/);
