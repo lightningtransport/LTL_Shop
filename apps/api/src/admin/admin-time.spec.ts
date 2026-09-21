@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getShopDashboardWindows } from './admin-time';
+import { getShopDashboardWindows, getShopWeekWindows } from './admin-time';
 
 describe('Admin dashboard calendar windows', () => {
   it('uses the New York calendar day and handles spring DST', () => {
@@ -21,5 +21,23 @@ describe('Admin dashboard calendar windows', () => {
       to: '2026-11-02T05:00:00.000Z',
     });
     expect(windows.last7Days.from).toBe('2026-10-26T04:00:00.000Z');
+  });
+});
+
+describe('Admin Monday–Sunday week windows', () => {
+  it('treats Monday as the start of this week', () => {
+    expect(getShopWeekWindows(new Date('2026-09-21T16:00:00.000Z'))).toEqual({
+      timeZone: 'America/New_York',
+      thisWeek: { from: '2026-09-21', to: '2026-09-27' },
+      nextWeek: { from: '2026-09-28', to: '2026-10-04' },
+    });
+  });
+
+  it('keeps Sunday in the week that started the previous Monday', () => {
+    expect(getShopWeekWindows(new Date('2026-09-20T16:00:00.000Z'))).toEqual({
+      timeZone: 'America/New_York',
+      thisWeek: { from: '2026-09-14', to: '2026-09-20' },
+      nextWeek: { from: '2026-09-21', to: '2026-09-27' },
+    });
   });
 });

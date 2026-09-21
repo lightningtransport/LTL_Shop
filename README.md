@@ -29,6 +29,11 @@ Historical PRDs and plans do not override these sources.
   GETs TrucksDB `E` and upserts Shop rows by VIN + `truckNumber` (`E.CG` / `E.A`).
   It never writes Ninox and will not query Ninox again after a completed run.
   See [`docs/NINOX_TRUCK_SEED.md`](docs/NINOX_TRUCK_SEED.md).
+- **Yard Phase 1 cards:** Incoming Trucks, Upcoming Departures, and Work
+  location are proxied by Nest `GET /api/admin/yard/data-boundary` from
+  Lightning `agent-reporting`. The agent key is API-only
+  (`AGENT_REPORTING_KEY`, never `NEXT_PUBLIC_*`). See
+  [`docs/YARD_DATA_BOUNDARY.md`](docs/YARD_DATA_BOUNDARY.md).
 
 ## Locked product rules
 

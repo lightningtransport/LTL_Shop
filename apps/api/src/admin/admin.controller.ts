@@ -20,6 +20,7 @@ import { TrucksService } from '../trucks/trucks.service';
 import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
 import { YardWorkPlanService } from './yard-work-plan.service';
+import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { isYardWorkPlanSlice1Enabled } from './yard-work-plan-flag';
 
 @Controller('admin')
@@ -31,6 +32,7 @@ export class AdminController {
     private readonly trucks: TrucksService,
     private readonly yardOperations: YardOperationsService,
     private readonly workPlan: YardWorkPlanService,
+    private readonly dataBoundary: YardDataBoundaryService,
   ) {}
 
   @Get('access')
@@ -199,6 +201,11 @@ export class AdminController {
   @Get('yard-operations')
   yardOperationsList(@Query() query: Record<string, unknown>) {
     return this.yardOperations.list(query);
+  }
+
+  @Get('yard/data-boundary')
+  yardDataBoundary() {
+    return this.dataBoundary.get();
   }
 
   @Get('trucks/:id')
