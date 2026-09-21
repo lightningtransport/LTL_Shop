@@ -22,10 +22,34 @@ GET /api/admin/yard/data-boundary
 Authorization: Bearer <session>
 ```
 
-Shared TypeScript contract: `YardDataBoundaryDto` in `@ltl-shop/shared`.
+Shared TypeScript contract: `YardDataBoundaryDto` and PD-locked EN/ES copy
+`YARD_DATA_BOUNDARY_COPY` in `@ltl-shop/shared`.
 
 HTTP status is **200** for missing config and upstream failures so the Phase 1
 card can stay on screen. Read `status` per section.
+
+## PD-locked card copy (FE catalog)
+
+Import `YARD_DATA_BOUNDARY_COPY`. Nest does **not** send labels, empty copy, or
+the badge. Optional `message` is English only, and only for `unavailable` /
+`error`.
+
+Canonical English in ES UI (same as nav): **Work Order**, **Jobs**,
+**Incoming Trucks**. Presence stays out of scope.
+
+| Card | EN label | ES label | EN empty (`ok`, 0 rows) | ES empty |
+| --- | --- | --- | --- | --- |
+| Work location | Work location | Ubicación de trabajo | No work location yet. | Aún no hay ubicación de trabajo. |
+| Incoming Trucks | Incoming Trucks | Incoming Trucks | No incoming trucks. | No hay Incoming Trucks. |
+| Upcoming Departures | Upcoming Departures | Salidas próximas | No upcoming departures. | No hay salidas próximas. |
+
+Unavailable / error (both locales, both `status` values):
+
+- EN: `Data unavailable.` Badge `UNAVAILABLE`
+- ES: `Datos no disponibles.` Badge `NO DISPONIBLE`
+
+FE wiring: `ok` + items → list; `ok` + empty items → `empty`; `unavailable` or
+`error` → `unavailable` + badge. Locale from the Admin catalog, not from Nest.
 
 ### Example — live data (`status: 'ok'`)
 
@@ -72,8 +96,8 @@ card can stay on screen. Read `status` per section.
 
 ### Example — missing API key (`status: 'unavailable'`)
 
-Returned when `AGENT_REPORTING_KEY` is unset. Items are empty. Message is safe
-to show.
+Returned when `AGENT_REPORTING_KEY` is unset. Items are empty. `message` is the
+English PD string (FE still localizes from `YARD_DATA_BOUNDARY_COPY`).
 
 ```json
 {
@@ -86,39 +110,44 @@ to show.
   "workLocation": {
     "status": "unavailable",
     "items": [],
-    "message": "AGENT_REPORTING_KEY is not configured on the API. Phase 1 cards stay disconnected until a server-only agent-reporting key is set."
+    "message": "Data unavailable."
   },
   "incomingTrucks": {
     "status": "unavailable",
     "items": [],
-    "message": "AGENT_REPORTING_KEY is not configured on the API. Phase 1 cards stay disconnected until a server-only agent-reporting key is set."
+    "message": "Data unavailable."
   },
   "upcomingDepartures": {
     "status": "unavailable",
     "items": [],
-    "message": "AGENT_REPORTING_KEY is not configured on the API. Phase 1 cards stay disconnected until a server-only agent-reporting key is set."
+    "message": "Data unavailable."
   }
 }
 ```
 
 ### Example — upstream failure (`status: 'error'`)
 
-Sections fail independently. A failed section has empty `items` and a generic
-message (no key, no upstream body).
+Sections fail independently. A failed section has empty `items` and the same
+PD `message` (no key, no upstream body). `ok` with zero rows has **no**
+`message` — FE uses `YARD_DATA_BOUNDARY_COPY.*.empty`.
 
 ```json
 {
   "workLocation": {
     "status": "error",
     "items": [],
-    "message": "Yard movement data is temporarily unavailable."
+    "message": "Data unavailable."
+  },
+  "incomingTrucks": {
+    "status": "ok",
+    "items": []
   }
 }
 ```
 
-UI recommendation: `unavailable` keeps the existing Phase 1 UNAVAILABLE chip;
-`ok` renders the compact list; `error` is a recoverable retry on this card
-only.
+UI recommendation: `unavailable` / `error` use the UNAVAILABLE badge plus
+`Data unavailable.` / `Datos no disponibles.`; `ok` with rows renders the
+compact list; `ok` with zero rows uses the empty copy above.
 
 ## Mapping
 
@@ -152,4 +181,5 @@ AGENT_REPORTING_URL=https://aaqquwhdglueqlnbifvn.supabase.co/functions/v1/agent-
 ```
 
 Set these on the Nest API host (Vercel `ltl-shop-api` prod + preview). Never
-`NEXT_PUBLIC_AGENT_REPORTING_KEY`.
+`NEXT_PUBLIC_AGENT_REPORTING_KEY`. Ops sets `AGENT_REPORTING_KEY` on Vercel
+separately from this PR.

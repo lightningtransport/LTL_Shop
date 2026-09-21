@@ -309,8 +309,8 @@ describe('shared contracts', () => {
         thisWeek: { from: '2026-09-21', to: '2026-09-27' },
         nextWeek: { from: '2026-09-28', to: '2026-10-04' },
       },
-      workLocation: { status: 'unavailable', items: [], message: 'missing key' },
-      incomingTrucks: { status: 'error', items: [], message: 'upstream' },
+      workLocation: { status: 'unavailable', items: [], message: 'Data unavailable.' },
+      incomingTrucks: { status: 'error', items: [], message: 'Data unavailable.' },
       upcomingDepartures: {
         status: 'ok',
         items: [{ truckNumber: '905', outDate: '2026-09-23', window: 'this_week' }],

@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type {
-  YardDataBoundaryDto,
-  YardDataBoundarySectionDto,
-  YardIncomingTruckItemDto,
-  YardUpcomingDepartureItemDto,
-  YardWorkLocationSectionDto,
+import {
+  YARD_DATA_BOUNDARY_SECTION_MESSAGE,
+  type YardDataBoundaryDto,
+  type YardDataBoundarySectionDto,
+  type YardIncomingTruckItemDto,
+  type YardUpcomingDepartureItemDto,
+  type YardWorkLocationSectionDto,
 } from '@ltl-shop/shared';
 import {
   AgentReportingClient,
@@ -14,8 +15,6 @@ import {
 } from '../integrations/agent-reporting/agent-reporting.client';
 import { getShopWeekWindows } from './admin-time';
 import {
-  AGENT_REPORTING_UPSTREAM_ERROR_MESSAGE,
-  MISSING_AGENT_REPORTING_KEY_MESSAGE,
   mapIncomingTrucks,
   mapUpcomingDepartures,
   mapWorkLocationItems,
@@ -38,13 +37,13 @@ export class YardDataBoundaryService {
       reportingConfig = getAgentReportingConfig(this.envSnapshot());
     } catch (error) {
       if (error instanceof AgentReportingConfigError) {
-        return this.emptyBoundary(asOf, windows, 'error', AGENT_REPORTING_UPSTREAM_ERROR_MESSAGE);
+        return this.emptyBoundary(asOf, windows, 'error');
       }
       throw error;
     }
 
     if (!reportingConfig) {
-      return this.emptyBoundary(asOf, windows, 'unavailable', MISSING_AGENT_REPORTING_KEY_MESSAGE);
+      return this.emptyBoundary(asOf, windows, 'unavailable');
     }
 
     const client = new AgentReportingClient(reportingConfig, fetchImpl);
@@ -70,8 +69,8 @@ export class YardDataBoundaryService {
     asOf: string,
     windows: ShopWeekWindows,
     status: 'unavailable' | 'error',
-    message: string,
   ): YardDataBoundaryDto {
+    const message = YARD_DATA_BOUNDARY_SECTION_MESSAGE;
     return {
       asOf,
       windows,
@@ -87,7 +86,7 @@ export class YardDataBoundaryService {
       const mapped = mapWorkLocationItems(rows);
       return { status: 'ok', items: mapped.items, ...(mapped.summary ? { summary: mapped.summary } : {}) };
     } catch {
-      return { status: 'error', items: [], message: AGENT_REPORTING_UPSTREAM_ERROR_MESSAGE };
+      return { status: 'error', items: [], message: YARD_DATA_BOUNDARY_SECTION_MESSAGE };
     }
   }
 
@@ -99,7 +98,7 @@ export class YardDataBoundaryService {
       const { rows } = await client.listAll('returns');
       return { status: 'ok', items: mapIncomingTrucks(rows, windows) };
     } catch {
-      return { status: 'error', items: [], message: AGENT_REPORTING_UPSTREAM_ERROR_MESSAGE };
+      return { status: 'error', items: [], message: YARD_DATA_BOUNDARY_SECTION_MESSAGE };
     }
   }
 
@@ -114,7 +113,7 @@ export class YardDataBoundaryService {
       });
       return { status: 'ok', items: mapUpcomingDepartures(rows, windows) };
     } catch {
-      return { status: 'error', items: [], message: AGENT_REPORTING_UPSTREAM_ERROR_MESSAGE };
+      return { status: 'error', items: [], message: YARD_DATA_BOUNDARY_SECTION_MESSAGE };
     }
   }
 }

@@ -492,6 +492,13 @@ export interface YardUpcomingDepartureItemDto {
 export interface YardDataBoundarySectionDto<T> {
   status: YardDataBoundaryStatus;
   items: T[];
+  /**
+   * Set only for `unavailable` and `error`. Nest sends the English PD string
+   * `YARD_DATA_BOUNDARY_COPY.en.unavailable` ("Data unavailable.").
+   * FE localizes labels, empty states, and the UNAVAILABLE badge from
+   * `YARD_DATA_BOUNDARY_COPY`. Do not send empty-state copy when `status` is
+   * `ok` and `items` is empty.
+   */
   message?: string;
 }
 
@@ -506,6 +513,10 @@ export interface YardWorkLocationSectionDto extends YardDataBoundarySectionDto<Y
 /**
  * Server-side agent-reporting proxy for Admin Yard Phase 1 cards.
  * Presence / geofence is intentionally absent.
+ *
+ * Card copy (PD 2026-09-21) lives in `YARD_DATA_BOUNDARY_COPY`:
+ * labels, empty (`ok` + 0 rows), unavailable/error, and the UNAVAILABLE badge.
+ * Canonical English in ES UI: Work Order, Jobs, Incoming Trucks.
  */
 export interface YardDataBoundaryDto {
   asOf: string;

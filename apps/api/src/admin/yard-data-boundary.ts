@@ -189,8 +189,3 @@ export function mapUpcomingDepartures(
     );
 }
 
-export const MISSING_AGENT_REPORTING_KEY_MESSAGE =
-  'AGENT_REPORTING_KEY is not configured on the API. Phase 1 cards stay disconnected until a server-only agent-reporting key is set.';
-
-export const AGENT_REPORTING_UPSTREAM_ERROR_MESSAGE =
-  'Yard movement data is temporarily unavailable.';

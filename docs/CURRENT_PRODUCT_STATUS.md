@@ -105,7 +105,8 @@ TARGET authorization/UX.
   (`docs/YARD_DATA_BOUNDARY.md`). That Nest proxy maps agent-reporting
   `returns`, `driver_pay`, and `trucks.yard_location` when
   `AGENT_REPORTING_KEY` is set on the API; it never exposes the key to the
-  web app. Schedule_Teams is not unioned yet.
+  web app. PD-locked EN/ES card copy lives in `YARD_DATA_BOUNDARY_COPY`.
+  Schedule_Teams is not unioned yet. Presence stays `UNKNOWN`.
 - Users with both `admin.access` and `yard.operations.manage` can start or close
   a readiness assessment, update its six requirements, and explicitly mark it
   Ready when the rules pass. These mutations use server authorization,

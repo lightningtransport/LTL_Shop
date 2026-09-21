@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
+import { YARD_DATA_BOUNDARY_SECTION_MESSAGE } from '@ltl-shop/shared';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
-import {
-  AGENT_REPORTING_UPSTREAM_ERROR_MESSAGE,
-  MISSING_AGENT_REPORTING_KEY_MESSAGE,
-} from './yard-data-boundary';
 import { DEFAULT_AGENT_REPORTING_URL } from '../integrations/agent-reporting/agent-reporting.client';
 
 const NOW = new Date('2026-09-21T16:00:00.000Z');
@@ -33,11 +30,13 @@ describe('YardDataBoundaryService', () => {
     expect(dto.workLocation).toEqual({
       status: 'unavailable',
       items: [],
-      message: MISSING_AGENT_REPORTING_KEY_MESSAGE,
+      message: YARD_DATA_BOUNDARY_SECTION_MESSAGE,
     });
     expect(dto.incomingTrucks.status).toBe('unavailable');
     expect(dto.upcomingDepartures.status).toBe('unavailable');
+    expect(dto.workLocation.message).toBe('Data unavailable.');
     expect(JSON.stringify(dto)).not.toMatch(/NEXT_PUBLIC/);
+    expect(JSON.stringify(dto)).not.toContain('AGENT_REPORTING_KEY');
   });
 
   it('maps mocked agent-reporting pages into the FE contract', async () => {
@@ -105,6 +104,9 @@ describe('YardDataBoundaryService', () => {
         drivers: ['Kai'],
       },
     ]);
+    expect(dto.workLocation.message).toBeUndefined();
+    expect(dto.incomingTrucks.message).toBeUndefined();
+    expect(dto.upcomingDepartures.message).toBeUndefined();
     expect(JSON.stringify(dto)).not.toContain('server-only-key');
     expect(String(fetchImpl.mock.calls[0][0])).toContain(new URL(DEFAULT_AGENT_REPORTING_URL).host);
   });
@@ -129,11 +131,13 @@ describe('YardDataBoundaryService', () => {
     expect(dto.workLocation).toEqual({
       status: 'error',
       items: [],
-      message: AGENT_REPORTING_UPSTREAM_ERROR_MESSAGE,
+      message: YARD_DATA_BOUNDARY_SECTION_MESSAGE,
     });
-    expect(dto.incomingTrucks.status).toBe('ok');
-    expect(dto.upcomingDepartures.status).toBe('ok');
+    expect(dto.incomingTrucks).toEqual({ status: 'ok', items: [] });
+    expect(dto.upcomingDepartures).toEqual({ status: 'ok', items: [] });
+    expect(dto.incomingTrucks.message).toBeUndefined();
     expect(JSON.stringify(dto)).not.toContain('server-only-key');
+    expect(dto.workLocation.message).toBe('Data unavailable.');
     expect(dto.workLocation.message).not.toContain('500');
   });
 });
