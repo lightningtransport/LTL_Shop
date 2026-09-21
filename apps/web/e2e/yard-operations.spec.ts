@@ -212,11 +212,12 @@ test.describe('Yard Operations Phase 1', () => {
       });
     });
     await page.reload();
+    await page.getByRole('button', { name: /Phase 1 data boundary|Límite de datos de la Fase 1/ }).click();
     await expect(page.getByTestId('yard-data-boundary-workLocation')).toHaveAttribute('data-kind', 'unavailable');
-    await expect(page.getByTestId('yard-data-boundary-workLocation').getByText('UNAVAILABLE')).toBeVisible();
+    await expect(page.getByTestId('yard-data-boundary-workLocation').getByText('UNAVAILABLE', { exact: true })).toBeVisible();
     await expect(page.getByTestId('yard-data-boundary-workLocation').getByText('Data unavailable.')).toBeVisible();
     await expect(page.getByTestId('yard-data-boundary-incomingTrucks')).toHaveAttribute('data-kind', 'unavailable');
-    await expect(page.getByTestId('yard-data-boundary-incomingTrucks').getByText('UNAVAILABLE')).toBeVisible();
+    await expect(page.getByTestId('yard-data-boundary-incomingTrucks').getByText('UNAVAILABLE', { exact: true })).toBeVisible();
     await expect(page.getByTestId('yard-data-boundary-upcomingDepartures')).toHaveAttribute('data-kind', 'empty');
     await expect(page.getByTestId('yard-data-boundary-upcomingDepartures').getByText('No upcoming departures.')).toBeVisible();
     await expect(page.getByText(/in the yard|en el patio/i)).toHaveCount(0);
@@ -224,10 +225,11 @@ test.describe('Yard Operations Phase 1', () => {
     const cookieUrl = `${new URL(page.url()).origin}/`;
     await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'es', url: cookieUrl }]);
     await page.reload();
-    await expect(page.getByTestId('yard-data-boundary-workLocation').getByText('NO DISPONIBLE')).toBeVisible();
+    await page.getByRole('button', { name: 'Límite de datos de la Fase 1' }).click();
+    await expect(page.getByTestId('yard-data-boundary-workLocation').getByText('NO DISPONIBLE', { exact: true })).toBeVisible();
     await expect(page.getByTestId('yard-data-boundary-workLocation').getByText('Datos no disponibles.')).toBeVisible();
     await expect(page.getByTestId('yard-data-boundary-incomingTrucks').getByText('Incoming Trucks', { exact: true })).toBeVisible();
-    await expect(page.getByTestId('yard-data-boundary-incomingTrucks').getByText('NO DISPONIBLE')).toBeVisible();
+    await expect(page.getByTestId('yard-data-boundary-incomingTrucks').getByText('NO DISPONIBLE', { exact: true })).toBeVisible();
     await expect(page.getByTestId('yard-data-boundary-upcomingDepartures').getByText('No hay salidas próximas.')).toBeVisible();
   });
 

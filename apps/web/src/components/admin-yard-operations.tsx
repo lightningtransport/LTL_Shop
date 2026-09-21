@@ -153,6 +153,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           boundary={boundary}
           loading={boundaryLoading && !boundary}
           fetchFailed={Boolean(boundaryError) && !boundary}
+          expanded={phase1Open}
         />
       </div>
     </Card>

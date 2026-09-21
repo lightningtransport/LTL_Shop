@@ -16,7 +16,7 @@ import {
   yardDataBoundaryCopy,
   type YardDataBoundaryCardKind,
 } from '@/lib/yard-data-boundary';
-import { Badge, CompactEmpty } from './ui';
+import { Badge } from './ui';
 
 const ICONS = {
   workLocation: Truck,
@@ -29,11 +29,13 @@ export function AdminYardDataBoundaryCards({
   boundary,
   loading,
   fetchFailed,
+  expanded,
 }: {
   locale: AdminLocale;
   boundary: YardDataBoundaryDto | undefined;
   loading: boolean;
   fetchFailed: boolean;
+  expanded: boolean;
 }) {
   const copy = yardDataBoundaryCopy(locale);
   const options = { loading, fetchFailed };
@@ -48,6 +50,8 @@ export function AdminYardDataBoundaryCards({
         empty={copy.workLocation.empty}
         unavailable={copy.unavailable}
         badge={copy.badge}
+        expanded={expanded}
+        preview={workLocationPreview(boundary?.workLocation.items ?? [], boundary?.workLocation.summary)}
       >
         {boundary?.workLocation.status === 'ok' ? (
           <WorkLocationItems items={boundary.workLocation.items} summary={boundary.workLocation.summary} />
@@ -61,13 +65,11 @@ export function AdminYardDataBoundaryCards({
         empty={copy.incomingTrucks.empty}
         unavailable={copy.unavailable}
         badge={copy.badge}
+        expanded={expanded}
+        preview={movementPreview(locale, boundary?.incomingTrucks.items ?? [], 'returnDate')}
       >
         {boundary?.incomingTrucks.status === 'ok' ? (
-          <MovementItems
-            locale={locale}
-            items={boundary.incomingTrucks.items}
-            dateKey="returnDate"
-          />
+          <MovementItems locale={locale} items={boundary.incomingTrucks.items} dateKey="returnDate" />
         ) : null}
       </BoundaryCard>
       <BoundaryCard
@@ -78,13 +80,11 @@ export function AdminYardDataBoundaryCards({
         empty={copy.upcomingDepartures.empty}
         unavailable={copy.unavailable}
         badge={copy.badge}
+        expanded={expanded}
+        preview={movementPreview(locale, boundary?.upcomingDepartures.items ?? [], 'outDate')}
       >
         {boundary?.upcomingDepartures.status === 'ok' ? (
-          <MovementItems
-            locale={locale}
-            items={boundary.upcomingDepartures.items}
-            dateKey="outDate"
-          />
+          <MovementItems locale={locale} items={boundary.upcomingDepartures.items} dateKey="outDate" />
         ) : null}
       </BoundaryCard>
     </div>
@@ -99,6 +99,8 @@ function BoundaryCard({
   empty,
   unavailable,
   badge,
+  expanded,
+  preview,
   children,
 }: {
   cardId: 'workLocation' | 'incomingTrucks' | 'upcomingDepartures';
@@ -108,6 +110,8 @@ function BoundaryCard({
   empty: string;
   unavailable: string;
   badge: string;
+  expanded: boolean;
+  preview: string;
   children: ReactNode;
 }) {
   const ariaLabel = kind === 'unavailable' ? `${label}. ${unavailable}` : kind === 'empty' ? `${label}. ${empty}` : label;
@@ -126,6 +130,8 @@ function BoundaryCard({
         <Icon aria-hidden="true" className="size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 basis-24 whitespace-normal break-words text-foreground">{label}</span>
         {kind === 'unavailable' ? <Badge variant="secondary" className="shrink-0">{badge}</Badge> : null}
+        {kind === 'empty' && !expanded ? <span className="min-w-0 basis-28 truncate">{empty}</span> : null}
+        {kind === 'ok' && !expanded && preview ? <span className="min-w-0 basis-28 truncate">{preview}</span> : null}
       </div>
       {kind === 'loading' ? (
         <div className="mt-1.5 space-y-1" aria-hidden="true">
@@ -133,11 +139,32 @@ function BoundaryCard({
           <div className="h-2.5 w-16 animate-pulse rounded bg-muted" />
         </div>
       ) : null}
-      {kind === 'unavailable' ? <p className="mt-1 whitespace-normal break-words">{unavailable}</p> : null}
-      {kind === 'empty' ? <CompactEmpty className="mt-1 px-2 py-1 text-[11px]">{empty}</CompactEmpty> : null}
-      {kind === 'ok' ? <div className="mt-1.5">{children}</div> : null}
+      {kind === 'unavailable' && expanded ? <p className="mt-1 whitespace-normal break-words">{unavailable}</p> : null}
+      {kind === 'empty' && expanded ? <p className="mt-1 whitespace-normal break-words">{empty}</p> : null}
+      {kind === 'ok' && expanded ? <div className="mt-1.5">{children}</div> : null}
     </div>
   );
+}
+
+function workLocationPreview(items: YardWorkLocationItemDto[], summary?: string) {
+  if (summary) return summary;
+  const first = items[0];
+  if (!first) return '';
+  return first.location ? `${first.truckNumber} · ${first.location}` : first.truckNumber;
+}
+
+function movementPreview(
+  locale: AdminLocale,
+  items: Array<YardIncomingTruckItemDto | YardUpcomingDepartureItemDto>,
+  dateKey: 'returnDate' | 'outDate',
+) {
+  const first = items[0];
+  if (!first) return '';
+  const date = dateKey === 'returnDate'
+    ? (first as YardIncomingTruckItemDto).returnDate
+    : (first as YardUpcomingDepartureItemDto).outDate;
+  const formatted = formatAdminDateOnly(date, locale);
+  return date ? `${first.truckNumber} · ${formatted}` : first.truckNumber;
 }
 
 function WorkLocationItems({
