@@ -53,6 +53,9 @@ function createPrisma() {
       findUnique: vi.fn(),
       count: vi.fn().mockResolvedValue(0),
     },
+    workOrder: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   };
 }
 
@@ -127,8 +130,9 @@ describe('YardOperationsService', () => {
     expect(page.items.map((item) => item.truck.truckNumber)).toEqual(['100']);
     expect(page.nextCursor).toBeTypeOf('string');
     expect(page.counts).toEqual({ underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
-    expect(page.incomingTrucks).toEqual({ status: 'unavailable', reason: 'integration_not_connected' });
-    expect(page.upcomingDepartures).toEqual({ status: 'unavailable', reason: 'integration_not_connected' });
+    expect(page.workLocation).toEqual({ status: 'ok', items: [], total: 0 });
+    expect(page.incomingTrucks).toEqual({ status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 });
+    expect(page.upcomingDepartures).toEqual({ status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 });
 
     const next = await service.list({ limit: 1, cursor: page.nextCursor });
     expect(next.items.map((item) => item.truck.truckNumber)).toEqual(['200']);

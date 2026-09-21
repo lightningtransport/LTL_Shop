@@ -54,10 +54,10 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('presence');
     expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('presencia');
     expect(getAdminMessages('en').yardOperationsPhase1Body).toBe(
-      'Work location, incoming Trucks, and upcoming departures are not connected yet. This view shows maintenance readiness only — not physical yard presence or dispatch.',
+      'Shop work plus expected arrivals and departures. A reported yard location is not GPS presence or dispatch confirmation.',
     );
     expect(getAdminMessages('es').yardOperationsPhase1Body).toBe(
-      'La ubicación de trabajo, llegadas y próximas salidas aún no están conectadas. Esta vista muestra solo readiness de mantenimiento — no presencia física en el yard ni despacho.',
+      'Trabajo de taller más llegadas y salidas esperadas. Una ubicación reportada no es presencia GPS ni confirmación de despacho.',
     );
     expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
     expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');

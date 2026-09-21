@@ -366,8 +366,9 @@ export interface YardOperationsCountsDto {
 
 export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto> {
   counts: YardOperationsCountsDto;
-  incomingTrucks: YardOperationsUnavailableDto;
-  upcomingDepartures: YardOperationsUnavailableDto;
+  workLocation: YardFeedDto;
+  incomingTrucks: YardFeedDto;
+  upcomingDepartures: YardFeedDto;
   /**
    * Slice 2 board cutover (`YARD_WORK_PLAN_SLICE2`). When true, board columns
    * follow Work Plan phases (incl. `shop_work`) instead of Phase 1 gates.
@@ -453,6 +454,23 @@ export interface TruckWorkPlanDto {
 export interface YardOperationsUnavailableDto {
   status: 'unavailable';
   reason: 'integration_not_connected';
+}
+
+export type YardFeedSource = 'open_work_order' | 'reported_yard' | 'expected_return' | 'planned_out';
+
+export interface YardFeedItemDto {
+  truckNumber: string;
+  truckId: string | null;
+  detail: string | null;
+  scheduledOn: string | null;
+  source: YardFeedSource;
+}
+
+export interface YardFeedDto {
+  status: 'ok' | 'unavailable';
+  reason?: 'integration_not_connected' | 'upstream_error';
+  items: YardFeedItemDto[];
+  total: number;
 }
 
 export interface PmPartDto {

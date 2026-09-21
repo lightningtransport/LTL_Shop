@@ -25,17 +25,24 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible({ timeout: 15_000 });
   });
 
-  test('shows Phase 1 unavailable boundary and real URL filters', async ({ page }) => {
+  test('shows yard movement feeds and real URL filters', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Phase 1 data boundary' }).click();
-    await expect(page.getByText('Work location, incoming Trucks, and upcoming departures are not connected yet. This view shows maintenance readiness only — not physical yard presence or dispatch.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Yard movement' })).toBeVisible();
+    await expect(page.getByText('Shop work plus expected arrivals and departures. A reported yard location is not GPS presence or dispatch confirmation.')).toBeVisible();
     await expect(page.getByText(/in the yard|en el patio/i)).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
-    await expect(page.getByRole('status', { name: 'Incoming Trucks unavailable' })).toBeVisible();
-    await expect(page.getByRole('status', { name: 'Upcoming Departures unavailable' })).toBeVisible();
-    await expect(page.getByRole('status', { name: 'Incoming Trucks unavailable' }).getByText('Incoming Trucks', { exact: true })).toBeVisible();
-    await expect(page.getByRole('status', { name: 'Upcoming Departures unavailable' }).getByText('Upcoming Departures', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'In shop / at yard' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Incoming Trucks', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Upcoming Departures', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /In shop \/ at yard/ }).click();
+    await expect(page.getByRole('link', { name: 'Y-102', exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Open Work Order · WO-0102')).toBeVisible();
+    await expect(page.getByText('Reported at yard')).toBeVisible();
+    await page.getByRole('button', { name: /Incoming Trucks/ }).click();
+    await expect(page.getByText('609')).toBeVisible();
+    await page.getByRole('button', { name: /Upcoming Departures/ }).click();
+    await expect(page.getByText('614')).toBeVisible();
     await expect(page.getByTestId('yard-truck-card').getByText('Last reported location')).toHaveCount(0);
     await page.getByLabel('Search Truck or Work Order').fill('Y-103');
     await expect(page).toHaveURL(/search=Y-103/, { timeout: 5_000 });
@@ -177,9 +184,9 @@ test.describe('Yard Operations Phase 1', () => {
       const searchClipped = await search.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
       expect(searchClipped, `search field clips at ${width}px`).toBe(false);
 
-      const workLocation = page.getByRole('status', { name: 'Work location is not connected' }).getByText('Work location', { exact: true });
-      const incoming = page.getByRole('status', { name: 'Incoming Trucks unavailable' }).getByText('Incoming Trucks', { exact: true });
-      const departures = page.getByRole('status', { name: 'Upcoming Departures unavailable' }).getByText('Upcoming Departures', { exact: true });
+      const workLocation = page.getByRole('heading', { name: 'In shop / at yard' });
+      const incoming = page.getByRole('heading', { name: 'Incoming Trucks', exact: true });
+      const departures = page.getByRole('heading', { name: 'Upcoming Departures', exact: true });
       await assertLabelUnclipped(workLocation, 'Work location', width);
       await assertLabelUnclipped(incoming, 'Incoming Trucks', width);
       await assertLabelUnclipped(departures, 'Upcoming Departures', width);

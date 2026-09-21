@@ -54,6 +54,8 @@ import {
   type WorkPlanDerivationInput,
 } from './yard-work-plan-derivation';
 import { isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
+import { buildYardMovementFeeds, unavailableFeed, type ShopMovementTruck } from './yard-movement-feeds';
+import { AgentReportingClient } from '../integrations/agent-reporting/agent-reporting.client';
 
 const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
   OR: [
@@ -181,6 +183,7 @@ export class YardOperationsService {
     private readonly prisma: PrismaService,
     private readonly trucks: TrucksService,
     private readonly activity: ActivityLogService,
+    private readonly reporting = new AgentReportingClient(),
   ) {}
 
   async startAssessment(user: AuthUser, truckId: string, raw: unknown) {
@@ -722,13 +725,15 @@ export class YardOperationsService {
     }
 
     const counts = await this.getCounts();
+    const feeds = await this.movementFeeds();
 
     return {
       items,
       nextCursor: hasMore && items.length ? this.encodeCursorFromItem(items[items.length - 1]) : null,
       counts,
-      incomingTrucks: this.unavailable(),
-      upcomingDepartures: this.unavailable(),
+      workLocation: feeds.workLocation,
+      incomingTrucks: feeds.incomingTrucks,
+      upcomingDepartures: feeds.upcomingDepartures,
       workPlanBoardCutover: isYardWorkPlanSlice2Enabled(),
     };
   }
@@ -956,6 +961,49 @@ export class YardOperationsService {
 
   private unavailable(): YardOperationsUnavailableDto {
     return { status: 'unavailable', reason: 'integration_not_connected' };
+  }
+
+  private async movementFeeds() {
+    try {
+      const [openWork, reporting] = await Promise.all([
+        this.prisma.workOrder.findMany({
+          where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+          select: {
+            displayId: true,
+            truck: {
+              select: {
+                id: true,
+                truckNumber: true,
+                yardLocation: true,
+                samsaraTruckLocation: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.reporting.fetchReports(),
+      ]);
+      const seen = new Set<string>();
+      const shop: ShopMovementTruck[] = [];
+      for (const row of openWork) {
+        if (!row.truck || seen.has(row.truck.id)) continue;
+        seen.add(row.truck.id);
+        shop.push({
+          id: row.truck.id,
+          truckNumber: row.truck.truckNumber,
+          yardLocation: row.truck.yardLocation,
+          samsaraTruckLocation: row.truck.samsaraTruckLocation,
+          workOrders: [{ displayId: row.displayId }],
+        });
+      }
+      return buildYardMovementFeeds({ shop, reporting });
+    } catch {
+      return {
+        workLocation: unavailableFeed('upstream_error'),
+        incomingTrucks: unavailableFeed('upstream_error'),
+        upcomingDepartures: unavailableFeed('upstream_error'),
+      };
+    }
   }
 }
 

@@ -47,8 +47,9 @@ function yardPage(cutover: boolean) {
     ],
     nextCursor: null,
     counts: { underReview: 1, readyToGo: 0, blocked: 0, presenceUnknown: 1 },
-    incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' },
-    upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' },
+    workLocation: { status: 'ok', items: [], total: 0 },
+    incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 },
+    upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 },
     workPlanBoardCutover: cutover,
   };
 }
