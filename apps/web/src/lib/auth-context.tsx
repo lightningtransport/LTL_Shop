@@ -18,6 +18,11 @@ import {
   SESSION_RESTORE_TIMEOUT_MS,
   withDeadline,
 } from './session-restore';
+import {
+  policyRequiresPasswordChange,
+  readPasswordChangeResolved,
+  writePasswordChangeResolved,
+} from './password-change-prompt';
 import { passwordResetRedirectUrl } from './site-url';
 
 type AuthState = {
@@ -26,12 +31,15 @@ type AuthState = {
   sessionLoading: boolean;
   profileLoading: boolean;
   passwordRecovery: boolean;
+  mustChangePassword: boolean;
+  passwordChangeResolved: boolean;
   error: string | null;
   sessionError: string | null;
   login: (email: string, password: string) => Promise<UserDto>;
   loginDev: (email: string) => Promise<UserDto>;
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
+  dismissPasswordChange: () => void;
   logout: () => Promise<void>;
   retrySession: () => void;
 };
@@ -58,6 +66,15 @@ function getSupabaseClient() {
   return supabaseClientPromise;
 }
 
+function browserSessionStorage() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserDto | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -71,15 +88,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [sessionAttempt, setSessionAttempt] = useState(0);
+  const [passwordChangeResolved, setPasswordChangeResolved] = useState(false);
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
   const profilePromiseRef = useRef<{ token: string; promise: Promise<UserDto> } | null>(null);
+  const userIdRef = useRef<string | null>(null);
+  const wasPasswordRecoveryRef = useRef(false);
+  const pendingRecoveryResetRef = useRef(false);
+  userIdRef.current = user?.id ?? null;
+
+  const sessionUserId = user?.id ?? null;
+  if (sessionUserId !== resolvedUserId) {
+    setResolvedUserId(sessionUserId);
+    setPasswordChangeResolved(sessionUserId ? readPasswordChangeResolved(sessionUserId, browserSessionStorage()) : false);
+  }
+
+  const markPasswordChangeResolved = useCallback(() => {
+    setPasswordChangeResolved(true);
+    const id = userIdRef.current;
+    if (id) writePasswordChangeResolved(id, true, browserSessionStorage());
+  }, []);
 
   const clearSession = useCallback(async () => {
+    const id = userIdRef.current;
+    if (id) writePasswordChangeResolved(id, false, browserSessionStorage());
     localStorage.removeItem(AUTH_TOKEN_KEY);
     setAuthToken(null);
     setUser(null);
     setToken(null);
     setProfileLoading(false);
     setPasswordRecovery(false);
+    setPasswordChangeResolved(false);
     profilePromiseRef.current = null;
     await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => undefined);
   }, []);
@@ -152,6 +190,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('ltl-auth-expired', onExpired);
     return () => window.removeEventListener('ltl-auth-expired', onExpired);
   }, [clearSession]);
+
+  useEffect(() => {
+    const recoveryStarted = passwordRecovery && !wasPasswordRecoveryRef.current;
+    wasPasswordRecoveryRef.current = passwordRecovery;
+    if (recoveryStarted) pendingRecoveryResetRef.current = true;
+    if (!pendingRecoveryResetRef.current || !user?.id) return;
+    pendingRecoveryResetRef.current = false;
+    writePasswordChangeResolved(user.id, false, browserSessionStorage());
+    setPasswordChangeResolved(false);
+  }, [passwordRecovery, user?.id]);
 
   useEffect(() => {
     if (!sessionError) return;
@@ -278,7 +326,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = await getSupabaseClient();
     const { error: authError } = await supabase.auth.updateUser({ password });
     if (authError) throw new Error(authError.message);
-  }, []);
+    setPasswordRecovery(false);
+    markPasswordChangeResolved();
+  }, [markPasswordChangeResolved]);
 
   const logout = useCallback(async () => {
     const cleared = clearSession();
@@ -293,6 +343,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [clearSession]);
 
+  const mustChangePassword = policyRequiresPasswordChange({
+    user,
+    accessToken: token,
+    passwordRecovery,
+  });
+
   const value = useMemo(
     () => ({
       user,
@@ -300,12 +356,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionLoading,
       profileLoading,
       passwordRecovery,
+      mustChangePassword,
+      passwordChangeResolved,
       error,
       sessionError,
       login,
       loginDev,
       requestPasswordReset,
       updatePassword,
+      dismissPasswordChange: markPasswordChangeResolved,
       logout,
       retrySession,
     }),
@@ -315,12 +374,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionLoading,
       profileLoading,
       passwordRecovery,
+      mustChangePassword,
+      passwordChangeResolved,
       error,
       sessionError,
       login,
       loginDev,
       requestPasswordReset,
       updatePassword,
+      markPasswordChangeResolved,
       logout,
       retrySession,
     ],

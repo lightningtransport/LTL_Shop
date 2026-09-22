@@ -12,6 +12,7 @@ import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
+import { shouldOpenUpdatePasswordSheet, updatePasswordSheetCopy } from '@/lib/password-change-prompt';
 import { jobStatusVariant, phaseVariant, priorityVariant, workOrderStatusVariant } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
 
@@ -339,45 +340,38 @@ export function ThemeToggle() {
 }
 
 function ProfileDialog() {
-  const { user, updatePassword, logout } = useAuth();
+  const {
+    user,
+    logout,
+    mustChangePassword,
+    passwordChangeResolved,
+    dismissPasswordChange,
+  } = useAuth();
   const { messages } = useShopLocale();
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
-  const [newPassword, setNewPassword] = React.useState('');
-  const [confirmPassword, setConfirmPassword] = React.useState('');
-  const [status, setStatus] = React.useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [passwordSheetOpen, setPasswordSheetOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [isUpdatingPassword, setIsUpdatingPassword] = React.useState(false);
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
   if (!user) return null;
 
-  async function handlePasswordUpdate(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus(null);
-    setError(null);
-
-    if (newPassword.length < 8) {
-      setError(messages.locale === 'es' ? 'Usa al menos 8 caracteres para la nueva contraseña.' : 'Use at least 8 characters for your new password.');
+  function requestProfileMenu() {
+    if (shouldOpenUpdatePasswordSheet({
+      policyRequiresPasswordChange: mustChangePassword,
+      passwordChangeResolved,
+    })) {
+      setMenuOpen(false);
+      setPasswordSheetOpen(true);
       return;
     }
+    setPasswordSheetOpen(false);
+    setMenuOpen(true);
+  }
 
-    if (newPassword !== confirmPassword) {
-      setError(messages.locale === 'es' ? 'Las contraseñas no coinciden.' : 'The passwords do not match.');
-      return;
-    }
-
-    setIsUpdatingPassword(true);
-    try {
-      await updatePassword(newPassword);
-      setNewPassword('');
-      setConfirmPassword('');
-      setStatus(messages.locale === 'es' ? 'Contraseña actualizada.' : 'Password updated.');
-    } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : 'Unable to update password.');
-    } finally {
-      setIsUpdatingPassword(false);
-    }
+  function handlePasswordSheetOpenChange(nextOpen: boolean) {
+    setPasswordSheetOpen(nextOpen);
+    if (!nextOpen) dismissPasswordChange();
   }
 
   async function handleLogout() {
@@ -388,7 +382,7 @@ function ProfileDialog() {
       router.replace('/login');
       router.refresh();
       window.location.replace('/login');
-      setOpen(false);
+      setMenuOpen(false);
     } catch (logoutError) {
       setError(logoutError instanceof Error ? logoutError.message : 'Unable to sign out.');
     } finally {
@@ -397,36 +391,116 @@ function ProfileDialog() {
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (!nextOpen) {
-          setStatus(null);
-          setError(null);
-        }
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button
-          variant="secondary"
-          className="max-w-28 justify-between gap-1.5 sm:max-w-44"
-          aria-label={messages.locale === 'es' ? `Abrir perfil de ${user.name}` : `Open profile for ${user.name}`}
-        >
-          <span className="truncate">{user.name}</span>
-          <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent aria-describedby="profile-description">
+    <>
+      <Button
+        variant="secondary"
+        className="max-w-28 justify-between gap-1.5 sm:max-w-44"
+        aria-label={messages.locale === 'es' ? `Abrir perfil de ${user.name}` : `Open profile for ${user.name}`}
+        aria-expanded={menuOpen || passwordSheetOpen}
+        aria-haspopup="dialog"
+        onClick={requestProfileMenu}
+      >
+        <span className="truncate">{user.name}</span>
+        <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+      </Button>
+      <Dialog
+        open={menuOpen}
+        onOpenChange={(nextOpen) => {
+          setMenuOpen(nextOpen);
+          if (!nextOpen) setError(null);
+        }}
+      >
+        <DialogContent aria-describedby="profile-description">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <DialogTitle>{user.name}</DialogTitle>
+              <DialogDescription id="profile-description" className="mt-1 break-words">
+                {user.email}
+              </DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon" aria-label={messages.locale === 'es' ? 'Cerrar perfil' : 'Close profile'}>
+                <X aria-hidden="true" className="size-5" />
+              </Button>
+            </DialogClose>
+          </div>
+
+          {error ? <p className="mb-4 text-sm font-medium text-destructive" role="alert">{error}</p> : null}
+
+          <Button
+            className="w-full"
+            variant="destructive"
+            onClick={() => void handleLogout()}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? (messages.locale === 'es' ? 'Cerrando sesión…' : 'Signing out…') : (messages.locale === 'es' ? 'Cerrar sesión' : 'Sign out')}
+          </Button>
+        </DialogContent>
+      </Dialog>
+      <UpdatePasswordSheet open={passwordSheetOpen} onOpenChange={handlePasswordSheetOpenChange} />
+    </>
+  );
+}
+
+function UpdatePasswordSheet({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { updatePassword } = useAuth();
+  const { messages } = useShopLocale();
+  const copy = updatePasswordSheetCopy(messages.locale === 'es' ? 'es' : 'en');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [error, setError] = React.useState<string | null>(null);
+  const [isUpdatingPassword, setIsUpdatingPassword] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setNewPassword('');
+    setConfirmPassword('');
+    setError(null);
+  }, [open]);
+
+  async function handlePasswordUpdate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    if (newPassword.length < 8) {
+      setError(copy.tooShort);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError(copy.mismatch);
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      await updatePassword(newPassword);
+      onOpenChange(false);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : copy.unable);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby="update-password-description">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <DialogTitle>{user.name}</DialogTitle>
-            <DialogDescription id="profile-description" className="mt-1 break-words">
-              {user.email}
+            <DialogTitle>{copy.title}</DialogTitle>
+            <DialogDescription id="update-password-description" className="mt-1">
+              {copy.description}
             </DialogDescription>
           </div>
           <DialogClose asChild>
-            <Button variant="ghost" size="icon" aria-label={messages.locale === 'es' ? 'Cerrar perfil' : 'Close profile'}>
+            <Button variant="ghost" size="icon" aria-label={copy.close} disabled={isUpdatingPassword}>
               <X aria-hidden="true" className="size-5" />
             </Button>
           </DialogClose>
@@ -434,7 +508,7 @@ function ProfileDialog() {
 
         <form className="space-y-4" onSubmit={handlePasswordUpdate}>
           <div className="space-y-2">
-            <Label htmlFor="profile-new-password">{messages.locale === 'es' ? 'Nueva contraseña' : 'New password'}</Label>
+            <Label htmlFor="profile-new-password">{copy.newPassword}</Label>
             <Input
               id="profile-new-password"
               type="password"
@@ -446,7 +520,7 @@ function ProfileDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="profile-confirm-password">{messages.locale === 'es' ? 'Confirmar nueva contraseña' : 'Confirm new password'}</Label>
+            <Label htmlFor="profile-confirm-password">{copy.confirmPassword}</Label>
             <Input
               id="profile-confirm-password"
               type="password"
@@ -458,25 +532,22 @@ function ProfileDialog() {
             />
           </div>
 
-          <p className="text-sm text-muted-foreground">{messages.locale === 'es' ? 'Usa al menos 8 caracteres.' : 'Use at least 8 characters.'}</p>
-          {status ? <p className="text-sm font-medium text-shop-success" role="status">{status}</p> : null}
+          <p className="text-sm text-muted-foreground">{copy.hint}</p>
           {error ? <p className="text-sm font-medium text-destructive" role="alert">{error}</p> : null}
 
-          <Button className="w-full" type="submit" disabled={isUpdatingPassword || isLoggingOut}>
-            {isUpdatingPassword ? (messages.locale === 'es' ? 'Actualizando contraseña…' : 'Updating password…') : (messages.locale === 'es' ? 'Actualizar contraseña' : 'Update password')}
+          <Button className="w-full" type="submit" disabled={isUpdatingPassword}>
+            {isUpdatingPassword ? copy.submitting : copy.submit}
           </Button>
-        </form>
-
-        <div className="mt-5 border-t pt-5">
           <Button
             className="w-full"
-            variant="destructive"
-            onClick={() => void handleLogout()}
-            disabled={isUpdatingPassword || isLoggingOut}
+            type="button"
+            variant="outline"
+            disabled={isUpdatingPassword}
+            onClick={() => onOpenChange(false)}
           >
-            {isLoggingOut ? (messages.locale === 'es' ? 'Cerrando sesión…' : 'Signing out…') : (messages.locale === 'es' ? 'Cerrar sesión' : 'Sign out')}
+            {copy.dismiss}
           </Button>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
