@@ -783,9 +783,9 @@ createServer(async (request, response) => {
     json(response, 200, rosterUserDto(candidate));
     return;
   }
-  const mechanicDetailMatch = request.url?.match(/^\/api\/admin\/mechanics\/([0-9a-f-]+)$/i);
-  if (mechanicDetailMatch && request.method === 'GET') {
-    const candidate = Object.values(users).find((item) => item.id === mechanicDetailMatch[1]);
+  const adminMechanicDetailMatch = request.url?.match(/^\/api\/admin\/mechanics\/([0-9a-f-]+)$/i);
+  if (adminMechanicDetailMatch && request.method === 'GET') {
+    const candidate = Object.values(users).find((item) => item.id === adminMechanicDetailMatch[1]);
     if (!candidate) { json(response, 404, { message: 'Mechanic not found' }); return; }
     json(response, 200, rosterDetail(candidate));
     return;
