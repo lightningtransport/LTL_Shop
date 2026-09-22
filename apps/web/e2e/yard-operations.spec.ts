@@ -1,6 +1,50 @@
+import { YARD_DATA_BOUNDARY_COPY, type YardDataBoundaryLocale } from '@ltl-shop/shared';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const YARD_FILTERS_BUTTON = /^(Filters|Filtros)( \(\d+\))?$/;
+const DATA_BOUNDARY_PATH = '/api/admin/yard/data-boundary';
+
+let yardDataBoundaryRequests: string[] = [];
+
+function isYardDataBoundaryRequest(url: string) {
+  try {
+    return new URL(url).pathname === DATA_BOUNDARY_PATH;
+  } catch {
+    return url.includes(DATA_BOUNDARY_PATH);
+  }
+}
+
+async function expectDataBoundaryRequested() {
+  await expect.poll(() => yardDataBoundaryRequests.length, { timeout: 15_000 }).toBeGreaterThan(0);
+  for (const url of yardDataBoundaryRequests) {
+    expect(url).not.toMatch(/agent-reporting|x-agent-key/i);
+  }
+}
+
+async function expectPdBoundaryCards(page: Page, locale: YardDataBoundaryLocale) {
+  const copy = YARD_DATA_BOUNDARY_COPY[locale];
+  const cards = [
+    ['yard-data-boundary-workLocation', copy.workLocation],
+    ['yard-data-boundary-incomingTrucks', copy.incomingTrucks],
+    ['yard-data-boundary-upcomingDepartures', copy.upcomingDepartures],
+  ] as const;
+
+  for (const [testId, card] of cards) {
+    const region = page.getByTestId(testId);
+    await expect(region).toBeVisible();
+    await expect(region.getByText(card.label, { exact: true })).toBeVisible();
+    await expect(region).not.toHaveAttribute('data-kind', 'loading');
+    const kind = await region.getAttribute('data-kind');
+    if (kind === 'unavailable') {
+      await expect(region.getByText(copy.badge, { exact: true })).toBeVisible();
+      await expect(region.getByText(copy.unavailable, { exact: true })).toBeVisible();
+    } else if (kind === 'empty') {
+      await expect(region.getByText(card.empty, { exact: true })).toBeVisible();
+    } else {
+      expect(kind, `${testId} kind`).toBe('ok');
+    }
+  }
+}
 
 async function yardFilterPanel(page: Page): Promise<Locator> {
   const dialog = page.getByRole('dialog');
@@ -16,6 +60,14 @@ async function yardFilterPanel(page: Page): Promise<Locator> {
 
 test.describe('Yard Operations Phase 1', () => {
   test.beforeEach(async ({ page }) => {
+    yardDataBoundaryRequests = [];
+    page.on('request', (request) => {
+      if (request.method() !== 'GET') return;
+      const url = request.url();
+      if (isYardDataBoundaryRequest(url) || /agent-reporting|x-agent-key/i.test(url)) {
+        yardDataBoundaryRequests.push(url);
+      }
+    });
     await page.goto('/login');
     await page.getByLabel('Email').fill('manager@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
@@ -32,17 +84,9 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByText(/in the yard|en el patio/i)).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'In shop / at yard' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Incoming Trucks', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Upcoming Departures', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: /In shop \/ at yard/ }).click();
-    await expect(page.getByRole('link', { name: 'Y-102', exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Open Work Order · WO-0102')).toBeVisible();
-    await expect(page.getByText('Reported at yard')).toBeVisible();
-    await page.getByRole('button', { name: /Incoming Trucks/ }).click();
-    await expect(page.getByText('609')).toBeVisible();
-    await page.getByRole('button', { name: /Upcoming Departures/ }).click();
-    await expect(page.getByText('614')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'In shop / at yard' })).toHaveCount(0);
+    await expectDataBoundaryRequested();
+    await expectPdBoundaryCards(page, 'en');
     await expect(page.getByTestId('yard-truck-card').getByText('Last reported location')).toHaveCount(0);
     await page.getByLabel('Search Truck or Work Order').fill('Y-103');
     await expect(page).toHaveURL(/search=Y-103/, { timeout: 5_000 });
@@ -181,9 +225,10 @@ test.describe('Yard Operations Phase 1', () => {
       const searchClipped = await search.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
       expect(searchClipped, `search field clips at ${width}px`).toBe(false);
 
-      const workLocation = page.getByRole('heading', { name: 'In shop / at yard' });
-      const incoming = page.getByRole('heading', { name: 'Incoming Trucks', exact: true });
-      const departures = page.getByRole('heading', { name: 'Upcoming Departures', exact: true });
+      const copy = YARD_DATA_BOUNDARY_COPY.en;
+      const workLocation = page.getByTestId('yard-data-boundary-workLocation').getByText(copy.workLocation.label, { exact: true });
+      const incoming = page.getByTestId('yard-data-boundary-incomingTrucks').getByText(copy.incomingTrucks.label, { exact: true });
+      const departures = page.getByTestId('yard-data-boundary-upcomingDepartures').getByText(copy.upcomingDepartures.label, { exact: true });
       await assertLabelUnclipped(workLocation, 'Work location', width);
       await assertLabelUnclipped(incoming, 'Incoming Trucks', width);
       await assertLabelUnclipped(departures, 'Upcoming Departures', width);
@@ -198,9 +243,11 @@ test.describe('Yard Operations Phase 1', () => {
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Operaciones del patio', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Movimiento del yard' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'En taller / en el yard' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Llegadas de Trucks' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Próximas salidas' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'En taller / en el yard' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Llegadas de Trucks' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Próximas salidas' })).toHaveCount(0);
+    await expectDataBoundaryRequested();
+    await expectPdBoundaryCards(page, 'es');
     await expect(page.getByText(/en el patio/i)).toHaveCount(0);
   });
 });
