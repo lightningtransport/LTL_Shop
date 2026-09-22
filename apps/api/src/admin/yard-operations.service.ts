@@ -64,6 +64,35 @@ const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
   ],
 };
 
+/**
+ * LTR-75 opción A — Readiness board membership.
+ *
+ * `GET /api/admin/yard-operations` and `getWorkPlanBoardCounts` include a truck
+ * only while it has an active yard engagement:
+ * - an open Work Order (`OPEN_WORK_ORDER_STATUSES`), which is the Work Plan, or
+ * - a readiness assessment still in the yard workflow (`under_review`, `ready`,
+ *   or closed with residual `readyAt`).
+ *
+ * Residual Ready stays on the board because Phase 1 has no Presence signal that
+ * would clear a closed approval. Idle trucks (no open work and no active or
+ * residual assessment) are omitted, so a WO/job/assessment wipe returns an empty
+ * board. Phase is still derived from that same open work and assessment; this
+ * predicate does not change six-gate or Work Plan derivation and does not read
+ * presence, Samsara location, or truck identity. `presenceUnknown` stays a
+ * fleet-wide presence fact (every truck is still UNKNOWN), not a board total.
+ * PO: update CURRENT vs TARGET on LTR-32 from this predicate.
+ */
+const ACTIVE_YARD_ENGAGEMENT: Prisma.TruckWhereInput = {
+  OR: [
+    {
+      workOrders: {
+        some: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+      },
+    },
+    { readinessAssessments: { some: ACTIVE_OR_RESIDUAL_READY } },
+  ],
+};
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const summaryWorkOrderInclude = {
@@ -820,7 +849,7 @@ export class YardOperationsService {
   }
 
   private buildWhere(query: AdminYardOperationsQuery, cursor: AdminYardOperationsCursor | null): Prisma.TruckWhereInput {
-    const filters: Prisma.TruckWhereInput[] = [];
+    const filters: Prisma.TruckWhereInput[] = [ACTIVE_YARD_ENGAGEMENT];
     if (query.search) {
       const contains = { contains: query.search, mode: 'insensitive' as const };
       filters.push({ OR: [
@@ -940,6 +969,7 @@ export class YardOperationsService {
     const [presenceUnknown, rows] = await Promise.all([
       this.prisma.truck.count(),
       this.prisma.truck.findMany({
+        where: ACTIVE_YARD_ENGAGEMENT,
         include: yardTruckInclude as never,
       }) as unknown as Promise<YardTruckRow[]>,
     ]);
