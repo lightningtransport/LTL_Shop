@@ -352,4 +352,93 @@ describe('YardOperationsService', () => {
     expect(page.items[0].phase).toBe('inspection');
     expect(page.items[0].phase).not.toBe(WorkPlanPhase.SHOP_WORK);
   });
+
+  it('LTR-75: post-wipe fleet with no yard engagement is an empty board', async () => {
+    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+    const prisma = createPrisma();
+    const idle = [
+      truck('100', '00000000-0000-4000-8000-000000000001'),
+      truck('200', '00000000-0000-4000-8000-000000000002'),
+    ];
+    prisma.truck.findMany.mockImplementation(async (args: { where?: unknown }) => {
+      return querySelectsYardEngagement(args?.where) ? [] : idle;
+    });
+    prisma.truck.count.mockResolvedValue(idle.length);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 25 });
+
+    expect(page.items).toEqual([]);
+    expect(page.nextCursor).toBeNull();
+    expect(page.counts).toEqual({ underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
+    expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
+    expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[1][0].where)).toBe(true);
+  });
+
+  it('LTR-75: Phase 1 list uses the same engagement predicate', async () => {
+    const prisma = createPrisma();
+    prisma.truck.findMany.mockResolvedValue([]);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 25 });
+
+    expect(page.workPlanBoardCutover).toBe(false);
+    expect(page.items).toEqual([]);
+    expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
+  });
+
+  it('LTR-75: an open Work Order enters the board on the derived Work Plan phase', async () => {
+    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+    const prisma = createPrisma();
+    const idle = truck('100', '00000000-0000-4000-8000-000000000099');
+    const engaged = truck('277', '00000000-0000-4000-8000-000000000001');
+    engaged.workOrders = [slice2WorkOrderRow()];
+    const fleet = [idle, engaged];
+    prisma.truck.findMany.mockImplementation(async (args: { where?: unknown }) => {
+      if (!querySelectsYardEngagement(args?.where)) return fleet;
+      return fleet.filter((row) => row.workOrders.length > 0 || row.readinessAssessments.length > 0);
+    });
+    prisma.truck.count.mockResolvedValue(fleet.length);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 25 });
+
+    expect(page.items.map((item) => item.truck.truckNumber)).toEqual(['277']);
+    expect(page.items[0].phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(page.counts.underReview).toBe(1);
+    expect(page.counts.readyToGo).toBe(0);
+    expect(page.counts.blocked).toBe(1);
+    expect(page.counts.presenceUnknown).toBe(2);
+  });
+
+  it('LTR-75: an active assessment without a Work Order is engagement and stays in Inspection', async () => {
+    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+    const prisma = createPrisma();
+    const engaged = truck('300', '00000000-0000-4000-8000-000000000001');
+    engaged.readinessAssessments = [readiness(ReadinessRequirementOutcome.NOT_EVALUATED)];
+    prisma.truck.findMany.mockImplementation(async (args: { where?: unknown }) => {
+      return querySelectsYardEngagement(args?.where) ? [engaged] : [];
+    });
+    prisma.truck.count.mockResolvedValue(4);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 25 });
+
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0].phase).toBe(WorkPlanPhase.INSPECTION);
+    expect(page.items[0].activeWorkOrder).toBeNull();
+    expect(page.counts.blocked).toBe(1);
+    expect(page.counts.readyToGo).toBe(0);
+    expect(page.counts.presenceUnknown).toBe(4);
+  });
 });
+
+function querySelectsYardEngagement(where: unknown) {
+  const serialized = JSON.stringify(where);
+  return serialized.includes('"workOrders"')
+    && serialized.includes('readinessAssessments')
+    && serialized.includes('under_review')
+    && serialized.includes('ready')
+    && serialized.includes('waiting_paused')
+    && serialized.includes('readyAt');
+}
