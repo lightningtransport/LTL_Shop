@@ -589,6 +589,11 @@ export interface AdminCatalogJobDto {
   aliases: string[];
 }
 
+/** LTR-77 write response. Same job id after rename or activate. */
+export interface AdminCatalogJobWriteDto extends AdminCatalogJobDto {
+  categoryId: string;
+}
+
 export interface AdminCatalogCategoryDetailDto extends AdminCatalogCategorySummaryDto {
   jobs: AdminCatalogJobDto[];
 }
