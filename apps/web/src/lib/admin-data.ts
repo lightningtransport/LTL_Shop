@@ -3,7 +3,7 @@
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import type {
-  AdminCatalogJobDto,
+  AdminCatalogJobWriteDto,
   AdminDashboardDto,
   AdminMechanicDetailDto,
   AdminMechanicSummaryDto,
@@ -503,18 +503,15 @@ export function recordAdminWorkPlanInspection(
 }
 
 /**
- * System Admin writes. Depends on API PR #140 (`SystemAdminGuard`: role admin
- * plus admin.access). Shop Manager is 403. No idempotency key on these bodies.
+ * System Admin writes from main abbc0ff (`SystemAdminGuard`: role admin plus
+ * admin.access). Shop Manager is 403. Live once API prod is READY.
+ * No idempotency key on these bodies.
  *
  * POST /api/admin/mechanics { email, name, mode: 'standard' | 'pm' } → UserDto
  * PATCH /api/admin/mechanics/:id { name?, mode?, active? } → UserDto
  * POST /api/admin/catalog/jobs { categoryId, displayName, status? } → job + categoryId
  * PATCH /api/admin/catalog/jobs/:id { displayName?, status? } → same job id
  */
-export interface AdminCatalogJobWriteDto extends AdminCatalogJobDto {
-  categoryId: string;
-}
-
 export const ADMIN_CATALOG_JOBS_PATH = '/api/admin/catalog/jobs';
 export const ADMIN_MECHANICS_COLLECTION_PATH = '/api/admin/mechanics';
 
