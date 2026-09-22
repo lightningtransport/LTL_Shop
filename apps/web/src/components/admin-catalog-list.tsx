@@ -6,14 +6,12 @@ import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
 import { AdminWriteTip } from './admin-write-tip';
 import { AdminPageHeader, Badge, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories } from '@/lib/admin-data';
-import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { isSystemAdmin } from '@/lib/system-admin';
 
 export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
-  const { user } = useAuth();
-  const canWrite = isSystemAdmin(user);
+  const canWrite = useCanShowAdminWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategories();
   const [search, setSearch] = useState('');
   const items = useMemo(() => {
@@ -23,21 +21,19 @@ export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; me
     return categories.filter((category) => category.name.toLowerCase().includes(query));
   }, [data, search]);
 
+  const addJobButton = () => (
+    <AdminCatalogWriteActions messages={messages} categories={data ?? []} onChanged={() => void mutate()} />
+  );
+
   return (
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow={messages.eyebrow}
         title={messages.catalogTitle}
         subtitle={canWrite ? messages.catalogWriteDescription : messages.catalogDescription}
+        actions={canWrite ? addJobButton() : null}
       />
-      {canWrite && data ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <AdminCatalogWriteActions messages={messages} categories={data} onChanged={() => void mutate()} />
-          </div>
-          <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip>
-        </div>
-      ) : null}
+      {canWrite ? <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip> : null}
       <Card className="p-3">
         <CardContent>
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchCatalog} aria-label={messages.searchCatalog} />
@@ -48,6 +44,7 @@ export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; me
       {!isLoading && !error && items.length === 0 ? (
         <EmptyState>
           <p>{search.trim() ? messages.catalogNoMatches : messages.catalogNoCategories}</p>
+          {canWrite ? <div className="mt-4 flex justify-center">{addJobButton()}</div> : null}
         </EmptyState>
       ) : null}
       {items.length ? (

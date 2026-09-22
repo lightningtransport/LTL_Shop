@@ -31,6 +31,30 @@ test('manager stays read-only on the mechanic roster and Job Catalog', async ({ 
   await expect(page.getByRole('button', { name: 'Rename Job' })).toHaveCount(0);
 });
 
+test('system admin with only admin.access sees catalog and roster writes', async ({ page }) => {
+  await devLogin(page, 'system-admin@lightning.local');
+
+  await page.goto('/admin/catalog');
+  await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
+  await expect(page.getByText('Read-only Categories, Jobs, and aliases')).toHaveCount(0);
+  await expect(page.getByTestId('pd-light-tip')).toContainText('System Admin only');
+  await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);
+
+  await page.getByLabel('Search Category').fill('zzzz-no-category');
+  await expect(page.getByText('No Categories match this search.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add Job' })).toHaveCount(2);
+  await page.getByLabel('Search Category').fill('');
+  await expect(page.getByRole('link', { name: 'Brakes' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add Job' })).toHaveCount(1);
+
+  await page.goto('/admin/mechanics');
+  await expect(page.getByRole('button', { name: 'Create mechanic' })).toBeVisible();
+  await expect(page.getByText('Create a mechanic with Standard or PM, or activate an existing mechanic.')).toBeVisible();
+  await expect(page.getByText(/read-only/i)).toHaveCount(0);
+  await expect(page.getByTestId('pd-light-tip')).toContainText('System Admin only');
+});
+
 test('system admin adds, renames, and activates a Job, then creates and activates a mechanic', async ({ page }) => {
   await devLogin(page, 'admin@lightning.local');
 
@@ -94,5 +118,8 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await page.getByRole('button', { name: 'Switch to Spanish' }).click();
   await expect(page.getByTestId('pd-light-tip')).toContainText('Solo System Admin');
   await expect(page.getByRole('button', { name: 'Guardar mecánico' })).toBeVisible();
+  await page.goto('/admin/mechanics');
+  await expect(page.getByText('Crea un mecánico con Standard o PM, o activa un mecánico existente.')).toBeVisible();
+  await expect(page.getByText(/solo lectura/i)).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });

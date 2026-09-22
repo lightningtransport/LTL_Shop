@@ -37,6 +37,15 @@ const users = {
     pmAuthorized: false,
     capabilities: ['admin.access', 'yard.operations.manage', 'work_orders.manage'],
   },
+  'system-admin@lightning.local': {
+    id: '00000000-0000-4000-8000-000000000008',
+    email: 'system-admin@lightning.local',
+    name: 'System Admin',
+    role: 'admin',
+    active: true,
+    pmAuthorized: false,
+    capabilities: ['admin.access'],
+  },
   'ibrain@ltransl.com': {
     id: '00000000-0000-4000-8000-000000000004',
     email: 'ibrain@ltransl.com',

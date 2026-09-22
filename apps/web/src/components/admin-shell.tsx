@@ -7,6 +7,7 @@ import { ClipboardList, Gauge, History, Library, Menu, Truck, UsersRound, Wareho
 import { AdminLocaleSwitcher } from './admin-locale-switcher';
 import { AdminNavLink } from './admin-nav-link';
 import { AppHeaderActions, Button, Modal } from './ui';
+import { AdminActorProvider } from '@/lib/admin-actor';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 const activeNavigation = [
@@ -39,6 +40,7 @@ export function AdminShell({
   }, [pathname]);
 
   return (
+    <AdminActorProvider role={user.role}>
     <div className="app-safe-x app-safe-bottom flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background [--admin-aside:0px] md:[--admin-aside:15rem]">
       <header
         className="app-safe-top sticky top-0 z-40 w-full shrink-0 border-b bg-card/95 backdrop-blur"
@@ -127,6 +129,7 @@ export function AdminShell({
         </nav>
       </Modal>
     </div>
+    </AdminActorProvider>
   );
 }
 
