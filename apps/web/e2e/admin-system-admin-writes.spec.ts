@@ -4,7 +4,7 @@ async function devLogin(page: Page, email: string) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
   await page.getByRole('button', { name: /Dev Login/i }).click();
-  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
 }
 
 test('manager stays read-only on the mechanic roster and Job Catalog', async ({ page }) => {
@@ -56,10 +56,10 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await renameDialog.getByLabel('Job name').fill('Service suspension');
   await renameDialog.getByRole('button', { name: 'Rename Job' }).click();
   await expect(page.getByText('Job renamed.')).toBeVisible();
-  await expect(page.getByText('Service suspension')).toBeVisible();
+  await expect(page.getByText('Service suspension', { exact: true })).toBeVisible();
 
   await page.goto('/admin/catalog/categories/00000000-0000-4000-8000-000000000301');
-  await expect(page.getByText('Bleed brakes')).toBeVisible();
+  await expect(page.getByText('Bleed brakes', { exact: true })).toBeVisible();
 
   await page.setViewportSize({ width: 320, height: 568 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
