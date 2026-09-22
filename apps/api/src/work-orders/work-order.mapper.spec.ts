@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ActivityEventType } from '@prisma/client';
 import { toWorkOrderDetail, toWorkOrderSummary, type WorkOrderWithRelations } from './work-order.mapper';
 
 const base = {
@@ -140,5 +141,45 @@ describe('Work Order Job Category readers', () => {
 
     expect(toWorkOrderSummary(wo).currentPauseReason).toBeNull();
     expect(toWorkOrderDetail(wo).currentPause).toBeNull();
+  });
+
+  it('reads mechanic finish notes from the latest job_completed activity row', () => {
+    const wo: WorkOrderWithRelations = {
+      ...base,
+      jobs: [
+        {
+          ...job('job-brakes', 'category-brakes', 'Brakes', 'Inspect brakes'),
+          status: 'completed',
+          completedAt: new Date('2026-09-19T22:41:00.000Z'),
+          completedById: 'mechanic-1',
+        },
+        job('job-open', 'category-brakes', 'Brakes', 'Bleed brakes'),
+      ],
+      activityLogs: [
+        {
+          eventType: ActivityEventType.job_completed,
+          entityId: 'job-brakes',
+          newValue: { notes: '  ' },
+          createdAt: new Date('2026-09-19T22:40:00.000Z'),
+        },
+        {
+          eventType: ActivityEventType.job_completed,
+          entityId: 'job-brakes',
+          newValue: { displayName: 'Inspect brakes', notes: 'Replaced the air hose' },
+          createdAt: new Date('2026-09-19T22:41:00.000Z'),
+        },
+        {
+          eventType: ActivityEventType.notes_updated,
+          entityId: 'wo-1',
+          newValue: { notes: 'Work Order note must not become the job note' },
+          createdAt: new Date('2026-09-19T22:50:00.000Z'),
+        },
+      ],
+    };
+
+    expect(toWorkOrderDetail(wo).jobs).toEqual([
+      expect.objectContaining({ id: 'job-brakes', completionNotes: 'Replaced the air hose' }),
+      expect.objectContaining({ id: 'job-open', completionNotes: null }),
+    ]);
   });
 });
