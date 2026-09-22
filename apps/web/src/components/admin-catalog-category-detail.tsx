@@ -2,12 +2,18 @@
 
 import Link from 'next/link';
 import { CatalogStatus } from '@ltl-shop/shared';
+import { AdminCatalogJobActions, AdminCatalogWriteActions } from './admin-catalog-write';
+import { AdminWriteTip } from './admin-write-tip';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { ApiError } from '@/lib/api';
 import { useAdminCatalogCategory } from '@/lib/admin-data';
+import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { isSystemAdmin } from '@/lib/system-admin';
 
 export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
+  const { user } = useAuth();
+  const canWrite = isSystemAdmin(user);
   const { data, error, isLoading, mutate } = useAdminCatalogCategory(id);
   if (isLoading) return <PageSkeleton label={messages.catalogTitle} />;
   if (error instanceof ApiError && error.status === 404) {
@@ -21,9 +27,24 @@ export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: strin
       <AdminPageHeader
         eyebrow={messages.eyebrow}
         title={data.name}
-        subtitle={messages.catalogDescription}
+        subtitle={canWrite ? messages.catalogWriteDescription : messages.catalogDescription}
         badges={data.status === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}
       />
+      {canWrite ? (
+        <div className="space-y-3">
+          {data.status === CatalogStatus.ACTIVE ? (
+            <div className="flex flex-wrap gap-2">
+              <AdminCatalogWriteActions
+                messages={messages}
+                categories={[data]}
+                categoryId={data.id}
+                onChanged={() => void mutate()}
+              />
+            </div>
+          ) : null}
+          <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip>
+        </div>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle>{messages.catalogJobsColumn}</CardTitle>
@@ -40,6 +61,7 @@ export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: strin
                   {job.aliases.length ? (
                     <p className="mt-1 text-sm text-muted-foreground">{messages.catalogJobAliases}: {job.aliases.join(', ')}</p>
                   ) : null}
+                  {canWrite ? <AdminCatalogJobActions job={job} messages={messages} onChanged={() => void mutate()} /> : null}
                 </li>
               ))}
             </ul>

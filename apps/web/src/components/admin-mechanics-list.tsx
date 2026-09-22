@@ -3,15 +3,26 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { UserRole, type AdminMechanicSummaryDto } from '@ltl-shop/shared';
+import { useActionToast } from './action-toast';
+import { ActivateMechanicDialog, CreateMechanicDialog } from './admin-mechanic-roster';
+import { AdminWriteTip } from './admin-write-tip';
 import { AdminFilterToolbar, AdminPageHeader, Badge, Button, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useAdminMechanics } from '@/lib/admin-data';
+import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { isSystemAdmin } from '@/lib/system-admin';
 
 export function AdminMechanicsList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  const { user } = useAuth();
+  const canWrite = isSystemAdmin(user);
+  const { showToast } = useActionToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [activateTarget, setActivateTarget] = useState<AdminMechanicSummaryDto | null>(null);
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminMechanics(query);
 
   useEffect(() => {
@@ -23,7 +34,17 @@ export function AdminMechanicsList({ locale, messages }: { locale: AdminLocale; 
 
   return (
     <div className="space-y-5">
-      <AdminPageHeader eyebrow={messages.eyebrow} title={messages.mechanicsTitle} subtitle={messages.mechanicsDescription} />
+      <AdminPageHeader
+        eyebrow={messages.eyebrow}
+        title={messages.mechanicsTitle}
+        subtitle={canWrite ? messages.mechanicsWriteDescription : messages.mechanicsDescription}
+      />
+      {canWrite ? (
+        <div className="space-y-3">
+          <Button type="button" onClick={() => setCreateOpen(true)}>{messages.createMechanic}</Button>
+          <AdminWriteTip testId>{messages.mechanicRosterTip}</AdminWriteTip>
+        </div>
+      ) : null}
       <AdminFilterToolbar
         onClear={() => router.replace('/admin/mechanics')}
         clearLabel={messages.clearFilters}
@@ -57,6 +78,13 @@ export function AdminMechanicsList({ locale, messages }: { locale: AdminLocale; 
                     <Link className="font-semibold text-primary hover:underline" href={`/admin/mechanics/${item.id}`}>{item.name}</Link>
                     <p className="text-muted-foreground">{item.email}</p>
                     {!item.active ? <Badge variant="secondary">{messages.mechanicInactive}</Badge> : null}
+                    {canWrite && item.role === UserRole.MECHANIC && !item.active ? (
+                      <div className="mt-2">
+                        <Button type="button" size="sm" variant="outline" onClick={() => setActivateTarget(item)}>
+                          {messages.activateMechanic}
+                        </Button>
+                      </div>
+                    ) : null}
                   </td>
                   <td className="p-3 text-muted-foreground">{item.capabilities.join(', ') || '—'}</td>
                   <td className="p-3">{item.openWorkOrderCount}</td>
@@ -67,6 +95,30 @@ export function AdminMechanicsList({ locale, messages }: { locale: AdminLocale; 
         </div>
       ) : null}
       {hasMore ? <Button type="button" variant="outline" disabled={isValidating} onClick={() => setSize(size + 1)}>{messages.loadMore}</Button> : null}
+      {canWrite ? (
+        <>
+          <CreateMechanicDialog
+            open={createOpen}
+            messages={messages}
+            onClose={() => setCreateOpen(false)}
+            onCreated={() => {
+              setCreateOpen(false);
+              showToast('success', messages.mechanicCreated);
+              void mutate();
+            }}
+          />
+          <ActivateMechanicDialog
+            mechanic={activateTarget}
+            messages={messages}
+            onClose={() => setActivateTarget(null)}
+            onActivated={() => {
+              setActivateTarget(null);
+              showToast('success', messages.mechanicActivated);
+              void mutate();
+            }}
+          />
+        </>
+      ) : null}
       <p className="sr-only">{locale}</p>
     </div>
   );

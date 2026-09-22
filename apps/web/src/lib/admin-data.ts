@@ -3,6 +3,7 @@
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import type {
+  AdminCatalogJobDto,
   AdminDashboardDto,
   AdminMechanicDetailDto,
   AdminMechanicSummaryDto,
@@ -16,6 +17,9 @@ import type {
   ReadinessRequirementOutcome,
   ReadinessRequirementType,
   RecordWorkPlanInspectionInput,
+  CatalogStatus,
+  MechanicMode,
+  UserDto,
   AdminCatalogCategoryDetailDto,
   AdminCatalogCategorySummaryDto,
   YardDataBoundaryDto,
@@ -495,6 +499,66 @@ export function recordAdminWorkPlanInspection(
   return apiFetch<TruckWorkPlanDto>(`/api/admin/trucks/${truckId}/work-plan/inspection`, {
     method: 'POST',
     body: JSON.stringify({ outcome, idempotencyKey }),
+  });
+}
+
+/**
+ * System Admin writes. Depends on API PR #140 (`SystemAdminGuard`: role admin
+ * plus admin.access). Shop Manager is 403. No idempotency key on these bodies.
+ *
+ * POST /api/admin/mechanics { email, name, mode: 'standard' | 'pm' } → UserDto
+ * PATCH /api/admin/mechanics/:id { name?, mode?, active? } → UserDto
+ * POST /api/admin/catalog/jobs { categoryId, displayName, status? } → job + categoryId
+ * PATCH /api/admin/catalog/jobs/:id { displayName?, status? } → same job id
+ */
+export interface AdminCatalogJobWriteDto extends AdminCatalogJobDto {
+  categoryId: string;
+}
+
+export const ADMIN_CATALOG_JOBS_PATH = '/api/admin/catalog/jobs';
+export const ADMIN_MECHANICS_COLLECTION_PATH = '/api/admin/mechanics';
+
+export function createAdminCatalogJob(input: { categoryId: string; displayName: string }) {
+  return apiFetch<AdminCatalogJobWriteDto>(ADMIN_CATALOG_JOBS_PATH, {
+    method: 'POST',
+    body: JSON.stringify({
+      categoryId: input.categoryId,
+      displayName: input.displayName.trim(),
+    }),
+  });
+}
+
+export function updateAdminCatalogJob(
+  jobId: string,
+  input: { displayName?: string; status?: CatalogStatus },
+) {
+  return apiFetch<AdminCatalogJobWriteDto>(`${ADMIN_CATALOG_JOBS_PATH}/${jobId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      ...(input.displayName === undefined ? {} : { displayName: input.displayName.trim() }),
+      ...(input.status === undefined ? {} : { status: input.status }),
+    }),
+  });
+}
+
+export function createAdminMechanic(input: { name: string; email: string; mode: MechanicMode }) {
+  return apiFetch<UserDto>(ADMIN_MECHANICS_COLLECTION_PATH, {
+    method: 'POST',
+    body: JSON.stringify({
+      name: input.name.trim(),
+      email: input.email.trim().toLowerCase(),
+      mode: input.mode,
+    }),
+  });
+}
+
+export function updateAdminMechanic(
+  mechanicId: string,
+  input: { name?: string; mode?: MechanicMode; active?: boolean },
+) {
+  return apiFetch<UserDto>(`${ADMIN_MECHANICS_COLLECTION_PATH}/${mechanicId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
   });
 }
 
