@@ -55,7 +55,108 @@ const users = {
     pmAuthorized: false,
     capabilities: ['admin.access', 'mechanic.standard', 'mechanic.pm'],
   },
+  'retired@lightning.local': {
+    id: '00000000-0000-4000-8000-000000000007',
+    email: 'retired@lightning.local',
+    name: 'Retired Mechanic',
+    role: 'mechanic',
+    active: false,
+    pmAuthorized: false,
+    capabilities: ['mechanic.standard'],
+  },
 };
+
+const adminCatalog = [
+  {
+    id: '00000000-0000-4000-8000-000000000301',
+    name: 'Brakes',
+    status: 'active',
+    sortOrder: 1,
+    jobs: [
+      { id: '00000000-0000-4000-8000-000000000801', displayName: 'Inspect brake chamber', status: 'active', aliases: ['Brake chamber', 'Chamber'] },
+      { id: '00000000-0000-4000-8000-000000000802', displayName: 'Replace brake pads', status: 'active', aliases: [] },
+      { id: '00000000-0000-4000-8000-000000000803', displayName: 'Retired brake job', status: 'inactive', aliases: ['Old brakes'] },
+    ],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000302',
+    name: 'Suspension',
+    status: 'inactive',
+    sortOrder: 2,
+    jobs: [
+      { id: '00000000-0000-4000-8000-000000000804', displayName: 'Retired suspension job', status: 'inactive', aliases: [] },
+    ],
+  },
+];
+
+let catalogWriteSeq = 900;
+let rosterWriteSeq = 20;
+
+function fixtureUuid(seq) {
+  return `00000000-0000-4000-8000-${String(seq).padStart(12, '0')}`;
+}
+
+function catalogSummary(category) {
+  return {
+    id: category.id,
+    name: category.name,
+    status: category.status,
+    sortOrder: category.sortOrder,
+    activeJobCount: category.jobs.filter((job) => job.status === 'active').length,
+    inactiveJobCount: category.jobs.filter((job) => job.status !== 'active').length,
+    aliasCount: category.jobs.reduce((count, job) => count + job.aliases.length, 0),
+  };
+}
+
+function catalogDetail(category) {
+  return { ...catalogSummary(category), jobs: category.jobs };
+}
+
+function rosterSummary(candidate) {
+  return {
+    id: candidate.id,
+    name: candidate.name,
+    email: candidate.email,
+    role: candidate.role,
+    active: candidate.active,
+    capabilities: candidate.capabilities,
+    openWorkOrderCount: 0,
+    currentAssignments: [],
+  };
+}
+
+function rosterDetail(candidate) {
+  return { ...rosterSummary(candidate), completedJobCount: 0, recentClosedWorkOrders: [] };
+}
+
+function modeToCapability(mode) {
+  if (mode === 'standard') return 'mechanic.standard';
+  if (mode === 'pm') return 'mechanic.pm';
+  return null;
+}
+
+function applyRosterMode(candidate, mode) {
+  const capability = modeToCapability(mode);
+  if (!capability) return false;
+  candidate.pmAuthorized = mode === 'pm';
+  candidate.capabilities = [
+    ...candidate.capabilities.filter((cap) => cap !== 'mechanic.standard' && cap !== 'mechanic.pm'),
+    capability,
+  ];
+  return true;
+}
+
+function rosterUserDto(candidate) {
+  return {
+    id: candidate.id,
+    email: candidate.email,
+    name: candidate.name,
+    role: candidate.role,
+    active: candidate.active,
+    pmAuthorized: Boolean(candidate.pmAuthorized),
+    capabilities: candidate.capabilities,
+  };
+}
 
 const workOrders = [
   makeWorkOrder('00000000-0000-4000-8000-000000000101', 'WO-0101', 'T-101', 'critical', 'waiting_paused'),
@@ -245,64 +346,70 @@ createServer(async (request, response) => {
     json(response, 403, { message: 'You do not have access to manage Work Orders.' });
     return true;
   }
+  function denyUnlessSystemAdmin() {
+    if (user.role === 'admin') return false;
+    json(response, 403, { message: 'Only System Admin can change this.' });
+    return true;
+  }
+  if (request.url === '/api/admin/catalog/jobs' && request.method === 'POST') {
+    if (denyUnlessSystemAdmin()) return;
+    const body = await readJson(request);
+    const category = adminCatalog.find((item) => item.id === body?.categoryId);
+    if (!category) { json(response, 404, { message: 'Category not found' }); return; }
+    if (category.status !== 'active') { json(response, 400, { message: 'Add jobs only to an active category.' }); return; }
+    const displayName = String(body?.displayName ?? '').trim();
+    if (!displayName) { json(response, 400, { message: 'Enter a Job name.' }); return; }
+    if (category.jobs.some((job) => job.displayName.toLowerCase() === displayName.toLowerCase())) {
+      json(response, 409, { message: 'That job name is already used by another catalog job.' });
+      return;
+    }
+    catalogWriteSeq += 1;
+    const created = {
+      id: fixtureUuid(catalogWriteSeq),
+      displayName,
+      status: body?.status === 'inactive' ? 'inactive' : 'active',
+      aliases: [displayName],
+    };
+    category.jobs.push(created);
+    json(response, 200, { ...created, categoryId: category.id });
+    return;
+  }
+  const catalogJobPatch = request.url?.match(/^\/api\/admin\/catalog\/jobs\/([0-9a-f-]+)$/i);
+  if (catalogJobPatch && request.method === 'PATCH') {
+    if (denyUnlessSystemAdmin()) return;
+    const body = await readJson(request);
+    const displayName = body?.displayName === undefined ? undefined : String(body.displayName).trim();
+    const status = body?.status;
+    if (displayName === undefined && status === undefined) {
+      json(response, 400, { message: 'Provide a display name or status' });
+      return;
+    }
+    const category = adminCatalog.find((item) => item.jobs.some((job) => job.id === catalogJobPatch[1]));
+    const job = category?.jobs.find((item) => item.id === catalogJobPatch[1]);
+    if (!category || !job) { json(response, 404, { message: 'Catalog job not found' }); return; }
+    if (displayName !== undefined) {
+      if (!displayName) { json(response, 400, { message: 'Enter a Job name.' }); return; }
+      const duplicate = category.jobs.some((item) => item.id !== job.id && item.displayName.toLowerCase() === displayName.toLowerCase());
+      if (duplicate) { json(response, 409, { message: 'That job name is already used by another catalog job.' }); return; }
+      job.displayName = displayName;
+      if (!job.aliases.includes(displayName)) job.aliases = [...job.aliases, displayName];
+    }
+    if (status !== undefined) {
+      if (status !== 'active' && status !== 'inactive') { json(response, 400, { message: 'Invalid status' }); return; }
+      job.status = status;
+    }
+    json(response, 200, { id: job.id, displayName: job.displayName, status: job.status, aliases: job.aliases, categoryId: category.id });
+    return;
+  }
   if (request.url === '/api/admin/catalog/categories') {
-    json(response, 200, [
-      {
-        id: '00000000-0000-4000-8000-000000000301',
-        name: 'Brakes',
-        status: 'active',
-        sortOrder: 1,
-        activeJobCount: 2,
-        inactiveJobCount: 1,
-        aliasCount: 3,
-      },
-      {
-        id: '00000000-0000-4000-8000-000000000302',
-        name: 'Suspension',
-        status: 'inactive',
-        sortOrder: 2,
-        activeJobCount: 0,
-        inactiveJobCount: 1,
-        aliasCount: 0,
-      },
-    ]);
+    json(response, 200, adminCatalog.map(catalogSummary));
     return;
   }
   if (request.url?.startsWith('/api/admin/catalog/categories/')) {
     const id = request.url.slice('/api/admin/catalog/categories/'.length).split('?')[0];
-    if (id === '00000000-0000-4000-8000-000000000301') {
-      json(response, 200, {
-        id,
-        name: 'Brakes',
-        status: 'active',
-        sortOrder: 1,
-        activeJobCount: 2,
-        inactiveJobCount: 1,
-        aliasCount: 3,
-        jobs: [
-          {
-            id: '00000000-0000-4000-8000-000000000801',
-            displayName: 'Inspect brake chamber',
-            status: 'active',
-            aliases: ['Brake chamber', 'Chamber'],
-          },
-          {
-            id: '00000000-0000-4000-8000-000000000802',
-            displayName: 'Replace brake pads',
-            status: 'active',
-            aliases: [],
-          },
-          {
-            id: '00000000-0000-4000-8000-000000000803',
-            displayName: 'Retired brake job',
-            status: 'inactive',
-            aliases: ['Old brakes'],
-          },
-        ],
-      });
-      return;
-    }
-    json(response, 404, { message: 'Category not found' });
+    const category = adminCatalog.find((item) => item.id === id);
+    if (!category) { json(response, 404, { message: 'Category not found' }); return; }
+    json(response, 200, catalogDetail(category));
     return;
   }
   if (request.url === '/api/admin/dashboard') {
@@ -628,19 +735,65 @@ createServer(async (request, response) => {
     }
     return;
   }
+  if (request.url === '/api/admin/mechanics' && request.method === 'POST') {
+    if (denyUnlessSystemAdmin()) return;
+    const body = await readJson(request);
+    const name = String(body?.name ?? '').trim();
+    const email = String(body?.email ?? '').trim().toLowerCase();
+    const capability = modeToCapability(body?.mode);
+    if (!name) { json(response, 400, { message: 'Enter a name.' }); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { json(response, 400, { message: 'Enter a valid email.' }); return; }
+    if (!capability) { json(response, 400, { message: 'Choose Standard or PM.' }); return; }
+    const existing = Object.values(users).find((candidate) => candidate.email.toLowerCase() === email);
+    if (existing) { json(response, 409, { message: 'That email already belongs to a Shop user.' }); return; }
+    rosterWriteSeq += 1;
+    const created = {
+      id: fixtureUuid(rosterWriteSeq),
+      email,
+      name,
+      role: 'mechanic',
+      active: true,
+      pmAuthorized: body.mode === 'pm',
+      capabilities: [capability],
+    };
+    users[email] = created;
+    json(response, 200, rosterUserDto(created));
+    return;
+  }
+  const mechanicWriteMatch = request.url?.match(/^\/api\/admin\/mechanics\/([0-9a-f-]+)$/i);
+  if (mechanicWriteMatch && request.method === 'PATCH') {
+    if (denyUnlessSystemAdmin()) return;
+    const body = await readJson(request);
+    if (body?.name === undefined && body?.mode === undefined && body?.active === undefined) {
+      json(response, 400, { message: 'Provide a name, Standard/PM mode, or active flag' });
+      return;
+    }
+    const candidate = Object.values(users).find((item) => item.id === mechanicWriteMatch[1]);
+    if (!candidate || candidate.role !== 'mechanic') { json(response, 404, { message: 'Mechanic not found' }); return; }
+    if (body.name !== undefined) {
+      const name = String(body.name).trim();
+      if (!name) { json(response, 400, { message: 'Enter a name.' }); return; }
+      candidate.name = name;
+    }
+    if (body.mode !== undefined && !applyRosterMode(candidate, body.mode)) {
+      json(response, 400, { message: 'Choose Standard or PM.' });
+      return;
+    }
+    if (body.active !== undefined) candidate.active = Boolean(body.active);
+    json(response, 200, rosterUserDto(candidate));
+    return;
+  }
+  const adminMechanicDetailMatch = request.url?.match(/^\/api\/admin\/mechanics\/([0-9a-f-]+)$/i);
+  if (adminMechanicDetailMatch && request.method === 'GET') {
+    const candidate = Object.values(users).find((item) => item.id === adminMechanicDetailMatch[1]);
+    if (!candidate) { json(response, 404, { message: 'Mechanic not found' }); return; }
+    json(response, 200, rosterDetail(candidate));
+    return;
+  }
   if (request.url?.startsWith('/api/admin/mechanics')) {
     const items = Object.values(users)
-      .filter((candidate) => candidate.capabilities.includes('mechanic.standard'))
-      .map((candidate) => ({
-        id: candidate.id,
-        name: candidate.name,
-        email: candidate.email,
-        role: candidate.role,
-        active: candidate.active,
-        capabilities: candidate.capabilities,
-        openWorkOrderCount: 0,
-        currentAssignments: [],
-      }));
+      .filter((candidate) => candidate.capabilities.includes('mechanic.standard') || candidate.capabilities.includes('mechanic.pm'))
+      .map(rosterSummary);
     json(response, 200, { items, nextCursor: null });
     return;
   }

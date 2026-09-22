@@ -1,13 +1,20 @@
 'use client';
 
 import Link from 'next/link';
+import { UserRole } from '@ltl-shop/shared';
+import { MechanicCapabilityEditor } from './admin-mechanic-roster';
+import { AdminWriteTip } from './admin-write-tip';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { ApiError } from '@/lib/api';
 import { useAdminMechanic } from '@/lib/admin-data';
+import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { isSystemAdmin } from '@/lib/system-admin';
 
 export function AdminMechanicDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
+  const { user } = useAuth();
   const { data, error, isLoading, mutate } = useAdminMechanic(id);
+  const canEditRoster = isSystemAdmin(user) && data?.role === UserRole.MECHANIC;
   if (isLoading) return <PageSkeleton label={messages.mechanicsTitle} />;
   if (error instanceof ApiError && error.status === 404) {
     return <EmptyState><p>{messages.mechanicNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/mechanics">{messages.backToMechanics}</Link></Button></EmptyState>;
@@ -21,8 +28,10 @@ export function AdminMechanicDetail({ id, locale, messages }: { id: string; loca
         eyebrow={messages.eyebrow}
         title={data.name}
         subtitle={data.email}
-        badges={<>{!data.active ? <Badge variant="secondary">{messages.mechanicInactive}</Badge> : null}<Badge variant="outline">{messages.readOnly}</Badge></>}
+        badges={<>{!data.active ? <Badge variant="secondary">{messages.mechanicInactive}</Badge> : null}{canEditRoster ? null : <Badge variant="outline">{messages.readOnly}</Badge>}</>}
       />
+      {canEditRoster ? <AdminWriteTip testId>{messages.mechanicRosterTip}</AdminWriteTip> : null}
+      {canEditRoster ? <MechanicCapabilityEditor mechanic={data} messages={messages} onSaved={() => void mutate()} /> : null}
       <Card>
         <CardHeader>
           <CardTitle>{messages.capabilitiesLabel}</CardTitle>
