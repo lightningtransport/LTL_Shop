@@ -275,10 +275,12 @@ function WorkOrderCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-display text-xl font-bold tracking-wide">
-            {wo.displayId}
+            #{wo.truckNumber}
           </p>
           <p className="text-sm text-shop-muted">
-            #{wo.truckNumber} · {!isPm ? `${messages.priority[wo.priority] ?? wo.priority} · ` : ''}
+            {messages.workOrder} {wo.displayId}
+            {' · '}
+            {!isPm ? `${messages.priority[wo.priority] ?? wo.priority} · ` : ''}
             {mode === 'paused'
               ? pauseLabel(wo.currentPauseReason, messages.pauseReason)
               : messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}

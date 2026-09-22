@@ -70,7 +70,7 @@ test.describe('Mechanic P0 critical path', () => {
     expect(workOrderReads).toBe(1);
 
     await page.getByRole('button', { name: /Start Work/i }).or(page.getByRole('link', { name: /View Work/i })).first().click();
-    await expect(page.getByRole('heading', { name: /WO-/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^#/ })).toBeVisible();
     await page.getByRole('link', { name: /Back/i }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     expect(workOrderReads).toBe(1);

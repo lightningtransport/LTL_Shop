@@ -46,7 +46,7 @@ test.describe('LTR-21 New WO category jobs', () => {
     await page.getByRole('button', { name: 'Create Work Order' }).click();
 
     await expect(page).toHaveURL(/\/admin\/work-orders\/00000000-0000-4000-8000-000000000199/);
-    await expect(page.getByRole('heading', { name: 'WO-0199' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'T-105' })).toBeVisible();
     await expect(page.getByRole('status').filter({ hasText: /WO-0199 created|WO-0199 creada/i })).toBeVisible();
   });
 

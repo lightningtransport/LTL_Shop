@@ -19,7 +19,7 @@ test.describe('V2-002 TARGET ownership cutover', () => {
     await expect(page.getByRole('combobox', { name: /Truck/i })).toHaveCount(0);
 
     await page.goto('/work-orders/00000000-0000-4000-8000-000000000106', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'WO-0106' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: '#T-106' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'Report Blocker' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Finish Work' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add job/i })).toHaveCount(0);
@@ -36,7 +36,7 @@ test.describe('V2-002 TARGET ownership cutover', () => {
     await expect(page.getByRole('heading', { name: 'New Work Order' })).toBeVisible();
 
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000106', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'WO-0106' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'T-106' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'Pause Work Order' })).toBeVisible();
     await page.getByRole('button', { name: 'Add job +' }).click();
     const dialog = page.getByRole('dialog', { name: /Add job/i });

@@ -41,8 +41,13 @@ export function AdminMechanicDetail({ id, locale, messages }: { id: string; loca
             <ul className="divide-y">
               {data.currentAssignments.map((assignment) => (
                 <li key={assignment.workOrderId} className="py-2 first:pt-0">
-                  <Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${assignment.workOrderId}`}>{assignment.displayId}</Link>
-                  <p className="text-sm text-muted-foreground">{assignment.truckNumber} · {assignment.primaryCategoryName}</p>
+                  <p className="font-display text-base font-semibold text-primary">{assignment.truckNumber}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {messages.workOrder}{' '}
+                    <Link className="font-medium text-foreground hover:underline" href={`/admin/work-orders/${assignment.workOrderId}`}>{assignment.displayId}</Link>
+                    {' · '}
+                    {assignment.primaryCategoryName}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -56,8 +61,13 @@ export function AdminMechanicDetail({ id, locale, messages }: { id: string; loca
             <ul className="divide-y">
               {data.recentClosedWorkOrders.map((assignment) => (
                 <li key={assignment.workOrderId} className="py-2 first:pt-0">
-                  <Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${assignment.workOrderId}`}>{assignment.displayId}</Link>
-                  <p className="text-sm text-muted-foreground">{assignment.truckNumber} · {assignment.primaryCategoryName} · {assignment.status}</p>
+                  <p className="font-display text-base font-semibold text-primary">{assignment.truckNumber}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {messages.workOrder}{' '}
+                    <Link className="font-medium text-foreground hover:underline" href={`/admin/work-orders/${assignment.workOrderId}`}>{assignment.displayId}</Link>
+                    {' · '}
+                    {assignment.primaryCategoryName} · {assignment.status}
+                  </p>
                 </li>
               ))}
             </ul>

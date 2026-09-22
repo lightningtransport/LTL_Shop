@@ -95,7 +95,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Jobs ready to close first')).toBeVisible();
     await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
     await page.getByRole('link', { name: 'WO-0102' }).first().click();
-    await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
     const completeHeading = page.getByRole('heading', { name: 'Complete Work Order' });
     const summaryHeading = page.getByRole('heading', { name: 'Operational summary' });
     await expect(completeHeading).toBeVisible();
@@ -194,7 +194,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('link', { name: 'WO-0101' }).first()).toBeVisible();
     await page.getByRole('link', { name: 'WO-0101' }).first().click();
-    await expect(page.getByRole('heading', { name: 'WO-0101' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'T-101' })).toBeVisible();
     await expect(page.locator('header .section-label')).toHaveText('Shop Admin');
     await expect(page.getByText('Read only')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Truck details' })).toBeVisible();
@@ -223,7 +223,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Cancelled').first()).toBeVisible();
     await page.getByRole('link', { name: 'Back to Work Orders' }).click();
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
-    await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
     await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm completion' }).first()).toBeVisible();
     await page.getByLabel('Time segment').selectOption({ index: 1 });
@@ -553,7 +553,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page).toHaveURL(/\/admin$/);
 
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
-    await expect(page.getByRole('heading', { name: 'WO-0102' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
     const nextAction = page.getByTestId('admin-wo-next-action');
     await expect(nextAction).toBeVisible();
     const stickyButton = nextAction.getByRole('button', { name: 'Confirm completion' });
@@ -569,7 +569,7 @@ test.describe('Shop Admin Phase 2A', () => {
     expect(completeCardBox && pauseBox && completeCardBox.y < pauseBox.y).toBe(true);
 
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
-    await expect(page.getByRole('heading', { name: 'WO-0101' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'T-101' })).toBeVisible();
     await expect(page.getByTestId('admin-wo-next-action')).toHaveCount(0);
 
     await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
