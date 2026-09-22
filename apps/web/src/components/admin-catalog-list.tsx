@@ -21,23 +21,19 @@ export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; me
     return categories.filter((category) => category.name.toLowerCase().includes(query));
   }, [data, search]);
 
+  const addJobButton = () => (
+    <AdminCatalogWriteActions messages={messages} categories={data ?? []} onChanged={() => void mutate()} />
+  );
+
   return (
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow={messages.eyebrow}
         title={messages.catalogTitle}
         subtitle={canWrite ? messages.catalogWriteDescription : messages.catalogDescription}
+        actions={canWrite ? addJobButton() : null}
       />
-      {canWrite ? (
-        <div className="space-y-3">
-          {data ? (
-            <div className="flex flex-wrap gap-2">
-              <AdminCatalogWriteActions messages={messages} categories={data} onChanged={() => void mutate()} />
-            </div>
-          ) : null}
-          <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip>
-        </div>
-      ) : null}
+      {canWrite ? <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip> : null}
       <Card className="p-3">
         <CardContent>
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchCatalog} aria-label={messages.searchCatalog} />
@@ -48,6 +44,7 @@ export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; me
       {!isLoading && !error && items.length === 0 ? (
         <EmptyState>
           <p>{search.trim() ? messages.catalogNoMatches : messages.catalogNoCategories}</p>
+          {canWrite ? <div className="mt-4 flex justify-center">{addJobButton()}</div> : null}
         </EmptyState>
       ) : null}
       {items.length ? (

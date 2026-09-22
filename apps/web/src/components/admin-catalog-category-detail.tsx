@@ -27,22 +27,16 @@ export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: strin
         title={data.name}
         subtitle={canWrite ? messages.catalogWriteDescription : messages.catalogDescription}
         badges={data.status === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}
+        actions={canWrite && data.status === CatalogStatus.ACTIVE ? (
+          <AdminCatalogWriteActions
+            messages={messages}
+            categories={[data]}
+            categoryId={data.id}
+            onChanged={() => void mutate()}
+          />
+        ) : null}
       />
-      {canWrite ? (
-        <div className="space-y-3">
-          {data.status === CatalogStatus.ACTIVE ? (
-            <div className="flex flex-wrap gap-2">
-              <AdminCatalogWriteActions
-                messages={messages}
-                categories={[data]}
-                categoryId={data.id}
-                onChanged={() => void mutate()}
-              />
-            </div>
-          ) : null}
-          <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip>
-        </div>
-      ) : null}
+      {canWrite ? <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip> : null}
       <Card>
         <CardHeader>
           <CardTitle>{messages.catalogJobsColumn}</CardTitle>
@@ -64,7 +58,19 @@ export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: strin
               ))}
             </ul>
           ) : (
-            <EmptyState>{messages.catalogNoJobs}</EmptyState>
+            <EmptyState>
+              <p>{messages.catalogNoJobs}</p>
+              {canWrite && data.status === CatalogStatus.ACTIVE ? (
+                <div className="mt-4 flex justify-center">
+                  <AdminCatalogWriteActions
+                    messages={messages}
+                    categories={[data]}
+                    categoryId={data.id}
+                    onChanged={() => void mutate()}
+                  />
+                </div>
+              ) : null}
+            </EmptyState>
           )}
         </CardContent>
       </Card>
