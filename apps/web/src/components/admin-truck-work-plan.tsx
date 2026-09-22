@@ -18,6 +18,7 @@ import {
   workPlanJobUiStatusLabel,
   workPlanJobUiStatusVariant,
   workPlanMandatoryStatusLabel,
+  workPlanMandatoryStatusVariant,
   workPlanNextStepCategoryName,
   workPlanNextStepCtaLabel,
   workPlanPhaseLabel,
@@ -379,11 +380,11 @@ function MandatoryRow({
 }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2">
-      <span>{label}</span>
-      <span className="text-muted-foreground">
+      <Badge variant="outline" className="normal-case tracking-normal">{label}</Badge>
+      <Badge variant={workPlanMandatoryStatusVariant(phase.status)} className="normal-case tracking-normal">
         {workPlanMandatoryStatusLabel(phase.status, messages)}
         {phase.jobCount ? ` · ${phase.jobCount}` : ''}
-      </span>
+      </Badge>
     </li>
   );
 }

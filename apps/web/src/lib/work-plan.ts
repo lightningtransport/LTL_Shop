@@ -75,6 +75,14 @@ export function workPlanMandatoryStatusLabel(status: string, messages: AdminMess
   return status;
 }
 
+/** Same Badge variants as Work Plan job chips: Pending outline, Complete success. */
+export function workPlanMandatoryStatusVariant(status: string): ChipVariant {
+  if (status === 'complete') return 'success';
+  if (status === 'in_progress') return 'default';
+  if (status === 'not_applicable') return 'secondary';
+  return 'outline';
+}
+
 export function shouldShowQualityCheckMandatory(plan: TruckWorkPlanDto) {
   return plan.mandatory.qualityCheck.required || plan.mandatory.qualityCheck.jobCount > 0;
 }

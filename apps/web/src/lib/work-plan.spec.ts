@@ -22,6 +22,7 @@ import {
   workPlanJobUiStatusLabel,
   workPlanJobUiStatusVariant,
   workPlanMandatoryStatusLabel,
+  workPlanMandatoryStatusVariant,
   workPlanNextStepCategoryName,
   workPlanNextStepCtaLabel,
   workPlanPhaseLabel,
@@ -74,6 +75,16 @@ describe('LTR-33 Work Plan copy helpers', () => {
     expect(workPlanNextStepCtaLabel('alignment_pending', en)).toBe('Add Alignment');
     expect(workPlanNextStepCtaLabel('qc_pending', es)).toBe('Agregar Quality Check');
     expect(workPlanMandatoryStatusLabel('pending', en)).toBe('Pending');
+    expect(workPlanMandatoryStatusLabel('pending', es)).toBe('Pendiente');
+    expect(workPlanMandatoryStatusLabel('in_progress', en)).toBe('In Progress');
+    expect(workPlanMandatoryStatusLabel('in_progress', es)).toBe('En progreso');
+    expect(workPlanMandatoryStatusLabel('complete', en)).toBe('Complete');
+    expect(workPlanMandatoryStatusLabel('complete', es)).toBe('Completo');
+    expect(workPlanMandatoryStatusLabel('not_applicable', es)).toBe('No aplica');
+    expect(workPlanMandatoryStatusVariant('pending')).toBe('outline');
+    expect(workPlanMandatoryStatusVariant('in_progress')).toBe('default');
+    expect(workPlanMandatoryStatusVariant('complete')).toBe('success');
+    expect(workPlanMandatoryStatusVariant('not_applicable')).toBe('secondary');
     expect(shouldShowQualityCheckMandatory(plan())).toBe(false);
     expect(shouldShowQualityCheckMandatory(plan({
       mandatory: {
