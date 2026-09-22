@@ -497,7 +497,7 @@ function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messa
       </div>
       {vehicle ? <p className="truncate text-xs text-muted-foreground" title={vehicle}>{vehicle}</p> : null}
       {workOrder ? (
-        <p className="truncate text-xs font-medium">{workOrder.displayId}</p>
+        <p className="truncate text-xs text-muted-foreground">{messages.workOrder} {workOrder.displayId}</p>
       ) : (
         <CompactEmpty className="px-2 py-1 text-xs">{messages.noOpenWorkOrder}</CompactEmpty>
       )}

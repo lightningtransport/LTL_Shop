@@ -28,6 +28,7 @@ type Copy = {
   devLogin: string;
   newWorkOrder: string;
   newPmService: string;
+  workOrder: string;
   workOrderHint: string;
   pmServiceHint: string;
   truck: string;
@@ -180,6 +181,7 @@ const copy: Record<ShopLocale, Copy> = {
     signInHint: 'Sign in with the email linked to the Shop.', email: 'Email', password: 'Password',
     resetPassword: 'Reset password', devLogin: 'Dev login (local bypass)',
     newWorkOrder: 'New Work Order', newPmService: 'New PM service',
+    workOrder: 'Work Order',
     workOrderHint: 'Enter the required information. Creating saves the order; Start Work begins labor.',
     pmServiceHint: 'Select a truck to create a PM service.', truck: 'Truck',
     searchTruck: 'Search truck number (for example, #905)', noTrucks: 'No trucks found.',
@@ -265,7 +267,7 @@ const copy: Record<ShopLocale, Copy> = {
     dismissNotice: 'Dismiss',
     closeDialog: 'Close',
     pauseWorkOrder: 'Pause Work Order',
-    workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, truck ${truckNumber}`,
+    workOrderAction: (action, displayId, truckNumber) => `${action} truck ${truckNumber}, Work Order ${displayId}`,
     pmServiceLoadError: 'Unable to load PM service details.',
     loadingPmService: 'Loading PM service details…',
     currentTruckMileage: 'Current truck mileage',
@@ -335,6 +337,7 @@ const copy: Record<ShopLocale, Copy> = {
     signInHint: 'Inicia sesión con el correo vinculado al Shop.', email: 'Correo electrónico', password: 'Contraseña',
     resetPassword: 'Restablecer contraseña', devLogin: 'Acceso de desarrollo (bypass local)',
     newWorkOrder: 'Nuevo Work Order', newPmService: 'Nuevo servicio de PM',
+    workOrder: 'Work Order',
     workOrderHint: 'Ingresa la información requerida. Crear guarda el Work Order; Iniciar trabajo comienza el registro de tiempo.',
     pmServiceHint: 'Selecciona una unidad para crear un servicio de PM.', truck: 'Unidad',
     searchTruck: 'Buscar número de unidad (por ejemplo, #905)', noTrucks: 'No se encontraron unidades.',
@@ -422,7 +425,7 @@ const copy: Record<ShopLocale, Copy> = {
     dismissNotice: 'Cerrar',
     closeDialog: 'Cerrar',
     pauseWorkOrder: 'Pausar Work Order',
-    workOrderAction: (action, displayId, truckNumber) => `${action} ${displayId}, unidad ${truckNumber}`,
+    workOrderAction: (action, displayId, truckNumber) => `${action} unidad ${truckNumber}, Work Order ${displayId}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',
     loadingPmService: 'Cargando detalles del servicio de PM…',
     currentTruckMileage: 'Millaje actual del camión',

@@ -58,8 +58,8 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
           <table className="w-full min-w-[48rem] text-left text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
-                <th className="p-3 font-medium">{messages.displayId}</th>
                 <th className="p-3 font-medium">{messages.truck}</th>
+                <th className="p-3 font-medium">{messages.displayId}</th>
                 <th className="p-3 font-medium">{messages.category}</th>
                 <th className="p-3 font-medium">{messages.status}</th>
                 <th className="p-3 font-medium">{messages.updatedAt}</th>
@@ -68,8 +68,8 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="border-t">
-                  <td className="p-3 font-semibold"><Link className="text-primary hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td>
-                  <td className="p-3">{item.truck.truckNumber}</td>
+                  <td className="p-3 font-display font-semibold">{item.truck.truckNumber}</td>
+                  <td className="p-3 text-muted-foreground"><Link className="hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td>
                   <td className="p-3">{item.category.name}</td>
                   <td className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></td>
                   <td className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</td>

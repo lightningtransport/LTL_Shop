@@ -15,7 +15,7 @@ test.describe('V1.2-002 blocker lifecycle', () => {
     await devLogin(page, 'mechanic@lightning.local');
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     await page.goto(`/work-orders/${BLOCKER_WO_ID}`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'WO-0106' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: '#T-106' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/In Progress/i)).toBeVisible();
 
     await page.getByRole('button', { name: 'Report Blocker' }).first().click();
@@ -24,8 +24,8 @@ test.describe('V1.2-002 blocker lifecycle', () => {
     await dialog.getByLabel('Blocker reason').selectOption('waiting_for_parts');
     await dialog.getByRole('button', { name: 'Report Blocker', exact: true }).click();
 
-    await expect(page.getByRole('heading', { name: 'WO-0106' })).toBeVisible();
-    await expect(page.getByText('#T-106 · In Progress')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '#T-106' })).toBeVisible();
+    await expect(page.getByText('Work Order WO-0106 · In Progress')).toBeVisible();
     await expect(page.getByText(/^Paused$/)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Resume Work' })).toHaveCount(0);
 
@@ -33,7 +33,7 @@ test.describe('V1.2-002 blocker lifecycle', () => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
     await page.goto(`/admin/work-orders/${BLOCKER_WO_ID}`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'WO-0106' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'T-106' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('In Progress').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Reported blockers' })).toBeVisible();
     await expect(page.getByText('Waiting for Parts').first()).toBeVisible();
