@@ -6,15 +6,14 @@ import { MechanicCapabilityEditor } from './admin-mechanic-roster';
 import { AdminWriteTip } from './admin-write-tip';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { ApiError } from '@/lib/api';
+import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminMechanic } from '@/lib/admin-data';
-import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { isSystemAdmin } from '@/lib/system-admin';
 
 export function AdminMechanicDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
-  const { user } = useAuth();
+  const canWrite = useCanShowAdminWrites();
   const { data, error, isLoading, mutate } = useAdminMechanic(id);
-  const canEditRoster = isSystemAdmin(user) && data?.role === UserRole.MECHANIC;
+  const canEditRoster = canWrite && data?.role === UserRole.MECHANIC;
   if (isLoading) return <PageSkeleton label={messages.mechanicsTitle} />;
   if (error instanceof ApiError && error.status === 404) {
     return <EmptyState><p>{messages.mechanicNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/mechanics">{messages.backToMechanics}</Link></Button></EmptyState>;

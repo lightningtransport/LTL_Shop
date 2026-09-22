@@ -115,12 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               PROFILE_RESTORE_TIMEOUT_MS,
             ).catch(() => new Response(null, { status: 503 })),
           ]);
-          if (!serverSession.ok) {
-            if (res.user.capabilities.includes(AppCapability.ADMIN_ACCESS)) {
-              throw new Error('Unable to establish the secure application session.');
-            }
-          }
+          // Publish the profile before the cookie check. A failed cookie refresh
+          // must not leave role === admin as a null client user, or catalog and
+          // roster writes stay on the read-only subtitle. Login still fails
+          // closed when the secure session cannot be established.
           setUser(res.user);
+          if (!serverSession.ok && res.user.capabilities.includes(AppCapability.ADMIN_ACCESS)) {
+            throw new Error('Unable to establish the secure application session.');
+          }
           return res.user;
         } catch (profileError) {
           profilePromiseRef.current = null;

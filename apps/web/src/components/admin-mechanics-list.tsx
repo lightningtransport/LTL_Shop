@@ -8,14 +8,12 @@ import { useActionToast } from './action-toast';
 import { ActivateMechanicDialog, CreateMechanicDialog } from './admin-mechanic-roster';
 import { AdminWriteTip } from './admin-write-tip';
 import { AdminFilterToolbar, AdminPageHeader, Badge, Button, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminMechanics } from '@/lib/admin-data';
-import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { isSystemAdmin } from '@/lib/system-admin';
 
 export function AdminMechanicsList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
-  const { user } = useAuth();
-  const canWrite = isSystemAdmin(user);
+  const canWrite = useCanShowAdminWrites();
   const { showToast } = useActionToast();
   const router = useRouter();
   const searchParams = useSearchParams();

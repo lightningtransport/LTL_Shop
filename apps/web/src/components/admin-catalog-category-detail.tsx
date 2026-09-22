@@ -6,14 +6,12 @@ import { AdminCatalogJobActions, AdminCatalogWriteActions } from './admin-catalo
 import { AdminWriteTip } from './admin-write-tip';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { ApiError } from '@/lib/api';
+import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategory } from '@/lib/admin-data';
-import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { isSystemAdmin } from '@/lib/system-admin';
 
 export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
-  const { user } = useAuth();
-  const canWrite = isSystemAdmin(user);
+  const canWrite = useCanShowAdminWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategory(id);
   if (isLoading) return <PageSkeleton label={messages.catalogTitle} />;
   if (error instanceof ApiError && error.status === 404) {

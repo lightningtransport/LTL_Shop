@@ -6,14 +6,12 @@ import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
 import { AdminWriteTip } from './admin-write-tip';
 import { AdminPageHeader, Badge, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories } from '@/lib/admin-data';
-import { useAuth } from '@/lib/auth-context';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { isSystemAdmin } from '@/lib/system-admin';
 
 export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
-  const { user } = useAuth();
-  const canWrite = isSystemAdmin(user);
+  const canWrite = useCanShowAdminWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategories();
   const [search, setSearch] = useState('');
   const items = useMemo(() => {
@@ -30,11 +28,13 @@ export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; me
         title={messages.catalogTitle}
         subtitle={canWrite ? messages.catalogWriteDescription : messages.catalogDescription}
       />
-      {canWrite && data ? (
+      {canWrite ? (
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <AdminCatalogWriteActions messages={messages} categories={data} onChanged={() => void mutate()} />
-          </div>
+          {data ? (
+            <div className="flex flex-wrap gap-2">
+              <AdminCatalogWriteActions messages={messages} categories={data} onChanged={() => void mutate()} />
+            </div>
+          ) : null}
           <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip>
         </div>
       ) : null}

@@ -31,6 +31,22 @@ test('manager stays read-only on the mechanic roster and Job Catalog', async ({ 
   await expect(page.getByRole('button', { name: 'Rename Job' })).toHaveCount(0);
 });
 
+test('system admin with only admin.access sees catalog and roster writes', async ({ page }) => {
+  await devLogin(page, 'system-admin@lightning.local');
+
+  await page.goto('/admin/catalog');
+  await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
+  await expect(page.getByText('Read-only Categories, Jobs, and aliases')).toHaveCount(0);
+  await expect(page.getByTestId('pd-light-tip')).toContainText('System Admin only');
+  await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);
+
+  await page.goto('/admin/mechanics');
+  await expect(page.getByRole('button', { name: 'Create mechanic' })).toBeVisible();
+  await expect(page.getByText('Read-only view of Shop mechanics')).toHaveCount(0);
+  await expect(page.getByTestId('pd-light-tip')).toContainText('System Admin only');
+});
+
 test('system admin adds, renames, and activates a Job, then creates and activates a mechanic', async ({ page }) => {
   await devLogin(page, 'admin@lightning.local');
 

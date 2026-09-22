@@ -1,7 +1,7 @@
 import { UserRole } from '@ltl-shop/shared';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api';
-import { adminWriteFailureMessage, isRosterEmail, isSystemAdmin } from './system-admin';
+import { adminWriteFailureMessage, canShowAdminWrites, isRosterEmail, isSystemAdmin } from './system-admin';
 
 describe('isSystemAdmin', () => {
   it('allows only the admin role', () => {
@@ -10,6 +10,26 @@ describe('isSystemAdmin', () => {
     expect(isSystemAdmin({ role: UserRole.MECHANIC })).toBe(false);
     expect(isSystemAdmin(null)).toBe(false);
     expect(isSystemAdmin(undefined)).toBe(false);
+  });
+});
+
+describe('canShowAdminWrites', () => {
+  it('shows writes for a System Admin session even before the client profile loads', () => {
+    expect(canShowAdminWrites(UserRole.ADMIN, null)).toBe(true);
+    expect(canShowAdminWrites(UserRole.ADMIN, undefined)).toBe(true);
+    expect(canShowAdminWrites(UserRole.ADMIN, { role: UserRole.MANAGER })).toBe(true);
+  });
+
+  it('keeps Shop Manager read-only, including when only admin.access would be present', () => {
+    expect(canShowAdminWrites(UserRole.MANAGER, null)).toBe(false);
+    expect(canShowAdminWrites(UserRole.MANAGER, { role: UserRole.MANAGER })).toBe(false);
+    expect(canShowAdminWrites(undefined, { role: UserRole.MANAGER })).toBe(false);
+    expect(canShowAdminWrites('manager', { role: UserRole.MECHANIC })).toBe(false);
+  });
+
+  it('accepts a loaded client profile with role admin when the session role is missing', () => {
+    expect(canShowAdminWrites(undefined, { role: UserRole.ADMIN })).toBe(true);
+    expect(canShowAdminWrites('manager', { role: UserRole.ADMIN })).toBe(true);
   });
 });
 
