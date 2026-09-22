@@ -11,6 +11,7 @@ import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, 
 import { changeAdminPmService, addAdminWorkOrderJob, addAdminWorkOrderNote, handleAdminWorkRequest, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { pauseResumeError } from './pause-resume-error';
+import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
 import { adminNextStep, fillPlaceholders } from '@/lib/admin-next-step';
 import { useAuth } from '@/lib/auth-context';
@@ -102,6 +103,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const canReopenJob = isOpen && data.category.name !== 'PM';
   const canEditFields = canManageWorkOrders && isOpen;
   const canOfficialPause = canManageWorkOrders && isOpen && data.category.name !== 'PM';
+  const pauseEnabled = canOfficiallyPauseWorkOrder(data.status);
   const hasIncompleteJobs = data.category.name !== 'PM' && data.jobs.some((job) => job.status === 'to_do');
   const readyToClose = isAdminWorkOrderReadyToClose({
     canManageWorkOrders,
@@ -647,20 +649,26 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 {messages.resumeWorkOrderAction}
               </Button>
             ) : (
-              <form
-                className="flex flex-col gap-3 sm:flex-row"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void runMutation('pause-wo', messages.pauseWorkOrderSuccess, () => pauseAdminWorkOrder(data.id, { reason: pauseReason }), (failure) => pauseResumeError(failure, messages));
-                }}
-              >
-                <Select aria-label={messages.pauseReasonLabel} value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
-                  {Object.values(PauseReason).map((reason) => (
-                    <option key={reason} value={reason}>{adminPauseReasonLabel(reason, messages)}</option>
-                  ))}
-                </Select>
-                <Button type="submit" disabled={Boolean(pendingAction)}>{messages.pauseWorkOrderAction}</Button>
-              </form>
+              <div className="space-y-2">
+                <form
+                  className="flex flex-col gap-3 sm:flex-row"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (!pauseEnabled) return;
+                    void runMutation('pause-wo', messages.pauseWorkOrderSuccess, () => pauseAdminWorkOrder(data.id, { reason: pauseReason }), (failure) => pauseResumeError(failure, messages));
+                  }}
+                >
+                  <Select aria-label={messages.pauseReasonLabel} value={pauseReason} disabled={!pauseEnabled || Boolean(pendingAction)} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
+                    {Object.values(PauseReason).map((reason) => (
+                      <option key={reason} value={reason}>{adminPauseReasonLabel(reason, messages)}</option>
+                    ))}
+                  </Select>
+                  <Button type="submit" disabled={!pauseEnabled || Boolean(pendingAction)} aria-describedby={pauseEnabled ? undefined : 'pause-unavailable-help'}>{messages.pauseWorkOrderAction}</Button>
+                </form>
+                {pauseEnabled ? null : (
+                  <p id="pause-unavailable-help" className="text-xs text-muted-foreground">{messages.pauseUnavailableUntilInProgress}</p>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

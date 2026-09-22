@@ -22,6 +22,7 @@ import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import { isMyAssignedOrInheritedJob, isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel } from '@/lib/job-assignment';
+import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
@@ -736,7 +737,21 @@ function PmWorkOrderDetail({
       ) : null}
 
       <section className="mb-4 space-y-2" aria-label="PM work actions">
-        {wo.status === 'in_progress' ? (
+        {wo.status === 'created' ? (
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              disabled
+              aria-describedby="pm-pause-unavailable"
+            >
+              {messages.pauseWorkOrder}
+            </Button>
+            <p id="pm-pause-unavailable" className="text-sm text-muted-foreground">{messages.pauseUnavailableUntilInProgress}</p>
+          </>
+        ) : null}
+        {canOfficiallyPauseWorkOrder(wo.status) ? (
           <div className="grid grid-cols-2 gap-2">
             <Button ref={pauseTriggerRef} variant="secondary" disabled={busy} onClick={() => setPauseOpen(true)}>{messages.pauseWorkOrder}</Button>
             <Button disabled={finishBlocked} onClick={() => setFinishOpen(true)}>{messages.finishWork}</Button>
@@ -745,7 +760,7 @@ function PmWorkOrderDetail({
         {wo.status === 'waiting_paused' ? (
           <Button className="w-full" disabled={busy} onClick={() => run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/resume`, { method: 'POST' }))}>Resume Work</Button>
         ) : null}
-        {wo.status === 'in_progress' && finishBlocked ? (
+        {canOfficiallyPauseWorkOrder(wo.status) && finishBlocked ? (
           <p className="text-sm text-muted-foreground">Finish Work requires a saved observed mileage and at least one part.</p>
         ) : null}
       </section>
@@ -786,7 +801,8 @@ function PmWorkOrderDetail({
         ) : null}
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" onClick={() => setPauseOpen(false)}>{messages.cancelAction}</Button>
-          <Button disabled={!pauseReason || busy} onClick={() => {
+          <Button disabled={!canOfficiallyPauseWorkOrder(wo.status) || !pauseReason || busy} onClick={() => {
+            if (!canOfficiallyPauseWorkOrder(wo.status)) return;
             setPauseOpen(false);
             void run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause`, {
               method: 'POST',
