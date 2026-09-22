@@ -35,8 +35,9 @@ Admin mutation. Full capability-based separation remains V2 enforcement.
 ## How authorization is implemented
 
 1. `AuthGuard` authenticates the Supabase/dev token and loads **persisted**
-   application capabilities. Role classifies the user; it does not grant
-   mutation authority.
+   application capabilities. Role classifies the user. It does not grant
+   Work Order or Yard mutation authority. LTR-77 / LTR-78 roster and catalog
+   writes are the exception: they require `role === admin` (see below).
 2. `CapabilitiesGuard` reads `@Capabilities(...)` with Nest
    `getAllAndOverride`. **Method metadata replaces class metadata.** A method
    that needs a second capability must re-declare `admin.access`.
@@ -48,6 +49,12 @@ Admin mutation. Full capability-based separation remains V2 enforcement.
 5. Manager wrappers `createByManager`, `pauseByManager`, and `resumeByManager`
    skip assignment checks and **do not re-assert** `work_orders.manage`.
    Yard mutation methods likewise trust the HTTP guard.
+6. **LTR-77 / LTR-78 exception (2026-09-22).** Roster and catalog writes are
+   not a new capability. `SystemAdminGuard` allows them only when
+   `users.role === admin` (System Admin). Shop Manager is `role = manager`
+   and already has `admin.access`, so capability checks alone would let
+   Manager write. Class-level `admin.access` still applies. See
+   `SYSTEM_ADMIN_ROLE_WRITES` in `capability-boundary.matrix.ts`.
 
 ## Capability catalog
 
@@ -93,6 +100,27 @@ mutation onto `work_orders.manage`.
 Admin reads (`/admin/access`, dashboard, lists, detail, catalog, trucks,
 mechanics, history, yard-operations, truck detail, repair history) all require
 `admin.access` only. That matches the Yard Phase 1 contract.
+
+## System Admin role gate (LTR-77 / LTR-78)
+
+`admin.access` is shared by Shop Manager and System Admin. These writes add
+`SystemAdminGuard` (`users.role === admin`) on top of class-level
+`admin.access`. A Manager who holds `admin.access`, `work_orders.manage`, and
+`yard.operations.manage` still receives 403. No permissions matrix and no new
+capability.
+
+| Method and path | Capability declared | Role gate | Manager |
+|---|---|---|---|
+| `POST /api/admin/mechanics` | `admin.access` (class) | `role === admin` | 403 |
+| `PATCH /api/admin/mechanics/:id` | `admin.access` (class) | `role === admin` | 403 |
+| `POST /api/admin/catalog/jobs` | `admin.access` (class) | `role === admin` | 403 |
+| `PATCH /api/admin/catalog/jobs/:id` | `admin.access` (class) | `role === admin` | 403 |
+
+Mechanic create applies exactly one of `mechanic.standard` or `mechanic.pm`
+and records `user_capabilities.granted_by_id`. Catalog create records
+`catalog_jobs.created_by_id` and keeps the job id stable across rename and
+activate. Category create, Custom Job review, and Supabase Auth provisioning
+are not part of this gate.
 
 ## Mechanic Work Order mutations
 

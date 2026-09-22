@@ -34,6 +34,10 @@ import {
   createWorkOrderSchema,
   addWorkPlanJobsSchema,
   recordWorkPlanInspectionSchema,
+  adminCreateMechanicSchema,
+  adminUpdateMechanicSchema,
+  adminCreateCatalogJobSchema,
+  adminUpdateCatalogJobSchema,
 } from './schemas';
 
 describe('shared contracts', () => {
@@ -318,5 +322,28 @@ describe('shared contracts', () => {
     };
     expect(unavailable.workLocation.items).toEqual([]);
     expect(unavailable.upcomingDepartures.items[0]?.truckNumber).toBe('905');
+  });
+
+  it('accepts System Admin mechanic and catalog write bodies and rejects empty updates', () => {
+    expect(adminCreateMechanicSchema.parse({
+      email: 'New.Mechanic@Lightning.Local',
+      name: 'New Mechanic',
+      mode: 'pm',
+    })).toEqual({
+      email: 'new.mechanic@lightning.local',
+      name: 'New Mechanic',
+      mode: 'pm',
+    });
+    expect(adminUpdateMechanicSchema.safeParse({}).success).toBe(false);
+    expect(adminUpdateMechanicSchema.parse({ active: true }).active).toBe(true);
+    expect(adminCreateCatalogJobSchema.parse({
+      categoryId: '00000000-0000-4000-8000-0000000000c1',
+      displayName: ' Air hose ',
+    })).toMatchObject({ displayName: 'Air hose' });
+    expect(adminUpdateCatalogJobSchema.safeParse({}).success).toBe(false);
+    expect(adminCreateCatalogJobSchema.safeParse({
+      categoryId: 'not-a-uuid',
+      displayName: 'Air hose',
+    }).success).toBe(false);
   });
 });

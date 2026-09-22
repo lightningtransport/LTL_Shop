@@ -16,12 +16,14 @@ import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { Capabilities } from '../auth/capabilities.decorator';
 import { CapabilitiesGuard } from '../auth/capabilities.guard';
+import { SystemAdminGuard } from '../auth/system-admin.guard';
 import { TrucksService } from '../trucks/trucks.service';
 import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
 import { YardWorkPlanService } from './yard-work-plan.service';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { isYardWorkPlanSlice1Enabled } from './yard-work-plan-flag';
+import { SystemAdminWritesService } from './system-admin-writes.service';
 
 @Controller('admin')
 @UseGuards(AuthGuard, CapabilitiesGuard)
@@ -33,6 +35,7 @@ export class AdminController {
     private readonly yardOperations: YardOperationsService,
     private readonly workPlan: YardWorkPlanService,
     private readonly dataBoundary: YardDataBoundaryService,
+    private readonly systemAdminWrites: SystemAdminWritesService,
   ) {}
 
   @Get('access')
@@ -173,6 +176,18 @@ export class AdminController {
     return this.admin.listMechanics(query);
   }
 
+  @Post('mechanics')
+  @UseGuards(SystemAdminGuard)
+  createMechanic(@Req() request: Request, @Body() body: unknown) {
+    return this.systemAdminWrites.createMechanic(request.user!, body);
+  }
+
+  @Patch('mechanics/:id')
+  @UseGuards(SystemAdminGuard)
+  updateMechanic(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.systemAdminWrites.updateMechanic(request.user!, id, body);
+  }
+
   @Get('mechanics/:id')
   mechanic(@Param('id') id: string) {
     return this.admin.mechanicDetail(id);
@@ -191,6 +206,18 @@ export class AdminController {
   @Get('catalog/categories/:id')
   catalogCategory(@Param('id') id: string) {
     return this.admin.catalogCategoryDetail(id);
+  }
+
+  @Post('catalog/jobs')
+  @UseGuards(SystemAdminGuard)
+  createCatalogJob(@Req() request: Request, @Body() body: unknown) {
+    return this.systemAdminWrites.createCatalogJob(request.user!, body);
+  }
+
+  @Patch('catalog/jobs/:id')
+  @UseGuards(SystemAdminGuard)
+  updateCatalogJob(@Param('id') id: string, @Body() body: unknown) {
+    return this.systemAdminWrites.updateCatalogJob(id, body);
   }
 
   @Get('trucks')

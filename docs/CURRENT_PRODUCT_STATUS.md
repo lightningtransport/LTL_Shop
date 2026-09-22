@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-21
+**Updated:** 2026-09-22 (LTR-77 / LTR-78 API)
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -84,17 +84,21 @@ TARGET authorization/UX.
 - The Admin dashboard offers capability-filtered Workspaces cards for Standard
   Mechanic and PM Mechanic. Work performed there retains the signed-in user's
   identity; it is not impersonation.
-- `/admin/catalog` is a read-only Job Catalog for managers. It lists Categories
+- `/admin/catalog` UI is still a read-only Job Catalog. It lists Categories
   with active/inactive Job counts and alias counts, including inactive
   Categories and Jobs. `/admin/catalog/categories/[id]` shows Jobs and aliases.
-  There are no create, rename, deactivate, or Custom Job mapping actions.
-  Mechanic catalog APIs remain active-only. Catalog writes, Custom Jobs review,
-  Waiting by Reason, and Job Performance stay deferred. Ninox data remains
-  deferred. Truck Detail and Yard Operations are implemented as the scoped
-  readiness slice described below. `/admin/trucks` lists Shop trucks, any open
-  Work Order, and operational status derived from service-status events. Off
-  Duty is not inferred and has no mutation yet. `/admin/mechanics` and
-  `/admin/history` are read-only manager views.
+  The screen has no create, rename, deactivate, or Custom Job mapping actions.
+  Mechanic catalog APIs remain active-only. Custom Job review, Waiting by
+  Reason, and Job Performance stay deferred. Ninox data remains deferred.
+  System Admin catalog writes exist on the API only (LTR-77): `POST` and
+  `PATCH /api/admin/catalog/jobs` for an existing active category. Shop Manager
+  reads stay open and those writes return 403. Truck Detail and Yard Operations
+  are implemented as the scoped readiness slice described below. `/admin/trucks`
+  lists Shop trucks, any open Work Order, and operational status derived from
+  service-status events. Off Duty is not inferred and has no mutation yet.
+  `/admin/mechanics` UI and `/admin/history` stay read-only views. System Admin
+  roster writes exist on the API only (LTR-78): `POST` and
+  `PATCH /api/admin/mechanics`.
 
 ### Yard Operations and readiness Phase 1
 
@@ -311,8 +315,14 @@ the work order. Completed PM records are read-only.
   `audit/V2_1_001_YARD_PHASE_PERSISTENCE_GAP.md`.
 - Ready to Go, Returned to Service, and Work Order completion are separate
   implemented concepts.
-- Admin Catalog is read-only. Catalog writes, Custom Job review/mapping, Job
-  performance, and a general permission UI do not exist.
+- Admin Catalog UI is read-only. System Admin (`users.role = admin` and
+  `admin.access`) can create, rename, and activate/deactivate catalog jobs
+  through `POST`/`PATCH /api/admin/catalog/jobs`, and can create or activate
+  Standard/PM mechanics through `POST`/`PATCH /api/admin/mechanics`. Shop
+  Manager (`users.role = manager`) keeps `admin.access` and still receives 403
+  on those writes. The gate is the role, not a new capability. Custom Job
+  review/mapping, category create, a general permission UI, and Job performance
+  do not exist. Supabase Auth accounts are not provisioned by the roster API.
 - Shop Manager and System Admin still share the Admin shell, now
   capability-differentiated: planning/complete/cancel/team/priority/notes/add
   Job require `work_orders.manage`; reopen WO, time correction, Job reopen,

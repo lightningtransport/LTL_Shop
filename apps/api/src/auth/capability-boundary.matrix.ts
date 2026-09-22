@@ -3,7 +3,7 @@ import { AdminController } from '../admin/admin.controller';
 import { WorkOrdersController } from '../work-orders/work-orders.controller';
 import { CAPABILITIES_KEY } from './capabilities.decorator';
 
-export type CapabilityBoundaryKind = 'http_guard' | 'service';
+export type CapabilityBoundaryKind = 'http_guard' | 'service' | 'system_admin_role';
 
 export type CapabilityBoundaryEntry = {
   method: string;
@@ -377,6 +377,53 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
 export const ALL_MUTATION_BOUNDARIES = [
   ...ADMIN_MUTATION_BOUNDARIES,
   ...WORK_ORDER_MUTATION_BOUNDARIES,
+];
+
+/**
+ * LTR-77 / LTR-78. These writes are intentionally absent from
+ * `ADMIN_MUTATION_BOUNDARIES`. That list treats `admin.access` as sufficient,
+ * and Shop Manager already has it. The HTTP gate is `SystemAdminGuard`:
+ * `users.role === admin`. Class-level `admin.access` still applies, so a
+ * role-admin user without `admin.access` cannot call them either.
+ * No new capability is added.
+ */
+export const SYSTEM_ADMIN_ROLE_WRITES: CapabilityBoundaryEntry[] = [
+  {
+    method: 'POST',
+    path: '/admin/mechanics',
+    handler: 'createMechanic',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'system_admin_role',
+    notes: 'LTR-78. role === admin. Creates an active mechanic with mechanic.standard or mechanic.pm. Manager is 403.',
+  },
+  {
+    method: 'PATCH',
+    path: '/admin/mechanics/:id',
+    handler: 'updateMechanic',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'system_admin_role',
+    notes: 'LTR-78. role === admin. Activate, rename, or switch Standard/PM. Does not edit manager or admin accounts.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/catalog/jobs',
+    handler: 'createCatalogJob',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'system_admin_role',
+    notes: 'LTR-77. role === admin. Adds a job to an existing active category. No category create and no Custom Job review.',
+  },
+  {
+    method: 'PATCH',
+    path: '/admin/catalog/jobs/:id',
+    handler: 'updateCatalogJob',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'system_admin_role',
+    notes: 'LTR-77. role === admin. Rename or activate/deactivate. Catalog job id is stable.',
+  },
 ];
 
 export function declaredHttpCapabilities(

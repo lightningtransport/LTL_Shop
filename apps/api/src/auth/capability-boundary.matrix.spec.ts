@@ -2,15 +2,18 @@ import { ForbiddenException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { describe, expect, it, vi } from 'vitest';
-import { AppCapability, PauseReason } from '@ltl-shop/shared';
+import { AppCapability, PauseReason, UserRole } from '@ltl-shop/shared';
 import { AdminController } from '../admin/admin.controller';
 import { WorkOrdersController } from '../work-orders/work-orders.controller';
 import type { AuthUser } from './auth.guard';
+import { CAPABILITIES_KEY } from './capabilities.decorator';
 import { CapabilitiesGuard } from './capabilities.guard';
+import { SystemAdminGuard } from './system-admin.guard';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import {
   ADMIN_MUTATION_BOUNDARIES,
   ADMIN_READ_BOUNDARIES,
+  SYSTEM_ADMIN_ROLE_WRITES,
   WORK_ORDER_MUTATION_BOUNDARIES,
   WORK_ORDER_READ_BOUNDARIES,
   adminHandler,
@@ -40,11 +43,12 @@ function httpContext(
   handler: (...args: never[]) => unknown,
   controller: object,
   capabilities: AppCapability[],
+  role: `${UserRole}` = 'manager',
 ): ExecutionContext {
   return {
     getHandler: () => handler,
     getClass: () => controller,
-    switchToHttp: () => ({ getRequest: () => ({ user: { capabilities } }) }),
+    switchToHttp: () => ({ getRequest: () => ({ user: { capabilities, role } }) }),
   } as unknown as ExecutionContext;
 }
 
@@ -178,6 +182,35 @@ describe('TARGET capability boundary matrix', () => {
       expect(entry.expected[0]).toBe(AppCapability.ADMIN_ACCESS);
     }
   });
+});
+
+describe('System Admin roster and catalog writes', () => {
+  const reflector = new Reflector();
+  const capabilities = new CapabilitiesGuard(reflector);
+  const systemAdmin = new SystemAdminGuard();
+  const managerCaps = [
+    AppCapability.ADMIN_ACCESS,
+    AppCapability.WORK_ORDERS_MANAGE,
+    AppCapability.YARD_OPERATIONS_MANAGE,
+  ];
+
+  it.each(SYSTEM_ADMIN_ROLE_WRITES)(
+    'keeps $method $path on class admin.access and gates the write by role admin',
+    ({ handler, expected, enforcement }) => {
+      const method = adminHandler(handler);
+      expect(enforcement).toBe('system_admin_role');
+      expect(Reflect.getMetadata(CAPABILITIES_KEY, method)).toBeUndefined();
+      expect(declaredHttpCapabilities(AdminController, method)).toEqual(expected);
+
+      const managerContext = httpContext(method, AdminController, managerCaps, UserRole.MANAGER);
+      expect(capabilities.canActivate(managerContext)).toBe(true);
+      expect(() => systemAdmin.canActivate(managerContext)).toThrow(ForbiddenException);
+
+      const adminContext = httpContext(method, AdminController, [AppCapability.ADMIN_ACCESS], UserRole.ADMIN);
+      expect(capabilities.canActivate(adminContext)).toBe(true);
+      expect(systemAdmin.canActivate(adminContext)).toBe(true);
+    },
+  );
 });
 
 describe('Mechanic Work Order mutation capability enforcement', () => {

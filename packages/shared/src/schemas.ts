@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  CatalogStatus,
   MechanicMode,
   PauseReason,
   Priority,
@@ -12,6 +13,37 @@ import {
 } from './enums';
 
 export const mechanicModeSchema = z.nativeEnum(MechanicMode);
+
+/** LTR-78. Creates an active mechanic and applies exactly one of Standard or PM. */
+export const adminCreateMechanicSchema = z.object({
+  email: z.string().trim().email().max(320).transform((value) => value.toLowerCase()),
+  name: z.string().trim().min(1).max(120),
+  mode: mechanicModeSchema,
+});
+
+/** LTR-78. Activate, rename, or switch Standard/PM on an existing mechanic row. */
+export const adminUpdateMechanicSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  mode: mechanicModeSchema.optional(),
+  active: z.boolean().optional(),
+}).refine((value) => value.name !== undefined || value.mode !== undefined || value.active !== undefined, {
+  message: 'Provide a name, Standard/PM mode, or active flag',
+});
+
+/** LTR-77. Adds a job to an existing category. Does not create categories. */
+export const adminCreateCatalogJobSchema = z.object({
+  categoryId: z.string().uuid(),
+  displayName: z.string().trim().min(1).max(200),
+  status: z.nativeEnum(CatalogStatus).optional(),
+});
+
+/** LTR-77. Rename and/or activate/deactivate a catalog job. Identity stays the same. */
+export const adminUpdateCatalogJobSchema = z.object({
+  displayName: z.string().trim().min(1).max(200).optional(),
+  status: z.nativeEnum(CatalogStatus).optional(),
+}).refine((value) => value.displayName !== undefined || value.status !== undefined, {
+  message: 'Provide a display name or status',
+});
 
 export const adminListQuerySchema = z.object({
   cursor: z.string().min(1).max(256).optional(),
@@ -355,3 +387,7 @@ export type MarkReadinessReadyInput = z.infer<typeof markReadinessReadySchema>;
 export type CloseReadinessAssessmentInput = z.infer<typeof closeReadinessAssessmentSchema>;
 export type AddWorkPlanJobsInput = z.infer<typeof addWorkPlanJobsSchema>;
 export type RecordWorkPlanInspectionInput = z.infer<typeof recordWorkPlanInspectionSchema>;
+export type AdminCreateMechanicInput = z.infer<typeof adminCreateMechanicSchema>;
+export type AdminUpdateMechanicInput = z.infer<typeof adminUpdateMechanicSchema>;
+export type AdminCreateCatalogJobInput = z.infer<typeof adminCreateCatalogJobSchema>;
+export type AdminUpdateCatalogJobInput = z.infer<typeof adminUpdateCatalogJobSchema>;
