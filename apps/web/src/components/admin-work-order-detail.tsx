@@ -789,7 +789,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <div
         role="region"
         aria-label={messages.completeWorkOrderTitle}
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-shop-accent/40 bg-card/95 px-4 py-3 backdrop-blur app-safe-bottom md:left-[220px] xl:left-[240px]"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-shop-accent/40 bg-card/95 px-4 py-3 backdrop-blur app-safe-bottom md:left-[var(--admin-aside)]"
         data-testid="admin-wo-next-action"
       >
         <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

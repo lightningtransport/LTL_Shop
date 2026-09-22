@@ -611,7 +611,7 @@ export function AdminNewWorkOrder({
         </Card>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[calc(0.75rem+var(--app-safe-bottom))] pt-3 backdrop-blur md:left-[220px] xl:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[calc(0.75rem+var(--app-safe-bottom))] pt-3 backdrop-blur md:left-[var(--admin-aside)] xl:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <p className="min-w-0 flex-1 text-sm text-muted-foreground">
             {formatCountMessage(jobs.length === 1 ? messages.selectedJobCount : messages.selectedJobsCount, jobs.length)}
