@@ -128,4 +128,50 @@ describe('mechanic completeJob notes', () => {
       newValue: { displayName: 'Inspect brakes', status: 'completed', notes: null },
     }));
   });
+
+  it('returns the persisted finish note on reload and after saving Work Order notes', async () => {
+    const completed = {
+      ...workOrder(),
+      version: 3,
+      notes: 'Check the leak again',
+      jobs: [{
+        ...workOrder().jobs[0],
+        status: 'completed' as const,
+        completedAt: new Date('2026-09-19T22:41:00.000Z'),
+        completedById: mechanic.id,
+      }],
+      activityLogs: [{
+        eventType: ActivityEventType.JOB_COMPLETED,
+        entityId: 'job-1',
+        newValue: { displayName: 'Inspect brakes', status: 'completed', notes: 'Replaced the air hose' },
+        createdAt: new Date('2026-09-19T22:41:00.000Z'),
+      }],
+    };
+    const findUnique = vi.fn().mockResolvedValue(completed);
+    const tx = {
+      workOrder: {
+        findUnique,
+        update: vi.fn().mockResolvedValue(completed),
+      },
+    };
+    const service = new WorkOrdersService({
+      workOrder: { findUnique },
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as never, { log: vi.fn() } as never);
+
+    await expect(service.getById(mechanic, 'wo-1')).resolves.toMatchObject({
+      jobs: [expect.objectContaining({
+        id: 'job-1',
+        status: 'completed',
+        completionNotes: 'Replaced the air hose',
+      })],
+    });
+    await expect(service.updateNotes(mechanic, 'wo-1', { notes: 'Check the leak again' })).resolves.toMatchObject({
+      notes: 'Check the leak again',
+      jobs: [expect.objectContaining({
+        id: 'job-1',
+        completionNotes: 'Replaced the air hose',
+      })],
+    });
+  });
 });

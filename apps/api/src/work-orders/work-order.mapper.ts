@@ -1,8 +1,9 @@
-import type {
-  JobStatus,
-  PauseReason,
-  Priority,
-  WorkOrderStatus,
+import {
+  ActivityEventType,
+  type JobStatus,
+  type PauseReason,
+  type Priority,
+  type WorkOrderStatus,
 } from '@prisma/client';
 import { toTruckDto } from '../trucks/trucks.service';
 
@@ -39,6 +40,13 @@ type MechanicRow = {
   mechanic: { name: string };
 };
 
+type JobCompletionLog = {
+  eventType: string;
+  entityId: string | null;
+  newValue: unknown;
+  createdAt?: Date;
+};
+
 export type WorkOrderWithRelations = {
   id: string;
   displayId: string;
@@ -69,6 +77,7 @@ export type WorkOrderWithRelations = {
   jobs: JobRow[];
   pauseEvents?: PauseRow[];
   mechanics?: MechanicRow[];
+  activityLogs?: JobCompletionLog[];
 };
 
 export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
@@ -135,7 +144,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
       status: j.status,
       completedAt: j.completedAt?.toISOString() ?? null,
       completedById: j.completedById,
-      completionNotes: null,
+      completionNotes: completionNotesForJob(wo.activityLogs, j.id),
       assignedMechanic: j.assignedMechanic ?? null,
     })),
     mechanics: (wo.mechanics ?? [])
@@ -148,6 +157,17 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
       })),
     currentPause: currentPause ? toPauseEventDto(currentPause) : null,
   };
+}
+
+function completionNotesForJob(logs: JobCompletionLog[] | undefined, jobId: string): string | null {
+  const matches = (logs ?? []).filter((event) => (
+    event.eventType === ActivityEventType.job_completed && event.entityId === jobId
+  ));
+  const entry = [...matches].sort((left, right) => (
+    (right.createdAt?.getTime() ?? 0) - (left.createdAt?.getTime() ?? 0)
+  ))[0];
+  const notes = (entry?.newValue as { notes?: unknown } | null)?.notes;
+  return typeof notes === 'string' && notes.trim() ? notes : null;
 }
 
 function currentOfficialPause(pauses?: PauseRow[]) {
@@ -187,5 +207,16 @@ export const workOrderDetailInclude = {
   mechanics: {
     include: { mechanic: true },
     orderBy: { addedAt: 'asc' as const },
+  },
+  // Finish notes are stored on job_completed activity rows, not on the job.
+  activityLogs: {
+    where: { eventType: ActivityEventType.job_completed },
+    select: {
+      eventType: true,
+      entityId: true,
+      newValue: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'desc' as const },
   },
 };
