@@ -18,5 +18,11 @@ describe('LTR-30 PWA safe-area shell', () => {
     expect(css).toContain('.app-safe-bottom');
     expect(adminShell).toContain('app-safe-top');
     expect(adminShell).toContain('app-safe-bottom');
+    expect(adminShell).toContain('flex-1');
+    expect(adminShell).toContain('min-w-0');
+    expect(adminShell).toContain('w-full');
+    expect(adminShell).toContain('[--admin-aside:15rem]');
+    expect(adminShell).not.toContain('grid-cols-2');
+    expect(adminShell).not.toContain('md:static');
   });
 });

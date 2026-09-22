@@ -15,6 +15,11 @@ export function PathScrollReset() {
     if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
+    const adminMain = document.querySelector('#main-content main');
+    if (adminMain instanceof HTMLElement) {
+      adminMain.scrollTop = 0;
+      adminMain.scrollLeft = 0;
+    }
   }, []);
 
   React.useLayoutEffect(() => {
