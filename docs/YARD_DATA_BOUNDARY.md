@@ -13,9 +13,11 @@ out of scope** and remains `UNKNOWN`.
 ## FE wiring
 
 Call this endpoint in parallel with `GET /api/admin/yard-operations`. Do not
-wait for the board list DTO: `incomingTrucks` / `upcomingDepartures` on that
-page remain `{ status: 'unavailable', reason: 'integration_not_connected' }`
-until a later FE cutover.
+read kit rows from the board list. `workLocation`, `incomingTrucks`, and
+`upcomingDepartures` on that page stay
+`{ status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 }`
+until Frontend mounts `AdminYardDataBoundaryCards` (LTR-74). The list path
+does not call agent-reporting. Schedule_Teams is not part of this proxy.
 
 ```
 GET /api/admin/yard/data-boundary

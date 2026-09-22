@@ -102,7 +102,8 @@ TARGET authorization/UX.
   `/admin/trucks/[id]`. Presence is explicitly `UNKNOWN`. Incoming Trucks,
   Upcoming Departures, and Work location on the board list remain
   disconnected until Frontend wires `GET /api/admin/yard/data-boundary`
-  (`docs/YARD_DATA_BOUNDARY.md`). That Nest proxy maps agent-reporting
+  (`docs/YARD_DATA_BOUNDARY.md`). The board list does not call
+  agent-reporting. That Nest proxy maps agent-reporting
   `returns`, `driver_pay`, and `trucks.yard_location` when
   `AGENT_REPORTING_KEY` is set on the API; it never exposes the key to the
   web app. PD-locked EN/ES card copy lives in `YARD_DATA_BOUNDARY_COPY`.
@@ -300,8 +301,10 @@ the work order. Completed PM records are read-only.
 - Physical Yard Presence is always `UNKNOWN`; Samsara geofence is not connected.
   Incoming Trucks, Upcoming Departures, and Work location have a Nest
   agent-reporting proxy (`GET /api/admin/yard/data-boundary`) that stays
-  `unavailable` until `AGENT_REPORTING_KEY` is set on the API. The Admin UI
-  cards are not wired yet. McLeod / Dispatch / Schedule_Teams are not used.
+  `unavailable` until `AGENT_REPORTING_KEY` is set on the API. The
+  yard-operations list keeps those three feeds `unavailable` even when the
+  key is set. The Admin UI cards are not wired to the proxy yet.
+  McLeod / Dispatch / Schedule_Teams are not used.
 - Yard Phase is derived for presentation; no persisted Yard Phase event
   exists. V2.1-001 recorded Cristian’s 2026-09-12 answers and implemented
   the next-unresolved-gate derivation plus **Ready for Approval**. See

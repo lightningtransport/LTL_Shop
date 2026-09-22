@@ -131,9 +131,11 @@ describe('YardOperationsService', () => {
     expect(page.items.map((item) => item.truck.truckNumber)).toEqual(['100']);
     expect(page.nextCursor).toBeTypeOf('string');
     expect(page.counts).toEqual({ underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
-    expect(page.workLocation).toEqual({ status: 'ok', items: [], total: 0 });
-    expect(page.incomingTrucks).toEqual({ status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 });
-    expect(page.upcomingDepartures).toEqual({ status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 });
+    const unavailableFeeds = { status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 };
+    expect(page.workLocation).toEqual(unavailableFeeds);
+    expect(page.incomingTrucks).toEqual(unavailableFeeds);
+    expect(page.upcomingDepartures).toEqual(unavailableFeeds);
+    expect(prisma.workOrder.findMany).not.toHaveBeenCalled();
 
     const next = await service.list({ limit: 1, cursor: page.nextCursor });
     expect(next.items.map((item) => item.truck.truckNumber)).toEqual(['200']);
@@ -141,9 +143,10 @@ describe('YardOperationsService', () => {
     expect(JSON.stringify(prisma.truck.findMany.mock.calls[2][0].where)).toContain('100');
   });
 
-  it('keeps open Work Orders in work location when agent-reporting fails', async () => {
+  it('does not map agent-reporting or open work orders into movement feeds', async () => {
     vi.stubEnv('AGENT_REPORTING_KEY', 'secret');
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('upstream')));
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ rows: [{ unit: '614' }] }) });
+    vi.stubGlobal('fetch', fetchMock);
     const prisma = createPrisma();
     prisma.truck.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     prisma.workOrder.findMany.mockResolvedValue([{
@@ -158,11 +161,13 @@ describe('YardOperationsService', () => {
     const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
 
     const page = await service.list({ limit: 1 });
-    expect(page.workLocation.items).toEqual([
-      expect.objectContaining({ truckNumber: '600', source: 'open_work_order', detail: 'WO-1' }),
-    ]);
-    expect(page.incomingTrucks).toMatchObject({ status: 'unavailable', reason: 'upstream_error' });
-    expect(page.upcomingDepartures).toMatchObject({ status: 'unavailable', reason: 'upstream_error' });
+    const unavailable = { status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 };
+    expect(page.workLocation).toEqual(unavailable);
+    expect(page.incomingTrucks).toEqual(unavailable);
+    expect(page.upcomingDepartures).toEqual(unavailable);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(prisma.workOrder.findMany).not.toHaveBeenCalled();
+    expect(JSON.stringify(page)).not.toContain('secret');
   });
 
   it('applies evidence-backed filters after deriving phase and blockers', async () => {

@@ -54,8 +54,7 @@ import {
   type WorkPlanDerivationInput,
 } from './yard-work-plan-derivation';
 import { isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
-import { buildYardMovementFeeds, type AgentReportingReports, type ShopMovementTruck } from './yard-movement-feeds';
-import { AgentReportingClient, getAgentReportingConfig } from '../integrations/agent-reporting/agent-reporting.client';
+import { unavailableYardMovementFeeds } from './yard-movement-feeds';
 
 const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
   OR: [
@@ -724,7 +723,7 @@ export class YardOperationsService {
     }
 
     const counts = await this.getCounts();
-    const feeds = await this.movementFeeds();
+    const feeds = this.movementFeeds();
 
     return {
       items,
@@ -962,74 +961,12 @@ export class YardOperationsService {
     return { status: 'unavailable', reason: 'integration_not_connected' };
   }
 
-  private async movementFeeds() {
-    const [shop, reporting] = await Promise.all([
-      this.loadShopMovementTrucks(),
-      this.loadReportingReports(),
-    ]);
-    return buildYardMovementFeeds({ shop, reporting });
-  }
-
-  private async loadShopMovementTrucks(): Promise<ShopMovementTruck[]> {
-    const openWork = await this.prisma.workOrder.findMany({
-      where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
-      select: {
-        displayId: true,
-        truck: {
-          select: {
-            id: true,
-            truckNumber: true,
-            yardLocation: true,
-            samsaraTruckLocation: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    const seen = new Set<string>();
-    const shop: ShopMovementTruck[] = [];
-    for (const row of openWork) {
-      if (!row.truck || seen.has(row.truck.id)) continue;
-      seen.add(row.truck.id);
-      shop.push({
-        id: row.truck.id,
-        truckNumber: row.truck.truckNumber,
-        yardLocation: row.truck.yardLocation,
-        samsaraTruckLocation: row.truck.samsaraTruckLocation,
-        workOrders: [{ displayId: row.displayId }],
-      });
-    }
-    return shop;
-  }
-
-  private async loadReportingReports(): Promise<AgentReportingReports> {
-    try {
-      const config = getAgentReportingConfig();
-      if (!config) {
-        return { available: false, trucks: null, returns: null, driverPay: null };
-      }
-      const client = new AgentReportingClient(config);
-      const [trucks, returns, driverPay] = await Promise.all([
-        this.loadReportRows(client, 'trucks'),
-        this.loadReportRows(client, 'returns'),
-        this.loadReportRows(client, 'driver_pay'),
-      ]);
-      return { available: true, trucks, returns, driverPay };
-    } catch {
-      return { available: false, trucks: null, returns: null, driverPay: null };
-    }
-  }
-
-  private async loadReportRows(
-    client: AgentReportingClient,
-    report: 'trucks' | 'returns' | 'driver_pay',
-  ): Promise<unknown> {
-    try {
-      const { rows } = await client.listAll(report);
-      return rows;
-    } catch {
-      return null;
-    }
+  /**
+   * Movement cards stay on `YardFeedDto` and unavailable until FE cutover
+   * (LTR-74) to `GET /api/admin/yard/data-boundary`. Kit reads live only there.
+   */
+  private movementFeeds() {
+    return unavailableYardMovementFeeds();
   }
 }
 
