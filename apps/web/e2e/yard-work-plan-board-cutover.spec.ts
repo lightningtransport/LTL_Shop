@@ -125,6 +125,11 @@ function truckDetailWorkPlan() {
 }
 
 async function mockSession(page: Page) {
+  // The Admin shell needs a real session; mocking /api/auth/me alone lands on /login.
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('manager@lightning.local');
+  await page.getByRole('button', { name: /Dev Login/i }).click();
+  await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
   await page.route('**/api/auth/me', async (route: Route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(manager) });
   });
@@ -157,7 +162,7 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     }
     await expect(page.getByRole('heading', { name: 'Needs evaluation', exact: true })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Required Work', exact: true })).toHaveCount(0);
-    await expect(page.getByTestId('yard-truck-card').getByText('Shop Work')).toBeVisible();
+    await expect(page.getByTestId('yard-truck-card').getByText('Shop Work').first()).toBeVisible();
 
     await page.getByRole('link', { name: 'Y-WP2', exact: true }).click();
     // LTR-110: Yard links carry ?from= so Truck Detail can link back to the board.

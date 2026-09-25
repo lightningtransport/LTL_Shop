@@ -864,7 +864,9 @@ export class YardOperationsService {
         : item.assessment?.status === 'under_review'
           ? YardReadinessFilter.UNDER_REVIEW
           : YardReadinessFilter.NOT_STARTED;
-    const blocked = item.blockers.length > 0;
+    const blocked = isYardWorkPlanSlice2Enabled()
+      ? isWorkPlanBoardBlocked(item.activeWorkOrder ? [item.activeWorkOrder] : [])
+      : item.blockers.length > 0;
     return (!query.readiness || query.readiness.includes(readiness as YardReadinessFilter))
       && (!query.phase || (query.phase as string[]).includes(item.phase))
       && (query.blocked === undefined || query.blocked === blocked);
@@ -997,6 +999,7 @@ export class YardOperationsService {
     ]);
     await this.attachReadyWorkOrders(rows);
 
+    let notStarted = 0;
     let underReview = 0;
     let readyToGo = 0;
     let blocked = 0;
@@ -1004,12 +1007,13 @@ export class YardOperationsService {
       if (isCompletedOnlyWithoutReadyWork(row)) continue;
       const workPlan = deriveWorkPlan(workPlanInputFromYardRow(row));
       const readiness = workPlanBoardReadinessFilter(workPlan.phase);
+      // LTR-100: mutually exclusive buckets that add up to the board.
+      if (readiness === YardReadinessFilter.NOT_STARTED) notStarted += 1;
       if (readiness === YardReadinessFilter.UNDER_REVIEW) underReview += 1;
       if (readiness === YardReadinessFilter.READY) readyToGo += 1;
-      const openSummaries = row.workOrders.map(toAdminWorkOrderSummary);
-      if (workPlanBoardBlockers(workPlan, openSummaries).length > 0) blocked += 1;
+      if (isWorkPlanBoardBlocked(row.workOrders.map(toAdminWorkOrderSummary))) blocked += 1;
     }
-    return { underReview, readyToGo, blocked, presenceUnknown };
+    return { notStarted, underReview, readyToGo, blocked, presenceUnknown };
   }
 
   /**
@@ -1089,6 +1093,15 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
         })),
     inspectionRequirementOutcome: (inspectionRequirement?.outcome as ReadinessRequirementOutcome | undefined) ?? null,
   };
+}
+
+/**
+ * LTR-92 / D5: on the Work Plan board "Blocked" means work is actually stopped —
+ * an official pause. Open work alone is not a blocker. Mechanic-reported blockers
+ * join once they have an active/resolved state (LTR-98).
+ */
+function isWorkPlanBoardBlocked(openWorkOrders: Pick<AdminWorkOrderSummaryDto, 'status'>[]): boolean {
+  return openWorkOrders.some((workOrder) => workOrder.status === WorkOrderStatus.waiting_paused);
 }
 
 function workPlanBoardReadinessFilter(phase: string): YardReadinessFilter {
