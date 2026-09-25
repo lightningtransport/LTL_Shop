@@ -12,7 +12,7 @@ import { useWorkOrders } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { pauseLabel, statusLabel } from '@/lib/format';
 import { useSWRConfig } from 'swr';
-import { isStandardWorkWaitingOnManager, jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
+import { isStandardWorkWaitingOnManager, jobPersonLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
@@ -155,9 +155,7 @@ export default function HomePage() {
             </>
           )}
         </>
-      ) : (
-        <p className="mb-6 text-sm text-shop-muted">{messages.askManagerToCreateHint}</p>
-      )}
+      ) : null}
 
       {error ? (
         <div className="mb-4">
@@ -301,6 +299,11 @@ function WorkOrderCard({
       <p className="text-sm text-shop-muted">
         {isPm ? messages.pmServiceLabel : `${wo.primaryCategoryName} · ${messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)}`}
       </p>
+      {isPm && wo.startedAt && mode !== 'completed' ? (
+        <p className="text-xs text-shop-muted">
+          {messages.pmStartedAt(new Intl.DateTimeFormat(messages.locale === 'es' ? 'es-US' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(wo.startedAt)))}
+        </p>
+      ) : null}
       {!isPm ? (
         <p className="text-xs text-shop-muted">{workOrderTeamLabel(wo.mechanics, messages)}</p>
       ) : null}
@@ -326,7 +329,7 @@ function WorkOrderCard({
                   {job.displayName}
                 </span>
                 <span className="block text-xs text-shop-muted">
-                  {jobAssignmentLabel(job.assignedMechanic, currentUserId, messages)}
+                  {jobPersonLabel(job, currentUserId, messages)}
                 </span>
               </span>
             </li>
@@ -356,7 +359,8 @@ function WorkOrderCard({
             </> : !isPm && wo.jobs.some((job) => job.status === 'to_do') ? (
               <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewWork} wo={wo} className="w-full" />
             ) : isPm ? (
-              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.finishWork} wo={wo} className="w-full" />
+              // LTR-138: this link opens the PM detail; Finish Work lives there.
+              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.continuePmService} wo={wo} className="w-full" />
             ) : (
               <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewWork} wo={wo} className="w-full" />
             )
