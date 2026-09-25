@@ -92,7 +92,11 @@ describe('AdminService', () => {
       attention: [],
     });
     expect(prisma.workOrder.count).toHaveBeenCalledTimes(6);
-    expect(prisma.workOrder.findMany).toHaveBeenCalledTimes(5);
+    // LTR-121: critical, high, paused, open, ready to close, active blocker.
+    expect(prisma.workOrder.findMany).toHaveBeenCalledTimes(6);
+    expect(prisma.workOrder.findMany.mock.calls[5][0].where).toMatchObject({
+      pauseEvents: { some: { isOfficialPause: false, resolvedAt: null } },
+    });
     expect(prisma.workOrder.findMany.mock.calls[4][0].where).toMatchObject({
       status: 'in_progress',
       // LTR-97: PM Work Orders (no Jobs) are never "ready to close".
@@ -100,6 +104,29 @@ describe('AdminService', () => {
       jobs: { some: { status: 'completed' }, none: { status: 'to_do' } },
     });
     expect(prisma.workOrder.findMany.mock.calls[4][0].orderBy).toEqual([{ updatedAt: 'desc' }, { id: 'desc' }]);
+  });
+
+  it('ranks an active reported blocker after paused and before plain open work (LTR-121)', async () => {
+    const prisma = createPrisma();
+    [0, 0, 0, 0, 0, 0].forEach((value) => prisma.workOrder.count.mockResolvedValueOnce(value));
+    const stale = { ...baseRow, id: 'stale-id', displayId: 'WO-OPEN', status: 'in_progress', createdAt: new Date() };
+    const blocked = {
+      ...baseRow, id: 'blocked-id', displayId: 'WO-BLOCKED', status: 'in_progress',
+      pauseEvents: [{ id: 'b-1', workOrderId: 'blocked-id', reason: 'waiting_for_parts', notes: null, startedAt: new Date(), endedAt: new Date(), durationMs: 0n, isOfficialPause: false, resolvedAt: null, createdBy: { id: 'u', name: 'MG' }, reportedBy: { id: 'u', name: 'MG' } }],
+    };
+    prisma.workOrder.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([stale, blocked])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([blocked]);
+
+    const result = await createService(prisma).dashboard();
+    expect(result.attention.map((item) => [item.displayId, item.attentionReason])).toEqual([
+      ['WO-BLOCKED', 'blocker'],
+      ['WO-OPEN', 'open'],
+    ]);
   });
 
   it('lists open mechanic work requests on the dashboard (LTR-126)', async () => {
@@ -131,11 +158,13 @@ describe('AdminService', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([ready, critical]);
+      .mockResolvedValueOnce([ready, critical])
+      .mockResolvedValueOnce([]);
     const service = createService(prisma);
 
     const result = await service.dashboard();
     expect(result.attention.map((item) => item.displayId)).toEqual(['WO-READY', 'WO-CRIT']);
+    expect(result.attention.map((item) => item.attentionReason)).toEqual(['ready_to_close', 'critical']);
   });
 
   it('returns the exact UTC cutoff used by the older-than-24-hours count', async () => {

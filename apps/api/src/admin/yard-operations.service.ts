@@ -35,6 +35,7 @@ import {
   type CloseReadinessAssessmentInput,
   adminYardOperationsCursorSchema,
   adminYardOperationsQuerySchema,
+  isWorkOrderBlocked,
 } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { TrucksService } from '../trucks/trucks.service';
@@ -1103,9 +1104,11 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
  */
 function isWorkPlanBoardBlocked(openWorkOrders: Pick<AdminWorkOrderSummaryDto, 'status' | 'latestReportedBlocker'>[]): boolean {
   // LTR-98: an unresolved mechanic blocker also stops the truck.
-  return openWorkOrders.some((workOrder) => (
-    workOrder.status === WorkOrderStatus.waiting_paused || Boolean(workOrder.latestReportedBlocker)
-  ));
+  // LTR-121: same Blocked definition as the Dashboard attention (shared).
+  return openWorkOrders.some((workOrder) => isWorkOrderBlocked({
+    status: workOrder.status,
+    hasActiveBlocker: Boolean(workOrder.latestReportedBlocker),
+  }));
 }
 
 function workPlanBoardReadinessFilter(phase: string): YardReadinessFilter {
