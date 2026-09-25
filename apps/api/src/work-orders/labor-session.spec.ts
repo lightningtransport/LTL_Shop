@@ -102,7 +102,7 @@ function standardWorkOrder(overrides: Record<string, unknown> = {}) {
     },
     primaryCategory: { id: 'category-inspection', name: 'Inspection' },
     pauseEvents: [],
-    sessions: [] as { id: string }[],
+    sessions: [] as { id: string; startedAt: Date; endedAt: Date | null }[],
     mechanics: [{ mechanicId: 'mech-1', addedAt: startedAt, removedAt: null, mechanic: { name: 'MG' } }],
     jobs: [{
       id: 'job-new',
@@ -125,7 +125,7 @@ function serviceFor(wo: ReturnType<typeof standardWorkOrder>) {
   const tx = {
     workOrder: {
       findUnique: vi.fn().mockResolvedValue(wo),
-      update: vi.fn().mockResolvedValue({ ...wo, version: wo.version + 1, sessions: [{ id: 'session-2' }] }),
+      update: vi.fn().mockResolvedValue({ ...wo, version: wo.version + 1, sessions: [{ id: 'session-2', startedAt: new Date(), endedAt: null }] }),
     },
     workSession: { create: vi.fn() },
     jobCategory: { findUnique: vi.fn().mockResolvedValue({ name: wo.primaryCategory.name }) },
@@ -152,7 +152,7 @@ describe('mechanic Start Work after labor stopped (LTR-124)', () => {
   });
 
   it('rejects Start Work while labor is already running', async () => {
-    const { service, tx } = serviceFor(standardWorkOrder({ sessions: [{ id: 'session-1' }] }));
+    const { service, tx } = serviceFor(standardWorkOrder({ sessions: [{ id: 'session-1', startedAt: new Date('2026-09-22T14:56:00.000Z'), endedAt: null }] }));
 
     await expect(service.start(mechanic, 'wo-1')).rejects.toThrow(
       'Work Order can only be started from created status',
