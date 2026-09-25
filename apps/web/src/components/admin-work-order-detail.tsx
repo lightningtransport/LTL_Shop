@@ -755,7 +755,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </CardContent>
     </Card>
     <section className="grid gap-4 lg:grid-cols-2">
-      <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent>{data.currentPause ? <Pause pause={data.currentPause} locale={locale} messages={messages} /> : <CompactEmpty>{messages.noCurrentPause}</CompactEmpty>}</CardContent></Card>
+      {data.currentPause ? <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent><Pause pause={data.currentPause} locale={locale} messages={messages} /></CardContent></Card> : null}
       <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} messages={messages} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
     </section>
     <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => {
