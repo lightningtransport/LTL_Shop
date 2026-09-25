@@ -60,10 +60,10 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('presence');
     expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('presencia');
     expect(getAdminMessages('en').yardOperationsPhase1Body).toBe(
-      'Shop work plus expected arrivals and departures. A reported yard location is not GPS presence or dispatch confirmation.',
+      "Reported by Dispatch: Truck status, expected arrivals, and departures. These are not the Shop's Ready to Go, GPS presence, or dispatch confirmation.",
     );
     expect(getAdminMessages('es').yardOperationsPhase1Body).toBe(
-      'Trabajo de taller más llegadas y salidas esperadas. Una ubicación reportada no es presencia GPS ni confirmación de despacho.',
+      'Reportado por Dispatch: estado de la unidad, llegadas y salidas esperadas. No es el Ready to Go del Shop, ni presencia GPS, ni confirmación de despacho.',
     );
     expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
     expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');

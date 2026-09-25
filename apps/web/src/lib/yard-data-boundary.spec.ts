@@ -20,7 +20,7 @@ describe('Yard data-boundary FE mapping', () => {
     expect(yardDataBoundaryCopy('es').badge).toBe('NO DISPONIBLE');
     expect(yardDataBoundaryCopy('es').incomingTrucks.label).toBe('Incoming Trucks');
     expect(yardDataBoundaryCopy('es').incomingTrucks.empty).toBe('No hay Incoming Trucks.');
-    expect(yardDataBoundaryCopy('es').workLocation.label).toBe('Ubicación de trabajo');
+    expect(yardDataBoundaryCopy('es').workLocation.label).toBe('Estado de Dispatch');
     expect(yardDataBoundaryCopy('es').upcomingDepartures.label).toBe('Salidas próximas');
   });
 

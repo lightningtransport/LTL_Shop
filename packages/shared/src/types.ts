@@ -393,6 +393,8 @@ export interface YardOperationsTruckDto {
   phase: YardBoardPhase | ReadinessPhase | WorkPlanPhase;
   blockers: ReadinessBlockerDto[];
   activeWorkOrder: AdminWorkOrderSummaryDto | null;
+  /** LTR-101: Work Plan board only — why the Truck is not Ready to Go yet (`WorkPlanNotReadyReason`). */
+  readyReason?: string;
 }
 
 export interface YardOperationsCountsDto {

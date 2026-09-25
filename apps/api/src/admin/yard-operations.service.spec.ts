@@ -461,6 +461,8 @@ describe('YardOperationsService', () => {
     const page = await service.list({ limit: 25 });
     expect(page.counts.blocked).toBe(1);
     expect(page.items[0].activeWorkOrder?.latestReportedBlocker?.reason).toBe('waiting_for_parts');
+    // LTR-101: the board card says why the Truck is not Ready yet.
+    expect(page.items[0].readyReason).toEqual(expect.any(String));
   });
 
   it('LTR-92: only an officially paused Work Order counts and filters as Blocked', async () => {
