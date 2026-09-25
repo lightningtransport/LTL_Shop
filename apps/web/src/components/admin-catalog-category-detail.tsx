@@ -10,7 +10,7 @@ import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
-export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
+export function AdminCatalogCategoryDetail({ id, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowAdminWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategory(id);
   if (isLoading) return <PageSkeleton label={messages.catalogTitle} />;
@@ -74,7 +74,6 @@ export function AdminCatalogCategoryDetail({ id, locale, messages }: { id: strin
           )}
         </CardContent>
       </Card>
-      <p className="sr-only">{locale}</p>
     </div>
   );
 }

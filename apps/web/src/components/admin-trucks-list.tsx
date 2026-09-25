@@ -5,11 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus } from '@ltl-shop/shared';
 import { AdminFilterToolbar, AdminPageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { useAdminTrucks } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
 
-export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
@@ -21,6 +22,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
   }, [searchParams]);
 
   const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
+  const showOperationalStatus = items.some((item) => item.operationalStatus !== TruckOperationalStatus.UNKNOWN);
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (
@@ -44,11 +46,12 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p></EmptyState> : null}
       {items.length ? (
         <div className="overflow-x-auto rounded-xl border">
+          {/* LTR-111: hide the column while every truck is Unknown (no service-status events yet). */}
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
                 <th className="p-3 font-medium">{messages.trucks}</th>
-                <th className="p-3 font-medium">{messages.operationalStatus}</th>
+                {showOperationalStatus ? <th className="p-3 font-medium">{messages.operationalStatus}</th> : null}
                 <th className="p-3 font-medium">{messages.make}</th>
                 <th className="p-3 font-medium">{messages.company}</th>
                 <th className="p-3 font-medium">{messages.currentWorkOrder}</th>
@@ -58,18 +61,20 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
               {items.map((item) => (
                 <tr key={item.truck.id} className="border-t">
                   <td className="p-3">
-                    <Link className="font-semibold text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link>
+                    <Link className="font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/trucks')}>{item.truck.truckNumber}</Link>
                     <p className="text-muted-foreground">
                       {[item.truck.year, item.truck.model].filter(Boolean).join(' ') || '—'}
                     </p>
                   </td>
-                  <td className="p-3 text-muted-foreground">
-                    {item.operationalStatus === TruckOperationalStatus.IN_SERVICE
-                      ? messages.operationalStatusInService
-                      : item.operationalStatus === TruckOperationalStatus.OFF_DUTY
-                        ? messages.operationalStatusOffDuty
-                        : messages.operationalStatusUnknown}
-                  </td>
+                  {showOperationalStatus ? (
+                    <td className="p-3 text-muted-foreground">
+                      {item.operationalStatus === TruckOperationalStatus.IN_SERVICE
+                        ? messages.operationalStatusInService
+                        : item.operationalStatus === TruckOperationalStatus.OFF_DUTY
+                          ? messages.operationalStatusOffDuty
+                          : messages.operationalStatusUnknown}
+                    </td>
+                  ) : null}
                   <td className="p-3 text-muted-foreground">{item.truck.make ?? '—'}</td>
                   <td className="p-3 text-muted-foreground">{item.truck.company ?? '—'}</td>
                   <td className="p-3">
@@ -89,7 +94,6 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
         </div>
       ) : null}
       {hasMore ? <Button type="button" variant="outline" disabled={isValidating} onClick={() => setSize(size + 1)}>{messages.loadMore}</Button> : null}
-      <p className="sr-only">{locale}</p>
     </div>
   );
 }

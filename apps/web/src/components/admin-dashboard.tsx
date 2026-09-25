@@ -77,7 +77,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
         <Button asChild variant="outline" size="sm"><AdminNavLink href="/admin/work-orders">{messages.viewAll}</AdminNavLink></Button>
       </CardHeader>
       <CardContent className="space-y-2 p-2 sm:p-3">
-        {data.attention.length ? data.attention.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} compact />) : <EmptyState>{messages.noAttention}</EmptyState>}
+        {data.attention.length ? data.attention.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} compact fromPath="/admin" />) : <EmptyState>{messages.noAttention}</EmptyState>}
       </CardContent>
     </Card>
   </div>;
