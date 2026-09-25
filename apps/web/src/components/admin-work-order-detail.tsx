@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSWRConfig } from 'swr';
-import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderJob, addAdminWorkOrderNote, handleAdminWorkRequest, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { pauseResumeError } from './pause-resume-error';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
@@ -74,7 +74,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   useEffect(() => {
     if (!data) return;
     setDraftPriority(data.priority);
-    setDraftNotes(data.notes ?? '');
   }, [data]);
 
   if (isLoading) return <PageSkeleton label={messages.workOrdersTitle} />;
@@ -464,7 +463,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </Card>
     ) : null}
 
-    {canEditFields ? (
+    {/* LTR-126: notes are append-only; this form only changes priority (PM priority is locked). */}
+    {canEditFields && data.category.name !== 'PM' ? (
       <Card>
         <CardHeader>
           <CardTitle>{messages.fieldUpdatesTitle}</CardTitle>
@@ -481,7 +481,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 await patchAdminWorkOrder(data.id, {
                   expectedVersion: data.version,
                   priority: draftPriority,
-                  notes: draftNotes.trim() || null,
                 });
               }, (failure) => fieldUpdateError(failure, messages));
             }}
@@ -500,24 +499,91 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 <option value={Priority.CRITICAL}>{messages.criticalPriority}</option>
               </Select>
             </label>
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">{messages.notes}</span>
-              <Textarea
-                aria-label={messages.workOrderNotes}
-                value={draftNotes}
-                onChange={(event) => setDraftNotes(event.target.value)}
-                maxLength={2000}
-              />
-            </label>
-            <Button type="submit" disabled={Boolean(pendingAction)}>
-              {messages.updatePriorityAndNotes}
+
+            <Button type="submit" disabled={Boolean(pendingAction) || draftPriority === data.priority}>
+              {messages.updatePriority}
             </Button>
           </form>
         </CardContent>
       </Card>
-    ) : (
-      <Card><CardHeader><CardTitle>{messages.notes}</CardTitle></CardHeader><CardContent>{data.notes ? <p className="whitespace-pre-wrap text-sm">{data.notes}</p> : <CompactEmpty>{messages.noNotes}</CompactEmpty>}</CardContent></Card>
-    )}
+    ) : null}
+
+    <Card>
+      <CardHeader>
+        <CardTitle>{messages.notes}</CardTitle>
+        {canEditFields ? <CardDescription>{messages.workRequestHint}</CardDescription> : null}
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {(data.noteEntries ?? []).length ? (
+          <ul className="space-y-2">
+            {(data.noteEntries ?? []).map((note) => {
+              const isRequest = note.kind === WorkOrderNoteKind.WORK_REQUEST;
+              return (
+                <li key={note.id} className="rounded-lg border px-3 py-2 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isRequest ? (
+                      <Badge variant={note.handledAt ? 'secondary' : 'warning'}>
+                        {messages.workRequestLabel}{note.handledAt ? '' : ` · ${messages.workRequestOpen}`}
+                      </Badge>
+                    ) : null}
+                    <span className="text-xs text-muted-foreground">
+                      {messages.noteByAt
+                        .replace('{name}', note.author.name)
+                        .replace('{date}', formatAdminDate(note.createdAt, locale))}
+                    </span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap">{note.body}</p>
+                  {isRequest && note.handledAt ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {messages.workRequestHandledByAt
+                        .replace('{name}', note.handledBy?.name ?? '—')
+                        .replace('{date}', formatAdminDate(note.handledAt, locale))}
+                    </p>
+                  ) : null}
+                  {isRequest && !note.handledAt && canManageWorkOrders ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="mt-2"
+                      disabled={Boolean(pendingAction)}
+                      onClick={() => void runMutation(`handle-request-${note.id}`, messages.workRequestHandledSuccess, () => handleAdminWorkRequest(data.id, note.id), () => messages.workRequestHandleFailed)}
+                    >
+                      {messages.markWorkRequestHandled}
+                    </Button>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        ) : <CompactEmpty>{messages.noNotes}</CompactEmpty>}
+        {canEditFields ? (
+          <form
+            className="space-y-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const body = draftNotes.trim();
+              if (!body) return;
+              void runMutation('add-note', messages.noteAddedSuccess, async () => {
+                await addAdminWorkOrderNote(data.id, body);
+                setDraftNotes('');
+              }, () => messages.noteAddFailed);
+            }}
+          >
+            <Textarea
+              aria-label={messages.addNote}
+              placeholder={messages.adminNotePlaceholder}
+              value={draftNotes}
+              onChange={(event) => setDraftNotes(event.target.value)}
+              maxLength={2000}
+            />
+            <Button type="submit" variant="outline" disabled={Boolean(pendingAction) || !draftNotes.trim()}>
+              {messages.addNote}
+            </Button>
+          </form>
+        ) : null}
+      </CardContent>
+    </Card>
 
     <Card>
       <CardHeader>

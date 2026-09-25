@@ -3,6 +3,7 @@ import {
   type JobStatus,
   type PauseReason,
   type Priority,
+  type WorkOrderNoteKind,
   type WorkOrderStatus,
 } from '@prisma/client';
 import { toTruckDto } from '../trucks/trucks.service';
@@ -35,6 +36,16 @@ type PauseRow = {
   reportedBy?: { id: string; name: string } | null;
   resolvedAt?: Date | null;
   resolvedBy?: { id: string; name: string } | null;
+};
+
+export type NoteRow = {
+  id: string;
+  kind: WorkOrderNoteKind;
+  body: string;
+  createdAt: Date;
+  handledAt: Date | null;
+  author: { id: string; name: string };
+  handledBy?: { id: string; name: string } | null;
 };
 
 type MechanicRow = {
@@ -83,6 +94,7 @@ export type WorkOrderWithRelations = {
   sessions?: { id: string; startedAt: Date; endedAt: Date | null }[];
   mechanics?: MechanicRow[];
   activityLogs?: JobCompletionLog[];
+  noteEntries?: NoteRow[];
 };
 
 export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
@@ -169,8 +181,30 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
     activeBlockers: (wo.pauseEvents ?? [])
       .filter((pause) => pause.isOfficialPause === false && !pause.resolvedAt)
       .map(toPauseEventDto),
+    noteEntries: (wo.noteEntries ?? []).map(toWorkOrderNoteDto),
   };
 }
+
+/** LTR-126 / D8: append-only note entry. */
+export function toWorkOrderNoteDto(note: NoteRow) {
+  return {
+    id: note.id,
+    kind: note.kind,
+    body: note.body,
+    author: note.author,
+    createdAt: note.createdAt.toISOString(),
+    handledAt: note.handledAt?.toISOString() ?? null,
+    handledBy: note.handledBy ?? null,
+  };
+}
+
+export const workOrderNoteInclude = {
+  include: {
+    author: { select: { id: true, name: true } },
+    handledBy: { select: { id: true, name: true } },
+  },
+  orderBy: { createdAt: 'asc' as const },
+};
 
 function completionNotesForJob(logs: JobCompletionLog[] | undefined, jobId: string): string | null {
   const matches = (logs ?? []).filter((event) => (
@@ -230,6 +264,7 @@ export const workOrderDetailInclude = {
     include: { mechanic: true },
     orderBy: { addedAt: 'asc' as const },
   },
+  noteEntries: workOrderNoteInclude,
   // Finish notes are stored on job_completed activity rows, not on the job.
   activityLogs: {
     where: { eventType: ActivityEventType.job_completed },

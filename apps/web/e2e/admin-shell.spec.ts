@@ -212,10 +212,14 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Recent repair history' })).toBeVisible();
     await expect(page.getByText('WO-0104').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Priority and notes' })).toBeVisible();
-    await page.getByLabel('Work Order notes').fill('Check the leak again');
-    await page.getByRole('button', { name: 'Update priority and notes' }).click();
-    await expect(page.getByRole('main').getByText('Priority and notes updated.')).toBeVisible();
+    // LTR-126: notes are append-only entries with author and time.
+    await expect(page.getByRole('heading', { name: 'Notes', exact: true })).toBeVisible();
+    await page.getByRole('textbox', { name: 'Add note' }).fill('Check the leak again');
+    await page.getByRole('button', { name: 'Add note' }).click();
+    await expect(page.getByRole('main').getByText('Note added.')).toBeVisible();
+    await expect(page.getByText('Check the leak again')).toBeVisible();
+    await expect(page.getByText(/Shop Manager · /).first()).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Add note' })).toHaveValue('');
     await expect(page.getByRole('heading', { name: 'Assignments' })).toBeVisible();
     await page.getByLabel('Reason for this Job change').fill('Not needed');
     await page.getByRole('button', { name: 'Confirm job cancellation' }).click();

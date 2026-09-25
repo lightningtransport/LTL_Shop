@@ -120,6 +120,18 @@ export class AdminController {
     return this.admin.resolveBlocker(request.user!, id, blockerId);
   }
 
+  @Post('work-orders/:id/notes')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  addNote(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.admin.addNote(request.user!, id, body);
+  }
+
+  @Post('work-orders/:id/notes/:noteId/handle')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  handleWorkRequest(@Req() request: Request, @Param('id') id: string, @Param('noteId') noteId: string) {
+    return this.admin.handleWorkRequest(request.user!, id, noteId);
+  }
+
   @Post('work-orders/:id/pause')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   pauseWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {

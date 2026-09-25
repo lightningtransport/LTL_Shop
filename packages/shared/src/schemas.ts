@@ -3,6 +3,7 @@ import {
   CatalogStatus,
   MechanicMode,
   PauseReason,
+  WorkOrderNoteKind,
   Priority,
   ReadinessRequirementOutcome,
   ReadinessRequirementType,
@@ -304,6 +305,12 @@ export const updateWorkOrderNotesSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
+/** LTR-126 / D8: append one note or work request to a Work Order. */
+export const addWorkOrderNoteSchema = z.object({
+  kind: z.nativeEnum(WorkOrderNoteKind).default(WorkOrderNoteKind.NOTE),
+  body: z.string().trim().min(1).max(2000),
+});
+
 export const completeJobSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
 });
@@ -357,6 +364,7 @@ export type CreateWorkOrderInput = z.infer<typeof createWorkOrderSchema>;
 export type PauseWorkOrderInput = z.infer<typeof pauseWorkOrderSchema>;
 export type ChangePauseReasonInput = z.infer<typeof changePauseReasonSchema>;
 export type UpdateWorkOrderNotesInput = z.infer<typeof updateWorkOrderNotesSchema>;
+export type AddWorkOrderNoteInput = z.infer<typeof addWorkOrderNoteSchema>;
 export type CompleteJobInput = z.infer<typeof completeJobSchema>;
 export type AddJobInput = z.infer<typeof addJobSchema>;
 export type UpdatePmServiceInput = z.infer<typeof updatePmServiceSchema>;

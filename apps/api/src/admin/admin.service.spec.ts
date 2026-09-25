@@ -63,6 +63,9 @@ function createPrisma() {
     workOrderMutation: {
       findUnique: vi.fn().mockResolvedValue(null),
     },
+    workOrderNote: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     $transaction: vi.fn(),
   };
 }
@@ -97,6 +100,25 @@ describe('AdminService', () => {
       jobs: { some: { status: 'completed' }, none: { status: 'to_do' } },
     });
     expect(prisma.workOrder.findMany.mock.calls[4][0].orderBy).toEqual([{ updatedAt: 'desc' }, { id: 'desc' }]);
+  });
+
+  it('lists open mechanic work requests on the dashboard (LTR-126)', async () => {
+    const prisma = createPrisma();
+    [0, 0, 0, 0, 0, 0].forEach((value) => prisma.workOrder.count.mockResolvedValueOnce(value));
+    prisma.workOrder.findMany.mockResolvedValue([]);
+    prisma.workOrderNote.findMany.mockResolvedValue([{
+      id: 'n-1', body: 'Brake lights out', createdAt: new Date('2026-09-25T12:00:00Z'),
+      author: { id: 'mg', name: 'MG' },
+      workOrder: { id: 'wo-1', displayId: 'WO-001', truck: { truckNumber: '277' } },
+    }]);
+
+    const result = await createService(prisma).dashboard();
+
+    expect(prisma.workOrderNote.findMany.mock.calls[0][0].where).toMatchObject({ kind: 'work_request', handledAt: null });
+    expect(result.openWorkRequests).toEqual([{
+      id: 'n-1', body: 'Brake lights out', author: { id: 'mg', name: 'MG' }, createdAt: '2026-09-25T12:00:00.000Z',
+      workOrderId: 'wo-1', workOrderDisplayId: 'WO-001', truckNumber: '277',
+    }]);
   });
 
   it('ranks ready-to-close Work Orders ahead of critical ones in needs attention', async () => {
@@ -899,10 +921,15 @@ describe('AdminService', () => {
       version: 2,
     });
     expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ priority: 'high', notes: 'Check the leak again' }),
+      data: expect.objectContaining({ priority: 'high' }),
     }));
+    // LTR-126: notes are append-only, so the shared notes column is not overwritten.
+    expect(tx.workOrder.updateMany.mock.calls[0][0].data).not.toHaveProperty('notes');
+    expect(tx.workOrderNote.create).toHaveBeenCalledWith({
+      data: { workOrderId: open.id, kind: 'note', body: 'Check the leak again', authorId: manager.id },
+    });
     expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.PRIORITY_CHANGED }));
-    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.NOTES_UPDATED }));
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.NOTE_ADDED }));
 
     const pm = detailRow({
       status: 'created',
@@ -1452,6 +1479,7 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
       count: vi.fn().mockResolvedValue(1),
     },
     workOrderMutation: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    workOrderNote: { create: vi.fn().mockResolvedValue({ id: 'note-1', kind: 'note', body: 'note' }) },
     workSession: {
       findUnique: vi.fn(),
       findFirst: vi.fn().mockResolvedValue(null),

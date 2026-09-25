@@ -132,7 +132,7 @@ describe('mechanic completeJob notes', () => {
     }));
   });
 
-  it('returns the persisted finish note on reload and after saving Work Order notes', async () => {
+  it('returns the persisted finish note on reload and after adding a Work Order note', async () => {
     const completed = {
       ...workOrder(),
       version: 3,
@@ -154,8 +154,10 @@ describe('mechanic completeJob notes', () => {
     const tx = {
       workOrder: {
         findUnique,
+        findUniqueOrThrow: findUnique,
         update: vi.fn().mockResolvedValue(completed),
       },
+      workOrderNote: { create: vi.fn().mockResolvedValue({ id: 'note-1', kind: 'note', body: 'Check the leak again' }) },
     };
     const service = new WorkOrdersService({
       workOrder: { findUnique },
@@ -169,8 +171,7 @@ describe('mechanic completeJob notes', () => {
         completionNotes: 'Replaced the air hose',
       })],
     });
-    await expect(service.updateNotes(mechanic, 'wo-1', { notes: 'Check the leak again' })).resolves.toMatchObject({
-      notes: 'Check the leak again',
+    await expect(service.addNote(mechanic, 'wo-1', { body: 'Check the leak again' })).resolves.toMatchObject({
       jobs: [expect.objectContaining({
         id: 'job-1',
         completionNotes: 'Replaced the air hose',

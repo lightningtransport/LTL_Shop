@@ -351,7 +351,7 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
   {
     method: 'POST',
     path: '/work-orders/:id/notes',
-    handler: 'updateNotes',
+    handler: 'addNote',
     controller: 'work-orders',
     expected: [STANDARD],
     enforcement: 'service',
