@@ -16,7 +16,7 @@ async function fulfill(route: Route, body: unknown, status = 200) {
 }
 
 async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
-  let notes = '';
+  let noteEntries: unknown[] = [];
   let currentLast = last;
   let savedPm = pm(last);
   await page.route('**/api/**', async (route) => {
@@ -38,8 +38,12 @@ async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
       return fulfill(route, { ...savedPm, lastCompletedPm: currentLast });
     }
     if (path === `/api/work-orders/${woId}/notes`) {
-      if (request.method() === 'POST') notes = (request.postDataJSON() as { notes?: string }).notes ?? '';
-      return fulfill(route, { ...detail(), notes });
+      if (request.method() === 'POST') {
+        const body = request.postDataJSON() as { kind: string; body: string };
+        if (pmSaveDelayMs) await new Promise((resolve) => setTimeout(resolve, pmSaveDelayMs));
+        noteEntries = [...noteEntries, { id: `note-${noteEntries.length}`, kind: body.kind, body: body.body, author: { id: daniel.id, name: daniel.name }, createdAt: '2026-01-01T12:05:00.000Z', handledAt: null, handledBy: null }];
+      }
+      return fulfill(route, { ...detail(), noteEntries });
     }
     if (path === `/api/work-orders/${woId}`) return fulfill(route, detail());
     if (path === `/api/work-orders/${woId}/complete`) return fulfill(route, detail('completed'));
@@ -82,15 +86,17 @@ test.describe('Daniel PM workflow', () => {
     expect(createBody).not.toHaveProperty('notes');
   });
 
-  test('autosaves PM notes and keeps observed mileage focused during a slow save', async ({ page }) => {
+  test('adds an append-only PM note and keeps observed mileage focused during a slow save', async ({ page }) => {
     await mockPmApi(page, null, 750);
     await login(page);
     await page.goto(`/work-orders/${woId}`);
-    const notes = page.getByLabel('Notes');
+    // LTR-126: a note is its own entry with author and time; the box clears after adding.
+    const notes = page.getByPlaceholder('Write a note, or describe additional work the Truck needs');
     await notes.fill('Filter housing inspected');
-    await notes.blur();
-    await expect(page.getByText('Saved', { exact: true }).last()).toBeVisible();
-    await expect(notes).toHaveValue('Filter housing inspected');
+    await page.getByRole('button', { name: 'Add Note' }).click();
+    await expect(page.getByText('Filter housing inspected')).toBeVisible();
+    await expect(page.getByText(/Daniel · /)).toBeVisible();
+    await expect(notes).toHaveValue('');
 
     const observedMileage = page.getByLabel('Observed mileage');
     await observedMileage.fill('155000');

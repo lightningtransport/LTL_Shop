@@ -1069,6 +1069,28 @@ createServer(async (request, response) => {
     json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
+  // LTR-126: append-only notes and work requests.
+  const noteMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/notes$/i);
+  if (noteMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
+    const summary = workOrders.find((item) => item.id === noteMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    const text = typeof body?.body === 'string' ? body.body.trim() : '';
+    if (!text) { json(response, 400, { message: 'A note is required' }); return; }
+    const author = users['manager@lightning.local'];
+    summary.noteEntries = [...(summary.noteEntries ?? []), {
+      id: `00000000-0000-4000-8000-${String(900000000000 + (summary.noteEntries?.length ?? 0)).padStart(12, '0')}`,
+      kind: body.kind ?? 'note',
+      body: text,
+      author: { id: author.id, name: author.name },
+      createdAt: new Date().toISOString(),
+      handledAt: null,
+      handledBy: null,
+    }];
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   const detailMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)$/i);
   if (detailMatch && request.method === 'PATCH') {
     if (denyUnlessManage()) return;
@@ -1296,6 +1318,7 @@ function fixtureWorkOrderDetail(summary) {
     latestReportedBlocker: summary.latestReportedBlocker ?? null,
     pauseHistory: summary.pauseHistory ?? (summary.currentPause ? [{ ...summary.currentPause, createdBy: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name } }] : []),
     reportedBlockers: summary.reportedBlockers ?? [],
+    noteEntries: summary.noteEntries ?? [],
     activityLog: summary.activityLog ?? [{ id: '00000000-0000-4000-8000-000000000601', eventType: 'work_order_created', entityType: 'work_order', entityId: summary.id, user: { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name }, previousValue: null, newValue: null, relevantValue: { displayId: summary.displayId }, createdAt: summary.createdAt }],
     returnedToServiceAt: summary.returnedToServiceAt ?? null,
   };
@@ -1305,6 +1328,7 @@ function fixtureMechanicWorkOrderDetail(summary) {
   return {
     ...toMechanicSummary(summary),
     notes: summary.notes ?? null,
+    noteEntries: summary.noteEntries ?? [],
     createdById: users['mechanic@lightning.local'].id,
     completedAt: summary.completedAt,
     totalActiveLaborMs: 5_400_000,

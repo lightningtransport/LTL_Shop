@@ -338,6 +338,20 @@ export function resolveAdminBlocker(workOrderId: string, blockerId: string) {
   });
 }
 
+// LTR-126: append-only notes; the Manager never overwrites a mechanic note.
+export function addAdminWorkOrderNote(workOrderId: string, body: string) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/notes`, {
+    method: 'POST',
+    body: JSON.stringify({ kind: 'note', body }),
+  });
+}
+
+export function handleAdminWorkRequest(workOrderId: string, noteId: string) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/notes/${noteId}/handle`, {
+    method: 'POST',
+  });
+}
+
 export function pauseAdminWorkOrder(
   workOrderId: string,
   input: { reason: string; notes?: string },

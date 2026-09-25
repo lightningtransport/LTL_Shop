@@ -71,6 +71,26 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
         </Card>
       </Link>)}
     </section>
+    {/* LTR-126: mechanic requests for additional work, until the Manager marks them handled. */}
+    {data.openWorkRequests?.length ? <Card className="overflow-hidden p-0">
+      <CardHeader className="mb-0 border-b p-4">
+        <CardTitle>{messages.openWorkRequests}</CardTitle><CardDescription>{messages.openWorkRequestsDescription}</CardDescription>
+      </CardHeader>
+      <CardContent className="p-2 sm:p-3">
+        <ul className="space-y-2">
+          {data.openWorkRequests.map((request) => <li key={request.id}>
+            <Link href={`/admin/work-orders/${request.workOrderId}`} className="block rounded-lg border px-3 py-2 text-sm transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <p className="whitespace-pre-wrap font-medium">{request.body}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{messages.workRequestFrom
+                .replace('{name}', request.author.name)
+                .replace('{truck}', request.truckNumber)
+                .replace('{workOrder}', request.workOrderDisplayId)
+                .replace('{date}', formatAdminDate(request.createdAt, locale))}</p>
+            </Link>
+          </li>)}
+        </ul>
+      </CardContent>
+    </Card> : null}
     <Card className="overflow-hidden p-0">
       <CardHeader className="mb-0 border-b p-4 sm:flex sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div><CardTitle>{messages.attention}</CardTitle><CardDescription>{messages.attentionBody}</CardDescription></div>

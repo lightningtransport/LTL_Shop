@@ -39,6 +39,7 @@ import {
   WorkspaceNav,
 } from '@/components/ui';
 import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
+import { WorkOrderNotesThread } from '@/components/work-order-notes-thread';
 
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
@@ -66,8 +67,6 @@ export default function WorkOrderDetailPage() {
   const [pauseOpen, setPauseOpen] = useState(false);
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [pauseNotes, setPauseNotes] = useState('');
-  const [notes, setNotes] = useState('');
-  const [notesDirty, setNotesDirty] = useState(false);
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -81,11 +80,6 @@ export default function WorkOrderDetailPage() {
       setPauseOpen(true);
     }
   }, [search, wo]);
-
-  useEffect(() => {
-    if (!wo || notesDirty) return;
-    setNotes(wo.notes ?? '');
-  }, [wo, notesDirty]);
 
   async function run(
     action: () => Promise<WorkOrderDetailDto>,
@@ -389,45 +383,12 @@ export default function WorkOrderDetailPage() {
         )}
       </section>
 
-      <section className="card space-y-3">
-        <div>
-          <Label className="section-label" htmlFor="wo-notes">
-            {messages.notes}
-          </Label>
-          <Textarea
-            id="wo-notes"
-            className="mt-2"
-            placeholder={messages.additionalWorkHint}
-            value={notes}
-            onChange={(e) => {
-              setNotes(e.target.value);
-              setNotesDirty(true);
-            }}
-          />
-          {notesDirty ? (
-            <Button
-              variant="secondary"
-              className="mt-2 w-full"
-              disabled={busy}
-              onClick={() =>
-                run(async () => {
-                  const updated = await apiFetch<WorkOrderDetailDto>(
-                    `/api/work-orders/${wo.id}/notes`,
-                    {
-                    method: 'POST',
-                    body: JSON.stringify({ notes: notes || undefined }),
-                    },
-                  );
-                  setNotesDirty(false);
-                  return updated;
-                })
-              }
-            >
-              {messages.saveNotes}
-            </Button>
-          ) : null}
-        </div>
-      </section>
+      <WorkOrderNotesThread
+        wo={wo}
+        onUpdated={async (updated) => {
+          await mutateWorkOrder(updated, { revalidate: false });
+        }}
+      />
 
       <Modal
         open={!!finishJob}
@@ -615,10 +576,6 @@ function PmWorkOrderDetail({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notes, setNotes] = useState(wo.notes ?? '');
-  const [notesDirty, setNotesDirty] = useState(false);
-  const [notesSaving, setNotesSaving] = useState(false);
-  const [notesError, setNotesError] = useState<string | null>(null);
   const [draft, setDraft] = useState<PmDraftState>({
     ready: false,
     pending: false,
@@ -632,10 +589,6 @@ function PmWorkOrderDetail({
   const [pauseNotes, setPauseNotes] = useState('');
   const [changeReason, setChangeReason] = useState<PauseReason | ''>('');
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!notesDirty) setNotes(wo.notes ?? '');
-  }, [notesDirty, wo.notes]);
 
   async function run(
     action: () => Promise<WorkOrderDetailDto>,
@@ -654,30 +607,6 @@ function PmWorkOrderDetail({
     }
   }
 
-  async function saveNotes() {
-    if (!notesDirty || notesSaving || wo.status === 'completed' || wo.status === 'cancelled') return;
-    setNotesSaving(true);
-    setNotesError(null);
-    try {
-      const updated = await apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/notes`, {
-        method: 'POST',
-        body: JSON.stringify({ notes: notes || undefined }),
-      });
-      setNotesDirty(false);
-      await onUpdated(updated);
-    } catch (err) {
-      setNotesError(err instanceof Error ? err.message : messages.unableToSaveNotes);
-    } finally {
-      setNotesSaving(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!notesDirty || notesSaving || notesError) return;
-    const timer = window.setTimeout(() => void saveNotes(), 600);
-    return () => window.clearTimeout(timer);
-  }, [notes, notesDirty, notesSaving, notesError]);
-
   const mileage = Number(draft.observedMileage);
   const validMileage =
     draft.observedMileage.trim() !== '' && Number.isInteger(mileage) && mileage >= 0;
@@ -686,9 +615,6 @@ function PmWorkOrderDetail({
     !draft.ready ||
     draft.pending ||
     draft.hasError ||
-    notesDirty ||
-    notesSaving ||
-    !!notesError ||
     !validMileage ||
     draft.selectedParts < 1;
   const mileageChangesTruck = validMileage && mileage !== wo.truck.mileage;
@@ -760,25 +686,7 @@ function PmWorkOrderDetail({
         </section>
       ) : null}
 
-      <section className="card mb-4 space-y-2">
-        <Label className="section-label" htmlFor="pm-notes">{messages.notes}</Label>
-        <Textarea
-          id="pm-notes"
-          placeholder={messages.pmNotesPlaceholder}
-          disabled={wo.status === 'completed' || wo.status === 'cancelled'}
-          value={notes}
-          onChange={(event) => {
-            setNotes(event.target.value);
-            setNotesDirty(true);
-            setNotesError(null);
-          }}
-          onBlur={() => void saveNotes()}
-        />
-        <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
-          {/* LTR-139: no save status on a closed Work Order. */}
-          {wo.status === 'completed' || wo.status === 'cancelled' ? null : notesSaving ? messages.saving : notesError ? <><span className="text-destructive">{notesError} </span><Button variant="ghost" className="px-1 underline" onClick={() => void saveNotes()}>{messages.retry}</Button></> : notesDirty ? messages.saving : messages.saved}
-        </p>
-      </section>
+      <WorkOrderNotesThread wo={wo} onUpdated={onUpdated} />
 
       {wo.currentPauseReason ? (
         <p className="mb-3 text-sm font-medium text-warning-foreground">{pauseLabel(wo.currentPauseReason, messages.pauseReason)}</p>

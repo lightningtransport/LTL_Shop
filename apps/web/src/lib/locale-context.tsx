@@ -63,7 +63,6 @@ type Copy = {
   saveNotes: string;
   notesOptional: string;
   notesPlaceholder: string;
-  pmNotesPlaceholder: string;
   unableToSaveNotes: string;
   priorityLabel: string;
   pauseReasonLabel: string;
@@ -115,6 +114,17 @@ type Copy = {
   activeBlockers: string;
   markBlockerResolved: string;
   blockerResolved: string;
+  noteThreadEmpty: string;
+  notePlaceholder: string;
+  addNote: string;
+  requestWork: string;
+  noteAddedSuccess: string;
+  workRequestSentSuccess: string;
+  workRequestLabel: string;
+  workRequestPending: string;
+  workRequestHandledBy: (name: string) => string;
+  notesClosed: string;
+  requestWorkHint: string;
   reportingBlocker: string;
   blockerReportedSuccess: string;
   blockerReason: string;
@@ -225,7 +235,6 @@ const copy: Record<ShopLocale, Copy> = {
     saveNotes: 'Save Notes',
     notesOptional: 'Notes (optional)',
     notesPlaceholder: 'Describe or add any information needed to perform the work',
-    pmNotesPlaceholder: 'Add notes (optional)',
     unableToSaveNotes: 'Unable to save notes.',
     priorityLabel: 'Priority',
     pauseReasonLabel: 'Pause reason',
@@ -262,7 +271,7 @@ const copy: Record<ShopLocale, Copy> = {
     askManagerToCreate: 'Ask your Shop Manager to create a Work Order.',
     askManagerToCreateHint: 'Managers plan Standard work. Your Home lists Work Orders assigned to you.',
     workOptions: 'Work Options',
-    additionalWorkHint: 'Need additional work on this Truck? Write it here so your Manager can add the Job.',
+    additionalWorkHint: 'Need additional work on this Truck? Use Request Work in Notes so your Manager can add the Job.',
     jobFinishNotes: 'Completion note',
     jobFinishNotesPlaceholder: 'What did you do? The Manager will see this.',
     pausedAskManager: 'This Work Order is paused. Your Shop Manager will resume it.',
@@ -277,6 +286,17 @@ const copy: Record<ShopLocale, Copy> = {
     activeBlockers: 'Active blockers',
     markBlockerResolved: 'Mark resolved',
     blockerResolved: 'Blocker resolved.',
+    noteThreadEmpty: 'No notes yet.',
+    notePlaceholder: 'Write a note, or describe additional work the Truck needs',
+    addNote: 'Add Note',
+    requestWork: 'Request Work',
+    noteAddedSuccess: 'Note added.',
+    workRequestSentSuccess: 'Work request sent to your Manager.',
+    workRequestLabel: 'Work request',
+    workRequestPending: 'Waiting for Manager',
+    workRequestHandledBy: (name) => `Handled by ${name}`,
+    notesClosed: 'This Work Order is closed. Notes are read-only.',
+    requestWorkHint: 'Request Work goes to your Manager, who can add it as a Job. Notes are never overwritten.',
     reportingBlocker: 'Reporting…',
     blockerReportedSuccess: 'Blocker reported. The Work Order is not paused.',
     blockerReason: 'Blocker reason',
@@ -397,7 +417,6 @@ const copy: Record<ShopLocale, Copy> = {
     saveNotes: 'Guardar notas',
     notesOptional: 'Notas (opcional)',
     notesPlaceholder: 'Describe o agrega cualquier información necesaria para realizar el trabajo',
-    pmNotesPlaceholder: 'Agrega notas (opcional)',
     unableToSaveNotes: 'No se pudieron guardar las notas.',
     priorityLabel: 'Prioridad',
     pauseReasonLabel: 'Motivo de pausa',
@@ -436,7 +455,7 @@ const copy: Record<ShopLocale, Copy> = {
     askManagerToCreate: 'Pide a tu Shop Manager que cree el Work Order.',
     askManagerToCreateHint: 'El Manager planifica el trabajo Standard. En Inicio ves los Work Orders asignados a ti.',
     workOptions: 'Opciones de trabajo',
-    additionalWorkHint: '¿Hace falta trabajo adicional en esta unidad? Anótalo aquí para que el Manager agregue el Job.',
+    additionalWorkHint: '¿Hace falta trabajo adicional en esta unidad? Usa Pedir trabajo en Notas para que el Manager agregue el Job.',
     jobFinishNotes: 'Nota al completar',
     jobFinishNotesPlaceholder: '¿Qué hiciste? El Manager verá esta nota.',
     pausedAskManager: 'Este Work Order está pausado. Tu Shop Manager lo reanudará.',
@@ -451,6 +470,17 @@ const copy: Record<ShopLocale, Copy> = {
     activeBlockers: 'Bloqueos activos',
     markBlockerResolved: 'Marcar resuelto',
     blockerResolved: 'Bloqueo resuelto.',
+    noteThreadEmpty: 'Aún no hay notas.',
+    notePlaceholder: 'Escribe una nota o describe el trabajo adicional que necesita la unidad',
+    addNote: 'Agregar nota',
+    requestWork: 'Pedir trabajo',
+    noteAddedSuccess: 'Nota agregada.',
+    workRequestSentSuccess: 'Pedido de trabajo enviado a tu Manager.',
+    workRequestLabel: 'Pedido de trabajo',
+    workRequestPending: 'Esperando al Manager',
+    workRequestHandledBy: (name) => `Atendido por ${name}`,
+    notesClosed: 'Esta Work Order está cerrada. Las notas son de solo lectura.',
+    requestWorkHint: 'Pedir trabajo le llega a tu Manager, que puede agregarlo como Job. Las notas nunca se sobrescriben.',
     reportingBlocker: 'Reportando…',
     blockerReportedSuccess: 'Bloqueo reportado. El Work Order no está pausado.',
     blockerReason: 'Motivo del bloqueo',

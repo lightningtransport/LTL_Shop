@@ -69,3 +69,15 @@ export function formatIsoDate(value: string | null | undefined, locale: 'en' | '
     dateStyle: 'medium',
   }).format(new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))));
 }
+
+/** Shop-local date and time (America/New_York), e.g. for note entries. */
+export function formatShopDateTime(value: string | null | undefined, locale: 'en' | 'es' = 'en') {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(locale === 'es' ? 'es-US' : 'en-US', {
+    timeZone: 'America/New_York',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
