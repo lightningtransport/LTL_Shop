@@ -307,7 +307,7 @@ describe('YardOperationsService', () => {
     expect(shopOnly.items).toHaveLength(0);
   });
 
-  it('Slice 2: completing Alignment + Detailing yields ready_to_go on board', async () => {
+  it('Slice 2: completing Alignment + Detailing with the WO still open yields ready_to_close (LTR-90)', async () => {
     vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
     const prisma = createPrisma();
     const row = truck('277', '00000000-0000-4000-8000-000000000001');
@@ -327,13 +327,68 @@ describe('YardOperationsService', () => {
     const trucks = { getRepairHistory: vi.fn().mockResolvedValue({ items: [], nextCursor: null }) };
     const service = new YardOperationsService(prisma as never, trucks as never, { log: vi.fn() } as never);
 
-    const page = await service.list({ readiness: 'ready' });
-    expect(page.items).toHaveLength(1);
-    expect(page.items[0].phase).toBe(WorkPlanPhase.READY_TO_GO);
-    expect(page.counts.readyToGo).toBe(1);
+    const readyOnly = await service.list({ readiness: 'ready' });
+    expect(readyOnly.items).toHaveLength(0);
+    expect(readyOnly.counts.readyToGo).toBe(0);
+
+    const page = await service.list({});
+    expect(page.items[0].phase).toBe(WorkPlanPhase.READY_TO_CLOSE);
 
     const detail = await service.detail(row.id);
-    expect(detail.phase).toBe(WorkPlanPhase.READY_TO_GO);
+    expect(detail.phase).toBe(WorkPlanPhase.READY_TO_CLOSE);
+  });
+
+  describe('Slice 2 Ready to Go after WO completion (LTR-90 / D1)', () => {
+    function completedSetup(serviceEvent: { status: string; occurredAt: Date } | null) {
+      vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+      vi.stubEnv('YARD_READY_TO_GO_SINCE', '2026-09-25T00:00:00.000Z');
+      const prisma = createPrisma();
+      const row = truck('277', '00000000-0000-4000-8000-000000000001');
+      row.workOrders = [];
+      row.readinessAssessments = [];
+      (row as { serviceStatusEvents: unknown[] }).serviceStatusEvents = serviceEvent ? [serviceEvent] : [];
+      const completed = {
+        ...slice2WorkOrderRow(),
+        truckId: row.id,
+        status: WorkOrderStatus.COMPLETED,
+        completedAt: new Date('2026-09-26T15:00:00.000Z'),
+        jobs: [
+          { ...slice2WorkOrderRow().jobs[0], id: 'i', displayName: 'General Inspection', category: { id: 'c-i', name: 'Inspection' }, status: JobStatus.COMPLETED },
+          { ...slice2WorkOrderRow().jobs[0], id: 'a', displayName: 'Alignment', category: { id: 'c-a', name: 'Suspension & Steering' }, status: JobStatus.COMPLETED },
+          { ...slice2WorkOrderRow().jobs[0], id: 'd', displayName: 'Detailing', category: { id: 'c-d', name: 'Detailing' }, status: JobStatus.COMPLETED },
+        ],
+      };
+      prisma.truck.findMany.mockResolvedValue([row]);
+      prisma.truck.findUnique.mockResolvedValue(row);
+      prisma.workOrder.findMany.mockResolvedValue([completed]);
+      const trucks = { getRepairHistory: vi.fn().mockResolvedValue({ items: [], nextCursor: null }) };
+      return { prisma, service: new YardOperationsService(prisma as never, trucks as never, { log: vi.fn() } as never) };
+    }
+
+    it('keeps the truck on the board as Ready to Go until Return to Service', async () => {
+      const { service } = completedSetup(null);
+      const page = await service.list({ readiness: 'ready' });
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0].phase).toBe(WorkPlanPhase.READY_TO_GO);
+      expect(page.items[0].activeWorkOrder?.status).toBe(WorkOrderStatus.COMPLETED);
+      expect(page.counts.readyToGo).toBe(1);
+    });
+
+    it('drops the truck once it was Returned to Service after completion', async () => {
+      const { service } = completedSetup({ status: 'in_service', occurredAt: new Date('2026-09-26T18:00:00.000Z') });
+      const page = await service.list({});
+      expect(page.items).toHaveLength(0);
+      expect(page.counts.readyToGo).toBe(0);
+    });
+
+    it('ignores completed Work Orders when YARD_READY_TO_GO_SINCE is unset', async () => {
+      const { prisma, service } = completedSetup(null);
+      vi.stubEnv('YARD_READY_TO_GO_SINCE', '');
+      const page = await service.list({});
+      expect(JSON.stringify(prisma.truck.findMany.mock.calls[0][0].where)).not.toContain('completedAt');
+      expect(page.items.every((item) => item.phase !== WorkPlanPhase.READY_TO_GO)).toBe(true);
+      expect(prisma.workOrder.findMany).not.toHaveBeenCalled();
+    });
   });
 
   it('Slice 2 off: board stays on six-gate phase even with Work Plan jobs present', async () => {

@@ -112,7 +112,7 @@ describe('work plan derivation', () => {
       workOrder: {
         id: 'wo-1',
         displayId: 'WO-1',
-        status: WorkOrderStatus.IN_PROGRESS,
+        status: WorkOrderStatus.COMPLETED,
         version: 4,
         primaryCategoryName: 'Suspension & Steering',
       },
@@ -135,7 +135,7 @@ describe('work plan derivation', () => {
       workOrder: {
         id: 'wo-1',
         displayId: 'WO-1',
-        status: WorkOrderStatus.IN_PROGRESS,
+        status: WorkOrderStatus.COMPLETED,
         version: 4,
         primaryCategoryName: 'Detailing',
       },
@@ -155,7 +155,7 @@ describe('work plan derivation', () => {
   it('does not require QC unless QC jobs are on the plan', () => {
     const withoutQc = deriveWorkPlan({
       workOrder: {
-        id: 'wo-1', displayId: 'WO-1', status: WorkOrderStatus.CREATED, version: 1, primaryCategoryName: 'Other',
+        id: 'wo-1', displayId: 'WO-1', status: WorkOrderStatus.COMPLETED, version: 1, primaryCategoryName: 'Other',
       },
       jobs: [
         job('j1', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED),
@@ -191,7 +191,7 @@ describe('work plan derivation', () => {
   it('ignores cancelled jobs for remaining count and Ready', () => {
     const result = deriveWorkPlan({
       workOrder: {
-        id: 'wo-1', displayId: 'WO-1', status: WorkOrderStatus.CREATED, version: 3, primaryCategoryName: 'Air & Brake System',
+        id: 'wo-1', displayId: 'WO-1', status: WorkOrderStatus.COMPLETED, version: 3, primaryCategoryName: 'Air & Brake System',
       },
       jobs: [
         job('j1', 'Brake Inspection', 'Air & Brake System', JobStatus.CANCELLED),
@@ -263,5 +263,41 @@ describe('Inspection Category Jobs (LTR-89)', () => {
     });
     expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.NOT_STARTED);
     expect(result.phase).toBe(WorkPlanPhase.INSPECTION);
+  });
+});
+
+describe('Ready to Go needs a completed Work Order (LTR-90 / D1)', () => {
+  const planDone = [
+    job('j1', 'General Inspection', 'Inspection', JobStatus.COMPLETED),
+    job('j2', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED),
+    job('j3', 'Detailing', 'Detailing', JobStatus.COMPLETED),
+  ];
+  const wo = (status: WorkOrderStatus) => ({
+    id: 'wo-277', displayId: 'WO-001', status, version: 7, primaryCategoryName: 'Inspection',
+  });
+
+  it('shows Ready to close while the Work Order is still In Progress (prod truck 277)', () => {
+    const result = deriveWorkPlan({ workOrder: wo(WorkOrderStatus.IN_PROGRESS), jobs: planDone });
+    expect(result.phase).toBe(WorkPlanPhase.READY_TO_CLOSE);
+    expect(result.readiness).toBe(WorkPlanReadiness.NOT_READY);
+    expect(result.readyReason).toBe(WorkPlanNotReadyReason.WORK_ORDER_OPEN);
+    expect(result.remainingJobCount).toBe(0);
+  });
+
+  it('keeps Ready to close while the Work Order is paused', () => {
+    expect(deriveWorkPlan({ workOrder: wo(WorkOrderStatus.WAITING_PAUSED), jobs: planDone }).phase)
+      .toBe(WorkPlanPhase.READY_TO_CLOSE);
+  });
+
+  it('is Ready to Go once the Work Order is Completed', () => {
+    const result = deriveWorkPlan({ workOrder: wo(WorkOrderStatus.COMPLETED), jobs: planDone });
+    expect(result.phase).toBe(WorkPlanPhase.READY_TO_GO);
+    expect(result.readiness).toBe(WorkPlanReadiness.READY);
+    expect(result.readyReason).toBe(WorkPlanNotReadyReason.PLAN_COMPLETE);
+  });
+
+  it('still reports the missing step on a completed Work Order without Detailing', () => {
+    const result = deriveWorkPlan({ workOrder: wo(WorkOrderStatus.COMPLETED), jobs: planDone.slice(0, 2) });
+    expect(result.phase).toBe(WorkPlanPhase.DETAILING);
   });
 });
