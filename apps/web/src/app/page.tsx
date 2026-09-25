@@ -145,9 +145,7 @@ export default function HomePage() {
             {messages.pmServicesStartImmediately}
           </p>
         </>
-      ) : (
-        <p className="mb-6 text-sm text-shop-muted">{messages.askManagerToCreateHint}</p>
-      )}
+      ) : null}
 
       {error ? (
         <div className="mb-4">
