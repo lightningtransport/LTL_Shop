@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus } from '@ltl-shop/shared';
 import { AdminFilterToolbar, AdminPageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { useAdminTrucks } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
@@ -58,7 +59,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
               {items.map((item) => (
                 <tr key={item.truck.id} className="border-t">
                   <td className="p-3">
-                    <Link className="font-semibold text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link>
+                    <Link className="font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/trucks')}>{item.truck.truckNumber}</Link>
                     <p className="text-muted-foreground">
                       {[item.truck.year, item.truck.model].filter(Boolean).join(' ') || '—'}
                     </p>

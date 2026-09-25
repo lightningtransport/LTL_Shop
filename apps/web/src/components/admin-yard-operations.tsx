@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Ban, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
 import {
@@ -380,7 +381,7 @@ function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messa
 
   return (
     <Link
-      href={`/admin/trucks/${item.truck.id}`}
+      href={adminTruckHref(item.truck.id, '/admin/yard-operations')}
       aria-label={item.truck.truckNumber}
       className="card block space-y-1.5 p-2 hover:bg-accent/40"
       data-testid="yard-truck-card"

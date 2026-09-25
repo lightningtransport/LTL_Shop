@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSWRConfig } from 'swr';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
@@ -148,7 +149,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
     <AdminPageHeader
       eyebrow={messages.eyebrow}
-      title={<Link className="text-primary hover:underline" href={`/admin/trucks/${truck.id}`}>{truck.truckNumber}</Link>}
+      title={<Link className="text-primary hover:underline" href={adminTruckHref(truck.id, `/admin/work-orders/${data.id}`)}>{truck.truckNumber}</Link>}
       subtitle={<>{messages.workOrder} {data.displayId} · {data.category.name}</>}
       meta={<>{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</>}
       badges={<><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></>}
