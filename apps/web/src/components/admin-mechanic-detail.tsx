@@ -10,7 +10,7 @@ import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminMechanic } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
-export function AdminMechanicDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
+export function AdminMechanicDetail({ id, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowAdminWrites();
   const { data, error, isLoading, mutate } = useAdminMechanic(id);
   const canEditRoster = canWrite && data?.role === UserRole.MECHANIC;
@@ -82,7 +82,6 @@ export function AdminMechanicDetail({ id, locale, messages }: { id: string; loca
           ) : <CompactEmpty>{messages.noRecentClosedWorkOrders}</CompactEmpty>}
         </CardContent>
       </Card>
-      <p className="sr-only">{locale}</p>
     </div>
   );
 }

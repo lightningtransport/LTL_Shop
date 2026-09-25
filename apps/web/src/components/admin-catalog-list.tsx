@@ -10,7 +10,7 @@ import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
-export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowAdminWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategories();
   const [search, setSearch] = useState('');
@@ -74,7 +74,6 @@ export function AdminCatalogList({ locale, messages }: { locale: AdminLocale; me
           </table>
         </div>
       ) : null}
-      <p className="sr-only">{locale}</p>
     </div>
   );
 }

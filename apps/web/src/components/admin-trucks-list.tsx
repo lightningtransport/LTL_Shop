@@ -10,7 +10,7 @@ import { useAdminTrucks } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
 
-export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
@@ -94,7 +94,6 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
         </div>
       ) : null}
       {hasMore ? <Button type="button" variant="outline" disabled={isValidating} onClick={() => setSize(size + 1)}>{messages.loadMore}</Button> : null}
-      <p className="sr-only">{locale}</p>
     </div>
   );
 }
