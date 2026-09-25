@@ -165,6 +165,11 @@ export function PmServiceCard({
   }
   if (!data) return <Card className="mb-4 text-sm text-muted-foreground">{messages.loadingPmService}</Card>;
 
+  if (data.serviceCompletedAt) {
+    // LTR-137 / LTR-139: a completed PM is history — show what was recorded, not editable fields.
+    return <CompletedPmSummary data={data} />;
+  }
+
   const canEdit = data.canEdit;
   const hasValidObservedMileage = /^\d+$/.test(mileage);
   const hasHistoricalParts = !canEdit && data.selections.length > 0;
@@ -285,6 +290,59 @@ export function PmServiceCard({
           <Button variant="ghost" className="ml-1 px-2 underline" onClick={() => persist(draft)}>{messages.retry}</Button>
           </span>
         ) : null}
+      </div>
+    </Card>
+  );
+}
+
+function CompletedPmSummary({ data }: { data: PmServiceDto }) {
+  const { messages } = useShopLocale();
+  const dateFormat = new Intl.DateTimeFormat(messages.locale === 'es' ? 'es-US' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  const usedParts = data.selections.flatMap((selection) => {
+    const category = data.categories.find((item) => item.id === selection.partCategoryId);
+    const part = category?.parts.find((item) => item.id === selection.partId);
+    return category && part ? [{ category: category.name, part }] : [];
+  });
+  const previousPm = !data.lastCompletedPm
+    ? messages.noPriorPm
+    : `${data.lastCompletedPm.displayId} · ${data.lastCompletedPm.observedMileage === null ? messages.mileageNotRecorded : formatMileage(data.lastCompletedPm.observedMileage)}`;
+
+  return (
+    <Card className="mb-4 space-y-4" aria-labelledby="pm-service-title">
+      <div>
+        <h2 id="pm-service-title" className="section-label">{messages.pmServiceLabel}</h2>
+        {data.serviceCompletedAt ? (
+          <p className="mt-1 text-sm text-muted-foreground">{messages.pmCompletedOn(dateFormat.format(new Date(data.serviceCompletedAt)))}</p>
+        ) : null}
+      </div>
+      <dl className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <dt className="text-xs text-muted-foreground">{messages.mileageAtThisPm}</dt>
+          <dd className="font-medium">{formatMileage(data.observedMileage)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted-foreground">{messages.previousPm}</dt>
+          <dd className="font-medium">{previousPm}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted-foreground">{messages.truckMileageToday}</dt>
+          <dd className="font-medium">{formatMileage(data.currentTruckMileage)}</dd>
+        </div>
+      </dl>
+      <div>
+        <p className="section-label">{messages.partsUsed}</p>
+        {usedParts.length ? (
+          <ul className="mt-2 space-y-1 text-sm">
+            {usedParts.map(({ category, part }) => (
+              <li key={part.id}>
+                <span className="text-muted-foreground">{category}:</span>{' '}
+                {part.partNumber ? `${part.partNumber} — ${part.displayName}` : part.displayName}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">{messages.noPartsRecorded}</p>
+        )}
       </div>
     </Card>
   );

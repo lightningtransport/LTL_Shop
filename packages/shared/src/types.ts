@@ -566,6 +566,8 @@ export interface PmServiceDto {
   canEdit: boolean;
   currentTruckMileage: number | null;
   observedMileage: number | null;
+  /** LTR-137: set when this PM Work Order is completed (read-only history view). */
+  serviceCompletedAt?: string | null;
   lastCompletedPm: {
     workOrderId: string;
     displayId: string;

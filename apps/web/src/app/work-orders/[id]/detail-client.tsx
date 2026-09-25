@@ -745,7 +745,8 @@ function PmWorkOrderDetail({
           onBlur={() => void saveNotes()}
         />
         <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
-          {notesSaving ? messages.saving : notesError ? <><span className="text-destructive">{notesError} </span><Button variant="ghost" className="px-1 underline" onClick={() => void saveNotes()}>{messages.retry}</Button></> : notesDirty ? messages.saving : messages.saved}
+          {/* LTR-139: no save status on a closed Work Order. */}
+          {wo.status === 'completed' || wo.status === 'cancelled' ? null : notesSaving ? messages.saving : notesError ? <><span className="text-destructive">{notesError} </span><Button variant="ghost" className="px-1 underline" onClick={() => void saveNotes()}>{messages.retry}</Button></> : notesDirty ? messages.saving : messages.saved}
         </p>
       </section>
 
