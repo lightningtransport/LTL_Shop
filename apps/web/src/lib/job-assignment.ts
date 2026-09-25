@@ -21,6 +21,27 @@ export function jobAssignmentLabel(
   return copy.assignedTo(assignedMechanic.name);
 }
 
+/**
+ * LTR-127: a completed Job shows who completed it; the assignment line only
+ * applies to Jobs still to do.
+ */
+export function jobPersonLabel(
+  job: { status: string; assignedMechanic: JobAssignee; completedBy?: JobAssignee },
+  currentUserId: string,
+  copy: {
+    assignedToYou: string;
+    assignedTo: (name: string) => string;
+    jobUnassignedInheritsTeam: string;
+    completedByYou: string;
+    completedBy: (name: string) => string;
+  },
+): string {
+  if (job.status === 'completed' && job.completedBy) {
+    return job.completedBy.id === currentUserId ? copy.completedByYou : copy.completedBy(job.completedBy.name);
+  }
+  return jobAssignmentLabel(job.assignedMechanic, currentUserId, copy);
+}
+
 export function workOrderTeamLabel(
   mechanics: { mechanicName: string }[] | undefined,
   copy: { workOrderTeam: string; noWorkOrderTeam: string },

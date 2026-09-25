@@ -12,7 +12,7 @@ import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminMechanics } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
-export function AdminMechanicsList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowAdminWrites();
   const { showToast } = useActionToast();
   const router = useRouter();
@@ -117,7 +117,6 @@ export function AdminMechanicsList({ locale, messages }: { locale: AdminLocale; 
           />
         </>
       ) : null}
-      <p className="sr-only">{locale}</p>
     </div>
   );
 }

@@ -37,6 +37,7 @@ function workOrder() {
     },
     primaryCategory: { id: 'category-brakes', name: 'Brakes' },
     pauseEvents: [],
+    sessions: [{ id: 'session-1' }],
     mechanics: [{ mechanicId: 'mech-1', addedAt: new Date(), removedAt: null, mechanic: { name: 'Alejandro' } }],
     jobs: [{
       id: 'job-1',
@@ -77,6 +78,7 @@ describe('mechanic completeJob notes', () => {
       workOrderJob: {
         findFirst: vi.fn().mockResolvedValue(initial.jobs[0]),
         update: vi.fn(),
+        count: vi.fn().mockResolvedValue(1),
       },
     };
     const service = new WorkOrdersService({
@@ -115,6 +117,7 @@ describe('mechanic completeJob notes', () => {
       workOrderJob: {
         findFirst: vi.fn().mockResolvedValue(initial.jobs[0]),
         update: vi.fn(),
+        count: vi.fn().mockResolvedValue(1),
       },
     };
     const service = new WorkOrdersService({

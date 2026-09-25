@@ -60,6 +60,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
+import { stopLaborWhenNoPendingJobs } from '../work-orders/labor-session';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { getShopDashboardWindows } from './admin-time';
@@ -1432,6 +1433,7 @@ export class AdminService {
           newValue: { status: JobStatus.cancelled, reason: input.reason },
           relevantValue: { action: 'job_cancelled', reason: input.reason, displayName: job.displayName },
         });
+        await stopLaborWhenNoPendingJobs(tx, workOrderId);
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
@@ -1513,6 +1515,7 @@ export class AdminService {
           newValue: { status: JobStatus.completed, displayName: job.displayName, notes },
           relevantValue: { action: 'job_completed', displayName: job.displayName, notes, actor: 'admin' },
         });
+        await stopLaborWhenNoPendingJobs(tx, workOrderId);
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,

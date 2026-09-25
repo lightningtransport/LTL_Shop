@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSWRConfig } from 'swr';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
@@ -148,7 +149,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
     <AdminPageHeader
       eyebrow={messages.eyebrow}
-      title={<Link className="text-primary hover:underline" href={`/admin/trucks/${truck.id}`}>{truck.truckNumber}</Link>}
+      title={<Link className="text-primary hover:underline" href={adminTruckHref(truck.id, `/admin/work-orders/${data.id}`)}>{truck.truckNumber}</Link>}
       subtitle={<>{messages.workOrder} {data.displayId} · {data.category.name}</>}
       meta={<>{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</>}
       badges={<><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></>}
@@ -202,7 +203,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     <Card>
       <CardHeader>
         <CardTitle>{messages.assignmentsTitle}</CardTitle>
-        <CardDescription>{canManageAssignments ? messages.assignmentsDescription : data.category.name === 'PM' ? messages.pmAssignmentsLocked : messages.closedAssignmentsLocked}</CardDescription>
+        <CardDescription>{canManageAssignments ? messages.assignmentsDescription : data.category.name === 'PM' ? messages.pmAssignmentsLocked : !isOpen ? messages.closedAssignmentsLocked : messages.assignmentsNoPermission}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {activeMechanics.length ? (
@@ -259,8 +260,14 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           <ul className="divide-y">
             {(data.reportedBlockers ?? []).map((blocker) => (
               <li key={blocker.id} className="py-3 first:pt-0">
-                <Pause pause={blocker} locale={locale} messages={messages} />
-                <p className="mt-1 text-xs text-muted-foreground">{blocker.reportedBy?.name ?? blocker.createdBy.name}</p>
+                {/* LTR-108: a blocker is a point-in-time report, not a timed interval. */}
+                <p className="font-medium">{adminPauseReasonLabel(blocker.reason, messages)}</p>
+                <p className="text-sm text-muted-foreground">
+                  {messages.reportedByAt
+                    .replace('{name}', blocker.reportedBy?.name ?? blocker.createdBy.name)
+                    .replace('{date}', formatAdminDate(blocker.startedAt, locale))}
+                </p>
+                {blocker.notes ? <p className="mt-1 text-sm">{blocker.notes}</p> : null}
               </li>
             ))}
           </ul>
@@ -493,7 +500,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <CardHeader>
         <CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle>
         <CardDescription>
-          {canManageJobs ? messages.jobsDescription : data.category.name === 'PM' ? messages.jobsPmLocked : messages.jobsClosedLocked}
+          {canManageJobs ? messages.jobsDescription : data.category.name === 'PM' ? messages.jobsPmLocked : !isOpen ? messages.jobsClosedLocked : messages.jobsNoPermission}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -653,7 +660,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             {messages.addJobAction}
           </Button>
         ) : null}
-        {canManageJobs || canReopenJob ? (
+        {canManageJobs || (canReopenJob && data.jobs.some((job) => job.status === 'cancelled')) ? (
           <label className="block space-y-1">
             <span className="text-sm font-medium">{messages.jobChangeReason}</span>
             <Textarea
@@ -755,7 +762,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </CardContent>
     </Card>
     <section className="grid gap-4 lg:grid-cols-2">
-      <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent>{data.currentPause ? <Pause pause={data.currentPause} locale={locale} messages={messages} /> : <CompactEmpty>{messages.noCurrentPause}</CompactEmpty>}</CardContent></Card>
+      {data.currentPause ? <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent><Pause pause={data.currentPause} locale={locale} messages={messages} /></CardContent></Card> : null}
       <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} messages={messages} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
     </section>
     <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => {
