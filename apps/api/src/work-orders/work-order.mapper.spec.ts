@@ -183,3 +183,29 @@ describe('Work Order Job Category readers', () => {
     ]);
   });
 });
+
+describe('live labor totals (LTR-94)', () => {
+  it('counts the open session up to now instead of the persisted 0m', () => {
+    const now = Date.now();
+    const wo = {
+      ...base,
+      jobs: [],
+      pauseEvents: [],
+      mechanics: [],
+      totalActiveLaborMs: 0n,
+      sessions: [
+        { id: 's1', startedAt: new Date(now - 60 * 60_000), endedAt: new Date(now - 30 * 60_000) },
+        { id: 's2', startedAt: new Date(now - 10 * 60_000), endedAt: null },
+      ],
+    } as unknown as WorkOrderWithRelations;
+    const detail = toWorkOrderDetail(wo);
+    expect(detail.laborRunning).toBe(true);
+    expect(detail.totalActiveLaborMs).toBeGreaterThanOrEqual(40 * 60_000);
+    expect(detail.totalActiveLaborMs).toBeLessThan(41 * 60_000);
+  });
+
+  it('keeps persisted totals when sessions were not loaded', () => {
+    const wo = { ...base, jobs: [], pauseEvents: [], mechanics: [], totalActiveLaborMs: 5000n } as unknown as WorkOrderWithRelations;
+    expect(toWorkOrderDetail(wo).totalActiveLaborMs).toBe(5000);
+  });
+});

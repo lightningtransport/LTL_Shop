@@ -411,7 +411,7 @@ export class WorkOrdersService {
       // needs Start Work again on the same In Progress Work Order.
       const restartingLabor = wo.status === 'in_progress'
         && wo.primaryCategory.name !== 'PM'
-        && (wo.sessions ?? []).length === 0
+        && !(wo.sessions ?? []).some((session) => session.endedAt === null)
         && wo.jobs.some((job) => job.status === 'to_do');
       if (wo.status !== 'created' && !restartingLabor) {
         throw new BadRequestException('Work Order can only be started from created status');
@@ -951,7 +951,7 @@ export class WorkOrdersService {
       if (category?.name === 'PM') {
         throw new BadRequestException('PM Work Orders do not use jobs');
       }
-      const gate = canCompleteJob(wo.status, (wo.sessions ?? []).length > 0);
+      const gate = canCompleteJob(wo.status, (wo.sessions ?? []).some((session) => session.endedAt === null));
       if (!gate.ok) {
         throw new BadRequestException({ code: gate.code, message: gate.message });
       }

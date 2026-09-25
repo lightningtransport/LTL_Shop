@@ -1934,8 +1934,8 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     notes: row.notes,
     createdBy: row.createdBy,
     completedBy: row.completedBy,
-    totalActiveLaborMs: Number(row.totalActiveLaborMs),
-    totalWaitingMs: Number(row.totalWaitingMs),
+    // LTR-94: live totals from persisted segments (open session/pause counted to now).
+    ...liveTotals(row),
     jobs,
     laborSessions: row.sessions.map((session) => ({
       id: session.id,
@@ -2090,4 +2090,11 @@ function mapPause(pause: {
     isOfficialPause: pause.isOfficialPause !== false,
     reportedBy: pause.reportedBy ?? null,
   };
+}
+
+function liveTotals(row: {
+  sessions: { startedAt: Date; endedAt: Date | null }[];
+  pauseEvents: { startedAt: Date; endedAt: Date | null; isOfficialPause?: boolean | null }[];
+}) {
+  return computeTotals({ sessions: row.sessions, pauses: row.pauseEvents });
 }
