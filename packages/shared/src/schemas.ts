@@ -310,6 +310,8 @@ export const completeJobSchema = z.object({
 
 export const updatePmServiceSchema = z.object({
   observedMileage: z.number().int().nonnegative().nullable(),
+  // LTR-135: required when the jump over the truck mileage exceeds the threshold.
+  confirmLargeMileageJump: z.boolean().optional(),
   selections: z.array(z.object({
     partCategoryId: z.string().uuid(),
     partId: z.string().uuid(),

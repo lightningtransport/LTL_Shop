@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PmServiceDto } from '@ltl-shop/shared';
+import { checkPmObservedMileage, type PmServiceDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
 import { shopKeys, usePmService } from '@/lib/shop-data';
@@ -19,14 +19,16 @@ export type PmDraftState = {
 type Payload = {
   observedMileage: number | null;
   selections: { partCategoryId: string; partId: string }[];
+  confirmLargeMileageJump?: boolean;
 };
 
-function payloadFor(mileage: string, selections: Record<string, string>): Payload {
+function payloadFor(mileage: string, selections: Record<string, string>, confirmLargeMileageJump = false): Payload {
   return {
     observedMileage: mileage.trim() === '' ? null : Number(mileage),
     selections: Object.entries(selections)
       .filter(([, partId]) => Boolean(partId))
       .map(([partCategoryId, partId]) => ({ partCategoryId, partId })),
+    ...(confirmLargeMileageJump ? { confirmLargeMileageJump: true } : {}),
   };
 }
 
@@ -49,6 +51,8 @@ export function PmServiceCard({
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // LTR-135: a jump above the threshold is saved only after explicit confirmation.
+  const [jumpConfirmed, setJumpConfirmed] = useState(false);
   const lastSavedKey = useRef('');
   const queuedPayload = useRef<Payload | null>(null);
   const dirtyRef = useRef(false);
@@ -63,8 +67,10 @@ export function PmServiceCard({
     // SWR revalidations must never overwrite an in-progress local draft.
     if (!hydrated || (!dirtyRef.current && !savingRef.current)) {
       setMileage(nextMileage);
+      // A mileage the API already accepted was confirmed when it was saved.
+      setJumpConfirmed(nextMileage !== '');
       setSelections(nextSelections);
-      lastSavedKey.current = JSON.stringify(payloadFor(nextMileage, nextSelections));
+      lastSavedKey.current = JSON.stringify(payloadFor(nextMileage, nextSelections, nextMileage !== ''));
       queuedPayload.current = null;
       dirtyRef.current = false;
       setDirty(false);
@@ -73,7 +79,19 @@ export function PmServiceCard({
     }
   }, [data]);
 
-  const draft = useMemo(() => payloadFor(mileage, selections), [mileage, selections]);
+  const draft = useMemo(
+    () => payloadFor(mileage, selections, jumpConfirmed),
+    [jumpConfirmed, mileage, selections],
+  );
+  const currentTruckMileage = data?.currentTruckMileage ?? null;
+  const mileageCheck = useMemo(
+    () => (/^\d+$/.test(mileage) ? checkPmObservedMileage(Number(mileage), currentTruckMileage) : null),
+    [currentTruckMileage, mileage],
+  );
+  const mileageBelowCurrent = !!data?.canEdit && mileageCheck?.ok === false;
+  const mileageNeedsConfirmation = !!data?.canEdit && mileageCheck?.ok === true
+    && mileageCheck.needsConfirmation && !jumpConfirmed;
+  const mileageBlocked = mileageBelowCurrent || mileageNeedsConfirmation;
 
   const flushSaveQueue = useCallback(async () => {
     if (!data?.canEdit || savingRef.current) return;
@@ -112,25 +130,27 @@ export function PmServiceCard({
 
   const persist = useCallback((payload: Payload) => {
     if (!data?.canEdit) return;
+    const check = checkPmObservedMileage(payload.observedMileage, data.currentTruckMileage);
+    if (!check.ok || (check.needsConfirmation && !payload.confirmLargeMileageJump)) return;
     queuedPayload.current = payload;
     void flushSaveQueue();
-  }, [data?.canEdit, flushSaveQueue]);
+  }, [data?.canEdit, data?.currentTruckMileage, flushSaveQueue]);
 
   useEffect(() => {
-    if (!hydrated || !data?.canEdit || !dirty || saveError) return;
+    if (!hydrated || !data?.canEdit || !dirty || saveError || mileageBlocked) return;
     const timer = window.setTimeout(() => persist(draft), 600);
     return () => window.clearTimeout(timer);
-  }, [data?.canEdit, dirty, draft, hydrated, persist, saveError]);
+  }, [data?.canEdit, dirty, draft, hydrated, mileageBlocked, persist, saveError]);
 
   useEffect(() => {
     onDraftStateChange?.({
       ready: !!data,
       pending: dirty || saving,
-      hasError: !!saveError,
+      hasError: !!saveError || mileageBlocked,
       observedMileage: mileage,
       selectedParts: draft.selections.length,
     });
-  }, [data, dirty, draft.selections.length, mileage, onDraftStateChange, saveError, saving]);
+  }, [data, dirty, draft.selections.length, mileage, mileageBlocked, onDraftStateChange, saveError, saving]);
 
   if (error) {
     return (
@@ -148,7 +168,7 @@ export function PmServiceCard({
   const canEdit = data.canEdit;
   const hasValidObservedMileage = /^\d+$/.test(mileage);
   const hasHistoricalParts = !canEdit && data.selections.length > 0;
-  const showParts = hasValidObservedMileage || hasHistoricalParts;
+  const showParts = (hasValidObservedMileage && !mileageBelowCurrent) || hasHistoricalParts;
   const lastPmValue = !data.lastCompletedPm
     ? messages.noPriorPm
     : data.lastCompletedPm.observedMileage === null
@@ -184,15 +204,36 @@ export function PmServiceCard({
             disabled={!canEdit}
             onChange={(event) => {
               setMileage(event.target.value.replace(/\D/g, ''));
+              setJumpConfirmed(false);
               dirtyRef.current = true;
               setDirty(true);
               setSaveError(null);
             }}
-            onBlur={() => void persist(payloadFor(mileage, selections))}
+            aria-invalid={mileageBelowCurrent || undefined}
+            onBlur={() => void persist(payloadFor(mileage, selections, jumpConfirmed))}
           />
           <span id="pm-observed-mileage-unit" className="text-sm text-muted-foreground">mi</span>
         </div>
-        {!showParts ? (
+        {mileageBelowCurrent && mileageCheck?.ok === false ? (
+          <p className="mt-2 text-sm text-destructive" role="alert">
+            {messages.mileageBelowCurrent(formatMileage(mileageCheck.currentMileage))}
+          </p>
+        ) : null}
+        {mileageNeedsConfirmation ? (
+          <div className="mt-2 space-y-2 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground" role="alert">
+            <p>{messages.mileageJumpWarning(formatMileage(currentTruckMileage))}</p>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setJumpConfirmed(true);
+                persist(payloadFor(mileage, selections, true));
+              }}
+            >
+              {messages.confirmMileage}
+            </Button>
+          </div>
+        ) : null}
+        {!showParts && !mileageBelowCurrent ? (
           <p className="mt-2 text-sm text-muted-foreground" id="pm-parts-instruction">
             {messages.enterMileageHint}
           </p>
@@ -216,7 +257,7 @@ export function PmServiceCard({
                   dirtyRef.current = true;
                   setDirty(true);
                   setSaveError(null);
-                  void persist(payloadFor(mileage, nextSelections));
+                  void persist(payloadFor(mileage, nextSelections, jumpConfirmed));
                 }}
               >
                 <option value="">{messages.noPartUsed}</option>

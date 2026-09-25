@@ -191,6 +191,9 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     readyReason = WorkPlanNotReadyReason.DETAILING_PENDING;
   } else if (qualityCheck.required && qualityCheck.status !== WorkPlanMandatoryStatus.COMPLETE) {
     readyReason = WorkPlanNotReadyReason.QC_PENDING;
+  } else if (input.workOrder && input.workOrder.status !== WorkOrderStatus.COMPLETED) {
+    // LTR-90 / D1: Ready to Go only after the Manager completes the Work Order.
+    readyReason = WorkPlanNotReadyReason.WORK_ORDER_OPEN;
   }
 
   const readiness = readyReason === WorkPlanNotReadyReason.PLAN_COMPLETE
@@ -208,6 +211,8 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     phase = WorkPlanPhase.DETAILING;
   } else if (qualityCheck.required && qualityCheck.status !== WorkPlanMandatoryStatus.COMPLETE) {
     phase = WorkPlanPhase.QUALITY_CHECK;
+  } else if (readyReason === WorkPlanNotReadyReason.WORK_ORDER_OPEN) {
+    phase = WorkPlanPhase.READY_TO_CLOSE;
   }
 
   return {
