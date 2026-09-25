@@ -72,6 +72,7 @@ enum ActivityEventType {
   pause_reason_changed
   work_resumed
   blocker_reported
+  blocker_resolved
   mechanic_added
   mechanic_removed
   priority_changed
@@ -136,6 +137,7 @@ model User {
   assignedJobs                   WorkOrderJob[]             @relation("JobAssignedTo")
   pauseEvents                    PauseEvent[]               @relation("PauseCreatedBy")
   reportedPauseEvents            PauseEvent[]               @relation("PauseReportedBy")
+  resolvedPauseEvents            PauseEvent[]               @relation("PauseResolvedBy")
   activityLogs                   ActivityLog[]
   createdCatalogJobs             CatalogJob[]               @relation("CatalogJobCreatedBy")
   mileageAdjustments             TruckMileageAdjustment[]
@@ -557,10 +559,14 @@ model PauseEvent {
   // official pauses. reportedById records the mechanic who raised the blocker.
   isOfficialPause Boolean @default(true) @map("is_official_pause")
   reportedById String?    @map("reported_by_id") @db.Uuid
+  // LTR-98 / D3: a mechanic-reported blocker stays active until resolved.
+  resolvedAt   DateTime?  @map("resolved_at")
+  resolvedById String?    @map("resolved_by_id") @db.Uuid
 
   workOrder  WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   createdBy  User      @relation("PauseCreatedBy", fields: [createdById], references: [id])
   reportedBy User?     @relation("PauseReportedBy", fields: [reportedById], references: [id])
+  resolvedBy User?     @relation("PauseResolvedBy", fields: [resolvedById], references: [id])
 
   @@index([workOrderId])
   @@map("pause_events")

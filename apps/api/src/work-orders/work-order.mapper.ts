@@ -33,6 +33,8 @@ type PauseRow = {
   durationMs: bigint | null;
   isOfficialPause?: boolean;
   reportedBy?: { id: string; name: string } | null;
+  resolvedAt?: Date | null;
+  resolvedBy?: { id: string; name: string } | null;
 };
 
 type MechanicRow = {
@@ -164,6 +166,9 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
         removedAt: m.removedAt?.toISOString() ?? null,
       })),
     currentPause: currentPause ? toPauseEventDto(currentPause) : null,
+    activeBlockers: (wo.pauseEvents ?? [])
+      .filter((pause) => pause.isOfficialPause === false && !pause.resolvedAt)
+      .map(toPauseEventDto),
   };
 }
 
@@ -195,6 +200,8 @@ export function toPauseEventDto(pause: PauseRow) {
       : Number(pause.durationMs),
     isOfficialPause: pause.isOfficialPause !== false,
     reportedBy: pause.reportedBy ?? null,
+    resolvedAt: pause.resolvedAt?.toISOString() ?? null,
+    resolvedBy: pause.resolvedBy ?? null,
   };
 }
 
@@ -213,7 +220,10 @@ export const workOrderDetailInclude = {
     select: { id: true, startedAt: true, endedAt: true },
   },
   pauseEvents: {
-    include: { reportedBy: { select: { id: true, name: true } } },
+    include: {
+      reportedBy: { select: { id: true, name: true } },
+      resolvedBy: { select: { id: true, name: true } },
+    },
     orderBy: { startedAt: 'desc' as const },
   },
   mechanics: {

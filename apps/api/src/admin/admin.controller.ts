@@ -114,6 +114,12 @@ export class AdminController {
     return this.admin.cancelWorkOrder(request.user!, id, body);
   }
 
+  @Post('work-orders/:id/blockers/:blockerId/resolve')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  resolveBlocker(@Req() request: Request, @Param('id') id: string, @Param('blockerId') blockerId: string) {
+    return this.admin.resolveBlocker(request.user!, id, blockerId);
+  }
+
   @Post('work-orders/:id/pause')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   pauseWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {

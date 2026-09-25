@@ -165,6 +165,7 @@ const detailInclude = {
     include: {
       createdBy: { select: { id: true, name: true } },
       reportedBy: { select: { id: true, name: true } },
+      resolvedBy: { select: { id: true, name: true } },
     },
     orderBy: { startedAt: 'desc' as const },
   },
@@ -201,6 +202,12 @@ export class AdminService {
 
   // Manager-first ownership: the Manager pauses/resumes the Work Order. Reuses
   // the mechanic pause/resume mechanics, then returns the admin detail DTO.
+  async resolveBlocker(user: AuthUser, workOrderId: string, blockerId: string): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId) || !isUuid(blockerId)) throw new BadRequestException('Invalid id');
+    await this.workOrders.resolveBlocker(user, workOrderId, blockerId, { managerActor: true });
+    return this.detail(workOrderId);
+  }
+
   async pauseWorkOrder(user: AuthUser, workOrderId: string, body: unknown): Promise<AdminWorkOrderDetailDto> {
     if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
     await this.workOrders.pauseByManager(user, workOrderId, body);
@@ -1872,7 +1879,8 @@ export class AdminService {
 function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
   const jobs = row.primaryCategory.name === 'PM' ? [] : row.jobs.filter((job) => job.status !== 'cancelled');
   const currentPause = row.pauseEvents.find((pause) => !pause.endedAt && pause.isOfficialPause !== false) ?? null;
-  const latestReportedBlocker = row.pauseEvents.find((pause) => pause.isOfficialPause === false) ?? null;
+  // LTR-98 / D3: only an unresolved blocker is "latest reported" (active).
+  const latestReportedBlocker = row.pauseEvents.find((pause) => pause.isOfficialPause === false && !pause.resolvedAt) ?? null;
   return {
     id: row.id,
     displayId: row.displayId,
@@ -2081,6 +2089,8 @@ function mapPause(pause: {
   startedAt: Date; endedAt: Date | null; durationMs: bigint | null;
   isOfficialPause?: boolean;
   reportedBy?: { id: string; name: string } | null;
+  resolvedAt?: Date | null;
+  resolvedBy?: { id: string; name: string } | null;
 }) {
   return {
     id: pause.id,
@@ -2092,6 +2102,8 @@ function mapPause(pause: {
     durationMs: pause.durationMs === null ? null : Number(pause.durationMs),
     isOfficialPause: pause.isOfficialPause !== false,
     reportedBy: pause.reportedBy ?? null,
+    resolvedAt: pause.resolvedAt?.toISOString() ?? null,
+    resolvedBy: pause.resolvedBy ?? null,
   };
 }
 

@@ -442,6 +442,27 @@ describe('YardOperationsService', () => {
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
   });
 
+  it('LTR-98: an unresolved mechanic blocker marks the truck Blocked', async () => {
+    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+    const prisma = createPrisma();
+    const blocked = truck('277', '00000000-0000-4000-8000-000000000001');
+    blocked.workOrders = [{
+      ...slice2WorkOrderRow(),
+      status: WorkOrderStatus.IN_PROGRESS,
+      pauseEvents: [{
+        id: 'b-1', workOrderId: '00000000-0000-4000-8000-000000000201', reason: 'waiting_for_parts', notes: null,
+        startedAt: new Date(), endedAt: new Date(), durationMs: 0n, isOfficialPause: false, resolvedAt: null,
+      }],
+    }] as never;
+    prisma.truck.findMany.mockResolvedValue([blocked]);
+    prisma.truck.count.mockResolvedValue(1);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 25 });
+    expect(page.counts.blocked).toBe(1);
+    expect(page.items[0].activeWorkOrder?.latestReportedBlocker?.reason).toBe('waiting_for_parts');
+  });
+
   it('LTR-92: only an officially paused Work Order counts and filters as Blocked', async () => {
     vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
     const prisma = createPrisma();

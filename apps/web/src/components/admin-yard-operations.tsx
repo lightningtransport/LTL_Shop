@@ -397,7 +397,9 @@ function YardTruckCard({ item, messages, workPlanBoard }: { item: YardOperations
   const vehicle = formatVehicleYmm(item.truck);
   const showPriority = Boolean(workOrder && workOrder.priority !== Priority.NORMAL);
   // LTR-92 / D5: on the Work Plan board Blocked means an official pause, not "has open work".
-  const showBlocker = workPlanBoard ? workOrder?.status === 'waiting_paused' : item.blockers.length > 0;
+  const showBlocker = workPlanBoard
+    ? workOrder?.status === 'waiting_paused' || Boolean(workOrder?.latestReportedBlocker) // LTR-98: active blocker
+    : item.blockers.length > 0;
 
   return (
     <Link

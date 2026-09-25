@@ -537,6 +537,43 @@ export class WorkOrdersService {
     });
   }
 
+  /**
+   * LTR-98 / D3: a reported blocker stays active until the assigned mechanic or
+   * the Manager resolves it. Does not change Work Order status or timers.
+   */
+  async resolveBlocker(user: AuthUser, id: string, blockerId: string, options: { managerActor?: boolean } = {}) {
+    return this.prisma.$transaction(async (tx) => {
+      const wo = await this.requireWo(tx, id);
+      if (!options.managerActor) this.assertMechanicAccess(user, wo);
+      const blocker = await tx.pauseEvent.findFirst({
+        where: { id: blockerId, workOrderId: id, isOfficialPause: false },
+      });
+      if (!blocker) throw new NotFoundException('Blocker not found');
+      if (blocker.resolvedAt) {
+        throw new BadRequestException({ code: 'BLOCKER_ALREADY_RESOLVED', message: 'This blocker is already resolved.' });
+      }
+      await tx.pauseEvent.update({
+        where: { id: blockerId },
+        data: { resolvedAt: new Date(), resolvedById: user.id },
+      });
+      const updated = await tx.workOrder.update({
+        where: { id },
+        data: { version: { increment: 1 } },
+        include: workOrderDetailInclude,
+      });
+      await this.activity.log(tx, {
+        workOrderId: id,
+        eventType: ActivityEventType.BLOCKER_RESOLVED,
+        entityType: 'work_order',
+        entityId: id,
+        userId: user.id,
+        previousValue: { reason: blocker.reason, notes: blocker.notes },
+        newValue: { resolved: true, actor: options.managerActor ? 'manager' : 'mechanic' },
+      });
+      return toWorkOrderDetail(updated);
+    });
+  }
+
   async pause(user: AuthUser, id: string, raw: unknown, options: { managerActor?: boolean } = {}) {
     const parsed = pauseWorkOrderSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());

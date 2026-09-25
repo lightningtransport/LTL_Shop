@@ -124,10 +124,11 @@ const summaryWorkOrderInclude = {
     include: { mechanic: { select: { id: true, name: true } } },
     orderBy: { addedAt: 'asc' as const },
   },
+  // Open official pause + active (unresolved) mechanic blockers (LTR-98).
   pauseEvents: {
-    where: { endedAt: null },
+    where: { OR: [{ endedAt: null }, { isOfficialPause: false, resolvedAt: null }] } as Prisma.PauseEventWhereInput,
     orderBy: { startedAt: 'desc' as const },
-    take: 1,
+    take: 5,
   },
 } as const;
 
@@ -1100,8 +1101,11 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
  * an official pause. Open work alone is not a blocker. Mechanic-reported blockers
  * join once they have an active/resolved state (LTR-98).
  */
-function isWorkPlanBoardBlocked(openWorkOrders: Pick<AdminWorkOrderSummaryDto, 'status'>[]): boolean {
-  return openWorkOrders.some((workOrder) => workOrder.status === WorkOrderStatus.waiting_paused);
+function isWorkPlanBoardBlocked(openWorkOrders: Pick<AdminWorkOrderSummaryDto, 'status' | 'latestReportedBlocker'>[]): boolean {
+  // LTR-98: an unresolved mechanic blocker also stops the truck.
+  return openWorkOrders.some((workOrder) => (
+    workOrder.status === WorkOrderStatus.waiting_paused || Boolean(workOrder.latestReportedBlocker)
+  ));
 }
 
 function workPlanBoardReadinessFilter(phase: string): YardReadinessFilter {
@@ -1141,7 +1145,8 @@ function workPlanBoardBlockers(
 
 function toAdminWorkOrderSummary(row: SummaryWorkOrderRow): AdminWorkOrderSummaryDto {
   const jobs = row.primaryCategory.name === 'PM' ? [] : row.jobs;
-  const currentPause = row.pauseEvents[0] ?? null;
+  const currentPause = row.pauseEvents.find((pause) => !pause.endedAt && pause.isOfficialPause !== false) ?? null;
+  const activeBlocker = row.pauseEvents.find((pause) => pause.isOfficialPause === false && !pause.resolvedAt) ?? null;
   return {
     id: row.id,
     displayId: row.displayId,
@@ -1174,7 +1179,17 @@ function toAdminWorkOrderSummary(row: SummaryWorkOrderRow): AdminWorkOrderSummar
       isOfficialPause: true,
       reportedBy: null,
     } : null,
-    latestReportedBlocker: null,
+    latestReportedBlocker: activeBlocker ? {
+      id: activeBlocker.id,
+      workOrderId: activeBlocker.workOrderId,
+      reason: activeBlocker.reason as never,
+      notes: activeBlocker.notes,
+      startedAt: activeBlocker.startedAt.toISOString(),
+      endedAt: activeBlocker.endedAt?.toISOString() ?? null,
+      durationMs: activeBlocker.durationMs === null ? null : Number(activeBlocker.durationMs),
+      isOfficialPause: false,
+      resolvedAt: null,
+    } : null,
     createdAt: row.createdAt.toISOString(),
     startedAt: row.startedAt?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
