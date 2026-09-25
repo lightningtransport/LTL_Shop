@@ -95,6 +95,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
               autoComplete="off"
               enterKeyHint="search"
               aria-label={messages.search}
+              placeholder={messages.searchPlaceholder}
               className="md:min-h-9 md:px-3"
               value={filters.search}
               onChange={(event) => updateFilter('search', event.target.value)}
