@@ -175,6 +175,10 @@ export default function WorkOrderDetailPage() {
   const myTodo = todo.filter((job) => isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
   const otherTodo = todo.filter((job) => !isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
   const waitingOnManager = isStandardWorkWaitingOnManager(wo);
+  // LTR-124: labor stops after the last Job; a Job added later needs Start Work.
+  // `laborRunning === false` keeps older API responses (field absent) unchanged.
+  const laborStopped = wo.status === 'in_progress' && wo.laborRunning === false;
+  const needsStart = wo.status === 'created' || (laborStopped && todo.length > 0);
 
   return (
     <div>
@@ -213,7 +217,7 @@ export default function WorkOrderDetailPage() {
 
       <section className="mb-4 space-y-2">
         <p className="section-label">{messages.workOptions}</p>
-        {wo.status === 'created' ? (
+        {needsStart ? (
           <Button
             className="w-full"
             disabled={busy}
@@ -290,7 +294,7 @@ export default function WorkOrderDetailPage() {
                 <JobTodoButton
                   job={job}
                   currentUserId={user?.id ?? ''}
-                  disabled={busy || wo.status !== 'in_progress'}
+                  disabled={busy || wo.status !== 'in_progress' || laborStopped}
                   onSelect={(event) => {
                     finishJobTriggerRef.current = event.currentTarget;
                     setFinishNotes('');
@@ -310,7 +314,7 @@ export default function WorkOrderDetailPage() {
                   <JobTodoButton
                     job={job}
                     currentUserId={user?.id ?? ''}
-                    disabled={busy || wo.status !== 'in_progress'}
+                    disabled={busy || wo.status !== 'in_progress' || laborStopped}
                     onSelect={(event) => {
                       finishJobTriggerRef.current = event.currentTarget;
                       setFinishNotes('');

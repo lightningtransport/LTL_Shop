@@ -1440,12 +1440,14 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
       findUnique: vi.fn().mockResolvedValue(wo),
       findFirst: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      update: vi.fn(),
     },
     user: { findFirst: vi.fn() },
     mechanicAssignment: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     workOrderJob: {
       findUnique: vi.fn().mockResolvedValue(wo.jobs[0] ? { ...wo.jobs[0], workOrderId: wo.id } : null),
       update: vi.fn(),
+      count: vi.fn().mockResolvedValue(1),
     },
     workOrderMutation: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
     workSession: {
