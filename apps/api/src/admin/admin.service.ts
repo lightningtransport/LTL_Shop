@@ -61,6 +61,7 @@ import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { stopLaborWhenNoPendingJobs } from '../work-orders/labor-session';
+import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { getShopDashboardWindows } from './admin-time';
 
@@ -875,6 +876,7 @@ export class AdminService {
           if (!pmService?.parts.length) {
             throw new BadRequestException('Select at least one part before finishing a PM service');
           }
+          assertPmObservedMileage(observedMileage, wo.truck.mileage, { confirmLargeJump: true });
         } else {
           const gate = canFinishWorkOrder(wo.jobs);
           if (!gate.ok) throw new BadRequestException(gate.message);

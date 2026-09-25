@@ -38,6 +38,7 @@ import {
 } from './work-order.timing';
 import type { AuthUser } from '../auth/auth.guard';
 import { stopLaborWhenNoPendingJobs } from './labor-session';
+import { assertPmObservedMileage } from './pm-mileage.guard';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
@@ -1019,6 +1020,8 @@ export class WorkOrdersService {
         if (!wo.pmService?.parts.length) {
           throw new BadRequestException('Select at least one part before finishing a PM service');
         }
+        // The truck mileage can move after the PM draft was saved.
+        assertPmObservedMileage(pmObservedMileage, wo.truck.mileage, { confirmLargeJump: true });
       } else {
         const jobs = await tx.workOrderJob.findMany({ where: { workOrderId: id } });
         const gate = canFinishWorkOrder(jobs);
@@ -1171,6 +1174,9 @@ export class WorkOrdersService {
       if (!['in_progress', 'waiting_paused'].includes(wo.status)) {
         throw new BadRequestException('Start or resume the PM Work Order before updating service details');
       }
+      assertPmObservedMileage(parsed.data.observedMileage, wo.truck.mileage, {
+        confirmLargeJump: parsed.data.confirmLargeMileageJump === true,
+      });
 
       const selectedParts = await tx.part.findMany({
         where: { id: { in: parsed.data.selections.map((selection) => selection.partId) }, active: true },
