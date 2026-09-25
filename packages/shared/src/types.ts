@@ -3,6 +3,7 @@ import type {
   ActivityEventType,
   JobStatus,
   PauseReason,
+  WorkOrderNoteKind,
   Priority,
   ReadinessAssessmentStatus,
   ReadinessPhase,
@@ -108,6 +109,18 @@ export interface PauseEventDto {
   resolvedBy?: { id: string; name: string } | null;
 }
 
+/** LTR-126 / D8: one append-only Work Order note (never edited or overwritten). */
+export interface WorkOrderNoteDto {
+  id: string;
+  kind: WorkOrderNoteKind;
+  body: string;
+  author: { id: string; name: string };
+  createdAt: string;
+  /** Work requests only: set when the Manager handled the request. */
+  handledAt: string | null;
+  handledBy: { id: string; name: string } | null;
+}
+
 export interface MechanicAssignmentDto {
   mechanicId: string;
   mechanicName: string;
@@ -146,6 +159,8 @@ export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
   currentPause: PauseEventDto | null;
   /** LTR-128: unresolved mechanic-reported blockers (newest first). */
   activeBlockers?: PauseEventDto[];
+  /** LTR-126: append-only notes and work requests (oldest first). */
+  noteEntries?: WorkOrderNoteDto[];
   truck: TruckDto;
   version: number;
 }
@@ -273,6 +288,8 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
     createdBy: { id: string; name: string };
   })[];
   activityLog: AdminActivityLogDto[];
+  /** LTR-126: append-only notes and work requests (oldest first). */
+  noteEntries?: WorkOrderNoteDto[];
   returnedToServiceAt: string | null;
 }
 
@@ -307,6 +324,18 @@ export interface AdminDashboardDto {
     completedLast7Days: number;
   };
   attention: AdminWorkOrderSummaryDto[];
+  /** LTR-126: mechanic work requests the Manager has not handled yet (newest first). */
+  openWorkRequests?: AdminOpenWorkRequestDto[];
+}
+
+export interface AdminOpenWorkRequestDto {
+  id: string;
+  body: string;
+  author: { id: string; name: string };
+  createdAt: string;
+  workOrderId: string;
+  workOrderDisplayId: string;
+  truckNumber: string;
 }
 
 export interface YardPresenceDto {

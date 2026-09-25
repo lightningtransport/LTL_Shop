@@ -77,6 +77,8 @@ export enum ActivityEventType {
   WORK_RESUMED = 'work_resumed',
   BLOCKER_REPORTED = 'blocker_reported',
   BLOCKER_RESOLVED = 'blocker_resolved',
+  NOTE_ADDED = 'note_added',
+  WORK_REQUEST_HANDLED = 'work_request_handled',
   MECHANIC_ADDED = 'mechanic_added',
   MECHANIC_REMOVED = 'mechanic_removed',
   PRIORITY_CHANGED = 'priority_changed',
@@ -91,6 +93,12 @@ export enum ActivityEventType {
   READINESS_APPROVED = 'readiness_approved',
   READINESS_APPROVAL_INVALIDATED = 'readiness_approval_invalidated',
   READINESS_ASSESSMENT_CLOSED = 'readiness_assessment_closed',
+}
+
+/** LTR-126 / D8: kind of an append-only Work Order note entry. */
+export enum WorkOrderNoteKind {
+  NOTE = 'note',
+  WORK_REQUEST = 'work_request',
 }
 
 export enum YardPresenceState {
