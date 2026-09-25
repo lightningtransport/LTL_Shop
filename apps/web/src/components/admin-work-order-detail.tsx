@@ -259,8 +259,14 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           <ul className="divide-y">
             {(data.reportedBlockers ?? []).map((blocker) => (
               <li key={blocker.id} className="py-3 first:pt-0">
-                <Pause pause={blocker} locale={locale} messages={messages} />
-                <p className="mt-1 text-xs text-muted-foreground">{blocker.reportedBy?.name ?? blocker.createdBy.name}</p>
+                {/* LTR-108: a blocker is a point-in-time report, not a timed interval. */}
+                <p className="font-medium">{adminPauseReasonLabel(blocker.reason, messages)}</p>
+                <p className="text-sm text-muted-foreground">
+                  {messages.reportedByAt
+                    .replace('{name}', blocker.reportedBy?.name ?? blocker.createdBy.name)
+                    .replace('{date}', formatAdminDate(blocker.startedAt, locale))}
+                </p>
+                {blocker.notes ? <p className="mt-1 text-sm">{blocker.notes}</p> : null}
               </li>
             ))}
           </ul>
