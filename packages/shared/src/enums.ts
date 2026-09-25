@@ -177,6 +177,8 @@ export enum WorkPlanJobUiStatus {
 }
 
 export enum WorkPlanJobLane {
+  /** LTR-89: Jobs in the Inspection Category are discovery, not Shop Work. */
+  INSPECTION = 'inspection',
   SHOP_WORK = 'shop_work',
   ALIGNMENT = 'alignment',
   DETAILING = 'detailing',

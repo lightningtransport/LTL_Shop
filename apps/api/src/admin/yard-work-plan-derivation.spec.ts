@@ -204,3 +204,64 @@ describe('work plan derivation', () => {
     expect(result.readiness).toBe(WorkPlanReadiness.READY);
   });
 });
+
+describe('Inspection Category Jobs (LTR-89)', () => {
+  const inProgress = {
+    id: 'wo-906',
+    displayId: 'WO-003',
+    status: WorkOrderStatus.CREATED,
+    version: 1,
+    primaryCategoryName: 'Inspection',
+  };
+
+  it('classifies only the Inspection Category as the Inspection lane', () => {
+    expect(classifyWorkPlanLane('Inspection', 'General Inspection')).toBe(WorkPlanJobLane.INSPECTION);
+    expect(classifyWorkPlanLane('Air & Brake System', 'Brake Inspection')).toBe(WorkPlanJobLane.SHOP_WORK);
+  });
+
+  it('stays in Inspection while the Inspection Job is to do, even with repairs already planned (prod truck 906)', () => {
+    const result = deriveWorkPlan({
+      workOrder: inProgress,
+      jobs: [
+        job('j1', 'DPF/DEF Service', 'Engine & Emissions'),
+        job('j2', 'Flat Repair', 'Tires & Wheels'),
+        job('j3', 'General Inspection', 'Inspection'),
+      ],
+    });
+    expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.NOT_STARTED);
+    expect(result.phase).toBe(WorkPlanPhase.INSPECTION);
+    expect(result.readyReason).toBe(WorkPlanNotReadyReason.INSPECTION_PENDING);
+    expect(result.remainingJobCount).toBe(3);
+  });
+
+  it('moves to Shop Work once the Inspection Job is done and repairs remain', () => {
+    const result = deriveWorkPlan({
+      workOrder: { ...inProgress, status: WorkOrderStatus.IN_PROGRESS },
+      jobs: [
+        job('j1', 'Fuel Leak', 'Fuel System'),
+        job('j2', 'General Inspection', 'Inspection', JobStatus.COMPLETED),
+      ],
+    });
+    expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.ISSUES_FOUND);
+    expect(result.phase).toBe(WorkPlanPhase.SHOP_WORK);
+    expect(result.readyReason).toBe(WorkPlanNotReadyReason.JOBS_REMAINING);
+  });
+
+  it('treats a completed Inspection Job with no repairs as No issues found', () => {
+    const result = deriveWorkPlan({
+      workOrder: { ...inProgress, status: WorkOrderStatus.IN_PROGRESS },
+      jobs: [job('j1', 'General Inspection', 'Inspection', JobStatus.COMPLETED)],
+    });
+    expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
+    expect(result.phase).toBe(WorkPlanPhase.ALIGNMENT);
+  });
+
+  it('ignores a cancelled Inspection Job', () => {
+    const result = deriveWorkPlan({
+      workOrder: { ...inProgress, status: WorkOrderStatus.IN_PROGRESS },
+      jobs: [job('j1', 'General Inspection', 'Inspection', JobStatus.CANCELLED)],
+    });
+    expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.NOT_STARTED);
+    expect(result.phase).toBe(WorkPlanPhase.INSPECTION);
+  });
+});
