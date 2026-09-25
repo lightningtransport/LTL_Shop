@@ -62,6 +62,7 @@ describe('yardPhasesForBoard', () => {
       WorkPlanPhase.ALIGNMENT,
       WorkPlanPhase.DETAILING,
       WorkPlanPhase.QUALITY_CHECK,
+      WorkPlanPhase.READY_TO_CLOSE,
       WorkPlanPhase.READY_TO_GO,
     ]);
   });

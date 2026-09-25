@@ -38,6 +38,7 @@ const phaseMessageKey = {
   quality_check: 'qualityCheck',
   ready_for_approval: 'readyForApproval',
   ready_to_go: 'readyToGo',
+  ready_to_close: 'readyToClose',
   shop_work: 'shopWork',
 } as const satisfies Record<YardBoardColumnPhase, keyof AdminMessages>;
 

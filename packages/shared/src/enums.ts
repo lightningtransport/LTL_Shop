@@ -149,6 +149,8 @@ export enum WorkPlanPhase {
   ALIGNMENT = 'alignment',
   DETAILING = 'detailing',
   QUALITY_CHECK = 'quality_check',
+  /** LTR-90 / D1: plan complete but the Work Order is still open. */
+  READY_TO_CLOSE = 'ready_to_close',
   READY_TO_GO = 'ready_to_go',
 }
 
@@ -159,6 +161,7 @@ export enum WorkPlanPhase {
 export const YardBoardPhase = {
   ...ReadinessPhase,
   SHOP_WORK: WorkPlanPhase.SHOP_WORK,
+  READY_TO_CLOSE: WorkPlanPhase.READY_TO_CLOSE,
 } as const;
 
 export type YardBoardPhase = (typeof YardBoardPhase)[keyof typeof YardBoardPhase];
@@ -203,6 +206,8 @@ export enum WorkPlanNotReadyReason {
   ALIGNMENT_PENDING = 'alignment_pending',
   DETAILING_PENDING = 'detailing_pending',
   QC_PENDING = 'qc_pending',
+  /** LTR-90 / D1: every step is done; the Manager must complete the Work Order. */
+  WORK_ORDER_OPEN = 'work_order_open',
   PLAN_COMPLETE = 'plan_complete',
 }
 

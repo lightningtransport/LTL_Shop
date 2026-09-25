@@ -35,6 +35,7 @@ export function workPlanJobUiStatusLabel(status: string, messages: AdminMessages
 
 export function workPlanPhaseLabel(phase: string, messages: AdminMessages) {
   if (phase === 'shop_work') return messages.shopWork;
+  if (phase === 'ready_to_close') return messages.readyToClose;
   return phaseLabel(phase, messages);
 }
 
@@ -44,6 +45,7 @@ export function workPlanReadyReasonMessage(reason: string, messages: AdminMessag
   if (reason === 'alignment_pending') return messages.workPlanReadyReasonAlignment;
   if (reason === 'detailing_pending') return messages.workPlanReadyReasonDetailing;
   if (reason === 'qc_pending') return messages.workPlanReadyReasonQc;
+  if (reason === 'work_order_open') return messages.workPlanReadyReasonWorkOrderOpen;
   if (reason === 'plan_complete') return messages.workPlanReadyReasonComplete;
   return reason;
 }
