@@ -42,7 +42,11 @@ export const PHASE_VARIANT = {
   [ReadinessPhase.READY_FOR_APPROVAL]: 'warning',
   [ReadinessPhase.READY_TO_GO]: 'success',
   [WorkPlanPhase.SHOP_WORK]: 'outline',
-} as const satisfies Record<ReadinessPhase | typeof WorkPlanPhase.SHOP_WORK, ChipVariant>;
+  [WorkPlanPhase.READY_TO_CLOSE]: 'warning',
+} as const satisfies Record<
+  ReadinessPhase | typeof WorkPlanPhase.SHOP_WORK | typeof WorkPlanPhase.READY_TO_CLOSE,
+  ChipVariant
+>;
 
 export const ADMIN_WO_STATUS_KEY = {
   [WorkOrderStatus.CREATED]: 'woStatusCreated',

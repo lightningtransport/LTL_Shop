@@ -53,6 +53,7 @@ import {
   deriveWorkPlan,
   type WorkPlanDerivationInput,
 } from './yard-work-plan-derivation';
+import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
 import { isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
 import { unavailableYardMovementFeeds } from './yard-movement-feeds';
 
@@ -91,6 +92,22 @@ const ACTIVE_YARD_ENGAGEMENT: Prisma.TruckWhereInput = {
     { readinessAssessments: { some: ACTIVE_OR_RESIDUAL_READY } },
   ],
 };
+
+/**
+ * LTR-90 / D1: with the Work Plan board, a truck whose Work Order was completed
+ * since `YARD_READY_TO_GO_SINCE` stays engaged (Ready to Go) until it is
+ * Returned to Service. The RTS comparison happens in memory (attachReadyWorkOrders).
+ */
+function activeYardEngagement(): Prisma.TruckWhereInput {
+  const since = isYardWorkPlanSlice2Enabled() ? yardReadyToGoSince() : null;
+  if (!since) return ACTIVE_YARD_ENGAGEMENT;
+  return {
+    OR: [
+      ...(ACTIVE_YARD_ENGAGEMENT.OR as Prisma.TruckWhereInput[]),
+      { workOrders: { some: { status: WorkOrderStatus.completed, completedAt: { gte: since } } } },
+    ],
+  };
+}
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -179,6 +196,8 @@ type YardTruckRow = {
   workOrders: SummaryWorkOrderRow[];
   readinessAssessments: YardAssessmentRow[];
   serviceStatusEvents: Array<{ status: string; occurredAt: Date }>;
+  /** LTR-90: last completed Work Order still awaiting Return to Service. */
+  readyWorkOrder?: SummaryWorkOrderRow | null;
 };
 
 type YardOperationsCountRow = {
@@ -729,11 +748,13 @@ export class YardOperationsService {
         orderBy: [{ truckNumber: 'asc' }, { id: 'asc' }],
         take: query.limit + 1,
       }) as unknown as YardTruckRow[];
+      await this.attachReadyWorkOrders(rows);
       const pageRows = rows.length > query.limit ? rows.slice(0, query.limit) : rows;
       const rawHasMore = rows.length > query.limit;
       if (!pageRows.length) break;
 
       for (let index = 0; index < pageRows.length; index += 1) {
+        if (isCompletedOnlyWithoutReadyWork(pageRows[index])) continue;
         const item = this.toTruckItem(pageRows[index]);
         if (!this.matchesDerivedFilters(item, query)) continue;
         items.push(item);
@@ -769,6 +790,7 @@ export class YardOperationsService {
     if (!UUID_PATTERN.test(id)) throw new BadRequestException('Invalid Truck id');
     const row = await this.prisma.truck.findUnique({ where: { id }, include: yardTruckInclude as never }) as unknown as YardTruckRow | null;
     if (!row) throw new NotFoundException('Truck not found');
+    await this.attachReadyWorkOrders([row]);
     const item = this.toTruckItem(row);
     const history = await this.trucks.getRepairHistory(id, undefined, { limit: 5 });
     return {
@@ -795,7 +817,8 @@ export class YardOperationsService {
       .map(toAdminWorkOrderSummary);
     const openOnTruck = row.workOrders.map(toAdminWorkOrderSummary);
     const linkedForDerivation = openOnTruck.length ? openOnTruck : linkedWorkOrders;
-    const activeWorkOrder = row.workOrders[0] ? toAdminWorkOrderSummary(row.workOrders[0]) : null;
+    const currentWorkOrder = row.workOrders[0] ?? (isYardWorkPlanSlice2Enabled() ? row.readyWorkOrder : null) ?? null;
+    const activeWorkOrder = currentWorkOrder ? toAdminWorkOrderSummary(currentWorkOrder) : null;
     const latestService = row.serviceStatusEvents[0];
     const operationalStatus = latestService?.status === 'in_service'
       ? TruckOperationalStatus.IN_SERVICE
@@ -848,7 +871,7 @@ export class YardOperationsService {
   }
 
   private buildWhere(query: AdminYardOperationsQuery, cursor: AdminYardOperationsCursor | null): Prisma.TruckWhereInput {
-    const filters: Prisma.TruckWhereInput[] = [ACTIVE_YARD_ENGAGEMENT];
+    const filters: Prisma.TruckWhereInput[] = [activeYardEngagement()];
     if (query.search) {
       const contains = { contains: query.search, mode: 'insensitive' as const };
       filters.push({ OR: [
@@ -968,15 +991,17 @@ export class YardOperationsService {
     const [presenceUnknown, rows] = await Promise.all([
       this.prisma.truck.count(),
       this.prisma.truck.findMany({
-        where: ACTIVE_YARD_ENGAGEMENT,
+        where: activeYardEngagement(),
         include: yardTruckInclude as never,
       }) as unknown as Promise<YardTruckRow[]>,
     ]);
+    await this.attachReadyWorkOrders(rows);
 
     let underReview = 0;
     let readyToGo = 0;
     let blocked = 0;
     for (const row of rows) {
+      if (isCompletedOnlyWithoutReadyWork(row)) continue;
       const workPlan = deriveWorkPlan(workPlanInputFromYardRow(row));
       const readiness = workPlanBoardReadinessFilter(workPlan.phase);
       if (readiness === YardReadinessFilter.UNDER_REVIEW) underReview += 1;
@@ -985,6 +1010,36 @@ export class YardOperationsService {
       if (workPlanBoardBlockers(workPlan, openSummaries).length > 0) blocked += 1;
     }
     return { underReview, readyToGo, blocked, presenceUnknown };
+  }
+
+  /**
+   * LTR-90 / D1: for trucks without an open Work Order, attach the last Work Order
+   * completed since `YARD_READY_TO_GO_SINCE` unless the truck was Returned to
+   * Service afterwards. One batched query per page.
+   */
+  private async attachReadyWorkOrders(rows: YardTruckRow[]): Promise<void> {
+    const since = isYardWorkPlanSlice2Enabled() ? yardReadyToGoSince() : null;
+    const candidates = since ? rows.filter((row) => row.workOrders.length === 0) : [];
+    if (!since || !candidates.length) return;
+    const completed = await this.prisma.workOrder.findMany({
+      where: {
+        truckId: { in: candidates.map((row) => row.id) },
+        status: WorkOrderStatus.completed,
+        completedAt: { gte: since },
+      },
+      include: summaryWorkOrderInclude,
+      orderBy: { completedAt: 'desc' },
+    }) as unknown as Array<SummaryWorkOrderRow & { truckId: string; completedAt: Date | null }>;
+    const latestByTruck = new Map<string, (typeof completed)[number]>();
+    for (const workOrder of completed) {
+      if (!latestByTruck.has(workOrder.truckId)) latestByTruck.set(workOrder.truckId, workOrder);
+    }
+    for (const row of candidates) {
+      const latest = latestByTruck.get(row.id) ?? null;
+      row.readyWorkOrder = latest && !returnedToServiceAfter(row.serviceStatusEvents[0], latest.completedAt)
+        ? latest
+        : null;
+    }
   }
 
   private unavailable(): YardOperationsUnavailableDto {
@@ -1000,8 +1055,14 @@ export class YardOperationsService {
   }
 }
 
+/** Matched only by a completed Work Order that was already Returned to Service. */
+function isCompletedOnlyWithoutReadyWork(row: YardTruckRow): boolean {
+  if (!isYardWorkPlanSlice2Enabled() || !yardReadyToGoSince()) return false;
+  return row.workOrders.length === 0 && row.readinessAssessments.length === 0 && !row.readyWorkOrder;
+}
+
 function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
-  const workOrder = row.workOrders[0] ?? null;
+  const workOrder = row.workOrders[0] ?? row.readyWorkOrder ?? null;
   const assessment = row.readinessAssessments[0] ?? null;
   const inspectionRequirement = assessment?.requirements.find(
     (requirement) => requirement.type === ReadinessRequirementType.INSPECTION,

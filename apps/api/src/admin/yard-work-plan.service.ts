@@ -24,7 +24,8 @@ import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { YardOperationsService } from './yard-operations.service';
 import { deriveWorkPlan } from './yard-work-plan-derivation';
-import { isYardWorkPlanSlice1Enabled } from './yard-work-plan-flag';
+import { isYardWorkPlanSlice1Enabled, isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
+import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -69,10 +70,12 @@ export class YardWorkPlanService {
     });
     if (!truck) throw new NotFoundException('Truck not found');
 
-    const [workOrder, assessment] = await Promise.all([
+    const [openWorkOrder, assessment] = await Promise.all([
       this.findOpenWorkOrder(truckId),
       this.findActiveAssessment(truckId),
     ]);
+    // LTR-90 / D1: after completion the plan stays on that Work Order until RTS.
+    const workOrder = openWorkOrder ?? await this.findReadyToGoWorkOrder(truckId);
 
     const inspectionRequirement = assessment?.requirements.find(
       (requirement) => requirement.type === ReadinessRequirementType.INSPECTION,
@@ -286,6 +289,26 @@ export class YardWorkPlanService {
       include: openWorkOrderInclude,
       orderBy: { createdAt: 'asc' },
     }) as Promise<OpenWorkOrderRow | null>;
+  }
+
+  private async findReadyToGoWorkOrder(truckId: string) {
+    if (!isYardWorkPlanSlice2Enabled()) return null;
+    const since = yardReadyToGoSince();
+    if (!since) return null;
+    const [completed, latestServiceEvent] = await Promise.all([
+      this.prisma.workOrder.findFirst({
+        where: { truckId, status: WorkOrderStatus.completed, completedAt: { gte: since } },
+        include: openWorkOrderInclude,
+        orderBy: { completedAt: 'desc' },
+      }) as Promise<(OpenWorkOrderRow & { completedAt: Date | null }) | null>,
+      this.prisma.truckServiceStatusEvent.findFirst({
+        where: { truckId },
+        orderBy: { occurredAt: 'desc' },
+        select: { status: true, occurredAt: true },
+      }),
+    ]);
+    if (!completed || returnedToServiceAfter(latestServiceEvent, completed.completedAt)) return null;
+    return completed;
   }
 
   private async findActiveAssessment(truckId: string) {

@@ -160,7 +160,8 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await expect(page.getByTestId('yard-truck-card').getByText('Shop Work')).toBeVisible();
 
     await page.getByRole('link', { name: 'Y-WP2', exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`/admin/trucks/${truckId}$`));
+    // LTR-110: Yard links carry ?from= so Truck Detail can link back to the board.
+    await expect(page).toHaveURL(new RegExp(`/admin/trucks/${truckId}\\?from=%2Fadmin%2Fyard-operations$`));
     await expect(page.getByRole('heading', { name: 'Work Plan' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Start assessment' })).toHaveCount(0);
     await expect(page.getByText('Required Work')).toHaveCount(0);

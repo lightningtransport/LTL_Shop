@@ -72,6 +72,7 @@ export const WORK_PLAN_YARD_PHASES = [
   WorkPlanPhase.SHOP_WORK,
   WorkPlanPhase.ALIGNMENT,
   WorkPlanPhase.DETAILING,
+  WorkPlanPhase.READY_TO_CLOSE,
   WorkPlanPhase.READY_TO_GO,
 ] as const;
 
@@ -87,7 +88,7 @@ export function yardPhasesForBoard(options: {
   if (!options.workPlanBoardCutover) return [...YARD_PHASES];
   const phases: YardBoardColumnPhase[] = [...WORK_PLAN_YARD_PHASES];
   if (options.itemPhases?.some((phase) => phase === WorkPlanPhase.QUALITY_CHECK)) {
-    const readyIndex = phases.indexOf(WorkPlanPhase.READY_TO_GO);
+    const readyIndex = phases.indexOf(WorkPlanPhase.READY_TO_CLOSE);
     phases.splice(readyIndex, 0, WorkPlanPhase.QUALITY_CHECK);
   }
   return phases;

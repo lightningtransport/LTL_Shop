@@ -37,6 +37,8 @@ import {
   nextDisplayId,
 } from './work-order.timing';
 import type { AuthUser } from '../auth/auth.guard';
+import { stopLaborWhenNoPendingJobs } from './labor-session';
+import { assertPmObservedMileage } from './pm-mileage.guard';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
@@ -84,7 +86,8 @@ export class WorkOrdersService {
 
     const mapped = rows.map(toWorkOrderSummary);
     return {
-      created: mapped.filter((w) => w.status === 'created'),
+      // LTR-129: "Ready to start" puts Critical first (then High, Normal, Low; oldest first).
+      created: mapped.filter((w) => w.status === 'created').sort(byPriorityThenOldest),
       active: mapped.filter((w) => w.status === 'in_progress'),
       paused: mapped.filter((w) => w.status === 'waiting_paused'),
       completed: mapped.filter((w) => w.status === 'completed'),
@@ -405,13 +408,36 @@ export class WorkOrdersService {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
       this.assertMechanicAccess(user, wo);
-      if (wo.status !== 'created') {
+      // LTR-124: labor stops when no Job is pending; a Job added afterwards
+      // needs Start Work again on the same In Progress Work Order.
+      const restartingLabor = wo.status === 'in_progress'
+        && wo.primaryCategory.name !== 'PM'
+        && !(wo.sessions ?? []).some((session) => session.endedAt === null)
+        && wo.jobs.some((job) => job.status === 'to_do');
+      if (wo.status !== 'created' && !restartingLabor) {
         throw new BadRequestException('Work Order can only be started from created status');
       }
       const now = new Date();
       await tx.workSession.create({
         data: { workOrderId: id, startedAt: now },
       });
+      if (restartingLabor) {
+        const restarted = await tx.workOrder.update({
+          where: { id },
+          data: { version: { increment: 1 } },
+          include: workOrderDetailInclude,
+        });
+        await this.activity.log(tx, {
+          workOrderId: id,
+          eventType: ActivityEventType.WORK_STARTED,
+          entityType: 'work_order',
+          entityId: id,
+          userId: user.id,
+          previousValue: { status: 'in_progress', laborRunning: false },
+          newValue: { status: 'in_progress', laborRunning: true },
+        });
+        return toWorkOrderDetail(restarted);
+      }
       const updated = await tx.workOrder.update({
         where: { id },
         data: {
@@ -926,7 +952,7 @@ export class WorkOrdersService {
       if (category?.name === 'PM') {
         throw new BadRequestException('PM Work Orders do not use jobs');
       }
-      const gate = canCompleteJob(wo.status);
+      const gate = canCompleteJob(wo.status, (wo.sessions ?? []).some((session) => session.endedAt === null));
       if (!gate.ok) {
         throw new BadRequestException({ code: gate.code, message: gate.message });
       }
@@ -945,6 +971,7 @@ export class WorkOrdersService {
           completedById: user.id,
         },
       });
+      await stopLaborWhenNoPendingJobs(tx, workOrderId);
       const updated = await tx.workOrder.update({
         where: { id: workOrderId },
         data: { version: { increment: 1 } },
@@ -994,6 +1021,8 @@ export class WorkOrdersService {
         if (!wo.pmService?.parts.length) {
           throw new BadRequestException('Select at least one part before finishing a PM service');
         }
+        // The truck mileage can move after the PM draft was saved.
+        assertPmObservedMileage(pmObservedMileage, wo.truck.mileage, { confirmLargeJump: true });
       } else {
         const jobs = await tx.workOrderJob.findMany({ where: { workOrderId: id } });
         const gate = canFinishWorkOrder(jobs);
@@ -1146,6 +1175,9 @@ export class WorkOrdersService {
       if (!['in_progress', 'waiting_paused'].includes(wo.status)) {
         throw new BadRequestException('Start or resume the PM Work Order before updating service details');
       }
+      assertPmObservedMileage(parsed.data.observedMileage, wo.truck.mileage, {
+        confirmLargeJump: parsed.data.confirmLargeMileageJump === true,
+      });
 
       const selectedParts = await tx.part.findMany({
         where: { id: { in: parsed.data.selections.map((selection) => selection.partId) }, active: true },
@@ -1280,4 +1312,14 @@ export class WorkOrdersService {
   private normalizeVehicleValue(value: string | null) {
     return value?.toLocaleLowerCase('en-US').replace(/[^a-z0-9]/g, '') ?? '';
   }
+}
+
+const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, normal: 2, low: 3 };
+
+export function byPriorityThenOldest(
+  left: { priority: string; createdAt: string },
+  right: { priority: string; createdAt: string },
+) {
+  const byPriority = (PRIORITY_RANK[left.priority] ?? 9) - (PRIORITY_RANK[right.priority] ?? 9);
+  return byPriority || left.createdAt.localeCompare(right.createdAt);
 }

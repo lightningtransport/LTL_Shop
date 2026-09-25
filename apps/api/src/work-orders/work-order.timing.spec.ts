@@ -91,3 +91,17 @@ describe('work-order.timing', () => {
     expect(nextDisplayId(42)).toBe('WO-042');
   });
 });
+
+describe('byPriorityThenOldest (LTR-129)', () => {
+  it('puts Critical before Normal and keeps oldest first within a priority', async () => {
+    const { byPriorityThenOldest } = await import('./work-orders.service');
+    const rows = [
+      { displayId: 'WO-004', priority: 'normal', createdAt: '2026-09-22T13:20:00.000Z' },
+      { displayId: 'WO-003', priority: 'critical', createdAt: '2026-09-22T12:13:00.000Z' },
+      { displayId: 'WO-010', priority: 'normal', createdAt: '2026-09-21T09:00:00.000Z' },
+      { displayId: 'WO-011', priority: 'high', createdAt: '2026-09-23T09:00:00.000Z' },
+    ];
+    expect([...rows].sort(byPriorityThenOldest).map((row) => row.displayId))
+      .toEqual(['WO-003', 'WO-011', 'WO-010', 'WO-004']);
+  });
+});
