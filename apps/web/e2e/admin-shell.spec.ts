@@ -172,6 +172,11 @@ test.describe('Shop Admin Phase 2A', () => {
     for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'Mechanics', 'Job Catalog', 'History']) {
       await expect(mobileNav.getByRole('link', { name, exact: true })).toBeVisible();
     }
+    // LTR-122: grouped by job — operation, setup, audit.
+    for (const group of ['Operations', 'Setup', 'Audit']) {
+      await expect(mobileNav.getByText(group, { exact: true })).toBeVisible();
+    }
+    await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Mechanics', 'Job Catalog', 'History']);
 
     await page.getByRole('button', { name: 'Close Shop Admin navigation' }).click();
     await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();

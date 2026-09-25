@@ -10,15 +10,35 @@ import { AppHeaderActions, Button, Modal } from './ui';
 import { AdminActorProvider } from '@/lib/admin-actor';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
-const activeNavigation = [
-  { message: 'dashboard', icon: Gauge, href: '/admin' },
-  { message: 'workOrders', icon: ClipboardList, href: '/admin/work-orders' },
-  { message: 'yardOperations', icon: Warehouse, href: '/admin/yard-operations' },
-  { message: 'trucks', icon: Truck, href: '/admin/trucks' },
-  { message: 'mechanics', icon: UsersRound, href: '/admin/mechanics' },
-  { message: 'jobCatalog', icon: Library, href: '/admin/catalog' },
-  { message: 'history', icon: History, href: '/admin/history' },
+// LTR-122: daily operation first, then setup, then audit (same pages for every role).
+const navigationGroups = [
+  {
+    title: 'navGroupOperations',
+    items: [
+      { message: 'dashboard', icon: Gauge, href: '/admin' },
+      { message: 'yardOperations', icon: Warehouse, href: '/admin/yard-operations' },
+      { message: 'workOrders', icon: ClipboardList, href: '/admin/work-orders' },
+      { message: 'trucks', icon: Truck, href: '/admin/trucks' },
+    ],
+  },
+  {
+    title: 'navGroupSetup',
+    items: [
+      { message: 'mechanics', icon: UsersRound, href: '/admin/mechanics' },
+      { message: 'jobCatalog', icon: Library, href: '/admin/catalog' },
+    ],
+  },
+  {
+    title: 'navGroupAudit',
+    items: [
+      { message: 'history', icon: History, href: '/admin/history' },
+    ],
+  },
 ] as const;
+
+function isActivePath(pathname: string, href: string) {
+  return href === '/admin' ? pathname === href : pathname.startsWith(href);
+}
 
 export function AdminShell({
   children,
@@ -74,15 +94,20 @@ export function AdminShell({
           className="hidden h-full min-h-0 w-[var(--admin-aside)] shrink-0 flex-col overflow-hidden border-r bg-card px-3 py-4 md:flex xl:px-4"
           aria-label={messages.navigation}
         >
-          <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1">
-            {activeNavigation.map(({ message, icon: Icon, href }) => {
-              const active = href === '/admin' ? pathname === href : pathname.startsWith(href);
-              return <Button key={href} asChild variant={active ? 'secondary' : 'ghost'} className="w-full justify-start">
-                <AdminNavLink href={href} aria-current={active ? 'page' : undefined}>
-                  <Icon aria-hidden="true" className="size-4" />{messages[message]}
-                </AdminNavLink>
-              </Button>;
-            })}
+          <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
+            {navigationGroups.map((group) => (
+              <div key={group.title} className="space-y-1">
+                <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{messages[group.title]}</p>
+                {group.items.map(({ message, icon: Icon, href }) => {
+                  const active = isActivePath(pathname, href);
+                  return <Button key={href} asChild variant={active ? 'secondary' : 'ghost'} className="w-full justify-start">
+                    <AdminNavLink href={href} aria-current={active ? 'page' : undefined}>
+                      <Icon aria-hidden="true" className="size-4" />{messages[message]}
+                    </AdminNavLink>
+                  </Button>;
+                })}
+              </div>
+            ))}
           </nav>
           <div className="mt-3 shrink-0 border-t px-1 pt-4 text-sm">
             <p className="truncate font-medium">{user.name}</p>
@@ -107,25 +132,30 @@ export function AdminShell({
           className="flex flex-col gap-1"
           aria-label={messages.mobileNavigation}
         >
-          {activeNavigation.map(({ message, icon: Icon, href }) => {
-            const active = href === '/admin' ? pathname === href : pathname.startsWith(href);
-            return (
-              <Button
-                key={href}
-                asChild
-                variant={active ? 'secondary' : 'ghost'}
-                className="h-11 w-full min-h-11 justify-start"
-              >
-                <AdminNavLink
-                  href={href}
-                  aria-current={active ? 'page' : undefined}
-                  onClick={() => setMobileNavOpen(false)}
-                >
-                  <Icon aria-hidden="true" className="size-4" />{messages[message]}
-                </AdminNavLink>
-              </Button>
-            );
-          })}
+          {navigationGroups.map((group) => (
+            <div key={group.title} className="flex flex-col gap-1 pb-2">
+              <p className="px-3 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{messages[group.title]}</p>
+              {group.items.map(({ message, icon: Icon, href }) => {
+                const active = isActivePath(pathname, href);
+                return (
+                  <Button
+                    key={href}
+                    asChild
+                    variant={active ? 'secondary' : 'ghost'}
+                    className="h-11 w-full min-h-11 justify-start"
+                  >
+                    <AdminNavLink
+                      href={href}
+                      aria-current={active ? 'page' : undefined}
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      <Icon aria-hidden="true" className="size-4" />{messages[message]}
+                    </AdminNavLink>
+                  </Button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </Modal>
     </div>
