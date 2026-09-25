@@ -1733,7 +1733,10 @@ export class AdminService {
         where: {
           ...openWhere,
           status: WorkOrderStatus.in_progress,
-          jobs: { none: { status: JobStatus.to_do } },
+          // LTR-97: PM Work Orders have no Jobs, so "none to do" matched them and
+          // ranked every running PM above real ready-to-close Standard work.
+          primaryCategory: { name: { not: 'PM' } },
+          jobs: { some: { status: JobStatus.completed }, none: { status: JobStatus.to_do } },
         },
         orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       }),

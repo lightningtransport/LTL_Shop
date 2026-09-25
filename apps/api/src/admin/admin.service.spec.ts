@@ -92,7 +92,9 @@ describe('AdminService', () => {
     expect(prisma.workOrder.findMany).toHaveBeenCalledTimes(5);
     expect(prisma.workOrder.findMany.mock.calls[4][0].where).toMatchObject({
       status: 'in_progress',
-      jobs: { none: { status: 'to_do' } },
+      // LTR-97: PM Work Orders (no Jobs) are never "ready to close".
+      primaryCategory: { name: { not: 'PM' } },
+      jobs: { some: { status: 'completed' }, none: { status: 'to_do' } },
     });
     expect(prisma.workOrder.findMany.mock.calls[4][0].orderBy).toEqual([{ updatedAt: 'desc' }, { id: 'desc' }]);
   });
