@@ -1092,7 +1092,8 @@ export class WorkOrdersService {
             truckId: wo.truckId,
             primaryCategory: { name: 'PM' },
             status: 'completed',
-            completedAt: { not: null },
+            // LTR-137: for a completed PM, "previous" means before this service.
+            completedAt: wo.completedAt ? { lt: wo.completedAt } : { not: null },
             id: { not: wo.id },
           },
         },
@@ -1109,6 +1110,7 @@ export class WorkOrdersService {
         ['in_progress', 'waiting_paused'].includes(wo.status),
       currentTruckMileage: wo.truck.mileage,
       observedMileage: wo.pmService?.observedMileage ?? null,
+      serviceCompletedAt: wo.status === 'completed' && wo.completedAt ? wo.completedAt.toISOString() : null,
       lastCompletedPm: lastCompletedPm
         ? {
             workOrderId: lastCompletedPm.workOrderId,

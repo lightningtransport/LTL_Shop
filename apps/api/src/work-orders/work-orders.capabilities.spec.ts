@@ -192,6 +192,28 @@ describe('Work Order workspace capabilities', () => {
       });
   });
 
+  it('returns the PM before this one for a completed PM (LTR-137)', async () => {
+    const completedAt = new Date('2026-09-22T15:00:00.000Z');
+    const findFirst = vi.fn().mockResolvedValue(null);
+    const service = new WorkOrdersService(
+      {
+        workOrder: { findUnique: vi.fn().mockResolvedValue({
+          id: 'wo-2', truckId: 'truck-601', createdById: 'pm-1', status: 'completed', completedAt,
+          primaryCategory: { name: 'PM' }, mechanics: [{ mechanicId: 'pm-1', removedAt: null }],
+          truck: { mileage: 365686, make: 'Mack', model: 'Anthem' },
+          pmService: { observedMileage: 364400, parts: [] },
+        }) },
+        partCategory: { findMany: vi.fn().mockResolvedValue([]) },
+        pmService: { findFirst },
+      } as never,
+      { log: vi.fn() } as never,
+    );
+
+    await expect(service.getPmService(user([AppCapability.ADMIN_ACCESS], 'admin-1'), 'wo-2'))
+      .resolves.toMatchObject({ serviceCompletedAt: completedAt.toISOString(), lastCompletedPm: null });
+    expect(findFirst.mock.calls[0][0].where.workOrder.completedAt).toEqual({ lt: completedAt });
+  });
+
   it('still denies PM service updates for an Admin-only user', async () => {
     const service = new WorkOrdersService(
       {

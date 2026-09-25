@@ -126,6 +126,11 @@ type Copy = {
   loadingPmService: string;
   currentTruckMileage: string;
   lastCompletedPm: string;
+  truckMileageToday: string;
+  previousPm: string;
+  mileageAtThisPm: string;
+  pmCompletedOn: (date: string) => string;
+  noPartsRecorded: string;
   noPriorPm: string;
   mileageNotRecorded: string;
   observedMileage: string;
@@ -272,6 +277,11 @@ const copy: Record<ShopLocale, Copy> = {
     loadingPmService: 'Loading PM service details…',
     currentTruckMileage: 'Current truck mileage',
     lastCompletedPm: 'Last completed PM',
+    truckMileageToday: 'Truck mileage today',
+    previousPm: 'Previous PM',
+    mileageAtThisPm: 'Mileage recorded at this PM',
+    pmCompletedOn: (date) => `PM completed ${date}`,
+    noPartsRecorded: 'No parts recorded.',
     noPriorPm: 'No prior PM recorded',
     mileageNotRecorded: 'Mileage not recorded',
     observedMileage: 'Observed mileage',
@@ -430,6 +440,11 @@ const copy: Record<ShopLocale, Copy> = {
     loadingPmService: 'Cargando detalles del servicio de PM…',
     currentTruckMileage: 'Millaje actual del camión',
     lastCompletedPm: 'Último PM completado',
+    truckMileageToday: 'Millaje del camión hoy',
+    previousPm: 'PM anterior',
+    mileageAtThisPm: 'Millaje registrado en este PM',
+    pmCompletedOn: (date) => `PM completado ${date}`,
+    noPartsRecorded: 'No se registraron piezas.',
     noPriorPm: 'No hay PM anterior registrado',
     mileageNotRecorded: 'Millaje no registrado',
     observedMileage: 'Millaje observado',
