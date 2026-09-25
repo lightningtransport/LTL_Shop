@@ -76,6 +76,7 @@ export enum ActivityEventType {
   PAUSE_REASON_CHANGED = 'pause_reason_changed',
   WORK_RESUMED = 'work_resumed',
   BLOCKER_REPORTED = 'blocker_reported',
+  BLOCKER_RESOLVED = 'blocker_resolved',
   MECHANIC_ADDED = 'mechanic_added',
   MECHANIC_REMOVED = 'mechanic_removed',
   PRIORITY_CHANGED = 'priority_changed',

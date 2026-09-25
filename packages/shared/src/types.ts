@@ -103,6 +103,9 @@ export interface PauseEventDto {
   // must not drive currentPause, waiting totals, or time correction.
   isOfficialPause?: boolean;
   reportedBy?: { id: string; name: string } | null;
+  /** LTR-98: set when a reported blocker was resolved (null = still active). */
+  resolvedAt?: string | null;
+  resolvedBy?: { id: string; name: string } | null;
 }
 
 export interface MechanicAssignmentDto {
