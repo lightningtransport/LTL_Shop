@@ -202,7 +202,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     <Card>
       <CardHeader>
         <CardTitle>{messages.assignmentsTitle}</CardTitle>
-        <CardDescription>{canManageAssignments ? messages.assignmentsDescription : data.category.name === 'PM' ? messages.pmAssignmentsLocked : messages.closedAssignmentsLocked}</CardDescription>
+        <CardDescription>{canManageAssignments ? messages.assignmentsDescription : data.category.name === 'PM' ? messages.pmAssignmentsLocked : !isOpen ? messages.closedAssignmentsLocked : messages.assignmentsNoPermission}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {activeMechanics.length ? (
@@ -493,7 +493,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <CardHeader>
         <CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle>
         <CardDescription>
-          {canManageJobs ? messages.jobsDescription : data.category.name === 'PM' ? messages.jobsPmLocked : messages.jobsClosedLocked}
+          {canManageJobs ? messages.jobsDescription : data.category.name === 'PM' ? messages.jobsPmLocked : !isOpen ? messages.jobsClosedLocked : messages.jobsNoPermission}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
