@@ -7,9 +7,10 @@ import { formatAdminDate } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 
-export function AdminWorkOrderItem({ item, locale, messages, compact = false }: {
-  item: AdminWorkOrderSummaryDto; locale: AdminLocale; messages: AdminMessages; compact?: boolean;
+export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders' }: {
+  item: AdminWorkOrderSummaryDto; locale: AdminLocale; messages: AdminMessages; compact?: boolean; fromPath?: string;
 }) {
   const statusChip = (
     <WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge>
@@ -22,7 +23,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false }: 
     <article className={cn('rounded-xl border bg-card p-4 shadow-sm', compact && 'bg-background p-3 shadow-none xl:grid xl:grid-cols-[minmax(180px,1.2fr)_minmax(220px,1fr)_auto] xl:items-center xl:gap-4')}>
       <div className="flex flex-wrap items-start justify-between gap-3 xl:block">
         <div>
-          <Link className="font-display text-lg font-semibold text-primary hover:underline" href={`/admin/trucks/${item.truck.id}`}>{item.truck.truckNumber}</Link>
+          <Link className="font-display text-lg font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, fromPath)}>{item.truck.truckNumber}</Link>
           <p className="mt-1 text-sm text-muted-foreground">
             {messages.workOrder}{' '}
             <Link className="font-medium text-foreground hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>

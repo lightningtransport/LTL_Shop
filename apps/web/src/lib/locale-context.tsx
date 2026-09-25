@@ -77,6 +77,8 @@ type Copy = {
   workOptions: string;
   assignedToYou: string;
   assignedTo: (name: string) => string;
+  completedByYou: string;
+  completedBy: (name: string) => string;
   jobUnassignedInheritsTeam: string;
   myJobs: string;
   otherWorkOnThisTruck: string;
@@ -154,6 +156,8 @@ type Copy = {
   resumeWork: string;
   viewWork: string;
   finishWork: string;
+  continuePmService: string;
+  pmStartedAt: (time: string) => string;
   finishingWork: string;
   pmFinishedSuccess: string;
   viewCompletedWorkAction: string;
@@ -184,7 +188,7 @@ const copy: Record<ShopLocale, Copy> = {
     workOrder: 'Work Order',
     workOrderHint: 'Enter the required information. Creating saves the order; Start Work begins labor.',
     pmServiceHint: 'Select a truck to create a PM service.', truck: 'Truck',
-    searchTruck: 'Search truck number (for example, #905)', noTrucks: 'No trucks found.',
+    searchTruck: 'Truck number, e.g. 905', noTrucks: 'No trucks found.',
     checkingOpenWorkOrder: 'Checking for an open Work Order.', retryWorkOrderCheck: 'Retry Work Order check',
     truckInformation: 'Truck Information', selectTruck: 'Select a truck to show its details.',
     vin: 'VIN', lastReportedLocation: 'Last reported location', locationUpdatedOn: 'Last reported on',
@@ -222,6 +226,8 @@ const copy: Record<ShopLocale, Copy> = {
     waitingOnManagerBody: 'Jobs are done. Your Shop Manager closes this Work Order. You can still report a blocker if something is stopping the Truck.',
     assignedToYou: 'Assigned to you',
     assignedTo: (name) => `Assigned to ${name}`,
+    completedByYou: 'Completed by you',
+    completedBy: (name) => `Completed by ${name}`,
     jobUnassignedInheritsTeam: 'Unassigned — inherits the Work Order team',
     myJobs: 'My Jobs',
     otherWorkOnThisTruck: 'Other work on this Truck',
@@ -300,6 +306,8 @@ const copy: Record<ShopLocale, Copy> = {
     resumeWork: 'Resume Work',
     viewWork: 'View Work',
     finishWork: 'Finish Work',
+    continuePmService: 'Continue PM service',
+    pmStartedAt: (time) => `Started ${time}`,
     finishingWork: 'Finishing…',
     pmFinishedSuccess: 'PM service completed.',
     viewCompletedWorkAction: 'View completed work',
@@ -340,7 +348,7 @@ const copy: Record<ShopLocale, Copy> = {
     workOrder: 'Work Order',
     workOrderHint: 'Ingresa la información requerida. Crear guarda el Work Order; Iniciar trabajo comienza el registro de tiempo.',
     pmServiceHint: 'Selecciona una unidad para crear un servicio de PM.', truck: 'Unidad',
-    searchTruck: 'Buscar número de unidad (por ejemplo, #905)', noTrucks: 'No se encontraron unidades.',
+    searchTruck: 'Número de unidad, ej. 905', noTrucks: 'No se encontraron unidades.',
     checkingOpenWorkOrder: 'Verificando si hay un Work Order abierto.', retryWorkOrderCheck: 'Reintentar la verificación del Work Order',
     truckInformation: 'Información de la unidad', selectTruck: 'Selecciona una unidad para ver sus detalles.',
     vin: 'VIN', lastReportedLocation: 'Ubicación reportada', locationUpdatedOn: 'Reportada el',
@@ -380,6 +388,8 @@ const copy: Record<ShopLocale, Copy> = {
     waitingOnManagerBody: 'Los Jobs están hechos. El Shop Manager cierra este Work Order. Si algo detiene la unidad, aún puedes reportar un bloqueo.',
     assignedToYou: 'Asignado a ti',
     assignedTo: (name) => `Asignado a ${name}`,
+    completedByYou: 'Completado por ti',
+    completedBy: (name) => `Completado por ${name}`,
     jobUnassignedInheritsTeam: 'Sin asignar — hereda el equipo de la Work Order',
     myJobs: 'Mis Jobs',
     otherWorkOnThisTruck: 'Otro trabajo en esta unidad',
@@ -458,6 +468,8 @@ const copy: Record<ShopLocale, Copy> = {
     resumeWork: 'Reanudar trabajo',
     viewWork: 'Ver trabajo',
     finishWork: 'Terminar trabajo',
+    continuePmService: 'Continuar servicio PM',
+    pmStartedAt: (time) => `Iniciado ${time}`,
     finishingWork: 'Terminando…',
     pmFinishedSuccess: 'Servicio de PM completado.',
     viewCompletedWorkAction: 'Ver trabajo completado',
