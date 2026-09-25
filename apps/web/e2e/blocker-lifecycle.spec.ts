@@ -39,6 +39,7 @@ test.describe('V1.2-002 blocker lifecycle', () => {
     await expect(page.getByText('Waiting for Parts').first()).toBeVisible();
     await expect(page.getByText('Alejandro 1').first()).toBeVisible();
     await expect(page.getByText('This Work Order is not currently paused.').first()).toBeVisible();
+    await page.getByTestId('admin-wo-history').locator('summary').click();
     await expect(page.getByText('Blocker reported')).toBeVisible();
     await expect(page.locator('pre')).toHaveCount(0);
     await expect(page.getByText(/waiting_for_parts/)).toHaveCount(0);
