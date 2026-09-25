@@ -154,6 +154,7 @@ type Copy = {
   resumeWork: string;
   viewWork: string;
   finishWork: string;
+  pmAlreadyRunning: (displayId: string) => string;
   finishingWork: string;
   pmFinishedSuccess: string;
   viewCompletedWorkAction: string;
@@ -300,6 +301,7 @@ const copy: Record<ShopLocale, Copy> = {
     resumeWork: 'Resume Work',
     viewWork: 'View Work',
     finishWork: 'Finish Work',
+    pmAlreadyRunning: (displayId) => `Finish or pause ${displayId} before starting another PM service.`,
     finishingWork: 'Finishing…',
     pmFinishedSuccess: 'PM service completed.',
     viewCompletedWorkAction: 'View completed work',
@@ -458,6 +460,7 @@ const copy: Record<ShopLocale, Copy> = {
     resumeWork: 'Reanudar trabajo',
     viewWork: 'Ver trabajo',
     finishWork: 'Terminar trabajo',
+    pmAlreadyRunning: (displayId) => `Termina o pausa ${displayId} antes de iniciar otro servicio PM.`,
     finishingWork: 'Terminando…',
     pmFinishedSuccess: 'Servicio de PM completado.',
     viewCompletedWorkAction: 'Ver trabajo completado',

@@ -464,3 +464,40 @@ describe('PM Work Order authorization', () => {
     });
   });
 });
+
+describe('one running PM per PM mechanic (LTR-95 / D2)', () => {
+  it('rejects a second PM while the mechanic has one In Progress', async () => {
+    const running = {
+      id: 'wo-pm-5', displayId: 'WO-005', truckId: 'truck-922', primaryCategoryId: 'pm-category',
+      status: 'in_progress', priority: Priority.NORMAL, notes: null, createdAt: new Date(), createdById: 'mpm-id',
+      startedAt: new Date(), completedAt: null, completedById: null, totalActiveLaborMs: BigInt(0), totalWaitingMs: BigInt(0), version: 1,
+      truck: { id: 'truck-922', truckNumber: '922', make: null, model: null, year: null, mileage: null, company: null, owner: null },
+      primaryCategory: { id: 'pm-category', name: 'PM' }, jobs: [], pauseEvents: [],
+      mechanics: [{ mechanicId: 'mpm-id', addedAt: new Date(), removedAt: null, mechanic: { name: 'MPM' } }],
+    };
+    const tx = {
+      workOrder: {
+        findFirst: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(running),
+        create: vi.fn(),
+      },
+    };
+    const prisma = {
+      workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0) },
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-923' }) },
+      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'pm-category', name: 'PM' }) },
+      $transaction: vi.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
+      $queryRaw: vi.fn(),
+    } as never;
+    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
+
+    await expect(service.create({
+      id: 'mpm-id', email: 'mpm@lightning.local', name: 'MPM',
+      role: 'mechanic', active: true, pmAuthorized: true, capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
+    }, {
+      truckId: '00000000-0000-4000-8000-000000000923',
+      primaryCategoryId: '00000000-0000-4000-8000-000000000002',
+      priority: Priority.NORMAL, mechanicIds: [], jobs: [],
+    })).rejects.toMatchObject({ response: { code: 'PM_ALREADY_IN_PROGRESS', workOrder: expect.objectContaining({ displayId: 'WO-005' }) } });
+    expect(tx.workOrder.create).not.toHaveBeenCalled();
+  });
+});

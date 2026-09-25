@@ -233,7 +233,11 @@ export default function NewWorkOrderPage() {
       void mutate(isWorkOrderRelatedListKey);
       router.push(`/work-orders/${wo.id}`, { scroll: true });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) {
+      if (e instanceof ApiError && e.status === 409 && (e.body as { code?: string } | null)?.code === 'PM_ALREADY_IN_PROGRESS') {
+        // LTR-95: one running PM per PM mechanic; point to the one in progress.
+        const running = (e.body as { workOrder?: WorkOrderSummaryDto }).workOrder;
+        setError(messages.pmAlreadyRunning(running?.displayId ?? ''));
+      } else if (e instanceof ApiError && e.status === 409) {
         const body = e.body as { workOrder?: WorkOrderSummaryDto };
         if (body.workOrder) setOpenWo(body.workOrder);
         setHasOpenWo(true);

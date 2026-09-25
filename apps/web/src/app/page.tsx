@@ -138,12 +138,22 @@ export default function HomePage() {
 
       {isPm ? (
         <>
-          <Button asChild className="mb-6 w-full">
-            <Link href={`/mechanic/${mode}/new`}>{messages.createPmService}</Link>
-          </Button>
-          <p className="-mt-4 mb-6 text-center text-sm text-shop-muted">
-            {messages.pmServicesStartImmediately}
-          </p>
+          {/* LTR-95: one running PM at a time; the API enforces it too. */}
+          {activeWork.length ? (
+            <>
+              <Button className="mb-2 w-full" disabled>{messages.createPmService}</Button>
+              <p className="mb-6 text-center text-sm text-shop-muted">{messages.pmAlreadyRunning(activeWork[0].displayId)}</p>
+            </>
+          ) : (
+            <>
+              <Button asChild className="mb-6 w-full">
+                <Link href={`/mechanic/${mode}/new`}>{messages.createPmService}</Link>
+              </Button>
+              <p className="-mt-4 mb-6 text-center text-sm text-shop-muted">
+                {messages.pmServicesStartImmediately}
+              </p>
+            </>
+          )}
         </>
       ) : (
         <p className="mb-6 text-sm text-shop-muted">{messages.askManagerToCreateHint}</p>
