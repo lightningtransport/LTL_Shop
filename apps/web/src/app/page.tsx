@@ -12,7 +12,7 @@ import { useWorkOrders } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { pauseLabel, statusLabel } from '@/lib/format';
 import { useSWRConfig } from 'swr';
-import { isStandardWorkWaitingOnManager, jobAssignmentLabel, workOrderTeamLabel } from '@/lib/job-assignment';
+import { isStandardWorkWaitingOnManager, jobPersonLabel, workOrderTeamLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
@@ -316,7 +316,7 @@ function WorkOrderCard({
                   {job.displayName}
                 </span>
                 <span className="block text-xs text-shop-muted">
-                  {jobAssignmentLabel(job.assignedMechanic, currentUserId, messages)}
+                  {jobPersonLabel(job, currentUserId, messages)}
                 </span>
               </span>
             </li>

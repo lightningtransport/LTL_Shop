@@ -77,6 +77,8 @@ type Copy = {
   workOptions: string;
   assignedToYou: string;
   assignedTo: (name: string) => string;
+  completedByYou: string;
+  completedBy: (name: string) => string;
   jobUnassignedInheritsTeam: string;
   myJobs: string;
   otherWorkOnThisTruck: string;
@@ -222,6 +224,8 @@ const copy: Record<ShopLocale, Copy> = {
     waitingOnManagerBody: 'Jobs are done. Your Shop Manager closes this Work Order. You can still report a blocker if something is stopping the Truck.',
     assignedToYou: 'Assigned to you',
     assignedTo: (name) => `Assigned to ${name}`,
+    completedByYou: 'Completed by you',
+    completedBy: (name) => `Completed by ${name}`,
     jobUnassignedInheritsTeam: 'Unassigned — inherits the Work Order team',
     myJobs: 'My Jobs',
     otherWorkOnThisTruck: 'Other work on this Truck',
@@ -380,6 +384,8 @@ const copy: Record<ShopLocale, Copy> = {
     waitingOnManagerBody: 'Los Jobs están hechos. El Shop Manager cierra este Work Order. Si algo detiene la unidad, aún puedes reportar un bloqueo.',
     assignedToYou: 'Asignado a ti',
     assignedTo: (name) => `Asignado a ${name}`,
+    completedByYou: 'Completado por ti',
+    completedBy: (name) => `Completado por ${name}`,
     jobUnassignedInheritsTeam: 'Sin asignar — hereda el equipo de la Work Order',
     myJobs: 'Mis Jobs',
     otherWorkOnThisTruck: 'Otro trabajo en esta unidad',

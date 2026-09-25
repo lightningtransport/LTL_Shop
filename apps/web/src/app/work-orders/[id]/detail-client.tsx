@@ -20,7 +20,7 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
-import { isMyAssignedOrInheritedJob, isStandardWorkWaitingOnManager, jobAssignmentLabel } from '@/lib/job-assignment';
+import { isMyAssignedOrInheritedJob, isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel } from '@/lib/job-assignment';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
@@ -343,7 +343,7 @@ export default function WorkOrderDetailPage() {
                   <span className="block">{job.displayName}</span>
                   <span className="block text-xs text-muted-foreground">{job.category.name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {jobAssignmentLabel(job.assignedMechanic, user?.id ?? '', messages)}
+                    {jobPersonLabel(job, user?.id ?? '', messages)}
                   </span>
                   {job.completionNotes ? (
                     <span className="mt-1 block text-sm text-foreground">{job.completionNotes}</span>
