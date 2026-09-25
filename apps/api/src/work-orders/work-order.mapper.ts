@@ -19,6 +19,7 @@ type JobRow = {
   completedAt: Date | null;
   completedById: string | null;
   assignedMechanic?: { id: string; name: string } | null;
+  completedBy?: { id: string; name: string } | null;
 };
 
 type PauseRow = {
@@ -96,6 +97,7 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     displayName: j.displayName,
     status: j.status,
     assignedMechanic: j.assignedMechanic ?? null,
+    completedBy: j.completedBy ?? null,
   }));
   const currentPause = currentOfficialPause(wo.pauseEvents);
   const mechanics = (wo.mechanics ?? [])
@@ -149,6 +151,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
       completedById: j.completedById,
       completionNotes: completionNotesForJob(wo.activityLogs, j.id),
       assignedMechanic: j.assignedMechanic ?? null,
+      completedBy: j.completedBy ?? null,
     })),
     mechanics: (wo.mechanics ?? [])
       .filter((m) => !m.removedAt)
@@ -200,6 +203,7 @@ export const workOrderDetailInclude = {
     include: {
       category: { select: { id: true, name: true } },
       assignedMechanic: { select: { id: true, name: true } },
+      completedBy: { select: { id: true, name: true } },
     },
     orderBy: { addedAt: 'asc' as const },
   },
