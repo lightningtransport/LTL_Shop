@@ -125,6 +125,7 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     displayId: wo.displayId,
     truckId: wo.truckId,
     truckNumber: wo.truck.truckNumber,
+    truckVehicle: { year: wo.truck.year, make: wo.truck.make, model: wo.truck.model },
     primaryCategoryId: wo.primaryCategoryId,
     primaryCategoryName: wo.primaryCategory.name,
     status: wo.status,

@@ -184,6 +184,10 @@ type Copy = {
   pmFinishedSuccess: string;
   viewCompletedWorkAction: string;
   jobsDone: (completed: number, total: number) => string;
+  truckTitle: (truckNumber: string) => string;
+  startWorkToCompleteJobs: string;
+  laborTime: (duration: string) => string;
+  laborRunningLabel: string;
   pmServiceLabel: string;
   noPendingJobs: string;
   noCompletedJobs: string;
@@ -356,6 +360,10 @@ const copy: Record<ShopLocale, Copy> = {
     pmFinishedSuccess: 'PM service completed.',
     viewCompletedWorkAction: 'View completed work',
     jobsDone: (completed, total) => `${completed} of ${total} jobs done`,
+    truckTitle: (truckNumber) => `Truck ${truckNumber}`,
+    startWorkToCompleteJobs: 'Press Start Work to be able to complete Jobs.',
+    laborTime: (duration) => `Labor time: ${duration}`,
+    laborRunningLabel: 'running',
     pmServiceLabel: 'PM Service',
     noPendingJobs: 'No pending jobs',
     noCompletedJobs: 'No completed jobs',
@@ -540,6 +548,10 @@ const copy: Record<ShopLocale, Copy> = {
     pmFinishedSuccess: 'Servicio de PM completado.',
     viewCompletedWorkAction: 'Ver trabajo completado',
     jobsDone: (completed, total) => `${completed} de ${total} Jobs completados`,
+    truckTitle: (truckNumber) => `Unidad ${truckNumber}`,
+    startWorkToCompleteJobs: 'Pulsa Iniciar trabajo para poder completar Jobs.',
+    laborTime: (duration) => `Tiempo de labor: ${duration}`,
+    laborRunningLabel: 'en curso',
     pmServiceLabel: 'Servicio de PM',
     noPendingJobs: 'No hay Jobs pendientes',
     noCompletedJobs: 'No hay Jobs completados',
