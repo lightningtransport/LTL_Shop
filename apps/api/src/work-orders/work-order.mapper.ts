@@ -76,6 +76,8 @@ export type WorkOrderWithRelations = {
   primaryCategory: { id: string; name: string };
   jobs: JobRow[];
   pauseEvents?: PauseRow[];
+  // Open labor sessions only (workOrderDetailInclude filters endedAt: null).
+  sessions?: { id: string }[];
   mechanics?: MechanicRow[];
   activityLogs?: JobCompletionLog[];
 };
@@ -131,6 +133,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
     completedAt: wo.completedAt?.toISOString() ?? null,
     totalActiveLaborMs: Number(wo.totalActiveLaborMs),
     totalWaitingMs: Number(wo.totalWaitingMs),
+    laborRunning: (wo.sessions ?? []).length > 0,
     version: wo.version,
     truck: toTruckDto(wo.truck),
     jobs: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => ({
@@ -199,6 +202,10 @@ export const workOrderDetailInclude = {
       assignedMechanic: { select: { id: true, name: true } },
     },
     orderBy: { addedAt: 'asc' as const },
+  },
+  sessions: {
+    where: { endedAt: null },
+    select: { id: true },
   },
   pauseEvents: {
     include: { reportedBy: { select: { id: true, name: true } } },

@@ -43,7 +43,7 @@ export function nextDisplayId(seq: number): string {
   return `WO-${String(seq).padStart(3, '0')}`;
 }
 
-export function canCompleteJob(status: string): {
+export function canCompleteJob(status: string, laborRunning = true): {
   ok: boolean;
   code?: string;
   message?: string;
@@ -67,6 +67,14 @@ export function canCompleteJob(status: string): {
       ok: false,
       code: 'WO_CLOSED',
       message: 'This Work Order is closed.',
+    };
+  }
+  // LTR-124: labor stopped after the last Job; a later Job needs Start Work.
+  if (status === 'in_progress' && !laborRunning) {
+    return {
+      ok: false,
+      code: 'START_REQUIRED',
+      message: 'Start Work before completing jobs.',
     };
   }
   return { ok: true };

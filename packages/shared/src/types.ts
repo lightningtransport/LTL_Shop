@@ -134,6 +134,8 @@ export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
   completedAt: string | null;
   totalActiveLaborMs: number;
   totalWaitingMs: number;
+  /** True while a labor session is open (LTR-124: closes when no Job is pending). */
+  laborRunning: boolean;
   jobs: WorkOrderJobDto[];
   mechanics: MechanicAssignmentDto[];
   currentPause: PauseEventDto | null;
