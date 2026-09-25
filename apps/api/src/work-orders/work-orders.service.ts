@@ -256,6 +256,25 @@ export class WorkOrdersService {
           });
         }
 
+        // LTR-95 / D2: a PM mechanic runs one PM at a time (a paused PM does not count).
+        if (isPm && typeof tx.workOrder.findFirst === 'function') {
+          const runningPm = await tx.workOrder.findFirst({
+            where: {
+              status: 'in_progress',
+              primaryCategory: { name: 'PM' },
+              mechanics: { some: { mechanicId: user.id, removedAt: null } },
+            },
+            include: workOrderDetailInclude,
+          });
+          if (runningPm) {
+            throw new ConflictException({
+              code: 'PM_ALREADY_IN_PROGRESS',
+              message: `Finish or pause ${runningPm.displayId} before starting another PM service.`,
+              workOrder: toWorkOrderSummary(runningPm),
+            });
+          }
+        }
+
         const count = typeof tx.workOrder.count === 'function'
           ? await tx.workOrder.count()
           : await this.prisma.workOrder.count();
