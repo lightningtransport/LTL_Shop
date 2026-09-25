@@ -256,7 +256,7 @@ describe('Mechanic Work Order mutation capability enforcement', () => {
           idempotencyKey: '55555555-5555-4555-8555-555555555555',
         }),
     ],
-    ['updateNotes', (service: WorkOrdersService) => service.updateNotes(adminOnly, WO_ID, { notes: 'Checked' })],
+    ['addNote', (service: WorkOrdersService) => service.addNote(adminOnly, WO_ID, { body: 'Checked' })],
     ['completeJob', (service: WorkOrdersService) => service.completeJob(adminOnly, WO_ID, JOB_ID)],
   ] as const)('denies %s for an Admin-only user', async (_name, invoke) => {
     const service = workOrderService(assignedStandardWorkOrder());

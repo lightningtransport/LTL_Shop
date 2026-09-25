@@ -35,6 +35,7 @@ import {
   adminWorkOrderCursorSchema,
   adminWorkOrdersQuerySchema,
   type AdminDashboardDto,
+  type WorkOrderNoteDto,
   type AdminCatalogCategoryDetailDto,
   type AdminCatalogCategorySummaryDto,
   type AdminMechanicCursor,
@@ -63,6 +64,7 @@ import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-or
 import { stopLaborWhenNoPendingJobs } from '../work-orders/labor-session';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
+import { toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
@@ -173,6 +175,7 @@ const detailInclude = {
     include: { user: { select: { id: true, name: true } } },
     orderBy: { createdAt: 'desc' as const },
   },
+  noteEntries: workOrderNoteInclude,
   serviceStatusEvents: {
     where: { status: 'in_service' as const },
     orderBy: { occurredAt: 'desc' as const },
@@ -208,6 +211,19 @@ export class AdminService {
     return this.detail(workOrderId);
   }
 
+  // LTR-126: the Manager appends a note (never overwrites a mechanic's note).
+  async addNote(user: AuthUser, workOrderId: string, body: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    await this.workOrders.addNote(user, workOrderId, body, { managerActor: true });
+    return this.detail(workOrderId);
+  }
+
+  async handleWorkRequest(user: AuthUser, workOrderId: string, noteId: string): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId) || !isUuid(noteId)) throw new BadRequestException('Invalid id');
+    await this.workOrders.handleWorkRequest(user, workOrderId, noteId);
+    return this.detail(workOrderId);
+  }
+
   async pauseWorkOrder(user: AuthUser, workOrderId: string, body: unknown): Promise<AdminWorkOrderDetailDto> {
     if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
     await this.workOrders.pauseByManager(user, workOrderId, body);
@@ -233,7 +249,7 @@ export class AdminService {
     const now = new Date();
     const windows = getShopDashboardWindows(now);
     const olderThan24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const [open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days, attention] =
+    const [open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days, attention, workRequests] =
       await Promise.all([
         this.prisma.workOrder.count({ where: openWhere }),
         this.prisma.workOrder.count({ where: { status: WorkOrderStatus.waiting_paused } }),
@@ -256,6 +272,16 @@ export class AdminService {
           },
         }),
         this.getAttention(openWhere),
+        // LTR-126: open work requests on open Work Orders.
+        this.prisma.workOrderNote.findMany({
+          where: { kind: 'work_request', handledAt: null, workOrder: openWhere },
+          include: {
+            author: { select: { id: true, name: true } },
+            workOrder: { select: { id: true, displayId: true, truck: { select: { truckNumber: true } } } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        }),
       ]);
 
     return {
@@ -269,6 +295,15 @@ export class AdminService {
       },
       counts: { open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days },
       attention,
+      openWorkRequests: workRequests.map((request) => ({
+        id: request.id,
+        body: request.body,
+        author: request.author,
+        createdAt: request.createdAt.toISOString(),
+        workOrderId: request.workOrder.id,
+        workOrderDisplayId: request.workOrder.displayId,
+        truckNumber: request.workOrder.truck.truckNumber,
+      })),
     };
   }
 
@@ -1202,7 +1237,9 @@ export class AdminService {
           throw new BadRequestException('PM Work Order priority cannot be changed');
         }
         const priorityChanged = input.priority !== undefined && input.priority !== (wo.priority as SharedPriority);
-        const notesChanged = nextNotes !== undefined && nextNotes !== wo.notes;
+        // LTR-126: notes are append-only; a non-empty value adds a Manager note entry.
+        const latestNote = wo.noteEntries?.[wo.noteEntries.length - 1]?.body ?? wo.notes;
+        const notesChanged = typeof nextNotes === 'string' && nextNotes.length > 0 && nextNotes !== latestNote;
         if (!priorityChanged && !notesChanged) {
           throw new BadRequestException('No allowed fields changed');
         }
@@ -1210,7 +1247,6 @@ export class AdminService {
           where: { id: workOrderId, version: input.expectedVersion },
           data: {
             ...(priorityChanged ? { priority: input.priority as Priority } : {}),
-            ...(notesChanged ? { notes: nextNotes } : {}),
             version: { increment: 1 },
           },
         });
@@ -1229,14 +1265,16 @@ export class AdminService {
           });
         }
         if (notesChanged) {
+          const note = await tx.workOrderNote.create({
+            data: { workOrderId, kind: 'note', body: nextNotes, authorId: user.id },
+          });
           await this.activity.log(tx, {
             workOrderId,
-            eventType: SharedActivityEventType.NOTES_UPDATED,
-            entityType: 'work_order',
-            entityId: workOrderId,
+            eventType: SharedActivityEventType.NOTE_ADDED,
+            entityType: 'work_order_note',
+            entityId: note.id,
             userId: user.id,
-            previousValue: { notes: wo.notes },
-            newValue: { notes: nextNotes },
+            newValue: { kind: note.kind, body: note.body, actor: 'manager' },
           });
         }
         return this.persistWorkOrderMutation(tx, {
@@ -1960,6 +1998,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     reportedBlockers: row.pauseEvents
       .filter((pause) => pause.isOfficialPause === false)
       .map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
+    noteEntries: (row.noteEntries ?? []).map((note) => toWorkOrderNoteDto(note) as WorkOrderNoteDto),
     activityLog: row.activityLogs.map((entry) => ({
       id: entry.id,
       eventType: entry.eventType as SharedActivityEventType,

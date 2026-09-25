@@ -17,7 +17,7 @@ import {
   createWorkOrderSchema,
   pauseWorkOrderSchema,
   reportBlockerSchema,
-  updateWorkOrderNotesSchema,
+  addWorkOrderNoteSchema,
   updatePmServiceSchema,
   mechanicModeSchema,
   type CreateWorkOrderInput,
@@ -299,6 +299,10 @@ export class WorkOrdersService {
             status: isPm ? 'in_progress' : 'created',
             priority: isPm ? 'normal' : input.priority,
             notes: isPm ? undefined : input.notes,
+            // LTR-126: the creation note is also the first append-only entry.
+            noteEntries: !isPm && input.notes?.trim()
+              ? { create: { body: input.notes.trim(), authorId: user.id } }
+              : undefined,
             createdById: user.id,
             startedAt,
             readinessAssessmentId: activeAssessment?.id,
@@ -967,31 +971,65 @@ export class WorkOrdersService {
     return existing.result as ReturnType<typeof toWorkOrderDetail>;
   }
 
-  async updateNotes(user: AuthUser, id: string, raw: unknown) {
-    const parsed = updateWorkOrderNotesSchema.safeParse(raw);
+  /**
+   * LTR-126 / D8: notes are append-only entries with author and time. Nobody edits
+   * or overwrites another person's note. A mechanic "work request" asks the Manager
+   * for additional work; the Manager marks it handled after adding the Job.
+   */
+  async addNote(user: AuthUser, id: string, raw: unknown, options: { managerActor?: boolean } = {}) {
+    const parsed = addWorkOrderNoteSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
 
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      this.assertMechanicAccess(user, wo);
-      const notes = parsed.data.notes?.trim() || null;
-      const updated = await tx.workOrder.update({
-        where: { id },
-        data: { notes, version: { increment: 1 } },
-        include: workOrderDetailInclude,
+      if (!options.managerActor) this.assertMechanicAccess(user, wo);
+      if (wo.status === 'completed' || wo.status === 'cancelled') {
+        throw new BadRequestException({ code: 'WORK_ORDER_CLOSED', message: 'Notes cannot be added to a closed Work Order.' });
+      }
+      const note = await tx.workOrderNote.create({
+        data: { workOrderId: id, kind: parsed.data.kind, body: parsed.data.body, authorId: user.id },
       });
       await this.activity.log(tx, {
         workOrderId: id,
-        eventType: ActivityEventType.NOTES_UPDATED,
-        entityType: 'work_order',
-        entityId: id,
+        eventType: ActivityEventType.NOTE_ADDED,
+        entityType: 'work_order_note',
+        entityId: note.id,
         userId: user.id,
-        previousValue: { notes: wo.notes },
-        newValue: { notes },
+        newValue: { kind: note.kind, body: note.body, actor: options.managerActor ? 'manager' : 'mechanic' },
       });
+      // Notes do not change Work Order state, so the version is not bumped
+      // (a Manager editing priority must not get a conflict from a new note).
+      const updated = await tx.workOrder.findUniqueOrThrow({ where: { id }, include: workOrderDetailInclude });
       return toWorkOrderDetail(updated);
     });
   }
+
+  /** LTR-126: the Manager marks a mechanic work request as handled. */
+  async handleWorkRequest(user: AuthUser, id: string, noteId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const request = await tx.workOrderNote.findFirst({
+        where: { id: noteId, workOrderId: id, kind: 'work_request' },
+      });
+      if (!request) throw new NotFoundException('Work request not found');
+      if (request.handledAt) {
+        throw new BadRequestException({ code: 'WORK_REQUEST_ALREADY_HANDLED', message: 'This work request is already handled.' });
+      }
+      await tx.workOrderNote.update({
+        where: { id: noteId },
+        data: { handledAt: new Date(), handledById: user.id },
+      });
+      await this.activity.log(tx, {
+        workOrderId: id,
+        eventType: ActivityEventType.WORK_REQUEST_HANDLED,
+        entityType: 'work_order_note',
+        entityId: noteId,
+        userId: user.id,
+        previousValue: { body: request.body },
+        newValue: { handled: true },
+      });
+    });
+  }
+
 
   async completeJob(user: AuthUser, workOrderId: string, jobId: string, raw: unknown = {}) {
     const parsed = completeJobSchema.safeParse(raw ?? {});

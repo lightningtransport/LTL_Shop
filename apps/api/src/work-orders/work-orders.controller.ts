@@ -76,13 +76,14 @@ export class WorkOrdersController {
     return this.workOrders.addJob(req.user!, id, body);
   }
 
+  // LTR-126: append one note or work request (never overwrites).
   @Post(':id/notes')
-  updateNotes(
+  addNote(
     @Req() req: Request,
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return this.workOrders.updateNotes(req.user!, id, body);
+    return this.workOrders.addNote(req.user!, id, body);
   }
 
   @Post(':id/jobs/:jobId/complete')
