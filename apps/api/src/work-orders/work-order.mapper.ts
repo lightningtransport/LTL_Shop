@@ -166,6 +166,9 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
         removedAt: m.removedAt?.toISOString() ?? null,
       })),
     currentPause: currentPause ? toPauseEventDto(currentPause) : null,
+    activeBlockers: (wo.pauseEvents ?? [])
+      .filter((pause) => pause.isOfficialPause === false && !pause.resolvedAt)
+      .map(toPauseEventDto),
   };
 }
 

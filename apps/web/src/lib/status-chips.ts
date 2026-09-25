@@ -91,6 +91,7 @@ export const ADMIN_ACTIVITY_EVENT_KEY = {
   [ActivityEventType.PAUSE_REASON_CHANGED]: 'activityPauseReasonChanged',
   [ActivityEventType.WORK_RESUMED]: 'activityWorkResumed',
   [ActivityEventType.BLOCKER_REPORTED]: 'activityBlockerReported',
+  [ActivityEventType.BLOCKER_RESOLVED]: 'activityBlockerResolved',
   [ActivityEventType.MECHANIC_ADDED]: 'activityMechanicAdded',
   [ActivityEventType.MECHANIC_REMOVED]: 'activityMechanicRemoved',
   [ActivityEventType.PRIORITY_CHANGED]: 'activityPriorityChanged',

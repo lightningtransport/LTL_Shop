@@ -8,7 +8,7 @@ import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminWorkOrderJob, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { pauseResumeError } from './pause-resume-error';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
@@ -268,6 +268,29 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                     .replace('{date}', formatAdminDate(blocker.startedAt, locale))}
                 </p>
                 {blocker.notes ? <p className="mt-1 text-sm">{blocker.notes}</p> : null}
+                {/* LTR-98: active until the mechanic or the Manager resolves it. */}
+                {blocker.resolvedAt ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {messages.blockerResolvedByAt
+                      .replace('{name}', blocker.resolvedBy?.name ?? '—')
+                      .replace('{date}', formatAdminDate(blocker.resolvedAt, locale))}
+                  </p>
+                ) : (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Badge variant="warning" className="normal-case tracking-normal">{messages.blockerActive}</Badge>
+                    {canManageWorkOrders && isOpen ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={Boolean(pendingAction)}
+                        onClick={() => void runMutation(`resolve-blocker-${blocker.id}`, messages.blockerResolvedSuccess, () => resolveAdminBlocker(data.id, blocker.id), () => messages.blockerResolveFailed)}
+                      >
+                        {messages.resolveBlocker}
+                      </Button>
+                    ) : null}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

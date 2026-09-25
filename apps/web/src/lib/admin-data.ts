@@ -331,6 +331,13 @@ export function addAdminWorkOrderJob(
   });
 }
 
+/** LTR-98: Manager resolves a mechanic-reported blocker. */
+export function resolveAdminBlocker(workOrderId: string, blockerId: string) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/blockers/${blockerId}/resolve`, {
+    method: 'POST',
+  });
+}
+
 export function pauseAdminWorkOrder(
   workOrderId: string,
   input: { reason: string; notes?: string },

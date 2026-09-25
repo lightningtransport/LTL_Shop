@@ -112,6 +112,9 @@ type Copy = {
   startingWork: string;
   workStartedSuccess: string;
   reportBlocker: string;
+  activeBlockers: string;
+  markBlockerResolved: string;
+  blockerResolved: string;
   reportingBlocker: string;
   blockerReportedSuccess: string;
   blockerReason: string;
@@ -271,6 +274,9 @@ const copy: Record<ShopLocale, Copy> = {
     startingWork: 'Starting…',
     workStartedSuccess: 'Work started.',
     reportBlocker: 'Report Blocker',
+    activeBlockers: 'Active blockers',
+    markBlockerResolved: 'Mark resolved',
+    blockerResolved: 'Blocker resolved.',
     reportingBlocker: 'Reporting…',
     blockerReportedSuccess: 'Blocker reported. The Work Order is not paused.',
     blockerReason: 'Blocker reason',
@@ -442,6 +448,9 @@ const copy: Record<ShopLocale, Copy> = {
     startingWork: 'Iniciando…',
     workStartedSuccess: 'Trabajo iniciado.',
     reportBlocker: 'Reportar bloqueo',
+    activeBlockers: 'Bloqueos activos',
+    markBlockerResolved: 'Marcar resuelto',
+    blockerResolved: 'Bloqueo resuelto.',
     reportingBlocker: 'Reportando…',
     blockerReportedSuccess: 'Bloqueo reportado. El Work Order no está pausado.',
     blockerReason: 'Motivo del bloqueo',

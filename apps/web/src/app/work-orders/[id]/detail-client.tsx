@@ -215,6 +215,36 @@ export default function WorkOrderDetailPage() {
 
       {wo.primaryCategoryName === 'PM' ? <PmServiceCard workOrderId={wo.id} /> : null}
 
+      {(wo.activeBlockers ?? []).length ? (
+        // LTR-128: the mechanic sees what they already reported and can mark it resolved.
+        <section className="mb-4 space-y-2" aria-labelledby="active-blockers-title">
+          <p id="active-blockers-title" className="section-label">{messages.activeBlockers}</p>
+          <ul className="space-y-2">
+            {(wo.activeBlockers ?? []).map((blocker) => (
+              <li key={blocker.id} className="rounded-xl bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
+                <p className="font-medium">{pauseLabel(blocker.reason, messages.pauseReason)}</p>
+                {blocker.notes ? <p>{blocker.notes}</p> : null}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-2"
+                  disabled={busy}
+                  onClick={() =>
+                    run(
+                      () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers/${blocker.id}/resolve`, { method: 'POST' }),
+                      undefined,
+                      () => showToast('success', messages.blockerResolved),
+                    )
+                  }
+                >
+                  {messages.markBlockerResolved}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="mb-4 space-y-2">
         <p className="section-label">{messages.workOptions}</p>
         {needsStart ? (

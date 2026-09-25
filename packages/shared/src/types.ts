@@ -144,6 +144,8 @@ export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
   jobs: WorkOrderJobDto[];
   mechanics: MechanicAssignmentDto[];
   currentPause: PauseEventDto | null;
+  /** LTR-128: unresolved mechanic-reported blockers (newest first). */
+  activeBlockers?: PauseEventDto[];
   truck: TruckDto;
   version: number;
 }
