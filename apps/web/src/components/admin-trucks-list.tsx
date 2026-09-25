@@ -22,6 +22,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
   }, [searchParams]);
 
   const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
+  const showOperationalStatus = items.some((item) => item.operationalStatus !== TruckOperationalStatus.UNKNOWN);
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (
@@ -45,11 +46,12 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p></EmptyState> : null}
       {items.length ? (
         <div className="overflow-x-auto rounded-xl border">
+          {/* LTR-111: hide the column while every truck is Unknown (no service-status events yet). */}
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
                 <th className="p-3 font-medium">{messages.trucks}</th>
-                <th className="p-3 font-medium">{messages.operationalStatus}</th>
+                {showOperationalStatus ? <th className="p-3 font-medium">{messages.operationalStatus}</th> : null}
                 <th className="p-3 font-medium">{messages.make}</th>
                 <th className="p-3 font-medium">{messages.company}</th>
                 <th className="p-3 font-medium">{messages.currentWorkOrder}</th>
@@ -64,13 +66,15 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
                       {[item.truck.year, item.truck.model].filter(Boolean).join(' ') || '—'}
                     </p>
                   </td>
-                  <td className="p-3 text-muted-foreground">
-                    {item.operationalStatus === TruckOperationalStatus.IN_SERVICE
-                      ? messages.operationalStatusInService
-                      : item.operationalStatus === TruckOperationalStatus.OFF_DUTY
-                        ? messages.operationalStatusOffDuty
-                        : messages.operationalStatusUnknown}
-                  </td>
+                  {showOperationalStatus ? (
+                    <td className="p-3 text-muted-foreground">
+                      {item.operationalStatus === TruckOperationalStatus.IN_SERVICE
+                        ? messages.operationalStatusInService
+                        : item.operationalStatus === TruckOperationalStatus.OFF_DUTY
+                          ? messages.operationalStatusOffDuty
+                          : messages.operationalStatusUnknown}
+                    </td>
+                  ) : null}
                   <td className="p-3 text-muted-foreground">{item.truck.make ?? '—'}</td>
                   <td className="p-3 text-muted-foreground">{item.truck.company ?? '—'}</td>
                   <td className="p-3">
