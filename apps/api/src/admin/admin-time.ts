@@ -98,6 +98,8 @@ export function getShopWeekWindows(now = new Date()) {
   const nextSunday = addLocalDays(thisMonday, 13);
   return {
     timeZone: SHOP_TIME_ZONE,
+    /** Shop-local today (ISO date); LTR-93 hides departures before it. */
+    today: formatShopIsoDate(today),
     thisWeek: {
       from: formatShopIsoDate(thisMonday),
       to: formatShopIsoDate(thisSunday),

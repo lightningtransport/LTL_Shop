@@ -11,6 +11,7 @@ import {
 
 const windows = {
   timeZone: 'America/New_York' as const,
+  today: '2026-09-21',
   thisWeek: { from: '2026-09-21', to: '2026-09-27' },
   nextWeek: { from: '2026-09-28', to: '2026-10-04' },
 };
@@ -102,5 +103,17 @@ describe('yard data-boundary mappers', () => {
       drivers: ['A', 'B'],
     });
     expect(classifyMovementWindow('2026-10-01', windows)).toBe('next_week');
+  });
+});
+
+describe('Upcoming Departures hides past dates (LTR-93)', () => {
+  it('drops departures before shop-local today but keeps today and later', () => {
+    const items = mapUpcomingDepartures([
+      { Truck_Number: '614', 'Out Date': '2026-09-21' },
+      { Truck_Number: '906', 'Out Date': '2026-09-23' },
+      { Truck_Number: '830', 'Out Date': '2026-09-24' },
+      { Truck_Number: '888', 'Out Date': '2026-09-29' },
+    ], { ...windows, today: '2026-09-24' });
+    expect(items.map((item) => item.truckNumber)).toEqual(['830', '888']);
   });
 });
