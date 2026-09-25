@@ -14,6 +14,16 @@ async function workOrderFilterPanel(page: Page): Promise<Locator> {
   return page.getByRole('search');
 }
 
+// Mobile projects keep Admin links in the navigation sheet; Dashboard metric
+// cards also contain "Work Orders", so match the sheet link exactly.
+async function openAdminNavLink(page: Page, name: string) {
+  await page.getByRole('button', { name: 'Open Shop Admin navigation' }).click();
+  await page
+    .getByRole('navigation', { name: 'Shop Admin mobile navigation' })
+    .getByRole('link', { name, exact: true })
+    .click();
+}
+
 test.describe('Shop Admin Phase 2A', () => {
   test('mechanic shell uses shared safe-area tokens under viewport-fit=cover', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -205,40 +215,44 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Priority and notes' })).toBeVisible();
     await page.getByLabel('Work Order notes').fill('Check the leak again');
     await page.getByRole('button', { name: 'Update priority and notes' }).click();
-    await expect(page.getByText('Priority and notes updated.')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Priority and notes updated.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Assignments' })).toBeVisible();
     await page.getByLabel('Reason for this Job change').fill('Not needed');
     await page.getByRole('button', { name: 'Confirm job cancellation' }).click();
-    await expect(page.getByText('Job cancelled.')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Job cancelled.')).toBeVisible();
     await page.getByLabel('Reason for this Job change').fill('Job is still required');
     await page.getByRole('button', { name: 'Confirm job reopen' }).click();
-    await expect(page.getByText('Job reopened.')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Job reopened.')).toBeVisible();
     await page.getByLabel('Select a mechanic to add').selectOption({ label: 'Anthony' });
     await page.getByRole('button', { name: 'Add mechanic' }).click();
     await expect(page.getByText('Anthony').first()).toBeVisible();
     await page.getByRole('listitem').filter({ hasText: 'Anthony' }).getByRole('button', { name: 'Remove' }).click();
+    // Cancel WO-0103, not WO-0101: the fixture API keeps state for the whole run,
+    // and later tests need WO-0101 to stay open and Waiting / Paused.
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000103');
+    await expect(page.getByRole('heading', { name: 'T-103' })).toBeVisible();
     await page.getByLabel('Reason for cancellation').fill('Duplicate Work Order');
     await page.getByRole('button', { name: 'Confirm cancellation' }).click();
-    await expect(page.getByText('Work Order cancelled.')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Work Order cancelled.')).toBeVisible();
     await expect(page.getByText('Cancelled').first()).toBeVisible();
     await page.getByRole('link', { name: 'Back to Work Orders' }).click();
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
-    await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
+    await expect(page.getByTestId('admin-wo-next-action').getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm completion' }).first()).toBeVisible();
     await page.getByLabel('Time segment').selectOption({ index: 1 });
     await page.getByLabel('Corrected end time').fill('2026-09-06T17:00');
     await page.getByLabel('Reason for time correction').fill('Clock was wrong');
     await page.getByRole('button', { name: 'Apply time correction' }).click();
-    await expect(page.getByText('Time correction saved.')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Time correction saved.')).toBeVisible();
     await page.getByTestId('admin-wo-next-action').getByRole('button', { name: 'Confirm completion' }).click();
-    await expect(page.getByText('Work Order completed.')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Work Order completed.')).toBeVisible();
     await page.getByLabel('Reason for Return to Service').fill('Repairs verified');
     await page.getByRole('button', { name: 'Confirm Return to Service' }).click();
-    await expect(page.getByText('Truck returned to service.')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Truck returned to service.')).toBeVisible();
     await page.getByLabel('Reason for reopening').fill('More work found');
     await page.getByRole('button', { name: 'Confirm reopen' }).click();
-    await expect(page.getByText('Work Order reopened.')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Work Order reopened.')).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
 
     await page.setViewportSize({ width: 1440, height: 700 });
@@ -392,7 +406,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByLabel('Email').fill('admin@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
-    await page.getByRole('link', { name: 'Work Orders' }).first().click();
+    await openAdminNavLink(page, 'Work Orders');
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await page.getByRole('button', { name: 'Load more' }).click();
     await expect(page.getByText('WO-0103').first()).toBeVisible();
@@ -410,13 +424,16 @@ test.describe('Shop Admin Phase 2A', () => {
       await expect(page).toHaveURL(/\/mechanic\/standard$/);
       await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
       await page.getByRole('link', { name: 'Back to Shop Admin' }).click();
+      await expect(page).toHaveURL(/\/admin$/);
 
-      await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
+      // The mechanic header has its own "Switch to Spanish"; use the Admin one.
+      await page.getByRole('banner', { name: 'Shop Admin controls' }).getByRole('button', { name: 'Switch to Spanish' }).click();
       await expect(page.getByRole('heading', { name: 'Espacios de trabajo' })).toBeVisible();
       await page.getByRole('link', { name: 'Abrir Mecánico PM' }).click();
       await expect(page).toHaveURL(/\/mechanic\/pm$/);
-      await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Back to Shop Admin' })).toBeVisible();
+      // The shared ltl_shop_locale cookie keeps the PM workspace in Spanish.
+      await expect(page.getByRole('heading', { name: 'Mecánico de PM' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Volver a Shop Admin' })).toBeVisible();
     });
   }
 
@@ -441,22 +458,22 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/login');
     await page.getByLabel('Email').fill('manager@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
-    await page.getByRole('link', { name: 'Mechanics' }).first().click();
+    await openAdminNavLink(page, 'Mechanics');
     await expect(page).toHaveURL(/\/admin\/mechanics$/);
     await expect(page.getByRole('heading', { name: 'Mechanics' })).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
-    await page.getByRole('link', { name: 'History' }).first().click();
+    await openAdminNavLink(page, 'History');
     await expect(page).toHaveURL(/\/admin\/history$/);
     await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
-    await page.getByRole('link', { name: 'Trucks' }).first().click();
+    await openAdminNavLink(page, 'Trucks');
     await expect(page).toHaveURL(/\/admin\/trucks$/);
     await expect(page.getByRole('heading', { name: 'Trucks' })).toBeVisible();
     await expect(page.getByText('T-101').first()).toBeVisible();
     await expect(page.getByText('WO-0101').first()).toBeVisible();
     await expect(page.getByText('No open Work Order').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
-    await page.getByRole('link', { name: 'Job Catalog' }).first().click();
+    await openAdminNavLink(page, 'Job Catalog');
     await expect(page).toHaveURL(/\/admin\/catalog$/);
     await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
     await expect(page.getByText('Brakes').first()).toBeVisible();

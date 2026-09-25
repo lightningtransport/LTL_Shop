@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Ban, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
 import {
@@ -38,6 +39,7 @@ const phaseMessageKey = {
   quality_check: 'qualityCheck',
   ready_for_approval: 'readyForApproval',
   ready_to_go: 'readyToGo',
+  ready_to_close: 'readyToClose',
   shop_work: 'shopWork',
 } as const satisfies Record<YardBoardColumnPhase, keyof AdminMessages>;
 
@@ -364,7 +366,8 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
   return (
     <Card className="flex min-w-0 items-center justify-between gap-1.5 overflow-hidden px-2.5 py-1.5">
       <div className="min-w-0">
-        <p className="truncate text-[11px] text-muted-foreground" title={label}>{label}</p>
+        {/* LTR-114: wrap instead of cutting "Under review" on 375px phones. */}
+        <p className="line-clamp-2 text-[11px] leading-tight text-muted-foreground" title={label}>{label}</p>
         <p className="font-display text-lg font-bold leading-tight">{value}</p>
       </div>
       <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
@@ -380,7 +383,7 @@ function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messa
 
   return (
     <Link
-      href={`/admin/trucks/${item.truck.id}`}
+      href={adminTruckHref(item.truck.id, '/admin/yard-operations')}
       aria-label={item.truck.truckNumber}
       className="card block space-y-1.5 p-2 hover:bg-accent/40"
       data-testid="yard-truck-card"

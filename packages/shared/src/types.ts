@@ -87,6 +87,8 @@ export interface WorkOrderJobDto {
   completionNotes: string | null;
   // Null means the Job inherits the Work Order general mechanic team.
   assignedMechanic: { id: string; name: string } | null;
+  /** LTR-127: who completed the Job (additive; absent on older API responses). */
+  completedBy?: { id: string; name: string } | null;
 }
 
 export interface PauseEventDto {
@@ -121,7 +123,7 @@ export interface WorkOrderSummaryDto {
   priority: Priority;
   jobsCompleted: number;
   jobsTotal: number;
-  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic'>[];
+  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic' | 'completedBy'>[];
   mechanics: Pick<MechanicAssignmentDto, 'mechanicId' | 'mechanicName'>[];
   currentPauseReason: PauseReason | null;
   createdAt: string;
@@ -134,6 +136,8 @@ export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
   completedAt: string | null;
   totalActiveLaborMs: number;
   totalWaitingMs: number;
+  /** True while a labor session is open (LTR-124: closes when no Job is pending). */
+  laborRunning: boolean;
   jobs: WorkOrderJobDto[];
   mechanics: MechanicAssignmentDto[];
   currentPause: PauseEventDto | null;

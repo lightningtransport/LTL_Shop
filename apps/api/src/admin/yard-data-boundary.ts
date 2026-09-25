@@ -169,6 +169,8 @@ export function mapUpcomingDepartures(
     if (!truckNumber) continue;
     const outDate = toIsoDate(pickField(row, ['Out Date', 'OutDate', 'out_date']));
     if (!inDefaultMovementWindow(outDate, windows)) continue;
+    // LTR-93: "Upcoming" excludes departures dated before today (shop time).
+    if (outDate && windows.today && outDate < windows.today) continue;
     mergeDriverRow(byTruck, truckNumber, outDate, driverDisplayName(row));
   }
 

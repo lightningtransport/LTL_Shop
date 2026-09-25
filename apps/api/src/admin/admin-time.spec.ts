@@ -28,6 +28,7 @@ describe('Admin Monday–Sunday week windows', () => {
   it('treats Monday as the start of this week', () => {
     expect(getShopWeekWindows(new Date('2026-09-21T16:00:00.000Z'))).toEqual({
       timeZone: 'America/New_York',
+      today: '2026-09-21',
       thisWeek: { from: '2026-09-21', to: '2026-09-27' },
       nextWeek: { from: '2026-09-28', to: '2026-10-04' },
     });
@@ -36,6 +37,7 @@ describe('Admin Monday–Sunday week windows', () => {
   it('keeps Sunday in the week that started the previous Monday', () => {
     expect(getShopWeekWindows(new Date('2026-09-20T16:00:00.000Z'))).toEqual({
       timeZone: 'America/New_York',
+      today: '2026-09-20',
       thisWeek: { from: '2026-09-14', to: '2026-09-20' },
       nextWeek: { from: '2026-09-21', to: '2026-09-27' },
     });

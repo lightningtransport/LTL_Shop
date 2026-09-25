@@ -21,6 +21,7 @@ import { closeAdminTruckAssessment, markAdminTruckReady, startAdminTruckAssessme
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
 import { formatVehicleYmm } from '@/lib/format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
+import { adminTruckOrigin } from '@/lib/admin-truck-origin';
 import { isWorkPlanSliceEnabled, workPlanPhaseLabel } from '@/lib/work-plan';
 import {
   collapseReadinessBlockers,
@@ -46,7 +47,8 @@ import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardD
 type Feedback = { kind: 'success' | 'error'; message: string };
 type RequirementDraft = { outcome: ReadinessRequirementOutcome; waiverReason: string; evidenceWorkOrderId: string };
 
-export function AdminTruckDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
+export function AdminTruckDetail({ id, from = null, locale, messages }: { id: string; from?: string | null; locale: AdminLocale; messages: AdminMessages }) {
+  const origin = adminTruckOrigin(from, messages);
   const { user } = useAuth();
   const { mutate: mutateRelated } = useSWRConfig();
   const { data, error, isLoading, mutate } = useAdminTruck(id);
@@ -176,9 +178,9 @@ export function AdminTruckDetail({ id, locale, messages }: { id: string; locale:
   }
 
   return <div className="space-y-5">
-    <AdminBackLink href="/admin/yard-operations">{messages.backToYardOperations}</AdminBackLink>
+    <AdminBackLink href={origin.href}>{origin.backLabel}</AdminBackLink>
     <AdminPageHeader
-      eyebrow={messages.yardOperationsTitle}
+      eyebrow={origin.eyebrow}
       title={data.truck.truckNumber}
       subtitle={formatVehicleYmm(data.truck) || messages.noValue}
       badges={slice1 && workPlan ? (

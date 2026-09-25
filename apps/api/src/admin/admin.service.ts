@@ -60,6 +60,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
+import { stopLaborWhenNoPendingJobs } from '../work-orders/labor-session';
+import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { getShopDashboardWindows } from './admin-time';
 
@@ -874,6 +876,7 @@ export class AdminService {
           if (!pmService?.parts.length) {
             throw new BadRequestException('Select at least one part before finishing a PM service');
           }
+          assertPmObservedMileage(observedMileage, wo.truck.mileage, { confirmLargeJump: true });
         } else {
           const gate = canFinishWorkOrder(wo.jobs);
           if (!gate.ok) throw new BadRequestException(gate.message);
@@ -1430,6 +1433,7 @@ export class AdminService {
           newValue: { status: JobStatus.cancelled, reason: input.reason },
           relevantValue: { action: 'job_cancelled', reason: input.reason, displayName: job.displayName },
         });
+        await stopLaborWhenNoPendingJobs(tx, workOrderId);
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
@@ -1511,6 +1515,7 @@ export class AdminService {
           newValue: { status: JobStatus.completed, displayName: job.displayName, notes },
           relevantValue: { action: 'job_completed', displayName: job.displayName, notes, actor: 'admin' },
         });
+        await stopLaborWhenNoPendingJobs(tx, workOrderId);
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
@@ -1733,7 +1738,10 @@ export class AdminService {
         where: {
           ...openWhere,
           status: WorkOrderStatus.in_progress,
-          jobs: { none: { status: JobStatus.to_do } },
+          // LTR-97: PM Work Orders have no Jobs, so "none to do" matched them and
+          // ranked every running PM above real ready-to-close Standard work.
+          primaryCategory: { name: { not: 'PM' } },
+          jobs: { some: { status: JobStatus.completed }, none: { status: JobStatus.to_do } },
         },
         orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       }),
@@ -1929,8 +1937,8 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     notes: row.notes,
     createdBy: row.createdBy,
     completedBy: row.completedBy,
-    totalActiveLaborMs: Number(row.totalActiveLaborMs),
-    totalWaitingMs: Number(row.totalWaitingMs),
+    // LTR-94: live totals from persisted segments (open session/pause counted to now).
+    ...liveTotals(row),
     jobs,
     laborSessions: row.sessions.map((session) => ({
       id: session.id,
@@ -2085,4 +2093,11 @@ function mapPause(pause: {
     isOfficialPause: pause.isOfficialPause !== false,
     reportedBy: pause.reportedBy ?? null,
   };
+}
+
+function liveTotals(row: {
+  sessions: { startedAt: Date; endedAt: Date | null }[];
+  pauseEvents: { startedAt: Date; endedAt: Date | null; isOfficialPause?: boolean | null }[];
+}) {
+  return computeTotals({ sessions: row.sessions, pauses: row.pauseEvents });
 }
