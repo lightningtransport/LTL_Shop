@@ -151,11 +151,28 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
 
       <section className="order-1 xl:order-none" aria-labelledby="yard-summary-title">
         <h2 id="yard-summary-title" className="sr-only">{messages.yardSummaryMetrics}</h2>
-        <div className="grid min-w-0 grid-cols-3 gap-2">
-          <SummaryMetric label={messages.underReview} value={counts?.underReview ?? 0} Icon={ClipboardCheck} />
-          <SummaryMetric label={messages.readyToGo} value={counts?.readyToGo ?? 0} Icon={ShieldCheck} />
-          <SummaryMetric label={messages.blocked} value={counts?.blocked ?? 0} Icon={Ban} />
-        </div>
+        {workPlanBoardCutover && counts?.notStarted !== undefined ? (
+          // LTR-100 / D5: exclusive buckets that add up to the board; Blocked (official pause) is a subset.
+          <>
+            <div className="grid min-w-0 grid-cols-3 gap-2">
+              <SummaryMetric label={messages.inspection} value={counts.notStarted} Icon={ClipboardCheck} />
+              <SummaryMetric label={messages.inTheShop} value={counts.underReview} Icon={ClipboardCheck} />
+              <SummaryMetric label={messages.readyToGo} value={counts.readyToGo} Icon={ShieldCheck} />
+            </div>
+            {counts.blocked ? (
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                <Ban aria-hidden="true" className="size-3.5" />
+                {messages.blockedOfTotal.replace('{count}', String(counts.blocked))}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <div className="grid min-w-0 grid-cols-3 gap-2">
+            <SummaryMetric label={messages.underReview} value={counts?.underReview ?? 0} Icon={ClipboardCheck} />
+            <SummaryMetric label={messages.readyToGo} value={counts?.readyToGo ?? 0} Icon={ShieldCheck} />
+            <SummaryMetric label={messages.blocked} value={counts?.blocked ?? 0} Icon={Ban} />
+          </div>
+        )}
       </section>
 
       <Card className="order-1 min-w-0 p-3 xl:order-none">
@@ -263,7 +280,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                       <Badge variant="secondary">{phaseItems.length}</Badge>
                     </div>
                     <div className="space-y-2">
-                      {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} />)}
+                      {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} workPlanBoard={workPlanBoardCutover} />)}
                       {phaseItems.length === 0 ? (
                         <CompactEmpty className="text-xs">{messages.noTrucksInPhase}</CompactEmpty>
                       ) : null}
@@ -284,7 +301,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                   <h3 id={`yard-group-${phase}`} className="font-display text-sm font-semibold">{messages[phaseMessageKey[phase]]}</h3>
                   <Badge variant="secondary">{phaseItems.length}</Badge>
                 </div>
-                <div className="space-y-2">{phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} />)}</div>
+                <div className="space-y-2">{phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} workPlanBoard={workPlanBoardCutover} />)}</div>
               </section>
             ) : null;
           })}
@@ -375,11 +392,12 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
   );
 }
 
-function YardTruckCard({ item, messages }: { item: YardOperationsTruckDto; messages: AdminMessages }) {
+function YardTruckCard({ item, messages, workPlanBoard }: { item: YardOperationsTruckDto; messages: AdminMessages; workPlanBoard: boolean }) {
   const workOrder = item.activeWorkOrder;
   const vehicle = formatVehicleYmm(item.truck);
   const showPriority = Boolean(workOrder && workOrder.priority !== Priority.NORMAL);
-  const showBlocker = item.blockers.length > 0;
+  // LTR-92 / D5: on the Work Plan board Blocked means an official pause, not "has open work".
+  const showBlocker = workPlanBoard ? workOrder?.status === 'waiting_paused' : item.blockers.length > 0;
 
   return (
     <Link

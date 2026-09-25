@@ -425,7 +425,7 @@ describe('YardOperationsService', () => {
 
     expect(page.items).toEqual([]);
     expect(page.nextCursor).toBeNull();
-    expect(page.counts).toEqual({ underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
+    expect(page.counts).toEqual({ notStarted: 0, underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[1][0].where)).toBe(true);
   });
@@ -440,6 +440,23 @@ describe('YardOperationsService', () => {
     expect(page.workPlanBoardCutover).toBe(false);
     expect(page.items).toEqual([]);
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
+  });
+
+  it('LTR-92: only an officially paused Work Order counts and filters as Blocked', async () => {
+    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+    const prisma = createPrisma();
+    const running = truck('277', '00000000-0000-4000-8000-000000000001');
+    running.workOrders = [{ ...slice2WorkOrderRow(), status: WorkOrderStatus.IN_PROGRESS }];
+    const paused = truck('906', '00000000-0000-4000-8000-000000000002');
+    paused.workOrders = [{ ...slice2WorkOrderRow(), id: '00000000-0000-4000-8000-000000000202', status: WorkOrderStatus.WAITING_PAUSED }];
+    prisma.truck.findMany.mockResolvedValue([running, paused]);
+    prisma.truck.count.mockResolvedValue(2);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 25 });
+    expect(page.counts.blocked).toBe(1);
+    const blockedOnly = await service.list({ limit: 25, blocked: 'true' });
+    expect(blockedOnly.items.map((item) => item.truck.truckNumber)).toEqual(['906']);
   });
 
   it('LTR-75: an open Work Order enters the board on the derived Work Plan phase', async () => {
@@ -462,7 +479,8 @@ describe('YardOperationsService', () => {
     expect(page.items[0].phase).toBe(WorkPlanPhase.ALIGNMENT);
     expect(page.counts.underReview).toBe(1);
     expect(page.counts.readyToGo).toBe(0);
-    expect(page.counts.blocked).toBe(1);
+    // LTR-92 / D5: open work alone is not Blocked; only an official pause is.
+    expect(page.counts.blocked).toBe(0);
     expect(page.counts.presenceUnknown).toBe(2);
   });
 
@@ -482,7 +500,9 @@ describe('YardOperationsService', () => {
     expect(page.items).toHaveLength(1);
     expect(page.items[0].phase).toBe(WorkPlanPhase.INSPECTION);
     expect(page.items[0].activeWorkOrder).toBeNull();
-    expect(page.counts.blocked).toBe(1);
+    // LTR-100: the Inspection bucket counts it; an assessment is not a blocker.
+    expect(page.counts.notStarted).toBe(1);
+    expect(page.counts.blocked).toBe(0);
     expect(page.counts.readyToGo).toBe(0);
     expect(page.counts.presenceUnknown).toBe(4);
   });

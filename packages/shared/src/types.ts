@@ -362,6 +362,8 @@ export interface YardOperationsTruckDto {
 }
 
 export interface YardOperationsCountsDto {
+  /** LTR-100: Work Plan board only — trucks still in Inspection (counters add up to the board). */
+  notStarted?: number;
   underReview: number;
   readyToGo: number;
   blocked: number;
