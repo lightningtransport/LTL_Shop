@@ -38,6 +38,7 @@ import {
 } from './work-order.timing';
 import type { AuthUser } from '../auth/auth.guard';
 import { assertPmObservedMileage } from './pm-mileage.guard';
+import { stopLaborWhenNoPendingJobs } from './labor-session';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
@@ -406,13 +407,36 @@ export class WorkOrdersService {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
       this.assertMechanicAccess(user, wo);
-      if (wo.status !== 'created') {
+      // LTR-124: labor stops when no Job is pending; a Job added afterwards
+      // needs Start Work again on the same In Progress Work Order.
+      const restartingLabor = wo.status === 'in_progress'
+        && wo.primaryCategory.name !== 'PM'
+        && (wo.sessions ?? []).length === 0
+        && wo.jobs.some((job) => job.status === 'to_do');
+      if (wo.status !== 'created' && !restartingLabor) {
         throw new BadRequestException('Work Order can only be started from created status');
       }
       const now = new Date();
       await tx.workSession.create({
         data: { workOrderId: id, startedAt: now },
       });
+      if (restartingLabor) {
+        const restarted = await tx.workOrder.update({
+          where: { id },
+          data: { version: { increment: 1 } },
+          include: workOrderDetailInclude,
+        });
+        await this.activity.log(tx, {
+          workOrderId: id,
+          eventType: ActivityEventType.WORK_STARTED,
+          entityType: 'work_order',
+          entityId: id,
+          userId: user.id,
+          previousValue: { status: 'in_progress', laborRunning: false },
+          newValue: { status: 'in_progress', laborRunning: true },
+        });
+        return toWorkOrderDetail(restarted);
+      }
       const updated = await tx.workOrder.update({
         where: { id },
         data: {
@@ -927,7 +951,7 @@ export class WorkOrdersService {
       if (category?.name === 'PM') {
         throw new BadRequestException('PM Work Orders do not use jobs');
       }
-      const gate = canCompleteJob(wo.status);
+      const gate = canCompleteJob(wo.status, (wo.sessions ?? []).length > 0);
       if (!gate.ok) {
         throw new BadRequestException({ code: gate.code, message: gate.message });
       }
@@ -946,6 +970,7 @@ export class WorkOrdersService {
           completedById: user.id,
         },
       });
+      await stopLaborWhenNoPendingJobs(tx, workOrderId);
       const updated = await tx.workOrder.update({
         where: { id: workOrderId },
         data: { version: { increment: 1 } },

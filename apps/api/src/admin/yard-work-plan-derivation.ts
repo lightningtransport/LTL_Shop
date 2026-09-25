@@ -72,6 +72,11 @@ export function classifyWorkPlanLane(
   if (category.includes('alignment') || name === 'alignment') {
     return WorkPlanJobLane.ALIGNMENT;
   }
+  // Only the Inspection Category: a repair Job named "... Inspection" in another
+  // Category (e.g. Air & Brake "Brake Inspection") stays Shop Work.
+  if (category === 'inspection') {
+    return WorkPlanJobLane.INSPECTION;
+  }
   if (
     category === normalize(QUALITY_CHECK_CATALOG_CATEGORY_NAME)
     || name === normalize(QUALITY_CHECK_CATALOG_JOB_NAME)
@@ -136,6 +141,13 @@ export function deriveInspectionOutcome(
   jobs: WorkPlanJobDto[],
   inspectionRequirementOutcome?: ReadinessRequirementOutcome | `${ReadinessRequirementOutcome}` | null,
 ): WorkPlanInspectionOutcome {
+  const activeInspectionJobs = jobs.filter(
+    (job) => job.lane === WorkPlanJobLane.INSPECTION && job.status !== JobStatus.CANCELLED,
+  );
+  // LTR-89: while an Inspection Job is still to do, discovery is not finished.
+  if (activeInspectionJobs.some((job) => job.status === JobStatus.TO_DO)) {
+    return WorkPlanInspectionOutcome.NOT_STARTED;
+  }
   const shopJobs = jobs.filter((job) => job.lane === WorkPlanJobLane.SHOP_WORK);
   const hasShopWork = shopJobs.some((job) => job.status !== JobStatus.CANCELLED);
   if (hasShopWork) return WorkPlanInspectionOutcome.ISSUES_FOUND;
@@ -146,6 +158,10 @@ export function deriveInspectionOutcome(
   }
   if (inspectionRequirementOutcome === ReadinessRequirementOutcome.REQUIRED) {
     return WorkPlanInspectionOutcome.ISSUES_FOUND;
+  }
+  // A completed Inspection Job with no Shop Work on the plan found nothing to repair.
+  if (activeInspectionJobs.length > 0) {
+    return WorkPlanInspectionOutcome.NO_ISSUES_FOUND;
   }
   return WorkPlanInspectionOutcome.NOT_STARTED;
 }
