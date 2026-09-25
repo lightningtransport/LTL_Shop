@@ -653,7 +653,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             {messages.addJobAction}
           </Button>
         ) : null}
-        {canManageJobs || canReopenJob ? (
+        {canManageJobs || (canReopenJob && data.jobs.some((job) => job.status === 'cancelled')) ? (
           <label className="block space-y-1">
             <span className="text-sm font-medium">{messages.jobChangeReason}</span>
             <Textarea
