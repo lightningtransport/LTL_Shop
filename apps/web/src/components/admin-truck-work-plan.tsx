@@ -287,11 +287,14 @@ function InspectionPanel({
         <h3 id="work-plan-inspection-title" className="font-medium">{messages.workPlanInspectionTitle}</h3>
         <p className="text-sm text-muted-foreground">{messages.workPlanInspectionDescription}</p>
       </div>
+      {/* LTR-112: always state the inspection result, never a Ready label here. */}
       {outcome === 'not_started' ? (
         <p className="text-sm">{messages.workPlanInspectionNotStarted}</p>
       ) : outcome === 'no_issues_found' ? (
-        <p className="text-sm">{messages.workPlanNoIssuesFoundHelp}</p>
-      ) : null}
+        <p className="text-sm"><span className="font-medium">{messages.workPlanNoIssuesFound}.</span> {messages.workPlanNoIssuesFoundHelp}</p>
+      ) : (
+        <p className="text-sm"><span className="font-medium">{messages.workPlanIssuesFound}.</span> {messages.workPlanIssuesFoundHelp}</p>
+      )}
       {canInspect ? (
         <div className="flex flex-wrap gap-2">
           <Button
