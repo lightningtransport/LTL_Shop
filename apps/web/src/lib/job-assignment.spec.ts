@@ -3,6 +3,7 @@ import {
   isMyAssignedOrInheritedJob,
   isStandardWorkWaitingOnManager,
   jobAssignmentLabel,
+  jobPersonLabel,
   workOrderTeamLabel,
 } from './job-assignment';
 
@@ -56,5 +57,28 @@ describe('job assignment presentation', () => {
       primaryCategoryName: 'Inspection',
       jobs: [{ status: 'completed' }],
     })).toBe(false);
+  });
+});
+
+describe('jobPersonLabel (LTR-127)', () => {
+  const copy = {
+    assignedToYou: 'Assigned to you',
+    assignedTo: (name: string) => `Assigned to ${name}`,
+    jobUnassignedInheritsTeam: 'Unassigned — inherits the Work Order team',
+    completedByYou: 'Completed by you',
+    completedBy: (name: string) => `Completed by ${name}`,
+  };
+
+  it('shows who completed a completed Job instead of its assignment', () => {
+    expect(jobPersonLabel({ status: 'completed', assignedMechanic: null, completedBy: { id: 'mg', name: 'MG' } }, 'mg', copy))
+      .toBe('Completed by you');
+    expect(jobPersonLabel({ status: 'completed', assignedMechanic: { id: 'mg', name: 'MG' }, completedBy: { id: 'c', name: 'Cristian' } }, 'mg', copy))
+      .toBe('Completed by Cristian');
+  });
+
+  it('keeps the assignment line for Jobs to do and for older responses', () => {
+    expect(jobPersonLabel({ status: 'to_do', assignedMechanic: { id: 'mg', name: 'MG' } }, 'mg', copy)).toBe('Assigned to you');
+    expect(jobPersonLabel({ status: 'completed', assignedMechanic: null }, 'mg', copy))
+      .toBe('Unassigned — inherits the Work Order team');
   });
 });
