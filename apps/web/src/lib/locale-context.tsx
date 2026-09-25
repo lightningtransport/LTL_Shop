@@ -130,6 +130,9 @@ type Copy = {
   mileageNotRecorded: string;
   observedMileage: string;
   enterMileageHint: string;
+  mileageBelowCurrent: (current: string) => string;
+  mileageJumpWarning: (current: string) => string;
+  confirmMileage: string;
   partsUsed: string;
   noPartUsed: string;
   noCompatibleParts: string;
@@ -276,6 +279,9 @@ const copy: Record<ShopLocale, Copy> = {
     mileageNotRecorded: 'Mileage not recorded',
     observedMileage: 'Observed mileage',
     enterMileageHint: 'Enter the observed mileage to record parts used.',
+    mileageBelowCurrent: (current) => `Observed mileage cannot be lower than the truck's current mileage (${current}). Check the odometer.`,
+    mileageJumpWarning: (current) => `This is more than 50,000 mi above the truck's current mileage (${current}). Confirm the odometer reading.`,
+    confirmMileage: 'Confirm mileage',
     partsUsed: 'Parts used',
     noPartUsed: 'No part used',
     noCompatibleParts: 'No compatible parts for this truck',
@@ -434,6 +440,9 @@ const copy: Record<ShopLocale, Copy> = {
     mileageNotRecorded: 'Millaje no registrado',
     observedMileage: 'Millaje observado',
     enterMileageHint: 'Ingresa el millaje observado para registrar las piezas usadas.',
+    mileageBelowCurrent: (current) => `El millaje observado no puede ser menor al millaje actual del truck (${current}). Revisa el odómetro.`,
+    mileageJumpWarning: (current) => `Son más de 50,000 mi sobre el millaje actual del truck (${current}). Confirma la lectura del odómetro.`,
+    confirmMileage: 'Confirmar millaje',
     partsUsed: 'Piezas usadas',
     noPartUsed: 'No se usó ninguna pieza',
     noCompatibleParts: 'No hay piezas compatibles para este camión',
