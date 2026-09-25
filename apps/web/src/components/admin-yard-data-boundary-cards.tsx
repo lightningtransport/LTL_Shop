@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ShieldCheck, Truck, type LucideIcon } from 'lucide-react';
 import type {
   YardDataBoundaryDto,
@@ -8,7 +8,8 @@ import type {
   YardUpcomingDepartureItemDto,
   YardWorkLocationItemDto,
 } from '@ltl-shop/shared';
-import type { AdminLocale } from '@/lib/admin-messages';
+import { getAdminMessages, type AdminLocale } from '@/lib/admin-messages';
+import { groupWorkLocations, matchesTruckSearch } from '@/lib/yard-card';
 import { formatAdminDateOnly } from '@/lib/admin-format';
 import {
   formatYardBoundaryDrivers,
@@ -30,18 +31,25 @@ export function AdminYardDataBoundaryCards({
   loading,
   fetchFailed,
   expanded,
+  search = '',
 }: {
   locale: AdminLocale;
   boundary: YardDataBoundaryDto | undefined;
   loading: boolean;
   fetchFailed: boolean;
   expanded: boolean;
+  /** LTR-103: filters every list by Truck number. */
+  search?: string;
 }) {
   const copy = yardDataBoundaryCopy(locale);
   const options = { loading, fetchFailed };
+  const workLocationItems = (boundary?.workLocation.items ?? []).filter((item) => matchesTruckSearch(item.truckNumber, search));
+  const incomingItems = (boundary?.incomingTrucks.items ?? []).filter((item) => matchesTruckSearch(item.truckNumber, search));
+  const departureItems = (boundary?.upcomingDepartures.items ?? []).filter((item) => matchesTruckSearch(item.truckNumber, search));
 
+  // LTR-103: full-width sections without nested scroll boxes.
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-1.5 xl:grid-cols-3">
+    <div className="grid min-w-0 grid-cols-1 gap-2">
       <BoundaryCard
         cardId="workLocation"
         icon={ICONS.workLocation}
@@ -54,7 +62,7 @@ export function AdminYardDataBoundaryCards({
         preview={workLocationPreview(boundary?.workLocation.items ?? [], boundary?.workLocation.summary)}
       >
         {boundary?.workLocation.status === 'ok' ? (
-          <WorkLocationItems items={boundary.workLocation.items} summary={boundary.workLocation.summary} />
+          <WorkLocationItems locale={locale} items={workLocationItems} />
         ) : null}
       </BoundaryCard>
       <BoundaryCard
@@ -69,7 +77,7 @@ export function AdminYardDataBoundaryCards({
         preview={movementPreview(locale, boundary?.incomingTrucks.items ?? [], 'returnDate')}
       >
         {boundary?.incomingTrucks.status === 'ok' ? (
-          <MovementItems locale={locale} items={boundary.incomingTrucks.items} dateKey="returnDate" />
+          <MovementItems locale={locale} items={incomingItems} dateKey="returnDate" />
         ) : null}
       </BoundaryCard>
       <BoundaryCard
@@ -84,7 +92,7 @@ export function AdminYardDataBoundaryCards({
         preview={movementPreview(locale, boundary?.upcomingDepartures.items ?? [], 'outDate')}
       >
         {boundary?.upcomingDepartures.status === 'ok' ? (
-          <MovementItems locale={locale} items={boundary.upcomingDepartures.items} dateKey="outDate" />
+          <MovementItems locale={locale} items={departureItems} dateKey="outDate" />
         ) : null}
       </BoundaryCard>
     </div>
@@ -167,21 +175,27 @@ function movementPreview(
   return date ? `${first.truckNumber} · ${formatted}` : first.truckNumber;
 }
 
+const LIST_PREVIEW = 12;
+
 function WorkLocationItems({
+  locale,
   items,
-  summary,
 }: {
+  locale: AdminLocale;
   items: YardWorkLocationItemDto[];
-  summary?: string;
 }) {
+  const messages = getAdminMessages(locale);
+  if (!items.length) return <p>{messages.yardNoTrucksMatch}</p>;
+  // LTR-103: group by reported status so 50+ rows read as a few lines.
+  const groups = groupWorkLocations(items, messages.yardNoReportedLocation);
   return (
-    <div className="space-y-1">
-      {summary ? <p className="font-medium text-foreground">{summary}</p> : null}
-      <ul className="max-h-36 space-y-0.5 overflow-y-auto">
-        {items.map((item, index) => (
-          <li key={`${item.truckNumber}-${index}`} className="min-w-0 truncate">
-            <span className="font-medium text-foreground">{item.truckNumber}</span>
-            {item.location ? <span> · {item.location}</span> : null}
+    <div className="space-y-1.5">
+      {/* The grouped headings replace the old one-line summary. */}
+      <ul className="space-y-1.5">
+        {groups.map((group) => (
+          <li key={group.location} className="min-w-0">
+            <p className="font-medium text-foreground">{group.location} <span className="text-muted-foreground">· {group.trucks.length}</span></p>
+            <ChipList locale={locale} chips={group.trucks.map((truck) => ({ key: truck, label: truck }))} />
           </li>
         ))}
       </ul>
@@ -198,23 +212,40 @@ function MovementItems({
   items: Array<YardIncomingTruckItemDto | YardUpcomingDepartureItemDto>;
   dateKey: 'returnDate' | 'outDate';
 }) {
+  const messages = getAdminMessages(locale);
+  if (!items.length) return <p>{messages.yardNoTrucksMatch}</p>;
   return (
-    <ul className="max-h-36 space-y-1 overflow-y-auto">
-      {items.map((item, index) => {
+    <ChipList
+      locale={locale}
+      chips={items.map((item, index) => {
         const date = dateKey === 'returnDate'
           ? (item as YardIncomingTruckItemDto).returnDate
           : (item as YardUpcomingDepartureItemDto).outDate;
         const drivers = formatYardBoundaryDrivers(item.drivers);
-        return (
-          <li key={`${item.truckNumber}-${date ?? 'undated'}-${index}`} className="min-w-0">
-            <p className="truncate">
-              <span className="font-medium text-foreground">{item.truckNumber}</span>
-              {date ? <span> · {formatAdminDateOnly(date, locale)}</span> : null}
-            </p>
-            {drivers ? <p className="truncate">{drivers}</p> : null}
-          </li>
-        );
+        return {
+          key: `${item.truckNumber}-${date ?? 'undated'}-${index}`,
+          label: date ? `${item.truckNumber} · ${formatAdminDateOnly(date, locale)}` : item.truckNumber,
+          title: drivers || undefined,
+        };
       })}
-    </ul>
+    />
+  );
+}
+
+function ChipList({ locale, chips }: { locale: AdminLocale; chips: { key: string; label: string; title?: string }[] }) {
+  const messages = getAdminMessages(locale);
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? chips : chips.slice(0, LIST_PREVIEW);
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1">
+      {visible.map((chip) => (
+        <span key={chip.key} title={chip.title} className="rounded-md border bg-background px-1.5 py-0.5 text-foreground">{chip.label}</span>
+      ))}
+      {chips.length > LIST_PREVIEW ? (
+        <button type="button" className="px-1 text-primary underline-offset-2 hover:underline" onClick={() => setShowAll((value) => !value)}>
+          {showAll ? messages.yardShowLess : messages.yardShowAll.replace('{count}', String(chips.length))}
+        </button>
+      ) : null}
+    </div>
   );
 }

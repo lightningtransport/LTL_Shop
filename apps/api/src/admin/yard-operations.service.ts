@@ -838,6 +838,7 @@ export class YardOperationsService {
         phase: workPlan.phase,
         blockers: workPlanBoardBlockers(workPlan, linkedForDerivation),
         activeWorkOrder,
+        readyReason: workPlan.readyReason,
       };
     }
 
