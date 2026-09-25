@@ -84,7 +84,8 @@ export class WorkOrdersService {
 
     const mapped = rows.map(toWorkOrderSummary);
     return {
-      created: mapped.filter((w) => w.status === 'created'),
+      // LTR-129: "Ready to start" puts Critical first (then High, Normal, Low; oldest first).
+      created: mapped.filter((w) => w.status === 'created').sort(byPriorityThenOldest),
       active: mapped.filter((w) => w.status === 'in_progress'),
       paused: mapped.filter((w) => w.status === 'waiting_paused'),
       completed: mapped.filter((w) => w.status === 'completed'),
@@ -1280,4 +1281,14 @@ export class WorkOrdersService {
   private normalizeVehicleValue(value: string | null) {
     return value?.toLocaleLowerCase('en-US').replace(/[^a-z0-9]/g, '') ?? '';
   }
+}
+
+const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, normal: 2, low: 3 };
+
+export function byPriorityThenOldest(
+  left: { priority: string; createdAt: string },
+  right: { priority: string; createdAt: string },
+) {
+  const byPriority = (PRIORITY_RANK[left.priority] ?? 9) - (PRIORITY_RANK[right.priority] ?? 9);
+  return byPriority || left.createdAt.localeCompare(right.createdAt);
 }
