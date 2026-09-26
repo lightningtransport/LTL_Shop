@@ -459,12 +459,15 @@ model PartFitment {
 model PmService {
   id              String   @id @default(uuid()) @db.Uuid
   workOrderId     String   @unique @map("work_order_id") @db.Uuid
+  // LTR-141 / LTR-143: the PM job inside the truck's Work Order. Null for legacy PM Work Orders.
+  workOrderJobId  String?  @unique @map("work_order_job_id") @db.Uuid
   observedMileage Int?     @map("observed_mileage")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  workOrder WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  parts     PmServicePart[]
+  workOrder    WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrderJob WorkOrderJob?   @relation(fields: [workOrderJobId], references: [id], onDelete: SetNull)
+  parts        PmServicePart[]
 
   @@map("pm_services")
 }
@@ -523,6 +526,8 @@ model WorkOrderJob {
   // Manager-first ownership: optional per-Job assignment. Nullable so historical
   // Jobs stay valid and an unassigned Job visually inherits the WO general team.
   assignedMechanicId String?   @map("assigned_mechanic_id") @db.Uuid
+  // LTR-141 / LTR-143: when the PM job was started (the end is completedAt).
+  startedAt          DateTime? @map("started_at")
 
   workOrder        WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   catalogJob       CatalogJob? @relation(fields: [catalogJobId], references: [id])
@@ -530,6 +535,7 @@ model WorkOrderJob {
   addedBy          User        @relation("JobAddedBy", fields: [addedById], references: [id])
   completedBy      User?       @relation("JobCompletedBy", fields: [completedById], references: [id])
   assignedMechanic User?       @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
+  pmService        PmService?
 
   @@index([workOrderId, status])
   @@index([assignedMechanicId])
