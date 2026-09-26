@@ -24,7 +24,7 @@ import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { YardOperationsService } from './yard-operations.service';
 import { deriveWorkPlan } from './yard-work-plan-derivation';
-import { isYardWorkPlanSlice1Enabled, isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
+import { isWorkPlanPmPhaseEnabled, isYardWorkPlanSlice1Enabled, isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -101,10 +101,12 @@ export class YardWorkPlanService {
             status: job.status as never,
           })),
       inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null,
+      pmPhase: isWorkPlanPmPhaseEnabled(),
     });
 
     return {
       sliceEnabled: isYardWorkPlanSlice1Enabled(),
+      pmPhaseEnabled: isWorkPlanPmPhaseEnabled(),
       ...derived,
       workOrder: workOrder
         ? {

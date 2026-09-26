@@ -42,6 +42,7 @@ export function workPlanPhaseLabel(phase: string, messages: AdminMessages) {
 export function workPlanReadyReasonMessage(reason: string, messages: AdminMessages) {
   if (reason === 'inspection_pending') return messages.workPlanReadyReasonInspection;
   if (reason === 'jobs_remaining') return messages.workPlanReadyReasonJobs;
+  if (reason === 'pm_pending') return messages.workPlanReadyReasonPm;
   if (reason === 'alignment_pending') return messages.workPlanReadyReasonAlignment;
   if (reason === 'detailing_pending') return messages.workPlanReadyReasonDetailing;
   if (reason === 'qc_pending') return messages.workPlanReadyReasonQc;

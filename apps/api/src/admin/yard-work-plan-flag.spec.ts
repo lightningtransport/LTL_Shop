@@ -32,3 +32,12 @@ describe('isYardWorkPlanSlice2Enabled', () => {
     expect(isYardWorkPlanSlice2Enabled({ YARD_WORK_PLAN_SLICE1: 'true' })).toBe(false);
   });
 });
+
+describe('isWorkPlanPmPhaseEnabled (LTR-144)', () => {
+  it('defaults off and turns on only when explicitly set', async () => {
+    const { isWorkPlanPmPhaseEnabled } = await import('./yard-work-plan-flag');
+    expect(isWorkPlanPmPhaseEnabled({})).toBe(false);
+    expect(isWorkPlanPmPhaseEnabled({ WORK_PLAN_PM_PHASE: 'false' })).toBe(false);
+    expect(isWorkPlanPmPhaseEnabled({ WORK_PLAN_PM_PHASE: 'true' })).toBe(true);
+  });
+});

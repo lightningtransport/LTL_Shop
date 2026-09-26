@@ -81,12 +81,14 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const hasMore = Boolean(lastPage?.nextCursor);
   const counts = data?.[0]?.counts;
   const workPlanBoardCutover = data?.[0]?.workPlanBoardCutover === true;
+  const pmPhaseEnabled = data?.[0]?.pmPhaseEnabled === true;
   const boardPhases = useMemo(
     () => yardPhasesForBoard({
       workPlanBoardCutover,
+      pmPhaseEnabled,
       itemPhases: items.map((item) => item.phase),
     }),
-    [workPlanBoardCutover, items],
+    [workPlanBoardCutover, pmPhaseEnabled, items],
   );
   const appliedFilters = useMemo(() => readYardOperationsFilters(searchParams), [searchParams]);
   const activeFilterCount = countActiveYardOperationsFilters(appliedFilters);

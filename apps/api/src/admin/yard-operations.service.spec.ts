@@ -442,6 +442,28 @@ describe('YardOperationsService', () => {
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
   });
 
+  it('LTR-144: with WORK_PLAN_PM_PHASE a legacy PM Work Order sits in the PM column, not Inspection', async () => {
+    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+    vi.stubEnv('WORK_PLAN_PM_PHASE', 'true');
+    const prisma = createPrisma();
+    const pmTruck = truck('923', '00000000-0000-4000-8000-000000000001');
+    pmTruck.workOrders = [{
+      ...slice2WorkOrderRow(),
+      status: WorkOrderStatus.IN_PROGRESS,
+      primaryCategory: { id: 'pm-cat', name: 'PM' },
+      jobs: [],
+    }] as never;
+    prisma.truck.findMany.mockResolvedValue([pmTruck]);
+    prisma.truck.count.mockResolvedValue(1);
+    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+    const page = await service.list({ limit: 25 });
+    expect(page.pmPhaseEnabled).toBe(true);
+    expect(page.items[0].phase).toBe('pm');
+    expect(page.items[0].readyReason).toBe('pm_pending');
+    expect(page.items[0].blockers).toContainEqual({ kind: 'required_requirement', requirementType: 'pm' });
+  });
+
   it('LTR-98: an unresolved mechanic blocker marks the truck Blocked', async () => {
     vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
     const prisma = createPrisma();

@@ -52,6 +52,20 @@ describe('yardPhasesForBoard', () => {
     expect(yardPhasesForBoard({ workPlanBoardCutover: true })).toEqual([...WORK_PLAN_YARD_PHASES]);
   });
 
+  it('LTR-144: adds PM after Shop Work and always shows QC with WORK_PLAN_PM_PHASE', () => {
+    expect(yardPhasesForBoard({ workPlanBoardCutover: true, pmPhaseEnabled: true })).toEqual([
+      WorkPlanPhase.INSPECTION,
+      WorkPlanPhase.SHOP_WORK,
+      WorkPlanPhase.PM,
+      WorkPlanPhase.ALIGNMENT,
+      WorkPlanPhase.DETAILING,
+      WorkPlanPhase.QUALITY_CHECK,
+      WorkPlanPhase.READY_TO_CLOSE,
+      WorkPlanPhase.READY_TO_GO,
+    ]);
+    expect(yardPhasesForBoard({ workPlanBoardCutover: false, pmPhaseEnabled: true })).toEqual([...YARD_PHASES]);
+  });
+
   it('inserts Quality Check only when a truck is in that phase', () => {
     expect(yardPhasesForBoard({
       workPlanBoardCutover: true,
