@@ -167,6 +167,17 @@ export class AdminController {
     return this.admin.removeMechanic(request.user!, id, mechanicId, body);
   }
 
+  @Post('work-orders/:id/jobs/:jobId/pm-service')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  changePmService(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.changePmService(request.user!, id, jobId, body);
+  }
+
   @Post('work-orders/:id/jobs/:jobId/assign')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   assignJob(

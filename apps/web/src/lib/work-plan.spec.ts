@@ -69,6 +69,7 @@ describe('LTR-33 Work Plan copy helpers', () => {
     expect(workPlanReadyReasonMessage('alignment_pending', es)).toContain('Alignment');
     expect(workPlanReadyReasonMessage('detailing_pending', es)).toContain('Detailing');
     expect(workPlanReadyReasonMessage('plan_complete', es)).toContain('Ready to Go');
+    expect(workPlanNextStepCategoryName('pm_pending')).toBe('PM');
     expect(workPlanNextStepCategoryName('alignment_pending')).toBe('Suspension & Steering');
     expect(workPlanNextStepCategoryName('detailing_pending')).toBe('Detailing');
     expect(workPlanNextStepCategoryName('qc_pending')).toBe('Quality Check');

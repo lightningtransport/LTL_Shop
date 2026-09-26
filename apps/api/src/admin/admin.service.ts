@@ -8,6 +8,8 @@ import {
   type PauseReason,
 } from '@prisma/client';
 import {
+  isPmCategory,
+  adminChangePmServiceSchema,
   workOrderAttentionRank,
   workOrderAttentionReason,
   ActivityEventType as SharedActivityEventType,
@@ -631,6 +633,85 @@ export class AdminService {
   // Manager-first ownership: assign a specific Job to a mechanic. Additive and
   // independent of MechanicAssignment (the general team). A Job with no assignee
   // visually inherits the general team.
+  /** LTR-145: switch a to-do PM job between PM Category catalog jobs (e.g. PM A ↔ PM B). */
+  async changePmService(user: AuthUser, workOrderId: string, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    if (!isUuid(jobId)) throw new BadRequestException('Invalid Job id');
+    const parsed = adminChangePmServiceSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const operation = 'admin_change_pm_service';
+    const payloadHash = idempotencyFingerprint({
+      workOrderId,
+      jobId,
+      catalogJobId: input.catalogJobId,
+      expectedVersion: input.expectedVersion,
+    });
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
+          throw new BadRequestException('Cannot change a closed Work Order');
+        }
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        const job = wo.jobs.find((item) => item.id === jobId);
+        if (!job) throw new NotFoundException('Job not found');
+        if (!isPmCategory(job.category.name)) throw new BadRequestException('Only the PM job can change its PM service');
+        if (job.status !== JobStatus.to_do) throw new BadRequestException('Job is not in To Do status');
+        const target = await tx.catalogJob.findFirst({
+          where: { id: input.catalogJobId, status: 'active', categoryId: job.categoryId },
+          select: { id: true, displayName: true },
+        });
+        if (!target) throw new BadRequestException('Choose an active PM service from the catalog');
+        if (target.id === job.catalogJobId) throw new BadRequestException('The PM job already uses this PM service');
+        await tx.workOrderJob.update({
+          where: { id: jobId },
+          data: { catalogJobId: target.id, displayName: target.displayName },
+        });
+        const incremented = await tx.workOrder.updateMany({
+          where: { id: workOrderId, version: input.expectedVersion },
+          data: { version: { increment: 1 } },
+        });
+        if (incremented.count !== 1) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: SharedActivityEventType.MANAGER_CORRECTION,
+          entityType: 'work_order_job',
+          entityId: jobId,
+          userId: user.id,
+          previousValue: { jobId, catalogJobId: job.catalogJobId, displayName: job.displayName },
+          newValue: { jobId, action: 'pm_service_changed', catalogJobId: target.id, displayName: target.displayName },
+        });
+        return this.persistWorkOrderMutation(tx, {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId,
+          operation,
+          payloadHash,
+          actorId: user.id,
+        });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
   async assignJob(user: AuthUser, workOrderId: string, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
     if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
     if (!isUuid(jobId)) throw new BadRequestException('Invalid Job id');
@@ -1534,6 +1615,13 @@ export class AdminService {
         if (!job) throw new NotFoundException('Job not found');
         if (job.status !== JobStatus.to_do) {
           throw new BadRequestException('Job is not in To Do status');
+        }
+        // LTR-145: the PM job is finished from the PM service (mileage + parts), not a plain complete.
+        if (isPmCategory(job.category.name)) {
+          throw new BadRequestException({
+            code: 'PM_JOB_USES_PM_SERVICE',
+            message: 'The PM job is completed from the PM service with observed mileage and parts.',
+          });
         }
         const incremented = await tx.workOrder.updateMany({
           where: { id: workOrderId, version: input.expectedVersion },
