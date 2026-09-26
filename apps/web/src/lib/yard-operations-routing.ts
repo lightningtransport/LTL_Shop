@@ -79,15 +79,21 @@ export const WORK_PLAN_YARD_PHASES = [
 export type YardBoardColumnPhase =
   | (typeof YARD_PHASES)[number]
   | (typeof WORK_PLAN_YARD_PHASES)[number]
+  | typeof WorkPlanPhase.PM
   | typeof WorkPlanPhase.QUALITY_CHECK;
 
 export function yardPhasesForBoard(options: {
   workPlanBoardCutover: boolean;
+  /** LTR-144: `WORK_PLAN_PM_PHASE` adds the PM column and always shows QC. */
+  pmPhaseEnabled?: boolean;
   itemPhases?: ReadonlyArray<string>;
 }): YardBoardColumnPhase[] {
   if (!options.workPlanBoardCutover) return [...YARD_PHASES];
   const phases: YardBoardColumnPhase[] = [...WORK_PLAN_YARD_PHASES];
-  if (options.itemPhases?.some((phase) => phase === WorkPlanPhase.QUALITY_CHECK)) {
+  if (options.pmPhaseEnabled) {
+    phases.splice(phases.indexOf(WorkPlanPhase.SHOP_WORK) + 1, 0, WorkPlanPhase.PM);
+  }
+  if (options.pmPhaseEnabled || options.itemPhases?.some((phase) => phase === WorkPlanPhase.QUALITY_CHECK)) {
     const readyIndex = phases.indexOf(WorkPlanPhase.READY_TO_CLOSE);
     phases.splice(readyIndex, 0, WorkPlanPhase.QUALITY_CHECK);
   }

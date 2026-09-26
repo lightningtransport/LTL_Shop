@@ -9,6 +9,7 @@ import {
   WorkPlanNotReadyReason,
   WorkPlanPhase,
   WorkPlanReadiness,
+  isPmCategory,
   type WorkPlanJobDto,
   type WorkPlanMandatoryPhaseDto,
 } from '@ltl-shop/shared';
@@ -34,6 +35,8 @@ export type WorkPlanDerivationInput = {
   workOrder: WorkPlanDerivationWorkOrder | null;
   jobs: WorkPlanDerivationJob[];
   inspectionRequirementOutcome?: ReadinessRequirementOutcome | `${ReadinessRequirementOutcome}` | null;
+  /** LTR-144: `WORK_PLAN_PM_PHASE`. Off keeps the pre-PM-phase derivation unchanged. */
+  pmPhase?: boolean;
 };
 
 function normalize(value: string) {
@@ -68,6 +71,10 @@ export function classifyWorkPlanLane(
   const name = normalize(displayName);
   if (isDetailingWorkPlanJob(categoryName, displayName)) {
     return WorkPlanJobLane.DETAILING;
+  }
+  // LTR-144: PM A / PM B Service live in the PM Category.
+  if (isPmCategory(categoryName)) {
+    return WorkPlanJobLane.PM;
   }
   if (category.includes('alignment') || name === 'alignment') {
     return WorkPlanJobLane.ALIGNMENT;
@@ -124,12 +131,17 @@ export function toWorkPlanJobDto(
 function mandatoryPhase(
   jobs: WorkPlanJobDto[],
   required: boolean,
+  options: { cancelledMeansNotApplicable?: boolean } = {},
 ): WorkPlanMandatoryPhaseDto {
   const active = jobs.filter((job) => job.status !== JobStatus.CANCELLED);
   const remainingCount = active.filter((job) => job.status === JobStatus.TO_DO).length;
   const completedCount = active.filter((job) => job.status === JobStatus.COMPLETED).length;
   if (!required && jobs.length === 0) {
     return { required: false, status: WorkPlanMandatoryStatus.NOT_APPLICABLE, jobCount: 0, remainingCount: 0 };
+  }
+  // LTR-144: the Manager cancelled every Job of this step with a reason ("No aplica").
+  if (options.cancelledMeansNotApplicable && jobs.length > 0 && active.length === 0) {
+    return { required, status: WorkPlanMandatoryStatus.NOT_APPLICABLE, jobCount: 0, remainingCount: 0 };
   }
   let status = WorkPlanMandatoryStatus.PENDING;
   if (completedCount > 0 && remainingCount === 0) status = WorkPlanMandatoryStatus.COMPLETE;
@@ -166,14 +178,45 @@ export function deriveInspectionOutcome(
   return WorkPlanInspectionOutcome.NOT_STARTED;
 }
 
+/** Resolved = done, or not applicable (optional QC off-flag, or all Jobs cancelled on-flag). */
+function unresolved(step: WorkPlanMandatoryPhaseDto) {
+  return step.status !== WorkPlanMandatoryStatus.COMPLETE && step.status !== WorkPlanMandatoryStatus.NOT_APPLICABLE;
+}
+
+/**
+ * LTR-144: a legacy PM Work Order (PM Category, no Jobs) is the PM phase while
+ * open — not "Inspection pending" (LTR-91) — and the whole service once completed.
+ */
+function deriveLegacyPmWorkPlan(input: WorkPlanDerivationInput) {
+  const open = input.workOrder?.status !== WorkOrderStatus.COMPLETED;
+  const notApplicable = { required: false, status: WorkPlanMandatoryStatus.NOT_APPLICABLE, jobCount: 0, remainingCount: 0 };
+  const pm = { required: true, status: open ? WorkPlanMandatoryStatus.IN_PROGRESS : WorkPlanMandatoryStatus.COMPLETE, jobCount: 0, remainingCount: 0 };
+  return {
+    inspection: { outcome: WorkPlanInspectionOutcome.NO_ISSUES_FOUND },
+    jobs: [] as WorkPlanJobDto[],
+    remainingJobCount: 0,
+    readiness: open ? WorkPlanReadiness.NOT_READY : WorkPlanReadiness.READY,
+    readyReason: open ? WorkPlanNotReadyReason.PM_PENDING : WorkPlanNotReadyReason.PLAN_COMPLETE,
+    phase: open ? WorkPlanPhase.PM : WorkPlanPhase.READY_TO_GO,
+    mandatory: { pm, alignment: notApplicable, detailing: notApplicable, qualityCheck: notApplicable },
+  };
+}
+
 export function deriveWorkPlan(input: WorkPlanDerivationInput) {
+  const pmPhase = Boolean(input.pmPhase);
+  if (pmPhase && input.workOrder && isPmCategory(input.workOrder.primaryCategoryName)) {
+    return deriveLegacyPmWorkPlan(input);
+  }
   const jobs = input.jobs.map((job) => toWorkPlanJobDto(job, input.workOrder?.status ?? null));
   const inspectionOutcome = deriveInspectionOutcome(jobs, input.inspectionRequirementOutcome);
   const byLane = (lane: WorkPlanJobLane) => jobs.filter((job) => job.lane === lane);
-  const alignment = mandatoryPhase(byLane(WorkPlanJobLane.ALIGNMENT), true);
-  const detailing = mandatoryPhase(byLane(WorkPlanJobLane.DETAILING), true);
+  const stepOptions = { cancelledMeansNotApplicable: pmPhase };
+  const pm = pmPhase ? mandatoryPhase(byLane(WorkPlanJobLane.PM), true, stepOptions) : null;
+  const alignment = mandatoryPhase(byLane(WorkPlanJobLane.ALIGNMENT), true, stepOptions);
+  const detailing = mandatoryPhase(byLane(WorkPlanJobLane.DETAILING), true, stepOptions);
   const qualityJobs = byLane(WorkPlanJobLane.QUALITY_CHECK);
-  const qualityCheck = mandatoryPhase(qualityJobs, qualityJobs.length > 0);
+  // LTR-144: QC is always required once PM is a phase (Cristian, 2026-09-25).
+  const qualityCheck = mandatoryPhase(qualityJobs, pmPhase || qualityJobs.length > 0, stepOptions);
   const remainingJobs = jobs.filter((job) => job.status === JobStatus.TO_DO);
   const remainingJobCount = remainingJobs.length;
   const shopRemaining = remainingJobs.filter((job) => job.lane === WorkPlanJobLane.SHOP_WORK).length;
@@ -185,11 +228,13 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     readyReason = WorkPlanNotReadyReason.INSPECTION_PENDING;
   } else if (needsAddWork || shopRemaining > 0) {
     readyReason = WorkPlanNotReadyReason.JOBS_REMAINING;
-  } else if (alignment.status !== WorkPlanMandatoryStatus.COMPLETE) {
+  } else if (pm && unresolved(pm)) {
+    readyReason = WorkPlanNotReadyReason.PM_PENDING;
+  } else if (unresolved(alignment)) {
     readyReason = WorkPlanNotReadyReason.ALIGNMENT_PENDING;
-  } else if (detailing.status !== WorkPlanMandatoryStatus.COMPLETE) {
+  } else if (unresolved(detailing)) {
     readyReason = WorkPlanNotReadyReason.DETAILING_PENDING;
-  } else if (qualityCheck.required && qualityCheck.status !== WorkPlanMandatoryStatus.COMPLETE) {
+  } else if (qualityCheck.required && unresolved(qualityCheck)) {
     readyReason = WorkPlanNotReadyReason.QC_PENDING;
   } else if (input.workOrder && input.workOrder.status !== WorkOrderStatus.COMPLETED) {
     // LTR-90 / D1: Ready to Go only after the Manager completes the Work Order.
@@ -205,11 +250,13 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     phase = WorkPlanPhase.INSPECTION;
   } else if (needsAddWork || shopRemaining > 0) {
     phase = WorkPlanPhase.SHOP_WORK;
-  } else if (alignment.status !== WorkPlanMandatoryStatus.COMPLETE) {
+  } else if (pm && unresolved(pm)) {
+    phase = WorkPlanPhase.PM;
+  } else if (unresolved(alignment)) {
     phase = WorkPlanPhase.ALIGNMENT;
-  } else if (detailing.status !== WorkPlanMandatoryStatus.COMPLETE) {
+  } else if (unresolved(detailing)) {
     phase = WorkPlanPhase.DETAILING;
-  } else if (qualityCheck.required && qualityCheck.status !== WorkPlanMandatoryStatus.COMPLETE) {
+  } else if (qualityCheck.required && unresolved(qualityCheck)) {
     phase = WorkPlanPhase.QUALITY_CHECK;
   } else if (readyReason === WorkPlanNotReadyReason.WORK_ORDER_OPEN) {
     phase = WorkPlanPhase.READY_TO_CLOSE;
@@ -222,6 +269,6 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     readiness,
     readyReason,
     phase,
-    mandatory: { alignment, detailing, qualityCheck },
+    mandatory: pm ? { pm, alignment, detailing, qualityCheck } : { alignment, detailing, qualityCheck },
   };
 }

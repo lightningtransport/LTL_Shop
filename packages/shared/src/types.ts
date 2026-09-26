@@ -421,6 +421,8 @@ export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto>
    * follow Work Plan phases (incl. `shop_work`) instead of Phase 1 gates.
    */
   workPlanBoardCutover?: boolean;
+  /** LTR-144: `WORK_PLAN_PM_PHASE` is on (board shows the PM column and QC always). */
+  pmPhaseEnabled?: boolean;
 }
 
 export interface AdminTruckSummaryDto {
@@ -487,10 +489,14 @@ export interface TruckWorkPlanDto {
   readyReason: WorkPlanNotReadyReason;
   phase: WorkPlanPhase;
   mandatory: {
+    /** LTR-144: present only when `WORK_PLAN_PM_PHASE` is on. */
+    pm?: WorkPlanMandatoryPhaseDto;
     alignment: WorkPlanMandatoryPhaseDto;
     detailing: WorkPlanMandatoryPhaseDto;
     qualityCheck: WorkPlanMandatoryPhaseDto;
   };
+  /** LTR-144: `WORK_PLAN_PM_PHASE` is on (PM phase, QC always required). */
+  pmPhaseEnabled?: boolean;
   capabilities: WorkPlanCapabilitiesDto;
   phase1: {
     assessmentId: string | null;

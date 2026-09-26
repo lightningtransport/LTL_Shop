@@ -155,6 +155,8 @@ export enum ReadinessPhase {
 export enum WorkPlanPhase {
   INSPECTION = 'inspection',
   SHOP_WORK = 'shop_work',
+  /** LTR-141 / LTR-144 (`WORK_PLAN_PM_PHASE`): mandatory PM between Shop Work and Alignment. */
+  PM = 'pm',
   ALIGNMENT = 'alignment',
   DETAILING = 'detailing',
   QUALITY_CHECK = 'quality_check',
@@ -192,6 +194,8 @@ export enum WorkPlanJobLane {
   /** LTR-89: Jobs in the Inspection Category are discovery, not Shop Work. */
   INSPECTION = 'inspection',
   SHOP_WORK = 'shop_work',
+  /** LTR-144: Jobs in the PM Category (PM A / PM B Service). */
+  PM = 'pm',
   ALIGNMENT = 'alignment',
   DETAILING = 'detailing',
   QUALITY_CHECK = 'quality_check',
@@ -212,6 +216,8 @@ export enum WorkPlanReadiness {
 export enum WorkPlanNotReadyReason {
   INSPECTION_PENDING = 'inspection_pending',
   JOBS_REMAINING = 'jobs_remaining',
+  /** LTR-144: the mandatory PM is not done. */
+  PM_PENDING = 'pm_pending',
   ALIGNMENT_PENDING = 'alignment_pending',
   DETAILING_PENDING = 'detailing_pending',
   QC_PENDING = 'qc_pending',

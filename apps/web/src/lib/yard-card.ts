@@ -5,6 +5,7 @@
 export type YardCardNextKey =
   | 'yardCardNextInspection'
   | 'yardCardJobsPending'
+  | 'yardCardNextPm'
   | 'yardCardNextAlignment'
   | 'yardCardNextDetailing'
   | 'yardCardNextQc'
@@ -22,6 +23,8 @@ export function yardCardNextStep(input: {
       const pending = Math.max(0, (input.jobsTotal ?? 0) - (input.jobsCompleted ?? 0));
       return { key: 'yardCardJobsPending', values: { count: String(pending) } };
     }
+    case 'pm_pending':
+      return { key: 'yardCardNextPm', values: {} };
     case 'alignment_pending':
       return { key: 'yardCardNextAlignment', values: {} };
     case 'detailing_pending':

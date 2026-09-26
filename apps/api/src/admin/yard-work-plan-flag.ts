@@ -26,3 +26,14 @@ export function isYardWorkPlanSlice2Enabled(
 ): boolean {
   return envFlagEnabled(env.YARD_WORK_PLAN_SLICE2);
 }
+
+/**
+ * LTR-141 / LTR-144: PM is a mandatory phase of the Work Plan (Shop Work → PM →
+ * Alignment), QC is always required, and a lane whose Jobs were all cancelled
+ * with a reason counts as not applicable. Default off.
+ */
+export function isWorkPlanPmPhaseEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return envFlagEnabled(env.WORK_PLAN_PM_PHASE);
+}

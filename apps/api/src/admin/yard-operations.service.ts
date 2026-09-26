@@ -55,7 +55,7 @@ import {
   type WorkPlanDerivationInput,
 } from './yard-work-plan-derivation';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
-import { isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
+import { isWorkPlanPmPhaseEnabled, isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
 import { unavailableYardMovementFeeds } from './yard-movement-feeds';
 
 const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
@@ -785,6 +785,7 @@ export class YardOperationsService {
       incomingTrucks: feeds.incomingTrucks,
       upcomingDepartures: feeds.upcomingDepartures,
       workPlanBoardCutover: isYardWorkPlanSlice2Enabled(),
+      pmPhaseEnabled: isYardWorkPlanSlice2Enabled() && isWorkPlanPmPhaseEnabled(),
     };
   }
 
@@ -1095,6 +1096,7 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
           status: job.status as never,
         })),
     inspectionRequirementOutcome: (inspectionRequirement?.outcome as ReadinessRequirementOutcome | undefined) ?? null,
+    pmPhase: isWorkPlanPmPhaseEnabled(),
   };
 }
 
@@ -1136,6 +1138,7 @@ function workPlanBoardBlockers(
   const reasonType: Partial<Record<WorkPlanNotReadyReason, ReadinessRequirementType>> = {
     [WorkPlanNotReadyReason.INSPECTION_PENDING]: ReadinessRequirementType.INSPECTION,
     [WorkPlanNotReadyReason.JOBS_REMAINING]: ReadinessRequirementType.REQUIRED_REPAIRS,
+    [WorkPlanNotReadyReason.PM_PENDING]: ReadinessRequirementType.PM,
     [WorkPlanNotReadyReason.ALIGNMENT_PENDING]: ReadinessRequirementType.ALIGNMENT,
     [WorkPlanNotReadyReason.DETAILING_PENDING]: ReadinessRequirementType.DETAILING,
     [WorkPlanNotReadyReason.QC_PENDING]: ReadinessRequirementType.QUALITY_CHECK,
