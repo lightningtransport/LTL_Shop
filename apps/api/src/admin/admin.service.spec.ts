@@ -916,6 +916,51 @@ describe('AdminService', () => {
     })).resolves.toEqual(stored);
   });
 
+  it('LTR-145: switches the PM job between PM A and PM B, and refuses completing it as a plain Job', async () => {
+    const manager = {
+      id: '00000000-0000-4000-8000-000000000002', email: 'manager@lightning.local', name: 'Shop Manager',
+      role: 'manager' as const, active: true, pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
+    };
+    const pmJobId = '00000000-0000-4000-8000-000000000777';
+    const pmJob = {
+      ...detailRow().jobs[0], id: pmJobId, catalogJobId: '00000000-0000-4000-8000-000000000a01',
+      displayName: 'PM A Service', categoryId: 'pm-cat', category: { name: 'PM' },
+    };
+    const open = detailRow({ status: 'in_progress', version: 1, jobs: [pmJob] });
+    const activity = { log: vi.fn() };
+    const tx = assignmentTx(open, {
+      catalogJob: { findFirst: vi.fn().mockResolvedValue({ id: '00000000-0000-4000-8000-000000000a02', displayName: 'PM B Service' }) },
+    });
+    tx.workOrder.findUnique.mockResolvedValue(open);
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, activity as never, {} as never);
+
+    await service.changePmService(manager, open.id, pmJobId, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001201',
+      catalogJobId: '00000000-0000-4000-8000-000000000a02',
+    });
+    expect((tx as unknown as { catalogJob: { findFirst: ReturnType<typeof vi.fn> } }).catalogJob.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ categoryId: 'pm-cat', status: 'active' }),
+    }));
+    expect(tx.workOrderJob.update).toHaveBeenCalledWith({
+      where: { id: pmJobId },
+      data: { catalogJobId: '00000000-0000-4000-8000-000000000a02', displayName: 'PM B Service' },
+    });
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({
+      eventType: ActivityEventType.MANAGER_CORRECTION,
+      newValue: expect.objectContaining({ action: 'pm_service_changed', displayName: 'PM B Service' }),
+    }));
+
+    prisma.workOrderJob.findUnique.mockResolvedValue({ id: pmJobId, workOrderId: open.id });
+    await expect(service.completeJob(manager, pmJobId, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001202',
+    })).rejects.toMatchObject({ response: { code: 'PM_JOB_USES_PM_SERVICE' } });
+  });
+
   it('patches allowed Admin fields on open Work Orders', async () => {
     const manager = {
       id: '00000000-0000-4000-8000-000000000002',

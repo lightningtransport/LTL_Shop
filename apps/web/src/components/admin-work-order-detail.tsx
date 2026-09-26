@@ -3,19 +3,19 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSWRConfig } from 'swr';
-import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { isPmCategory, AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { addAdminWorkOrderJob, addAdminWorkOrderNote, handleAdminWorkRequest, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { changeAdminPmService, addAdminWorkOrderJob, addAdminWorkOrderNote, handleAdminWorkRequest, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { pauseResumeError } from './pause-resume-error';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
 import { adminNextStep, fillPlaceholders } from '@/lib/admin-next-step';
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
-import { useCategories } from '@/lib/shop-data';
+import { useCatalogJobs, useCategories } from '@/lib/shop-data';
 import { useActionToast } from './action-toast';
 import { JobPickerDialog } from './job-picker-dialog';
 import {
@@ -205,6 +205,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             <ul className="divide-y">
               {data.jobs.map((job) => {
                 const isToDo = job.status === 'to_do';
+                // LTR-145: the PM job is finished from the PM service (mileage + parts), not "Complete".
+                const isPmJob = isPmCategory(job.category.name);
                 const isTerminal = job.status === 'completed' || job.status === 'cancelled';
                 return (
                   <li key={job.id} className="py-3 first:pt-0">
@@ -306,7 +308,16 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                           ) : null}
                           <div className="flex flex-wrap items-center gap-2">
                             <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
-                            {canManageJobs && isToDo ? (
+                            {isPmJob && isToDo && canManageJobs ? (
+                              <PmServiceSelect
+                                job={job}
+                                messages={messages}
+                                disabled={Boolean(pendingAction)}
+                                onChange={(catalogJobId) => void runMutation(`pm-service-${job.id}`, messages.pmServiceChangedSuccess, () => changeAdminPmService(data.id, job.id, { catalogJobId, expectedVersion: data.version }), () => messages.pmServiceChangeFailed)}
+                              />
+                            ) : null}
+                            {isPmJob && isToDo ? <span className="text-xs text-muted-foreground">{messages.pmJobCompletedFromPmService}</span> : null}
+                            {canManageJobs && isToDo && !isPmJob ? (
                               <Button
                                 type="button"
                                 size="sm"
@@ -1037,3 +1048,26 @@ function Info({ label, value }: { label: string; value: string }) { return <div>
 function formatAge(value: string, locale: AdminLocale) { const elapsed = Math.max(0, Date.now() - new Date(value).getTime()); const hours = Math.floor(elapsed / 3_600_000); const number = new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US'); if (hours < 24) return `${number.format(hours)}h`; const days = Math.floor(hours / 24); return `${number.format(days)}d ${number.format(hours % 24)}h`; }
 function Pause({ pause, locale, messages }: { pause: { reason: string; notes: string | null; startedAt: string; endedAt: string | null; durationMs: number | null }; locale: AdminLocale; messages: AdminMessages }) { return <div><p className="font-medium">{adminPauseReasonLabel(pause.reason, messages)}</p><p className="text-sm text-muted-foreground">{formatAdminDate(pause.startedAt, locale)} → {formatAdminDate(pause.endedAt, locale)}{pause.durationMs !== null ? ` · ${formatDuration(pause.durationMs)}` : ''}</p>{pause.notes ? <p className="mt-1 text-sm">{pause.notes}</p> : null}</div>; }
 function NotFound({ messages }: { messages: AdminMessages }) { return <EmptyState><p>{messages.workOrderNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/work-orders">{messages.backToWorkOrders}</Link></Button></EmptyState>; }
+
+/** LTR-145: PM A ↔ PM B for the PM job (PM Category catalog jobs). */
+function PmServiceSelect({ job, messages, disabled, onChange }: {
+  job: AdminWorkOrderDetailDto['jobs'][number];
+  messages: AdminMessages;
+  disabled: boolean;
+  onChange: (catalogJobId: string) => void;
+}) {
+  const { data: pmJobs } = useCatalogJobs(job.category.id, true);
+  const options = (pmJobs ?? []).filter((item) => /^PM [A-Z] Service$/i.test(item.displayName) || item.id === job.catalogJobId);
+  if (options.length < 2) return null;
+  return (
+    <Select
+      aria-label={messages.pmServiceVariant}
+      className="h-9 w-auto"
+      value={job.catalogJobId ?? ''}
+      disabled={disabled}
+      onChange={(event) => { if (event.target.value && event.target.value !== job.catalogJobId) onChange(event.target.value); }}
+    >
+      {options.map((item) => <option key={item.id} value={item.id}>{item.displayName}</option>)}
+    </Select>
+  );
+}

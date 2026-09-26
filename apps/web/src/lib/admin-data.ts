@@ -290,6 +290,19 @@ export function removeAdminWorkOrderMechanic(
   });
 }
 
+/** LTR-145: switch the PM job between PM Category catalog jobs (PM A ↔ PM B). */
+export function changeAdminPmService(
+  workOrderId: string,
+  jobId: string,
+  input: { catalogJobId: string; expectedVersion: number },
+  idempotencyKey = adminMutationIdempotencyKey(),
+) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/jobs/${jobId}/pm-service`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey }),
+  });
+}
+
 export function assignAdminWorkOrderJob(
   workOrderId: string,
   jobId: string,

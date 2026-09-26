@@ -53,6 +53,7 @@ export function workPlanReadyReasonMessage(reason: string, messages: AdminMessag
 
 /** Catalog category to pre-select when the next Work Plan step needs Add work. */
 export function workPlanNextStepCategoryName(readyReason: string): string | null {
+  if (readyReason === 'pm_pending') return 'PM';
   if (readyReason === 'alignment_pending') return 'Suspension & Steering';
   if (readyReason === 'detailing_pending') return 'Detailing';
   if (readyReason === 'qc_pending') return 'Quality Check';
@@ -60,6 +61,7 @@ export function workPlanNextStepCategoryName(readyReason: string): string | null
 }
 
 export function workPlanNextStepCtaLabel(readyReason: string, messages: AdminMessages): string | null {
+  if (readyReason === 'pm_pending') return messages.workPlanAddPmCta;
   if (readyReason === 'alignment_pending') return messages.workPlanAddAlignmentCta;
   if (readyReason === 'detailing_pending') return messages.workPlanAddDetailingCta;
   if (readyReason === 'qc_pending') return messages.workPlanAddQcCta;

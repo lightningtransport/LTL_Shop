@@ -39,6 +39,8 @@ import {
 import type { AuthUser } from '../auth/auth.guard';
 import { stopLaborWhenNoPendingJobs } from './labor-session';
 import { assertPmObservedMileage } from './pm-mileage.guard';
+import { isPmJobCategory, resolveMandatoryJobs, type MandatoryJob } from './mandatory-jobs';
+import { isWorkPlanPmPhaseEnabled } from '../admin/yard-work-plan-flag';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
@@ -200,6 +202,21 @@ export class WorkOrdersService {
       await this.assertStandardJobsUseActiveCategories(input.jobs);
     }
 
+    // LTR-145: PM, Alignment, Detailing and QC are added to every new truck Work Order.
+    let mandatoryJobs: MandatoryJob[] = [];
+    if (!isPm && isWorkPlanPmPhaseEnabled()) {
+      const categoryNames = new Map(
+        (await this.prisma.jobCategory.findMany({
+          where: { id: { in: input.jobs.map((job) => job.categoryId) } },
+          select: { id: true, name: true },
+        })).map((item) => [item.id, item.name]),
+      );
+      mandatoryJobs = await resolveMandatoryJobs(
+        this.prisma,
+        input.jobs.map((job) => ({ categoryName: categoryNames.get(job.categoryId) ?? '', displayName: job.displayName })),
+      );
+    }
+
     const preflightOpen = await this.prisma.workOrder.findFirst({
       where: {
         truckId: input.truckId,
@@ -311,7 +328,7 @@ export class WorkOrdersService {
             idempotencyActorId: input.idempotencyKey ? user.id : undefined,
             sessions: isPm && startedAt ? { create: { startedAt } } : undefined,
             jobs: {
-              create: input.jobs.map((job) => ({
+              create: ([] as Prisma.WorkOrderJobUncheckedCreateWithoutWorkOrderInput[]).concat(input.jobs.map((job) => ({
                 catalogJobId: job.catalogJobId,
                 categoryId: job.categoryId,
                 displayName: job.displayName,
@@ -320,8 +337,18 @@ export class WorkOrdersService {
                 reviewStatus: job.catalogJobId ? null : 'pending_review',
                 addedById: user.id,
                 assignedMechanicId: actorKind === 'manager' ? job.assignedMechanicId : undefined,
-                status: 'to_do',
-              })),
+                status: 'to_do' as const,
+              })), mandatoryJobs.map((job) => ({
+                catalogJobId: job.catalogJobId,
+                categoryId: job.categoryId,
+                displayName: job.displayName,
+                customDescription: undefined,
+                isCustom: false,
+                reviewStatus: null,
+                addedById: user.id,
+                assignedMechanicId: undefined,
+                status: 'to_do' as const,
+              }))),
             },
             mechanics: {
               create: mechanicIds.map((mechanicId) => ({
@@ -784,14 +811,18 @@ export class WorkOrdersService {
           select: { id: true, name: true },
         });
         if (!category) throw new BadRequestException('Invalid or inactive job category');
-        if (category.name === 'PM') {
+        if (category.name === 'PM' && !isWorkPlanPmPhaseEnabled()) {
           throw new BadRequestException('PM jobs must use the PM workflow');
         }
         await this.assertCatalogJobsBelongToCategory([input], input.categoryId, tx);
         const currentJobs = await tx.workOrderJob.findMany({
           where: { workOrderId: id, status: { not: 'cancelled' } },
-          select: { catalogJobId: true, displayName: true },
+          select: { catalogJobId: true, displayName: true, category: { select: { name: true } } },
         });
+        // LTR-145: one PM job per Work Order (switch A↔B instead of adding a second).
+        if (isPmJobCategory(category.name) && currentJobs.some((job) => isPmJobCategory(job.category.name))) {
+          throw new BadRequestException({ code: 'PM_JOB_EXISTS', message: 'This Work Order already has a PM job. Change it to PM A or PM B instead.' });
+        }
         const duplicate = input.catalogJobId
           ? currentJobs.some((job) => job.catalogJobId === input.catalogJobId)
           : currentJobs.some((job) =>
@@ -883,6 +914,17 @@ export class WorkOrdersService {
     }
   }
 
+  /** LTR-145: the PM job is finished from the PM service (mileage + parts), coming in LTR-146. */
+  async assertNotPmJob(tx: Pick<Prisma.TransactionClient, 'jobCategory'>, categoryId: string) {
+    const category = await tx.jobCategory.findUnique({ where: { id: categoryId }, select: { name: true } });
+    if (isPmJobCategory(category?.name)) {
+      throw new BadRequestException({
+        code: 'PM_JOB_USES_PM_SERVICE',
+        message: 'The PM job is completed from the PM service with observed mileage and parts.',
+      });
+    }
+  }
+
   private async assertStandardJobsUseActiveCategories(
     jobs: CreateWorkOrderInput['jobs'],
   ) {
@@ -891,7 +933,8 @@ export class WorkOrdersService {
       where: { id: { in: categoryIds }, status: 'active' },
       select: { id: true, name: true },
     });
-    if (categories.length !== categoryIds.length || categories.some((item) => item.name === 'PM')) {
+    const pmAllowed = isWorkPlanPmPhaseEnabled();
+    if (categories.length !== categoryIds.length || (!pmAllowed && categories.some((item) => item.name === 'PM'))) {
       throw new BadRequestException('One or more job categories are invalid or inactive');
     }
     const catalogIds = [...new Set(jobs.flatMap((job) => job.catalogJobId ? [job.catalogJobId] : []))];
@@ -1057,6 +1100,7 @@ export class WorkOrdersService {
       if (job.status !== 'to_do') {
         throw new BadRequestException('Job is not in To Do status');
       }
+      await this.assertNotPmJob(tx, job.categoryId);
       await tx.workOrderJob.update({
         where: { id: jobId },
         data: {
