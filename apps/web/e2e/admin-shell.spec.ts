@@ -216,6 +216,9 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('120,000').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Recent repair history' })).toBeVisible();
     await expect(page.getByText('WO-0104').first()).toBeVisible();
+    // LTR-109: times, correction, pauses and Activity Log live in "History and audit".
+    await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeHidden();
+    await page.getByTestId('admin-wo-history').locator('summary').click();
     await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeVisible();
     // LTR-126: notes are append-only entries with author and time.
     await expect(page.getByRole('heading', { name: 'Notes', exact: true })).toBeVisible();
@@ -234,7 +237,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('main').getByText('Job reopened.')).toBeVisible();
     await page.getByLabel('Select a mechanic to add').selectOption({ label: 'Anthony' });
     await page.getByRole('button', { name: 'Add mechanic' }).click();
-    await expect(page.getByText('Anthony').first()).toBeVisible();
+    await expect(page.getByRole('listitem').filter({ hasText: 'Anthony' }).first()).toBeVisible();
     await page.getByRole('listitem').filter({ hasText: 'Anthony' }).getByRole('button', { name: 'Remove' }).click();
     // Cancel WO-0103, not WO-0101: the fixture API keeps state for the whole run,
     // and later tests need WO-0101 to stay open and Waiting / Paused.
@@ -249,6 +252,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
     await expect(page.getByTestId('admin-wo-next-action').getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm completion' }).first()).toBeVisible();
+    await page.getByTestId('admin-wo-history').locator('summary').click();
     await page.getByLabel('Time segment').selectOption({ index: 1 });
     await page.getByLabel('Corrected end time').fill('2026-09-06T17:00');
     await page.getByLabel('Reason for time correction').fill('Clock was wrong');
@@ -587,6 +591,7 @@ test.describe('Shop Admin Phase 2A', () => {
     const stickyBox = await stickyButton.boundingBox();
     expect(stickyBox?.height).toBeGreaterThanOrEqual(44);
 
+    await page.getByTestId('admin-wo-history').locator('summary').click();
     await page.getByRole('heading', { name: 'Activity Log' }).scrollIntoViewIfNeeded();
     await expect(nextAction).toBeInViewport();
     await expect(stickyButton).toBeInViewport();

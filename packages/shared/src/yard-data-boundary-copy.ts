@@ -26,8 +26,8 @@ export const YARD_DATA_BOUNDARY_COPY = {
     unavailable: 'Data unavailable.',
     badge: 'UNAVAILABLE',
     workLocation: {
-      label: 'Work location',
-      empty: 'No work location yet.',
+      label: 'Dispatch status',
+      empty: 'No Dispatch status yet.',
     },
     incomingTrucks: {
       label: 'Incoming Trucks',
@@ -42,8 +42,8 @@ export const YARD_DATA_BOUNDARY_COPY = {
     unavailable: 'Datos no disponibles.',
     badge: 'NO DISPONIBLE',
     workLocation: {
-      label: 'Ubicación de trabajo',
-      empty: 'Aún no hay ubicación de trabajo.',
+      label: 'Estado de Dispatch',
+      empty: 'Aún no hay estado de Dispatch.',
     },
     incomingTrucks: {
       label: 'Incoming Trucks',

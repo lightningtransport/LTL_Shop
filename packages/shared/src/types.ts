@@ -133,6 +133,8 @@ export interface WorkOrderSummaryDto {
   displayId: string;
   truckId: string;
   truckNumber: string;
+  /** LTR-130: year / make / model so a card identifies the Truck (additive). */
+  truckVehicle?: { year: number | null; make: string | null; model: string | null };
   primaryCategoryId: string;
   primaryCategoryName: string;
   status: WorkOrderStatus;
@@ -393,6 +395,8 @@ export interface YardOperationsTruckDto {
   phase: YardBoardPhase | ReadinessPhase | WorkPlanPhase;
   blockers: ReadinessBlockerDto[];
   activeWorkOrder: AdminWorkOrderSummaryDto | null;
+  /** LTR-101: Work Plan board only — why the Truck is not Ready to Go yet (`WorkPlanNotReadyReason`). */
+  readyReason?: string;
 }
 
 export interface YardOperationsCountsDto {

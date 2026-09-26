@@ -26,6 +26,7 @@ import {
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { workPlanPhaseLabel } from '@/lib/work-plan';
 import { formatVehicleYmm } from '@/lib/format';
+import { compactAge, fillYardText, yardCardNextStep } from '@/lib/yard-card';
 import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
 import { AdminPageHeader, Badge, Button, Card, CardDescription, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
 
@@ -57,6 +58,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const [filters, setFilters] = useState<YardOperationsFilters>(() => readYardOperationsFilters(searchParams));
   const [view, setView] = useState<'board' | 'list'>(() => searchParams.get('view') === 'list' ? 'list' : 'board');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [movementSearch, setMovementSearch] = useState('');
   const query = searchParams.toString();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminYardOperations(query);
   const {
@@ -140,12 +142,21 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         <CardTitle id="yard-movement-title" className="text-sm">{messages.yardOperationsPhase1}</CardTitle>
         <CardDescription className="line-clamp-2">{messages.yardOperationsPhase1Body}</CardDescription>
       </div>
+      {yardBoundary && [yardBoundary.workLocation, yardBoundary.incomingTrucks, yardBoundary.upcomingDepartures].some((section) => section.status === 'ok' && section.items.length > 0) ? <Input
+        type="search"
+        className="mb-2 h-9"
+        aria-label={messages.yardMovementSearch}
+        placeholder={messages.yardMovementSearch}
+        value={movementSearch}
+        onChange={(event) => setMovementSearch(event.target.value)}
+      /> : null}
       <AdminYardDataBoundaryCards
         locale={locale}
         boundary={yardBoundary}
         loading={yardBoundaryLoading}
         fetchFailed={Boolean(yardBoundaryError) && yardBoundary === undefined}
         expanded
+        search={movementSearch}
       />
     </Card>
 
@@ -395,6 +406,10 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
 function YardTruckCard({ item, messages, workPlanBoard }: { item: YardOperationsTruckDto; messages: AdminMessages; workPlanBoard: boolean }) {
   const workOrder = item.activeWorkOrder;
   const vehicle = formatVehicleYmm(item.truck);
+  const nextStep = workPlanBoard && workOrder
+    ? yardCardNextStep({ readyReason: item.readyReason, jobsCompleted: workOrder.jobsCompleted, jobsTotal: workOrder.jobsTotal })
+    : null;
+  const mechanicNames = (workOrder?.mechanics ?? []).filter((mechanic) => !mechanic.removedAt).map((mechanic) => mechanic.mechanicName).join(', ');
   const showPriority = Boolean(workOrder && workOrder.priority !== Priority.NORMAL);
   // LTR-92 / D5: on the Work Plan board Blocked means an official pause, not "has open work".
   const showBlocker = workPlanBoard
@@ -414,8 +429,12 @@ function YardTruckCard({ item, messages, workPlanBoard }: { item: YardOperations
       </div>
       {vehicle ? <p className="truncate text-xs text-muted-foreground" title={vehicle}>{vehicle}</p> : null}
       {workOrder ? (
-        <p className="truncate text-xs text-muted-foreground">{messages.workOrder} {workOrder.displayId}</p>
-      ) : (
+        <p className="truncate text-xs text-muted-foreground">{messages.workOrder} {workOrder.displayId} · {compactAge(workOrder.createdAt)}</p>
+      ) : null}
+      {/* LTR-101: what is missing and who is on it. */}
+      {nextStep ? <p className="truncate text-xs font-medium text-foreground">{fillYardText(messages[nextStep.key], nextStep.values)}</p> : null}
+      {mechanicNames ? <p className="truncate text-xs text-muted-foreground" title={mechanicNames}>{mechanicNames}</p> : null}
+      {workOrder ? null : (
         <CompactEmpty className="px-2 py-1 text-xs">{messages.noOpenWorkOrder}</CompactEmpty>
       )}
       {showPriority || showBlocker ? (

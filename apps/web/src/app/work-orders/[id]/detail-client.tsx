@@ -40,6 +40,13 @@ import {
 } from '@/components/ui';
 import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
 import { WorkOrderNotesThread } from '@/components/work-order-notes-thread';
+import { jobCategoriesLine, liveLaborMs, vehicleLine } from '@/lib/work-order-identity';
+
+function formatLaborDuration(milliseconds: number) {
+  const minutes = Math.max(0, Math.floor(milliseconds / 60_000));
+  const hours = Math.floor(minutes / 60);
+  return hours ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+}
 
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
@@ -69,6 +76,14 @@ export default function WorkOrderDetailPage() {
   const [pauseNotes, setPauseNotes] = useState('');
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
+  // LTR-131: live labor clock (API total at fetch time + elapsed while running).
+  const fetchedAt = useMemo(() => Date.now(), [wo]);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!wo?.laborRunning) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [wo?.laborRunning]);
 
   useEffect(() => {
     if (!sessionLoading && !token) replaceAppLocation('/login', router);
@@ -173,13 +188,14 @@ export default function WorkOrderDetailPage() {
   // `laborRunning === false` keeps older API responses (field absent) unchanged.
   const laborStopped = wo.status === 'in_progress' && wo.laborRunning === false;
   const needsStart = wo.status === 'created' || (laborStopped && todo.length > 0);
+  const laborMs = liveLaborMs(wo.totalActiveLaborMs, wo.laborRunning, fetchedAt, now);
 
   return (
     <div>
       <WorkspaceNav mode={MechanicMode.STANDARD} />
       <ScreenHeader
-        title={`#${wo.truckNumber}`}
-        subtitle={`${messages.workOrder} ${wo.displayId} · ${messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}`}
+        title={messages.truckTitle(wo.truckNumber)}
+        subtitle={[vehicleLine(wo.truck), `${messages.workOrder} ${wo.displayId}`, messages.status[wo.status] ?? statusLabel(wo.status, messages.status)].filter(Boolean).join(' · ')}
         backHref="/mechanic/standard"
       />
 
@@ -187,9 +203,16 @@ export default function WorkOrderDetailPage() {
         <div className="flex items-center justify-between">
           <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge>
           <span className="text-sm text-shop-muted">
-            {wo.primaryCategoryName} · {messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)}
+            {[jobCategoriesLine(wo.jobs), messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)].filter(Boolean).join(' · ')}
           </span>
         </div>
+        {/* LTR-131: the mechanic sees how long labor has run on this Work Order. */}
+        {wo.status !== 'created' ? (
+          <p className="text-sm text-shop-muted" aria-live="off">
+            {messages.laborTime(formatLaborDuration(laborMs))}
+            {wo.laborRunning ? ` · ${messages.laborRunningLabel}` : ''}
+          </p>
+        ) : null}
         {wo.currentPauseReason ? (
           <p className="text-sm font-medium text-warning-foreground">
             {pauseLabel(wo.currentPauseReason, messages.pauseReason)}
@@ -309,6 +332,10 @@ export default function WorkOrderDetailPage() {
             : messages.noWorkOrderTeam}
         </p>
         <p className="section-label mb-2">{messages.myJobs}</p>
+        {/* LTR-131: say why Jobs are disabled before Start Work. */}
+        {needsStart && todo.length > 0 ? (
+          <p className="mb-2 text-sm text-muted-foreground">{messages.startWorkToCompleteJobs}</p>
+        ) : null}
         {myTodo.length === 0 ? (
           <EmptyState>{todo.length === 0 ? messages.noPendingJobs : messages.noMyJobs}</EmptyState>
         ) : (
@@ -623,8 +650,8 @@ function PmWorkOrderDetail({
     <div>
       <WorkspaceNav mode={MechanicMode.PM} />
       <ScreenHeader
-        title={`#${wo.truckNumber}`}
-        subtitle={`${messages.workOrder} ${wo.displayId} · ${messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}`}
+        title={messages.truckTitle(wo.truckNumber)}
+        subtitle={[vehicleLine(wo.truck), `${messages.workOrder} ${wo.displayId}`, messages.status[wo.status] ?? statusLabel(wo.status, messages.status)].filter(Boolean).join(' · ')}
         backHref="/mechanic/pm"
       />
 

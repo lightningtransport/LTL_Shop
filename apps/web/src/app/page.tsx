@@ -29,6 +29,7 @@ import {
   buttonVariants,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
 
 export default function HomePage() {
   const { user, token, sessionLoading, sessionError, retrySession } = useAuth();
@@ -283,8 +284,11 @@ function WorkOrderCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-display text-xl font-bold tracking-wide">
-            #{wo.truckNumber}
+            {messages.truckTitle(wo.truckNumber)}
           </p>
+          {vehicleLine(wo.truckVehicle) ? (
+            <p className="text-sm text-shop-muted">{vehicleLine(wo.truckVehicle)}</p>
+          ) : null}
           <p className="text-sm text-shop-muted">
             {messages.workOrder} {wo.displayId}
             {' · '}
@@ -297,7 +301,9 @@ function WorkOrderCard({
         {!isPm ? <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge> : null}
       </div>
       <p className="text-sm text-shop-muted">
-        {isPm ? messages.pmServiceLabel : `${wo.primaryCategoryName} · ${messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)}`}
+        {isPm
+          ? messages.pmServiceLabel
+          : [jobCategoriesLine(wo.jobs), messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)].filter(Boolean).join(' · ')}
       </p>
       {isPm && wo.startedAt && mode !== 'completed' ? (
         <p className="text-xs text-shop-muted">

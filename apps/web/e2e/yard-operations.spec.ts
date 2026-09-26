@@ -80,7 +80,8 @@ test.describe('Yard Operations Phase 1', () => {
   test('shows yard movement feeds and real URL filters', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Yard movement' })).toBeVisible();
-    await expect(page.getByText('Shop work plus expected arrivals and departures. A reported yard location is not GPS presence or dispatch confirmation.')).toBeVisible();
+    // LTR-102: external statuses are labeled as reported by Dispatch, not the Shop's Ready to Go.
+    await expect(page.getByText(/^Reported by Dispatch: Truck status, expected arrivals, and departures\./)).toBeVisible();
     await expect(page.getByText(/in the yard|en el patio/i)).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
@@ -98,6 +99,20 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page).toHaveURL(/phase=required_work/);
     await expect(page).toHaveURL(/blocked=true/);
     await expect(page.getByLabel('Readiness list').getByRole('link', { name: 'Y-103', exact: true })).toBeVisible();
+  });
+
+  test('groups Dispatch status without nested scroll and filters Yard movement by Truck (LTR-102, LTR-103)', async ({ page }) => {
+    const status = page.getByTestId('yard-data-boundary-workLocation');
+    await expect(status.getByText(/^301 Yard · 2$/)).toBeVisible();
+    await expect(status.getByText('277', { exact: true })).toBeVisible();
+    await expect(status.getByText('905', { exact: true })).toBeVisible();
+    const nestedScroll = await page.getByRole('region', { name: 'Yard movement' }).evaluate((element) => (
+      [...element.querySelectorAll('*')].some((node) => ['auto', 'scroll'].includes(getComputedStyle(node).overflowY))
+    ));
+    expect(nestedScroll).toBe(false);
+    await page.getByLabel('Filter Yard movement by Truck').fill('905');
+    await expect(status.getByText('905', { exact: true })).toBeVisible();
+    await expect(status.getByText('277', { exact: true })).toHaveCount(0);
   });
 
   test('uses grouped list on mobile and tablet without compressing the board', async ({ page }) => {
@@ -229,7 +244,7 @@ test.describe('Yard Operations Phase 1', () => {
       const workLocation = page.getByTestId('yard-data-boundary-workLocation').getByText(copy.workLocation.label, { exact: true });
       const incoming = page.getByTestId('yard-data-boundary-incomingTrucks').getByText(copy.incomingTrucks.label, { exact: true });
       const departures = page.getByTestId('yard-data-boundary-upcomingDepartures').getByText(copy.upcomingDepartures.label, { exact: true });
-      await assertLabelUnclipped(workLocation, 'Work location', width);
+      await assertLabelUnclipped(workLocation, 'Dispatch status', width);
       await assertLabelUnclipped(incoming, 'Incoming Trucks', width);
       await assertLabelUnclipped(departures, 'Upcoming Departures', width);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);

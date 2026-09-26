@@ -243,9 +243,9 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await page.evaluate(() => window.scrollTo(0, 1200));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     await page.getByRole('button', { name: /Start Work/i }).first().click();
-    await expect(page.getByRole('heading', { name: `#${workOrder.truckNumber}` })).toBeVisible();
+    await expect(page.getByRole('heading', { name: `Truck ${workOrder.truckNumber}` })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-    const detailHeader = await page.getByRole('heading', { name: `#${workOrder.truckNumber}` }).boundingBox();
+    const detailHeader = await page.getByRole('heading', { name: `Truck ${workOrder.truckNumber}` }).boundingBox();
     expect(detailHeader?.y).toBeGreaterThanOrEqual(0);
     expect(detailHeader?.y).toBeLessThan(await page.evaluate(() => window.innerHeight));
     await expect(page.locator('main')).toBeFocused();
@@ -392,7 +392,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await page.getByRole('link', { name: 'Back to Home' }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     await page.getByRole('button', { name: /Start Work/i }).click();
-    await expect(page.getByRole('heading', { name: `#${workOrder.truckNumber}` })).toBeVisible();
+    await expect(page.getByRole('heading', { name: `Truck ${workOrder.truckNumber}` })).toBeVisible();
     await expect(page.getByRole('banner', { name: 'Home controls' })).toHaveCount(0);
     await page.getByRole('link', { name: 'Back to Home' }).click();
     await expect(page.getByRole('banner', { name: 'Home controls' })).toBeVisible();
@@ -466,7 +466,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     });
     await createdCard.getByRole('button', { name: /Start Work|Iniciar trabajo/i }).click();
     await started;
-    await expect(page.getByRole('heading', { name: `#${workOrder.truckNumber}` })).toBeVisible();
+    await expect(page.getByRole('heading', { name: `Unidad ${workOrder.truckNumber}` })).toBeVisible();
     await page.getByRole('button', { name: /Truck Information|Información/i }).click();
     await expect(page.getByText('Ubicación reportada')).toBeVisible();
     await expect(page.getByText('4802 Orient Road, Tampa, FL')).toBeVisible();
@@ -634,7 +634,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
     await login(page);
     await page.goto(`/work-orders/${workOrder.id}`);
-    await expect(page.getByRole('heading', { name: `#${workOrder.truckNumber}` })).toBeVisible();
+    await expect(page.getByRole('heading', { name: `Truck ${workOrder.truckNumber}` })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Finish Work' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Confirm completion|Complete Work Order|Completar Work Order/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add job/i })).toHaveCount(0);
@@ -774,7 +774,7 @@ test.describe('My Assigned Work presentation', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
     await assignedCard.getByRole('link', { name: /View Work/i }).click();
-    await expect(page.getByRole('heading', { name: '#905' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Truck 905' })).toBeVisible();
     await expect(page.getByText('Work Order team', { exact: true })).toBeVisible();
     await expect(page.getByText('Alex Mechanic / Jamie Technician')).toBeVisible();
     await expect(page.getByText('My Jobs', { exact: true })).toBeVisible();
