@@ -1,3 +1,4 @@
+import type { WorkOrderAttentionReason } from './attention';
 import type {
   AppCapability,
   ActivityEventType,
@@ -244,6 +245,8 @@ export interface AdminWorkOrderSummaryDto {
   startedAt: string | null;
   completedAt: string | null;
   updatedAt: string;
+  /** LTR-121: why this open Work Order needs attention (null when closed). Additive. */
+  attentionReason?: WorkOrderAttentionReason | null;
 }
 
 export interface AdminActivityLogDto {

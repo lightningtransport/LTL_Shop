@@ -8,6 +8,8 @@ import {
   type PauseReason,
 } from '@prisma/client';
 import {
+  workOrderAttentionRank,
+  workOrderAttentionReason,
   ActivityEventType as SharedActivityEventType,
   JobStatus as SharedJobStatus,
   OPEN_WORK_ORDER_STATUSES,
@@ -1749,7 +1751,7 @@ export class AdminService {
 
   private async getAttention(openWhere: Prisma.WorkOrderWhereInput) {
     const base = { include: summaryInclude, take: ATTENTION_LIMIT } as const;
-    const [critical, high, paused, stale, readyToClose] = await Promise.all([
+    const [critical, high, paused, stale, readyToClose, blocked] = await Promise.all([
       this.prisma.workOrder.findMany({
         ...base,
         where: { ...openWhere, priority: Priority.critical },
@@ -1790,9 +1792,24 @@ export class AdminService {
         },
         orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       }),
+      // LTR-121: an active mechanic-reported blocker (LTR-98) also needs attention.
+      this.prisma.workOrder.findMany({
+        ...base,
+        where: {
+          ...openWhere,
+          pauseEvents: { some: { isOfficialPause: false, resolvedAt: null } },
+        },
+        orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
+      }),
     ]);
-    return uniqueWorkOrders([readyToClose, critical, high, paused, stale], ATTENTION_LIMIT)
+    // LTR-121: one ranking (shared) for every surface; within a reason keep query order.
+    const candidates = uniqueWorkOrders([readyToClose, critical, high, paused, blocked, stale], Number.MAX_SAFE_INTEGER)
       .map(toAdminSummary);
+    return candidates
+      .map((item, index) => ({ item, index, rank: workOrderAttentionRank(item.attentionReason ?? null) }))
+      .sort((left, right) => left.rank - right.rank || left.index - right.index)
+      .slice(0, ATTENTION_LIMIT)
+      .map(({ item }) => item);
   }
 
   private buildWhere(query: AdminWorkOrdersQuery, cursor: AdminWorkOrderCursor | null) {
@@ -1946,6 +1963,15 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
     startedAt: row.startedAt?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
+    attentionReason: workOrderAttentionReason({
+      status: row.status,
+      priority: row.priority,
+      categoryName: row.primaryCategory.name,
+      jobsCompleted: jobs.filter((job) => job.status === 'completed').length,
+      jobsTotal: jobs.length,
+      hasActiveBlocker: Boolean(latestReportedBlocker),
+      createdAt: row.createdAt,
+    }),
   };
 }
 

@@ -5,7 +5,7 @@ import type { AdminWorkOrderSummaryDto } from '@ltl-shop/shared';
 import { Button, PriorityBadge, WorkOrderStatusBadge } from './ui';
 import { formatAdminDate } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
-import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
+import { adminAttentionReasonLabel, adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 
@@ -19,6 +19,9 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
     <PriorityBadge priority={item.priority}>{adminPriorityLabel(item.priority, messages)}</PriorityBadge>
   );
 
+  // LTR-121: same reason and copy on the Dashboard and the Work Order list.
+  const attention = adminAttentionReasonLabel(item.attentionReason, messages);
+
   return (
     <article className={cn('rounded-xl border bg-card p-4 shadow-sm', compact && 'bg-background p-3 shadow-none xl:grid xl:grid-cols-[minmax(180px,1.2fr)_minmax(220px,1fr)_auto] xl:items-center xl:gap-4')}>
       <div className="flex flex-wrap items-start justify-between gap-3 xl:block">
@@ -30,6 +33,11 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
             {' · '}
             {item.category.name}
           </p>
+          {attention ? (
+            <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-warning-foreground" data-testid="attention-reason">
+              {messages.attentionReasonLabel}: {attention}
+            </p>
+          ) : null}
         </div>
         <div className={cn('flex flex-wrap gap-2', compact && 'xl:hidden')}>{priorityChip}{statusChip}</div>
       </div>

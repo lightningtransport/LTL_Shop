@@ -176,3 +176,16 @@ export function adminActivityEventDetail(entry: { newValue: unknown; previousVal
   const parts = [displayName, notes].filter(Boolean);
   return parts.length ? parts.join(' — ') : null;
 }
+
+/** LTR-121: shared attention reason → Admin copy (null for plain open or closed work). */
+export function adminAttentionReasonLabel(reason: string | null | undefined, messages: AdminMessages): string | null {
+  switch (reason) {
+    case 'ready_to_close': return messages.attentionReasonReadyToClose;
+    case 'critical': return messages.attentionReasonCritical;
+    case 'high': return messages.attentionReasonHigh;
+    case 'paused': return messages.attentionReasonPaused;
+    case 'blocker': return messages.attentionReasonBlocker;
+    case 'open_over_24h': return messages.attentionReasonOpenOver24h;
+    default: return null;
+  }
+}
