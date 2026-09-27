@@ -17,11 +17,21 @@ describe('pauseResumeError', () => {
     expect(pauseResumeError(failure, es)).not.toBe(es.assignmentBadRequest);
   });
 
-  it('surfaces other pause 400 API messages', () => {
+  it('maps the not-in-progress pause 400 to localized copy', () => {
     const failure = new ApiError('Only in-progress Work Orders can be paused', 400, {
       message: 'Only in-progress Work Orders can be paused',
     });
-    expect(pauseResumeError(failure, en)).toBe('Only in-progress Work Orders can be paused');
+    expect(pauseResumeError(failure, en)).toBe(en.pauseWorkOrderNotInProgress);
+    expect(pauseResumeError(failure, es)).toBe(es.pauseWorkOrderNotInProgress);
+    expect(en.pauseWorkOrderNotInProgress).toMatch(/In Progress/);
+    expect(es.pauseWorkOrderNotInProgress).toMatch(/En progreso/);
+  });
+
+  it('surfaces other pause 400 API messages', () => {
+    const failure = new ApiError('Notes are required when reason is Other', 400, {
+      message: 'Notes are required when reason is Other',
+    });
+    expect(pauseResumeError(failure, en)).toBe('Notes are required when reason is Other');
   });
 
   it('uses pause-specific generic copy for non-API failures', () => {

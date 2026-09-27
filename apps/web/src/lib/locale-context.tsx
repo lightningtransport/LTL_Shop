@@ -136,6 +136,7 @@ type Copy = {
   dismissNotice: string;
   closeDialog: string;
   pauseWorkOrder: string;
+  pauseUnavailableUntilInProgress: string;
   workOrderAction: (action: string, displayId: string, truckNumber: string) => string;
   pmServiceLoadError: string;
   loadingPmService: string;
@@ -334,6 +335,7 @@ const copy: Record<ShopLocale, Copy> = {
     dismissNotice: 'Dismiss',
     closeDialog: 'Close',
     pauseWorkOrder: 'Pause Work Order',
+    pauseUnavailableUntilInProgress: 'Pause is available after this Work Order is In Progress.',
     workOrderAction: (action, displayId, truckNumber) => `${action} truck ${truckNumber}, Work Order ${displayId}`,
     pmServiceLoadError: 'Unable to load PM service details.',
     loadingPmService: 'Loading PM service details…',
@@ -544,6 +546,7 @@ const copy: Record<ShopLocale, Copy> = {
     dismissNotice: 'Cerrar',
     closeDialog: 'Cerrar',
     pauseWorkOrder: 'Pausar Work Order',
+    pauseUnavailableUntilInProgress: 'La pausa está disponible cuando esta Work Order está En progreso.',
     workOrderAction: (action, displayId, truckNumber) => `${action} unidad ${truckNumber}, Work Order ${displayId}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',
     loadingPmService: 'Cargando detalles del servicio de PM…',

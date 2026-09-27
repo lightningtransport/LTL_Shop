@@ -13,6 +13,7 @@ import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { pauseLabel, statusLabel } from '@/lib/format';
 import { useSWRConfig } from 'swr';
 import { isStandardWorkWaitingOnManager, jobPersonLabel, workOrderTeamLabel } from '@/lib/job-assignment';
+import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
@@ -367,9 +368,25 @@ function WorkOrderCard({
         ) : mode === 'waiting_on_manager' ? (
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewDetails} wo={wo} className="w-full" />
         ) : mode === 'created' ? (
-          <StartWorkAction wo={wo} className="flex-1" />
+          isPm ? (
+            <div className="flex w-full flex-col gap-2">
+              <StartWorkAction wo={wo} className="w-full" />
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                disabled
+                aria-describedby={`pause-unavailable-${wo.id}`}
+              >
+                {messages.pauseWorkOrder}
+              </Button>
+              <p id={`pause-unavailable-${wo.id}`} className="text-sm text-shop-muted">{messages.pauseUnavailableUntilInProgress}</p>
+            </div>
+          ) : (
+            <StartWorkAction wo={wo} className="flex-1" />
+          )
         ) : (
-          isPm && wo.jobs.some((job) => job.status === 'to_do') ? <>
+          isPm && canOfficiallyPauseWorkOrder(wo.status) && wo.jobs.some((job) => job.status === 'to_do') ? <>
               <WorkOrderActionLink href={`/work-orders/${wo.id}?action=pause`} action={messages.pauseWorkOrder} wo={wo} variant="secondary" className="flex-1" />
               <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewWork} wo={wo} className="flex-1" />
             </> : !isPm && wo.jobs.some((job) => job.status === 'to_do') ? (

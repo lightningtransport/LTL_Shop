@@ -96,6 +96,10 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('es').createWorkOrderSuccess).toContain('{id}');
     expect(getShopCopy('en').pauseWorkOrder).toBe('Pause Work Order');
     expect(getShopCopy('es').pauseWorkOrder).toBe('Pausar Work Order');
+    expect(getShopCopy('en').pauseUnavailableUntilInProgress).toMatch(/In Progress/);
+    expect(getShopCopy('es').pauseUnavailableUntilInProgress).toMatch(/En progreso/);
+    expect(getAdminMessages('en').pauseUnavailableUntilInProgress).toBe(getShopCopy('en').pauseUnavailableUntilInProgress);
+    expect(getAdminMessages('es').pauseUnavailableUntilInProgress).toBe(getShopCopy('es').pauseUnavailableUntilInProgress);
     expect(getShopCopy('en').workOrderAction('Start Work', 'WO-1001', '905')).toBe('Start Work truck 905, Work Order WO-1001');
     expect(getShopCopy('es').workOrderAction(getShopCopy('es').startWork, 'WO-1001', '905')).toBe('Iniciar trabajo unidad 905, Work Order WO-1001');
     expect(getShopCopy('en').lastReportedLocation).toBe('Last reported location');
