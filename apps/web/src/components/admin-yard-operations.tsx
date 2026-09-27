@@ -26,7 +26,8 @@ import {
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { workPlanPhaseLabel } from '@/lib/work-plan';
 import { formatVehicleYmm } from '@/lib/format';
-import { compactAge, fillYardText, yardCardNextStep } from '@/lib/yard-card';
+import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
+import { compactAge, dispatchSignalsByTruck, fillYardText, yardCardNextStep, type YardDispatchSignal } from '@/lib/yard-card';
 import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
 import { AdminPageHeader, Badge, Button, Card, CardDescription, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
 
@@ -57,6 +58,8 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<YardOperationsFilters>(() => readYardOperationsFilters(searchParams));
   const [view, setView] = useState<'board' | 'list'>(() => searchParams.get('view') === 'list' ? 'list' : 'board');
+  // LTR-120: the Shop's own readiness and Dispatch movement are separate tabs.
+  const tab: 'shop' | 'movement' = searchParams.get('tab') === 'movement' ? 'movement' : 'shop';
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [movementSearch, setMovementSearch] = useState('');
   const query = searchParams.toString();
@@ -76,6 +79,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
     }));
   }, [searchParams]);
 
+  const dispatchSignals = useMemo(() => dispatchSignalsByTruck(yardBoundary), [yardBoundary]);
   const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
   const lastPage = data?.[data.length - 1];
   const hasMore = Boolean(lastPage?.nextCursor);
@@ -103,6 +107,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   function commitFilters(next: YardOperationsFilters) {
     const params = buildYardOperationsQuery(next);
     if (view === 'list') params.set('view', 'list');
+    if (tab === 'movement') params.set('tab', 'movement');
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 
@@ -118,11 +123,11 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
       commitFilters({ ...appliedFilters, search: filters.search });
     }, 300);
     return () => window.clearTimeout(handle);
-  }, [appliedFilters, filters.search, view, router]);
+  }, [appliedFilters, filters.search, view, tab, router]);
 
   function clearFilters() {
     setFilters(DEFAULT_YARD_OPERATIONS_FILTERS);
-    router.replace('/admin/yard-operations');
+    router.replace(tab === 'movement' ? '/admin/yard-operations?tab=movement' : '/admin/yard-operations');
     setFiltersOpen(false);
   }
 
@@ -135,14 +140,43 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 
+  function updateTab(nextTab: 'shop' | 'movement') {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextTab === 'shop') params.delete('tab');
+    else params.set('tab', nextTab);
+    router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
+  }
+
   return <div className="space-y-5">
     <AdminPageHeader eyebrow={messages.eyebrow} title={messages.yardOperationsTitle} subtitle={messages.yardOperationsDescription} />
 
-    {isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : <div className="flex flex-col gap-5">
-    <Card className="order-3 p-3 xl:order-none" role="region" aria-labelledby="yard-movement-title">
+    <div role="tablist" aria-label={messages.yardTabsLabel} className="flex gap-1 rounded-xl border bg-muted/40 p-1">
+      {(['shop', 'movement'] as const).map((value) => (
+        <button
+          key={value}
+          type="button"
+          role="tab"
+          id={`yard-tab-${value}`}
+          aria-selected={tab === value}
+          aria-controls={`yard-panel-${value}`}
+          className={`min-h-10 flex-1 rounded-lg px-3 text-sm font-medium ${tab === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          onClick={() => updateTab(value)}
+        >
+          {value === 'shop' ? messages.yardTabShop : messages.yardTabMovement}
+        </button>
+      ))}
+    </div>
+
+    {tab === 'movement' ? <div role="tabpanel" id="yard-panel-movement" aria-labelledby="yard-tab-movement">
+    <Card className="p-3" role="region" aria-labelledby="yard-movement-title">
       <div className="mb-2 space-y-1">
         <CardTitle id="yard-movement-title" className="text-sm">{messages.yardOperationsPhase1}</CardTitle>
-        <CardDescription className="line-clamp-2">{messages.yardOperationsPhase1Body}</CardDescription>
+        <CardDescription>{messages.yardOperationsPhase1Body}</CardDescription>
+        {yardBoundary?.asOf ? (
+          <p className="text-xs text-muted-foreground" data-testid="yard-movement-source">
+            {fillYardText(messages.yardMovementSource, { time: formatAdminDate(yardBoundary.asOf, locale) })}
+          </p>
+        ) : null}
       </div>
       {yardBoundary && [yardBoundary.workLocation, yardBoundary.incomingTrucks, yardBoundary.upcomingDepartures].some((section) => section.status === 'ok' && section.items.length > 0) ? <Input
         type="search"
@@ -161,6 +195,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         search={movementSearch}
       />
     </Card>
+    </div> : isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : <div role="tabpanel" id="yard-panel-shop" aria-labelledby="yard-tab-shop" className="flex flex-col gap-5">
 
       <section className="order-1 xl:order-none" aria-labelledby="yard-summary-title">
         <h2 id="yard-summary-title" className="sr-only">{messages.yardSummaryMetrics}</h2>
@@ -293,7 +328,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                       <Badge variant="secondary">{phaseItems.length}</Badge>
                     </div>
                     <div className="space-y-2">
-                      {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} workPlanBoard={workPlanBoardCutover} />)}
+                      {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} workPlanBoard={workPlanBoardCutover} dispatch={dispatchSignals.get(item.truck.truckNumber)} />)}
                       {phaseItems.length === 0 ? (
                         <CompactEmpty className="text-xs">{messages.noTrucksInPhase}</CompactEmpty>
                       ) : null}
@@ -314,7 +349,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                   <h3 id={`yard-group-${phase}`} className="font-display text-sm font-semibold">{messages[phaseMessageKey[phase]]}</h3>
                   <Badge variant="secondary">{phaseItems.length}</Badge>
                 </div>
-                <div className="space-y-2">{phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} workPlanBoard={workPlanBoardCutover} />)}</div>
+                <div className="space-y-2">{phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} workPlanBoard={workPlanBoardCutover} dispatch={dispatchSignals.get(item.truck.truckNumber)} />)}</div>
               </section>
             ) : null;
           })}
@@ -405,7 +440,14 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
   );
 }
 
-function YardTruckCard({ item, messages, workPlanBoard }: { item: YardOperationsTruckDto; messages: AdminMessages; workPlanBoard: boolean }) {
+function YardTruckCard({ item, messages, locale, workPlanBoard, dispatch }: {
+  item: YardOperationsTruckDto;
+  messages: AdminMessages;
+  locale: AdminLocale;
+  workPlanBoard: boolean;
+  /** LTR-120: Dispatch movement shown only as a signal, never as a phase. */
+  dispatch?: YardDispatchSignal;
+}) {
   const workOrder = item.activeWorkOrder;
   const vehicle = formatVehicleYmm(item.truck);
   const nextStep = workPlanBoard && workOrder
@@ -436,6 +478,8 @@ function YardTruckCard({ item, messages, workPlanBoard }: { item: YardOperations
       {/* LTR-101: what is missing and who is on it. */}
       {nextStep ? <p className="truncate text-xs font-medium text-foreground">{fillYardText(messages[nextStep.key], nextStep.values)}</p> : null}
       {mechanicNames ? <p className="truncate text-xs text-muted-foreground" title={mechanicNames}>{mechanicNames}</p> : null}
+      {dispatch?.expectedIn ? <p className="truncate text-xs text-muted-foreground" data-testid="yard-card-dispatch">{fillYardText(messages.yardDispatchExpectedIn, { date: formatAdminDateOnly(dispatch.expectedIn, locale) })}</p> : null}
+      {dispatch?.departs ? <p className="truncate text-xs text-muted-foreground" data-testid="yard-card-dispatch">{fillYardText(messages.yardDispatchDeparts, { date: formatAdminDateOnly(dispatch.departs, locale) })}</p> : null}
       {workOrder ? null : (
         <CompactEmpty className="px-2 py-1 text-xs">{messages.noOpenWorkOrder}</CompactEmpty>
       )}
