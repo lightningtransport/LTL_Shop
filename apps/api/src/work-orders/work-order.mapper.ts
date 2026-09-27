@@ -6,6 +6,7 @@ import {
   type WorkOrderNoteKind,
   type WorkOrderStatus,
 } from '@prisma/client';
+import { isPmCategory } from '@ltl-shop/shared';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals } from './work-order.timing';
 
@@ -22,6 +23,7 @@ type JobRow = {
   completedById: string | null;
   assignedMechanic?: { id: string; name: string } | null;
   completedBy?: { id: string; name: string } | null;
+  startedAt?: Date | null;
 };
 
 type PauseRow = {
@@ -126,6 +128,7 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     truckId: wo.truckId,
     truckNumber: wo.truck.truckNumber,
     truckVehicle: { year: wo.truck.year, make: wo.truck.make, model: wo.truck.model },
+    pmJob: pmJobSummary(wo),
     primaryCategoryId: wo.primaryCategoryId,
     primaryCategoryName: wo.primaryCategory.name,
     status: wo.status,
@@ -137,6 +140,21 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     currentPauseReason: currentPause?.reason ?? null,
     createdAt: wo.createdAt.toISOString(),
     startedAt: wo.startedAt?.toISOString() ?? null,
+  };
+}
+
+/** LTR-146: the active PM job of a truck Work Order (never on a legacy PM Work Order). */
+function pmJobSummary(wo: WorkOrderWithRelations) {
+  if (isPmCategory(wo.primaryCategory.name)) return null;
+  const job = wo.jobs.find((item) => item.status !== 'cancelled' && isPmCategory(item.category.name));
+  if (!job) return null;
+  return {
+    id: job.id,
+    displayName: job.displayName,
+    status: job.status,
+    startedAt: job.startedAt?.toISOString() ?? null,
+    completedAt: job.completedAt?.toISOString() ?? null,
+    assignedMechanic: job.assignedMechanic ?? null,
   };
 }
 
@@ -169,6 +187,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
       completionNotes: completionNotesForJob(wo.activityLogs, j.id),
       assignedMechanic: j.assignedMechanic ?? null,
       completedBy: j.completedBy ?? null,
+      startedAt: j.startedAt?.toISOString() ?? null,
     })),
     mechanics: (wo.mechanics ?? [])
       .filter((m) => !m.removedAt)

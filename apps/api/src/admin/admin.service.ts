@@ -67,6 +67,8 @@ import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { stopLaborWhenNoPendingJobs } from '../work-orders/labor-session';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
+import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
+import { isWorkPlanPmPhaseEnabled } from './yard-work-plan-flag';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
@@ -180,6 +182,7 @@ const detailInclude = {
     orderBy: { createdAt: 'desc' as const },
   },
   noteEntries: workOrderNoteInclude,
+  pmService: { select: { observedMileage: true, workOrderJobId: true, _count: { select: { parts: true } } } },
   serviceStatusEvents: {
     where: { status: 'in_service' as const },
     orderBy: { occurredAt: 'desc' as const },
@@ -743,19 +746,28 @@ export class AdminService {
         }
         const job = wo.jobs.find((item) => item.id === jobId);
         if (!job) throw new NotFoundException('Job not found');
+        // LTR-146: the PM job goes to a PM mechanic, who does not join the Standard team.
+        const isPmJob = isWorkPlanPmPhaseEnabled() && isPmCategory(job.category.name);
+        if (isPmJob && (job.status !== JobStatus.to_do || job.startedAt)) {
+          throw new BadRequestException('A started or finished PM job cannot be reassigned');
+        }
         const mechanic = await tx.user.findFirst({
           where: {
             id: input.mechanicId,
             active: true,
-            capabilities: { some: { capability: AppCapability.MECHANIC_STANDARD } },
+            capabilities: { some: { capability: isPmJob ? AppCapability.MECHANIC_PM : AppCapability.MECHANIC_STANDARD } },
           },
           select: { id: true, name: true },
         });
-        if (!mechanic) throw new BadRequestException('This mechanic cannot perform standard work');
-        const teamAssignment = await tx.mechanicAssignment.findUnique({
+        if (!mechanic) {
+          throw new BadRequestException(isPmJob ? 'This mechanic cannot perform PM work' : 'This mechanic cannot perform standard work');
+        }
+        const teamAssignment = isPmJob ? null : await tx.mechanicAssignment.findUnique({
           where: { workOrderId_mechanicId: { workOrderId, mechanicId: input.mechanicId } },
         });
-        if (teamAssignment?.removedAt) {
+        if (isPmJob) {
+          // PM mechanics reach the Work Order through their PM job only.
+        } else if (teamAssignment?.removedAt) {
           await tx.mechanicAssignment.update({
             where: { id: teamAssignment.id },
             data: { removedAt: null, addedAt: new Date(), addedById: user.id },
@@ -993,15 +1005,9 @@ export class AdminService {
         const pmService = isPm
           ? await tx.pmService.findUnique({ where: { workOrderId }, include: { parts: true } })
           : null;
-        const observedMileage = pmService?.observedMileage ?? null;
+        let observedMileage: number | null = null;
         if (isPm) {
-          if (observedMileage == null) {
-            throw new BadRequestException('Observed mileage is required to finish a PM service');
-          }
-          if (!pmService?.parts.length) {
-            throw new BadRequestException('Select at least one part before finishing a PM service');
-          }
-          assertPmObservedMileage(observedMileage, wo.truck.mileage, { confirmLargeJump: true });
+          observedMileage = assertPmServiceReadyToFinish(pmService, wo.truck.mileage);
         } else {
           const gate = canFinishWorkOrder(wo.jobs);
           if (!gate.ok) throw new BadRequestException(gate.message);
@@ -1017,28 +1023,10 @@ export class AdminService {
         const sessions = await tx.workSession.findMany({ where: { workOrderId } });
         const pauses = await tx.pauseEvent.findMany({ where: { workOrderId } });
         const totals = computeTotals({ sessions, pauses, now });
-        if (isPm && observedMileage !== null && observedMileage !== wo.truck.mileage) {
-          await tx.truck.update({
-            where: { id: wo.truckId },
-            data: { mileage: observedMileage },
-          });
-          await tx.truckMileageAdjustment.create({
-            data: {
-              truckId: wo.truckId,
-              workOrderId: wo.id,
-              previousMileage: wo.truck.mileage,
-              observedMileage,
-              createdById: user.id,
-            },
-          });
-          await this.activity.log(tx, {
-            workOrderId: wo.id,
-            eventType: SharedActivityEventType.TRUCK_MILEAGE_CORRECTED,
-            entityType: 'truck',
-            entityId: wo.truckId,
-            userId: user.id,
-            previousValue: { mileage: wo.truck.mileage },
-            newValue: { mileage: observedMileage },
+        if (isPm && observedMileage !== null) {
+          await applyPmObservedMileage(tx, this.activity, {
+            truckId: wo.truckId, workOrderId: wo.id, currentMileage: wo.truck.mileage,
+            observedMileage, userId: user.id,
           });
         }
         const incremented = await tx.workOrder.updateMany({
@@ -2089,6 +2077,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     completedAt: job.completedAt?.toISOString() ?? null,
     completedBy: job.completedBy ?? null,
     completionNotes: jobCompletionNotes(row.activityLogs, job.id),
+    startedAt: job.startedAt?.toISOString() ?? null,
   }));
   return {
     ...summary,
@@ -2112,6 +2101,9 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     reportedBlockers: row.pauseEvents
       .filter((pause) => pause.isOfficialPause === false)
       .map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
+    pmService: row.pmService
+      ? { observedMileage: row.pmService.observedMileage, partsCount: row.pmService._count.parts, workOrderJobId: row.pmService.workOrderJobId }
+      : null,
     noteEntries: (row.noteEntries ?? []).map((note) => toWorkOrderNoteDto(note) as WorkOrderNoteDto),
     activityLog: row.activityLogs.map((entry) => ({
       id: entry.id,

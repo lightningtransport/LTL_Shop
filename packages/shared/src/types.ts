@@ -91,6 +91,8 @@ export interface WorkOrderJobDto {
   assignedMechanic: { id: string; name: string } | null;
   /** LTR-127: who completed the Job (additive; absent on older API responses). */
   completedBy?: { id: string; name: string } | null;
+  /** LTR-146: when the PM job was started. */
+  startedAt?: string | null;
 }
 
 export interface PauseEventDto {
@@ -136,6 +138,15 @@ export interface WorkOrderSummaryDto {
   truckNumber: string;
   /** LTR-130: year / make / model so a card identifies the Truck (additive). */
   truckVehicle?: { year: number | null; make: string | null; model: string | null };
+  /** LTR-146: the PM job of a truck Work Order (`WORK_PLAN_PM_PHASE`). */
+  pmJob?: {
+    id: string;
+    displayName: string;
+    status: JobStatus;
+    startedAt: string | null;
+    completedAt: string | null;
+    assignedMechanic: { id: string; name: string } | null;
+  } | null;
   primaryCategoryId: string;
   primaryCategoryName: string;
   status: WorkOrderStatus;
@@ -274,6 +285,8 @@ export interface AdminWorkOrderJobDto {
   completedAt: string | null;
   completedBy: { id: string; name: string } | null;
   completionNotes: string | null;
+  /** LTR-146: when the PM job was started. */
+  startedAt?: string | null;
 }
 
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
@@ -295,6 +308,8 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   activityLog: AdminActivityLogDto[];
   /** LTR-126: append-only notes and work requests (oldest first). */
   noteEntries?: WorkOrderNoteDto[];
+  /** LTR-146: PM service recorded on this Work Order (legacy PM WO or PM job). */
+  pmService?: { observedMileage: number | null; partsCount: number; workOrderJobId: string | null } | null;
   returnedToServiceAt: string | null;
 }
 

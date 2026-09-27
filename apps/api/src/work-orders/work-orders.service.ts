@@ -39,11 +39,20 @@ import {
 import type { AuthUser } from '../auth/auth.guard';
 import { stopLaborWhenNoPendingJobs } from './labor-session';
 import { assertPmObservedMileage } from './pm-mileage.guard';
+import { applyPmObservedMileage, assertPmServiceReadyToFinish } from './pm-finish';
 import { isPmJobCategory, resolveMandatoryJobs, type MandatoryJob } from './mandatory-jobs';
 import { isWorkPlanPmPhaseEnabled } from '../admin/yard-work-plan-flag';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
+
+/** Minimal Job shape used for PM job access checks (LTR-146). */
+type PmJobLike = {
+  id?: string;
+  status?: string;
+  assignedMechanicId?: string | null;
+  category?: { name: string } | null;
+};
 
 @Injectable()
 export class WorkOrdersService {
@@ -72,10 +81,22 @@ export class WorkOrdersService {
       : mode === MechanicMode.PM || (!mode && canPm && !canStandard)
         ? { name: 'PM' }
         : undefined;
+    const pmMode = categoryFilter?.name === 'PM';
+    const pmJobsInWorkPlan = pmMode && isWorkPlanPmPhaseEnabled();
     const rows = await this.prisma.workOrder.findMany({
       where: {
         status: { in: ['created', 'in_progress', 'waiting_paused', 'completed'] },
-        ...(categoryFilter ? { primaryCategory: categoryFilter } : {}),
+        // LTR-146: the PM workspace also lists truck Work Orders whose PM job is mine.
+        ...(pmJobsInWorkPlan
+          ? {
+              AND: [{
+                OR: [
+                  { primaryCategory: categoryFilter },
+                  { jobs: { some: { assignedMechanicId: user.id, status: { not: 'cancelled' }, category: { name: 'PM' } } } },
+                ],
+              }],
+            }
+          : categoryFilter ? { primaryCategory: categoryFilter } : {}),
         OR: [
           { createdById: user.id },
           { mechanics: { some: { mechanicId: user.id, removedAt: null } } },
@@ -86,7 +107,18 @@ export class WorkOrdersService {
       orderBy: { updatedAt: 'desc' },
     });
 
-    const mapped = rows.map(toWorkOrderSummary);
+    // LTR-146: in the PM workspace a truck Work Order is bucketed by its PM job, not the WO status.
+    const mapped = rows.map((row) => {
+      const summary = toWorkOrderSummary(row);
+      const pmJob = pmJobsInWorkPlan ? this.activePmJob(row) : null;
+      if (!pmJob) return summary;
+      const status = pmJob.status === 'completed'
+        ? 'completed'
+        : row.status === 'waiting_paused'
+          ? 'waiting_paused'
+          : pmJob.startedAt ? 'in_progress' : 'created';
+      return { ...summary, status: status as typeof summary.status };
+    });
     return {
       // LTR-129: "Ready to start" puts Critical first (then High, Normal, Low; oldest first).
       created: mapped.filter((w) => w.status === 'created').sort(byPriorityThenOldest),
@@ -283,6 +315,8 @@ export class WorkOrdersService {
             },
             include: workOrderDetailInclude,
           });
+          // LTR-146: a started PM job also counts as the mechanic's running PM.
+          if (!runningPm && isWorkPlanPmPhaseEnabled()) await this.assertNoOtherRunningPm(tx, user.id);
           if (runningPm) {
             throw new ConflictException({
               code: 'PM_ALREADY_IN_PROGRESS',
@@ -717,6 +751,10 @@ export class WorkOrdersService {
       if (wo.status !== 'waiting_paused') {
         throw new BadRequestException('Only paused Work Orders can be resumed');
       }
+      // LTR-146 / D2: resuming a PM must not leave the mechanic with two running PMs.
+      if (!options.managerActor && wo.primaryCategory.name === 'PM') {
+        await this.assertNoOtherRunningPm(tx, user.id, { workOrderId: id });
+      }
       const now = new Date();
       const openPause = await tx.pauseEvent.findFirst({
         where: { workOrderId: id, endedAt: null, isOfficialPause: true },
@@ -1081,6 +1119,10 @@ export class WorkOrdersService {
 
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, workOrderId);
+      // LTR-146: the PM job is finished from the PM service by its PM mechanic.
+      if (this.activePmJob(wo)?.id === jobId) {
+        return this.completePmJobInTx(tx, user, wo, jobId, notes);
+      }
       this.assertMechanicAccess(user, wo);
       const category = await tx.jobCategory.findUnique({
         where: { id: wo.primaryCategoryId },
@@ -1133,6 +1175,98 @@ export class WorkOrdersService {
     });
   }
 
+  /** LTR-146: the PM mechanic starts (or claims and starts) the PM job of a truck Work Order. */
+  async startPmJob(user: AuthUser, id: string, jobId: string) {
+    if (!isWorkPlanPmPhaseEnabled()) throw new BadRequestException('PM jobs are not enabled');
+    this.assertCapability(user, AppCapability.MECHANIC_PM, 'PM mechanic');
+    return this.prisma.$transaction(async (tx) => {
+      const initial = await this.requireWo(tx, id);
+      await lockTruckMutation(tx, initial.truckId);
+      const wo = await this.requireWo(tx, id);
+      const job = wo.jobs.find((item) => item.id === jobId);
+      if (!job) throw new NotFoundException('Job not found');
+      if (this.activePmJob(wo)?.id !== jobId) throw new BadRequestException('This is not the PM job of this Work Order');
+      if (job.status !== 'to_do') throw new BadRequestException('The PM job is not to do');
+      if (job.startedAt) throw new BadRequestException({ code: 'PM_JOB_ALREADY_STARTED', message: 'The PM service is already started.' });
+      if (job.assignedMechanicId && job.assignedMechanicId !== user.id) {
+        throw new ForbiddenException({
+          code: 'PM_JOB_ASSIGNED_TO_OTHER',
+          message: `This PM job is assigned to ${job.assignedMechanic?.name ?? 'another PM mechanic'}.`,
+        });
+      }
+      if (!['created', 'in_progress'].includes(wo.status)) {
+        throw new BadRequestException({ code: 'WORK_ORDER_NOT_WORKABLE', message: 'The Work Order is paused or closed.' });
+      }
+      await this.assertNoOtherRunningPm(tx, user.id, { jobId });
+      const now = new Date();
+      await tx.workOrderJob.update({ where: { id: jobId }, data: { startedAt: now, assignedMechanicId: user.id } });
+      await tx.pmService.upsert({
+        where: { workOrderId: id },
+        update: { workOrderJobId: jobId },
+        create: { workOrderId: id, workOrderJobId: jobId },
+      });
+      const updated = await tx.workOrder.update({
+        where: { id },
+        data: { version: { increment: 1 } },
+        include: workOrderDetailInclude,
+      });
+      await this.activity.log(tx, {
+        workOrderId: id,
+        eventType: ActivityEventType.WORK_STARTED,
+        entityType: 'work_order_job',
+        entityId: jobId,
+        userId: user.id,
+        newValue: { pmJob: true, displayName: job.displayName, startedAt: now.toISOString() },
+      });
+      return toWorkOrderDetail(updated);
+    });
+  }
+
+  /** LTR-146: finishing the PM job records the PM service (mileage + parts); it does not complete the Work Order. */
+  private async completePmJobInTx(
+    tx: Prisma.TransactionClient,
+    user: AuthUser,
+    wo: Awaited<ReturnType<WorkOrdersService['requireWo']>>,
+    jobId: string,
+    notes: string | null,
+  ) {
+    const job = this.pmJobForUser(user, wo);
+    if (!job || job.id !== jobId) throw new ForbiddenException('This PM job is not assigned to you.');
+    if (job.status !== 'to_do') throw new BadRequestException('Job is not in To Do status');
+    if (!job.startedAt) throw new BadRequestException({ code: 'PM_JOB_NOT_STARTED', message: 'Start the PM service first.' });
+    if (!['created', 'in_progress'].includes(wo.status)) {
+      throw new BadRequestException({ code: 'WORK_ORDER_NOT_WORKABLE', message: 'The Work Order is paused or closed.' });
+    }
+    const pmService = await tx.pmService.findUnique({ where: { workOrderId: wo.id }, include: { parts: true } });
+    const observedMileage = assertPmServiceReadyToFinish(pmService, wo.truck.mileage);
+    await applyPmObservedMileage(tx, this.activity, {
+      truckId: wo.truckId, workOrderId: wo.id, currentMileage: wo.truck.mileage, observedMileage, userId: user.id,
+    });
+    await tx.workOrderJob.update({
+      where: { id: jobId },
+      data: { status: 'completed', completedAt: new Date(), completedById: user.id },
+    });
+    await stopLaborWhenNoPendingJobs(tx, wo.id);
+    const updated = await tx.workOrder.update({
+      where: { id: wo.id },
+      data: { version: { increment: 1 } },
+      include: workOrderDetailInclude,
+    });
+    await this.activity.log(tx, {
+      workOrderId: wo.id,
+      eventType: ActivityEventType.JOB_COMPLETED,
+      entityType: 'work_order_job',
+      entityId: jobId,
+      userId: user.id,
+      newValue: {
+        displayName: job.displayName, status: 'completed', notes,
+        pmService: { observedMileage, parts: pmService?.parts.length ?? 0 },
+      },
+    });
+    const detail = toWorkOrderDetail(updated);
+    return { ...detail, jobs: detail.jobs.map((item) => (item.id === jobId ? { ...item, completionNotes: notes } : item)) };
+  }
+
   async complete(user: AuthUser, id: string) {
     return this.prisma.$transaction(async (tx) => {
       const wo = await tx.workOrder.findUnique({
@@ -1151,16 +1285,9 @@ export class WorkOrdersService {
         throw new BadRequestException('Work Order must be in progress to finish');
       }
       const isPm = wo.primaryCategory.name === 'PM';
-      const pmObservedMileage = wo.pmService?.observedMileage;
+      let pmObservedMileage: number | null = null;
       if (isPm) {
-        if (pmObservedMileage == null) {
-          throw new BadRequestException('Observed mileage is required to finish a PM service');
-        }
-        if (!wo.pmService?.parts.length) {
-          throw new BadRequestException('Select at least one part before finishing a PM service');
-        }
-        // The truck mileage can move after the PM draft was saved.
-        assertPmObservedMileage(pmObservedMileage, wo.truck.mileage, { confirmLargeJump: true });
+        pmObservedMileage = assertPmServiceReadyToFinish(wo.pmService, wo.truck.mileage);
       } else {
         const jobs = await tx.workOrderJob.findMany({ where: { workOrderId: id } });
         const gate = canFinishWorkOrder(jobs);
@@ -1174,28 +1301,10 @@ export class WorkOrdersService {
       const pauses = await tx.pauseEvent.findMany({ where: { workOrderId: id } });
       const totals = computeTotals({ sessions, pauses, now });
 
-      if (isPm && pmObservedMileage !== wo.truck.mileage) {
-        await tx.truck.update({
-          where: { id: wo.truckId },
-          data: { mileage: pmObservedMileage },
-        });
-        await tx.truckMileageAdjustment.create({
-          data: {
-            truckId: wo.truckId,
-            workOrderId: wo.id,
-            previousMileage: wo.truck.mileage,
-            observedMileage: pmObservedMileage!,
-            createdById: user.id,
-          },
-        });
-        await this.activity.log(tx, {
-          workOrderId: wo.id,
-          eventType: ActivityEventType.TRUCK_MILEAGE_CORRECTED,
-          entityType: 'truck',
-          entityId: wo.truckId,
-          userId: user.id,
-          previousValue: { mileage: wo.truck.mileage },
-          newValue: { mileage: pmObservedMileage },
+      if (isPm && pmObservedMileage != null) {
+        await applyPmObservedMileage(tx, this.activity, {
+          truckId: wo.truckId, workOrderId: wo.id, currentMileage: wo.truck.mileage,
+          observedMileage: pmObservedMileage, userId: user.id,
         });
       }
 
@@ -1235,13 +1344,19 @@ export class WorkOrdersService {
         primaryCategory: true,
         pmService: { include: { parts: true } },
         mechanics: true,
+        jobs: { include: { category: { select: { name: true } } } },
       },
     });
     if (!wo) throw new NotFoundException('Work Order not found');
-    if (wo.primaryCategory.name !== 'PM') throw new BadRequestException('Work Order is not a PM service');
+    // LTR-146: a truck Work Order with a PM job uses the same PM service screen.
+    const pmJob = this.activePmJob(wo);
+    if (wo.primaryCategory.name !== 'PM' && !pmJob) throw new BadRequestException('Work Order is not a PM service');
     this.assertCanViewWorkOrder(user, wo);
+    const serviceCompletedAt = pmJob
+      ? pmJob.completedAt
+      : wo.status === 'completed' ? wo.completedAt : null;
 
-    const [categories, lastCompletedPm] = await Promise.all([
+    const [categories, lastCompletedPmCandidates] = await Promise.all([
       this.prisma.partCategory.findMany({
         where: { active: true },
         orderBy: { sortOrder: 'asc' },
@@ -1253,37 +1368,44 @@ export class WorkOrdersService {
           },
         },
       }),
-      this.prisma.pmService.findFirst({
+      this.prisma.pmService.findMany({
         where: {
-          workOrder: {
-            truckId: wo.truckId,
-            primaryCategory: { name: 'PM' },
-            status: 'completed',
-            // LTR-137: for a completed PM, "previous" means before this service.
-            completedAt: wo.completedAt ? { lt: wo.completedAt } : { not: null },
-            id: { not: wo.id },
-          },
+          workOrderId: { not: wo.id },
+          workOrder: { truckId: wo.truckId },
+          OR: [
+            { workOrder: { primaryCategory: { name: 'PM' }, status: 'completed' } },
+            { workOrderJob: { status: 'completed' } },
+          ],
         },
-        orderBy: { workOrder: { completedAt: 'desc' } },
-        include: { workOrder: true },
+        include: { workOrder: true, workOrderJob: true },
       }),
     ]);
+    // LTR-137 / LTR-146: the previous PM is the latest one finished before this service.
+    const previous = lastCompletedPmCandidates
+      .map((service) => ({
+        service,
+        completedAt: service.workOrderJob?.completedAt ?? service.workOrder.completedAt ?? service.workOrder.createdAt,
+      }))
+      .filter((item) => !serviceCompletedAt || item.completedAt < serviceCompletedAt)
+      .sort((left, right) => right.completedAt.getTime() - left.completedAt.getTime())[0] ?? null;
 
     return {
       workOrderId: wo.id,
-      canEdit:
-        hasCapability(user, AppCapability.MECHANIC_PM) &&
-        this.isAssigned(user, wo) &&
-        ['in_progress', 'waiting_paused'].includes(wo.status),
+      canEdit: pmJob
+        ? Boolean(this.pmJobForUser(user, wo)) && Boolean(pmJob.startedAt) && pmJob.status === 'to_do'
+          && ['created', 'in_progress'].includes(wo.status)
+        : hasCapability(user, AppCapability.MECHANIC_PM) &&
+          this.isAssigned(user, wo) &&
+          ['in_progress', 'waiting_paused'].includes(wo.status),
       currentTruckMileage: wo.truck.mileage,
       observedMileage: wo.pmService?.observedMileage ?? null,
-      serviceCompletedAt: wo.status === 'completed' && wo.completedAt ? wo.completedAt.toISOString() : null,
-      lastCompletedPm: lastCompletedPm
+      serviceCompletedAt: serviceCompletedAt ? serviceCompletedAt.toISOString() : null,
+      lastCompletedPm: previous
         ? {
-            workOrderId: lastCompletedPm.workOrderId,
-            displayId: lastCompletedPm.workOrder.displayId,
-            completedAt: (lastCompletedPm.workOrder.completedAt ?? lastCompletedPm.workOrder.createdAt).toISOString(),
-            observedMileage: lastCompletedPm.observedMileage,
+            workOrderId: previous.service.workOrderId,
+            displayId: previous.service.workOrder.displayId,
+            completedAt: previous.completedAt.toISOString(),
+            observedMileage: previous.service.observedMileage,
           }
         : null,
       categories: categories.map((category) => ({
@@ -1307,13 +1429,25 @@ export class WorkOrdersService {
     await this.prisma.$transaction(async (tx) => {
       const wo = await tx.workOrder.findUnique({
         where: { id },
-        include: { truck: true, primaryCategory: true, mechanics: true },
+        include: {
+          truck: true, primaryCategory: true, mechanics: true,
+          jobs: { include: { category: { select: { name: true } } } },
+        },
       });
       if (!wo) throw new NotFoundException('Work Order not found');
-      if (wo.primaryCategory.name !== 'PM') throw new BadRequestException('Work Order is not a PM service');
-      this.assertMechanicAccess(user, wo);
-      if (!['in_progress', 'waiting_paused'].includes(wo.status)) {
-        throw new BadRequestException('Start or resume the PM Work Order before updating service details');
+      const pmJob = this.activePmJob(wo);
+      if (wo.primaryCategory.name !== 'PM' && !pmJob) throw new BadRequestException('Work Order is not a PM service');
+      if (pmJob) {
+        // LTR-146: only the assigned PM mechanic edits a started, unfinished PM job.
+        if (!this.pmJobForUser(user, wo)) throw new ForbiddenException('This PM job is not assigned to you.');
+        if (!pmJob.startedAt || pmJob.status !== 'to_do' || !['created', 'in_progress'].includes(wo.status)) {
+          throw new BadRequestException('Start the PM service before updating service details');
+        }
+      } else {
+        this.assertMechanicAccess(user, wo);
+        if (!['in_progress', 'waiting_paused'].includes(wo.status)) {
+          throw new BadRequestException('Start or resume the PM Work Order before updating service details');
+        }
       }
       assertPmObservedMileage(parsed.data.observedMileage, wo.truck.mileage, {
         confirmLargeJump: parsed.data.confirmLargeMileageJump === true,
@@ -1333,7 +1467,7 @@ export class WorkOrdersService {
       const service = await tx.pmService.upsert({
         where: { workOrderId: id },
         update: { observedMileage: parsed.data.observedMileage },
-        create: { workOrderId: id, observedMileage: parsed.data.observedMileage },
+        create: { workOrderId: id, observedMileage: parsed.data.observedMileage, workOrderJobId: pmJob?.id ?? null },
       });
       await tx.pmServicePart.deleteMany({ where: { pmServiceId: service.id } });
       if (parsed.data.selections.length) {
@@ -1369,7 +1503,7 @@ export class WorkOrdersService {
     wo: {
       createdById: string;
       mechanics?: { mechanicId: string; removedAt: Date | null }[];
-      jobs?: { assignedMechanicId?: string | null }[];
+      jobs?: PmJobLike[];
     },
   ) {
     return wo.createdById === user.id
@@ -1383,11 +1517,70 @@ export class WorkOrdersService {
       createdById: string;
       primaryCategory: { name: string };
       mechanics?: { mechanicId: string; removedAt: Date | null }[];
-      jobs?: { assignedMechanicId?: string | null }[];
+      jobs?: PmJobLike[];
     },
   ) {
     if (hasCapability(user, AppCapability.ADMIN_ACCESS)) return;
+    // LTR-146: the PM mechanic assigned to the PM job can open the truck Work Order.
+    if (this.pmJobForUser(user, wo)) return;
     this.assertMechanicAccess(user, wo);
+  }
+
+  /** LTR-146: the one active PM job of a truck Work Order (flag on; never a legacy PM Work Order). */
+  private activePmJob<J extends PmJobLike>(wo: { primaryCategory: { name: string }; jobs?: J[] }): J | null {
+    if (!isWorkPlanPmPhaseEnabled() || isPmJobCategory(wo.primaryCategory.name)) return null;
+    return wo.jobs?.find((job) => job.status !== 'cancelled' && isPmJobCategory(job.category?.name)) ?? null;
+  }
+
+  /** LTR-146: the PM job when this user is the PM mechanic assigned to it. */
+  private pmJobForUser<J extends PmJobLike>(user: AuthUser, wo: { primaryCategory: { name: string }; jobs?: J[] }): J | null {
+    const job = this.activePmJob(wo);
+    if (!job || !hasCapability(user, AppCapability.MECHANIC_PM)) return null;
+    return job.assignedMechanicId === user.id ? job : null;
+  }
+
+  /**
+   * LTR-95 / D2: a PM mechanic runs one PM at a time — a legacy PM Work Order in
+   * progress or a started PM job. A paused PM (official pause) does not count.
+   */
+  private async assertNoOtherRunningPm(
+    tx: Pick<Prisma.TransactionClient, 'workOrder' | 'workOrderJob'>,
+    userId: string,
+    except: { workOrderId?: string; jobId?: string } = {},
+  ) {
+    const legacy = typeof tx.workOrder?.findFirst === 'function'
+      ? await tx.workOrder.findFirst({
+          where: {
+            status: 'in_progress',
+            primaryCategory: { name: 'PM' },
+            mechanics: { some: { mechanicId: userId, removedAt: null } },
+            ...(except.workOrderId ? { id: { not: except.workOrderId } } : {}),
+          },
+          select: { id: true, displayId: true },
+        })
+      : null;
+    const job = !legacy && typeof tx.workOrderJob?.findFirst === 'function'
+      ? await tx.workOrderJob.findFirst({
+          where: {
+            assignedMechanicId: userId,
+            status: 'to_do',
+            startedAt: { not: null },
+            category: { name: 'PM' },
+            workOrder: { status: { in: ['created', 'in_progress'] } },
+            ...(except.jobId ? { id: { not: except.jobId } } : {}),
+          },
+          select: { workOrder: { select: { id: true, displayId: true } } },
+        })
+      : null;
+    const running = legacy ?? job?.workOrder ?? null;
+    if (running) {
+      throw new ConflictException({
+        code: 'PM_ALREADY_IN_PROGRESS',
+        message: `Finish or pause ${running.displayId} before starting another PM service.`,
+        runningWorkOrderId: running.id,
+        runningDisplayId: running.displayId,
+      });
+    }
   }
 
   private assertMechanicAccess(
@@ -1396,7 +1589,7 @@ export class WorkOrdersService {
       createdById: string;
       primaryCategory: { name: string };
       mechanics?: { mechanicId: string; removedAt: Date | null }[];
-      jobs?: { assignedMechanicId?: string | null }[];
+      jobs?: PmJobLike[];
     },
   ) {
     const isPm = wo.primaryCategory.name === 'PM';

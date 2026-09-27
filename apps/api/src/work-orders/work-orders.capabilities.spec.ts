@@ -169,11 +169,12 @@ describe('Work Order workspace capabilities', () => {
       {
         workOrder: { findUnique: vi.fn().mockResolvedValue(workOrder) },
         partCategory: { findMany: vi.fn().mockResolvedValue([]) },
-        pmService: { findFirst: vi.fn().mockResolvedValue({
+        pmService: { findMany: vi.fn().mockResolvedValue([{
           workOrderId: 'wo-prior',
           observedMileage: 120000,
           workOrder: { displayId: 'WO-001', completedAt: null, createdAt: new Date('2026-08-01T00:00:00.000Z') },
-        }) },
+          workOrderJob: null,
+        }]) },
       } as never,
       { log: vi.fn() } as never,
     );
@@ -194,7 +195,13 @@ describe('Work Order workspace capabilities', () => {
 
   it('returns the PM before this one for a completed PM (LTR-137)', async () => {
     const completedAt = new Date('2026-09-22T15:00:00.000Z');
-    const findFirst = vi.fn().mockResolvedValue(null);
+    // LTR-146: candidates include legacy PM Work Orders and PM jobs; only the ones before this service count.
+    const findMany = vi.fn().mockResolvedValue([
+      { workOrderId: 'wo-after', observedMileage: 370000, workOrderJob: null,
+        workOrder: { displayId: 'WO-9', completedAt: new Date('2026-09-23T10:00:00.000Z'), createdAt: new Date('2026-09-23T09:00:00.000Z') } },
+      { workOrderId: 'wo-job', observedMileage: 360000, workOrderJob: { completedAt: new Date('2026-09-10T10:00:00.000Z') },
+        workOrder: { displayId: 'WO-7', completedAt: null, createdAt: new Date('2026-09-09T09:00:00.000Z') } },
+    ]);
     const service = new WorkOrdersService(
       {
         workOrder: { findUnique: vi.fn().mockResolvedValue({
@@ -204,14 +211,17 @@ describe('Work Order workspace capabilities', () => {
           pmService: { observedMileage: 364400, parts: [] },
         }) },
         partCategory: { findMany: vi.fn().mockResolvedValue([]) },
-        pmService: { findFirst },
+        pmService: { findMany },
       } as never,
       { log: vi.fn() } as never,
     );
 
     await expect(service.getPmService(user([AppCapability.ADMIN_ACCESS], 'admin-1'), 'wo-2'))
-      .resolves.toMatchObject({ serviceCompletedAt: completedAt.toISOString(), lastCompletedPm: null });
-    expect(findFirst.mock.calls[0][0].where.workOrder.completedAt).toEqual({ lt: completedAt });
+      .resolves.toMatchObject({
+        serviceCompletedAt: completedAt.toISOString(),
+        lastCompletedPm: { workOrderId: 'wo-job', displayId: 'WO-7', completedAt: '2026-09-10T10:00:00.000Z' },
+      });
+    expect(findMany.mock.calls[0][0].where.workOrderId).toEqual({ not: 'wo-2' });
   });
 
   it('still denies PM service updates for an Admin-only user', async () => {
