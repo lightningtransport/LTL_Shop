@@ -188,3 +188,21 @@ describe('TrucksService search', () => {
     }));
   });
 });
+
+describe('TrucksService list (LTR-140)', () => {
+  it('marks the Truck open Work Order for search results', async () => {
+    const findMany = vi.fn().mockResolvedValueOnce([
+      { ...truck('905'), workOrders: [{ id: 'wo-9', displayId: 'WO-009', status: 'in_progress' }] },
+      { ...truck('906'), workOrders: [] },
+    ]);
+    const service = new TrucksService({ truck: { findMany } } as never);
+
+    await expect(service.list()).resolves.toMatchObject([
+      { truckNumber: '905', openWorkOrder: { id: 'wo-9', displayId: 'WO-009', status: 'in_progress' } },
+      { truckNumber: '906', openWorkOrder: null },
+    ]);
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      include: { workOrders: expect.objectContaining({ take: 1, where: { status: { in: expect.any(Array) } } }) },
+    }));
+  });
+});

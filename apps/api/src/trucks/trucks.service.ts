@@ -3,6 +3,7 @@ import {
   AppCapability,
   JobStatus,
   OPEN_WORK_ORDER_STATUSES,
+  type WorkOrderStatus,
   isPmCategory,
   type AdminRepairHistoryDto,
 } from '@ltl-shop/shared';
@@ -19,8 +20,23 @@ export class TrucksService {
   async list() {
     const trucks = await this.prisma.truck.findMany({
       orderBy: { truckNumber: 'asc' },
+      // LTR-140: one open Work Order per Truck, so search results can say "Open WO-009".
+      include: {
+        workOrders: {
+          where: { status: { in: OPEN_WORK_ORDER_STATUSES } },
+          select: { id: true, displayId: true, status: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
     });
-    return trucks.map(toTruckDto);
+    return trucks.map((truck) => {
+      const open = truck.workOrders[0];
+      return {
+        ...toTruckDto(truck),
+        openWorkOrder: open ? { id: open.id, displayId: open.displayId, status: open.status as WorkOrderStatus } : null,
+      };
+    });
   }
 
   async search(q: string) {

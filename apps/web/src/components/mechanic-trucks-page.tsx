@@ -11,6 +11,7 @@ import { replaceAppLocation } from '@/lib/session-restore';
 import { useTrucks } from '@/lib/shop-data';
 import { rankTruckResults } from '@/lib/truck-search';
 import { SessionSignInFallback } from './session-sign-in-fallback';
+import { OpenWorkOrderTag } from './open-work-order-tag';
 import { Card, EmptyState, HomeTopBar, Input, Label, LoadFailure, ScreenHeader } from './ui';
 
 /** LTR-133: a mechanic finds any Truck and opens its repair history. */
@@ -48,7 +49,10 @@ export function MechanicTrucksPage({ mode }: { mode: MechanicMode }) {
           <li key={truck.id}>
             <Link href={`/trucks/${truck.id}/history?from=${encodeURIComponent(`${base}/trucks`)}`} className="block">
               <Card className="p-3 transition hover:border-primary/50">
-                <p className="font-display text-lg font-semibold">{messages.truckTitle(truck.truckNumber)}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-display text-lg font-semibold">{messages.truckTitle(truck.truckNumber)}</p>
+                  {truck.openWorkOrder ? <OpenWorkOrderTag label={messages.truckOpenWorkOrder(truck.openWorkOrder.displayId)} /> : null}
+                </div>
                 {formatVehicleYmm(truck) ? <p className="text-sm text-shop-muted">{formatVehicleYmm(truck)}</p> : null}
                 <p className="mt-1 text-sm text-primary">{messages.repairHistory}</p>
               </Card>

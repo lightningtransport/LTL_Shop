@@ -34,6 +34,7 @@ type Copy = {
   truck: string;
   searchTruck: string;
   noTrucks: string;
+  truckOpenWorkOrder: (displayId: string) => string;
   checkingOpenWorkOrder: string;
   retryWorkOrderCheck: string;
   truckInformation: string;
@@ -237,7 +238,7 @@ const copy: Record<ShopLocale, Copy> = {
     workOrder: 'Work Order',
     workOrderHint: 'Enter the required information. Creating saves the order; Start Work begins labor.',
     pmServiceHint: 'Select a truck to create a PM service.', truck: 'Truck',
-    searchTruck: 'Truck number, e.g. 905', noTrucks: 'No trucks found.',
+    searchTruck: 'Truck number, e.g. 905', noTrucks: 'No trucks found.', truckOpenWorkOrder: (displayId) => `Open ${displayId}`,
     checkingOpenWorkOrder: 'Checking for an open Work Order.', retryWorkOrderCheck: 'Retry Work Order check',
     truckInformation: 'Truck Information', selectTruck: 'Select a truck to show its details.',
     vin: 'VIN', lastReportedLocation: 'Last reported location', locationUpdatedOn: 'Last reported on',
@@ -446,7 +447,7 @@ const copy: Record<ShopLocale, Copy> = {
     workOrder: 'Work Order',
     workOrderHint: 'Ingresa la información requerida. Crear guarda el Work Order; Iniciar trabajo comienza el registro de tiempo.',
     pmServiceHint: 'Selecciona una unidad para crear un servicio de PM.', truck: 'Unidad',
-    searchTruck: 'Número de unidad, ej. 905', noTrucks: 'No se encontraron unidades.',
+    searchTruck: 'Número de unidad, ej. 905', noTrucks: 'No se encontraron unidades.', truckOpenWorkOrder: (displayId) => `${displayId} abierta`,
     checkingOpenWorkOrder: 'Verificando si hay un Work Order abierto.', retryWorkOrderCheck: 'Reintentar la verificación del Work Order',
     truckInformation: 'Información de la unidad', selectTruck: 'Selecciona una unidad para ver sus detalles.',
     vin: 'VIN', lastReportedLocation: 'Ubicación reportada', locationUpdatedOn: 'Reportada el',
