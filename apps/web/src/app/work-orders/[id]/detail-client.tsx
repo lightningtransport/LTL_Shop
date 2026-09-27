@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { useSWRConfig } from 'swr';
 import {
+  AppCapability,
   JobStatus,
   MechanicMode,
   PauseReason,
@@ -39,6 +40,7 @@ import {
   WorkspaceNav,
 } from '@/components/ui';
 import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
+import { PmJobDetail } from '@/components/pm-job-detail';
 import { WorkOrderNotesThread } from '@/components/work-order-notes-thread';
 import { jobCategoriesLine, liveLaborMs, vehicleLine } from '@/lib/work-order-identity';
 
@@ -159,6 +161,20 @@ export default function WorkOrderDetailPage() {
       return <LoadFailure message={loadError.message} onRetry={() => void mutateWorkOrder()} retryLabel={messages.retryWorkOrder} />;
     }
     return <PageSkeleton label={messages.loadingWorkOrder} />;
+  }
+
+  // LTR-146: the assigned PM mechanic sees only the PM job of a truck Work Order.
+  const canStandard = Boolean(user?.capabilities.includes(AppCapability.MECHANIC_STANDARD));
+  if (wo.pmJob && wo.pmJob.assignedMechanic?.id === user?.id && (!canStandard || search.get('view') === 'pm')) {
+    return (
+      <PmJobDetail
+        wo={wo}
+        onUpdated={async (updated) => {
+          await mutateWorkOrder(updated, { revalidate: false });
+          void mutateGlobal(isWorkOrderRelatedListKey).catch(() => undefined);
+        }}
+      />
+    );
   }
 
   if (wo.primaryCategoryName === 'PM') {
