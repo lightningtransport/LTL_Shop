@@ -370,6 +370,16 @@ describe('AdminService', () => {
     expect(rosterWhere).not.toContain('"role"');
   });
 
+  it('hides deactivated mechanics unless includeInactive is requested (LTR-160)', async () => {
+    const prisma = createPrisma();
+    prisma.user.findMany.mockResolvedValue([]);
+    const service = createService(prisma);
+    await service.listMechanics({});
+    await service.listMechanics({ includeInactive: 'true' });
+    expect(JSON.stringify(prisma.user.findMany.mock.calls[0][0].where)).toContain('{"active":true}');
+    expect(JSON.stringify(prisma.user.findMany.mock.calls[1][0].where)).not.toContain('"active"');
+  });
+
   it('maps Prisma capability keys onto shared capability values', async () => {
     const prisma = createPrisma();
     prisma.user.findMany.mockResolvedValue([{

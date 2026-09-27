@@ -1919,6 +1919,7 @@ export class AdminService {
   private buildMechanicWhere(query: AdminMechanicsQuery, cursor: AdminMechanicCursor | null): Prisma.UserWhereInput {
     const filters: Prisma.UserWhereInput[] = [mechanicCapabilityWhere];
     if (query.assignable) filters.push({ role: { not: 'admin' } });
+    if (!query.includeInactive) filters.push({ active: true });
     if (query.search) {
       const contains = { contains: query.search, mode: 'insensitive' as const };
       filters.push({ OR: [{ name: contains }, { email: contains }] });

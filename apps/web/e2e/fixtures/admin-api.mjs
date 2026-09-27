@@ -814,6 +814,7 @@ createServer(async (request, response) => {
     const items = Object.values(users)
       .filter((candidate) => candidate.capabilities.includes('mechanic.standard') || candidate.capabilities.includes('mechanic.pm'))
       .filter((candidate) => !assignable || candidate.role !== 'admin')
+      .filter((candidate) => candidate.active || new URL(request.url, 'http://fixture').searchParams.get('includeInactive') === 'true')
       .map(rosterSummary);
     json(response, 200, { items, nextCursor: null });
     return;

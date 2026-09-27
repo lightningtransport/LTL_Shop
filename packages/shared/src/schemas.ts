@@ -109,6 +109,8 @@ const adminNamedListQuerySchema = z.object({
 export const adminMechanicsQuerySchema = adminNamedListQuerySchema.extend({
   // LTR-151: assignment pickers list only people who can own a job (no System Admin accounts).
   assignable: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  // LTR-160: deactivated accounts are hidden unless the roster asks for them.
+  includeInactive: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
 });
 
 const closedWorkOrderStatus = z.enum([WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]);

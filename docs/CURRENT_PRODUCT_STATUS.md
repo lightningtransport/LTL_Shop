@@ -51,7 +51,9 @@ TARGET authorization/UX.
   `GET /api/admin/mechanics?assignable=true`, which excludes `role = admin`
   accounts even when they hold a mechanic capability, and load every page of
   the roster. Each per-Job picker is labeled "Mechanic for <Job>". The
-  `/admin/mechanics` roster still lists every mechanic-capable account. An
+  `/admin/mechanics` roster lists every mechanic-capable account; deactivated
+  accounts are hidden unless "Show inactive" is applied
+  (`?includeInactive=true`, LTR-160). An
   empty mechanics list reads "No mechanics assigned" on the Work Order, its
   list card, and Truck Detail (LTR-151).
   PM Work Orders stay assigned to their creator. Assignments keep at
@@ -329,6 +331,13 @@ Orders (created before LTR-141) keep their pause and finish-the-WO behavior
   URLs, and approved local development URLs.
 - The Supabase Reset Password email template must use
   `{{ .ConfirmationURL }}`.
+- Test roster (LTR-160): until Flujo v3 ships, only four test accounts are
+  active: Crixcrox (admin), Cristian (manager), MG (Standard) and MPM (PM).
+  `npm run prisma:reset-test-roster --workspace=@ltl-shop/api` (dry-run by
+  default, `-- --apply` to write) reads `apps/api/.env.production.local` and
+  deactivates every other user. It never deletes anyone, and it refuses to run
+  while a user it would deactivate still has open work. Supabase Auth accounts
+  and passwords are managed in the Supabase dashboard.
 - Prisma is the sole schema-migration authority. Do not add a parallel
   migration history under `supabase/migrations`. The existing
   `supabase/migrations/20260825140000_init_domain.sql` is a preserved legacy
