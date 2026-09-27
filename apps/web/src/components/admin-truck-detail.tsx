@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { AlertTriangle, Info as InfoIcon, ShieldCheck } from 'lucide-react';
 import {
   AppCapability,
@@ -58,6 +58,13 @@ export function AdminTruckDetail({ id, from = null, locale, messages }: { id: st
   const [closeOpen, setCloseOpen] = useState(false);
   const [closeReason, setCloseReason] = useState('');
   const [drafts, setDrafts] = useState<Record<string, RequirementDraft>>({});
+  const workPlanLoaded = Boolean(data?.workPlan);
+
+  // LTR-119: "Add work in the Work Plan" from a Work Order lands on the Work Plan once it has loaded.
+  useEffect(() => {
+    if (!workPlanLoaded || window.location.hash !== '#truck-work-plan-title') return;
+    document.getElementById('truck-work-plan-title')?.scrollIntoView({ block: 'start' });
+  }, [workPlanLoaded]);
 
   if (isLoading) return <PageSkeleton label={messages.loadingTruck} />;
   if (error instanceof ApiError && error.status === 404) return <TruckNotFound messages={messages} />;

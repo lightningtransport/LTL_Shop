@@ -68,7 +68,7 @@ import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-or
 import { stopLaborWhenNoPendingJobs } from '../work-orders/labor-session';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
-import { isWorkPlanPmPhaseEnabled } from './yard-work-plan-flag';
+import { isWorkPlanPmPhaseEnabled, isYardWorkPlanSlice1Enabled } from './yard-work-plan-flag';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
@@ -2103,6 +2103,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     reportedBlockers: row.pauseEvents
       .filter((pause) => pause.isOfficialPause === false)
       .map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
+    addWorkInWorkPlan: isYardWorkPlanSlice1Enabled(),
     pmService: row.pmService
       ? { observedMileage: row.pmService.observedMileage, partsCount: row.pmService._count.parts, workOrderJobId: row.pmService.workOrderJobId }
       : null,

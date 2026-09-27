@@ -386,7 +386,14 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           ) : (
             <CompactEmpty>{messages.noJobs}</CompactEmpty>
           )}
-          {canManageJobs ? (
+          {canManageJobs && data.addWorkInWorkPlan ? (
+            // LTR-119 / D6: Jobs are added from the Truck Work Plan (the canonical place).
+            <Button asChild variant="outline">
+              <Link href={`${adminTruckHref(truck.id, `/admin/work-orders/${data.id}`)}#truck-work-plan-title`}>
+                {messages.addWorkInWorkPlan}
+              </Link>
+            </Button>
+          ) : canManageJobs ? (
             <Button type="button" variant="outline" onClick={() => setAddJobOpen(true)}>
               {messages.addJobAction}
             </Button>
