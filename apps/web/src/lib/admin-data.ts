@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import type {
@@ -103,22 +104,56 @@ export function useAdminWorkOrder(id: string) {
   );
 }
 
+export function adminMechanicsPageKey(
+  token: string | null,
+  query: string,
+  limit: number,
+  pageIndex: number,
+  previous: AdminPage<AdminMechanicSummaryDto> | null,
+) {
+  if (!token || (previous && !previous.nextCursor)) return null;
+  const params = new URLSearchParams(query);
+  params.set('limit', String(limit));
+  if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
+  return `/api/admin/mechanics?${params.toString()}`;
+}
+
+/** True when every requested page has loaded and the last one says more exist. */
+export function hasUnloadedAdminPage<T>(pages: AdminPage<T>[] | undefined, size: number) {
+  return Boolean(pages && pages.length === size && pages[pages.length - 1]?.nextCursor);
+}
+
 export function useAdminMechanics(query: string) {
   const { token } = useAuth();
   return withAdminReadPending(
     token,
     useSWRInfinite<AdminPage<AdminMechanicSummaryDto>>(
-      (pageIndex, previous) => {
-        if (!token || (previous && !previous.nextCursor)) return null;
-        const params = new URLSearchParams(query);
-        params.set('limit', '25');
-        if (pageIndex > 0 && previous?.nextCursor) params.set('cursor', previous.nextCursor);
-        return `/api/admin/mechanics?${params.toString()}`;
-      },
+      (pageIndex, previous) => adminMechanicsPageKey(token, query, 25, pageIndex, previous),
       adminReadFetcher,
       adminInfiniteOptions,
     ),
   );
+}
+
+/**
+ * LTR-151: the full roster for assignment pickers. Excludes System Admin accounts server-side and
+ * follows the cursor until the last page, so a Shop with more than one page of mechanics is complete.
+ */
+export function useAdminAssignableMechanics() {
+  const { token } = useAuth();
+  const swr = withAdminReadPending(
+    token,
+    useSWRInfinite<AdminPage<AdminMechanicSummaryDto>>(
+      (pageIndex, previous) => adminMechanicsPageKey(token, 'assignable=true', 100, pageIndex, previous),
+      adminReadFetcher,
+      adminInfiniteOptions,
+    ),
+  );
+  const { data, size, setSize } = swr;
+  useEffect(() => {
+    if (hasUnloadedAdminPage(data, size)) void setSize(size + 1);
+  }, [data, size, setSize]);
+  return swr;
 }
 
 export function useAdminMechanic(id: string) {

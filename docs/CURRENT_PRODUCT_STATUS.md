@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-22 (LTR-77 / LTR-78 API)
+**Updated:** 2026-09-27 (LTR-151)
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -29,6 +29,7 @@ TARGET authorization/UX.
   open more than 24 hours, completed today, and completed in the last seven
   calendar days. Today and seven-day windows use `America/New_York` calendar
   boundaries represented as explicit UTC instants for drill-down queries.
+  Each metric link is announced as "<metric>: <value>" (LTR-151).
 - Dashboard attention is ordered by Critical, High, Waiting/Paused, and then
   least recently updated open Work Orders. It does not show downtime averages,
   Off Duty, historical trends, percentages, or per-Job timing.
@@ -46,6 +47,13 @@ TARGET authorization/UX.
   Work Order, users with `admin.access` and `work_orders.manage` can add or
   soft-remove assigned mechanics and add Jobs after create; per-Job
   assign/unassign also requires `work_orders.manage`.
+  Mechanic pickers (per-Job assignee, team, New Work Order) read
+  `GET /api/admin/mechanics?assignable=true`, which excludes `role = admin`
+  accounts even when they hold a mechanic capability, and load every page of
+  the roster. Each per-Job picker is labeled "Mechanic for <Job>". The
+  `/admin/mechanics` roster still lists every mechanic-capable account. An
+  empty mechanics list reads "No mechanics assigned" on the Work Order, its
+  list card, and Truck Detail (LTR-151).
   PM Work Orders stay assigned to their creator. Assignments keep at
   least one active mechanic, use Work Order versioning and idempotency, and
   write `mechanic_added` / `mechanic_removed` Activity Log events. On any open
@@ -124,6 +132,10 @@ TARGET authorization/UX.
   mandatory step. Managers with `work_orders.manage` add jobs there (the Admin
   Work Order links to it; LTR-119 / D6) and can complete open Work Plan jobs
   from Admin (LTR-38).
+- Truck Detail "Current Work" shows only an open Work Order; the completed
+  Work Order that keeps a Truck Ready to Go is not listed there. Return to
+  Service copy states that the Truck leaves Ready to Go. The Yard card says
+  "1 Job pending" / "N Jobs pending" (LTR-151).
 - The Work Plan is `Inspection → Shop Work → PM → Alignment → Detailing →
   Quality Check → Ready to close → Ready to Go`. PM, Alignment, Detailing and
   QC are always required. A step whose Jobs were all cancelled with a reason
@@ -187,6 +199,9 @@ TARGET authorization/UX.
 - An assigned Standard mechanic can start work, complete assigned or
   inherited-team Jobs, report a blocker, and save execution notes (including
   additional work for the Manager to add as a Job).
+- The PM job of a truck Work Order is listed read-only in the Standard view
+  for anyone but its PM assignee (no "Complete job"); the API already rejected
+  it (LTR-151).
 - PM is not offered to a user without `mechanic.pm`.
 - Catalog aliases resolve to one canonical result; a catalog job or normalized
   custom job cannot be added twice when a Manager adds work.
@@ -280,7 +295,8 @@ The legacy `pmAuthorized` column remains only for migration compatibility.
    part; it confirms a canonical truck-mileage update when needed.
 
 PM Service records the observed mileage, selected parts, and notes as a draft
-while work is open. Finishing creates the immutable mileage audit and completes
+while work is open. The card shows "Saved" only after a write in the current
+visit succeeds, not on open (LTR-151). Finishing creates the immutable mileage audit and completes
 the PM job; the truck Work Order stays open for its other steps. Legacy PM Work
 Orders (created before LTR-141) keep their pause and finish-the-WO behavior
 (Q13, D12). Completed PM records are read-only.

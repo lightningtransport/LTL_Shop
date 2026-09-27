@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canCompleteJobFromWorkOrder,
   isMyAssignedOrInheritedJob,
   isStandardWorkWaitingOnManager,
   jobAssignmentLabel,
@@ -80,5 +81,20 @@ describe('jobPersonLabel (LTR-127)', () => {
     expect(jobPersonLabel({ status: 'to_do', assignedMechanic: { id: 'mg', name: 'MG' } }, 'mg', copy)).toBe('Assigned to you');
     expect(jobPersonLabel({ status: 'completed', assignedMechanic: null }, 'mg', copy))
       .toBe('Unassigned — inherits the Work Order team');
+  });
+});
+
+describe('PM job completion from the Standard Work Order (LTR-151)', () => {
+  const pmJob = { id: 'pm-job', assignedMechanic: { id: 'pm-mechanic', name: 'Daniel' } };
+
+  it('does not offer the PM job to a mechanic who is not its assignee', () => {
+    expect(canCompleteJobFromWorkOrder(pmJob, 'pm-job', 'standard-mechanic')).toBe(false);
+    expect(canCompleteJobFromWorkOrder({ ...pmJob, assignedMechanic: null }, 'pm-job', 'standard-mechanic')).toBe(false);
+  });
+
+  it('keeps the PM job for its assignee and every other Job completable', () => {
+    expect(canCompleteJobFromWorkOrder(pmJob, 'pm-job', 'pm-mechanic')).toBe(true);
+    expect(canCompleteJobFromWorkOrder({ id: 'brakes', assignedMechanic: null }, 'pm-job', 'standard-mechanic')).toBe(true);
+    expect(canCompleteJobFromWorkOrder({ id: 'brakes', assignedMechanic: null }, null, 'standard-mechanic')).toBe(true);
   });
 });

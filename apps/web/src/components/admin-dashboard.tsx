@@ -64,7 +64,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
       </section>
     ) : null}
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-6" aria-label={messages.currentOperations}>
-      {metrics.map(({ label, description, value, Icon, href }) => <Link key={label} href={href} className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+      {metrics.map(({ label, description, value, Icon, href }) => <Link key={label} href={href} aria-label={`${label}: ${value}`} className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
         <Card className="flex h-full min-h-28 flex-col justify-between p-3 transition group-hover:border-primary/50 group-hover:shadow-md sm:p-4">
           <CardContent className="flex items-start justify-between gap-2 p-0"><div className="min-w-0"><p className="text-xs leading-5 text-muted-foreground sm:text-sm">{label}</p><p className="mt-2 font-display text-2xl font-bold sm:text-3xl">{value}</p></div><Icon aria-hidden="true" className="size-4 shrink-0 text-primary sm:size-5" /></CardContent>
           <p className="mt-3 text-[11px] leading-4 text-muted-foreground">{description}</p>

@@ -99,11 +99,16 @@ export const adminMechanicCursorSchema = z.object({
   id: z.string().uuid(),
 });
 
-export const adminMechanicsQuerySchema = z.object({
+const adminNamedListQuerySchema = z.object({
   cursor: z.string().trim().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   search: z.string().trim().min(1).max(200).optional(),
   direction: z.enum(['asc', 'desc']).default('asc'),
+});
+
+export const adminMechanicsQuerySchema = adminNamedListQuerySchema.extend({
+  // LTR-151: assignment pickers list only people who can own a job (no System Admin accounts).
+  assignable: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
 });
 
 const closedWorkOrderStatus = z.enum([WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]);
@@ -125,7 +130,7 @@ export const adminHistoryQuerySchema = z.object({
   direction: z.enum(['asc', 'desc']).default('desc'),
 });
 
-export const adminTrucksQuerySchema = adminMechanicsQuerySchema;
+export const adminTrucksQuerySchema = adminNamedListQuerySchema;
 export const adminTruckCursorSchema = z.object({
   direction: z.enum(['asc', 'desc']),
   truckNumber: z.string().min(1).max(120),

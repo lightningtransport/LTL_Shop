@@ -21,7 +21,7 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
-import { isMyAssignedOrInheritedJob, isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel } from '@/lib/job-assignment';
+import { canCompleteJobFromWorkOrder, isMyAssignedOrInheritedJob, isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel } from '@/lib/job-assignment';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
@@ -198,8 +198,10 @@ export default function WorkOrderDetailPage() {
 
   const todo = wo.jobs.filter((j) => j.status === 'to_do');
   const done = wo.jobs.filter((j) => j.status === 'completed');
-  const myTodo = todo.filter((job) => isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
-  const otherTodo = todo.filter((job) => !isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? ''));
+  const canComplete = (job: WorkOrderJobDto) => canCompleteJobFromWorkOrder(job, wo.pmJob?.id, user?.id ?? '');
+  const isMyTodo = (job: WorkOrderJobDto) => isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? '') && canComplete(job);
+  const myTodo = todo.filter(isMyTodo);
+  const otherTodo = todo.filter((job) => !isMyTodo(job));
   const waitingOnManager = isStandardWorkWaitingOnManager(wo);
   // LTR-124: labor stops after the last Job; a Job added later needs Start Work.
   // `laborRunning === false` keeps older API responses (field absent) unchanged.
@@ -382,6 +384,7 @@ export default function WorkOrderDetailPage() {
                   <JobTodoButton
                     job={job}
                     currentUserId={user?.id ?? ''}
+                    readOnly={!canComplete(job)}
                     disabled={busy || wo.status !== 'in_progress' || laborStopped}
                     onSelect={(event) => {
                       finishJobTriggerRef.current = event.currentTarget;
@@ -819,21 +822,19 @@ function JobTodoButton({
   job,
   currentUserId,
   disabled,
+  readOnly = false,
   onSelect,
 }: {
   job: WorkOrderJobDto;
   currentUserId: string;
   disabled: boolean;
+  /** LTR-151: someone else's PM job is listed without offering "Complete job". */
+  readOnly?: boolean;
   onSelect: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
   const { messages } = useShopLocale();
-  return (
-    <Button
-      variant="outline"
-      className="h-auto w-full justify-start gap-3 p-4 text-left font-normal"
-      disabled={disabled}
-      onClick={onSelect}
-    >
+  const content = (
+    <>
       <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-shop-border text-xs">
         ○
       </span>
@@ -844,6 +845,19 @@ function JobTodoButton({
           {jobAssignmentLabel(job.assignedMechanic, currentUserId, messages)}
         </span>
       </span>
+    </>
+  );
+  if (readOnly) {
+    return <div className="card flex items-start gap-3 text-left" data-testid="job-read-only">{content}</div>;
+  }
+  return (
+    <Button
+      variant="outline"
+      className="h-auto w-full justify-start gap-3 p-4 text-left font-normal"
+      disabled={disabled}
+      onClick={onSelect}
+    >
+      {content}
     </Button>
   );
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { compactAge, dispatchSignalsByTruck, groupWorkLocations, matchesTruckSearch, yardCardNextStep } from './yard-card';
+import { getAdminMessages } from './admin-messages';
+import { compactAge, dispatchSignalsByTruck, fillYardText, groupWorkLocations, matchesTruckSearch, yardCardNextStep } from './yard-card';
 
 describe('Yard card helpers (LTR-101, LTR-103)', () => {
   it('turns the Work Plan reason into the next step', () => {
@@ -7,11 +8,20 @@ describe('Yard card helpers (LTR-101, LTR-103)', () => {
     expect(yardCardNextStep({ readyReason: 'alignment_pending' })?.key).toBe('yardCardNextAlignment');
     // Only Shop Work counts once PM/Alignment/Detailing/QC are on the Work Order too.
     expect(yardCardNextStep({ readyReason: 'jobs_remaining', jobsCompleted: 0, jobsTotal: 5, shopWorkRemainingCount: 1 }))
-      .toEqual({ key: 'yardCardJobsPending', values: { count: '1' } });
+      .toEqual({ key: 'yardCardJobPending', values: { count: '1' } });
     expect(yardCardNextStep({ readyReason: 'pm_pending' })?.key).toBe('yardCardNextPm');
     expect(yardCardNextStep({ readyReason: 'work_order_open' })?.key).toBe('yardCardWaitingClose');
     expect(yardCardNextStep({ readyReason: 'plan_complete' })).toBeNull();
     expect(yardCardNextStep({})).toBeNull();
+  });
+
+  it('uses the singular for one pending Job in both locales (LTR-151)', () => {
+    const one = yardCardNextStep({ readyReason: 'jobs_remaining', shopWorkRemainingCount: 1 });
+    expect(one?.key).toBe('yardCardJobPending');
+    expect(fillYardText(getAdminMessages('en')[one!.key], one!.values)).toBe('1 Job pending');
+    expect(fillYardText(getAdminMessages('es')[one!.key], one!.values)).toBe('1 Job pendiente');
+    const many = yardCardNextStep({ readyReason: 'jobs_remaining', shopWorkRemainingCount: 2 });
+    expect(fillYardText(getAdminMessages('en')[many!.key], many!.values)).toBe('2 Jobs pending');
   });
 
   it('formats a compact age', () => {
