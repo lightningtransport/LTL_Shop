@@ -191,6 +191,16 @@ type Copy = {
   viewCompletedWorkAction: string;
   jobsDone: (completed: number, total: number) => string;
   truckTitle: (truckNumber: string) => string;
+  navMyWork: string;
+  navTrucks: string;
+  navCompleted: string;
+  mechanicNavLabel: string;
+  mechanicTrucksTitle: string;
+  mechanicTrucksSubtitle: string;
+  mechanicCompletedTitle: string;
+  mechanicCompletedSubtitle: string;
+  noCompletedWork: string;
+  backToTrucks: string;
   startPmService: string;
   pmServiceStartedSuccess: string;
   pmJobFinishedHint: string;
@@ -379,6 +389,16 @@ const copy: Record<ShopLocale, Copy> = {
     viewCompletedWorkAction: 'View completed work',
     jobsDone: (completed, total) => `${completed} of ${total} jobs done`,
     truckTitle: (truckNumber) => `Truck ${truckNumber}`,
+    navMyWork: 'My work',
+    navTrucks: 'Trucks',
+    navCompleted: 'Completed',
+    mechanicNavLabel: 'Mechanic workspace',
+    mechanicTrucksTitle: 'Find a Truck',
+    mechanicTrucksSubtitle: 'Search by Truck number to see its repair history.',
+    mechanicCompletedTitle: 'Completed work',
+    mechanicCompletedSubtitle: 'Work you finished, newest first.',
+    noCompletedWork: 'No completed work yet.',
+    backToTrucks: 'Back to Trucks',
     startPmService: 'Start PM service',
     pmServiceStartedSuccess: 'PM service started.',
     pmJobFinishedHint: 'This PM service is finished. The Shop Manager closes the Work Order.',
@@ -579,6 +599,16 @@ const copy: Record<ShopLocale, Copy> = {
     viewCompletedWorkAction: 'Ver trabajo completado',
     jobsDone: (completed, total) => `${completed} de ${total} Jobs completados`,
     truckTitle: (truckNumber) => `Unidad ${truckNumber}`,
+    navMyWork: 'Mi trabajo',
+    navTrucks: 'Unidades',
+    navCompleted: 'Completado',
+    mechanicNavLabel: 'Espacio del mecánico',
+    mechanicTrucksTitle: 'Buscar una unidad',
+    mechanicTrucksSubtitle: 'Busca por número de unidad para ver su historial de reparaciones.',
+    mechanicCompletedTitle: 'Trabajo completado',
+    mechanicCompletedSubtitle: 'Trabajo que terminaste, del más reciente al más antiguo.',
+    noCompletedWork: 'Aún no hay trabajo completado.',
+    backToTrucks: 'Volver a Unidades',
     startPmService: 'Iniciar servicio PM',
     pmServiceStartedSuccess: 'Servicio PM iniciado.',
     pmJobFinishedHint: 'Este servicio PM está terminado. El Shop Manager cierra el Work Order.',
