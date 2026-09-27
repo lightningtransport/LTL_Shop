@@ -114,7 +114,7 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').closeDialog).toBe('Cerrar');
     expect(getShopCopy('es').waitingOnManagerBody).toMatch(/Manager cierra/);
     expect(getShopCopy('en').workOptions).toBe('Work Options');
-    expect(getShopCopy('es').activeJobsTitle).toBe('Jobs activos');
+    expect(getShopCopy('es').activeJobsTitle).toBe('En curso');
     expect(getShopCopy('en').pmPausedTitle).toBe('Paused PM services');
     expect(getShopCopy('es').pmPausedTitle).toBe('Servicios de PM pausados');
     expect(getShopCopy('en').pmActiveTitle).toBe('Active PM services');

@@ -177,6 +177,34 @@ export default function HomePage() {
 
       {data ? (
         <>
+          {/* LTR-134: one unit (the Work Order) per section; what I am working on comes first. */}
+          <section className="mb-6">
+              <h2 className="section-label mb-2">{isPm ? messages.pmActiveTitle : messages.activeJobsTitle}</h2>
+            <p className="mb-3 text-sm text-shop-muted">
+              {isPm ? messages.activePmServices(activeWork.length) : messages.activeJobs(activeWork.length)}
+            </p>
+            {!activeWork.length ? (
+              <EmptyState>
+                {isPm ? (
+                  messages.noActivePmServices
+                ) : (
+                  <>
+                    <p>{messages.noActiveJobs}</p>
+                    {!data.created.length && !waitingOnManager.length ? (
+                      <p className="mt-2 text-sm">{messages.askManagerToCreate}</p>
+                    ) : null}
+                  </>
+                )}
+              </EmptyState>
+            ) : (
+              <div className="space-y-3">
+                {activeWork.map((wo) => (
+                  <WorkOrderCard key={wo.id} wo={wo} mode="active" currentUserId={user.id} pmWorkspace={isPm} />
+                ))}
+              </div>
+            )}
+          </section>
+
           {data.created.length ? (
             <section className="mb-6">
               <h2 className="section-label mb-2">{messages.readyToStart}</h2>
@@ -204,33 +232,6 @@ export default function HomePage() {
               </div>
             </section>
           ) : null}
-
-          <section className="mb-6">
-              <h2 className="section-label mb-2">{isPm ? messages.pmActiveTitle : messages.activeJobsTitle}</h2>
-            <p className="mb-3 text-sm text-shop-muted">
-              {isPm ? messages.activePmServices(activeWork.length) : messages.activeJobs(activeWork.length)}
-            </p>
-            {!activeWork.length ? (
-              <EmptyState>
-                {isPm ? (
-                  messages.noActivePmServices
-                ) : (
-                  <>
-                    <p>{messages.noActiveJobs}</p>
-                    {!data.created.length && !waitingOnManager.length ? (
-                      <p className="mt-2 text-sm">{messages.askManagerToCreate}</p>
-                    ) : null}
-                  </>
-                )}
-              </EmptyState>
-            ) : (
-              <div className="space-y-3">
-                {activeWork.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="active" currentUserId={user.id} pmWorkspace={isPm} />
-                ))}
-              </div>
-            )}
-          </section>
 
           <section>
             <h2 className="section-label mb-2">{isPm ? messages.pmPausedTitle : messages.pausedJobsTitle}</h2>

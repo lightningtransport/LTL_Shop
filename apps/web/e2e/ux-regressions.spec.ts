@@ -822,8 +822,8 @@ test.describe('My Assigned Work presentation', () => {
     const waitingCard = page.locator('.card').filter({ hasText: 'WO-READY-1' });
     await expect(waitingCard.getByRole('link', { name: /View Details WO-READY-1/ })).toBeVisible();
     const activeCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
-    await expect(page.getByRole('heading', { name: 'Active Jobs' })).toBeVisible();
-    await expect(page.getByText('1 active job')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'In Progress' })).toBeVisible();
+    await expect(page.getByText('1 Work Order in progress')).toBeVisible();
     await expect(activeCard.getByRole('link', { name: /View Work WO-ASSIGN-1/ })).toBeVisible();
   });
 
@@ -850,7 +850,7 @@ test.describe('My Assigned Work presentation', () => {
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Ready to Start' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Waiting on Manager' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Active Jobs' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'In Progress' })).toBeVisible();
     await expect(page.getByText('No assigned work in progress.')).toBeVisible();
     await expect(page.getByText(/Ask your Shop Manager to create a Work Order/i)).toHaveCount(0);
   });
