@@ -1,5 +1,6 @@
 'use client';
 
+import { MechanicTabs } from './mechanic-tabs';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -522,6 +523,7 @@ export function HomeTopBar({ mode }: { mode?: MechanicMode }) {
         </div>
       </header>
       {mode ? <WorkspaceNav mode={mode} /> : null}
+      {mode ? <MechanicTabs mode={mode} /> : null}
     </>
   );
 }

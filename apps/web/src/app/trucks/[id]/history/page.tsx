@@ -32,7 +32,9 @@ export default function RepairHistoryPage() {
     ? (messages.locale === 'es' ? 'Volver al nuevo Work Order' : 'Back to New Work Order')
     : backHref.startsWith('/work-orders/')
       ? (messages.locale === 'es' ? 'Volver al Work Order' : 'Back to Work Order')
-      : messages.backToHome;
+      : /^\/mechanic\/(standard|pm)\/trucks$/.test(backHref)
+        ? messages.backToTrucks
+        : messages.backToHome;
 
   useEffect(() => {
     if (!sessionLoading && !token) replaceAppLocation('/login', router);
@@ -55,7 +57,7 @@ export default function RepairHistoryPage() {
     <div>
       <ScreenHeader
         title={messages.locale === 'es' ? 'Historial de reparaciones' : 'Repair history'}
-        subtitle={`#${truck.truckNumber}`}
+        subtitle={messages.truckTitle(truck.truckNumber)}
         backHref={backHref}
         backLabel={backLabel}
       />

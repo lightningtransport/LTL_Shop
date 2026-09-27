@@ -131,6 +131,23 @@ test.describe('Daniel PM workflow', () => {
     await expect(oil).toHaveValue(oilPart);
   });
 
+  test('LTR-133: tabs lead to Truck search and Completed work', async ({ page }) => {
+    await mockPmApi(page);
+    await login(page);
+    const nav = page.getByRole('navigation', { name: 'Mechanic workspace' });
+    await expect(nav.getByRole('link', { name: 'My work' })).toHaveAttribute('aria-current', 'page');
+    await nav.getByRole('link', { name: 'Trucks' }).click();
+    await expect(page).toHaveURL(/\/mechanic\/pm\/trucks$/);
+    await expect(page.getByRole('heading', { name: 'Find a Truck' })).toBeVisible();
+    await page.getByLabel('Truck', { exact: true }).fill('905');
+    const result = page.getByRole('link', { name: /Truck 905/ });
+    await expect(result).toHaveAttribute('href', `/trucks/${truck.id}/history?from=%2Fmechanic%2Fpm%2Ftrucks`);
+    await nav.getByRole('link', { name: 'Completed' }).click();
+    await expect(page).toHaveURL(/\/mechanic\/pm\/completed$/);
+    await expect(page.getByRole('heading', { name: 'Completed work' })).toBeVisible();
+    await expect(page.getByText('No completed work yet.')).toBeVisible();
+  });
+
   test('PM-only mechanic leaving /mechanic/standard gets an access exit', async ({ page }) => {
     await mockPmApi(page);
     await login(page);

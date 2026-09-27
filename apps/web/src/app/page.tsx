@@ -251,17 +251,11 @@ export default function HomePage() {
             )}
           </section>
 
+          {/* LTR-133: completed work has its own screen (also in the tab bar). */}
           {data.completed.length ? (
-            <details className="mt-6">
-              <summary className={cn(buttonVariants({ variant: 'secondary' }), 'w-full cursor-pointer list-none')}>
-                {messages.viewCompletedWork(data.completed.length)}
-              </summary>
-              <div className="mt-3 space-y-3">
-                {data.completed.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="completed" currentUserId={user.id} pmWorkspace={isPm} />
-                ))}
-              </div>
-            </details>
+            <Link href={`/mechanic/${isPm ? 'pm' : 'standard'}/completed`} className={cn(buttonVariants({ variant: 'secondary' }), 'mt-6 w-full')}>
+              {messages.viewCompletedWork(data.completed.length)}
+            </Link>
           ) : null}
         </>
       ) : null}
