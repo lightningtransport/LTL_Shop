@@ -308,6 +308,8 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   activityLog: AdminActivityLogDto[];
   /** LTR-126: append-only notes and work requests (oldest first). */
   noteEntries?: WorkOrderNoteDto[];
+  /** LTR-119 / D6: the Truck Work Plan is where Jobs are added (Slice 1 on). */
+  addWorkInWorkPlan?: boolean;
   /** LTR-146: PM service recorded on this Work Order (legacy PM WO or PM job). */
   pmService?: { observedMileage: number | null; partsCount: number; workOrderJobId: string | null } | null;
   returnedToServiceAt: string | null;
