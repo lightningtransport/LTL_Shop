@@ -961,6 +961,41 @@ describe('AdminService', () => {
     })).rejects.toMatchObject({ response: { code: 'PM_JOB_USES_PM_SERVICE' } });
   });
 
+  it('LTR-146: assigns the PM job to a PM mechanic without adding them to the Standard team', async () => {
+    vi.stubEnv('WORK_PLAN_PM_PHASE', 'true');
+    const manager = {
+      id: '00000000-0000-4000-8000-000000000002', email: 'manager@lightning.local', name: 'Shop Manager',
+      role: 'manager' as const, active: true, pmAuthorized: false,
+      capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
+    };
+    const pmJobId = '00000000-0000-4000-8000-000000000778';
+    const open = detailRow({
+      status: 'in_progress', version: 1,
+      jobs: [{ ...detailRow().jobs[0], id: pmJobId, displayName: 'PM A Service', category: { name: 'PM' }, startedAt: null }],
+    });
+    const tx = assignmentTx(open);
+    tx.workOrder.findUnique.mockResolvedValue(open);
+    tx.user.findFirst.mockResolvedValue({ id: '00000000-0000-4000-8000-000000000009', name: 'MPM' });
+    const prisma = createPrisma();
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+    const service = new AdminService(prisma as never, { log: vi.fn() } as never, {} as never);
+
+    await service.assignJob(manager, open.id, pmJobId, {
+      mechanicId: '00000000-0000-4000-8000-000000000009',
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001301',
+    });
+    expect(tx.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ capabilities: { some: { capability: 'MECHANIC_PM' } } }),
+    }));
+    expect(tx.mechanicAssignment.create).not.toHaveBeenCalled();
+    expect(tx.workOrderJob.update).toHaveBeenCalledWith({
+      where: { id: pmJobId },
+      data: { assignedMechanicId: '00000000-0000-4000-8000-000000000009' },
+    });
+    vi.unstubAllEnvs();
+  });
+
   it('patches allowed Admin fields on open Work Orders', async () => {
     const manager = {
       id: '00000000-0000-4000-8000-000000000002',

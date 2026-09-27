@@ -67,6 +67,11 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const { data: categoryData } = useCategories(true);
   const historyQuery = useAdminRepairHistory(data?.truck.id ?? '', id, historyCategory || undefined);
   const { data: mechanicPages } = useAdminMechanics('');
+  // LTR-146: the PM job is assigned to a PM mechanic.
+  const pmMechanics = useMemo(
+    () => (mechanicPages?.flatMap((page) => page.items) ?? []).filter((mechanic) => mechanic.active && mechanic.capabilities.includes(AppCapability.MECHANIC_PM)),
+    [mechanicPages],
+  );
   const assignableMechanics = useMemo(
     () => (mechanicPages?.flatMap((page) => page.items) ?? []).filter((mechanic) => mechanic.active && mechanic.capabilities.includes(AppCapability.MECHANIC_STANDARD)),
     [mechanicPages],
@@ -256,8 +261,18 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                           <p className="mt-1 text-xs text-muted-foreground">
                             {job.assignedMechanic
                               ? `${messages.jobAssignee}: ${job.assignedMechanic.name}`
-                              : messages.jobUnassignedInheritsTeam}
+                              : isPmJob ? messages.pmJobUnassigned : messages.jobUnassignedInheritsTeam}
                           </p>
+                          {isPmJob && job.startedAt ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {messages.pmJobStartedAt.replace('{date}', formatAdminDate(job.startedAt, locale))}
+                              {data.pmService?.workOrderJobId === job.id
+                                ? ` · ${messages.pmJobServiceSummary
+                                  .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(data.pmService.observedMileage))
+                                  .replace('{parts}', String(data.pmService.partsCount))}`
+                                : ''}
+                            </p>
+                          ) : null}
                         </div>
                         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
                           {canManageJobs && isToDo ? (
@@ -284,7 +299,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                                   onChange={(event) => setAssignDrafts((prev) => ({ ...prev, [job.id]: event.target.value }))}
                                 >
                                   <option value="">{messages.assignJobPlaceholder}</option>
-                                  {assignableMechanics.map((mechanic) => (
+                                  {(isPmJob ? pmMechanics : assignableMechanics).map((mechanic) => (
                                     <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
                                   ))}
                                 </Select>

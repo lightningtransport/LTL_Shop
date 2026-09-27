@@ -350,6 +350,15 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
   },
   {
     method: 'POST',
+    path: '/work-orders/:id/jobs/:jobId/pm/start',
+    handler: 'startPmJob',
+    controller: 'work-orders',
+    expected: [PM],
+    enforcement: 'service',
+    notes: 'LTR-146: the assigned (or claiming) PM mechanic starts the PM job of a truck Work Order.',
+  },
+  {
+    method: 'POST',
     path: '/work-orders/:id/notes',
     handler: 'addNote',
     controller: 'work-orders',

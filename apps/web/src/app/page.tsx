@@ -185,7 +185,7 @@ export default function HomePage() {
               </p>
               <div className="space-y-3">
                 {data.created.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="created" currentUserId={user.id} />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="created" currentUserId={user.id} pmWorkspace={isPm} />
                 ))}
               </div>
             </section>
@@ -199,7 +199,7 @@ export default function HomePage() {
               </p>
               <div className="space-y-3">
                 {waitingOnManager.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="waiting_on_manager" currentUserId={user.id} />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="waiting_on_manager" currentUserId={user.id} pmWorkspace={isPm} />
                 ))}
               </div>
             </section>
@@ -226,7 +226,7 @@ export default function HomePage() {
             ) : (
               <div className="space-y-3">
                 {activeWork.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="active" currentUserId={user.id} />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="active" currentUserId={user.id} pmWorkspace={isPm} />
                 ))}
               </div>
             )}
@@ -244,7 +244,7 @@ export default function HomePage() {
             ) : (
               <div className="space-y-3">
                 {data.paused.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="paused" currentUserId={user.id} />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="paused" currentUserId={user.id} pmWorkspace={isPm} />
                 ))}
               </div>
             )}
@@ -257,7 +257,7 @@ export default function HomePage() {
               </summary>
               <div className="mt-3 space-y-3">
                 {data.completed.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="completed" currentUserId={user.id} />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="completed" currentUserId={user.id} pmWorkspace={isPm} />
                 ))}
               </div>
             </details>
@@ -272,13 +272,18 @@ function WorkOrderCard({
   wo,
   mode,
   currentUserId,
+  pmWorkspace = false,
 }: {
   wo: WorkOrderSummaryDto;
   mode: 'created' | 'active' | 'waiting_on_manager' | 'paused' | 'completed';
   currentUserId: string;
+  pmWorkspace?: boolean;
 }) {
   const { messages } = useShopLocale();
-  const isPm = wo.primaryCategoryName === 'PM';
+  // LTR-146: in the PM workspace a truck Work Order shows only its PM job.
+  const pmJob = pmWorkspace && wo.primaryCategoryName !== 'PM' ? wo.pmJob ?? null : null;
+  const isPm = wo.primaryCategoryName === 'PM' || Boolean(pmJob);
+  const detailHref = pmJob ? `/work-orders/${wo.id}?view=pm` : `/work-orders/${wo.id}`;
   return (
     <Card className="space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -301,13 +306,15 @@ function WorkOrderCard({
         {!isPm ? <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge> : null}
       </div>
       <p className="text-sm text-shop-muted">
-        {isPm
+        {pmJob
+          ? messages.pmJobOnWorkOrder(pmJob.displayName, wo.displayId)
+          : isPm
           ? messages.pmServiceLabel
           : [jobCategoriesLine(wo.jobs), messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)].filter(Boolean).join(' · ')}
       </p>
-      {isPm && wo.startedAt && mode !== 'completed' ? (
+      {isPm && (pmJob ? pmJob.startedAt : wo.startedAt) && mode !== 'completed' ? (
         <p className="text-xs text-shop-muted">
-          {messages.pmStartedAt(new Intl.DateTimeFormat(messages.locale === 'es' ? 'es-US' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(wo.startedAt)))}
+          {messages.pmStartedAt(new Intl.DateTimeFormat(messages.locale === 'es' ? 'es-US' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date((pmJob ? pmJob.startedAt : wo.startedAt)!)))}
         </p>
       ) : null}
       {!isPm ? (
@@ -343,7 +350,15 @@ function WorkOrderCard({
         </ul>
       ) : null}
       <div className="flex flex-col gap-2 sm:flex-row">
-        {mode === 'completed' ? (
+        {pmJob ? (
+          <WorkOrderActionLink
+            href={detailHref}
+            action={mode === 'completed' ? messages.viewCompletedWorkAction : pmJob.startedAt ? messages.continuePmService : messages.startPmService}
+            wo={wo}
+            variant={mode === 'completed' ? 'secondary' : undefined}
+            className="w-full"
+          />
+        ) : mode === 'completed' ? (
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewCompletedWorkAction} wo={wo} variant="secondary" className="flex-1" />
         ) : mode === 'paused' ? (
           isPm ? (

@@ -86,6 +86,12 @@ export class WorkOrdersController {
     return this.workOrders.addNote(req.user!, id, body);
   }
 
+  // LTR-146: the PM mechanic starts the PM job of a truck Work Order.
+  @Post(':id/jobs/:jobId/pm/start')
+  startPmJob(@Req() req: Request, @Param('id') id: string, @Param('jobId') jobId: string) {
+    return this.workOrders.startPmJob(req.user!, id, jobId);
+  }
+
   @Post(':id/jobs/:jobId/complete')
   completeJob(
     @Req() req: Request,

@@ -185,6 +185,12 @@ type Copy = {
   viewCompletedWorkAction: string;
   jobsDone: (completed: number, total: number) => string;
   truckTitle: (truckNumber: string) => string;
+  startPmService: string;
+  pmServiceStartedSuccess: string;
+  pmJobFinishedHint: string;
+  pmJobFinishRequirement: string;
+  pmJobNotStartedHint: string;
+  pmJobOnWorkOrder: (job: string, workOrder: string) => string;
   startWorkToCompleteJobs: string;
   laborTime: (duration: string) => string;
   laborRunningLabel: string;
@@ -361,6 +367,12 @@ const copy: Record<ShopLocale, Copy> = {
     viewCompletedWorkAction: 'View completed work',
     jobsDone: (completed, total) => `${completed} of ${total} jobs done`,
     truckTitle: (truckNumber) => `Truck ${truckNumber}`,
+    startPmService: 'Start PM service',
+    pmServiceStartedSuccess: 'PM service started.',
+    pmJobFinishedHint: 'This PM service is finished. The Shop Manager closes the Work Order.',
+    pmJobFinishRequirement: 'Finish requires a saved observed mileage and at least one part.',
+    pmJobNotStartedHint: 'Start the PM service to record the observed mileage and parts.',
+    pmJobOnWorkOrder: (job, workOrder) => `${job} · Work Order ${workOrder}`,
     startWorkToCompleteJobs: 'Press Start Work to be able to complete Jobs.',
     laborTime: (duration) => `Labor time: ${duration}`,
     laborRunningLabel: 'running',
@@ -549,6 +561,12 @@ const copy: Record<ShopLocale, Copy> = {
     viewCompletedWorkAction: 'Ver trabajo completado',
     jobsDone: (completed, total) => `${completed} de ${total} Jobs completados`,
     truckTitle: (truckNumber) => `Unidad ${truckNumber}`,
+    startPmService: 'Iniciar servicio PM',
+    pmServiceStartedSuccess: 'Servicio PM iniciado.',
+    pmJobFinishedHint: 'Este servicio PM está terminado. El Shop Manager cierra el Work Order.',
+    pmJobFinishRequirement: 'Para terminar se necesita el millaje observado guardado y al menos una parte.',
+    pmJobNotStartedHint: 'Inicia el servicio PM para registrar el millaje observado y las partes.',
+    pmJobOnWorkOrder: (job, workOrder) => `${job} · Work Order ${workOrder}`,
     startWorkToCompleteJobs: 'Pulsa Iniciar trabajo para poder completar Jobs.',
     laborTime: (duration) => `Tiempo de labor: ${duration}`,
     laborRunningLabel: 'en curso',
