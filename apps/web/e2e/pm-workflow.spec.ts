@@ -157,3 +157,81 @@ test.describe('Daniel PM workflow', () => {
     await expect(page.getByRole('button', { name: /Try again|Retry/i })).toBeVisible();
   });
 });
+
+test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148, WORK_PLAN_PM_PHASE)', () => {
+  const jobWoId = '00000000-0000-0000-0000-000000000901';
+  const pmJobId = '00000000-0000-0000-0000-000000000911';
+  const pmCategoryId = pmCategory.id;
+
+  async function mockPmJobApi(page: Page) {
+    let started: string | null = null;
+    let finished = false;
+    let savedPm = pm(null);
+    const pmJob = () => ({
+      id: pmJobId, displayName: 'PM A Service', status: finished ? 'completed' : 'to_do', startedAt: started,
+      completedAt: finished ? '2026-01-01T13:00:00.000Z' : null, assignedMechanic: { id: daniel.id, name: daniel.name },
+    });
+    const jobSummary = () => ({
+      ...summary(), id: jobWoId, displayId: 'WO-900', primaryCategoryName: 'Inspection', status: 'created',
+      priority: 'normal', jobs: [], jobsCompleted: 0, jobsTotal: 5, pmJob: pmJob(),
+    });
+    const jobDetail = () => ({
+      ...jobSummary(), notes: null, createdById: 'mgr', completedAt: null, totalActiveLaborMs: 0, totalWaitingMs: 0,
+      laborRunning: false, mechanics: [], currentPause: null, truck, version: 1, noteEntries: [],
+      jobs: [{
+        id: pmJobId, workOrderId: jobWoId, catalogJobId: 'cj-pm-a', categoryId: pmCategoryId,
+        category: { id: pmCategoryId, name: 'PM' }, displayName: 'PM A Service', customDescription: null,
+        status: finished ? 'completed' : 'to_do', completedAt: null, completedById: null, completionNotes: null,
+        assignedMechanic: { id: daniel.id, name: daniel.name }, startedAt: started,
+      }],
+    });
+    await page.route('**/api/**', async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path === '/api/auth/me') return fulfill(route, { user: daniel });
+      if (path === '/api/catalog/categories') return fulfill(route, [pmCategory]);
+      if (path.startsWith('/api/catalog/')) return fulfill(route, []);
+      if (path === '/api/work-orders' && request.method() === 'GET') {
+        const item = jobSummary();
+        return fulfill(route, started
+          ? { created: [], active: [{ ...item, status: 'in_progress' }], paused: [], completed: [] }
+          : { created: [item], active: [], paused: [], completed: [] });
+      }
+      if (path === `/api/work-orders/${jobWoId}/jobs/${pmJobId}/pm/start`) {
+        started = '2026-01-01T12:30:00.000Z';
+        savedPm = { ...savedPm, workOrderId: jobWoId };
+        return fulfill(route, jobDetail());
+      }
+      if (path === `/api/work-orders/${jobWoId}/jobs/${pmJobId}/complete`) {
+        finished = true;
+        return fulfill(route, jobDetail());
+      }
+      if (path === `/api/work-orders/${jobWoId}/pm`) {
+        if (request.method() === 'POST') {
+          const body = request.postDataJSON() as { observedMileage: number | null; selections: unknown[] };
+          savedPm = { ...savedPm, observedMileage: body.observedMileage, selections: body.selections };
+        }
+        return fulfill(route, { ...savedPm, workOrderId: jobWoId, canEdit: Boolean(started) && !finished });
+      }
+      if (path === `/api/work-orders/${jobWoId}`) return fulfill(route, jobDetail());
+      return route.continue();
+    });
+  }
+
+  test('PM mechanic starts and finishes only the PM job', async ({ page }) => {
+    await mockPmJobApi(page);
+    await login(page);
+    await expect(page.getByText('PM A Service · Work Order WO-900')).toBeVisible();
+    await page.getByRole('link', { name: /Start PM service/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/work-orders/${jobWoId}\\?view=pm$`));
+    await expect(page.getByText('Start the PM service to record the observed mileage and parts.')).toBeVisible();
+    await page.getByRole('button', { name: 'Start PM service' }).click();
+    await page.getByLabel('Observed mileage').fill('120500');
+    await page.getByLabel('Oil Filter 1 Unit').selectOption(oilPart);
+    const finish = page.getByRole('button', { name: 'Finish Work' });
+    await expect(finish).toBeEnabled({ timeout: 10_000 });
+    await finish.click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Finish Work' }).click();
+    await expect(page).toHaveURL(/\/mechanic\/pm$/);
+  });
+});

@@ -1882,6 +1882,8 @@ export class AdminService {
     const candidates = uniqueWorkOrders([readyToClose, critical, high, paused, blocked, stale], Number.MAX_SAFE_INTEGER)
       .map(toAdminSummary);
     return candidates
+      // LTR-116: nothing actionable (e.g. a fresh PM service) is not attention.
+      .filter((item) => item.attentionReason !== null)
       .map((item, index) => ({ item, index, rank: workOrderAttentionRank(item.attentionReason ?? null) }))
       .sort((left, right) => left.rank - right.rank || left.index - right.index)
       .slice(0, ATTENTION_LIMIT)

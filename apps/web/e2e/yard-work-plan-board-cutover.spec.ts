@@ -172,6 +172,28 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await expect(page.getByText('Required Work')).toHaveCount(0);
   });
 
+  test('LTR-148: WORK_PLAN_PM_PHASE adds the PM column, QC always, and a PM card says Next: PM', async ({ page }) => {
+    await mockSession(page);
+    const base = yardPage(true);
+    const pmPage = {
+      ...base,
+      pmPhaseEnabled: true,
+      items: [{ ...base.items[0], phase: 'pm', readyReason: 'pm_pending', activeWorkOrder: { ...base.items[0].activeWorkOrder, jobsCompleted: 1, jobsTotal: 5, createdAt: new Date().toISOString() } }],
+    };
+    await page.route('**/api/admin/yard-operations**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(pmPage) });
+    });
+
+    await page.setViewportSize({ width: 1440, height: 1024 });
+    await page.goto('/admin/yard-operations');
+    await expect(page.locator('[data-work-plan-board="true"]')).toBeVisible();
+    const headings = ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close WO', 'Ready to Go'];
+    for (const phase of headings) {
+      await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
+    }
+    await expect(page.getByTestId('yard-truck-card').getByText('Next: PM').first()).toBeVisible();
+  });
+
   test('flag off: Phase 1 nine columns stay', async ({ page }) => {
     await mockSession(page);
     await page.route('**/api/admin/yard-operations**', async (route) => {

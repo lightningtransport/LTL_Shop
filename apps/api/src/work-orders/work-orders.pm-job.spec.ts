@@ -58,6 +58,7 @@ function setup(wo = workOrder(), options: { runningJob?: unknown; pmService?: un
     truck: { update: vi.fn() },
     truckMileageAdjustment: { create: vi.fn() },
     jobCategory: { findUnique: vi.fn().mockResolvedValue({ name: 'Air & Brake System' }) },
+    catalogJob: { findFirst: vi.fn().mockResolvedValue({ id: 'cj-pm-b', displayName: 'PM B Service' }) },
   };
   const activity = { log: vi.fn() };
   const service = new WorkOrdersService({
@@ -148,5 +149,20 @@ describe('PM job inside the truck Work Order (LTR-146)', () => {
     expect(result.created.map((item) => item.displayId)).toEqual(['WO-006']);
     expect(result.active.map((item) => item.displayId)).toEqual(['WO-007']);
     expect(result.active[0].pmJob).toMatchObject({ id: 'job-pm', displayName: 'PM A Service' });
+  });
+
+  it('lets the assigned PM mechanic switch PM A to PM B, and nobody else (LTR-148)', async () => {
+    const wo = workOrder({ assignedMechanicId: 'mpm', startedAt: new Date() }, { status: 'in_progress' });
+    const { service, tx } = setup(wo);
+    await service.changePmService(pmMechanic, 'wo-1', 'job-pm', { catalogJobId: '00000000-0000-4000-8000-00000000cb02' });
+    expect(tx.catalogJob.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ categoryId: 'cat-pm', status: 'active' }),
+    }));
+    expect(tx.workOrderJob.update).toHaveBeenCalledWith({
+      where: { id: 'job-pm' },
+      data: { catalogJobId: 'cj-pm-b', displayName: 'PM B Service' },
+    });
+    await expect(setup(wo).service.changePmService(otherPm, 'wo-1', 'job-pm', { catalogJobId: '00000000-0000-4000-8000-00000000cb02' }))
+      .rejects.toThrow('not assigned to you');
   });
 });

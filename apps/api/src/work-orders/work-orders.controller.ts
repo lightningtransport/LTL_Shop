@@ -86,6 +86,17 @@ export class WorkOrdersController {
     return this.workOrders.addNote(req.user!, id, body);
   }
 
+  // LTR-148: the assigned PM mechanic switches PM A ↔ PM B.
+  @Post(':id/jobs/:jobId/pm-service')
+  changePmService(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.workOrders.changePmService(req.user!, id, jobId, body);
+  }
+
   // LTR-146: the PM mechanic starts the PM job of a truck Work Order.
   @Post(':id/jobs/:jobId/pm/start')
   startPmJob(@Req() req: Request, @Param('id') id: string, @Param('jobId') jobId: string) {
