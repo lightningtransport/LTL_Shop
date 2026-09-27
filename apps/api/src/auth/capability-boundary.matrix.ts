@@ -350,6 +350,15 @@ export const WORK_ORDER_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
   },
   {
     method: 'POST',
+    path: '/work-orders/:id/jobs/:jobId/pm-service',
+    handler: 'changePmService',
+    controller: 'work-orders',
+    expected: [PM],
+    enforcement: 'service',
+    notes: 'LTR-148: the assigned PM mechanic switches the PM job between PM A and PM B.',
+  },
+  {
+    method: 'POST',
     path: '/work-orders/:id/jobs/:jobId/pm/start',
     handler: 'startPmJob',
     controller: 'work-orders',

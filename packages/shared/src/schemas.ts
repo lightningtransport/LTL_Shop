@@ -216,6 +216,11 @@ export const adminCompleteJobSchema = adminMutationMetaSchema.extend({
   notes: z.string().trim().max(2000).optional(),
 });
 
+/** LTR-148: the PM mechanic switches their PM job between PM Category catalog jobs. */
+export const changePmServiceSchema = z.object({
+  catalogJobId: z.string().uuid(),
+});
+
 /** LTR-145: switch the Work Order's PM job between PM Category catalog jobs (PM A ↔ PM B). */
 export const adminChangePmServiceSchema = adminMutationMetaSchema.extend({
   catalogJobId: z.string().uuid(),

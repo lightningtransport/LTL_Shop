@@ -44,6 +44,8 @@ export function workOrderAttentionReason(input: WorkOrderAttentionInput, now = D
   if (input.status === 'waiting_paused') return 'paused';
   if (input.hasActiveBlocker) return 'blocker';
   if (now - new Date(input.createdAt).getTime() > DAY_MS) return 'open_over_24h';
+  // LTR-116: an open PM service with nothing actionable does not need attention.
+  if (isPm) return null;
   return 'open';
 }
 

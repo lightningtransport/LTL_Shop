@@ -19,6 +19,7 @@ import {
   pauseWorkOrderSchema,
   reportBlockerSchema,
   addWorkOrderNoteSchema,
+  changePmServiceSchema,
   updatePmServiceSchema,
   mechanicModeSchema,
   type CreateWorkOrderInput,
@@ -1242,6 +1243,40 @@ export class WorkOrdersService {
     }
     if (!pmJobId) throw new BadRequestException('The PM job could not be prepared');
     return this.startPmJob(user, workOrderId, pmJobId);
+  }
+
+  /** LTR-148: the assigned PM mechanic switches the PM job between PM A and PM B before finishing it. */
+  async changePmService(user: AuthUser, id: string, jobId: string, raw: unknown) {
+    const parsed = changePmServiceSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    return this.prisma.$transaction(async (tx) => {
+      const wo = await this.requireWo(tx, id);
+      const job = this.pmJobForUser(user, wo);
+      if (!job || job.id !== jobId) throw new ForbiddenException('This PM job is not assigned to you.');
+      if (job.status !== 'to_do') throw new BadRequestException('Job is not in To Do status');
+      const target = await tx.catalogJob.findFirst({
+        where: { id: parsed.data.catalogJobId, status: 'active', categoryId: job.categoryId },
+        select: { id: true, displayName: true },
+      });
+      if (!target) throw new BadRequestException('Choose an active PM service from the catalog');
+      if (target.id === job.catalogJobId) return toWorkOrderDetail(wo);
+      await tx.workOrderJob.update({ where: { id: jobId }, data: { catalogJobId: target.id, displayName: target.displayName } });
+      const updated = await tx.workOrder.update({
+        where: { id },
+        data: { version: { increment: 1 } },
+        include: workOrderDetailInclude,
+      });
+      await this.activity.log(tx, {
+        workOrderId: id,
+        eventType: ActivityEventType.PM_DETAILS_UPDATED,
+        entityType: 'work_order_job',
+        entityId: jobId,
+        userId: user.id,
+        previousValue: { catalogJobId: job.catalogJobId, displayName: job.displayName },
+        newValue: { action: 'pm_service_changed', catalogJobId: target.id, displayName: target.displayName },
+      });
+      return toWorkOrderDetail(updated);
+    });
   }
 
   /** LTR-146: the PM mechanic starts (or claims and starts) the PM job of a truck Work Order. */

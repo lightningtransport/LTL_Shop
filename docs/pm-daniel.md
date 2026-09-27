@@ -14,6 +14,13 @@ A later migration can remove `pmAuthorized` after production stability is
 confirmed. PM part selections and observed mileage remain recorded per PM Work
 Order, while every change to the truck's canonical mileage is auditable.
 
+> **Superseded when `WORK_PLAN_PM_PHASE` is on (LTR-141, decisions D4 + D9).**
+> PM becomes a mandatory Job inside the truck's single Work Order. The PM
+> mechanic is assigned to the PM job, starts and finishes it with mileage and
+> parts, and "Create PM service" joins the truck's open Work Order. The rules
+> below describe the legacy flow (flag off), which stays for PM Work Orders
+> created before the flag.
+
 The Standard multi-Category target does not absorb PM. The Standard flow never
 offers or accepts PM as a Job Category. A user who holds `mechanic.pm`, including
 a multi-workspace user, must enter the specialized PM flow for mileage, parts,

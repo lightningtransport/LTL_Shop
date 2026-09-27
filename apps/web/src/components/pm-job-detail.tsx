@@ -8,12 +8,12 @@ import { MechanicMode, type WorkOrderDetailDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
 import { useShopLocale } from '@/lib/locale-context';
-import { shopKeys } from '@/lib/shop-data';
+import { shopKeys, useCatalogJobs } from '@/lib/shop-data';
 import { vehicleLine } from '@/lib/work-order-identity';
 import { useActionToast } from './action-toast';
 import { PmServiceCard, type PmDraftState } from './pm-service-card';
 import { TruckInformationFields } from './truck-information-fields';
-import { Button, InlineAlert, Modal, ScreenHeader, WorkspaceNav } from './ui';
+import { Button, InlineAlert, Label, Modal, ScreenHeader, Select, WorkspaceNav } from './ui';
 
 /**
  * LTR-146: the PM mechanic's view of a truck Work Order — only its PM job.
@@ -38,6 +38,9 @@ export function PmJobDetail({
     ready: false, pending: false, hasError: false, observedMileage: '', selectedParts: 0,
   });
   const pmJob = wo.pmJob;
+  const pmJobRow = wo.jobs.find((job) => job.id === pmJob?.id);
+  const { data: pmServices } = useCatalogJobs(pmJobRow?.category.id ?? '', Boolean(pmJobRow) && pmJob?.status === 'to_do');
+  const pmServiceOptions = (pmServices ?? []).filter((item) => /^PM [A-Z] Service$/i.test(item.displayName) || item.id === pmJobRow?.catalogJobId);
   if (!pmJob) return null;
 
   const started = Boolean(pmJob.startedAt);
@@ -81,6 +84,28 @@ export function PmJobDetail({
           </Link>
         </Button>
       </section>
+
+      {/* LTR-148: PM A ↔ PM B before the PM service is finished. */}
+      {!finished && pmJobRow && pmServiceOptions.length > 1 ? (
+        <section className="card mb-4 space-y-2">
+          <Label className="section-label" htmlFor="pm-job-service">{messages.pmServiceLabel}</Label>
+          <Select
+            id="pm-job-service"
+            value={pmJobRow.catalogJobId ?? ''}
+            disabled={busy}
+            onChange={(event) => {
+              const catalogJobId = event.target.value;
+              if (!catalogJobId || catalogJobId === pmJobRow.catalogJobId) return;
+              void run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/jobs/${pmJob.id}/pm-service`, {
+                method: 'POST',
+                body: JSON.stringify({ catalogJobId }),
+              }));
+            }}
+          >
+            {pmServiceOptions.map((item) => <option key={item.id} value={item.id}>{item.displayName}</option>)}
+          </Select>
+        </section>
+      ) : null}
 
       {started ? (
         <PmServiceCard workOrderId={wo.id} onDraftStateChange={setDraft} />

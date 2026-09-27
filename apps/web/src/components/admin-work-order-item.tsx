@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { AdminWorkOrderSummaryDto } from '@ltl-shop/shared';
+import { isPmCategory, type AdminWorkOrderSummaryDto } from '@ltl-shop/shared';
 import { Button, PriorityBadge, WorkOrderStatusBadge } from './ui';
 import { formatAdminDate } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
@@ -42,7 +42,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
         <div className={cn('flex flex-wrap gap-2', compact && 'xl:hidden')}>{priorityChip}{statusChip}</div>
       </div>
       <dl className={cn('mt-4 grid gap-3 text-sm sm:grid-cols-3', compact && 'grid-cols-2 xl:mt-0 xl:grid-cols-2')}>
-        <div><dt className="text-muted-foreground">{messages.progress}</dt><dd className="font-medium">{item.jobsCompleted} / {item.jobsTotal}</dd></div>
+        <div><dt className="text-muted-foreground">{messages.progress}</dt><dd className="font-medium">{isPmCategory(item.category.name) ? messages.pmServiceVariant : `${item.jobsCompleted} / ${item.jobsTotal}`}</dd></div>
         <div><dt className="text-muted-foreground">{messages.mechanicsLabel}</dt><dd className="font-medium">{item.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || '—'}</dd></div>
         <div className={cn(compact && 'col-span-2 sm:col-span-1 xl:hidden')}><dt className="text-muted-foreground">{messages.updated}</dt><dd className="font-medium">{formatAdminDate(item.updatedAt, locale)}</dd></div>
       </dl>

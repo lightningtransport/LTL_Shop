@@ -155,6 +155,27 @@ TARGET authorization/UX.
   Truck Detail also returns `workPlan`. `YARD_WORK_PLAN_SLICE2` (default off)
   cuts board/list phase over to that derivation. `updateRequirement` / Mark
   Ready stay in place. See `docs/LTR-34_WORK_PLAN_SLICE1_PROPOSAL.md`.
+- **`WORK_PLAN_PM_PHASE` (LTR-141, default off; API env only).** When on:
+  - The Work Plan is `Inspection → Shop Work → PM → Alignment → Detailing →
+    Quality Check → Ready to close → Ready to Go`. PM and QC are always
+    required. A step whose Jobs were all cancelled with a reason counts as not
+    applicable.
+  - A new truck Work Order automatically gets PM A Service, Alignment,
+    Detailing and Quality Check (catalog names; no backfill of open WOs). One
+    PM job per Work Order; the Manager or the assigned PM mechanic switches
+    PM A ↔ PM B.
+  - The PM job is assigned to a `mechanic.pm` user (not added to the Standard
+    team). That mechanic opens only the PM job, starts it
+    (`POST /work-orders/:id/jobs/:jobId/pm/start`), records mileage + parts
+    (`/work-orders/:id/pm`) and finishes it; finishing moves the truck
+    odometer and does **not** complete the Work Order.
+  - "Create PM service" joins the truck's open Work Order (adds PM A if
+    missing) or creates the full truck Work Order. One running PM per PM
+    mechanic (D2) counts started PM jobs.
+  - Legacy PM Work Orders keep working and show in the PM column; a fresh PM
+    service is not "Needs attention" (LTR-116).
+  - Rollback: turn the flag off; `work_order_jobs.started_at` and
+    `pm_services.work_order_job_id` are additive.
 
 ### Authentication and profile
 
@@ -203,7 +224,9 @@ TARGET authorization/UX.
   Work Order. Standard Create does not Start, PM remains a `mechanic.pm`
   exception, Job completion does not complete the Work Order, and Work Order
   `Completed` does not mean `Ready to Go`/`Returned to Service`.
-- **CURRENT contract rules:** Standard may not add the PM Category; catalog
+- **CURRENT contract rules:** Standard may not add the PM Category (superseded
+  when `WORK_PLAN_PM_PHASE` is on: PM is a mandatory Job of the truck Work
+  Order, one per WO); catalog
   duplicates use `catalogJobId`, Custom Job duplicates use normalized custom
   name; inactive Categories and historical Jobs remain readable but cannot be
   selected for new work; repair-history Category filters match any Job

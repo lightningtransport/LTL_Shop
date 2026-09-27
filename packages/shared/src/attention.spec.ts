@@ -19,7 +19,10 @@ describe('work order attention (LTR-121)', () => {
   });
 
   it('never marks PM or closed Work Orders ready to close', () => {
-    expect(workOrderAttentionReason({ ...base, categoryName: 'PM', jobsCompleted: 0, jobsTotal: 0 }, now)).toBe('open');
+    // LTR-116: a fresh PM service is not "attention"; an old, paused or blocked one is.
+    expect(workOrderAttentionReason({ ...base, categoryName: 'PM', jobsCompleted: 0, jobsTotal: 0 }, now)).toBeNull();
+    expect(workOrderAttentionReason({ ...base, categoryName: 'PM', jobsCompleted: 0, jobsTotal: 0, createdAt: '2026-09-23T10:00:00Z' }, now)).toBe('open_over_24h');
+    expect(workOrderAttentionReason({ ...base, categoryName: 'PM', jobsCompleted: 0, jobsTotal: 0, status: 'waiting_paused' }, now)).toBe('paused');
     expect(workOrderAttentionReason({ ...base, status: 'completed' }, now)).toBeNull();
   });
 

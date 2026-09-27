@@ -129,6 +129,23 @@ describe('AdminService', () => {
     ]);
   });
 
+  it('LTR-116: leaves a fresh PM service out of needs attention', async () => {
+    const prisma = createPrisma();
+    [0, 0, 0, 0, 0, 0].forEach((value) => prisma.workOrder.count.mockResolvedValueOnce(value));
+    const pm = { ...baseRow, id: 'pm-id', displayId: 'WO-PM', status: 'in_progress', createdAt: new Date(), jobs: [], primaryCategory: { id: 'pm-cat', name: 'PM' } };
+    const open = { ...baseRow, id: 'open-id', displayId: 'WO-OPEN', status: 'in_progress', createdAt: new Date() };
+    prisma.workOrder.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([pm, open])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await createService(prisma).dashboard();
+    expect(result.attention.map((item) => item.displayId)).toEqual(['WO-OPEN']);
+  });
+
   it('lists open mechanic work requests on the dashboard (LTR-126)', async () => {
     const prisma = createPrisma();
     [0, 0, 0, 0, 0, 0].forEach((value) => prisma.workOrder.count.mockResolvedValueOnce(value));
