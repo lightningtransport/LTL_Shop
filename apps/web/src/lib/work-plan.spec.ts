@@ -17,8 +17,6 @@ import {
   existingWorkPlanCatalogJobIds,
   existingWorkPlanCustomNames,
   isDuplicateCustomOnPlan,
-  isWorkPlanSliceEnabled,
-  shouldShowQualityCheckMandatory,
   workPlanJobUiStatusLabel,
   workPlanJobUiStatusVariant,
   workPlanMandatoryStatusLabel,
@@ -44,9 +42,10 @@ function plan(overrides: Partial<TruckWorkPlanDto> = {}): TruckWorkPlanDto {
     readyReason: WorkPlanNotReadyReason.INSPECTION_PENDING,
     phase: WorkPlanPhase.INSPECTION,
     mandatory: {
+      pm: { required: true, status: WorkPlanMandatoryStatus.PENDING, jobCount: 0, remainingCount: 0 },
       alignment: { required: true, status: WorkPlanMandatoryStatus.PENDING, jobCount: 0, remainingCount: 0 },
       detailing: { required: true, status: WorkPlanMandatoryStatus.PENDING, jobCount: 0, remainingCount: 0 },
-      qualityCheck: { required: false, status: WorkPlanMandatoryStatus.NOT_APPLICABLE, jobCount: 0, remainingCount: 0 },
+      qualityCheck: { required: true, status: WorkPlanMandatoryStatus.PENDING, jobCount: 0, remainingCount: 0 },
     },
     capabilities: { canRead: true, canAddWork: true, canRecordInspection: true },
     phase1: { assessmentId: null, gatesRemainDefault: true },
@@ -55,13 +54,6 @@ function plan(overrides: Partial<TruckWorkPlanDto> = {}): TruckWorkPlanDto {
 }
 
 describe('LTR-33 Work Plan copy helpers', () => {
-  it('keeps the Slice 1 UI off unless the API attached an enabled workPlan', () => {
-    expect(isWorkPlanSliceEnabled(undefined)).toBe(false);
-    expect(isWorkPlanSliceEnabled({})).toBe(false);
-    expect(isWorkPlanSliceEnabled({ workPlan: plan({ sliceEnabled: false }) })).toBe(false);
-    expect(isWorkPlanSliceEnabled({ workPlan: plan({ sliceEnabled: true }) })).toBe(true);
-  });
-
   it('shows remaining count together with readyReason and mandatory Alignment/Detailing', () => {
     expect(workPlanRemainingSummary(2, en)).toBe('Not Ready — 2 remaining');
     expect(workPlanRemainingSummary(1, es)).toBe('Not Ready — 1 restantes');
@@ -86,14 +78,6 @@ describe('LTR-33 Work Plan copy helpers', () => {
     expect(workPlanMandatoryStatusVariant('in_progress')).toBe('default');
     expect(workPlanMandatoryStatusVariant('complete')).toBe('success');
     expect(workPlanMandatoryStatusVariant('not_applicable')).toBe('secondary');
-    expect(shouldShowQualityCheckMandatory(plan())).toBe(false);
-    expect(shouldShowQualityCheckMandatory(plan({
-      mandatory: {
-        alignment: { required: true, status: WorkPlanMandatoryStatus.COMPLETE, jobCount: 1, remainingCount: 0 },
-        detailing: { required: true, status: WorkPlanMandatoryStatus.COMPLETE, jobCount: 1, remainingCount: 0 },
-        qualityCheck: { required: true, status: WorkPlanMandatoryStatus.PENDING, jobCount: 1, remainingCount: 1 },
-      },
-    }))).toBe(true);
   });
 
   it('maps job UI statuses to existing Badge variants and Pending / In Progress / Completed', () => {

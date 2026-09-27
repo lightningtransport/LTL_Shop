@@ -146,7 +146,7 @@ export interface WorkOrderSummaryDto {
   truckNumber: string;
   /** LTR-130: year / make / model so a card identifies the Truck (additive). */
   truckVehicle?: { year: number | null; make: string | null; model: string | null };
-  /** LTR-146: the PM job of a truck Work Order (`WORK_PLAN_PM_PHASE`). */
+  /** LTR-146: the PM job of a truck Work Order. */
   pmJob?: {
     id: string;
     displayName: string;
@@ -316,7 +316,7 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   activityLog: AdminActivityLogDto[];
   /** LTR-126: append-only notes and work requests (oldest first). */
   noteEntries?: WorkOrderNoteDto[];
-  /** LTR-119 / D6: the Truck Work Plan is where Jobs are added (Slice 1 on). */
+  /** LTR-119 / D6: the Truck Work Plan is where Jobs are added. @deprecated LTR-150: always true; kept for web/API deploy skew. */
   addWorkInWorkPlan?: boolean;
   /** LTR-146: PM service recorded on this Work Order (legacy PM WO or PM job). */
   pmService?: { observedMileage: number | null; partsCount: number; workOrderJobId: string | null } | null;
@@ -417,8 +417,8 @@ export interface YardOperationsTruckDto {
   operationalStatusAt: string | null;
   assessment: ReadinessAssessmentDto | null;
   /**
-   * Phase 1: `ReadinessPhase`. Slice 2 board cutover: `WorkPlanPhase`
-   * (includes `shop_work`). Overlapping string values are intentional.
+   * `WorkPlanPhase` (LTR-150: the only board). `ReadinessPhase` stays in the
+   * type for historical Phase 1 values. Overlapping string values are intentional.
    */
   phase: YardBoardPhase | ReadinessPhase | WorkPlanPhase;
   blockers: ReadinessBlockerDto[];
@@ -443,12 +443,9 @@ export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto>
   workLocation: YardFeedDto;
   incomingTrucks: YardFeedDto;
   upcomingDepartures: YardFeedDto;
-  /**
-   * Slice 2 board cutover (`YARD_WORK_PLAN_SLICE2`). When true, board columns
-   * follow Work Plan phases (incl. `shop_work`) instead of Phase 1 gates.
-   */
+  /** @deprecated LTR-150: always true (Work Plan board is the only mode); kept for web/API deploy skew. */
   workPlanBoardCutover?: boolean;
-  /** LTR-144: `WORK_PLAN_PM_PHASE` is on (board shows the PM column and QC always). */
+  /** @deprecated LTR-150: always true (PM column and QC always shown); kept for web/API deploy skew. */
   pmPhaseEnabled?: boolean;
 }
 
@@ -469,11 +466,8 @@ export interface AdminTruckDetailDto extends YardOperationsTruckDto {
   repairHistoryUrl: string;
   incomingTrucks: YardOperationsUnavailableDto;
   upcomingDepartures: YardOperationsUnavailableDto;
-  /**
-   * Additive Slice 1 Work Plan. Present only when `YARD_WORK_PLAN_SLICE1` is
-   * enabled. Phase 1 `assessment` / `phase` / `blockers` remain canonical.
-   */
-  workPlan?: TruckWorkPlanDto;
+  /** Truck Work Plan (LTR-34): Inspection, jobs of the open Work Order and derived Ready. */
+  workPlan: TruckWorkPlanDto;
 }
 
 export interface WorkPlanJobDto {
@@ -501,6 +495,7 @@ export interface WorkPlanCapabilitiesDto {
 }
 
 export interface TruckWorkPlanDto {
+  /** @deprecated LTR-150: always true; kept for web/API deploy skew. */
   sliceEnabled: boolean;
   inspection: { outcome: WorkPlanInspectionOutcome };
   workOrder: {
@@ -516,13 +511,13 @@ export interface TruckWorkPlanDto {
   readyReason: WorkPlanNotReadyReason;
   phase: WorkPlanPhase;
   mandatory: {
-    /** LTR-144: present only when `WORK_PLAN_PM_PHASE` is on. */
-    pm?: WorkPlanMandatoryPhaseDto;
+    /** LTR-144: PM is a mandatory step of every truck Work Order. */
+    pm: WorkPlanMandatoryPhaseDto;
     alignment: WorkPlanMandatoryPhaseDto;
     detailing: WorkPlanMandatoryPhaseDto;
     qualityCheck: WorkPlanMandatoryPhaseDto;
   };
-  /** LTR-144: `WORK_PLAN_PM_PHASE` is on (PM phase, QC always required). */
+  /** @deprecated LTR-150: always true (PM phase, QC always required); kept for web/API deploy skew. */
   pmPhaseEnabled?: boolean;
   capabilities: WorkPlanCapabilitiesDto;
   phase1: {

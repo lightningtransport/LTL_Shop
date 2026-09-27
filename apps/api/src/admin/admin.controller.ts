@@ -22,7 +22,6 @@ import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
 import { YardWorkPlanService } from './yard-work-plan.service';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
-import { isYardWorkPlanSlice1Enabled } from './yard-work-plan-flag';
 import { SystemAdminWritesService } from './system-admin-writes.service';
 
 @Controller('admin')
@@ -266,7 +265,6 @@ export class AdminController {
 
   @Get('trucks/:id')
   async yardTruck(@Req() request: Request, @Param('id') id: string) {
-    if (!isYardWorkPlanSlice1Enabled()) return this.yardOperations.detail(id);
     const [detail, workPlan] = await Promise.all([
       this.yardOperations.detail(id),
       this.workPlan.get(request.user!, id),
@@ -291,12 +289,14 @@ export class AdminController {
     return this.workPlan.recordInspection(request.user!, id, body);
   }
 
+  /** @deprecated LTR-150: Phase 1 six-gate readiness has no UI; the Work Plan is the only mode. Remove in a cleanup PR. */
   @Post('trucks/:id/readiness-assessments')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
   startReadinessAssessment(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.yardOperations.startAssessment(request.user!, id, body);
   }
 
+  /** @deprecated LTR-150: Phase 1 six-gate readiness has no UI; the Work Plan is the only mode. Remove in a cleanup PR. */
   @Patch('readiness-assessments/:id/requirements/:type')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
   updateReadinessRequirement(
@@ -308,12 +308,14 @@ export class AdminController {
     return this.yardOperations.updateRequirement(request.user!, id, type, body);
   }
 
+  /** @deprecated LTR-150: Phase 1 six-gate readiness has no UI; the Work Plan is the only mode. Remove in a cleanup PR. */
   @Post('readiness-assessments/:id/mark-ready')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
   markReadinessReady(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.yardOperations.markReady(request.user!, id, body);
   }
 
+  /** @deprecated LTR-150: Phase 1 six-gate readiness has no UI; the Work Plan is the only mode. Remove in a cleanup PR. */
   @Post('readiness-assessments/:id/close')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
   closeReadinessAssessment(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {

@@ -55,7 +55,6 @@ import {
   type WorkPlanDerivationInput,
 } from './yard-work-plan-derivation';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
-import { isWorkPlanPmPhaseEnabled, isYardWorkPlanSlice2Enabled } from './yard-work-plan-flag';
 import { unavailableYardMovementFeeds } from './yard-movement-feeds';
 
 const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
@@ -100,7 +99,7 @@ const ACTIVE_YARD_ENGAGEMENT: Prisma.TruckWhereInput = {
  * Returned to Service. The RTS comparison happens in memory (attachReadyWorkOrders).
  */
 function activeYardEngagement(): Prisma.TruckWhereInput {
-  const since = isYardWorkPlanSlice2Enabled() ? yardReadyToGoSince() : null;
+  const since = yardReadyToGoSince();
   if (!since) return ACTIVE_YARD_ENGAGEMENT;
   return {
     OR: [
@@ -115,7 +114,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const summaryWorkOrderInclude = {
   truck: true,
   primaryCategory: true,
-  // Slice 2 board derivation needs category/name; Phase 1 summary only uses status.
+  // Work Plan derivation needs category/name.
   jobs: {
     include: { category: { select: { id: true, name: true } } },
     orderBy: { addedAt: 'asc' as const },
@@ -784,12 +783,14 @@ export class YardOperationsService {
       workLocation: feeds.workLocation,
       incomingTrucks: feeds.incomingTrucks,
       upcomingDepartures: feeds.upcomingDepartures,
-      workPlanBoardCutover: isYardWorkPlanSlice2Enabled(),
-      pmPhaseEnabled: isYardWorkPlanSlice2Enabled() && isWorkPlanPmPhaseEnabled(),
+      // Deprecated (LTR-150): Work Plan board and PM phase are the only mode; kept for web/API deploy skew.
+      workPlanBoardCutover: true,
+      pmPhaseEnabled: true,
     };
   }
 
-  async detail(id: string): Promise<AdminTruckDetailDto> {
+  /** Truck Detail without `workPlan`; the controller attaches it (needs the requesting user). */
+  async detail(id: string): Promise<Omit<AdminTruckDetailDto, 'workPlan'>> {
     if (!UUID_PATTERN.test(id)) throw new BadRequestException('Invalid Truck id');
     const row = await this.prisma.truck.findUnique({ where: { id }, include: yardTruckInclude as never }) as unknown as YardTruckRow | null;
     if (!row) throw new NotFoundException('Truck not found');
@@ -820,7 +821,7 @@ export class YardOperationsService {
       .map(toAdminWorkOrderSummary);
     const openOnTruck = row.workOrders.map(toAdminWorkOrderSummary);
     const linkedForDerivation = openOnTruck.length ? openOnTruck : linkedWorkOrders;
-    const currentWorkOrder = row.workOrders[0] ?? (isYardWorkPlanSlice2Enabled() ? row.readyWorkOrder : null) ?? null;
+    const currentWorkOrder = row.workOrders[0] ?? row.readyWorkOrder ?? null;
     const activeWorkOrder = currentWorkOrder ? toAdminWorkOrderSummary(currentWorkOrder) : null;
     const latestService = row.serviceStatusEvents[0];
     const operationalStatus = latestService?.status === 'in_service'
@@ -829,49 +830,24 @@ export class YardOperationsService {
         ? TruckOperationalStatus.OFF_DUTY
         : TruckOperationalStatus.UNKNOWN;
 
-    if (isYardWorkPlanSlice2Enabled()) {
-      const workPlan = deriveWorkPlan(workPlanInputFromYardRow(row));
-      return {
-        truck: toTruckDto(row),
-        presence: { state: YardPresenceState.UNKNOWN, provenance: 'phase_1_unavailable' },
-        operationalStatus,
-        operationalStatusAt: latestService?.occurredAt.toISOString() ?? null,
-        assessment: mappedAssessment,
-        phase: workPlan.phase,
-        blockers: workPlanBoardBlockers(workPlan, linkedForDerivation),
-        activeWorkOrder,
-        readyReason: workPlan.readyReason,
-        shopWorkRemainingCount: workPlan.shopWorkRemainingCount,
-      };
-    }
-
-    const derivation = deriveReadiness({
-      assessment: mappedAssessment,
-      linkedWorkOrders: linkedForDerivation,
-    });
+    const workPlan = deriveWorkPlan(workPlanInputFromYardRow(row));
     return {
       truck: toTruckDto(row),
       presence: { state: YardPresenceState.UNKNOWN, provenance: 'phase_1_unavailable' },
       operationalStatus,
       operationalStatusAt: latestService?.occurredAt.toISOString() ?? null,
       assessment: mappedAssessment,
-      phase: derivation.phase,
-      blockers: derivation.blockers,
+      phase: workPlan.phase,
+      blockers: workPlanBoardBlockers(workPlan, linkedForDerivation),
       activeWorkOrder,
+      readyReason: workPlan.readyReason,
+      shopWorkRemainingCount: workPlan.shopWorkRemainingCount,
     };
   }
 
   private matchesDerivedFilters(item: YardOperationsTruckDto, query: AdminYardOperationsQuery) {
-    const readiness = isYardWorkPlanSlice2Enabled()
-      ? workPlanBoardReadinessFilter(item.phase)
-      : item.assessment?.status === 'ready' || isResidualReady(item.assessment)
-        ? YardReadinessFilter.READY
-        : item.assessment?.status === 'under_review'
-          ? YardReadinessFilter.UNDER_REVIEW
-          : YardReadinessFilter.NOT_STARTED;
-    const blocked = isYardWorkPlanSlice2Enabled()
-      ? isWorkPlanBoardBlocked(item.activeWorkOrder ? [item.activeWorkOrder] : [])
-      : item.blockers.length > 0;
+    const readiness = workPlanBoardReadinessFilter(item.phase);
+    const blocked = isWorkPlanBoardBlocked(item.activeWorkOrder ? [item.activeWorkOrder] : []);
     return (!query.readiness || query.readiness.includes(readiness as YardReadinessFilter))
       && (!query.phase || (query.phase as string[]).includes(item.phase))
       && (query.blocked === undefined || query.blocked === blocked);
@@ -899,29 +875,8 @@ export class YardOperationsService {
     if (query.mechanicId) {
       filters.push({ workOrders: { some: { mechanics: { some: { mechanicId: query.mechanicId, removedAt: null } } } } });
     }
-    // Slice 2 Ready is Work Plan derived — assessment Prisma filters would miss auto-Ready trucks.
-    if (query.readiness && !isYardWorkPlanSlice2Enabled()) {
-      const readinessFilters: Prisma.TruckWhereInput[] = [];
-      if (query.readiness.includes(YardReadinessFilter.NOT_STARTED)) {
-        readinessFilters.push({ readinessAssessments: { none: ACTIVE_OR_RESIDUAL_READY } });
-      }
-      if (query.readiness.includes(YardReadinessFilter.UNDER_REVIEW)) {
-        readinessFilters.push({ readinessAssessments: { some: { status: ReadinessAssessmentStatus.UNDER_REVIEW } } });
-      }
-      if (query.readiness.includes(YardReadinessFilter.READY)) {
-        readinessFilters.push({
-          readinessAssessments: {
-            some: {
-              OR: [
-                { status: ReadinessAssessmentStatus.READY },
-                { status: ReadinessAssessmentStatus.CLOSED, readyAt: { not: null } },
-              ],
-            },
-          },
-        });
-      }
-      if (readinessFilters.length) filters.push({ OR: readinessFilters });
-    }
+    // Ready is Work Plan derived — assessment Prisma filters would miss auto-Ready trucks.
+    // `query.readiness` is applied in memory by matchesDerivedFilters.
     if (cursor) {
       filters.push({ OR: [
         { truckNumber: { gt: cursor.truckNumber } },
@@ -944,54 +899,7 @@ export class YardOperationsService {
   }
 
   private async getCounts() {
-    if (isYardWorkPlanSlice2Enabled()) {
-      return this.getWorkPlanBoardCounts();
-    }
-
-    const [presenceUnknown, rows] = await Promise.all([
-      this.prisma.truck.count(),
-      this.prisma.truck.findMany({
-        where: { readinessAssessments: { some: ACTIVE_OR_RESIDUAL_READY } },
-        select: {
-          workOrders: {
-            where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
-            select: { id: true, status: true },
-          },
-          readinessAssessments: {
-            where: ACTIVE_OR_RESIDUAL_READY,
-            orderBy: { updatedAt: 'desc' },
-            take: 1,
-            select: {
-              status: true,
-              readyAt: true,
-              requirements: { select: { type: true, outcome: true } },
-              workOrders: {
-                where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
-                select: { id: true, status: true },
-              },
-            },
-          },
-        },
-      }) as unknown as Promise<YardOperationsCountRow[]>,
-    ]);
-
-    let underReview = 0;
-    let readyToGo = 0;
-    let blocked = 0;
-    for (const row of rows) {
-      const assessment = row.readinessAssessments[0];
-      if (!assessment) continue;
-      if (assessment.status === 'under_review') underReview += 1;
-      const hasAllRequirements = assessment.requirements.length === READINESS_REQUIREMENT_TYPES.length;
-      const hasBlockingRequirement = !hasAllRequirements || assessment.requirements.some((requirement) =>
-        requirement.outcome === 'not_evaluated' || requirement.outcome === 'required',
-      );
-      const hasOpenWorkOrder = (row.workOrders?.length ?? 0) > 0 || assessment.workOrders.length > 0;
-      if (hasBlockingRequirement || hasOpenWorkOrder) blocked += 1;
-      const residualReady = assessment.status === 'closed' && Boolean(assessment.readyAt);
-      if ((assessment.status === 'ready' || residualReady) && !hasBlockingRequirement && !hasOpenWorkOrder) readyToGo += 1;
-    }
-    return { underReview, readyToGo, blocked, presenceUnknown };
+    return this.getWorkPlanBoardCounts();
   }
 
   private async getWorkPlanBoardCounts() {
@@ -1027,7 +935,7 @@ export class YardOperationsService {
    * Service afterwards. One batched query per page.
    */
   private async attachReadyWorkOrders(rows: YardTruckRow[]): Promise<void> {
-    const since = isYardWorkPlanSlice2Enabled() ? yardReadyToGoSince() : null;
+    const since = yardReadyToGoSince();
     const candidates = since ? rows.filter((row) => row.workOrders.length === 0) : [];
     if (!since || !candidates.length) return;
     const completed = await this.prisma.workOrder.findMany({
@@ -1066,7 +974,7 @@ export class YardOperationsService {
 
 /** Matched only by a completed Work Order that was already Returned to Service. */
 function isCompletedOnlyWithoutReadyWork(row: YardTruckRow): boolean {
-  if (!isYardWorkPlanSlice2Enabled() || !yardReadyToGoSince()) return false;
+  if (!yardReadyToGoSince()) return false;
   return row.workOrders.length === 0 && row.readinessAssessments.length === 0 && !row.readyWorkOrder;
 }
 
@@ -1097,7 +1005,6 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
           status: job.status as never,
         })),
     inspectionRequirementOutcome: (inspectionRequirement?.outcome as ReadinessRequirementOutcome | undefined) ?? null,
-    pmPhase: isWorkPlanPmPhaseEnabled(),
   };
 }
 

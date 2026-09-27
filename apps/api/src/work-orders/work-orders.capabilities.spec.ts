@@ -18,18 +18,35 @@ function user(capabilities: AppCapability[], id = 'user-1'): AuthUser {
 }
 
 describe('Work Order workspace capabilities', () => {
-  it.each([
-    [MechanicMode.STANDARD, AppCapability.MECHANIC_STANDARD, { name: { not: 'PM' } }],
-    [MechanicMode.PM, AppCapability.MECHANIC_PM, { name: 'PM' }],
-  ] as const)('filters %s lists by category', async (mode, capability, categoryFilter) => {
+  it('filters standard lists by category', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const service = new WorkOrdersService({ workOrder: { findMany } } as never, { log: vi.fn() } as never);
 
-    await expect(service.listForMechanic(user([capability]), mode)).resolves.toEqual({
+    await expect(service.listForMechanic(user([AppCapability.MECHANIC_STANDARD]), MechanicMode.STANDARD)).resolves.toEqual({
       created: [], active: [], paused: [], completed: [],
     });
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ primaryCategory: categoryFilter }),
+      where: expect.objectContaining({ primaryCategory: { name: { not: 'PM' } } }),
+    }));
+  });
+
+  it('lists legacy PM Work Orders and truck Work Orders whose PM job is mine (LTR-146)', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const service = new WorkOrdersService({ workOrder: { findMany } } as never, { log: vi.fn() } as never);
+    const pm = user([AppCapability.MECHANIC_PM]);
+
+    await expect(service.listForMechanic(pm, MechanicMode.PM)).resolves.toEqual({
+      created: [], active: [], paused: [], completed: [],
+    });
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        AND: [{
+          OR: [
+            { primaryCategory: { name: 'PM' } },
+            { jobs: { some: { assignedMechanicId: pm.id, status: { not: 'cancelled' }, category: { name: 'PM' } } } },
+          ],
+        }],
+      }),
     }));
   });
 
@@ -65,6 +82,7 @@ describe('Work Order workspace capabilities', () => {
         findUnique: vi.fn().mockResolvedValue({ id: categoryId, name: 'Brakes' }),
         findMany: vi.fn().mockResolvedValue([{ id: categoryId, name: 'Brakes' }]),
       },
+      catalogJob: { findFirst: vi.fn().mockResolvedValue(null) },
       // Prove the capability gate is passed for a Manager by reaching the tx.
       $transaction: vi.fn().mockRejectedValue(new Error('reached-transaction')),
     };

@@ -12,7 +12,7 @@ const manager = {
 
 const truckId = '00000000-0000-4000-8000-00000000bbb1';
 
-function yardPage(cutover: boolean) {
+function yardPage() {
   return {
     items: [
       {
@@ -29,7 +29,7 @@ function yardPage(cutover: boolean) {
           location: null,
           locationUpdatedOn: null,
         },
-        phase: cutover ? 'shop_work' : 'required_work',
+        phase: 'shop_work',
         readiness: 'under_review',
         assessment: null,
         activeWorkOrder: {
@@ -46,11 +46,10 @@ function yardPage(cutover: boolean) {
       },
     ],
     nextCursor: null,
-    counts: { underReview: 1, readyToGo: 0, blocked: 0, presenceUnknown: 1 },
+    counts: { notStarted: 0, underReview: 1, readyToGo: 0, blocked: 0, presenceUnknown: 1 },
     workLocation: { status: 'ok', items: [], total: 0 },
     incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 },
     upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 },
-    workPlanBoardCutover: cutover,
   };
 }
 
@@ -114,9 +113,10 @@ function truckDetailWorkPlan() {
       readyReason: 'jobs_remaining',
       phase: 'shop_work',
       mandatory: {
+        pm: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
         alignment: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
         detailing: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
-        qualityCheck: { required: false, status: 'not_applicable', jobCount: 0, remainingCount: 0 },
+        qualityCheck: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
       },
       capabilities: { canRead: true, canAddWork: true, canRecordInspection: true, canCompleteJobs: true },
       phase1: { assessmentId: null, gatesRemainDefault: true },
@@ -136,13 +136,13 @@ async function mockSession(page: Page) {
 }
 
 test.describe('Yard Work Plan board cutover (LTR-40)', () => {
-  test('flag on: board columns follow Work Plan phases and Detail hides six-gate', async ({ page }) => {
+  test('board columns follow Work Plan phases and Detail hides six-gate', async ({ page }) => {
     await mockSession(page);
     await page.route('**/api/admin/yard-operations**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(yardPage(true)),
+        body: JSON.stringify(yardPage()),
       });
     });
     await page.route(`**/api/admin/trucks/${truckId}`, async (route) => {
@@ -156,8 +156,7 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await page.setViewportSize({ width: 1440, height: 1024 });
     await page.goto('/admin/yard-operations');
     await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible();
-    await expect(page.locator('[data-work-plan-board="true"]')).toBeVisible();
-    for (const phase of ['Inspection', 'Shop Work', 'Alignment', 'Detailing', 'Ready to Go']) {
+    for (const phase of ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close WO', 'Ready to Go']) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
     await expect(page.getByRole('heading', { name: 'Needs evaluation', exact: true })).toHaveCount(0);
@@ -172,12 +171,11 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await expect(page.getByText('Required Work')).toHaveCount(0);
   });
 
-  test('LTR-148: WORK_PLAN_PM_PHASE adds the PM column, QC always, and a PM card says Next: PM', async ({ page }) => {
+  test('LTR-148: the board has the PM column, QC always, and a PM card says Next: PM', async ({ page }) => {
     await mockSession(page);
-    const base = yardPage(true);
+    const base = yardPage();
     const pmPage = {
       ...base,
-      pmPhaseEnabled: true,
       items: [{ ...base.items[0], phase: 'pm', readyReason: 'pm_pending', activeWorkOrder: { ...base.items[0].activeWorkOrder, jobsCompleted: 1, jobsTotal: 5, createdAt: new Date().toISOString() } }],
     };
     await page.route('**/api/admin/yard-operations**', async (route) => {
@@ -186,30 +184,10 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
 
     await page.setViewportSize({ width: 1440, height: 1024 });
     await page.goto('/admin/yard-operations');
-    await expect(page.locator('[data-work-plan-board="true"]')).toBeVisible();
     const headings = ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close WO', 'Ready to Go'];
     for (const phase of headings) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
     await expect(page.getByTestId('yard-truck-card').getByText('Next: PM').first()).toBeVisible();
-  });
-
-  test('flag off: Phase 1 nine columns stay', async ({ page }) => {
-    await mockSession(page);
-    await page.route('**/api/admin/yard-operations**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(yardPage(false)),
-      });
-    });
-
-    await page.setViewportSize({ width: 1440, height: 1024 });
-    await page.goto('/admin/yard-operations');
-    await expect(page.locator('[data-work-plan-board="false"]')).toBeVisible();
-    for (const phase of ['Needs evaluation', 'Inspection', 'Required Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready for Approval', 'Ready to Go']) {
-      await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
-    }
-    await expect(page.getByRole('heading', { name: 'Shop Work', exact: true })).toHaveCount(0);
   });
 });

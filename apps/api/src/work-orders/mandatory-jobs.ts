@@ -3,7 +3,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { classifyWorkPlanLane } from '../admin/yard-work-plan-derivation';
 
 /**
- * LTR-141 / LTR-145 (`WORK_PLAN_PM_PHASE`): every truck Work Order gets PM,
+ * LTR-141 / LTR-145: every truck Work Order gets PM,
  * Alignment, Detailing and Quality Check. Catalog ids differ per environment,
  * so the jobs are resolved by their stable catalog names.
  */

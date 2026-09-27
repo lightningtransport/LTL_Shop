@@ -45,11 +45,8 @@ export function WorkPlanAddWork({
   const { data: categories, error: categoriesError, isLoading: categoriesLoading } = useCategories(true);
   const { data: catalogJobs, error: jobsError, isLoading: jobsLoading } = useCatalogJobs(categoryId, Boolean(categoryId));
 
-  const standardCategories = useMemo(
-    // LTR-145: with WORK_PLAN_PM_PHASE the PM Category is a normal Work Plan step.
-    () => (categories ?? []).filter((category) => plan.pmPhaseEnabled || category.name !== 'PM'),
-    [categories, plan.pmPhaseEnabled],
-  );
+  // LTR-145: the PM Category is a normal Work Plan step.
+  const standardCategories = categories ?? [];
   const selectedCategory = standardCategories.find((category) => category.id === categoryId) ?? null;
   const existingCatalogIds = useMemo(() => existingWorkPlanCatalogJobIds(plan), [plan]);
   const existingCustomNames = useMemo(() => existingWorkPlanCustomNames(plan), [plan]);

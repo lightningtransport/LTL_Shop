@@ -979,7 +979,6 @@ describe('AdminService', () => {
   });
 
   it('LTR-146: assigns the PM job to a PM mechanic without adding them to the Standard team', async () => {
-    vi.stubEnv('WORK_PLAN_PM_PHASE', 'true');
     const manager = {
       id: '00000000-0000-4000-8000-000000000002', email: 'manager@lightning.local', name: 'Shop Manager',
       role: 'manager' as const, active: true, pmAuthorized: false,
@@ -1010,7 +1009,6 @@ describe('AdminService', () => {
       where: { id: pmJobId },
       data: { assignedMechanicId: '00000000-0000-4000-8000-000000000009' },
     });
-    vi.unstubAllEnvs();
   });
 
   it('patches allowed Admin fields on open Work Orders', async () => {

@@ -38,8 +38,7 @@ Historical PRDs and plans do not override these sources.
 ## Locked product rules
 
 1. **Create Work Order ≠ Start Work.** Mechanic must tap **Start Work** to open the first work session and begin Active Labor.
-   - **PM exception (legacy, flag off):** a user with `mechanic.pm` creates a PM service already in progress. The system assigns that user, creates one work session, and records creation/start events atomically.
-   - **PM in the Work Plan (`WORK_PLAN_PM_PHASE=true`, LTR-141):** superseded the exception above. PM is a mandatory **Job** inside the truck's single Work Order (`Inspection → Shop Work → PM → Alignment → Detailing → QC`). Every new truck Work Order gets PM A, Alignment, Detailing and Quality Check; the PM mechanic starts and finishes only the PM job (mileage + parts) and "Create PM service" joins the truck's open Work Order. See [`docs/CURRENT_PRODUCT_STATUS.md`](docs/CURRENT_PRODUCT_STATUS.md).
+   - **PM in the Work Plan (LTR-141; the only mode since LTR-150):** replaced the old PM exception (a PM service created already in progress); legacy PM Work Orders keep working. PM is a mandatory **Job** inside the truck's single Work Order (`Inspection → Shop Work → PM → Alignment → Detailing → QC`). Every new truck Work Order gets PM A, Alignment, Detailing and Quality Check; the PM mechanic starts and finishes only the PM job (mileage + parts) and "Create PM service" joins the truck's open Work Order. See [`docs/CURRENT_PRODUCT_STATUS.md`](docs/CURRENT_PRODUCT_STATUS.md).
 2. Timers are computed from persisted session / pause timestamps (never client-only counters).
 3. Completing a Job does not pause or finish the Work Order.
 4. One open Work Order per Truck.

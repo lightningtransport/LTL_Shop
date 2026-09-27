@@ -43,7 +43,6 @@ import { stopLaborWhenNoPendingJobs } from './labor-session';
 import { assertPmObservedMileage } from './pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from './pm-finish';
 import { isPmJobCategory, resolveMandatoryJobs, type MandatoryJob } from './mandatory-jobs';
-import { isWorkPlanPmPhaseEnabled } from '../admin/yard-work-plan-flag';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
@@ -84,12 +83,11 @@ export class WorkOrdersService {
         ? { name: 'PM' }
         : undefined;
     const pmMode = categoryFilter?.name === 'PM';
-    const pmJobsInWorkPlan = pmMode && isWorkPlanPmPhaseEnabled();
     const rows = await this.prisma.workOrder.findMany({
       where: {
         status: { in: ['created', 'in_progress', 'waiting_paused', 'completed'] },
         // LTR-146: the PM workspace also lists truck Work Orders whose PM job is mine.
-        ...(pmJobsInWorkPlan
+        ...(pmMode
           ? {
               AND: [{
                 OR: [
@@ -112,7 +110,7 @@ export class WorkOrdersService {
     // LTR-146: in the PM workspace a truck Work Order is bucketed by its PM job, not the WO status.
     const mapped = rows.map((row) => {
       const summary = toWorkOrderSummary(row);
-      const pmJob = pmJobsInWorkPlan ? this.activePmJob(row) : null;
+      const pmJob = pmMode ? this.activePmJob(row) : null;
       if (!pmJob) return summary;
       const status = pmJob.status === 'completed'
         ? 'completed'
@@ -209,8 +207,8 @@ export class WorkOrdersService {
       if (input.mechanicIds.some((id) => id !== user.id)) {
         throw new BadRequestException('PM Work Orders can only be assigned to their creator');
       }
-      // LTR-147: with PM in the Work Plan, "Create PM service" joins the truck's Work Order.
-      if (isWorkPlanPmPhaseEnabled()) return this.createOrJoinPm(user, input);
+      // LTR-147: "Create PM service" joins (or creates) the truck's Work Order.
+      return this.createOrJoinPm(user, input);
     } else if (actorKind === 'mechanic') {
       throw new ForbiddenException('Standard Work Orders are created by a Shop Manager.');
     } else if (!input.jobs.length) {
@@ -239,19 +237,16 @@ export class WorkOrdersService {
     }
 
     // LTR-145: PM, Alignment, Detailing and QC are added to every new truck Work Order.
-    let mandatoryJobs: MandatoryJob[] = [];
-    if (!isPm && isWorkPlanPmPhaseEnabled()) {
-      const categoryNames = new Map(
-        (await this.prisma.jobCategory.findMany({
-          where: { id: { in: input.jobs.map((job) => job.categoryId) } },
-          select: { id: true, name: true },
-        })).map((item) => [item.id, item.name]),
-      );
-      mandatoryJobs = await resolveMandatoryJobs(
-        this.prisma,
-        input.jobs.map((job) => ({ categoryName: categoryNames.get(job.categoryId) ?? '', displayName: job.displayName })),
-      );
-    }
+    const categoryNames = new Map(
+      (await this.prisma.jobCategory.findMany({
+        where: { id: { in: input.jobs.map((job) => job.categoryId) } },
+        select: { id: true, name: true },
+      })).map((item) => [item.id, item.name]),
+    );
+    const mandatoryJobs: MandatoryJob[] = await resolveMandatoryJobs(
+      this.prisma,
+      input.jobs.map((job) => ({ categoryName: categoryNames.get(job.categoryId) ?? '', displayName: job.displayName })),
+    );
 
     const preflightOpen = await this.prisma.workOrder.findFirst({
       where: {
@@ -261,12 +256,9 @@ export class WorkOrdersService {
       include: workOrderDetailInclude,
     });
 
-    // A Manager is not a mechanic and is never auto-assigned to the Work Order.
-    // Mechanics remain auto-assigned as the creator/executor. Team already
-    // includes any per-job assignees (unioned above for standard WOs).
-    const mechanicIds = actorKind === 'manager'
-      ? Array.from(new Set(teamMechanicIds))
-      : Array.from(new Set([user.id, ...teamMechanicIds]));
+    // Only a Manager reaches here (PM joins via createOrJoinPm). A Manager is not a
+    // mechanic and is never auto-assigned; the team already includes per-job assignees.
+    const mechanicIds = Array.from(new Set(teamMechanicIds));
 
     let wo: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>;
     try {
@@ -279,7 +271,6 @@ export class WorkOrdersService {
           });
           if (stored) {
             this.assertWorkOrderIdempotency(stored, input.truckId, idempotencyPayloadHash, user.id);
-            if (actorKind === 'mechanic') this.assertMechanicAccess(user, stored);
             return stored;
           }
         }
@@ -309,32 +300,10 @@ export class WorkOrdersService {
           });
         }
 
-        // LTR-95 / D2: a PM mechanic runs one PM at a time (a paused PM does not count).
-        if (isPm && typeof tx.workOrder.findFirst === 'function') {
-          const runningPm = await tx.workOrder.findFirst({
-            where: {
-              status: 'in_progress',
-              primaryCategory: { name: 'PM' },
-              mechanics: { some: { mechanicId: user.id, removedAt: null } },
-            },
-            include: workOrderDetailInclude,
-          });
-          // LTR-146: a started PM job also counts as the mechanic's running PM.
-          if (!runningPm && isWorkPlanPmPhaseEnabled()) await this.assertNoOtherRunningPm(tx, user.id);
-          if (runningPm) {
-            throw new ConflictException({
-              code: 'PM_ALREADY_IN_PROGRESS',
-              message: `Finish or pause ${runningPm.displayId} before starting another PM service.`,
-              workOrder: toWorkOrderSummary(runningPm),
-            });
-          }
-        }
-
         const count = typeof tx.workOrder.count === 'function'
           ? await tx.workOrder.count()
           : await this.prisma.workOrder.count();
         const displayId = nextDisplayId(count + 1);
-        const startedAt = isPm ? new Date() : null;
         // Keep older unit-test transaction doubles compatible while the real
         // Prisma client always exposes the additive readiness model.
         const activeAssessment = tx.truckReadinessAssessment
@@ -349,22 +318,18 @@ export class WorkOrdersService {
             displayId,
             truckId: input.truckId,
             primaryCategoryId: input.primaryCategoryId,
-            // A new PM service starts immediately for its authorized creator. Existing
-            // created PM orders remain startable through the legacy endpoint.
-            status: isPm ? 'in_progress' : 'created',
-            priority: isPm ? 'normal' : input.priority,
-            notes: isPm ? undefined : input.notes,
+            status: 'created',
+            priority: input.priority,
+            notes: input.notes,
             // LTR-126: the creation note is also the first append-only entry.
-            noteEntries: !isPm && input.notes?.trim()
+            noteEntries: input.notes?.trim()
               ? { create: { body: input.notes.trim(), authorId: user.id } }
               : undefined,
             createdById: user.id,
-            startedAt,
             readinessAssessmentId: activeAssessment?.id,
             idempotencyKey: input.idempotencyKey,
             idempotencyPayloadHash,
             idempotencyActorId: input.idempotencyKey ? user.id : undefined,
-            sessions: isPm && startedAt ? { create: { startedAt } } : undefined,
             jobs: {
               create: ([] as Prisma.WorkOrderJobUncheckedCreateWithoutWorkOrderInput[]).concat(input.jobs.map((job) => ({
                 catalogJobId: job.catalogJobId,
@@ -374,7 +339,7 @@ export class WorkOrdersService {
                 isCustom: !job.catalogJobId,
                 reviewStatus: job.catalogJobId ? null : 'pending_review',
                 addedById: user.id,
-                assignedMechanicId: actorKind === 'manager' ? job.assignedMechanicId : undefined,
+                assignedMechanicId: job.assignedMechanicId,
                 status: 'to_do' as const,
               })), mandatoryJobs.map((job) => ({
                 catalogJobId: job.catalogJobId,
@@ -406,17 +371,6 @@ export class WorkOrdersService {
           userId: user.id,
           newValue: { displayId, status: 'created' },
         });
-        if (isPm) {
-          await this.activity.log(tx, {
-            workOrderId: created.id,
-            eventType: ActivityEventType.WORK_STARTED,
-            entityType: 'work_order',
-            entityId: created.id,
-            userId: user.id,
-            previousValue: { status: 'created' },
-            newValue: { status: 'in_progress' },
-          });
-        }
 
         if (activeAssessment?.status === 'ready') {
           await tx.truckReadinessAssessment.update({
@@ -453,7 +407,6 @@ export class WorkOrdersService {
         });
         if (existing) {
           this.assertWorkOrderIdempotency(existing, input.truckId, idempotencyPayloadHash, user.id);
-          if (actorKind === 'mechanic') this.assertMechanicAccess(user, existing);
           return toWorkOrderDetail(existing);
         }
       }
@@ -853,9 +806,6 @@ export class WorkOrdersService {
           select: { id: true, name: true },
         });
         if (!category) throw new BadRequestException('Invalid or inactive job category');
-        if (category.name === 'PM' && !isWorkPlanPmPhaseEnabled()) {
-          throw new BadRequestException('PM jobs must use the PM workflow');
-        }
         await this.assertCatalogJobsBelongToCategory([input], input.categoryId, tx);
         const currentJobs = await tx.workOrderJob.findMany({
           where: { workOrderId: id, status: { not: 'cancelled' } },
@@ -975,8 +925,7 @@ export class WorkOrdersService {
       where: { id: { in: categoryIds }, status: 'active' },
       select: { id: true, name: true },
     });
-    const pmAllowed = isWorkPlanPmPhaseEnabled();
-    if (categories.length !== categoryIds.length || (!pmAllowed && categories.some((item) => item.name === 'PM'))) {
+    if (categories.length !== categoryIds.length) {
       throw new BadRequestException('One or more job categories are invalid or inactive');
     }
     const catalogIds = [...new Set(jobs.flatMap((job) => job.catalogJobId ? [job.catalogJobId] : []))];
@@ -1180,7 +1129,7 @@ export class WorkOrdersService {
   }
 
   /**
-   * LTR-147: "Create PM service" (flag on) never makes a separate PM Work Order.
+   * LTR-147: "Create PM service" never makes a separate PM Work Order.
    * - Truck with an open Work Order: add PM A if it has no PM job, then claim and start it.
    * - Truck without one: create the truck Work Order (Inspection + mandatory jobs) and start its PM job.
    * A legacy PM Work Order still open on the truck keeps the old conflict.
@@ -1281,7 +1230,6 @@ export class WorkOrdersService {
 
   /** LTR-146: the PM mechanic starts (or claims and starts) the PM job of a truck Work Order. */
   async startPmJob(user: AuthUser, id: string, jobId: string) {
-    if (!isWorkPlanPmPhaseEnabled()) throw new BadRequestException('PM jobs are not enabled');
     this.assertCapability(user, AppCapability.MECHANIC_PM, 'PM mechanic');
     return this.prisma.$transaction(async (tx) => {
       const initial = await this.requireWo(tx, id);
@@ -1630,9 +1578,9 @@ export class WorkOrdersService {
     this.assertMechanicAccess(user, wo);
   }
 
-  /** LTR-146: the one active PM job of a truck Work Order (flag on; never a legacy PM Work Order). */
+  /** LTR-146: the one active PM job of a truck Work Order (never a legacy PM Work Order). */
   private activePmJob<J extends PmJobLike>(wo: { primaryCategory: { name: string }; jobs?: J[] }): J | null {
-    if (!isWorkPlanPmPhaseEnabled() || isPmJobCategory(wo.primaryCategory.name)) return null;
+    if (isPmJobCategory(wo.primaryCategory.name)) return null;
     return wo.jobs?.find((job) => job.status !== 'cancelled' && isPmJobCategory(job.category?.name)) ?? null;
   }
 

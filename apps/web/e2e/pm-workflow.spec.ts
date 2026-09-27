@@ -190,7 +190,7 @@ test.describe('Daniel PM workflow', () => {
   });
 });
 
-test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148, WORK_PLAN_PM_PHASE)', () => {
+test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
   const jobWoId = '00000000-0000-0000-0000-000000000901';
   const pmJobId = '00000000-0000-0000-0000-000000000911';
   const pmCategoryId = pmCategory.id;

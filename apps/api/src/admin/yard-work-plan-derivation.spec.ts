@@ -33,6 +33,10 @@ const job = (
   status,
 });
 
+// LTR-144: PM and QC are mandatory steps of every truck Work Plan.
+const pmDone = job('pm', 'PM A Service', 'PM', JobStatus.COMPLETED);
+const qcDone = job('qc', 'Quality Check', 'Quality Check', JobStatus.COMPLETED);
+
 describe('work plan lane classification', () => {
   it('treats the LTR-24 Alignment catalog job as the Alignment lane', () => {
     expect(classifyWorkPlanLane('Suspension & Steering', 'Alignment')).toBe(WorkPlanJobLane.ALIGNMENT);
@@ -68,8 +72,10 @@ describe('work plan derivation', () => {
     expect(result.mandatory.detailing.required).toBe(true);
     expect(result.mandatory.alignment.status).toBe(WorkPlanMandatoryStatus.PENDING);
     expect(result.mandatory.detailing.status).toBe(WorkPlanMandatoryStatus.PENDING);
-    expect(result.mandatory.qualityCheck.required).toBe(false);
-    expect(result.mandatory.qualityCheck.status).toBe(WorkPlanMandatoryStatus.NOT_APPLICABLE);
+    // LTR-144: PM and QC are always required.
+    expect(result.mandatory.pm.required).toBe(true);
+    expect(result.mandatory.qualityCheck.required).toBe(true);
+    expect(result.mandatory.qualityCheck.status).toBe(WorkPlanMandatoryStatus.PENDING);
   });
 
   it('uses Shop Work as the phase while repair jobs remain', () => {
@@ -95,19 +101,19 @@ describe('work plan derivation', () => {
     expect(result.jobs[0].lane).toBe(WorkPlanJobLane.SHOP_WORK);
   });
 
-  it('does not invent Shop Work after No issues found; Alignment is next and always required', () => {
+  it('does not invent Shop Work after No issues found; PM is next and always required', () => {
     const result = deriveWorkPlan({
       workOrder: null,
       jobs: [],
       inspectionRequirementOutcome: ReadinessRequirementOutcome.COMPLETED,
     });
     expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
-    expect(result.phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(result.phase).toBe(WorkPlanPhase.PM);
     expect(result.readiness).toBe(WorkPlanReadiness.NOT_READY);
-    expect(result.readyReason).toBe(WorkPlanNotReadyReason.ALIGNMENT_PENDING);
+    expect(result.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
   });
 
-  it('auto-marks Ready when the plan is clear and Alignment + Detailing jobs are complete', () => {
+  it('auto-marks Ready when the plan is clear and PM, Alignment, Detailing and QC are complete', () => {
     const result = deriveWorkPlan({
       workOrder: {
         id: 'wo-1',
@@ -119,6 +125,8 @@ describe('work plan derivation', () => {
       jobs: [
         job('j1', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED),
         job('j2', 'Detailing', 'Other', JobStatus.COMPLETED),
+        pmDone,
+        qcDone,
       ],
       inspectionRequirementOutcome: ReadinessRequirementOutcome.COMPLETED,
     });
@@ -142,6 +150,8 @@ describe('work plan derivation', () => {
       jobs: [
         job('j1', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED),
         job('j2', 'Detailing', 'Detailing', JobStatus.COMPLETED, 'catalog-detailing'),
+        pmDone,
+        qcDone,
       ],
       inspectionRequirementOutcome: ReadinessRequirementOutcome.COMPLETED,
     });
@@ -152,7 +162,7 @@ describe('work plan derivation', () => {
     expect(result.mandatory.detailing.status).toBe(WorkPlanMandatoryStatus.COMPLETE);
   });
 
-  it('does not require QC unless QC jobs are on the plan', () => {
+  it('always requires QC, even when no QC job is on the plan (LTR-144)', () => {
     const withoutQc = deriveWorkPlan({
       workOrder: {
         id: 'wo-1', displayId: 'WO-1', status: WorkOrderStatus.COMPLETED, version: 1, primaryCategoryName: 'Other',
@@ -160,10 +170,12 @@ describe('work plan derivation', () => {
       jobs: [
         job('j1', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED),
         job('j2', 'Detailing', 'Other', JobStatus.COMPLETED),
+        pmDone,
       ],
       inspectionRequirementOutcome: ReadinessRequirementOutcome.COMPLETED,
     });
-    expect(withoutQc.readiness).toBe(WorkPlanReadiness.READY);
+    expect(withoutQc.phase).toBe(WorkPlanPhase.QUALITY_CHECK);
+    expect(withoutQc.readiness).toBe(WorkPlanReadiness.NOT_READY);
 
     const withQc = deriveWorkPlan({
       workOrder: {
@@ -173,6 +185,7 @@ describe('work plan derivation', () => {
         job('j1', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED),
         job('j2', 'Detailing', 'Other', JobStatus.COMPLETED),
         job('j3', 'Quality Check', 'Other'),
+        pmDone,
       ],
       inspectionRequirementOutcome: ReadinessRequirementOutcome.COMPLETED,
     });
@@ -197,6 +210,8 @@ describe('work plan derivation', () => {
         job('j1', 'Brake Inspection', 'Air & Brake System', JobStatus.CANCELLED),
         job('j2', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED),
         job('j3', 'Detailing', 'Other', JobStatus.COMPLETED),
+        pmDone,
+        qcDone,
       ],
       inspectionRequirementOutcome: ReadinessRequirementOutcome.COMPLETED,
     });
@@ -253,7 +268,7 @@ describe('Inspection Category Jobs (LTR-89)', () => {
       jobs: [job('j1', 'General Inspection', 'Inspection', JobStatus.COMPLETED)],
     });
     expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
-    expect(result.phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(result.phase).toBe(WorkPlanPhase.PM);
   });
 
   it('ignores a cancelled Inspection Job', () => {
@@ -271,6 +286,8 @@ describe('Ready to Go needs a completed Work Order (LTR-90 / D1)', () => {
     job('j1', 'General Inspection', 'Inspection', JobStatus.COMPLETED),
     job('j2', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED),
     job('j3', 'Detailing', 'Detailing', JobStatus.COMPLETED),
+    pmDone,
+    qcDone,
   ];
   const wo = (status: WorkOrderStatus) => ({
     id: 'wo-277', displayId: 'WO-001', status, version: 7, primaryCategoryName: 'Inspection',
@@ -297,7 +314,7 @@ describe('Ready to Go needs a completed Work Order (LTR-90 / D1)', () => {
   });
 
   it('still reports the missing step on a completed Work Order without Detailing', () => {
-    const result = deriveWorkPlan({ workOrder: wo(WorkOrderStatus.COMPLETED), jobs: planDone.slice(0, 2) });
+    const result = deriveWorkPlan({ workOrder: wo(WorkOrderStatus.COMPLETED), jobs: planDone.filter((item) => item.id !== 'j3') });
     expect(result.phase).toBe(WorkPlanPhase.DETAILING);
   });
 });

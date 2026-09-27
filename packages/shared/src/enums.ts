@@ -148,14 +148,14 @@ export enum ReadinessPhase {
 }
 
 /**
- * Work Plan phase for Truck Detail and (when `YARD_WORK_PLAN_SLICE2` is on)
- * Yard board/list. Separate from Phase 1 `ReadinessPhase` so six-gate stays
- * canonical until cutover. Shop Work is one phase; jobs live on Truck Detail.
+ * Work Plan phase for Truck Detail and the Yard board/list (LTR-150: the only
+ * mode). Phase 1 `ReadinessPhase` stays for historical assessments. Shop Work
+ * is one phase; jobs live on Truck Detail.
  */
 export enum WorkPlanPhase {
   INSPECTION = 'inspection',
   SHOP_WORK = 'shop_work',
-  /** LTR-141 / LTR-144 (`WORK_PLAN_PM_PHASE`): mandatory PM between Shop Work and Alignment. */
+  /** LTR-141 / LTR-144: mandatory PM between Shop Work and Alignment. */
   PM = 'pm',
   ALIGNMENT = 'alignment',
   DETAILING = 'detailing',
@@ -166,8 +166,8 @@ export enum WorkPlanPhase {
 }
 
 /**
- * Yard board `phase` query values: Phase 1 columns plus Work Plan `shop_work`
- * so Slice 2 filters validate without dropping dual-run Phase 1 values.
+ * Yard board `phase` query values. The board uses Work Plan phases (LTR-150);
+ * Phase 1 values still validate so old bookmarked URLs do not 400.
  */
 export const YardBoardPhase = {
   ...ReadinessPhase,
