@@ -180,6 +180,12 @@ type Copy = {
   continuePmService: string;
   pmStartedAt: (time: string) => string;
   pmAlreadyRunning: (displayId: string) => string;
+  pmJoinAdd: (displayId: string) => string;
+  pmJoinJoin: (displayId: string) => string;
+  pmJoinMine: (displayId: string) => string;
+  pmJoinTaken: (displayId: string, name: string) => string;
+  pmJoinDone: (displayId: string) => string;
+  joinPmService: string;
   finishingWork: string;
   pmFinishedSuccess: string;
   viewCompletedWorkAction: string;
@@ -362,6 +368,12 @@ const copy: Record<ShopLocale, Copy> = {
     continuePmService: 'Continue PM service',
     pmStartedAt: (time) => `Started ${time}`,
     pmAlreadyRunning: (displayId) => `Finish or pause ${displayId} before starting another PM service.`,
+    pmJoinAdd: (displayId) => `This truck already has Work Order ${displayId}. Your PM service will be added to it.`,
+    pmJoinJoin: (displayId) => `This truck already has Work Order ${displayId} with a PM job. You will take and start it.`,
+    pmJoinMine: (displayId) => `You already started the PM on Work Order ${displayId}.`,
+    pmJoinTaken: (displayId, name) => `The PM of Work Order ${displayId} is assigned to ${name}. Ask your Shop Manager if it should be yours.`,
+    pmJoinDone: (displayId) => `The PM of Work Order ${displayId} is already done.`,
+    joinPmService: 'Start PM on this Work Order',
     finishingWork: 'Finishing…',
     pmFinishedSuccess: 'PM service completed.',
     viewCompletedWorkAction: 'View completed work',
@@ -556,6 +568,12 @@ const copy: Record<ShopLocale, Copy> = {
     continuePmService: 'Continuar servicio PM',
     pmStartedAt: (time) => `Iniciado ${time}`,
     pmAlreadyRunning: (displayId) => `Termina o pausa ${displayId} antes de iniciar otro servicio PM.`,
+    pmJoinAdd: (displayId) => `Esta unidad ya tiene el Work Order ${displayId}. Tu servicio PM se agregará ahí.`,
+    pmJoinJoin: (displayId) => `Esta unidad ya tiene el Work Order ${displayId} con un job PM. Lo tomarás e iniciarás.`,
+    pmJoinMine: (displayId) => `Ya iniciaste el PM en el Work Order ${displayId}.`,
+    pmJoinTaken: (displayId, name) => `El PM del Work Order ${displayId} está asignado a ${name}. Pregunta a tu Shop Manager si debe ser tuyo.`,
+    pmJoinDone: (displayId) => `El PM del Work Order ${displayId} ya está hecho.`,
+    joinPmService: 'Iniciar PM en este Work Order',
     finishingWork: 'Terminando…',
     pmFinishedSuccess: 'Servicio de PM completado.',
     viewCompletedWorkAction: 'Ver trabajo completado',

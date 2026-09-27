@@ -3,12 +3,14 @@ import {
   AppCapability,
   JobStatus,
   OPEN_WORK_ORDER_STATUSES,
+  isPmCategory,
   type AdminRepairHistoryDto,
 } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { toWorkOrderSummary } from '../work-orders/work-order.mapper';
 import type { AuthUser } from '../auth/auth.guard';
 import { hasCapability } from '../auth/capabilities';
+import { isWorkPlanPmPhaseEnabled } from '../admin/yard-work-plan-flag';
 
 @Injectable()
 export class TrucksService {
@@ -68,6 +70,7 @@ export class TrucksService {
       ...(hasCapability(user, requiredCapability) && isAssigned
         ? { workOrder: toWorkOrderSummary(wo) }
         : {}),
+      ...(hasCapability(user, AppCapability.MECHANIC_PM) ? { pmJoin: pmJoinPreview(user, wo) } : {}),
     };
   }
 
@@ -250,3 +253,33 @@ const workOrderSummaryInclude = {
   },
   pauseEvents: { where: { endedAt: null }, take: 1, orderBy: { startedAt: 'desc' as const } },
 };
+
+/**
+ * LTR-147: what "Create PM service" will do on a truck that already has an open
+ * Work Order (only with WORK_PLAN_PM_PHASE; a legacy PM Work Order keeps the old rule).
+ */
+function pmJoinPreview(
+  user: AuthUser,
+  wo: {
+    displayId: string;
+    primaryCategory: { name: string };
+    jobs: Array<{ status: string; assignedMechanicId: string | null; startedAt?: Date | null; category: { name: string }; assignedMechanic?: { name: string } | null }>;
+  },
+) {
+  if (!isWorkPlanPmPhaseEnabled() || isPmCategory(wo.primaryCategory.name)) return undefined;
+  const pmJob = wo.jobs.find((job) => job.status !== 'cancelled' && isPmCategory(job.category.name));
+  const status = !pmJob
+    ? 'add'
+    : pmJob.status === 'completed'
+      ? 'done'
+      : pmJob.assignedMechanicId && pmJob.assignedMechanicId !== user.id
+        ? 'taken'
+        : pmJob.assignedMechanicId === user.id && pmJob.startedAt
+          ? 'mine'
+          : 'join';
+  return {
+    displayId: wo.displayId,
+    status,
+    assignedMechanicName: status === 'taken' ? pmJob?.assignedMechanic?.name ?? null : null,
+  };
+}

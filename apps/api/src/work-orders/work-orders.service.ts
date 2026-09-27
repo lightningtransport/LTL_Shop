@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -207,6 +208,8 @@ export class WorkOrdersService {
       if (input.mechanicIds.some((id) => id !== user.id)) {
         throw new BadRequestException('PM Work Orders can only be assigned to their creator');
       }
+      // LTR-147: with PM in the Work Plan, "Create PM service" joins the truck's Work Order.
+      if (isWorkPlanPmPhaseEnabled()) return this.createOrJoinPm(user, input);
     } else if (actorKind === 'mechanic') {
       throw new ForbiddenException('Standard Work Orders are created by a Shop Manager.');
     } else if (!input.jobs.length) {
@@ -1173,6 +1176,72 @@ export class WorkOrdersService {
         ),
       };
     });
+  }
+
+  /**
+   * LTR-147: "Create PM service" (flag on) never makes a separate PM Work Order.
+   * - Truck with an open Work Order: add PM A if it has no PM job, then claim and start it.
+   * - Truck without one: create the truck Work Order (Inspection + mandatory jobs) and start its PM job.
+   * A legacy PM Work Order still open on the truck keeps the old conflict.
+   */
+  private async createOrJoinPm(user: AuthUser, input: CreateWorkOrderInput): Promise<ReturnType<typeof toWorkOrderDetail>> {
+    const open = await this.prisma.workOrder.findFirst({
+      where: { truckId: input.truckId, status: { in: OPEN_WORK_ORDER_STATUSES } },
+      include: workOrderDetailInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+    if (open && isPmJobCategory(open.primaryCategory.name)) {
+      throw new ConflictException({ code: 'OPEN_WORK_ORDER_EXISTS', message: 'Truck already has an open Work Order.' });
+    }
+    const openPmJob = open ? this.activePmJob(open) : null;
+    if (open && openPmJob?.status === 'completed') {
+      throw new ConflictException({ code: 'PM_JOB_DONE', message: `The PM of ${open.displayId} is already done.`, displayId: open.displayId });
+    }
+    if (open && openPmJob?.assignedMechanicId === user.id && openPmJob.startedAt) {
+      return toWorkOrderDetail(open);
+    }
+    // D2 before anything is created or added, so a refused PM leaves no half-made Work Order.
+    await this.prisma.$transaction((tx) => this.assertNoOtherRunningPm(tx, user.id));
+    const pmCatalogJob = await this.prisma.catalogJob.findFirst({
+      where: { displayName: 'PM A Service', status: 'active', category: { name: 'PM', status: 'active' } },
+      select: { id: true, categoryId: true, displayName: true },
+    });
+
+    let workOrderId: string;
+    let pmJobId: string | undefined;
+    if (!open) {
+      const inspection = await this.prisma.jobCategory.findFirst({ where: { name: 'Inspection', status: 'active' }, select: { id: true } });
+      if (!inspection || !pmCatalogJob) throw new BadRequestException('The Inspection and PM catalog must be seeded before creating a PM service');
+      // Created as a truck Work Order: PM A now, Alignment / Detailing / QC via the mandatory jobs.
+      const created = (await this.create(user, {
+        truckId: input.truckId,
+        primaryCategoryId: inspection.id,
+        priority: input.priority,
+        mechanicIds: [],
+        jobs: [{ categoryId: pmCatalogJob.categoryId, catalogJobId: pmCatalogJob.id, displayName: pmCatalogJob.displayName }],
+        idempotencyKey: input.idempotencyKey,
+      }, { actorKind: 'manager' })) as ReturnType<typeof toWorkOrderDetail>;
+      workOrderId = created.id;
+      pmJobId = created.jobs.find((job) => isPmJobCategory(job.category.name))?.id;
+    } else {
+      workOrderId = open.id;
+      const existing = openPmJob;
+      if (existing) {
+        pmJobId = existing.id;
+      } else {
+        if (!pmCatalogJob) throw new BadRequestException('The PM catalog must be seeded before creating a PM service');
+        const updated = await this.addJobByManager(user, open.id, {
+          categoryId: pmCatalogJob.categoryId,
+          catalogJobId: pmCatalogJob.id,
+          displayName: pmCatalogJob.displayName,
+          expectedVersion: open.version,
+          idempotencyKey: randomUUID(),
+        });
+        pmJobId = updated.jobs.find((job) => isPmJobCategory(job.category.name) && job.status !== 'cancelled')?.id;
+      }
+    }
+    if (!pmJobId) throw new BadRequestException('The PM job could not be prepared');
+    return this.startPmJob(user, workOrderId, pmJobId);
   }
 
   /** LTR-146: the PM mechanic starts (or claims and starts) the PM job of a truck Work Order. */

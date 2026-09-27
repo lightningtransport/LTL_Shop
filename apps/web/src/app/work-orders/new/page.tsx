@@ -83,6 +83,9 @@ export default function NewWorkOrderPage() {
   const [truck, setTruck] = useState<TruckDto | null>(null);
   const [openWo, setOpenWo] = useState<WorkOrderSummaryDto | null>(null);
   const [hasOpenWo, setHasOpenWo] = useState(false);
+  // LTR-147: with PM in the Work Plan, Create PM joins the truck's open Work Order.
+  const [pmJoin, setPmJoin] = useState<PmJoinPreview | null>(null);
+  const pmJoinable = Boolean(pmJoin && ['add', 'join', 'mine'].includes(pmJoin.status));
   const [categoryId, setCategoryId] = useState('');
   const [jobs, setJobs] = useState<DraftJob[]>([]);
   const [workingWith, setWorkingWith] = useState<string[]>([]);
@@ -133,7 +136,9 @@ export default function NewWorkOrderPage() {
   const createActionLabel = isPmMechanic
     ? openWoCheck === 'checking'
       ? messages.checkingTruck
-      : messages.createPmService
+      : pmJoin?.status === 'mine'
+        ? messages.continuePmService
+        : pmJoinable ? messages.joinPmService : messages.createPmService
     : !categoryId
       ? messages.chooseCategory
       : jobs.length === 0
@@ -188,14 +193,18 @@ export default function NewWorkOrderPage() {
     setSearchOpen(false);
     setOpenWo(null);
     setHasOpenWo(false);
+    setPmJoin(null);
     setOpenWoCheck('checking');
     setError(null);
     try {
       const open = await apiFetch<
-        { exists: false } | { exists: true; workOrder?: WorkOrderSummaryDto }
+        { exists: false } | { exists: true; workOrder?: WorkOrderSummaryDto; pmJoin?: PmJoinPreview }
       >(`/api/trucks/${t.id}/open-work-order`);
       if (requestId !== openWoRequest.current) return;
-      setHasOpenWo(open.exists);
+      const join = isPmMechanic && open.exists ? open.pmJoin ?? null : null;
+      setPmJoin(join);
+      // A joinable Work Order is not a dead end for the PM mechanic.
+      setHasOpenWo(open.exists && !(join && ['add', 'join', 'mine'].includes(join.status)));
       if (open.exists && open.workOrder) setOpenWo(open.workOrder);
       setOpenWoCheck('verified');
     } catch {
@@ -213,7 +222,7 @@ export default function NewWorkOrderPage() {
     setBusy(true);
     setError(null);
     try {
-      const wo = await apiFetch<{ id: string }>('/api/work-orders', {
+      const wo = await apiFetch<{ id: string; pmJob?: { id: string } | null }>('/api/work-orders', {
         method: 'POST',
         body: JSON.stringify({
           truckId: truck.id,
@@ -231,12 +240,12 @@ export default function NewWorkOrderPage() {
         }),
       });
       void mutate(isWorkOrderRelatedListKey);
-      router.push(`/work-orders/${wo.id}`, { scroll: true });
+      router.push(`/work-orders/${wo.id}${wo.pmJob ? '?view=pm' : ''}`, { scroll: true });
     } catch (e) {
       if (e instanceof ApiError && e.status === 409 && (e.body as { code?: string } | null)?.code === 'PM_ALREADY_IN_PROGRESS') {
         // LTR-95: one running PM per PM mechanic; point to the one in progress.
-        const running = (e.body as { workOrder?: WorkOrderSummaryDto }).workOrder;
-        setError(messages.pmAlreadyRunning(running?.displayId ?? ''));
+        const body = e.body as { workOrder?: WorkOrderSummaryDto; runningDisplayId?: string };
+        setError(messages.pmAlreadyRunning(body.workOrder?.displayId ?? body.runningDisplayId ?? ''));
       } else if (e instanceof ApiError && e.status === 409) {
         const body = e.body as { workOrder?: WorkOrderSummaryDto };
         if (body.workOrder) setOpenWo(body.workOrder);
@@ -455,7 +464,23 @@ export default function NewWorkOrderPage() {
         </div>
       </section>
 
-      {openWo ? (
+      {pmJoin ? (
+        <InlineAlert
+          className={pmJoinable ? 'mb-4' : 'mb-4 border-[var(--warning)] bg-warning-surface text-warning-foreground'}
+        >
+          {pmJoin.status === 'add'
+            ? messages.pmJoinAdd(pmJoin.displayId)
+            : pmJoin.status === 'join'
+              ? messages.pmJoinJoin(pmJoin.displayId)
+              : pmJoin.status === 'mine'
+                ? messages.pmJoinMine(pmJoin.displayId)
+                : pmJoin.status === 'taken'
+                  ? messages.pmJoinTaken(pmJoin.displayId, pmJoin.assignedMechanicName ?? '—')
+                  : messages.pmJoinDone(pmJoin.displayId)}
+        </InlineAlert>
+      ) : null}
+
+      {openWo && !pmJoin ? (
         <div
           className="mb-4 rounded-2xl border border-[var(--warning)] bg-warning-surface p-4 text-warning-foreground"
           role="alert"
@@ -482,7 +507,7 @@ export default function NewWorkOrderPage() {
         </div>
       ) : null}
 
-      {hasOpenWo && !openWo ? (
+      {hasOpenWo && !openWo && !pmJoin ? (
         <InlineAlert className="mb-4 border-[var(--warning)] bg-warning-surface text-warning-foreground">
           Truck #{truck?.truckNumber} already has an open Work Order assigned to another mechanic.
         </InlineAlert>
@@ -761,3 +786,10 @@ function WorkingWithModal({
 function normalizeJobName(name: string) {
   return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
 }
+
+/** LTR-147: what Create PM will do on a truck with an open Work Order. */
+type PmJoinPreview = {
+  displayId: string;
+  status: 'add' | 'join' | 'mine' | 'taken' | 'done';
+  assignedMechanicName: string | null;
+};
