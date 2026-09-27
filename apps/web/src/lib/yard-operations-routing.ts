@@ -1,4 +1,4 @@
-import { Priority, ReadinessPhase, WorkPlanPhase, YardReadinessFilter, WorkOrderStatus } from '@ltl-shop/shared';
+import { Priority, WorkPlanPhase, YardReadinessFilter, WorkOrderStatus } from '@ltl-shop/shared';
 
 export type YardOperationsFilters = {
   search: string;
@@ -50,55 +50,22 @@ export function countOverflowYardOperationsFilters(filters: YardOperationsFilter
   return YARD_OVERFLOW_FILTER_KEYS.filter((key) => filters[key] !== DEFAULT_YARD_OPERATIONS_FILTERS[key]).length;
 }
 
-/** Phase 1 six-gate board columns (flag off). */
-export const YARD_PHASES = [
-  ReadinessPhase.NEEDS_EVALUATION,
-  ReadinessPhase.INSPECTION,
-  ReadinessPhase.REQUIRED_WORK,
-  ReadinessPhase.PM,
-  ReadinessPhase.ALIGNMENT,
-  ReadinessPhase.DETAILING,
-  ReadinessPhase.QUALITY_CHECK,
-  ReadinessPhase.READY_FOR_APPROVAL,
-  ReadinessPhase.READY_TO_GO,
-] as const;
-
 /**
- * Slice 2 Work Plan board columns (opción A). QC is appended only when at least
- * one truck is currently in that phase.
+ * Work Plan board columns (LTR-39 / LTR-144): Inspection → Shop Work → PM →
+ * Alignment → Detailing → QC → Ready to close → Ready to Go.
  */
 export const WORK_PLAN_YARD_PHASES = [
   WorkPlanPhase.INSPECTION,
   WorkPlanPhase.SHOP_WORK,
+  WorkPlanPhase.PM,
   WorkPlanPhase.ALIGNMENT,
   WorkPlanPhase.DETAILING,
+  WorkPlanPhase.QUALITY_CHECK,
   WorkPlanPhase.READY_TO_CLOSE,
   WorkPlanPhase.READY_TO_GO,
 ] as const;
 
-export type YardBoardColumnPhase =
-  | (typeof YARD_PHASES)[number]
-  | (typeof WORK_PLAN_YARD_PHASES)[number]
-  | typeof WorkPlanPhase.PM
-  | typeof WorkPlanPhase.QUALITY_CHECK;
-
-export function yardPhasesForBoard(options: {
-  workPlanBoardCutover: boolean;
-  /** LTR-144: `WORK_PLAN_PM_PHASE` adds the PM column and always shows QC. */
-  pmPhaseEnabled?: boolean;
-  itemPhases?: ReadonlyArray<string>;
-}): YardBoardColumnPhase[] {
-  if (!options.workPlanBoardCutover) return [...YARD_PHASES];
-  const phases: YardBoardColumnPhase[] = [...WORK_PLAN_YARD_PHASES];
-  if (options.pmPhaseEnabled) {
-    phases.splice(phases.indexOf(WorkPlanPhase.SHOP_WORK) + 1, 0, WorkPlanPhase.PM);
-  }
-  if (options.pmPhaseEnabled || options.itemPhases?.some((phase) => phase === WorkPlanPhase.QUALITY_CHECK)) {
-    const readyIndex = phases.indexOf(WorkPlanPhase.READY_TO_CLOSE);
-    phases.splice(readyIndex, 0, WorkPlanPhase.QUALITY_CHECK);
-  }
-  return phases;
-}
+export type YardBoardColumnPhase = (typeof WORK_PLAN_YARD_PHASES)[number];
 
 export const YARD_READINESS_FILTERS = [
   YardReadinessFilter.NOT_STARTED,

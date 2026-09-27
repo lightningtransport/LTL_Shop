@@ -14,7 +14,6 @@ import { addAdminWorkPlanJobs, completeAdminJob, fetchAdminTruckWorkPlan, record
 import type { AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
-  shouldShowQualityCheckMandatory,
   workPlanJobUiStatusLabel,
   workPlanJobUiStatusVariant,
   workPlanMandatoryStatusLabel,
@@ -365,13 +364,11 @@ function WorkPlanSummary({
       <div>
         <p className="text-xs font-medium text-muted-foreground">{messages.workPlanMandatoryTitle}</p>
         <ul className="mt-2 space-y-1 text-sm">
-          {/* LTR-144: PM is mandatory when WORK_PLAN_PM_PHASE is on. */}
-          {plan.mandatory.pm ? <MandatoryRow label={messages.pm} phase={plan.mandatory.pm} messages={messages} /> : null}
+          {/* LTR-144: PM is a mandatory step. */}
+          <MandatoryRow label={messages.pm} phase={plan.mandatory.pm} messages={messages} />
           <MandatoryRow label={messages.alignment} phase={plan.mandatory.alignment} messages={messages} />
           <MandatoryRow label={messages.detailing} phase={plan.mandatory.detailing} messages={messages} />
-          {shouldShowQualityCheckMandatory(plan) ? (
-            <MandatoryRow label={messages.qualityCheck} phase={plan.mandatory.qualityCheck} messages={messages} />
-          ) : null}
+          <MandatoryRow label={messages.qualityCheck} phase={plan.mandatory.qualityCheck} messages={messages} />
         </ul>
       </div>
     </div>

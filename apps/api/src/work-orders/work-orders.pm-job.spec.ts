@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ActivityEventType, AppCapability } from '@ltl-shop/shared';
 import type { AuthUser } from '../auth/auth.guard';
 import { WorkOrdersService } from './work-orders.service';
@@ -69,8 +69,6 @@ function setup(wo = workOrder(), options: { runningJob?: unknown; pmService?: un
 }
 
 describe('PM job inside the truck Work Order (LTR-146)', () => {
-  beforeEach(() => vi.stubEnv('WORK_PLAN_PM_PHASE', 'true'));
-  afterEach(() => vi.unstubAllEnvs());
 
   it('lets a PM mechanic claim and start the unassigned PM job', async () => {
     const { service, tx, activity } = setup();

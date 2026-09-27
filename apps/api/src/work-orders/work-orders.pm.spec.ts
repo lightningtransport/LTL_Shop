@@ -4,51 +4,6 @@ import { WorkOrdersService } from './work-orders.service';
 import { idempotencyFingerprint } from '../common/idempotency';
 
 describe('PM Work Order authorization', () => {
-  it('creates Daniel PM work atomically as active with one session and both audit events', async () => {
-    const createdAt = new Date('2026-09-02T15:00:00.000Z');
-    const created = {
-      id: 'wo-pm-1', displayId: 'WO-0001', truckId: 'truck-1', primaryCategoryId: 'pm-category',
-      status: 'in_progress', priority: Priority.NORMAL, notes: null, createdAt, createdById: 'daniel-id',
-      startedAt: createdAt, completedAt: null, completedById: null, totalActiveLaborMs: BigInt(0),
-      totalWaitingMs: BigInt(0), version: 1,
-      truck: { id: 'truck-1', truckNumber: '905', make: 'Peterbilt', model: '579', year: 2025, mileage: 155000, company: null, owner: null },
-      primaryCategory: { id: 'pm-category', name: 'PM' }, jobs: [], pauseEvents: [],
-      mechanics: [{ mechanicId: 'daniel-id', addedAt: createdAt, removedAt: null, mechanic: { name: 'Daniel' } }],
-    };
-    const tx = { workOrder: { create: vi.fn().mockResolvedValue(created) } };
-    const prisma = {
-      workOrder: {
-        findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0),
-      },
-      truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-1' }) },
-      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'pm-category', name: 'PM' }) },
-      $transaction: vi.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
-    } as never;
-    const activity = { log: vi.fn().mockResolvedValue(undefined) };
-    const service = new WorkOrdersService(prisma, activity as never);
-
-    const result = await service.create({
-      id: 'daniel-id', email: 'daniel@lightning.local', name: 'Daniel',
-      role: 'mechanic', active: true, pmAuthorized: true, capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
-    }, {
-      truckId: '00000000-0000-4000-8000-000000000001',
-      primaryCategoryId: '00000000-0000-4000-8000-000000000002',
-      priority: Priority.NORMAL, mechanicIds: [], jobs: [], notes: 'must not be saved at creation',
-    });
-
-    expect(result.status).toBe('in_progress');
-    expect(tx.workOrder.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        status: 'in_progress', startedAt: expect.any(Date), notes: undefined,
-        sessions: { create: { startedAt: expect.any(Date) } },
-        jobs: { create: [] },
-        mechanics: { create: [{ mechanicId: 'daniel-id', addedById: 'daniel-id' }] },
-      }),
-    }));
-    expect(activity.log).toHaveBeenCalledTimes(2);
-    expect(activity.log).toHaveBeenLastCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.WORK_STARTED }));
-  });
-
   it('rejects PM creation by a mechanic without PM authorization', async () => {
     const prisma = {
       workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null) },
@@ -93,57 +48,6 @@ describe('PM Work Order authorization', () => {
       jobs: [],
       idempotencyKey: 'idempotency-key-duplicate',
     })).rejects.toMatchObject({ response: { code: 'IDEMPOTENCY_KEY_REUSE' } });
-  });
-
-  it('replays a Work Order found after waiting for the truck lock before open-WO checks', async () => {
-    const createdAt = new Date('2026-09-02T15:00:00.000Z');
-    const idempotencyKey = 'idempotency-key-after-lock';
-    const stored = {
-      id: 'wo-pm-after-lock', displayId: 'WO-0002', truckId: '00000000-0000-0000-0000-000000000001', primaryCategoryId: '00000000-0000-0000-0000-000000000002',
-      status: 'in_progress', priority: Priority.NORMAL, notes: null, createdAt, createdById: 'daniel-id',
-      startedAt: createdAt, completedAt: null, completedById: null, totalActiveLaborMs: BigInt(0),
-      totalWaitingMs: BigInt(0), version: 1,
-      idempotencyPayloadHash: idempotencyFingerprint({
-        truckId: '00000000-0000-0000-0000-000000000001',
-        primaryCategoryId: '00000000-0000-0000-0000-000000000002',
-        priority: Priority.NORMAL,
-        notes: null,
-        mechanicIds: [],
-        jobs: [],
-      }),
-      idempotencyActorId: 'daniel-id',
-      truck: { id: 'truck-1', truckNumber: '905', make: 'Peterbilt', model: '579', year: 2025, mileage: 155000, company: null, owner: null },
-      primaryCategory: { id: 'pm-category', name: 'PM' }, jobs: [], pauseEvents: [],
-      mechanics: [{ mechanicId: 'daniel-id', addedAt: createdAt, removedAt: null, mechanic: { name: 'Daniel' } }],
-    } as never;
-    const tx = {
-      $queryRaw: vi.fn().mockResolvedValue([]),
-      workOrder: { findUnique: vi.fn().mockResolvedValue(stored) },
-    };
-    const prisma = {
-      workOrder: {
-        findUnique: vi.fn().mockResolvedValue(null),
-        findFirst: vi.fn().mockResolvedValue(null),
-      },
-      truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-1' }) },
-      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'pm-category', name: 'PM' }) },
-      $transaction: vi.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
-    };
-    const service = new WorkOrdersService(prisma as never, { log: vi.fn() } as never);
-
-    const result = await service.create({
-      id: 'daniel-id', email: 'daniel@lightning.local', name: 'Daniel',
-      role: 'mechanic', active: true, pmAuthorized: true, capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
-    }, {
-      truckId: '00000000-0000-0000-0000-000000000001',
-      primaryCategoryId: '00000000-0000-0000-0000-000000000002',
-      jobs: [],
-      idempotencyKey,
-    });
-
-    expect(result.id).toBe('wo-pm-after-lock');
-    expect(tx.workOrder.findUnique).toHaveBeenCalledTimes(1);
-    expect(prisma.workOrder.findFirst).toHaveBeenCalledTimes(1);
   });
 
   it('does not let a PM mechanic create a non-PM Work Order', async () => {
@@ -462,42 +366,5 @@ describe('PM Work Order authorization', () => {
     })).rejects.toMatchObject({
       response: { message: 'One or more selected mechanics cannot perform standard work' },
     });
-  });
-});
-
-describe('one running PM per PM mechanic (LTR-95 / D2)', () => {
-  it('rejects a second PM while the mechanic has one In Progress', async () => {
-    const running = {
-      id: 'wo-pm-5', displayId: 'WO-005', truckId: 'truck-922', primaryCategoryId: 'pm-category',
-      status: 'in_progress', priority: Priority.NORMAL, notes: null, createdAt: new Date(), createdById: 'mpm-id',
-      startedAt: new Date(), completedAt: null, completedById: null, totalActiveLaborMs: BigInt(0), totalWaitingMs: BigInt(0), version: 1,
-      truck: { id: 'truck-922', truckNumber: '922', make: null, model: null, year: null, mileage: null, company: null, owner: null },
-      primaryCategory: { id: 'pm-category', name: 'PM' }, jobs: [], pauseEvents: [],
-      mechanics: [{ mechanicId: 'mpm-id', addedAt: new Date(), removedAt: null, mechanic: { name: 'MPM' } }],
-    };
-    const tx = {
-      workOrder: {
-        findFirst: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(running),
-        create: vi.fn(),
-      },
-    };
-    const prisma = {
-      workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null), count: vi.fn().mockResolvedValue(0) },
-      truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-923' }) },
-      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'pm-category', name: 'PM' }) },
-      $transaction: vi.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
-      $queryRaw: vi.fn(),
-    } as never;
-    const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
-
-    await expect(service.create({
-      id: 'mpm-id', email: 'mpm@lightning.local', name: 'MPM',
-      role: 'mechanic', active: true, pmAuthorized: true, capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
-    }, {
-      truckId: '00000000-0000-4000-8000-000000000923',
-      primaryCategoryId: '00000000-0000-4000-8000-000000000002',
-      priority: Priority.NORMAL, mechanicIds: [], jobs: [],
-    })).rejects.toMatchObject({ response: { code: 'PM_ALREADY_IN_PROGRESS', workOrder: expect.objectContaining({ displayId: 'WO-005' }) } });
-    expect(tx.workOrder.create).not.toHaveBeenCalled();
   });
 });

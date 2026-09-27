@@ -8,7 +8,7 @@ import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { changeAdminPmService, addAdminWorkOrderJob, addAdminWorkOrderNote, handleAdminWorkRequest, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { pauseResumeError } from './pause-resume-error';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
@@ -18,7 +18,6 @@ import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { useCatalogJobs, useCategories } from '@/lib/shop-data';
 import { useActionToast } from './action-toast';
-import { JobPickerDialog } from './job-picker-dialog';
 import {
   AdminBackLink,
   AdminPageHeader,
@@ -48,7 +47,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const { mutate: mutateRelated } = useSWRConfig();
   const { data, error, isLoading, mutate } = useAdminWorkOrder(id);
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
-  const [addJobOpen, setAddJobOpen] = useState(false);
   const [historyCategory, setHistoryCategory] = useState('');
   const [selectedMechanic, setSelectedMechanic] = useState('');
   const [cancelReason, setCancelReason] = useState('');
@@ -388,16 +386,12 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           ) : (
             <CompactEmpty>{messages.noJobs}</CompactEmpty>
           )}
-          {canManageJobs && data.addWorkInWorkPlan ? (
+          {canManageJobs ? (
             // LTR-119 / D6: Jobs are added from the Truck Work Plan (the canonical place).
             <Button asChild variant="outline">
               <Link href={`${adminTruckHref(truck.id, `/admin/work-orders/${data.id}`)}#truck-work-plan-title`}>
                 {messages.addWorkInWorkPlan}
               </Link>
-            </Button>
-          ) : canManageJobs ? (
-            <Button type="button" variant="outline" onClick={() => setAddJobOpen(true)}>
-              {messages.addJobAction}
             </Button>
           ) : null}
           {canManageJobs || (canReopenJob && data.jobs.some((job) => job.status === 'cancelled')) ? (
@@ -943,29 +937,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         })}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</CardContent></Card>
       </div>
     </details>
-    {canManageJobs ? (
-      <JobPickerDialog
-        open={addJobOpen}
-        defaultCategoryId={data.category.id}
-        primaryCategoryName={data.category.name}
-        categories={categoryData?.length ? categoryData : categories.map((category) => ({ ...category, sortOrder: 0 }))}
-        existingCatalogJobIds={data.jobs
-          .filter((job) => job.status !== 'cancelled' && job.catalogJobId)
-          .map((job) => job.catalogJobId!)}
-        existingCustomDisplayNames={data.jobs
-          .filter((job) => job.status !== 'cancelled' && !job.catalogJobId)
-          .map((job) => job.displayName)}
-        messages={messages}
-        onClose={() => setAddJobOpen(false)}
-        onAdd={async (body) => {
-          await runMutation('add-job', messages.addJobSuccess, () => addAdminWorkOrderJob(data.id, {
-            ...body,
-            expectedVersion: data.version,
-          }), () => messages.addJobFailed);
-          setAddJobOpen(false);
-        }}
-      />
-    ) : null}
     {readyToClose ? (
       <div
         role="region"

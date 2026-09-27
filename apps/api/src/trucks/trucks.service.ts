@@ -11,7 +11,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { toWorkOrderSummary } from '../work-orders/work-order.mapper';
 import type { AuthUser } from '../auth/auth.guard';
 import { hasCapability } from '../auth/capabilities';
-import { isWorkPlanPmPhaseEnabled } from '../admin/yard-work-plan-flag';
 
 @Injectable()
 export class TrucksService {
@@ -272,7 +271,7 @@ const workOrderSummaryInclude = {
 
 /**
  * LTR-147: what "Create PM service" will do on a truck that already has an open
- * Work Order (only with WORK_PLAN_PM_PHASE; a legacy PM Work Order keeps the old rule).
+ * Work Order (a legacy PM Work Order keeps the old rule).
  */
 function pmJoinPreview(
   user: AuthUser,
@@ -282,7 +281,7 @@ function pmJoinPreview(
     jobs: Array<{ status: string; assignedMechanicId: string | null; startedAt?: Date | null; category: { name: string }; assignedMechanic?: { name: string } | null }>;
   },
 ) {
-  if (!isWorkPlanPmPhaseEnabled() || isPmCategory(wo.primaryCategory.name)) return undefined;
+  if (isPmCategory(wo.primaryCategory.name)) return undefined;
   const pmJob = wo.jobs.find((job) => job.status !== 'cancelled' && isPmCategory(job.category.name));
   const status = !pmJob
     ? 'add'

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AppCapability } from '@ltl-shop/shared';
 import type { AuthUser } from '../auth/auth.guard';
 import { resolveMandatoryJobs } from './mandatory-jobs';
@@ -17,8 +17,6 @@ const catalogClient = () => ({
 });
 
 describe('mandatory Work Plan jobs (LTR-145)', () => {
-  afterEach(() => vi.unstubAllEnvs());
-
   it('adds PM A, Alignment, Detailing and QC by catalog name', async () => {
     const client = catalogClient();
     const jobs = await resolveMandatoryJobs(client as never, [{ categoryName: 'Air & Brake', displayName: 'Brake Repair' }]);
@@ -39,7 +37,7 @@ describe('mandatory Work Plan jobs (LTR-145)', () => {
     catalog['Quality Check'] = { id: 'cj-qc', categoryId: 'cat-qc', displayName: 'Quality Check' };
   });
 
-  it('resolves mandatory jobs on Manager create only when WORK_PLAN_PM_PHASE is on', async () => {
+  it('resolves mandatory jobs on every Manager create', async () => {
     const manager: AuthUser = {
       id: 'mgr', email: 'm@l.local', name: 'Manager', role: 'manager', active: true, pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
@@ -61,13 +59,8 @@ describe('mandatory Work Plan jobs (LTR-145)', () => {
     };
     const body = { truckId, primaryCategoryId: categoryId, jobs: [{ categoryId, displayName: 'Brake Repair' }] };
 
-    const off = build();
-    await expect(off.service.createByManager(manager, body)).rejects.toThrow('reached-transaction');
-    expect(off.prisma.catalogJob.findFirst).not.toHaveBeenCalled();
-
-    vi.stubEnv('WORK_PLAN_PM_PHASE', 'true');
-    const on = build();
-    await expect(on.service.createByManager(manager, body)).rejects.toThrow('reached-transaction');
-    expect(on.prisma.catalogJob.findFirst).toHaveBeenCalledTimes(4);
+    const { prisma, service } = build();
+    await expect(service.createByManager(manager, body)).rejects.toThrow('reached-transaction');
+    expect(prisma.catalogJob.findFirst).toHaveBeenCalledTimes(4);
   });
 });

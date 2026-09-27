@@ -27,7 +27,7 @@ const fullPlan = (overrides: Partial<Record<'pm' | 'alignment' | 'detailing' | '
   job('qc', 'Quality Check', 'Quality Check', overrides.qc ?? JobStatus.TO_DO),
 ];
 
-describe('Work Plan PM phase (LTR-144, WORK_PLAN_PM_PHASE)', () => {
+describe('Work Plan PM phase (LTR-144)', () => {
   it('classifies PM Category Jobs into the PM lane', () => {
     expect(classifyWorkPlanLane('PM', 'PM A Service')).toBe(WorkPlanJobLane.PM);
     expect(classifyWorkPlanLane('PM', 'PM B Service')).toBe(WorkPlanJobLane.PM);
@@ -35,7 +35,7 @@ describe('Work Plan PM phase (LTR-144, WORK_PLAN_PM_PHASE)', () => {
 
   it('puts PM between Shop Work and Alignment', () => {
     const shop = deriveWorkPlan({
-      workOrder: workOrder(), inspectionRequirementOutcome: inspected, pmPhase: true,
+      workOrder: workOrder(), inspectionRequirementOutcome: inspected,
       jobs: [job('s1', 'Brake Repair', 'Air & Brake'), ...fullPlan()],
     });
     expect(shop.phase).toBe(WorkPlanPhase.SHOP_WORK);
@@ -43,7 +43,7 @@ describe('Work Plan PM phase (LTR-144, WORK_PLAN_PM_PHASE)', () => {
     expect(shop.remainingJobCount).toBe(5);
 
     const pm = deriveWorkPlan({
-      workOrder: workOrder(), inspectionRequirementOutcome: inspected, pmPhase: true,
+      workOrder: workOrder(), inspectionRequirementOutcome: inspected,
       jobs: [job('s1', 'Brake Repair', 'Air & Brake', done), ...fullPlan()],
     });
     expect(pm.phase).toBe(WorkPlanPhase.PM);
@@ -51,7 +51,7 @@ describe('Work Plan PM phase (LTR-144, WORK_PLAN_PM_PHASE)', () => {
     expect(pm.mandatory.pm).toMatchObject({ required: true, status: WorkPlanMandatoryStatus.IN_PROGRESS });
 
     const alignment = deriveWorkPlan({
-      workOrder: workOrder(), inspectionRequirementOutcome: inspected, pmPhase: true,
+      workOrder: workOrder(), inspectionRequirementOutcome: inspected,
       jobs: fullPlan({ pm: done }),
     });
     expect(alignment.phase).toBe(WorkPlanPhase.ALIGNMENT);
@@ -59,14 +59,14 @@ describe('Work Plan PM phase (LTR-144, WORK_PLAN_PM_PHASE)', () => {
 
   it('requires PM even when it was never added, and QC always', () => {
     const noPm = deriveWorkPlan({
-      workOrder: workOrder(), inspectionRequirementOutcome: inspected, pmPhase: true,
+      workOrder: workOrder(), inspectionRequirementOutcome: inspected,
       jobs: [job('al', 'Alignment', 'Suspension & Steering', done), job('de', 'Detailing', 'Detailing', done)],
     });
     expect(noPm.phase).toBe(WorkPlanPhase.PM);
     expect(noPm.mandatory.pm?.status).toBe(WorkPlanMandatoryStatus.PENDING);
 
     const noQc = deriveWorkPlan({
-      workOrder: workOrder(), inspectionRequirementOutcome: inspected, pmPhase: true,
+      workOrder: workOrder(), inspectionRequirementOutcome: inspected,
       jobs: fullPlan({ pm: done, alignment: done, detailing: done }).filter((item) => item.id !== 'qc'),
     });
     expect(noQc.phase).toBe(WorkPlanPhase.QUALITY_CHECK);
@@ -75,7 +75,7 @@ describe('Work Plan PM phase (LTR-144, WORK_PLAN_PM_PHASE)', () => {
 
   it('treats a step whose Jobs were all cancelled as not applicable', () => {
     const result = deriveWorkPlan({
-      workOrder: workOrder(), inspectionRequirementOutcome: inspected, pmPhase: true,
+      workOrder: workOrder(), inspectionRequirementOutcome: inspected,
       jobs: fullPlan({ pm: done, alignment: done, detailing: JobStatus.CANCELLED, qc: done }),
     });
     expect(result.mandatory.detailing.status).toBe(WorkPlanMandatoryStatus.NOT_APPLICABLE);
@@ -84,7 +84,7 @@ describe('Work Plan PM phase (LTR-144, WORK_PLAN_PM_PHASE)', () => {
 
   it('is Ready to Go only with every step resolved and the Work Order completed', () => {
     const result = deriveWorkPlan({
-      workOrder: workOrder(WorkOrderStatus.COMPLETED), inspectionRequirementOutcome: inspected, pmPhase: true,
+      workOrder: workOrder(WorkOrderStatus.COMPLETED), inspectionRequirementOutcome: inspected,
       jobs: fullPlan({ pm: done, alignment: done, detailing: done, qc: done }),
     });
     expect(result.phase).toBe(WorkPlanPhase.READY_TO_GO);
@@ -92,26 +92,10 @@ describe('Work Plan PM phase (LTR-144, WORK_PLAN_PM_PHASE)', () => {
   });
 
   it('shows a legacy PM Work Order in the PM phase, not Inspection (LTR-91)', () => {
-    const open = deriveWorkPlan({ workOrder: workOrder(WorkOrderStatus.IN_PROGRESS, 'PM'), jobs: [], pmPhase: true });
+    const open = deriveWorkPlan({ workOrder: workOrder(WorkOrderStatus.IN_PROGRESS, 'PM'), jobs: [] });
     expect(open.phase).toBe(WorkPlanPhase.PM);
     expect(open.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
-    const completed = deriveWorkPlan({ workOrder: workOrder(WorkOrderStatus.COMPLETED, 'PM'), jobs: [], pmPhase: true });
+    const completed = deriveWorkPlan({ workOrder: workOrder(WorkOrderStatus.COMPLETED, 'PM'), jobs: [] });
     expect(completed.phase).toBe(WorkPlanPhase.READY_TO_GO);
-  });
-
-  it('keeps the flag-off behavior unchanged', () => {
-    const legacyPm = deriveWorkPlan({ workOrder: workOrder(WorkOrderStatus.IN_PROGRESS, 'PM'), jobs: [] });
-    expect(legacyPm.phase).toBe(WorkPlanPhase.INSPECTION);
-    const withoutQc = deriveWorkPlan({
-      workOrder: workOrder(WorkOrderStatus.COMPLETED), inspectionRequirementOutcome: inspected,
-      jobs: [job('al', 'Alignment', 'Suspension & Steering', done), job('de', 'Detailing', 'Detailing', done)],
-    });
-    expect(withoutQc.phase).toBe(WorkPlanPhase.READY_TO_GO);
-    expect(withoutQc.mandatory).not.toHaveProperty('pm');
-    const cancelledDetailing = deriveWorkPlan({
-      workOrder: workOrder(), inspectionRequirementOutcome: inspected,
-      jobs: [job('al', 'Alignment', 'Suspension & Steering', done), job('de', 'Detailing', 'Detailing', JobStatus.CANCELLED)],
-    });
-    expect(cancelledDetailing.phase).toBe(WorkPlanPhase.DETAILING);
   });
 });

@@ -72,6 +72,7 @@ function emptyPlan(): {
   readyReason: string;
   phase: string;
   mandatory: {
+    pm: { required: boolean; status: string; jobCount: number; remainingCount: number };
     alignment: { required: boolean; status: string; jobCount: number; remainingCount: number };
     detailing: { required: boolean; status: string; jobCount: number; remainingCount: number };
     qualityCheck: { required: boolean; status: string; jobCount: number; remainingCount: number };
@@ -89,25 +90,26 @@ function emptyPlan(): {
     readyReason: 'inspection_pending',
     phase: 'inspection',
     mandatory: {
+      pm: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
       alignment: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
       detailing: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
-      qualityCheck: { required: false, status: 'not_applicable', jobCount: 0, remainingCount: 0 },
+      qualityCheck: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
     },
     capabilities: { canRead: true, canAddWork: true, canRecordInspection: true },
     phase1: { assessmentId: null, gatesRemainDefault: true },
   };
 }
 
-function truckDetail(workPlan: ReturnType<typeof emptyPlan> | undefined) {
+function truckDetail(workPlan: ReturnType<typeof emptyPlan>) {
   return {
     truck,
     presence: { state: 'unknown', provenance: 'phase_1_unavailable' },
     operationalStatus: 'unknown',
     operationalStatusAt: null,
     assessment: null,
-    phase: 'needs_evaluation',
+    phase: 'inspection',
     blockers: [],
-    activeWorkOrder: workPlan?.workOrder
+    activeWorkOrder: workPlan.workOrder
       ? {
         id: workPlan.workOrder.id,
         displayId: workPlan.workOrder.displayId,
@@ -130,7 +132,7 @@ function truckDetail(workPlan: ReturnType<typeof emptyPlan> | undefined) {
     repairHistoryUrl: `/api/admin/trucks/${truckId}/repair-history`,
     incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' },
     upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' },
-    ...(workPlan ? { workPlan } : {}),
+    workPlan,
   };
 }
 
@@ -138,8 +140,8 @@ async function json(route: Route, body: unknown, status = 200) {
   await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 }
 
-async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan> | undefined) {
-  let plan = workPlan ? structuredClone(workPlan) : undefined;
+async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan>) {
+  const plan = structuredClone(workPlan);
 
   await page.route('**/api/admin/trucks/**', async (route) => {
     const request = route.request();
@@ -151,7 +153,6 @@ async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan
     }
     if (path === `/api/admin/trucks/${truckId}/work-plan/inspection` && request.method() === 'POST') {
       const body = request.postDataJSON() as { outcome: 'issues_found' | 'no_issues_found' };
-      plan = plan ?? emptyPlan();
       plan.inspection.outcome = body.outcome;
       if (body.outcome === 'issues_found') {
         plan.readyReason = 'jobs_remaining';
@@ -167,7 +168,6 @@ async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan
       const body = request.postDataJSON() as {
         jobs: Array<{ catalogJobId?: string; categoryId: string; displayName: string; customDescription?: string }>;
       };
-      plan = plan ?? emptyPlan();
       plan.inspection.outcome = 'issues_found';
       plan.workOrder = plan.workOrder ?? {
         id: '00000000-0000-4000-8000-00000000bbb1',
@@ -226,18 +226,7 @@ async function loginManager(page: Page) {
 }
 
 test.describe('LTR-33 Truck Detail Work Plan', () => {
-  test('flag off keeps the Phase 1 six-gate Readiness journey', async ({ page }) => {
-    await mockWorkPlanApi(page, undefined);
-    await loginManager(page);
-    await page.goto(`/admin/trucks/${truckId}`);
-    await expect(page.getByRole('heading', { name: 'Readiness' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Start assessment' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Work Plan', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Issues found', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
-  });
-
-  test('flag on: Issues found adds a catalog job without editing six gates', async ({ page }) => {
+  test('Issues found adds a catalog job without editing six gates', async ({ page }) => {
     await mockWorkPlanApi(page, emptyPlan());
     await loginManager(page);
     await page.goto(`/admin/trucks/${truckId}`);
@@ -266,7 +255,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByRole('heading', { name: 'Required Work' })).toHaveCount(0);
   });
 
-  test('flag on: No issues found does not invent a Required Work gate', async ({ page }) => {
+  test('No issues found does not invent a Required Work gate', async ({ page }) => {
     await mockWorkPlanApi(page, emptyPlan());
     await loginManager(page);
     await page.goto(`/admin/trucks/${truckId}`);
@@ -277,7 +266,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
   });
 
-  test('flag on: Detailing with no catalog Jobs shows EmptyState and keeps Custom available', async ({ page }) => {
+  test('Detailing with no catalog Jobs shows EmptyState and keeps Custom available', async ({ page }) => {
     await mockWorkPlanApi(page, emptyPlan());
     await loginManager(page);
     await page.goto(`/admin/trucks/${truckId}`);

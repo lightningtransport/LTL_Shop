@@ -1,4 +1,4 @@
-import { JobStatus, type AdminTruckDetailDto, type TruckWorkPlanDto } from '@ltl-shop/shared';
+import { JobStatus, type TruckWorkPlanDto } from '@ltl-shop/shared';
 import type { AdminMessages } from './admin-messages';
 import type { ChipVariant } from './status-chips';
 import { phaseLabel } from './status-chips';
@@ -11,12 +11,6 @@ export type WorkPlanJobDraft = {
   displayName: string;
   customDescription?: string;
 };
-
-export function isWorkPlanSliceEnabled(
-  detail: Pick<AdminTruckDetailDto, 'workPlan'> | null | undefined,
-) {
-  return detail?.workPlan?.sliceEnabled === true;
-}
 
 export function workPlanJobUiStatusVariant(status: string): ChipVariant {
   if (status === 'completed') return 'success';
@@ -86,10 +80,6 @@ export function workPlanMandatoryStatusVariant(status: string): ChipVariant {
   if (status === 'in_progress') return 'default';
   if (status === 'not_applicable') return 'secondary';
   return 'outline';
-}
-
-export function shouldShowQualityCheckMandatory(plan: TruckWorkPlanDto) {
-  return plan.mandatory.qualityCheck.required || plan.mandatory.qualityCheck.jobCount > 0;
 }
 
 function normalizeJobName(value: string) {

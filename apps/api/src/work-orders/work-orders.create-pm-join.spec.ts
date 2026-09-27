@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AppCapability } from '@ltl-shop/shared';
 import type { AuthUser } from '../auth/auth.guard';
 import { TrucksService } from '../trucks/trucks.service';
@@ -43,8 +43,6 @@ function setup(open: unknown) {
 }
 
 describe('Create PM service joins the truck Work Order (LTR-147)', () => {
-  beforeEach(() => vi.stubEnv('WORK_PLAN_PM_PHASE', 'true'));
-  afterEach(() => vi.unstubAllEnvs());
 
   it('creates the truck Work Order (Inspection + PM A) and starts its PM job when the truck has none', async () => {
     const { spies, createOrJoin } = setup(null);

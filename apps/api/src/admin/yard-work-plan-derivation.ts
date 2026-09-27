@@ -35,8 +35,6 @@ export type WorkPlanDerivationInput = {
   workOrder: WorkPlanDerivationWorkOrder | null;
   jobs: WorkPlanDerivationJob[];
   inspectionRequirementOutcome?: ReadinessRequirementOutcome | `${ReadinessRequirementOutcome}` | null;
-  /** LTR-144: `WORK_PLAN_PM_PHASE`. Off keeps the pre-PM-phase derivation unchanged. */
-  pmPhase?: boolean;
 };
 
 function normalize(value: string) {
@@ -178,7 +176,7 @@ export function deriveInspectionOutcome(
   return WorkPlanInspectionOutcome.NOT_STARTED;
 }
 
-/** Resolved = done, or not applicable (optional QC off-flag, or all Jobs cancelled on-flag). */
+/** Resolved = done, or not applicable (every Job of the step cancelled with a reason). */
 function unresolved(step: WorkPlanMandatoryPhaseDto) {
   return step.status !== WorkPlanMandatoryStatus.COMPLETE && step.status !== WorkPlanMandatoryStatus.NOT_APPLICABLE;
 }
@@ -204,20 +202,19 @@ function deriveLegacyPmWorkPlan(input: WorkPlanDerivationInput) {
 }
 
 export function deriveWorkPlan(input: WorkPlanDerivationInput) {
-  const pmPhase = Boolean(input.pmPhase);
-  if (pmPhase && input.workOrder && isPmCategory(input.workOrder.primaryCategoryName)) {
+  if (input.workOrder && isPmCategory(input.workOrder.primaryCategoryName)) {
     return deriveLegacyPmWorkPlan(input);
   }
   const jobs = input.jobs.map((job) => toWorkPlanJobDto(job, input.workOrder?.status ?? null));
   const inspectionOutcome = deriveInspectionOutcome(jobs, input.inspectionRequirementOutcome);
   const byLane = (lane: WorkPlanJobLane) => jobs.filter((job) => job.lane === lane);
-  const stepOptions = { cancelledMeansNotApplicable: pmPhase };
-  const pm = pmPhase ? mandatoryPhase(byLane(WorkPlanJobLane.PM), true, stepOptions) : null;
+  const stepOptions = { cancelledMeansNotApplicable: true };
+  const pm = mandatoryPhase(byLane(WorkPlanJobLane.PM), true, stepOptions);
   const alignment = mandatoryPhase(byLane(WorkPlanJobLane.ALIGNMENT), true, stepOptions);
   const detailing = mandatoryPhase(byLane(WorkPlanJobLane.DETAILING), true, stepOptions);
   const qualityJobs = byLane(WorkPlanJobLane.QUALITY_CHECK);
-  // LTR-144: QC is always required once PM is a phase (Cristian, 2026-09-25).
-  const qualityCheck = mandatoryPhase(qualityJobs, pmPhase || qualityJobs.length > 0, stepOptions);
+  // LTR-144: QC is always required (Cristian, 2026-09-25).
+  const qualityCheck = mandatoryPhase(qualityJobs, true, stepOptions);
   const remainingJobs = jobs.filter((job) => job.status === JobStatus.TO_DO);
   const remainingJobCount = remainingJobs.length;
   const shopRemaining = remainingJobs.filter((job) => job.lane === WorkPlanJobLane.SHOP_WORK).length;
@@ -229,13 +226,13 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     readyReason = WorkPlanNotReadyReason.INSPECTION_PENDING;
   } else if (needsAddWork || shopRemaining > 0) {
     readyReason = WorkPlanNotReadyReason.JOBS_REMAINING;
-  } else if (pm && unresolved(pm)) {
+  } else if (unresolved(pm)) {
     readyReason = WorkPlanNotReadyReason.PM_PENDING;
   } else if (unresolved(alignment)) {
     readyReason = WorkPlanNotReadyReason.ALIGNMENT_PENDING;
   } else if (unresolved(detailing)) {
     readyReason = WorkPlanNotReadyReason.DETAILING_PENDING;
-  } else if (qualityCheck.required && unresolved(qualityCheck)) {
+  } else if (unresolved(qualityCheck)) {
     readyReason = WorkPlanNotReadyReason.QC_PENDING;
   } else if (input.workOrder && input.workOrder.status !== WorkOrderStatus.COMPLETED) {
     // LTR-90 / D1: Ready to Go only after the Manager completes the Work Order.
@@ -251,13 +248,13 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     phase = WorkPlanPhase.INSPECTION;
   } else if (needsAddWork || shopRemaining > 0) {
     phase = WorkPlanPhase.SHOP_WORK;
-  } else if (pm && unresolved(pm)) {
+  } else if (unresolved(pm)) {
     phase = WorkPlanPhase.PM;
   } else if (unresolved(alignment)) {
     phase = WorkPlanPhase.ALIGNMENT;
   } else if (unresolved(detailing)) {
     phase = WorkPlanPhase.DETAILING;
-  } else if (qualityCheck.required && unresolved(qualityCheck)) {
+  } else if (unresolved(qualityCheck)) {
     phase = WorkPlanPhase.QUALITY_CHECK;
   } else if (readyReason === WorkPlanNotReadyReason.WORK_ORDER_OPEN) {
     phase = WorkPlanPhase.READY_TO_CLOSE;
@@ -272,6 +269,6 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     readiness,
     readyReason,
     phase,
-    mandatory: pm ? { pm, alignment, detailing, qualityCheck } : { alignment, detailing, qualityCheck },
+    mandatory: { pm, alignment, detailing, qualityCheck },
   };
 }

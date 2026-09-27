@@ -59,7 +59,7 @@ function createPrisma() {
   };
 }
 
-function slice2WorkOrderRow() {
+function workPlanWorkOrderRow() {
   return {
     id: '00000000-0000-4000-8000-000000000201',
     displayId: 'WO-201',
@@ -103,6 +103,23 @@ function slice2WorkOrderRow() {
         status: JobStatus.TO_DO,
         category: { id: '00000000-0000-4000-8000-000000000302', name: 'Detailing' },
       },
+      // LTR-144: PM and QC are mandatory steps; done here so Alignment/Detailing drive the phase.
+      {
+        id: '00000000-0000-4000-8000-000000000403',
+        catalogJobId: '00000000-0000-4000-8000-000000000503',
+        displayName: 'PM A Service',
+        customDescription: null,
+        status: JobStatus.COMPLETED,
+        category: { id: '00000000-0000-4000-8000-000000000303', name: 'PM' },
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000404',
+        catalogJobId: '00000000-0000-4000-8000-000000000504',
+        displayName: 'Quality Check',
+        customDescription: null,
+        status: JobStatus.COMPLETED,
+        category: { id: '00000000-0000-4000-8000-000000000304', name: 'Quality Check' },
+      },
     ],
     mechanics: [],
     pauseEvents: [],
@@ -130,7 +147,7 @@ describe('YardOperationsService', () => {
     const page = await service.list({ limit: 1 });
     expect(page.items.map((item) => item.truck.truckNumber)).toEqual(['100']);
     expect(page.nextCursor).toBeTypeOf('string');
-    expect(page.counts).toEqual({ underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
+    expect(page.counts).toEqual({ notStarted: 0, underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
     const unavailableFeeds = { status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 };
     expect(page.workLocation).toEqual(unavailableFeeds);
     expect(page.incomingTrucks).toEqual(unavailableFeeds);
@@ -168,45 +185,6 @@ describe('YardOperationsService', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(prisma.workOrder.findMany).not.toHaveBeenCalled();
     expect(JSON.stringify(page)).not.toContain('secret');
-  });
-
-  it('applies evidence-backed filters after deriving phase and blockers', async () => {
-    const prisma = createPrisma();
-    const row = truck('100', '00000000-0000-4000-8000-000000000001');
-    row.readinessAssessments = [readiness()];
-    prisma.truck.findMany
-      .mockResolvedValueOnce([row])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([row])
-      .mockResolvedValueOnce([]);
-    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
-
-    const page = await service.list({ phase: 'ready_for_approval', blocked: 'true' });
-    expect(page.items).toHaveLength(0);
-    expect(prisma.truck.findMany).toHaveBeenCalled();
-
-    const noBlockers = await service.list({ phase: 'ready_for_approval', blocked: 'false' });
-    expect(noBlockers.items).toHaveLength(1);
-  });
-
-  it('returns authoritative counts from the separate database summary query', async () => {
-    const prisma = createPrisma();
-    const pageRow = truck('100', '00000000-0000-4000-8000-000000000001');
-    const completeRequirements = READINESS_REQUIREMENT_TYPES.map((type) => ({ type, outcome: 'completed' }));
-    prisma.truck.findMany
-      .mockResolvedValueOnce([pageRow])
-      .mockResolvedValueOnce([
-        { readinessAssessments: [{ status: 'under_review', requirements: completeRequirements, workOrders: [] }] },
-        { readinessAssessments: [{ status: 'ready', requirements: completeRequirements, workOrders: [] }] },
-        { readinessAssessments: [{ status: 'ready', requirements: completeRequirements, workOrders: [{ id: 'wo-1', status: 'in_progress' }] }] },
-      ]);
-    prisma.truck.count.mockResolvedValue(10);
-    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
-
-    const page = await service.list({ limit: 1 });
-
-    expect(page.items).toHaveLength(1);
-    expect(page.counts).toEqual({ underReview: 1, readyToGo: 1, blocked: 1, presenceUnknown: 10 });
   });
 
   it('does not treat a stored address as yard presence', async () => {
@@ -266,8 +244,7 @@ describe('YardOperationsService', () => {
     await expect(service.detail('00000000-0000-4000-8000-000000000001')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('Slice 2: board phase matches Work Plan derivation without Mark Ready', async () => {
-    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+  it('board phase matches Work Plan derivation without Mark Ready', async () => {
     const prisma = createPrisma();
     const row = truck('277', '00000000-0000-4000-8000-000000000001');
     const assessment = readiness(ReadinessRequirementOutcome.NOT_EVALUATED);
@@ -277,7 +254,7 @@ describe('YardOperationsService', () => {
         : requirement,
     );
     row.readinessAssessments = [assessment];
-    row.workOrders = [slice2WorkOrderRow()];
+    row.workOrders = [workPlanWorkOrderRow()];
     prisma.truck.findMany.mockResolvedValue([row]);
     prisma.truck.count.mockResolvedValue(1);
     const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
@@ -307,8 +284,7 @@ describe('YardOperationsService', () => {
     expect(shopOnly.items).toHaveLength(0);
   });
 
-  it('Slice 2: completing Alignment + Detailing with the WO still open yields ready_to_close (LTR-90)', async () => {
-    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
+  it('completing Alignment + Detailing with the WO still open yields ready_to_close (LTR-90)', async () => {
     const prisma = createPrisma();
     const row = truck('277', '00000000-0000-4000-8000-000000000001');
     const assessment = readiness(ReadinessRequirementOutcome.NOT_EVALUATED);
@@ -318,7 +294,7 @@ describe('YardOperationsService', () => {
         : requirement,
     );
     row.readinessAssessments = [assessment];
-    const workOrder = slice2WorkOrderRow();
+    const workOrder = workPlanWorkOrderRow();
     workOrder.jobs = workOrder.jobs.map((job) => ({ ...job, status: JobStatus.COMPLETED }));
     row.workOrders = [workOrder];
     prisma.truck.findMany.mockResolvedValue([row]);
@@ -338,9 +314,8 @@ describe('YardOperationsService', () => {
     expect(detail.phase).toBe(WorkPlanPhase.READY_TO_CLOSE);
   });
 
-  describe('Slice 2 Ready to Go after WO completion (LTR-90 / D1)', () => {
+  describe('Ready to Go after WO completion (LTR-90 / D1)', () => {
     function completedSetup(serviceEvent: { status: string; occurredAt: Date } | null) {
-      vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
       vi.stubEnv('YARD_READY_TO_GO_SINCE', '2026-09-25T00:00:00.000Z');
       const prisma = createPrisma();
       const row = truck('277', '00000000-0000-4000-8000-000000000001');
@@ -348,14 +323,16 @@ describe('YardOperationsService', () => {
       row.readinessAssessments = [];
       (row as { serviceStatusEvents: unknown[] }).serviceStatusEvents = serviceEvent ? [serviceEvent] : [];
       const completed = {
-        ...slice2WorkOrderRow(),
+        ...workPlanWorkOrderRow(),
         truckId: row.id,
         status: WorkOrderStatus.COMPLETED,
         completedAt: new Date('2026-09-26T15:00:00.000Z'),
         jobs: [
-          { ...slice2WorkOrderRow().jobs[0], id: 'i', displayName: 'General Inspection', category: { id: 'c-i', name: 'Inspection' }, status: JobStatus.COMPLETED },
-          { ...slice2WorkOrderRow().jobs[0], id: 'a', displayName: 'Alignment', category: { id: 'c-a', name: 'Suspension & Steering' }, status: JobStatus.COMPLETED },
-          { ...slice2WorkOrderRow().jobs[0], id: 'd', displayName: 'Detailing', category: { id: 'c-d', name: 'Detailing' }, status: JobStatus.COMPLETED },
+          { ...workPlanWorkOrderRow().jobs[0], id: 'i', displayName: 'General Inspection', category: { id: 'c-i', name: 'Inspection' }, status: JobStatus.COMPLETED },
+          { ...workPlanWorkOrderRow().jobs[0], id: 'a', displayName: 'Alignment', category: { id: 'c-a', name: 'Suspension & Steering' }, status: JobStatus.COMPLETED },
+          { ...workPlanWorkOrderRow().jobs[0], id: 'd', displayName: 'Detailing', category: { id: 'c-d', name: 'Detailing' }, status: JobStatus.COMPLETED },
+          { ...workPlanWorkOrderRow().jobs[0], id: 'p', displayName: 'PM A Service', category: { id: 'c-p', name: 'PM' }, status: JobStatus.COMPLETED },
+          { ...workPlanWorkOrderRow().jobs[0], id: 'q', displayName: 'Quality Check', category: { id: 'c-q', name: 'Quality Check' }, status: JobStatus.COMPLETED },
         ],
       };
       prisma.truck.findMany.mockResolvedValue([row]);
@@ -391,25 +368,7 @@ describe('YardOperationsService', () => {
     });
   });
 
-  it('Slice 2 off: board stays on six-gate phase even with Work Plan jobs present', async () => {
-    const prisma = createPrisma();
-    const row = truck('277', '00000000-0000-4000-8000-000000000001');
-    row.readinessAssessments = [readiness(ReadinessRequirementOutcome.NOT_EVALUATED)];
-    row.workOrders = [slice2WorkOrderRow()];
-    prisma.truck.findMany
-      .mockResolvedValueOnce([row])
-      .mockResolvedValueOnce([]);
-    prisma.truck.count.mockResolvedValue(1);
-    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
-
-    const page = await service.list({ limit: 1 });
-    expect(page.workPlanBoardCutover).toBe(false);
-    expect(page.items[0].phase).toBe('inspection');
-    expect(page.items[0].phase).not.toBe(WorkPlanPhase.SHOP_WORK);
-  });
-
   it('LTR-75: post-wipe fleet with no yard engagement is an empty board', async () => {
-    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
     const prisma = createPrisma();
     const idle = [
       truck('100', '00000000-0000-4000-8000-000000000001'),
@@ -430,25 +389,11 @@ describe('YardOperationsService', () => {
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[1][0].where)).toBe(true);
   });
 
-  it('LTR-75: Phase 1 list uses the same engagement predicate', async () => {
-    const prisma = createPrisma();
-    prisma.truck.findMany.mockResolvedValue([]);
-    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
-
-    const page = await service.list({ limit: 25 });
-
-    expect(page.workPlanBoardCutover).toBe(false);
-    expect(page.items).toEqual([]);
-    expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
-  });
-
-  it('LTR-144: with WORK_PLAN_PM_PHASE a legacy PM Work Order sits in the PM column, not Inspection', async () => {
-    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
-    vi.stubEnv('WORK_PLAN_PM_PHASE', 'true');
+  it('LTR-144: a legacy PM Work Order sits in the PM column, not Inspection', async () => {
     const prisma = createPrisma();
     const pmTruck = truck('923', '00000000-0000-4000-8000-000000000001');
     pmTruck.workOrders = [{
-      ...slice2WorkOrderRow(),
+      ...workPlanWorkOrderRow(),
       status: WorkOrderStatus.IN_PROGRESS,
       primaryCategory: { id: 'pm-cat', name: 'PM' },
       jobs: [],
@@ -465,11 +410,10 @@ describe('YardOperationsService', () => {
   });
 
   it('LTR-98: an unresolved mechanic blocker marks the truck Blocked', async () => {
-    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
     const prisma = createPrisma();
     const blocked = truck('277', '00000000-0000-4000-8000-000000000001');
     blocked.workOrders = [{
-      ...slice2WorkOrderRow(),
+      ...workPlanWorkOrderRow(),
       status: WorkOrderStatus.IN_PROGRESS,
       pauseEvents: [{
         id: 'b-1', workOrderId: '00000000-0000-4000-8000-000000000201', reason: 'waiting_for_parts', notes: null,
@@ -488,12 +432,11 @@ describe('YardOperationsService', () => {
   });
 
   it('LTR-92: only an officially paused Work Order counts and filters as Blocked', async () => {
-    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
     const prisma = createPrisma();
     const running = truck('277', '00000000-0000-4000-8000-000000000001');
-    running.workOrders = [{ ...slice2WorkOrderRow(), status: WorkOrderStatus.IN_PROGRESS }];
+    running.workOrders = [{ ...workPlanWorkOrderRow(), status: WorkOrderStatus.IN_PROGRESS }];
     const paused = truck('906', '00000000-0000-4000-8000-000000000002');
-    paused.workOrders = [{ ...slice2WorkOrderRow(), id: '00000000-0000-4000-8000-000000000202', status: WorkOrderStatus.WAITING_PAUSED }];
+    paused.workOrders = [{ ...workPlanWorkOrderRow(), id: '00000000-0000-4000-8000-000000000202', status: WorkOrderStatus.WAITING_PAUSED }];
     prisma.truck.findMany.mockResolvedValue([running, paused]);
     prisma.truck.count.mockResolvedValue(2);
     const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
@@ -505,11 +448,10 @@ describe('YardOperationsService', () => {
   });
 
   it('LTR-75: an open Work Order enters the board on the derived Work Plan phase', async () => {
-    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
     const prisma = createPrisma();
     const idle = truck('100', '00000000-0000-4000-8000-000000000099');
     const engaged = truck('277', '00000000-0000-4000-8000-000000000001');
-    engaged.workOrders = [slice2WorkOrderRow()];
+    engaged.workOrders = [workPlanWorkOrderRow()];
     const fleet = [idle, engaged];
     prisma.truck.findMany.mockImplementation(async (args: { where?: unknown }) => {
       if (!querySelectsYardEngagement(args?.where)) return fleet;
@@ -530,7 +472,6 @@ describe('YardOperationsService', () => {
   });
 
   it('LTR-75: an active assessment without a Work Order is engagement and stays in Inspection', async () => {
-    vi.stubEnv('YARD_WORK_PLAN_SLICE2', 'true');
     const prisma = createPrisma();
     const engaged = truck('300', '00000000-0000-4000-8000-000000000001');
     engaged.readinessAssessments = [readiness(ReadinessRequirementOutcome.NOT_EVALUATED)];

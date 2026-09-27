@@ -181,24 +181,22 @@ const workOrders = [
 ];
 
 const yardOperations = [
-  makeYardItem('00000000-0000-4000-8000-000000001001', 'Y-101', 'needs_evaluation', null, null),
+  makeYardItem('00000000-0000-4000-8000-000000001001', 'Y-101', 'inspection', null, null),
   makeYardItem('00000000-0000-4000-8000-000000001002', 'Y-102', 'inspection', 'high', 'under_review', { make: 'PETERBILT', model: 'PETERBILT 579' }),
-  makeYardItem('00000000-0000-4000-8000-000000001003', 'Y-103', 'required_work', 'critical', 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001003', 'Y-103', 'shop_work', 'critical', 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001004', 'Y-104', 'pm', 'normal', 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001005', 'Y-105', 'alignment', 'normal', 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001006', 'Y-106', 'detailing', 'low', 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001007', 'Y-107', 'quality_check', 'normal', 'under_review'),
-  makeYardItem('00000000-0000-4000-8000-000000001009', 'Y-109', 'ready_for_approval', null, 'under_review'),
+  makeYardItem('00000000-0000-4000-8000-000000001009', 'Y-109', 'ready_to_close', null, 'under_review'),
   makeYardItem('00000000-0000-4000-8000-000000001008', 'Y-108', 'ready_to_go', null, 'ready'),
 ];
 
 const workPlanByTruck = new Map();
-const yardWorkPlanSlice1 = process.env.YARD_WORK_PLAN_SLICE1 === 'true';
-const yardWorkPlanSlice2 = process.env.YARD_WORK_PLAN_SLICE2 === 'true';
 
 function emptyFixtureWorkPlan() {
   return {
-    sliceEnabled: yardWorkPlanSlice1,
+    sliceEnabled: true,
     inspection: { outcome: 'not_started' },
     workOrder: null,
     jobs: [],
@@ -207,10 +205,12 @@ function emptyFixtureWorkPlan() {
     readyReason: 'inspection_pending',
     phase: 'inspection',
     mandatory: {
+      pm: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
       alignment: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
       detailing: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
-      qualityCheck: { required: false, status: 'not_applicable', jobCount: 0, remainingCount: 0 },
+      qualityCheck: { required: true, status: 'pending', jobCount: 0, remainingCount: 0 },
     },
+    pmPhaseEnabled: true,
     capabilities: { canRead: true, canAddWork: false, canRecordInspection: false },
     phase1: { assessmentId: null, gatesRemainDefault: true },
   };
@@ -218,7 +218,6 @@ function emptyFixtureWorkPlan() {
 
 function fixtureWorkPlan(item, currentUser) {
   const current = workPlanByTruck.get(item.truck.id) ?? emptyFixtureWorkPlan();
-  current.sliceEnabled = yardWorkPlanSlice1;
   current.capabilities = {
     canRead: true,
     canAddWork: currentUser.capabilities.includes('work_orders.manage'),
@@ -544,7 +543,7 @@ createServer(async (request, response) => {
     if (!item) json(response, 404, { message: 'Truck not found' });
     else {
       const detail = { ...item, repairHistory: { items: [], nextCursor: null }, repairHistoryUrl: `/api/admin/trucks/${item.truck.id}/repair-history`, incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' }, upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' } };
-      json(response, 200, yardWorkPlanSlice1 ? { ...detail, workPlan: fixtureWorkPlan(item, user) } : detail);
+      json(response, 200, { ...detail, workPlan: fixtureWorkPlan(item, user) });
     }
     return;
   }
@@ -667,7 +666,7 @@ createServer(async (request, response) => {
     json(response, 200, {
       items: hasCursor ? items.slice(0, 4) : items,
       nextCursor: hasCursor ? 'yard-page-2' : null,
-      counts: { underReview: 7, readyToGo: 1, blocked: 6, presenceUnknown: 9 },
+      counts: { notStarted: 2, underReview: 6, readyToGo: 1, blocked: 1, presenceUnknown: 9 },
       workLocation: {
         status: 'ok',
         total: 2,
@@ -691,7 +690,8 @@ createServer(async (request, response) => {
           { truckNumber: '614', truckId: null, detail: 'LEYDER ESTRADA', scheduledOn: '2026-09-21', source: 'planned_out' },
         ],
       },
-      workPlanBoardCutover: yardWorkPlanSlice2,
+      workPlanBoardCutover: true,
+      pmPhaseEnabled: true,
     });
     return;
   }
@@ -1455,10 +1455,10 @@ function syncJobCounts(workOrder) {
 function makeYardItem(truckId, truckNumber, phase, priority, assessmentStatus, vehicle = {}) {
   const hasWorkOrder = Boolean(priority);
   const workOrderId = truckId.replace('100', '200');
-  const activeWorkOrder = hasWorkOrder ? makeWorkOrder(workOrderId, `WO-${truckNumber.slice(2)}`, truckNumber, priority, phase === 'required_work' ? 'in_progress' : 'created') : null;
+  const activeWorkOrder = hasWorkOrder ? makeWorkOrder(workOrderId, `WO-${truckNumber.slice(2)}`, truckNumber, priority, phase === 'shop_work' ? 'in_progress' : 'created') : null;
   if (activeWorkOrder) activeWorkOrder.truck.id = truckId;
   const now = '2026-09-06T18:00:00.000Z';
-  const requirementType = phase === 'inspection' ? 'inspection' : phase === 'required_work' ? 'required_repairs' : phase === 'pm' ? 'pm' : phase === 'alignment' ? 'alignment' : phase === 'detailing' ? 'detailing' : phase === 'quality_check' ? 'quality_check' : null;
+  const requirementType = phase === 'inspection' ? 'inspection' : phase === 'shop_work' ? 'required_repairs' : phase === 'pm' ? 'pm' : phase === 'alignment' ? 'alignment' : phase === 'detailing' ? 'detailing' : phase === 'quality_check' ? 'quality_check' : null;
   const assessment = assessmentStatus ? { id: truckId.replace('100', '300'), truckId, status: assessmentStatus, version: 1, startedAt: '2026-09-06T12:00:00.000Z', startedById: users['manager@lightning.local'].id, readyAt: assessmentStatus === 'ready' ? now : null, approvedById: assessmentStatus === 'ready' ? users['manager@lightning.local'].id : null, closedAt: null, closedById: null, closedReason: null, requirements: requirementType ? [{ id: truckId.replace('100', '400'), type: requirementType, outcome: 'required', waiverReason: null, evidenceWorkOrderId: null, evaluatedById: null, evaluatedAt: null, version: 1 }] : [] } : null;
   const blockers = phase === 'ready_to_go' || !assessment ? [] : [{ kind: activeWorkOrder ? 'open_work_order' : 'unevaluated_requirement', requirementType, workOrderId: activeWorkOrder?.id, status: activeWorkOrder?.status, priority: activeWorkOrder?.priority, categoryName: activeWorkOrder?.category.name, message: activeWorkOrder ? 'Open Work Order remains linked.' : 'Assessment requires evaluation.' }];
   return { truck: { id: truckId, truckNumber, make: vehicle.make ?? 'Volvo', model: vehicle.model ?? 'VNL', year: vehicle.year ?? 2024, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport', vin: '4V4NC9EH0RN123456', location: '4802 Orient Road, Tampa, FL', locationUpdatedOn: '2026-09-11' }, presence: { state: 'unknown', provenance: 'phase_1_unavailable' }, operationalStatus: 'unknown', operationalStatusAt: null, assessment, phase, blockers, activeWorkOrder };

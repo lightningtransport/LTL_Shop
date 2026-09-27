@@ -68,7 +68,6 @@ import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-or
 import { stopLaborWhenNoPendingJobs } from '../work-orders/labor-session';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
-import { isWorkPlanPmPhaseEnabled, isYardWorkPlanSlice1Enabled } from './yard-work-plan-flag';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
@@ -747,7 +746,7 @@ export class AdminService {
         const job = wo.jobs.find((item) => item.id === jobId);
         if (!job) throw new NotFoundException('Job not found');
         // LTR-146: the PM job goes to a PM mechanic, who does not join the Standard team.
-        const isPmJob = isWorkPlanPmPhaseEnabled() && isPmCategory(job.category.name);
+        const isPmJob = isPmCategory(job.category.name);
         if (isPmJob && (job.status !== JobStatus.to_do || job.startedAt)) {
           throw new BadRequestException('A started or finished PM job cannot be reassigned');
         }
@@ -2103,7 +2102,8 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     reportedBlockers: row.pauseEvents
       .filter((pause) => pause.isOfficialPause === false)
       .map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
-    addWorkInWorkPlan: isYardWorkPlanSlice1Enabled(),
+    // Deprecated (LTR-150): always true; kept for web/API deploy skew.
+    addWorkInWorkPlan: true,
     pmService: row.pmService
       ? { observedMileage: row.pmService.observedMileage, partsCount: row.pmService._count.parts, workOrderJobId: row.pmService.workOrderJobId }
       : null,

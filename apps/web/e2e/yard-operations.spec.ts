@@ -100,11 +100,11 @@ test.describe('Yard Operations Phase 1', () => {
     await page.getByLabel('Search Truck or Work Order').fill('Y-103');
     await expect(page).toHaveURL(/search=Y-103/, { timeout: 5_000 });
     const filters = await yardFilterPanel(page);
-    await filters.getByLabel('Phase', { exact: true }).selectOption('required_work');
+    await filters.getByLabel('Phase', { exact: true }).selectOption('shop_work');
     await filters.getByLabel('Blockers').selectOption('true');
     await filters.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/search=Y-103/);
-    await expect(page).toHaveURL(/phase=required_work/);
+    await expect(page).toHaveURL(/phase=shop_work/);
     await expect(page).toHaveURL(/blocked=true/);
     await expect(page.getByLabel('Readiness list').getByRole('link', { name: 'Y-103', exact: true })).toBeVisible();
   });
@@ -151,7 +151,7 @@ test.describe('Yard Operations Phase 1', () => {
   test('shows all derived phases in the desktop board and paginates', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1024 });
     await expect(page.getByRole('heading', { name: 'Readiness board' })).toBeVisible();
-    for (const phase of ['Needs evaluation', 'Inspection', 'Required Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready for Approval', 'Ready to Go']) {
+    for (const phase of ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close WO', 'Ready to Go']) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
     await expect(page.getByText('No Trucks in this phase.').first()).toBeVisible();
@@ -179,9 +179,9 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(sheet.getByLabel('Work Order status')).toBeVisible();
     await expect(sheet.getByLabel('Priority')).toBeVisible();
     await expect(sheet.getByLabel('Blockers')).toBeVisible();
-    await sheet.getByLabel('Phase', { exact: true }).selectOption('required_work');
+    await sheet.getByLabel('Phase', { exact: true }).selectOption('shop_work');
     await sheet.getByRole('button', { name: 'Apply filters' }).click();
-    await expect(page).toHaveURL(/phase=required_work/);
+    await expect(page).toHaveURL(/phase=shop_work/);
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Filters \(1\)/ })).toBeVisible();
 
@@ -193,8 +193,8 @@ test.describe('Yard Operations Phase 1', () => {
     const y101 = list.getByTestId('yard-truck-card').filter({ hasText: 'Y-101' });
     await expect(y101).toBeVisible();
     await expect(y101.getByText('No open Work Order')).toBeVisible();
-    await expect(y101.getByText('Needs evaluation')).toBeVisible();
-    await expect(y101.getByText('Needs evaluation')).toHaveCSS('text-transform', 'none');
+    await expect(y101.getByText('Inspection')).toBeVisible();
+    await expect(y101.getByText('Inspection')).toHaveCSS('text-transform', 'none');
     await expect(y101.getByText('2024 Volvo VNL')).toBeVisible();
     await expect(y101.getByText('Time in assessment')).toHaveCount(0);
     await expect(y101.getByText('No active Work Order')).toHaveCount(0);
@@ -206,7 +206,8 @@ test.describe('Yard Operations Phase 1', () => {
     const y102 = list.getByTestId('yard-truck-card').filter({ hasText: 'Y-102' });
     await expect(y102.getByText('WO-102')).toBeVisible();
     await expect(y102.getByText('High')).toBeVisible();
-    await expect(y102.getByText('Blocked')).toBeVisible();
+    // LTR-92 / D5: an open (not officially paused) Work Order is not Blocked.
+    await expect(y102.getByText('Blocked')).toHaveCount(0);
     await expect(y102.getByText('2024 PETERBILT 579')).toBeVisible();
     await expect(y102.getByText(/PETERBILT PETERBILT/i)).toHaveCount(0);
 

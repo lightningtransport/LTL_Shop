@@ -112,70 +112,55 @@ TARGET authorization/UX.
   `AGENT_REPORTING_KEY` is set on the API; it never exposes the key to the
   web app. PD-locked EN/ES card copy lives in `YARD_DATA_BOUNDARY_COPY`.
   Schedule_Teams is not unioned yet. Presence stays `UNKNOWN`.
-- Users with both `admin.access` and `yard.operations.manage` can start or close
-  a readiness assessment, update its six requirements, and explicitly mark it
-  Ready when the rules pass. These mutations use server authorization,
-  optimistic version checks, idempotency, and Activity Log records.
-- When the API flag `YARD_WORK_PLAN_SLICE1` is on, Truck Detail replaces the
-  six-gate Readiness editor with Inspection discovery (**No issues found** /
-  **Issues found**) and a Work Plan of jobs on the open Work Order. Ready is
-  derived from `readyReason` plus mandatory Alignment and Detailing (QC only
-  if a QC job is on the plan). Catalog includes a seeded **Quality Check**
-  category/job (LTR-41) so managers can add optional QC the same way as
-  Detailing. Work Plan CTAs open Add work pre-focused on the next pending
-  mandatory step. Mark Ready is not the Manager path in that UI. With the
-  flag off, Phase 1 six-gate Readiness is unchanged. Board columns stay on
-  the six-gate derivation until `YARD_WORK_PLAN_SLICE2` is on (LTR-39). The
-  hooks live at `GET/POST /api/admin/trucks/:id/work-plan*` (LTR-34 /
-  PR #103). Managers with `work_orders.manage` can complete open Work Plan
-  jobs from Admin (LTR-38).
-- When `YARD_WORK_PLAN_SLICE2` is on, Yard board/list top-level `phase` and
-  Ready filters/counts use the **same** `deriveWorkPlan` rules as Truck
-  Detail (including `shop_work`). The page DTO also sets
-  `workPlanBoardCutover`, and Admin Kanban/list columns switch to Work Plan
-  phases (Inspection → Shop Work → Alignment → Detailing → Ready; QC only
-  when present). Flag off leaves Phase 1 six-gate board behavior. Gate
-  mutation APIs stay live; Truck Detail six-gate editor stays hidden when
-  Slice 1 `workPlan` is present.
-- Yard Phase (Phase 1 / Slice 2 off) is derived for presentation as the next
-  unresolved readiness gate. It is not a persisted Work Order status, not a
-  Job Category, and does not create another Work Order. An open Work Order is
-  a blocker, not the phase. All-resolved assessments that are not yet
-  approved show **Ready for Approval**. `Ready to Go` is the explicit
-  approval, and a closed Ready assessment stays in that column until new open
-  work appears.
-- `Ready to Go` is an explicit readiness approval under Phase 1. Completing a
-  Work Order does not establish physical presence, departure, or return to
-  service. Under Slice 2, Ready on the board is automatic from the Work Plan.
-- Additive LTR-34 Slice 1 Work Plan hooks are on main (PR #103) for Frontend
-  (LTR-33) and do **not** replace Phase 1 until Slice 2. `GET/POST
-  /api/admin/trucks/:id/work-plan*` read the open Work Order jobs and derive
-  Ready automatically (Alignment + Detailing always required; Shop Work is a
-  Work Plan phase). `YARD_WORK_PLAN_SLICE1` (default off) is required before
-  Truck Detail also returns `workPlan`. `YARD_WORK_PLAN_SLICE2` (default off)
-  cuts board/list phase over to that derivation. `updateRequirement` / Mark
-  Ready stay in place. See `docs/LTR-34_WORK_PLAN_SLICE1_PROPOSAL.md`.
-- **`WORK_PLAN_PM_PHASE` (LTR-141, default off; API env only).** When on:
-  - The Work Plan is `Inspection → Shop Work → PM → Alignment → Detailing →
-    Quality Check → Ready to close → Ready to Go`. PM and QC are always
-    required. A step whose Jobs were all cancelled with a reason counts as not
-    applicable.
-  - A new truck Work Order automatically gets PM A Service, Alignment,
-    Detailing and Quality Check (catalog names; no backfill of open WOs). One
-    PM job per Work Order; the Manager or the assigned PM mechanic switches
-    PM A ↔ PM B.
-  - The PM job is assigned to a `mechanic.pm` user (not added to the Standard
-    team). That mechanic opens only the PM job, starts it
-    (`POST /work-orders/:id/jobs/:jobId/pm/start`), records mileage + parts
-    (`/work-orders/:id/pm`) and finishes it; finishing moves the truck
-    odometer and does **not** complete the Work Order.
-  - "Create PM service" joins the truck's open Work Order (adds PM A if
-    missing) or creates the full truck Work Order. One running PM per PM
-    mechanic (D2) counts started PM jobs.
-  - Legacy PM Work Orders keep working and show in the PM column; a fresh PM
-    service is not "Needs attention" (LTR-116).
-  - Rollback: turn the flag off; `work_order_jobs.started_at` and
-    `pm_services.work_order_job_id` are additive.
+- **Work Plan is the only mode (LTR-150).** `YARD_WORK_PLAN_SLICE1`,
+  `YARD_WORK_PLAN_SLICE2` and `WORK_PLAN_PM_PHASE` are retired: the API no
+  longer reads them and there is no flag-off path. Setting or removing them in
+  an environment has no effect.
+- Truck Detail shows Inspection discovery (**No issues found** /
+  **Issues found**, requires `yard.operations.manage`) and a Work Plan of the
+  jobs on the open Work Order. `GET /api/admin/trucks/:id` always returns
+  `workPlan`; the hooks live at `GET/POST /api/admin/trucks/:id/work-plan*`
+  (LTR-34). Work Plan CTAs open Add work pre-focused on the next pending
+  mandatory step. Managers with `work_orders.manage` add jobs there (the Admin
+  Work Order links to it; LTR-119 / D6) and can complete open Work Plan jobs
+  from Admin (LTR-38).
+- The Work Plan is `Inspection → Shop Work → PM → Alignment → Detailing →
+  Quality Check → Ready to close → Ready to Go`. PM, Alignment, Detailing and
+  QC are always required. A step whose Jobs were all cancelled with a reason
+  counts as not applicable (LTR-144). The order is shown, not enforced.
+- Ready is derived, never marked: every step resolved **and** the Work Order
+  Completed (LTR-90 / D1). With the steps done and the Work Order still open
+  the phase is **Ready to close**.
+- The Yard board/list, its Ready filter and its counters use the **same**
+  `deriveWorkPlan` rules as Truck Detail (LTR-39). Counters are exclusive
+  buckets that add up to the board (LTR-100); Blocked means an official pause
+  or an active mechanic blocker, not "has open work" (LTR-92 / LTR-98).
+  Yard Phase is presentation only: it is not a persisted Work Order status,
+  not a Job Category, and does not create another Work Order.
+- `YARD_READY_TO_GO_SINCE` (API env, ISO date; `apps/api/src/admin/yard-ready-window.ts`)
+  is still configuration: a truck whose Work Order was completed on or after
+  that date stays on the board as Ready to Go until Return to Service. Unset,
+  completed Work Orders leave the board.
+- A new truck Work Order automatically gets PM A Service, Alignment, Detailing
+  and Quality Check (catalog names; no backfill of open WOs). One PM job per
+  Work Order; the Manager or the assigned PM mechanic switches PM A ↔ PM B.
+- The PM job is assigned to a `mechanic.pm` user (not added to the Standard
+  team). That mechanic opens only the PM job, starts it
+  (`POST /work-orders/:id/jobs/:jobId/pm/start`), records mileage + parts
+  (`/work-orders/:id/pm`) and finishes it; finishing moves the truck odometer
+  and does **not** complete the Work Order.
+- "Create PM service" joins the truck's open Work Order (adds PM A if missing)
+  or creates the full truck Work Order. It no longer creates a standalone PM
+  Work Order. One running PM per PM mechanic (D2) counts started PM jobs and
+  in-progress legacy PM Work Orders.
+- Legacy PM Work Orders keep working (pause, resume, finish) and show in the PM
+  column; a fresh PM service is not "Needs attention" (LTR-116).
+- Phase 1 six-gate readiness has no UI (the six-gate editor, Mark Ready to Go
+  and the Blockers card are gone from Truck Detail). Its mutation endpoints
+  (`/api/admin/trucks/:id/readiness-assessments`,
+  `/api/admin/readiness-assessments/:id/*`) remain `@deprecated` until a
+  cleanup PR. Inspection outcome is still stored on the assessment's
+  Inspection requirement.
 
 ### Authentication and profile
 
@@ -224,9 +209,8 @@ TARGET authorization/UX.
   Work Order. Standard Create does not Start, PM remains a `mechanic.pm`
   exception, Job completion does not complete the Work Order, and Work Order
   `Completed` does not mean `Ready to Go`/`Returned to Service`.
-- **CURRENT contract rules:** Standard may not add the PM Category (superseded
-  when `WORK_PLAN_PM_PHASE` is on: PM is a mandatory Job of the truck Work
-  Order, one per WO); catalog
+- **CURRENT contract rules:** PM is a mandatory Job of the truck Work Order,
+  one per WO (LTR-145); catalog
   duplicates use `catalogJobId`, Custom Job duplicates use normalized custom
   name; inactive Categories and historical Jobs remain readable but cannot be
   selected for new work; repair-history Category filters match any Job
@@ -285,18 +269,21 @@ approved multi-workspace user may also perform PM work under their own identity.
 The legacy `pmAuthorized` column remains only for migration compatibility.
 
 1. Select a truck.
-2. Create PM Work Order. It starts immediately with one assigned PM mechanic
-   and one open work session; no category, jobs, collaborator, priority, or
-   creation-notes form is shown.
+2. Create PM service. It joins the truck's open Work Order (or creates the
+   truck Work Order with its mandatory steps), assigns the PM job to the PM
+   mechanic and starts it (LTR-147). No category, jobs, collaborator,
+   priority, or creation-notes form is shown.
 3. Review Truck Information and enter Observed mileage.
 4. After a valid integer mileage is present, select parts used from the
    compatible catalog and save notes automatically.
-5. Pause or finish. Finish requires a saved observed mileage and at least one
-   selected part; it confirms a canonical truck-mileage update when needed.
+5. Finish. Finish requires a saved observed mileage and at least one selected
+   part; it confirms a canonical truck-mileage update when needed.
 
 PM Service records the observed mileage, selected parts, and notes as a draft
 while work is open. Finishing creates the immutable mileage audit and completes
-the work order. Completed PM records are read-only.
+the PM job; the truck Work Order stays open for its other steps. Legacy PM Work
+Orders (created before LTR-141) keep their pause and finish-the-WO behavior
+(Q13, D12). Completed PM records are read-only.
 
 ### PM catalog and fitment
 

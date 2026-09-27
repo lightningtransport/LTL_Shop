@@ -13,9 +13,6 @@ import type {
   AdminTruckSummaryDto,
   AdminWorkOrderDetailDto,
   AdminWorkOrderSummaryDto,
-  ReadinessAssessmentDto,
-  ReadinessRequirementOutcome,
-  ReadinessRequirementType,
   RecordWorkPlanInspectionInput,
   CatalogStatus,
   MechanicMode,
@@ -327,23 +324,6 @@ export function unassignAdminWorkOrderJob(
   });
 }
 
-export function addAdminWorkOrderJob(
-  workOrderId: string,
-  input: {
-    catalogJobId?: string;
-    categoryId: string;
-    displayName: string;
-    customDescription?: string;
-    expectedVersion: number;
-  },
-  idempotencyKey = adminMutationIdempotencyKey(),
-) {
-  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/jobs`, {
-    method: 'POST',
-    body: JSON.stringify({ ...input, idempotencyKey }),
-  });
-}
-
 /** LTR-98: Manager resolves a mechanic-reported blocker. */
 export function resolveAdminBlocker(workOrderId: string, blockerId: string) {
   return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/blockers/${blockerId}/resolve`, {
@@ -490,39 +470,6 @@ export function reopenAdminJob(
 
 export function fetchAdminTruckWorkPlan(truckId: string) {
   return apiFetch<TruckWorkPlanDto>(`/api/admin/trucks/${truckId}/work-plan`);
-}
-
-export function startAdminTruckAssessment(truckId: string, idempotencyKey = adminMutationIdempotencyKey()) {
-  return apiFetch<{ assessment: ReadinessAssessmentDto; linkedWorkOrderId: string | null }>(`/api/admin/trucks/${truckId}/readiness-assessments`, {
-    method: 'POST',
-    body: JSON.stringify({ idempotencyKey }),
-  });
-}
-
-export function updateAdminTruckRequirement(
-  assessmentId: string,
-  type: ReadinessRequirementType,
-  input: { outcome: ReadinessRequirementOutcome; expectedVersion: number; waiverReason?: string; evidenceWorkOrderId?: string },
-  idempotencyKey = adminMutationIdempotencyKey(),
-) {
-  return apiFetch<{ assessment: ReadinessAssessmentDto }>(`/api/admin/readiness-assessments/${assessmentId}/requirements/${type}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ ...input, idempotencyKey }),
-  });
-}
-
-export function markAdminTruckReady(assessmentId: string, expectedVersion: number, idempotencyKey = adminMutationIdempotencyKey()) {
-  return apiFetch<{ assessment: ReadinessAssessmentDto }>(`/api/admin/readiness-assessments/${assessmentId}/mark-ready`, {
-    method: 'POST',
-    body: JSON.stringify({ expectedVersion, idempotencyKey }),
-  });
-}
-
-export function closeAdminTruckAssessment(assessmentId: string, expectedVersion: number, reason: string, idempotencyKey = adminMutationIdempotencyKey()) {
-  return apiFetch<{ assessment: ReadinessAssessmentDto }>(`/api/admin/readiness-assessments/${assessmentId}/close`, {
-    method: 'POST',
-    body: JSON.stringify({ expectedVersion, reason, idempotencyKey }),
-  });
 }
 
 export function recordAdminWorkPlanInspection(

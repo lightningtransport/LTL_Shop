@@ -7,8 +7,6 @@ import {
   DEFAULT_YARD_OPERATIONS_FILTERS,
   readYardOperationsFilters,
   WORK_PLAN_YARD_PHASES,
-  YARD_PHASES,
-  yardPhasesForBoard,
 } from './yard-operations-routing';
 
 describe('Yard Operations URL filters', () => {
@@ -43,36 +41,12 @@ describe('Yard Operations URL filters', () => {
   });
 });
 
-describe('yardPhasesForBoard', () => {
-  it('keeps Phase 1 nine columns when cutover is off', () => {
-    expect(yardPhasesForBoard({ workPlanBoardCutover: false })).toEqual([...YARD_PHASES]);
-  });
-
-  it('uses Work Plan opción A columns when cutover is on', () => {
-    expect(yardPhasesForBoard({ workPlanBoardCutover: true })).toEqual([...WORK_PLAN_YARD_PHASES]);
-  });
-
-  it('LTR-144: adds PM after Shop Work and always shows QC with WORK_PLAN_PM_PHASE', () => {
-    expect(yardPhasesForBoard({ workPlanBoardCutover: true, pmPhaseEnabled: true })).toEqual([
+describe('WORK_PLAN_YARD_PHASES', () => {
+  it('LTR-144: shows PM after Shop Work and QC always (LTR-150: the only board)', () => {
+    expect([...WORK_PLAN_YARD_PHASES]).toEqual([
       WorkPlanPhase.INSPECTION,
       WorkPlanPhase.SHOP_WORK,
       WorkPlanPhase.PM,
-      WorkPlanPhase.ALIGNMENT,
-      WorkPlanPhase.DETAILING,
-      WorkPlanPhase.QUALITY_CHECK,
-      WorkPlanPhase.READY_TO_CLOSE,
-      WorkPlanPhase.READY_TO_GO,
-    ]);
-    expect(yardPhasesForBoard({ workPlanBoardCutover: false, pmPhaseEnabled: true })).toEqual([...YARD_PHASES]);
-  });
-
-  it('inserts Quality Check only when a truck is in that phase', () => {
-    expect(yardPhasesForBoard({
-      workPlanBoardCutover: true,
-      itemPhases: [WorkPlanPhase.QUALITY_CHECK, WorkPlanPhase.SHOP_WORK],
-    })).toEqual([
-      WorkPlanPhase.INSPECTION,
-      WorkPlanPhase.SHOP_WORK,
       WorkPlanPhase.ALIGNMENT,
       WorkPlanPhase.DETAILING,
       WorkPlanPhase.QUALITY_CHECK,
