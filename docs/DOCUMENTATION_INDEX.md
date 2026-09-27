@@ -37,6 +37,8 @@ V2-002 implements TARGET directly. For `apps/web` UI work, read
 | `IMPLEMENTATION_QUEUE.md` | IMPLEMENTATION PLAN | Task execution | Small, scoped tasks with acceptance criteria and tests | ACTIVE |
 | `OWNERSHIP_CUTOVER_CONTRACT.md` | PRODUCT DECISION CONTRACT | Approved V2 cutover | Action matrix, rollback, test plan, and Cristian Q1–Q18. Authorizes direct TARGET implementation (no W1) | ACTIVE — APPROVED 2026-09-12 |
 | `AGENT_WORKFLOW.md` | ENGINEERING | Delivery process | Context, agent responsibility, and development-loop rules | ACTIVE |
+| `ux/FLUJOS_Y_MEJORAS_2026-09-27.md` | PRODUCT DECISION CONTRACT | Flujo v3 (D11–D18) | JTBD walkthrough, root causes, decisions D11–D18 (§4, §12), review against code/PRD/Linear (§11); epic LTR-149 | ACTIVE — DECIDED 2026-09-27 |
+| `agents/FLUJO_V3_RUNBOOK.md` | IMPLEMENTATION PLAN | Flujo v3 execution | Per-PR prompts (PR 0–9), dependencies, acceptance criteria and gates for LTR-150…LTR-159 | ACTIVE |
 | `YARD_OPERATIONS_PHASE_1_CONTRACT.md` | CURRENT STATE | Module contract | Implemented readiness Phase 1 boundary | ACTIVE |
 | `YARD_DATA_BOUNDARY.md` | CURRENT STATE / INTEGRATION BOUNDARY | Admin Yard Phase 1 cards | Nest `GET /api/admin/yard/data-boundary` → agent-reporting; FE DTO; no browser key | ACTIVE |
 | `LTR-34_WORK_PLAN_SLICE1_PROPOSAL.md` | PROPOSAL | Dual-run Work Plan API | LTR-34 Slice 1 hooks + TARGET derivation; awaiting PM+PD ack before merge/cutover | DRAFT |
