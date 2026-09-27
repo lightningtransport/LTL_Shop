@@ -1,6 +1,7 @@
 import { AppCapability, PrismaClient } from '@prisma/client';
 import { applyJobCatalog } from './job-catalog';
 import { loadCanonicalPmParts, PM_PART_CATEGORIES } from './pm-parts';
+import { applyShopWorkflowSteps } from './shop-workflow-steps';
 
 const prisma = new PrismaClient();
 
@@ -178,6 +179,7 @@ async function main() {
   }
 
   const catalog = await applyJobCatalog(prisma, { createdById: mechanic.id });
+  const shopWorkflowSteps = await applyShopWorkflowSteps(prisma);
 
   const partCategories: Record<string, string> = {};
   for (let index = 0; index < PM_PART_CATEGORIES.length; index += 1) {
@@ -213,6 +215,7 @@ async function main() {
     trucks: trucks.map((t) => t.truckNumber),
     categories: catalog.categories,
     catalogJobs: catalog.catalogJobs,
+    shopWorkflowSteps,
     pmParts: partsToSeed.length,
   });
 }

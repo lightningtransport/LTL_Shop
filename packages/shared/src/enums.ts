@@ -201,6 +201,17 @@ export enum WorkPlanJobLane {
   QUALITY_CHECK = 'quality_check',
 }
 
+/**
+ * LTR-156 / D15, D16: mandatory steps of the shop workflow (`shop_workflow_steps.step_key`).
+ * Stored as text so new steps can be added without a Postgres enum change.
+ */
+export enum ShopWorkflowStepKey {
+  PM = 'pm',
+  ALIGNMENT = 'alignment',
+  DETAILING = 'detailing',
+  QUALITY_CHECK = 'quality_check',
+}
+
 export enum WorkPlanMandatoryStatus {
   PENDING = 'pending',
   IN_PROGRESS = 'in_progress',
