@@ -13,6 +13,7 @@ import {
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
+import { OpenWorkOrderTag } from '@/components/open-work-order-tag';
 import { normalizeTruckSearch, rankTruckResults } from '@/lib/truck-search';
 import { useAuth } from '@/lib/auth-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
@@ -411,7 +412,8 @@ export default function NewWorkOrderPage() {
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => void selectTruck(t)}
                   >
-                    #{t.truckNumber} · {t.make} {t.model}
+                    <span className="min-w-0 flex-1 truncate">#{t.truckNumber} · {t.make} {t.model}</span>
+                    {t.openWorkOrder ? <OpenWorkOrderTag label={messages.truckOpenWorkOrder(t.openWorkOrder.displayId)} /> : null}
                   </Button>
                 </li>
               ))}

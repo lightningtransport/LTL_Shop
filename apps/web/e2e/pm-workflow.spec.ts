@@ -148,6 +148,21 @@ test.describe('Daniel PM workflow', () => {
     await expect(page.getByText('No completed work yet.')).toBeVisible();
   });
 
+  test('LTR-140: Truck search marks a Truck that already has an open Work Order', async ({ page }) => {
+    await mockPmApi(page);
+    // Registered after mockPmApi, so it answers /api/trucks first.
+    await page.route('**/api/trucks', (route) => fulfill(route, [
+      { ...truck, openWorkOrder: { id: 'wo-open', displayId: 'WO-009', status: 'in_progress' } },
+    ]));
+    await login(page);
+    await page.goto('/mechanic/pm/trucks');
+    await page.getByLabel('Truck', { exact: true }).fill('905');
+    await expect(page.getByRole('link', { name: /Truck 905/ }).getByTestId('truck-open-work-order')).toHaveText('Open WO-009');
+    await page.goto('/mechanic/pm/new');
+    await page.getByRole('combobox', { name: /Truck/i }).first().fill('905');
+    await expect(page.getByRole('option', { name: /#905/ }).getByTestId('truck-open-work-order')).toHaveText('Open WO-009');
+  });
+
   test('PM-only mechanic leaving /mechanic/standard gets an access exit', async ({ page }) => {
     await mockPmApi(page);
     await login(page);

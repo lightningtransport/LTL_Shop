@@ -21,6 +21,7 @@ import {
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCatalogJobs, useCategories, useTrucks } from '@/lib/shop-data';
 import { CategoryJobList } from './category-job-list';
+import { OpenWorkOrderTag } from './open-work-order-tag';
 import { rankTruckResults } from '@/lib/truck-search';
 import { cn } from '@/lib/utils';
 import { isAdminWorkOrdersListKey, isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
@@ -418,7 +419,8 @@ export function AdminNewWorkOrder({
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => selectTruck(item)}
                           >
-                            #{item.truckNumber} · {item.make} {item.model}
+                            <span className="min-w-0 flex-1 truncate">#{item.truckNumber} · {item.make} {item.model}</span>
+                            {item.openWorkOrder ? <OpenWorkOrderTag label={messages.truckOpenWorkOrder.replace('{displayId}', item.openWorkOrder.displayId)} /> : null}
                           </Button>
                         </li>
                       )) : (

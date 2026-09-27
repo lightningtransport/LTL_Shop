@@ -51,6 +51,14 @@ export interface TruckDto {
   location: string | null;
   /** ISO date (`YYYY-MM-DD`) from `trucks.samsara_last_connected_date`. */
   locationUpdatedOn: string | null;
+  /** LTR-140: the Truck's open Work Order, sent by `GET /trucks` so search results can mark it. */
+  openWorkOrder?: TruckOpenWorkOrderRefDto | null;
+}
+
+export interface TruckOpenWorkOrderRefDto {
+  id: string;
+  displayId: string;
+  status: WorkOrderStatus;
 }
 
 export interface JobCategoryDto {
