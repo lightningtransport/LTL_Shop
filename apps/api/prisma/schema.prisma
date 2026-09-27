@@ -152,6 +152,8 @@ model User {
   closedReadinessAssessments     TruckReadinessAssessment[] @relation("ReadinessAssessmentClosedBy")
   evaluatedReadinessRequirements ReadinessRequirement[]     @relation("ReadinessRequirementEvaluatedBy")
   truckServiceStatusEvents       TruckServiceStatusEvent[]
+  defaultForWorkflowSteps        ShopWorkflowStep[]         @relation("ShopWorkflowStepDefaultMechanic")
+  updatedWorkflowSteps           ShopWorkflowStep[]         @relation("ShopWorkflowStepUpdatedBy")
 
   @@map("users")
 }
@@ -328,9 +330,31 @@ model CatalogJob {
   createdBy     User?          @relation("CatalogJobCreatedBy", fields: [createdById], references: [id])
   aliases       JobAlias[]
   workOrderJobs WorkOrderJob[]
+  workflowSteps ShopWorkflowStep[]
 
   @@index([categoryId, status])
   @@map("catalog_jobs")
+}
+
+// LTR-156 / D15, D16: the mandatory steps every new truck Work Order starts with,
+// each mapped to a catalog Job and an optional default mechanic. step_key values
+// come from ShopWorkflowStepKey (shared); text keeps the list extensible.
+// Schema only: runtime still reads MANDATORY_WORK_PLAN_JOBS until LTR-157.
+model ShopWorkflowStep {
+  id                String   @id @default(uuid()) @db.Uuid
+  stepKey           String   @unique @map("step_key")
+  catalogJobId      String   @map("catalog_job_id") @db.Uuid
+  defaultMechanicId String?  @map("default_mechanic_id") @db.Uuid
+  sortOrder         Int      @default(0) @map("sort_order")
+  active            Boolean  @default(true)
+  updatedById       String?  @map("updated_by_id") @db.Uuid
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  catalogJob      CatalogJob @relation(fields: [catalogJobId], references: [id])
+  defaultMechanic User?      @relation("ShopWorkflowStepDefaultMechanic", fields: [defaultMechanicId], references: [id], onDelete: SetNull)
+  updatedBy       User?      @relation("ShopWorkflowStepUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("shop_workflow_steps")
 }
 
 model JobAlias {
