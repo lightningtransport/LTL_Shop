@@ -46,6 +46,11 @@ async function expectPdBoundaryCards(page: Page, locale: YardDataBoundaryLocale)
   }
 }
 
+async function openMovementTab(page: Page, name: RegExp = /^Movement \(Dispatch\)$/) {
+  await page.getByRole('tab', { name }).click();
+  await expect(page).toHaveURL(/tab=movement/);
+}
+
 async function yardFilterPanel(page: Page): Promise<Locator> {
   const dialog = page.getByRole('dialog');
   if (await dialog.isVisible()) return dialog;
@@ -79,7 +84,9 @@ test.describe('Yard Operations Phase 1', () => {
 
   test('shows yard movement feeds and real URL filters', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible();
+    await openMovementTab(page);
     await expect(page.getByRole('heading', { name: 'Yard movement' })).toBeVisible();
+    await expect(page.getByTestId('yard-movement-source')).toHaveText(/^Source: Dispatch · Updated /);
     // LTR-102: external statuses are labeled as reported by Dispatch, not the Shop's Ready to Go.
     await expect(page.getByText(/^Reported by Dispatch: Truck status, expected arrivals, and departures\./)).toBeVisible();
     await expect(page.getByText(/in the yard|en el patio/i)).toHaveCount(0);
@@ -88,6 +95,7 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByRole('heading', { name: 'In shop / at yard' })).toHaveCount(0);
     await expectDataBoundaryRequested();
     await expectPdBoundaryCards(page, 'en');
+    await page.getByRole('tab', { name: 'Shop readiness' }).click();
     await expect(page.getByTestId('yard-truck-card').getByText('Last reported location')).toHaveCount(0);
     await page.getByLabel('Search Truck or Work Order').fill('Y-103');
     await expect(page).toHaveURL(/search=Y-103/, { timeout: 5_000 });
@@ -101,7 +109,21 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByLabel('Readiness list').getByRole('link', { name: 'Y-103', exact: true })).toBeVisible();
   });
 
+  test('separates Shop readiness from Dispatch movement and shows arrivals as a card signal (LTR-120)', async ({ page }) => {
+    await expect(page.getByRole('tab', { name: 'Shop readiness' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('heading', { name: 'Yard movement' })).toHaveCount(0);
+    await expect(page.getByTestId('yard-data-boundary-workLocation')).toHaveCount(0);
+    const card = page.getByRole('link', { name: 'Y-101', exact: true }).first();
+    await expect(card.getByTestId('yard-card-dispatch')).toHaveText('Dispatch: expected in Sep 28, 2026');
+    await openMovementTab(page);
+    await expect(page.getByRole('tab', { name: /^Movement \(Dispatch\)$/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('yard-truck-card')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Yard movement' })).toBeVisible();
+  });
+
   test('groups Dispatch status without nested scroll and filters Yard movement by Truck (LTR-102, LTR-103)', async ({ page }) => {
+    await openMovementTab(page);
     const status = page.getByTestId('yard-data-boundary-workLocation');
     await expect(status.getByText(/^301 Yard · 2$/)).toBeVisible();
     await expect(status.getByText('277', { exact: true })).toBeVisible();
@@ -239,6 +261,7 @@ test.describe('Yard Operations Phase 1', () => {
       await expect(search).toBeVisible();
       const searchClipped = await search.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
       expect(searchClipped, `search field clips at ${width}px`).toBe(false);
+      await page.getByRole('tab', { name: /^Movement \(Dispatch\)$/ }).click();
 
       const copy = YARD_DATA_BOUNDARY_COPY.en;
       const workLocation = page.getByTestId('yard-data-boundary-workLocation').getByText(copy.workLocation.label, { exact: true });
@@ -249,6 +272,7 @@ test.describe('Yard Operations Phase 1', () => {
       await assertLabelUnclipped(departures, 'Upcoming Departures', width);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(overflow, `horizontal overflow at ${width}px`).toBe(false);
+      await page.getByRole('tab', { name: 'Shop readiness' }).click();
     }
   });
 
@@ -257,6 +281,7 @@ test.describe('Yard Operations Phase 1', () => {
     await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'es', url: cookieUrl }]);
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Operaciones del patio', exact: true })).toBeVisible();
+    await openMovementTab(page, /^Movimiento \(Dispatch\)$/);
     await expect(page.getByRole('heading', { name: 'Movimiento del yard' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'En taller / en el yard' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Llegadas de Trucks' })).toHaveCount(0);

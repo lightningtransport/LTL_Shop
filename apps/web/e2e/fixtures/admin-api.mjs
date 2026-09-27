@@ -633,6 +633,7 @@ createServer(async (request, response) => {
         status: 'ok',
         items: [
           { truckNumber: '277', returnDate: '2026-09-22', window: 'this_week', drivers: ['Ana', 'Luis'] },
+          { truckNumber: 'Y-101', returnDate: '2026-09-28', window: 'next_week' },
         ],
       },
       upcomingDepartures: {

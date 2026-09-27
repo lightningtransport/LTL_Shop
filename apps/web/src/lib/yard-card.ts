@@ -66,3 +66,38 @@ export function matchesTruckSearch(truckNumber: string, search: string) {
 export function fillYardText(template: string, values: Record<string, string>) {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
 }
+
+export interface YardDispatchSignal {
+  /** Next expected arrival reported by Dispatch (YYYY-MM-DD). */
+  expectedIn?: string;
+  /** Next departure reported by Dispatch (YYYY-MM-DD). */
+  departs?: string;
+}
+
+/**
+ * LTR-120: Dispatch movement is an external source. The Shop board only shows
+ * it as a signal on the Truck card ("expected in 28 Sep"), never as a phase.
+ */
+export function dispatchSignalsByTruck(boundary?: {
+  incomingTrucks: { status: string; items: { truckNumber: string; returnDate: string | null }[] };
+  upcomingDepartures: { status: string; items: { truckNumber: string; outDate: string | null }[] };
+}) {
+  const signals = new Map<string, YardDispatchSignal>();
+  if (!boundary) return signals;
+  const earliest = (current: string | undefined, next: string) => (!current || next < current ? next : current);
+  if (boundary.incomingTrucks.status === 'ok') {
+    for (const item of boundary.incomingTrucks.items) {
+      if (!item.returnDate) continue;
+      const signal = signals.get(item.truckNumber) ?? {};
+      signals.set(item.truckNumber, { ...signal, expectedIn: earliest(signal.expectedIn, item.returnDate) });
+    }
+  }
+  if (boundary.upcomingDepartures.status === 'ok') {
+    for (const item of boundary.upcomingDepartures.items) {
+      if (!item.outDate) continue;
+      const signal = signals.get(item.truckNumber) ?? {};
+      signals.set(item.truckNumber, { ...signal, departs: earliest(signal.departs, item.outDate) });
+    }
+  }
+  return signals;
+}

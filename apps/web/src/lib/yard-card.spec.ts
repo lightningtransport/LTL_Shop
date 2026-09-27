@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compactAge, groupWorkLocations, matchesTruckSearch, yardCardNextStep } from './yard-card';
+import { compactAge, dispatchSignalsByTruck, groupWorkLocations, matchesTruckSearch, yardCardNextStep } from './yard-card';
 
 describe('Yard card helpers (LTR-101, LTR-103)', () => {
   it('turns the Work Plan reason into the next step', () => {
@@ -37,5 +37,29 @@ describe('Yard card helpers (LTR-101, LTR-103)', () => {
     expect(matchesTruckSearch('T-608', '608')).toBe(true);
     expect(matchesTruckSearch('T-608', ' ')).toBe(true);
     expect(matchesTruckSearch('T-608', '700')).toBe(false);
+  });
+});
+
+describe('dispatchSignalsByTruck (LTR-120)', () => {
+  it('keeps the earliest dated arrival and departure per Truck', () => {
+    const signals = dispatchSignalsByTruck({
+      incomingTrucks: { status: 'ok', items: [
+        { truckNumber: '905', returnDate: '2026-09-30' },
+        { truckNumber: '905', returnDate: '2026-09-28' },
+        { truckNumber: '277', returnDate: null },
+      ] },
+      upcomingDepartures: { status: 'ok', items: [{ truckNumber: '905', outDate: '2026-10-02' }] },
+    });
+    expect(signals.get('905')).toEqual({ expectedIn: '2026-09-28', departs: '2026-10-02' });
+    expect(signals.has('277')).toBe(false);
+  });
+
+  it('ignores sections Dispatch could not provide', () => {
+    const signals = dispatchSignalsByTruck({
+      incomingTrucks: { status: 'unavailable', items: [{ truckNumber: '905', returnDate: '2026-09-28' }] },
+      upcomingDepartures: { status: 'ok', items: [] },
+    });
+    expect(signals.size).toBe(0);
+    expect(dispatchSignalsByTruck(undefined).size).toBe(0);
   });
 });
