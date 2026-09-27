@@ -4,9 +4,11 @@ import { ADMIN_READ_TIMEOUT_MS } from './api';
 import {
   ADMIN_CATALOG_JOBS_PATH,
   ADMIN_MECHANICS_COLLECTION_PATH,
+  adminMechanicsPageKey,
   adminReadFetcher,
   createAdminCatalogJob,
   createAdminMechanic,
+  hasUnloadedAdminPage,
   updateAdminCatalogJob,
   updateAdminMechanic,
   withAdminReadPending,
@@ -151,5 +153,23 @@ describe('system admin write contracts', () => {
       mode: MechanicMode.STANDARD,
       name: 'Ana',
     });
+  });
+});
+
+describe('assignable mechanics picker (LTR-151)', () => {
+  it('requests assignable mechanics and follows the cursor', () => {
+    expect(adminMechanicsPageKey('token', 'assignable=true', 100, 0, null))
+      .toBe('/api/admin/mechanics?assignable=true&limit=100');
+    expect(adminMechanicsPageKey('token', 'assignable=true', 100, 1, { items: [], nextCursor: 'abc' }))
+      .toBe('/api/admin/mechanics?assignable=true&limit=100&cursor=abc');
+    expect(adminMechanicsPageKey('token', 'assignable=true', 100, 1, { items: [], nextCursor: null })).toBeNull();
+    expect(adminMechanicsPageKey(null, 'assignable=true', 100, 0, null)).toBeNull();
+  });
+
+  it('keeps loading pages until the last page has no cursor', () => {
+    expect(hasUnloadedAdminPage(undefined, 1)).toBe(false);
+    expect(hasUnloadedAdminPage([{ items: [], nextCursor: 'abc' }], 1)).toBe(true);
+    expect(hasUnloadedAdminPage([{ items: [], nextCursor: 'abc' }], 2)).toBe(false);
+    expect(hasUnloadedAdminPage([{ items: [], nextCursor: 'abc' }, { items: [], nextCursor: null }], 2)).toBe(false);
   });
 });

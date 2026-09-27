@@ -35,6 +35,20 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await expect(page.getByRole('button', { name: 'End review', exact: true })).toHaveCount(0);
   });
 
+  test('Current Work does not list the completed Work Order of a Ready to Go Truck (LTR-151)', async ({ page }) => {
+    await page.route(/\/api\/admin\/trucks\/[0-9a-f-]+$/, async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      if (body.activeWorkOrder) body.activeWorkOrder = { ...body.activeWorkOrder, status: 'completed' };
+      await route.fulfill({ response, json: body });
+    });
+    await login(page, 'manager@lightning.local');
+    await openYardOperations(page);
+    await page.getByRole('link', { name: 'Y-101' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Current Work' })).toBeVisible();
+    await expect(page.getByText('No open Work Orders are linked to this Truck.')).toBeVisible();
+  });
+
   test('read-only Admin sees readiness data but no mutation controls in Spanish', async ({ page }) => {
     await login(page, 'ibrain@ltransl.com');
     await openYardOperations(page);

@@ -64,6 +64,15 @@ const users = {
     pmAuthorized: false,
     capabilities: ['admin.access', 'mechanic.standard', 'mechanic.pm'],
   },
+  'daniel@lightning.local': {
+    id: '00000000-0000-4000-8000-000000000009',
+    email: 'daniel@lightning.local',
+    name: 'Daniel PM',
+    role: 'mechanic',
+    active: true,
+    pmAuthorized: true,
+    capabilities: ['mechanic.pm'],
+  },
   'retired@lightning.local': {
     id: '00000000-0000-4000-8000-000000000007',
     email: 'retired@lightning.local',
@@ -801,8 +810,10 @@ createServer(async (request, response) => {
     return;
   }
   if (request.url?.startsWith('/api/admin/mechanics')) {
+    const assignable = new URL(request.url, 'http://fixture').searchParams.get('assignable') === 'true';
     const items = Object.values(users)
       .filter((candidate) => candidate.capabilities.includes('mechanic.standard') || candidate.capabilities.includes('mechanic.pm'))
+      .filter((candidate) => !assignable || candidate.role !== 'admin')
       .map(rosterSummary);
     json(response, 200, { items, nextCursor: null });
     return;

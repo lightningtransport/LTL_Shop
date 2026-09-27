@@ -7,6 +7,19 @@ export function isMyAssignedOrInheritedJob(
   return !assignedMechanic || assignedMechanic.id === currentUserId;
 }
 
+/**
+ * LTR-151: the PM job is finished only by its assigned PM mechanic, from the PM service. The Standard
+ * Work Order view never offers "Complete job" on it to anyone else (the API rejects it anyway).
+ */
+export function canCompleteJobFromWorkOrder(
+  job: { id: string; assignedMechanic: JobAssignee },
+  pmJobId: string | null | undefined,
+  currentUserId: string,
+): boolean {
+  if (!pmJobId || job.id !== pmJobId) return true;
+  return Boolean(job.assignedMechanic && job.assignedMechanic.id === currentUserId);
+}
+
 export function jobAssignmentLabel(
   assignedMechanic: JobAssignee,
   currentUserId: string,

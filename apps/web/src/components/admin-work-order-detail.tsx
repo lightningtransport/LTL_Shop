@@ -8,11 +8,12 @@ import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { pauseResumeError } from './pause-resume-error';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
+import { mechanicNamesLabel } from '@/lib/admin-work-summary';
 import { adminNextStep, fillPlaceholders } from '@/lib/admin-next-step';
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
@@ -65,7 +66,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const { data: categoryData } = useCategories(true);
   const historyQuery = useAdminRepairHistory(data?.truck.id ?? '', id, historyCategory || undefined);
-  const { data: mechanicPages } = useAdminMechanics('');
+  const { data: mechanicPages } = useAdminAssignableMechanics();
   // LTR-146: the PM job is assigned to a PM mechanic.
   const pmMechanics = useMemo(
     () => (mechanicPages?.flatMap((page) => page.items) ?? []).filter((mechanic) => mechanic.active && mechanic.capabilities.includes(AppCapability.MECHANIC_PM)),
@@ -301,7 +302,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                             ) : (
                               <>
                                 <Select
-                                  aria-label={messages.assignJobPlaceholder}
+                                  aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
                                   className="w-full sm:w-48"
                                   value={assignDrafts[job.id] ?? ''}
                                   onChange={(event) => setAssignDrafts((prev) => ({ ...prev, [job.id]: event.target.value }))}
@@ -811,7 +812,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             <Info label={messages.priority} value={adminPriorityLabel(data.priority, messages)} />
             <Info label={messages.age} value={formatAge(data.createdAt, locale)} />
             <Info label={messages.progress} value={`${data.jobsCompleted}/${data.jobsTotal}`} />
-            <Info label={messages.mechanicsLabel} value={activeMechanics.map((mechanic) => mechanic.mechanicName).join(', ') || messages.noValue} />
+            <Info label={messages.mechanicsLabel} value={mechanicNamesLabel(activeMechanics, messages)} />
             <Info label={messages.currentPause} value={data.currentPause ? `${adminPauseReasonLabel(data.currentPause.reason, messages)} · ${formatAdminDate(data.currentPause.startedAt, locale)}` : messages.noCurrentPause} />
             <Info label={messages.latestReportedBlocker} value={data.latestReportedBlocker ? `${adminPauseReasonLabel(data.latestReportedBlocker.reason, messages)}${data.latestReportedBlocker.reportedBy ? ` · ${data.latestReportedBlocker.reportedBy.name}` : ''}` : messages.noLatestReportedBlocker} />
           </dl></CardContent>

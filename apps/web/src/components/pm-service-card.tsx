@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { checkPmObservedMileage, type PmServiceDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { formatMileage } from '@/lib/format';
+import { pmSaveStatus } from '@/lib/pm-save-status';
 import { shopKeys, usePmService } from '@/lib/shop-data';
 import { Button, Card, Input, Label, LoadFailure, Select } from '@/components/ui';
 import { useShopLocale } from '@/lib/locale-context';
@@ -51,6 +52,7 @@ export function PmServiceCard({
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedOnce, setSavedOnce] = useState(false);
   // LTR-135: a jump above the threshold is saved only after explicit confirmation.
   const [jumpConfirmed, setJumpConfirmed] = useState(false);
   const lastSavedKey = useRef('');
@@ -113,6 +115,7 @@ export function PmServiceCard({
           body: JSON.stringify(nextPayload),
         });
         lastSavedKey.current = key;
+        setSavedOnce(true);
         await mutate(updated, { revalidate: false });
       }
       dirtyRef.current = false;
@@ -151,6 +154,8 @@ export function PmServiceCard({
       selectedParts: draft.selections.length,
     });
   }, [data, dirty, draft.selections.length, mileage, mileageBlocked, onDraftStateChange, saveError, saving]);
+
+  const saveStatus = pmSaveStatus({ saving, dirty, saveError, savedOnce });
 
   if (error) {
     return (
@@ -282,8 +287,8 @@ export function PmServiceCard({
       </div> : null}
 
       <div className="min-h-5 text-sm" aria-live="polite">
-        {saving ? <span className="text-muted-foreground">{messages.saving}</span> : null}
-        {!saving && !dirty && !saveError && hydrated ? <span className="text-muted-foreground">{messages.saved}</span> : null}
+        {saveStatus === 'saving' ? <span className="text-muted-foreground">{messages.saving}</span> : null}
+        {saveStatus === 'saved' ? <span className="text-muted-foreground">{messages.saved}</span> : null}
         {saveError ? (
           <span className="text-destructive" role="alert">
             {saveError}{' '}

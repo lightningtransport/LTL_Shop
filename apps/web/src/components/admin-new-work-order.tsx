@@ -16,7 +16,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useActionToast } from './action-toast';
 import {
   createAdminWorkOrder,
-  useAdminMechanics,
+  useAdminAssignableMechanics,
 } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useCatalogJobs, useCategories, useTrucks } from '@/lib/shop-data';
@@ -110,7 +110,7 @@ export function AdminNewWorkOrder({
   const { data: truckData, error: truckError, isLoading: trucksLoading } = useTrucks(true);
   const { data: categories, error: categoriesError, isLoading: categoriesLoading } = useCategories(true);
   const { data: catalogJobs, error: jobsError, isLoading: jobsLoading } = useCatalogJobs(categoryId, Boolean(categoryId));
-  const { data: mechanicPages, error: mechanicsError } = useAdminMechanics('');
+  const { data: mechanicPages, error: mechanicsError } = useAdminAssignableMechanics();
 
   const trucks = useMemo(
     () => (debouncedTruckQuery && !selectedTruck

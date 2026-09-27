@@ -27,6 +27,39 @@ test.describe('shared UI consistency', () => {
     }
   });
 
+  test('Dashboard metrics name the metric and its value (LTR-151)', async ({ page }) => {
+    await signInAsManager(page);
+    const metrics = page.getByRole('region', { name: 'Current shop operations' }).getByRole('link');
+    await expect(metrics.first()).toBeVisible();
+    for (const label of await metrics.evaluateAll((links) => links.map((link) => link.getAttribute('aria-label')))) {
+      expect(label).toMatch(/^.+: \d+$/);
+    }
+    await expect(page.getByRole('link', { name: /^Open Work Orders: \d+$/ })).toBeVisible();
+  });
+
+  test('Work Order detail labels job pickers, hides System Admin accounts, and uses one empty-mechanics wording (LTR-151)', async ({ page }) => {
+    await signInAsManager(page);
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000106');
+    const jobPicker = page.getByRole('combobox', { name: 'Mechanic for Inspect brake chamber' });
+    await expect(jobPicker).toBeVisible();
+    await expect(jobPicker.locator('option', { hasText: 'Anthony' })).toHaveCount(1);
+    await expect(jobPicker.locator('option', { hasText: 'iBrain Admin' })).toHaveCount(0);
+    await expect(jobPicker.locator('option', { hasText: 'Cristian Perez' })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Select mechanic', exact: true })).toHaveCount(0);
+
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000103');
+    const summary = page.getByRole('region', { name: 'Operational summary' });
+    const mechanicsRow = summary.locator('div').filter({ has: page.getByText('Mechanics', { exact: true }) }).last();
+    await expect(mechanicsRow.locator('dd')).toHaveText('No mechanics assigned');
+  });
+
+  test('Return to Service says the Truck leaves Ready to Go (LTR-151)', async ({ page }) => {
+    await signInAsManager(page);
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000104');
+    await expect(page.getByText(/The Truck leaves Ready to Go\./)).toBeVisible();
+    await expect(page.getByText(/does not change Work Order status, Ready to Go/)).toHaveCount(0);
+  });
+
   test('filter actions keep their labels on one line', async ({ page }) => {
     await signInAsManager(page);
     for (const path of ['/admin/trucks', '/admin/mechanics', '/admin/history']) {

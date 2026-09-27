@@ -358,6 +358,18 @@ describe('AdminService', () => {
     await expect(service.mechanicDetail(baseRow.createdById)).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('excludes System Admin accounts only when listing assignable mechanics (LTR-151)', async () => {
+    const prisma = createPrisma();
+    prisma.user.findMany.mockResolvedValue([]);
+    const service = createService(prisma);
+    await service.listMechanics({ assignable: 'true' });
+    await service.listMechanics({});
+    const assignableWhere = JSON.stringify(prisma.user.findMany.mock.calls[0][0].where);
+    const rosterWhere = JSON.stringify(prisma.user.findMany.mock.calls[1][0].where);
+    expect(assignableWhere).toContain('{"role":{"not":"admin"}}');
+    expect(rosterWhere).not.toContain('"role"');
+  });
+
   it('maps Prisma capability keys onto shared capability values', async () => {
     const prisma = createPrisma();
     prisma.user.findMany.mockResolvedValue([{

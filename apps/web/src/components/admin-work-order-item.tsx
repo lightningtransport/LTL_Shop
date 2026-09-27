@@ -8,6 +8,7 @@ import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/l
 import { adminAttentionReasonLabel, adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
+import { mechanicNamesLabel } from '@/lib/admin-work-summary';
 
 export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders' }: {
   item: AdminWorkOrderSummaryDto; locale: AdminLocale; messages: AdminMessages; compact?: boolean; fromPath?: string;
@@ -43,7 +44,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
       </div>
       <dl className={cn('mt-4 grid gap-3 text-sm sm:grid-cols-3', compact && 'grid-cols-2 xl:mt-0 xl:grid-cols-2')}>
         <div><dt className="text-muted-foreground">{messages.progress}</dt><dd className="font-medium">{isPmCategory(item.category.name) ? messages.pmServiceVariant : `${item.jobsCompleted} / ${item.jobsTotal}`}</dd></div>
-        <div><dt className="text-muted-foreground">{messages.mechanicsLabel}</dt><dd className="font-medium">{item.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || '—'}</dd></div>
+        <div><dt className="text-muted-foreground">{messages.mechanicsLabel}</dt><dd className="font-medium">{mechanicNamesLabel(item.mechanics, messages)}</dd></div>
         <div className={cn(compact && 'col-span-2 sm:col-span-1 xl:hidden')}><dt className="text-muted-foreground">{messages.updated}</dt><dd className="font-medium">{formatAdminDate(item.updatedAt, locale)}</dd></div>
       </dl>
       {compact ? <div className="mt-3 hidden min-w-0 text-right xl:block"><div className="flex justify-end gap-2">{priorityChip}{statusChip}</div><p className="mt-2 text-xs text-muted-foreground">{formatAdminDate(item.updatedAt, locale)}</p></div> : null}

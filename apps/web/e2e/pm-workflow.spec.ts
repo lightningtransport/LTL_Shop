@@ -250,6 +250,38 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     });
   }
 
+  test('Standard mechanic does not get "Complete job" on the PM job of someone else (LTR-151)', async ({ page }) => {
+    const standard = { ...daniel, id: '00000000-0000-0000-0000-000000000102', email: 'mechanic@lightning.local', name: 'Alejandro', pmAuthorized: false, capabilities: ['mechanic.standard'] };
+    const brakesJobId = '00000000-0000-0000-0000-000000000912';
+    const assignee = { id: daniel.id, name: daniel.name };
+    const detail = {
+      ...summary(), id: jobWoId, displayId: 'WO-900', primaryCategoryName: 'Inspection', status: 'in_progress',
+      pmJob: { id: pmJobId, displayName: 'PM A Service', status: 'to_do', startedAt: null, completedAt: null, assignedMechanic: assignee },
+      notes: null, createdById: 'mgr', completedAt: null, totalActiveLaborMs: 0, totalWaitingMs: 0, laborRunning: true,
+      mechanics: [{ mechanicId: standard.id, mechanicName: standard.name }], currentPause: null, truck, version: 1, noteEntries: [],
+      jobsCompleted: 0, jobsTotal: 2,
+      jobs: [
+        { id: pmJobId, workOrderId: jobWoId, catalogJobId: 'cj-pm-a', categoryId: pmCategoryId, category: { id: pmCategoryId, name: 'PM' }, displayName: 'PM A Service', customDescription: null, status: 'to_do', completedAt: null, completedById: null, completionNotes: null, assignedMechanic: assignee, startedAt: null },
+        { id: brakesJobId, workOrderId: jobWoId, catalogJobId: 'cj-brakes', categoryId: 'cat-brakes', category: { id: 'cat-brakes', name: 'Brakes' }, displayName: 'Brake adjustment', customDescription: null, status: 'to_do', completedAt: null, completedById: null, completionNotes: null, assignedMechanic: null, startedAt: null },
+      ],
+    };
+    await page.route('**/api/**', async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === '/api/auth/me') return fulfill(route, { user: standard });
+      if (path === '/api/work-orders' && route.request().method() === 'GET') return fulfill(route, { created: [], active: [detail], paused: [], completed: [] });
+      if (path === `/api/work-orders/${jobWoId}`) return fulfill(route, detail);
+      if (path.startsWith('/api/catalog/')) return fulfill(route, []);
+      return route.continue();
+    });
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await expect(page).toHaveURL(/\/mechanic/, { timeout: 15_000 });
+    await page.goto(`/work-orders/${jobWoId}`);
+    await expect(page.getByRole('button', { name: /Brake adjustment/ })).toBeEnabled();
+    await expect(page.getByTestId('job-read-only')).toContainText('PM A Service');
+    await expect(page.getByRole('button', { name: /PM A Service/ })).toHaveCount(0);
+  });
+
   test('PM mechanic starts and finishes only the PM job', async ({ page }) => {
     await mockPmJobApi(page);
     await login(page);

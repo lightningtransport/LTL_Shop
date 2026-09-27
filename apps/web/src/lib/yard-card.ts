@@ -4,6 +4,7 @@
  */
 export type YardCardNextKey =
   | 'yardCardNextInspection'
+  | 'yardCardJobPending'
   | 'yardCardJobsPending'
   | 'yardCardNextPm'
   | 'yardCardNextAlignment'
@@ -23,7 +24,8 @@ export function yardCardNextStep(input: {
       return { key: 'yardCardNextInspection', values: {} };
     case 'jobs_remaining': {
       const pending = input.shopWorkRemainingCount ?? Math.max(0, (input.jobsTotal ?? 0) - (input.jobsCompleted ?? 0));
-      return { key: 'yardCardJobsPending', values: { count: String(pending) } };
+      // LTR-151 (§8.8): "1 Job pending", not "1 Jobs pending".
+      return { key: pending === 1 ? 'yardCardJobPending' : 'yardCardJobsPending', values: { count: String(pending) } };
     }
     case 'pm_pending':
       return { key: 'yardCardNextPm', values: {} };
