@@ -5,6 +5,9 @@ describe('Yard card helpers (LTR-101, LTR-103)', () => {
   it('turns the Work Plan reason into the next step', () => {
     expect(yardCardNextStep({ readyReason: 'jobs_remaining', jobsCompleted: 1, jobsTotal: 3 })).toEqual({ key: 'yardCardJobsPending', values: { count: '2' } });
     expect(yardCardNextStep({ readyReason: 'alignment_pending' })?.key).toBe('yardCardNextAlignment');
+    // Only Shop Work counts once PM/Alignment/Detailing/QC are on the Work Order too.
+    expect(yardCardNextStep({ readyReason: 'jobs_remaining', jobsCompleted: 0, jobsTotal: 5, shopWorkRemainingCount: 1 }))
+      .toEqual({ key: 'yardCardJobsPending', values: { count: '1' } });
     expect(yardCardNextStep({ readyReason: 'pm_pending' })?.key).toBe('yardCardNextPm');
     expect(yardCardNextStep({ readyReason: 'work_order_open' })?.key).toBe('yardCardWaitingClose');
     expect(yardCardNextStep({ readyReason: 'plan_complete' })).toBeNull();
