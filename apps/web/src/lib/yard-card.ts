@@ -15,12 +15,14 @@ export function yardCardNextStep(input: {
   readyReason?: string;
   jobsCompleted?: number;
   jobsTotal?: number;
+  /** Shop Work Jobs still to do, from the Work Plan (preferred over total − completed). */
+  shopWorkRemainingCount?: number;
 }): { key: YardCardNextKey; values: Record<string, string> } | null {
   switch (input.readyReason) {
     case 'inspection_pending':
       return { key: 'yardCardNextInspection', values: {} };
     case 'jobs_remaining': {
-      const pending = Math.max(0, (input.jobsTotal ?? 0) - (input.jobsCompleted ?? 0));
+      const pending = input.shopWorkRemainingCount ?? Math.max(0, (input.jobsTotal ?? 0) - (input.jobsCompleted ?? 0));
       return { key: 'yardCardJobsPending', values: { count: String(pending) } };
     }
     case 'pm_pending':

@@ -195,6 +195,7 @@ function deriveLegacyPmWorkPlan(input: WorkPlanDerivationInput) {
     inspection: { outcome: WorkPlanInspectionOutcome.NO_ISSUES_FOUND },
     jobs: [] as WorkPlanJobDto[],
     remainingJobCount: 0,
+    shopWorkRemainingCount: 0,
     readiness: open ? WorkPlanReadiness.NOT_READY : WorkPlanReadiness.READY,
     readyReason: open ? WorkPlanNotReadyReason.PM_PENDING : WorkPlanNotReadyReason.PLAN_COMPLETE,
     phase: open ? WorkPlanPhase.PM : WorkPlanPhase.READY_TO_GO,
@@ -266,6 +267,8 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     inspection: { outcome: inspectionOutcome },
     jobs,
     remainingJobCount,
+    /** Shop Work Jobs still to do (the Yard card's "N Jobs pending" — not PM/Alignment/Detailing/QC). */
+    shopWorkRemainingCount: shopRemaining,
     readiness,
     readyReason,
     phase,

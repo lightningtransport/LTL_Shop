@@ -224,6 +224,14 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                           {job.status === 'completed' && job.completedBy ? (
                             <p className="mt-1 text-xs text-muted-foreground">{messages.completedByLabel}: {job.completedBy.name}</p>
                           ) : null}
+                          {/* LTR-148: a finished PM job keeps its recorded mileage and parts visible. */}
+                          {isPmJob && job.status === 'completed' && data.pmService?.workOrderJobId === job.id ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {messages.pmJobServiceSummary
+                                .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(data.pmService.observedMileage))
+                                .replace('{parts}', String(data.pmService.partsCount))}
+                            </p>
+                          ) : null}
                           {job.completionNotes ? (
                             <p className="mt-1 whitespace-pre-wrap text-sm">{messages.jobCompletionNotes}: {job.completionNotes}</p>
                           ) : null}

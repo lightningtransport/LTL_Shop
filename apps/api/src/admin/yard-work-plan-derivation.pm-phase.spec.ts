@@ -39,6 +39,8 @@ describe('Work Plan PM phase (LTR-144, WORK_PLAN_PM_PHASE)', () => {
       jobs: [job('s1', 'Brake Repair', 'Air & Brake'), ...fullPlan()],
     });
     expect(shop.phase).toBe(WorkPlanPhase.SHOP_WORK);
+    expect(shop.shopWorkRemainingCount).toBe(1);
+    expect(shop.remainingJobCount).toBe(5);
 
     const pm = deriveWorkPlan({
       workOrder: workOrder(), inspectionRequirementOutcome: inspected, pmPhase: true,

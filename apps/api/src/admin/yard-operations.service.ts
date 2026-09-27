@@ -841,6 +841,7 @@ export class YardOperationsService {
         blockers: workPlanBoardBlockers(workPlan, linkedForDerivation),
         activeWorkOrder,
         readyReason: workPlan.readyReason,
+        shopWorkRemainingCount: workPlan.shopWorkRemainingCount,
       };
     }
 

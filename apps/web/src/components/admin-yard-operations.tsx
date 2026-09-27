@@ -409,7 +409,7 @@ function YardTruckCard({ item, messages, workPlanBoard }: { item: YardOperations
   const workOrder = item.activeWorkOrder;
   const vehicle = formatVehicleYmm(item.truck);
   const nextStep = workPlanBoard && workOrder
-    ? yardCardNextStep({ readyReason: item.readyReason, jobsCompleted: workOrder.jobsCompleted, jobsTotal: workOrder.jobsTotal })
+    ? yardCardNextStep({ readyReason: item.readyReason, jobsCompleted: workOrder.jobsCompleted, jobsTotal: workOrder.jobsTotal, shopWorkRemainingCount: item.shopWorkRemainingCount })
     : null;
   const mechanicNames = (workOrder?.mechanics ?? []).filter((mechanic) => !mechanic.removedAt).map((mechanic) => mechanic.mechanicName).join(', ');
   const showPriority = Boolean(workOrder && workOrder.priority !== Priority.NORMAL);

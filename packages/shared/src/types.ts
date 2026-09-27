@@ -415,6 +415,8 @@ export interface YardOperationsTruckDto {
   activeWorkOrder: AdminWorkOrderSummaryDto | null;
   /** LTR-101: Work Plan board only — why the Truck is not Ready to Go yet (`WorkPlanNotReadyReason`). */
   readyReason?: string;
+  /** Work Plan board only — Shop Work Jobs still to do (excludes PM, Alignment, Detailing, QC). */
+  shopWorkRemainingCount?: number;
 }
 
 export interface YardOperationsCountsDto {

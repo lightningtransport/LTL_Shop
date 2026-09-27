@@ -231,7 +231,11 @@ export function AdminTruckWorkPlan({
                       <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)} className="normal-case tracking-normal">
                         {workPlanJobUiStatusLabel(job.uiStatus, messages)}
                       </Badge>
-                      {canAddWork && plan.workOrder && job.status === JobStatus.TO_DO ? (
+                      {/* LTR-148: the PM job is finished from the PM service (mileage + parts), not "Mark complete". */}
+                      {job.lane === 'pm' && job.status === JobStatus.TO_DO ? (
+                        <span className="text-xs text-muted-foreground">{messages.pmJobCompletedFromPmService}</span>
+                      ) : null}
+                      {canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.lane !== 'pm' ? (
                         <Button
                           type="button"
                           size="sm"
