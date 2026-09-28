@@ -21,7 +21,7 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
-import { canCompleteJobFromWorkOrder, isMyOrUnassignedJob, isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel } from '@/lib/job-assignment';
+import { isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel, splitMyJobs } from '@/lib/job-assignment';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
@@ -196,17 +196,18 @@ export default function WorkOrderDetailPage() {
     );
   }
 
-  const todo = wo.jobs.filter((j) => j.status === 'to_do');
   const done = wo.jobs.filter((j) => j.status === 'completed');
-  const canComplete = (job: WorkOrderJobDto) => canCompleteJobFromWorkOrder(job, wo.pmJob?.id, user?.id ?? '');
-  const isMyTodo = (job: WorkOrderJobDto) => isMyOrUnassignedJob(job.assignedMechanic, user?.id ?? '') && canComplete(job);
-  const myTodo = todo.filter(isMyTodo);
-  const otherTodo = todo.filter((job) => !isMyTodo(job));
+  // LTR-154 / D11: the mechanic completes only their own Jobs; the rest of the truck's work is read-only.
+  const { mine, others, partDone } = splitMyJobs(wo, user?.id ?? '');
+  const myTodo = mine.filter((job) => job.status === 'to_do');
+  const otherTodo = others.filter((job) => job.status === 'to_do');
   const waitingOnManager = isStandardWorkWaitingOnManager(wo);
-  // LTR-124: labor stops after the last Job; a Job added later needs Start Work.
+  // LTR-154 / D18: labor is per mechanic. `laborRunning` is the viewer's own session;
+  // it stops when they finish their part and "Continue" reopens it for a new Job.
   // `laborRunning === false` keeps older API responses (field absent) unchanged.
   const laborStopped = wo.status === 'in_progress' && wo.laborRunning === false;
-  const needsStart = wo.status === 'created' || (laborStopped && todo.length > 0);
+  const needsStart = (wo.status === 'created' || laborStopped) && myTodo.length > 0;
+  const finishedMyPart = partDone && (wo.status === 'in_progress' || wo.status === 'created');
   const laborMs = liveLaborMs(wo.totalActiveLaborMs, wo.laborRunning, fetchedAt, now);
 
   return (
@@ -239,7 +240,12 @@ export default function WorkOrderDetailPage() {
         ) : null}
       </div>
 
-      {waitingOnManager ? (
+      {finishedMyPart ? (
+        <div className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status">
+          <p className="font-medium">{messages.finishedYourPart(wo.truckNumber)}</p>
+          <p>{waitingOnManager ? messages.waitingOnManagerBody : messages.finishedYourPartHint}</p>
+        </div>
+      ) : waitingOnManager ? (
         <p className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status">
           {messages.waitingOnManagerBody}
         </p>
@@ -298,7 +304,7 @@ export default function WorkOrderDetailPage() {
               )
             }
           >
-            {busy ? messages.startingWork : messages.startWork}
+            {busy ? messages.startingWork : wo.status === 'created' ? messages.startWork : messages.continueWork}
           </Button>
         ) : null}
         {wo.status === 'in_progress' ? (
@@ -344,19 +350,15 @@ export default function WorkOrderDetailPage() {
       </section>
 
       <section className="mb-4">
-        <p className="section-label mb-2">{messages.workOrderTeam}</p>
-        <p className="mb-3 text-sm text-muted-foreground">
-          {wo.mechanics.length
-            ? wo.mechanics.map((assignment) => assignment.mechanicName).join(' / ')
-            : messages.noWorkOrderTeam}
-        </p>
         <p className="section-label mb-2">{messages.myJobs}</p>
         {/* LTR-131: say why Jobs are disabled before Start Work. */}
-        {needsStart && todo.length > 0 ? (
+        {needsStart ? (
           <p className="mb-2 text-sm text-muted-foreground">{messages.startWorkToCompleteJobs}</p>
+        ) : myTodo.length > 0 && wo.status === 'in_progress' ? (
+          <p className="mb-2 text-sm text-muted-foreground">{messages.tapJobToComplete}</p>
         ) : null}
         {myTodo.length === 0 ? (
-          <EmptyState>{todo.length === 0 ? messages.noPendingJobs : messages.noMyJobs}</EmptyState>
+          <EmptyState>{mine.length > 0 ? messages.noPendingJobs : messages.noMyJobs}</EmptyState>
         ) : (
           <ul className="mb-3 space-y-2">
             {myTodo.map((job) => (
@@ -377,21 +379,12 @@ export default function WorkOrderDetailPage() {
         )}
         {otherTodo.length ? (
           <>
-            <p className="section-label mb-2">{messages.otherWorkOnThisTruck}</p>
+            <p className="section-label mb-1">{messages.otherWorkOnThisTruck}</p>
+            <p className="mb-2 text-xs text-muted-foreground">{messages.otherWorkReadOnly}</p>
             <ul className="mb-3 space-y-2">
               {otherTodo.map((job) => (
                 <li key={job.id}>
-                  <JobTodoButton
-                    job={job}
-                    currentUserId={user?.id ?? ''}
-                    readOnly={!canComplete(job)}
-                    disabled={busy || wo.status !== 'in_progress' || laborStopped}
-                    onSelect={(event) => {
-                      finishJobTriggerRef.current = event.currentTarget;
-                      setFinishNotes('');
-                      setFinishJob({ id: job.id, name: job.displayName });
-                    }}
-                  />
+                  <JobTodoButton job={job} currentUserId={user?.id ?? ''} readOnly disabled onSelect={() => undefined} />
                 </li>
               ))}
             </ul>
@@ -828,7 +821,7 @@ function JobTodoButton({
   job: WorkOrderJobDto;
   currentUserId: string;
   disabled: boolean;
-  /** LTR-151: someone else's PM job is listed without offering "Complete job". */
+  /** LTR-154 / D11: another mechanic's or an unassigned Job is listed without "Complete job". */
   readOnly?: boolean;
   onSelect: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
@@ -842,7 +835,10 @@ function JobTodoButton({
         <span className="block">{job.displayName}</span>
         <span className="block text-xs text-muted-foreground">{job.category.name}</span>
         <span className="block text-xs text-muted-foreground">
-          {jobAssignmentLabel(job.assignedMechanic, currentUserId, messages)}
+          {[
+            jobAssignmentLabel(job.assignedMechanic, currentUserId, messages),
+            job.workStatus === 'in_progress' ? messages.jobStatusInProgress : job.workStatus === 'pending' ? messages.jobStatusPending : null,
+          ].filter(Boolean).join(' · ')}
         </span>
       </span>
     </>

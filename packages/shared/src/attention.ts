@@ -8,6 +8,7 @@ export const WORK_ORDER_ATTENTION_REASONS = [
   'high',
   'paused',
   'blocker',
+  'unassigned',
   'open_over_24h',
   'open',
 ] as const;
@@ -22,6 +23,8 @@ export type WorkOrderAttentionInput = {
   jobsTotal: number;
   /** Unresolved mechanic-reported blocker (LTR-98). */
   hasActiveBlocker: boolean;
+  /** LTR-154 / D11: pending Jobs nobody owns; no mechanic sees them until assigned. */
+  unassignedJobs?: number;
   createdAt: string | Date;
 };
 
@@ -43,6 +46,7 @@ export function workOrderAttentionReason(input: WorkOrderAttentionInput, now = D
   if (input.priority === 'high') return 'high';
   if (input.status === 'waiting_paused') return 'paused';
   if (input.hasActiveBlocker) return 'blocker';
+  if ((input.unassignedJobs ?? 0) > 0) return 'unassigned';
   if (now - new Date(input.createdAt).getTime() > DAY_MS) return 'open_over_24h';
   // LTR-116: an open PM service with nothing actionable does not need attention.
   if (isPm) return null;

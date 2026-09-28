@@ -12,7 +12,7 @@ import { useWorkOrders } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { pauseLabel, statusLabel } from '@/lib/format';
 import { useSWRConfig } from 'swr';
-import { isStandardWorkWaitingOnManager, jobPersonLabel, workOrderTeamLabel } from '@/lib/job-assignment';
+import { isMyJob, isMyPartDone, isStandardWorkWaitingOnManager, jobPersonLabel } from '@/lib/job-assignment';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
@@ -127,8 +127,10 @@ export default function HomePage() {
   }
 
   const isPm = mode === MechanicMode.PM;
-  const waitingOnManager = data && !isPm ? data.active.filter(isStandardWorkWaitingOnManager) : [];
-  const activeWork = data ? (isPm ? data.active : data.active.filter((wo) => !isStandardWorkWaitingOnManager(wo))) : [];
+  // LTR-154 / D18: my part done (or every Job done) waits on the Manager.
+  const partDone = (wo: WorkOrderSummaryDto) => isStandardWorkWaitingOnManager(wo) || isMyPartDone(wo, user.id);
+  const waitingOnManager = data && !isPm ? data.active.filter(partDone) : [];
+  const activeWork = data ? (isPm ? data.active : data.active.filter((wo) => !partDone(wo))) : [];
 
   return (
     <div>
@@ -280,6 +282,8 @@ function WorkOrderCard({
   const pmJob = pmWorkspace && wo.primaryCategoryName !== 'PM' ? wo.pmJob ?? null : null;
   const isPm = wo.primaryCategoryName === 'PM' || Boolean(pmJob);
   const detailHref = pmJob ? `/work-orders/${wo.id}?view=pm` : `/work-orders/${wo.id}`;
+  const myJobs = isPm ? [] : wo.jobs.filter((job) => isMyJob(job.assignedMechanic, currentUserId));
+  const nextJobId = myJobs.find((job) => job.status === 'to_do')?.id ?? null;
   return (
     <Card className="space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -306,20 +310,18 @@ function WorkOrderCard({
           ? messages.pmJobOnWorkOrder(pmJob.displayName, wo.displayId)
           : isPm
           ? messages.pmServiceLabel
-          : [jobCategoriesLine(wo.jobs), messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)].filter(Boolean).join(' · ')}
+          : [myJobs.length ? messages.yourJobsCount(myJobs.length) : null, jobCategoriesLine(myJobs.length ? myJobs : wo.jobs)].filter(Boolean).join(' · ')}
       </p>
       {isPm && (pmJob ? pmJob.startedAt : wo.startedAt) && mode !== 'completed' ? (
         <p className="text-xs text-shop-muted">
           {messages.pmStartedAt(new Intl.DateTimeFormat(messages.locale === 'es' ? 'es-US' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date((pmJob ? pmJob.startedAt : wo.startedAt)!)))}
         </p>
       ) : null}
-      {!isPm ? (
-        <p className="text-xs text-shop-muted">{workOrderTeamLabel(wo.mechanics, messages)}</p>
-      ) : null}
-      {!isPm && mode !== 'completed' && wo.jobs.length > 0 ? (
+      {!isPm && mode !== 'completed' && myJobs.length > 0 ? (
         <ul className="space-y-2 text-sm">
-          {wo.jobs.map((job) => (
-            <li key={job.id} className="flex items-start gap-2">
+          {/* LTR-154 / D11: only my Jobs, with the next one marked. */}
+          {myJobs.map((job) => (
+            <li key={job.id} className="flex items-start gap-2" aria-current={job.id === nextJobId ? 'step' : undefined}>
               <span
                 className={
                   job.status === 'completed'
@@ -336,6 +338,7 @@ function WorkOrderCard({
                   }`}
                 >
                   {job.displayName}
+                  {job.id === nextJobId ? <span className="ml-2 text-xs font-semibold text-shop-accent">{messages.nextJob}</span> : null}
                 </span>
                 <span className="block text-xs text-shop-muted">
                   {jobPersonLabel(job, currentUserId, messages)}

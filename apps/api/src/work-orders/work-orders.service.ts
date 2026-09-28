@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -39,7 +40,7 @@ import {
   nextDisplayId,
 } from './work-order.timing';
 import type { AuthUser } from '../auth/auth.guard';
-import { stopLaborWhenNoPendingJobs } from './labor-session';
+import { openSessionFor, stopLaborForMechanic } from './labor-session';
 import { assertPmObservedMileage } from './pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from './pm-finish';
 import { isPmJobCategory, resolveMandatoryJobs, type MandatoryJob } from './mandatory-jobs';
@@ -57,6 +58,8 @@ type PmJobLike = {
 
 @Injectable()
 export class WorkOrdersService {
+  private readonly logger = new Logger(WorkOrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityLogService,
@@ -97,10 +100,17 @@ export class WorkOrdersService {
               }],
             }
           : categoryFilter ? { primaryCategory: categoryFilter } : {}),
+        // LTR-154 / D11: a mechanic sees a truck Work Order only through a Job assigned to them.
+        // Legacy PM Work Orders (no jobs) keep creator/team membership.
         OR: [
-          { createdById: user.id },
-          { mechanics: { some: { mechanicId: user.id, removedAt: null } } },
-          { jobs: { some: { assignedMechanicId: user.id } } },
+          { jobs: { some: { assignedMechanicId: user.id, status: { not: 'cancelled' } } } },
+          {
+            primaryCategory: { name: 'PM' },
+            OR: [
+              { createdById: user.id },
+              { mechanics: { some: { mechanicId: user.id, removedAt: null } } },
+            ],
+          },
         ],
       },
       include: workOrderDetailInclude,
@@ -135,7 +145,7 @@ export class WorkOrdersService {
     });
     if (!wo) throw new NotFoundException('Work Order not found');
     this.assertCanViewWorkOrder(user, wo);
-    return toWorkOrderDetail(wo);
+    return toWorkOrderDetail(wo, user.id);
   }
 
   // Managers plan the intervention; mechanics execute it. The core create logic
@@ -176,7 +186,7 @@ export class WorkOrdersService {
       if (existing) {
         this.assertWorkOrderIdempotency(existing, input.truckId, idempotencyPayloadHash, user.id);
         if (actorKind === 'mechanic') this.assertMechanicAccess(user, existing);
-        return toWorkOrderDetail(existing);
+        return toWorkOrderDetail(existing, user.id);
       }
     }
 
@@ -217,9 +227,11 @@ export class WorkOrdersService {
       const jobAssigneeIds = input.jobs
         .map((job) => job.assignedMechanicId)
         .filter((id): id is string => Boolean(id));
-      // Team = explicit mechanicIds union per-job assignees so WO membership
-      // stays consistent with Job ownership.
-      teamMechanicIds = Array.from(new Set([...input.mechanicIds, ...jobAssigneeIds]));
+      // LTR-154 / D11: the team is derived from Job assignees; mechanicIds is deprecated and ignored.
+      if (input.mechanicIds.length) {
+        this.logger.warn('createWorkOrder: mechanicIds is deprecated and ignored (LTR-154); assign mechanics per Job.');
+      }
+      teamMechanicIds = Array.from(new Set(jobAssigneeIds));
       if (teamMechanicIds.length) {
         const selectedMechanics = await this.prisma.user.findMany({
           where: {
@@ -407,13 +419,13 @@ export class WorkOrdersService {
         });
         if (existing) {
           this.assertWorkOrderIdempotency(existing, input.truckId, idempotencyPayloadHash, user.id);
-          return toWorkOrderDetail(existing);
+          return toWorkOrderDetail(existing, user.id);
         }
       }
       throw error;
     }
 
-    return toWorkOrderDetail(wo);
+    return toWorkOrderDetail(wo, user.id);
   }
 
   private isUniqueViolation(error: unknown) {
@@ -449,20 +461,32 @@ export class WorkOrdersService {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
       this.assertMechanicAccess(user, wo);
-      // LTR-124: labor stops when no Job is pending; a Job added afterwards
-      // needs Start Work again on the same In Progress Work Order.
-      const restartingLabor = wo.status === 'in_progress'
-        && wo.primaryCategory.name !== 'PM'
-        && !(wo.sessions ?? []).some((session) => session.endedAt === null)
-        && wo.jobs.some((job) => job.status === 'to_do');
-      if (wo.status !== 'created' && !restartingLabor) {
+      const isPm = wo.primaryCategory.name === 'PM';
+      // LTR-154 / D18: labor is per mechanic. Start (or "Continue") opens the
+      // actor's own session while they have a pending Job; other mechanics'
+      // sessions are untouched. A legacy PM Work Order keeps create → start.
+      const hasPendingJob = wo.jobs.some((job) => job.status === 'to_do' && job.assignedMechanicId === user.id);
+      const alreadyRunning = !!openSessionFor(wo.sessions, user.id);
+      const canStart = isPm
+        ? wo.status === 'created'
+        : ['created', 'in_progress'].includes(wo.status) && hasPendingJob && !alreadyRunning;
+      if (!canStart) {
+        if (!isPm && wo.status === 'waiting_paused') {
+          throw new BadRequestException({ code: 'WORK_ORDER_PAUSED', message: 'The Manager paused this Work Order.' });
+        }
+        if (!isPm && ['created', 'in_progress'].includes(wo.status) && !hasPendingJob) {
+          throw new BadRequestException({ code: 'NO_PENDING_JOBS', message: 'You have no pending Jobs on this Work Order.' });
+        }
+        if (!isPm && alreadyRunning) {
+          throw new BadRequestException({ code: 'LABOR_ALREADY_RUNNING', message: 'Your work is already running on this Work Order.' });
+        }
         throw new BadRequestException('Work Order can only be started from created status');
       }
       const now = new Date();
       await tx.workSession.create({
-        data: { workOrderId: id, startedAt: now },
+        data: { workOrderId: id, startedAt: now, userId: user.id },
       });
-      if (restartingLabor) {
+      if (wo.status === 'in_progress') {
         const restarted = await tx.workOrder.update({
           where: { id },
           data: { version: { increment: 1 } },
@@ -477,7 +501,7 @@ export class WorkOrdersService {
           previousValue: { status: 'in_progress', laborRunning: false },
           newValue: { status: 'in_progress', laborRunning: true },
         });
-        return toWorkOrderDetail(restarted);
+        return toWorkOrderDetail(restarted, user.id);
       }
       const updated = await tx.workOrder.update({
         where: { id },
@@ -497,7 +521,7 @@ export class WorkOrdersService {
         previousValue: { status: 'created' },
         newValue: { status: 'in_progress' },
       });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -555,7 +579,7 @@ export class WorkOrdersService {
         userId: user.id,
         newValue: { reason: parsed.data.reason, notes: parsed.data.notes ?? null },
       });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -592,7 +616,7 @@ export class WorkOrdersService {
         previousValue: { reason: blocker.reason, notes: blocker.notes },
         newValue: { resolved: true, actor: options.managerActor ? 'manager' : 'mechanic' },
       });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -640,7 +664,7 @@ export class WorkOrdersService {
         userId: user.id,
         newValue: { reason: parsed.data.reason },
       });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -694,7 +718,7 @@ export class WorkOrdersService {
         previousValue: { reason: openPause.reason },
         newValue: { reason: parsed.data.reason },
       });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -724,9 +748,7 @@ export class WorkOrdersService {
           data: { endedAt: now, durationMs },
         });
       }
-      await tx.workSession.create({
-        data: { workOrderId: id, startedAt: now },
-      });
+      await this.reopenSessionsClosedByPause(tx, id, openPause?.startedAt ?? null, now);
       const updated = await tx.workOrder.update({
         where: { id },
         data: { status: 'in_progress', version: { increment: 1 } },
@@ -740,7 +762,7 @@ export class WorkOrdersService {
         userId: user.id,
         newValue: { status: 'in_progress' },
       });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -858,7 +880,7 @@ export class WorkOrdersService {
             isCustom: createdJob.isCustom,
           },
         });
-        const result = toWorkOrderDetail(updated);
+        const result = toWorkOrderDetail(updated, user.id);
         await tx.workOrderMutation.create({
           data: {
             idempotencyKey: input.idempotencyKey,
@@ -1034,7 +1056,7 @@ export class WorkOrdersService {
       // Notes do not change Work Order state, so the version is not bumped
       // (a Manager editing priority must not get a conflict from a new note).
       const updated = await tx.workOrder.findUniqueOrThrow({ where: { id }, include: workOrderDetailInclude });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -1084,14 +1106,18 @@ export class WorkOrdersService {
       if (category?.name === 'PM') {
         throw new BadRequestException('PM Work Orders do not use jobs');
       }
-      const gate = canCompleteJob(wo.status, (wo.sessions ?? []).some((session) => session.endedAt === null));
-      if (!gate.ok) {
-        throw new BadRequestException({ code: gate.code, message: gate.message });
-      }
       const job = await tx.workOrderJob.findFirst({
         where: { id: jobId, workOrderId },
       });
       if (!job) throw new NotFoundException('Job not found');
+      // LTR-154 / D11: only the Job's assignee completes it (the Manager uses Admin).
+      if (job.assignedMechanicId !== user.id) {
+        throw new ForbiddenException({ code: 'JOB_NOT_ASSIGNED_TO_YOU', message: 'This Job is assigned to another mechanic.' });
+      }
+      const gate = canCompleteJob(wo.status, !!openSessionFor(wo.sessions, user.id));
+      if (!gate.ok) {
+        throw new BadRequestException({ code: gate.code, message: gate.message });
+      }
       if (job.status !== 'to_do') {
         throw new BadRequestException('Job is not in To Do status');
       }
@@ -1104,7 +1130,7 @@ export class WorkOrdersService {
           completedById: user.id,
         },
       });
-      await stopLaborWhenNoPendingJobs(tx, workOrderId);
+      await stopLaborForMechanic(tx, workOrderId, user.id);
       const updated = await tx.workOrder.update({
         where: { id: workOrderId },
         data: { version: { increment: 1 } },
@@ -1118,7 +1144,7 @@ export class WorkOrdersService {
         userId: user.id,
         newValue: { displayName: job.displayName, status: 'completed', notes },
       });
-      const detail = toWorkOrderDetail(updated);
+      const detail = toWorkOrderDetail(updated, user.id);
       return {
         ...detail,
         jobs: detail.jobs.map((item) =>
@@ -1148,7 +1174,7 @@ export class WorkOrdersService {
       throw new ConflictException({ code: 'PM_JOB_DONE', message: `The PM of ${open.displayId} is already done.`, displayId: open.displayId });
     }
     if (open && openPmJob?.assignedMechanicId === user.id && openPmJob.startedAt) {
-      return toWorkOrderDetail(open);
+      return toWorkOrderDetail(open, user.id);
     }
     // D2 before anything is created or added, so a refused PM leaves no half-made Work Order.
     await this.prisma.$transaction((tx) => this.assertNoOtherRunningPm(tx, user.id));
@@ -1208,7 +1234,7 @@ export class WorkOrdersService {
         select: { id: true, displayName: true },
       });
       if (!target) throw new BadRequestException('Choose an active PM service from the catalog');
-      if (target.id === job.catalogJobId) return toWorkOrderDetail(wo);
+      if (target.id === job.catalogJobId) return toWorkOrderDetail(wo, user.id);
       await tx.workOrderJob.update({ where: { id: jobId }, data: { catalogJobId: target.id, displayName: target.displayName } });
       const updated = await tx.workOrder.update({
         where: { id },
@@ -1224,7 +1250,7 @@ export class WorkOrdersService {
         previousValue: { catalogJobId: job.catalogJobId, displayName: job.displayName },
         newValue: { action: 'pm_service_changed', catalogJobId: target.id, displayName: target.displayName },
       });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -1270,7 +1296,7 @@ export class WorkOrdersService {
         userId: user.id,
         newValue: { pmJob: true, displayName: job.displayName, startedAt: now.toISOString() },
       });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -1298,7 +1324,7 @@ export class WorkOrdersService {
       where: { id: jobId },
       data: { status: 'completed', completedAt: new Date(), completedById: user.id },
     });
-    await stopLaborWhenNoPendingJobs(tx, wo.id);
+    await stopLaborForMechanic(tx, wo.id, user.id);
     const updated = await tx.workOrder.update({
       where: { id: wo.id },
       data: { version: { increment: 1 } },
@@ -1315,7 +1341,7 @@ export class WorkOrdersService {
         pmService: { observedMileage, parts: pmService?.parts.length ?? 0 },
       },
     });
-    const detail = toWorkOrderDetail(updated);
+    const detail = toWorkOrderDetail(updated, user.id);
     return { ...detail, jobs: detail.jobs.map((item) => (item.id === jobId ? { ...item, completionNotes: notes } : item)) };
   }
 
@@ -1384,7 +1410,7 @@ export class WorkOrdersService {
           totalWaitingMs: totals.totalWaitingMs,
         },
       });
-      return toWorkOrderDetail(updated);
+      return toWorkOrderDetail(updated, user.id);
     });
   }
 
@@ -1554,13 +1580,16 @@ export class WorkOrdersService {
     user: AuthUser,
     wo: {
       createdById: string;
+      primaryCategory?: { name: string };
       mechanics?: { mechanicId: string; removedAt: Date | null }[];
       jobs?: PmJobLike[];
     },
   ) {
+    // LTR-154 / D11: the team is derived from Job assignments (Q10/Q17 retired).
+    if (wo.jobs?.some((job) => job.assignedMechanicId === user.id)) return true;
+    if (!wo.primaryCategory || wo.primaryCategory.name !== 'PM') return false;
     return wo.createdById === user.id
-      || !!wo.mechanics?.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt)
-      || !!wo.jobs?.some((job) => job.assignedMechanicId === user.id);
+      || !!wo.mechanics?.some((assignment) => assignment.mechanicId === user.id && !assignment.removedAt);
   }
 
   private assertCanViewWorkOrder(
@@ -1669,15 +1698,31 @@ export class WorkOrdersService {
     workOrderId: string,
     now: Date,
   ) {
-    const open = await tx.workSession.findFirst({
+    // LTR-154 / D18: an official pause or completion stops every mechanic's labor.
+    await tx.workSession.updateMany({
       where: { workOrderId, endedAt: null },
-      orderBy: { startedAt: 'desc' },
+      data: { endedAt: now },
     });
-    if (open) {
-      await tx.workSession.update({
-        where: { id: open.id },
-        data: { endedAt: now },
-      });
+  }
+
+  /**
+   * LTR-154 / D18: resuming an official pause restarts labor for exactly the
+   * mechanics the pause stopped (their sessions ended at the pause start).
+   */
+  private async reopenSessionsClosedByPause(
+    tx: Prisma.TransactionClient,
+    workOrderId: string,
+    pausedAt: Date | null,
+    now: Date,
+  ) {
+    // No open pause row to read from: keep the previous single-session behavior.
+    if (!pausedAt) {
+      await tx.workSession.create({ data: { workOrderId, startedAt: now } });
+      return;
+    }
+    const stopped = await tx.workSession.findMany({ where: { workOrderId, endedAt: pausedAt }, select: { userId: true } });
+    for (const userId of new Set(stopped.map((session) => session.userId ?? null))) {
+      await tx.workSession.create({ data: { workOrderId, startedAt: now, userId } });
     }
   }
 

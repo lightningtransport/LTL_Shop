@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  AppCapability,
   JobStatus,
   WorkPlanInspectionOutcome,
   type RecordWorkPlanInspectionInput,
@@ -10,7 +11,16 @@ import {
   type WorkPlanMandatoryPhaseDto,
 } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
-import { addAdminWorkPlanJobs, completeAdminJob, fetchAdminTruckWorkPlan, recordAdminWorkPlanInspection } from '@/lib/admin-data';
+import {
+  addAdminWorkPlanJobs,
+  assignAdminWorkOrderJob,
+  completeAdminJob,
+  fetchAdminTruckWorkPlan,
+  recordAdminWorkPlanInspection,
+  unassignAdminWorkOrderJob,
+  useAdminAssignableMechanics,
+} from '@/lib/admin-data';
+import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
 import {
@@ -27,7 +37,7 @@ import {
 } from '@/lib/work-plan';
 import { WorkPlanAddWork } from './work-plan-add-work';
 import { useActionToast } from './action-toast';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty } from './ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, Select } from './ui';
 
 type Feedback = { kind: 'success' | 'error'; message: string };
 
@@ -51,6 +61,15 @@ export function AdminTruckWorkPlan({
   const canAddWork = plan.capabilities.canAddWork;
   const ready = plan.readiness === 'ready';
   useCategories(true);
+  // LTR-154 / D11: the Manager sets each Job's one owner here (PM job → PM mechanic).
+  const { data: mechanicPages } = useAdminAssignableMechanics();
+  const { standardMechanics, pmMechanics } = useMemo(() => {
+    const active = (mechanicPages?.flatMap((page) => page.items) ?? []).filter((mechanic) => mechanic.active);
+    return {
+      standardMechanics: active.filter((mechanic) => mechanic.capabilities.includes(AppCapability.MECHANIC_STANDARD)),
+      pmMechanics: active.filter((mechanic) => mechanic.capabilities.includes(AppCapability.MECHANIC_PM)),
+    };
+  }, [mechanicPages]);
 
   function openAddWork(categoryName?: string | null) {
     setPreferredCategoryName(categoryName ?? null);
@@ -120,6 +139,26 @@ export function AdminTruckWorkPlan({
         message: mutationError(errorValue, messages.workPlanAddWorkFailed, messages.workPlanAddWorkForbidden),
       });
       return false;
+    }
+  }
+
+  async function handleAssign(jobId: string, mechanicId: string) {
+    if (!plan.workOrder) return;
+    const workOrder = plan.workOrder;
+    try {
+      await run(`assign-${jobId}`, () => (mechanicId
+        ? assignAdminWorkOrderJob(workOrder.id, jobId, { mechanicId, expectedVersion: workOrder.version })
+        : unassignAdminWorkOrderJob(workOrder.id, jobId, workOrder.version)));
+      const next = await fetchAdminTruckWorkPlan(truckId);
+      await onPlanUpdated(next);
+      const message = mechanicId ? messages.assignJobSuccess : messages.unassignJobSuccess;
+      setFeedback({ kind: 'success', message });
+      showToast('success', message);
+    } catch (errorValue) {
+      setFeedback({
+        kind: 'error',
+        message: mutationError(errorValue, messages.assignmentGenericError, messages.workPlanAddWorkForbidden),
+      });
     }
   }
 
@@ -225,8 +264,27 @@ export function AdminTruckWorkPlan({
                     <div className="min-w-0">
                       <p className="font-medium">{job.displayName}</p>
                       <p className="text-xs text-muted-foreground">{job.category.name}</p>
+                      {job.assignedMechanic !== undefined ? (
+                        <p className="text-xs text-muted-foreground">
+                          {job.assignedMechanic ? `${messages.jobAssignee}: ${job.assignedMechanic.name}` : messages.jobUnassigned}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      {canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic !== undefined ? (
+                        <Select
+                          aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
+                          className="w-full sm:w-44"
+                          value={job.assignedMechanic?.id ?? ''}
+                          disabled={Boolean(pendingAction)}
+                          onChange={(event) => void handleAssign(job.id, event.target.value)}
+                        >
+                          <option value="">{messages.jobUnassigned}</option>
+                          {withCurrentAssignee(job.lane === 'pm' ? pmMechanics : standardMechanics, job.assignedMechanic).map((mechanic) => (
+                            <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
+                          ))}
+                        </Select>
+                      ) : null}
                       <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)} className="normal-case tracking-normal">
                         {workPlanJobUiStatusLabel(job.uiStatus, messages)}
                       </Badge>
@@ -401,4 +459,13 @@ function errorCode(errorValue: ApiError) {
     return typeof code === 'string' ? code : null;
   }
   return null;
+}
+
+/** Keep the current owner selectable even when they are no longer in the assignable list. */
+function withCurrentAssignee<M extends { id: string; name: string }>(
+  mechanics: M[],
+  current: { id: string; name: string } | null | undefined,
+): Array<{ id: string; name: string }> {
+  if (!current || mechanics.some((mechanic) => mechanic.id === current.id)) return mechanics;
+  return [current, ...mechanics];
 }

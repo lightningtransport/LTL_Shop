@@ -276,7 +276,6 @@ export interface CreateAdminWorkOrderInput {
   primaryCategoryId: string;
   priority?: string;
   notes?: string;
-  mechanicIds?: string[];
   jobs: Array<{
     catalogJobId?: string;
     categoryId: string;
@@ -296,29 +295,6 @@ export function createAdminWorkOrder(
   return apiFetch<AdminWorkOrderDetailDto>('/api/admin/work-orders', {
     method: 'POST',
     body: JSON.stringify({ ...input, idempotencyKey }),
-  });
-}
-
-export function addAdminWorkOrderMechanic(
-  workOrderId: string,
-  input: { mechanicId: string; expectedVersion: number },
-  idempotencyKey = adminMutationIdempotencyKey(),
-) {
-  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/mechanics`, {
-    method: 'POST',
-    body: JSON.stringify({ ...input, idempotencyKey }),
-  });
-}
-
-export function removeAdminWorkOrderMechanic(
-  workOrderId: string,
-  mechanicId: string,
-  expectedVersion: number,
-  idempotencyKey = adminMutationIdempotencyKey(),
-) {
-  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/mechanics/${mechanicId}`, {
-    method: 'DELETE',
-    body: JSON.stringify({ expectedVersion, idempotencyKey }),
   });
 }
 

@@ -1,4 +1,5 @@
 import type { WorkOrderAttentionReason } from './attention';
+import type { JobWorkStatus } from './job-work-status';
 import type {
   AppCapability,
   ActivityEventType,
@@ -95,8 +96,10 @@ export interface WorkOrderJobDto {
   completedAt: string | null;
   completedById: string | null;
   completionNotes: string | null;
-  // Null means the Job inherits the Work Order general mechanic team.
+  /** LTR-154 / D11: the one mechanic who owns the Job; null means unassigned. */
   assignedMechanic: { id: string; name: string } | null;
+  /** LTR-154 / D18: Pending / In Progress derived from the assignee's labor session. */
+  workStatus?: JobWorkStatus;
   /** LTR-127: who completed the Job (additive; absent on older API responses). */
   completedBy?: { id: string; name: string } | null;
   /** LTR-146: when the PM job was started. */
@@ -174,8 +177,17 @@ export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
   completedAt: string | null;
   totalActiveLaborMs: number;
   totalWaitingMs: number;
-  /** True while a labor session is open (LTR-124: closes when no Job is pending). */
+  /**
+   * LTR-154 / D18: for a mechanic assigned to a Job here, true while their own
+   * labor session is open; for anyone else, true while any session is open.
+   */
   laborRunning: boolean;
+  /** LTR-154: the viewer's own Jobs (mechanic endpoints only). */
+  myJobs?: WorkOrderJobDto[];
+  /** LTR-154: other mechanics' and unassigned Jobs, read-only for the viewer. */
+  otherJobs?: WorkOrderJobDto[];
+  /** LTR-154: the viewer had Jobs here and none is pending ("You finished your part"). */
+  myPartDone?: boolean;
   jobs: WorkOrderJobDto[];
   mechanics: MechanicAssignmentDto[];
   currentPause: PauseEventDto | null;
@@ -479,6 +491,8 @@ export interface WorkPlanJobDto {
   status: JobStatus;
   uiStatus: WorkPlanJobUiStatus;
   lane: WorkPlanJobLane;
+  /** LTR-154 / D11: the Job's owner on the Truck Work Plan (null = unassigned). */
+  assignedMechanic?: { id: string; name: string } | null;
 }
 
 export interface WorkPlanMandatoryPhaseDto {

@@ -228,17 +228,14 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Check the leak again')).toBeVisible();
     await expect(page.getByText(/Shop Manager · /).first()).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Add note' })).toHaveValue('');
-    await expect(page.getByRole('heading', { name: 'Assignments' })).toBeVisible();
+    // LTR-154 / D11: no Work Order team editor; each Job has its own owner.
+    await expect(page.getByRole('heading', { name: 'Assignments' })).toHaveCount(0);
     await page.getByLabel('Reason for this Job change').fill('Not needed');
     await page.getByRole('button', { name: 'Confirm job cancellation' }).click();
     await expect(page.getByRole('main').getByText('Job cancelled.')).toBeVisible();
     await page.getByLabel('Reason for this Job change').fill('Job is still required');
     await page.getByRole('button', { name: 'Confirm job reopen' }).click();
     await expect(page.getByRole('main').getByText('Job reopened.')).toBeVisible();
-    await page.getByLabel('Select a mechanic to add').selectOption({ label: 'Anthony' });
-    await page.getByRole('button', { name: 'Add mechanic' }).click();
-    await expect(page.getByRole('listitem').filter({ hasText: 'Anthony' }).first()).toBeVisible();
-    await page.getByRole('listitem').filter({ hasText: 'Anthony' }).getByRole('button', { name: 'Remove' }).click();
     // Cancel WO-0103, not WO-0101: the fixture API keeps state for the whole run,
     // and later tests need WO-0101 to stay open and Waiting / Paused.
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000103');

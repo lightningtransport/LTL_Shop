@@ -291,7 +291,7 @@ describe('Work Order workspace capabilities', () => {
       .rejects.toThrow('This Work Order is not assigned to you.');
   });
 
-  it('lists Work Orders when the mechanic is a per-Job assignee even if not on the general team', async () => {
+  it('lists Standard Work Orders only through a Job assigned to the mechanic (LTR-154 / D11)', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const service = new WorkOrdersService({ workOrder: { findMany } } as never, { log: vi.fn() } as never);
 
@@ -300,15 +300,20 @@ describe('Work Order workspace capabilities', () => {
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         OR: [
-          { createdById: 'user-1' },
-          { mechanics: { some: { mechanicId: 'user-1', removedAt: null } } },
-          { jobs: { some: { assignedMechanicId: 'user-1' } } },
+          { jobs: { some: { assignedMechanicId: 'user-1', status: { not: 'cancelled' } } } },
+          {
+            primaryCategory: { name: 'PM' },
+            OR: [
+              { createdById: 'user-1' },
+              { mechanics: { some: { mechanicId: 'user-1', removedAt: null } } },
+            ],
+          },
         ],
       }),
     }));
   });
 
-  it('allows a team mechanic to read a Work Order when Jobs are assigned to someone else', async () => {
+  it('denies a team mechanic with no Job of their own on the Work Order (LTR-154 retires Q10)', async () => {
     const workOrder = assignedReadWorkOrder({
       createdById: 'manager-1',
       mechanics: [{ mechanicId: 'user-1', addedAt: new Date('2026-09-09T12:00:00.000Z'), removedAt: null, mechanic: { name: 'Alex' } }],
@@ -320,9 +325,7 @@ describe('Work Order workspace capabilities', () => {
     );
 
     await expect(service.getById(user([AppCapability.MECHANIC_STANDARD]), 'wo-1'))
-      .resolves.toMatchObject({
-        jobs: [expect.objectContaining({ assignedMechanic: { id: 'other-mechanic', name: 'Jamie' } })],
-      });
+      .rejects.toThrow('This Work Order is not assigned to you.');
   });
 
   it('allows a per-Job assignee to read a Work Order without general-team membership', async () => {
@@ -339,7 +342,32 @@ describe('Work Order workspace capabilities', () => {
     await expect(service.getById(user([AppCapability.MECHANIC_STANDARD]), 'wo-1'))
       .resolves.toMatchObject({
         jobs: [expect.objectContaining({ assignedMechanic: { id: 'user-1', name: 'Alex' } })],
+        myJobs: [expect.objectContaining({ id: 'job-1' })],
+        otherJobs: [],
+        myPartDone: false,
       });
+  });
+
+  it("splits the viewer's Jobs from the rest of the truck's work (LTR-154)", async () => {
+    const workOrder = assignedReadWorkOrder({
+      createdById: 'manager-1',
+      mechanics: [],
+      jobs: [
+        { ...mappedJob({ assignedMechanic: { id: 'user-1', name: 'Alex' } }), status: 'completed' as const },
+        { ...mappedJob({ assignedMechanic: { id: 'other-mechanic', name: 'Jamie' } }), id: 'job-2' },
+        { ...mappedJob({ assignedMechanic: null }), id: 'job-3' },
+      ],
+    });
+    const service = new WorkOrdersService(
+      { workOrder: { findUnique: vi.fn().mockResolvedValue(workOrder) } } as never,
+      { log: vi.fn() } as never,
+    );
+
+    const detail = await service.getById(user([AppCapability.MECHANIC_STANDARD]), 'wo-1');
+
+    expect(detail.myJobs?.map((job) => job.id)).toEqual(['job-1']);
+    expect(detail.otherJobs?.map((job) => job.id)).toEqual(['job-2', 'job-3']);
+    expect(detail.myPartDone).toBe(true);
   });
 });
 
@@ -352,7 +380,7 @@ function mappedJob(overrides: { assignedMechanic: { id: string; name: string } |
     category: { id: 'category-brakes', name: 'Brakes' },
     displayName: 'Inspect brakes',
     customDescription: null,
-    status: 'to_do' as const,
+    status: 'to_do' as 'to_do' | 'completed',
     completedAt: null,
     completedById: null,
     assignedMechanicId: overrides.assignedMechanic?.id ?? null,

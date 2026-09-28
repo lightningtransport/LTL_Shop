@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-28 (LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
+**Updated:** 2026-09-28 (LTR-154 Job owner and per-mechanic labor; LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -268,14 +268,29 @@ TARGET authorization/UX.
   Standard work is `created`, not auto-started. Managers cannot create PM
   through this route. The Admin Create CTA is hidden without
   `work_orders.manage`; the API returns 403.
-- `MechanicAssignment` remains the Work Order-level general team.
-  `WorkOrderJob.assignedMechanicId` is an optional per-Job assignment. Manager
-  create unions Job assignees into the general team; Manager detail assign also
-  adds or reactivates that mechanic on the general team. Assign/unassign keep
-  version and idempotency checks. An unassigned Job has no persisted per-Job
-  owner and is presented as inheriting the general team. A mechanic can
-  read a Work Order when they created it, are an active team member, or are the
-  per-Job assignee.
+- LTR-154 / D11: each Job has one owner (`WorkOrderJob.assignedMechanicId`).
+  `MechanicAssignment` is a derived cache of Job owners: assign adds or
+  reactivates the owner; unassign or reassign removes a mechanic who no longer
+  owns a Job there. Create ignores `mechanicIds` (deprecated, logged) and uses
+  Job assignees. The Admin "Assignments" team card is gone; the owner is set per
+  Job on the Work Order detail and on the Truck Work Plan. The team endpoints
+  `POST/DELETE /admin/work-orders/:id/mechanics` remain but are deprecated.
+  A Standard mechanic lists and reads a Work Order only through a non-cancelled
+  Job assigned to them (legacy PM Work Orders keep creator/team access), and
+  completes only their own Jobs (`403 JOB_NOT_ASSIGNED_TO_YOU`). Mechanic
+  detail returns `myJobs`, `otherJobs` (read-only) and `myPartDone`. An
+  unassigned pending Job gives the Dashboard reason `unassigned` (after
+  blocker, before open more than 24 hours).
+- LTR-154 / D18: labor is per mechanic (`work_sessions.user_id`). Start Work /
+  Continue opens the actor's own session while they have a pending Job (not
+  while paused). Completing, unassigning or cancelling a mechanic's last pending
+  Job closes that mechanic's session only; with no pending Job at all every
+  session closes. An official pause closes every open session and resume
+  reopens exactly the mechanics it stopped. Work Order labor = sum of sessions.
+  `laborRunning` is the viewer's own session for an assignee, any session
+  otherwise. Job `workStatus` (and the Truck Work Plan `uiStatus`) is In
+  Progress while the owner has an open session, Pending otherwise. Sessions
+  without `user_id` (before LTR-154) count for every assignee until they close.
 - Managers with `work_orders.manage` officially pause/resume a Standard
   Work Order from Admin. Standard mechanics report a blocker without
   changing Work Order status or waiting totals. The blocker is stored as a
@@ -284,14 +299,13 @@ TARGET authorization/UX.
   report separately from the current official pause; pause history and time
   correction use official pauses only. Waiting totals exclude report-only
   events even if a report later has a non-zero duration.
-- Additive columns, unused until LTR-154 / LTR-155 (LTR-153, schema only):
-  `work_sessions.user_id` (nullable FK `users`, index
-  `(work_order_id, user_id)`) for per-mechanic labor; `pause_events.job_id`
+- LTR-153 columns: `work_sessions.user_id` (nullable FK `users`, index
+  `(work_order_id, user_id)`) is used by LTR-154; `pause_events.job_id`
   (nullable FK `work_order_jobs`) and `pause_events.blocker_reason` (nullable
   Postgres enum `blocker_reason`, mirrored by `BlockerReason` in
   `@ltl-shop/shared`: the waiting reasons of `PauseReason` plus `other`) for
-  per-Job blockers. No endpoint reads or writes them yet; `PauseReason` is
-  unchanged and still used by official pauses and today's blocker reports.
+  per-Job blockers stay unused until LTR-155; `PauseReason` is unchanged and
+  still used by official pauses and today's blocker reports.
 - PM retains its specialized create-start, pause, resume, and finish behavior.
 - Reopen Work Order, time correction, reopen Job, and Returned to Service stay
   on `admin.access`. There is no general permission-management UI.

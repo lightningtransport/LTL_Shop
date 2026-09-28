@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppCapability } from '@ltl-shop/shared';
 import type { AuthUser } from '../auth/auth.guard';
-import { stopLaborWhenNoPendingJobs } from './labor-session';
+import { openSessionFor, stopLaborForMechanic, stopLaborWhenNoPendingJobs } from './labor-session';
 import { canCompleteJob } from './work-order.timing';
 import { WorkOrdersService } from './work-orders.service';
 
@@ -19,51 +19,116 @@ const mechanic: AuthUser = {
 const startedAt = new Date('2026-09-22T14:56:00.000Z');
 const now = new Date('2026-09-23T13:53:00.000Z');
 
-function laborTx(options: { pending: number; openSession: boolean }) {
-  const open = options.openSession ? { id: 'session-1', startedAt, endedAt: null } : null;
+type Session = { id: string; startedAt: Date; endedAt: Date | null; userId: string | null };
+
+/**
+ * In-memory tx for the labor helpers: jobs and sessions live in arrays so the
+ * per-mechanic rules can be checked end to end.
+ */
+function laborTx(options: {
+  jobs: { status: 'to_do' | 'completed'; assignedMechanicId: string | null }[];
+  sessions: Session[];
+}) {
+  const sessions = options.sessions.map((session) => ({ ...session }));
+  const matchesSession = (session: Session, where: Record<string, unknown>) => {
+    if (where.endedAt === null && session.endedAt !== null) return false;
+    if ('userId' in where && session.userId !== where.userId) return false;
+    return true;
+  };
   return {
-    workOrderJob: { count: vi.fn().mockResolvedValue(options.pending) },
+    sessions,
+    workOrderJob: {
+      count: vi.fn(async ({ where }: { where: { status: string; assignedMechanicId?: string } }) => options.jobs.filter((job) => (
+        job.status === where.status
+        && (where.assignedMechanicId === undefined || job.assignedMechanicId === where.assignedMechanicId)
+      )).length),
+    },
     workSession: {
-      findFirst: vi.fn().mockResolvedValue(open),
-      update: vi.fn(),
-      findMany: vi.fn().mockResolvedValue(open ? [{ ...open, endedAt: now }] : []),
+      updateMany: vi.fn(async ({ where, data }: { where: Record<string, unknown>; data: { endedAt: Date } }) => {
+        const hits = sessions.filter((session) => matchesSession(session, where));
+        hits.forEach((session) => { session.endedAt = data.endedAt; });
+        return { count: hits.length };
+      }),
+      findMany: vi.fn(async () => sessions),
     },
     pauseEvent: { findMany: vi.fn().mockResolvedValue([]) },
     workOrder: { update: vi.fn() },
   };
 }
 
-describe('stopLaborWhenNoPendingJobs (LTR-124)', () => {
-  it('closes the open session and persists totals when no Job is pending', async () => {
-    const tx = laborTx({ pending: 0, openSession: true });
+const HOUR = 60 * 60 * 1000;
+const earlier = new Date(now.getTime() - 2 * HOUR);
 
-    await expect(stopLaborWhenNoPendingJobs(tx as never, 'wo-1', now)).resolves.toBe(true);
+describe('stopLaborForMechanic (LTR-154 / D18)', () => {
+  it('closes only the mechanic who finished their part; the Work Order total is the sum', async () => {
+    const tx = laborTx({
+      jobs: [
+        { status: 'completed', assignedMechanicId: 'mech-a' },
+        { status: 'to_do', assignedMechanicId: 'mech-b' },
+      ],
+      sessions: [
+        { id: 'a', startedAt: earlier, endedAt: null, userId: 'mech-a' },
+        { id: 'b', startedAt: earlier, endedAt: null, userId: 'mech-b' },
+      ],
+    });
 
-    expect(tx.workSession.update).toHaveBeenCalledWith({ where: { id: 'session-1' }, data: { endedAt: now } });
+    await expect(stopLaborForMechanic(tx as never, 'wo-1', 'mech-a', now)).resolves.toBe(true);
+
+    expect(tx.sessions.find((session) => session.id === 'a')?.endedAt).toEqual(now);
+    expect(tx.sessions.find((session) => session.id === 'b')?.endedAt).toBeNull();
+    // A closed at now (2h) + B still open at now (2h) = 4h of labor.
     expect(tx.workOrder.update).toHaveBeenCalledWith({
       where: { id: 'wo-1' },
-      data: {
-        totalActiveLaborMs: BigInt(now.getTime() - startedAt.getTime()),
-        totalWaitingMs: 0n,
-      },
+      data: { totalActiveLaborMs: BigInt(4 * HOUR), totalWaitingMs: 0n },
     });
   });
 
-  it('keeps labor running while a Job is still pending', async () => {
-    const tx = laborTx({ pending: 1, openSession: true });
+  it('keeps the mechanic running while they still have a pending Job', async () => {
+    const tx = laborTx({
+      jobs: [
+        { status: 'completed', assignedMechanicId: 'mech-a' },
+        { status: 'to_do', assignedMechanicId: 'mech-a' },
+      ],
+      sessions: [{ id: 'a', startedAt: earlier, endedAt: null, userId: 'mech-a' }],
+    });
 
-    await expect(stopLaborWhenNoPendingJobs(tx as never, 'wo-1', now)).resolves.toBe(false);
+    await expect(stopLaborForMechanic(tx as never, 'wo-1', 'mech-a', now)).resolves.toBe(false);
 
-    expect(tx.workSession.update).not.toHaveBeenCalled();
+    expect(tx.sessions[0].endedAt).toBeNull();
     expect(tx.workOrder.update).not.toHaveBeenCalled();
   });
 
-  it('does nothing when no session is open', async () => {
-    const tx = laborTx({ pending: 0, openSession: false });
+  it('closes every open session, including one from before per-mechanic labor, when no Job is pending', async () => {
+    const tx = laborTx({
+      jobs: [{ status: 'completed', assignedMechanicId: 'mech-a' }],
+      sessions: [
+        { id: 'legacy', startedAt: earlier, endedAt: null, userId: null },
+        { id: 'b', startedAt: earlier, endedAt: null, userId: 'mech-b' },
+      ],
+    });
 
-    await expect(stopLaborWhenNoPendingJobs(tx as never, 'wo-1', now)).resolves.toBe(false);
+    await expect(stopLaborWhenNoPendingJobs(tx as never, 'wo-1', now)).resolves.toBe(true);
+
+    expect(tx.sessions.every((session) => session.endedAt?.getTime() === now.getTime())).toBe(true);
+  });
+
+  it('does nothing when no session is open', async () => {
+    const tx = laborTx({ jobs: [{ status: 'completed', assignedMechanicId: 'mech-a' }], sessions: [] });
+
+    await expect(stopLaborForMechanic(tx as never, 'wo-1', 'mech-a', now)).resolves.toBe(false);
 
     expect(tx.workOrder.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('openSessionFor (LTR-154 / D18)', () => {
+  it("finds the mechanic's own open session or a legacy one without userId", () => {
+    const own = { endedAt: null, userId: 'mech-a' };
+    const other = { endedAt: null, userId: 'mech-b' };
+    const legacy = { endedAt: null, userId: null };
+    expect(openSessionFor([other, own], 'mech-a')).toBe(own);
+    expect(openSessionFor([other], 'mech-a')).toBeNull();
+    expect(openSessionFor([legacy], 'mech-a')).toBe(legacy);
   });
 });
 
@@ -102,7 +167,7 @@ function standardWorkOrder(overrides: Record<string, unknown> = {}) {
     },
     primaryCategory: { id: 'category-inspection', name: 'Inspection' },
     pauseEvents: [],
-    sessions: [] as { id: string; startedAt: Date; endedAt: Date | null }[],
+    sessions: [] as { id: string; startedAt: Date; endedAt: Date | null; userId?: string | null }[],
     mechanics: [{ mechanicId: 'mech-1', addedAt: startedAt, removedAt: null, mechanic: { name: 'MG' } }],
     jobs: [{
       id: 'job-new',
@@ -115,6 +180,7 @@ function standardWorkOrder(overrides: Record<string, unknown> = {}) {
       status: 'to_do' as const,
       completedAt: null,
       completedById: null,
+      assignedMechanicId: 'mech-1',
       assignedMechanic: { id: 'mech-1', name: 'MG' },
     }],
     ...overrides,
@@ -125,7 +191,7 @@ function serviceFor(wo: ReturnType<typeof standardWorkOrder>) {
   const tx = {
     workOrder: {
       findUnique: vi.fn().mockResolvedValue(wo),
-      update: vi.fn().mockResolvedValue({ ...wo, version: wo.version + 1, sessions: [{ id: 'session-2', startedAt: new Date(), endedAt: null }] }),
+      update: vi.fn().mockResolvedValue({ ...wo, version: wo.version + 1, sessions: [...wo.sessions, { id: 'session-2', startedAt: new Date(), endedAt: null, userId: 'mech-1' }] }),
     },
     workSession: { create: vi.fn() },
     jobCategory: { findUnique: vi.fn().mockResolvedValue({ name: wo.primaryCategory.name }) },
@@ -138,7 +204,7 @@ function serviceFor(wo: ReturnType<typeof standardWorkOrder>) {
   return { service, tx, activity };
 }
 
-describe('mechanic Start Work after labor stopped (LTR-124)', () => {
+describe('mechanic Start Work / Continue (LTR-124, LTR-154 / D18)', () => {
   it('reopens labor on an In Progress Work Order with a new pending Job', async () => {
     const { service, tx } = serviceFor(standardWorkOrder());
 
@@ -147,16 +213,42 @@ describe('mechanic Start Work after labor stopped (LTR-124)', () => {
       laborRunning: true,
     });
     expect(tx.workSession.create).toHaveBeenCalledWith({
-      data: { workOrderId: 'wo-1', startedAt: expect.any(Date) },
+      data: { workOrderId: 'wo-1', startedAt: expect.any(Date), userId: 'mech-1' },
     });
   });
 
-  it('rejects Start Work while labor is already running', async () => {
-    const { service, tx } = serviceFor(standardWorkOrder({ sessions: [{ id: 'session-1', startedAt: new Date('2026-09-22T14:56:00.000Z'), endedAt: null }] }));
+  it("opens the mechanic's own session while another mechanic keeps working", async () => {
+    const { service, tx } = serviceFor(standardWorkOrder({
+      sessions: [{ id: 'session-b', startedAt, endedAt: null, userId: 'mech-2' }],
+    }));
 
-    await expect(service.start(mechanic, 'wo-1')).rejects.toThrow(
-      'Work Order can only be started from created status',
-    );
+    await expect(service.start(mechanic, 'wo-1')).resolves.toMatchObject({ laborRunning: true });
+    expect(tx.workSession.create).toHaveBeenCalledWith({
+      data: { workOrderId: 'wo-1', startedAt: expect.any(Date), userId: 'mech-1' },
+    });
+  });
+
+  it('rejects Start Work while the mechanic already has a session open', async () => {
+    const { service, tx } = serviceFor(standardWorkOrder({ sessions: [{ id: 'session-1', startedAt, endedAt: null, userId: 'mech-1' }] }));
+
+    await expect(service.start(mechanic, 'wo-1')).rejects.toMatchObject({
+      response: { code: 'LABOR_ALREADY_RUNNING' },
+    });
+    expect(tx.workSession.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects Start Work when the mechanic has no pending Job of their own', async () => {
+    const wo = standardWorkOrder();
+    const { service, tx } = serviceFor(standardWorkOrder({
+      jobs: [
+        { ...wo.jobs[0], status: 'completed' as const },
+        { ...wo.jobs[0], id: 'job-b', assignedMechanicId: 'mech-2', assignedMechanic: { id: 'mech-2', name: 'Jamie' } },
+      ],
+    }));
+
+    await expect(service.start(mechanic, 'wo-1')).rejects.toMatchObject({
+      response: { code: 'NO_PENDING_JOBS' },
+    });
     expect(tx.workSession.create).not.toHaveBeenCalled();
   });
 

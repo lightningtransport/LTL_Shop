@@ -1,23 +1,37 @@
 export type JobAssignee = { id: string; name: string } | null | undefined;
 
-export function isMyOrUnassignedJob(
-  assignedMechanic: JobAssignee,
-  currentUserId: string,
-): boolean {
-  return !assignedMechanic || assignedMechanic.id === currentUserId;
+/** LTR-154 / D11: a Job is mine only when it is assigned to me; unassigned work waits for the Manager. */
+export function isMyJob(assignedMechanic: JobAssignee, currentUserId: string): boolean {
+  return Boolean(currentUserId && assignedMechanic && assignedMechanic.id === currentUserId);
 }
 
 /**
- * LTR-151: the PM job is finished only by its assigned PM mechanic, from the PM service. The Standard
- * Work Order view never offers "Complete job" on it to anyone else (the API rejects it anyway).
+ * LTR-154 / D11: only the Job's assignee completes it from the Work Order
+ * (LTR-151 already applied this to the PM job; the API rejects anyone else).
  */
 export function canCompleteJobFromWorkOrder(
-  job: { id: string; assignedMechanic: JobAssignee },
-  pmJobId: string | null | undefined,
+  job: { assignedMechanic: JobAssignee },
   currentUserId: string,
 ): boolean {
-  if (!pmJobId || job.id !== pmJobId) return true;
-  return Boolean(job.assignedMechanic && job.assignedMechanic.id === currentUserId);
+  return isMyJob(job.assignedMechanic, currentUserId);
+}
+
+type SplittableJob = { id: string; status: string; assignedMechanic: JobAssignee };
+
+/**
+ * LTR-154: the viewer's Jobs, the rest of the truck's work, and whether the
+ * viewer finished their part. Uses the API split when present (falls back for
+ * older responses during deploy skew).
+ */
+export function splitMyJobs<J extends SplittableJob>(
+  wo: { jobs: J[]; myJobs?: J[]; otherJobs?: J[]; myPartDone?: boolean },
+  currentUserId: string,
+): { mine: J[]; others: J[]; partDone: boolean } {
+  const active = wo.jobs.filter((job) => job.status !== 'cancelled');
+  const mine = wo.myJobs ?? active.filter((job) => isMyJob(job.assignedMechanic, currentUserId));
+  const others = wo.otherJobs ?? active.filter((job) => !mine.includes(job));
+  const partDone = wo.myPartDone ?? (mine.length > 0 && mine.every((job) => job.status !== 'to_do'));
+  return { mine, others, partDone };
 }
 
 export function jobAssignmentLabel(
@@ -55,13 +69,17 @@ export function jobPersonLabel(
   return jobAssignmentLabel(job.assignedMechanic, currentUserId, copy);
 }
 
-export function workOrderTeamLabel(
-  mechanics: { mechanicName: string }[] | undefined,
-  copy: { workOrderTeam: string; noWorkOrderTeam: string },
-): string {
-  const names = (mechanics ?? []).map((mechanic) => mechanic.mechanicName).filter(Boolean);
-  if (!names.length) return copy.noWorkOrderTeam;
-  return `${copy.workOrderTeam}: ${names.join(' / ')}`;
+/**
+ * LTR-154 / D18: on the mechanic Home a Standard Work Order in progress moves to
+ * "Waiting on Manager" once every Job of mine is done, even if others still work.
+ */
+export function isMyPartDone(
+  wo: { status: string; primaryCategoryName: string; jobs: Array<{ status: string; assignedMechanic: JobAssignee }> },
+  currentUserId: string,
+): boolean {
+  if (wo.primaryCategoryName === 'PM' || wo.status !== 'in_progress') return false;
+  const mine = wo.jobs.filter((job) => job.status !== 'cancelled' && isMyJob(job.assignedMechanic, currentUserId));
+  return mine.length > 0 && mine.every((job) => job.status !== 'to_do');
 }
 
 /** Standard jobs are done; the Work Order stays in progress until a Manager closes it. */

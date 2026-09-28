@@ -149,12 +149,17 @@ export class AdminController {
     return this.admin.addJob(request.user!, id, body);
   }
 
+  /**
+   * @deprecated LTR-154 / D11: the team is derived from Job assignments; the web no
+   * longer edits it. Kept for deploy skew; remove in a cleanup PR.
+   */
   @Post('work-orders/:id/mechanics')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   addWorkOrderMechanic(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.addMechanic(request.user!, id, body);
   }
 
+  /** @deprecated LTR-154 / D11: see addWorkOrderMechanic. */
   @Delete('work-orders/:id/mechanics/:mechanicId')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   removeWorkOrderMechanic(

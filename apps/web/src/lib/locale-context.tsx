@@ -87,9 +87,14 @@ type Copy = {
   inspectionStep: string;
   myJobs: string;
   otherWorkOnThisTruck: string;
-  workOrderTeam: string;
-  noWorkOrderTeam: string;
   noMyJobs: string;
+  tapJobToComplete: string;
+  finishedYourPart: (truckNumber: string) => string;
+  finishedYourPartHint: string;
+  continueWork: string;
+  yourJobsCount: (count: number) => string;
+  nextJob: string;
+  otherWorkReadOnly: string;
   createWorkOrder: string;
   searchJobsLabel: string;
   categoryJobsLabel: string;
@@ -276,7 +281,7 @@ const copy: Record<ShopLocale, Copy> = {
     additionalDetails: 'Additional details',
     unableToSavePmDetails: 'Unable to save PM service details.',
     waitingOnManager: 'Waiting on Manager',
-    waitingOnManagerHint: (count) => `${count} ${count === 1 ? 'Work Order is' : 'Work Orders are'} ready for the Manager to close`,
+    waitingOnManagerHint: (count) => `You finished your part on ${count} ${count === 1 ? 'Work Order' : 'Work Orders'}. The Manager closes ${count === 1 ? 'it' : 'them'}.`,
     waitingOnManagerBody: 'Jobs are done. Your Shop Manager closes this Work Order. You can still report a blocker if something is stopping the Truck.',
     assignedToYou: 'Assigned to you',
     assignedTo: (name) => `Assigned to ${name}`,
@@ -288,11 +293,16 @@ const copy: Record<ShopLocale, Copy> = {
     jobStatusBlocked: 'Blocked',
     woStatusPaused: 'Paused',
     inspectionStep: 'Inspection',
-    myJobs: 'My Jobs',
+    myJobs: 'Your Jobs',
     otherWorkOnThisTruck: 'Other work on this Truck',
-    workOrderTeam: 'Work Order team',
-    noWorkOrderTeam: 'No Work Order team assigned',
     noMyJobs: 'No jobs assigned to you.',
+    tapJobToComplete: 'Tap a Job to complete it.',
+    finishedYourPart: (truckNumber) => `You finished your part on Truck ${truckNumber}.`,
+    finishedYourPartHint: 'Your time stopped. If the Manager gives you another Job here, tap Continue.',
+    continueWork: 'Continue',
+    yourJobsCount: (count) => `${count} ${count === 1 ? 'Job' : 'Jobs'} for you`,
+    nextJob: 'Next',
+    otherWorkReadOnly: 'Other mechanics do this work. You can see it, not change it.',
     createWorkOrder: 'Create new Work Order',
     searchJobsLabel: 'Search jobs in this category',
     categoryJobsLabel: 'Jobs in this Category',
@@ -491,8 +501,8 @@ const copy: Record<ShopLocale, Copy> = {
     unableToSavePmDetails: 'No se pudieron guardar los detalles del servicio de PM.',
     waitingOnManager: 'Espera al Manager',
     waitingOnManagerHint: (count) => count === 1
-      ? '1 Work Order listo para que el Manager lo cierre'
-      : `${count} Work Orders listos para que el Manager los cierre`,
+      ? 'Terminaste tu parte en 1 Work Order. El Manager la cierra.'
+      : `Terminaste tu parte en ${count} Work Orders. El Manager las cierra.`,
     waitingOnManagerBody: 'Los Jobs están hechos. El Shop Manager cierra este Work Order. Si algo detiene la unidad, aún puedes reportar un bloqueo.',
     assignedToYou: 'Asignado a ti',
     assignedTo: (name) => `Asignado a ${name}`,
@@ -504,11 +514,16 @@ const copy: Record<ShopLocale, Copy> = {
     jobStatusBlocked: 'Bloqueado',
     woStatusPaused: 'Pausado',
     inspectionStep: 'Inspección',
-    myJobs: 'Mis Jobs',
+    myJobs: 'Tus Jobs',
     otherWorkOnThisTruck: 'Otro trabajo en esta unidad',
-    workOrderTeam: 'Equipo de la Work Order',
-    noWorkOrderTeam: 'No hay equipo asignado a la Work Order',
     noMyJobs: 'No tienes Jobs asignados.',
+    tapJobToComplete: 'Toca un Job para completarlo.',
+    finishedYourPart: (truckNumber) => `Terminaste tu parte en la unidad ${truckNumber}.`,
+    finishedYourPartHint: 'Tu tiempo se detuvo. Si el Manager te da otro Job aquí, toca Continuar.',
+    continueWork: 'Continuar',
+    yourJobsCount: (count) => `${count} ${count === 1 ? 'Job tuyo' : 'Jobs tuyos'}`,
+    nextJob: 'Siguiente',
+    otherWorkReadOnly: 'Este trabajo lo hacen otros mecánicos. Puedes verlo, no cambiarlo.',
     createWorkOrder: 'Crear nuevo Work Order',
     searchJobsLabel: 'Buscar jobs en esta categoría',
     categoryJobsLabel: 'Jobs en esta Category',
