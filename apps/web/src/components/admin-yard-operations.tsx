@@ -44,7 +44,7 @@ const phaseMessageKey = {
 
 const readinessMessageKey = {
   not_started: 'notStarted',
-  under_review: 'underReview',
+  under_review: 'inTheShop',
   ready: 'readyToGo',
 } as const;
 
@@ -412,7 +412,7 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
   return (
     <Card className="flex min-w-0 items-center justify-between gap-1.5 overflow-hidden px-2.5 py-1.5">
       <div className="min-w-0">
-        {/* LTR-114: wrap instead of cutting "Under review" on 375px phones. */}
+        {/* LTR-114: wrap long labels instead of cutting them on 375px phones. */}
         <p className="line-clamp-2 text-[11px] leading-tight text-muted-foreground" title={label}>{label}</p>
         <p className="font-display text-lg font-bold leading-tight">{value}</p>
       </div>

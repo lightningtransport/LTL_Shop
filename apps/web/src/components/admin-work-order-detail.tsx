@@ -270,7 +270,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                           <p className="mt-1 text-xs text-muted-foreground">
                             {job.assignedMechanic
                               ? `${messages.jobAssignee}: ${job.assignedMechanic.name}`
-                              : isPmJob ? messages.pmJobUnassigned : messages.jobUnassignedInheritsTeam}
+                              : isPmJob ? messages.pmJobUnassigned : messages.jobUnassigned}
                           </p>
                           {isPmJob && job.startedAt ? (
                             <p className="mt-1 text-xs text-muted-foreground">
