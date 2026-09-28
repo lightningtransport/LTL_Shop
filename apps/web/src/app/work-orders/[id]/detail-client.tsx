@@ -8,7 +8,6 @@ import { useSWRConfig } from 'swr';
 import {
   AppCapability,
   BlockerReason,
-  JobStatus,
   MechanicMode,
   PauseReason,
   type WorkOrderDetailDto,
@@ -45,6 +44,7 @@ import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
 import { PmJobDetail } from '@/components/pm-job-detail';
 import { WorkOrderNotesThread } from '@/components/work-order-notes-thread';
 import { jobCategoriesLine, liveLaborMs, vehicleLine } from '@/lib/work-order-identity';
+import { optimisticCompleteJob } from '@/lib/optimistic-complete-job';
 
 function formatLaborDuration(milliseconds: number) {
   const minutes = Math.max(0, Math.floor(milliseconds / 60_000));
@@ -523,28 +523,14 @@ export default function WorkOrderDetailPage() {
                       body: JSON.stringify({ notes: notesToSave }),
                     },
                   ),
-                (current) => {
-                  const completedAt = new Date().toISOString();
-                  const jobs = current.jobs.map((job) =>
-                    job.id === jobId
-                      ? {
-                          ...job,
-                          status: JobStatus.COMPLETED,
-                          completedAt,
-                          completedById: user?.id ?? null,
-                          completionNotes: notesToSave ?? null,
-                        }
-                      : job,
-                  );
-                  return {
-                    ...current,
-                    jobs,
-                    jobsCompleted: jobs.filter(
-                      (job) => job.status === 'completed',
-                    ).length,
-                    version: current.version + 1,
-                  };
-                },
+                (current) =>
+                  optimisticCompleteJob(
+                    current,
+                    jobId,
+                    user?.id ?? null,
+                    notesToSave ?? null,
+                    new Date().toISOString(),
+                  ),
                 () => {
                   setFinishJob(null);
                   setFinishNotes('');
