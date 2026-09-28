@@ -16,13 +16,14 @@ import {
 import { postLoginPath } from '@/lib/admin-routing';
 import { useShopLocale } from '@/lib/locale-context';
 import { replaceAppLocation } from '@/lib/session-restore';
+import { DEV_LOGIN_ENABLED } from '@/lib/dev-login';
 
 export default function LoginPage() {
   const { login, loginDev, requestPasswordReset, logout, passwordRecovery, user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
   const { messages } = useShopLocale();
   const router = useRouter();
   const [email, setEmail] = useState(() =>
-    process.env.NODE_ENV === 'production' ? '' : 'mechanic@lightning.local',
+    DEV_LOGIN_ENABLED ? 'mechanic@lightning.local' : '',
   );
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -168,7 +169,7 @@ export default function LoginPage() {
             {messages.locale === 'es' ? 'Si este correo tiene una cuenta, se envió un enlace para restablecer la contraseña.' : 'If this email has an account, a password-reset link has been sent.'}
           </p>
         ) : null}
-        {process.env.NODE_ENV !== 'production' ? (
+        {DEV_LOGIN_ENABLED ? (
           <Button
             variant="secondary"
             className="w-full"

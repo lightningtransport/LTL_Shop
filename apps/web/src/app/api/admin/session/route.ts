@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { UserDto } from '@ltl-shop/shared';
 import { cookies } from 'next/headers';
 import { ADMIN_SESSION_COOKIE, apiBaseUrl } from '@/lib/admin-session';
+import { adminSessionCookieSecure } from '@/lib/dev-login';
 
 export async function POST(request: NextRequest) {
   const authorization = request.headers.get('authorization');
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
   cookieStore.set(ADMIN_SESSION_COOKIE, authorization.slice('Bearer '.length), {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: adminSessionCookieSecure(process.env.NODE_ENV, process.env.NEXT_PUBLIC_E2E_DEV_LOGIN),
     path: '/',
     maxAge: 60 * 60,
   });

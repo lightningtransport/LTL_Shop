@@ -53,6 +53,10 @@ Entorno:
 - Compila shared antes de los tests de API: npm run build --workspace=@ltl-shop/shared
 - Flags locales: YARD_WORK_PLAN_SLICE1=true YARD_WORK_PLAN_SLICE2=true
   WORK_PLAN_PM_PHASE=true (hasta que el PR 0 las retire).
+- E2E con fixture (LTR-163): Playwright hace un build de producción (`.next-e2e`) y lo
+  sirve en 3010, con la API fixture en 3101. La suite completa tarda ~7 min, corre sin
+  reintentos y con un solo worker. Usa esos puertos: no corras dos suites a la vez en
+  la misma máquina.
 
 Definition of done:
 - Todos los criterios de aceptación del prompt.
