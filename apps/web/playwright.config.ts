@@ -15,7 +15,10 @@ export default defineConfig({
   // LTR-162: every spec shares one in-memory fixture API that each test resets; parallel workers
   // would reset or mutate it under each other.
   workers: process.env.ADMIN_E2E_FIXTURE ? 1 : undefined,
-  retries: 0,
+  // LTR-162: one full run keeps a single `next dev` up for ~20 min. WebKit near the end of that run can hit
+  // slow loads that pass on their own; retry once and report them as flaky. LTR-163 tracks running e2e
+  // against a production build instead.
+  retries: process.env.ADMIN_E2E_FIXTURE ? 1 : 0,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL
       ?? (process.env.ADMIN_E2E_FIXTURE ? 'http://127.0.0.1:3010' : 'http://localhost:3000'),
