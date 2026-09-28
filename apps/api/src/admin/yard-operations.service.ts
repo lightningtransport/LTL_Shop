@@ -57,6 +57,7 @@ import {
 } from './yard-work-plan-derivation';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
 import { workOrderTeam } from '../work-orders/work-order-team';
+import { blockerActivityLogsInclude, blockerLogDetails } from '../work-orders/work-order.mapper';
 import { workOrderNextStep } from './work-order-next-step';
 import { unavailableYardMovementFeeds } from './yard-movement-feeds';
 
@@ -134,10 +135,15 @@ const summaryWorkOrderInclude = {
   // Open official pause + active (unresolved) mechanic blockers (LTR-98).
   pauseEvents: {
     where: { OR: [{ endedAt: null }, { isOfficialPause: false, resolvedAt: null }] } as Prisma.PauseEventWhereInput,
-    include: { job: { select: { id: true, displayName: true } } },
+    include: {
+      job: { select: { id: true, displayName: true } },
+      reportedBy: { select: { id: true, name: true } },
+    },
     orderBy: { startedAt: 'desc' as const },
     take: 5,
   },
+  // LTR-164 (#8): the active blocker's notes on the Truck and the Yard card.
+  activityLogs: blockerActivityLogsInclude,
 } as const;
 
 const yardTruckInclude = {
@@ -1125,10 +1131,12 @@ function toAdminWorkOrderSummary(row: SummaryWorkOrderRow): AdminWorkOrderSummar
       endedAt: activeBlocker.endedAt?.toISOString() ?? null,
       durationMs: activeBlocker.durationMs === null ? null : Number(activeBlocker.durationMs),
       isOfficialPause: false,
+      reportedBy: activeBlocker.reportedBy ?? null,
       resolvedAt: null,
       // LTR-155 / D17: the blocked Job and mechanic reason for "Blocked · reason".
       job: activeBlocker.job ?? null,
       blockerReason: (activeBlocker.blockerReason ?? null) as never,
+      ...blockerLogDetails(activeBlocker.id, row.activityLogs),
     } : null,
     createdAt: row.createdAt.toISOString(),
     startedAt: row.startedAt?.toISOString() ?? null,

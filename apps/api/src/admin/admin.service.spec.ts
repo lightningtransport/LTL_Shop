@@ -1661,6 +1661,28 @@ describe('AdminService', () => {
     });
     expect(detail.totalWaitingMs).toBe(0);
   });
+
+  it('sends the mechanic notes with the active blocker for the Dashboard and the Truck (LTR-164 #8)', async () => {
+    const reportedAt = new Date('2026-09-28T17:41:00.000Z');
+    const md = { id: '00000000-0000-4000-8000-000000000005', name: 'MD' };
+    const prisma = createPrisma();
+    prisma.workOrder.findUnique.mockResolvedValue(detailRow({
+      status: 'in_progress',
+      pauseEvents: [{
+        id: '00000000-0000-4000-8000-000000000902', workOrderId: baseRow.id, reason: 'waiting_for_parts', notes: null,
+        startedAt: reportedAt, endedAt: reportedAt, durationMs: 0n, isOfficialPause: false, createdBy: md, reportedBy: md,
+      }],
+      activityLogs: [{
+        id: 'log-1', eventType: 'note_added', entityType: 'pause_event', entityId: '00000000-0000-4000-8000-000000000902',
+        newValue: { body: 'ya llegó la pieza' }, createdAt: reportedAt, user: md, previousValue: null, userId: md.id, workOrderId: baseRow.id,
+      }],
+    }));
+
+    const detail = await createService(prisma).detail(baseRow.id);
+    expect(detail.latestReportedBlocker?.blockerNotes).toEqual([
+      expect.objectContaining({ body: 'ya llegó la pieza', author: md }),
+    ]);
+  });
 });
 
 function detailRow(overrides: Record<string, unknown> = {}) {

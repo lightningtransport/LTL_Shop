@@ -222,6 +222,8 @@ export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
   currentPause: PauseEventDto | null;
   /** LTR-128: unresolved mechanic-reported blockers (newest first). */
   activeBlockers?: PauseEventDto[];
+  /** LTR-164 (#9): the blocker the Manager resolved on my Job while I wait to tap Continue, with their note. */
+  resolvedBlocker?: PauseEventDto | null;
   /** LTR-126: append-only notes and work requests (oldest first). */
   noteEntries?: WorkOrderNoteDto[];
   truck: TruckDto;

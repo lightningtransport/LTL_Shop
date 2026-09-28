@@ -250,6 +250,17 @@ export default function WorkOrderDetailPage() {
         </p>
       ) : null}
 
+      {wo.resolvedBlocker ? (
+        // LTR-164 (#9): who resolved my blocker and the Manager's note, until I tap Continue.
+        <div className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status" data-testid="resolved-blocker">
+          <p className="font-medium">
+            {messages.resolvedBlockerTitle(wo.resolvedBlocker.job?.displayName ?? '', wo.resolvedBlocker.resolvedBy?.name ?? '')}
+          </p>
+          {wo.resolvedBlocker.resolutionNote ? <p>{messages.managerNote(wo.resolvedBlocker.resolutionNote)}</p> : null}
+          <p>{messages.resolvedBlockerHint}</p>
+        </div>
+      ) : null}
+
       {error && !finishJob && !pauseOpen ? (
         <InlineAlert className="mb-3">{error}</InlineAlert>
       ) : null}

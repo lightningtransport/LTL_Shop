@@ -274,4 +274,20 @@ describe('resolvedBlockerAwaitingContinue (LTR-158 / D18)', () => {
     expect(toWorkOrderSummary(wo(new Date('2026-09-28T11:00:00.000Z')), 'other').resolvedBlockerAwaitingContinue).toBe(false);
     expect(toWorkOrderSummary(wo(new Date('2026-09-28T11:00:00.000Z'))).resolvedBlockerAwaitingContinue).toBeUndefined();
   });
+
+  it('gives me the resolved blocker with who resolved it and the Manager note (LTR-164 #9)', () => {
+    const manager = { id: 'manager-1', name: 'Cristian' };
+    const resolved = wo(new Date('2026-09-28T11:00:00.000Z'));
+    resolved.pauseEvents = resolved.pauseEvents!.map((pause) => ({ ...pause, resolvedBy: manager }));
+    resolved.activityLogs = [{
+      id: 'log-1', eventType: 'blocker_resolved', entityType: 'pause_event', entityId: 'b-1',
+      newValue: { resolved: true, notes: 'Part arrived' }, createdAt: new Date('2026-09-28T11:00:00.000Z'), user: manager,
+    }];
+
+    expect(toWorkOrderDetail(resolved, alex.id).resolvedBlocker).toMatchObject({
+      id: 'b-1', resolvedBy: manager, resolutionNote: 'Part arrived',
+    });
+    expect(toWorkOrderDetail(wo(null), alex.id).resolvedBlocker).toBeNull();
+    expect(toWorkOrderDetail(resolved).resolvedBlocker).toBeUndefined();
+  });
 });

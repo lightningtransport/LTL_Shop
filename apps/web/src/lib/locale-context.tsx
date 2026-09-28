@@ -95,6 +95,9 @@ type Copy = {
   yourJobsCount: (count: number) => string;
   nextJob: string;
   resolvedTapContinue: string;
+  resolvedBlockerTitle: (job: string, name: string) => string;
+  managerNote: (note: string) => string;
+  resolvedBlockerHint: string;
   otherWorkReadOnly: string;
   createWorkOrder: string;
   searchJobsLabel: string;
@@ -308,6 +311,9 @@ const copy: Record<ShopLocale, Copy> = {
     yourJobsCount: (count) => `${count} ${count === 1 ? 'Job' : 'Jobs'} for you`,
     nextJob: 'Next',
     resolvedTapContinue: 'Resolved · tap Continue',
+    resolvedBlockerTitle: (job, name) => [job, `Resolved by ${name}`].filter(Boolean).join(' · '),
+    managerNote: (note) => `Manager note: ${note}`,
+    resolvedBlockerHint: 'Tap Continue to keep working.',
     otherWorkReadOnly: 'Other mechanics do this work. You can see it, not change it.',
     createWorkOrder: 'Create new Work Order',
     searchJobsLabel: 'Search jobs in this category',
@@ -534,6 +540,9 @@ const copy: Record<ShopLocale, Copy> = {
     yourJobsCount: (count) => `${count} ${count === 1 ? 'Job tuyo' : 'Jobs tuyos'}`,
     nextJob: 'Siguiente',
     resolvedTapContinue: 'Resuelto · toca Continuar',
+    resolvedBlockerTitle: (job, name) => [job, `Resuelto por ${name}`].filter(Boolean).join(' · '),
+    managerNote: (note) => `Nota del Manager: ${note}`,
+    resolvedBlockerHint: 'Toca Continuar para seguir trabajando.',
     otherWorkReadOnly: 'Este trabajo lo hacen otros mecánicos. Puedes verlo, no cambiarlo.',
     createWorkOrder: 'Crear nuevo Work Order',
     searchJobsLabel: 'Buscar jobs en esta categoría',

@@ -1481,6 +1481,7 @@ createServer(async (request, response) => {
     blocker.resolvedBy = { id: user.id, name: user.name };
     blocker.resolutionNote = body?.notes ?? null;
     summary.latestReportedBlocker = null;
+    summary.resolvedBlocker = blocker;
     for (const job of summary.jobs ?? []) if (job.activeBlocker?.id === blocker.id) job.activeBlocker = null;
     summary.version += 1;
     json(response, 200, fixtureWorkOrderDetail(summary));
@@ -1557,6 +1558,8 @@ function fixtureMechanicWorkOrderDetail(summary) {
     })),
     currentPause: summary.currentPause,
     activeBlockers: (summary.reportedBlockers ?? []).filter((blocker) => !blocker.resolvedAt),
+    // LTR-164 (#9): the resolved blocker the mechanic sees until Continue.
+    resolvedBlocker: summary.resolvedBlocker ?? null,
   };
 }
 
