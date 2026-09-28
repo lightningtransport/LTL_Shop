@@ -1,5 +1,6 @@
 import { YARD_DATA_BOUNDARY_COPY, type YardDataBoundaryLocale } from '@ltl-shop/shared';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './support/test';
+import { devLogin } from './support/dev-login';
 
 const YARD_FILTERS_BUTTON = /^(Filters|Filtros)( \(\d+\))?$/;
 const DATA_BOUNDARY_PATH = '/api/admin/yard/data-boundary';
@@ -73,9 +74,7 @@ test.describe('Yard Operations Phase 1', () => {
         yardDataBoundaryRequests.push(url);
       }
     });
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
     await page.goto('/admin/yard-operations');
     await expect(page).toHaveURL(/\/admin\/yard-operations$/);

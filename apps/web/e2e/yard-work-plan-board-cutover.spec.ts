@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from './support/test';
+import { devLogin } from './support/dev-login';
 
 const manager = {
   id: '00000000-0000-4000-8000-000000000002',
@@ -126,9 +127,7 @@ function truckDetailWorkPlan() {
 
 async function mockSession(page: Page) {
   // The Admin shell needs a real session; mocking /api/auth/me alone lands on /login.
-  await page.goto('/login');
-  await page.getByLabel('Email').fill('manager@lightning.local');
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+  await devLogin(page, 'manager@lightning.local');
   await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
   await page.route('**/api/auth/me', async (route: Route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(manager) });

@@ -1,9 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/test';
+import { devLogin } from './support/dev-login';
 
 async function signInAsManager(page: Page) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill('manager@lightning.local');
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+  await devLogin(page, 'manager@lightning.local');
   await expect(page).toHaveURL(/\/admin$/);
 }
 
@@ -77,7 +76,7 @@ test.describe('shared UI consistency', () => {
     await signInAsManager(page);
     await page.goto('/admin/trucks');
     await page.locator('main table tbody a').first().click();
-    const history = page.getByRole('heading', { name: 'Repair history' }).locator('..');
+    const history = page.getByRole('region', { name: 'Repair history' });
     await expect(history).toBeVisible();
     await expect(history.locator('li .shrink-0.text-right').first()).toBeVisible();
   });

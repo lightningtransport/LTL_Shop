@@ -1,13 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/test';
+import { devLogin } from './support/dev-login';
 
 const BLOCKER_WO_ID = '00000000-0000-4000-8000-000000000106';
-
-async function devLogin(page: Page, email: string) {
-  await page.goto('/login');
-  await expect(page.getByRole('button', { name: /Dev Login/i })).toBeVisible({ timeout: 15_000 });
-  await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', { name: /Dev Login/i }).click();
-}
 
 test.describe('V1.2-002 blocker lifecycle', () => {
   test('mechanic report stays visible to Manager without pausing; official pause/resume works', async ({ page }) => {

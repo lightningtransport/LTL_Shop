@@ -1,9 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/test';
+import { devLogin } from './support/dev-login';
 
 async function login(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+  await devLogin(page, email);
   await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
 }
 

@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from './support/test';
+import { devLogin } from './support/dev-login';
 
 const pmUser = {
   id: 'pm-1',
@@ -26,8 +27,7 @@ async function mockPmHome(page: Page, mustChangePassword: boolean) {
 }
 
 async function loginPm(page: Page) {
-  await page.goto('/login');
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+  await devLogin(page);
   await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
 }
 

@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from './support/test';
+import { devLogin } from './support/dev-login';
 
 const user = {
   id: 'mechanic-1',
@@ -201,8 +202,7 @@ async function mockShopApi(page: Page) {
 }
 
 async function login(page: Page) {
-  await page.goto('/login');
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+  await devLogin(page);
   await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
 }
 
@@ -227,8 +227,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       releaseProfile = resolve;
     });
 
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByRole('status', { name: /Restoring session/i })).toBeVisible();
 
@@ -496,8 +495,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     };
     await page.setViewportSize({ width: 390, height: 844 });
     await page.route('**/api/auth/me', async (route) => json(route, { user: daniel }));
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
     await page.goto('/mechanic/pm/new');
     await page.getByRole('combobox', { name: /Truck/i }).fill('907');
@@ -575,8 +573,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       completedAt: '2026-01-01T14:00:00.000Z', totalActiveLaborMs: 1, totalWaitingMs: 0,
       mechanics: [], currentPause: null, truck, version: 2,
     }));
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
     // Let the login redirect settle before navigating to the fixture detail.
     await page.waitForTimeout(200);
@@ -603,7 +600,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     });
     await expect(page.getByRole('button', { name: 'Finish Work' })).toBeEnabled();
     await page.getByRole('button', { name: 'Finish Work' }).click();
-    await expect(page.getByRole('heading', { name: 'Finish PM service' })).toBeVisible();
+    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Finish Work' })).toBeVisible();
     await page.getByRole('button', { name: 'Finish Work' }).last().click();
     await expect.poll(() => savedBody).toEqual({
       observedMileage: 120500,
@@ -763,8 +760,7 @@ test.describe('My Assigned Work presentation', () => {
       return route.continue();
     });
 
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     const assignedCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
     await expect(assignedCard.getByText('Work Order team: Alex Mechanic / Jamie Technician')).toBeVisible();
@@ -817,17 +813,16 @@ test.describe('My Assigned Work presentation', () => {
       return route.continue();
     });
 
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Waiting on Manager' })).toBeVisible();
     await expect(page.getByText('1 Work Order is ready for the Manager to close')).toBeVisible();
     const waitingCard = page.locator('.card').filter({ hasText: 'WO-READY-1' });
-    await expect(waitingCard.getByRole('link', { name: /View Details WO-READY-1/ })).toBeVisible();
+    await expect(waitingCard.getByRole('link', { name: /^View Details truck .*, Work Order WO-READY-1$/ })).toBeVisible();
     const activeCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
     await expect(page.getByRole('heading', { name: 'In Progress' })).toBeVisible();
     await expect(page.getByText('1 Work Order in progress')).toBeVisible();
-    await expect(activeCard.getByRole('link', { name: /View Work WO-ASSIGN-1/ })).toBeVisible();
+    await expect(activeCard.getByRole('link', { name: /^View Work truck .*, Work Order WO-ASSIGN-1$/ })).toBeVisible();
   });
 
   test('Active Jobs empty does not ask Standard to create when work is ready or waiting on Manager', async ({ page }) => {
@@ -848,8 +843,7 @@ test.describe('My Assigned Work presentation', () => {
       return route.continue();
     });
 
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Ready to Start' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Waiting on Manager' })).toBeVisible();
@@ -877,8 +871,7 @@ test.describe('My Assigned Work presentation', () => {
       return route.continue();
     });
 
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Active PM services' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Paused PM services' })).toBeVisible();

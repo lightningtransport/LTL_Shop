@@ -237,11 +237,33 @@ function fixtureWorkPlan(item, currentUser) {
   return current;
 }
 
+// LTR-162: every test starts from the same data. Specs call POST /__test/reset (see e2e/support/test.ts);
+// without it one test's cancel/create/assign leaked into the next test and into the other browser project.
+const initialState = structuredClone({ users, adminCatalog, workOrders, yardOperations, workPlanByTruck: [...workPlanByTruck] });
+
+function resetFixtureState() {
+  const fresh = structuredClone(initialState);
+  for (const key of Object.keys(users)) delete users[key];
+  Object.assign(users, fresh.users);
+  adminCatalog.splice(0, adminCatalog.length, ...fresh.adminCatalog);
+  workOrders.splice(0, workOrders.length, ...fresh.workOrders);
+  yardOperations.splice(0, yardOperations.length, ...fresh.yardOperations);
+  workPlanByTruck.clear();
+  for (const [key, value] of fresh.workPlanByTruck) workPlanByTruck.set(key, value);
+  catalogWriteSeq = 900;
+  rosterWriteSeq = 20;
+}
+
 createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   if (request.method === 'OPTIONS') {
+    response.writeHead(204).end();
+    return;
+  }
+  if (request.url === '/__test/reset' && request.method === 'POST') {
+    resetFixtureState();
     response.writeHead(204).end();
     return;
   }
@@ -712,6 +734,9 @@ createServer(async (request, response) => {
       return;
     }
     const created = makeWorkOrder('00000000-0000-4000-8000-000000000199', 'WO-0199', 'T-199', body.priority ?? 'normal', 'created');
+    // LTR-162: keep the Truck the Manager picked instead of a placeholder.
+    const pickedTruck = workOrders.find((item) => item.truck.id === body.truckId)?.truck;
+    if (pickedTruck) created.truck = structuredClone(pickedTruck);
     created.notes = body.notes ?? null;
     created.jobs = body.jobs.map((job, index) => ({
       id: `00000000-0000-4000-8000-0000000008${String(index).padStart(2, '0')}`,

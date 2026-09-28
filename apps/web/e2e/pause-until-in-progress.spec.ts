@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from './support/test';
+import { devLogin } from './support/dev-login';
 
 const CREATED_ID = '00000000-0000-4000-8000-000000000103';
 const IN_PROGRESS_ID = '00000000-0000-4000-8000-000000000102';
@@ -64,15 +65,13 @@ async function fulfill(route: Route, body: unknown) {
   await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
 }
 
-async function devLogin(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+async function loginToAdmin(page: Page, email: string) {
+  await devLogin(page, email);
   await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
 }
 
 test('Admin Pause stays disabled on Created and enables on In Progress', async ({ page }) => {
-  await devLogin(page, 'manager@lightning.local');
+  await loginToAdmin(page, 'manager@lightning.local');
 
   await page.goto(`/admin/work-orders/${CREATED_ID}`);
   await expect(page.getByRole('heading', { name: 'Pause Work Order' })).toBeVisible();
@@ -110,7 +109,7 @@ test('PM mechanic Pause stays disabled until the service is In Progress', async 
     return route.fallback();
   });
 
-  await devLogin(page, 'cristian240588@hotmail.com');
+  await loginToAdmin(page, 'cristian240588@hotmail.com');
   await page.goto('/mechanic/pm');
   const createdCard = page.locator('.card').filter({ hasText: 'WO-PM-CREATED' });
   await expect(createdCard.getByRole('button', { name: 'Pause Work Order' })).toBeDisabled();

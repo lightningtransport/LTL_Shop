@@ -8,6 +8,9 @@ const chromiumExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
+  // LTR-162: `next dev` compiles and hydrates slower than 5 s under a full run; the warm-up compiles routes first.
+  expect: { timeout: 15_000 },
+  globalSetup: './e2e/support/warm-up.ts',
   fullyParallel: false,
   retries: 0,
   use: {
