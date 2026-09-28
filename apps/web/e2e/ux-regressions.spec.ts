@@ -227,7 +227,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       releaseProfile = resolve;
     });
 
-    await devLogin(page);
+    await devLogin(page, undefined, { waitForRedirect: false });
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByRole('status', { name: /Restoring session/i })).toBeVisible();
 

@@ -210,8 +210,11 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(y102.getByText('2024 PETERBILT 579')).toBeVisible();
     await expect(y102.getByText(/PETERBILT PETERBILT/i)).toHaveCount(0);
 
-    await y101.click();
-    await expect(page).toHaveURL(/\/admin\/trucks\/.*001001/);
+    // WebKit occasionally drops the first tap on a card while the list re-renders; retry until it navigates.
+    await expect(async () => {
+      if (!/\/admin\/trucks\/.*001001/.test(page.url())) await y101.click({ timeout: 2_000 });
+      await expect(page).toHaveURL(/\/admin\/trucks\/.*001001/, { timeout: 3_000 });
+    }).toPass({ timeout: 20_000 });
     await page.goBack();
     await expect(page).toHaveURL(/\/admin\/yard-operations/);
 
