@@ -255,7 +255,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   });
 
-  test('opens query actions at the top and preserves dialog focus', async ({ page }) => {
+  test('Report Blocker opens a dialog that keeps focus inside it', async ({ page }) => {
     const activeWorkOrder = activeWorkOrders[0];
     await page.route(`**/api/work-orders/${activeWorkOrder.id}`, async (route) => {
       return json(route, {
@@ -274,19 +274,11 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
     await login(page);
     await page.goto(`/work-orders/${activeWorkOrder.id}`);
-    await page.evaluate(() => {
-      const spacer = document.createElement('div');
-      spacer.style.height = '1600px';
-      spacer.setAttribute('aria-hidden', 'true');
-      document.body.appendChild(spacer);
-      window.scrollTo(0, document.documentElement.scrollHeight);
-    });
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-    // Manager-first ownership: mechanics report a blocker instead of pausing.
-    await page.getByRole('button', { name: 'Report Blocker' }).first().click();
+    // Manager-first ownership: mechanics report a blocker instead of pausing. Since LTR-155 the button sits on
+    // each Job and opens a modal in place; the old scroll-to-top only applied to ?action= links (legacy PM).
+    await page.getByRole('button', { name: /^Report blocker/i }).first().click();
     const dialog = page.getByRole('dialog', { name: /Report Blocker/i });
     await expect(dialog).toBeVisible();
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     await expect
       .poll(() => dialog.evaluate((node) => node.contains(document.activeElement)))
       .toBe(true);

@@ -26,7 +26,7 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     await expect(page.getByText('Only the Manager resolves a blocker. Add a note if something changes.')).toBeVisible();
     await page.getByRole('textbox', { name: 'Add note to blocker' }).fill('The part arrived');
     await page.getByRole('button', { name: 'Add note to blocker' }).click();
-    await expect(page.getByText('The part arrived')).toBeVisible();
+    await expect(page.getByText('The part arrived').first()).toBeVisible();
 
     await page.evaluate(() => localStorage.removeItem('ltl_shop_token'));
     await devLogin(page, 'manager@lightning.local');
