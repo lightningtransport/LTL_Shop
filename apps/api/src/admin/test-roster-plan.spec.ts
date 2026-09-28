@@ -23,10 +23,12 @@ describe('test roster reset plan (LTR-160)', () => {
       'cristian@ltransl.com': 'update',
       'cristian240588@hotmail.com': 'update',
       'cris240588@gmail.com': 'create',
+      'cris240588+detailing@gmail.com': 'create',
+      'cris240588+alignment@gmail.com': 'create',
       'ibrain@ltransl.com': 'deactivate',
       'retired@lightning.local': 'already_inactive',
     });
-    expect(plan.pendingChanges).toBe(5);
+    expect(plan.pendingChanges).toBe(7);
     expect(plan.blockers).toEqual([]);
   });
 
@@ -37,7 +39,7 @@ describe('test roster reset plan (LTR-160)', () => {
     }));
     const plan = planRosterReset([...users, user({ email: 'old@lightning.local', active: false })]);
     expect(plan.pendingChanges).toBe(0);
-    expect(plan.actions.filter((action) => action.kind === 'keep')).toHaveLength(4);
+    expect(plan.actions.filter((action) => action.kind === 'keep')).toHaveLength(TEST_ROSTER.length);
   });
 
   it('blocks deactivating a user that still has open work', () => {

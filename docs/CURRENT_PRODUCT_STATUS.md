@@ -424,8 +424,9 @@ Orders (created before LTR-141) keep their pause and finish-the-WO behavior
   URLs, and approved local development URLs.
 - The Supabase Reset Password email template must use
   `{{ .ConfirmationURL }}`.
-- Test roster (LTR-160): until Flujo v3 ships, only four test accounts are
-  active: Crixcrox (admin), Cristian (manager), MG (Standard) and MPM (PM).
+- Test roster (LTR-160, LTR-99): until real users go live, only six test
+  accounts are active: Crixcrox (admin), Cristian (manager), MG (Standard),
+  MPM (PM), MD (Standard, Detailing owner) and MA (Standard, Alignment owner).
   `npm run prisma:reset-test-roster --workspace=@ltl-shop/api` (dry-run by
   default, `-- --apply` to write) reads `apps/api/.env.production.local` and
   deactivates every other user. It never deletes anyone, and it refuses to run
