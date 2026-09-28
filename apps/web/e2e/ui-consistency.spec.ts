@@ -8,6 +8,8 @@ async function signInAsManager(page: Page) {
 
 test.describe('shared UI consistency', () => {
   test('Admin list pages share the same header hierarchy and fit narrow screens', async ({ page }) => {
+    // Six pages at four viewports each.
+    test.setTimeout(120_000);
     await signInAsManager(page);
 
     for (const path of ['/admin', '/admin/trucks', '/admin/mechanics', '/admin/catalog', '/admin/history', '/admin/work-orders']) {

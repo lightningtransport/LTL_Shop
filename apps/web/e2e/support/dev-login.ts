@@ -14,7 +14,7 @@ export async function waitForLoginForm(page: Page) {
 }
 
 /** Opens /login and signs in through Dev Login. Without `email`, the form's default dev account is used. */
-export async function devLogin(page: Page, email?: string) {
+export async function devLogin(page: Page, email?: string, options: { waitForRedirect?: boolean } = {}) {
   await page.goto('/login');
   await waitForLoginForm(page);
   const input = page.getByLabel('Email');
@@ -23,6 +23,8 @@ export async function devLogin(page: Page, email?: string) {
     await expect(input).toHaveValue(email);
   }
   await page.getByRole('button', { name: /Dev Login/i }).click();
+  // Tests that hold the profile request on purpose check the page before any redirect.
+  if (options.waitForRedirect === false) return;
   // The post-login redirect is client-side; a goto issued before it lands gets interrupted by it.
   // It can pass through "/" before the workspace route; wait for the final destination.
   await page.waitForURL((url) => url.pathname !== '/' && !url.pathname.startsWith('/login'), { timeout: 30_000 });

@@ -242,6 +242,22 @@ const yardOperations = [
 
 const workPlanByTruck = new Map();
 
+function fixtureRepairHistory(truckId) {
+  const completed = workOrders.filter((item) => item.truck.id === truckId && item.status === 'completed');
+  const rows = completed.length ? completed : [{ id: '00000000-0000-4000-8000-000000000190', displayId: 'WO-0090', truck: { truckNumber: '' }, category: { name: 'Brakes' }, completedAt: '2026-08-20T15:00:00.000Z', jobs: [], mechanics: [] }];
+  return rows.map((item) => ({
+    workOrderId: item.id,
+    displayId: item.displayId,
+    date: item.completedAt,
+    primaryCategoryName: item.category.name,
+    truckNumber: item.truck.truckNumber,
+    mechanicNames: (item.mechanics ?? []).map((mechanic) => mechanic.mechanicName),
+    mileage: 118_500,
+    jobs: (item.jobs ?? []).map((job) => job.displayName),
+    jobDetails: (item.jobs ?? []).map((job) => ({ id: job.id, categoryId: job.category.id, category: job.category, displayName: job.displayName, status: job.status })),
+  }));
+}
+
 function emptyFixtureWorkPlan() {
   return {
     sliceEnabled: true,
@@ -610,10 +626,16 @@ createServer(async (request, response) => {
     return;
   }
   if (truckDetailMatch) {
-    const item = yardOperations.find((candidate) => candidate.truck.id === truckDetailMatch[1]);
+    // LTR-162: Trucks listed under /admin/trucks come from Work Orders, not only from the Yard board.
+    let item = yardOperations.find((candidate) => candidate.truck.id === truckDetailMatch[1]);
+    const workOrderTruck = workOrders.find((candidate) => candidate.truck.id === truckDetailMatch[1])?.truck;
+    if (!item && workOrderTruck) {
+      item = makeYardItem(workOrderTruck.id, workOrderTruck.truckNumber, 'inspection', null, null);
+      item.truck = { ...item.truck, ...structuredClone(workOrderTruck) };
+    }
     if (!item) json(response, 404, { message: 'Truck not found' });
     else {
-      const detail = { ...item, repairHistory: { items: [], nextCursor: null }, repairHistoryUrl: `/api/admin/trucks/${item.truck.id}/repair-history`, incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' }, upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' } };
+      const detail = { ...item, repairHistory: { items: fixtureRepairHistory(item.truck.id), nextCursor: null }, repairHistoryUrl: `/api/admin/trucks/${item.truck.id}/repair-history`, incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' }, upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' } };
       const workPlan = fixtureWorkPlan(item, user);
       json(response, 200, { ...detail, workPlan, nextStep: fixtureNextStep(item, workPlan) });
     }

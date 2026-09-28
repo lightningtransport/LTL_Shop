@@ -12,6 +12,9 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   globalSetup: './e2e/support/warm-up.ts',
   fullyParallel: false,
+  // LTR-162: every spec shares one in-memory fixture API that each test resets; parallel workers
+  // would reset or mutate it under each other.
+  workers: process.env.ADMIN_E2E_FIXTURE ? 1 : undefined,
   retries: 0,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL

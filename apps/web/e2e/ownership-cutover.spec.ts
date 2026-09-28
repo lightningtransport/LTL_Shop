@@ -21,7 +21,7 @@ test.describe('V2-002 TARGET ownership cutover', () => {
     await expect(page.getByText(/Need additional work on this Truck/i)).toBeVisible();
   });
 
-  test('Manager can create, officially pause, and add a Job', async ({ page }) => {
+  test('Manager can create, officially pause, and add work from the Work Plan', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
     await page.getByRole('link', { name: 'Work Orders' }).first().click();
@@ -32,13 +32,10 @@ test.describe('V2-002 TARGET ownership cutover', () => {
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000106', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'T-106' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'Pause Work Order' })).toBeVisible();
-    await page.getByRole('button', { name: 'Add job +' }).click();
-    const dialog = page.getByRole('dialog', { name: /Add job/i });
-    await expect(dialog).toBeVisible();
-    await dialog.getByLabel('Job Category').selectOption({ label: 'Suspension' });
-    await dialog.getByRole('button', { name: 'Add Inspect shocks' }).click();
-    await expect(page.getByText('Job added.')).toBeVisible();
-    await expect(page.getByText('Inspect shocks').first()).toBeVisible();
+    // D6 / LTR-150: work is added from the Truck Work Plan (covered by admin-truck-work-plan.spec.ts).
+    await expect(page.getByRole('button', { name: 'Add job +' })).toHaveCount(0);
+    const addWork = page.getByRole('link', { name: 'Add work in the Work Plan' });
+    await expect(addWork).toHaveAttribute('href', /\/admin\/trucks\/.*#truck-work-plan-title$/);
   });
 
   test('Admin without manage cannot see Create', async ({ page }) => {

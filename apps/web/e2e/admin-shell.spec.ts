@@ -300,8 +300,13 @@ test.describe('Shop Admin Phase 2A', () => {
     await clearPanel.getByRole('button', { name: 'Clear' }).click();
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await expect(page.getByText('WO-0101').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Load more' }).click();
-    await expect(page.getByText('WO-0104').first()).toBeVisible();
+    // The first page may still be settling when Load more is first clicked (WebKit); retry the pair.
+    await expect(async () => {
+      if (!(await page.getByText('WO-0104').first().isVisible())) {
+        await page.getByRole('button', { name: 'Load more' }).click({ timeout: 2_000 });
+      }
+      await expect(page.getByText('WO-0104').first()).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 20_000 });
     await expect(page.getByText('WO-0105').first()).toBeVisible();
   });
 
