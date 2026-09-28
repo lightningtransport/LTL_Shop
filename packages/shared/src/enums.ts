@@ -66,6 +66,39 @@ export const PAUSE_REASON_LABELS: Record<PauseReason, string> = {
   [PauseReason.OTHER]: 'Other',
 };
 
+// LTR-153 / D17: reasons a mechanic can give when a Job is blocked. A subset of
+// PauseReason without Break, End of Shift, Working on Another WO or Truck
+// Unavailable. PauseReason stays for the Manager's official Work Order pause.
+export enum BlockerReason {
+  WAITING_FOR_PARTS = 'waiting_for_parts',
+  WAITING_FOR_APPROVAL = 'waiting_for_approval',
+  WAITING_FOR_VENDOR = 'waiting_for_vendor',
+  WAITING_FOR_EQUIPMENT = 'waiting_for_equipment',
+  WAITING_FOR_BAY = 'waiting_for_bay',
+  WAITING_FOR_DRIVER = 'waiting_for_driver',
+  OTHER = 'other',
+}
+
+export const BLOCKER_REASON_LABELS: Record<BlockerReason, string> = {
+  [BlockerReason.WAITING_FOR_PARTS]: 'Waiting for Parts',
+  [BlockerReason.WAITING_FOR_APPROVAL]: 'Waiting for Approval',
+  [BlockerReason.WAITING_FOR_VENDOR]: 'Waiting for Vendor',
+  [BlockerReason.WAITING_FOR_EQUIPMENT]: 'Waiting for Equipment / Tool',
+  [BlockerReason.WAITING_FOR_BAY]: 'Waiting for Bay',
+  [BlockerReason.WAITING_FOR_DRIVER]: 'Waiting for Driver',
+  [BlockerReason.OTHER]: 'Other',
+};
+
+export const BLOCKER_REASON_LABELS_ES: Record<BlockerReason, string> = {
+  [BlockerReason.WAITING_FOR_PARTS]: 'En espera de piezas',
+  [BlockerReason.WAITING_FOR_APPROVAL]: 'En espera de aprobación',
+  [BlockerReason.WAITING_FOR_VENDOR]: 'En espera del proveedor',
+  [BlockerReason.WAITING_FOR_EQUIPMENT]: 'En espera de equipo o herramienta',
+  [BlockerReason.WAITING_FOR_BAY]: 'En espera de bahía',
+  [BlockerReason.WAITING_FOR_DRIVER]: 'En espera del conductor',
+  [BlockerReason.OTHER]: 'Otro',
+};
+
 export enum ActivityEventType {
   WORK_ORDER_CREATED = 'work_order_created',
   WORK_STARTED = 'work_started',
