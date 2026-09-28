@@ -165,19 +165,26 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
  * stopped, and I have not tapped Continue yet (the mechanic Home badge).
  */
 export function resolvedBlockerAwaitingContinue(wo: WorkOrderWithRelations, viewerId: string): boolean {
-  if (wo.status !== 'in_progress') return false;
+  return Boolean(resolvedBlockerForViewer(wo, viewerId));
+}
+
+/** LTR-164 (#9): that resolved blocker, newest first, so the mechanic sees the Manager's note. */
+function resolvedBlockerForViewer(wo: WorkOrderWithRelations, viewerId: string): PauseRow | null {
+  if (wo.status !== 'in_progress') return null;
   const sessions = wo.sessions ?? [];
-  if (sessions.some((session) => session.endedAt === null && (!session.userId || session.userId === viewerId))) return false;
+  if (sessions.some((session) => session.endedAt === null && (!session.userId || session.userId === viewerId))) return null;
   const myPending = wo.jobs.filter((job) => job.status === 'to_do' && jobAssigneeId(job) === viewerId);
-  if (!myPending.some((job) => !activeBlockerForJob(wo.pauseEvents, job.id))) return false;
+  if (!myPending.some((job) => !activeBlockerForJob(wo.pauseEvents, job.id))) return null;
   const lastStop = sessions
     .filter((session) => session.userId === viewerId && session.endedAt)
     .reduce((latest, session) => Math.max(latest, session.endedAt!.getTime()), 0);
   const myJobIds = new Set(myPending.map((job) => job.id));
-  return (wo.pauseEvents ?? []).some((pause) => (
-    pause.isOfficialPause === false && pause.resolvedAt && pause.jobId && myJobIds.has(pause.jobId)
-    && pause.resolvedAt.getTime() >= lastStop
-  ));
+  return [...(wo.pauseEvents ?? [])]
+    .filter((pause) => (
+      pause.isOfficialPause === false && pause.resolvedAt && pause.jobId && myJobIds.has(pause.jobId)
+      && pause.resolvedAt.getTime() >= lastStop
+    ))
+    .sort((left, right) => right.resolvedAt!.getTime() - left.resolvedAt!.getTime())[0] ?? null;
 }
 
 /** LTR-146: the active PM job of a truck Work Order (never on a legacy PM Work Order). */
@@ -267,8 +274,14 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string)
     activeBlockers: (wo.pauseEvents ?? [])
       .filter((pause) => pause.isOfficialPause === false && !pause.resolvedAt)
       .map((pause) => toPauseEventDto(pause, wo.activityLogs)),
+    ...(viewerId ? { resolvedBlocker: resolvedBlockerOrNull(wo, viewerId) } : {}),
     noteEntries: (wo.noteEntries ?? []).map(toWorkOrderNoteDto),
   };
+}
+
+function resolvedBlockerOrNull(wo: WorkOrderWithRelations, viewerId: string) {
+  const pause = resolvedBlockerForViewer(wo, viewerId);
+  return pause ? toPauseEventDto(pause, wo.activityLogs) : null;
 }
 
 /** LTR-126 / D8: append-only note entry. */
@@ -283,6 +296,27 @@ export function toWorkOrderNoteDto(note: NoteRow) {
     handledBy: note.handledBy ?? null,
   };
 }
+
+/**
+ * LTR-164 (#8): the blocker notes and resolution notes (Activity Log rows on the
+ * `pause_event`) for Work Order lists, so the Dashboard and the Truck show them.
+ */
+export const blockerActivityLogsInclude = {
+  where: {
+    entityType: 'pause_event',
+    eventType: { in: [ActivityEventType.note_added, ActivityEventType.blocker_resolved] },
+  },
+  select: {
+    id: true,
+    eventType: true,
+    entityType: true,
+    entityId: true,
+    newValue: true,
+    createdAt: true,
+    user: { select: { id: true, name: true } },
+  },
+  orderBy: { createdAt: 'desc' as const },
+};
 
 export const workOrderNoteInclude = {
   include: {

@@ -53,8 +53,9 @@ export function AdminBlockerResolve({
   return (
     <div className="space-y-1 text-sm" data-testid="admin-blocker">
       <p className="font-medium">
+        {/* LTR-164 (#9): a resolved blocker no longer reads "Blocked". */}
         {blocker.job
-          ? fillPlaceholders(messages.blockedJobReason, { job: blocker.job.displayName, reason })
+          ? fillPlaceholders(blocker.resolvedAt ? messages.resolvedJobReason : messages.blockedJobReason, { job: blocker.job.displayName, reason })
           : reason}
       </p>
       <p className="text-muted-foreground">

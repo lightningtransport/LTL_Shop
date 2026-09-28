@@ -42,6 +42,9 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     await blocker.getByLabel('Note for the mechanic (optional)').fill('Installed from stock');
     await blocker.getByRole('button', { name: 'Resolve' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Blocker resolved.' }).first()).toBeVisible();
+    // LTR-164 (#9): a resolved blocker reads "Resolved" and keeps the Manager's note.
+    await expect(blocker.getByText('Resolved · Inspect brake chamber: Waiting for Parts')).toBeVisible();
+    await expect(blocker.getByText('Manager note: Installed from stock')).toBeVisible();
 
     // The Manager's official pause is separate from Job blockers.
     await page.getByLabel('Pause reason').selectOption('waiting_for_approval');
@@ -51,5 +54,14 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     await page.getByRole('button', { name: 'Resume Work Order' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order resumed.' }).first()).toBeVisible();
     await expect(page.getByText('This Work Order is not currently paused.').first()).toBeVisible();
+
+    // LTR-164 (#9): the mechanic sees who resolved it and the Manager's note.
+    await page.evaluate(() => localStorage.removeItem('ltl_shop_token'));
+    await devLogin(page, 'mechanic@lightning.local');
+    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
+    await page.goto(`/work-orders/${BLOCKER_WO_ID}`, { waitUntil: 'domcontentloaded' });
+    const resolved = page.getByTestId('resolved-blocker');
+    await expect(resolved.getByText(/^Inspect brake chamber · Resolved by /)).toBeVisible({ timeout: 15_000 });
+    await expect(resolved.getByText('Manager note: Installed from stock')).toBeVisible();
   });
 });

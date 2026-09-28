@@ -75,7 +75,7 @@ import { activeInspectionInclude, activeInspectionOutcome, workOrderNextStep, ty
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
-import { blockerLogDetails, toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
+import { blockerActivityLogsInclude, blockerLogDetails, toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
@@ -166,6 +166,8 @@ const summaryInclude = {
     },
     orderBy: { startedAt: 'desc' as const },
   },
+  // LTR-164 (#8): the active blocker's notes on the Dashboard.
+  activityLogs: blockerActivityLogsInclude,
 };
 
 const detailInclude = {
@@ -2089,7 +2091,9 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       removedAt: null,
     })),
     currentPause: currentPause ? mapPause(currentPause) : null,
-    latestReportedBlocker: latestReportedBlocker ? mapPause(latestReportedBlocker) : null,
+    latestReportedBlocker: latestReportedBlocker
+      ? { ...mapPause(latestReportedBlocker), ...blockerLogDetails(latestReportedBlocker.id, row.activityLogs) }
+      : null,
     createdAt: row.createdAt.toISOString(),
     startedAt: row.startedAt?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
