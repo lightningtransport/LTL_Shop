@@ -52,7 +52,7 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('en').jobStatusToDo).toBe('To do');
     expect(getAdminMessages('es').jobStatusToDo).toBe('Por hacer');
     expect(getAdminMessages('en').workPlanIssuesFound).toBe('Issues found');
-    expect(getAdminMessages('es').workPlanNoIssuesFound).toMatch(/issues/i);
+    expect(getAdminMessages('es').workPlanNoIssuesFound).toBe('Sin hallazgos');
     expect(getAdminMessages('en').workPlanNotReadyRemaining).toContain('{count}');
     expect(getAdminMessages('es').workPlanReady).toBe('Ready to Go');
     expect(getAdminMessages('es').readyToGo).toBe('Ready to Go');

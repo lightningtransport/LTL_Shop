@@ -54,7 +54,7 @@ function plan(overrides: Partial<TruckWorkPlanDto> = {}): TruckWorkPlanDto {
 describe('LTR-33 Work Plan copy helpers', () => {
   it('shows remaining count together with readyReason and mandatory Alignment/Detailing', () => {
     expect(workPlanRemainingSummary(2, en)).toBe('Not Ready — 2 remaining');
-    expect(workPlanRemainingSummary(1, es)).toBe('Not Ready — 1 restantes');
+    expect(workPlanRemainingSummary(1, es)).toBe('Aún no está listo — faltan 1');
     expect(workPlanReadyReasonMessage('jobs_remaining', en)).toMatch(/Jobs/);
     expect(workPlanReadyReasonMessage('alignment_pending', es)).toContain('Alignment');
     expect(workPlanReadyReasonMessage('detailing_pending', es)).toContain('Detailing');
