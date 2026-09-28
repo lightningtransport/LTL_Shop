@@ -789,6 +789,20 @@ createServer(async (request, response) => {
     });
     return;
   }
+  // LTR-154 / D11: per-Job owner from the Admin Work Order detail.
+  const jobAssignMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/jobs\/([0-9a-f-]+)\/(assign|unassign)$/i);
+  if (jobAssignMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
+    const summary = workOrders.find((item) => item.id === jobAssignMatch[1]);
+    const job = summary?.jobs?.find((item) => item.id === jobAssignMatch[2]);
+    const body = await readJson(request);
+    if (!summary || !job) { json(response, 404, { message: 'Job not found' }); return; }
+    const owner = jobAssignMatch[3] === 'assign' ? userById(body?.mechanicId) : null;
+    job.assignedMechanic = owner ? { id: owner.id, name: owner.name } : null;
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   if (request.url === '/api/admin/setup/workflow-steps' && request.method === 'GET') {
     json(response, 200, workflowSteps.map(workflowStepDto));
     return;

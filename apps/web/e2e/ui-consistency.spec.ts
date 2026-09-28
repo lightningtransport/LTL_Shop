@@ -41,6 +41,8 @@ test.describe('shared UI consistency', () => {
   test('Work Order detail labels job pickers, hides System Admin accounts, and uses one empty-mechanics wording (LTR-151)', async ({ page }) => {
     await signInAsManager(page);
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000106');
+    // LTR-154 / D11: the pending Job has an owner; unassign it to get the picker.
+    await page.getByRole('button', { name: 'Unassign' }).first().click();
     const jobPicker = page.getByRole('combobox', { name: 'Mechanic for Inspect brake chamber' });
     await expect(jobPicker).toBeVisible();
     await expect(jobPicker.locator('option', { hasText: 'Anthony' })).toHaveCount(1);
@@ -78,6 +80,8 @@ test.describe('shared UI consistency', () => {
     await signInAsManager(page);
     await page.goto('/admin/trucks');
     await page.locator('main table tbody a').first().click();
+    // LTR-158: repair history is folded below the Work Plan.
+    await page.getByTestId('truck-history').locator('summary').click();
     const history = page.getByRole('region', { name: 'Repair history' });
     await expect(history).toBeVisible();
     await expect(history.locator('li .shrink-0.text-right').first()).toBeVisible();
