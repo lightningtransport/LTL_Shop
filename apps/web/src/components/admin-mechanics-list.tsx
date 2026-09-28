@@ -19,12 +19,15 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
   const searchParams = useSearchParams();
   const query = searchParams.toString();
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  // LTR-160: deactivated accounts stay hidden unless the System Admin asks to see them (e.g. to reactivate).
+  const [showInactive, setShowInactive] = useState(searchParams.get('includeInactive') === 'true');
   const [createOpen, setCreateOpen] = useState(false);
   const [activateTarget, setActivateTarget] = useState<AdminMechanicSummaryDto | null>(null);
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminMechanics(query);
 
   useEffect(() => {
     setSearch(searchParams.get('search') ?? '');
+    setShowInactive(searchParams.get('includeInactive') === 'true');
   }, [searchParams]);
 
   const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
@@ -51,10 +54,15 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
           event.preventDefault();
           const next = new URLSearchParams();
           if (search.trim()) next.set('search', search.trim());
+          if (showInactive) next.set('includeInactive', 'true');
           router.replace(`/admin/mechanics${next.size ? `?${next}` : ''}`);
         }}
       >
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchMechanics} aria-label={messages.searchMechanics} />
+        <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-sm">
+          <input type="checkbox" className="size-4" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
+          {messages.showInactiveMechanics}
+        </label>
       </AdminFilterToolbar>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.mechanicsTitle} /> : null}

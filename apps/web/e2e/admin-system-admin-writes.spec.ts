@@ -99,12 +99,17 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await expect(page.getByText('Mechanic created.')).toBeVisible();
   await expect(page.getByRole('row', { name: /Luz Mechanic/ })).toContainText('mechanic.pm');
 
+  // LTR-160: inactive mechanics are hidden until "Show inactive" is applied.
+  await expect(page.getByRole('row', { name: /Retired Mechanic/ })).toHaveCount(0);
+  await page.getByLabel('Show inactive').check();
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(page).toHaveURL(/includeInactive=true/);
   await page.getByRole('row', { name: /Retired Mechanic/ }).getByRole('button', { name: 'Activate' }).click();
   const activateDialog = page.getByRole('dialog');
   await activateDialog.getByLabel('PM').check();
   await activateDialog.getByRole('button', { name: 'Activate' }).click();
   await expect(page.getByText('Mechanic activated.')).toBeVisible();
-  await expect(page.getByText('Inactive')).toHaveCount(0);
+  await expect(page.getByText('Inactive', { exact: true })).toHaveCount(0);
 
   await page.getByRole('link', { name: 'Luz Mechanic' }).click();
   await expect(page.getByRole('heading', { name: 'Standard or PM' })).toBeVisible();

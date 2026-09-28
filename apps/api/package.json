@@ -15,6 +15,7 @@
     "prisma:seed": "../../node_modules/.bin/tsx prisma/seed.ts",
     "prisma:seed-ninox-trucks": "../../node_modules/.bin/tsx prisma/seed-ninox-trucks.ts",
     "prisma:apply-catalog": "../../node_modules/.bin/tsx prisma/apply-job-catalog.ts",
+    "prisma:reset-test-roster": "../../node_modules/.bin/tsx prisma/reset-test-roster.ts",
     "prisma:release-status": "../../node_modules/.bin/tsx src/release/run-prisma-release-gate.ts --status --require-up-to-date",
     "prisma:release-deploy": "../../node_modules/.bin/tsx src/release/run-prisma-release-gate.ts --deploy --verify-api",
     "prisma:release-gate": "../../node_modules/.bin/tsx src/release/run-prisma-release-gate.ts --vercel-build",
