@@ -16,3 +16,19 @@ export function mechanicNamesLabel(
 ): string {
   return mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || copy.noMechanicsAssigned;
 }
+
+/**
+ * LTR-157: lists and cards say what is next instead of the Category
+ * ("5 Jobs · Next: PM A Service"). Older API responses fall back to the Category.
+ */
+export function workOrderNextJobLine(
+  item: { category: { name: string }; jobsTotal: number; jobsCompleted: number; nextJobName?: string | null },
+  messages: { workOrderJobsNext: string; workOrderJobsAllDone: string },
+): string {
+  if (item.category.name === 'PM' || item.nextJobName === undefined) return item.category.name;
+  if (item.nextJobName) {
+    return messages.workOrderJobsNext.replace('{count}', String(item.jobsTotal)).replace('{job}', item.nextJobName);
+  }
+  return item.jobsTotal > 0 ? messages.workOrderJobsAllDone.replace('{count}', String(item.jobsTotal)) : item.category.name;
+}
+

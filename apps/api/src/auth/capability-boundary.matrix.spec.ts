@@ -243,7 +243,7 @@ describe('Mechanic Work Order mutation capability enforcement', () => {
     [
       'reportBlocker',
       (service: WorkOrdersService) =>
-        service.reportBlocker(adminOnly, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS }),
+        service.reportBlocker(adminOnly, WO_ID, { jobId: JOB_ID, reason: PauseReason.WAITING_FOR_PARTS }),
     ],
     ['complete', (service: WorkOrdersService) => service.complete(adminOnly, WO_ID)],
     [
@@ -270,7 +270,7 @@ describe('Mechanic Work Order mutation capability enforcement', () => {
     [
       'reportBlocker',
       (service: WorkOrdersService) =>
-        service.reportBlocker(managerOnly, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS }),
+        service.reportBlocker(managerOnly, WO_ID, { jobId: JOB_ID, reason: PauseReason.WAITING_FOR_PARTS }),
     ],
     ['complete', (service: WorkOrdersService) => service.complete(managerOnly, WO_ID)],
   ] as const)('denies mechanic %s for a Manager without mechanic.standard', async (_name, invoke) => {

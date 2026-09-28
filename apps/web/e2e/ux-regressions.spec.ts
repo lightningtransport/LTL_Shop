@@ -52,7 +52,8 @@ const workOrder = {
     status: 'to_do',
     categoryId: categories[0].id,
     category: { id: categories[0].id, name: categories[0].name },
-    assignedMechanic: null,
+    // LTR-154 / D11: the mechanic reaches this Work Order through their own Job.
+    assignedMechanic: { id: user.id, name: user.name },
   }],
   mechanics: [],
   currentPauseReason: null,
@@ -638,7 +639,8 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('button', { name: 'Finish Work' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Confirm completion|Complete Work Order|Completar Work Order/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add job/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Report Blocker' })).toBeVisible();
+    // LTR-155 / D17: blockers are reported per pending Job; with every Job done there is none to block.
+    await expect(page.getByRole('button', { name: /Report blocker/i })).toHaveCount(0);
     await expect(page.getByRole('status').filter({ hasText: /Jobs are done.*Manager closes this Work Order/i })).toBeVisible();
     await expect(page.getByText(/Need additional work on this Truck/i)).toBeVisible();
   });
@@ -778,7 +780,7 @@ test.describe('My Assigned Work presentation', () => {
     await expect(page.getByText('Work Order team', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Your Jobs', { exact: true })).toBeVisible();
     await expect(page.getByText('Tap a Job to complete it.')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Replace pads/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^○ Replace pads/ })).toBeVisible();
     await expect(page.getByText('Other work on this Truck')).toBeVisible();
     // Unassigned and other mechanics' Jobs are visible but not completable.
     await expect(page.getByRole('button', { name: /Bleed brakes/ })).toHaveCount(0);
@@ -787,7 +789,7 @@ test.describe('My Assigned Work presentation', () => {
     await expect(page.getByText('Create new Work Order')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
-    await page.getByRole('button', { name: /Replace pads/ }).click();
+    await page.getByRole('button', { name: /^○ Replace pads/ }).click();
     const finishDialog = page.getByRole('dialog', { name: /Complete job|Completar Job/i });
     await expect(finishDialog).toBeVisible();
     await expect(finishDialog.getByRole('button', { name: 'Close Complete job' })).toHaveCount(0);

@@ -11,7 +11,9 @@ import {
   AppCapability,
   ActivityEventType,
   MechanicMode,
+  WorkPlanJobLane,
   OPEN_WORK_ORDER_STATUSES,
+  BlockerReason,
   PauseReason,
   addJobSchema,
   changePauseReasonSchema,
@@ -19,6 +21,8 @@ import {
   createWorkOrderSchema,
   pauseWorkOrderSchema,
   reportBlockerSchema,
+  addBlockerNoteSchema,
+  resolveBlockerSchema,
   addWorkOrderNoteSchema,
   changePmServiceSchema,
   updatePmServiceSchema,
@@ -44,6 +48,7 @@ import { openSessionFor, stopLaborForMechanic } from './labor-session';
 import { assertPmObservedMileage } from './pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from './pm-finish';
 import { isPmJobCategory, resolveMandatoryJobs, type MandatoryJob } from './mandatory-jobs';
+import { classifyWorkPlanLane } from '../admin/yard-work-plan-derivation';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
@@ -197,9 +202,11 @@ export class WorkOrdersService {
     });
     if (!truck) throw new BadRequestException('Invalid truck');
 
-    const category = await this.prisma.jobCategory.findUnique({
-      where: { id: input.primaryCategoryId },
-    });
+    const category = input.primaryCategoryId
+      ? await this.prisma.jobCategory.findUnique({ where: { id: input.primaryCategoryId } })
+      : actorKind === 'manager'
+        ? await this.derivePrimaryCategory(input.jobs)
+        : null;
     if (!category) throw new BadRequestException('Invalid primary category');
 
     const isPm = category.name === 'PM';
@@ -221,9 +228,8 @@ export class WorkOrdersService {
       return this.createOrJoinPm(user, input);
     } else if (actorKind === 'mechanic') {
       throw new ForbiddenException('Standard Work Orders are created by a Shop Manager.');
-    } else if (!input.jobs.length) {
-      throw new BadRequestException('At least one job is required for this Work Order');
     } else {
+      // LTR-157 / D13: a Work Order can start with only the truck; the mandatory steps are added below.
       const jobAssigneeIds = input.jobs
         .map((job) => job.assignedMechanicId)
         .filter((id): id is string => Boolean(id));
@@ -245,7 +251,7 @@ export class WorkOrdersService {
           throw new BadRequestException('One or more selected mechanics cannot perform standard work');
         }
       }
-      await this.assertStandardJobsUseActiveCategories(input.jobs);
+      if (input.jobs.length) await this.assertStandardJobsUseActiveCategories(input.jobs);
     }
 
     // LTR-145: PM, Alignment, Detailing and QC are added to every new truck Work Order.
@@ -269,8 +275,15 @@ export class WorkOrdersService {
     });
 
     // Only a Manager reaches here (PM joins via createOrJoinPm). A Manager is not a
-    // mechanic and is never auto-assigned; the team already includes per-job assignees.
-    const mechanicIds = Array.from(new Set(teamMechanicIds));
+    // mechanic and is never auto-assigned; the team is every Job owner except the
+    // PM job's (a PM mechanic reaches the Work Order through that Job, LTR-146).
+    const pmCategoryIds = new Set(
+      (await this.prisma.jobCategory.findMany({ where: { name: 'PM' }, select: { id: true } })).map((item) => item.id),
+    );
+    const mandatoryOwners = mandatoryJobs
+      .filter((job) => job.assignedMechanicId && !pmCategoryIds.has(job.categoryId))
+      .map((job) => job.assignedMechanicId as string);
+    const mechanicIds = Array.from(new Set([...teamMechanicIds, ...mandatoryOwners]));
 
     let wo: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>;
     try {
@@ -329,7 +342,7 @@ export class WorkOrdersService {
           data: {
             displayId,
             truckId: input.truckId,
-            primaryCategoryId: input.primaryCategoryId,
+            primaryCategoryId: category.id,
             status: 'created',
             priority: input.priority,
             notes: input.notes,
@@ -361,7 +374,8 @@ export class WorkOrdersService {
                 isCustom: false,
                 reviewStatus: null,
                 addedById: user.id,
-                assignedMechanicId: undefined,
+                // LTR-157 / D15: the step's default owner (null when inactive or QC).
+                assignedMechanicId: job.assignedMechanicId ?? undefined,
                 status: 'to_do' as const,
               }))),
             },
@@ -465,7 +479,10 @@ export class WorkOrdersService {
       // LTR-154 / D18: labor is per mechanic. Start (or "Continue") opens the
       // actor's own session while they have a pending Job; other mechanics'
       // sessions are untouched. A legacy PM Work Order keeps create → start.
-      const hasPendingJob = wo.jobs.some((job) => job.status === 'to_do' && job.assignedMechanicId === user.id);
+      // LTR-155: a blocked Job is not workable until the Manager resolves it.
+      const hasPendingJob = wo.jobs.some((job) => (
+        job.status === 'to_do' && job.assignedMechanicId === user.id && !this.activeBlockerForJob(wo, job.id)
+      ));
       const alreadyRunning = !!openSessionFor(wo.sessions, user.id);
       const canStart = isPm
         ? wo.status === 'created'
@@ -540,10 +557,15 @@ export class WorkOrdersService {
   // status. Stored as a closed, zero-duration PauseEvent flagged
   // isOfficialPause=false so it never affects waiting totals or the open-pause
   // lookup used by resume/changePauseReason.
+  /**
+   * LTR-155 / D17: a mechanic blocks one of their own pending Jobs. The Work Order
+   * status and waiting totals do not change (not an official pause). D18: when
+   * the mechanic has no workable Job left here, their own labor stops.
+   */
   async reportBlocker(user: AuthUser, id: string, raw: unknown) {
     const parsed = reportBlockerSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
-    if (parsed.data.reason === PauseReason.OTHER && !parsed.data.notes?.trim()) {
+    if (parsed.data.reason === BlockerReason.OTHER && !parsed.data.notes?.trim()) {
       throw new BadRequestException('Notes are required when reason is Other');
     }
     return this.prisma.$transaction(async (tx) => {
@@ -552,11 +574,25 @@ export class WorkOrdersService {
       if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
         throw new BadRequestException('Cannot report a blocker on a closed Work Order');
       }
+      const job = wo.jobs.find((item) => item.id === parsed.data.jobId);
+      if (!job) throw new NotFoundException('Job not found');
+      if (job.assignedMechanicId !== user.id) {
+        throw new ForbiddenException({ code: 'JOB_NOT_ASSIGNED_TO_YOU', message: 'This Job is assigned to another mechanic.' });
+      }
+      if (job.status !== 'to_do') {
+        throw new BadRequestException({ code: 'JOB_NOT_PENDING', message: 'Only a pending Job can be blocked.' });
+      }
+      if (this.activeBlockerForJob(wo, job.id)) {
+        throw new ConflictException({ code: 'BLOCKER_ALREADY_ACTIVE', message: 'This Job is already blocked.' });
+      }
       const now = new Date();
-      await tx.pauseEvent.create({
+      const blocker = await tx.pauseEvent.create({
         data: {
           workOrderId: id,
-          reason: parsed.data.reason,
+          jobId: job.id,
+          // BlockerReason values are a subset of PauseReason; `reason` stays filled for older readers.
+          reason: parsed.data.reason as unknown as PauseReason,
+          blockerReason: parsed.data.reason,
           notes: parsed.data.notes,
           startedAt: now,
           endedAt: now,
@@ -566,6 +602,7 @@ export class WorkOrdersService {
           createdById: user.id,
         },
       });
+      const laborStopped = await stopLaborForMechanic(tx, id, user.id, now);
       const updated = await tx.workOrder.update({
         where: { id },
         data: { version: { increment: 1 } },
@@ -574,23 +611,68 @@ export class WorkOrdersService {
       await this.activity.log(tx, {
         workOrderId: id,
         eventType: ActivityEventType.BLOCKER_REPORTED,
-        entityType: 'work_order',
-        entityId: id,
+        entityType: 'pause_event',
+        entityId: blocker.id,
         userId: user.id,
-        newValue: { reason: parsed.data.reason, notes: parsed.data.notes ?? null },
+        newValue: {
+          jobId: job.id, jobName: job.displayName, reason: parsed.data.reason,
+          notes: parsed.data.notes ?? null, laborStopped,
+        },
       });
       return toWorkOrderDetail(updated, user.id);
     });
   }
 
   /**
-   * LTR-98 / D3: a reported blocker stays active until the assigned mechanic or
-   * the Manager resolves it. Does not change Work Order status or timers.
+   * LTR-155 / D17: the mechanic cannot resolve; they append notes ("the part
+   * arrived") that the Manager sees next to the blocker.
    */
-  async resolveBlocker(user: AuthUser, id: string, blockerId: string, options: { managerActor?: boolean } = {}) {
+  async addBlockerNote(user: AuthUser, id: string, blockerId: string, raw: unknown) {
+    const parsed = addBlockerNoteSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      if (!options.managerActor) this.assertMechanicAccess(user, wo);
+      this.assertMechanicAccess(user, wo);
+      const blocker = await tx.pauseEvent.findFirst({
+        where: { id: blockerId, workOrderId: id, isOfficialPause: false },
+      });
+      if (!blocker) throw new NotFoundException('Blocker not found');
+      if (blocker.resolvedAt) {
+        throw new BadRequestException({ code: 'BLOCKER_ALREADY_RESOLVED', message: 'This blocker is already resolved.' });
+      }
+      const job = blocker.jobId ? wo.jobs.find((item) => item.id === blocker.jobId) : null;
+      if (blocker.reportedById !== user.id && job?.assignedMechanicId !== user.id) {
+        throw new ForbiddenException({ code: 'BLOCKER_NOT_YOURS', message: 'This blocker belongs to another mechanic.' });
+      }
+      const updated = await tx.workOrder.update({
+        where: { id },
+        data: { version: { increment: 1 } },
+        include: workOrderDetailInclude,
+      });
+      await this.activity.log(tx, {
+        workOrderId: id,
+        eventType: ActivityEventType.NOTE_ADDED,
+        entityType: 'pause_event',
+        entityId: blockerId,
+        userId: user.id,
+        newValue: { body: parsed.data.body },
+      });
+      // The note was logged after the read; reload so the response carries it.
+      const withNote = await tx.workOrder.findUnique({ where: { id }, include: workOrderDetailInclude });
+      return toWorkOrderDetail(withNote ?? updated, user.id);
+    });
+  }
+
+  /**
+   * LTR-155 / D17 (replaces D3): only the Manager resolves a blocker, with an
+   * optional note. The Job goes back to its owner as Pending; labor does not
+   * restart until the mechanic taps Continue (D18).
+   */
+  async resolveBlocker(user: AuthUser, id: string, blockerId: string, raw: unknown = {}) {
+    const parsed = resolveBlockerSchema.safeParse(raw ?? {});
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const notes = parsed.data.notes?.trim() || null;
+    return this.prisma.$transaction(async (tx) => {
       const blocker = await tx.pauseEvent.findFirst({
         where: { id: blockerId, workOrderId: id, isOfficialPause: false },
       });
@@ -602,20 +684,18 @@ export class WorkOrdersService {
         where: { id: blockerId },
         data: { resolvedAt: new Date(), resolvedById: user.id },
       });
-      const updated = await tx.workOrder.update({
-        where: { id },
-        data: { version: { increment: 1 } },
-        include: workOrderDetailInclude,
-      });
+      await tx.workOrder.update({ where: { id }, data: { version: { increment: 1 } } });
       await this.activity.log(tx, {
         workOrderId: id,
         eventType: ActivityEventType.BLOCKER_RESOLVED,
-        entityType: 'work_order',
-        entityId: id,
+        entityType: 'pause_event',
+        entityId: blockerId,
         userId: user.id,
-        previousValue: { reason: blocker.reason, notes: blocker.notes },
-        newValue: { resolved: true, actor: options.managerActor ? 'manager' : 'mechanic' },
+        previousValue: { reason: blocker.blockerReason ?? blocker.reason, notes: blocker.notes, jobId: blocker.jobId },
+        newValue: { resolved: true, actor: 'manager', notes },
       });
+      const updated = await tx.workOrder.findUnique({ where: { id }, include: workOrderDetailInclude });
+      if (!updated) throw new NotFoundException('Work Order not found');
       return toWorkOrderDetail(updated, user.id);
     });
   }
@@ -939,6 +1019,27 @@ export class WorkOrdersService {
     }
   }
 
+  /**
+   * LTR-157 / D13: the Manager no longer picks a Category. Keep `primaryCategoryId`
+   * (PRD §9) from the first Shop Work Job, else Inspection, else the first
+   * non-PM active Category. Never PM: a PM primary Category means a legacy PM
+   * Work Order without Jobs.
+   */
+  private async derivePrimaryCategory(jobs: Array<{ categoryId: string; displayName: string }>) {
+    if (jobs.length) {
+      const categories = await this.prisma.jobCategory.findMany({
+        where: { id: { in: jobs.map((job) => job.categoryId) }, status: 'active' },
+      });
+      const byId = new Map(categories.map((item) => [item.id, item]));
+      const shopWork = jobs
+        .map((job) => ({ job, category: byId.get(job.categoryId) }))
+        .find(({ job, category }) => category && classifyWorkPlanLane(category.name, job.displayName) === WorkPlanJobLane.SHOP_WORK);
+      if (shopWork?.category) return shopWork.category;
+    }
+    return await this.prisma.jobCategory.findFirst({ where: { name: 'Inspection', status: 'active' } })
+      ?? await this.prisma.jobCategory.findFirst({ where: { name: { not: 'PM' }, status: 'active' }, orderBy: { sortOrder: 'asc' } });
+  }
+
   private async assertStandardJobsUseActiveCategories(
     jobs: CreateWorkOrderInput['jobs'],
   ) {
@@ -1114,6 +1215,9 @@ export class WorkOrdersService {
       if (job.assignedMechanicId !== user.id) {
         throw new ForbiddenException({ code: 'JOB_NOT_ASSIGNED_TO_YOU', message: 'This Job is assigned to another mechanic.' });
       }
+      if (this.activeBlockerForJob(wo, job.id)) {
+        throw new BadRequestException({ code: 'JOB_BLOCKED', message: 'The Manager resolves this blocker before the Job can be completed.' });
+      }
       const gate = canCompleteJob(wo.status, !!openSessionFor(wo.sessions, user.id));
       if (!gate.ok) {
         throw new BadRequestException({ code: gate.code, message: gate.message });
@@ -1266,12 +1370,9 @@ export class WorkOrdersService {
       if (this.activePmJob(wo)?.id !== jobId) throw new BadRequestException('This is not the PM job of this Work Order');
       if (job.status !== 'to_do') throw new BadRequestException('The PM job is not to do');
       if (job.startedAt) throw new BadRequestException({ code: 'PM_JOB_ALREADY_STARTED', message: 'The PM service is already started.' });
-      if (job.assignedMechanicId && job.assignedMechanicId !== user.id) {
-        throw new ForbiddenException({
-          code: 'PM_JOB_ASSIGNED_TO_OTHER',
-          message: `This PM job is assigned to ${job.assignedMechanic?.name ?? 'another PM mechanic'}.`,
-        });
-      }
+      // LTR-157 / D15: the PM mechanic who starts the PM takes it, even when the
+      // default owner was someone else (who may be out today). D2 still applies below.
+      const previousAssigneeId = job.assignedMechanicId;
       if (!['created', 'in_progress'].includes(wo.status)) {
         throw new BadRequestException({ code: 'WORK_ORDER_NOT_WORKABLE', message: 'The Work Order is paused or closed.' });
       }
@@ -1294,7 +1395,8 @@ export class WorkOrdersService {
         entityType: 'work_order_job',
         entityId: jobId,
         userId: user.id,
-        newValue: { pmJob: true, displayName: job.displayName, startedAt: now.toISOString() },
+        previousValue: previousAssigneeId && previousAssigneeId !== user.id ? { assignedMechanicId: previousAssigneeId } : undefined,
+        newValue: { pmJob: true, displayName: job.displayName, startedAt: now.toISOString(), assignedMechanicId: user.id },
       });
       return toWorkOrderDetail(updated, user.id);
     });
@@ -1682,6 +1784,14 @@ export class WorkOrdersService {
     if (!this.isAssigned(user, wo)) {
       throw new ForbiddenException('This Work Order is not assigned to you.');
     }
+  }
+
+  /** LTR-155 / D17: the unresolved mechanic blocker on a Job, if any. */
+  private activeBlockerForJob(
+    wo: { pauseEvents?: { id: string; jobId?: string | null; isOfficialPause?: boolean; resolvedAt?: Date | null }[] },
+    jobId: string,
+  ) {
+    return wo.pauseEvents?.find((pause) => pause.isOfficialPause === false && !pause.resolvedAt && pause.jobId === jobId) ?? null;
   }
 
   private async requireWo(

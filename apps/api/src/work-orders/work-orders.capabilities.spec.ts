@@ -83,6 +83,7 @@ describe('Work Order workspace capabilities', () => {
         findMany: vi.fn().mockResolvedValue([{ id: categoryId, name: 'Brakes' }]),
       },
       catalogJob: { findFirst: vi.fn().mockResolvedValue(null) },
+      shopWorkflowStep: { findMany: vi.fn().mockResolvedValue([]) },
       // Prove the capability gate is passed for a Manager by reaching the tx.
       $transaction: vi.fn().mockRejectedValue(new Error('reached-transaction')),
     };
@@ -151,6 +152,7 @@ describe('Work Order workspace capabilities', () => {
     const service = new WorkOrdersService({} as never, { log: vi.fn() } as never);
     await expect(
       service.reportBlocker(user([AppCapability.MECHANIC_STANDARD]), '11111111-1111-4111-8111-111111111111', {
+        jobId: '22222222-2222-4222-8222-222222222222',
         reason: 'other',
       }),
     ).rejects.toThrow('Notes are required when reason is Other');

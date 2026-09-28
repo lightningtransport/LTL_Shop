@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -23,6 +24,7 @@ import { YardOperationsService } from './yard-operations.service';
 import { YardWorkPlanService } from './yard-work-plan.service';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { SystemAdminWritesService } from './system-admin-writes.service';
+import { ShopWorkflowService } from './shop-workflow.service';
 
 @Controller('admin')
 @UseGuards(AuthGuard, CapabilitiesGuard)
@@ -35,6 +37,7 @@ export class AdminController {
     private readonly workPlan: YardWorkPlanService,
     private readonly dataBoundary: YardDataBoundaryService,
     private readonly systemAdminWrites: SystemAdminWritesService,
+    private readonly shopWorkflow: ShopWorkflowService,
   ) {}
 
   @Get('access')
@@ -115,8 +118,13 @@ export class AdminController {
 
   @Post('work-orders/:id/blockers/:blockerId/resolve')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
-  resolveBlocker(@Req() request: Request, @Param('id') id: string, @Param('blockerId') blockerId: string) {
-    return this.admin.resolveBlocker(request.user!, id, blockerId);
+  resolveBlocker(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('blockerId') blockerId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.resolveBlocker(request.user!, id, blockerId, body);
   }
 
   @Post('work-orders/:id/notes')
@@ -229,6 +237,17 @@ export class AdminController {
   @Get('history')
   history(@Query() query: Record<string, unknown>) {
     return this.admin.listHistory(query);
+  }
+
+  // LTR-157 / D16: Setup → Shop workflow. Writes: work_orders.manage or System Admin (service check).
+  @Get('setup/workflow-steps')
+  workflowSteps() {
+    return this.shopWorkflow.list();
+  }
+
+  @Put('setup/workflow-steps')
+  updateWorkflowSteps(@Req() request: Request, @Body() body: unknown) {
+    return this.shopWorkflow.update(request.user!, body);
   }
 
   @Get('catalog/categories')

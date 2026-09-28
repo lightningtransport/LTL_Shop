@@ -219,6 +219,8 @@ export enum WorkPlanInspectionOutcome {
 export enum WorkPlanJobUiStatus {
   PENDING = 'pending',
   IN_PROGRESS = 'in_progress',
+  /** LTR-155 / D17: the Job has an active blocker. */
+  BLOCKED = 'blocked',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
 }

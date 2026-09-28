@@ -227,11 +227,21 @@ export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     enforcement: 'http_guard',
     notes: 'LTR-34 Slice 1: Inspection discovery. Dual-run writes the Phase 1 Inspection requirement; does not delete gates.',
   },
+  {
+    method: 'PUT',
+    path: '/admin/setup/workflow-steps',
+    handler: 'updateWorkflowSteps',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'service',
+    notes: 'LTR-157 / D16: service requires work_orders.manage or the System Admin role.',
+  },
 ];
 
 export const ADMIN_READ_BOUNDARIES: CapabilityBoundaryEntry[] = [
   { method: 'GET', path: '/admin/access', handler: 'access', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/dashboard', handler: 'dashboard', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/setup/workflow-steps', handler: 'workflowSteps', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/work-orders', handler: 'workOrders', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/work-orders/:id', handler: 'workOrder', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/mechanics', handler: 'mechanics', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },

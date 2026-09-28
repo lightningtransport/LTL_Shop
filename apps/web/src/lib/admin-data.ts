@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import type {
+  ShopWorkflowStepDto,
   AdminCatalogJobWriteDto,
   AdminDashboardDto,
   AdminMechanicDetailDto,
@@ -273,7 +274,8 @@ export function adminMutationIdempotencyKey() {
 
 export interface CreateAdminWorkOrderInput {
   truckId: string;
-  primaryCategoryId: string;
+  /** LTR-157 / D13: derived by the API when omitted. */
+  primaryCategoryId?: string;
   priority?: string;
   notes?: string;
   jobs: Array<{
@@ -336,9 +338,11 @@ export function unassignAdminWorkOrderJob(
 }
 
 /** LTR-98: Manager resolves a mechanic-reported blocker. */
-export function resolveAdminBlocker(workOrderId: string, blockerId: string) {
+/** LTR-155 / D17: only the Manager resolves, with an optional note for the mechanic. */
+export function resolveAdminBlocker(workOrderId: string, blockerId: string, notes?: string) {
   return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/blockers/${blockerId}/resolve`, {
     method: 'POST',
+    body: JSON.stringify(notes ? { notes } : {}),
   });
 }
 
@@ -586,4 +590,20 @@ export function useAdminRepairHistory(truckId: string, excludeWorkOrderId: strin
       adminInfiniteOptions,
     ),
   );
+}
+
+/** LTR-157 / D16: Setup → Shop workflow (mandatory steps and default owners). */
+export function useAdminWorkflowSteps() {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<ShopWorkflowStepDto[]>(token ? '/api/admin/setup/workflow-steps' : null, adminReadFetcher, adminReadRetry),
+  );
+}
+
+export function updateAdminWorkflowSteps(steps: Array<{ stepKey: string; defaultMechanicId: string | null }>) {
+  return apiFetch<ShopWorkflowStepDto[]>('/api/admin/setup/workflow-steps', {
+    method: 'PUT',
+    body: JSON.stringify({ steps }),
+  });
 }

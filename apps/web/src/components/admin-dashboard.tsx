@@ -33,6 +33,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
   ] as const;
   const canStandard = !!user?.capabilities.includes(AppCapability.MECHANIC_STANDARD);
   const canPm = !!user?.capabilities.includes(AppCapability.MECHANIC_PM);
+  const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
 
   return <div className="space-y-5">
     <AdminPageHeader
@@ -97,7 +98,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
         <Button asChild variant="outline" size="sm"><AdminNavLink href="/admin/work-orders">{messages.viewAll}</AdminNavLink></Button>
       </CardHeader>
       <CardContent className="space-y-2 p-2 sm:p-3">
-        {data.attention.length ? data.attention.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} compact fromPath="/admin" />) : <EmptyState>{messages.noAttention}</EmptyState>}
+        {data.attention.length ? data.attention.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} compact fromPath="/admin" onBlockerResolved={canManageWorkOrders ? () => mutate() : undefined} />) : <EmptyState>{messages.noAttention}</EmptyState>}
       </CardContent>
     </Card>
   </div>;

@@ -9,10 +9,11 @@ import { YardOperationsService } from './yard-operations.service';
 import { YardWorkPlanService } from './yard-work-plan.service';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { SystemAdminWritesService } from './system-admin-writes.service';
+import { ShopWorkflowService } from './shop-workflow.service';
 
 @Module({
   imports: [AuthModule, TrucksModule, ActivityLogModule, WorkOrdersModule],
   controllers: [AdminController],
-  providers: [AdminService, YardOperationsService, YardWorkPlanService, YardDataBoundaryService, SystemAdminWritesService],
+  providers: [AdminService, YardOperationsService, YardWorkPlanService, YardDataBoundaryService, SystemAdminWritesService, ShopWorkflowService],
 })
 export class AdminModule {}

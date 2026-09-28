@@ -127,6 +127,7 @@ const summaryWorkOrderInclude = {
   // Open official pause + active (unresolved) mechanic blockers (LTR-98).
   pauseEvents: {
     where: { OR: [{ endedAt: null }, { isOfficialPause: false, resolvedAt: null }] } as Prisma.PauseEventWhereInput,
+    include: { job: { select: { id: true, displayName: true } } },
     orderBy: { startedAt: 'desc' as const },
     take: 5,
   },
@@ -1104,6 +1105,9 @@ function toAdminWorkOrderSummary(row: SummaryWorkOrderRow): AdminWorkOrderSummar
       durationMs: activeBlocker.durationMs === null ? null : Number(activeBlocker.durationMs),
       isOfficialPause: false,
       resolvedAt: null,
+      // LTR-155 / D17: the blocked Job and mechanic reason for "Blocked · reason".
+      job: activeBlocker.job ?? null,
+      blockerReason: (activeBlocker.blockerReason ?? null) as never,
     } : null,
     createdAt: row.createdAt.toISOString(),
     startedAt: row.startedAt?.toISOString() ?? null,

@@ -3,53 +3,53 @@ import { devLogin } from './support/dev-login';
 
 const BLOCKER_WO_ID = '00000000-0000-4000-8000-000000000106';
 
-test.describe('V1.2-002 blocker lifecycle', () => {
-  test('mechanic report stays visible to Manager without pausing; official pause/resume works', async ({ page }) => {
+test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolves)', () => {
+  test('mechanic blocks a Job and adds a note; Manager sees it and resolves with a note; official pause still works', async ({ page }) => {
     test.setTimeout(90_000);
     await devLogin(page, 'mechanic@lightning.local');
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     await page.goto(`/work-orders/${BLOCKER_WO_ID}`, { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'Truck T-106' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/In Progress/i)).toBeVisible();
+    await expect(page.getByText(/In Progress/i).first()).toBeVisible();
 
-    await page.getByRole('button', { name: 'Report Blocker' }).first().click();
-    const dialog = page.getByRole('dialog', { name: /Report Blocker/i });
+    // The blocker is reported from the Job, with mechanic reasons only.
+    await page.getByRole('button', { name: 'Report blocker: Inspect brake chamber' }).click();
+    const dialog = page.getByRole('dialog', { name: /Report blocker: Inspect brake chamber/i });
     await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel('Blocker reason').locator('option', { hasText: 'Break' })).toHaveCount(0);
     await dialog.getByLabel('Blocker reason').selectOption('waiting_for_parts');
     await dialog.getByRole('button', { name: 'Report Blocker', exact: true }).click();
 
-    await expect(page.getByRole('heading', { name: 'Truck T-106' })).toBeVisible();
     await expect(page.getByText('Work Order WO-0106 · In Progress')).toBeVisible();
-    await expect(page.getByText(/^Paused$/)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Resume Work' })).toHaveCount(0);
+    await expect(page.getByText('Inspect brake chamber · Blocked · Waiting for Parts')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Mark resolved' })).toHaveCount(0);
+    await expect(page.getByText('Only the Manager resolves a blocker. Add a note if something changes.')).toBeVisible();
+    await page.getByRole('textbox', { name: 'Add note to blocker' }).fill('The part arrived');
+    await page.getByRole('button', { name: 'Add note to blocker' }).click();
+    await expect(page.getByText('The part arrived')).toBeVisible();
 
     await page.evaluate(() => localStorage.removeItem('ltl_shop_token'));
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
     await page.goto(`/admin/work-orders/${BLOCKER_WO_ID}`, { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'T-106' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('In Progress').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Reported blockers' })).toBeVisible();
-    await expect(page.getByText('Waiting for Parts').first()).toBeVisible();
-    await expect(page.getByText('Alejandro 1').first()).toBeVisible();
+    const blocker = page.getByTestId('admin-blocker').first();
+    await expect(blocker.getByText('Blocked · Inspect brake chamber: Waiting for Parts')).toBeVisible();
+    await expect(blocker.getByText(/Alejandro 1 · .*: The part arrived/)).toBeVisible();
     await expect(page.getByText('This Work Order is not currently paused.').first()).toBeVisible();
-    await page.getByTestId('admin-wo-history').locator('summary').click();
-    await expect(page.getByText('Blocker reported')).toBeVisible();
-    await expect(page.locator('pre')).toHaveCount(0);
-    await expect(page.getByText(/waiting_for_parts/)).toHaveCount(0);
 
+    await blocker.getByLabel('Note for the mechanic (optional)').fill('Installed from stock');
+    await blocker.getByRole('button', { name: 'Resolve' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Blocker resolved.' }).first()).toBeVisible();
+
+    // The Manager's official pause is separate from Job blockers.
     await page.getByLabel('Pause reason').selectOption('waiting_for_approval');
     await page.getByRole('button', { name: 'Pause Work Order' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order paused.' }).first()).toBeVisible();
-    await expect(page.getByText('Paused').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Resume Work Order' })).toBeVisible();
-    await expect(page.getByText('Waiting for Approval').first()).toBeVisible();
-    await expect(page.getByText('Waiting for Parts').first()).toBeVisible();
-
     await page.getByRole('button', { name: 'Resume Work Order' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order resumed.' }).first()).toBeVisible();
-    await expect(page.getByText('In Progress').first()).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Pause Work Order' })).toBeVisible();
     await expect(page.getByText('This Work Order is not currently paused.').first()).toBeVisible();
   });
 });

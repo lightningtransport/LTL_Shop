@@ -38,6 +38,10 @@ const openWorkOrderInclude = {
     orderBy: { addedAt: 'asc' as const },
   },
   sessions: { select: { endedAt: true, userId: true } },
+  pauseEvents: {
+    where: { isOfficialPause: false, resolvedAt: null, jobId: { not: null } },
+    select: { jobId: true },
+  },
 } as const;
 
 type OpenWorkOrderRow = {
@@ -58,6 +62,7 @@ type OpenWorkOrderRow = {
     startedAt: Date | null;
   }>;
   sessions: Array<{ endedAt: Date | null; userId: string | null }>;
+  pauseEvents: Array<{ jobId: string | null }>;
 };
 
 @Injectable()
@@ -107,6 +112,7 @@ export class YardWorkPlanService {
             status: job.status as never,
             assignedMechanic: job.assignedMechanic,
             startedAt: job.startedAt,
+            blocked: (workOrder?.pauseEvents ?? []).some((pause) => pause.jobId === job.id),
           })),
       sessions: workOrder?.sessions ?? [],
       inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null,

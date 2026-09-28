@@ -6,7 +6,7 @@ import {
   type WorkOrderNoteKind,
   type WorkOrderStatus,
 } from '@prisma/client';
-import { isPmCategory, jobWorkStatus } from '@ltl-shop/shared';
+import { isPmCategory, jobWorkStatus, type BlockerReason } from '@ltl-shop/shared';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals } from './work-order.timing';
 
@@ -39,6 +39,9 @@ type PauseRow = {
   reportedBy?: { id: string; name: string } | null;
   resolvedAt?: Date | null;
   resolvedBy?: { id: string; name: string } | null;
+  jobId?: string | null;
+  job?: { id: string; displayName: string } | null;
+  blockerReason?: string | null;
 };
 
 export type NoteRow = {
@@ -60,9 +63,12 @@ type MechanicRow = {
 
 type JobCompletionLog = {
   eventType: string;
+  entityType?: string;
   entityId: string | null;
   newValue: unknown;
   createdAt?: Date;
+  id?: string;
+  user?: { id: string; name: string } | null;
 };
 
 export type WorkOrderWithRelations = {
@@ -107,15 +113,26 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
   const activeJobs = isPm ? [] : wo.jobs.filter((j) => j.status !== 'cancelled');
   const jobsCompleted = activeJobs.filter((j) => j.status === 'completed').length;
   const jobsTotal = activeJobs.length;
-  const jobs = activeJobs.map((j) => ({
-    id: j.id,
-    categoryId: j.categoryId,
-    category: j.category,
-    displayName: j.displayName,
-    status: j.status,
-    assignedMechanic: j.assignedMechanic ?? null,
-    completedBy: j.completedBy ?? null,
-  }));
+  const jobs = activeJobs.map((j) => {
+    const activeBlocker = activeBlockerForJob(wo.pauseEvents, j.id);
+    return {
+      id: j.id,
+      categoryId: j.categoryId,
+      category: j.category,
+      displayName: j.displayName,
+      status: j.status,
+      workStatus: jobWorkStatus(
+        {
+          status: j.status, assignedMechanicId: jobAssigneeId(j), startedAt: j.startedAt,
+          isPm: isPmCategory(j.category.name), blocked: Boolean(activeBlocker),
+        },
+        wo.sessions ?? [],
+      ),
+      activeBlocker: activeBlocker ? toJobActiveBlocker(activeBlocker) : null,
+      assignedMechanic: j.assignedMechanic ?? null,
+      completedBy: j.completedBy ?? null,
+    };
+  });
   const currentPause = currentOfficialPause(wo.pauseEvents);
   const mechanics = (wo.mechanics ?? [])
     .filter((m) => !m.removedAt)
@@ -169,7 +186,9 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string)
   const currentPause = currentOfficialPause(wo.pauseEvents);
   const sessions = wo.sessions ?? [];
   const isPmWorkOrder = wo.primaryCategory.name === 'PM';
-  const jobs = isPmWorkOrder ? [] : wo.jobs.map((j) => ({
+  const jobs = isPmWorkOrder ? [] : wo.jobs.map((j) => {
+    const activeBlocker = activeBlockerForJob(wo.pauseEvents, j.id);
+    return {
     id: j.id,
     workOrderId: j.workOrderId,
     catalogJobId: j.catalogJobId,
@@ -179,16 +198,21 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string)
     customDescription: j.customDescription,
     status: j.status,
     workStatus: jobWorkStatus(
-      { status: j.status, assignedMechanicId: jobAssigneeId(j), startedAt: j.startedAt, isPm: isPmCategory(j.category.name) },
+      {
+        status: j.status, assignedMechanicId: jobAssigneeId(j), startedAt: j.startedAt,
+        isPm: isPmCategory(j.category.name), blocked: Boolean(activeBlocker),
+      },
       sessions,
     ),
+    activeBlocker: activeBlocker ? toJobActiveBlocker(activeBlocker) : null,
     completedAt: j.completedAt?.toISOString() ?? null,
     completedById: j.completedById,
     completionNotes: completionNotesForJob(wo.activityLogs, j.id),
     assignedMechanic: j.assignedMechanic ?? null,
     completedBy: j.completedBy ?? null,
     startedAt: j.startedAt?.toISOString() ?? null,
-  }));
+    };
+  });
   const viewerOwnsJobs = !!viewerId && wo.jobs.some((j) => jobAssigneeId(j) === viewerId);
   const myJobs = viewerOwnsJobs ? jobs.filter((j) => j.assignedMechanic?.id === viewerId && j.status !== 'cancelled') : [];
   const laborRunning = viewerOwnsJobs
@@ -225,7 +249,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string)
     currentPause: currentPause ? toPauseEventDto(currentPause) : null,
     activeBlockers: (wo.pauseEvents ?? [])
       .filter((pause) => pause.isOfficialPause === false && !pause.resolvedAt)
-      .map(toPauseEventDto),
+      .map((pause) => toPauseEventDto(pause, wo.activityLogs)),
     noteEntries: (wo.noteEntries ?? []).map(toWorkOrderNoteDto),
   };
 }
@@ -270,8 +294,47 @@ function currentOfficialPause(pauses?: PauseRow[]) {
   return pauses?.find((pause) => !pause.endedAt && pause.isOfficialPause !== false) ?? null;
 }
 
-export function toPauseEventDto(pause: PauseRow) {
+/** LTR-155 / D17: the unresolved mechanic blocker on a Job (newest first). */
+function activeBlockerForJob(pauses: PauseRow[] | undefined, jobId: string): PauseRow | null {
+  return pauses?.find((pause) => pause.isOfficialPause === false && !pause.resolvedAt && pause.jobId === jobId) ?? null;
+}
+
+function toJobActiveBlocker(pause: PauseRow) {
   return {
+    id: pause.id,
+    reason: (pause.blockerReason ?? pause.reason) as PauseReason,
+    reportedAt: pause.startedAt.toISOString(),
+    reportedBy: pause.reportedBy ?? null,
+  };
+}
+
+/**
+ * LTR-155 / D17: blocker notes and the resolution note live in the Activity Log
+ * (note_added / blocker_resolved on entity `pause_event`), so no new table.
+ */
+export function blockerLogDetails(pauseId: string, logs: JobCompletionLog[] | undefined) {
+  const own = (logs ?? []).filter((log) => log.entityType === 'pause_event' && log.entityId === pauseId);
+  const blockerNotes = own
+    .filter((log) => log.eventType === ActivityEventType.note_added)
+    .map((log) => ({
+      id: log.id ?? `${pauseId}-${log.createdAt?.getTime() ?? 0}`,
+      body: String((log.newValue as { body?: unknown } | null)?.body ?? ''),
+      author: log.user ?? { id: '', name: '' },
+      createdAt: log.createdAt?.toISOString() ?? '',
+    }))
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  const resolved = own.find((log) => log.eventType === ActivityEventType.blocker_resolved);
+  const note = (resolved?.newValue as { notes?: unknown } | null)?.notes;
+  return { blockerNotes, resolutionNote: typeof note === 'string' && note.trim() ? note : null };
+}
+
+export function toPauseEventDto(pause: PauseRow, logs?: JobCompletionLog[]) {
+  return {
+    ...(pause.isOfficialPause === false ? {
+      job: pause.job ?? null,
+      blockerReason: (pause.blockerReason ?? null) as BlockerReason | null,
+      ...blockerLogDetails(pause.id, logs),
+    } : {}),
     id: pause.id,
     workOrderId: pause.workOrderId,
     reason: pause.reason,
@@ -306,6 +369,7 @@ export const workOrderDetailInclude = {
     include: {
       reportedBy: { select: { id: true, name: true } },
       resolvedBy: { select: { id: true, name: true } },
+      job: { select: { id: true, displayName: true } },
     },
     orderBy: { startedAt: 'desc' as const },
   },
@@ -316,12 +380,21 @@ export const workOrderDetailInclude = {
   noteEntries: workOrderNoteInclude,
   // Finish notes are stored on job_completed activity rows, not on the job.
   activityLogs: {
-    where: { eventType: ActivityEventType.job_completed },
+    // LTR-155: blocker notes and resolution notes ride along with Job completion notes.
+    where: {
+      OR: [
+        { eventType: ActivityEventType.job_completed },
+        { entityType: 'pause_event', eventType: { in: [ActivityEventType.note_added, ActivityEventType.blocker_resolved] } },
+      ],
+    },
     select: {
+      id: true,
       eventType: true,
+      entityType: true,
       entityId: true,
       newValue: true,
       createdAt: true,
+      user: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: 'desc' as const },
   },

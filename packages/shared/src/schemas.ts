@@ -2,7 +2,9 @@ import { z } from 'zod';
 import {
   CatalogStatus,
   MechanicMode,
+  BlockerReason,
   PauseReason,
+  ShopWorkflowStepKey,
   WorkOrderNoteKind,
   Priority,
   ReadinessRequirementOutcome,
@@ -286,7 +288,8 @@ export const createWorkOrderJobSchema = z.object({
 
 export const createWorkOrderSchema = z.object({
   truckId: z.string().uuid(),
-  primaryCategoryId: z.string().uuid(),
+  // LTR-157 / D13: optional for the Manager (derived); "Create PM service" still sends the PM Category.
+  primaryCategoryId: z.string().uuid().optional(),
   priority: z.nativeEnum(Priority).default(Priority.NORMAL),
   notes: z.string().max(2000).optional(),
   mechanicIds: z.array(z.string().uuid()).default([]),
@@ -308,10 +311,24 @@ export const changePauseReasonSchema = z.object({
 
 // Manager-first ownership: a mechanic reports a blocker without pausing the
 // Work Order. The Manager pauses/resumes officially.
+// LTR-155 / D17: a blocker always belongs to one of the mechanic's Jobs and uses
+// the mechanic reasons only (no Break, End of Shift, Working on Another WO,
+// Truck Unavailable — those stay on PauseReason for the Manager).
 export const reportBlockerSchema = z.object({
-  reason: z.nativeEnum(PauseReason),
+  jobId: z.string().uuid(),
+  reason: z.nativeEnum(BlockerReason),
   notes: z.string().max(1000).optional(),
 });
+
+/** LTR-155 / D17: the mechanic appends notes to an active blocker ("the part arrived"). */
+export const addBlockerNoteSchema = z.object({
+  body: z.string().trim().min(1).max(1000),
+});
+
+/** LTR-155 / D17: only the Manager resolves, with an optional note. */
+export const resolveBlockerSchema = z.object({
+  notes: z.string().trim().max(1000).optional(),
+}).default({});
 
 export const adminPauseWorkOrderSchema = z.object({
   reason: z.nativeEnum(PauseReason),
@@ -418,3 +435,14 @@ export type AdminCreateMechanicInput = z.infer<typeof adminCreateMechanicSchema>
 export type AdminUpdateMechanicInput = z.infer<typeof adminUpdateMechanicSchema>;
 export type AdminCreateCatalogJobInput = z.infer<typeof adminCreateCatalogJobSchema>;
 export type AdminUpdateCatalogJobInput = z.infer<typeof adminUpdateCatalogJobSchema>;
+
+/**
+ * LTR-157 / D15, D16: the Manager (or System Admin) sets the default owner of
+ * each mandatory step. Quality Check never has one (D15).
+ */
+export const updateShopWorkflowStepsSchema = z.object({
+  steps: z.array(z.object({
+    stepKey: z.nativeEnum(ShopWorkflowStepKey),
+    defaultMechanicId: z.string().uuid().nullable(),
+  })).min(1),
+});

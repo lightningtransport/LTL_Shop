@@ -15,6 +15,7 @@ import {
   ActivityEventType as SharedActivityEventType,
   JobStatus as SharedJobStatus,
   OPEN_WORK_ORDER_STATUSES,
+  BlockerReason as SharedBlockerReason,
   PauseReason as SharedPauseReason,
   Priority as SharedPriority,
   WorkOrderStatus as SharedWorkOrderStatus,
@@ -66,10 +67,11 @@ import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { stopLaborForMechanic } from '../work-orders/labor-session';
+import { classifyWorkPlanLane } from './yard-work-plan-derivation';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
-import { toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
+import { blockerLogDetails, toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
@@ -132,7 +134,10 @@ const mechanicDetailInclude = {
 const summaryInclude = {
   truck: true,
   primaryCategory: true,
-  jobs: { select: { status: true, assignedMechanicId: true } },
+  jobs: {
+    select: { status: true, assignedMechanicId: true, displayName: true, category: { select: { name: true } } },
+    orderBy: { addedAt: 'asc' as const },
+  },
   mechanics: {
     where: { removedAt: null },
     include: { mechanic: { select: { id: true, name: true } } },
@@ -148,6 +153,7 @@ const summaryInclude = {
     include: {
       createdBy: { select: { id: true, name: true } },
       reportedBy: { select: { id: true, name: true } },
+      job: { select: { id: true, displayName: true } },
     },
     orderBy: { startedAt: 'desc' as const },
   },
@@ -173,6 +179,7 @@ const detailInclude = {
       createdBy: { select: { id: true, name: true } },
       reportedBy: { select: { id: true, name: true } },
       resolvedBy: { select: { id: true, name: true } },
+      job: { select: { id: true, displayName: true } },
     },
     orderBy: { startedAt: 'desc' as const },
   },
@@ -211,9 +218,9 @@ export class AdminService {
 
   // Manager-first ownership: the Manager pauses/resumes the Work Order. Reuses
   // the mechanic pause/resume mechanics, then returns the admin detail DTO.
-  async resolveBlocker(user: AuthUser, workOrderId: string, blockerId: string): Promise<AdminWorkOrderDetailDto> {
+  async resolveBlocker(user: AuthUser, workOrderId: string, blockerId: string, body: unknown = {}): Promise<AdminWorkOrderDetailDto> {
     if (!isUuid(workOrderId) || !isUuid(blockerId)) throw new BadRequestException('Invalid id');
-    await this.workOrders.resolveBlocker(user, workOrderId, blockerId, { managerActor: true });
+    await this.workOrders.resolveBlocker(user, workOrderId, blockerId, body);
     return this.detail(workOrderId);
   }
 
@@ -2064,7 +2071,19 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       unassignedJobs: jobs.filter((job) => job.status === 'to_do' && !job.assignedMechanicId).length,
       createdAt: row.createdAt,
     }),
+    nextJobName: nextJobInFlow(jobs),
   };
+}
+
+// LTR-157: flow order for "Next: <Job>" on lists and cards.
+const LANE_FLOW_ORDER = ['inspection', 'shop_work', 'pm', 'alignment', 'detailing', 'quality_check'];
+
+function nextJobInFlow(jobs: Array<{ status: string; displayName?: string; category?: { name: string } }>): string | null {
+  const pending = jobs
+    .map((job, index) => ({ job, index, rank: LANE_FLOW_ORDER.indexOf(classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '')) }))
+    .filter(({ job }) => job.status === 'to_do')
+    .sort((left, right) => left.rank - right.rank || left.index - right.index);
+  return pending[0]?.job.displayName ?? null;
 }
 
 function jobCompletionNotes(
@@ -2116,7 +2135,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       .map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
     reportedBlockers: row.pauseEvents
       .filter((pause) => pause.isOfficialPause === false)
-      .map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy })),
+      .map((pause) => ({ ...mapPause(pause), createdBy: pause.createdBy, ...blockerLogDetails(pause.id, row.activityLogs) })),
     // Deprecated (LTR-150): always true; kept for web/API deploy skew.
     addWorkInWorkPlan: true,
     pmService: row.pmService
@@ -2254,8 +2273,13 @@ function mapPause(pause: {
   reportedBy?: { id: string; name: string } | null;
   resolvedAt?: Date | null;
   resolvedBy?: { id: string; name: string } | null;
+  job?: { id: string; displayName: string } | null;
+  blockerReason?: string | null;
 }) {
   return {
+    // LTR-155 / D17: which Job is blocked and why (mechanic reasons).
+    job: pause.job ?? null,
+    blockerReason: (pause.blockerReason ?? null) as SharedBlockerReason | null,
     id: pause.id,
     workOrderId: pause.workOrderId,
     reason: pause.reason as SharedPauseReason,
