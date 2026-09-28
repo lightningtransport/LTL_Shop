@@ -20,6 +20,8 @@ async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
   let noteEntries: unknown[] = [];
   let currentLast = last;
   let savedPm = pm(last);
+  // D2: one running PM per PM mechanic. The active PM exists only after Create PM service.
+  let created = false;
   await page.route('**/api/**', async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
@@ -28,8 +30,11 @@ async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
     if (path === '/api/mechanics') return fulfill(route, [{ ...daniel, role: 'mechanic' }]);
     if (path === '/api/trucks') return fulfill(route, [truck]);
     if (path === `/api/trucks/${truck.id}/open-work-order`) return fulfill(route, { exists: false });
-    if (path === '/api/work-orders' && request.method() === 'GET') return fulfill(route, { created: [], active: [summary()], paused: [], completed: [] });
-    if (path === '/api/work-orders' && request.method() === 'POST') return fulfill(route, { id: woId }, 201);
+    if (path === '/api/work-orders' && request.method() === 'GET') return fulfill(route, { created: [], active: created ? [summary()] : [], paused: [], completed: [] });
+    if (path === '/api/work-orders' && request.method() === 'POST') {
+      created = true;
+      return fulfill(route, { id: woId }, 201);
+    }
     if (path === `/api/work-orders/${woId}/pm`) {
       if (request.method() === 'POST') {
         const body = request.postDataJSON() as { observedMileage: number | null; selections: unknown[] };
@@ -121,7 +126,7 @@ test.describe('Daniel PM workflow', () => {
     await mockPmApi(page);
     await login(page);
     await page.goto(`/work-orders/${woId}`);
-    await expect(page.getByText('Parts used')).toHaveCount(0);
+    await expect(page.getByText('Parts used', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Enter the observed mileage to record parts used.')).toBeVisible();
     await page.getByLabel('Observed mileage').fill('155000');
     await expect(page.getByLabel('Fuel Filter: no compatible parts for this truck')).toBeVisible();
