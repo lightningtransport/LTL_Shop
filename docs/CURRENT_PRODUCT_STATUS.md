@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-28 (LTR-157 shop workflow and truck-only create; LTR-155 per-Job blockers; LTR-154 Job owner and per-mechanic labor; LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
+**Updated:** 2026-09-28 (LTR-158 Truck next step; LTR-157 shop workflow and truck-only create; LTR-155 per-Job blockers; LTR-154 Job owner and per-mechanic labor; LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -181,6 +181,25 @@ TARGET authorization/UX.
 - LTR-157: the `mechanic.pm` who starts the PM job takes it even when its
   default owner was someone else (the change is in the Activity Log); D2 still
   allows one running PM per mechanic.
+- LTR-158 / D14: the Truck is the Manager's workplace. `GET /admin/trucks/:id`
+  returns `nextStep` from the shared `deriveTruckNextStep` (first match wins:
+  `resolve_blocker` → `resume` → `inspect` → `add_missing_steps` → `assign`
+  → `qc` → `close` → `return_to_service` → `work`; `create_work_order` without
+  a Work Order). Truck Detail shows one Next step card with its one button
+  (Resolve with optional note, Resume, go to the inspection, Add missing steps,
+  Assign, Mark QC complete, Close Work Order, Return to Service), then the
+  inspection and Work Plan, then Current Work; truck data and repair history
+  are folded. "Mark complete" is primary only on Quality Check (D15).
+- `POST /admin/trucks/:id/work-plan/backfill-mandatory { expectedVersion }`
+  (`work_orders.manage`) adds the mandatory steps an older open Work Order
+  lacks, with their default owners (a cancelled step counts as decided).
+  Return to Service takes an optional reason (stored as empty text when
+  omitted). Admin Work Order detail folds Cancel and Reopen under "More
+  actions".
+- The PM mechanic blocks their PM job from the PM view (Manager resolves; a
+  blocked PM cannot be finished) and the truck data is folded below the PM.
+  The mechanic Home shows "Resolved · tap Continue" when the Manager resolved
+  a blocker on one of their Jobs after their time stopped.
 - The PM job is assigned to a `mechanic.pm` user (not added to the Standard
   team). That mechanic opens only the PM job, starts it
   (`POST /work-orders/:id/jobs/:jobId/pm/start`), records mileage + parts

@@ -232,10 +232,11 @@ describe('shared contracts', () => {
       expectedVersion: 2,
       idempotencyKey: '00000000-0000-4000-8000-00000000000b',
     }).success).toBe(true);
+    // LTR-158: the Return to Service reason is optional.
     expect(adminReturnToServiceSchema.safeParse({
       expectedVersion: 2,
       idempotencyKey: '00000000-0000-4000-8000-00000000000b',
-    }).success).toBe(false);
+    }).success).toBe(true);
   });
 
   it('requires version and UUID idempotency for Add Job mutations', () => {

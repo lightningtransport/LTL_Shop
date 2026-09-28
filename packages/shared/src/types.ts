@@ -1,5 +1,6 @@
 import type { WorkOrderAttentionReason } from './attention';
 import type { JobWorkStatus } from './job-work-status';
+import type { TruckNextStepDto } from './truck-next-step';
 import type {
   AppCapability,
   ActivityEventType,
@@ -195,6 +196,8 @@ export interface WorkOrderSummaryDto {
   currentPauseReason: PauseReason | null;
   createdAt: string;
   startedAt: string | null;
+  /** LTR-158 / D18: the Manager resolved my blocker and my time is stopped — tap Continue. */
+  resolvedBlockerAwaitingContinue?: boolean;
 }
 
 export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
@@ -508,6 +511,8 @@ export interface AdminTruckDetailDto extends YardOperationsTruckDto {
   upcomingDepartures: YardOperationsUnavailableDto;
   /** Truck Work Plan (LTR-34): Inspection, jobs of the open Work Order and derived Ready. */
   workPlan: TruckWorkPlanDto;
+  /** LTR-158 / D14: the one thing the Manager should do next on this Truck. */
+  nextStep?: TruckNextStepDto | null;
 }
 
 export interface WorkPlanJobDto {

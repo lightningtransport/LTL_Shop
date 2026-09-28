@@ -412,7 +412,7 @@ export function reopenAdminWorkOrder(
 
 export function returnAdminWorkOrderToService(
   workOrderId: string,
-  input: { reason: string; expectedVersion: number },
+  input: { reason?: string; expectedVersion: number },
   idempotencyKey = adminMutationIdempotencyKey(),
 ) {
   return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/return-to-service`, {

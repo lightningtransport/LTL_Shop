@@ -2,6 +2,7 @@ export * from './attention';
 export * from './pm';
 export * from './enums';
 export * from './job-work-status';
+export * from './truck-next-step';
 export * from './pm-mileage';
 export * from './schemas';
 export * from './types';

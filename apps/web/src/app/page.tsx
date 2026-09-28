@@ -303,7 +303,15 @@ function WorkOrderCard({
               : messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}
           </p>
         </div>
-        {!isPm ? <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge> : null}
+        <div className="flex flex-col items-end gap-1">
+          {!isPm ? <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge> : null}
+          {/* LTR-158 / D18: the Manager resolved my blocker; my time waits for Continue. */}
+          {wo.resolvedBlockerAwaitingContinue ? (
+            <span className="rounded-full bg-shop-accent/15 px-2 py-0.5 text-xs font-semibold text-shop-accent" data-testid="resolved-tap-continue">
+              {messages.resolvedTapContinue}
+            </span>
+          ) : null}
+        </div>
       </div>
       <p className="text-sm text-shop-muted">
         {pmJob

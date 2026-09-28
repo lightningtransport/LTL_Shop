@@ -124,7 +124,7 @@ export class WorkOrdersService {
 
     // LTR-146: in the PM workspace a truck Work Order is bucketed by its PM job, not the WO status.
     const mapped = rows.map((row) => {
-      const summary = toWorkOrderSummary(row);
+      const summary = toWorkOrderSummary(row, user.id);
       const pmJob = pmMode ? this.activePmJob(row) : null;
       if (!pmJob) return summary;
       const status = pmJob.status === 'completed'
@@ -570,7 +570,8 @@ export class WorkOrdersService {
     }
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      this.assertMechanicAccess(user, wo);
+      // LTR-158: the PM mechanic blocks their PM job on the truck Work Order too (D17).
+      if (this.pmJobForUser(user, wo)?.id !== parsed.data.jobId) this.assertMechanicAccess(user, wo);
       if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
         throw new BadRequestException('Cannot report a blocker on a closed Work Order');
       }
@@ -632,10 +633,10 @@ export class WorkOrdersService {
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      this.assertMechanicAccess(user, wo);
       const blocker = await tx.pauseEvent.findFirst({
         where: { id: blockerId, workOrderId: id, isOfficialPause: false },
       });
+      if (!blocker || this.pmJobForUser(user, wo)?.id !== blocker.jobId) this.assertMechanicAccess(user, wo);
       if (!blocker) throw new NotFoundException('Blocker not found');
       if (blocker.resolvedAt) {
         throw new BadRequestException({ code: 'BLOCKER_ALREADY_RESOLVED', message: 'This blocker is already resolved.' });
@@ -1009,6 +1010,70 @@ export class WorkOrdersService {
   }
 
   /** LTR-145: the PM job is finished from the PM service (mileage + parts), coming in LTR-146. */
+  /**
+   * LTR-158: "Add missing steps" for an open Work Order created before the
+   * mandatory steps existed. Adds only the steps not already on it (a cancelled
+   * step counts as decided "not applicable"), each with its default owner.
+   */
+  async backfillMandatoryJobs(user: AuthUser, workOrderId: string, expectedVersion: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const initial = await this.requireWo(tx, workOrderId);
+      await lockTruckMutation(tx, initial.truckId);
+      const wo = await this.requireWo(tx, workOrderId);
+      if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
+        throw new BadRequestException('Only an open Work Order can get its missing steps');
+      }
+      if (wo.primaryCategory.name === 'PM') {
+        throw new BadRequestException('A legacy PM Work Order has no Work Plan steps');
+      }
+      if (wo.version !== expectedVersion) {
+        throw this.versionConflict('Work Order was updated. Refresh and try again.');
+      }
+      const missing = await resolveMandatoryJobs(
+        tx,
+        wo.jobs.map((job) => ({ categoryName: job.category.name, displayName: job.displayName })),
+      );
+      if (!missing.length) return toWorkOrderDetail(wo, user.id);
+      for (const job of missing) {
+        const created = await tx.workOrderJob.create({
+          data: {
+            workOrderId,
+            catalogJobId: job.catalogJobId,
+            categoryId: job.categoryId,
+            displayName: job.displayName,
+            isCustom: false,
+            addedById: user.id,
+            assignedMechanicId: job.assignedMechanicId,
+            status: 'to_do',
+          },
+        });
+        const category = await tx.jobCategory.findUnique({ where: { id: job.categoryId }, select: { name: true } });
+        // LTR-154 / D11: a Standard owner joins the derived team; a PM owner reaches it through the PM job.
+        if (job.assignedMechanicId && category?.name !== 'PM') {
+          await tx.mechanicAssignment.upsert({
+            where: { workOrderId_mechanicId: { workOrderId, mechanicId: job.assignedMechanicId } },
+            create: { workOrderId, mechanicId: job.assignedMechanicId, addedById: user.id },
+            update: { removedAt: null },
+          });
+        }
+        await this.activity.log(tx, {
+          workOrderId,
+          eventType: ActivityEventType.JOB_ADDED,
+          entityType: 'work_order_job',
+          entityId: created.id,
+          userId: user.id,
+          newValue: { jobId: created.id, displayName: job.displayName, assignedMechanicId: job.assignedMechanicId, action: 'mandatory_backfill' },
+        });
+      }
+      const updated = await tx.workOrder.update({
+        where: { id: workOrderId },
+        data: { version: { increment: 1 } },
+        include: workOrderDetailInclude,
+      });
+      return toWorkOrderDetail(updated, user.id);
+    });
+  }
+
   async assertNotPmJob(tx: Pick<Prisma.TransactionClient, 'jobCategory'>, categoryId: string) {
     const category = await tx.jobCategory.findUnique({ where: { id: categoryId }, select: { name: true } });
     if (isPmJobCategory(category?.name)) {
@@ -1414,6 +1479,9 @@ export class WorkOrdersService {
     if (!job || job.id !== jobId) throw new ForbiddenException('This PM job is not assigned to you.');
     if (job.status !== 'to_do') throw new BadRequestException('Job is not in To Do status');
     if (!job.startedAt) throw new BadRequestException({ code: 'PM_JOB_NOT_STARTED', message: 'Start the PM service first.' });
+    if (this.activeBlockerForJob(wo, job.id)) {
+      throw new BadRequestException({ code: 'JOB_BLOCKED', message: 'The Manager resolves this blocker before the PM can be finished.' });
+    }
     if (!['created', 'in_progress'].includes(wo.status)) {
       throw new BadRequestException({ code: 'WORK_ORDER_NOT_WORKABLE', message: 'The Work Order is paused or closed.' });
     }

@@ -220,6 +220,15 @@ export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
   },
   {
     method: 'POST',
+    path: '/admin/trucks/:id/work-plan/backfill-mandatory',
+    handler: 'backfillMandatorySteps',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'http_guard',
+    notes: 'LTR-158: add the mandatory steps an older open Work Order lacks.',
+  },
+  {
+    method: 'POST',
     path: '/admin/trucks/:id/work-plan/inspection',
     handler: 'recordWorkPlanInspection',
     controller: 'admin',

@@ -106,7 +106,7 @@ export type WorkOrderWithRelations = {
   noteEntries?: NoteRow[];
 };
 
-export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
+export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string) {
   const isPm = wo.primaryCategory.name === 'PM';
   // PM is a single service. Legacy jobs remain in the database for audit but
   // are never presented as a checklist or progress metric.
@@ -158,7 +158,28 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations) {
     currentPauseReason: currentPause?.reason ?? null,
     createdAt: wo.createdAt.toISOString(),
     startedAt: wo.startedAt?.toISOString() ?? null,
+    ...(viewerId ? { resolvedBlockerAwaitingContinue: resolvedBlockerAwaitingContinue(wo, viewerId) } : {}),
   };
+}
+
+/**
+ * LTR-158 / D18: the Manager resolved a blocker on one of my Jobs after my time
+ * stopped, and I have not tapped Continue yet (the mechanic Home badge).
+ */
+export function resolvedBlockerAwaitingContinue(wo: WorkOrderWithRelations, viewerId: string): boolean {
+  if (wo.status !== 'in_progress') return false;
+  const sessions = wo.sessions ?? [];
+  if (sessions.some((session) => session.endedAt === null && (!session.userId || session.userId === viewerId))) return false;
+  const myPending = wo.jobs.filter((job) => job.status === 'to_do' && jobAssigneeId(job) === viewerId);
+  if (!myPending.some((job) => !activeBlockerForJob(wo.pauseEvents, job.id))) return false;
+  const lastStop = sessions
+    .filter((session) => session.userId === viewerId && session.endedAt)
+    .reduce((latest, session) => Math.max(latest, session.endedAt!.getTime()), 0);
+  const myJobIds = new Set(myPending.map((job) => job.id));
+  return (wo.pauseEvents ?? []).some((pause) => (
+    pause.isOfficialPause === false && pause.resolvedAt && pause.jobId && myJobIds.has(pause.jobId)
+    && pause.resolvedAt.getTime() >= lastStop
+  ));
 }
 
 /** LTR-146: the active PM job of a truck Work Order (never on a legacy PM Work Order). */

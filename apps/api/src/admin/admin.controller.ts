@@ -12,7 +12,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { AppCapability, adminRepairHistoryQuerySchema } from '@ltl-shop/shared';
+import { AppCapability, adminRepairHistoryQuerySchema, deriveTruckNextStep } from '@ltl-shop/shared';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { Capabilities } from '../auth/capabilities.decorator';
@@ -293,7 +293,15 @@ export class AdminController {
       this.yardOperations.detail(id),
       this.workPlan.get(request.user!, id),
     ]);
-    return { ...detail, workPlan };
+    // LTR-158 / D14: one "Next step" rule shared with the web (and PR 9 surfaces).
+    const nextStep = deriveTruckNextStep({
+      workOrder: workPlan.workOrder,
+      inspectionOutcome: workPlan.inspection.outcome,
+      jobs: workPlan.jobs,
+      activeBlocker: detail.activeWorkOrder?.latestReportedBlocker ?? null,
+      currentPause: detail.activeWorkOrder?.currentPause ?? null,
+    });
+    return { ...detail, workPlan, nextStep };
   }
 
   @Get('trucks/:id/work-plan')
@@ -305,6 +313,13 @@ export class AdminController {
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   addWorkPlanJobs(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.workPlan.addJobs(request.user!, id, body);
+  }
+
+  // LTR-158: "Add missing steps" for an open Work Order created before the mandatory steps.
+  @Post('trucks/:id/work-plan/backfill-mandatory')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  backfillMandatorySteps(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.workPlan.backfillMandatory(request.user!, id, body);
   }
 
   @Post('trucks/:id/work-plan/inspection')

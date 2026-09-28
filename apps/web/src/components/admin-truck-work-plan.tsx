@@ -273,6 +273,7 @@ export function AdminTruckWorkPlan({
                     <div className="flex flex-wrap items-center gap-2">
                       {canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic !== undefined ? (
                         <Select
+                          id={`assign-job-${job.id}`}
                           aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
                           className="w-full sm:w-44"
                           value={job.assignedMechanic?.id ?? ''}
@@ -296,6 +297,8 @@ export function AdminTruckWorkPlan({
                         <Button
                           type="button"
                           size="sm"
+                          // LTR-158 / D15: primary only on Quality Check (the Manager's step); secondary on mechanics' Jobs.
+                          variant={job.lane === 'quality_check' ? 'default' : 'ghost'}
                           disabled={Boolean(pendingAction)}
                           onClick={() => void handleCompleteJob(job.id)}
                         >

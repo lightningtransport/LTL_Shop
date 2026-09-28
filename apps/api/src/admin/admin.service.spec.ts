@@ -1453,6 +1453,21 @@ describe('AdminService', () => {
       eventType: ActivityEventType.TRUCK_RETURNED_TO_SERVICE,
     }));
 
+    // LTR-158: the reason is optional.
+    const noReasonTx = assignmentTx(completed);
+    noReasonTx.workOrder.findUnique
+      .mockResolvedValueOnce(completed)
+      .mockResolvedValueOnce(completed)
+      .mockResolvedValueOnce(detailRow({ status: 'completed', version: 2, startedAt: completed.startedAt }));
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof noReasonTx) => unknown) => callback(noReasonTx));
+    await expect(service.returnToService(manager, completed.id, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000001409',
+    })).resolves.toMatchObject({ status: 'completed' });
+    expect(noReasonTx.truckServiceStatusEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'in_service', reason: '' }),
+    }));
+
     const open = assignmentTx(detailRow({ status: 'in_progress' }));
     prisma.$transaction.mockImplementation(async (callback: (client: typeof open) => unknown) => callback(open));
     await expect(service.returnToService(manager, completed.id, {
