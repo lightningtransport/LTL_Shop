@@ -1254,7 +1254,7 @@ export class AdminService {
           data: {
             truckId: wo.truckId,
             status: 'in_service',
-            reason: input.reason,
+            reason: input.reason ?? '',
             workOrderId,
             actorId: user.id,
           },

@@ -4,16 +4,16 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSWRConfig } from 'swr';
-import { MechanicMode, type WorkOrderDetailDto } from '@ltl-shop/shared';
+import { BlockerReason, MechanicMode, PauseReason, type WorkOrderDetailDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
-import { formatMileage } from '@/lib/format';
+import { formatMileage, pauseLabel } from '@/lib/format';
 import { useShopLocale } from '@/lib/locale-context';
 import { shopKeys, useCatalogJobs } from '@/lib/shop-data';
 import { vehicleLine } from '@/lib/work-order-identity';
 import { useActionToast } from './action-toast';
 import { PmServiceCard, type PmDraftState } from './pm-service-card';
 import { TruckInformationFields } from './truck-information-fields';
-import { Button, InlineAlert, Label, Modal, ScreenHeader, Select, WorkspaceNav } from './ui';
+import { Button, InlineAlert, Label, Modal, ScreenHeader, Select, Textarea, WorkspaceNav } from './ui';
 
 /**
  * LTR-146: the PM mechanic's view of a truck Work Order — only its PM job.
@@ -34,6 +34,11 @@ export function PmJobDetail({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
+  // LTR-158 / D17: the PM mechanic blocks their PM job and adds notes; the Manager resolves.
+  const [blockerOpen, setBlockerOpen] = useState(false);
+  const [blockerReason, setBlockerReason] = useState<BlockerReason | ''>('');
+  const [blockerNotes, setBlockerNotes] = useState('');
+  const [noteDraft, setNoteDraft] = useState('');
   const [draft, setDraft] = useState<PmDraftState>({
     ready: false, pending: false, hasError: false, observedMileage: '', selectedParts: 0,
   });
@@ -44,10 +49,11 @@ export function PmJobDetail({
   if (!pmJob) return null;
 
   const started = Boolean(pmJob.startedAt);
+  const activeBlocker = (wo.activeBlockers ?? []).find((blocker) => blocker.job?.id === pmJob.id) ?? null;
   const finished = pmJob.status === 'completed';
   const mileage = Number(draft.observedMileage);
   const validMileage = draft.observedMileage.trim() !== '' && Number.isInteger(mileage) && mileage >= 0;
-  const finishBlocked = busy || !draft.ready || draft.pending || draft.hasError || !validMileage || draft.selectedParts < 1;
+  const finishBlocked = busy || Boolean(activeBlocker) || !draft.ready || draft.pending || draft.hasError || !validMileage || draft.selectedParts < 1;
   const mileageChangesTruck = validMileage && mileage !== wo.truck.mileage;
 
   async function run(action: () => Promise<WorkOrderDetailDto>, onSuccess?: () => void) {
@@ -74,16 +80,6 @@ export function PmJobDetail({
         backHref="/mechanic/pm"
       />
       {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
-
-      <section className="card mb-4 space-y-3" aria-labelledby="pm-job-truck-information">
-        <h2 id="pm-job-truck-information" className="section-label">{messages.truckInformation}</h2>
-        <TruckInformationFields truck={wo.truck} locale={messages.locale} />
-        <Button asChild variant="secondary" className="w-full">
-          <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
-            {messages.repairHistory}
-          </Link>
-        </Button>
-      </section>
 
       {/* LTR-148: PM A ↔ PM B before the PM service is finished. */}
       {!finished && pmJobRow && pmServiceOptions.length > 1 ? (
@@ -130,9 +126,78 @@ export function PmJobDetail({
       ) : started ? (
         <section className="mb-4 space-y-2" aria-label="PM job actions">
           <Button className="w-full" disabled={finishBlocked} onClick={() => setFinishOpen(true)}>{messages.finishWork}</Button>
-          {finishBlocked ? <p className="text-sm text-muted-foreground">{messages.pmJobFinishRequirement}</p> : null}
+          {finishBlocked && !activeBlocker ? <p className="text-sm text-muted-foreground">{messages.pmJobFinishRequirement}</p> : null}
+          {!activeBlocker ? (
+            <Button type="button" variant="secondary" className="w-full" disabled={busy} onClick={() => { setBlockerReason(''); setBlockerNotes(''); setBlockerOpen(true); }}>
+              {messages.reportBlocker}
+            </Button>
+          ) : null}
         </section>
       ) : null}
+
+      {activeBlocker ? (
+        <section className="mb-4 space-y-2 rounded-xl bg-warning-surface px-3 py-2 text-sm text-warning-foreground" aria-label={messages.activeBlockers}>
+          <p className="font-medium">{messages.blockedWithReason(pauseLabel(activeBlocker.blockerReason ?? activeBlocker.reason, messages.pauseReason) ?? '')}</p>
+          <p>{messages.blockerWaitsForManager}</p>
+          {(activeBlocker.blockerNotes ?? []).map((note) => <p key={note.id}>{note.author.name}: {note.body}</p>)}
+          <form
+            className="flex flex-col gap-2 sm:flex-row"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!noteDraft.trim()) return;
+              void run(
+                () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers/${activeBlocker.id}/notes`, {
+                  method: 'POST', body: JSON.stringify({ body: noteDraft.trim() }),
+                }),
+                () => { setNoteDraft(''); showToast('success', messages.blockerNoteAdded); },
+              );
+            }}
+          >
+            <Textarea aria-label={messages.addBlockerNote} placeholder={messages.blockerNotePlaceholder} rows={2} value={noteDraft} disabled={busy} onChange={(event) => setNoteDraft(event.target.value)} />
+            <Button type="submit" variant="secondary" disabled={busy || !noteDraft.trim()}>{messages.addBlockerNote}</Button>
+          </form>
+        </section>
+      ) : null}
+
+      {/* LTR-158: the PM comes first; truck data is folded below it. */}
+      <details className="card mb-4" aria-labelledby="pm-job-truck-information">
+        <summary id="pm-job-truck-information" className="section-label cursor-pointer select-none">{messages.truckInformation}</summary>
+        <div className="mt-3 space-y-3">
+          <TruckInformationFields truck={wo.truck} locale={messages.locale} />
+          <Button asChild variant="secondary" className="w-full">
+            <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
+              {messages.repairHistory}
+            </Link>
+          </Button>
+        </div>
+      </details>
+
+
+      <Modal open={blockerOpen} title={messages.reportBlockerFor(pmJob.displayName)} closeLabel={messages.closeDialog} onClose={() => { if (!busy) setBlockerOpen(false); }}>
+        <Label className="section-label mb-2 block" htmlFor="pm-blocker-reason">{messages.blockerReason}</Label>
+        <Select id="pm-blocker-reason" className="mb-3" value={blockerReason} disabled={busy} onChange={(event) => setBlockerReason(event.target.value as BlockerReason)}>
+          <option value="">{messages.selectOption}</option>
+          {Object.values(BlockerReason).map((reason) => <option key={reason} value={reason}>{messages.pauseReason[reason as unknown as PauseReason]}</option>)}
+        </Select>
+        {blockerReason === BlockerReason.OTHER ? (
+          <Textarea className="mb-3" placeholder={messages.reasonRequiredForOther} value={blockerNotes} disabled={busy} onChange={(event) => setBlockerNotes(event.target.value)} />
+        ) : null}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" disabled={busy} onClick={() => setBlockerOpen(false)}>{messages.cancelAction}</Button>
+          <Button
+            disabled={busy || !blockerReason || (blockerReason === BlockerReason.OTHER && !blockerNotes.trim())}
+            onClick={() => void run(
+              () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers`, {
+                method: 'POST',
+                body: JSON.stringify({ jobId: pmJob.id, reason: blockerReason, notes: blockerNotes.trim() || undefined }),
+              }),
+              () => { setBlockerOpen(false); showToast('success', messages.blockerReportedSuccess); },
+            )}
+          >
+            {busy ? messages.reportingBlocker : messages.reportBlocker}
+          </Button>
+        </div>
+      </Modal>
 
       <Modal open={finishOpen} title={messages.finishWork} closeLabel={messages.closeDialog} onClose={() => { if (!busy) setFinishOpen(false); }}>
         {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}

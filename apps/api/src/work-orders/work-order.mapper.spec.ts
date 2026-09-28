@@ -246,3 +246,28 @@ describe('live labor totals (LTR-94)', () => {
     expect(toWorkOrderDetail(wo).totalActiveLaborMs).toBe(5000);
   });
 });
+
+describe('resolvedBlockerAwaitingContinue (LTR-158 / D18)', () => {
+  const alex = { id: 'mechanic-1', name: 'Alex' };
+  const stoppedAt = new Date('2026-09-28T10:00:00.000Z');
+  const wo = (resolvedAt: Date | null, sessionOpen = false): WorkOrderWithRelations => ({
+    ...base,
+    jobs: [{ ...job('job-1', 'category-brakes', 'Brakes', 'Inspect brakes', alex), assignedMechanicId: alex.id }],
+    sessions: [{ id: 's-1', startedAt: new Date('2026-09-28T09:00:00.000Z'), endedAt: sessionOpen ? null : stoppedAt, userId: alex.id }],
+    pauseEvents: [{
+      id: 'b-1', workOrderId: 'wo-1', reason: 'waiting_for_parts', notes: null, startedAt: stoppedAt, endedAt: stoppedAt,
+      durationMs: 0n, isOfficialPause: false, reportedBy: alex, jobId: 'job-1', resolvedAt,
+    }],
+  });
+
+  it('asks me to Continue once the Manager resolved my blocker after my time stopped', () => {
+    expect(toWorkOrderSummary(wo(new Date('2026-09-28T11:00:00.000Z')), alex.id).resolvedBlockerAwaitingContinue).toBe(true);
+  });
+
+  it('stays quiet while the blocker is active, after I continued, or for someone else', () => {
+    expect(toWorkOrderSummary(wo(null), alex.id).resolvedBlockerAwaitingContinue).toBe(false);
+    expect(toWorkOrderSummary(wo(new Date('2026-09-28T11:00:00.000Z'), true), alex.id).resolvedBlockerAwaitingContinue).toBe(false);
+    expect(toWorkOrderSummary(wo(new Date('2026-09-28T11:00:00.000Z')), 'other').resolvedBlockerAwaitingContinue).toBe(false);
+    expect(toWorkOrderSummary(wo(new Date('2026-09-28T11:00:00.000Z'))).resolvedBlockerAwaitingContinue).toBeUndefined();
+  });
+});

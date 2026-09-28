@@ -115,6 +115,18 @@ const workflowSteps = [
   { stepKey: 'quality_check', sortOrder: 40, catalogJob: { id: '00000000-0000-4000-8000-000000000854', displayName: 'Quality Check', categoryId: '00000000-0000-4000-8000-000000000305', categoryName: 'Quality Check' }, defaultMechanicId: null, requiredCapability: null },
 ];
 
+// LTR-158: a reduced copy of deriveTruckNextStep (the API uses the shared rule).
+function fixtureNextStep(item, workPlan) {
+  const wo = item.activeWorkOrder;
+  if (!wo) return { kind: 'create_work_order' };
+  if (wo.latestReportedBlocker) return { kind: 'resolve_blocker', workOrderId: wo.id, blockerId: wo.latestReportedBlocker.id };
+  if (wo.status === 'waiting_paused') return { kind: 'resume', workOrderId: wo.id, reason: wo.currentPause?.reason };
+  if (workPlan?.inspection?.outcome === 'not_started') return { kind: 'inspect', workOrderId: wo.id };
+  const pending = (workPlan?.jobs ?? []).filter((job) => job.status === 'to_do');
+  if (!pending.length) return { kind: 'close', workOrderId: wo.id };
+  return { kind: 'work', workOrderId: wo.id, jobId: pending[0].id, jobName: pending[0].displayName, remaining: pending.length };
+}
+
 function userById(id) {
   return Object.values(users).find((item) => item.id === id) ?? null;
 }
@@ -602,7 +614,8 @@ createServer(async (request, response) => {
     if (!item) json(response, 404, { message: 'Truck not found' });
     else {
       const detail = { ...item, repairHistory: { items: [], nextCursor: null }, repairHistoryUrl: `/api/admin/trucks/${item.truck.id}/repair-history`, incomingTrucks: { status: 'unavailable', reason: 'integration_not_connected' }, upcomingDepartures: { status: 'unavailable', reason: 'integration_not_connected' } };
-      json(response, 200, { ...detail, workPlan: fixtureWorkPlan(item, user) });
+      const workPlan = fixtureWorkPlan(item, user);
+      json(response, 200, { ...detail, workPlan, nextStep: fixtureNextStep(item, workPlan) });
     }
     return;
   }

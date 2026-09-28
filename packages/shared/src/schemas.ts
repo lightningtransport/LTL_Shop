@@ -239,8 +239,9 @@ export const adminReopenJobSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),
 });
 
+// LTR-158: the reason is optional; the common case needs no text.
 export const adminReturnToServiceSchema = adminMutationMetaSchema.extend({
-  reason: z.string().trim().min(1).max(1000),
+  reason: z.string().trim().max(1000).optional(),
 });
 
 export const startReadinessAssessmentSchema = z.object({

@@ -233,6 +233,8 @@ test.describe('Shop Admin Phase 2A', () => {
     // and later tests need WO-0101 to stay open and Waiting / Paused.
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000103');
     await expect(page.getByRole('heading', { name: 'T-103' })).toBeVisible();
+    // LTR-158: rare actions are folded under "More actions".
+    await page.getByTestId('admin-wo-more-actions').locator('summary').click();
     await page.getByLabel('Reason for cancellation').fill('Duplicate Work Order');
     await page.getByRole('button', { name: 'Confirm cancellation' }).click();
     await expect(page.getByRole('main').getByText('Work Order cancelled.')).toBeVisible();
@@ -250,9 +252,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('main').getByText('Time correction saved.')).toBeVisible();
     await page.getByTestId('admin-wo-next-action').getByRole('button', { name: 'Confirm completion' }).click();
     await expect(page.getByRole('main').getByText('Work Order completed.')).toBeVisible();
-    await page.getByLabel('Reason for Return to Service').fill('Repairs verified');
+    await page.getByLabel('Reason (optional)').fill('Repairs verified');
     await page.getByRole('button', { name: 'Confirm Return to Service' }).click();
     await expect(page.getByRole('main').getByText('Truck returned to service.')).toBeVisible();
+    await page.getByTestId('admin-wo-more-actions').locator('summary').click();
     await page.getByLabel('Reason for reopening').fill('More work found');
     await page.getByRole('button', { name: 'Confirm reopen' }).click();
     await expect(page.getByRole('main').getByText('Work Order reopened.')).toBeVisible();

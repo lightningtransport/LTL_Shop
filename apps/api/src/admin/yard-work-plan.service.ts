@@ -177,6 +177,19 @@ export class YardWorkPlanService {
     return this.get(user, truckId);
   }
 
+  /** LTR-158: add the mandatory steps an older open Work Order lacks. */
+  async backfillMandatory(user: AuthUser, truckId: string, raw: unknown): Promise<TruckWorkPlanDto> {
+    this.assertUuid(truckId, 'Invalid Truck id');
+    const expectedVersion = (raw as { expectedVersion?: unknown } | null)?.expectedVersion;
+    if (typeof expectedVersion !== 'number' || !Number.isInteger(expectedVersion)) {
+      throw new BadRequestException('expectedVersion is required');
+    }
+    const open = await this.findOpenWorkOrder(truckId);
+    if (!open) throw new NotFoundException('This Truck has no open Work Order');
+    await this.workOrders.backfillMandatoryJobs(user, open.id, expectedVersion);
+    return this.get(user, truckId);
+  }
+
   async recordInspection(user: AuthUser, truckId: string, raw: unknown): Promise<TruckWorkPlanDto> {
     this.assertUuid(truckId, 'Invalid Truck id');
     const parsed = recordWorkPlanInspectionSchema.safeParse(raw);

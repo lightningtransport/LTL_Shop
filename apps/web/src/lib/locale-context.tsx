@@ -94,6 +94,7 @@ type Copy = {
   continueWork: string;
   yourJobsCount: (count: number) => string;
   nextJob: string;
+  resolvedTapContinue: string;
   otherWorkReadOnly: string;
   createWorkOrder: string;
   searchJobsLabel: string;
@@ -306,6 +307,7 @@ const copy: Record<ShopLocale, Copy> = {
     continueWork: 'Continue',
     yourJobsCount: (count) => `${count} ${count === 1 ? 'Job' : 'Jobs'} for you`,
     nextJob: 'Next',
+    resolvedTapContinue: 'Resolved · tap Continue',
     otherWorkReadOnly: 'Other mechanics do this work. You can see it, not change it.',
     createWorkOrder: 'Create new Work Order',
     searchJobsLabel: 'Search jobs in this category',
@@ -531,6 +533,7 @@ const copy: Record<ShopLocale, Copy> = {
     continueWork: 'Continuar',
     yourJobsCount: (count) => `${count} ${count === 1 ? 'Job tuyo' : 'Jobs tuyos'}`,
     nextJob: 'Siguiente',
+    resolvedTapContinue: 'Resuelto · toca Continuar',
     otherWorkReadOnly: 'Este trabajo lo hacen otros mecánicos. Puedes verlo, no cambiarlo.',
     createWorkOrder: 'Crear nuevo Work Order',
     searchJobsLabel: 'Buscar jobs en esta categoría',

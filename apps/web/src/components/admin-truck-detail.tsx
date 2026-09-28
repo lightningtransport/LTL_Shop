@@ -18,7 +18,7 @@ import { adminTruckOrigin } from '@/lib/admin-truck-origin';
 import { mechanicNamesLabel, openCurrentWork } from '@/lib/admin-work-summary';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { AdminTruckWorkPlan } from './admin-truck-work-plan';
-import { AdminBlockerResolve } from './admin-blocker-resolve';
+import { AdminTruckNextStep } from './admin-truck-next-step';
 import { useAuth } from '@/lib/auth-context';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton, PriorityBadge, WorkOrderStatusBadge } from './ui';
 
@@ -62,10 +62,8 @@ export function AdminTruckDetail({ id, from = null, locale, messages }: { id: st
       )}
     />
 
-    <section className="grid items-start gap-4 xl:grid-cols-2" aria-label={messages.truckOverview}>
-      <Card><CardHeader><CardTitle>{messages.truckOverview}</CardTitle></CardHeader><CardContent><dl className="grid gap-4 text-sm sm:grid-cols-2"><Info label={messages.truckNumber} value={data.truck.truckNumber} /><Info label={messages.make} value={data.truck.make ?? messages.noValue} /><Info label={messages.model} value={data.truck.model ?? messages.noValue} /><Info label={messages.year} value={data.truck.year ? String(data.truck.year) : messages.noValue} /><Info label={messages.mileage} value={formatNumber(data.truck.mileage, locale, messages)} /><Info label={messages.company} value={data.truck.company ?? messages.noValue} /><Info label={messages.owner} value={data.truck.owner ?? messages.noValue} /><Info label={messages.vin} value={data.truck.vin ?? messages.noValue} /><Info label={messages.lastReportedLocation} value={data.truck.location ?? messages.noValue} /><Info label={messages.locationUpdatedOn} value={formatAdminDateOnly(data.truck.locationUpdatedOn, locale)} /><Info label={messages.operationalStatus} value={operationalStatusLabel(data.operationalStatus, messages)} /></dl></CardContent></Card>
-      <Card><CardHeader><CardTitle>{messages.currentWork}</CardTitle><CardDescription>{messages.currentWorkDescription}</CardDescription></CardHeader><CardContent>{currentWork ? <div className="space-y-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${currentWork.id}`}>{currentWork.displayId}</Link><div className="flex gap-2"><WorkOrderStatusBadge status={currentWork.status}>{workOrderStatusLabel(currentWork.status, messages)}</WorkOrderStatusBadge><PriorityBadge priority={currentWork.priority}>{adminPriorityLabel(currentWork.priority, messages)}</PriorityBadge></div></div><Info label={messages.category} value={currentWork.category.name} /><Info label={messages.mechanicsLabel} value={mechanicNamesLabel(currentWork.mechanics, messages)} />{currentWork.currentPause ? <p className="rounded-lg bg-muted px-3 py-2 text-muted-foreground">{messages.currentPause}: {adminPauseReasonLabel(currentWork.currentPause.reason, messages)} · {formatAdminDate(currentWork.currentPause.startedAt, locale)}</p> : null}{currentWork.latestReportedBlocker ? <div className="rounded-lg bg-warning-surface px-3 py-2 text-warning-foreground">{/* LTR-155 / D17: resolve the Job blocker from the Truck. */}<AdminBlockerResolve workOrderId={currentWork.id} blocker={currentWork.latestReportedBlocker} locale={locale} messages={messages} canResolve={canManageWorkOrders} onResolved={() => mutate()} /></div> : null}</div> : <CompactEmpty>{messages.noCurrentWork}</CompactEmpty>}</CardContent></Card>
-    </section>
+    {/* LTR-158 / D14: the one thing to do next, then inspection and the Work Plan; truck data folded below. */}
+    <AdminTruckNextStep truck={data} locale={locale} messages={messages} canManage={canManageWorkOrders} onChanged={() => mutate()} />
 
     <AdminTruckWorkPlan
       truckId={truckId}
@@ -74,7 +72,21 @@ export function AdminTruckDetail({ id, from = null, locale, messages }: { id: st
       onPlanUpdated={handleWorkPlanUpdated}
     />
 
+      <Card><CardHeader><CardTitle>{messages.currentWork}</CardTitle><CardDescription>{messages.currentWorkDescription}</CardDescription></CardHeader><CardContent>{currentWork ? <div className="space-y-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${currentWork.id}`}>{currentWork.displayId}</Link><div className="flex gap-2"><WorkOrderStatusBadge status={currentWork.status}>{workOrderStatusLabel(currentWork.status, messages)}</WorkOrderStatusBadge><PriorityBadge priority={currentWork.priority}>{adminPriorityLabel(currentWork.priority, messages)}</PriorityBadge></div></div><Info label={messages.category} value={currentWork.category.name} /><Info label={messages.mechanicsLabel} value={mechanicNamesLabel(currentWork.mechanics, messages)} />{currentWork.currentPause ? <p className="rounded-lg bg-muted px-3 py-2 text-muted-foreground">{messages.currentPause}: {adminPauseReasonLabel(currentWork.currentPause.reason, messages)} · {formatAdminDate(currentWork.currentPause.startedAt, locale)}</p> : null}</div> : <CompactEmpty>{messages.noCurrentWork}</CompactEmpty>}</CardContent></Card>
+
+    <details className="group rounded-xl border bg-card" data-testid="truck-details">
+      <summary className="cursor-pointer select-none px-4 py-3 font-medium">{messages.truckDetailsSection}</summary>
+      <div className="border-t p-4">
+      <dl className="grid gap-4 text-sm sm:grid-cols-2"><Info label={messages.truckNumber} value={data.truck.truckNumber} /><Info label={messages.make} value={data.truck.make ?? messages.noValue} /><Info label={messages.model} value={data.truck.model ?? messages.noValue} /><Info label={messages.year} value={data.truck.year ? String(data.truck.year) : messages.noValue} /><Info label={messages.mileage} value={formatNumber(data.truck.mileage, locale, messages)} /><Info label={messages.company} value={data.truck.company ?? messages.noValue} /><Info label={messages.owner} value={data.truck.owner ?? messages.noValue} /><Info label={messages.vin} value={data.truck.vin ?? messages.noValue} /><Info label={messages.lastReportedLocation} value={data.truck.location ?? messages.noValue} /><Info label={messages.locationUpdatedOn} value={formatAdminDateOnly(data.truck.locationUpdatedOn, locale)} /><Info label={messages.operationalStatus} value={operationalStatusLabel(data.operationalStatus, messages)} /></dl>
+      </div>
+    </details>
+
+    <details className="group rounded-xl border bg-card" data-testid="truck-history">
+      <summary className="cursor-pointer select-none px-4 py-3 font-medium">{messages.repairHistorySection}</summary>
+      <div className="border-t">
     <section aria-labelledby="truck-history-title"><Card><CardHeader><CardTitle id="truck-history-title">{messages.repairHistorySection}</CardTitle><CardDescription>{messages.repairHistorySectionDescription}</CardDescription></CardHeader><CardContent>{data.repairHistory.items.length ? <ul className="divide-y">{data.repairHistory.items.map((item) => <li key={item.workOrderId} className="flex items-start justify-between gap-3 py-3 first:pt-0"><div className="min-w-0 flex-1"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${item.workOrderId}`}>{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p>{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : null}</div><div className="shrink-0 text-right text-xs text-muted-foreground">{item.mileage === null ? messages.noValue : <><span className="block">{messages.mileage}</span><span className="mt-1 block font-medium text-foreground">{formatNumber(item.mileage, locale, messages)}</span></>}</div></li>)}</ul> : <CompactEmpty>{messages.noRepairHistoryForTruck}</CompactEmpty>}</CardContent></Card></section>
+      </div>
+    </details>
   </div>;
 }
 

@@ -173,3 +173,34 @@ describe('PM job inside the truck Work Order (LTR-146)', () => {
       .rejects.toThrow('not assigned to you');
   });
 });
+
+describe('PM job blockers (LTR-158 / D17)', () => {
+  const PM_JOB = '33333333-3333-4333-8333-333333333333';
+  const mine = { assignedMechanicId: 'mpm', assignedMechanic: { id: 'mpm', name: 'MPM' }, startedAt: new Date() };
+
+  it('lets the PM mechanic block their PM job without Standard capability', async () => {
+    const wo = workOrder({ ...mine, id: PM_JOB }, { status: 'in_progress' });
+    const { service, tx } = setup(wo);
+    Object.assign(tx, { pauseEvent: { create: vi.fn().mockResolvedValue({ id: 'b-pm' }) }, workSession: { ...tx.workSession, updateMany: vi.fn() } });
+
+    await service.reportBlocker(pmMechanic, 'wo-1', { jobId: PM_JOB, reason: 'waiting_for_parts' });
+
+    expect((tx as unknown as { pauseEvent: { create: ReturnType<typeof vi.fn> } }).pauseEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ jobId: PM_JOB, blockerReason: 'waiting_for_parts', reportedById: 'mpm' }),
+    });
+    // Another PM mechanic (not the owner) still has no Standard access here.
+    await expect(setup(wo).service.reportBlocker(otherPm, 'wo-1', { jobId: PM_JOB, reason: 'waiting_for_parts' }))
+      .rejects.toMatchObject({ status: 403 });
+  });
+
+  it('refuses to finish a blocked PM', async () => {
+    const blocker = {
+      id: 'b-pm', workOrderId: 'wo-1', jobId: 'job-pm', reason: 'waiting_for_parts', notes: null, startedAt: new Date(),
+      endedAt: new Date(), durationMs: 0n, isOfficialPause: false, resolvedAt: null, reportedBy: null,
+    };
+    const { service, tx } = setup(workOrder(mine, { status: 'in_progress', pauseEvents: [blocker] }));
+    await expect(service.completeJob(pmMechanic, 'wo-1', 'job-pm')).rejects.toMatchObject({ response: { code: 'JOB_BLOCKED' } });
+    expect(tx.workOrderJob.update).not.toHaveBeenCalled();
+  });
+});
+

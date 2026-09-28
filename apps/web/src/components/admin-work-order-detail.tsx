@@ -597,6 +597,58 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
 
       {!readyToClose ? completeCard : null}
 
+      {data.status === 'completed' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{messages.returnToServiceTitle}</CardTitle>
+            <CardDescription>{messages.returnToServiceDescription}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {canReturnToService ? (
+              <form
+                className="space-y-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  // LTR-158: the reason is optional.
+                  const reason = returnReason.trim() || undefined;
+                  void runMutation('return-to-service', messages.returnToServiceSuccess, async () => {
+                    await returnAdminWorkOrderToService(data.id, { reason, expectedVersion: data.version });
+                    setReturnReason('');
+                  }, (failure) => returnToServiceError(failure, messages));
+                }}
+              >
+                <label className="block space-y-1">
+                  <span className="text-sm font-medium">{messages.returnToServiceReason}</span>
+                  <Textarea
+                    aria-label={messages.returnToServiceReason}
+                    value={returnReason}
+                    onChange={(event) => setReturnReason(event.target.value)}
+                    maxLength={1000}
+                  />
+                  <span className="text-xs text-muted-foreground">{messages.returnToServiceReasonHelp}</span>
+                </label>
+                <Button type="submit" disabled={Boolean(pendingAction)}>
+                  {messages.returnToServiceConfirm}
+                </Button>
+              </form>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {messages.returnToServiceAlready}
+                {data.returnedToServiceAt ? ` ${formatAdminDate(data.returnedToServiceAt, locale)}` : ''}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* LTR-158: rare or destructive actions stay folded. */}
+      {canCancelWorkOrder || canReopenWorkOrder ? (
+        <details className="group rounded-xl border bg-card" data-testid="admin-wo-more-actions">
+          <summary className="cursor-pointer select-none px-4 py-3">
+            <span className="font-medium">{messages.moreActions}</span>
+            <span className="block text-xs text-muted-foreground">{messages.moreActionsHelp}</span>
+          </summary>
+          <div className="space-y-4 border-t p-4">
       {canCancelWorkOrder ? (
         <Card>
           <CardHeader>
@@ -637,55 +689,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         </CardContent>
       </Card>
       ) : null}
-
-      {data.status === 'completed' ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{messages.returnToServiceTitle}</CardTitle>
-            <CardDescription>{messages.returnToServiceDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {canReturnToService ? (
-              <form
-                className="space-y-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const reason = returnReason.trim();
-                  if (!reason) {
-                    setFeedback({ kind: 'error', message: messages.returnToServiceReasonRequired });
-                    return;
-                  }
-                  void runMutation('return-to-service', messages.returnToServiceSuccess, async () => {
-                    await returnAdminWorkOrderToService(data.id, { reason, expectedVersion: data.version });
-                    setReturnReason('');
-                  }, (failure) => returnToServiceError(failure, messages));
-                }}
-              >
-                <label className="block space-y-1">
-                  <span className="text-sm font-medium">{messages.returnToServiceReason}</span>
-                  <Textarea
-                    aria-label={messages.returnToServiceReason}
-                    value={returnReason}
-                    onChange={(event) => setReturnReason(event.target.value)}
-                    maxLength={1000}
-                    required
-                  />
-                  <span className="text-xs text-muted-foreground">{messages.returnToServiceReasonHelp}</span>
-                </label>
-                <Button type="submit" disabled={Boolean(pendingAction)}>
-                  {messages.returnToServiceConfirm}
-                </Button>
-              </form>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {messages.returnToServiceAlready}
-                {data.returnedToServiceAt ? ` ${formatAdminDate(data.returnedToServiceAt, locale)}` : ''}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
-
       {canReopenWorkOrder ? (
         <Card>
           <CardHeader>
@@ -725,6 +728,9 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             </form>
           </CardContent>
         </Card>
+      ) : null}
+          </div>
+        </details>
       ) : null}
 
       {/* LTR-126: notes are append-only; this form only changes priority (PM priority is locked). */}

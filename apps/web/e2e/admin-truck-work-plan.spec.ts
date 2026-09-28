@@ -330,4 +330,46 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByText('Job assigned.').first()).toBeVisible();
     await expect(planList.getByText('Assigned to: Alex Mechanic')).toBeVisible();
   });
+
+  test('Next step closes the Work Order and returns the Truck to service from the Truck (LTR-158)', async ({ page }) => {
+    const plan = structuredClone(emptyPlan());
+    plan.inspection.outcome = 'issues_found';
+    plan.workOrder = { id: '00000000-0000-4000-8000-00000000bbb1', displayId: 'WO-WP1', status: 'in_progress', version: 4, primaryCategoryName: categories[0].name };
+    let step: Record<string, unknown> = { kind: 'close', workOrderId: plan.workOrder.id };
+    let closed = false;
+    let rtsBody: Record<string, unknown> | null = null;
+    await page.route('**/api/admin/trucks/**', async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === `/api/admin/trucks/${truckId}` && route.request().method() === 'GET') {
+        return json(route, { ...truckDetail(plan), nextStep: step });
+      }
+      return route.continue();
+    });
+    await page.route('**/api/admin/work-orders/*/complete', async (route) => {
+      closed = true;
+      plan.workOrder!.status = 'completed';
+      step = { kind: 'return_to_service', workOrderId: plan.workOrder!.id };
+      return json(route, { id: plan.workOrder!.id, version: 5 });
+    });
+    await page.route('**/api/admin/work-orders/*/return-to-service', async (route) => {
+      rtsBody = route.request().postDataJSON();
+      step = { kind: 'create_work_order' };
+      return json(route, { id: plan.workOrder!.id, version: 6 });
+    });
+
+    await loginManager(page);
+    await page.goto(`/admin/trucks/${truckId}`);
+    const card = page.getByTestId('truck-next-step');
+    await expect(card).toHaveAttribute('data-kind', 'close');
+    await card.getByRole('button', { name: 'Close Work Order' }).click();
+    await expect.poll(() => closed).toBe(true);
+    await expect(card).toHaveAttribute('data-kind', 'return_to_service');
+
+    // The reason is optional.
+    await card.getByRole('button', { name: 'Return to Service' }).click();
+    await expect.poll(() => rtsBody).toMatchObject({ expectedVersion: 4 });
+    expect(rtsBody).not.toHaveProperty('reason');
+    await expect(card).toHaveAttribute('data-kind', 'create_work_order');
+  });
 });
+

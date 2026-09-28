@@ -18,7 +18,10 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await openYardOperations(page);
     await page.getByRole('link', { name: 'Y-101' }).first().click();
     await expect(page).toHaveURL(/\/admin\/trucks\/.*001001/);
-    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    // LTR-158 / D14: the Next step comes first; truck data is folded below the Work Plan.
+    await expect(page.getByTestId('truck-next-step')).toBeVisible();
+    await expect(page.getByText('Last reported location')).toBeHidden();
+    await page.getByTestId('truck-details').locator('summary').click();
     await expect(page.getByText('Last reported location')).toBeVisible();
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
@@ -26,6 +29,7 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await expect(page.getByRole('heading', { name: 'Current Work' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Work Plan', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Issues found', exact: true })).toBeVisible();
+    await page.getByTestId('truck-history').locator('summary').click();
     await expect(page.getByRole('heading', { name: 'Repair history' })).toBeVisible();
     // The Phase 1 six-gate editor, Mark Ready and its Blockers card are gone.
     await expect(page.getByRole('heading', { name: 'Blockers' })).toHaveCount(0);
@@ -52,9 +56,9 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await login(page, 'ibrain@ltransl.com');
     await openYardOperations(page);
     await page.getByRole('link', { name: 'Y-102' }).click();
-    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByText('Truck details', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Switch to Spanish' }).click();
-    await expect(page.getByRole('heading', { name: 'Resumen' })).toBeVisible();
+    await page.getByTestId('truck-details').locator('summary').filter({ hasText: 'Datos del truck' }).click();
     await expect(page.getByText('Ubicación reportada')).toBeVisible();
     await expect(page.getByText('Presencia desconocida')).toHaveCount(0);
     await expect(page.getByText(/no tienes permiso para cambiar/i)).toBeVisible();
