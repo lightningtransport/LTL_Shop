@@ -268,7 +268,8 @@ export function AdminTruckWorkPlan({
                       ) : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      {canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic !== undefined ? (
+                      {/* LTR-164 (#2) / D15: Quality Check has no owner, so no mechanic picker. */}
+                      {canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic !== undefined && job.lane !== 'quality_check' ? (
                         <Select
                           id={`assign-job-${job.id}`}
                           aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}

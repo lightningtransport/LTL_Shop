@@ -1437,6 +1437,8 @@ describe('AdminService', () => {
         startedAt: completed.startedAt,
         serviceStatusEvents: [{ occurredAt: new Date('2026-09-10T18:00:00.000Z') }],
       }));
+    // LTR-164 (#13): the truck's readiness assessment ends with Return to Service.
+    tx.truckReadinessAssessment.findMany.mockResolvedValue([{ id: 'assessment-1', status: 'under_review', version: 4 }]);
     const prisma = createPrisma();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
     const service = new AdminService(prisma as never, activity as never, {} as never);
@@ -1451,6 +1453,14 @@ describe('AdminService', () => {
     }));
     expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({
       eventType: ActivityEventType.TRUCK_RETURNED_TO_SERVICE,
+    }));
+    expect(tx.truckReadinessAssessment.update).toHaveBeenCalledWith({
+      where: { id: 'assessment-1' },
+      data: expect.objectContaining({ status: 'closed', closedById: manager.id, closedReason: 'Returned to Service' }),
+    });
+    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({
+      eventType: ActivityEventType.READINESS_ASSESSMENT_CLOSED,
+      entityId: 'assessment-1',
     }));
 
     // LTR-158: the reason is optional.
@@ -1750,6 +1760,7 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
     pmService: { findUnique: vi.fn().mockResolvedValue(null) },
     truckReadinessAssessment: {
       findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
     },
     truck: { update: vi.fn() },

@@ -101,6 +101,21 @@ describe('work plan derivation', () => {
     expect(result.jobs[0].lane).toBe(WorkPlanJobLane.SHOP_WORK);
   });
 
+  it('keeps a mandatory step Pending until someone works on it (LTR-164 #3)', () => {
+    const plan = (sessions: { endedAt: Date | null; userId: string | null }[], alignment = job('al', 'Alignment', 'Suspension & Steering')) => deriveWorkPlan({
+      workOrder: { id: 'wo-1', displayId: 'WO-1', status: WorkOrderStatus.IN_PROGRESS, version: 2, primaryCategoryName: 'Inspection' },
+      jobs: [{ ...alignment, assignedMechanic: { id: 'ma', name: 'MA' } }, job('qc', 'Quality Check', 'Quality Check')],
+      inspectionRequirementOutcome: ReadinessRequirementOutcome.REQUIRED,
+      sessions,
+    });
+    // Another mechanic's running session does not start Alignment.
+    expect(plan([{ endedAt: null, userId: 'mg' }]).mandatory.alignment.status).toBe(WorkPlanMandatoryStatus.PENDING);
+    expect(plan([{ endedAt: null, userId: 'mg' }]).mandatory.qualityCheck.status).toBe(WorkPlanMandatoryStatus.PENDING);
+    expect(plan([{ endedAt: null, userId: 'ma' }]).mandatory.alignment.status).toBe(WorkPlanMandatoryStatus.IN_PROGRESS);
+    expect(plan([], job('al', 'Alignment', 'Suspension & Steering', JobStatus.COMPLETED)).mandatory.alignment.status)
+      .toBe(WorkPlanMandatoryStatus.COMPLETE);
+  });
+
   it('does not invent Shop Work after No issues found; PM is next and always required', () => {
     const result = deriveWorkPlan({
       workOrder: null,

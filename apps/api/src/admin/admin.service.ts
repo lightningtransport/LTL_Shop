@@ -1293,6 +1293,35 @@ export class AdminService {
             actorId: user.id,
           },
         });
+        // LTR-164 (#13): the truck left the shop, so its readiness assessment ends here. Otherwise the
+        // next Work Order would inherit this Inspection outcome and skip "Record the inspection".
+        const activeAssessments = tx.truckReadinessAssessment
+          ? await tx.truckReadinessAssessment.findMany({
+              where: { truckId: wo.truckId, status: { in: ['under_review', 'ready'] } },
+              select: { id: true, status: true, version: true },
+            })
+          : [];
+        for (const assessment of activeAssessments) {
+          await tx.truckReadinessAssessment.update({
+            where: { id: assessment.id },
+            data: {
+              status: 'closed',
+              closedAt: new Date(),
+              closedById: user.id,
+              closedReason: 'Returned to Service',
+              version: { increment: 1 },
+            },
+          });
+          await this.activity.log(tx, {
+            eventType: SharedActivityEventType.READINESS_ASSESSMENT_CLOSED,
+            entityType: 'readiness_assessment',
+            entityId: assessment.id,
+            userId: user.id,
+            previousValue: { status: assessment.status, version: assessment.version },
+            newValue: { status: 'closed', version: assessment.version + 1, closedReason: 'Returned to Service' },
+            relevantValue: { truckId: wo.truckId, workOrderId },
+          });
+        }
         await this.activity.log(tx, {
           workOrderId,
           eventType: SharedActivityEventType.TRUCK_RETURNED_TO_SERVICE,

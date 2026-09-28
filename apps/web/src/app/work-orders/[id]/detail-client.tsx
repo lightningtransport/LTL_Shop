@@ -206,6 +206,8 @@ export default function WorkOrderDetailPage() {
   // `laborRunning === false` keeps older API responses (field absent) unchanged.
   const laborStopped = wo.status === 'in_progress' && wo.laborRunning === false;
   const needsStart = (wo.status === 'created' || laborStopped) && myWorkable.length > 0;
+  // LTR-164 (#6): a mechanic who has not worked here yet starts; one who stopped continues.
+  const startedHereBefore = wo.myLaborStarted ?? wo.status !== 'created';
   const finishedMyPart = partDone && (wo.status === 'in_progress' || wo.status === 'created');
   const laborMs = liveLaborMs(wo.totalActiveLaborMs, wo.laborRunning, fetchedAt, now);
 
@@ -326,30 +328,33 @@ export default function WorkOrderDetailPage() {
         </section>
       ) : null}
 
-      <section className="mb-4 space-y-2">
-        <p className="section-label">{messages.workOptions}</p>
-        {needsStart ? (
-          <Button
-            className="w-full"
-            disabled={busy}
-            onClick={() =>
-              run(
-                () =>
-                  apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
-                    method: 'POST',
-                  }),
-                undefined,
-                () => showToast('success', messages.workStartedSuccess),
-              )
-            }
-          >
-            {busy ? messages.startingWork : wo.status === 'created' ? messages.startWork : messages.continueWork}
-          </Button>
-        ) : null}
-        {wo.status === 'waiting_paused' ? (
-          <p className="text-sm text-muted-foreground">{messages.pausedAskManager}</p>
-        ) : null}
-      </section>
+      {/* LTR-164 (#5): the section only shows when it has something (Start / Continue or the pause note). */}
+      {needsStart || wo.status === 'waiting_paused' ? (
+        <section className="mb-4 space-y-2">
+          <p className="section-label">{messages.workOptions}</p>
+          {needsStart ? (
+            <Button
+              className="w-full"
+              disabled={busy}
+              onClick={() =>
+                run(
+                  () =>
+                    apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
+                      method: 'POST',
+                    }),
+                  undefined,
+                  () => showToast('success', messages.workStartedSuccess),
+                )
+              }
+            >
+              {busy ? messages.startingWork : startedHereBefore ? messages.continueWork : messages.startWork}
+            </Button>
+          ) : null}
+          {wo.status === 'waiting_paused' ? (
+            <p className="text-sm text-muted-foreground">{messages.pausedAskManager}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="card mb-4">
         <Button
@@ -381,7 +386,7 @@ export default function WorkOrderDetailPage() {
         <p className="section-label mb-2">{messages.myJobs}</p>
         {/* LTR-131: say why Jobs are disabled before Start Work. */}
         {needsStart ? (
-          <p className="mb-2 text-sm text-muted-foreground">{messages.startWorkToCompleteJobs}</p>
+          <p className="mb-2 text-sm text-muted-foreground">{startedHereBefore ? messages.continueToCompleteJobs : messages.startWorkToCompleteJobs}</p>
         ) : myWorkable.length > 0 && wo.status === 'in_progress' ? (
           <p className="mb-2 text-sm text-muted-foreground">{messages.tapJobToComplete}</p>
         ) : null}

@@ -300,7 +300,7 @@ function WorkOrderCard({
             {!isPm ? `${messages.priority[wo.priority] ?? wo.priority} · ` : ''}
             {mode === 'paused'
               ? pauseLabel(wo.currentPauseReason, messages.pauseReason)
-              : messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}
+              : messages.status[wo.workOrderStatus ?? wo.status] ?? statusLabel(wo.workOrderStatus ?? wo.status, messages.status)}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">

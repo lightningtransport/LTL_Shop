@@ -71,7 +71,8 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
           <Button type="button" disabled={!dirty || saving} onClick={() => void save()}>{messages.shopWorkflowSave}</Button>
         ) : null}
       />
-      {!canWrite ? <p className="text-sm text-muted-foreground">{messages.shopWorkflowReadOnly}</p> : null}
+      {/* LTR-164 (#1): read-only only once the session says so, not while it loads. */}
+      {user && !canWrite ? <p className="text-sm text-muted-foreground">{messages.shopWorkflowReadOnly}</p> : null}
       {saveError ? <InlineAlert>{saveError}</InlineAlert> : null}
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.shopWorkflow} /> : null}

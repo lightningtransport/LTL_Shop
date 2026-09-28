@@ -33,6 +33,7 @@ import {
   EmptyState,
   InlineAlert,
   Input,
+  PageSkeleton,
   Select,
   Textarea,
 } from './ui';
@@ -63,7 +64,7 @@ export function AdminNewWorkOrder({
   const router = useRouter();
   const { showToast } = useActionToast();
   const { mutate } = useSWRConfig();
-  const { user } = useAuth();
+  const { user, sessionLoading } = useAuth();
   const canCreateWorkOrder = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const [truckQuery, setTruckQuery] = useState('');
   const [debouncedTruckQuery, setDebouncedTruckQuery] = useState('');
@@ -174,6 +175,9 @@ export function AdminNewWorkOrder({
       setError(failure instanceof ApiError && failure.message ? failure.message : messages.createWorkOrderFailed);
     }
   }
+
+  // LTR-164 (#1): no "no permission" flash while the session is still loading.
+  if (sessionLoading || !user) return <PageSkeleton label={messages.newWorkOrderTitle} />;
 
   if (!canCreateWorkOrder) {
     return (

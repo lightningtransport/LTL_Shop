@@ -154,6 +154,8 @@ describe('PM job inside the truck Work Order (LTR-146)', () => {
       jobs: { some: { assignedMechanicId: 'mpm', status: { not: 'cancelled' }, category: { name: 'PM' } } },
     });
     expect(result.created.map((item) => item.displayId)).toEqual(['WO-006']);
+    // LTR-164 (#10): the card shows the Work Order's own status, not the PM bucket.
+    expect(result.created[0]).toMatchObject({ status: 'created', workOrderStatus: 'in_progress' });
     expect(result.active.map((item) => item.displayId)).toEqual(['WO-007']);
     expect(result.active[0].pmJob).toMatchObject({ id: 'job-pm', displayName: 'PM A Service' });
   });
