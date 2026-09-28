@@ -38,6 +38,9 @@ export const TEST_ROSTER: RosterTarget[] = [
   { email: 'cristian@ltransl.com', name: 'Cristian', role: 'manager', capabilities: MANAGE },
   { email: 'cristian240588@hotmail.com', name: 'MG', role: 'mechanic', capabilities: ['MECHANIC_STANDARD'] },
   { email: 'cris240588@gmail.com', name: 'MPM', role: 'mechanic', capabilities: ['MECHANIC_PM'] },
+  // LTR-99: test owners for the Detailing and Alignment steps (Gmail + addressing, same inbox as MPM).
+  { email: 'cris240588+detailing@gmail.com', name: 'MD', role: 'mechanic', capabilities: ['MECHANIC_STANDARD'] },
+  { email: 'cris240588+alignment@gmail.com', name: 'MA', role: 'mechanic', capabilities: ['MECHANIC_STANDARD'] },
 ];
 
 export type RosterAction =
