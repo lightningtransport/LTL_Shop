@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ActivityEventType, AppCapability, PauseReason } from '@ltl-shop/shared';
+import { ActivityEventType, AppCapability, BlockerReason, PauseReason } from '@ltl-shop/shared';
 import type { AuthUser } from '../auth/auth.guard';
 import { WorkOrdersService } from './work-orders.service';
 
@@ -66,67 +66,115 @@ function workOrder(overrides: Record<string, unknown> = {}) {
   };
 }
 
+const WO_ID = '11111111-1111-4111-8111-111111111111';
+const J1 = '22222222-2222-4222-8222-000000000001';
+const J2 = '22222222-2222-4222-8222-000000000002';
+const J3 = '22222222-2222-4222-8222-000000000003';
+
+/** Mechanic-1 owns J1 and J2; J3 belongs to mechanic-2. `workableLeft` = mechanic-1's unblocked pending Jobs after the report. */
+function reportSetup(options: { workableLeft: number; alreadyBlocked?: string }) {
+  const base = workOrder().jobs[0];
+  const job = (id: string, owner: string, name: string) => ({
+    ...base, id, displayName: name, assignedMechanicId: owner, assignedMechanic: { id: owner, name: owner },
+  });
+  const wo = workOrder({
+    jobs: [job(J1, 'mechanic-1', 'Inspect brakes'), job(J2, 'mechanic-1', 'Replace pads'), job(J3, 'mechanic-2', 'ABS sensor')],
+    sessions: [{ id: 's-1', startedAt: now, endedAt: null, userId: 'mechanic-1' }],
+    pauseEvents: options.alreadyBlocked ? [{
+      id: 'b-old', workOrderId: WO_ID, jobId: options.alreadyBlocked, reason: PauseReason.WAITING_FOR_PARTS, notes: null,
+      startedAt: now, endedAt: now, durationMs: 0n, isOfficialPause: false, resolvedAt: null, reportedBy: null,
+    }] : [],
+  });
+  const tx = {
+    workOrder: { findUnique: vi.fn().mockResolvedValue(wo), update: vi.fn().mockResolvedValue(wo) },
+    pauseEvent: { create: vi.fn().mockResolvedValue({ id: 'blocker-new' }), findMany: vi.fn().mockResolvedValue([]) },
+    workOrderJob: {
+      count: vi.fn(async ({ where }: { where: { assignedMechanicId?: string } }) => (where.assignedMechanicId ? options.workableLeft : 2)),
+    },
+    workSession: {
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findMany: vi.fn().mockResolvedValue([{ startedAt: now, endedAt: now }]),
+    },
+  };
+  const activity = { log: vi.fn() };
+  const service = new WorkOrdersService({
+    $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+  } as never, activity as never);
+  return { service, tx, activity };
+}
+
 describe('Work Order blocker lifecycle', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('records a mechanic report without pausing or adding waiting time', async () => {
+  it('records a per-Job blocker without pausing the Work Order or adding waiting time (LTR-155)', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(now);
-    const open = workOrder();
-    const updated = workOrder({
-      version: 2,
-      pauseEvents: [{
-        id: 'report-1',
-        workOrderId: open.id,
-        reason: PauseReason.WAITING_FOR_PARTS,
-        notes: null,
-        startedAt: now,
-        endedAt: now,
-        durationMs: 0n,
-        isOfficialPause: false,
-        reportedBy: { id: 'mechanic-1', name: 'Alex' },
-      }],
-    });
-    const tx = {
-      workOrder: {
-        findUnique: vi.fn().mockResolvedValue(open),
-        update: vi.fn().mockResolvedValue(updated),
-      },
-      pauseEvent: { create: vi.fn() },
-    };
-    const activity = { log: vi.fn() };
-    const service = new WorkOrdersService({
-      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
-    } as never, activity as never);
+    const { service, tx, activity } = reportSetup({ workableLeft: 1 });
 
     const result = await service.reportBlocker(
       actor([AppCapability.MECHANIC_STANDARD]),
-      open.id,
-      { reason: PauseReason.WAITING_FOR_PARTS },
+      WO_ID,
+      { jobId: J1, reason: BlockerReason.WAITING_FOR_PARTS },
     );
 
     expect(result.status).toBe('in_progress');
     expect(result.currentPause).toBeNull();
-    expect(result.currentPauseReason).toBeNull();
     expect(result.totalWaitingMs).toBe(0);
-    expect(tx.workOrder.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: { version: { increment: 1 } },
-    }));
     expect(tx.pauseEvent.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        jobId: J1,
+        blockerReason: BlockerReason.WAITING_FOR_PARTS,
+        reason: PauseReason.WAITING_FOR_PARTS,
         isOfficialPause: false,
         durationMs: 0n,
-        endedAt: now,
         reportedById: 'mechanic-1',
-        createdById: 'mechanic-1',
-        reason: PauseReason.WAITING_FOR_PARTS,
       }),
     });
     expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({
       eventType: ActivityEventType.BLOCKER_REPORTED,
-      userId: 'mechanic-1',
-      newValue: { reason: PauseReason.WAITING_FOR_PARTS, notes: null },
+      entityType: 'pause_event',
+      entityId: 'blocker-new',
+      newValue: expect.objectContaining({ jobId: J1, jobName: 'Inspect brakes', reason: BlockerReason.WAITING_FOR_PARTS }),
     }));
+  });
+
+  it('keeps labor running while another Job is workable (J1 blocked)', async () => {
+    const { service, tx } = reportSetup({ workableLeft: 1 });
+    await service.reportBlocker(actor([AppCapability.MECHANIC_STANDARD]), WO_ID, { jobId: J1, reason: BlockerReason.WAITING_FOR_BAY });
+    expect(tx.workSession.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("stops the mechanic's labor when their last workable Job is blocked (J2 blocked)", async () => {
+    const { service, tx } = reportSetup({ workableLeft: 0 });
+    await service.reportBlocker(actor([AppCapability.MECHANIC_STANDARD]), WO_ID, { jobId: J2, reason: BlockerReason.WAITING_FOR_PARTS });
+    expect(tx.workSession.updateMany).toHaveBeenCalledWith({
+      where: { workOrderId: WO_ID, endedAt: null, userId: 'mechanic-1' },
+      data: { endedAt: expect.any(Date) },
+    });
+  });
+
+  it('rejects Manager-only reasons such as Break (400)', async () => {
+    const { service, tx } = reportSetup({ workableLeft: 1 });
+    await expect(service.reportBlocker(
+      actor([AppCapability.MECHANIC_STANDARD]), WO_ID, { jobId: J1, reason: PauseReason.BREAK },
+    )).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.reportBlocker(
+      actor([AppCapability.MECHANIC_STANDARD]), WO_ID, { reason: BlockerReason.WAITING_FOR_PARTS },
+    )).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.pauseEvent.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects blocking another mechanic's Job (403) and a Job already blocked (409)", async () => {
+    const other = reportSetup({ workableLeft: 1 });
+    await expect(other.service.reportBlocker(
+      actor([AppCapability.MECHANIC_STANDARD]), WO_ID, { jobId: J3, reason: BlockerReason.WAITING_FOR_PARTS },
+    )).rejects.toMatchObject({ status: 403 });
+
+    const blocked = reportSetup({ workableLeft: 1, alreadyBlocked: J1 });
+    await expect(blocked.service.reportBlocker(
+      actor([AppCapability.MECHANIC_STANDARD]), WO_ID, { jobId: J1, reason: BlockerReason.WAITING_FOR_PARTS },
+    )).rejects.toMatchObject({ response: { code: 'BLOCKER_ALREADY_ACTIVE' } });
+    expect(blocked.tx.pauseEvent.create).not.toHaveBeenCalled();
   });
 
   it('rejects a blocker report on a closed Work Order', async () => {
@@ -142,7 +190,7 @@ describe('Work Order blocker lifecycle', () => {
     await expect(service.reportBlocker(
       actor([AppCapability.MECHANIC_STANDARD]),
       closed.id,
-      { reason: PauseReason.WAITING_FOR_PARTS },
+      { jobId: J1, reason: BlockerReason.WAITING_FOR_PARTS },
     )).rejects.toBeInstanceOf(BadRequestException);
     expect(tx.pauseEvent.create).not.toHaveBeenCalled();
   });

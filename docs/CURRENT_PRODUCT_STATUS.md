@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-28 (LTR-154 Job owner and per-mechanic labor; LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
+**Updated:** 2026-09-28 (LTR-155 per-Job blockers; LTR-154 Job owner and per-mechanic labor; LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -206,9 +206,9 @@ TARGET authorization/UX.
   `work_orders.manage` on the Admin path and return API 403 for the mechanic
   Standard routes. The Standard Create CTA and `/mechanic/standard/new` form
   are gone; the deep link asks the mechanic to contact their Shop Manager.
-- An assigned Standard mechanic can start work, complete assigned or
-  inherited-team Jobs, report a blocker, and save execution notes (including
-  additional work for the Manager to add as a Job).
+- An assigned Standard mechanic can start work (Continue), complete their own
+  Jobs, block one of their own pending Jobs, and save execution notes
+  (including additional work for the Manager to add as a Job).
 - UI vocabulary follows the Flujo v3 glossary (LTR-152,
   `design-system/glossary-en-es.md`). A Job without an owner reads
   "Unassigned" / "Sin asignar"; the "inherits the Work Order team" wording is
@@ -257,10 +257,10 @@ TARGET authorization/UX.
 - A Standard mechanic with `mechanic.standard` executes assigned work. Home
   remains “My Assigned Work.” Standard Create, global pause/resume/change-reason,
   Add Job, and Finish Work Order are hidden. Those mechanic APIs return 403.
-  The mechanic can start work, complete assigned or inherited-team Jobs, report
-  a blocker, and save execution notes so the Manager can add discovered work.
-  Unassigned Jobs remain executable by the general Work Order team; a specific
-  Job assignee takes priority in presentation.
+  The mechanic can start work, complete their own Jobs, block one of their
+  own pending Jobs, and save execution notes so the Manager can add discovered
+  work. Unassigned Jobs are not executable by anyone until the Manager assigns
+  them (LTR-154 / D11).
 - A Manager with both `admin.access` and `work_orders.manage` creates Standard
   Work Orders from `/admin/work-orders/new`, adds Jobs after create, sets
   priority/notes, assigns the team and per-Job mechanics, officially
@@ -292,20 +292,38 @@ TARGET authorization/UX.
   Progress while the owner has an open session, Pending otherwise. Sessions
   without `user_id` (before LTR-154) count for every assignee until they close.
 - Managers with `work_orders.manage` officially pause/resume a Standard
-  Work Order from Admin. Standard mechanics report a blocker without
-  changing Work Order status or waiting totals. The blocker is stored as a
-  closed, zero-duration non-official `PauseEvent` and writes
-  `blocker_reported` with actor and reason. Admin list/detail show the latest
-  report separately from the current official pause; pause history and time
-  correction use official pauses only. Waiting totals exclude report-only
-  events even if a report later has a non-zero duration.
+  Work Order from Admin; the Standard mechanic never pauses (D12) and the Home
+  section reads "Paused by the Manager" (read-only, with reason).
+- LTR-155 / D17 (replaces D3): a blocker always belongs to one Job.
+  `POST /work-orders/:id/blockers { jobId, reason, notes? }` needs a pending
+  Job owned by the actor (403 otherwise, 409 when already blocked) and a
+  `BlockerReason` (Break, End of Shift, Working on Another WO and Truck
+  Unavailable → 400). It stores a closed, zero-duration non-official
+  `PauseEvent` with `job_id` and `blocker_reason` (also `reason`, for older
+  readers) and logs `blocker_reported` on entity `pause_event`. Work Order
+  status and waiting totals do not change. D18: when the mechanic has no
+  unblocked pending Job left there, their own labor session closes. A blocked
+  Job cannot be completed (`JOB_BLOCKED`) and does not count for Continue.
+- The mechanic cannot resolve: the mechanic resolve route is gone. They append
+  notes with `POST /work-orders/:id/blockers/:blockerId/notes { body }`
+  (Activity Log `note_added` on the blocker). Only
+  `POST /admin/work-orders/:id/blockers/:blockerId/resolve { notes? }`
+  resolves (`blocker_resolved` with the note). The Job goes back to Pending;
+  labor restarts only when the mechanic taps Continue.
+- Job DTOs carry `activeBlocker` and `workStatus: blocked`; blocker DTOs carry
+  `job`, `blockerReason`, `blockerNotes` and `resolutionNote`. "Blocked ·
+  reason" shows on the mechanic Home and WO, the Truck Work Plan and the Yard.
+  The Manager resolves (optional note) from the Dashboard attention item, the
+  Truck Current Work card and the Work Order Reported blockers card.
+- Pause history and time correction use official pauses only; waiting totals
+  exclude mechanic blockers.
 - LTR-153 columns: `work_sessions.user_id` (nullable FK `users`, index
   `(work_order_id, user_id)`) is used by LTR-154; `pause_events.job_id`
   (nullable FK `work_order_jobs`) and `pause_events.blocker_reason` (nullable
   Postgres enum `blocker_reason`, mirrored by `BlockerReason` in
-  `@ltl-shop/shared`: the waiting reasons of `PauseReason` plus `other`) for
-  per-Job blockers stay unused until LTR-155; `PauseReason` is unchanged and
-  still used by official pauses and today's blocker reports.
+  `@ltl-shop/shared`: the waiting reasons of `PauseReason` plus `other`) are
+  used by LTR-155. `PauseReason` is unchanged and still used by official
+  pauses.
 - PM retains its specialized create-start, pause, resume, and finish behavior.
 - Reopen Work Order, time correction, reopen Job, and Returned to Service stay
   on `admin.access`. There is no general permission-management UI.

@@ -1286,11 +1286,21 @@ createServer(async (request, response) => {
       json(response, 400, { message: 'Cannot report a blocker on a closed Work Order' });
       return;
     }
+    // LTR-155 / D17: a blocker belongs to one of the mechanic's pending Jobs.
+    const blockedJob = (summary.jobs ?? []).find((job) => job.id === body?.jobId);
+    if (!blockedJob) { json(response, 400, { message: 'jobId is required' }); return; }
+    if (blockedJob.assignedMechanic?.id !== user.id) { json(response, 403, { code: 'JOB_NOT_ASSIGNED_TO_YOU', message: 'This Job is assigned to another mechanic.' }); return; }
     const now = '2026-09-11T15:00:00.000Z';
     const report = {
       id: '00000000-0000-4000-8000-000000000902',
       workOrderId: summary.id,
       reason: body?.reason ?? 'waiting_for_parts',
+      blockerReason: body?.reason ?? 'waiting_for_parts',
+      job: { id: blockedJob.id, displayName: blockedJob.displayName },
+      blockerNotes: [],
+      resolvedAt: null,
+      resolvedBy: null,
+      resolutionNote: null,
       notes: body?.notes ?? null,
       startedAt: now,
       endedAt: now,
@@ -1301,6 +1311,7 @@ createServer(async (request, response) => {
     };
     summary.latestReportedBlocker = report;
     summary.reportedBlockers = [report, ...(summary.reportedBlockers ?? [])];
+    blockedJob.activeBlocker = { id: report.id, reason: report.blockerReason, reportedAt: now, reportedBy: report.reportedBy };
     summary.version += 1;
     summary.activityLog = [
       {
@@ -1317,6 +1328,39 @@ createServer(async (request, response) => {
       ...(summary.activityLog ?? []),
     ];
     json(response, 200, fixtureMechanicWorkOrderDetail(summary));
+    return;
+  }
+  // LTR-155 / D17: the mechanic appends notes; only Admin resolves.
+  const blockerNoteMatch = request.url?.match(/^\/api\/work-orders\/([0-9a-f-]+)\/blockers\/([0-9a-f-]+)\/notes$/i);
+  if (blockerNoteMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === blockerNoteMatch[1]);
+    const blocker = summary?.reportedBlockers?.find((item) => item.id === blockerNoteMatch[2] && !item.resolvedAt);
+    const body = await readJson(request);
+    if (!summary || !blocker) { json(response, 404, { message: 'Blocker not found' }); return; }
+    blocker.blockerNotes = [...(blocker.blockerNotes ?? []), {
+      id: `00000000-0000-4000-8000-00000000095${blocker.blockerNotes?.length ?? 0}`,
+      body: String(body?.body ?? '').trim(),
+      author: { id: user.id, name: user.name },
+      createdAt: '2026-09-11T16:00:00.000Z',
+    }];
+    summary.version += 1;
+    json(response, 200, fixtureMechanicWorkOrderDetail(summary));
+    return;
+  }
+  const adminResolveMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/blockers\/([0-9a-f-]+)\/resolve$/i);
+  if (adminResolveMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === adminResolveMatch[1]);
+    const blocker = summary?.reportedBlockers?.find((item) => item.id === adminResolveMatch[2]);
+    const body = await readJson(request);
+    if (!summary || !blocker) { json(response, 404, { message: 'Blocker not found' }); return; }
+    if (blocker.resolvedAt) { json(response, 400, { code: 'BLOCKER_ALREADY_RESOLVED', message: 'This blocker is already resolved.' }); return; }
+    blocker.resolvedAt = '2026-09-11T17:00:00.000Z';
+    blocker.resolvedBy = { id: user.id, name: user.name };
+    blocker.resolutionNote = body?.notes ?? null;
+    summary.latestReportedBlocker = null;
+    for (const job of summary.jobs ?? []) if (job.activeBlocker?.id === blocker.id) job.activeBlocker = null;
+    summary.version += 1;
+    json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
   const mechanicPlanningMatch = request.url?.match(/^\/api\/work-orders(?:\/([0-9a-f-]+)\/(pause|pause-reason|resume|complete|jobs))?$/i);
@@ -1386,8 +1430,10 @@ function fixtureMechanicWorkOrderDetail(summary) {
       completedById: null,
       completionNotes: job.completionNotes ?? null,
       assignedMechanic: job.assignedMechanic ?? null,
+      activeBlocker: job.activeBlocker ?? null,
     })),
     currentPause: summary.currentPause,
+    activeBlockers: (summary.reportedBlockers ?? []).filter((blocker) => !blocker.resolvedAt),
   };
 }
 
@@ -1466,7 +1512,8 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status, options = {
       customDescription: null,
       category: { id: '00000000-0000-4000-8000-000000000301', name: 'Brakes' },
       status: pendingJob ? 'to_do' : (status === 'in_progress' || status === 'completed' ? 'completed' : 'to_do'),
-      assignedMechanic: null,
+      // LTR-154 / D11: a pending Job the dev mechanic works has them as its owner.
+      assignedMechanic: pendingJob ? { id: users['mechanic@lightning.local'].id, name: users['mechanic@lightning.local'].name } : null,
       completedAt: pendingJob ? null : (status === 'in_progress' || status === 'completed' ? '2026-09-06T17:30:00.000Z' : null),
       completedBy: pendingJob ? null : (status === 'in_progress' || status === 'completed' ? { id: users['mechanic@lightning.local'].id, name: users['mechanic@lightning.local'].name } : null),
       completionNotes: null,

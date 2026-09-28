@@ -1531,6 +1531,13 @@ Reason: A shared team made ownership and time ambiguous (anyone could complete a
 Impact: D11 replaces Q10/Q17 (team membership grants Job access; unassigned Jobs inherit the team). D18 replaces D7 (one labor session per Work Order).
 Phase: Flujo v3 PR 4 (LTR-154).
 
+### 2026-09-27 — Blockers belong to a Job; only the Manager resolves (D12, D17)
+
+Decision: A mechanic blocks one of their own pending Jobs with a mechanic reason (waiting for parts, approval, vendor, equipment, bay, driver, other). The Standard mechanic never pauses the Work Order. Only the Manager resolves a blocker, with an optional note; the mechanic adds append-only notes. When a mechanic has no unblocked pending Job left, their labor stops; after resolution it restarts only when they tap Continue.
+Reason: Blockers "resolved" by whoever reported them hid real waiting from the Manager, and one blocker could not say which Job was stopped. Flujo v3 review §12.
+Impact: D17 replaces D3 (LTR-98, mechanic or Manager resolves). Break, End of Shift, Working on Another WO and Truck Unavailable stay Manager pause reasons only.
+Phase: Flujo v3 PR 5 (LTR-155).
+
 ### 2026-09-11 — Ownership migration
 
 Do not destructively cut over. Introduce Manager workflow additively, validate, then retire Mechanic planning controls.

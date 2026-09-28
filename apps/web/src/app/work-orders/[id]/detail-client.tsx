@@ -7,6 +7,7 @@ import { ChevronDown } from 'lucide-react';
 import { useSWRConfig } from 'swr';
 import {
   AppCapability,
+  BlockerReason,
   JobStatus,
   MechanicMode,
   PauseReason,
@@ -19,7 +20,7 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
-import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
+import { formatMileage, formatShopDateTime, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import { isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel, splitMyJobs } from '@/lib/job-assignment';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
@@ -77,6 +78,9 @@ export default function WorkOrderDetailPage() {
   const [pauseOpen, setPauseOpen] = useState(false);
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [pauseNotes, setPauseNotes] = useState('');
+  // LTR-155 / D17: the Job the mechanic is blocking, and note drafts per blocker.
+  const [blockerJob, setBlockerJob] = useState<{ id: string; name: string } | null>(null);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
   // LTR-131: live labor clock (API total at fetch time + elapsed while running).
@@ -91,13 +95,6 @@ export default function WorkOrderDetailPage() {
   useEffect(() => {
     if (!sessionLoading && !token) replaceAppLocation('/login', router);
   }, [sessionLoading, token, router]);
-
-  useEffect(() => {
-    const action = search.get('action');
-    if (action === 'pause' && wo?.primaryCategoryName !== 'PM' && wo?.status === 'in_progress') {
-      setPauseOpen(true);
-    }
-  }, [search, wo]);
 
   async function run(
     action: () => Promise<WorkOrderDetailDto>,
@@ -200,13 +197,15 @@ export default function WorkOrderDetailPage() {
   // LTR-154 / D11: the mechanic completes only their own Jobs; the rest of the truck's work is read-only.
   const { mine, others, partDone } = splitMyJobs(wo, user?.id ?? '');
   const myTodo = mine.filter((job) => job.status === 'to_do');
+  // LTR-155 / D17: a blocked Job waits for the Manager; only the others are workable.
+  const myWorkable = myTodo.filter((job) => !job.activeBlocker);
   const otherTodo = others.filter((job) => job.status === 'to_do');
   const waitingOnManager = isStandardWorkWaitingOnManager(wo);
   // LTR-154 / D18: labor is per mechanic. `laborRunning` is the viewer's own session;
   // it stops when they finish their part and "Continue" reopens it for a new Job.
   // `laborRunning === false` keeps older API responses (field absent) unchanged.
   const laborStopped = wo.status === 'in_progress' && wo.laborRunning === false;
-  const needsStart = (wo.status === 'created' || laborStopped) && myTodo.length > 0;
+  const needsStart = (wo.status === 'created' || laborStopped) && myWorkable.length > 0;
   const finishedMyPart = partDone && (wo.status === 'in_progress' || wo.status === 'created');
   const laborMs = liveLaborMs(wo.totalActiveLaborMs, wo.laborRunning, fetchedAt, now);
 
@@ -258,29 +257,58 @@ export default function WorkOrderDetailPage() {
       {wo.primaryCategoryName === 'PM' ? <PmServiceCard workOrderId={wo.id} /> : null}
 
       {(wo.activeBlockers ?? []).length ? (
-        // LTR-128: the mechanic sees what they already reported and can mark it resolved.
+        // LTR-155 / D17: the mechanic sees each blocked Job and adds notes; only the Manager resolves.
         <section className="mb-4 space-y-2" aria-labelledby="active-blockers-title">
           <p id="active-blockers-title" className="section-label">{messages.activeBlockers}</p>
+          <p className="text-sm text-muted-foreground">{messages.blockerWaitsForManager}</p>
           <ul className="space-y-2">
             {(wo.activeBlockers ?? []).map((blocker) => (
-              <li key={blocker.id} className="rounded-xl bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
-                <p className="font-medium">{pauseLabel(blocker.reason, messages.pauseReason)}</p>
+              <li key={blocker.id} className="space-y-2 rounded-xl bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
+                <p className="font-medium">
+                  {[blocker.job?.displayName, messages.blockedWithReason(pauseLabel(blocker.blockerReason ?? blocker.reason, messages.pauseReason) ?? '')].filter(Boolean).join(' · ')}
+                </p>
                 {blocker.notes ? <p>{blocker.notes}</p> : null}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="mt-2"
-                  disabled={busy}
-                  onClick={() =>
-                    run(
-                      () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers/${blocker.id}/resolve`, { method: 'POST' }),
+                {(blocker.blockerNotes ?? []).length ? (
+                  <ul className="space-y-1">
+                    {(blocker.blockerNotes ?? []).map((note) => (
+                      <li key={note.id}>
+                        <span className="text-xs">{note.author.name} · {formatShopDateTime(note.createdAt, messages.locale)}</span>
+                        <p>{note.body}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <form
+                  className="flex flex-col gap-2 sm:flex-row"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const body = (noteDrafts[blocker.id] ?? '').trim();
+                    if (!body) return;
+                    void run(
+                      () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers/${blocker.id}/notes`, {
+                        method: 'POST',
+                        body: JSON.stringify({ body }),
+                      }),
                       undefined,
-                      () => showToast('success', messages.blockerResolved),
-                    )
-                  }
+                      () => {
+                        setNoteDrafts((prev) => ({ ...prev, [blocker.id]: '' }));
+                        showToast('success', messages.blockerNoteAdded);
+                      },
+                    );
+                  }}
                 >
-                  {messages.markBlockerResolved}
-                </Button>
+                  <Textarea
+                    aria-label={messages.addBlockerNote}
+                    placeholder={messages.blockerNotePlaceholder}
+                    value={noteDrafts[blocker.id] ?? ''}
+                    onChange={(event) => setNoteDrafts((prev) => ({ ...prev, [blocker.id]: event.target.value }))}
+                    disabled={busy}
+                    rows={2}
+                  />
+                  <Button type="submit" variant="secondary" disabled={busy || !(noteDrafts[blocker.id] ?? '').trim()}>
+                    {messages.addBlockerNote}
+                  </Button>
+                </form>
               </li>
             ))}
           </ul>
@@ -305,17 +333,6 @@ export default function WorkOrderDetailPage() {
             }
           >
             {busy ? messages.startingWork : wo.status === 'created' ? messages.startWork : messages.continueWork}
-          </Button>
-        ) : null}
-        {wo.status === 'in_progress' ? (
-          <Button
-            ref={pauseTriggerRef}
-            variant="secondary"
-            className="w-full"
-            disabled={busy}
-            onClick={() => setPauseOpen(true)}
-          >
-            {messages.reportBlocker}
           </Button>
         ) : null}
         {wo.status === 'waiting_paused' ? (
@@ -354,7 +371,7 @@ export default function WorkOrderDetailPage() {
         {/* LTR-131: say why Jobs are disabled before Start Work. */}
         {needsStart ? (
           <p className="mb-2 text-sm text-muted-foreground">{messages.startWorkToCompleteJobs}</p>
-        ) : myTodo.length > 0 && wo.status === 'in_progress' ? (
+        ) : myWorkable.length > 0 && wo.status === 'in_progress' ? (
           <p className="mb-2 text-sm text-muted-foreground">{messages.tapJobToComplete}</p>
         ) : null}
         {myTodo.length === 0 ? (
@@ -362,17 +379,42 @@ export default function WorkOrderDetailPage() {
         ) : (
           <ul className="mb-3 space-y-2">
             {myTodo.map((job) => (
-              <li key={job.id}>
-                <JobTodoButton
-                  job={job}
-                  currentUserId={user?.id ?? ''}
-                  disabled={busy || wo.status !== 'in_progress' || laborStopped}
-                  onSelect={(event) => {
-                    finishJobTriggerRef.current = event.currentTarget;
-                    setFinishNotes('');
-                    setFinishJob({ id: job.id, name: job.displayName });
-                  }}
-                />
+              <li key={job.id} className="space-y-1">
+                {job.activeBlocker ? (
+                  <JobTodoButton job={job} currentUserId={user?.id ?? ''} readOnly disabled onSelect={() => undefined} />
+                ) : (
+                  <>
+                    <JobTodoButton
+                      job={job}
+                      currentUserId={user?.id ?? ''}
+                      disabled={busy || wo.status !== 'in_progress' || laborStopped}
+                      onSelect={(event) => {
+                        finishJobTriggerRef.current = event.currentTarget;
+                        setFinishNotes('');
+                        setFinishJob({ id: job.id, name: job.displayName });
+                      }}
+                    />
+                    {wo.status === 'in_progress' || wo.status === 'created' ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        disabled={busy}
+                        aria-label={messages.reportBlockerFor(job.displayName)}
+                        onClick={(event) => {
+                          pauseTriggerRef.current = event.currentTarget;
+                          setPauseReason('');
+                          setPauseNotes('');
+                          setBlockerJob({ id: job.id, name: job.displayName });
+                          setPauseOpen(true);
+                        }}
+                      >
+                        {messages.reportBlocker}
+                      </Button>
+                    ) : null}
+                  </>
+                )}
               </li>
             ))}
           </ul>
@@ -520,12 +562,13 @@ export default function WorkOrderDetailPage() {
       </Modal>
 
       <Modal
-        open={pauseOpen}
-        title={messages.reportBlocker}
+        open={pauseOpen && Boolean(blockerJob)}
+        title={blockerJob ? messages.reportBlockerFor(blockerJob.name) : messages.reportBlocker}
         closeLabel={messages.closeDialog}
         onClose={() => {
           if (busy) return;
           setPauseOpen(false);
+          setBlockerJob(null);
         }}
         returnFocusRef={pauseTriggerRef}
       >
@@ -541,9 +584,10 @@ export default function WorkOrderDetailPage() {
             disabled={busy}
           >
             <option value="">{messages.selectOption}</option>
-            {Object.values(PauseReason).map((r) => (
+            {/* LTR-155 / D12: mechanic reasons only (no Break, End of Shift, other Work Order, Truck Unavailable). */}
+            {Object.values(BlockerReason).map((r) => (
               <option key={r} value={r}>
-                {messages.pauseReason[r]}
+                {messages.pauseReason[r as unknown as PauseReason]}
               </option>
             ))}
           </Select>
@@ -574,14 +618,15 @@ export default function WorkOrderDetailPage() {
             {messages.cancelAction}
           </Button>
           <Button
-            disabled={!pauseReason || busy}
+            disabled={!pauseReason || !blockerJob || busy || (pauseReason === PauseReason.OTHER && !pauseNotes.trim())}
             onClick={() => {
-              if (busy) return;
+              if (busy || !blockerJob) return;
               void run(
                 () =>
                   apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers`, {
                     method: 'POST',
                     body: JSON.stringify({
+                      jobId: blockerJob.id,
                       reason: pauseReason,
                       notes: pauseNotes || undefined,
                     }),
@@ -589,6 +634,7 @@ export default function WorkOrderDetailPage() {
                 undefined,
                 () => {
                   setPauseOpen(false);
+                  setBlockerJob(null);
                   setPauseReason('');
                   setPauseNotes('');
                   showToast('success', messages.blockerReportedSuccess);
@@ -837,7 +883,9 @@ function JobTodoButton({
         <span className="block text-xs text-muted-foreground">
           {[
             jobAssignmentLabel(job.assignedMechanic, currentUserId, messages),
-            job.workStatus === 'in_progress' ? messages.jobStatusInProgress : job.workStatus === 'pending' ? messages.jobStatusPending : null,
+            job.activeBlocker
+              ? messages.blockedWithReason(pauseLabel(job.activeBlocker.reason, messages.pauseReason) ?? '')
+              : job.workStatus === 'in_progress' ? messages.jobStatusInProgress : job.workStatus === 'pending' ? messages.jobStatusPending : null,
           ].filter(Boolean).join(' · ')}
         </span>
       </span>

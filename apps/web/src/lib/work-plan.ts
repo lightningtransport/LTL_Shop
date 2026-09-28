@@ -15,6 +15,7 @@ export type WorkPlanJobDraft = {
 export function workPlanJobUiStatusVariant(status: string): ChipVariant {
   if (status === 'completed') return 'success';
   if (status === 'in_progress') return 'default';
+  if (status === 'blocked') return 'warning';
   if (status === 'cancelled') return 'secondary';
   return 'outline';
 }
@@ -22,6 +23,7 @@ export function workPlanJobUiStatusVariant(status: string): ChipVariant {
 export function workPlanJobUiStatusLabel(status: string, messages: AdminMessages) {
   if (status === 'pending') return messages.workPlanJobPending;
   if (status === 'in_progress') return messages.workPlanJobInProgress;
+  if (status === 'blocked') return messages.blocked;
   if (status === 'completed') return messages.jobStatusCompleted;
   if (status === 'cancelled') return messages.jobStatusCancelled;
   return status;

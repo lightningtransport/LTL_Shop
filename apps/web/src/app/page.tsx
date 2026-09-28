@@ -283,7 +283,7 @@ function WorkOrderCard({
   const isPm = wo.primaryCategoryName === 'PM' || Boolean(pmJob);
   const detailHref = pmJob ? `/work-orders/${wo.id}?view=pm` : `/work-orders/${wo.id}`;
   const myJobs = isPm ? [] : wo.jobs.filter((job) => isMyJob(job.assignedMechanic, currentUserId));
-  const nextJobId = myJobs.find((job) => job.status === 'to_do')?.id ?? null;
+  const nextJobId = myJobs.find((job) => job.status === 'to_do' && !job.activeBlocker)?.id ?? null;
   return (
     <Card className="space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -342,6 +342,10 @@ function WorkOrderCard({
                 </span>
                 <span className="block text-xs text-shop-muted">
                   {jobPersonLabel(job, currentUserId, messages)}
+                  {/* LTR-155 / D17: a blocked Job waits for the Manager. */}
+                  {job.status === 'to_do' && job.activeBlocker
+                    ? ` · ${messages.blockedWithReason(pauseLabel(job.activeBlocker.reason, messages.pauseReason) ?? '')}`
+                    : ''}
                 </span>
               </span>
             </li>

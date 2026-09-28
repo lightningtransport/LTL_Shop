@@ -115,8 +115,13 @@ export class AdminController {
 
   @Post('work-orders/:id/blockers/:blockerId/resolve')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
-  resolveBlocker(@Req() request: Request, @Param('id') id: string, @Param('blockerId') blockerId: string) {
-    return this.admin.resolveBlocker(request.user!, id, blockerId);
+  resolveBlocker(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('blockerId') blockerId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.resolveBlocker(request.user!, id, blockerId, body);
   }
 
   @Post('work-orders/:id/notes')

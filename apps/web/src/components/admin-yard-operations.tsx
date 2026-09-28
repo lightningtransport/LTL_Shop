@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Ban, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
 import {
   buildYardOperationsQuery,
@@ -464,7 +464,14 @@ function YardTruckCard({ item, messages, locale, dispatch }: {
       {showPriority || showBlocker ? (
         <div className="flex flex-wrap items-center gap-1">
           {showPriority && workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : null}
-          {showBlocker ? <Badge variant="warning" className="normal-case tracking-normal">{messages.blocked}</Badge> : null}
+          {showBlocker ? (
+            <Badge variant="warning" className="normal-case tracking-normal">
+              {/* LTR-155 / D17: "Blocked · reason" for a mechanic blocker. */}
+              {workOrder?.latestReportedBlocker
+                ? `${messages.blocked} · ${adminPauseReasonLabel(workOrder.latestReportedBlocker.blockerReason ?? workOrder.latestReportedBlocker.reason, messages)}`
+                : messages.blocked}
+            </Badge>
+          ) : null}
         </div>
       ) : null}
     </Link>

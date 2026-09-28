@@ -3,6 +3,7 @@ import type { JobWorkStatus } from './job-work-status';
 import type {
   AppCapability,
   ActivityEventType,
+  BlockerReason,
   JobStatus,
   PauseReason,
   WorkOrderNoteKind,
@@ -98,12 +99,30 @@ export interface WorkOrderJobDto {
   completionNotes: string | null;
   /** LTR-154 / D11: the one mechanic who owns the Job; null means unassigned. */
   assignedMechanic: { id: string; name: string } | null;
-  /** LTR-154 / D18: Pending / In Progress derived from the assignee's labor session. */
+  /** LTR-154 / D18: Pending / In Progress derived from the assignee's labor session (Blocked wins, LTR-155). */
   workStatus?: JobWorkStatus;
+  /** LTR-155 / D17: the Job's active blocker, if any. */
+  activeBlocker?: JobActiveBlockerDto | null;
   /** LTR-127: who completed the Job (additive; absent on older API responses). */
   completedBy?: { id: string; name: string } | null;
   /** LTR-146: when the PM job was started. */
   startedAt?: string | null;
+}
+
+/** LTR-155 / D17: short form of a Job's active blocker for lists and cards. */
+export interface JobActiveBlockerDto {
+  id: string;
+  reason: BlockerReason | PauseReason;
+  reportedAt: string;
+  reportedBy: { id: string; name: string } | null;
+}
+
+/** LTR-155 / D17: an append-only note on a blocker (author and time). */
+export interface BlockerNoteDto {
+  id: string;
+  body: string;
+  author: { id: string; name: string };
+  createdAt: string;
 }
 
 export interface PauseEventDto {
@@ -121,6 +140,13 @@ export interface PauseEventDto {
   /** LTR-98: set when a reported blocker was resolved (null = still active). */
   resolvedAt?: string | null;
   resolvedBy?: { id: string; name: string } | null;
+  /** LTR-155 / D17: the blocked Job (null for official pauses and older reports). */
+  job?: { id: string; displayName: string } | null;
+  blockerReason?: BlockerReason | null;
+  /** LTR-155: mechanic notes after the report, oldest first. */
+  blockerNotes?: BlockerNoteDto[];
+  /** LTR-155: the Manager's optional note when resolving. */
+  resolutionNote?: string | null;
 }
 
 /** LTR-126 / D8: one append-only Work Order note (never edited or overwritten). */
@@ -164,7 +190,7 @@ export interface WorkOrderSummaryDto {
   priority: Priority;
   jobsCompleted: number;
   jobsTotal: number;
-  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic' | 'completedBy'>[];
+  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic' | 'completedBy' | 'workStatus' | 'activeBlocker'>[];
   mechanics: Pick<MechanicAssignmentDto, 'mechanicId' | 'mechanicName'>[];
   currentPauseReason: PauseReason | null;
   createdAt: string;
