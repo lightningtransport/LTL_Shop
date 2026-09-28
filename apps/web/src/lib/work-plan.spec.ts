@@ -21,8 +21,6 @@ import {
   workPlanJobUiStatusVariant,
   workPlanMandatoryStatusLabel,
   workPlanMandatoryStatusVariant,
-  workPlanNextStepCategoryName,
-  workPlanNextStepCtaLabel,
   workPlanPhaseLabel,
   workPlanReadyReasonMessage,
   workPlanRemainingSummary,
@@ -61,12 +59,6 @@ describe('LTR-33 Work Plan copy helpers', () => {
     expect(workPlanReadyReasonMessage('alignment_pending', es)).toContain('Alignment');
     expect(workPlanReadyReasonMessage('detailing_pending', es)).toContain('Detailing');
     expect(workPlanReadyReasonMessage('plan_complete', es)).toContain('Ready to Go');
-    expect(workPlanNextStepCategoryName('pm_pending')).toBe('PM');
-    expect(workPlanNextStepCategoryName('alignment_pending')).toBe('Suspension & Steering');
-    expect(workPlanNextStepCategoryName('detailing_pending')).toBe('Detailing');
-    expect(workPlanNextStepCategoryName('qc_pending')).toBe('Quality Check');
-    expect(workPlanNextStepCtaLabel('alignment_pending', en)).toBe('Add Alignment');
-    expect(workPlanNextStepCtaLabel('qc_pending', es)).toBe('Agregar Quality Check');
     expect(workPlanMandatoryStatusLabel('pending', en)).toBe('Pending');
     expect(workPlanMandatoryStatusLabel('pending', es)).toBe('Pendiente');
     expect(workPlanMandatoryStatusLabel('in_progress', en)).toBe('In Progress');

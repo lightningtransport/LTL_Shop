@@ -309,6 +309,8 @@ export interface AdminWorkOrderSummaryDto {
   attentionReason?: WorkOrderAttentionReason | null;
   /** LTR-157: the next pending Job in flow order (Inspection → Shop Work → PM → Alignment → Detailing → QC). */
   nextJobName?: string | null;
+  /** LTR-159: the one Next step rule (same as Truck Detail and the Yard). */
+  nextStep?: TruckNextStepDto | null;
 }
 
 export interface AdminActivityLogDto {
@@ -395,6 +397,8 @@ export interface AdminDashboardDto {
     openOlderThan24h: number;
     completedToday: number;
     completedLast7Days: number;
+    /** LTR-159: trucks Ready to Go (same window as the Yard board). */
+    readyToGo?: number;
   };
   attention: AdminWorkOrderSummaryDto[];
   /** LTR-126: mechanic work requests the Manager has not handled yet (newest first). */
@@ -470,6 +474,8 @@ export interface YardOperationsTruckDto {
   readyReason?: string;
   /** Work Plan board only — Shop Work Jobs still to do (excludes PM, Alignment, Detailing, QC). */
   shopWorkRemainingCount?: number;
+  /** LTR-159: the one Next step rule (same as Truck Detail, Dashboard and Work Order). */
+  nextStep?: TruckNextStepDto | null;
 }
 
 export interface YardOperationsCountsDto {
@@ -502,6 +508,8 @@ export interface AdminTruckSummaryDto {
     status: WorkOrderStatus;
     primaryCategoryName: string;
   } | null;
+  /** LTR-159: the one Next step rule, as on Truck Detail. */
+  nextStep?: TruckNextStepDto | null;
 }
 
 export interface AdminTruckDetailDto extends YardOperationsTruckDto {

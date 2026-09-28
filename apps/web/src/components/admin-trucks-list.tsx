@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus } from '@ltl-shop/shared';
 import { AdminFilterToolbar, AdminPageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { truckNextStepText } from '@/lib/truck-next-step';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { useAdminTrucks } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -55,6 +56,7 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
                 <th className="p-3 font-medium">{messages.make}</th>
                 <th className="p-3 font-medium">{messages.company}</th>
                 <th className="p-3 font-medium">{messages.currentWorkOrder}</th>
+                <th className="p-3 font-medium">{messages.nextStepTitle}</th>
               </tr>
             </thead>
             <tbody>
@@ -68,7 +70,10 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
                   </td>
                   {showOperationalStatus ? (
                     <td className="p-3 text-muted-foreground">
-                      {item.operationalStatus === TruckOperationalStatus.IN_SERVICE
+                      {/* LTR-159: "In Service" contradicts an open Work Order; show nothing then. */}
+                      {item.openWorkOrder && item.operationalStatus === TruckOperationalStatus.IN_SERVICE
+                        ? '—'
+                        : item.operationalStatus === TruckOperationalStatus.IN_SERVICE
                         ? messages.operationalStatusInService
                         : item.operationalStatus === TruckOperationalStatus.OFF_DUTY
                           ? messages.operationalStatusOffDuty
@@ -86,6 +91,9 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
                     ) : (
                       <span className="text-muted-foreground">{messages.noOpenWorkOrder}</span>
                     )}
+                  </td>
+                  <td className="p-3" data-testid="truck-next-step-cell">
+                    {item.nextStep && item.nextStep.kind !== 'create_work_order' ? truckNextStepText(item.nextStep, messages) : '—'}
                   </td>
                 </tr>
               ))}

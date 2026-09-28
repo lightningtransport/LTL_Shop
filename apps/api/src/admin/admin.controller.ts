@@ -12,7 +12,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { AppCapability, adminRepairHistoryQuerySchema, deriveTruckNextStep } from '@ltl-shop/shared';
+import { AppCapability, adminRepairHistoryQuerySchema } from '@ltl-shop/shared';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { Capabilities } from '../auth/capabilities.decorator';
@@ -293,15 +293,8 @@ export class AdminController {
       this.yardOperations.detail(id),
       this.workPlan.get(request.user!, id),
     ]);
-    // LTR-158 / D14: one "Next step" rule shared with the web (and PR 9 surfaces).
-    const nextStep = deriveTruckNextStep({
-      workOrder: workPlan.workOrder,
-      inspectionOutcome: workPlan.inspection.outcome,
-      jobs: workPlan.jobs,
-      activeBlocker: detail.activeWorkOrder?.latestReportedBlocker ?? null,
-      currentPause: detail.activeWorkOrder?.currentPause ?? null,
-    });
-    return { ...detail, workPlan, nextStep };
+    // LTR-158 / LTR-159: `detail.nextStep` comes from the one helper every surface uses.
+    return { ...detail, workPlan };
   }
 
   @Get('trucks/:id/work-plan')

@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { mechanicNamesLabel, workOrderNextJobLine } from '@/lib/admin-work-summary';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
+import { truckNextStepActionLabel, truckNextStepText } from '@/lib/truck-next-step';
 
 export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders', onBlockerResolved }: {
   item: AdminWorkOrderSummaryDto; locale: AdminLocale; messages: AdminMessages; compact?: boolean; fromPath?: string;
@@ -25,6 +26,9 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
 
   // LTR-121: same reason and copy on the Dashboard and the Work Order list.
   const attention = adminAttentionReasonLabel(item.attentionReason, messages);
+  const nextStepText = truckNextStepText(item.nextStep, messages);
+  // Resolve happens inline on the Dashboard (LTR-155); every other action opens the Truck.
+  const nextStepAction = item.nextStep?.kind === 'resolve_blocker' && onBlockerResolved ? null : truckNextStepActionLabel(item.nextStep, messages);
 
   return (
     <article className={cn('rounded-xl border bg-card p-4 shadow-sm', compact && 'bg-background p-3 shadow-none xl:grid xl:grid-cols-[minmax(180px,1.2fr)_minmax(220px,1fr)_auto] xl:items-center xl:gap-4')}>
@@ -41,6 +45,17 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
             <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-warning-foreground" data-testid="attention-reason">
               {messages.attentionReasonLabel}: {attention}
             </p>
+          ) : null}
+          {/* LTR-159: the same Next step as the Truck, with the button that gets there. */}
+          {nextStepText ? (
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm" data-testid="work-order-next-step" data-kind={item.nextStep?.kind}>
+              <span>{messages.nextStepTitle}: {nextStepText}</span>
+              {nextStepAction ? (
+                <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+                  <Link href={adminTruckHref(item.truck.id, fromPath)}>{nextStepAction}</Link>
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
         <div className={cn('flex flex-wrap gap-2', compact && 'xl:hidden')}>{priorityChip}{statusChip}</div>

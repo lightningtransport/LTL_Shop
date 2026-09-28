@@ -28,8 +28,6 @@ import {
   workPlanJobUiStatusVariant,
   workPlanMandatoryStatusLabel,
   workPlanMandatoryStatusVariant,
-  workPlanNextStepCategoryName,
-  workPlanNextStepCtaLabel,
   workPlanPhaseLabel,
   workPlanReadyReasonMessage,
   workPlanRemainingSummary,
@@ -196,7 +194,7 @@ export function AdminTruckWorkPlan({
                     setAddWorkOpen(false);
                     setPreferredCategoryName(null);
                   } else {
-                    openAddWork(workPlanNextStepCategoryName(plan.readyReason));
+                    openAddWork(null);
                   }
                 }}
                 disabled={Boolean(pendingAction)}
@@ -252,7 +250,6 @@ export function AdminTruckWorkPlan({
             messages={messages}
             ready={ready}
             canAddWork={canAddWork}
-            onAddWorkStep={(categoryName) => openAddWork(categoryName)}
           />
 
           <div>
@@ -390,17 +387,12 @@ function WorkPlanSummary({
   messages,
   ready,
   canAddWork,
-  onAddWorkStep,
 }: {
   plan: TruckWorkPlanDto;
   messages: AdminMessages;
   ready: boolean;
   canAddWork: boolean;
-  onAddWorkStep: (categoryName: string | null) => void;
 }) {
-  const nextStepLabel = workPlanNextStepCtaLabel(plan.readyReason, messages);
-  const nextStepCategory = workPlanNextStepCategoryName(plan.readyReason);
-
   return (
     <div className="space-y-3 rounded-xl border p-3" aria-live="polite">
       <div className="flex flex-wrap items-center gap-2">
@@ -417,11 +409,7 @@ function WorkPlanSummary({
         <p className="text-sm font-medium">{workPlanRemainingSummary(plan.remainingJobCount, messages)}</p>
       )}
       <p className="text-sm text-muted-foreground">{workPlanReadyReasonMessage(plan.readyReason, messages)}</p>
-      {!ready && canAddWork && nextStepLabel ? (
-        <Button type="button" size="sm" variant="outline" onClick={() => onAddWorkStep(nextStepCategory)}>
-          {nextStepLabel}
-        </Button>
-      ) : null}
+      {/* LTR-159: what to do next lives in the one Next step card above (no second rule here). */}
       <div>
         <p className="text-xs font-medium text-muted-foreground">{messages.workPlanMandatoryTitle}</p>
         <ul className="mt-2 space-y-1 text-sm">

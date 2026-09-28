@@ -15,7 +15,8 @@ import { pauseResumeError } from './pause-resume-error';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
 import { mechanicNamesLabel } from '@/lib/admin-work-summary';
-import { adminNextStep, fillPlaceholders } from '@/lib/admin-next-step';
+import { fillPlaceholders } from '@/lib/admin-next-step';
+import { truckNextStepActionLabel, truckNextStepText } from '@/lib/truck-next-step';
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { useCatalogJobs, useCategories } from '@/lib/shop-data';
@@ -109,15 +110,14 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     categoryName: data.category.name,
     jobs: data.jobs,
   });
-  const nextStep = adminNextStep({
-    status: data.status,
-    categoryName: data.category.name,
-    jobs: data.jobs,
-    mechanicNames: activeMechanics.map((mechanic) => mechanic.mechanicName),
-    canManageWorkOrders,
-    returnedToServiceAt: data.returnedToServiceAt,
-    pauseReasonLabel: data.currentPause ? adminPauseReasonLabel(data.currentPause.reason, messages) : null,
-  });
+  // LTR-159: the same Next step as the Truck, Dashboard and Yard (the API's one rule).
+  const nextStep = data.nextStep ?? null;
+  const nextStepText = truckNextStepText(nextStep, messages);
+  const nextStepAction = truckNextStepActionLabel(nextStep, messages);
+  // Everything except plain work in progress is the Shop Manager's to do.
+  const nextStepManagerOwned = Boolean(nextStep && nextStep.kind !== 'work');
+  // The "Confirm completion" card already covers closing.
+  const showNextStep = Boolean(nextStepText) && !(readyToClose && nextStep?.kind === 'close');
 
   async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
     if (pendingAction) return;
@@ -183,15 +183,24 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
 
     {readyToClose ? completeCard : null}
 
-    {nextStep ? (
+    {showNextStep ? (
       <div
-        className={nextStep.managerOwned && !canManageWorkOrders ? 'rounded-xl border border-warning bg-warning-surface px-4 py-3 text-sm text-warning-foreground' : 'rounded-xl border bg-card px-4 py-3 text-sm'}
+        className={nextStepManagerOwned && !canManageWorkOrders ? 'rounded-xl border border-warning bg-warning-surface px-4 py-3 text-sm text-warning-foreground' : 'rounded-xl border bg-card px-4 py-3 text-sm'}
         role="status"
         data-testid="admin-wo-next-step"
+        data-kind={nextStep?.kind}
       >
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{messages.nextStepTitle}</p>
-        <p className="mt-1 font-medium">{fillPlaceholders(messages[nextStep.key], nextStep.values)}</p>
-        {nextStep.managerOwned && !canManageWorkOrders ? <p className="mt-1">{messages.nextStepNoPermission}</p> : null}
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+          <p className="font-medium">{nextStepText}</p>
+          {/* The action lives on the Truck, the Manager's workplace (LTR-158). */}
+          {nextStepAction && canManageWorkOrders ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={adminTruckHref(data.truck.id, `/admin/work-orders/${data.id}`)}>{nextStepAction}</Link>
+            </Button>
+          ) : null}
+        </div>
+        {nextStepManagerOwned && !canManageWorkOrders ? <p className="mt-1">{messages.nextStepNoPermission}</p> : null}
       </div>
     ) : null}
     {/* LTR-109: operational work first (Jobs, team, blockers, notes, actions); context on the side on desktop. */}
