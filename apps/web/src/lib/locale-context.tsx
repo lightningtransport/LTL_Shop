@@ -79,7 +79,12 @@ type Copy = {
   assignedTo: (name: string) => string;
   completedByYou: string;
   completedBy: (name: string) => string;
-  jobUnassignedInheritsTeam: string;
+  jobUnassigned: string;
+  jobStatusPending: string;
+  jobStatusInProgress: string;
+  jobStatusBlocked: string;
+  woStatusPaused: string;
+  inspectionStep: string;
   myJobs: string;
   otherWorkOnThisTruck: string;
   workOrderTeam: string;
@@ -277,12 +282,17 @@ const copy: Record<ShopLocale, Copy> = {
     assignedTo: (name) => `Assigned to ${name}`,
     completedByYou: 'Completed by you',
     completedBy: (name) => `Completed by ${name}`,
-    jobUnassignedInheritsTeam: 'Unassigned — inherits the Work Order team',
+    jobUnassigned: 'Unassigned',
+    jobStatusPending: 'Pending',
+    jobStatusInProgress: 'In progress',
+    jobStatusBlocked: 'Blocked',
+    woStatusPaused: 'Paused',
+    inspectionStep: 'Inspection',
     myJobs: 'My Jobs',
     otherWorkOnThisTruck: 'Other work on this Truck',
     workOrderTeam: 'Work Order team',
     noWorkOrderTeam: 'No Work Order team assigned',
-    noMyJobs: 'No jobs assigned to you. Unassigned jobs inherit the Work Order team.',
+    noMyJobs: 'No jobs assigned to you.',
     createWorkOrder: 'Create new Work Order',
     searchJobsLabel: 'Search jobs in this category',
     categoryJobsLabel: 'Jobs in this Category',
@@ -488,12 +498,17 @@ const copy: Record<ShopLocale, Copy> = {
     assignedTo: (name) => `Asignado a ${name}`,
     completedByYou: 'Completado por ti',
     completedBy: (name) => `Completado por ${name}`,
-    jobUnassignedInheritsTeam: 'Sin asignar — hereda el equipo de la Work Order',
+    jobUnassigned: 'Sin asignar',
+    jobStatusPending: 'Pendiente',
+    jobStatusInProgress: 'En curso',
+    jobStatusBlocked: 'Bloqueado',
+    woStatusPaused: 'Pausado',
+    inspectionStep: 'Inspección',
     myJobs: 'Mis Jobs',
     otherWorkOnThisTruck: 'Otro trabajo en esta unidad',
     workOrderTeam: 'Equipo de la Work Order',
     noWorkOrderTeam: 'No hay equipo asignado a la Work Order',
-    noMyJobs: 'No tienes Jobs asignados. Los Jobs sin asignar heredan el equipo de la Work Order.',
+    noMyJobs: 'No tienes Jobs asignados.',
     createWorkOrder: 'Crear nuevo Work Order',
     searchJobsLabel: 'Buscar jobs en esta categoría',
     categoryJobsLabel: 'Jobs en esta Category',

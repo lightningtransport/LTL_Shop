@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canCompleteJobFromWorkOrder,
-  isMyAssignedOrInheritedJob,
+  isMyOrUnassignedJob,
   isStandardWorkWaitingOnManager,
   jobAssignmentLabel,
   jobPersonLabel,
@@ -11,20 +11,20 @@ import {
 const copy = {
   assignedToYou: 'Assigned to you',
   assignedTo: (name: string) => `Assigned to ${name}`,
-  jobUnassignedInheritsTeam: 'Unassigned — inherits the Work Order team',
+  jobUnassigned: 'Unassigned',
   workOrderTeam: 'Work Order team',
   noWorkOrderTeam: 'No Work Order team assigned',
 };
 
 describe('job assignment presentation', () => {
-  it('treats unassigned Jobs as inherited team work for the current mechanic', () => {
-    expect(isMyAssignedOrInheritedJob(null, 'mechanic-1')).toBe(true);
-    expect(jobAssignmentLabel(null, 'mechanic-1', copy)).toBe(copy.jobUnassignedInheritsTeam);
+  it('treats unassigned Jobs as work the current mechanic can take', () => {
+    expect(isMyOrUnassignedJob(null, 'mechanic-1')).toBe(true);
+    expect(jobAssignmentLabel(null, 'mechanic-1', copy)).toBe(copy.jobUnassigned);
   });
 
   it('labels Jobs assigned to the current mechanic versus another mechanic', () => {
-    expect(isMyAssignedOrInheritedJob({ id: 'mechanic-1', name: 'Alex' }, 'mechanic-1')).toBe(true);
-    expect(isMyAssignedOrInheritedJob({ id: 'mechanic-2', name: 'Jamie' }, 'mechanic-1')).toBe(false);
+    expect(isMyOrUnassignedJob({ id: 'mechanic-1', name: 'Alex' }, 'mechanic-1')).toBe(true);
+    expect(isMyOrUnassignedJob({ id: 'mechanic-2', name: 'Jamie' }, 'mechanic-1')).toBe(false);
     expect(jobAssignmentLabel({ id: 'mechanic-1', name: 'Alex' }, 'mechanic-1', copy)).toBe('Assigned to you');
     expect(jobAssignmentLabel({ id: 'mechanic-2', name: 'Jamie' }, 'mechanic-1', copy)).toBe('Assigned to Jamie');
   });
@@ -65,7 +65,7 @@ describe('jobPersonLabel (LTR-127)', () => {
   const copy = {
     assignedToYou: 'Assigned to you',
     assignedTo: (name: string) => `Assigned to ${name}`,
-    jobUnassignedInheritsTeam: 'Unassigned — inherits the Work Order team',
+    jobUnassigned: 'Unassigned',
     completedByYou: 'Completed by you',
     completedBy: (name: string) => `Completed by ${name}`,
   };
@@ -80,7 +80,7 @@ describe('jobPersonLabel (LTR-127)', () => {
   it('keeps the assignment line for Jobs to do and for older responses', () => {
     expect(jobPersonLabel({ status: 'to_do', assignedMechanic: { id: 'mg', name: 'MG' } }, 'mg', copy)).toBe('Assigned to you');
     expect(jobPersonLabel({ status: 'completed', assignedMechanic: null }, 'mg', copy))
-      .toBe('Unassigned — inherits the Work Order team');
+      .toBe('Unassigned');
   });
 });
 

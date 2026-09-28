@@ -76,10 +76,29 @@ describe('shop locale catalogs', () => {
     expect(getAdminMessages('es').pauseWorkOrderBadRequest).not.toBe(getAdminMessages('es').assignmentBadRequest);
   });
 
+  it('uses the Flujo v3 vocabulary and drops retired wording in both catalogs (LTR-152)', () => {
+    const catalogs = [getAdminMessages('en'), getAdminMessages('es'), getShopCopy('en'), getShopCopy('es')];
+    for (const catalog of catalogs) {
+      const text = Object.values(catalog).filter((value) => typeof value === 'string').join('\n');
+      expect(text).not.toMatch(/inherit|hereda el equipo/i);
+      expect(text).not.toMatch(/Mandatory for every yard Truck|Obligatorio para cada Truck del yard/);
+      expect(text).not.toMatch(/operational status from recorded service-status events|según eventos de servicio registrados/);
+      expect(text).not.toMatch(/Under review|En revisión/);
+    }
+    const expected = {
+      en: { jobStatusPending: 'Pending', jobStatusInProgress: 'In progress', jobStatusBlocked: 'Blocked', woStatusPaused: 'Paused', jobUnassigned: 'Unassigned', inspectionStep: 'Inspection' },
+      es: { jobStatusPending: 'Pendiente', jobStatusInProgress: 'En curso', jobStatusBlocked: 'Bloqueado', woStatusPaused: 'Pausado', jobUnassigned: 'Sin asignar', inspectionStep: 'Inspección' },
+    } as const;
+    for (const locale of ['en', 'es'] as const) {
+      expect(getAdminMessages(locale)).toMatchObject(expected[locale]);
+      expect(getShopCopy(locale)).toMatchObject(expected[locale]);
+    }
+  });
+
   it('keeps English and Spanish mechanic assignment keys in parity', () => {
     expect(Object.keys(getShopCopy('en'))).toEqual(Object.keys(getShopCopy('es')));
-    expect(getShopCopy('en').jobUnassignedInheritsTeam).toContain('inherits the Work Order team');
-    expect(getShopCopy('es').jobUnassignedInheritsTeam).toContain('hereda el equipo');
+    expect(getShopCopy('en').jobUnassigned).toBe('Unassigned');
+    expect(getShopCopy('es').jobUnassigned).toBe('Sin asignar');
     expect(getShopCopy('en').workspaceUnavailable).toMatch(/not available/);
     expect(getShopCopy('es').openAllowedHome).toMatch(/Inicio/);
     expect(getShopCopy('en').searchJobsLabel).toBe('Search jobs in this category');

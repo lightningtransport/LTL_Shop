@@ -21,7 +21,7 @@ import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatMileage, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
-import { canCompleteJobFromWorkOrder, isMyAssignedOrInheritedJob, isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel } from '@/lib/job-assignment';
+import { canCompleteJobFromWorkOrder, isMyOrUnassignedJob, isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel } from '@/lib/job-assignment';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { shopKeys, useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
@@ -199,7 +199,7 @@ export default function WorkOrderDetailPage() {
   const todo = wo.jobs.filter((j) => j.status === 'to_do');
   const done = wo.jobs.filter((j) => j.status === 'completed');
   const canComplete = (job: WorkOrderJobDto) => canCompleteJobFromWorkOrder(job, wo.pmJob?.id, user?.id ?? '');
-  const isMyTodo = (job: WorkOrderJobDto) => isMyAssignedOrInheritedJob(job.assignedMechanic, user?.id ?? '') && canComplete(job);
+  const isMyTodo = (job: WorkOrderJobDto) => isMyOrUnassignedJob(job.assignedMechanic, user?.id ?? '') && canComplete(job);
   const myTodo = todo.filter(isMyTodo);
   const otherTodo = todo.filter((job) => !isMyTodo(job));
   const waitingOnManager = isStandardWorkWaitingOnManager(wo);

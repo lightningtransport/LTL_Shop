@@ -234,7 +234,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByRole('heading', { name: 'Work Plan' }).first()).toBeVisible();
     await expect(page.getByText('Not Ready — 0 remaining')).toBeVisible();
     await expect(page.getByText('Inspection is not finished yet.')).toBeVisible();
-    await expect(page.getByText('Mandatory for every yard Truck')).toBeVisible();
+    await expect(page.getByText('Mandatory steps')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Start assessment' })).toHaveCount(0);
     await expect(page.getByLabel('Outcome: Inspection')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);

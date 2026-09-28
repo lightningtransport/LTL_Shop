@@ -1,6 +1,6 @@
 export type JobAssignee = { id: string; name: string } | null | undefined;
 
-export function isMyAssignedOrInheritedJob(
+export function isMyOrUnassignedJob(
   assignedMechanic: JobAssignee,
   currentUserId: string,
 ): boolean {
@@ -26,10 +26,10 @@ export function jobAssignmentLabel(
   copy: {
     assignedToYou: string;
     assignedTo: (name: string) => string;
-    jobUnassignedInheritsTeam: string;
+    jobUnassigned: string;
   },
 ): string {
-  if (!assignedMechanic) return copy.jobUnassignedInheritsTeam;
+  if (!assignedMechanic) return copy.jobUnassigned;
   if (assignedMechanic.id === currentUserId) return copy.assignedToYou;
   return copy.assignedTo(assignedMechanic.name);
 }
@@ -44,7 +44,7 @@ export function jobPersonLabel(
   copy: {
     assignedToYou: string;
     assignedTo: (name: string) => string;
-    jobUnassignedInheritsTeam: string;
+    jobUnassigned: string;
     completedByYou: string;
     completedBy: (name: string) => string;
   },

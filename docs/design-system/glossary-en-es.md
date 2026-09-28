@@ -1,7 +1,7 @@
 # Glossary (EN / ES)
 
 **Classification:** CURRENT STATE
-**Updated:** 2026-09-21
+**Updated:** 2026-09-27 (LTR-152)
 
 Domain words stay in English in much of the Admin ES catalog (Work Order,
 Truck, Job, Jobs, Incoming Trucks, PM). Mechanic ES copy sometimes uses
@@ -42,6 +42,32 @@ consistent with `YARD_DATA_BOUNDARY_COPY` for Yard Phase 1 cards and with
 | Active labor | Mano de obra activa | Timed work sessions |
 | Waiting time | Tiempo de espera | Official pause totals only |
 | Read only | Solo lectura | Use only when the surface cannot mutate |
+
+## Flujo v3 vocabulary (LTR-152)
+
+Source: `docs/ux/FLUJOS_Y_MEJORAS_2026-09-27.md` §7, consistent with the
+glossary approved in LTR-118. Catalog keys live in both `admin-messages.ts` and
+`locale-context.tsx`.
+
+| Concept | UI word (EN / ES) | Key | Do not use |
+|---|---|---|---|
+| Job not started | Pending / Pendiente | `jobStatusPending` | "In Progress" for a Job that has not started |
+| Job being worked | In progress / En curso | `jobStatusInProgress` | — |
+| Job stopped by a problem | Blocked / Bloqueado (+ reason) | `jobStatusBlocked` | "paused", "waiting" |
+| Work Order stopped by the Manager | Paused / Pausado (+ reason) | `woStatusPaused` | "blocked" |
+| Arrival check | Inspection / Inspección (the step only) | `inspectionStep` | Inspection as a Work Order "category" |
+| Truck ready | Ready to Go | — | — |
+| Truck leaves the Shop | Return to Service | — | — |
+| Job without an owner | Unassigned / Sin asignar | `jobUnassigned` | "inherits the Work Order team" |
+
+§7 writes the paused Work Order as "Pausada". The ES Work Order status catalog
+signed in LTR-23 is masculine (Creado, Completado, Cancelado), so the chip stays
+"Pausado" until that catalog is changed as a whole.
+
+Retired wording (removed from the UI): "inherits the Work Order team",
+"Mandatory for every yard Truck" (now "Mandatory steps" / "Pasos
+obligatorios"), "operational status from recorded service-status events…",
+and "Under review" (the readiness filter reads "In the Shop" / "En el Shop").
 
 Keep these terms in aria-labels and EmptyState copy so EN/ES users hear the
 same domain objects.

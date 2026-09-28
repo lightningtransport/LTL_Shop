@@ -209,6 +209,12 @@ TARGET authorization/UX.
 - An assigned Standard mechanic can start work, complete assigned or
   inherited-team Jobs, report a blocker, and save execution notes (including
   additional work for the Manager to add as a Job).
+- UI vocabulary follows the Flujo v3 glossary (LTR-152,
+  `design-system/glossary-en-es.md`). A Job without an owner reads
+  "Unassigned" / "Sin asignar"; the "inherits the Work Order team" wording is
+  gone, although an unassigned Job can still be completed by any team member
+  until per-Job ownership ships (PR 4). The Job-state keys (Pending, In
+  progress, Blocked) exist in both catalogs, but no screen uses them yet.
 - The PM job of a truck Work Order is listed read-only in the Standard view
   for anyone but its PM assignee (no "Complete job"); the API already rejected
   it (LTR-151).

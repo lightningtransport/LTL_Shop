@@ -585,7 +585,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('heading', { name: 'PM Service' })).toBeVisible();
     await expect(page.getByText('Jobs To Do', { exact: true })).toHaveCount(0);
     await expect(page.getByText('My Jobs', { exact: true })).toHaveCount(0);
-    await expect(page.getByText('Unassigned — inherits the Work Order team', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Unassigned', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Working With', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Priority', { exact: true })).toHaveCount(0);
     await expect(page.getByLabel('Observed mileage')).toHaveAttribute('type', 'text');
@@ -717,7 +717,7 @@ const assignedWorkOrder = {
 };
 
 test.describe('My Assigned Work presentation', () => {
-  test('labels assigned, unassigned inherited-team, and other Jobs at mobile size', async ({ page }) => {
+  test('labels assigned, unassigned, and other Jobs at mobile size', async ({ page }) => {
     await page.route('**/api/**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
@@ -771,7 +771,7 @@ test.describe('My Assigned Work presentation', () => {
     await expect(assignedCard.getByText('Replace pads')).toBeVisible();
     await expect(assignedCard.getByText('Assigned to you')).toBeVisible();
     await expect(assignedCard.getByText('Bleed brakes')).toBeVisible();
-    await expect(assignedCard.getByText('Unassigned — inherits the Work Order team')).toBeVisible();
+    await expect(assignedCard.getByText('Unassigned', { exact: true })).toBeVisible();
     await expect(assignedCard.getByText('ABS sensor')).toBeVisible();
     await expect(assignedCard.getByText('Assigned to Jamie Technician')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
