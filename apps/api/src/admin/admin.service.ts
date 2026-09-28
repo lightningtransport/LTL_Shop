@@ -67,6 +67,7 @@ import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { stopLaborForMechanic } from '../work-orders/labor-session';
+import { classifyWorkPlanLane } from './yard-work-plan-derivation';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
@@ -133,7 +134,10 @@ const mechanicDetailInclude = {
 const summaryInclude = {
   truck: true,
   primaryCategory: true,
-  jobs: { select: { status: true, assignedMechanicId: true } },
+  jobs: {
+    select: { status: true, assignedMechanicId: true, displayName: true, category: { select: { name: true } } },
+    orderBy: { addedAt: 'asc' as const },
+  },
   mechanics: {
     where: { removedAt: null },
     include: { mechanic: { select: { id: true, name: true } } },
@@ -2067,7 +2071,19 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       unassignedJobs: jobs.filter((job) => job.status === 'to_do' && !job.assignedMechanicId).length,
       createdAt: row.createdAt,
     }),
+    nextJobName: nextJobInFlow(jobs),
   };
+}
+
+// LTR-157: flow order for "Next: <Job>" on lists and cards.
+const LANE_FLOW_ORDER = ['inspection', 'shop_work', 'pm', 'alignment', 'detailing', 'quality_check'];
+
+function nextJobInFlow(jobs: Array<{ status: string; displayName?: string; category?: { name: string } }>): string | null {
+  const pending = jobs
+    .map((job, index) => ({ job, index, rank: LANE_FLOW_ORDER.indexOf(classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '')) }))
+    .filter(({ job }) => job.status === 'to_do')
+    .sort((left, right) => left.rank - right.rank || left.index - right.index);
+  return pending[0]?.job.displayName ?? null;
 }
 
 function jobCompletionNotes(

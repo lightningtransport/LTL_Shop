@@ -107,6 +107,33 @@ const adminCatalog = [
   },
 ];
 
+// LTR-157 / D15, D16: Setup → Shop workflow (mandatory steps and default owners).
+const workflowSteps = [
+  { stepKey: 'pm', sortOrder: 10, catalogJob: { id: '00000000-0000-4000-8000-000000000851', displayName: 'PM A Service', categoryId: '00000000-0000-4000-8000-000000000303', categoryName: 'PM' }, defaultMechanicId: null, requiredCapability: 'mechanic.pm' },
+  { stepKey: 'alignment', sortOrder: 20, catalogJob: { id: '00000000-0000-4000-8000-000000000852', displayName: 'Alignment', categoryId: '00000000-0000-4000-8000-000000000302', categoryName: 'Suspension' }, defaultMechanicId: null, requiredCapability: 'mechanic.standard' },
+  { stepKey: 'detailing', sortOrder: 30, catalogJob: { id: '00000000-0000-4000-8000-000000000853', displayName: 'Detailing', categoryId: '00000000-0000-4000-8000-000000000304', categoryName: 'Detailing' }, defaultMechanicId: null, requiredCapability: 'mechanic.standard' },
+  { stepKey: 'quality_check', sortOrder: 40, catalogJob: { id: '00000000-0000-4000-8000-000000000854', displayName: 'Quality Check', categoryId: '00000000-0000-4000-8000-000000000305', categoryName: 'Quality Check' }, defaultMechanicId: null, requiredCapability: null },
+];
+
+function userById(id) {
+  return Object.values(users).find((item) => item.id === id) ?? null;
+}
+
+function workflowStepDto(step) {
+  const owner = step.defaultMechanicId ? userById(step.defaultMechanicId) : null;
+  return {
+    stepKey: step.stepKey,
+    sortOrder: step.sortOrder,
+    active: true,
+    catalogJob: { id: step.catalogJob.id, displayName: step.catalogJob.displayName, categoryName: step.catalogJob.categoryName },
+    defaultMechanic: owner ? { id: owner.id, name: owner.name, active: owner.active } : null,
+    allowsDefaultMechanic: step.requiredCapability !== null,
+    requiredCapability: step.requiredCapability,
+    updatedAt: '2026-09-28T12:00:00.000Z',
+    updatedBy: null,
+  };
+}
+
 let catalogWriteSeq = 900;
 let rosterWriteSeq = 20;
 
@@ -239,7 +266,7 @@ function fixtureWorkPlan(item, currentUser) {
 
 // LTR-162: every test starts from the same data. Specs call POST /__test/reset (see e2e/support/test.ts);
 // without it one test's cancel/create/assign leaked into the next test and into the other browser project.
-const initialState = structuredClone({ users, adminCatalog, workOrders, yardOperations, workPlanByTruck: [...workPlanByTruck] });
+const initialState = structuredClone({ users, adminCatalog, workOrders, yardOperations, workPlanByTruck: [...workPlanByTruck], workflowSteps });
 
 function resetFixtureState() {
   const fresh = structuredClone(initialState);
@@ -250,6 +277,7 @@ function resetFixtureState() {
   yardOperations.splice(0, yardOperations.length, ...fresh.yardOperations);
   workPlanByTruck.clear();
   for (const [key, value] of fresh.workPlanByTruck) workPlanByTruck.set(key, value);
+  workflowSteps.splice(0, workflowSteps.length, ...fresh.workflowSteps);
   catalogWriteSeq = 900;
   rosterWriteSeq = 20;
 }
@@ -257,7 +285,7 @@ function resetFixtureState() {
 createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   if (request.method === 'OPTIONS') {
     response.writeHead(204).end();
     return;
@@ -726,11 +754,41 @@ createServer(async (request, response) => {
     });
     return;
   }
+  if (request.url === '/api/admin/setup/workflow-steps' && request.method === 'GET') {
+    json(response, 200, workflowSteps.map(workflowStepDto));
+    return;
+  }
+  if (request.url === '/api/admin/setup/workflow-steps' && request.method === 'PUT') {
+    if (!user.capabilities.includes('work_orders.manage') && user.role !== 'admin') {
+      json(response, 403, { message: 'Only a Shop Manager or a System Admin can change the shop workflow.' });
+      return;
+    }
+    const body = await readJson(request);
+    for (const change of body?.steps ?? []) {
+      const step = workflowSteps.find((item) => item.stepKey === change.stepKey);
+      if (!step) { json(response, 400, { code: 'UNKNOWN_STEP', message: 'Unknown step' }); return; }
+      if (change.defaultMechanicId && !step.requiredCapability) {
+        json(response, 400, { code: 'STEP_HAS_NO_OWNER', message: 'Quality Check has no default owner.' });
+        return;
+      }
+      const owner = change.defaultMechanicId ? userById(change.defaultMechanicId) : null;
+      if (change.defaultMechanicId && (!owner?.active || !owner.capabilities.includes(step.requiredCapability))) {
+        json(response, 400, { code: 'OWNER_NOT_ELIGIBLE', message: 'Owner not eligible' });
+        return;
+      }
+    }
+    for (const change of body.steps) {
+      workflowSteps.find((item) => item.stepKey === change.stepKey).defaultMechanicId = change.defaultMechanicId ?? null;
+    }
+    json(response, 200, workflowSteps.map(workflowStepDto));
+    return;
+  }
   if (request.url === '/api/admin/work-orders' && request.method === 'POST') {
     if (denyUnlessManage()) return;
     const body = await readJson(request);
-    if (!body?.truckId || !body?.primaryCategoryId || !body?.jobs?.length) {
-      json(response, 400, { message: 'Truck, category, and at least one Job are required.' });
+    // LTR-157 / D13: only the truck is required; the mandatory steps are added with their default owners.
+    if (!body?.truckId) {
+      json(response, 400, { message: 'A Truck is required.' });
       return;
     }
     const created = makeWorkOrder('00000000-0000-4000-8000-000000000199', 'WO-0199', 'T-199', body.priority ?? 'normal', 'created');
@@ -749,6 +807,22 @@ createServer(async (request, response) => {
       completedBy: null,
       completionNotes: null,
     }));
+    for (const step of workflowSteps) {
+      const owner = step.defaultMechanicId ? userById(step.defaultMechanicId) : null;
+      created.jobs.push({
+        id: `00000000-0000-4000-8000-0000000009${String(step.sortOrder).padStart(2, '0')}`,
+        catalogJobId: step.catalogJob.id,
+        displayName: step.catalogJob.displayName,
+        customDescription: null,
+        category: { id: step.catalogJob.categoryId, name: step.catalogJob.categoryName },
+        status: 'to_do',
+        assignedMechanic: owner?.active ? { id: owner.id, name: owner.name } : null,
+        completedAt: null,
+        completedBy: null,
+        completionNotes: null,
+      });
+    }
+    created.nextJobName = created.jobs.find((job) => job.status === 'to_do')?.displayName ?? null;
     syncJobCounts(created);
     workOrders.unshift(created);
     json(response, 201, created);

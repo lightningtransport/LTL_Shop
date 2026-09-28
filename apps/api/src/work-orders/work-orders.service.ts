@@ -11,6 +11,7 @@ import {
   AppCapability,
   ActivityEventType,
   MechanicMode,
+  WorkPlanJobLane,
   OPEN_WORK_ORDER_STATUSES,
   BlockerReason,
   PauseReason,
@@ -47,6 +48,7 @@ import { openSessionFor, stopLaborForMechanic } from './labor-session';
 import { assertPmObservedMileage } from './pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from './pm-finish';
 import { isPmJobCategory, resolveMandatoryJobs, type MandatoryJob } from './mandatory-jobs';
+import { classifyWorkPlanLane } from '../admin/yard-work-plan-derivation';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
@@ -200,9 +202,11 @@ export class WorkOrdersService {
     });
     if (!truck) throw new BadRequestException('Invalid truck');
 
-    const category = await this.prisma.jobCategory.findUnique({
-      where: { id: input.primaryCategoryId },
-    });
+    const category = input.primaryCategoryId
+      ? await this.prisma.jobCategory.findUnique({ where: { id: input.primaryCategoryId } })
+      : actorKind === 'manager'
+        ? await this.derivePrimaryCategory(input.jobs)
+        : null;
     if (!category) throw new BadRequestException('Invalid primary category');
 
     const isPm = category.name === 'PM';
@@ -224,9 +228,8 @@ export class WorkOrdersService {
       return this.createOrJoinPm(user, input);
     } else if (actorKind === 'mechanic') {
       throw new ForbiddenException('Standard Work Orders are created by a Shop Manager.');
-    } else if (!input.jobs.length) {
-      throw new BadRequestException('At least one job is required for this Work Order');
     } else {
+      // LTR-157 / D13: a Work Order can start with only the truck; the mandatory steps are added below.
       const jobAssigneeIds = input.jobs
         .map((job) => job.assignedMechanicId)
         .filter((id): id is string => Boolean(id));
@@ -248,7 +251,7 @@ export class WorkOrdersService {
           throw new BadRequestException('One or more selected mechanics cannot perform standard work');
         }
       }
-      await this.assertStandardJobsUseActiveCategories(input.jobs);
+      if (input.jobs.length) await this.assertStandardJobsUseActiveCategories(input.jobs);
     }
 
     // LTR-145: PM, Alignment, Detailing and QC are added to every new truck Work Order.
@@ -272,8 +275,15 @@ export class WorkOrdersService {
     });
 
     // Only a Manager reaches here (PM joins via createOrJoinPm). A Manager is not a
-    // mechanic and is never auto-assigned; the team already includes per-job assignees.
-    const mechanicIds = Array.from(new Set(teamMechanicIds));
+    // mechanic and is never auto-assigned; the team is every Job owner except the
+    // PM job's (a PM mechanic reaches the Work Order through that Job, LTR-146).
+    const pmCategoryIds = new Set(
+      (await this.prisma.jobCategory.findMany({ where: { name: 'PM' }, select: { id: true } })).map((item) => item.id),
+    );
+    const mandatoryOwners = mandatoryJobs
+      .filter((job) => job.assignedMechanicId && !pmCategoryIds.has(job.categoryId))
+      .map((job) => job.assignedMechanicId as string);
+    const mechanicIds = Array.from(new Set([...teamMechanicIds, ...mandatoryOwners]));
 
     let wo: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>;
     try {
@@ -332,7 +342,7 @@ export class WorkOrdersService {
           data: {
             displayId,
             truckId: input.truckId,
-            primaryCategoryId: input.primaryCategoryId,
+            primaryCategoryId: category.id,
             status: 'created',
             priority: input.priority,
             notes: input.notes,
@@ -364,7 +374,8 @@ export class WorkOrdersService {
                 isCustom: false,
                 reviewStatus: null,
                 addedById: user.id,
-                assignedMechanicId: undefined,
+                // LTR-157 / D15: the step's default owner (null when inactive or QC).
+                assignedMechanicId: job.assignedMechanicId ?? undefined,
                 status: 'to_do' as const,
               }))),
             },
@@ -1008,6 +1019,27 @@ export class WorkOrdersService {
     }
   }
 
+  /**
+   * LTR-157 / D13: the Manager no longer picks a Category. Keep `primaryCategoryId`
+   * (PRD §9) from the first Shop Work Job, else Inspection, else the first
+   * non-PM active Category. Never PM: a PM primary Category means a legacy PM
+   * Work Order without Jobs.
+   */
+  private async derivePrimaryCategory(jobs: Array<{ categoryId: string; displayName: string }>) {
+    if (jobs.length) {
+      const categories = await this.prisma.jobCategory.findMany({
+        where: { id: { in: jobs.map((job) => job.categoryId) }, status: 'active' },
+      });
+      const byId = new Map(categories.map((item) => [item.id, item]));
+      const shopWork = jobs
+        .map((job) => ({ job, category: byId.get(job.categoryId) }))
+        .find(({ job, category }) => category && classifyWorkPlanLane(category.name, job.displayName) === WorkPlanJobLane.SHOP_WORK);
+      if (shopWork?.category) return shopWork.category;
+    }
+    return await this.prisma.jobCategory.findFirst({ where: { name: 'Inspection', status: 'active' } })
+      ?? await this.prisma.jobCategory.findFirst({ where: { name: { not: 'PM' }, status: 'active' }, orderBy: { sortOrder: 'asc' } });
+  }
+
   private async assertStandardJobsUseActiveCategories(
     jobs: CreateWorkOrderInput['jobs'],
   ) {
@@ -1338,12 +1370,9 @@ export class WorkOrdersService {
       if (this.activePmJob(wo)?.id !== jobId) throw new BadRequestException('This is not the PM job of this Work Order');
       if (job.status !== 'to_do') throw new BadRequestException('The PM job is not to do');
       if (job.startedAt) throw new BadRequestException({ code: 'PM_JOB_ALREADY_STARTED', message: 'The PM service is already started.' });
-      if (job.assignedMechanicId && job.assignedMechanicId !== user.id) {
-        throw new ForbiddenException({
-          code: 'PM_JOB_ASSIGNED_TO_OTHER',
-          message: `This PM job is assigned to ${job.assignedMechanic?.name ?? 'another PM mechanic'}.`,
-        });
-      }
+      // LTR-157 / D15: the PM mechanic who starts the PM takes it, even when the
+      // default owner was someone else (who may be out today). D2 still applies below.
+      const previousAssigneeId = job.assignedMechanicId;
       if (!['created', 'in_progress'].includes(wo.status)) {
         throw new BadRequestException({ code: 'WORK_ORDER_NOT_WORKABLE', message: 'The Work Order is paused or closed.' });
       }
@@ -1366,7 +1395,8 @@ export class WorkOrdersService {
         entityType: 'work_order_job',
         entityId: jobId,
         userId: user.id,
-        newValue: { pmJob: true, displayName: job.displayName, startedAt: now.toISOString() },
+        previousValue: previousAssigneeId && previousAssigneeId !== user.id ? { assignedMechanicId: previousAssigneeId } : undefined,
+        newValue: { pmJob: true, displayName: job.displayName, startedAt: now.toISOString(), assignedMechanicId: user.id },
       });
       return toWorkOrderDetail(updated, user.id);
     });

@@ -96,11 +96,17 @@ describe('PM Work Order authorization', () => {
     })).rejects.toThrow('PM Work Orders do not use jobs');
   });
 
-  it('keeps at least one job mandatory for Manager-created Standard Work Orders', async () => {
+  it('keeps Standard create Manager-only; the Manager may start with no Jobs (LTR-157 / D13)', async () => {
     const prisma = {
       workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null) },
       truck: { findUnique: vi.fn().mockResolvedValue({ id: 'truck-1' }) },
-      jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: 'brakes-category', name: 'Brakes' }) },
+      jobCategory: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'brakes-category', name: 'Brakes' }),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      shopWorkflowStep: { findMany: vi.fn().mockResolvedValue([]) },
+      catalogJob: { findFirst: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn().mockRejectedValue(new Error('reached-transaction')),
     } as never;
     const service = new WorkOrdersService(prisma, { log: vi.fn() } as never);
     const manager = {
@@ -120,9 +126,8 @@ describe('PM Work Order authorization', () => {
       id: 'alex-id', email: 'mechanic@lightning.local', name: 'Alejandro 1',
       role: 'mechanic', active: true, pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
     }, payload)).rejects.toThrow('Standard Work Orders are created by a Shop Manager.');
-    await expect(service.createByManager(manager, payload)).rejects.toThrow(
-      'At least one job is required for this Work Order',
-    );
+    // No "at least one job" rule any more: the request reaches the write.
+    await expect(service.createByManager(manager, payload)).rejects.toThrow('reached-transaction');
   });
 
   it('rejects a duplicate job on an open standard Work Order', async () => {

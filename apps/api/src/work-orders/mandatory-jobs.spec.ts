@@ -10,57 +10,103 @@ const catalog: Record<string, { id: string; categoryId: string; displayName: str
   Detailing: { id: 'cj-detail', categoryId: 'cat-detail', displayName: 'Detailing' },
   'Quality Check': { id: 'cj-qc', categoryId: 'cat-qc', displayName: 'Quality Check' },
 };
-const catalogClient = () => ({
+
+type Owner = { id: string; active: boolean; capabilities: { capability: string }[] } | null;
+const daniel: Owner = { id: 'daniel', active: true, capabilities: [{ capability: 'MECHANIC_PM' }] };
+const anthony: Owner = { id: 'anthony', active: true, capabilities: [{ capability: 'MECHANIC_STANDARD' }] };
+
+function step(stepKey: string, jobName: string, categoryName: string, owner: Owner = null) {
+  const job = catalog[jobName];
+  return {
+    stepKey,
+    catalogJob: { id: job.id, categoryId: job.categoryId, displayName: job.displayName, category: { name: categoryName } },
+    defaultMechanic: owner,
+  };
+}
+
+const configuredSteps = (overrides: { pm?: Owner; detailing?: Owner; qc?: Owner } = {}) => [
+  step('pm', 'PM A Service', 'PM', overrides.pm ?? daniel),
+  step('alignment', 'Alignment', 'Suspension & Steering', anthony),
+  step('detailing', 'Detailing', 'Detailing', overrides.detailing ?? anthony),
+  step('quality_check', 'Quality Check', 'Quality Check', overrides.qc ?? null),
+];
+
+const client = (steps: unknown[] = configuredSteps()) => ({
+  shopWorkflowStep: { findMany: vi.fn().mockResolvedValue(steps) },
   catalogJob: {
     findFirst: vi.fn(async ({ where }: { where: { displayName: string } }) => catalog[where.displayName] ?? null),
   },
 });
 
-describe('mandatory Work Plan jobs (LTR-145)', () => {
-  it('adds PM A, Alignment, Detailing and QC by catalog name', async () => {
-    const client = catalogClient();
-    const jobs = await resolveMandatoryJobs(client as never, [{ categoryName: 'Air & Brake', displayName: 'Brake Repair' }]);
-    expect(jobs.map((job) => job.displayName)).toEqual(['PM A Service', 'Alignment', 'Detailing', 'Quality Check']);
-    expect(client.catalogJob.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+describe('mandatory Work Plan jobs from the shop workflow (LTR-157 / D13, D15)', () => {
+  it('adds the four steps in order with their default owners; QC has none', async () => {
+    const jobs = await resolveMandatoryJobs(client() as never, []);
+    expect(jobs.map((job) => [job.displayName, job.assignedMechanicId])).toEqual([
+      ['PM A Service', 'daniel'],
+      ['Alignment', 'anthony'],
+      ['Detailing', 'anthony'],
+      ['Quality Check', null],
+    ]);
+  });
+
+  it('leaves a Job unassigned when its default owner is inactive or lacks the capability', async () => {
+    const jobs = await resolveMandatoryJobs(client(configuredSteps({
+      pm: { id: 'daniel', active: false, capabilities: [{ capability: 'MECHANIC_PM' }] },
+      detailing: { id: 'pm-only', active: true, capabilities: [{ capability: 'MECHANIC_PM' }] },
+      qc: anthony,
+    })) as never, []);
+    expect(Object.fromEntries(jobs.map((job) => [job.displayName, job.assignedMechanicId]))).toEqual({
+      'PM A Service': null,
+      Alignment: 'anthony',
+      Detailing: null,
+      'Quality Check': null,
+    });
+  });
+
+  it('skips steps the Manager already picked (PM B counts as PM)', async () => {
+    const jobs = await resolveMandatoryJobs(client() as never, [
+      { categoryName: 'PM', displayName: 'PM B Service' },
+      { categoryName: 'Suspension & Steering', displayName: 'Alignment' },
+    ]);
+    expect(jobs.map((job) => job.displayName)).toEqual(['Detailing', 'Quality Check']);
+  });
+
+  it('falls back to the catalog names, unassigned, when no step is configured', async () => {
+    const empty = client([]);
+    const jobs = await resolveMandatoryJobs(empty as never, [{ categoryName: 'Air & Brake', displayName: 'Brake Repair' }]);
+    expect(jobs.map((job) => [job.displayName, job.assignedMechanicId])).toEqual([
+      ['PM A Service', null], ['Alignment', null], ['Detailing', null], ['Quality Check', null],
+    ]);
+    expect(empty.catalogJob.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: { displayName: 'PM A Service', status: 'active', category: { name: 'PM', status: 'active' } },
     }));
   });
 
-  it('skips steps the Manager already picked (PM B counts as PM) and missing catalog rows', async () => {
-    const client = catalogClient();
-    delete (catalog as Record<string, unknown>)['Quality Check'];
-    const jobs = await resolveMandatoryJobs(client as never, [
-      { categoryName: 'PM', displayName: 'PM B Service' },
-      { categoryName: 'Suspension & Steering', displayName: 'Alignment' },
-    ]);
-    expect(jobs.map((job) => job.displayName)).toEqual(['Detailing']);
-    catalog['Quality Check'] = { id: 'cj-qc', categoryId: 'cat-qc', displayName: 'Quality Check' };
-  });
-
-  it('resolves mandatory jobs on every Manager create', async () => {
+  it('lets the Manager create a Work Order with only the truck (no Category, no Jobs)', async () => {
     const manager: AuthUser = {
       id: 'mgr', email: 'm@l.local', name: 'Manager', role: 'manager', active: true, pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     };
     const truckId = '11111111-1111-4111-8111-111111111111';
-    const categoryId = '33333333-3333-4333-8333-333333333333';
-    const build = () => {
-      const prisma = {
-        ...catalogClient(),
-        workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null) },
-        truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },
-        jobCategory: {
-          findUnique: vi.fn().mockResolvedValue({ id: categoryId, name: 'Air & Brake' }),
-          findMany: vi.fn().mockResolvedValue([{ id: categoryId, name: 'Air & Brake' }]),
-        },
-        $transaction: vi.fn().mockRejectedValue(new Error('reached-transaction')),
-      };
-      return { prisma, service: new WorkOrdersService(prisma as never, { log: vi.fn() } as never) };
+    const inspection = { id: '33333333-3333-4333-8333-333333333333', name: 'Inspection' };
+    const prisma = {
+      ...client(),
+      workOrder: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null) },
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },
+      jobCategory: {
+        findUnique: vi.fn(),
+        findFirst: vi.fn().mockResolvedValue(inspection),
+        findMany: vi.fn().mockResolvedValue([{ id: 'cat-pm' }]),
+      },
+      user: { findMany: vi.fn().mockResolvedValue([]) },
+      $transaction: vi.fn().mockRejectedValue(new Error('reached-transaction')),
     };
-    const body = { truckId, primaryCategoryId: categoryId, jobs: [{ categoryId, displayName: 'Brake Repair' }] };
+    const service = new WorkOrdersService(prisma as never, { log: vi.fn() } as never);
 
-    const { prisma, service } = build();
-    await expect(service.createByManager(manager, body)).rejects.toThrow('reached-transaction');
-    expect(prisma.catalogJob.findFirst).toHaveBeenCalledTimes(4);
+    await expect(service.createByManager(manager, { truckId })).rejects.toThrow('reached-transaction');
+    // D13: primary Category is derived (Inspection), never PM; the steps come from shop_workflow_steps.
+    expect(prisma.jobCategory.findUnique).not.toHaveBeenCalled();
+    expect(prisma.jobCategory.findFirst).toHaveBeenCalledWith({ where: { name: 'Inspection', status: 'active' } });
+    expect(prisma.shopWorkflowStep.findMany).toHaveBeenCalled();
   });
 });

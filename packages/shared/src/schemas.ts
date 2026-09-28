@@ -4,6 +4,7 @@ import {
   MechanicMode,
   BlockerReason,
   PauseReason,
+  ShopWorkflowStepKey,
   WorkOrderNoteKind,
   Priority,
   ReadinessRequirementOutcome,
@@ -287,7 +288,8 @@ export const createWorkOrderJobSchema = z.object({
 
 export const createWorkOrderSchema = z.object({
   truckId: z.string().uuid(),
-  primaryCategoryId: z.string().uuid(),
+  // LTR-157 / D13: optional for the Manager (derived); "Create PM service" still sends the PM Category.
+  primaryCategoryId: z.string().uuid().optional(),
   priority: z.nativeEnum(Priority).default(Priority.NORMAL),
   notes: z.string().max(2000).optional(),
   mechanicIds: z.array(z.string().uuid()).default([]),
@@ -433,3 +435,14 @@ export type AdminCreateMechanicInput = z.infer<typeof adminCreateMechanicSchema>
 export type AdminUpdateMechanicInput = z.infer<typeof adminUpdateMechanicSchema>;
 export type AdminCreateCatalogJobInput = z.infer<typeof adminCreateCatalogJobSchema>;
 export type AdminUpdateCatalogJobInput = z.infer<typeof adminUpdateCatalogJobSchema>;
+
+/**
+ * LTR-157 / D15, D16: the Manager (or System Admin) sets the default owner of
+ * each mandatory step. Quality Check never has one (D15).
+ */
+export const updateShopWorkflowStepsSchema = z.object({
+  steps: z.array(z.object({
+    stepKey: z.nativeEnum(ShopWorkflowStepKey),
+    defaultMechanicId: z.string().uuid().nullable(),
+  })).min(1),
+});

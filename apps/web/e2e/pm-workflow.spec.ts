@@ -262,7 +262,9 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
       jobsCompleted: 0, jobsTotal: 2,
       jobs: [
         { id: pmJobId, workOrderId: jobWoId, catalogJobId: 'cj-pm-a', categoryId: pmCategoryId, category: { id: pmCategoryId, name: 'PM' }, displayName: 'PM A Service', customDescription: null, status: 'to_do', completedAt: null, completedById: null, completionNotes: null, assignedMechanic: assignee, startedAt: null },
-        { id: brakesJobId, workOrderId: jobWoId, catalogJobId: 'cj-brakes', categoryId: 'cat-brakes', category: { id: 'cat-brakes', name: 'Brakes' }, displayName: 'Brake adjustment', customDescription: null, status: 'to_do', completedAt: null, completedById: null, completionNotes: null, assignedMechanic: null, startedAt: null },
+        { id: brakesJobId, workOrderId: jobWoId, catalogJobId: 'cj-brakes', categoryId: 'cat-brakes', category: { id: 'cat-brakes', name: 'Brakes' }, displayName: 'Brake adjustment', customDescription: null, status: 'to_do', completedAt: null, completedById: null, completionNotes: null,
+          // LTR-154 / D11: the Standard mechanic completes only their own Job.
+          assignedMechanic: { id: standard.id, name: standard.name }, startedAt: null },
       ],
     };
     await page.route('**/api/**', async (route) => {
@@ -276,7 +278,7 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     await devLogin(page);
     await expect(page).toHaveURL(/\/mechanic/, { timeout: 15_000 });
     await page.goto(`/work-orders/${jobWoId}`);
-    await expect(page.getByRole('button', { name: /Brake adjustment/ })).toBeEnabled();
+    await expect(page.getByRole('button', { name: /^○ Brake adjustment/ })).toBeEnabled();
     await expect(page.getByTestId('job-read-only')).toContainText('PM A Service');
     await expect(page.getByRole('button', { name: /PM A Service/ })).toHaveCount(0);
   });

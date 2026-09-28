@@ -8,7 +8,7 @@ import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/l
 import { adminAttentionReasonLabel, adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
-import { mechanicNamesLabel } from '@/lib/admin-work-summary';
+import { mechanicNamesLabel, workOrderNextJobLine } from '@/lib/admin-work-summary';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
 
 export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders', onBlockerResolved }: {
@@ -35,7 +35,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
             {messages.workOrder}{' '}
             <Link className="font-medium text-foreground hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>
             {' · '}
-            {item.category.name}
+            {workOrderNextJobLine(item, messages)}
           </p>
           {attention ? (
             <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-warning-foreground" data-testid="attention-reason">

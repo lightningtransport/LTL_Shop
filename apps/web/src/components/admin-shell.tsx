@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, Gauge, History, Library, Menu, Truck, UsersRound, Warehouse } from 'lucide-react';
+import { ClipboardList, Gauge, History, Library, ListChecks, Menu, Truck, UsersRound, Warehouse } from 'lucide-react';
 import { AdminLocaleSwitcher } from './admin-locale-switcher';
 import { AdminNavLink } from './admin-nav-link';
 import { AppHeaderActions, Button, Modal } from './ui';
@@ -26,6 +26,7 @@ const navigationGroups = [
     items: [
       { message: 'mechanics', icon: UsersRound, href: '/admin/mechanics' },
       { message: 'jobCatalog', icon: Library, href: '/admin/catalog' },
+      { message: 'shopWorkflow', icon: ListChecks, href: '/admin/setup/workflow' },
     ],
   },
   {
