@@ -113,7 +113,7 @@ async function main() {
     }
     const deactivate = plan.actions.flatMap((action) => (action.kind === 'deactivate' ? [action.user.id] : []));
     if (deactivate.length) await tx.user.updateMany({ where: { id: { in: deactivate } }, data: { active: false } });
-  });
+  }, { maxWait: 15_000, timeout: 60_000 }); // Remote pooler round-trips exceed Prisma's 5 s default.
   console.log('Applied. Run again without --apply to confirm there are no pending changes.');
 }
 
