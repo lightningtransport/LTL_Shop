@@ -110,7 +110,9 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('en').jobFinishedSuccess).toBe('Job marked complete.');
     expect(getShopCopy('es').jobFinishedWithNoteSuccess).toMatch(/nota/);
     expect(getShopCopy('en').workStartedSuccess).toBe('Work started.');
-    expect(getShopCopy('es').blockerReportedSuccess).toMatch(/pausado/);
+    // LTR-155 / D17: only the Manager resolves a blocker.
+    expect(getShopCopy('es').blockerReportedSuccess).toMatch(/Manager/);
+    expect(getShopCopy('es').pausedJobsTitle).toBe('Pausada por el Manager');
     expect(getAdminMessages('en').createWorkOrderSuccess).toContain('{id}');
     expect(getAdminMessages('es').createWorkOrderSuccess).toContain('{id}');
     expect(getShopCopy('en').pauseWorkOrder).toBe('Pause Work Order');

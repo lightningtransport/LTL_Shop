@@ -143,6 +143,43 @@ describe('Work Order Job Category readers', () => {
     expect(toWorkOrderDetail(wo).currentPause).toBeNull();
   });
 
+  it('marks the blocked Job and carries its blocker notes and job (LTR-155 / D17)', () => {
+    const reportedAt = new Date('2026-09-11T15:00:00.000Z');
+    const alex = { id: 'mechanic-1', name: 'Alex Mechanic' };
+    const wo: WorkOrderWithRelations = {
+      ...base,
+      jobs: [
+        { ...job('job-brakes', 'category-brakes', 'Brakes', 'Inspect brakes', alex), assignedMechanicId: alex.id },
+        { ...job('job-pads', 'category-brakes', 'Brakes', 'Replace pads', alex), assignedMechanicId: alex.id },
+      ],
+      sessions: [{ id: 's-1', startedAt: reportedAt, endedAt: null, userId: alex.id }],
+      pauseEvents: [{
+        id: 'report-1', workOrderId: 'wo-1', reason: 'waiting_for_parts', notes: 'Air line ordered',
+        startedAt: reportedAt, endedAt: reportedAt, durationMs: 0n, isOfficialPause: false,
+        reportedBy: alex, jobId: 'job-brakes', job: { id: 'job-brakes', displayName: 'Inspect brakes' },
+        blockerReason: 'waiting_for_parts',
+      }],
+      activityLogs: [{
+        id: 'log-1', eventType: ActivityEventType.note_added, entityType: 'pause_event', entityId: 'report-1',
+        newValue: { body: 'The part arrived' }, createdAt: new Date('2026-09-11T16:00:00.000Z'), user: alex,
+      }],
+    };
+
+    const detail = toWorkOrderDetail(wo, alex.id);
+    expect(detail.jobs.map((item) => [item.id, item.workStatus])).toEqual([
+      ['job-brakes', 'blocked'],
+      ['job-pads', 'in_progress'],
+    ]);
+    expect(detail.jobs[0].activeBlocker).toMatchObject({ id: 'report-1', reason: 'waiting_for_parts', reportedBy: alex });
+    expect(detail.activeBlockers?.[0]).toMatchObject({
+      job: { id: 'job-brakes', displayName: 'Inspect brakes' },
+      blockerReason: 'waiting_for_parts',
+      blockerNotes: [{ id: 'log-1', body: 'The part arrived', author: alex, createdAt: '2026-09-11T16:00:00.000Z' }],
+      resolutionNote: null,
+    });
+    expect(toWorkOrderSummary(wo).jobs[0]).toMatchObject({ workStatus: 'blocked', activeBlocker: { id: 'report-1' } });
+  });
+
   it('reads mechanic finish notes from the latest job_completed activity row', () => {
     const wo: WorkOrderWithRelations = {
       ...base,

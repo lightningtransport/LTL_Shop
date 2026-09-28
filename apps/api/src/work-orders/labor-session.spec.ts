@@ -261,3 +261,26 @@ describe('mechanic Start Work / Continue (LTR-124, LTR-154 / D18)', () => {
     expect(tx.workOrderJob.update).not.toHaveBeenCalled();
   });
 });
+
+describe('blocked Jobs (LTR-155 / D17)', () => {
+  const blocker = {
+    id: 'b-1', workOrderId: 'wo-1', jobId: 'job-new', reason: 'waiting_for_parts', notes: null,
+    startedAt, endedAt: startedAt, durationMs: 0n, isOfficialPause: false, resolvedAt: null, reportedBy: null,
+  };
+
+  it('does not let Continue start labor when every pending Job of mine is blocked', async () => {
+    const { service, tx } = serviceFor(standardWorkOrder({ pauseEvents: [blocker] }));
+    await expect(service.start(mechanic, 'wo-1')).rejects.toMatchObject({ response: { code: 'NO_PENDING_JOBS' } });
+    expect(tx.workSession.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects completing a blocked Job until the Manager resolves it', async () => {
+    const { service, tx } = serviceFor(standardWorkOrder({
+      pauseEvents: [blocker],
+      sessions: [{ id: 's-1', startedAt, endedAt: null, userId: 'mech-1' }],
+    }));
+    await expect(service.completeJob(mechanic, 'wo-1', 'job-new')).rejects.toMatchObject({ response: { code: 'JOB_BLOCKED' } });
+    expect(tx.workOrderJob.update).not.toHaveBeenCalled();
+  });
+});
+

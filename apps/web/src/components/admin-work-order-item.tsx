@@ -9,9 +9,12 @@ import { adminAttentionReasonLabel, adminPriorityLabel, workOrderStatusLabel } f
 import { cn } from '@/lib/utils';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { mechanicNamesLabel } from '@/lib/admin-work-summary';
+import { AdminBlockerResolve } from './admin-blocker-resolve';
 
-export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders' }: {
+export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders', onBlockerResolved }: {
   item: AdminWorkOrderSummaryDto; locale: AdminLocale; messages: AdminMessages; compact?: boolean; fromPath?: string;
+  /** LTR-155 / D17: when set (Dashboard), the active blocker can be resolved in place. */
+  onBlockerResolved?: () => Promise<unknown> | void;
 }) {
   const statusChip = (
     <WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge>
@@ -52,7 +55,25 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
         <p className={cn('mt-3 rounded-lg bg-shop-accent/10 px-3 py-2 text-sm font-medium', compact && 'xl:col-span-3 xl:mt-0')}>{messages.readyToCloseHint}</p>
       ) : null}
       {item.currentPause ? <p className={cn('mt-3 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground', compact && 'xl:col-span-3 xl:mt-0')}>{messages.currentPause}: {adminPauseReasonLabel(item.currentPause.reason, messages)}</p> : null}
-      {!item.currentPause && item.latestReportedBlocker ? <p className={cn('mt-3 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground', compact && 'xl:col-span-3 xl:mt-0')}>{messages.reportedBlockerLabel}: {adminPauseReasonLabel(item.latestReportedBlocker.reason, messages)}</p> : null}
+      {!item.currentPause && item.latestReportedBlocker ? (
+        <div className={cn('mt-3 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground', compact && 'xl:col-span-3 xl:mt-0')}>
+          {onBlockerResolved ? (
+            <AdminBlockerResolve
+              workOrderId={item.id}
+              blocker={item.latestReportedBlocker}
+              locale={locale}
+              messages={messages}
+              canResolve
+              onResolved={onBlockerResolved}
+            />
+          ) : (
+            <p>
+              {messages.reportedBlockerLabel}: {item.latestReportedBlocker.job ? `${item.latestReportedBlocker.job.displayName} · ` : ''}
+              {adminPauseReasonLabel(item.latestReportedBlocker.blockerReason ?? item.latestReportedBlocker.reason, messages)}
+            </p>
+          )}
+        </div>
+      ) : null}
       {!compact ? <Button asChild variant="outline" size="sm" className="mt-4"><Link href={`/admin/work-orders/${item.id}`}>{messages.details}</Link></Button> : null}
     </article>
   );

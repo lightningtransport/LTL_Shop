@@ -61,9 +61,15 @@ export class WorkOrdersController {
     return this.workOrders.reportBlocker(req.user!, id, body);
   }
 
-  @Post(':id/blockers/:blockerId/resolve')
-  resolveBlocker(@Req() req: Request, @Param('id') id: string, @Param('blockerId') blockerId: string) {
-    return this.workOrders.resolveBlocker(req.user!, id, blockerId);
+  // LTR-155 / D17: the mechanic no longer resolves; they add notes. Only Admin resolves.
+  @Post(':id/blockers/:blockerId/notes')
+  addBlockerNote(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('blockerId') blockerId: string,
+    @Body() body: unknown,
+  ) {
+    return this.workOrders.addBlockerNote(req.user!, id, blockerId, body);
   }
 
   @Post(':id/complete')

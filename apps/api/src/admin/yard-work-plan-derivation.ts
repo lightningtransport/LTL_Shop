@@ -25,6 +25,8 @@ export type WorkPlanDerivationJob = {
   /** LTR-154 / D11: the Job's one owner (absent on callers that do not load it). */
   assignedMechanic?: { id: string; name: string } | null;
   startedAt?: Date | null;
+  /** LTR-155 / D17: the Job has an unresolved mechanic blocker. */
+  blocked?: boolean;
 };
 
 export type WorkPlanDerivationWorkOrder = {
@@ -119,6 +121,7 @@ export function toWorkPlanJobUiStatus(
 const WORK_STATUS_TO_UI: Record<ReturnType<typeof jobWorkStatus>, WorkPlanJobUiStatus> = {
   pending: WorkPlanJobUiStatus.PENDING,
   in_progress: WorkPlanJobUiStatus.IN_PROGRESS,
+  blocked: WorkPlanJobUiStatus.BLOCKED,
   completed: WorkPlanJobUiStatus.COMPLETED,
   cancelled: WorkPlanJobUiStatus.CANCELLED,
 };
@@ -134,6 +137,7 @@ export function toWorkPlanJobDto(
         assignedMechanicId: job.assignedMechanic?.id ?? null,
         startedAt: job.startedAt,
         isPm: isPmCategory(job.category.name),
+        blocked: job.blocked,
       }, sessions)]
     : toWorkPlanJobUiStatus(job.status, workOrderStatus);
   return {

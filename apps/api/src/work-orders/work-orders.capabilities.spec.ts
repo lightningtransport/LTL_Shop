@@ -151,6 +151,7 @@ describe('Work Order workspace capabilities', () => {
     const service = new WorkOrdersService({} as never, { log: vi.fn() } as never);
     await expect(
       service.reportBlocker(user([AppCapability.MECHANIC_STANDARD]), '11111111-1111-4111-8111-111111111111', {
+        jobId: '22222222-2222-4222-8222-222222222222',
         reason: 'other',
       }),
     ).rejects.toThrow('Notes are required when reason is Other');

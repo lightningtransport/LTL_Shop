@@ -123,8 +123,12 @@ type Copy = {
   workStartedSuccess: string;
   reportBlocker: string;
   activeBlockers: string;
-  markBlockerResolved: string;
-  blockerResolved: string;
+  blockerWaitsForManager: string;
+  addBlockerNote: string;
+  blockerNotePlaceholder: string;
+  blockerNoteAdded: string;
+  blockedWithReason: (reason: string) => string;
+  reportBlockerFor: (jobName: string) => string;
   noteThreadEmpty: string;
   notePlaceholder: string;
   addNote: string;
@@ -266,7 +270,7 @@ const copy: Record<ShopLocale, Copy> = {
     noPausedJobs: 'No paused Work Orders. Paused work will appear here until it is resumed.',
     noPausedPmServices: 'No paused PM services. Paused work will appear here until it is resumed.',
     activeJobsTitle: 'In Progress',
-    pausedJobsTitle: 'Paused',
+    pausedJobsTitle: 'Paused by the Manager',
     pmActiveTitle: 'Active PM services',
     pmPausedTitle: 'Paused PM services',
     notes: 'Notes',
@@ -332,8 +336,12 @@ const copy: Record<ShopLocale, Copy> = {
     workStartedSuccess: 'Work started.',
     reportBlocker: 'Report Blocker',
     activeBlockers: 'Active blockers',
-    markBlockerResolved: 'Mark resolved',
-    blockerResolved: 'Blocker resolved.',
+    blockerWaitsForManager: 'Only the Manager resolves a blocker. Add a note if something changes.',
+    addBlockerNote: 'Add note to blocker',
+    blockerNotePlaceholder: 'For example: the part arrived.',
+    blockerNoteAdded: 'Note added to the blocker.',
+    blockedWithReason: (reason) => `Blocked · ${reason}`,
+    reportBlockerFor: (jobName) => `Report blocker: ${jobName}`,
     noteThreadEmpty: 'No notes yet.',
     notePlaceholder: 'Write a note, or describe additional work the Truck needs',
     addNote: 'Add Note',
@@ -346,7 +354,7 @@ const copy: Record<ShopLocale, Copy> = {
     notesClosed: 'This Work Order is closed. Notes are read-only.',
     requestWorkHint: 'Request Work goes to your Manager, who can add it as a Job. Notes are never overwritten.',
     reportingBlocker: 'Reporting…',
-    blockerReportedSuccess: 'Blocker reported. The Work Order is not paused.',
+    blockerReportedSuccess: 'Blocker reported. The Manager will resolve it.',
     blockerReason: 'Blocker reason',
     jobFinishTitle: 'Complete job',
     jobFinishConfirm: 'Complete job',
@@ -485,7 +493,7 @@ const copy: Record<ShopLocale, Copy> = {
     noPausedJobs: 'No hay Work Orders en pausa. El trabajo pausado aparecerá aquí hasta que se reanude.',
     noPausedPmServices: 'No hay servicios de PM pausados. El trabajo pausado aparecerá aquí hasta que se reanude.',
     activeJobsTitle: 'En curso',
-    pausedJobsTitle: 'En pausa',
+    pausedJobsTitle: 'Pausada por el Manager',
     pmActiveTitle: 'Servicios de PM activos',
     pmPausedTitle: 'Servicios de PM pausados',
     notes: 'Notas',
@@ -553,8 +561,12 @@ const copy: Record<ShopLocale, Copy> = {
     workStartedSuccess: 'Trabajo iniciado.',
     reportBlocker: 'Reportar bloqueo',
     activeBlockers: 'Bloqueos activos',
-    markBlockerResolved: 'Marcar resuelto',
-    blockerResolved: 'Bloqueo resuelto.',
+    blockerWaitsForManager: 'Solo el Manager resuelve el bloqueo. Agrega una nota si algo cambia.',
+    addBlockerNote: 'Agregar nota al bloqueo',
+    blockerNotePlaceholder: 'Por ejemplo: ya llegó la pieza.',
+    blockerNoteAdded: 'Nota agregada al bloqueo.',
+    blockedWithReason: (reason) => `Bloqueado · ${reason}`,
+    reportBlockerFor: (jobName) => `Reportar bloqueo: ${jobName}`,
     noteThreadEmpty: 'Aún no hay notas.',
     notePlaceholder: 'Escribe una nota o describe el trabajo adicional que necesita la unidad',
     addNote: 'Agregar nota',
@@ -567,7 +579,7 @@ const copy: Record<ShopLocale, Copy> = {
     notesClosed: 'Esta Work Order está cerrada. Las notas son de solo lectura.',
     requestWorkHint: 'Pedir trabajo le llega a tu Manager, que puede agregarlo como Job. Las notas nunca se sobrescriben.',
     reportingBlocker: 'Reportando…',
-    blockerReportedSuccess: 'Bloqueo reportado. El Work Order no está pausado.',
+    blockerReportedSuccess: 'Bloqueo reportado. El Manager lo resolverá.',
     blockerReason: 'Motivo del bloqueo',
     jobFinishTitle: 'Completar Job',
     jobFinishConfirm: 'Completar Job',

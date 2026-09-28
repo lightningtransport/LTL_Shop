@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import {
+  AppCapability,
   TruckOperationalStatus,
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
@@ -17,12 +18,16 @@ import { adminTruckOrigin } from '@/lib/admin-truck-origin';
 import { mechanicNamesLabel, openCurrentWork } from '@/lib/admin-work-summary';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { AdminTruckWorkPlan } from './admin-truck-work-plan';
+import { AdminBlockerResolve } from './admin-blocker-resolve';
+import { useAuth } from '@/lib/auth-context';
 import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton, PriorityBadge, WorkOrderStatusBadge } from './ui';
 
 export function AdminTruckDetail({ id, from = null, locale, messages }: { id: string; from?: string | null; locale: AdminLocale; messages: AdminMessages }) {
   const origin = adminTruckOrigin(from, messages);
   const { mutate: mutateRelated } = useSWRConfig();
   const { data, error, isLoading, mutate } = useAdminTruck(id);
+  const { user } = useAuth();
+  const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const workPlanLoaded = Boolean(data?.workPlan);
 
   // LTR-119: "Add work in the Work Plan" from a Work Order lands on the Work Plan once it has loaded.
@@ -59,7 +64,7 @@ export function AdminTruckDetail({ id, from = null, locale, messages }: { id: st
 
     <section className="grid items-start gap-4 xl:grid-cols-2" aria-label={messages.truckOverview}>
       <Card><CardHeader><CardTitle>{messages.truckOverview}</CardTitle></CardHeader><CardContent><dl className="grid gap-4 text-sm sm:grid-cols-2"><Info label={messages.truckNumber} value={data.truck.truckNumber} /><Info label={messages.make} value={data.truck.make ?? messages.noValue} /><Info label={messages.model} value={data.truck.model ?? messages.noValue} /><Info label={messages.year} value={data.truck.year ? String(data.truck.year) : messages.noValue} /><Info label={messages.mileage} value={formatNumber(data.truck.mileage, locale, messages)} /><Info label={messages.company} value={data.truck.company ?? messages.noValue} /><Info label={messages.owner} value={data.truck.owner ?? messages.noValue} /><Info label={messages.vin} value={data.truck.vin ?? messages.noValue} /><Info label={messages.lastReportedLocation} value={data.truck.location ?? messages.noValue} /><Info label={messages.locationUpdatedOn} value={formatAdminDateOnly(data.truck.locationUpdatedOn, locale)} /><Info label={messages.operationalStatus} value={operationalStatusLabel(data.operationalStatus, messages)} /></dl></CardContent></Card>
-      <Card><CardHeader><CardTitle>{messages.currentWork}</CardTitle><CardDescription>{messages.currentWorkDescription}</CardDescription></CardHeader><CardContent>{currentWork ? <div className="space-y-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${currentWork.id}`}>{currentWork.displayId}</Link><div className="flex gap-2"><WorkOrderStatusBadge status={currentWork.status}>{workOrderStatusLabel(currentWork.status, messages)}</WorkOrderStatusBadge><PriorityBadge priority={currentWork.priority}>{adminPriorityLabel(currentWork.priority, messages)}</PriorityBadge></div></div><Info label={messages.category} value={currentWork.category.name} /><Info label={messages.mechanicsLabel} value={mechanicNamesLabel(currentWork.mechanics, messages)} />{currentWork.currentPause ? <p className="rounded-lg bg-muted px-3 py-2 text-muted-foreground">{messages.currentPause}: {adminPauseReasonLabel(currentWork.currentPause.reason, messages)} · {formatAdminDate(currentWork.currentPause.startedAt, locale)}</p> : null}</div> : <CompactEmpty>{messages.noCurrentWork}</CompactEmpty>}</CardContent></Card>
+      <Card><CardHeader><CardTitle>{messages.currentWork}</CardTitle><CardDescription>{messages.currentWorkDescription}</CardDescription></CardHeader><CardContent>{currentWork ? <div className="space-y-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><Link className="font-semibold text-primary hover:underline" href={`/admin/work-orders/${currentWork.id}`}>{currentWork.displayId}</Link><div className="flex gap-2"><WorkOrderStatusBadge status={currentWork.status}>{workOrderStatusLabel(currentWork.status, messages)}</WorkOrderStatusBadge><PriorityBadge priority={currentWork.priority}>{adminPriorityLabel(currentWork.priority, messages)}</PriorityBadge></div></div><Info label={messages.category} value={currentWork.category.name} /><Info label={messages.mechanicsLabel} value={mechanicNamesLabel(currentWork.mechanics, messages)} />{currentWork.currentPause ? <p className="rounded-lg bg-muted px-3 py-2 text-muted-foreground">{messages.currentPause}: {adminPauseReasonLabel(currentWork.currentPause.reason, messages)} · {formatAdminDate(currentWork.currentPause.startedAt, locale)}</p> : null}{currentWork.latestReportedBlocker ? <div className="rounded-lg bg-warning-surface px-3 py-2 text-warning-foreground">{/* LTR-155 / D17: resolve the Job blocker from the Truck. */}<AdminBlockerResolve workOrderId={currentWork.id} blocker={currentWork.latestReportedBlocker} locale={locale} messages={messages} canResolve={canManageWorkOrders} onResolved={() => mutate()} /></div> : null}</div> : <CompactEmpty>{messages.noCurrentWork}</CompactEmpty>}</CardContent></Card>
     </section>
 
     <AdminTruckWorkPlan

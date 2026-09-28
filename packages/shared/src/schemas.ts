@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   CatalogStatus,
   MechanicMode,
+  BlockerReason,
   PauseReason,
   WorkOrderNoteKind,
   Priority,
@@ -308,10 +309,24 @@ export const changePauseReasonSchema = z.object({
 
 // Manager-first ownership: a mechanic reports a blocker without pausing the
 // Work Order. The Manager pauses/resumes officially.
+// LTR-155 / D17: a blocker always belongs to one of the mechanic's Jobs and uses
+// the mechanic reasons only (no Break, End of Shift, Working on Another WO,
+// Truck Unavailable — those stay on PauseReason for the Manager).
 export const reportBlockerSchema = z.object({
-  reason: z.nativeEnum(PauseReason),
+  jobId: z.string().uuid(),
+  reason: z.nativeEnum(BlockerReason),
   notes: z.string().max(1000).optional(),
 });
+
+/** LTR-155 / D17: the mechanic appends notes to an active blocker ("the part arrived"). */
+export const addBlockerNoteSchema = z.object({
+  body: z.string().trim().min(1).max(1000),
+});
+
+/** LTR-155 / D17: only the Manager resolves, with an optional note. */
+export const resolveBlockerSchema = z.object({
+  notes: z.string().trim().max(1000).optional(),
+}).default({});
 
 export const adminPauseWorkOrderSchema = z.object({
   reason: z.nativeEnum(PauseReason),

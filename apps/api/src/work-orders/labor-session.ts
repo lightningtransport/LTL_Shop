@@ -13,9 +13,9 @@ export function openSessionFor<S extends SessionLike>(sessions: S[] | undefined,
 }
 
 /**
- * LTR-154 / D18: labor is per mechanic. After a Job completes (or is taken away
- * from a mechanic), close that mechanic's session when they have no pending Job
- * left on the Work Order. The Work Order stays In Progress; other mechanics keep
+ * LTR-154 / D18: labor is per mechanic. After a Job completes, is blocked (LTR-155)
+ * or is taken away from a mechanic, close that mechanic's session when they have
+ * no workable pending Job left on the Work Order. The Work Order stays In Progress; other mechanics keep
  * working. When the Work Order has no pending Job at all, every open session
  * closes (this also retires sessions opened before per-mechanic labor).
  * Persists the Work Order totals (sum of all sessions) when anything closed.
@@ -27,8 +27,15 @@ export async function stopLaborForMechanic(
   now: Date = new Date(),
 ): Promise<boolean> {
   const woPending = await tx.workOrderJob.count({ where: { workOrderId, status: 'to_do' } });
+  // LTR-155 / D17: a blocked Job is not workable; the mechanic's time stops when
+  // every pending Job of theirs is done or blocked.
   const minePending = userId && woPending > 0
-    ? await tx.workOrderJob.count({ where: { workOrderId, status: 'to_do', assignedMechanicId: userId } })
+    ? await tx.workOrderJob.count({
+        where: {
+          workOrderId, status: 'to_do', assignedMechanicId: userId,
+          blockers: { none: { isOfficialPause: false, resolvedAt: null } },
+        },
+      })
     : 0;
   if (woPending > 0 && (!userId || minePending > 0)) return false;
   const where: Prisma.WorkSessionWhereInput = woPending === 0

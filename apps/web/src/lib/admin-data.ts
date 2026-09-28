@@ -336,9 +336,11 @@ export function unassignAdminWorkOrderJob(
 }
 
 /** LTR-98: Manager resolves a mechanic-reported blocker. */
-export function resolveAdminBlocker(workOrderId: string, blockerId: string) {
+/** LTR-155 / D17: only the Manager resolves, with an optional note for the mechanic. */
+export function resolveAdminBlocker(workOrderId: string, blockerId: string, notes?: string) {
   return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/blockers/${blockerId}/resolve`, {
     method: 'POST',
+    body: JSON.stringify(notes ? { notes } : {}),
   });
 }
 
