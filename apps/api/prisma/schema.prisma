@@ -57,6 +57,20 @@ enum PauseReason {
   other
 }
 
+// LTR-153 / D17: reasons a mechanic can give when a Job is blocked.
+// PauseReason stays for the Manager's official Work Order pause.
+enum BlockerReason {
+  waiting_for_parts
+  waiting_for_approval
+  waiting_for_vendor
+  waiting_for_equipment
+  waiting_for_bay
+  waiting_for_driver
+  other
+
+  @@map("blocker_reason")
+}
+
 enum CatalogStatus {
   active
   inactive
@@ -140,6 +154,7 @@ model User {
   pauseEvents                    PauseEvent[]               @relation("PauseCreatedBy")
   reportedPauseEvents            PauseEvent[]               @relation("PauseReportedBy")
   resolvedPauseEvents            PauseEvent[]               @relation("PauseResolvedBy")
+  workSessions                   WorkSession[]
   workOrderNotes                 WorkOrderNote[]            @relation("WorkOrderNoteAuthor")
   handledWorkRequests            WorkOrderNote[]            @relation("WorkRequestHandledBy")
   activityLogs                   ActivityLog[]
@@ -560,6 +575,7 @@ model WorkOrderJob {
   completedBy      User?       @relation("JobCompletedBy", fields: [completedById], references: [id])
   assignedMechanic User?       @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
   pmService        PmService?
+  blockers         PauseEvent[]
 
   @@index([workOrderId, status])
   @@index([assignedMechanicId])
@@ -572,10 +588,14 @@ model WorkSession {
   startedAt   DateTime  @map("started_at")
   endedAt     DateTime? @map("ended_at")
   createdAt   DateTime  @default(now()) @map("created_at")
+  // LTR-153 / D18: labor is per mechanic. Nullable so historical sessions stay valid.
+  userId      String?   @map("user_id") @db.Uuid
 
   workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([workOrderId])
+  @@index([workOrderId, userId])
   @@map("work_sessions")
 }
 
@@ -622,13 +642,19 @@ model PauseEvent {
   // LTR-98 / D3: a mechanic-reported blocker stays active until resolved.
   resolvedAt   DateTime?  @map("resolved_at")
   resolvedById String?    @map("resolved_by_id") @db.Uuid
+  // LTR-153 / D17: a blocker always belongs to one Job. Nullable for official
+  // pauses and historical rows. blockerReason replaces reason for new blockers.
+  jobId         String?        @map("job_id") @db.Uuid
+  blockerReason BlockerReason? @map("blocker_reason")
 
-  workOrder  WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrder  WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  job        WorkOrderJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
   createdBy  User      @relation("PauseCreatedBy", fields: [createdById], references: [id])
   reportedBy User?     @relation("PauseReportedBy", fields: [reportedById], references: [id])
   resolvedBy User?     @relation("PauseResolvedBy", fields: [resolvedById], references: [id])
 
   @@index([workOrderId])
+  @@index([jobId])
   @@map("pause_events")
 }
 

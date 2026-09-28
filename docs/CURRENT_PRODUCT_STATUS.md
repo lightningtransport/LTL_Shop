@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-27 (LTR-156 shop workflow steps schema; LTR-151)
+**Updated:** 2026-09-28 (LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -284,6 +284,14 @@ TARGET authorization/UX.
   report separately from the current official pause; pause history and time
   correction use official pauses only. Waiting totals exclude report-only
   events even if a report later has a non-zero duration.
+- Additive columns, unused until LTR-154 / LTR-155 (LTR-153, schema only):
+  `work_sessions.user_id` (nullable FK `users`, index
+  `(work_order_id, user_id)`) for per-mechanic labor; `pause_events.job_id`
+  (nullable FK `work_order_jobs`) and `pause_events.blocker_reason` (nullable
+  Postgres enum `blocker_reason`, mirrored by `BlockerReason` in
+  `@ltl-shop/shared`: the waiting reasons of `PauseReason` plus `other`) for
+  per-Job blockers. No endpoint reads or writes them yet; `PauseReason` is
+  unchanged and still used by official pauses and today's blocker reports.
 - PM retains its specialized create-start, pause, resume, and finish behavior.
 - Reopen Work Order, time correction, reopen Job, and Returned to Service stay
   on `admin.access`. There is no general permission-management UI.
