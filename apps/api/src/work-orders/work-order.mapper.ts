@@ -275,6 +275,8 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string)
       .filter((pause) => pause.isOfficialPause === false && !pause.resolvedAt)
       .map((pause) => toPauseEventDto(pause, wo.activityLogs)),
     ...(viewerId ? { resolvedBlocker: resolvedBlockerOrNull(wo, viewerId) } : {}),
+    // LTR-164 (#6): "Start Work" until I have worked here once, then "Continue".
+    ...(viewerId ? { myLaborStarted: sessions.some((session) => !session.userId || session.userId === viewerId) } : {}),
     noteEntries: (wo.noteEntries ?? []).map(toWorkOrderNoteDto),
   };
 }

@@ -228,6 +228,7 @@ type Copy = {
   pmJobNotStartedHint: string;
   pmJobOnWorkOrder: (job: string, workOrder: string) => string;
   startWorkToCompleteJobs: string;
+  continueToCompleteJobs: string;
   laborTime: (duration: string) => string;
   laborRunningLabel: string;
   pmServiceLabel: string;
@@ -445,6 +446,7 @@ const copy: Record<ShopLocale, Copy> = {
     pmJobNotStartedHint: 'Start the PM service to record the observed mileage and parts.',
     pmJobOnWorkOrder: (job, workOrder) => `${job} · Work Order ${workOrder}`,
     startWorkToCompleteJobs: 'Press Start Work to be able to complete Jobs.',
+    continueToCompleteJobs: 'Press Continue to be able to complete Jobs.',
     laborTime: (duration) => `Labor time: ${duration}`,
     laborRunningLabel: 'running',
     pmServiceLabel: 'PM Service',
@@ -674,6 +676,7 @@ const copy: Record<ShopLocale, Copy> = {
     pmJobNotStartedHint: 'Inicia el servicio PM para registrar el millaje observado y las partes.',
     pmJobOnWorkOrder: (job, workOrder) => `${job} · Work Order ${workOrder}`,
     startWorkToCompleteJobs: 'Pulsa Iniciar trabajo para poder completar Jobs.',
+    continueToCompleteJobs: 'Pulsa Continuar para poder completar Jobs.',
     laborTime: (duration) => `Tiempo de labor: ${duration}`,
     laborRunningLabel: 'en curso',
     pmServiceLabel: 'Servicio de PM',

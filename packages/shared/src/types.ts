@@ -198,6 +198,8 @@ export interface WorkOrderSummaryDto {
   startedAt: string | null;
   /** LTR-158 / D18: the Manager resolved my blocker and my time is stopped — tap Continue. */
   resolvedBlockerAwaitingContinue?: boolean;
+  /** LTR-164 (#10): PM workspace only. `status` buckets by the PM job; this is the Work Order's own status. */
+  workOrderStatus?: WorkOrderStatus;
 }
 
 export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
@@ -224,6 +226,8 @@ export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
   activeBlockers?: PauseEventDto[];
   /** LTR-164 (#9): the blocker the Manager resolved on my Job while I wait to tap Continue, with their note. */
   resolvedBlocker?: PauseEventDto | null;
+  /** LTR-164 (#6): the viewer already had a labor session here (the button reads Continue, not Start Work). */
+  myLaborStarted?: boolean;
   /** LTR-126: append-only notes and work requests (oldest first). */
   noteEntries?: WorkOrderNoteDto[];
   truck: TruckDto;

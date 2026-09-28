@@ -10,6 +10,7 @@ import {
   WorkPlanPhase,
   WorkPlanReadiness,
   isPmCategory,
+  isQualityCheckJob,
   jobWorkStatus,
   type WorkPlanJobDto,
   type WorkPlanMandatoryPhaseDto,
@@ -90,14 +91,7 @@ export function classifyWorkPlanLane(
   if (category === 'inspection') {
     return WorkPlanJobLane.INSPECTION;
   }
-  if (
-    category === normalize(QUALITY_CHECK_CATALOG_CATEGORY_NAME)
-    || name === normalize(QUALITY_CHECK_CATALOG_JOB_NAME)
-    || category.includes('quality check')
-    || category.includes('quality_check')
-    || name === 'qc'
-    || name.includes('quality check')
-  ) {
+  if (isQualityCheckJob(categoryName, displayName)) {
     return WorkPlanJobLane.QUALITY_CHECK;
   }
   return WorkPlanJobLane.SHOP_WORK;
@@ -168,9 +162,14 @@ function mandatoryPhase(
   if (options.cancelledMeansNotApplicable && jobs.length > 0 && active.length === 0) {
     return { required, status: WorkPlanMandatoryStatus.NOT_APPLICABLE, jobCount: 0, remainingCount: 0 };
   }
+  // LTR-164 (#3): a step is In Progress once someone works on it (or part of it is done), not just because a Job exists.
+  const started = active.some((job) => (
+    job.status === JobStatus.TO_DO
+    && (job.uiStatus === WorkPlanJobUiStatus.IN_PROGRESS || job.uiStatus === WorkPlanJobUiStatus.BLOCKED)
+  ));
   let status = WorkPlanMandatoryStatus.PENDING;
   if (completedCount > 0 && remainingCount === 0) status = WorkPlanMandatoryStatus.COMPLETE;
-  else if (remainingCount > 0) status = WorkPlanMandatoryStatus.IN_PROGRESS;
+  else if (remainingCount > 0 && (started || completedCount > 0)) status = WorkPlanMandatoryStatus.IN_PROGRESS;
   return { required, status, jobCount: active.length, remainingCount };
 }
 

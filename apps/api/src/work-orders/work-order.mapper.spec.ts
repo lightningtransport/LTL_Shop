@@ -290,4 +290,10 @@ describe('resolvedBlockerAwaitingContinue (LTR-158 / D18)', () => {
     expect(toWorkOrderDetail(wo(null), alex.id).resolvedBlocker).toBeNull();
     expect(toWorkOrderDetail(resolved).resolvedBlocker).toBeUndefined();
   });
+
+  it('says whether I already worked here, for Start Work vs Continue (LTR-164 #6)', () => {
+    expect(toWorkOrderDetail(wo(null), alex.id).myLaborStarted).toBe(true);
+    expect(toWorkOrderDetail(wo(null), 'mechanic-new').myLaborStarted).toBe(false);
+    expect(toWorkOrderDetail(wo(null)).myLaborStarted).toBeUndefined();
+  });
 });

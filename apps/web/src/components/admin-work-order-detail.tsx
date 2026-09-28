@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSWRConfig } from 'swr';
-import { isPmCategory, AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { isPmCategory, isQualityCheckJob, AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
@@ -220,6 +220,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 const isToDo = job.status === 'to_do';
                 // LTR-145: the PM job is finished from the PM service (mileage + parts), not "Complete".
                 const isPmJob = isPmCategory(job.category.name);
+                // LTR-164 (#2) / D15: Quality Check has no owner; the Manager completes it.
+                const isQualityCheck = isQualityCheckJob(job.category.name, job.displayName);
                 const isTerminal = job.status === 'completed' || job.status === 'cancelled';
                 return (
                   <li key={job.id} className="py-3 first:pt-0">
@@ -291,7 +293,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                           ) : null}
                         </div>
                         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
-                          {canManageJobs && isToDo ? (
+                          {canManageJobs && isToDo && !isQualityCheck ? (
                             job.assignedMechanic ? (
                               <Button
                                 type="button"
@@ -352,6 +354,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                               <Button
                                 type="button"
                                 size="sm"
+                                // LTR-164 (#2) / D15: primary only on Quality Check (the Manager's step), as on the Truck.
+                                variant={isQualityCheck ? 'default' : 'ghost'}
                                 disabled={Boolean(pendingAction)}
                                 onClick={() => {
                                   void runMutation(`complete-job-${job.id}`, messages.completeJobSuccess, async () => {

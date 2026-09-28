@@ -132,7 +132,8 @@ export class WorkOrdersService {
         : row.status === 'waiting_paused'
           ? 'waiting_paused'
           : pmJob.startedAt ? 'in_progress' : 'created';
-      return { ...summary, status: status as typeof summary.status };
+      // LTR-164 (#10): the bucket follows the PM job; the card still shows the real Work Order status.
+      return { ...summary, status: status as typeof summary.status, workOrderStatus: row.status };
     });
     return {
       // LTR-129: "Ready to start" puts Critical first (then High, Normal, Low; oldest first).
