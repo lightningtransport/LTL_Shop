@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ActivityEventType, AppCapability } from '@ltl-shop/shared';
 import { idempotencyFingerprint } from '../common/idempotency';
-import { AdminService } from './admin.service';
+import { AdminService, countUnassignedJobs } from './admin.service';
 
 const baseRow = {
   id: '00000000-0000-4000-8000-000000000011',
@@ -1739,3 +1739,20 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
 function cancelTx(wo: ReturnType<typeof detailRow>, extra: Record<string, unknown> = {}) {
   return assignmentTx(wo, extra);
 }
+
+describe('countUnassignedJobs (LTR-164 / D15)', () => {
+  const qc = { status: 'to_do', assignedMechanicId: null, displayName: 'Quality Check', category: { name: 'Quality Check' } };
+
+  it('does not count Quality Check, which never has an owner', () => {
+    expect(countUnassignedJobs([qc])).toBe(0);
+  });
+
+  it('counts pending Jobs without an owner and skips owned or finished ones', () => {
+    expect(countUnassignedJobs([
+      qc,
+      { status: 'to_do', assignedMechanicId: null, displayName: 'Alignment', category: { name: 'Suspension & Steering' } },
+      { status: 'to_do', assignedMechanicId: 'm1', displayName: 'Detailing', category: { name: 'Detailing' } },
+      { status: 'completed', assignedMechanicId: null, displayName: 'Brake Inspection', category: { name: 'Air & Brake System' } },
+    ])).toBe(1);
+  });
+});

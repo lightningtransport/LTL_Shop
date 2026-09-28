@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import {
   isPmCategory,
+  WorkPlanJobLane,
   adminChangePmServiceSchema,
   workOrderAttentionRank,
   workOrderAttentionReason,
@@ -2113,7 +2114,7 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       jobsCompleted: jobs.filter((job) => job.status === 'completed').length,
       jobsTotal: jobs.length,
       hasActiveBlocker: Boolean(latestReportedBlocker),
-      unassignedJobs: jobs.filter((job) => job.status === 'to_do' && !job.assignedMechanicId).length,
+      unassignedJobs: countUnassignedJobs(jobs),
       createdAt: row.createdAt,
     }),
     nextJobName: nextJobInFlow(jobs),
@@ -2122,6 +2123,15 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       ? null
       : workOrderNextStep(row, { inspectionRequirementOutcome: activeInspectionOutcome(row.truck) }),
   };
+}
+
+// LTR-164 / D15: Quality Check never has an owner, so it is not an unassigned Job.
+export function countUnassignedJobs(
+  jobs: Array<{ status: string; assignedMechanicId?: string | null; displayName?: string; category?: { name: string } }>,
+): number {
+  return jobs.filter((job) => job.status === 'to_do'
+    && !job.assignedMechanicId
+    && classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '') !== WorkPlanJobLane.QUALITY_CHECK).length;
 }
 
 // LTR-157: flow order for "Next: <Job>" on lists and cards.
