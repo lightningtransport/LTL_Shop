@@ -69,7 +69,8 @@ import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { stopLaborForMechanic } from '../work-orders/labor-session';
 import { classifyWorkPlanLane } from './yard-work-plan-derivation';
-import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
+import { YardOperationsService } from './yard-operations.service';
+import { workOrderTeam } from '../work-orders/work-order-team';
 import { activeInspectionInclude, activeInspectionOutcome, workOrderNextStep, type NextStepWorkOrderRow } from './work-order-next-step';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
@@ -139,7 +140,11 @@ const summaryInclude = {
   truck: { include: activeInspectionInclude },
   primaryCategory: true,
   jobs: {
-    select: { id: true, status: true, assignedMechanicId: true, displayName: true, category: { select: { name: true } } },
+    select: {
+      id: true, status: true, assignedMechanicId: true, displayName: true, addedAt: true,
+      category: { select: { name: true } },
+      assignedMechanic: { select: { id: true, name: true } },
+    },
     orderBy: { addedAt: 'asc' as const },
   },
   mechanics: {
@@ -209,6 +214,7 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly activity: ActivityLogService,
     private readonly workOrders: WorkOrdersService,
+    private readonly yard?: YardOperationsService,
   ) {}
 
   // Manager-first ownership: a Manager (work_orders.manage) plans the
@@ -300,7 +306,8 @@ export class AdminService {
           take: 20,
         }),
       ]);
-    const readyToGo = await this.countReadyToGoTrucks();
+    // LTR-164 (#12): one Ready to Go rule, the Yard's (Work Plan phase), so both surfaces agree.
+    const readyToGo = (await this.yard?.countReadyToGoTrucks()) ?? 0;
 
     return {
       generatedAt: now.toISOString(),
@@ -381,27 +388,6 @@ export class AdminService {
    * LTR-159: trucks Ready to Go — their latest Work Order completed inside the Yard
    * window (`YARD_READY_TO_GO_SINCE`), no open Work Order, not yet Returned to Service.
    */
-  private async countReadyToGoTrucks(): Promise<number> {
-    const since = yardReadyToGoSince();
-    if (!since || typeof this.prisma.truck?.findMany !== 'function') return 0;
-    const trucks = await this.prisma.truck.findMany({
-      where: {
-        workOrders: { some: { status: WorkOrderStatus.completed, completedAt: { gte: since } } },
-        NOT: { workOrders: { some: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } } } },
-      },
-      select: {
-        workOrders: {
-          where: { status: WorkOrderStatus.completed, completedAt: { gte: since } },
-          orderBy: { completedAt: 'desc' },
-          take: 1,
-          select: { completedAt: true },
-        },
-        serviceStatusEvents: { orderBy: { occurredAt: 'desc' }, take: 1, select: { status: true, occurredAt: true } },
-      },
-    });
-    return trucks.filter((truck) => !returnedToServiceAfter(truck.serviceStatusEvents[0], truck.workOrders[0]?.completedAt ?? null)).length;
-  }
-
   async listTrucks(rawQuery: unknown): Promise<AdminPage<AdminTruckSummaryDto>> {
     const parsed = adminTrucksQuerySchema.safeParse(rawQuery);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
@@ -2095,10 +2081,11 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
     priority: row.priority as SharedPriority,
     jobsCompleted: jobs.filter((job) => job.status === 'completed').length,
     jobsTotal: jobs.length,
-    mechanics: row.mechanics.map((assignment) => ({
-      mechanicId: assignment.mechanic.id,
-      mechanicName: assignment.mechanic.name,
-      addedAt: assignment.addedAt.toISOString(),
+    // LTR-164 (#11) / D11: the team includes every Job owner, the PM mechanic too.
+    mechanics: workOrderTeam(row.mechanics, row.jobs, row.createdAt).map((member) => ({
+      mechanicId: member.mechanicId,
+      mechanicName: member.mechanicName,
+      addedAt: member.addedAt.toISOString(),
       removedAt: null,
     })),
     currentPause: currentPause ? mapPause(currentPause) : null,

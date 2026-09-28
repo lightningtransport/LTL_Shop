@@ -1756,3 +1756,20 @@ describe('countUnassignedJobs (LTR-164 / D15)', () => {
     ])).toBe(1);
   });
 });
+
+describe('Dashboard Ready to Go (LTR-164 #12)', () => {
+  it('uses the Yard Work Plan count so both surfaces agree', async () => {
+    const yard = { countReadyToGoTrucks: vi.fn().mockResolvedValue(1) };
+    const prisma = {
+      workOrder: { count: vi.fn().mockResolvedValue(0), findMany: vi.fn().mockResolvedValue([]) },
+      workOrderNote: { findMany: vi.fn().mockResolvedValue([]) },
+      truck: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const service = new AdminService(prisma as never, { log: vi.fn() } as never, {} as never, yard as never);
+    const dashboard = await service.dashboard();
+    expect(dashboard.counts.readyToGo).toBe(1);
+    expect(yard.countReadyToGoTrucks).toHaveBeenCalledTimes(1);
+    // The Dashboard no longer counts completed Work Orders on its own.
+    expect(prisma.truck.findMany).not.toHaveBeenCalled();
+  });
+});

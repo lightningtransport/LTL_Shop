@@ -107,7 +107,7 @@ describe('TrucksService search', () => {
         completedAt: new Date('2026-09-08T12:00:00.000Z'),
         createdAt: new Date('2026-09-08T10:00:00.000Z'),
         primaryCategory: { name: 'Suspension' },
-        mechanics: [{ mechanic: { name: 'Alex' } }],
+        mechanics: [{ mechanic: { id: 'mechanic-alex', name: 'Alex' }, addedAt: new Date('2026-09-01T10:00:00.000Z'), removedAt: null }],
         pmService: null,
         jobs: [{
           id: '00000000-0000-4000-8000-000000000003',
@@ -182,7 +182,10 @@ describe('TrucksService search', () => {
         primaryCategory: true,
         jobs: expect.objectContaining({
           where: { status: 'completed' },
-          include: { category: { select: { id: true, name: true } } },
+          include: {
+            category: { select: { id: true, name: true } },
+            assignedMechanic: { select: { id: true, name: true } },
+          },
         }),
       }),
     }));

@@ -103,7 +103,11 @@ describe('Work Order Job Category readers', () => {
     };
 
     expect(toWorkOrderSummary(wo)).toMatchObject({
-      mechanics: [{ mechanicId: 'mechanic-1', mechanicName: 'Alex Mechanic' }],
+      // LTR-164 (#11) / D11: the Job owner joins the team shown.
+      mechanics: [
+        { mechanicId: 'mechanic-1', mechanicName: 'Alex Mechanic' },
+        { mechanicId: 'mechanic-2', mechanicName: 'Jamie Technician' },
+      ],
       jobs: [
         expect.objectContaining({
           id: 'job-assigned',

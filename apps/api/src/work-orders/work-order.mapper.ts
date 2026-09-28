@@ -9,6 +9,7 @@ import {
 import { isPmCategory, jobWorkStatus, type BlockerReason } from '@ltl-shop/shared';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals } from './work-order.timing';
+import { workOrderTeam } from './work-order-team';
 
 type JobRow = {
   id: string;
@@ -134,12 +135,9 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
     };
   });
   const currentPause = currentOfficialPause(wo.pauseEvents);
-  const mechanics = (wo.mechanics ?? [])
-    .filter((m) => !m.removedAt)
-    .map((m) => ({
-      mechanicId: m.mechanicId,
-      mechanicName: m.mechanic.name,
-    }));
+  // LTR-164 (#11) / D11: the team includes every Job owner, the PM mechanic too.
+  const mechanics = workOrderTeam(wo.mechanics ?? [], wo.jobs, wo.createdAt)
+    .map((member) => ({ mechanicId: member.mechanicId, mechanicName: member.mechanicName }));
   return {
     id: wo.id,
     displayId: wo.displayId,
@@ -259,14 +257,12 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string)
           myPartDone: myJobs.length > 0 && myJobs.every((j) => j.status !== 'to_do'),
         }
       : {}),
-    mechanics: (wo.mechanics ?? [])
-      .filter((m) => !m.removedAt)
-      .map((m) => ({
-        mechanicId: m.mechanicId,
-        mechanicName: m.mechanic.name,
-        addedAt: m.addedAt.toISOString(),
-        removedAt: m.removedAt?.toISOString() ?? null,
-      })),
+    mechanics: workOrderTeam(wo.mechanics ?? [], wo.jobs, wo.createdAt).map((member) => ({
+      mechanicId: member.mechanicId,
+      mechanicName: member.mechanicName,
+      addedAt: member.addedAt.toISOString(),
+      removedAt: null,
+    })),
     currentPause: currentPause ? toPauseEventDto(currentPause) : null,
     activeBlockers: (wo.pauseEvents ?? [])
       .filter((pause) => pause.isOfficialPause === false && !pause.resolvedAt)
