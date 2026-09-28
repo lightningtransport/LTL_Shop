@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from './support/test';
+import { devLogin } from './support/dev-login';
 
 const truckId = '00000000-0000-4000-8000-00000000aaa1';
 const manager = {
@@ -248,9 +249,7 @@ async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan
 }
 
 async function loginManager(page: Page) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(manager.email);
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+  await devLogin(page, manager.email);
   await expect(page).toHaveURL(/\/admin/, { timeout: 15_000 });
 }
 

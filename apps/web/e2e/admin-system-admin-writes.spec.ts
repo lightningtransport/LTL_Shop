@@ -1,14 +1,13 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/test';
+import { devLogin } from './support/dev-login';
 
-async function devLogin(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+async function loginToAdmin(page: Page, email: string) {
+  await devLogin(page, email);
   await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
 }
 
 test('manager stays read-only on the mechanic roster and Job Catalog', async ({ page }) => {
-  await devLogin(page, 'manager@lightning.local');
+  await loginToAdmin(page, 'manager@lightning.local');
 
   await page.goto('/admin/mechanics');
   await expect(page.getByRole('heading', { name: 'Mechanics' })).toBeVisible();
@@ -32,7 +31,7 @@ test('manager stays read-only on the mechanic roster and Job Catalog', async ({ 
 });
 
 test('system admin with only admin.access sees catalog and roster writes', async ({ page }) => {
-  await devLogin(page, 'system-admin@lightning.local');
+  await loginToAdmin(page, 'system-admin@lightning.local');
 
   await page.goto('/admin/catalog');
   await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
@@ -56,7 +55,7 @@ test('system admin with only admin.access sees catalog and roster writes', async
 });
 
 test('system admin adds, renames, and activates a Job, then creates and activates a mechanic', async ({ page }) => {
-  await devLogin(page, 'admin@lightning.local');
+  await loginToAdmin(page, 'admin@lightning.local');
 
   await page.goto('/admin/catalog');
   await expect(page.getByTestId('pd-light-tip')).toContainText('System Admin only');

@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support/test';
+import { devLogin } from './support/dev-login';
 
 /**
  * Critical mechanic flow smoke test.
@@ -11,8 +12,7 @@ test.describe('Mechanic P0 critical path', () => {
   });
 
   test('login → home shows assigned work without create CTA', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({
       timeout: 15000,
     });
@@ -22,8 +22,7 @@ test.describe('Mechanic P0 critical path', () => {
   test('restored session verifies current capabilities before loading work orders', async ({
     page,
   }) => {
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
 
     let releaseProfile!: () => void;
@@ -64,13 +63,12 @@ test.describe('Mechanic P0 critical path', () => {
       }
     });
 
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     expect(workOrderReads).toBe(1);
 
     await page.getByRole('button', { name: /Start Work/i }).or(page.getByRole('link', { name: /View Work/i })).first().click();
-    await expect(page.getByRole('heading', { name: /^#/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Truck / })).toBeVisible();
     await page.getByRole('link', { name: /Back/i }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     expect(workOrderReads).toBe(1);
@@ -86,8 +84,7 @@ test.describe('Mechanic P0 critical path', () => {
       await route.continue();
     });
 
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     await expect(
       page.getByRole('status', { name: /Loading work orders/i }),

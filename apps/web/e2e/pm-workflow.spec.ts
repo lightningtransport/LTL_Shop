@@ -1,4 +1,5 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from './support/test';
+import { devLogin } from './support/dev-login';
 
 const daniel = { id: '00000000-0000-0000-0000-000000000101', email: 'daniel@lightning.local', name: 'Daniel', role: 'mechanic', active: true, pmAuthorized: true, capabilities: ['mechanic.pm'] };
 const truck = { id: '00000000-0000-0000-0000-000000000201', truckNumber: '905', make: 'Freightliner', model: 'Cascadia', year: 2022, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' };
@@ -53,8 +54,7 @@ async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
 }
 
 async function login(page: Page) {
-  await page.goto('/login');
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+  await devLogin(page);
   await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
 }
 
@@ -273,8 +273,7 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
       if (path.startsWith('/api/catalog/')) return fulfill(route, []);
       return route.continue();
     });
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page).toHaveURL(/\/mechanic/, { timeout: 15_000 });
     await page.goto(`/work-orders/${jobWoId}`);
     await expect(page.getByRole('button', { name: /Brake adjustment/ })).toBeEnabled();

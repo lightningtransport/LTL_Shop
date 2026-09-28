@@ -1,12 +1,18 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './support/test';
+import { devLogin } from './support/dev-login';
 
 async function openNewWorkOrder(page: Page) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill('manager@lightning.local');
-  await page.getByRole('button', { name: /Dev Login/i }).click();
+  await devLogin(page, 'manager@lightning.local');
   await expect(page).toHaveURL(/\/admin/);
   await page.goto('/admin/work-orders/new');
   await expect(page.getByRole('heading', { name: /New Work Order|Nueva Work Order/ })).toBeVisible();
+}
+
+// The mobile wizard shows the Work step (with Category) only after a Truck is chosen.
+async function chooseTruck(page: Page, number: string) {
+  await page.getByLabel('Truck number').fill(number);
+  await page.getByRole('option', { name: new RegExp(`T-${number}`) }).click();
+  await page.getByRole('button', { name: 'Continue to work' }).click();
 }
 
 test.describe('LTR-21 New WO category jobs', () => {
@@ -53,12 +59,14 @@ test.describe('LTR-21 New WO category jobs', () => {
   test('selecting a Category lists catalog jobs and Search filters that list', async ({ page }) => {
     await openNewWorkOrder(page);
 
+    await chooseTruck(page, '104');
+    // Fixture catalog: Brakes and Suspension (see e2e/fixtures/admin-api.mjs).
     const category = page.getByLabel('Category').first();
-    await category.selectOption({ label: 'Air & Brake System' });
-    await expect(page.getByRole('button', { name: /Add (Brake Inspection|Inspect brake chamber)/i })).toBeVisible();
+    await category.selectOption({ label: 'Brakes' });
+    await expect(page.getByRole('button', { name: /Add (Brake Inspection|Inspect brake chamber)/i }).first()).toBeVisible();
 
-    await category.selectOption({ label: 'Suspension & Steering' });
-    const suspensionJobs = page.getByRole('list', { name: /Jobs in this Category: Suspension & Steering/i });
+    await category.selectOption({ label: 'Suspension' });
+    const suspensionJobs = page.getByRole('list', { name: /Jobs in this Category: Suspension/i });
     await expect(suspensionJobs.getByRole('button').first()).toBeVisible();
     const listedCount = await suspensionJobs.getByRole('button').count();
     expect(listedCount).toBeGreaterThan(1);
@@ -71,20 +79,24 @@ test.describe('LTR-21 New WO category jobs', () => {
     await expect(suspensionJobs.getByRole('button')).toHaveCount(listedCount);
 
     await suspensionJobs.getByRole('button').first().click();
-    await expect(page.getByRole('heading', { name: 'Work Plan' }).or(page.getByText('Work Plan'))).toBeVisible();
+    await expect(page.getByText('1 job selected').filter({ visible: true }).first()).toBeVisible();
   });
 
   test('search with no matches still allows a custom job', async ({ page }) => {
     await openNewWorkOrder(page);
 
-    await page.getByLabel('Category').first().selectOption({ label: 'Trailer' });
-    await expect(page.getByRole('button', { name: /Add Trailer Repair/i })).toBeVisible();
+    await chooseTruck(page, '104');
+    await page.getByLabel('Category').first().selectOption({ label: 'Brakes' });
+    await expect(page.getByRole('button', { name: /Add Brake Inspection/i })).toBeVisible();
 
     await page.getByLabel('Search jobs in this category').fill('zzzz-no-such-job');
     await expect(page.getByText('No Jobs match this search.')).toBeVisible();
 
     await page.getByLabel('Custom job name').fill('Road test after alignment');
     await page.getByRole('button', { name: 'Add custom job' }).click();
+    // On mobile the selected Jobs are listed in the Review step.
+    await expect(page.getByText('1 job selected').filter({ visible: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Review Work Order' }).click();
     await expect(page.getByText('Road test after alignment')).toBeVisible();
   });
 });

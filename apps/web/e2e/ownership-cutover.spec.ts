@@ -1,11 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-
-async function devLogin(page: Page, email?: string) {
-  await page.goto('/login');
-  await expect(page.getByRole('button', { name: /Dev Login/i })).toBeVisible({ timeout: 15_000 });
-  if (email) await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', { name: /Dev Login/i }).click();
-}
+import { expect, test, type Page } from './support/test';
+import { devLogin } from './support/dev-login';
 
 test.describe('V2-002 TARGET ownership cutover', () => {
   test('Standard mechanic cannot create, pause, or add a Job', async ({ page }) => {
@@ -54,6 +48,6 @@ test.describe('V2-002 TARGET ownership cutover', () => {
     await expect(page.getByRole('heading', { name: 'Work Orders' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'New Work Order' })).toHaveCount(0);
     await page.goto('/admin/work-orders/new', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText(/requires work_orders.manage/i)).toBeVisible();
+    await expect(page.getByText('You do not have permission to create Work Orders.', { exact: false })).toBeVisible();
   });
 });

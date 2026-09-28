@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './support/test';
+import { devLogin, waitForLoginForm } from './support/dev-login';
 
 const WORK_ORDER_FILTERS_BUTTON = /^(Filters|Filtros)( \(\d+\))?$/;
 
@@ -41,9 +42,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
   test('Admin sticky header and bottom sheet honor shared safe-area tokens', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
 
     const header = page.getByRole('banner', { name: 'Shop Admin controls' });
@@ -92,9 +91,7 @@ test.describe('Shop Admin Phase 2A', () => {
   });
 
   test('manager login opens the responsive Admin shell in EN and ES', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
     await expect(page.getByText('Current shop operations')).toBeVisible();
@@ -152,9 +149,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
   test('mobile Admin navigation is a one-column sheet with every Admin link', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Current shop operations' })).toBeVisible();
@@ -195,9 +190,7 @@ test.describe('Shop Admin Phase 2A', () => {
   });
 
   test('manager navigates Dashboard to filtered list, pagination, and read-only detail', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
     await page.goto('/admin/work-orders');
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
@@ -275,9 +268,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
   test('work orders open with all statuses and dashboard metrics use explicit list filters', async ({ page }) => {
     test.setTimeout(90_000);
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible({ timeout: 15_000 });
 
@@ -312,9 +303,7 @@ test.describe('Shop Admin Phase 2A', () => {
   });
 
   test('work order search 9 + Apply returns ranked WO/truck matches and EmptyState', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
     await page.goto('/admin/work-orders');
     await expect(page.getByRole('heading', { name: 'Work Orders' })).toBeVisible();
@@ -369,9 +358,7 @@ test.describe('Shop Admin Phase 2A', () => {
   });
 
   test('work order filters stay collapsed on mobile and compact on desktop', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
     await page.goto('/admin/work-orders');
     await expect(page.getByRole('heading', { name: 'Work Orders' })).toBeVisible();
@@ -412,9 +399,7 @@ test.describe('Shop Admin Phase 2A', () => {
   });
 
   test('admin role can load dashboard and pagination completes', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('admin@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'admin@lightning.local');
     await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
     await openAdminNavLink(page, 'Work Orders');
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
@@ -424,9 +409,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
   for (const email of ['ibrain@ltransl.com', 'cristian240588@hotmail.com']) {
     test(`${email} opens Standard and PM without signing in again`, async ({ page }) => {
-      await page.goto('/login');
-      await page.getByLabel('Email').fill(email);
-      await page.getByRole('button', { name: /Dev Login/i }).click();
+      await devLogin(page, email);
       await expect(page).toHaveURL(/\/admin$/);
       await expect(page.getByRole('heading', { name: 'Workspaces' })).toBeVisible();
 
@@ -448,8 +431,7 @@ test.describe('Shop Admin Phase 2A', () => {
   }
 
   test('mechanic receives a secure forbidden screen for direct Admin access', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     const response = await page.goto('/admin');
     expect(response?.status()).toBe(403);
@@ -465,9 +447,7 @@ test.describe('Shop Admin Phase 2A', () => {
   });
 
   test('manager opens read-only Mechanics, History, and Trucks', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await openAdminNavLink(page, 'Mechanics');
     await expect(page).toHaveURL(/\/admin\/mechanics$/);
     await expect(page.getByRole('heading', { name: 'Mechanics' })).toBeVisible();
@@ -522,7 +502,9 @@ test.describe('Shop Admin Phase 2A', () => {
 
     await page.reload({ waitUntil: 'load' });
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+    await waitForLoginForm(page);
     await page.getByLabel('Email').fill('manager@lightning.local');
+    await expect(page.getByLabel('Email')).toHaveValue('manager@lightning.local');
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
 
@@ -542,9 +524,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
   test('Dashboard Work Orders and View all navigate on the first click ten times', async ({ page }) => {
     test.setTimeout(180_000);
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
 
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -574,9 +554,7 @@ test.describe('Shop Admin Phase 2A', () => {
   });
 
   test('Admin WO detail keeps Confirm completion sticky when Jobs are done', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('manager@lightning.local');
-    await page.getByRole('button', { name: /Dev Login/i }).click();
+    await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
 
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
