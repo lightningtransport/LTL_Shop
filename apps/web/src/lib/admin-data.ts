@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import type {
@@ -61,6 +61,19 @@ export function withAdminReadPending<T extends { isLoading: boolean; isValidatin
     ...swr,
     isLoading: !token || swr.isLoading || (swr.isValidating && swr.data === undefined),
   };
+}
+
+/**
+ * LTR-84: a transient first failure (timeout, network) is retried once. Until that
+ * retry settles the read is still loading, so the UI does not flash UNAVAILABLE.
+ */
+export function adminReadRetryPending(error: unknown, data: unknown, failures: number) {
+  return (
+    error !== undefined &&
+    data === undefined &&
+    isTransientApiError(error) &&
+    failures <= adminReadRetry.errorRetryCount
+  );
 }
 
 export function useAdminDashboard() {
@@ -206,14 +219,19 @@ export function useAdminYardOperations(query: string) {
 
 export function useAdminYardDataBoundary() {
   const { token } = useAuth();
-  return withAdminReadPending(
-    token,
-    useSWR<YardDataBoundaryDto>(token ? ADMIN_YARD_DATA_BOUNDARY_PATH : null, adminReadFetcher, {
-      dedupingInterval: 10_000,
-      refreshInterval: 30_000,
-      ...adminReadRetry,
-    }),
-  );
+  const [failures, setFailures] = useState(0);
+  const swr = useSWR<YardDataBoundaryDto>(token ? ADMIN_YARD_DATA_BOUNDARY_PATH : null, adminReadFetcher, {
+    dedupingInterval: 10_000,
+    refreshInterval: 30_000,
+    ...adminReadRetry,
+    onSuccess: () => setFailures(0),
+    onError: () => setFailures((count) => count + 1),
+  });
+  const pending = withAdminReadPending(token, swr);
+  return {
+    ...pending,
+    isLoading: pending.isLoading || adminReadRetryPending(swr.error, swr.data, failures),
+  };
 }
 
 export function useAdminTruck(id: string) {
