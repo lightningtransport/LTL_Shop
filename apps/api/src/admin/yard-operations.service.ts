@@ -56,6 +56,7 @@ import {
   type WorkPlanDerivationInput,
 } from './yard-work-plan-derivation';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
+import { workOrderTeam } from '../work-orders/work-order-team';
 import { workOrderNextStep } from './work-order-next-step';
 import { unavailableYardMovementFeeds } from './yard-movement-feeds';
 
@@ -917,6 +918,11 @@ export class YardOperationsService {
     return this.getWorkPlanBoardCounts();
   }
 
+  /** LTR-164 (#12): the Dashboard's Ready to Go metric is the Yard's Work Plan count. */
+  async countReadyToGoTrucks(): Promise<number> {
+    return (await this.getWorkPlanBoardCounts()).readyToGo;
+  }
+
   private async getWorkPlanBoardCounts() {
     const [presenceUnknown, rows] = await Promise.all([
       this.prisma.truck.count(),
@@ -1092,10 +1098,11 @@ function toAdminWorkOrderSummary(row: SummaryWorkOrderRow): AdminWorkOrderSummar
     priority: row.priority as never,
     jobsCompleted: jobs.filter((job) => job.status === 'completed').length,
     jobsTotal: jobs.length,
-    mechanics: row.mechanics.map((assignment) => ({
-      mechanicId: assignment.mechanic.id,
-      mechanicName: assignment.mechanic.name,
-      addedAt: assignment.addedAt.toISOString(),
+    // LTR-164 (#11) / D11: the team includes every Job owner, the PM mechanic too.
+    mechanics: workOrderTeam(row.mechanics, row.jobs, row.createdAt).map((member) => ({
+      mechanicId: member.mechanicId,
+      mechanicName: member.mechanicName,
+      addedAt: member.addedAt.toISOString(),
       removedAt: null,
     })),
     currentPause: currentPause ? {

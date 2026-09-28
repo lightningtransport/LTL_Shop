@@ -9,6 +9,7 @@ import {
 } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { toWorkOrderSummary } from '../work-orders/work-order.mapper';
+import { workOrderTeam } from '../work-orders/work-order-team';
 import type { AuthUser } from '../auth/auth.guard';
 import { hasCapability } from '../auth/capabilities';
 
@@ -116,7 +117,10 @@ export class TrucksService {
         mechanics: { include: { mechanic: true }, where: { removedAt: null } },
         jobs: {
           where: { status: 'completed' },
-          include: { category: { select: { id: true, name: true } } },
+          include: {
+            category: { select: { id: true, name: true } },
+            assignedMechanic: { select: { id: true, name: true } },
+          },
         },
         pmService: true,
       },
@@ -143,13 +147,15 @@ function toRepairHistoryItem(
     completedAt: Date | null;
     createdAt: Date;
     primaryCategory: { name: string };
-    mechanics: { mechanic: { name: string } }[];
+    mechanics: { mechanic: { id: string; name: string }; addedAt: Date; removedAt: Date | null }[];
     pmService: { observedMileage: number | null } | null;
     jobs: {
       id: string;
+      status: string;
       categoryId: string;
       category: { id: string; name: string };
       displayName: string;
+      assignedMechanic: { id: string; name: string } | null;
     }[];
   },
   truckNumber: string,
@@ -161,7 +167,8 @@ function toRepairHistoryItem(
     date: (wo.completedAt ?? wo.createdAt).toISOString(),
     primaryCategoryName: wo.primaryCategory.name,
     truckNumber,
-    mechanicNames: wo.mechanics.map((m) => m.mechanic.name),
+    // LTR-164 (#11) / D11: every Job owner, the PM mechanic too.
+    mechanicNames: workOrderTeam(wo.mechanics, wo.jobs, wo.createdAt).map((member) => member.mechanicName),
     mileage: wo.pmService?.observedMileage ?? truckMileage,
     jobs: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => j.displayName),
     jobDetails: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => ({
