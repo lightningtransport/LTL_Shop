@@ -251,11 +251,6 @@ export function AdminNewWorkOrder({
     return [...groups.entries()];
   }, [jobs]);
 
-  const teamMechanicIds = useMemo(
-    () => Array.from(new Set(jobs.map((job) => job.assignedMechanicId).filter((id): id is string => Boolean(id)))),
-    [jobs],
-  );
-
   async function submit() {
     if (!canSubmit || !selectedTruck) return;
     setBusy(true);
@@ -266,7 +261,6 @@ export function AdminNewWorkOrder({
         primaryCategoryId,
         priority,
         notes: notes.trim() || undefined,
-        mechanicIds: teamMechanicIds,
         jobs: jobs.map((job) => ({
           catalogJobId: job.catalogJobId,
           categoryId: job.categoryId,

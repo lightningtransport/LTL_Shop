@@ -12,13 +12,22 @@ const manager: AuthUser = {
   pmAuthorized: false, capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
 };
 
+// LTR-154 / D11: a mechanic reaches a Standard Work Order through a Job assigned to them.
+function ownedJob(mechanicId: string) {
+  return {
+    id: 'job-1', workOrderId: 'wo-1', catalogJobId: null, categoryId: 'cat', category: { id: 'cat', name: 'Inspection' },
+    displayName: 'Inspection', customDescription: null, status: 'to_do' as const, completedAt: null, completedById: null,
+    assignedMechanicId: mechanicId, assignedMechanic: { id: mechanicId, name: 'MG' },
+  };
+}
+
 function workOrder(status: 'in_progress' | 'completed' = 'in_progress', mechanicId = 'mg') {
   return {
     id: 'wo-1', displayId: 'WO-001', truckId: 'truck-277', primaryCategoryId: 'cat', status,
     priority: 'normal' as const, notes: 'Manager note', createdAt: new Date(), createdById: 'mgr', startedAt: new Date(),
     completedAt: null, completedById: null, totalActiveLaborMs: 0n, totalWaitingMs: 0n, version: 3,
     truck: { id: 'truck-277', truckNumber: '277', make: null, model: null, year: null, mileage: null, company: null, owner: null },
-    primaryCategory: { id: 'cat', name: 'Inspection' }, jobs: [], pauseEvents: [], sessions: [],
+    primaryCategory: { id: 'cat', name: 'Inspection' }, jobs: [ownedJob(mechanicId)], pauseEvents: [], sessions: [],
     mechanics: [{ mechanicId, addedAt: new Date(), removedAt: null, mechanic: { name: 'MG' } }],
     noteEntries: [{
       id: 'n-0', kind: 'note' as const, body: 'Manager note', createdAt: new Date('2026-09-25T10:00:00Z'),

@@ -6,7 +6,7 @@ import {
   type WorkOrderNoteKind,
   type WorkOrderStatus,
 } from '@prisma/client';
-import { isPmCategory } from '@ltl-shop/shared';
+import { isPmCategory, jobWorkStatus } from '@ltl-shop/shared';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals } from './work-order.timing';
 
@@ -21,6 +21,7 @@ type JobRow = {
   status: JobStatus;
   completedAt: Date | null;
   completedById: string | null;
+  assignedMechanicId?: string | null;
   assignedMechanic?: { id: string; name: string } | null;
   completedBy?: { id: string; name: string } | null;
   startedAt?: Date | null;
@@ -93,7 +94,7 @@ export type WorkOrderWithRelations = {
   primaryCategory: { id: string; name: string };
   jobs: JobRow[];
   pauseEvents?: PauseRow[];
-  sessions?: { id: string; startedAt: Date; endedAt: Date | null }[];
+  sessions?: { id: string; startedAt: Date; endedAt: Date | null; userId?: string | null }[];
   mechanics?: MechanicRow[];
   activityLogs?: JobCompletionLog[];
   noteEntries?: NoteRow[];
@@ -158,9 +159,41 @@ function pmJobSummary(wo: WorkOrderWithRelations) {
   };
 }
 
-export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
+/**
+ * LTR-154: `viewerId` is the mechanic asking. Their labor, their Jobs and the
+ * rest of the truck's work are split out; without it (Manager) labor is running
+ * while any mechanic has a session open.
+ */
+export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string) {
   const summary = toWorkOrderSummary(wo);
   const currentPause = currentOfficialPause(wo.pauseEvents);
+  const sessions = wo.sessions ?? [];
+  const isPmWorkOrder = wo.primaryCategory.name === 'PM';
+  const jobs = isPmWorkOrder ? [] : wo.jobs.map((j) => ({
+    id: j.id,
+    workOrderId: j.workOrderId,
+    catalogJobId: j.catalogJobId,
+    categoryId: j.categoryId,
+    category: j.category,
+    displayName: j.displayName,
+    customDescription: j.customDescription,
+    status: j.status,
+    workStatus: jobWorkStatus(
+      { status: j.status, assignedMechanicId: jobAssigneeId(j), startedAt: j.startedAt, isPm: isPmCategory(j.category.name) },
+      sessions,
+    ),
+    completedAt: j.completedAt?.toISOString() ?? null,
+    completedById: j.completedById,
+    completionNotes: completionNotesForJob(wo.activityLogs, j.id),
+    assignedMechanic: j.assignedMechanic ?? null,
+    completedBy: j.completedBy ?? null,
+    startedAt: j.startedAt?.toISOString() ?? null,
+  }));
+  const viewerOwnsJobs = !!viewerId && wo.jobs.some((j) => jobAssigneeId(j) === viewerId);
+  const myJobs = viewerOwnsJobs ? jobs.filter((j) => j.assignedMechanic?.id === viewerId && j.status !== 'cancelled') : [];
+  const laborRunning = viewerOwnsJobs
+    ? sessions.some((session) => session.endedAt === null && (!session.userId || session.userId === viewerId))
+    : sessions.some((session) => session.endedAt === null);
   return {
     ...summary,
     notes: wo.notes,
@@ -170,25 +203,17 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations) {
     ...(wo.sessions
       ? computeTotals({ sessions: wo.sessions, pauses: wo.pauseEvents ?? [] })
       : { totalActiveLaborMs: Number(wo.totalActiveLaborMs), totalWaitingMs: Number(wo.totalWaitingMs) }),
-    laborRunning: (wo.sessions ?? []).some((session) => session.endedAt === null),
+    laborRunning,
     version: wo.version,
     truck: toTruckDto(wo.truck),
-    jobs: wo.primaryCategory.name === 'PM' ? [] : wo.jobs.map((j) => ({
-      id: j.id,
-      workOrderId: j.workOrderId,
-      catalogJobId: j.catalogJobId,
-      categoryId: j.categoryId,
-      category: j.category,
-      displayName: j.displayName,
-      customDescription: j.customDescription,
-      status: j.status,
-      completedAt: j.completedAt?.toISOString() ?? null,
-      completedById: j.completedById,
-      completionNotes: completionNotesForJob(wo.activityLogs, j.id),
-      assignedMechanic: j.assignedMechanic ?? null,
-      completedBy: j.completedBy ?? null,
-      startedAt: j.startedAt?.toISOString() ?? null,
-    })),
+    jobs,
+    ...(viewerId
+      ? {
+          myJobs,
+          otherJobs: jobs.filter((j) => j.status !== 'cancelled' && !myJobs.includes(j)),
+          myPartDone: myJobs.length > 0 && myJobs.every((j) => j.status !== 'to_do'),
+        }
+      : {}),
     mechanics: (wo.mechanics ?? [])
       .filter((m) => !m.removedAt)
       .map((m) => ({
@@ -237,6 +262,10 @@ function completionNotesForJob(logs: JobCompletionLog[] | undefined, jobId: stri
   return typeof notes === 'string' && notes.trim() ? notes : null;
 }
 
+function jobAssigneeId(job: JobRow): string | null {
+  return job.assignedMechanicId ?? job.assignedMechanic?.id ?? null;
+}
+
 function currentOfficialPause(pauses?: PauseRow[]) {
   return pauses?.find((pause) => !pause.endedAt && pause.isOfficialPause !== false) ?? null;
 }
@@ -271,7 +300,7 @@ export const workOrderDetailInclude = {
     orderBy: { addedAt: 'asc' as const },
   },
   sessions: {
-    select: { id: true, startedAt: true, endedAt: true },
+    select: { id: true, startedAt: true, endedAt: true, userId: true },
   },
   pauseEvents: {
     include: {

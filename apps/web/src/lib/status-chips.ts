@@ -185,6 +185,7 @@ export function adminAttentionReasonLabel(reason: string | null | undefined, mes
     case 'high': return messages.attentionReasonHigh;
     case 'paused': return messages.attentionReasonPaused;
     case 'blocker': return messages.attentionReasonBlocker;
+    case 'unassigned': return messages.attentionReasonUnassigned;
     case 'open_over_24h': return messages.attentionReasonOpenOver24h;
     default: return null;
   }

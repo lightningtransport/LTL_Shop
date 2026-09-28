@@ -10,6 +10,7 @@ import {
   WorkPlanPhase,
   WorkPlanReadiness,
   isPmCategory,
+  jobWorkStatus,
   type WorkPlanJobDto,
   type WorkPlanMandatoryPhaseDto,
 } from '@ltl-shop/shared';
@@ -21,6 +22,9 @@ export type WorkPlanDerivationJob = {
   customDescription: string | null;
   category: { id: string; name: string };
   status: JobStatus | `${JobStatus}`;
+  /** LTR-154 / D11: the Job's one owner (absent on callers that do not load it). */
+  assignedMechanic?: { id: string; name: string } | null;
+  startedAt?: Date | null;
 };
 
 export type WorkPlanDerivationWorkOrder = {
@@ -34,6 +38,8 @@ export type WorkPlanDerivationWorkOrder = {
 export type WorkPlanDerivationInput = {
   workOrder: WorkPlanDerivationWorkOrder | null;
   jobs: WorkPlanDerivationJob[];
+  /** LTR-154 / D18: labor sessions; when present a Job is In Progress only while its assignee works. */
+  sessions?: { endedAt: Date | null; userId: string | null }[];
   inspectionRequirementOutcome?: ReadinessRequirementOutcome | `${ReadinessRequirementOutcome}` | null;
 };
 
@@ -110,10 +116,26 @@ export function toWorkPlanJobUiStatus(
   return WorkPlanJobUiStatus.PENDING;
 }
 
+const WORK_STATUS_TO_UI: Record<ReturnType<typeof jobWorkStatus>, WorkPlanJobUiStatus> = {
+  pending: WorkPlanJobUiStatus.PENDING,
+  in_progress: WorkPlanJobUiStatus.IN_PROGRESS,
+  completed: WorkPlanJobUiStatus.COMPLETED,
+  cancelled: WorkPlanJobUiStatus.CANCELLED,
+};
+
 export function toWorkPlanJobDto(
   job: WorkPlanDerivationJob,
   workOrderStatus: WorkOrderStatus | `${WorkOrderStatus}` | null,
+  sessions?: WorkPlanDerivationInput['sessions'],
 ): WorkPlanJobDto {
+  const uiStatus = sessions
+    ? WORK_STATUS_TO_UI[jobWorkStatus({
+        status: job.status,
+        assignedMechanicId: job.assignedMechanic?.id ?? null,
+        startedAt: job.startedAt,
+        isPm: isPmCategory(job.category.name),
+      }, sessions)]
+    : toWorkPlanJobUiStatus(job.status, workOrderStatus);
   return {
     id: job.id,
     catalogJobId: job.catalogJobId,
@@ -121,8 +143,9 @@ export function toWorkPlanJobDto(
     customDescription: job.customDescription,
     category: job.category,
     status: job.status as JobStatus,
-    uiStatus: toWorkPlanJobUiStatus(job.status, workOrderStatus),
+    uiStatus,
     lane: classifyWorkPlanLane(job.category.name, job.displayName),
+    ...(job.assignedMechanic !== undefined ? { assignedMechanic: job.assignedMechanic } : {}),
   };
 }
 
@@ -205,7 +228,7 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
   if (input.workOrder && isPmCategory(input.workOrder.primaryCategoryName)) {
     return deriveLegacyPmWorkPlan(input);
   }
-  const jobs = input.jobs.map((job) => toWorkPlanJobDto(job, input.workOrder?.status ?? null));
+  const jobs = input.jobs.map((job) => toWorkPlanJobDto(job, input.workOrder?.status ?? null, input.sessions));
   const inspectionOutcome = deriveInspectionOutcome(jobs, input.inspectionRequirementOutcome);
   const byLane = (lane: WorkPlanJobLane) => jobs.filter((job) => job.lane === lane);
   const stepOptions = { cancelledMeansNotApplicable: true };

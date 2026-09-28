@@ -1524,6 +1524,13 @@ Yard Phase is separate from Category and Work Order status.
 
 Manager plans and controls the intervention; Mechanic executes assigned work.
 
+### 2026-09-27 — One owner per Job (D11) and per-mechanic labor (D18)
+
+Decision: Each Job has one owner (`assignedMechanicId`). The Work Order team is derived from Job assignments; there is no editable team and no "inherits the Work Order team". A mechanic sees a Work Order only through a Job assigned to them and completes only their own Jobs (403 otherwise). Labor is per mechanic (`work_sessions.user_id`): a mechanic's time stops when they finish their last pending Job on that Work Order ("You finished your part") and restarts with Continue; the Work Order labor total is the sum of all sessions. A Job is In Progress while its owner has an open session, Pending otherwise. An unassigned pending Job is a Dashboard attention reason.
+Reason: A shared team made ownership and time ambiguous (anyone could complete anything; one clock for everyone). Flujo v3 review, `docs/ux/FLUJOS_Y_MEJORAS_2026-09-27.md` §12.
+Impact: D11 replaces Q10/Q17 (team membership grants Job access; unassigned Jobs inherit the team). D18 replaces D7 (one labor session per Work Order).
+Phase: Flujo v3 PR 4 (LTR-154).
+
 ### 2026-09-11 — Ownership migration
 
 Do not destructively cut over. Introduce Manager workflow additively, validate, then retire Mechanic planning controls.

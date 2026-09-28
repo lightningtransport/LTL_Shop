@@ -8,7 +8,7 @@ import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, addAdminWorkOrderMechanic, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, removeAdminWorkOrderMechanic, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, resolveAdminBlocker, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { pauseResumeError } from './pause-resume-error';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
@@ -49,7 +49,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const { data, error, isLoading, mutate } = useAdminWorkOrder(id);
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const [historyCategory, setHistoryCategory] = useState('');
-  const [selectedMechanic, setSelectedMechanic] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [reopenReason, setReopenReason] = useState('');
   const [returnReason, setReturnReason] = useState('');
@@ -93,7 +92,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const activeMechanics = data.mechanics.filter((mechanic) => !mechanic.removedAt);
   const truck = data.truck;
   const isOpen = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status);
-  const canManageAssignments = canManageWorkOrders && isOpen && data.category.name !== 'PM';
   const canCancelWorkOrder = canManageWorkOrders && isOpen;
   const canCompleteWorkOrder = canManageWorkOrders && data.status === 'in_progress';
   const canReopenWorkOrder = data.status === 'completed' || data.status === 'cancelled';
@@ -119,7 +117,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     returnedToServiceAt: data.returnedToServiceAt,
     pauseReasonLabel: data.currentPause ? adminPauseReasonLabel(data.currentPause.reason, messages) : null,
   });
-  const availableMechanics = assignableMechanics.filter((mechanic) => !activeMechanics.some((assigned) => assigned.mechanicId === mechanic.id));
 
   async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
     if (pendingAction) return;
@@ -406,56 +403,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               />
               <span className="text-xs text-muted-foreground">{messages.jobChangeReasonHelp}</span>
             </label>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{messages.assignmentsTitle}</CardTitle>
-          <CardDescription>{canManageAssignments ? messages.assignmentsDescription : data.category.name === 'PM' ? messages.pmAssignmentsLocked : !isOpen ? messages.closedAssignmentsLocked : messages.assignmentsNoPermission}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {activeMechanics.length ? (
-            <ul className="divide-y rounded-xl border">
-              {activeMechanics.map((mechanic) => (
-                <li key={mechanic.mechanicId} className="flex min-h-11 items-center justify-between gap-3 px-3 py-2">
-                  <p className="font-medium">{mechanic.mechanicName}</p>
-                  {canManageAssignments ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={Boolean(pendingAction) || activeMechanics.length <= 1}
-                      onClick={() => void runMutation(`remove:${mechanic.mechanicId}`, messages.assignmentRemoved, () => removeAdminWorkOrderMechanic(data.id, mechanic.mechanicId, data.version), (failure) => assignmentError(failure, messages))}
-                    >
-                      {messages.removeMechanic}
-                    </Button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : <CompactEmpty>{messages.noMechanics}</CompactEmpty>}
-          {canManageAssignments ? (
-            <form
-              className="flex flex-col gap-3 sm:flex-row"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!selectedMechanic) return;
-                void runMutation('add', messages.assignmentAdded, async () => {
-                  await addAdminWorkOrderMechanic(data.id, { mechanicId: selectedMechanic, expectedVersion: data.version });
-                  setSelectedMechanic('');
-                }, (failure) => assignmentError(failure, messages));
-              }}
-            >
-              <Select aria-label={messages.selectMechanic} value={selectedMechanic} onChange={(event) => setSelectedMechanic(event.target.value)}>
-                <option value="">{messages.selectMechanic}</option>
-                {availableMechanics.map((mechanic) => (
-                  <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
-                ))}
-              </Select>
-              <Button type="submit" disabled={!selectedMechanic || Boolean(pendingAction)}>{messages.addMechanic}</Button>
-            </form>
           ) : null}
         </CardContent>
       </Card>

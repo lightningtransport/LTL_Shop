@@ -174,6 +174,7 @@ describe('Work Order blocker lifecycle', () => {
       workSession: {
         findFirst: vi.fn().mockResolvedValue({ id: 'session-1', startedAt: open.startedAt }),
         update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       pauseEvent: { create: vi.fn() },
     };
@@ -208,5 +209,44 @@ describe('Work Order blocker lifecycle', () => {
       userId: 'manager-1',
       newValue: { reason: PauseReason.WAITING_FOR_APPROVAL },
     }));
+  });
+
+  it('resumes labor for exactly the mechanics the official pause stopped (LTR-154 / D18)', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const pausedAt = new Date(now.getTime() - 60 * 60 * 1000);
+    const paused = workOrder({
+      status: 'waiting_paused',
+      pauseEvents: [{
+        id: 'pause-1', workOrderId: 'wo-1', reason: PauseReason.WAITING_FOR_APPROVAL, notes: null,
+        startedAt: pausedAt, endedAt: null, durationMs: null, isOfficialPause: true, reportedBy: null,
+      }],
+    });
+    const tx = {
+      workOrder: {
+        findUnique: vi.fn().mockResolvedValue(paused),
+        update: vi.fn().mockResolvedValue(workOrder({ status: 'in_progress', version: 2 })),
+      },
+      pauseEvent: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'pause-1', startedAt: pausedAt }),
+        update: vi.fn(),
+      },
+      workSession: {
+        // Mechanic A and B were working when the Manager paused; C had already finished.
+        findMany: vi.fn().mockResolvedValue([{ userId: 'mech-a' }, { userId: 'mech-b' }]),
+        create: vi.fn(),
+      },
+    };
+    const service = new WorkOrdersService({
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as never, { log: vi.fn() } as never);
+
+    await service.resumeByManager(actor([AppCapability.WORK_ORDERS_MANAGE, AppCapability.ADMIN_ACCESS], 'manager-1'), 'wo-1');
+
+    expect(tx.workSession.findMany).toHaveBeenCalledWith({
+      where: { workOrderId: 'wo-1', endedAt: pausedAt }, select: { userId: true },
+    });
+    expect(tx.workSession.create.mock.calls.map(([args]) => args.data.userId)).toEqual(['mech-a', 'mech-b']);
+    vi.useRealTimers();
   });
 });

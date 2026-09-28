@@ -34,3 +34,21 @@ describe('work order attention (LTR-121)', () => {
     expect(isWorkOrderBlocked({ status: 'in_progress', hasActiveBlocker: false })).toBe(false);
   });
 });
+
+describe('unassigned attention (LTR-154 / D11)', () => {
+  const base = {
+    status: 'in_progress', priority: 'normal', categoryName: 'Brakes',
+    jobsCompleted: 0, jobsTotal: 2, hasActiveBlocker: false, createdAt: new Date(),
+  };
+
+  it('flags pending Jobs without an owner before open more than 24 hours', () => {
+    const old = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    expect(workOrderAttentionReason({ ...base, unassignedJobs: 1, createdAt: old })).toBe('unassigned');
+    expect(workOrderAttentionReason({ ...base, unassignedJobs: 0, createdAt: old })).toBe('open_over_24h');
+  });
+
+  it('ranks below an active blocker', () => {
+    expect(workOrderAttentionReason({ ...base, unassignedJobs: 1, hasActiveBlocker: true })).toBe('blocker');
+    expect(workOrderAttentionRank('unassigned')).toBeLessThan(workOrderAttentionRank('open_over_24h'));
+  });
+});

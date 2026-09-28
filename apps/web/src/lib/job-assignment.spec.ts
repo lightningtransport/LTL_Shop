@@ -1,40 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import {
   canCompleteJobFromWorkOrder,
-  isMyOrUnassignedJob,
+  isMyJob,
+  isMyPartDone,
   isStandardWorkWaitingOnManager,
   jobAssignmentLabel,
   jobPersonLabel,
-  workOrderTeamLabel,
+  splitMyJobs,
 } from './job-assignment';
 
 const copy = {
   assignedToYou: 'Assigned to you',
   assignedTo: (name: string) => `Assigned to ${name}`,
   jobUnassigned: 'Unassigned',
-  workOrderTeam: 'Work Order team',
-  noWorkOrderTeam: 'No Work Order team assigned',
 };
 
 describe('job assignment presentation', () => {
-  it('treats unassigned Jobs as work the current mechanic can take', () => {
-    expect(isMyOrUnassignedJob(null, 'mechanic-1')).toBe(true);
+  it('does not treat unassigned Jobs as mine (LTR-154 / D11)', () => {
+    expect(isMyJob(null, 'mechanic-1')).toBe(false);
     expect(jobAssignmentLabel(null, 'mechanic-1', copy)).toBe(copy.jobUnassigned);
   });
 
   it('labels Jobs assigned to the current mechanic versus another mechanic', () => {
-    expect(isMyOrUnassignedJob({ id: 'mechanic-1', name: 'Alex' }, 'mechanic-1')).toBe(true);
-    expect(isMyOrUnassignedJob({ id: 'mechanic-2', name: 'Jamie' }, 'mechanic-1')).toBe(false);
+    expect(isMyJob({ id: 'mechanic-1', name: 'Alex' }, 'mechanic-1')).toBe(true);
+    expect(isMyJob({ id: 'mechanic-2', name: 'Jamie' }, 'mechanic-1')).toBe(false);
     expect(jobAssignmentLabel({ id: 'mechanic-1', name: 'Alex' }, 'mechanic-1', copy)).toBe('Assigned to you');
     expect(jobAssignmentLabel({ id: 'mechanic-2', name: 'Jamie' }, 'mechanic-1', copy)).toBe('Assigned to Jamie');
-  });
-
-  it('renders the Work Order team or an explicit empty-team label', () => {
-    expect(workOrderTeamLabel([
-      { mechanicName: 'Alex Mechanic' },
-      { mechanicName: 'Jamie Technician' },
-    ], copy)).toBe('Work Order team: Alex Mechanic / Jamie Technician');
-    expect(workOrderTeamLabel([], copy)).toBe('No Work Order team assigned');
   });
 
   it('treats in-progress Standard Work Orders with no to-do Jobs as waiting on the Manager', () => {
@@ -84,17 +75,41 @@ describe('jobPersonLabel (LTR-127)', () => {
   });
 });
 
-describe('PM job completion from the Standard Work Order (LTR-151)', () => {
-  const pmJob = { id: 'pm-job', assignedMechanic: { id: 'pm-mechanic', name: 'Daniel' } };
+describe('Job completion from the Work Order (LTR-151, LTR-154 / D11)', () => {
+  it('offers "Complete job" only to the Job assignee', () => {
+    const pmJob = { assignedMechanic: { id: 'pm-mechanic', name: 'Daniel' } };
+    expect(canCompleteJobFromWorkOrder(pmJob, 'pm-mechanic')).toBe(true);
+    expect(canCompleteJobFromWorkOrder(pmJob, 'standard-mechanic')).toBe(false);
+    expect(canCompleteJobFromWorkOrder({ assignedMechanic: null }, 'standard-mechanic')).toBe(false);
+  });
+});
 
-  it('does not offer the PM job to a mechanic who is not its assignee', () => {
-    expect(canCompleteJobFromWorkOrder(pmJob, 'pm-job', 'standard-mechanic')).toBe(false);
-    expect(canCompleteJobFromWorkOrder({ ...pmJob, assignedMechanic: null }, 'pm-job', 'standard-mechanic')).toBe(false);
+describe('splitMyJobs / isMyPartDone (LTR-154)', () => {
+  const alex = { id: 'mechanic-1', name: 'Alex' };
+  const jamie = { id: 'mechanic-2', name: 'Jamie' };
+  const jobs = [
+    { id: 'mine-done', status: 'completed', assignedMechanic: alex },
+    { id: 'theirs', status: 'to_do', assignedMechanic: jamie },
+    { id: 'unassigned', status: 'to_do', assignedMechanic: null },
+    { id: 'cancelled', status: 'cancelled', assignedMechanic: alex },
+  ];
+
+  it('splits my Jobs from the rest of the truck and knows when my part is done', () => {
+    const split = splitMyJobs({ jobs }, 'mechanic-1');
+    expect(split.mine.map((job) => job.id)).toEqual(['mine-done']);
+    expect(split.others.map((job) => job.id)).toEqual(['theirs', 'unassigned']);
+    expect(split.partDone).toBe(true);
   });
 
-  it('keeps the PM job for its assignee and every other Job completable', () => {
-    expect(canCompleteJobFromWorkOrder(pmJob, 'pm-job', 'pm-mechanic')).toBe(true);
-    expect(canCompleteJobFromWorkOrder({ id: 'brakes', assignedMechanic: null }, 'pm-job', 'standard-mechanic')).toBe(true);
-    expect(canCompleteJobFromWorkOrder({ id: 'brakes', assignedMechanic: null }, null, 'standard-mechanic')).toBe(true);
+  it('prefers the API split when present', () => {
+    const split = splitMyJobs({ jobs, myJobs: [], otherJobs: jobs.slice(0, 1), myPartDone: false }, 'mechanic-1');
+    expect(split).toEqual({ mine: [], others: jobs.slice(0, 1), partDone: false });
+  });
+
+  it('moves an in-progress Work Order to Waiting on Manager once my part is done', () => {
+    const wo = { status: 'in_progress', primaryCategoryName: 'Brakes', jobs };
+    expect(isMyPartDone(wo, 'mechanic-1')).toBe(true);
+    expect(isMyPartDone(wo, 'mechanic-2')).toBe(false);
+    expect(isMyPartDone({ ...wo, status: 'created' }, 'mechanic-1')).toBe(false);
   });
 });

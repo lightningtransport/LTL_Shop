@@ -65,7 +65,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
-import { stopLaborWhenNoPendingJobs } from '../work-orders/labor-session';
+import { stopLaborForMechanic } from '../work-orders/labor-session';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
@@ -132,7 +132,7 @@ const mechanicDetailInclude = {
 const summaryInclude = {
   truck: true,
   primaryCategory: true,
-  jobs: { select: { status: true } },
+  jobs: { select: { status: true, assignedMechanicId: true } },
   mechanics: {
     where: { removedAt: null },
     include: { mechanic: { select: { id: true, name: true } } },
@@ -780,6 +780,9 @@ export class AdminService {
           where: { id: jobId },
           data: { assignedMechanicId: input.mechanicId },
         });
+        if (job.assignedMechanicId && job.assignedMechanicId !== input.mechanicId) {
+          await this.releaseMechanicFromWorkOrder(tx, workOrderId, job.assignedMechanicId);
+        }
         const incremented = await tx.workOrder.updateMany({
           where: { id: workOrderId, version: input.expectedVersion },
           data: { version: { increment: 1 } },
@@ -848,6 +851,7 @@ export class AdminService {
           where: { id: jobId },
           data: { assignedMechanicId: null },
         });
+        await this.releaseMechanicFromWorkOrder(tx, workOrderId, job.assignedMechanicId);
         const incremented = await tx.workOrder.updateMany({
           where: { id: workOrderId, version: input.expectedVersion },
           data: { version: { increment: 1 } },
@@ -881,6 +885,24 @@ export class AdminService {
     }
   }
 
+  /**
+   * LTR-154 / D11, D18: after a Job leaves a mechanic, drop them from the derived
+   * team when they own no other Job here, and stop their labor when they have
+   * no pending Job left.
+   */
+  private async releaseMechanicFromWorkOrder(tx: Prisma.TransactionClient, workOrderId: string, mechanicId: string) {
+    const stillOwns = await tx.workOrderJob.count({
+      where: { workOrderId, assignedMechanicId: mechanicId, status: { not: JobStatus.cancelled } },
+    });
+    if (stillOwns === 0) {
+      await tx.mechanicAssignment.updateMany({
+        where: { workOrderId, mechanicId, removedAt: null },
+        data: { removedAt: new Date() },
+      });
+    }
+    await stopLaborForMechanic(tx, workOrderId, mechanicId);
+  }
+
   async cancelWorkOrder(user: AuthUser, workOrderId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
     if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
     const parsed = adminCancelWorkOrderSchema.safeParse(raw);
@@ -911,13 +933,8 @@ export class AdminService {
           throw this.versionConflict('Work Order was updated. Refresh and try again.');
         }
         const now = new Date();
-        const openSession = await tx.workSession.findFirst({
-          where: { workOrderId, endedAt: null },
-          orderBy: { startedAt: 'desc' },
-        });
-        if (openSession) {
-          await tx.workSession.update({ where: { id: openSession.id }, data: { endedAt: now } });
-        }
+        // LTR-154 / D18: closing the Work Order stops every mechanic's labor.
+        await tx.workSession.updateMany({ where: { workOrderId, endedAt: null }, data: { endedAt: now } });
         const openPause = await tx.pauseEvent.findFirst({
           where: { workOrderId, endedAt: null, isOfficialPause: true },
           orderBy: { startedAt: 'desc' },
@@ -1012,13 +1029,8 @@ export class AdminService {
           if (!gate.ok) throw new BadRequestException(gate.message);
         }
         const now = new Date();
-        const openSession = await tx.workSession.findFirst({
-          where: { workOrderId, endedAt: null },
-          orderBy: { startedAt: 'desc' },
-        });
-        if (openSession) {
-          await tx.workSession.update({ where: { id: openSession.id }, data: { endedAt: now } });
-        }
+        // LTR-154 / D18: closing the Work Order stops every mechanic's labor.
+        await tx.workSession.updateMany({ where: { workOrderId, endedAt: null }, data: { endedAt: now } });
         const sessions = await tx.workSession.findMany({ where: { workOrderId } });
         const pauses = await tx.pauseEvent.findMany({ where: { workOrderId } });
         const totals = computeTotals({ sessions, pauses, now });
@@ -1548,7 +1560,7 @@ export class AdminService {
           newValue: { status: JobStatus.cancelled, reason: input.reason },
           relevantValue: { action: 'job_cancelled', reason: input.reason, displayName: job.displayName },
         });
-        await stopLaborWhenNoPendingJobs(tx, workOrderId);
+        await stopLaborForMechanic(tx, workOrderId, job.assignedMechanicId);
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
@@ -1637,7 +1649,7 @@ export class AdminService {
           newValue: { status: JobStatus.completed, displayName: job.displayName, notes },
           relevantValue: { action: 'job_completed', displayName: job.displayName, notes, actor: 'admin' },
         });
-        await stopLaborWhenNoPendingJobs(tx, workOrderId);
+        await stopLaborForMechanic(tx, workOrderId, job.assignedMechanicId);
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
@@ -2049,6 +2061,7 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       jobsCompleted: jobs.filter((job) => job.status === 'completed').length,
       jobsTotal: jobs.length,
       hasActiveBlocker: Boolean(latestReportedBlocker),
+      unassignedJobs: jobs.filter((job) => job.status === 'to_do' && !job.assignedMechanicId).length,
       createdAt: row.createdAt,
     }),
   };

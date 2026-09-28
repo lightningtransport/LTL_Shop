@@ -584,7 +584,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByRole('heading', { name: 'Truck Information' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'PM Service' })).toBeVisible();
     await expect(page.getByText('Jobs To Do', { exact: true })).toHaveCount(0);
-    await expect(page.getByText('My Jobs', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Your Jobs', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Unassigned', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Working With', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Priority', { exact: true })).toHaveCount(0);
@@ -717,7 +717,7 @@ const assignedWorkOrder = {
 };
 
 test.describe('My Assigned Work presentation', () => {
-  test('labels assigned, unassigned, and other Jobs at mobile size', async ({ page }) => {
+  test('shows only my Jobs and keeps other work read-only at mobile size (LTR-154)', async ({ page }) => {
     await page.route('**/api/**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
@@ -767,24 +767,27 @@ test.describe('My Assigned Work presentation', () => {
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     const assignedCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
-    await expect(assignedCard.getByText('Work Order team: Alex Mechanic / Jamie Technician')).toBeVisible();
+    // LTR-154 / D11: the card lists only my Jobs, counts them and marks the next one.
+    await expect(assignedCard.getByText('1 Job for you', { exact: false })).toBeVisible();
     await expect(assignedCard.getByText('Replace pads')).toBeVisible();
     await expect(assignedCard.getByText('Assigned to you')).toBeVisible();
-    await expect(assignedCard.getByText('Bleed brakes')).toBeVisible();
-    await expect(assignedCard.getByText('Unassigned', { exact: true })).toBeVisible();
-    await expect(assignedCard.getByText('ABS sensor')).toBeVisible();
-    await expect(assignedCard.getByText('Assigned to Jamie Technician')).toBeVisible();
+    await expect(assignedCard.getByText('Next', { exact: true })).toBeVisible();
+    await expect(assignedCard.getByText('Bleed brakes')).toHaveCount(0);
+    await expect(assignedCard.getByText('ABS sensor')).toHaveCount(0);
+    await expect(assignedCard.getByText(/Work Order team/)).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
     await assignedCard.getByRole('link', { name: /View Work/i }).click();
     await expect(page.getByRole('heading', { name: 'Truck 905' })).toBeVisible();
-    await expect(page.getByText('Work Order team', { exact: true })).toBeVisible();
-    await expect(page.getByText('Alex Mechanic / Jamie Technician')).toBeVisible();
-    await expect(page.getByText('My Jobs', { exact: true })).toBeVisible();
+    await expect(page.getByText('Work Order team', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Your Jobs', { exact: true })).toBeVisible();
+    await expect(page.getByText('Tap a Job to complete it.')).toBeVisible();
     await expect(page.getByRole('button', { name: /Replace pads/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Bleed brakes/ })).toBeVisible();
     await expect(page.getByText('Other work on this Truck')).toBeVisible();
-    await expect(page.getByRole('button', { name: /ABS sensor/ })).toBeVisible();
+    // Unassigned and other mechanics' Jobs are visible but not completable.
+    await expect(page.getByRole('button', { name: /Bleed brakes/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /ABS sensor/ })).toHaveCount(0);
+    await expect(page.getByTestId('job-read-only')).toHaveCount(2);
     await expect(page.getByText('Create new Work Order')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
@@ -797,6 +800,7 @@ test.describe('My Assigned Work presentation', () => {
     await finishDialog.getByRole('button', { name: 'Complete job', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: /Job marked complete|Job marcado como completado/i })).toBeVisible();
     await expect(page.getByText('Replace pads')).toBeVisible();
+    await expect(page.getByText('You finished your part on Truck 905.')).toBeVisible();
   });
 
   test('moves Standard Work Orders with no to-do Jobs out of Active Jobs', async ({ page }) => {
@@ -821,7 +825,7 @@ test.describe('My Assigned Work presentation', () => {
     await page.getByRole('button', { name: /Dev Login/i }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Waiting on Manager' })).toBeVisible();
-    await expect(page.getByText('1 Work Order is ready for the Manager to close')).toBeVisible();
+    await expect(page.getByText('You finished your part on 1 Work Order. The Manager closes it.')).toBeVisible();
     const waitingCard = page.locator('.card').filter({ hasText: 'WO-READY-1' });
     await expect(waitingCard.getByRole('link', { name: /View Details WO-READY-1/ })).toBeVisible();
     const activeCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });

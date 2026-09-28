@@ -361,8 +361,12 @@ describe('PM Work Order authorization', () => {
       truckId: '00000000-0000-4000-8000-000000000001',
       primaryCategoryId: '00000000-0000-4000-8000-000000000003',
       priority: Priority.NORMAL,
-      mechanicIds: ['00000000-0000-4000-8000-000000000004'],
-      jobs: [{ categoryId: '00000000-0000-4000-8000-000000000003', displayName: 'Brake Inspection' }],
+      // LTR-154 / D11: the team comes from Job assignees (mechanicIds is ignored).
+      jobs: [{
+        categoryId: '00000000-0000-4000-8000-000000000003',
+        displayName: 'Brake Inspection',
+        assignedMechanicId: '00000000-0000-4000-8000-000000000004',
+      }],
     })).rejects.toMatchObject({
       response: { message: 'One or more selected mechanics cannot perform standard work' },
     });

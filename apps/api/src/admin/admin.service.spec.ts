@@ -27,7 +27,7 @@ const baseRow = {
     make: 'Volvo', model: 'VNL', year: 2024, mileage: null, company: null, owner: null,
   },
   primaryCategory: { id: '00000000-0000-4000-8000-000000000031', name: 'Engine' },
-  jobs: [{ status: 'to_do' }],
+  jobs: [{ status: 'to_do', assignedMechanicId: 'mechanic-1' }],
   mechanics: [],
   pauseEvents: [],
 };
@@ -104,6 +104,27 @@ describe('AdminService', () => {
       jobs: { some: { status: 'completed' }, none: { status: 'to_do' } },
     });
     expect(prisma.workOrder.findMany.mock.calls[4][0].orderBy).toEqual([{ updatedAt: 'desc' }, { id: 'desc' }]);
+  });
+
+  it('flags open work with an unassigned pending Job (LTR-154 / D11)', async () => {
+    const prisma = createPrisma();
+    [0, 0, 0, 0, 0, 0].forEach((value) => prisma.workOrder.count.mockResolvedValueOnce(value));
+    const unassigned = {
+      ...baseRow, id: 'unassigned-id', displayId: 'WO-UNASSIGNED', status: 'in_progress', createdAt: new Date(),
+      jobs: [{ status: 'to_do', assignedMechanicId: null }],
+    };
+    prisma.workOrder.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([unassigned])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await createService(prisma).dashboard();
+    expect(result.attention.map((item) => [item.displayId, item.attentionReason])).toEqual([
+      ['WO-UNASSIGNED', 'unassigned'],
+    ]);
   });
 
   it('ranks an active reported blocker after paused and before plain open work (LTR-121)', async () => {
@@ -649,6 +670,7 @@ describe('AdminService', () => {
         findFirst: vi.fn().mockResolvedValue(session),
         findMany: vi.fn().mockResolvedValue([{ ...session, endedAt: new Date() }]),
         update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       pauseEvent: {
         findFirst: vi.fn().mockResolvedValue(pause),
@@ -665,7 +687,10 @@ describe('AdminService', () => {
     const service = new AdminService(prisma as never, activity as never, {} as never);
 
     await expect(service.cancelWorkOrder(manager, wo.id, body)).resolves.toMatchObject({ status: 'cancelled', version: 2 });
-    expect(tx.workSession.update).toHaveBeenCalled();
+    expect(tx.workSession.updateMany).toHaveBeenCalledWith({
+      where: { workOrderId: wo.id, endedAt: null },
+      data: { endedAt: expect.any(Date) },
+    });
     expect(tx.pauseEvent.update).toHaveBeenCalled();
     expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ status: 'cancelled' }),
@@ -1539,6 +1564,48 @@ describe('AdminService', () => {
     expect(unassignTx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
       data: { assignedMechanicId: null },
     }));
+    // Still owns another Job here: stays on the derived team.
+    expect(unassignTx.mechanicAssignment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('drops a mechanic from the derived team and stops their labor when their last Job is unassigned (LTR-154)', async () => {
+    const prisma = createPrisma();
+    const service = createService(prisma);
+    const mechanicId = '00000000-0000-4000-8000-000000000004';
+    const manager = {
+      id: baseRow.createdById, email: 'manager@lightning.local', name: 'Shop Manager', role: 'manager' as const,
+      active: true, pmAuthorized: false, capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE],
+      supabaseAuthId: null,
+    };
+    const base = detailRow({});
+    const assignedRow = detailRow({
+      jobs: [{ ...base.jobs[0], assignedMechanicId: mechanicId, assignedMechanic: { id: mechanicId, name: 'Alejandro 1' } }],
+    });
+    const tx = assignmentTx(assignedRow);
+    tx.workOrder.findUnique
+      .mockResolvedValueOnce(assignedRow)
+      .mockResolvedValueOnce(assignedRow)
+      .mockResolvedValueOnce(detailRow({ version: 2 }));
+    // No Job left for this mechanic; the Work Order still has the now-unassigned pending Job.
+    tx.workOrderJob.count.mockImplementation(async ({ where }: { where: { assignedMechanicId?: string } }) => (
+      where.assignedMechanicId ? 0 : 1
+    ));
+    tx.workSession.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
+
+    await expect(service.unassignJob(manager, base.id, base.jobs[0].id, {
+      expectedVersion: 1,
+      idempotencyKey: '00000000-0000-4000-8000-000000000804',
+    })).resolves.toMatchObject({ version: 2 });
+
+    expect(tx.mechanicAssignment.updateMany).toHaveBeenCalledWith({
+      where: { workOrderId: base.id, mechanicId, removedAt: null },
+      data: { removedAt: expect.any(Date) },
+    });
+    expect(tx.workSession.updateMany).toHaveBeenCalledWith({
+      where: { workOrderId: base.id, endedAt: null, userId: mechanicId },
+      data: { endedAt: expect.any(Date) },
+    });
   });
 
   it('shows a reported blocker without treating it as the current pause', async () => {
@@ -1618,7 +1685,7 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
       update: vi.fn(),
     },
     user: { findFirst: vi.fn() },
-    mechanicAssignment: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
+    mechanicAssignment: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     workOrderJob: {
       findUnique: vi.fn().mockResolvedValue(wo.jobs[0] ? { ...wo.jobs[0], workOrderId: wo.id } : null),
       update: vi.fn(),
@@ -1631,6 +1698,7 @@ function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, un
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
     pauseEvent: {
       findUnique: vi.fn(),

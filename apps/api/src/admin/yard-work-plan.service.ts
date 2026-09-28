@@ -31,9 +31,13 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const openWorkOrderInclude = {
   primaryCategory: { select: { id: true, name: true } },
   jobs: {
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      assignedMechanic: { select: { id: true, name: true } },
+    },
     orderBy: { addedAt: 'asc' as const },
   },
+  sessions: { select: { endedAt: true, userId: true } },
 } as const;
 
 type OpenWorkOrderRow = {
@@ -50,7 +54,10 @@ type OpenWorkOrderRow = {
     customDescription: string | null;
     status: string;
     category: { id: string; name: string };
+    assignedMechanic: { id: string; name: string } | null;
+    startedAt: Date | null;
   }>;
+  sessions: Array<{ endedAt: Date | null; userId: string | null }>;
 };
 
 @Injectable()
@@ -98,7 +105,10 @@ export class YardWorkPlanService {
             customDescription: job.customDescription,
             category: job.category,
             status: job.status as never,
+            assignedMechanic: job.assignedMechanic,
+            startedAt: job.startedAt,
           })),
+      sessions: workOrder?.sessions ?? [],
       inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null,
     });
 

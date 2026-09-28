@@ -59,7 +59,7 @@ function assignedStandardWorkOrder(status = 'in_progress') {
     primaryCategory: { name: 'Brakes' },
     mechanics: [{ mechanicId: 'mechanic-1', removedAt: null }],
     status,
-    jobs: [{ status: 'to_do' }],
+    jobs: [{ status: 'to_do', assignedMechanicId: 'mechanic-1' }],
     notes: null,
   };
 }
@@ -315,6 +315,7 @@ describe('Mechanic Work Order mutation capability enforcement', () => {
       ...assignedStandardWorkOrder(),
       createdById: 'other',
       mechanics: [{ mechanicId: 'other', removedAt: null }],
+      jobs: [{ status: 'to_do', assignedMechanicId: 'other' }],
     });
     await expect(service.start(standard, WO_ID)).rejects.toThrow('This Work Order is not assigned to you.');
   });

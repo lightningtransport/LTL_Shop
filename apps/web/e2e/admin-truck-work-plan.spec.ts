@@ -11,6 +11,17 @@ const manager = {
   capabilities: ['admin.access', 'yard.operations.manage', 'work_orders.manage'],
 };
 
+const mechanicAlex = {
+  id: '00000000-0000-4000-8000-000000000011',
+  name: 'Alex Mechanic',
+  email: 'alex@lightning.local',
+  role: 'mechanic',
+  active: true,
+  capabilities: ['mechanic.standard'],
+  openWorkOrderCount: 0,
+  currentAssignments: [],
+};
+
 const categories = [
   { id: '00000000-0000-4000-8000-000000000301', name: 'Air & Brake System', sortOrder: 1 },
   { id: '00000000-0000-4000-8000-000000000302', name: 'Suspension & Steering', sortOrder: 2 },
@@ -66,6 +77,7 @@ function emptyPlan(): {
     status: string;
     uiStatus: string;
     lane: string;
+    assignedMechanic?: { id: string; name: string } | null;
   }>;
   remainingJobCount: number;
   readiness: string;
@@ -151,6 +163,9 @@ async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan
     if (path === `/api/admin/trucks/${truckId}` && request.method() === 'GET') {
       return json(route, truckDetail(plan));
     }
+    if (path === `/api/admin/trucks/${truckId}/work-plan` && request.method() === 'GET') {
+      return json(route, plan);
+    }
     if (path === `/api/admin/trucks/${truckId}/work-plan/inspection` && request.method() === 'POST') {
       const body = request.postDataJSON() as { outcome: 'issues_found' | 'no_issues_found' };
       plan.inspection.outcome = body.outcome;
@@ -192,6 +207,7 @@ async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan
           status: 'to_do',
           uiStatus: 'pending',
           lane,
+          assignedMechanic: null,
         });
       }
       plan.workOrder.version += 1;
@@ -205,6 +221,19 @@ async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan
       return json(route, plan);
     }
     return route.continue();
+  });
+
+  // LTR-154 / D11: per-Job owner from the Truck Work Plan.
+  await page.route('**/api/admin/mechanics?**', async (route) => json(route, {
+    items: [mechanicAlex],
+    nextCursor: null,
+  }));
+  await page.route('**/api/admin/work-orders/*/jobs/*/assign', async (route) => {
+    const jobId = new URL(route.request().url()).pathname.split('/').at(-2);
+    const job = plan.jobs.find((item) => item.id === jobId);
+    if (job) job.assignedMechanic = { id: mechanicAlex.id, name: mechanicAlex.name };
+    if (plan.workOrder) plan.workOrder.version += 1;
+    return json(route, { id: plan.workOrder?.id, version: plan.workOrder?.version });
   });
 
   await page.route('**/api/catalog/**', async (route) => {
@@ -285,5 +314,21 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await page.getByRole('button', { name: 'Add to Work Plan' }).click();
     await expect(page.getByText('Work Plan updated.').first()).toBeVisible();
     await expect(page.getByRole('list', { name: 'Jobs in this Work Order' }).getByText('Cab wash')).toBeVisible();
+  });
+
+  test('Manager sets the owner of a Job from the Work Plan (LTR-154 / D11)', async ({ page }) => {
+    await mockWorkPlanApi(page, emptyPlan());
+    await loginManager(page);
+    await page.goto(`/admin/trucks/${truckId}`);
+    await page.getByRole('button', { name: 'Issues found', exact: true }).click();
+    await page.getByLabel('Job Category').selectOption({ label: 'Air & Brake System' });
+    await page.getByRole('button', { name: 'Add Brake Inspection' }).click();
+    await page.getByRole('button', { name: 'Add to Work Plan' }).click();
+
+    const planList = page.getByRole('list', { name: 'Jobs in this Work Order' });
+    await expect(planList.getByText('Unassigned').first()).toBeVisible();
+    await planList.getByLabel('Mechanic for Brake Inspection').selectOption({ label: 'Alex Mechanic' });
+    await expect(page.getByText('Job assigned.').first()).toBeVisible();
+    await expect(planList.getByText('Assigned to: Alex Mechanic')).toBeVisible();
   });
 });
