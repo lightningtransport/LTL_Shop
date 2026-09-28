@@ -62,6 +62,8 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Add Job' }).click();
   const jobDialog = page.getByRole('dialog');
+  // The Modal focuses its first control one frame after opening (ui.tsx); wait so typing is not redirected.
+  await expect(jobDialog.getByLabel('Category')).toBeFocused();
   await expect(jobDialog.getByRole('option', { name: 'Suspension' })).toHaveCount(0);
   await jobDialog.getByLabel('Category').selectOption({ label: 'Brakes' });
   await jobDialog.getByLabel('Job name').fill('Bleed brakes');
@@ -76,6 +78,7 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await expect(page.getByRole('listitem').filter({ hasText: 'Retired suspension job' })).not.toContainText('Inactive');
   await page.getByRole('button', { name: 'Rename Job' }).click();
   const renameDialog = page.getByRole('dialog');
+  await expect(renameDialog.getByLabel('Job name')).toBeFocused();
   await renameDialog.getByLabel('Job name').fill('Service suspension');
   await renameDialog.getByRole('button', { name: 'Rename Job' }).click();
   await expect(page.getByText('Job renamed.')).toBeVisible();
@@ -91,6 +94,8 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await expect(page.getByTestId('pd-light-tip')).toContainText('System Admin only');
   await page.getByRole('button', { name: 'Create mechanic' }).click();
   const createDialog = page.getByRole('dialog');
+  // LTR-163: the dialog focuses Name when it opens; typing before that lands the email in Name.
+  await expect(createDialog.getByLabel('Name')).toBeFocused();
   await createDialog.getByLabel('Name').fill('Luz Mechanic');
   await createDialog.getByLabel('Email').fill('luz@lightning.local');
   await createDialog.getByLabel('PM').check();

@@ -98,6 +98,13 @@ test('PM mechanic Pause stays disabled until the service is In Progress', async 
     const path = new URL(route.request().url()).pathname;
     if (path === `/api/work-orders/${PM_CREATED_ID}`) return fulfill(route, created);
     if (path === `/api/work-orders/${PM_ACTIVE_ID}`) return fulfill(route, active);
+    // The PM service card loads its own details; without this the request fell through to the fixture API.
+    if (path.endsWith('/pm')) {
+      return fulfill(route, {
+        workOrderId: path.split('/')[3], canEdit: true, currentTruckMileage: 120000, observedMileage: null,
+        lastCompletedPm: null, categories: [], selections: [],
+      });
+    }
     if (path === '/api/work-orders') {
       return fulfill(route, {
         created: [pmSummary(PM_CREATED_ID, 'WO-PM-CREATED', 'created')],

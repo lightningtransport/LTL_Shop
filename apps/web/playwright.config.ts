@@ -8,17 +8,13 @@ const chromiumExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
-  // LTR-162: `next dev` compiles and hydrates slower than 5 s under a full run; the warm-up compiles routes first.
-  expect: { timeout: 15_000 },
-  globalSetup: './e2e/support/warm-up.ts',
+  expect: { timeout: 10_000 },
   fullyParallel: false,
   // LTR-162: every spec shares one in-memory fixture API that each test resets; parallel workers
   // would reset or mutate it under each other.
   workers: process.env.ADMIN_E2E_FIXTURE ? 1 : undefined,
-  // LTR-162: one full run keeps a single `next dev` up for ~20 min. WebKit near the end of that run can hit
-  // slow loads that pass on their own; retry once and report them as flaky. LTR-163 tracks running e2e
-  // against a production build instead.
-  retries: process.env.ADMIN_E2E_FIXTURE ? 1 : 0,
+  // LTR-163: the fixture suite runs against a production build, so a slow or flaky run is a real failure.
+  retries: 0,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL
       ?? (process.env.ADMIN_E2E_FIXTURE ? 'http://127.0.0.1:3010' : 'http://localhost:3000'),
@@ -47,12 +43,19 @@ export default defineConfig({
             reuseExistingServer: false,
           },
           {
-            command: '../../node_modules/.bin/next dev --hostname 127.0.0.1 --port 3010',
+            // LTR-163: a production build instead of `next dev`. Routes are compiled once up front, so a long run
+            // does not slow down. NEXT_PUBLIC_E2E_DEV_LOGIN keeps Dev Login in this build only (see
+            // src/lib/dev-login.ts); NEXT_DIST_DIR keeps it away from a running `next dev`.
+            command: '../../node_modules/.bin/next build && ../../node_modules/.bin/next start --hostname 127.0.0.1 --port 3010',
             port: 3010,
             reuseExistingServer: false,
+            timeout: 600_000,
             env: {
-              NODE_ENV: 'development',
+              NODE_ENV: 'production',
+              NEXT_DIST_DIR: '.next-e2e',
               NEXT_PUBLIC_API_URL: 'http://127.0.0.1:3101',
+              NEXT_PUBLIC_E2E_DEV_LOGIN: '1',
+              NEXT_TELEMETRY_DISABLED: '1',
             },
           },
         ]
