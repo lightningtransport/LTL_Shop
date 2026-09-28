@@ -56,9 +56,14 @@ export function AdminTruckDetail({ id, from = null, locale, messages }: { id: st
       title={data.truck.truckNumber}
       subtitle={formatVehicleYmm(data.truck) || messages.noValue}
       badges={(
-        <Badge variant={workPlan.readiness === 'ready' ? 'success' : 'warning'} className="normal-case tracking-normal">
-          {workPlan.readiness === 'ready' ? messages.workPlanReady : messages.workPlanNotReady}
-        </Badge>
+        // LTR-51 (#14): a truck back in service with no Work Order is not "Not Ready".
+        workPlan.readiness !== 'ready' && !workPlan.workOrder && data.operationalStatus === TruckOperationalStatus.IN_SERVICE ? (
+          <Badge variant="secondary" className="normal-case tracking-normal">{messages.operationalStatusInService}</Badge>
+        ) : (
+          <Badge variant={workPlan.readiness === 'ready' ? 'success' : 'warning'} className="normal-case tracking-normal">
+            {workPlan.readiness === 'ready' ? messages.workPlanReady : messages.workPlanNotReady}
+          </Badge>
+        )
       )}
     />
 
