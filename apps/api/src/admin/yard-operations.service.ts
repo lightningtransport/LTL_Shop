@@ -36,6 +36,7 @@ import {
   adminYardOperationsCursorSchema,
   adminYardOperationsQuerySchema,
   isWorkOrderBlocked,
+  deriveTruckNextStep,
 } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { TrucksService } from '../trucks/trucks.service';
@@ -55,6 +56,7 @@ import {
   type WorkPlanDerivationInput,
 } from './yard-work-plan-derivation';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
+import { workOrderNextStep } from './work-order-next-step';
 import { unavailableYardMovementFeeds } from './yard-movement-feeds';
 
 const ACTIVE_OR_RESIDUAL_READY: Prisma.TruckReadinessAssessmentWhereInput = {
@@ -116,7 +118,11 @@ const summaryWorkOrderInclude = {
   primaryCategory: true,
   // Work Plan derivation needs category/name.
   jobs: {
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      // LTR-159: the Next step needs each Job's owner.
+      assignedMechanic: { select: { id: true, name: true } },
+    },
     orderBy: { addedAt: 'asc' as const },
   },
   mechanics: {
@@ -832,6 +838,13 @@ export class YardOperationsService {
         : TruckOperationalStatus.UNKNOWN;
 
     const workPlan = deriveWorkPlan(workPlanInputFromYardRow(row));
+    const inspectionRequirement = row.readinessAssessments[0]?.requirements.find(
+      (requirement) => requirement.type === ReadinessRequirementType.INSPECTION,
+    );
+    // LTR-159: the same Next step as Truck Detail, Dashboard and the Work Order.
+    const nextStep = currentWorkOrder
+      ? workOrderNextStep(currentWorkOrder, { inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null })
+      : deriveTruckNextStep({ workOrder: null, inspectionOutcome: workPlan.inspection.outcome, jobs: [] });
     return {
       truck: toTruckDto(row),
       presence: { state: YardPresenceState.UNKNOWN, provenance: 'phase_1_unavailable' },
@@ -843,6 +856,7 @@ export class YardOperationsService {
       activeWorkOrder,
       readyReason: workPlan.readyReason,
       shopWorkRemainingCount: workPlan.shopWorkRemainingCount,
+      nextStep,
     };
   }
 

@@ -170,12 +170,16 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await expect(page.getByText('Required Work')).toHaveCount(0);
   });
 
-  test('LTR-148: the board has the PM column, QC always, and a PM card says Next: PM', async ({ page }) => {
+  test('LTR-148 / LTR-159: the board has the PM column, QC always, and a card shows the one Next step', async ({ page }) => {
     await mockSession(page);
     const base = yardPage();
     const pmPage = {
       ...base,
-      items: [{ ...base.items[0], phase: 'pm', readyReason: 'pm_pending', activeWorkOrder: { ...base.items[0].activeWorkOrder, jobsCompleted: 1, jobsTotal: 5, createdAt: new Date().toISOString() } }],
+      items: [{
+        ...base.items[0], phase: 'pm', readyReason: 'pm_pending',
+        activeWorkOrder: { ...base.items[0].activeWorkOrder, jobsCompleted: 1, jobsTotal: 5, createdAt: new Date().toISOString() },
+        nextStep: { kind: 'work', jobName: 'PM A Service', remaining: 4 },
+      }],
     };
     await page.route('**/api/admin/yard-operations**', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(pmPage) });
@@ -187,6 +191,6 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     for (const phase of headings) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
-    await expect(page.getByTestId('yard-truck-card').getByText('Next: PM').first()).toBeVisible();
+    await expect(page.getByTestId('yard-card-next-step').first()).toHaveText('4 Jobs left · next: PM A Service');
   });
 });

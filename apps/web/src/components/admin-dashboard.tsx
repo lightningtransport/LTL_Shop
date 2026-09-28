@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, CalendarCheck, ClipboardCheck, ClipboardList, Clock3, History, Wrench } from 'lucide-react';
+import { AlertTriangle, CalendarCheck, ClipboardCheck, ClipboardList, Clock3, History, Wrench, Truck } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminNavLink } from './admin-nav-link';
 import { AdminWorkOrderItem } from './admin-work-order-item';
@@ -30,6 +30,8 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
     { label: messages.openOlderThan24h, description: messages.metricOlderDescription, value: data.counts.openOlderThan24h, Icon: History, href: query({ status: openStatuses, createdBefore: windows.openOlderThan24h.before }) },
     { label: messages.completedToday, description: messages.metricCompletedTodayDescription, value: data.counts.completedToday, Icon: CalendarCheck, href: query({ status: 'completed', completedFrom: windows.today.from, completedBefore: windows.today.to }) },
     { label: messages.completedLast7Days, description: messages.metricCompletedLast7DaysDescription, value: data.counts.completedLast7Days, Icon: CalendarCheck, href: query({ status: 'completed', completedFrom: windows.last7Days.from, completedBefore: windows.last7Days.to }) },
+    // LTR-159: trucks done and waiting for Return to Service (same window as the Yard).
+    { label: messages.metricReadyToGo, description: messages.metricReadyToGoDescription, value: data.counts.readyToGo ?? 0, Icon: Truck, href: '/admin/yard-operations' },
   ] as const;
   const canStandard = !!user?.capabilities.includes(AppCapability.MECHANIC_STANDARD);
   const canPm = !!user?.capabilities.includes(AppCapability.MECHANIC_PM);

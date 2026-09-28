@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-28 (LTR-158 Truck next step; LTR-157 shop workflow and truck-only create; LTR-155 per-Job blockers; LTR-154 Job owner and per-mechanic labor; LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
+**Updated:** 2026-09-28 (LTR-159 one next step everywhere; LTR-158 Truck next step; LTR-157 shop workflow and truck-only create; LTR-155 per-Job blockers; LTR-154 Job owner and per-mechanic labor; LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -196,6 +196,19 @@ TARGET authorization/UX.
   Return to Service takes an optional reason (stored as empty text when
   omitted). Admin Work Order detail folds Cancel and Reopen under "More
   actions".
+- LTR-159: one Next step everywhere. `workOrderNextStep`
+  (`apps/api/src/admin/work-order-next-step.ts`) feeds the shared
+  `deriveTruckNextStep` with the Work Plan lanes, the truck's active Inspection
+  outcome, the unresolved blocker and the official pause. The Yard card,
+  Truck Detail, Admin Work Order summaries (Dashboard, list) and detail, and
+  the Truck list all return `nextStep`; a contract test checks they agree
+  (including an old Work Order without the mandatory steps). The web words it
+  with one presenter (`truckNextStepText`); the old per-surface rules
+  (`adminNextStep`, `yardCardNextStep`, the Work Plan "Add PM/…" CTAs) are
+  gone. Dashboard attention items show the Next step and a button to the Truck
+  (Resolve stays inline); the Dashboard counts trucks Ready to Go; Yard
+  Ready to Go cards offer Return to Service; the Truck list has a Next step
+  column and hides "In Service" while a Work Order is open.
 - The PM mechanic blocks their PM job from the PM view (Manager resolves; a
   blocked PM cannot be finished) and the truck data is folded below the PM.
   The mechanic Home shows "Resolved · tap Continue" when the Manager resolved

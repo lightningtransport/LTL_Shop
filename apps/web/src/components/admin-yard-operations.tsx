@@ -4,10 +4,14 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Ban, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal } from 'lucide-react';
-import { Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
+import { AppCapability, Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
-import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
+import { returnAdminWorkOrderToService, useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
+import { apiFetch } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { truckNextStepText } from '@/lib/truck-next-step';
+import { useActionToast } from './action-toast';
 import {
   buildYardOperationsQuery,
   countActiveYardOperationsFilters,
@@ -27,7 +31,7 @@ import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { workPlanPhaseLabel } from '@/lib/work-plan';
 import { formatVehicleYmm } from '@/lib/format';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
-import { compactAge, dispatchSignalsByTruck, fillYardText, yardCardNextStep, type YardDispatchSignal } from '@/lib/yard-card';
+import { compactAge, dispatchSignalsByTruck, fillYardText, type YardDispatchSignal } from '@/lib/yard-card';
 import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
 import { AdminPageHeader, Badge, Button, Card, CardDescription, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
 
@@ -61,6 +65,8 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const [movementSearch, setMovementSearch] = useState('');
   const query = searchParams.toString();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminYardOperations(query);
+  const { user } = useAuth();
+  const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const {
     data: yardBoundary,
     error: yardBoundaryError,
@@ -309,7 +315,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                       <Badge variant="secondary">{phaseItems.length}</Badge>
                     </div>
                     <div className="space-y-2">
-                      {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} />)}
+                      {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} canManage={canManageWorkOrders} onChanged={() => mutate()} />)}
                       {phaseItems.length === 0 ? (
                         <CompactEmpty className="text-xs">{messages.noTrucksInPhase}</CompactEmpty>
                       ) : null}
@@ -330,7 +336,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                   <h3 id={`yard-group-${phase}`} className="font-display text-sm font-semibold">{messages[phaseMessageKey[phase]]}</h3>
                   <Badge variant="secondary">{phaseItems.length}</Badge>
                 </div>
-                <div className="space-y-2">{phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} />)}</div>
+                <div className="space-y-2">{phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} canManage={canManageWorkOrders} onChanged={() => mutate()} />)}</div>
               </section>
             ) : null;
           })}
@@ -421,8 +427,11 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
   );
 }
 
-function YardTruckCard({ item, messages, locale, dispatch }: {
+function YardTruckCard({ item, messages, locale, dispatch, canManage = false, onChanged }: {
   item: YardOperationsTruckDto;
+  /** LTR-159: Return to Service from a Ready to Go card. */
+  canManage?: boolean;
+  onChanged?: () => Promise<unknown> | void;
   messages: AdminMessages;
   locale: AdminLocale;
   /** LTR-120: Dispatch movement shown only as a signal, never as a phase. */
@@ -430,15 +439,14 @@ function YardTruckCard({ item, messages, locale, dispatch }: {
 }) {
   const workOrder = item.activeWorkOrder;
   const vehicle = formatVehicleYmm(item.truck);
-  const nextStep = workOrder
-    ? yardCardNextStep({ readyReason: item.readyReason, jobsCompleted: workOrder.jobsCompleted, jobsTotal: workOrder.jobsTotal, shopWorkRemainingCount: item.shopWorkRemainingCount })
-    : null;
+  // LTR-159: the same Next step as the Truck, Dashboard and Work Order.
+  const nextStepText = item.nextStep && item.nextStep.kind !== 'create_work_order' ? truckNextStepText(item.nextStep, messages) : null;
   const mechanicNames = (workOrder?.mechanics ?? []).filter((mechanic) => !mechanic.removedAt).map((mechanic) => mechanic.mechanicName).join(', ');
   const showPriority = Boolean(workOrder && workOrder.priority !== Priority.NORMAL);
   // LTR-92 / D5: Blocked means an official pause (or LTR-98 active blocker), not "has open work".
   const showBlocker = workOrder?.status === 'waiting_paused' || Boolean(workOrder?.latestReportedBlocker);
 
-  return (
+  const card = (
     <Link
       href={adminTruckHref(item.truck.id, '/admin/yard-operations')}
       aria-label={item.truck.truckNumber}
@@ -454,7 +462,7 @@ function YardTruckCard({ item, messages, locale, dispatch }: {
         <p className="truncate text-xs text-muted-foreground">{messages.workOrder} {workOrder.displayId} · {compactAge(workOrder.createdAt)}</p>
       ) : null}
       {/* LTR-101: what is missing and who is on it. */}
-      {nextStep ? <p className="truncate text-xs font-medium text-foreground">{fillYardText(messages[nextStep.key], nextStep.values)}</p> : null}
+      {nextStepText ? <p className="truncate text-xs font-medium text-foreground" title={nextStepText} data-testid="yard-card-next-step">{nextStepText}</p> : null}
       {mechanicNames ? <p className="truncate text-xs text-muted-foreground" title={mechanicNames}>{mechanicNames}</p> : null}
       {dispatch?.expectedIn ? <p className="truncate text-xs text-muted-foreground" data-testid="yard-card-dispatch">{fillYardText(messages.yardDispatchExpectedIn, { date: formatAdminDateOnly(dispatch.expectedIn, locale) })}</p> : null}
       {dispatch?.departs ? <p className="truncate text-xs text-muted-foreground" data-testid="yard-card-dispatch">{fillYardText(messages.yardDispatchDeparts, { date: formatAdminDateOnly(dispatch.departs, locale) })}</p> : null}
@@ -475,5 +483,46 @@ function YardTruckCard({ item, messages, locale, dispatch }: {
         </div>
       ) : null}
     </Link>
+  );
+  if (item.nextStep?.kind !== 'return_to_service' || !canManage || !item.nextStep.workOrderId) return card;
+  return (
+    <div className="space-y-1">
+      {card}
+      <YardReturnToService workOrderId={item.nextStep.workOrderId} messages={messages} onChanged={onChanged} />
+    </div>
+  );
+}
+
+function YardReturnToService({ workOrderId, messages, onChanged }: {
+  workOrderId: string;
+  messages: AdminMessages;
+  onChanged?: () => Promise<unknown> | void;
+}) {
+  const { showToast } = useActionToast();
+  const [pending, setPending] = useState(false);
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="w-full"
+      disabled={pending}
+      onClick={async () => {
+        setPending(true);
+        try {
+          // The reason is optional (LTR-158); the version comes from the Work Order itself.
+          const wo = await apiFetch<{ version: number }>(`/api/admin/work-orders/${workOrderId}`);
+          await returnAdminWorkOrderToService(workOrderId, { expectedVersion: wo.version });
+          showToast('success', messages.returnToServiceSuccess);
+          await onChanged?.();
+        } catch {
+          showToast('error', messages.truckNextStepFailed);
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      {messages.returnToServiceTitle}
+    </Button>
   );
 }

@@ -68,6 +68,8 @@ import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { stopLaborForMechanic } from '../work-orders/labor-session';
 import { classifyWorkPlanLane } from './yard-work-plan-derivation';
+import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
+import { activeInspectionInclude, activeInspectionOutcome, workOrderNextStep, type NextStepWorkOrderRow } from './work-order-next-step';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
@@ -132,10 +134,11 @@ const mechanicDetailInclude = {
 };
 
 const summaryInclude = {
-  truck: true,
+  // LTR-159: the truck's active Inspection outcome feeds the one Next step rule.
+  truck: { include: activeInspectionInclude },
   primaryCategory: true,
   jobs: {
-    select: { status: true, assignedMechanicId: true, displayName: true, category: { select: { name: true } } },
+    select: { id: true, status: true, assignedMechanicId: true, displayName: true, category: { select: { name: true } } },
     orderBy: { addedAt: 'asc' as const },
   },
   mechanics: {
@@ -296,6 +299,7 @@ export class AdminService {
           take: 20,
         }),
       ]);
+    const readyToGo = await this.countReadyToGoTrucks();
 
     return {
       generatedAt: now.toISOString(),
@@ -306,7 +310,7 @@ export class AdminService {
         today: windows.today,
         last7Days: windows.last7Days,
       },
-      counts: { open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days },
+      counts: { open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days, readyToGo },
       attention,
       openWorkRequests: workRequests.map((request) => ({
         id: request.id,
@@ -372,6 +376,31 @@ export class AdminService {
     };
   }
 
+  /**
+   * LTR-159: trucks Ready to Go — their latest Work Order completed inside the Yard
+   * window (`YARD_READY_TO_GO_SINCE`), no open Work Order, not yet Returned to Service.
+   */
+  private async countReadyToGoTrucks(): Promise<number> {
+    const since = yardReadyToGoSince();
+    if (!since || typeof this.prisma.truck?.findMany !== 'function') return 0;
+    const trucks = await this.prisma.truck.findMany({
+      where: {
+        workOrders: { some: { status: WorkOrderStatus.completed, completedAt: { gte: since } } },
+        NOT: { workOrders: { some: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } } } },
+      },
+      select: {
+        workOrders: {
+          where: { status: WorkOrderStatus.completed, completedAt: { gte: since } },
+          orderBy: { completedAt: 'desc' },
+          take: 1,
+          select: { completedAt: true },
+        },
+        serviceStatusEvents: { orderBy: { occurredAt: 'desc' }, take: 1, select: { status: true, occurredAt: true } },
+      },
+    });
+    return trucks.filter((truck) => !returnedToServiceAfter(truck.serviceStatusEvents[0], truck.workOrders[0]?.completedAt ?? null)).length;
+  }
+
   async listTrucks(rawQuery: unknown): Promise<AdminPage<AdminTruckSummaryDto>> {
     const parsed = adminTrucksQuerySchema.safeParse(rawQuery);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
@@ -380,9 +409,25 @@ export class AdminService {
     const rows = await this.prisma.truck.findMany({
       where: this.buildTruckWhere(query, cursor),
       include: {
+        ...activeInspectionInclude,
         workOrders: {
           where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
-          include: { primaryCategory: { select: { name: true } } },
+          include: {
+            primaryCategory: { select: { name: true } },
+            // LTR-159: enough of the Work Plan for the one Next step rule.
+            jobs: {
+              select: {
+                id: true, status: true, displayName: true, assignedMechanicId: true,
+                category: { select: { id: true, name: true } },
+              },
+              orderBy: { addedAt: 'asc' },
+            },
+            pauseEvents: {
+              where: { OR: [{ endedAt: null }, { isOfficialPause: false, resolvedAt: null }] },
+              include: { job: { select: { id: true, displayName: true } }, reportedBy: { select: { name: true } } },
+              orderBy: { startedAt: 'desc' },
+            },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -2072,6 +2117,10 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       createdAt: row.createdAt,
     }),
     nextJobName: nextJobInFlow(jobs),
+    // LTR-159: same Next step as Truck Detail and the Yard (none once completed on a list).
+    nextStep: row.status === 'completed'
+      ? null
+      : workOrderNextStep(row, { inspectionRequirementOutcome: activeInspectionOutcome(row.truck) }),
   };
 }
 
@@ -2154,6 +2203,11 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       createdAt: entry.createdAt.toISOString(),
     })),
     returnedToServiceAt: row.serviceStatusEvents[0]?.occurredAt.toISOString() ?? null,
+    // LTR-159: the Work Order detail says the same Next step as its Truck.
+    nextStep: workOrderNextStep(row, {
+      inspectionRequirementOutcome: activeInspectionOutcome(row.truck),
+      returnedToService: Boolean(row.serviceStatusEvents[0]),
+    }),
   };
 }
 
@@ -2208,17 +2262,22 @@ function toTruckSummary(row: {
   mileage: number | null;
   company: string | null;
   owner: string | null;
-  workOrders: {
+  workOrders: Array<NextStepWorkOrderRow & {
     id: string;
     displayId: string;
     status: WorkOrderStatus;
     primaryCategory: { name: string };
-  }[];
+  }>;
   serviceStatusEvents: { status: string; occurredAt: Date }[];
+  readinessAssessments?: Array<{ requirements: Array<{ outcome: string }> }>;
 }): AdminTruckSummaryDto {
   const open = row.workOrders[0] ?? null;
   const operational = derivedOperationalStatus(row.serviceStatusEvents);
   return {
+    // LTR-159: the same Next step as Truck Detail (no open Work Order → create one).
+    nextStep: open
+      ? workOrderNextStep(open, { inspectionRequirementOutcome: activeInspectionOutcome(row) })
+      : { kind: 'create_work_order' },
     truck: toTruckDto(row),
     operationalStatus: operational.status,
     operationalStatusAt: operational.at,
