@@ -85,11 +85,20 @@ describe('PM job inside the truck Work Order (LTR-146)', () => {
     expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.WORK_STARTED }));
   });
 
-  it('refuses a PM job assigned to another PM mechanic, a Standard mechanic, and a second running PM (D2)', async () => {
+  it('lets the PM mechanic who starts take a PM job defaulted to someone else (LTR-157 / D15)', async () => {
     const assigned = setup(workOrder({ assignedMechanicId: 'mpm2', assignedMechanic: { id: 'mpm2', name: 'MPM 2' } }));
-    await expect(assigned.service.startPmJob(pmMechanic, 'wo-1', 'job-pm')).rejects.toMatchObject({
-      response: { code: 'PM_JOB_ASSIGNED_TO_OTHER' },
+    await assigned.service.startPmJob(pmMechanic, 'wo-1', 'job-pm');
+    expect(assigned.tx.workOrderJob.update).toHaveBeenCalledWith({
+      where: { id: 'job-pm' },
+      data: { startedAt: expect.any(Date), assignedMechanicId: 'mpm' },
     });
+    expect(assigned.activity.log).toHaveBeenCalledWith(assigned.tx, expect.objectContaining({
+      previousValue: { assignedMechanicId: 'mpm2' },
+      newValue: expect.objectContaining({ assignedMechanicId: 'mpm' }),
+    }));
+  });
+
+  it('refuses a Standard mechanic and a second running PM (D2)', async () => {
     await expect(setup().service.startPmJob(standard, 'wo-1', 'job-pm')).rejects.toThrow();
     const busy = setup(workOrder(), { runningJob: { workOrder: { id: 'wo-9', displayId: 'WO-009' } } });
     await expect(busy.service.startPmJob(pmMechanic, 'wo-1', 'job-pm')).rejects.toMatchObject({

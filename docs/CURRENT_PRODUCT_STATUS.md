@@ -2,7 +2,7 @@
 
 **Classification:** CURRENT STATE
 **Audited commit:** V2-002 TARGET cutover (this branch)
-**Updated:** 2026-09-28 (LTR-155 per-Job blockers; LTR-154 Job owner and per-mechanic labor; LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
+**Updated:** 2026-09-28 (LTR-157 shop workflow and truck-only create; LTR-155 per-Job blockers; LTR-154 Job owner and per-mechanic labor; LTR-153 labor/blocker columns; LTR-156 shop workflow steps schema; LTR-151)
 
 This document describes only behavior implemented in the audited code. It does
 not define TARGET behavior. Product direction lives exclusively in
@@ -158,14 +158,29 @@ TARGET authorization/UX.
 - A new truck Work Order automatically gets PM A Service, Alignment, Detailing
   and Quality Check (catalog names; no backfill of open WOs). One PM job per
   Work Order; the Manager or the assigned PM mechanic switches PM A ↔ PM B.
-- `shop_workflow_steps` (LTR-156, schema only): one row per mandatory step
-  (`step_key` from `ShopWorkflowStepKey`: `pm`, `alignment`, `detailing`,
-  `quality_check`) → catalog Job, optional `default_mechanic_id`, `sort_order`,
-  `active`, `updated_by_id`, `updated_at`. The migration seeds the four steps
-  above by catalog name with no default mechanic; `prisma/seed.ts` fills any
-  step whose catalog Job did not exist yet. Nothing reads the table at runtime
-  yet: Work Order creation still uses `MANDATORY_WORK_PLAN_JOBS` until LTR-157
-  (Setup "Shop workflow" screen and defaults on create).
+- `shop_workflow_steps` (LTR-156) drives the mandatory steps (LTR-157 / D13,
+  D15, D16): one row per step (`pm`, `alignment`, `detailing`,
+  `quality_check`) → catalog Job, optional `default_mechanic_id`,
+  `sort_order`, `active`. Admin → Setup → **Shop workflow**
+  (`/admin/setup/workflow`, `GET/PUT /admin/setup/workflow-steps`) edits the
+  default owner; writes need `work_orders.manage` or the System Admin role.
+  An owner must be active with `mechanic.pm` (PM) or `mechanic.standard`
+  (others); Quality Check never has one (400 `STEP_HAS_NO_OWNER`).
+- Manager create needs only the Truck (plus priority and a note): `jobs` is
+  optional and `primaryCategoryId` is derived when omitted (first Shop Work
+  Job, else Inspection, else the first non-PM Category — never PM, which
+  means a legacy PM Work Order). Every new Work Order gets the active steps
+  in order, each owned by its default mechanic when that user is still active
+  and capable, otherwise unassigned (Dashboard reason `unassigned`). Without
+  configured steps it falls back to the catalog names, unassigned. The Admin
+  create screen no longer asks for Category or Jobs; extra work is added from
+  the Truck. Open Work Orders are not changed by Setup edits.
+- Admin Work Order lists and cards show "N Jobs · Next: <Job>" (flow order
+  Inspection → Shop Work → PM → Alignment → Detailing → QC) instead of the
+  Category (`nextJobName` on the admin summary).
+- LTR-157: the `mechanic.pm` who starts the PM job takes it even when its
+  default owner was someone else (the change is in the Activity Log); D2 still
+  allows one running PM per mechanic.
 - The PM job is assigned to a `mechanic.pm` user (not added to the Standard
   team). That mechanic opens only the PM job, starts it
   (`POST /work-orders/:id/jobs/:jobId/pm/start`), records mileage + parts

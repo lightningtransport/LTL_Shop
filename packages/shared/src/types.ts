@@ -304,6 +304,8 @@ export interface AdminWorkOrderSummaryDto {
   updatedAt: string;
   /** LTR-121: why this open Work Order needs attention (null when closed). Additive. */
   attentionReason?: WorkOrderAttentionReason | null;
+  /** LTR-157: the next pending Job in flow order (Inspection → Shop Work → PM → Alignment → Detailing → QC). */
+  nextJobName?: string | null;
 }
 
 export interface AdminActivityLogDto {
@@ -713,4 +715,19 @@ export interface AdminCatalogJobWriteDto extends AdminCatalogJobDto {
 
 export interface AdminCatalogCategoryDetailDto extends AdminCatalogCategorySummaryDto {
   jobs: AdminCatalogJobDto[];
+}
+
+/** LTR-157 / D16: one row of Admin → Setup → Shop workflow. */
+export interface ShopWorkflowStepDto {
+  stepKey: string;
+  sortOrder: number;
+  active: boolean;
+  catalogJob: { id: string; displayName: string; categoryName: string };
+  defaultMechanic: { id: string; name: string; active: boolean } | null;
+  /** D15: Quality Check has no default owner; the Manager completes it from the Truck. */
+  allowsDefaultMechanic: boolean;
+  /** Capability a default owner needs: `mechanic.pm` for PM, `mechanic.standard` otherwise. */
+  requiredCapability: AppCapability | null;
+  updatedAt: string;
+  updatedBy: { id: string; name: string } | null;
 }

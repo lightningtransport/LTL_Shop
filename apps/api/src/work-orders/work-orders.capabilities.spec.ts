@@ -83,6 +83,7 @@ describe('Work Order workspace capabilities', () => {
         findMany: vi.fn().mockResolvedValue([{ id: categoryId, name: 'Brakes' }]),
       },
       catalogJob: { findFirst: vi.fn().mockResolvedValue(null) },
+      shopWorkflowStep: { findMany: vi.fn().mockResolvedValue([]) },
       // Prove the capability gate is passed for a Manager by reaching the tx.
       $transaction: vi.fn().mockRejectedValue(new Error('reached-transaction')),
     };

@@ -7,29 +7,22 @@ import { useSWRConfig } from 'swr';
 import {
   AppCapability,
   Priority,
-  type CatalogJobDto,
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useActionToast } from './action-toast';
-import {
-  createAdminWorkOrder,
-  useAdminAssignableMechanics,
-} from '@/lib/admin-data';
+import { createAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { useCatalogJobs, useCategories, useTrucks } from '@/lib/shop-data';
-import { CategoryJobList } from './category-job-list';
+import { useTrucks } from '@/lib/shop-data';
 import { OpenWorkOrderTag } from './open-work-order-tag';
 import { rankTruckResults } from '@/lib/truck-search';
-import { cn } from '@/lib/utils';
 import { isAdminWorkOrdersListKey, isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { prependAdminWorkOrderPage, WORK_ORDER_LIST_REVALIDATE } from '@/lib/swr-work-order-cache';
 import {
   AdminBackLink,
   AdminPageHeader,
-  Badge,
   Button,
   Card,
   CardContent,
@@ -44,16 +37,6 @@ import {
   Textarea,
 } from './ui';
 
-type DraftJob = {
-  key: string;
-  catalogJobId?: string;
-  categoryId: string;
-  categoryName: string;
-  displayName: string;
-  customDescription?: string;
-  assignedMechanicId?: string;
-};
-
 type SelectedTruck = {
   truck: TruckDto;
   openWorkOrder: { id: string; displayId: string } | null;
@@ -61,14 +44,12 @@ type SelectedTruck = {
 
 type OpenWorkOrderCheck = 'idle' | 'checking' | 'verified' | 'error';
 
-function normalizeJobName(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-function formatCountMessage(template: string, count: number) {
-  return template.replace('{count}', String(count));
-}
-
+/**
+ * LTR-157 / D13: a Work Order starts with only the truck (plus priority and a
+ * note). The mandatory steps (PM, Alignment, Detailing, QC) and their default
+ * owners come from Setup → Shop workflow; extra work is added from the Truck
+ * after the inspection.
+ */
 export function AdminNewWorkOrder({
   locale,
   messages,
@@ -89,17 +70,12 @@ export function AdminNewWorkOrder({
   const [selectedTruck, setSelectedTruck] = useState<SelectedTruck | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(-1);
-  const [categoryId, setCategoryId] = useState('');
-  const [jobQuery, setJobQuery] = useState('');
-  const [jobs, setJobs] = useState<DraftJob[]>([]);
   const [priority, setPriority] = useState<Priority>(Priority.NORMAL);
   const [notes, setNotes] = useState('');
-  const [customName, setCustomName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preselectApplied, setPreselectApplied] = useState(false);
   const [openWorkOrderCheck, setOpenWorkOrderCheck] = useState<OpenWorkOrderCheck>('idle');
-  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
   const openWorkOrderRequest = useRef(0);
 
   useEffect(() => {
@@ -108,9 +84,6 @@ export function AdminNewWorkOrder({
   }, [truckQuery]);
 
   const { data: truckData, error: truckError, isLoading: trucksLoading } = useTrucks(true);
-  const { data: categories, error: categoriesError, isLoading: categoriesLoading } = useCategories(true);
-  const { data: catalogJobs, error: jobsError, isLoading: jobsLoading } = useCatalogJobs(categoryId, Boolean(categoryId));
-  const { data: mechanicPages, error: mechanicsError } = useAdminAssignableMechanics();
 
   const trucks = useMemo(
     () => (debouncedTruckQuery && !selectedTruck
@@ -118,36 +91,16 @@ export function AdminNewWorkOrder({
       : []),
     [debouncedTruckQuery, selectedTruck, truckData],
   );
-  const standardCategories = (categories ?? []).filter((category) => category.name !== 'PM');
-  const selectedCategory = standardCategories.find((category) => category.id === categoryId) ?? null;
-  const assignableMechanics = useMemo(
-    () => (mechanicPages?.flatMap((page) => page.items) ?? []).filter(
-      (mechanic) => mechanic.active && mechanic.capabilities.includes(AppCapability.MECHANIC_STANDARD),
-    ),
-    [mechanicPages],
-  );
-
-  const selectedCatalogJobIds = useMemo(
-    () => jobs.flatMap((job) => (job.catalogJobId ? [job.catalogJobId] : [])),
-    [jobs],
-  );
 
   const resultsOpen = searchOpen && Boolean(debouncedTruckQuery) && !selectedTruck;
-  const primaryCategoryId = jobs[0]?.categoryId ?? categoryId;
   const canSubmit = Boolean(selectedTruck)
     && openWorkOrderCheck === 'verified'
-    && jobs.length > 0
     && !selectedTruck?.openWorkOrder
     && !busy;
 
   useEffect(() => {
     setActiveResult(trucks.length ? 0 : -1);
   }, [trucks]);
-
-  useEffect(() => {
-    setJobQuery('');
-    setCustomName('');
-  }, [categoryId]);
 
   function selectTruck(item: TruckDto) {
     const requestId = ++openWorkOrderRequest.current;
@@ -191,65 +144,8 @@ export function AdminNewWorkOrder({
     setTruckQuery('');
     setSearchOpen(false);
     setOpenWorkOrderCheck('idle');
-    setActiveStep(1);
   }
 
-  function toggleCatalogJob(job: CatalogJobDto) {
-    if (!selectedCategory) return;
-    setJobs((current) => {
-      if (current.some((draft) => draft.catalogJobId === job.id)) {
-        return current.filter((draft) => draft.catalogJobId !== job.id);
-      }
-      return [...current, {
-        key: crypto.randomUUID(),
-        catalogJobId: job.id,
-        categoryId: selectedCategory.id,
-        categoryName: selectedCategory.name,
-        displayName: job.displayName,
-      }];
-    });
-  }
-
-  function addCustomJob() {
-    if (!selectedCategory || !customName.trim()) return;
-    const name = customName.trim();
-    setJobs((current) => {
-      if (current.some((draft) => !draft.catalogJobId && normalizeJobName(draft.displayName) === normalizeJobName(name))) {
-        return current;
-      }
-      return [...current, {
-        key: crypto.randomUUID(),
-        categoryId: selectedCategory.id,
-        categoryName: selectedCategory.name,
-        displayName: name,
-        customDescription: name,
-      }];
-    });
-    setCustomName('');
-  }
-
-  function setJobAssignee(key: string, mechanicId: string) {
-    setJobs((current) => current.map((job) => (
-      job.key === key
-        ? { ...job, assignedMechanicId: mechanicId || undefined }
-        : job
-    )));
-  }
-
-  function removeJob(key: string) {
-    setJobs((current) => current.filter((item) => item.key !== key));
-    if (jobs.length === 1 && activeStep === 3) setActiveStep(2);
-  }
-
-  const jobsByCategory = useMemo(() => {
-    const groups = new Map<string, DraftJob[]>();
-    for (const job of jobs) {
-      const list = groups.get(job.categoryName) ?? [];
-      list.push(job);
-      groups.set(job.categoryName, list);
-    }
-    return [...groups.entries()];
-  }, [jobs]);
 
   async function submit() {
     if (!canSubmit || !selectedTruck) return;
@@ -258,16 +154,9 @@ export function AdminNewWorkOrder({
     try {
       const created = await createAdminWorkOrder({
         truckId: selectedTruck.truck.id,
-        primaryCategoryId,
         priority,
         notes: notes.trim() || undefined,
-        jobs: jobs.map((job) => ({
-          catalogJobId: job.catalogJobId,
-          categoryId: job.categoryId,
-          displayName: job.displayName,
-          customDescription: job.customDescription,
-          assignedMechanicId: job.assignedMechanicId,
-        })),
+        jobs: [],
       });
       await mutate(
         isAdminWorkOrdersListKey,
@@ -296,43 +185,15 @@ export function AdminNewWorkOrder({
   }
 
   return (
-    <div className="flex flex-col gap-4 pb-24 xl:pb-0">
+    <div className="flex max-w-2xl flex-col gap-4">
       <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
       <AdminPageHeader eyebrow={messages.eyebrow} title={messages.newWorkOrderTitle} subtitle={messages.newWorkOrderSubtitle} />
 
-      <ol className="grid grid-cols-3 gap-2" aria-label={messages.createFlowLabel}>
-        <FlowStep
-          number={1}
-          label={messages.createStepTruck}
-          state={activeStep === 1 ? 'current' : 'complete'}
-          messages={messages}
-          onClick={() => setActiveStep(1)}
-        />
-        <FlowStep
-          number={2}
-          label={messages.createStepWork}
-          state={activeStep === 2 ? 'current' : activeStep > 2 ? 'complete' : 'upcoming'}
-          messages={messages}
-          disabled={!selectedTruck || Boolean(selectedTruck.openWorkOrder)}
-          onClick={() => setActiveStep(2)}
-        />
-        <FlowStep
-          number={3}
-          label={messages.createStepReview}
-          state={activeStep === 3 ? 'current' : 'upcoming'}
-          messages={messages}
-          disabled={!selectedTruck || jobs.length === 0 || Boolean(selectedTruck.openWorkOrder)}
-          onClick={() => setActiveStep(3)}
-        />
-      </ol>
-
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <Card className={cn(activeStep !== 1 && 'hidden xl:block')}>
-            <CardHeader>
-              <CardTitle>{messages.createStepTruck}</CardTitle>
-              <CardDescription>{messages.selectTruckHelp}</CardDescription>
-            </CardHeader>
+      <Card>
+        <CardHeader>
+          <CardTitle>{messages.createStepTruck}</CardTitle>
+          <CardDescription>{messages.selectTruckHelp}</CardDescription>
+        </CardHeader>
             <CardContent>
               {selectedTruck ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3 py-3 text-sm">
@@ -445,242 +306,41 @@ export function AdminNewWorkOrder({
                 </div>
               ) : null}
             </CardContent>
-          </Card>
+      </Card>
 
-          <Card className={cn(activeStep !== 2 && 'hidden xl:block')}>
-            <CardHeader>
-              <CardTitle>{messages.createStepWork}</CardTitle>
-              <CardDescription>{messages.addJobsHelp}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              {categoriesError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
-              {categoriesLoading && !categories ? (
-                <p className="text-sm text-muted-foreground">{messages.loadingCategories}</p>
-              ) : null}
-              {!categoriesLoading && !categoriesError && standardCategories.length === 0 ? (
-                <EmptyState>{messages.noCategoriesAvailable}</EmptyState>
-              ) : null}
-
-              {standardCategories.length ? (
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs font-medium text-muted-foreground">{messages.category}</span>
-                  <Select
-                    aria-label={messages.category}
-                    value={categoryId}
-                    onChange={(event) => setCategoryId(event.target.value)}
-                  >
-                    <option value="">{messages.selectCategoryPlaceholder}</option>
-                    {standardCategories.map((category) => (
-                      <option key={category.id} value={category.id}>{category.name}</option>
-                    ))}
-                  </Select>
-                </label>
-              ) : null}
-
-              {selectedCategory ? (
-                <div className="flex flex-col gap-3">
-                  <CategoryJobList
-                    categoryName={selectedCategory.name}
-                    jobs={catalogJobs ?? []}
-                    isLoading={jobsLoading}
-                    error={Boolean(jobsError)}
-                    query={jobQuery}
-                    onQueryChange={setJobQuery}
-                    selectedIds={selectedCatalogJobIds}
-                    onSelect={toggleCatalogJob}
-                    copy={{
-                      searchLabel: messages.searchJobsLabel,
-                      loading: messages.loadingJobs,
-                      loadError: messages.loadError,
-                      emptyCategory: messages.noJobsInCategory,
-                      emptyCategoryHint: messages.emptyCategoryCustomHint,
-                      noMatches: messages.noMatchingCategoryJobs,
-                      listLabel: messages.categoryJobsLabel,
-                      addJob: messages.addCatalogJob,
-                    }}
-                  />
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input
-                      aria-label={messages.customJobPlaceholder}
-                      className="min-w-0 flex-1"
-                      placeholder={messages.customJobPlaceholder}
-                      value={customName}
-                      onChange={(event) => setCustomName(event.target.value)}
-                    />
-                    <Button type="button" variant="outline" disabled={!customName.trim()} onClick={addCustomJob}>
-                      {messages.addCustomJob}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <EmptyState>{messages.chooseCategoryFirst}</EmptyState>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className={cn('min-w-0 xl:sticky xl:top-4', activeStep !== 3 && 'hidden xl:block')}>
-          <CardHeader>
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <CardTitle>{messages.createStepReview}</CardTitle>
-                <CardDescription>{messages.reviewWorkOrderHelp}</CardDescription>
-              </div>
-              <Badge variant={jobs.length ? 'secondary' : 'outline'}>
-                {formatCountMessage(jobs.length === 1 ? messages.selectedJobCount : messages.selectedJobsCount, jobs.length)}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {jobs.length ? (
-              <div className="max-h-[38dvh] overflow-y-auto overscroll-contain rounded-xl border">
-                {jobsByCategory.map(([categoryName, group]) => (
-                  <section key={categoryName} className="border-b p-3 last:border-b-0">
-                    <Badge variant="outline">{categoryName}</Badge>
-                    <ul className="mt-2 divide-y">
-                      {group.map((job) => (
-                        <li key={job.key} className="flex flex-col gap-2 py-3 first:pt-1 last:pb-1">
-                          <div className="flex items-start justify-between gap-2 text-sm">
-                            <span className="min-w-0 font-medium">{job.displayName}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="shrink-0"
-                              onClick={() => removeJob(job.key)}
-                            >
-                              {messages.removeJobAction}
-                            </Button>
-                          </div>
-                          <label className="flex flex-col gap-1">
-                            <span className="text-xs font-medium text-muted-foreground">{messages.assignJobOnCreate}</span>
-                            <Select
-                              aria-label={`${messages.assignJobOnCreate}: ${job.displayName}`}
-                              value={job.assignedMechanicId ?? ''}
-                              onChange={(event) => setJobAssignee(job.key, event.target.value)}
-                            >
-                              <option value="">{messages.assignJobPlaceholder}</option>
-                              {assignableMechanics.map((mechanic) => (
-                                <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
-                              ))}
-                            </Select>
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ))}
-              </div>
-            ) : (
-              <EmptyState>{messages.noSelectedJobs}</EmptyState>
-            )}
-            {mechanicsError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-muted-foreground">{messages.priority}</span>
-                <Select aria-label={messages.priority} value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
-                  {Object.values(Priority).map((value) => (
-                    <option key={value} value={value}>{value.toUpperCase()}</option>
-                  ))}
-                </Select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-muted-foreground">{messages.notesOptional}</span>
-                <Textarea
-                  aria-label={messages.notesOptional}
-                  className="min-h-20"
-                  placeholder={messages.notesPlaceholder}
-                  value={notes}
-                  maxLength={2000}
-                  onChange={(event) => setNotes(event.target.value)}
-                />
-              </label>
-            </div>
-            {error ? <InlineAlert>{error}</InlineAlert> : null}
-          </CardContent>
-          <CardFooter className="hidden border-t pt-4 xl:flex">
-            <Button type="button" className="w-full" disabled={!canSubmit} onClick={submit}>
-              {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pb-[calc(0.75rem+var(--app-safe-bottom))] pt-3 backdrop-blur md:left-[var(--admin-aside)] xl:hidden">
-        <div className="mx-auto flex max-w-xl items-center gap-3">
-          <p className="min-w-0 flex-1 text-sm text-muted-foreground">
-            {formatCountMessage(jobs.length === 1 ? messages.selectedJobCount : messages.selectedJobsCount, jobs.length)}
-          </p>
-          {activeStep === 1 ? (
-            <Button
-              type="button"
-              className="shrink-0"
-              disabled={!selectedTruck || openWorkOrderCheck !== 'verified' || Boolean(selectedTruck.openWorkOrder)}
-              onClick={() => setActiveStep(2)}
-            >
-              {messages.continueToWork}
-            </Button>
-          ) : activeStep === 2 ? (
-            <Button
-              type="button"
-              className="shrink-0"
-              disabled={!selectedTruck || jobs.length === 0 || Boolean(selectedTruck.openWorkOrder)}
-              onClick={() => setActiveStep(3)}
-            >
-              {messages.reviewWorkOrderAction}
-            </Button>
-          ) : (
-            <Button type="button" className="shrink-0" disabled={!canSubmit} onClick={submit}>
-              {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
-            </Button>
-          )}
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{messages.createDetailsTitle}</CardTitle>
+          <CardDescription>{messages.createMandatoryStepsHelp}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted-foreground">{messages.priority}</span>
+            <Select aria-label={messages.priority} value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
+              {Object.values(Priority).map((value) => (
+                <option key={value} value={value}>{value.toUpperCase()}</option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex flex-col gap-1 sm:col-span-2">
+            <span className="text-xs font-medium text-muted-foreground">{messages.notesOptional}</span>
+            <Textarea
+              aria-label={messages.notesOptional}
+              className="min-h-20"
+              placeholder={messages.notesPlaceholder}
+              value={notes}
+              maxLength={2000}
+              onChange={(event) => setNotes(event.target.value)}
+            />
+          </label>
+          {error ? <InlineAlert className="sm:col-span-2">{error}</InlineAlert> : null}
+        </CardContent>
+        <CardFooter className="border-t pt-4">
+          <Button type="button" className="w-full" disabled={!canSubmit} onClick={submit}>
+            {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
-  );
-}
-
-function FlowStep({
-  number,
-  label,
-  state,
-  messages,
-  disabled = false,
-  onClick,
-}: {
-  number: number;
-  label: string;
-  state: 'complete' | 'current' | 'upcoming';
-  messages: AdminMessages;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  const stateLabel = state === 'complete'
-    ? messages.createStepComplete
-    : state === 'current'
-      ? messages.createStepCurrent
-      : messages.createStepUpcoming;
-
-  return (
-    <li className="min-w-0">
-      <button
-        type="button"
-        className={cn(
-          'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-xl border bg-card px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-          state === 'current' && 'border-primary bg-primary/10',
-        )}
-        aria-current={state === 'current' ? 'step' : undefined}
-        aria-label={`${number}. ${label}: ${stateLabel}`}
-        disabled={disabled}
-        onClick={onClick}
-      >
-        <Badge variant={state === 'complete' ? 'secondary' : state === 'current' ? 'default' : 'outline'}>{number}</Badge>
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-medium">{label}</span>
-          <span className="hidden text-xs text-muted-foreground sm:block">{stateLabel}</span>
-        </span>
-      </button>
-    </li>
   );
 }
