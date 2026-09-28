@@ -1,10 +1,11 @@
 import { CatalogStatus, MechanicMode } from '@ltl-shop/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ADMIN_READ_TIMEOUT_MS } from './api';
+import { ADMIN_READ_TIMEOUT_MS, ApiError } from './api';
 import {
   ADMIN_CATALOG_JOBS_PATH,
   ADMIN_MECHANICS_COLLECTION_PATH,
   adminMechanicsPageKey,
+  adminReadRetryPending,
   adminReadFetcher,
   createAdminCatalogJob,
   createAdminMechanic,
@@ -33,6 +34,15 @@ describe('admin read loaders', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it('keeps a first transient failure loading until its retry settles (LTR-84)', () => {
+    const timeout = new ApiError('slow', 0, null, 'timeout');
+    expect(adminReadRetryPending(timeout, undefined, 1)).toBe(true);
+    expect(adminReadRetryPending(timeout, undefined, 2)).toBe(false);
+    expect(adminReadRetryPending(new ApiError('nope', 500, null, 'http'), undefined, 1)).toBe(false);
+    expect(adminReadRetryPending(timeout, { ok: true }, 1)).toBe(false);
+    expect(adminReadRetryPending(undefined, undefined, 0)).toBe(false);
   });
 
   it('treats a missing Bearer token as still loading so Admin does not paint LoadFailure', () => {
