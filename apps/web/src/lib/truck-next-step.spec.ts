@@ -12,7 +12,7 @@ describe('truckNextStepText (LTR-159)', () => {
     expect(truckNextStepText({ kind: 'add_missing_steps', missingLanes: [WorkPlanJobLane.PM, WorkPlanJobLane.QUALITY_CHECK] }, en)).toBe('This Work Order is missing: PM, Quality Check.');
     expect(truckNextStepText({ kind: 'assign', jobName: 'Alignment' }, es)).toBe('Nadie asignado a Alignment.');
     expect(truckNextStepText({ kind: 'work', jobName: 'PM A Service', remaining: 3 }, en)).toBe('3 Jobs left · next: PM A Service');
-    expect(truckNextStepText({ kind: 'close' }, es)).toContain('Cierra la Work Order');
+    expect(truckNextStepText({ kind: 'close' }, es)).toContain('Cierra el Work Order');
     expect(truckNextStepText(null, en)).toBeNull();
   });
 

@@ -1,7 +1,7 @@
 # Glossary (EN / ES)
 
 **Classification:** CURRENT STATE
-**Updated:** 2026-09-27 (LTR-152)
+**Updated:** 2026-09-29 (LTR-170)
 
 Domain words stay in English in much of the Admin ES catalog (Work Order,
 Truck, Job, Jobs, Incoming Trucks, PM). Mechanic ES copy sometimes uses
@@ -16,11 +16,12 @@ consistent with `YARD_DATA_BOUNDARY_COPY` for Yard Phase 1 cards and with
 | Standard Mechanic | Mecánico Standard / Mi trabajo asignado | Assigned Standard execution at `/mechanic/standard` |
 | PM Mechanic | Mecánico de PM | Preventive-maintenance workspace at `/mechanic/pm` |
 | PM / PM service | PM / servicio de PM | Specialized Work Order: create starts work |
-| Work Order | Work Order | One open intervention per Truck |
+| Work Order | Work Order (masculine: el Work Order, abierto, pausado) | One open intervention per Truck |
 | Job | Job | Unit of work on a Standard Work Order |
-| Category | Category / Categoría | Job Catalog grouping (Brakes, PM, …) |
+| Category | Categoría | Job Catalog grouping (Brakes, PM, …). "Job Catalog" stays English |
+| Alias | Alias | Other names a catalog Job is found by (plural stays "Alias") |
 | Job Catalog | Job Catalog | Read-only Admin catalog |
-| Truck | Truck (Admin) / unidad (mechanic ES) | Fleet asset |
+| Truck | Truck (Admin, including the nav and page title) / unidad (mechanic ES) | Fleet asset |
 | Mechanic | Mecánico | Assigned technician |
 | Manager | Manager / Shop Manager | Plans Standard work; `work_orders.manage` |
 | Yard Operations | Operaciones del patio | Readiness board/list at `/admin/yard-operations` |
@@ -60,9 +61,22 @@ glossary approved in LTR-118. Catalog keys live in both `admin-messages.ts` and
 | Truck leaves the Shop | Return to Service | — | — |
 | Job without an owner | Unassigned / Sin asignar | `jobUnassigned` | "inherits the Work Order team" |
 
-§7 writes the paused Work Order as "Pausada". The ES Work Order status catalog
-signed in LTR-23 is masculine (Creado, Completado, Cancelado), so the chip stays
-"Pausado" until that catalog is changed as a whole.
+## Work Order is masculine (LTR-170)
+
+Decided 2026-09-29: in Spanish, Work Order is masculine everywhere, matching the
+status catalog signed in LTR-23 (Creado, Pausado, Completado, Cancelado). Write
+"el Work Order", "un Work Order", "este Work Order", "Nuevo Work Order", "Work
+Order abierto / pausado / completado", "Los Work Orders abiertos", and pronouns
+"ábrelo", "termínalo". Dashboard metrics that describe Work Orders agree with
+it too ("Creados", "Completados hoy"). §7 of FLUJOS_Y_MEJORAS wrote "Pausada";
+that is superseded.
+
+## Mandatory step names (LTR-170)
+
+The Truck, the Work Plan and New Work Order name the mandatory steps the same
+way: Alineación, Detallado, Control de calidad (EN: Alignment, Detailing,
+Quality Check). Catalog Job names stay as stored ("Job Alignment",
+"Job Detailing"), because they are data.
 
 Retired wording (removed from the UI): "inherits the Work Order team",
 "Mandatory for every yard Truck" (now "Mandatory steps" / "Pasos

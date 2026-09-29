@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Button, LoadFailure, PageHeader } from '@/components/ui';
+import { useShopLocale } from '@/lib/locale-context';
 
 export default function RouteError({
   error,
@@ -11,17 +12,19 @@ export default function RouteError({
   reset: () => void;
 }) {
   void error;
+  // LTR-170: the root layout (and its locale provider) still wraps a route error, so it follows the language.
+  const { messages } = useShopLocale();
 
   return (
     <div>
       <PageHeader
         className="mb-6"
-        title="Something went wrong"
-        subtitle="This screen could not be loaded. Your saved work has not been changed."
+        title={messages.errorScreenTitle}
+        subtitle={messages.errorScreenSubtitle}
       />
-      <LoadFailure message="Try loading this screen again." onRetry={reset} retryLabel="Retry screen" />
+      <LoadFailure message={messages.errorScreenRetryMessage} onRetry={reset} retryLabel={messages.errorScreenRetry} />
       <Button asChild variant="secondary" className="mt-3 w-full">
-        <Link href="/">Back to Home</Link>
+        <Link href="/">{messages.backToHome}</Link>
       </Button>
     </div>
   );

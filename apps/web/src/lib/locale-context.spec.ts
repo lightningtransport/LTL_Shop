@@ -42,7 +42,8 @@ describe('shop locale catalogs', () => {
   it('keeps English and Spanish Admin New WO job-picker keys in parity', () => {
     expect(Object.keys(getAdminMessages('en'))).toEqual(Object.keys(getAdminMessages('es')));
     expect(getAdminMessages('en').noJobsInCategory).toMatch(/Category/);
-    expect(getAdminMessages('es').noJobsInCategory).toMatch(/Category/);
+    // LTR-170: Spanish says categoría (glossary).
+    expect(getAdminMessages('es').noJobsInCategory).toMatch(/categoría/);
     expect(getAdminMessages('en').addCatalogJob).toBe('Add');
     expect(getAdminMessages('es').addCatalogJob).toBe('Agregar');
     expect(getAdminMessages('en').jobPickerCategoryLabel).toBe('Job Category');
@@ -112,7 +113,8 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('en').workStartedSuccess).toBe('Work started.');
     // LTR-155 / D17: only the Manager resolves a blocker.
     expect(getShopCopy('es').blockerReportedSuccess).toMatch(/Manager/);
-    expect(getShopCopy('es').pausedJobsTitle).toBe('Pausada por el Manager');
+    // LTR-170: Work Order is masculine in Spanish (Creado, Pausado, Completado).
+    expect(getShopCopy('es').pausedJobsTitle).toBe('Pausados por el Manager');
     expect(getAdminMessages('en').createWorkOrderSuccess).toContain('{id}');
     expect(getAdminMessages('es').createWorkOrderSuccess).toContain('{id}');
     expect(getShopCopy('en').pauseWorkOrder).toBe('Pause Work Order');

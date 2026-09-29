@@ -304,7 +304,7 @@ function WorkOrderCard({
           <p className="text-sm text-shop-muted">
             {messages.workOrder} {wo.displayId}
             {' · '}
-            {!isPm ? `${messages.priority[wo.priority] ?? wo.priority} · ` : ''}
+            {/* LTR-170: priority is the badge on the right; the line does not repeat it. */}
             {mode === 'paused'
               ? pauseLabel(wo.currentPauseReason, messages.pauseReason)
               : messages.status[wo.workOrderStatus ?? wo.status] ?? statusLabel(wo.workOrderStatus ?? wo.status, messages.status)}

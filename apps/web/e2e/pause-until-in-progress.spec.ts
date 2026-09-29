@@ -83,7 +83,7 @@ test('Admin Pause stays disabled on Created and enables on In Progress', async (
 
   await switchLanguage(page, 'es');
   await expect(page.getByRole('button', { name: 'Pausar Work Order' })).toBeDisabled();
-  await expect(page.getByText('La pausa está disponible cuando esta Work Order está En progreso.')).toBeVisible();
+  await expect(page.getByText('La pausa está disponible cuando este Work Order está En progreso.')).toBeVisible();
 
   await page.goto(`/admin/work-orders/${IN_PROGRESS_ID}`);
   const enabledPause = page.getByRole('button', { name: 'Pausar Work Order' });
@@ -92,7 +92,7 @@ test('Admin Pause stays disabled on Created and enables on In Progress', async (
   await expect(enabledPause).toBeDisabled();
   await page.getByLabel('Motivo de pausa').selectOption('waiting_for_parts');
   await expect(enabledPause).toBeEnabled();
-  await expect(page.getByText('La pausa está disponible cuando esta Work Order está En progreso.')).toHaveCount(0);
+  await expect(page.getByText('La pausa está disponible cuando este Work Order está En progreso.')).toHaveCount(0);
 });
 
 test('PM mechanic Pause stays disabled until the service is In Progress', async ({ page }) => {

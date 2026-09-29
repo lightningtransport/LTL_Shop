@@ -20,6 +20,11 @@ type Copy = {
   home: string;
   backToHome: string;
   retry: string;
+  /** LTR-170: the route error screen (app/error.tsx). */
+  errorScreenTitle: string;
+  errorScreenSubtitle: string;
+  errorScreenRetryMessage: string;
+  errorScreenRetry: string;
   signIn: string;
   signInHint: string;
   email: string;
@@ -251,6 +256,10 @@ const copy: Record<ShopLocale, Copy> = {
   en: {
     locale: 'en', language: 'Language', switchTo: 'Switch to Spanish', home: 'Home',
     backToHome: 'Back to Home', retry: 'Try again', signIn: 'Sign in',
+    errorScreenTitle: 'Something went wrong',
+    errorScreenSubtitle: 'This screen could not be loaded. Your saved work has not been changed.',
+    errorScreenRetryMessage: 'Try loading this screen again.',
+    errorScreenRetry: 'Retry screen',
     signInHint: 'Sign in with the email linked to the Shop.', email: 'Email', password: 'Password',
     resetPassword: 'Reset password', devLogin: 'Dev login (local bypass)',
     newWorkOrder: 'New Work Order', newPmService: 'New PM service',
@@ -479,13 +488,17 @@ const copy: Record<ShopLocale, Copy> = {
   es: {
     locale: 'es', language: 'Idioma', switchTo: 'Cambiar a inglés', home: 'Inicio',
     backToHome: 'Volver a Inicio', retry: 'Reintentar', signIn: 'Iniciar sesión',
+    errorScreenTitle: 'Algo salió mal',
+    errorScreenSubtitle: 'No se pudo cargar esta pantalla. Tu trabajo guardado no cambió.',
+    errorScreenRetryMessage: 'Intenta cargar esta pantalla de nuevo.',
+    errorScreenRetry: 'Reintentar pantalla',
     signInHint: 'Inicia sesión con el correo vinculado al Shop.', email: 'Correo electrónico', password: 'Contraseña',
     resetPassword: 'Restablecer contraseña', devLogin: 'Acceso de desarrollo (bypass local)',
     newWorkOrder: 'Nuevo Work Order', newPmService: 'Nuevo servicio de PM',
     workOrder: 'Work Order',
     workOrderHint: 'Ingresa la información requerida. Crear guarda el Work Order; Iniciar trabajo comienza el registro de tiempo.',
     pmServiceHint: 'Selecciona una unidad para crear un servicio de PM.', truck: 'Unidad',
-    searchTruck: 'Número de unidad, ej. 905', noTrucks: 'No se encontraron unidades.', truckOpenWorkOrder: (displayId) => `${displayId} abierta`,
+    searchTruck: 'Número de unidad, ej. 905', noTrucks: 'No se encontraron unidades.', truckOpenWorkOrder: (displayId) => `${displayId} abierto`,
     checkingOpenWorkOrder: 'Verificando si hay un Work Order abierto.', retryWorkOrderCheck: 'Reintentar la verificación del Work Order',
     truckInformation: 'Información de la unidad', selectTruck: 'Selecciona una unidad para ver sus detalles.',
     vin: 'VIN', lastReportedLocation: 'Ubicación reportada', locationUpdatedOn: 'Reportada el',
@@ -503,7 +516,7 @@ const copy: Record<ShopLocale, Copy> = {
     noPausedJobs: 'No hay Work Orders en pausa. El trabajo pausado aparecerá aquí hasta que se reanude.',
     noPausedPmServices: 'No hay servicios de PM pausados. El trabajo pausado aparecerá aquí hasta que se reanude.',
     activeJobsTitle: 'En curso',
-    pausedJobsTitle: 'Pausada por el Manager',
+    pausedJobsTitle: 'Pausados por el Manager',
     pmActiveTitle: 'Servicios de PM activos',
     pmPausedTitle: 'Servicios de PM pausados',
     notes: 'Notas',
@@ -590,7 +603,7 @@ const copy: Record<ShopLocale, Copy> = {
     workRequestLabel: 'Pedido de trabajo',
     workRequestPending: 'Esperando al Manager',
     workRequestHandledBy: (name) => `Atendido por ${name}`,
-    notesClosed: 'Esta Work Order está cerrada. Las notas son de solo lectura.',
+    notesClosed: 'Este Work Order está cerrado. Las notas son de solo lectura.',
     requestWorkHint: 'Pedir trabajo le llega a tu Manager, que puede agregarlo como Job. Las notas nunca se sobrescriben.',
     reportingBlocker: 'Reportando…',
     blockerReportedSuccess: 'Bloqueo reportado. El Manager lo resolverá.',
@@ -603,7 +616,7 @@ const copy: Record<ShopLocale, Copy> = {
     dismissNotice: 'Cerrar',
     closeDialog: 'Cerrar',
     pauseWorkOrder: 'Pausar Work Order',
-    pauseUnavailableUntilInProgress: 'La pausa está disponible cuando esta Work Order está En progreso.',
+    pauseUnavailableUntilInProgress: 'La pausa está disponible cuando este Work Order está En progreso.',
     workOrderAction: (action, displayId, truckNumber) => `${action} unidad ${truckNumber}, Work Order ${displayId}`,
     pmServiceLoadError: 'No se pudieron cargar los detalles del servicio de PM.',
     loadingPmService: 'Cargando detalles del servicio de PM…',
@@ -661,7 +674,7 @@ const copy: Record<ShopLocale, Copy> = {
     truckTitle: (truckNumber) => `Unidad ${truckNumber}`,
     navMyWork: 'Mi trabajo',
     navTrucks: 'Unidades',
-    navCompleted: 'Completado',
+    navCompleted: 'Completados',
     mechanicNavLabel: 'Espacio del mecánico',
     mechanicTrucksTitle: 'Buscar una unidad',
     mechanicTrucksSubtitle: 'Busca por número de unidad para ver su historial de reparaciones.',
