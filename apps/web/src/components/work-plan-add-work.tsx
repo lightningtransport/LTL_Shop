@@ -211,7 +211,7 @@ export function WorkPlanAddWork({
                 {/* D14: the PM job goes to a PM mechanic and Quality Check has no owner; both are set on the plan. */}
                 {job.categoryName !== 'PM' && job.categoryName !== 'Quality Check' ? (
                   <label className="flex items-center gap-2 sm:ml-auto">
-                    <span className="text-xs font-medium text-muted-foreground">{messages.workPlanJobOwnerLabel}</span>
+                    <span className="shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{messages.workPlanJobOwnerLabel}</span>
                     <Select
                       aria-label={fillPlaceholders(messages.workPlanJobOwnerFor, { job: job.displayName })}
                       className="w-full sm:w-44"
