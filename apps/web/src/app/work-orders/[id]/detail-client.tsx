@@ -648,6 +648,8 @@ export default function WorkOrderDetailPage() {
             {busy ? messages.reportingBlocker : messages.reportBlocker}
           </Button>
         </div>
+        {/* LTR-169: a disabled button says why. */}
+        {!pauseReason ? <p className="mt-3 text-sm text-muted-foreground">{messages.blockerReasonRequiredHint}</p> : null}
       </Modal>
     </div>
   );

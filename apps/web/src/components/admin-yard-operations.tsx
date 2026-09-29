@@ -301,9 +301,13 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           <div className="overflow-x-auto rounded-xl border bg-muted/40 p-2">
             <div
               className="grid gap-2"
+              // LTR-169: an empty phase only needs its title and "no trucks"; the space goes to phases with cards,
+              // so a 1366px screen fits the board without cutting off Truck numbers or the last column.
               style={{
-                gridTemplateColumns: `repeat(${boardPhases.length}, minmax(160px, 1fr))`,
-                minWidth: `${boardPhases.length * 170}px`,
+                gridTemplateColumns: boardPhases
+                  .map((phase) => (items.some((item) => item.phase === phase) ? 'minmax(172px, 1.6fr)' : 'minmax(92px, 1fr)'))
+                  .join(' '),
+                minWidth: `${boardPhases.reduce((sum, phase) => sum + (items.some((item) => item.phase === phase) ? 180 : 100), 0)}px`,
               }}
             >
               {boardPhases.map((phase) => {
@@ -362,7 +366,8 @@ function YardFilterFields({
   compact?: boolean;
   boardPhases: ReadonlyArray<YardBoardColumnPhase>;
 }) {
-  const fieldClass = compact ? 'min-w-0 flex-1 space-y-1' : 'space-y-1';
+  // LTR-169: block, or the sheet's space-y never reaches the inline <label> (4px between fields).
+  const fieldClass = compact ? 'min-w-0 flex-1 space-y-1' : 'block space-y-2';
   const labelClass = compact ? 'block text-xs font-medium' : 'text-sm font-medium';
   const controlClass = compact ? 'min-h-9 px-3 pr-9' : undefined;
   const render = (key: keyof YardOperationsFilters) => (

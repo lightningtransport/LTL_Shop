@@ -145,6 +145,8 @@ type Copy = {
   notesClosed: string;
   requestWorkHint: string;
   reportingBlocker: string;
+  /** LTR-169: why Report blocker is disabled. */
+  blockerReasonRequiredHint: string;
   blockerReportedSuccess: string;
   blockerReason: string;
   jobFinishTitle: string;
@@ -363,6 +365,7 @@ const copy: Record<ShopLocale, Copy> = {
     notesClosed: 'This Work Order is closed. Notes are read-only.',
     requestWorkHint: 'Request Work goes to your Manager, who can add it as a Job. Notes are never overwritten.',
     reportingBlocker: 'Reporting…',
+    blockerReasonRequiredHint: 'Choose a reason to report the blocker.',
     blockerReportedSuccess: 'Blocker reported. The Manager will resolve it.',
     blockerReason: 'Blocker reason',
     jobFinishTitle: 'Complete job',
@@ -593,6 +596,7 @@ const copy: Record<ShopLocale, Copy> = {
     notesClosed: 'Esta Work Order está cerrada. Las notas son de solo lectura.',
     requestWorkHint: 'Pedir trabajo le llega a tu Manager, que puede agregarlo como Job. Las notas nunca se sobrescriben.',
     reportingBlocker: 'Reportando…',
+    blockerReasonRequiredHint: 'Elige un motivo para reportar el bloqueo.',
     blockerReportedSuccess: 'Bloqueo reportado. El Manager lo resolverá.',
     blockerReason: 'Motivo del bloqueo',
     jobFinishTitle: 'Completar Job',

@@ -482,6 +482,10 @@ const messages = {
     noMechanicsMatch: 'No mechanics match these filters.',
     openAssignments: 'Open Work Orders',
     capabilitiesLabel: 'Capabilities',
+    // LTR-169: people-facing names for capability keys.
+    capabilityAdmin: 'Shop Admin',
+    capabilityYard: 'Yard',
+    capabilityWorkOrders: 'Work Orders',
     mechanicNotFound: 'This mechanic could not be found.',
     backToMechanics: 'Back to Mechanics',
     completedJobsCount: 'Completed Jobs',
@@ -1216,6 +1220,9 @@ const messages = {
     noMechanicsMatch: 'Ningún mecánico coincide con estos filtros.',
     openAssignments: 'Work Orders abiertos',
     capabilitiesLabel: 'Capacidades',
+    capabilityAdmin: 'Shop Admin',
+    capabilityYard: 'Patio',
+    capabilityWorkOrders: 'Work Orders',
     mechanicNotFound: 'No se encontró este mecánico.',
     backToMechanics: 'Volver a Mecánicos',
     completedJobsCount: 'Jobs completados',
@@ -1492,6 +1499,21 @@ export function adminPauseReasonLabel(reason: string, catalog: AdminMessages): s
   return reason in ADMIN_PAUSE_REASON_KEY
     ? catalog[ADMIN_PAUSE_REASON_KEY[reason as keyof typeof ADMIN_PAUSE_REASON_KEY]]
     : reason;
+}
+
+const ADMIN_CAPABILITY_KEY = {
+  'mechanic.standard': 'mechanicStandard',
+  'mechanic.pm': 'mechanicPm',
+  'admin.access': 'capabilityAdmin',
+  'yard.operations.manage': 'capabilityYard',
+  'work_orders.manage': 'capabilityWorkOrders',
+} as const;
+
+/** LTR-169: "Standard", "PM", "Shop Admin"… instead of keys like mechanic.standard. Unknown keys pass through. */
+export function adminCapabilityLabel(capability: string, catalog: AdminMessages): string {
+  return capability in ADMIN_CAPABILITY_KEY
+    ? catalog[ADMIN_CAPABILITY_KEY[capability as keyof typeof ADMIN_CAPABILITY_KEY]]
+    : capability;
 }
 
 export function getAdminMessages(locale: AdminLocale): AdminMessages {

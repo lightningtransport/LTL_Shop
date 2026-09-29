@@ -102,12 +102,15 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await createDialog.getByLabel('PM').check();
   await createDialog.getByRole('button', { name: 'Create mechanic' }).click();
   await expect(page.getByText('Mechanic created.')).toBeVisible();
-  await expect(page.getByRole('row', { name: /Luz Mechanic/ })).toContainText('mechanic.pm');
+  await expect(page.getByRole('row', { name: /Luz Mechanic/ })).toContainText('PM');
+  await expect(page.getByRole('row', { name: /Luz Mechanic/ })).not.toContainText('mechanic.pm');
 
   // LTR-160: inactive mechanics are hidden until "Show inactive" is applied.
   await expect(page.getByRole('row', { name: /Retired Mechanic/ })).toHaveCount(0);
-  await page.getByLabel('Show inactive').check();
-  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await page.getByRole('search').getByRole('button', { name: /^Filters( [0-9]+)?$/ }).click();
+  const filtersSheet = page.getByRole('dialog', { name: 'Filters' });
+  await filtersSheet.getByLabel('Show inactive').check();
+  await filtersSheet.getByRole('button', { name: 'Apply filters' }).click();
   await expect(page).toHaveURL(/includeInactive=true/);
   await page.getByRole('row', { name: /Retired Mechanic/ }).getByRole('button', { name: 'Activate' }).click();
   const activateDialog = page.getByRole('dialog');

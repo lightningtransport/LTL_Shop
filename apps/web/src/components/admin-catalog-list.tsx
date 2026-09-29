@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
 import { AdminWriteTip } from './admin-write-tip';
-import { PageHeader, Badge, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { DataTable, PageHeader, Badge, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -47,31 +47,28 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
         </EmptyState>
       ) : null}
       {items.length ? (
-        <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[40rem] text-left text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="p-3 font-medium">{messages.catalogCategoryColumn}</th>
-                <th className="p-3 font-medium">{messages.catalogJobsColumn}</th>
-                <th className="p-3 font-medium">{messages.catalogInactiveJobs}</th>
-                <th className="p-3 font-medium">{messages.catalogAliasesColumn}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="p-3">
-                    <Link className="tap-inline font-semibold text-primary hover:underline" href={`/admin/catalog/categories/${item.id}`}>{item.name}</Link>
-                    {item.status === CatalogStatus.INACTIVE ? <Badge variant="secondary" className="ml-2">{messages.catalogInactive}</Badge> : null}
-                  </td>
-                  <td className="p-3">{item.activeJobCount}</td>
-                  <td className="p-3 text-muted-foreground">{item.inactiveJobCount}</td>
-                  <td className="p-3 text-muted-foreground">{item.aliasCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          items={items}
+          caption={messages.catalogTitle}
+          getKey={(item) => item.id}
+          getRowLabel={(item) => item.name}
+          columns={[
+            {
+              key: 'category',
+              header: messages.catalogCategoryColumn,
+              primary: true,
+              cell: (item) => (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link className="tap-inline font-semibold text-primary hover:underline" href={`/admin/catalog/categories/${item.id}`}>{item.name}</Link>
+                  {item.status === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}
+                </div>
+              ),
+            },
+            { key: 'jobs', header: messages.catalogJobsColumn, cell: (item) => <span>{item.activeJobCount}</span> },
+            { key: 'inactive', header: messages.catalogInactiveJobs, cell: (item) => <span className="text-muted-foreground">{item.inactiveJobCount}</span> },
+            { key: 'aliases', header: messages.catalogAliasesColumn, cell: (item) => <span className="text-muted-foreground">{item.aliasCount}</span> },
+          ]}
+        />
       ) : null}
     </div>
   );

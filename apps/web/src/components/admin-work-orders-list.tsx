@@ -165,7 +165,8 @@ function WorkOrderFilterFields({
   onChange: <K extends keyof AdminWorkOrdersFilters>(key: K, value: AdminWorkOrdersFilters[K]) => void;
   compact?: boolean;
 }) {
-  const fieldClass = compact ? 'min-w-0 flex-1 space-y-1' : 'space-y-1';
+  // LTR-169: block, or the sheet's space-y never reaches the inline <label> (4px between fields).
+  const fieldClass = compact ? 'min-w-0 flex-1 space-y-1' : 'block space-y-2';
   const labelClass = compact ? 'block truncate text-xs font-medium' : 'text-sm font-medium';
   const controlClass = compact ? 'min-h-9 px-3 pr-9' : undefined;
 
