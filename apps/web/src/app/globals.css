@@ -130,9 +130,10 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
-/* iOS home-screen webview: paint the splash color immediately so the shell is not a blank white hang. */
+/* iOS home-screen webview: paint the theme background at once, so opening the installed app never flashes a
+   color from the other theme (LTR-171: it used to paint near-black under the light theme). */
 html[data-display='standalone'] {
-  background-color: #0f1720;
+  background-color: var(--background);
   min-height: 100%;
 }
 

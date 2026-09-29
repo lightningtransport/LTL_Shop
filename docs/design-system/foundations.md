@@ -114,6 +114,20 @@ Buttons also use `whitespace-nowrap`; if an action group does not fit, the
 group wraps or stacks. Individual action labels must never be allowed to form
 an accidental two-line button.
 
+## Installed app (LTR-171)
+
+Mechanics and managers install the web app on the phone's home screen.
+
+- **Name**: "Lightning Shop" (`name`), "LTL Shop" under the icon (`short_name`); one app for every role.
+- **Icon**: the green bolt from `public/ltl-logo.png` on white (the wordmark is unreadable at 60pt).
+  `apps/web/scripts/generate-app-icons.mjs` writes `icon-192.png`, `icon-512.png`,
+  `icon-maskable-512.png` (bolt inside the 80% safe circle), `apple-touch-icon.png` and
+  `favicon-32.png`; rerun it if the logo changes.
+- **Colors**: `background_color` / `theme_color` `#ffffff` (light `--background`); the
+  `theme-color` meta follows the system theme (`#ffffff` / `#0f172a`, the dark `--background`).
+  In standalone mode `html` paints `var(--background)`, so opening the app never flashes the
+  other theme.
+
 ## Layout shells
 
 | Surface | Constraint |

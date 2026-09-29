@@ -27,11 +27,15 @@ const monoFont = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Lightning Shop — Mechanic',
-  description: 'Lightning Shop Mechanic Work Order app',
+  // LTR-171: one neutral name; mechanics, managers and admins install the same app.
+  title: 'Lightning Shop',
+  description: 'Work Orders, Trucks and the Shop floor for Lightning Transport mechanics and managers',
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    icon: [
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
   appleWebApp: {
@@ -42,7 +46,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f1720',
+  // LTR-171: the browser/status bar color follows the theme (light --background / dark --background).
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
