@@ -146,7 +146,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(esNav.getByRole('link', { name: 'Operaciones', exact: true })).toBeVisible();
     await expect(esNav.getByRole('link', { name: 'Work Orders', exact: true })).toBeVisible();
     await expect(esNav.getByRole('link', { name: 'Operaciones del patio', exact: true })).toBeVisible();
-    await expect(esNav.getByRole('link', { name: 'Unidades', exact: true })).toBeVisible();
+    // LTR-170: Admin says Truck in Spanish too (glossary); "unidad" stays in the mechanic app.
+    await expect(esNav.getByRole('link', { name: 'Trucks', exact: true })).toBeVisible();
     await expect(esNav.getByRole('link', { name: 'Dashboard', exact: true })).toHaveCount(0);
   });
 
@@ -181,15 +182,15 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
     await page.getByRole('button', { name: 'Abrir navegación de Shop Admin' }).click();
     const esMobileNav = page.getByRole('dialog').getByRole('navigation', { name: 'Navegación móvil de Shop Admin' });
-    for (const name of ['Operaciones', 'Work Orders', 'Operaciones del patio', 'Unidades', 'Mecánicos', 'Catálogo de Jobs', 'Historial']) {
+    for (const name of ['Operaciones', 'Work Orders', 'Operaciones del patio', 'Trucks', 'Mecánicos', 'Catálogo de Jobs', 'Historial']) {
       await expect(esMobileNav.getByRole('link', { name, exact: true })).toBeVisible();
     }
     await expect(esMobileNav.getByRole('link', { name: 'Dashboard', exact: true })).toHaveCount(0);
 
-    await esMobileNav.getByRole('link', { name: 'Unidades', exact: true }).click();
+    await esMobileNav.getByRole('link', { name: 'Trucks', exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/trucks$/);
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Unidades' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Trucks' })).toBeVisible();
   });
 
   test('manager navigates Dashboard to filtered list, pagination, and read-only detail', async ({ page }) => {

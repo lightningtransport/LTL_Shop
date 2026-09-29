@@ -56,8 +56,8 @@ describe('LTR-33 Work Plan copy helpers', () => {
     expect(workPlanRemainingSummary(2, en)).toBe('Not Ready — 2 remaining');
     expect(workPlanRemainingSummary(1, es)).toBe('Aún no está listo — faltan 1');
     expect(workPlanReadyReasonMessage('jobs_remaining', en)).toMatch(/Jobs/);
-    expect(workPlanReadyReasonMessage('alignment_pending', es)).toContain('Alignment');
-    expect(workPlanReadyReasonMessage('detailing_pending', es)).toContain('Detailing');
+    expect(workPlanReadyReasonMessage('alignment_pending', es)).toContain('Alineación');
+    expect(workPlanReadyReasonMessage('detailing_pending', es)).toContain('Detallado');
     expect(workPlanReadyReasonMessage('plan_complete', es)).toContain('Ready to Go');
     expect(workPlanMandatoryStatusLabel('pending', en)).toBe('Pending');
     expect(workPlanMandatoryStatusLabel('pending', es)).toBe('Pendiente');
