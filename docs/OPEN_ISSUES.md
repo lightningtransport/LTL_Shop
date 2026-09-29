@@ -7,6 +7,8 @@ Una sola lista de lo que falta. Cuando algo se arregla, se borra de aquí
 
 ## 0. Cómo terminamos esto (plan de cierre)
 
+**Linear:** épica [LTR-173](https://linear.app/ltransl/issue/LTR-173). Cada fase y cada defecto B/C tiene su issue hijo; el número va en su fila.
+
 ### Por qué siguen apareciendo defectos
 
 No es mala suerte ni datos corruptos. Son tres causas, y las tres se
@@ -34,7 +36,7 @@ arreglan con método, no con más trabajo:
   PASA contra la API real.** No cuando "se ve bien".
 - Un PR que arregla un defecto trae su prueba y borra la fila de aquí.
 
-### Fase A — Auditoría única de flujos (una vez, 2–3 días)
+### Fase A — Auditoría única de flujos (una vez, 2–3 días) — LTR-174
 
 Se recorre **cada fila de la matriz una sola vez**, con la API y la base de
 datos locales reales (no la API falsa), usando los escenarios de
@@ -77,17 +79,17 @@ producción; la columna "API real" se llena en la Fase A.
 | A27 | Login, reset de contraseña, cambio de idioma y tema, app instalada | Todos | OK (ver §1b) | — |
 | A28 | WO de PM legacy abierto: pausa, reanudar, terminar | PM | Sin probar (¿queda alguno abierto en producción?) | — |
 
-### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR
+### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — LTR-175 a LTR-179
 
 Orden: defecto #1 (con el ajuste manual de WO-009), #2, #4, #6, luego los C
 de §1b. Cada PR: arreglo + prueba contra la API real + fila borrada de aquí.
 
-### Fase C — Limpieza (§3) e idioma (§4)
+### Fase C — Limpieza (§3, LTR-180) e idioma (§4, LTR-181)
 
 Borrar el código heredado y unificar los textos, para que nadie vuelva a
 construir sobre algo muerto.
 
-### Fase D — Salir en vivo (§5)
+### Fase D — Salir en vivo (§5) — LTR-45
 
 Roster real, Auth real, bypass apagado, prueba con un Manager y un mecánico
 reales. **El uso real es lo que confirma que está terminado.**
@@ -104,15 +106,15 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 
 | # | Problema | Qué pasa | Dónde |
 |---|---|---|---|
-| 1 | **WO atorado en `created`** — **confirmado en producción** (WO-009, Truck 607, 2026-09-29) | Solo el Start del mecánico Standard pasa el WO de `created` a `in_progress`. `startPmJob` y `completePmJobInTx` marcan el Job de PM pero no cambian el WO ni abren sesión; completar Jobs desde Admin tampoco. Resultado: si el único que trabajó fue el mecánico de PM y el Manager completó el resto, el WO queda en `created` con todos los Jobs `completed`. El siguiente paso muestra "Close Work Order", pero la API responde 400 *"Work Order must be in progress to finish"* y la tarjeta de cierre del detalle ni aparece. Tampoco se puede hacer Start (no hay Jobs pendientes). Sin salida salvo cancelar. Efecto extra: el tiempo de trabajo del PM queda en 0. **WO-009 necesita un ajuste manual en producción** después del arreglo. | `apps/api/src/work-orders/work-orders.service.ts` (`startPmJob` ~l. 1469, `completePmJobInTx`), `apps/api/src/admin/admin.service.ts` (~l. 1042), `apps/web/src/components/admin-work-order-detail.tsx` (`canCompleteWorkOrder` ~l. 115), `packages/shared/src/truck-next-step.ts` (l. 112) |
-| 2 | **Bloqueos huérfanos** | Cancelar el WO o el Job no resuelve el bloqueo de ese Job. Si el Manager completa un Job bloqueado, el bloqueo sigue activo y el siguiente paso se queda en "Resolve". | `AdminService.cancelWorkOrder`, `cancelJob`, `completeJob` |
-| 3 | **Custom Jobs sin revisión** | Quedan en `review_status = pending_review` para siempre; nada los mapea al catálogo (ver P5 en `DECISIONS.md`). | `work-orders.service.ts` (l. 367, 951) |
-| 4 | **Inspección que se hereda** *(sin verificar de punta a punta)* | Cancelar un WO no cierra la evaluación donde se guarda la inspección; solo Return to Service la cierra. El resultado podría pasar al siguiente WO del mismo Truck. | `yard-operations.service.ts`, `yard-work-plan.service.ts` |
-| 5 | **"Mechanic note: undefined"** *(sin confirmar en producción)* | Reportado en la revisión de UX del 27-sep; posiblemente cerrado por LTR-86 / LTR-172. Verificar. | — |
-| 6 | **Texto de QC contradice D15** | `workPlanQcHint` y `workPlanReadyAutomatic` dicen que Quality Check es opcional; QC siempre es obligatorio. En ES además dice "Quality Check" en lugar de "Control de calidad". | `apps/web/src/lib/admin-messages.ts` (EN ~l. 712/731, ES ~l. 1449/1468; también `truckNextStepQc`) |
+| 1 | **WO atorado en `created`** — **confirmado en producción** (WO-009, Truck 607, 2026-09-29) — **B**, LTR-175 | Solo el Start del mecánico Standard pasa el WO de `created` a `in_progress`. `startPmJob` y `completePmJobInTx` marcan el Job de PM pero no cambian el WO ni abren sesión; completar Jobs desde Admin tampoco. Resultado: si el único que trabajó fue el mecánico de PM y el Manager completó el resto, el WO queda en `created` con todos los Jobs `completed`. El siguiente paso muestra "Close Work Order", pero la API responde 400 *"Work Order must be in progress to finish"* y la tarjeta de cierre del detalle ni aparece. Tampoco se puede hacer Start (no hay Jobs pendientes). Sin salida salvo cancelar. Efecto extra: el tiempo de trabajo del PM queda en 0. **WO-009 necesita un ajuste manual en producción** después del arreglo. | `apps/api/src/work-orders/work-orders.service.ts` (`startPmJob` ~l. 1469, `completePmJobInTx`), `apps/api/src/admin/admin.service.ts` (~l. 1042), `apps/web/src/components/admin-work-order-detail.tsx` (`canCompleteWorkOrder` ~l. 115), `packages/shared/src/truck-next-step.ts` (l. 112) |
+| 2 | **Bloqueos huérfanos** — **B**, LTR-176 | Cancelar el WO o el Job no resuelve el bloqueo de ese Job. Si el Manager completa un Job bloqueado, el bloqueo sigue activo y el siguiente paso se queda en "Resolve". | `AdminService.cancelWorkOrder`, `cancelJob`, `completeJob` |
+| 3 | **Custom Jobs sin revisión** — C, pendiente de P5 | Quedan en `review_status = pending_review` para siempre; nada los mapea al catálogo (ver P5 en `DECISIONS.md`). | `work-orders.service.ts` (l. 367, 951) |
+| 4 | **Inspección que se hereda** *(sin verificar de punta a punta)* — B si se confirma, LTR-177 | Cancelar un WO no cierra la evaluación donde se guarda la inspección; solo Return to Service la cierra. El resultado podría pasar al siguiente WO del mismo Truck. | `yard-operations.service.ts`, `yard-work-plan.service.ts` |
+| 5 | **"Mechanic note: undefined"** *(sin confirmar en producción)* — se verifica en LTR-174 | Reportado en la revisión de UX del 27-sep; posiblemente cerrado por LTR-86 / LTR-172. Verificar. | — |
+| 6 | **Texto de QC contradice D15** — C, LTR-178 | `workPlanQcHint` y `workPlanReadyAutomatic` dicen que Quality Check es opcional; QC siempre es obligatorio. En ES además dice "Quality Check" en lugar de "Control de calidad". | `apps/web/src/lib/admin-messages.ts` (EN ~l. 712/731, ES ~l. 1449/1468; también `truckNextStepQc`) |
 
 
-## 1b. Defectos menores de la UI móvil (LTR-165, revisión 2026-09-29)
+## 1b. Defectos menores de la UI móvil (LTR-165, revisión 2026-09-29) — LTR-179
 
 | # | Problema | Dónde |
 |---|---|---|
@@ -144,7 +146,7 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 - Sin spec de API: `pauseWorkOrder` (admin), `closeAssessment`, controladores
   de users/trucks, `activity-log.service`.
 
-## 3. Limpieza de código
+## 3. Limpieza de código — LTR-180
 
 Código que confunde porque ya no es parte del flujo (ver `SYSTEM.md` §10):
 
@@ -166,7 +168,7 @@ Código que confunde porque ya no es parte del flujo (ver `SYSTEM.md` §10):
 - `supabase/migrations/20260825140000_init_domain.sql`: copia congelada;
   borrarla o dejarle un README que lo diga.
 
-## 4. Idioma
+## 4. Idioma — LTR-181
 
 - 62 textos `locale === 'es' ? … : …` escritos directo en 13 archivos, fuera
   de los catálogos (más en `reset-password`, `trucks/[id]/history`,
@@ -178,7 +180,7 @@ Código que confunde porque ya no es parte del flujo (ver `SYSTEM.md` §10):
   muestran al usuario, también en español. `app/error.tsx` y
   `global-error.tsx` ya están traducidos (LTR-170).
 
-## 5. Para salir en vivo
+## 5. Para salir en vivo — LTR-45
 
 Detalle en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md).
 
