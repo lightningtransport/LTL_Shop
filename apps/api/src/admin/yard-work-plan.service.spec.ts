@@ -220,6 +220,8 @@ describe('YardWorkPlanService', () => {
       await service.addJobs(manager, truckId, input);
       const stored = prisma.workOrderMutation.create.mock.calls[0][0].data;
       prisma.workOrderMutation.findUnique.mockResolvedValue(stored);
+      // The first request already bumped the version the retry still carries.
+      prisma.workOrder.findFirst.mockResolvedValue(openWorkOrder({ version: 4 }));
       await service.addJobs(manager, truckId, input);
       expect(workOrders.addJobByManager).toHaveBeenCalledTimes(1);
     });
@@ -244,6 +246,7 @@ describe('YardWorkPlanService', () => {
     const prisma = {
       truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },
       workOrder: { findFirst: vi.fn().mockResolvedValue(openWorkOrder()) },
+      workOrderMutation: { findUnique: vi.fn().mockResolvedValue(null) },
     };
     const service = new YardWorkPlanService(prisma as never, {} as never, {} as never);
     await expect(service.addJobs(manager, truckId, {
