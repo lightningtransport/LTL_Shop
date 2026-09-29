@@ -576,7 +576,7 @@ export function updateAdminMechanic(
 export function addAdminWorkPlanJobs(
   truckId: string,
   input: {
-    jobs: Array<Pick<WorkPlanJobDraft, 'catalogJobId' | 'categoryId' | 'displayName' | 'customDescription'>>;
+    jobs: Array<Pick<WorkPlanJobDraft, 'catalogJobId' | 'categoryId' | 'displayName' | 'customDescription' | 'assignedMechanicId'>>;
     expectedVersion?: number;
   },
   idempotencyKey = adminMutationIdempotencyKey(),

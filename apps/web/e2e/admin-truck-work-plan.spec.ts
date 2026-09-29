@@ -153,7 +153,12 @@ async function json(route: Route, body: unknown, status = 200) {
   await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 }
 
-async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan>) {
+type AddJobsBody = {
+  expectedVersion?: number;
+  jobs: Array<{ catalogJobId?: string; categoryId: string; displayName: string; customDescription?: string; assignedMechanicId?: string }>;
+};
+
+async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan>, addJobsBodies: AddJobsBody[] = []) {
   const plan = structuredClone(workPlan);
 
   await page.route('**/api/admin/trucks/**', async (route) => {
@@ -181,9 +186,8 @@ async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan
       return json(route, plan);
     }
     if (path === `/api/admin/trucks/${truckId}/work-plan/jobs` && request.method() === 'POST') {
-      const body = request.postDataJSON() as {
-        jobs: Array<{ catalogJobId?: string; categoryId: string; displayName: string; customDescription?: string }>;
-      };
+      const body = request.postDataJSON() as AddJobsBody;
+      addJobsBodies.push(body);
       plan.inspection.outcome = 'issues_found';
       plan.workOrder = plan.workOrder ?? {
         id: '00000000-0000-4000-8000-00000000bbb1',
@@ -208,7 +212,10 @@ async function mockWorkPlanApi(page: Page, workPlan: ReturnType<typeof emptyPlan
           status: 'to_do',
           uiStatus: 'pending',
           lane,
-          assignedMechanic: null,
+          // D14: the owner chosen in Hallazgos comes back on the Job.
+          assignedMechanic: job.assignedMechanicId === mechanicAlex.id
+            ? { id: mechanicAlex.id, name: mechanicAlex.name }
+            : null,
         });
       }
       plan.workOrder.version += 1;
@@ -329,6 +336,39 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await planList.getByLabel('Mechanic for Brake Inspection').selectOption({ label: 'Alex Mechanic' });
     await expect(page.getByText('Job assigned.').first()).toBeVisible();
     await expect(planList.getByText('Assigned to: Alex Mechanic')).toBeVisible();
+  });
+
+  test('Manager chooses who does each Job while adding Hallazgos to an open Work Order (D14)', async ({ page }) => {
+    const plan = emptyPlan();
+    plan.inspection.outcome = 'issues_found';
+    plan.workOrder = { id: '00000000-0000-4000-8000-00000000bbb1', displayId: 'WO-WP1', status: 'created', version: 3, primaryCategoryName: categories[0].name };
+    const bodies: AddJobsBody[] = [];
+    await mockWorkPlanApi(page, plan, bodies);
+    await loginManager(page);
+    await page.goto(`/admin/trucks/${truckId}`);
+
+    // Issues found with no Jobs yet: the add form is already open.
+    await page.getByLabel('Job Category').selectOption({ label: 'Air & Brake System' });
+    await page.getByRole('button', { name: 'Add Brake Inspection' }).click();
+    await page.getByLabel('Custom job name').fill('Air leak at tank');
+    await page.getByRole('button', { name: 'Add custom job' }).click();
+
+    const brakeOwner = page.getByLabel('Who does Brake Inspection?');
+    await expect(brakeOwner).toHaveValue('');
+    await expect(brakeOwner.locator('option:checked')).toHaveText('Unassigned');
+    await brakeOwner.selectOption({ label: 'Alex Mechanic' });
+    await page.getByRole('button', { name: 'Add to Work Plan' }).click();
+
+    await expect(page.getByText('Work Plan updated.').first()).toBeVisible();
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0].expectedVersion).toBe(3);
+    expect(bodies[0].jobs).toEqual([
+      expect.objectContaining({ displayName: 'Brake Inspection', assignedMechanicId: mechanicAlex.id }),
+      expect.not.objectContaining({ assignedMechanicId: expect.anything() }),
+    ]);
+    const planList = page.getByRole('list', { name: 'Jobs in this Work Order' });
+    await expect(planList.getByText('Assigned to: Alex Mechanic')).toHaveCount(1);
+    await expect(planList.getByLabel('Mechanic for Air leak at tank')).toHaveValue('');
   });
 
   test('Next step closes the Work Order and returns the Truck to service from the Truck (LTR-158)', async ({ page }) => {

@@ -10,6 +10,8 @@ export type WorkPlanJobDraft = {
   categoryName: string;
   displayName: string;
   customDescription?: string;
+  /** D14: who does the Job, chosen as it is added; unset stays Unassigned. */
+  assignedMechanicId?: string;
 };
 
 export function workPlanJobUiStatusVariant(status: string): ChipVariant {

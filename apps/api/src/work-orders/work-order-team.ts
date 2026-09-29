@@ -1,3 +1,5 @@
+import type { Prisma } from '@prisma/client';
+
 /**
  * LTR-164 (#11) / D11: the team shown on a Work Order is derived from its
  * owners. A PM mechanic reaches the Work Order only through the PM job (no
@@ -27,4 +29,28 @@ export function workOrderTeam(
     team.push({ mechanicId: owner.id, mechanicName: owner.name, addedAt: job.addedAt ?? fallbackAddedAt });
   }
   return team;
+}
+
+/**
+ * LTR-154 / D11: a Standard Job owner is on the Work Order team. Adds the
+ * `mechanic_assignments` row, or restores one removed earlier. Not for the PM
+ * job's owner, who reaches the Work Order through that Job only (LTR-146).
+ */
+export async function joinWorkOrderTeam(
+  tx: Prisma.TransactionClient,
+  workOrderId: string,
+  mechanicId: string,
+  addedById: string,
+) {
+  const current = await tx.mechanicAssignment.findUnique({
+    where: { workOrderId_mechanicId: { workOrderId, mechanicId } },
+  });
+  if (!current) {
+    await tx.mechanicAssignment.create({ data: { workOrderId, mechanicId, addedById } });
+  } else if (current.removedAt) {
+    await tx.mechanicAssignment.update({
+      where: { id: current.id },
+      data: { removedAt: null, addedAt: new Date(), addedById },
+    });
+  }
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CatalogJobDto, TruckWorkPlanDto } from '@ltl-shop/shared';
 import type { AdminMessages } from '@/lib/admin-messages';
+import { fillPlaceholders } from '@/lib/admin-next-step';
 import {
   draftContainsCatalogJob,
   draftContainsCustomName,
@@ -29,6 +30,7 @@ export function WorkPlanAddWork({
   disabled,
   submitting,
   preferredCategoryName,
+  standardMechanics = [],
   onSubmit,
 }: {
   plan: TruckWorkPlanDto;
@@ -36,6 +38,8 @@ export function WorkPlanAddWork({
   disabled: boolean;
   submitting: boolean;
   preferredCategoryName?: string | null;
+  /** D14: active Standard mechanics the Manager can name as each Job is added. */
+  standardMechanics?: ReadonlyArray<{ id: string; name: string }>;
   onSubmit: (jobs: WorkPlanJobDraft[]) => Promise<boolean | void> | boolean | void;
 }) {
   const [categoryId, setCategoryId] = useState('');
@@ -100,6 +104,12 @@ export function WorkPlanAddWork({
       customDescription: name,
     }]);
     setCustomName('');
+  }
+
+  function setDraftOwner(key: string, mechanicId: string) {
+    setDrafts((current) => current.map((draft) => (
+      draft.key === key ? { ...draft, assignedMechanicId: mechanicId || undefined } : draft
+    )));
   }
 
   async function submit() {
@@ -193,11 +203,29 @@ export function WorkPlanAddWork({
         {drafts.length ? (
           <ul className="divide-y rounded-xl border">
             {drafts.map((job) => (
-              <li key={job.key} className="flex items-center justify-between gap-2 px-3 py-3 text-sm">
+              <li key={job.key} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm">
                 <span className="min-w-0">
                   <span className="font-medium">{job.displayName}</span>
                   <Badge variant="outline" className="ml-2 normal-case tracking-normal">{job.categoryName}</Badge>
                 </span>
+                {/* D14: the PM job goes to a PM mechanic and Quality Check has no owner; both are set on the plan. */}
+                {job.categoryName !== 'PM' && job.categoryName !== 'Quality Check' ? (
+                  <label className="flex items-center gap-2 sm:ml-auto">
+                    <span className="text-xs font-medium text-muted-foreground">{messages.workPlanJobOwnerLabel}</span>
+                    <Select
+                      aria-label={fillPlaceholders(messages.workPlanJobOwnerFor, { job: job.displayName })}
+                      className="w-full sm:w-44"
+                      value={job.assignedMechanicId ?? ''}
+                      disabled={disabled}
+                      onChange={(event) => setDraftOwner(job.key, event.target.value)}
+                    >
+                      <option value="">{messages.jobUnassigned}</option>
+                      {standardMechanics.map((mechanic) => (
+                        <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
+                      ))}
+                    </Select>
+                  </label>
+                ) : null}
                 <Button
                   type="button"
                   variant="ghost"

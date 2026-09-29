@@ -70,7 +70,7 @@ import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-or
 import { stopLaborForMechanic } from '../work-orders/labor-session';
 import { classifyWorkPlanLane } from './yard-work-plan-derivation';
 import { YardOperationsService } from './yard-operations.service';
-import { workOrderTeam } from '../work-orders/work-order-team';
+import { joinWorkOrderTeam, workOrderTeam } from '../work-orders/work-order-team';
 import { activeInspectionInclude, activeInspectionOutcome, workOrderNextStep, type NextStepWorkOrderRow } from './work-order-next-step';
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
@@ -802,21 +802,8 @@ export class AdminService {
         if (!mechanic) {
           throw new BadRequestException(isPmJob ? 'This mechanic cannot perform PM work' : 'This mechanic cannot perform standard work');
         }
-        const teamAssignment = isPmJob ? null : await tx.mechanicAssignment.findUnique({
-          where: { workOrderId_mechanicId: { workOrderId, mechanicId: input.mechanicId } },
-        });
-        if (isPmJob) {
-          // PM mechanics reach the Work Order through their PM job only.
-        } else if (teamAssignment?.removedAt) {
-          await tx.mechanicAssignment.update({
-            where: { id: teamAssignment.id },
-            data: { removedAt: null, addedAt: new Date(), addedById: user.id },
-          });
-        } else if (!teamAssignment) {
-          await tx.mechanicAssignment.create({
-            data: { workOrderId, mechanicId: input.mechanicId, addedById: user.id },
-          });
-        }
+        // PM mechanics reach the Work Order through their PM job only.
+        if (!isPmJob) await joinWorkOrderTeam(tx, workOrderId, input.mechanicId, user.id);
         await tx.workOrderJob.update({
           where: { id: jobId },
           data: { assignedMechanicId: input.mechanicId },
