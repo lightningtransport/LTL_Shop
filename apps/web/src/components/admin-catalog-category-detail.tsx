@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogJobActions, AdminCatalogWriteActions } from './admin-catalog-write';
 import { AdminWriteTip } from './admin-write-tip';
-import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminBackLink, PageHeader, Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { ApiError } from '@/lib/api';
 import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategory } from '@/lib/admin-data';
@@ -20,10 +20,9 @@ export function AdminCatalogCategoryDetail({ id, messages }: { id: string; local
   if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <AdminBackLink href="/admin/catalog">{messages.backToCatalog}</AdminBackLink>
-      <AdminPageHeader
-        eyebrow={messages.eyebrow}
+      <PageHeader
         title={data.name}
         subtitle={canWrite ? messages.catalogWriteDescription : messages.catalogDescription}
         badges={data.status === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}

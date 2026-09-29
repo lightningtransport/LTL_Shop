@@ -2,7 +2,6 @@ export type AdminLocale = 'en' | 'es';
 
 const messages = {
   en: {
-    eyebrow: 'Shop Admin',
     title: 'Shop Operations',
     description: 'Secure manager workspace for the Lightning Shop.',
     dashboard: 'Dashboard',
@@ -735,7 +734,6 @@ const messages = {
     workPlanPmOpenConflict: 'This Truck has an open PM Work Order. Finish or cancel it before adding Standard Work Plan Jobs.',
   },
   es: {
-    eyebrow: 'Shop Admin',
     title: 'Operaciones del Shop',
     description: 'Espacio seguro para el equipo de gestión del Lightning Shop.',
     dashboard: 'Operaciones',

@@ -206,7 +206,7 @@ export function WorkPlanAddWork({
               <li key={job.key} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm">
                 <span className="min-w-0">
                   <span className="font-medium">{job.displayName}</span>
-                  <Badge variant="outline" className="ml-2 normal-case tracking-normal">{job.categoryName}</Badge>
+                  <Badge variant="outline" className="ml-2">{job.categoryName}</Badge>
                 </span>
                 {/* D14: the PM job goes to a PM mechanic and Quality Check has no owner; both are set on the plan. */}
                 {job.categoryName !== 'PM' && job.categoryName !== 'Quality Check' ? (

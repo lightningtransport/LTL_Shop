@@ -5,7 +5,7 @@ import { AlertTriangle, CalendarCheck, ClipboardCheck, ClipboardList, Clock3, Hi
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminNavLink } from './admin-nav-link';
 import { AdminWorkOrderItem } from './admin-work-order-item';
-import { AdminPageHeader, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { PageHeader, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { formatAdminDate } from '@/lib/admin-format';
 import { useAdminDashboard } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -37,9 +37,8 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
   const canPm = !!user?.capabilities.includes(AppCapability.MECHANIC_PM);
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
 
-  return <div className="space-y-5">
-    <AdminPageHeader
-      eyebrow={messages.eyebrow}
+  return <div className="space-y-6">
+    <PageHeader
       title={messages.title}
       subtitle={messages.currentOperations}
       meta={<>{messages.generatedAtLabel} {formatAdminDate(data.generatedAt, locale)}</>}
@@ -70,7 +69,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
       {metrics.map(({ label, description, value, Icon, href }) => <Link key={label} href={href} aria-label={`${label}: ${value}`} className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
         <Card className="flex h-full min-h-28 flex-col justify-between p-3 transition group-hover:border-primary/50 group-hover:shadow-md sm:p-4">
           <CardContent className="flex items-start justify-between gap-2 p-0"><div className="min-w-0"><p className="text-xs leading-5 text-muted-foreground sm:text-sm">{label}</p><p className="mt-2 font-display text-2xl font-bold sm:text-3xl">{value}</p></div><Icon aria-hidden="true" className="size-4 shrink-0 text-primary sm:size-5" /></CardContent>
-          <p className="mt-3 text-[11px] leading-4 text-muted-foreground">{description}</p>
+          <p className="mt-3 text-xs leading-snug text-muted-foreground">{description}</p>
         </Card>
       </Link>)}
     </section>

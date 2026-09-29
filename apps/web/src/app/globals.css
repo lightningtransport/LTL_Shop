@@ -15,15 +15,16 @@
   --secondary: oklch(0.7062 0.1363 140.8559);
   --secondary-foreground: oklch(1 0 0);
   --muted: oklch(0.9683 0.0069 247.8956);
-  --muted-foreground: oklch(0.5544 0.0407 257.4166);
+  --muted-foreground: oklch(0.5 0.0407 257.4166);
   --accent: oklch(0.9514 0.025 236.8242);
   --accent-foreground: oklch(0.5358 0.1444 248.0435);
-  --destructive: oklch(0.6368 0.2078 25.3313);
+  --destructive: oklch(0.55 0.2 25.3313);
+  --destructive-text: oklch(0.5 0.19 27);
   --destructive-foreground: oklch(0.9842 0.0034 247.8575);
   --border: oklch(0.9288 0.0126 255.5078);
   --input: oklch(0.9288 0.0126 255.5078);
   --ring: oklch(0.5358 0.1444 248.0435);
-  --success: oklch(0.57 0.14 151);
+  --success: oklch(0.48 0.13 151);
   --warning: oklch(0.74 0.15 80);
   --warning-foreground: oklch(0.38 0.09 72);
   --warning-surface: oklch(0.965 0.035 92);
@@ -44,11 +45,11 @@
   --shop-bg: 1 0 0;
   --shop-panel: 0.9842 0.0034 247.8575;
   --shop-border: 0.9288 0.0126 255.5078;
-  --shop-accent: 0.5358 0.1444 248.0435;
+  --shop-accent: 0.5 0.14 248.0435;
   --shop-accent-dark: 0.45 0.13 248.0435;
-  --shop-muted: 0.5544 0.0407 257.4166;
-  --shop-danger: 0.6368 0.2078 25.3313;
-  --shop-success: 0.57 0.14 151;
+  --shop-muted: 0.5 0.0407 257.4166;
+  --shop-danger: 0.55 0.2 25.3313;
+  --shop-success: 0.48 0.13 151;
 
   /* PWA / notched devices. 0 on desktop and browser tabs (env() is 0 without a notch). */
   --app-safe-top: 0px;
@@ -92,6 +93,7 @@
   --accent: oklch(0.2795 0.0368 260.031);
   --accent-foreground: oklch(0.7535 0.139 232.6615);
   --destructive: oklch(0.3958 0.1331 25.723);
+  --destructive-text: oklch(0.78 0.12 22);
   --destructive-foreground: oklch(0.9842 0.0034 247.8575);
   --border: oklch(0.3717 0.0392 257.287);
   --input: oklch(0.3717 0.0392 257.287);
@@ -189,14 +191,29 @@ body {
   .btn-danger {
     @apply btn border border-destructive bg-destructive text-destructive-foreground hover:opacity-90;
   }
+  /* 16px on every screen: iOS (iPhone and iPad) zooms into fields under 16px on focus (LTR-166). */
   .field {
-    @apply min-h-11 w-full rounded-lg border bg-background px-4 py-2.5 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring md:text-sm;
+    @apply min-h-11 w-full rounded-lg border bg-background px-4 py-2.5 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring;
   }
   .card {
     @apply rounded-xl border bg-card p-4 text-card-foreground shadow-soft;
   }
-  .section-label {
-    @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground;
+
+  /* LTR-166 type scale (docs/design-system/foundations.md). Body text is `text-sm`, secondary text is
+     `text-sm text-muted-foreground`, and meta (timestamps, counts) is `text-xs text-muted-foreground`.
+     Nothing goes under 12px, and nothing is uppercased: labels and headings stay in sentence case. */
+  .page-title {
+    @apply font-display text-2xl font-bold leading-tight text-foreground md:text-3xl;
+  }
+  .section-title {
+    @apply font-display text-lg font-semibold leading-snug text-foreground;
+  }
+  .card-title {
+    @apply text-base font-semibold leading-snug text-foreground;
+  }
+  /* Groups a list or a block of fields inside a card ("Notes", "Your Jobs"). */
+  .group-title {
+    @apply text-sm font-semibold text-foreground;
   }
 }
 

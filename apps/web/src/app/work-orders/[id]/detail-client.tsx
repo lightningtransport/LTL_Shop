@@ -35,7 +35,7 @@ import {
   Modal,
   PageSkeleton,
   PriorityBadge,
-  ScreenHeader,
+  PageHeader,
   Select,
   Textarea,
   WorkspaceNav,
@@ -214,7 +214,8 @@ export default function WorkOrderDetailPage() {
   return (
     <div>
       <WorkspaceNav mode={MechanicMode.STANDARD} />
-      <ScreenHeader
+      <PageHeader
+        className="mb-6"
         title={messages.truckTitle(wo.truckNumber)}
         subtitle={[vehicleLine(wo.truck), `${messages.workOrder} ${wo.displayId}`, messages.status[wo.status] ?? statusLabel(wo.status, messages.status)].filter(Boolean).join(' · ')}
         backHref="/mechanic/standard"
@@ -272,7 +273,7 @@ export default function WorkOrderDetailPage() {
       {(wo.activeBlockers ?? []).length ? (
         // LTR-155 / D17: the mechanic sees each blocked Job and adds notes; only the Manager resolves.
         <section className="mb-4 space-y-2" aria-labelledby="active-blockers-title">
-          <p id="active-blockers-title" className="section-label">{messages.activeBlockers}</p>
+          <p id="active-blockers-title" className="group-title">{messages.activeBlockers}</p>
           <p className="text-sm text-muted-foreground">{messages.blockerWaitsForManager}</p>
           <ul className="space-y-2">
             {(wo.activeBlockers ?? []).map((blocker) => (
@@ -331,7 +332,7 @@ export default function WorkOrderDetailPage() {
       {/* LTR-164 (#5): the section only shows when it has something (Start / Continue or the pause note). */}
       {needsStart || wo.status === 'waiting_paused' ? (
         <section className="mb-4 space-y-2">
-          <p className="section-label">{messages.workOptions}</p>
+          <p className="group-title">{messages.workOptions}</p>
           {needsStart ? (
             <Button
               className="w-full"
@@ -364,7 +365,7 @@ export default function WorkOrderDetailPage() {
           aria-expanded={truckOpen}
           aria-controls="truck-information-panel"
         >
-          <span className="section-label">{messages.truckInformation}</span>
+          <span className="group-title">{messages.truckInformation}</span>
           <ChevronDown
             className={`h-5 w-5 transition-transform ${truckOpen ? 'rotate-180' : ''}`}
             aria-hidden="true"
@@ -383,7 +384,7 @@ export default function WorkOrderDetailPage() {
       </section>
 
       <section className="mb-4">
-        <p className="section-label mb-2">{messages.myJobs}</p>
+        <p className="group-title mb-2">{messages.myJobs}</p>
         {/* LTR-131: say why Jobs are disabled before Start Work. */}
         {needsStart ? (
           <p className="mb-2 text-sm text-muted-foreground">{startedHereBefore ? messages.continueToCompleteJobs : messages.startWorkToCompleteJobs}</p>
@@ -437,7 +438,7 @@ export default function WorkOrderDetailPage() {
         )}
         {otherTodo.length ? (
           <>
-            <p className="section-label mb-1">{messages.otherWorkOnThisTruck}</p>
+            <p className="group-title mb-1">{messages.otherWorkOnThisTruck}</p>
             <p className="mb-2 text-xs text-muted-foreground">{messages.otherWorkReadOnly}</p>
             <ul className="mb-3 space-y-2">
               {otherTodo.map((job) => (
@@ -454,7 +455,7 @@ export default function WorkOrderDetailPage() {
       </section>
 
       <section className="mb-4">
-        <p className="section-label mb-2">{messages.jobStatus.completed}</p>
+        <p className="group-title mb-2">{messages.jobStatus.completed}</p>
         {done.length === 0 ? (
           <EmptyState>{messages.noCompletedJobs}</EmptyState>
         ) : (
@@ -501,7 +502,7 @@ export default function WorkOrderDetailPage() {
       >
         {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
         <p className="mb-4 text-lg">{finishJob?.name}</p>
-        <Label className="section-label mb-2 block" htmlFor="finish-job-notes">
+        <Label className="mb-2 block" htmlFor="finish-job-notes">
           {messages.jobFinishNotes}
         </Label>
         <Textarea
@@ -575,7 +576,7 @@ export default function WorkOrderDetailPage() {
         returnFocusRef={pauseTriggerRef}
       >
         {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
-        <Label className="section-label mb-2 block" htmlFor="pause-reason">
+        <Label className="mb-2 block" htmlFor="pause-reason">
           {messages.blockerReason}
         </Label>
         <div className="mb-3">
@@ -596,7 +597,7 @@ export default function WorkOrderDetailPage() {
         </div>
         {pauseReason === PauseReason.OTHER ? (
           <div className="mb-3">
-            <Label className="section-label mb-2 block" htmlFor="pause-notes">
+            <Label className="mb-2 block" htmlFor="pause-notes">
               {messages.additionalDetails}
             </Label>
             <Textarea
@@ -710,7 +711,8 @@ function PmWorkOrderDetail({
   return (
     <div>
       <WorkspaceNav mode={MechanicMode.PM} />
-      <ScreenHeader
+      <PageHeader
+        className="mb-6"
         title={messages.truckTitle(wo.truckNumber)}
         subtitle={[vehicleLine(wo.truck), `${messages.workOrder} ${wo.displayId}`, messages.status[wo.status] ?? statusLabel(wo.status, messages.status)].filter(Boolean).join(' · ')}
         backHref="/mechanic/pm"
@@ -719,7 +721,7 @@ function PmWorkOrderDetail({
       {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
 
       <section className="card mb-4 space-y-3" aria-labelledby="pm-truck-information">
-        <h2 id="pm-truck-information" className="section-label">{messages.truckInformation}</h2>
+        <h2 id="pm-truck-information" className="group-title">{messages.truckInformation}</h2>
         <TruckInformationFields truck={wo.truck} locale={messages.locale} />
         <Button asChild variant="secondary" className="w-full">
           <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
@@ -750,7 +752,7 @@ function PmWorkOrderDetail({
 
       {wo.status === 'waiting_paused' ? (
         <section className="card mb-4 space-y-3">
-          <Label className="section-label" htmlFor="pm-change-pause-reason">Change Pause Reason</Label>
+          <Label htmlFor="pm-change-pause-reason">Change Pause Reason</Label>
           <Select
               id="pm-change-pause-reason"
               value={changeReason || wo.currentPauseReason || ''}
@@ -833,7 +835,7 @@ function PmWorkOrderDetail({
       </Modal>
 
       <Modal open={pauseOpen} title={messages.pauseWorkOrder} closeLabel={messages.closeDialog} onClose={() => setPauseOpen(false)} returnFocusRef={pauseTriggerRef}>
-        <Label className="section-label mb-2 block" htmlFor="pm-pause-reason">{messages.pauseReasonLabel}</Label>
+        <Label className="mb-2 block" htmlFor="pm-pause-reason">{messages.pauseReasonLabel}</Label>
         <div className="mb-3">
           <Select id="pm-pause-reason" value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
             <option value="">{messages.selectOption}</option>

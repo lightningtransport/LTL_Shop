@@ -2,13 +2,12 @@ import type { AdminMessages } from './admin-messages';
 
 /**
  * LTR-110: Truck Detail is reached from Trucks, Yard Operations and Work Orders.
- * Links pass `?from=<admin path>` so the back link and eyebrow match the origin.
+ * Links pass `?from=<admin path>` so the back link matches the origin.
  * Unknown or missing origins keep the historical Yard Operations behavior.
  */
 export type AdminTruckOrigin = {
   href: string;
   backLabel: string;
-  eyebrow: string;
 };
 
 export function adminTruckHref(truckId: string, fromPath: string) {
@@ -19,22 +18,21 @@ export function adminTruckOrigin(from: string | null | undefined, messages: Admi
   const yard = {
     href: '/admin/yard-operations',
     backLabel: messages.backToYardOperations,
-    eyebrow: messages.yardOperationsTitle,
   };
   // Only same-app Admin paths; never follow an external or protocol-relative URL.
   if (!from || !from.startsWith('/admin') || from.startsWith('//')) return yard;
   const path = from.split(/[?#]/)[0];
   if (path === '/admin/trucks') {
-    return { href: from, backLabel: messages.backToTrucks, eyebrow: messages.trucksTitle };
+    return { href: from, backLabel: messages.backToTrucks };
   }
   if (path === '/admin/work-orders') {
-    return { href: from, backLabel: messages.backToWorkOrders, eyebrow: messages.workOrdersTitle };
+    return { href: from, backLabel: messages.backToWorkOrders };
   }
   if (path.startsWith('/admin/work-orders/')) {
-    return { href: from, backLabel: messages.backToWorkOrder, eyebrow: messages.workOrdersTitle };
+    return { href: from, backLabel: messages.backToWorkOrder };
   }
   if (path === '/admin') {
-    return { href: from, backLabel: messages.backToDashboard, eyebrow: messages.dashboard };
+    return { href: from, backLabel: messages.backToDashboard };
   }
   if (path === '/admin/yard-operations') return { ...yard, href: from };
   return yard;

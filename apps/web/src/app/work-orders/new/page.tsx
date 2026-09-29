@@ -40,7 +40,7 @@ import {
   LoadFailure,
   Modal,
   PageSkeleton,
-  ScreenHeader,
+  PageHeader,
   Select,
   Textarea,
   WorkspaceNav,
@@ -292,7 +292,8 @@ export default function NewWorkOrderPage() {
     const allowedHome = defaultWorkspacePath(user);
     return (
       <div>
-        <ScreenHeader
+        <PageHeader
+          className="mb-6"
           title={isPmMechanic ? messages.newPmService : messages.newWorkOrder}
           subtitle={messages.workspaceUnavailable}
           backHref={allowedHome}
@@ -311,7 +312,8 @@ export default function NewWorkOrderPage() {
     return (
       <div>
         <WorkspaceNav mode={mechanicMode} />
-        <ScreenHeader
+        <PageHeader
+          className="mb-6"
           title={messages.newWorkOrder}
           subtitle={messages.askManagerToCreateHint}
           backHref={`/mechanic/${mechanicMode}`}
@@ -341,14 +343,15 @@ export default function NewWorkOrderPage() {
   return (
     <div className={truck && !hasOpenWo ? 'pb-[calc(6rem+var(--app-safe-bottom))]' : undefined}>
       <WorkspaceNav mode={mechanicMode} />
-      <ScreenHeader
+      <PageHeader
+        className="mb-6"
         title={isPmMechanic ? messages.newPmService : messages.newWorkOrder}
         subtitle={isPmMechanic ? messages.pmServiceHint : messages.workOrderHint}
         backHref={`/mechanic/${mechanicMode}`}
       />
 
       <section className="card mb-4 space-y-3">
-        <Label className="section-label" htmlFor="truck-search">
+        <Label htmlFor="truck-search">
           {messages.truck}
         </Label>
         <div className="relative">
@@ -449,7 +452,7 @@ export default function NewWorkOrderPage() {
 
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="section-label">{messages.truckInformation}</p>
+            <p className="group-title">{messages.truckInformation}</p>
           </div>
           {!truck ? (
             <EmptyState>{messages.selectTruck}</EmptyState>
@@ -520,7 +523,7 @@ export default function NewWorkOrderPage() {
           {!isPmMechanic ? <section className="card mb-4 space-y-4">
             {!isPmMechanic ? (
               <div>
-                <Label className="section-label" htmlFor="work-order-category">
+                <Label htmlFor="work-order-category">
                   Category
                 </Label>
                 <div className="mt-2">
@@ -543,7 +546,7 @@ export default function NewWorkOrderPage() {
             ) : null}
 
             {!isPmMechanic ? <div>
-              <p className="section-label mb-2">Jobs To Do</p>
+              <p className="group-title mb-2">Jobs To Do</p>
               {!categoryId ? <EmptyState>Choose a category to see its listed jobs.</EmptyState> : null}
               {categoryId && jobs.length === 0 ? <p className="mb-3 text-sm text-muted-foreground">Select at least one job.</p> : null}
               {jobs.length ? (
@@ -619,7 +622,7 @@ export default function NewWorkOrderPage() {
             </div> : null}
 
             {!isPmMechanic ? <div>
-              <p className="section-label" id="working-with-label">
+              <p className="group-title" id="working-with-label">
                 Working With
               </p>
               <Button
@@ -638,7 +641,7 @@ export default function NewWorkOrderPage() {
             </div> : null}
 
             {!isPmMechanic ? <div>
-              <p className="section-label mb-2">{messages.priorityLabel}</p>
+              <p className="group-title mb-2">{messages.priorityLabel}</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {Object.values(Priority).map((p) => (
                   <Button
@@ -654,7 +657,7 @@ export default function NewWorkOrderPage() {
             </div> : null}
 
             {!isPmMechanic ? <div>
-              <Label className="section-label" htmlFor="work-order-notes">
+              <Label htmlFor="work-order-notes">
                 {messages.notesOptional}
               </Label>
               <Textarea
@@ -708,7 +711,8 @@ function NewWorkOrderLoading({
   return (
     <div>
       <WorkspaceNav mode={mode} />
-      <ScreenHeader
+      <PageHeader
+        className="mb-6"
         title={mode === MechanicMode.PM ? messages.newPmService : messages.newWorkOrder}
         subtitle={mode === MechanicMode.PM ? messages.pmServiceHint : messages.workOrderHint}
         backHref={`/mechanic/${mode}`}

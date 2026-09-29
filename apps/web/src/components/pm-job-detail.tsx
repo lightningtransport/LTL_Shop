@@ -13,7 +13,7 @@ import { vehicleLine } from '@/lib/work-order-identity';
 import { useActionToast } from './action-toast';
 import { PmServiceCard, type PmDraftState } from './pm-service-card';
 import { TruckInformationFields } from './truck-information-fields';
-import { Button, InlineAlert, Label, Modal, ScreenHeader, Select, Textarea, WorkspaceNav } from './ui';
+import { Button, InlineAlert, Label, Modal, PageHeader, Select, Textarea, WorkspaceNav } from './ui';
 
 /**
  * LTR-146: the PM mechanic's view of a truck Work Order — only its PM job.
@@ -74,7 +74,8 @@ export function PmJobDetail({
   return (
     <div>
       <WorkspaceNav mode={MechanicMode.PM} />
-      <ScreenHeader
+      <PageHeader
+        className="mb-6"
         title={messages.truckTitle(wo.truckNumber)}
         subtitle={[vehicleLine(wo.truck), messages.pmJobOnWorkOrder(pmJob.displayName, wo.displayId)].filter(Boolean).join(' · ')}
         backHref="/mechanic/pm"
@@ -84,7 +85,7 @@ export function PmJobDetail({
       {/* LTR-148: PM A ↔ PM B before the PM service is finished. */}
       {!finished && pmJobRow && pmServiceOptions.length > 1 ? (
         <section className="card mb-4 space-y-2">
-          <Label className="section-label" htmlFor="pm-job-service">{messages.pmServiceLabel}</Label>
+          <Label htmlFor="pm-job-service">{messages.pmServiceLabel}</Label>
           <Select
             id="pm-job-service"
             value={pmJobRow.catalogJobId ?? ''}
@@ -161,7 +162,7 @@ export function PmJobDetail({
 
       {/* LTR-158: the PM comes first; truck data is folded below it. */}
       <details className="card mb-4" aria-labelledby="pm-job-truck-information">
-        <summary id="pm-job-truck-information" className="section-label cursor-pointer select-none">{messages.truckInformation}</summary>
+        <summary id="pm-job-truck-information" className="group-title cursor-pointer select-none">{messages.truckInformation}</summary>
         <div className="mt-3 space-y-3">
           <TruckInformationFields truck={wo.truck} locale={messages.locale} />
           <Button asChild variant="secondary" className="w-full">
@@ -174,7 +175,7 @@ export function PmJobDetail({
 
 
       <Modal open={blockerOpen} title={messages.reportBlockerFor(pmJob.displayName)} closeLabel={messages.closeDialog} onClose={() => { if (!busy) setBlockerOpen(false); }}>
-        <Label className="section-label mb-2 block" htmlFor="pm-blocker-reason">{messages.blockerReason}</Label>
+        <Label className="mb-2 block" htmlFor="pm-blocker-reason">{messages.blockerReason}</Label>
         <Select id="pm-blocker-reason" className="mb-3" value={blockerReason} disabled={busy} onChange={(event) => setBlockerReason(event.target.value as BlockerReason)}>
           <option value="">{messages.selectOption}</option>
           {Object.values(BlockerReason).map((reason) => <option key={reason} value={reason}>{messages.pauseReason[reason as unknown as PauseReason]}</option>)}

@@ -18,7 +18,7 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 | `Select` | Native `<select>` with Lucide chevron |
 | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Grouped content |
 | `InlineAlert` | Assertive inline error |
-| `Badge` | Single chip primitive. Variants `default`, `secondary`, `outline`, `destructive`, `success`, `warning`. Status / priority / phase chips use this only — no ad-hoc `<span>` chips |
+| `Badge` | Single chip primitive. Variants `default`, `secondary`, `outline`, `destructive`, `success`, `warning`. Status / priority / phase chips use this only — no ad-hoc `<span>` chips. 12px semibold, sentence case (LTR-166) |
 | `Dialog`, `DialogTrigger`, `DialogClose`, `DialogContent`, `DialogTitle`, `DialogDescription` | Radix dialog (sheet-like on mobile, centered on `sm+`) |
 | `MultiSelect` | Accessible checkbox multi-select dialog |
 | `Modal` | Focus-managed dialog wrapper used by mechanic flows |
@@ -31,8 +31,7 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 | `HomeTopBar` | Mechanic logo, locale, profile |
 | `WorkspaceNav` | Standard / PM / Back to Shop Admin |
 | `AuthBrandHeader` | Login / access-denied brand block |
-| `ScreenHeader` | Title, subtitle, optional back control |
-| `AdminPageHeader` | Admin eyebrow, page title, description, metadata, badges, and actions |
+| `PageHeader` | The one page header (LTR-166): `.page-title`, optional subtitle, meta, badges, actions, and a mechanic icon back button (`backHref`). No eyebrow, no outer margin |
 | `AdminBackLink` | Consistent labeled back navigation with icon and 44px target |
 
 ## Loading, empty, failure (see `patterns.md`)
@@ -57,7 +56,7 @@ these primitives. They are not a second component library.
 
 ## Admin composition rules
 
-- Every Admin page uses `AdminPageHeader`; do not hand-roll a second eyebrow/title hierarchy.
+- Every page uses `PageHeader`; do not hand-roll a second title hierarchy or add an eyebrow.
 - Use `AdminBackLink` for labeled back navigation. Keep the icon, label, and target area together.
 - Primary and filter actions use `Button`; labels remain on one line. Action groups wrap as a group at narrow widths rather than allowing individual buttons to become two-line controls.
 - Search and filter controls live in a bordered surface with consistent padding. Simple forms may omit the mobile modal, but they must preserve the same control heights and action alignment.
@@ -78,3 +77,10 @@ today. Marked TARGET so nobody documents them as existing:
 
 Do not build those TARGET primitives in a UI-only pass unless a queue task
 asks for them.
+
+When a task does, `apps/web/components.json` configures the shadcn CLI for this
+Tailwind 3 setup. Run `npx shadcn@2.3.0 add <name>` from `apps/web` (newer CLI
+versions target Tailwind 4); pick `--legacy-peer-deps` at the React 19 prompt.
+Generated files land in `src/components/ui/` and import `@radix-ui/react-*`;
+switch them to the `radix-ui` package the app already uses, and apply the type
+scale above (no uppercase, nothing under 12px) before committing.

@@ -126,7 +126,7 @@ function BoundaryCard({
 
   return (
     <div
-      className="min-w-0 rounded-lg border bg-card/70 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground"
+      className="min-w-0 rounded-lg border bg-card/70 px-2 py-1.5 text-xs leading-snug text-muted-foreground"
       role="status"
       title={ariaLabel}
       aria-label={ariaLabel}

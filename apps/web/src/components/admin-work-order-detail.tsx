@@ -23,7 +23,7 @@ import { useCatalogJobs, useCategories } from '@/lib/shop-data';
 import { useActionToast } from './action-toast';
 import {
   AdminBackLink,
-  AdminPageHeader,
+  PageHeader,
   Badge,
   Button,
   Card,
@@ -146,7 +146,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </CardHeader>
       <CardContent className="space-y-3">
         {data.category.name === 'PM' ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
-        {hasIncompleteJobs ? <p className="text-sm text-destructive">{messages.completeWorkOrderIncompleteJobs}</p> : null}
+        {hasIncompleteJobs ? <p className="text-sm text-destructive-text">{messages.completeWorkOrderIncompleteJobs}</p> : null}
         {readyToClose ? <p className="text-sm font-medium">{messages.readyToCloseHint}</p> : null}
         <CompleteWorkOrderButton
           messages={messages}
@@ -160,8 +160,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
 
   return <div className={readyToClose ? 'space-y-5 pb-24' : 'space-y-5'}>
     <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
-    <AdminPageHeader
-      eyebrow={messages.eyebrow}
+    <PageHeader
       title={<Link className="text-primary hover:underline" href={adminTruckHref(truck.id, `/admin/work-orders/${data.id}`)}>{truck.truckNumber}</Link>}
       subtitle={<>{messages.workOrder} {data.displayId} · {data.category.name}</>}
       meta={<>{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</>}
@@ -171,7 +170,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <p
         className={
           feedback.kind === 'error'
-            ? 'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive'
+            ? 'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive-text'
             : 'rounded-xl border border-shop-success/30 bg-shop-success/10 px-3 py-2 text-sm text-shop-success'
         }
         role={feedback.kind === 'error' ? 'alert' : 'status'}
@@ -190,7 +189,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         data-testid="admin-wo-next-step"
         data-kind={nextStep?.kind}
       >
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{messages.nextStepTitle}</p>
+        <p className="group-title">{messages.nextStepTitle}</p>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
           <p className="font-medium">{nextStepText}</p>
           {/* The action lives on the Truck, the Manager's workplace (LTR-158). */}
@@ -749,7 +748,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       {/* LTR-126: notes are append-only; this form only changes priority (PM priority is locked). */}
       </div>
       <div className="min-w-0 space-y-5">
-      <section className="space-y-5" aria-label={messages.operationalSummary}>
+      <section className="space-y-6" aria-label={messages.operationalSummary}>
         <Card>
           <CardHeader><CardTitle>{messages.operationalSummary}</CardTitle><CardDescription>{messages.operationalSummaryDescription}</CardDescription></CardHeader>
           <CardContent><dl className="grid gap-4 sm:grid-cols-2">

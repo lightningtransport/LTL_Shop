@@ -7,7 +7,7 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { formatIsoDate, formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
-import { Badge, Button, Card, EmptyState, LoadFailure, PageSkeleton, ScreenHeader } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, LoadFailure, PageSkeleton, PageHeader } from '@/components/ui';
 import { useShopLocale } from '@/lib/locale-context';
 
 export default function RepairHistoryPage() {
@@ -55,7 +55,8 @@ export default function RepairHistoryPage() {
 
   return (
     <div>
-      <ScreenHeader
+      <PageHeader
+        className="mb-6"
         title={messages.locale === 'es' ? 'Historial de reparaciones' : 'Repair history'}
         subtitle={messages.truckTitle(truck.truckNumber)}
         backHref={backHref}
@@ -123,7 +124,7 @@ export default function RepairHistoryPage() {
                 </div>
               </div>
               <div>
-                <p className="section-label mb-2">{messages.locale === 'es' ? 'Trabajo realizado' : 'Work performed'}</p>
+                <p className="group-title mb-2">{messages.locale === 'es' ? 'Trabajo realizado' : 'Work performed'}</p>
                 {item.jobs.length ? <div className="flex flex-wrap gap-2">
                   {item.jobs.map((j) => (
                     <Badge key={j} variant="outline">{j}</Badge>

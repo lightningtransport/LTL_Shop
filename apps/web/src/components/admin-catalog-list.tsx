@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
 import { AdminWriteTip } from './admin-write-tip';
-import { AdminPageHeader, Badge, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { PageHeader, Badge, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -26,9 +26,8 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
   );
 
   return (
-    <div className="space-y-5">
-      <AdminPageHeader
-        eyebrow={messages.eyebrow}
+    <div className="space-y-6">
+      <PageHeader
         title={messages.catalogTitle}
         subtitle={canWrite ? messages.catalogWriteDescription : messages.catalogDescription}
         actions={canWrite ? addJobButton() : null}

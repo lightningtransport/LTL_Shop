@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Button, LoadFailure, ScreenHeader } from '@/components/ui';
+import { Button, LoadFailure, PageHeader } from '@/components/ui';
 
 export default function RouteError({
   error,
@@ -14,7 +14,8 @@ export default function RouteError({
 
   return (
     <div>
-      <ScreenHeader
+      <PageHeader
+        className="mb-6"
         title="Something went wrong"
         subtitle="This screen could not be loaded. Your saved work has not been changed."
       />

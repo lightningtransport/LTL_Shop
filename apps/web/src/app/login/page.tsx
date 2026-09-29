@@ -123,7 +123,7 @@ export default function LoginPage() {
       <form onSubmit={onSubmit}>
         <Card className="space-y-4">
         <div>
-          <Label className="section-label" htmlFor="login-email">
+          <Label htmlFor="login-email">
             {messages.email}
           </Label>
           <Input
@@ -137,7 +137,7 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <Label className="section-label" htmlFor="login-password">
+          <Label htmlFor="login-password">
             {messages.password}
           </Label>
           <Input

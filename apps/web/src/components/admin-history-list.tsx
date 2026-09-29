@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { AdminFilterToolbar, AdminPageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, Select, WorkOrderStatusBadge } from './ui';
+import { AdminFilterToolbar, PageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, Select, WorkOrderStatusBadge } from './ui';
 import { formatAdminDate } from '@/lib/admin-format';
 import { useAdminHistory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -26,8 +26,8 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (
-    <div className="space-y-5">
-      <AdminPageHeader eyebrow={messages.eyebrow} title={messages.historyTitle} subtitle={messages.historyDescription} />
+    <div className="space-y-6">
+      <PageHeader title={messages.historyTitle} subtitle={messages.historyDescription} />
       <AdminFilterToolbar
         className="md:flex-row"
         onClear={() => router.replace('/admin/history')}

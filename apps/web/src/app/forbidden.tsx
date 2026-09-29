@@ -11,7 +11,7 @@ export default function Forbidden() {
     <main className="mx-auto grid min-h-screen max-w-md place-items-center px-4 py-10">
       <Card className="w-full text-center">
         <CardHeader>
-          <ShieldX aria-hidden="true" className="mx-auto size-10 text-destructive" />
+          <ShieldX aria-hidden="true" className="mx-auto size-10 text-destructive-text" />
           <CardTitle className="mt-3">{messages.locale === 'es' ? 'Acceso a Shop Admin denegado' : 'Shop Admin access denied'}</CardTitle>
           <CardDescription>{messages.locale === 'es' ? 'Tu cuenta no tiene permiso para abrir el espacio administrativo.' : 'Your account does not have permission to open the administrative workspace.'}</CardDescription>
         </CardHeader>

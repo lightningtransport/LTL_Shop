@@ -211,7 +211,7 @@ export function AdminTruckWorkPlan({
           {feedback ? (
             <div
               className={feedback.kind === 'error'
-                ? 'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive'
+                ? 'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive-text'
                 : 'rounded-xl border border-shop-success/30 bg-shop-success/10 px-3 py-2 text-sm text-shop-success'}
               role={feedback.kind === 'error' ? 'alert' : 'status'}
               aria-live="polite"
@@ -286,7 +286,7 @@ export function AdminTruckWorkPlan({
                           ))}
                         </Select>
                       ) : null}
-                      <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)} className="normal-case tracking-normal">
+                      <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)}>
                         {workPlanJobUiStatusLabel(job.uiStatus, messages)}
                       </Badge>
                       {/* LTR-148: the PM job is finished from the PM service (mileage + parts), not "Mark complete". */}
@@ -399,10 +399,10 @@ function WorkPlanSummary({
   return (
     <div className="space-y-3 rounded-xl border p-3" aria-live="polite">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={ready ? 'success' : 'warning'} className="normal-case tracking-normal">
+        <Badge variant={ready ? 'success' : 'warning'}>
           {ready ? messages.workPlanReady : messages.workPlanNotReady}
         </Badge>
-        <Badge variant="outline" className="normal-case tracking-normal">
+        <Badge variant="outline">
           {workPlanPhaseLabel(plan.phase, messages)}
         </Badge>
       </div>
@@ -438,8 +438,8 @@ function MandatoryRow({
 }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2">
-      <Badge variant="outline" className="normal-case tracking-normal">{label}</Badge>
-      <Badge variant={workPlanMandatoryStatusVariant(phase.status)} className="normal-case tracking-normal">
+      <Badge variant="outline">{label}</Badge>
+      <Badge variant={workPlanMandatoryStatusVariant(phase.status)}>
         {workPlanMandatoryStatusLabel(phase.status, messages)}
         {phase.jobCount ? ` · ${phase.jobCount}` : ''}
       </Badge>

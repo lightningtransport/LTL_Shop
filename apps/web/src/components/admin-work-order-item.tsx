@@ -42,7 +42,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
             {workOrderNextJobLine(item, messages)}
           </p>
           {attention ? (
-            <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-warning-foreground" data-testid="attention-reason">
+            <p className="mt-1 text-xs font-semibold text-warning-foreground" data-testid="attention-reason">
               {messages.attentionReasonLabel}: {attention}
             </p>
           ) : null}

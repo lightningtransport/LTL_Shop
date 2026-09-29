@@ -98,7 +98,7 @@ export function AdminShell({
           <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
             {navigationGroups.map((group) => (
               <div key={group.title} className="space-y-1">
-                <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{messages[group.title]}</p>
+                <p className="px-3 text-xs font-semibold text-muted-foreground">{messages[group.title]}</p>
                 {group.items.map(({ message, icon: Icon, href }) => {
                   const active = isActivePath(pathname, href);
                   return <Button key={href} asChild variant={active ? 'secondary' : 'ghost'} className="w-full justify-start">
@@ -135,7 +135,7 @@ export function AdminShell({
         >
           {navigationGroups.map((group) => (
             <div key={group.title} className="flex flex-col gap-1 pb-2">
-              <p className="px-3 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{messages[group.title]}</p>
+              <p className="px-3 pt-1 text-xs font-semibold text-muted-foreground">{messages[group.title]}</p>
               {group.items.map(({ message, icon: Icon, href }) => {
                 const active = isActivePath(pathname, href);
                 return (
@@ -175,9 +175,9 @@ function AdminBrand() {
         priority
         className="h-8 w-12 shrink-0 object-contain sm:h-9 sm:w-14"
       />
-      <p className="hidden min-w-0 truncate font-display text-sm font-bold tracking-wide sm:block">
+      <p className="hidden min-w-0 truncate font-display text-sm font-bold sm:block">
         LTL SHOP
-        <span className="ml-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Admin</span>
+        <span className="ml-2 text-xs font-medium text-muted-foreground">Admin</span>
       </p>
     </div>
   );

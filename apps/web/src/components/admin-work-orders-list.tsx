@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminWorkOrderItem } from './admin-work-order-item';
-import { AdminPageHeader, Button, Card, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PriorityBadge, Select, WorkOrderStatusBadge } from './ui';
+import { PageHeader, Button, Card, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PriorityBadge, Select, WorkOrderStatusBadge } from './ui';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { workOrderNextJobLine } from '@/lib/admin-work-summary';
 import { formatAdminDate } from '@/lib/admin-format';
@@ -79,9 +79,8 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
     ? `${messages.filters} (${activeFilterCount})`
     : messages.filters;
 
-  return <div className="space-y-5">
-    <AdminPageHeader
-      eyebrow={messages.eyebrow}
+  return <div className="space-y-6">
+    <PageHeader
       title={messages.workOrdersTitle}
       subtitle={messages.workOrdersDescription}
       actions={canCreateWorkOrder ? <Button asChild><Link href="/admin/work-orders/new">{messages.newWorkOrderCta}</Link></Button> : null}
@@ -120,7 +119,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
             <SlidersHorizontal aria-hidden="true" className="size-4" />
             {messages.filters}
             {activeFilterCount > 0 ? (
-              <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+              <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
                 {activeFilterCount}
               </span>
             ) : null}

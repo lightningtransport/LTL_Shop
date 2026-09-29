@@ -187,7 +187,7 @@ export function PmServiceCard({
 
   return (
     <Card className="mb-4 space-y-4" aria-labelledby="pm-service-title">
-      <h2 id="pm-service-title" className="section-label">{messages.pmServiceLabel}</h2>
+      <h2 id="pm-service-title" className="group-title">{messages.pmServiceLabel}</h2>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
@@ -225,7 +225,7 @@ export function PmServiceCard({
           <span id="pm-observed-mileage-unit" className="text-sm text-muted-foreground">mi</span>
         </div>
         {mileageBelowCurrent && mileageCheck?.ok === false ? (
-          <p className="mt-2 text-sm text-destructive" role="alert">
+          <p className="mt-2 text-sm text-destructive-text" role="alert">
             {messages.mileageBelowCurrent(formatMileage(mileageCheck.currentMileage))}
           </p>
         ) : null}
@@ -251,7 +251,7 @@ export function PmServiceCard({
       </div>
 
       {showParts ? <div className="space-y-3">
-        <p className="section-label">{messages.partsUsed}</p>
+        <p className="group-title">{messages.partsUsed}</p>
         {data.categories.map((category) => (
           <div key={category.id}>
             <Label htmlFor={`pm-part-${category.id}`}>{category.name}</Label>
@@ -290,7 +290,7 @@ export function PmServiceCard({
         {saveStatus === 'saving' ? <span className="text-muted-foreground">{messages.saving}</span> : null}
         {saveStatus === 'saved' ? <span className="text-muted-foreground">{messages.saved}</span> : null}
         {saveError ? (
-          <span className="text-destructive" role="alert">
+          <span className="text-destructive-text" role="alert">
             {saveError}{' '}
           <Button variant="ghost" className="ml-1 px-2 underline" onClick={() => persist(draft)}>{messages.retry}</Button>
           </span>
@@ -315,7 +315,7 @@ function CompletedPmSummary({ data }: { data: PmServiceDto }) {
   return (
     <Card className="mb-4 space-y-4" aria-labelledby="pm-service-title">
       <div>
-        <h2 id="pm-service-title" className="section-label">{messages.pmServiceLabel}</h2>
+        <h2 id="pm-service-title" className="group-title">{messages.pmServiceLabel}</h2>
         {data.serviceCompletedAt ? (
           <p className="mt-1 text-sm text-muted-foreground">{messages.pmCompletedOn(dateFormat.format(new Date(data.serviceCompletedAt)))}</p>
         ) : null}
@@ -335,7 +335,7 @@ function CompletedPmSummary({ data }: { data: PmServiceDto }) {
         </div>
       </dl>
       <div>
-        <p className="section-label">{messages.partsUsed}</p>
+        <p className="group-title">{messages.partsUsed}</p>
         {usedParts.length ? (
           <ul className="mt-2 space-y-1 text-sm">
             {usedParts.map(({ category, part }) => (

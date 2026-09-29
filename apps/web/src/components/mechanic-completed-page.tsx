@@ -10,7 +10,7 @@ import { replaceAppLocation } from '@/lib/session-restore';
 import { useWorkOrders } from '@/lib/shop-data';
 import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
 import { SessionSignInFallback } from './session-sign-in-fallback';
-import { Card, CardListSkeleton, EmptyState, HomeTopBar, LoadFailure, ScreenHeader } from './ui';
+import { Card, CardListSkeleton, EmptyState, HomeTopBar, LoadFailure, PageHeader } from './ui';
 
 /** LTR-133: completed work has its own screen in both mechanic workspaces. */
 export function MechanicCompletedPage({ mode }: { mode: MechanicMode }) {
@@ -29,7 +29,7 @@ export function MechanicCompletedPage({ mode }: { mode: MechanicMode }) {
   return (
     <div>
       <HomeTopBar mode={mode} />
-      <ScreenHeader title={messages.mechanicCompletedTitle} subtitle={messages.mechanicCompletedSubtitle} />
+      <PageHeader className="mb-6" title={messages.mechanicCompletedTitle} subtitle={messages.mechanicCompletedSubtitle} />
       {error ? <LoadFailure message={messages.unableToLoadWorkOrders} onRetry={() => void mutate()} retryLabel={messages.retry} /> : null}
       {!data && !error ? <CardListSkeleton /> : null}
       {data && !completed.length ? <EmptyState>{messages.noCompletedWork}</EmptyState> : null}

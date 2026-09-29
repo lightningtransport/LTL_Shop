@@ -20,6 +20,8 @@ module.exports = {
         'accent-foreground': 'var(--accent-foreground)',
         destructive: 'var(--destructive)',
         'destructive-foreground': 'var(--destructive-foreground)',
+        // Destructive text on page, card, or a destructive/10 tint; readable in both themes (LTR-166).
+        'destructive-text': 'var(--destructive-text)',
         border: 'var(--border)',
         input: 'var(--input)',
         ring: 'var(--ring)',
