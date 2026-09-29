@@ -39,7 +39,7 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
         </CardContent>
       </Card>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.catalogTitle} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.catalogTitle} header={false} /> : null}
       {!isLoading && !error && items.length === 0 ? (
         <EmptyState>
           <p>{search.trim() ? messages.catalogNoMatches : messages.catalogNoCategories}</p>
@@ -61,7 +61,7 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
               {items.map((item) => (
                 <tr key={item.id} className="border-t">
                   <td className="p-3">
-                    <Link className="font-semibold text-primary hover:underline" href={`/admin/catalog/categories/${item.id}`}>{item.name}</Link>
+                    <Link className="tap-inline font-semibold text-primary hover:underline" href={`/admin/catalog/categories/${item.id}`}>{item.name}</Link>
                     {item.status === CatalogStatus.INACTIVE ? <Badge variant="secondary" className="ml-2">{messages.catalogInactive}</Badge> : null}
                   </td>
                   <td className="p-3">{item.activeJobCount}</td>

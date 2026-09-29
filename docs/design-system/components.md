@@ -26,9 +26,8 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 | `WorkOrderStatusBadge` | `Badge` wrapper. `created=outline`, `in_progress=default`, `waiting_paused=warning`, `completed=success`, `cancelled=secondary` |
 | `JobStatusBadge` | `Badge` wrapper. `to_do=outline`, `completed=success`, `cancelled=secondary` |
 | `PhaseBadge` | `Badge` wrapper. Color by `ReadinessPhase` only (`needs_evaluation=warning`, mid-gates=`outline`, `ready_for_approval=warning`, `ready_to_go=success`). Blockers are text/icon, not chip color |
-| `ThemeToggle` | Light / dark |
-| `AppHeaderActions` | Theme + profile |
-| `HomeTopBar` | Mechanic logo, locale, profile |
+| `AppHeaderActions` | The profile button (LTR-167): 44px round initials; its menu holds the full name, email, Language (English / Español), Theme (Light / Dark / Auto), and Sign out as an outline action at the end. Language and theme are not header buttons |
+| `HomeTopBar` | Mechanic header (`.app-topbar`): logo + profile button, sticky, 56px row like the Admin header; its background covers the status bar in the installed app |
 | `WorkspaceNav` | Standard / PM / Back to Shop Admin |
 | `AuthBrandHeader` | Login / access-denied brand block |
 | `PageHeader` | The one page header (LTR-166): `.page-title`, optional subtitle, meta, badges, actions, and a mechanic icon back button (`backHref`). No eyebrow, no outer margin |

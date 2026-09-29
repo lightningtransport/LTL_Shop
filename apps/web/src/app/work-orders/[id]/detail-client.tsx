@@ -414,8 +414,7 @@ export default function WorkOrderDetailPage() {
                     {wo.status === 'in_progress' || wo.status === 'created' ? (
                       <Button
                         type="button"
-                        variant="ghost"
-                        size="sm"
+                        variant="outline"
                         className="w-full"
                         disabled={busy}
                         aria-label={messages.reportBlockerFor(job.displayName)}

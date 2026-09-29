@@ -7,12 +7,13 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Dialog as DialogPrimitive, Slot } from 'radix-ui';
-import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, Languages, Moon, Sun, Wrench, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, Moon, Sun, Wrench, X } from 'lucide-react';
 import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { shouldOpenUpdatePasswordSheet, updatePasswordSheetCopy } from '@/lib/password-change-prompt';
+import { profileInitials } from '@/lib/profile-initials';
 import { jobStatusVariant, phaseVariant, priorityVariant, workOrderStatusVariant } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
 
@@ -29,7 +30,7 @@ export const buttonVariants = cva(
       },
       size: {
         default: 'min-h-11',
-        sm: 'min-h-9 px-3 py-2 text-xs',
+        sm: 'min-h-11 px-3 py-2 text-sm [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:text-xs',
         lg: 'min-h-12 px-5 py-3 text-base',
         icon: 'size-11 p-0',
       },
@@ -317,25 +318,76 @@ export function MultiSelect({
   );
 }
 
-export function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const { messages } = useShopLocale();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => setMounted(true), []);
-
-  const isDark = mounted && resolvedTheme === 'dark';
+/** A labeled row of options where one is pressed (language, theme). Each option is a 44px target. */
+function SegmentedChoice<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T | undefined;
+  options: { value: T; label: string; icon?: React.ReactNode }[];
+  onChange: (value: T) => void;
+}) {
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="rounded-full border bg-card shadow-sm"
-      aria-label={isDark ? (messages.locale === 'es' ? 'Cambiar tema: usar modo claro' : 'Toggle theme: use light mode') : (messages.locale === 'es' ? 'Cambiar tema: usar modo oscuro' : 'Toggle theme: use dark mode')}
-      title={isDark ? (messages.locale === 'es' ? 'Usar tema claro' : 'Use light theme') : (messages.locale === 'es' ? 'Usar tema oscuro' : 'Use dark theme')}
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
-    >
-      {isDark ? <Sun aria-hidden="true" className="size-5" /> : <Moon aria-hidden="true" className="size-5" />}
-    </Button>
+    <div role="group" aria-label={label} className="space-y-2">
+      <p className="group-title">{label}</p>
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+        {options.map((option) => (
+          <Button
+            key={option.value}
+            type="button"
+            variant={value === option.value ? 'secondary' : 'outline'}
+            className={cn('px-2', value === option.value && 'border-primary text-primary')}
+            aria-pressed={value === option.value}
+            onClick={() => onChange(option.value)}
+          >
+            {option.icon}
+            {option.label}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProfileSettings() {
+  const { messages, setLocale } = useShopLocale();
+  const { theme, setTheme } = useTheme();
+  const router = useRouter();
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  const es = messages.locale === 'es';
+
+  return (
+    <div className="space-y-4">
+      {/* Native names, so a person who cannot read the current language still finds theirs. */}
+      <SegmentedChoice
+        label={es ? 'Idioma' : 'Language'}
+        value={messages.locale}
+        options={[
+          { value: 'en', label: 'English' },
+          { value: 'es', label: 'Español' },
+        ]}
+        onChange={(next) => {
+          if (next === messages.locale) return;
+          setLocale(next);
+          // Admin copy is rendered on the server from the cookie.
+          router.refresh();
+        }}
+      />
+      <SegmentedChoice
+        label={es ? 'Tema' : 'Theme'}
+        value={mounted ? (theme as 'light' | 'dark' | 'system' | undefined) : undefined}
+        options={[
+          { value: 'light', label: es ? 'Claro' : 'Light', icon: <Sun aria-hidden="true" className="size-4" /> },
+          { value: 'dark', label: es ? 'Oscuro' : 'Dark', icon: <Moon aria-hidden="true" className="size-4" /> },
+          { value: 'system', label: es ? 'Auto' : 'Auto' },
+        ]}
+        onChange={setTheme}
+      />
+    </div>
   );
 }
 
@@ -354,7 +406,8 @@ function ProfileDialog() {
   const [error, setError] = React.useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
-  if (!user) return null;
+  // Keep the slot while the session restores so the header does not shift when the user arrives.
+  if (!user) return <span aria-hidden="true" className="size-11 shrink-0" />;
 
   function requestProfileMenu() {
     if (shouldOpenUpdatePasswordSheet({
@@ -392,16 +445,17 @@ function ProfileDialog() {
 
   return (
     <>
+      {/* LTR-167: initials instead of a truncated name; the full name is in the menu. */}
       <Button
         variant="secondary"
-        className="max-w-28 justify-between gap-1.5 sm:max-w-44"
+        size="icon"
+        className="shrink-0 rounded-full border-primary/30 bg-primary/10 text-sm font-bold text-primary"
         aria-label={messages.locale === 'es' ? `Abrir perfil de ${user.name}` : `Open profile for ${user.name}`}
         aria-expanded={menuOpen || passwordSheetOpen}
         aria-haspopup="dialog"
         onClick={requestProfileMenu}
       >
-        <span className="truncate">{user.name}</span>
-        <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        <span aria-hidden="true">{profileInitials(user.name)}</span>
       </Button>
       <Dialog
         open={menuOpen}
@@ -425,11 +479,14 @@ function ProfileDialog() {
             </DialogClose>
           </div>
 
-          {error ? <p className="mb-4 text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
+          <ProfileSettings />
 
+          {error ? <p className="mt-4 text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
+
+          {/* Signing out is rare; it sits last and does not compete with the settings above. */}
           <Button
-            className="w-full"
-            variant="destructive"
+            className="mt-6 w-full text-destructive-text"
+            variant="outline"
             onClick={() => void handleLogout()}
             disabled={isLoggingOut}
           >
@@ -553,43 +610,29 @@ function UpdatePasswordSheet({
   );
 }
 
+/** LTR-167: the header holds only the profile button; language and theme live in its menu. */
 export function AppHeaderActions() {
-  return (
-    <div className="flex shrink-0 items-center gap-2">
-      <ThemeToggle />
-      <ProfileDialog />
-    </div>
-  );
+  return <ProfileDialog />;
 }
 
 export function HomeTopBar({ mode }: { mode?: MechanicMode }) {
-  const { messages, setLocale } = useShopLocale();
+  const { messages } = useShopLocale();
   return (
     <>
       <header
-        className="mb-4 flex items-start justify-between gap-3"
+        className="app-topbar"
         role="banner"
         aria-label={messages.locale === 'es' ? 'Controles de Inicio' : 'Home controls'}
       >
-        <Image
-          src="/ltl-logo.png"
-          alt="Lightning Transport and Logistics"
-          width={1536}
-          height={894}
-          priority
-          className="h-auto w-[85px] object-contain sm:w-28"
-        />
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="min-w-16"
-            aria-label={messages.switchTo}
-            onClick={() => setLocale(messages.locale === 'en' ? 'es' : 'en')}
-          >
-            <Languages aria-hidden="true" className="size-4" />
-            {messages.locale === 'en' ? 'ES' : 'EN'}
-          </Button>
+        <div className="app-topbar-row">
+          <Image
+            src="/ltl-logo.png"
+            alt="Lightning Transport and Logistics"
+            width={1536}
+            height={894}
+            priority
+            className="h-10 w-auto object-contain"
+          />
           <AppHeaderActions />
         </div>
       </header>
@@ -774,7 +817,11 @@ export function CompactEmpty({ children, className }: { children: React.ReactNod
   );
 }
 
-export function PageSkeleton({ label = 'Loading page' }: { label?: string }) {
+/**
+ * Full-page wait. `header={false}` when the real PageHeader is already on screen above it, so the title
+ * does not appear twice and nothing shifts when the data arrives (LTR-167).
+ */
+export function PageSkeleton({ label = 'Loading page', header = true }: { label?: string; header?: boolean }) {
   return (
     <div
       className="animate-pulse space-y-6"
@@ -782,11 +829,12 @@ export function PageSkeleton({ label = 'Loading page' }: { label?: string }) {
       aria-label={label}
       aria-live="polite"
     >
-      <div className="space-y-3">
-        <div className="h-3 w-24 rounded bg-shop-border" />
-        <div className="h-9 w-2/3 rounded-lg bg-shop-panel" />
-        <div className="h-4 w-full rounded bg-shop-panel" />
-      </div>
+      {header ? (
+        <div className="space-y-2">
+          <div className="h-8 w-2/3 rounded-lg bg-shop-panel" />
+          <div className="h-4 w-full rounded bg-shop-panel" />
+        </div>
+      ) : null}
       <CardListSkeleton />
       <span className="sr-only">{label}</span>
     </div>

@@ -58,13 +58,13 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
         }}
       >
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchMechanics} aria-label={messages.searchMechanics} />
-        <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-sm">
-          <input type="checkbox" className="size-4" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
+        <label className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-sm">
+          <input type="checkbox" className="size-5" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
           {messages.showInactiveMechanics}
         </label>
       </AdminFilterToolbar>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.mechanicsTitle} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.mechanicsTitle} header={false} /> : null}
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noMechanicsMatch}</p></EmptyState> : null}
       {items.length ? (
         <div className="overflow-x-auto rounded-xl border">
@@ -80,7 +80,7 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
               {items.map((item) => (
                 <tr key={item.id} className="border-t">
                   <td className="p-3">
-                    <Link className="font-semibold text-primary hover:underline" href={`/admin/mechanics/${item.id}`}>{item.name}</Link>
+                    <Link className="tap-inline font-semibold text-primary hover:underline" href={`/admin/mechanics/${item.id}`}>{item.name}</Link>
                     <p className="text-muted-foreground">{item.email}</p>
                     {!item.active ? <Badge variant="secondary">{messages.mechanicInactive}</Badge> : null}
                     {canWrite && item.role === UserRole.MECHANIC && !item.active ? (

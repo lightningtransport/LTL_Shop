@@ -34,10 +34,10 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
     <article className={cn('rounded-xl border bg-card p-4 shadow-sm', compact && 'bg-background p-3 shadow-none xl:grid xl:grid-cols-[minmax(180px,1.2fr)_minmax(220px,1fr)_auto] xl:items-center xl:gap-4')}>
       <div className="flex flex-wrap items-start justify-between gap-3 xl:block">
         <div>
-          <Link className="font-display text-lg font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, fromPath)}>{item.truck.truckNumber}</Link>
+          <Link className="tap-inline font-display text-lg font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, fromPath)}>{item.truck.truckNumber}</Link>
           <p className="mt-1 text-sm text-muted-foreground">
             {messages.workOrder}{' '}
-            <Link className="font-medium text-foreground hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>
+            <Link className="tap-inline font-medium text-foreground hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>
             {' · '}
             {workOrderNextJobLine(item, messages)}
           </p>
@@ -51,7 +51,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm" data-testid="work-order-next-step" data-kind={item.nextStep?.kind}>
               <span>{messages.nextStepTitle}: {nextStepText}</span>
               {nextStepAction ? (
-                <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+                <Button asChild size="sm" variant="outline">
                   <Link href={adminTruckHref(item.truck.id, fromPath)}>{nextStepAction}</Link>
                 </Button>
               ) : null}

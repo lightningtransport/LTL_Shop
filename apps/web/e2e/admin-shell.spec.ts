@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from './support/test';
 import { devLogin, waitForLoginForm } from './support/dev-login';
+import { switchLanguage } from './support/locale';
 
 const WORK_ORDER_FILTERS_BUTTON = /^(Filters|Filtros)( \(\d+\))?$/;
 
@@ -36,7 +37,8 @@ test.describe('Shop Admin Phase 2A', () => {
     expect(await mechanicShell.evaluate((element) => getComputedStyle(element).paddingTop)).toBe('24px');
 
     await page.addStyleTag({ content: ':root { --app-safe-top: 59px; --app-safe-bottom: 48px; }' });
-    await expect.poll(async () => mechanicShell.evaluate((element) => getComputedStyle(element).paddingTop)).toBe('59px');
+    // LTR-167: 1rem below the status bar, so iOS does not blur the first line in the installed app.
+    await expect.poll(async () => mechanicShell.evaluate((element) => getComputedStyle(element).paddingTop)).toBe('75px');
     await expect.poll(async () => mechanicShell.evaluate((element) => getComputedStyle(element).paddingBottom)).toBe('48px');
   });
 
@@ -133,7 +135,7 @@ test.describe('Shop Admin Phase 2A', () => {
       }
     }
 
-    await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
+    await switchLanguage(page, 'es');
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
     await expect(page.getByText('Operaciones actuales del Shop')).toBeVisible();
     await expect(page.getByText('Primero los listos para cerrar')).toBeVisible();
@@ -174,7 +176,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Mechanics', 'Job Catalog', 'Shop workflow', 'History']);
 
     await page.getByRole('button', { name: 'Close Shop Admin navigation' }).click();
-    await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
+    await switchLanguage(page, 'es');
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
     await page.getByRole('button', { name: 'Abrir navegación de Shop Admin' }).click();
     const esMobileNav = page.getByRole('dialog').getByRole('navigation', { name: 'Navegación móvil de Shop Admin' });
@@ -428,8 +430,7 @@ test.describe('Shop Admin Phase 2A', () => {
       await page.getByRole('link', { name: 'Back to Shop Admin' }).click();
       await expect(page).toHaveURL(/\/admin$/);
 
-      // The mechanic header has its own "Switch to Spanish"; use the Admin one.
-      await page.getByRole('banner', { name: 'Shop Admin controls' }).getByRole('button', { name: 'Switch to Spanish' }).click();
+      await switchLanguage(page, 'es');
       await expect(page.getByRole('heading', { name: 'Espacios de trabajo' })).toBeVisible();
       await page.getByRole('link', { name: 'Abrir Mecánico PM' }).click();
       await expect(page).toHaveURL(/\/mechanic\/pm$/);
@@ -524,7 +525,8 @@ test.describe('Shop Admin Phase 2A', () => {
 
     await page.goto('/admin');
     await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
-    await page.getByRole('button', { name: /Switch to Spanish|Cambiar a inglés/ }).click();
+    await switchLanguage(page, 'en');
+    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
     const localeCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'ltl_shop_locale');
     expect(localeCookie?.value).toMatch(/^(en|es)$/);
     expect(localeCookie?.path).toBe('/');
@@ -587,7 +589,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'T-101' })).toBeVisible();
     await expect(page.getByTestId('admin-wo-next-action')).toHaveCount(0);
 
-    await page.getByRole('button', { name: /Switch to Spanish|Language: English/ }).click();
+    await switchLanguage(page, 'es');
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByTestId('admin-wo-next-action').getByRole('button', { name: 'Confirmar finalización' })).toBeVisible();
   });

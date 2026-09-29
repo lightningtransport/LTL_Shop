@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from './support/test';
 import { devLogin } from './support/dev-login';
+import { switchLanguage } from './support/locale';
 
 const CREATED_ID = '00000000-0000-4000-8000-000000000103';
 const IN_PROGRESS_ID = '00000000-0000-4000-8000-000000000102';
@@ -80,7 +81,7 @@ test('Admin Pause stays disabled on Created and enables on In Progress', async (
   await expect(page.getByLabel('Pause reason')).toBeDisabled();
   await expect(page.getByText('Pause is available after this Work Order is In Progress.')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Switch to Spanish' }).click();
+  await switchLanguage(page, 'es');
   await expect(page.getByRole('button', { name: 'Pausar Work Order' })).toBeDisabled();
   await expect(page.getByText('La pausa está disponible cuando esta Work Order está En progreso.')).toBeVisible();
 

@@ -51,7 +51,7 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
         </div>
       </AdminFilterToolbar>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.historyTitle} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.historyTitle} header={false} /> : null}
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noHistory}</p></EmptyState> : null}
       {items.length ? (
         <div className="overflow-x-auto rounded-xl border">
@@ -69,7 +69,7 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
               {items.map((item) => (
                 <tr key={item.id} className="border-t">
                   <td className="p-3 font-display font-semibold">{item.truck.truckNumber}</td>
-                  <td className="p-3 text-muted-foreground"><Link className="hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td>
+                  <td className="p-3 text-muted-foreground"><Link className="tap-inline hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td>
                   <td className="p-3">{item.category.name}</td>
                   <td className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></td>
                   <td className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</td>

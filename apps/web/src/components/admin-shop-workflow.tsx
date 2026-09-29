@@ -74,7 +74,7 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
       {user && !canWrite ? <p className="text-sm text-muted-foreground">{messages.shopWorkflowReadOnly}</p> : null}
       {saveError ? <InlineAlert>{saveError}</InlineAlert> : null}
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.shopWorkflow} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.shopWorkflow} header={false} /> : null}
       {data && data.length === 0 ? <EmptyState>{messages.shopWorkflowEmpty}</EmptyState> : null}
       {data?.length ? (
         <Card>

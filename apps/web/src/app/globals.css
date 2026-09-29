@@ -172,11 +172,36 @@ body {
 
 @layer components {
   .app-shell {
+    /* In the installed iPhone app, iOS blurs what sits right under the status bar. Keep the first line
+       of content at least 1rem below it (LTR-167). */
+    --app-shell-top: max(1.5rem, calc(var(--app-safe-top) + 1rem));
+    --app-shell-left: max(1rem, var(--app-safe-left));
+    --app-shell-right: max(1rem, var(--app-safe-right));
     @apply mx-auto min-h-screen w-full max-w-md outline-none md:max-w-xl;
-    padding-top: max(1.5rem, var(--app-safe-top));
-    padding-right: max(1rem, var(--app-safe-right));
+    padding-top: var(--app-shell-top);
+    padding-right: var(--app-shell-right);
     padding-bottom: max(2.5rem, var(--app-safe-bottom));
-    padding-left: max(1rem, var(--app-safe-left));
+    padding-left: var(--app-shell-left);
+  }
+  /* Mechanic header: full-bleed and sticky, its background under the status bar, so scrolled content never
+     sits in the blurred strip. Same 56px row as the Admin header. */
+  .app-topbar {
+    @apply sticky top-0 z-30 mb-4 border-b bg-shop-bg/95 backdrop-blur;
+    margin-top: calc(-1 * var(--app-shell-top));
+    margin-left: calc(-1 * var(--app-shell-left));
+    margin-right: calc(-1 * var(--app-shell-right));
+    padding-top: var(--app-safe-top);
+    padding-left: var(--app-shell-left);
+    padding-right: var(--app-shell-right);
+  }
+  .app-topbar-row {
+    @apply flex h-14 items-center justify-between gap-3;
+  }
+  /* Grows an inline link (T-102, WO-0102) to a 44px-tall target without moving the text around it. */
+  .tap-inline {
+    display: inline-block;
+    padding-block: calc((2.75rem - 1lh) / 2);
+    margin-block: calc((1lh - 2.75rem) / 2);
   }
   /* Deprecated: use Button from ui.tsx. Kept only so leftover class names do not unstyle. */
   .btn {
