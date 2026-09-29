@@ -252,23 +252,8 @@ export class YardWorkPlanService {
         'An open PM Work Order blocks a Standard Work Plan. Complete or cancel it first.',
       );
     }
-    if (input.expectedVersion === undefined) {
-      throw new ConflictException({
-        code: 'WORK_ORDER_VERSION_REQUIRED',
-        message: 'expectedVersion is required when the Truck already has an open Work Order.',
-        workOrderId: open.id,
-        version: open.version,
-      });
-    }
-    if (open.version !== input.expectedVersion) {
-      throw new ConflictException({
-        code: 'VERSION_CONFLICT',
-        message: 'Work Order was updated. Refresh and try again.',
-        workOrderId: open.id,
-        version: open.version,
-      });
-    }
-
+    // A retry of a request that already landed replays before the version check:
+    // its own write bumped the version the client sent.
     const payloadHash = idempotencyFingerprint({
       workOrderId: open.id,
       jobs: input.jobs,
@@ -286,6 +271,23 @@ export class YardWorkPlanService {
         throw new ConflictException('Idempotency key was already used for a different Work Plan mutation.');
       }
       return;
+    }
+
+    if (input.expectedVersion === undefined) {
+      throw new ConflictException({
+        code: 'WORK_ORDER_VERSION_REQUIRED',
+        message: 'expectedVersion is required when the Truck already has an open Work Order.',
+        workOrderId: open.id,
+        version: open.version,
+      });
+    }
+    if (open.version !== input.expectedVersion) {
+      throw new ConflictException({
+        code: 'VERSION_CONFLICT',
+        message: 'Work Order was updated. Refresh and try again.',
+        workOrderId: open.id,
+        version: open.version,
+      });
     }
 
     await this.assertStandardAssignees(input);
