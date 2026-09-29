@@ -108,7 +108,7 @@ Interactive controls use Tailwind `min-h-11` (2.75rem / 44px):
 - MultiSelect option rows (`min-h-11`)
 
 Do not ship new tappable controls below 44px. The 2026-09-01 UX audit recorded
-this as a CURRENT rule (`docs/audit/ux-theme/README.md`).
+this as a CURRENT rule (`docs/archive/audit/ux-theme/README.md`).
 
 Buttons also use `whitespace-nowrap`; if an action group does not fit, the
 group wraps or stacks. Individual action labels must never be allowed to form

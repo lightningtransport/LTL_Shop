@@ -1,9 +1,10 @@
 # Lista para abrir el Shop a usuarios reales
 
 **Para:** Cristian
-**Fecha:** 2026-09-20
+**Fecha:** 2026-09-20 (rutas y banderas actualizadas 2026-09-29)
+**Preguntas abiertas:** se deciden en `docs/DECISIONS.md` (P1–P6)
 **Idioma:** español, lenguaje claro
-**Código de apoyo:** `docs/NINOX_SHOP_MAPPING.md` y
+**Código de apoyo:** `docs/reference/NINOX_SHOP_MAPPING.md` y
 `apps/api/src/integrations/ninox/ninox.mapping.ts`
 
 Esta lista cierra lo que falta para que **personas reales** usen LTL_Shop.
@@ -19,7 +20,7 @@ tablero.
 
 Comando: `npm run prisma:seed-ninox-trucks --workspace=@ltl-shop/api`
 
-Detalle: `docs/NINOX_TRUCK_SEED.md`.
+Detalle: `docs/reference/NINOX_TRUCK_SEED.md`.
 
 ## ¿Con el scan de MappingTool hecho, puede lanzar el Shop?
 
@@ -66,7 +67,7 @@ Las fases del patio / Work Plan **no** son `E.TA`.
   para buscar o mostrar el camión.
 - Work Orders, PM, Admin y Yard Phase 1 ya existen en código.
 - El camino de deploy (Vercel + Prisma migrate por el workflow aprobado)
-  está documentado en `docs/DEPLOY.md`.
+  está documentado en `docs/reference/DEPLOY.md`.
 
 ---
 
@@ -99,8 +100,6 @@ Nada de esto bloquea abrir el Shop de **camiones** como está hoy.
 - **¿Quién da de alta un camión nuevo?** Hoy no hay editor Admin de
   camiones. Sin Ninox en vivo, alguien tiene que cargar o importar la
   fila en `trucks`.
-- **¿Las banderas de Work Plan (`YARD_WORK_PLAN_SLICE1` / `SLICE2`) van
-  encendidas en producción?** Eso cambia la pantalla del patio, no Ninox.
 - **Roster real:** qué personas entran el día 1, con qué capacidad
   (mecánico Standard, PM, Manager con `work_orders.manage`, Admin).
 - **Off Duty:** no hay mutación todavía. ¿Se lanza sin eso?

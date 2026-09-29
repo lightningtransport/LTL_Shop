@@ -1,14 +1,14 @@
 # Design system
 
 **Classification:** CURRENT STATE
-**Updated:** 2026-09-13
+**Updated:** 2026-09-29 (docs reorganized)
 
 This folder inventories the Lightning Shop UI that exists in `apps/web` today.
 It is not a target kit and does not invent primitives.
 
-Product TARGET still lives in `LIGHTNING_SHOP_MASTER_PRD.md`. When this folder
-says TARGET, it only marks Master PRD primitives that are **not** implemented
-yet (Table / Tabs / Sheet). Do not treat those as current exports.
+When this folder says TARGET, it only marks primitives from the archived
+Master PRD (`../archive/LIGHTNING_SHOP_MASTER_PRD.md` §33) that are **not**
+implemented yet (Table / Tabs / Sheet). Do not treat those as current exports.
 
 ## Read order
 
@@ -26,6 +26,5 @@ CURRENT terms, not new translations.
 ## Authority
 
 - CURRENT UI: tested code in `apps/web`
-- CURRENT product behavior: `../CURRENT_PRODUCT_STATUS.md`
-- TARGET product: `../LIGHTNING_SHOP_MASTER_PRD.md` §33 Design System
-- Theme audit evidence: `../audit/ux-theme/README.md`
+- CURRENT product behavior: `../SYSTEM.md`
+- Theme audit evidence (historical): `../archive/audit/ux-theme/README.md`
