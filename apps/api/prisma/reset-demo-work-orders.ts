@@ -1,6 +1,6 @@
 /**
  * Demo Work Orders: wipe every Work Order and the Truck state that hangs off it, then rebuild one
- * Truck per JTBD scenario (docs/LIGHTNING_SHOP_MASTER_PRD.md §4, docs/ux/FLUJOS_Y_MEJORAS_2026-09-27.md §5).
+ * Truck per JTBD scenario (docs/SYSTEM.md §4).
  *
  *   npm run prisma:reset-demo-work-orders --workspace=@ltl-shop/api                      # dry-run, production
  *   npm run prisma:reset-demo-work-orders --workspace=@ltl-shop/api -- --apply           # writes, production

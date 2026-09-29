@@ -3,20 +3,19 @@
 Operational Shop, Yard, and fleet-readiness application for Lightning
 Transport.
 
-## Documentation authority
+## Documentation
 
-Read in this order before implementation:
+Start at [`docs/README.md`](docs/README.md). One source of truth per topic:
 
-1. [`docs/LIGHTNING_SHOP_MASTER_PRD.md`](docs/LIGHTNING_SHOP_MASTER_PRD.md) —
-   canonical TARGET product and domain.
-2. [`docs/CURRENT_PRODUCT_STATUS.md`](docs/CURRENT_PRODUCT_STATUS.md) — behavior
-   implemented now.
-3. [`docs/ENGINEERING_PRACTICES.md`](docs/ENGINEERING_PRACTICES.md) — technical
-   rules.
-4. [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md) — classification
-   of all other documents.
+1. [`docs/SYSTEM.md`](docs/SYSTEM.md) — how the system works today (roles,
+   flows, states, screens, rules).
+2. [`docs/DECISIONS.md`](docs/DECISIONS.md) — product decisions D1–D18.
+3. [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) — known defects, cleanup,
+   go-live work, out of scope.
+4. [`docs/reference/`](docs/reference) — engineering practices, deploy,
+   performance, Ninox, Yard data boundary.
 
-Historical PRDs and plans do not override these sources.
+`docs/archive/` is history and never overrides these sources or the code.
 
 ## Stack
 
@@ -28,56 +27,24 @@ Historical PRDs and plans do not override these sources.
   fleet load is a **one-shot** CLI (`npm run prisma:seed-ninox-trucks`) that
   GETs TrucksDB `E` and upserts Shop rows by VIN + `truckNumber` (`E.CG` / `E.A`).
   It never writes Ninox and will not query Ninox again after a completed run.
-  See [`docs/NINOX_TRUCK_SEED.md`](docs/NINOX_TRUCK_SEED.md).
+  See [`docs/reference/NINOX_TRUCK_SEED.md`](docs/reference/NINOX_TRUCK_SEED.md).
 - **Yard Phase 1 cards:** Incoming Trucks, Upcoming Departures, and Work
   location are proxied by Nest `GET /api/admin/yard/data-boundary` from
   Lightning `agent-reporting`. The agent key is API-only
   (`AGENT_REPORTING_KEY`, never `NEXT_PUBLIC_*`). See
-  [`docs/YARD_DATA_BOUNDARY.md`](docs/YARD_DATA_BOUNDARY.md).
+  [`docs/reference/YARD_DATA_BOUNDARY.md`](docs/reference/YARD_DATA_BOUNDARY.md).
 
 ## Locked product rules
 
-1. **Create Work Order ≠ Start Work.** Mechanic must tap **Start Work** to open the first work session and begin Active Labor.
-   - **PM in the Work Plan (LTR-141; the only mode since LTR-150):** replaced the old PM exception (a PM service created already in progress); legacy PM Work Orders keep working. PM is a mandatory **Job** inside the truck's single Work Order (`Inspection → Shop Work → PM → Alignment → Detailing → QC`). Every new truck Work Order gets PM A, Alignment, Detailing and Quality Check; the PM mechanic starts and finishes only the PM job (mileage + parts) and "Create PM service" joins the truck's open Work Order. See [`docs/CURRENT_PRODUCT_STATUS.md`](docs/CURRENT_PRODUCT_STATUS.md).
-2. Timers are computed from persisted session / pause timestamps (never client-only counters).
-3. Completing a Job does not pause or finish the Work Order.
-4. One open Work Order per Truck.
-5. A normal Work Order requires at least one job. Duplicate catalog jobs and duplicate custom-job names are rejected in both the UI and API.
-6. A normal Work Order cannot be paused when it has no remaining jobs. PM work is controlled by its PM Service requirements instead.
+Full list and rationale: [`docs/SYSTEM.md`](docs/SYSTEM.md) §7 and
+[`docs/DECISIONS.md`](docs/DECISIONS.md).
 
-## Work Order domain direction
-
-- **CURRENT/legacy-compatible:** `primaryCategoryId` remains required as the
-  **Initial/Primary Category** for backward compatibility. Every
-  `WorkOrderJob` owns its Category.
-- **CURRENT:** a Work Order is the complete service intervention for one Truck.
-  Standard creation and Add Job permit multiple non-PM Job Categories without
-  removing legacy readers or `primaryCategoryId`.
-- **CURRENT soft cutover:** a Manager with `admin.access` and
-  `work_orders.manage` can create/plan Standard Work Orders, assign Jobs, and
-  pause/resume. Standard mechanics see assignment-centered UI and can report
-  blockers, while legacy Standard create and some pause/resume behavior remain.
-  PM remains specialized. See
-  [`docs/CURRENT_PRODUCT_STATUS.md`](docs/CURRENT_PRODUCT_STATUS.md).
-- **TARGET:** the Manager normally plans and controls the Standard intervention;
-  the mechanic executes assigned work. See the canonical Master PRD and
-  [`docs/audit/CURRENT_VS_TARGET.md`](docs/audit/CURRENT_VS_TARGET.md).
-- **LOCKED:** one open Work Order per Truck; a later visit or distinct service
-  event creates a new Work Order. A Yard Phase is not a Category and never
-  creates another Work Order.
-- **LOCKED:** Standard Create remains different from Start. PM remains the
-  specialized `mechanic.pm` exception. Completing a Job does not complete the
-  Work Order, and Work Order `Completed` does not mean `Ready to Go` or
-  `Returned to Service`.
-- **DEFERRED:** Job-level timers, a configurable rules engine, unconfirmed
-  external integrations, multiple open Work Orders per Truck, and removal of
-  `primaryCategoryId`. Per-Job assignment exists and is pending operational
-  validation.
-
-Use the current
-[`development roadmap`](docs/DEVELOPMENT_ROADMAP.md),
-[`implementation queue`](docs/IMPLEMENTATION_QUEUE.md), and
-[`CURRENT/TARGET audit`](docs/audit/CURRENT_VS_TARGET.md) for sequencing.
+1. One open Work Order per Truck.
+2. Creating a Work Order does not start work; the mechanic taps Start.
+3. Completing a Job does not pause or complete the Work Order.
+4. Work Order Completed ≠ Ready to Go ≠ Return to Service.
+5. Timers come from persisted sessions and pauses, never client counters.
+6. Authorization and business rules are enforced by the API only.
 
 ## Quick start (local)
 
@@ -171,34 +138,17 @@ the fleet with Ninox, match on `truckNumber` = Ninox `E.A` only.
 | `packages/shared` | Enums, DTOs, Zod contracts |
 | `apps/api/prisma` | Prisma schema, migrations, and local seed; this is the only migration source |
 | `/admin` | Server-authorized responsive shell for users with `admin.access` |
-| `/admin/yard-operations` | Admin Yard Operations and readiness view; mutations require `yard.operations.manage` |
+| `/admin/yard-operations` | Yard board by Work Plan phase; Movement tab with agent-reporting cards |
 | `/mechanic/standard` | Standard mechanic workspace for users with `mechanic.standard` |
 | `/mechanic/pm` | PM mechanic workspace for users with `mechanic.pm` |
-| `docs/LIGHTNING_SHOP_MASTER_PRD.md` | Canonical product and domain TARGET |
-| `docs/CURRENT_PRODUCT_STATUS.md` | Implemented workflows and operating configuration |
-| `docs/GO_LIVE_CHECKLIST_ES.md` | Spanish Shop launch checklist (Ninox scan closed for trucks) |
-| `docs/NINOX_SHOP_MAPPING.md` | Verified Ninox IDs only: `E` / `E.A` / `E.TA`; UC trailer unresolved |
-| `docs/DOCUMENTATION_INDEX.md` | Authority and classification for every relevant document |
-| `docs/DEVELOPMENT_ROADMAP.md` | NOW/NEXT/LATER sequencing |
-| `docs/IMPLEMENTATION_QUEUE.md` | Scoped, ordered implementation tasks |
-| `docs/pm-daniel.md` | PM authorization and future assignment-policy note |
-| `docs/ENGINEERING_PRACTICES.md` | Data-flow, caching, mutation, and performance rules |
-| `docs/PERFORMANCE.md` | Production measurements and performance targets |
 
 ## API overview
 
-- `GET /api/auth/me`
-- `GET /api/mechanics`
-- `GET /api/trucks`
-- `GET /api/trucks/search?q=`
-- `GET /api/trucks/:id/open-work-order`
-- `GET /api/trucks/:id/repair-history`
-- `GET /api/catalog/categories|jobs`
-- `GET /api/work-orders?mode=standard|pm`
-- `POST /api/work-orders`
-- `POST /api/work-orders/:id/start|pause|pause-reason|resume|complete`
-- `POST /api/work-orders/:id/jobs`
-- `POST /api/work-orders/:id/jobs/:jobId/complete`
+Endpoints live in the NestJS controllers under `apps/api/src`
+(`work-orders/`, `admin/`, `trucks/`, `job-catalog/`, `users/`, `auth/`).
+Which screen calls what, and who may call it, is in
+[`docs/SYSTEM.md`](docs/SYSTEM.md). Deprecated endpoints still present are
+listed in [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) §3.
 
 ## Tests
 
@@ -215,8 +165,4 @@ npm run test:e2e --workspace=@ltl-shop/web   # requires running app
 
 ## Deferred beyond the current release
 
-Ninox live integration, per-Job timers, purchasing/costing, configurable
-rules, unconfirmed Samsara/Dispatch/McLeod integrations, and permanent
-dual-write. Per-Job assignment is already implemented and must be stabilized,
-not rebuilt. MappingTool discovery for the truck number is **done**; a live
-Ninox adapter is still deferred and is not a Shop launch blocker.
+See [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) §6.
