@@ -1,6 +1,6 @@
 # Pendientes: defectos, limpieza y salida en vivo
 
-**Actualizado:** 2026-09-29 (Fase A hecha, LTR-174)
+**Actualizado:** 2026-09-29 (Fase A hecha; cuestionario de operación)
 
 Una sola lista de lo que falta. Cuando algo se arregla, se borra de aquí
 (el historial queda en git y en Linear). El orden es el orden de trabajo.
@@ -63,7 +63,7 @@ Con esto **la lista de defectos de flujo está cerrada**. Lo que aparezca
 después se anota en §1 con su clase y su fila de prueba, pero no cambia el
 plan.
 
-**Lo que la auditoría no cubre** (se revisa en pantalla, `USER_FLOWS.md` §6):
+**Lo que la auditoría no cubre** (se revisa en pantalla, `USER_FLOWS.md` §7):
 inicio de sesión real, idioma, tema, app instalada, textos y pantallas
 vacías/de error.
 
@@ -76,7 +76,10 @@ puede borrar en la limpieza (§3).
 
 Orden: #1 (LTR-175, con el ajuste manual de WO-009) → #2 (LTR-176) → #4
 (LTR-177) → #7 (LTR-182) → #9 (LTR-184) → #6 (LTR-178) → los C de §1b
-(LTR-179) → #8 (LTR-183). Cada PR: arreglo + su fila en `test-real/` pasa a
+(LTR-179). El #8 (LTR-183) está en pausa hasta decidir D19.
+
+**En paralelo, decisiones:** D19 (quién hace QC, LTR-185) es la única que
+frena la salida en vivo. D20 y P7–P11 se deciden antes de la Fase D. Cada PR: arreglo + su fila en `test-real/` pasa a
 PASA + `USER_FLOWS.md` pasa a ✅ + fila borrada de aquí.
 
 ### Fase C — Limpieza (§3, LTR-180) e idioma (§4, LTR-181)
@@ -113,6 +116,32 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 | 8 | **Quality Check acepta dueño** (fila E9b) — E, LTR-183 | La asignación directa de un Job acepta Quality Check (D15 dice que nunca lleva dueño). La pantalla no lo ofrece y Setup sí lo rechaza. | `AdminService.assignJob` |
 | 9 | **Sesiones de tiempo sin mecánico** — C, LTR-184 | El detalle Admin del WO lista las sesiones de trabajo sin decir de quién es cada una. Con dos mecánicos no se sabe cuál corregir. | `admin.service.ts` (~l. 2193, `laborSessions`) |
 
+
+## 1c. Huecos de operación (cuestionario del 2026-09-29)
+
+No son defectos: es trabajo del taller que la app no cubre. Cada uno
+necesita su decisión en `DECISIONS.md` antes de construirse. Las historias
+están en `USER_FLOWS.md` §6.
+
+| # | El taller | La app hoy | Clase | Ticket |
+|---|---|---|---|---|
+| G1 | **El Quality Check lo hace Safety** (dos personas) | Lo marca el Manager; Safety no tiene cuenta ni pantalla (D15) | **B** para salir en vivo | LTR-185 |
+| G2 | El tiempo olvidado debe detenerse solo a cierta hora; el tiempo se usa para costear | Corre hasta que alguien lo corrige a mano | C | LTR-186 |
+| G3 | A veces dos mecánicos trabajan en la misma tarea | Un dueño por Job; el tiempo del ayudante se pierde | C | LTR-188 (P7) |
+| G4 | A veces se manda trabajo a un taller externo | No existe | C | LTR-188 (P8) |
+| G5 | El Manager da de alta camiones y mecánicos | Sin pantalla; el Manager no tiene permiso | C | LTR-187 |
+| G6 | El taller también trabaja trailers | Solo camiones | por decidir cuándo | LTR-188 (P11), LTR-56 |
+| G7 | El tiempo se usa para costear | El tiempo de un mecánico puede contarse dos veces (D2) | C | LTR-188 (P9) |
+
+**Efecto en los defectos:**
+- **#8 (LTR-183) queda en pausa.** Si Safety va a ser dueño del Quality
+  Check, la regla "QC nunca lleva dueño" cambia.
+- **#4 (LTR-177) y #7 (LTR-182) suben de importancia.** Return to Service se
+  hace cuando el camión sale del patio, así que los camiones pasan horas o
+  días en Ready to Go. Ahí es donde fallan los dos.
+- **#1 (LTR-175) y #9 (LTR-184) importan más:** el tiempo del PM hoy no se
+  registra y las sesiones no dicen de quién son, y ese tiempo se usa para
+  costear.
 
 ## 1b. Defectos menores de la UI móvil (LTR-165, revisión 2026-09-29) — LTR-179
 
@@ -194,10 +223,10 @@ Detalle en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md).
 ## 6. Fuera de alcance (no se construye hasta decidirlo)
 
 - Presencia física en el patio (Samsara), McLeod, Dispatch, Schedule_Teams.
-- Off Duty (P2), editor de camiones (P1), trailers como activos (P3),
-  sincronizar con Ninox (P4).
-- Pantallas para escribir catálogo, roster, categorías y permisos (hoy solo
-  por API o nada).
+- Off Duty (decidido: se lanza sin eso), sincronizar con Ninox (P4).
+- Trailers como activos: el taller los necesita; falta decidir cuándo (P11).
+- Pantallas para escribir catálogo, categorías y permisos (hoy solo por API
+  o nada). Alta de camiones y mecánicos **sí** entra: LTR-187.
 - Rendimiento por Job, tiempos por Job, espera por motivo.
 - Espacios de trabajo de Detailing, Body Shop, Trailer e Inspector.
 - Notificaciones push (decidido: solo dentro de la app).
