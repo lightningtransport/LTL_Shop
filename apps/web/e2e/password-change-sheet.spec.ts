@@ -74,7 +74,9 @@ test.describe('MPM update password sheet', () => {
     await page.evaluate(() => sessionStorage.removeItem('ltl_shop_password_change_resolved'));
     await page.reload();
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
-    await page.getByRole('button', { name: 'Switch to Spanish' }).click();
+    // A required password change opens its sheet before the profile menu, so set the language directly.
+    await page.evaluate(() => { document.cookie = 'ltl_shop_locale=es; path=/'; });
+    await page.reload();
     await expect(page.getByRole('heading', { name: 'Mecánico de PM' })).toBeVisible();
     await page.getByRole('button', { name: 'Abrir perfil de Dana PM' }).click();
     await expect(page.getByRole('heading', { name: 'Actualizar contraseña' })).toBeVisible();

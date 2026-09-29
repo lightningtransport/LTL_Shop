@@ -1,5 +1,6 @@
 import { expect, test, type Page } from './support/test';
 import { devLogin } from './support/dev-login';
+import { switchLanguage } from './support/locale';
 
 async function loginToAdmin(page: Page, email: string) {
   await devLogin(page, email);
@@ -124,7 +125,7 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await expect(page.getByText('Mechanic saved.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Luz Mendez' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Switch to Spanish' }).click();
+  await switchLanguage(page, 'es');
   await expect(page.getByTestId('pd-light-tip')).toContainText('Solo System Admin');
   await expect(page.getByRole('button', { name: 'Guardar mecánico' })).toBeVisible();
   await page.goto('/admin/mechanics');

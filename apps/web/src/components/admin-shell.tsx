@@ -4,11 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { ClipboardList, Gauge, History, Library, ListChecks, Menu, Truck, UsersRound, Warehouse } from 'lucide-react';
-import { AdminLocaleSwitcher } from './admin-locale-switcher';
 import { AdminNavLink } from './admin-nav-link';
 import { AppHeaderActions, Button, Modal } from './ui';
 import { AdminActorProvider } from '@/lib/admin-actor';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import type { AdminMessages } from '@/lib/admin-messages';
 
 // LTR-122: daily operation first, then setup, then audit (same pages for every role).
 const navigationGroups = [
@@ -43,12 +42,10 @@ function isActivePath(pathname: string, href: string) {
 
 export function AdminShell({
   children,
-  locale,
   messages,
   user,
 }: {
   children: React.ReactNode;
-  locale: AdminLocale;
   messages: AdminMessages;
   user: { name: string; role: string };
 }) {
@@ -67,7 +64,7 @@ export function AdminShell({
         className="app-safe-top sticky top-0 z-40 w-full shrink-0 border-b bg-card/95 backdrop-blur"
         aria-label={messages.shellControls}
       >
-        <div className="flex h-16 w-full min-w-0 items-center gap-2 px-4 md:gap-3 md:px-5 xl:px-6">
+        <div className="flex h-14 w-full min-w-0 items-center gap-2 px-4 md:gap-3 md:px-5 xl:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Button
               ref={menuButtonRef}
@@ -83,8 +80,8 @@ export function AdminShell({
             </Button>
             <AdminBrand />
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <AdminLocaleSwitcher locale={locale} messages={messages} />
+          {/* LTR-167: language and theme are in the profile menu, same as the mechanic header. */}
+          <div className="ml-auto flex shrink-0 items-center">
             <AppHeaderActions />
           </div>
         </div>

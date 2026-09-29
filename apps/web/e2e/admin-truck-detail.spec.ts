@@ -1,5 +1,6 @@
 import { expect, test, type Page } from './support/test';
 import { devLogin } from './support/dev-login';
+import { switchLanguage } from './support/locale';
 
 async function login(page: Page, email: string) {
   await devLogin(page, email);
@@ -57,7 +58,7 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await openYardOperations(page);
     await page.getByRole('link', { name: 'Y-102' }).click();
     await expect(page.getByText('Truck details', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Switch to Spanish' }).click();
+    await switchLanguage(page, 'es');
     await page.getByTestId('truck-details').locator('summary').filter({ hasText: 'Datos del truck' }).click();
     await expect(page.getByText('Ubicación reportada')).toBeVisible();
     await expect(page.getByText('Presencia desconocida')).toHaveCount(0);

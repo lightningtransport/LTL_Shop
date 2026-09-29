@@ -20,5 +20,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     role: requestHeaders.get('x-ltl-admin-role') ?? 'manager',
   };
 
-  return <AdminShell locale={locale} messages={getAdminMessages(locale)} user={user}>{children}</AdminShell>;
+  return <AdminShell messages={getAdminMessages(locale)} user={user}>{children}</AdminShell>;
 }

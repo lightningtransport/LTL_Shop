@@ -43,7 +43,7 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchTrucks} aria-label={messages.searchTrucks} />
       </AdminFilterToolbar>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.trucksTitle} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.trucksTitle} header={false} /> : null}
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p></EmptyState> : null}
       {items.length ? (
         <div className="overflow-x-auto rounded-xl border">
@@ -63,7 +63,7 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
               {items.map((item) => (
                 <tr key={item.truck.id} className="border-t">
                   <td className="p-3">
-                    <Link className="font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/trucks')}>{item.truck.truckNumber}</Link>
+                    <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/trucks')}>{item.truck.truckNumber}</Link>
                     <p className="text-muted-foreground">
                       {[item.truck.year, item.truck.model].filter(Boolean).join(' ') || '—'}
                     </p>
@@ -85,7 +85,7 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
                   <td className="p-3">
                     {item.openWorkOrder ? (
                       <>
-                        <Link className="font-medium text-primary hover:underline" href={`/admin/work-orders/${item.openWorkOrder.id}`}>{item.openWorkOrder.displayId}</Link>
+                        <Link className="tap-inline font-medium text-primary hover:underline" href={`/admin/work-orders/${item.openWorkOrder.id}`}>{item.openWorkOrder.displayId}</Link>
                         <p className="text-muted-foreground">{item.openWorkOrder.primaryCategoryName} · <WorkOrderStatusBadge status={item.openWorkOrder.status}>{workOrderStatusLabel(item.openWorkOrder.status, messages)}</WorkOrderStatusBadge></p>
                       </>
                     ) : (

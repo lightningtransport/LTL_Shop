@@ -153,7 +153,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           id={`yard-tab-${value}`}
           aria-selected={tab === value}
           aria-controls={`yard-panel-${value}`}
-          className={`min-h-10 flex-1 rounded-lg px-3 text-sm font-medium ${tab === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`min-h-11 flex-1 rounded-lg px-3 text-sm font-medium ${tab === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
           onClick={() => updateTab(value)}
         >
           {value === 'shop' ? messages.yardTabShop : messages.yardTabMovement}

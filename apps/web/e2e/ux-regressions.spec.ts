@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from './support/test';
 import { devLogin } from './support/dev-login';
+import { switchLanguage } from './support/locale';
 
 const user = {
   id: 'mechanic-1',
@@ -392,7 +393,11 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
   test('toggles light/dark theme and persists explicit preference', async ({ page }) => {
     await login(page);
-    const toggle = page.getByRole('button', { name: /toggle (theme|dark mode|light mode)/i }).first();
+    // LTR-167: theme is a choice in the profile menu.
+    await page.getByRole('button', { name: /Open profile for / }).click();
+    const theme = page.getByRole('dialog').getByRole('group', { name: 'Theme' });
+    const isDark = await page.locator('html').evaluate((node) => node.classList.contains('dark'));
+    const toggle = theme.getByRole('button', { name: isDark ? 'Light' : 'Dark' });
     await expect(toggle).toBeVisible();
 
     const before = await page.locator('html').evaluate((node) => ({
@@ -441,7 +446,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     const pausedCard = page.locator('.card').filter({ hasText: 'WO-PAUSED-1' });
     await expect(pausedCard.getByText('Waiting for Parts')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Switch to Spanish' }).click();
+    await switchLanguage(page, 'es');
     await expect(page.getByRole('heading', { name: 'Mi trabajo asignado' })).toBeVisible();
     await expect(createdCard.getByText('Creado')).toBeVisible();
     await expect(createdCard.getByText('Created')).toHaveCount(0);
@@ -876,7 +881,7 @@ test.describe('My Assigned Work presentation', () => {
     await expect(page.getByText('0 paused PM services')).toBeVisible();
     await expect(page.getByText('No paused PM services. Paused work will appear here until it is resumed.')).toBeVisible();
     await expect(page.getByText(/paused jobs/i)).toHaveCount(0);
-    await page.getByRole('button', { name: 'Switch to Spanish' }).click();
+    await switchLanguage(page, 'es');
     await expect(page.getByRole('heading', { name: 'Servicios de PM pausados' })).toBeVisible();
     await expect(page.getByText('0 servicios de PM pausados')).toBeVisible();
     await expect(page.getByText(/Jobs pausados/i)).toHaveCount(0);

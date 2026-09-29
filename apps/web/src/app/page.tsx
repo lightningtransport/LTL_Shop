@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { Check } from 'lucide-react';
 import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
@@ -55,12 +56,16 @@ export default function HomePage() {
     }
   }, [sessionLoading, token, sessionError, user, mode, requiredCapability, router]);
 
+  // LTR-167: while the session restores, show the workspace title the page will land on, so it does not jump.
+  const workspaceTitle = mode === MechanicMode.PM ? messages.pmHomeTitle : mode ? messages.standardHomeTitle : messages.home;
+  const workspaceSubtitle = mode === MechanicMode.PM ? messages.pmHomeSubtitle : mode ? messages.standardHomeSubtitle : messages.homeSubtitle;
+
   if (!token) {
     if (sessionError) {
       return (
         <div>
           <HomeTopBar mode={mode ?? undefined} />
-          <PageHeader className="mb-6" title={messages.home} subtitle={messages.homeSubtitle} />
+          <PageHeader className="mb-6" title={workspaceTitle} subtitle={workspaceSubtitle} />
           <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
         </div>
       );
@@ -69,8 +74,8 @@ export default function HomePage() {
       return (
         <div>
           <HomeTopBar mode={mode ?? undefined} />
-          <PageHeader className="mb-6" title={messages.home} subtitle={messages.homeSubtitle} />
-          <PageSkeleton label={messages.restoringSession} />
+          <PageHeader className="mb-6" title={workspaceTitle} subtitle={workspaceSubtitle} />
+          <PageSkeleton label={messages.restoringSession} header={false} />
         </div>
       );
     }
@@ -80,8 +85,8 @@ export default function HomePage() {
   if (!user) {
     return (
       <div>
-        <HomeTopBar />
-        <PageHeader className="mb-6" title={messages.home} subtitle={messages.homeSubtitle} />
+        <HomeTopBar mode={mode ?? undefined} />
+        <PageHeader className="mb-6" title={workspaceTitle} subtitle={workspaceSubtitle} />
         {sessionError ? (
           <LoadFailure
             message={sessionError}
@@ -89,7 +94,7 @@ export default function HomePage() {
             retryLabel={messages.retry}
           />
         ) : (
-          <PageSkeleton label={messages.restoringSession} />
+          <PageSkeleton label={messages.restoringSession} header={false} />
         )}
       </div>
     );
@@ -332,15 +337,12 @@ function WorkOrderCard({
           {/* LTR-154 / D11: only my Jobs, with the next one marked. */}
           {myJobs.map((job) => (
             <li key={job.id} className="flex items-start gap-2" aria-current={job.id === nextJobId ? 'step' : undefined}>
-              <span
-                className={
-                  job.status === 'completed'
-                    ? 'mt-0.5 text-shop-success'
-                    : 'mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-shop-border text-xs text-shop-muted'
-                }
-              >
-                {job.status === 'completed' ? '✓' : '○'}
-              </span>
+              {/* LTR-167: a status mark, not a checkbox; the card's "View Work" is the action. */}
+              {job.status === 'completed' ? (
+                <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-shop-success" />
+              ) : (
+                <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-shop-muted/60" />
+              )}
               <span className="min-w-0">
                 <span
                   className={`block ${
