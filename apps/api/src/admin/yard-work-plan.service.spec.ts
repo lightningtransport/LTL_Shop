@@ -125,8 +125,119 @@ describe('YardWorkPlanService', () => {
         expectedVersion: 3,
         idempotencyKey: childIdempotencyKey(idempotencyKey, 0),
       }),
+      { assignedMechanicId: undefined },
     );
     expect(prisma.workOrderMutation.create).toHaveBeenCalled();
+  });
+
+  describe('D14: who does each Job, chosen in Hallazgos', () => {
+    const mechanicId = '00000000-0000-4000-8000-000000000050';
+    const otherMechanicId = '00000000-0000-4000-8000-000000000051';
+
+    function setup(activeMechanics: Array<{ id: string }>) {
+      const prisma = {
+        truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },
+        workOrder: { findFirst: vi.fn().mockResolvedValue(openWorkOrder()) },
+        workOrderMutation: {
+          findUnique: vi.fn().mockResolvedValue(null),
+          create: vi.fn().mockResolvedValue({}),
+        },
+        user: {
+          findMany: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) =>
+            activeMechanics.filter((mechanic) => where.id.in.includes(mechanic.id))),
+        },
+        truckReadinessAssessment: { findFirst: vi.fn().mockResolvedValue(null) },
+      };
+      const workOrders = {
+        addJobByManager: vi.fn()
+          .mockResolvedValueOnce({ version: 4 })
+          .mockResolvedValueOnce({ version: 5 }),
+      };
+      const service = new YardWorkPlanService(prisma as never, workOrders as never, {} as never);
+      return { prisma, workOrders, service };
+    }
+
+    it('passes each Job owner to the manager add-job path and chains the version', async () => {
+      const { prisma, workOrders, service } = setup([{ id: mechanicId }]);
+      await service.addJobs(manager, truckId, {
+        idempotencyKey,
+        expectedVersion: 3,
+        jobs: [
+          { categoryId, displayName: 'Air Leak', assignedMechanicId: mechanicId },
+          { categoryId, displayName: 'Brake Chamber' },
+        ],
+      });
+      expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: [mechanicId] },
+          active: true,
+          capabilities: { some: { capability: 'MECHANIC_STANDARD' } },
+        }),
+      }));
+      expect(workOrders.addJobByManager).toHaveBeenNthCalledWith(
+        1,
+        manager,
+        workOrderId,
+        expect.objectContaining({ displayName: 'Air Leak', expectedVersion: 3 }),
+        { assignedMechanicId: mechanicId },
+      );
+      expect(workOrders.addJobByManager).toHaveBeenNthCalledWith(
+        2,
+        manager,
+        workOrderId,
+        expect.objectContaining({ displayName: 'Brake Chamber', expectedVersion: 4 }),
+        { assignedMechanicId: undefined },
+      );
+      expect(prisma.workOrderMutation.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          operation: 'work_plan_add_jobs',
+          result: { added: 2, version: 5 },
+        }),
+      });
+    });
+
+    it('adds nothing when an assignee is inactive or not a Standard mechanic', async () => {
+      const { prisma, workOrders, service } = setup([{ id: mechanicId }]);
+      await expect(service.addJobs(manager, truckId, {
+        idempotencyKey,
+        expectedVersion: 3,
+        jobs: [
+          { categoryId, displayName: 'Air Leak', assignedMechanicId: mechanicId },
+          { categoryId, displayName: 'Brake Chamber', assignedMechanicId: otherMechanicId },
+        ],
+      })).rejects.toBeInstanceOf(BadRequestException);
+      expect(workOrders.addJobByManager).not.toHaveBeenCalled();
+      expect(prisma.workOrderMutation.create).not.toHaveBeenCalled();
+    });
+
+    it('replays the same request without adding or assigning again', async () => {
+      const { prisma, workOrders, service } = setup([{ id: mechanicId }]);
+      const input = {
+        idempotencyKey,
+        expectedVersion: 3,
+        jobs: [{ categoryId, displayName: 'Air Leak', assignedMechanicId: mechanicId }],
+      };
+      await service.addJobs(manager, truckId, input);
+      const stored = prisma.workOrderMutation.create.mock.calls[0][0].data;
+      prisma.workOrderMutation.findUnique.mockResolvedValue(stored);
+      await service.addJobs(manager, truckId, input);
+      expect(workOrders.addJobByManager).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats a different assignee under the same key as a different mutation', async () => {
+      const { prisma, service } = setup([{ id: mechanicId }, { id: otherMechanicId }]);
+      await service.addJobs(manager, truckId, {
+        idempotencyKey,
+        expectedVersion: 3,
+        jobs: [{ categoryId, displayName: 'Air Leak', assignedMechanicId: mechanicId }],
+      });
+      prisma.workOrderMutation.findUnique.mockResolvedValue(prisma.workOrderMutation.create.mock.calls[0][0].data);
+      await expect(service.addJobs(manager, truckId, {
+        idempotencyKey,
+        expectedVersion: 3,
+        jobs: [{ categoryId, displayName: 'Air Leak', assignedMechanicId: otherMechanicId }],
+      })).rejects.toBeInstanceOf(ConflictException);
+    });
   });
 
   it('rejects Add work without expectedVersion when a Work Order is already open', async () => {

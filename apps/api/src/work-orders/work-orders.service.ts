@@ -48,6 +48,7 @@ import { openSessionFor, stopLaborForMechanic } from './labor-session';
 import { assertPmObservedMileage } from './pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from './pm-finish';
 import { isPmJobCategory, resolveMandatoryJobs, type MandatoryJob } from './mandatory-jobs';
+import { joinWorkOrderTeam } from './work-order-team';
 import { classifyWorkPlanLane } from '../admin/yard-work-plan-derivation';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
@@ -848,19 +849,24 @@ export class WorkOrdersService {
     });
   }
 
-  async addJobByManager(user: AuthUser, id: string, raw: unknown) {
-    return this.addJob(user, id, raw, { managerActor: true });
+  /**
+   * D14: the Manager may name who does the Job as it is added (Hallazgos on the
+   * Truck). The assignee is an internal option, not part of the public body.
+   */
+  async addJobByManager(user: AuthUser, id: string, raw: unknown, options: { assignedMechanicId?: string } = {}) {
+    return this.addJob(user, id, raw, { managerActor: true, assignedMechanicId: options.assignedMechanicId });
   }
 
   async addJob(
     user: AuthUser,
     id: string,
     raw: unknown,
-    options: { managerActor?: boolean } = {},
+    options: { managerActor?: boolean; assignedMechanicId?: string } = {},
   ) {
     const parsed = addJobSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     const input = parsed.data;
+    const assignedMechanicId = options.managerActor ? options.assignedMechanicId : undefined;
     if (!options.managerActor) {
       const existingWo = await this.prisma.workOrder.findUnique({
         where: { id },
@@ -871,7 +877,12 @@ export class WorkOrdersService {
       this.assertStandardPlanningDenied(existingWo, 'Standard Jobs are added by a Shop Manager.');
     }
     const operation = 'add_job';
-    const payloadHash = idempotencyFingerprint({ workOrderId: id, ...input });
+    // Only hashed when set, so unassigned adds keep their existing fingerprint.
+    const payloadHash = idempotencyFingerprint({
+      workOrderId: id,
+      ...input,
+      ...(assignedMechanicId ? { assignedMechanicId } : {}),
+    });
     const existing = await this.findAddJobIdempotent(
       input.idempotencyKey,
       id,
@@ -926,6 +937,9 @@ export class WorkOrdersService {
               this.normalizeJobName(job.displayName) === this.normalizeJobName(input.displayName),
             );
         if (duplicate) throw new BadRequestException('This job is already on the Work Order');
+        const assignee = assignedMechanicId
+          ? await this.requireStandardAssignee(tx, assignedMechanicId, category.name)
+          : null;
         const createdJob = await tx.workOrderJob.create({
           data: {
             workOrderId: id,
@@ -936,9 +950,11 @@ export class WorkOrdersService {
             isCustom: !input.catalogJobId,
             reviewStatus: input.catalogJobId ? null : 'pending_review',
             addedById: user.id,
+            assignedMechanicId: assignee?.id,
             status: 'to_do',
           },
         });
+        if (assignee) await joinWorkOrderTeam(tx, id, assignee.id, user.id);
         const incremented = await tx.workOrder.updateMany({
           where: { id, version: input.expectedVersion },
           data: { version: { increment: 1 } },
@@ -962,6 +978,18 @@ export class WorkOrdersService {
             isCustom: createdJob.isCustom,
           },
         });
+        if (assignee) {
+          // Same Activity Log entry as a later assignment (AdminService.assignJob).
+          await this.activity.log(tx, {
+            workOrderId: id,
+            eventType: ActivityEventType.MECHANIC_ADDED,
+            entityType: 'work_order_job',
+            entityId: createdJob.id,
+            userId: user.id,
+            previousValue: { jobId: createdJob.id, assignedMechanicId: null },
+            newValue: { jobId: createdJob.id, action: 'job_assigned', assignedMechanicId: assignee.id, mechanicName: assignee.name },
+          });
+        }
         const result = toWorkOrderDetail(updated, user.id);
         await tx.workOrderMutation.create({
           data: {
@@ -988,6 +1016,19 @@ export class WorkOrdersService {
       }
       throw error;
     }
+  }
+
+  /** D14: a Job added with its owner goes to an active Standard mechanic; the PM job is assigned on the Work Order. */
+  private async requireStandardAssignee(tx: Prisma.TransactionClient, mechanicId: string, categoryName: string) {
+    if (isPmJobCategory(categoryName)) {
+      throw new BadRequestException('Assign the PM job from the Work Order');
+    }
+    const mechanic = await tx.user.findFirst({
+      where: { id: mechanicId, active: true, capabilities: { some: { capability: 'MECHANIC_STANDARD' } } },
+      select: { id: true, name: true },
+    });
+    if (!mechanic) throw new BadRequestException('This mechanic cannot perform standard work');
+    return mechanic;
   }
 
   private normalizeJobName(name: string) {

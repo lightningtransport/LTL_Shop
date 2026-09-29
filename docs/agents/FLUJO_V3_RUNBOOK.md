@@ -280,6 +280,8 @@ Antes de PR 8, el ejecutor entrega en el issue LTR-158 un boceto (markdown/ASCII
 
 **Decisiones que aplica (§12).** D14 inspección arriba y del Manager; D15 "Mark complete" primario solo en QC; WOs viejas con botón "Agregar pasos que faltan"; cerrar y Return to Service desde el Truck.
 
+**Fuera de PR 8.** Elegir quién hace cada job al agregarlo en "Hallazgos" (D14) salió en un PR aparte: `POST /admin/trucks/:id/work-plan/jobs` respeta `assignedMechanicId` también con la WO abierta, y el formulario del Truck tiene "¿Quién lo hace?" por job. PR 8 no lo incluye.
+
 **API.**
 - `GET /admin/trucks/:id` devuelve `nextStep` calculado por **una** función nueva `deriveTruckNextStep` en `apps/api/src/admin/yard-work-plan-derivation.ts` (o módulo hermano): `{ kind: 'inspect' | 'assign' | 'resolve_blocker' | 'work' | 'qc' | 'close' | 'return_to_service' | 'none', jobId?, blockerId?, label }`. Orden de prioridad: bloqueo activo → inspección pendiente → job sin asignar → QC listo → listo para cerrar → Ready to Go pendiente de RTS → trabajo en curso.
 - `POST /admin/trucks/:id/work-plan/backfill-mandatory`: agrega los pasos del flujo que falten a la WO abierta (solo para WOs anteriores a `WORK_PLAN_PM_PHASE`). Activity Log.

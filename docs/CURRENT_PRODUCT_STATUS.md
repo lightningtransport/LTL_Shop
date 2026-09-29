@@ -134,6 +134,13 @@ TARGET authorization/UX.
   mandatory step. Managers with `work_orders.manage` add jobs there (the Admin
   Work Order links to it; LTR-119 / D6) and can complete open Work Plan jobs
   from Admin (LTR-38).
+- D14: when adding Hallazgos jobs on the Truck, each job has a "Who does
+  it?" picker (active `mechanic.standard` mechanics, default Unassigned; not
+  shown for PM or Quality Check). `POST /api/admin/trucks/:id/work-plan/jobs`
+  honors each job's `assignedMechanicId` on an open Work Order too, in the
+  same idempotent request: the assignee is validated before any job is added,
+  joins the Work Order team (`mechanic_assignments`) and is logged like a
+  later assignment (`mechanic_added`, `job_assigned`).
 - Truck Detail "Current Work" shows only an open Work Order; the completed
   Work Order that keeps a Truck Ready to Go is not listed there. Return to
   Service copy states that the Truck leaves Ready to Go. The Yard card says

@@ -288,8 +288,11 @@ export class YardWorkPlanService {
       return;
     }
 
+    await this.assertStandardAssignees(input);
+
     let expectedVersion = input.expectedVersion;
     for (const [index, job] of input.jobs.entries()) {
+      // D14: each Job keeps the owner the Manager chose in Hallazgos.
       const result = await this.workOrders.addJobByManager(user, open.id, {
         catalogJobId: job.catalogJobId,
         categoryId: job.categoryId,
@@ -297,7 +300,7 @@ export class YardWorkPlanService {
         customDescription: job.customDescription,
         expectedVersion,
         idempotencyKey: childIdempotencyKey(input.idempotencyKey, index),
-      });
+      }, { assignedMechanicId: job.assignedMechanicId });
       expectedVersion = result.version;
     }
 
@@ -311,6 +314,21 @@ export class YardWorkPlanService {
         result: { added: input.jobs.length, version: expectedVersion },
       },
     });
+  }
+
+  /** Checked before the first Job is added, so a bad assignee adds nothing. */
+  private async assertStandardAssignees(input: AddWorkPlanJobsInput) {
+    const ids = Array.from(new Set(
+      input.jobs.map((job) => job.assignedMechanicId).filter((id): id is string => Boolean(id)),
+    ));
+    if (!ids.length) return;
+    const mechanics = await this.prisma.user.findMany({
+      where: { id: { in: ids }, active: true, capabilities: { some: { capability: 'MECHANIC_STANDARD' } } },
+      select: { id: true },
+    });
+    if (mechanics.length !== ids.length) {
+      throw new BadRequestException('One or more selected mechanics cannot perform standard work');
+    }
   }
 
   private async findOpenWorkOrder(truckId: string) {

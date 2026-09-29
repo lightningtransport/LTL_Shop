@@ -122,6 +122,7 @@ export function AdminTruckWorkPlan({
           categoryId: job.categoryId,
           displayName: job.displayName,
           customDescription: job.customDescription,
+          ...(job.assignedMechanicId ? { assignedMechanicId: job.assignedMechanicId } : {}),
         })),
         expectedVersion: plan.workOrder?.version,
       }));
@@ -240,6 +241,7 @@ export function AdminTruckWorkPlan({
                 disabled={Boolean(pendingAction)}
                 submitting={pendingAction === 'add-work'}
                 preferredCategoryName={preferredCategoryName}
+                standardMechanics={standardMechanics}
                 onSubmit={handleAddWork}
               />
             </div>
