@@ -12,7 +12,7 @@ para entender por qué se decidió algo, nunca para saber cómo funciona hoy.
 |---|---|
 | [`SYSTEM.md`](SYSTEM.md) | **Cómo funciona el sistema hoy**: roles, flujos, estados, pantallas y reglas. Empieza aquí. |
 | [`DECISIONS.md`](DECISIONS.md) | Registro único de decisiones de producto (D1–D18), con su estado. |
-| [`OPEN_ISSUES.md`](OPEN_ISSUES.md) | Defectos conocidos, limpieza pendiente, lo que falta para salir en vivo y lo que queda fuera de alcance. |
+| [`OPEN_ISSUES.md`](OPEN_ISSUES.md) | **Plan de cierre** (§0: por qué salen defectos, reglas, matriz de 28 flujos, fases A–D), defectos conocidos, limpieza, salida en vivo, fuera de alcance. |
 | [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md) | Lista para abrir el Shop a usuarios reales. |
 | [`design-system/`](design-system/README.md) | Tokens, componentes, patrones y glosario EN/ES. |
 

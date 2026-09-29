@@ -5,6 +5,101 @@
 Una sola lista de lo que falta. Cuando algo se arregla, se borra de aquí
 (el historial queda en git y en Linear). El orden es el orden de trabajo.
 
+## 0. Cómo terminamos esto (plan de cierre)
+
+### Por qué siguen apareciendo defectos
+
+No es mala suerte ni datos corruptos. Son tres causas, y las tres se
+arreglan con método, no con más trabajo:
+
+1. **Nunca se revisó el sistema completo de una vez.** Cada revisión miró
+   un ticket (una pantalla, un texto, un botón). Los defectos que quedan son
+   de **flujo**: pasan cuando dos partes se combinan (el PM arranca, el
+   Manager completa, nadie hizo Start). Eso no lo ve una revisión por ticket.
+2. **Las pruebas no prueban el sistema real.** Las 16 pruebas e2e corren
+   contra una API falsa. "Pasa las pruebas" hoy no significa "funciona".
+3. **Cada defecto nuevo se sentía como empezar de cero**, porque no había
+   una lista cerrada. Ahora la hay: este documento. Un defecto nuevo se
+   anota aquí, se clasifica y se sigue con el plan. No se reinicia nada.
+
+### Reglas mientras cerramos
+
+- **Alcance congelado.** No entra ninguna función nueva hasta terminar la
+  Fase C. Lo nuevo va a §6 y espera.
+- **Todo defecto se clasifica** al anotarlo:
+  **B** bloqueante (un flujo no se puede terminar o deja datos mal),
+  **C** confuso (se puede terminar, pero el usuario no sabe cómo),
+  **E** estético. Antes de salir en vivo se arreglan B y C. Los E, después.
+- **Un flujo está "terminado" solo cuando su fila de la matriz (abajo) dice
+  PASA contra la API real.** No cuando "se ve bien".
+- Un PR que arregla un defecto trae su prueba y borra la fila de aquí.
+
+### Fase A — Auditoría única de flujos (una vez, 2–3 días)
+
+Se recorre **cada fila de la matriz una sola vez**, con la API y la base de
+datos locales reales (no la API falsa), usando los escenarios de
+`npm run prisma:reset-demo-work-orders -- --local --apply`. Cada fila
+termina en PASA, FALLA (con defecto anotado en §1) o NO APLICA. Al acabar la
+Fase A la lista de defectos es **finita y cerrada**; lo que aparezca después
+se anota y se clasifica, pero ya no cambia el plan.
+
+**Matriz de flujos.** Estado al 2026-09-29, según revisión de código y
+producción; la columna "API real" se llena en la Fase A.
+
+| # | Flujo / transición | Quién | Código | API real |
+|---|---|---|---|---|
+| A1 | M01: crear WO solo con Truck → nace con PM, Alignment, Detailing, QC y dueños por defecto | Manager | OK | — |
+| A2 | M01: inspección "No issues found" | Manager | OK | — |
+| A3 | M01: inspección "Issues found" → agregar Jobs con dueño (D14) | Manager | OK | — |
+| A4 | M02: asignar / reasignar / quitar dueño; equipo derivado | Manager | OK | — |
+| A5 | MECH01: el mecánico ve solo sus Jobs; "Other work" solo lectura | Mecánico | OK | — |
+| A6 | MECH02: Start → WO pasa a `in_progress`, abre sesión → completar Jobs → "Terminaste tu parte" cierra sesión | Mecánico | OK | — |
+| A7 | MECH03: reportar bloqueo → notas → Manager resuelve → Continue | Mecánico + Manager | OK | — |
+| A8 | M03: pausa oficial → cierra sesiones → Resume reabre las mismas | Manager | OK | — |
+| A9 | PM: Create PM service se une al WO abierto / crea el WO; millaje; partes; Finish actualiza millaje | PM | **FALLA** (defecto #1: no mueve el WO ni abre sesión) | — |
+| A10 | PM: Create PM service en Truck sin WO → WO completo con los 4 pasos | PM | Revisar (mismo defecto #1) | — |
+| A11 | PM: bloquear el PM; D2 un PM en curso por mecánico; cambio PM A ↔ PM B | PM | OK | — |
+| A12 | M04: Manager completa Jobs desde Admin ("Mark complete") | Manager | **FALLA** (defecto #1: no mueve el WO) | — |
+| A13 | M04: QC "Mark complete" → Ready to close → Close WO | Manager | **FALLA** si el WO sigue en `created` (defecto #1) | — |
+| A14 | M04: Ready to Go → Return to Service desde Truck, WO y Yard | Manager | OK | — |
+| A15 | Cancelar WO (con motivo) → cierra sesiones y pausas; bloqueos y evaluación de inspección | Manager | **FALLA** (defectos #2, #4) | — |
+| A16 | Cancelar Job / reabrir Job; paso con todos sus Jobs cancelados = no aplica | Manager | **FALLA** parcial (defecto #2: bloqueo queda activo) | — |
+| A17 | Reabrir WO completado/cancelado → `in_progress` o `created` | Admin | Revisar (reabre a `created` sin salida, defecto #1) | — |
+| A18 | "Agregar pasos que faltan" en WO viejo | Manager | OK | — |
+| A19 | Siguiente paso: las 5 pantallas dicen lo mismo (test de contrato) | — | OK, pero puede mostrar "Close" cuando la API lo rechaza (defecto #1) | — |
+| A20 | Dashboard "Needs attention": bloqueo, pausa, sin dueño, +24 h | Manager | OK | — |
+| A21 | Yard: tablero por fase, contadores, `YARD_READY_TO_GO_SINCE`, pestaña Movement | Manager | OK | — |
+| A22 | Notas y "Pedir trabajo" → Manager marca atendido; WO cerrado rechaza notas | Ambos | OK | — |
+| A23 | Corrección de tiempos (admin) | Admin | OK | — |
+| A24 | Custom Job: agregar, duplicados, revisión | Manager | **FALLA** (defecto #3: nunca se revisa) | — |
+| A25 | Setup → Shop workflow: cambiar dueño por defecto; dueño inactivo → Unassigned | Manager | OK | — |
+| A26 | Permisos: mecánico recibe 403 en crear/pausar/agregar/terminar; Manager 403 en escrituras de System Admin | — | OK | — |
+| A27 | Login, reset de contraseña, cambio de idioma y tema, app instalada | Todos | OK (ver §1b) | — |
+| A28 | WO de PM legacy abierto: pausa, reanudar, terminar | PM | Sin probar (¿queda alguno abierto en producción?) | — |
+
+### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR
+
+Orden: defecto #1 (con el ajuste manual de WO-009), #2, #4, #6, luego los C
+de §1b. Cada PR: arreglo + prueba contra la API real + fila borrada de aquí.
+
+### Fase C — Limpieza (§3) e idioma (§4)
+
+Borrar el código heredado y unificar los textos, para que nadie vuelva a
+construir sobre algo muerto.
+
+### Fase D — Salir en vivo (§5)
+
+Roster real, Auth real, bypass apagado, prueba con un Manager y un mecánico
+reales. **El uso real es lo que confirma que está terminado.**
+
+### Cómo saber que terminamos
+
+- Las 28 filas de la matriz dicen PASA o NO APLICA contra la API real.
+- §1 y §1b no tienen ningún B ni C.
+- Hay usuarios reales trabajando un día completo sin un defecto B.
+
+Todo lo demás es mejora, y va a §6 hasta que se decida.
+
 ## 1. Defectos: flujos que se atoran
 
 | # | Problema | Qué pasa | Dónde |
