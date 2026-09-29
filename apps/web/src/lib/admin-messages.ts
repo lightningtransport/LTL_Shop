@@ -29,6 +29,9 @@ const messages = {
     truckNextStepCreateAction: 'New Work Order',
     truckNextStepFailed: 'Could not complete this step. Refresh and try again.',
     moreActions: 'More actions',
+    // LTR-168: priority and the official pause share one section on the Work Order.
+    workOrderControls: 'Controls',
+    pauseReasonPlaceholder: 'Choose a reason',
     moreActionsHelp: 'Cancel, reopen, time correction and other rare changes.',
     truckDetailsSection: 'Truck details',
     shopWorkflow: 'Shop workflow',
@@ -761,6 +764,8 @@ const messages = {
     truckNextStepCreateAction: 'Nueva Work Order',
     truckNextStepFailed: 'No se pudo completar este paso. Actualiza e inténtalo de nuevo.',
     moreActions: 'Más acciones',
+    workOrderControls: 'Controles',
+    pauseReasonPlaceholder: 'Elige un motivo',
     moreActionsHelp: 'Cancelar, reabrir, corregir tiempo y otros cambios poco frecuentes.',
     truckDetailsSection: 'Datos del truck',
     shopWorkflow: 'Flujo del taller',

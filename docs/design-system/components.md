@@ -16,7 +16,9 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 | `Textarea` | Notes and reasons |
 | `Label` | Programmatically associated labels |
 | `Select` | Native `<select>` with Lucide chevron |
-| `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Grouped content |
+| `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Grouped content. Never put a Card (or any bordered box) inside another Card; split it with `SectionBlock` or dividers (LTR-168). `CardDescription` is one line at most, or left out when the title says it |
+| `CollapsibleSection` | A folded section with one surface: the title is an `h2` inside the summary, optional one-line description, chevron. Use it for context the user does not act on (summaries, truck data, history, audit, rare actions); it starts closed |
+| `SectionBlock` | One block inside a `Card` or `CollapsibleSection`: `h3.group-title`, optional description, content; blocks are separated by `divide-y` on the parent |
 | `InlineAlert` | Assertive inline error |
 | `Badge` | Single chip primitive. Variants `default`, `secondary`, `outline`, `destructive`, `success`, `warning`. Status / priority / phase chips use this only — no ad-hoc `<span>` chips. 12px semibold, sentence case (LTR-166) |
 | `Dialog`, `DialogTrigger`, `DialogClose`, `DialogContent`, `DialogTitle`, `DialogDescription` | Radix dialog (sheet-like on mobile, centered on `sm+`) |

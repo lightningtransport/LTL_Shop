@@ -32,12 +32,14 @@ import {
   CardHeader,
   CardListSkeleton,
   CardTitle,
+  CollapsibleSection,
   CompactEmpty,
   EmptyState,
   JobStatusBadge,
   LoadFailure,
   PageSkeleton,
   PriorityBadge,
+  SectionBlock,
   WorkOrderStatusBadge,
   Input,
   Select,
@@ -55,7 +57,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [reopenReason, setReopenReason] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [jobReason, setJobReason] = useState('');
-  const [pauseReason, setPauseReason] = useState<PauseReason>(PauseReason.WAITING_FOR_PARTS);
+  // LTR-168: no preselected reason, so pausing is a choice and never a single accidental tap.
+  const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [assignDrafts, setAssignDrafts] = useState<Record<string, string>>({});
   const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
   const [draftNotes, setDraftNotes] = useState('');
@@ -82,6 +85,20 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     if (!data) return;
     setDraftPriority(data.priority);
   }, [data]);
+
+  // LTR-168: the fixed "Confirm completion" bar shows only while the inline card is off screen, so the action
+  // is never on screen twice.
+  const [completeCardElement, setCompleteCardElement] = useState<HTMLDivElement | null>(null);
+  const [completeCardInView, setCompleteCardInView] = useState(true);
+  useEffect(() => {
+    if (!completeCardElement) {
+      setCompleteCardInView(false);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => setCompleteCardInView(entry.isIntersecting));
+    observer.observe(completeCardElement);
+    return () => observer.disconnect();
+  }, [completeCardElement]);
 
   if (isLoading) return <PageSkeleton label={messages.workOrdersTitle} />;
   if (error instanceof ApiError && error.status === 404) return <NotFound messages={messages} />;
@@ -127,7 +144,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       await operation();
       await mutate();
       void mutateRelated(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
-      setFeedback({ kind: 'success', message: successMessage });
+      // LTR-168: success is the toast only (the status badge shows the result); errors also stay inline.
       showToast('success', successMessage);
     } catch (failure) {
       const message = onError(failure);
@@ -139,10 +156,9 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   }
 
   const completeCard = canCompleteWorkOrder ? (
-    <Card className={readyToClose ? 'border-shop-accent/50 bg-shop-accent/5' : undefined}>
+    <Card ref={readyToClose ? setCompleteCardElement : undefined} className={readyToClose ? 'border-shop-accent/50 bg-shop-accent/5' : undefined}>
       <CardHeader>
         <CardTitle>{messages.completeWorkOrderTitle}</CardTitle>
-        <CardDescription>{messages.completeWorkOrderDescription}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {data.category.name === 'PM' ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
@@ -158,7 +174,9 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     </Card>
   ) : null;
 
-  return <div className={readyToClose ? 'space-y-5 pb-24' : 'space-y-5'}>
+  const showStickyComplete = readyToClose && !completeCardInView;
+
+  return <div className={showStickyComplete ? 'space-y-5 pb-28' : 'space-y-5'}>
     <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
     <PageHeader
       title={<Link className="tap-inline text-primary hover:underline" href={adminTruckHref(truck.id, `/admin/work-orders/${data.id}`)}>{truck.truckNumber}</Link>}
@@ -203,14 +221,16 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </div>
     ) : null}
     {/* LTR-109: operational work first (Jobs, team, blockers, notes, actions); context on the side on desktop. */}
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(300px,1fr)]">
       <div className="min-w-0 space-y-5">
       <Card>
         <CardHeader>
           <CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle>
-          <CardDescription>
-            {canManageJobs ? messages.jobsDescription : data.category.name === 'PM' ? messages.jobsPmLocked : !isOpen ? messages.jobsClosedLocked : messages.jobsNoPermission}
-          </CardDescription>
+          {canManageJobs ? null : (
+            <CardDescription>
+              {data.category.name === 'PM' ? messages.jobsPmLocked : !isOpen ? messages.jobsClosedLocked : messages.jobsNoPermission}
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {data.jobs.length ? (
@@ -405,7 +425,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               </Link>
             </Button>
           ) : null}
-          {canManageJobs || (canReopenJob && data.jobs.some((job) => job.status === 'cancelled')) ? (
+          {/* LTR-168: the reason field only when a Job here can actually be cancelled or reopened. */}
+          {(canManageJobs && data.jobs.some((job) => job.status === 'to_do')) || (canReopenJob && data.jobs.some((job) => job.status === 'cancelled')) ? (
             <label className="block space-y-1">
               <span className="text-sm font-medium">{messages.jobChangeReason}</span>
               <Textarea
@@ -423,7 +444,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <Card>
         <CardHeader>
           <CardTitle>{messages.reportedBlockers}</CardTitle>
-          <CardDescription>{messages.reportedBlockersDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {(data.reportedBlockers ?? []).length ? (
@@ -449,7 +469,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       <Card>
         <CardHeader>
           <CardTitle>{messages.notes}</CardTitle>
-          {canEditFields ? <CardDescription>{messages.workRequestHint}</CardDescription> : null}
         </CardHeader>
         <CardContent className="space-y-3">
           {(data.noteEntries ?? []).length ? (
@@ -523,15 +542,15 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         </CardContent>
       </Card>
 
-      {canEditFields && data.category.name !== 'PM' ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{messages.fieldUpdatesTitle}</CardTitle>
-            <CardDescription>
-              {data.category.name === 'PM' ? `${messages.fieldUpdatesDescription} ${messages.fieldUpdatesPmPriorityLocked}` : messages.fieldUpdatesDescription}
-            </CardDescription>
+      {/* LTR-168: priority and the official pause are one "Controls" section with two blocks. */}
+      {(canEditFields && data.category.name !== 'PM') || canOfficialPause ? (
+        <Card className="overflow-hidden p-0">
+          <CardHeader className="mb-0 p-4">
+            <CardTitle>{messages.workOrderControls}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <div className="divide-y border-t">
+      {canEditFields && data.category.name !== 'PM' ? (
+          <SectionBlock title={messages.fieldUpdatesTitle}>
             <form
               className="space-y-3"
               onSubmit={(event) => {
@@ -544,35 +563,27 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 }, (failure) => fieldUpdateError(failure, messages));
               }}
             >
-              <label className="block space-y-1">
-                <span className="text-sm font-medium">{messages.priority}</span>
-                <Select
-                  aria-label={messages.priority}
-                  value={draftPriority}
-                  disabled={data.category.name === 'PM' || Boolean(pendingAction)}
-                  onChange={(event) => setDraftPriority(event.target.value as Priority)}
-                >
-                  <option value={Priority.LOW}>{messages.lowPriority}</option>
-                  <option value={Priority.NORMAL}>{messages.normalPriority}</option>
-                  <option value={Priority.HIGH}>{messages.highPriority}</option>
-                  <option value={Priority.CRITICAL}>{messages.criticalPriority}</option>
-                </Select>
-              </label>
+              <Select
+                aria-label={messages.priority}
+                value={draftPriority}
+                disabled={data.category.name === 'PM' || Boolean(pendingAction)}
+                onChange={(event) => setDraftPriority(event.target.value as Priority)}
+              >
+                <option value={Priority.LOW}>{messages.lowPriority}</option>
+                <option value={Priority.NORMAL}>{messages.normalPriority}</option>
+                <option value={Priority.HIGH}>{messages.highPriority}</option>
+                <option value={Priority.CRITICAL}>{messages.criticalPriority}</option>
+              </Select>
 
-              <Button type="submit" disabled={Boolean(pendingAction) || draftPriority === data.priority}>
+              <Button type="submit" variant="outline" disabled={Boolean(pendingAction) || draftPriority === data.priority}>
                 {messages.updatePriority}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+          </SectionBlock>
       ) : null}
 
       {canOfficialPause ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{data.status === 'waiting_paused' ? messages.resumeWorkOrderAction : messages.pauseWorkOrderAction}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          <SectionBlock title={data.status === 'waiting_paused' ? messages.resumeWorkOrderAction : messages.pauseWorkOrderAction}>
             {data.status === 'waiting_paused' ? (
               <Button
                 type="button"
@@ -587,23 +598,31 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                   className="flex flex-col gap-3 sm:flex-row"
                   onSubmit={(event) => {
                     event.preventDefault();
-                    if (!pauseEnabled) return;
-                    void runMutation('pause-wo', messages.pauseWorkOrderSuccess, () => pauseAdminWorkOrder(data.id, { reason: pauseReason }), (failure) => pauseResumeError(failure, messages));
+                    if (!pauseEnabled || !pauseReason) return;
+                    const reason = pauseReason;
+                    void runMutation('pause-wo', messages.pauseWorkOrderSuccess, async () => {
+                      await pauseAdminWorkOrder(data.id, { reason });
+                      setPauseReason('');
+                    }, (failure) => pauseResumeError(failure, messages));
                   }}
                 >
-                  <Select aria-label={messages.pauseReasonLabel} value={pauseReason} disabled={!pauseEnabled || Boolean(pendingAction)} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
+                  <Select aria-label={messages.pauseReasonLabel} value={pauseReason} disabled={!pauseEnabled || Boolean(pendingAction)} onChange={(event) => setPauseReason(event.target.value as PauseReason | '')}>
+                    <option value="" disabled>{messages.pauseReasonPlaceholder}</option>
                     {Object.values(PauseReason).map((reason) => (
                       <option key={reason} value={reason}>{adminPauseReasonLabel(reason, messages)}</option>
                     ))}
                   </Select>
-                  <Button type="submit" disabled={!pauseEnabled || Boolean(pendingAction)} aria-describedby={pauseEnabled ? undefined : 'pause-unavailable-help'}>{messages.pauseWorkOrderAction}</Button>
+                  {/* Secondary: Confirm completion is the primary action on this page. */}
+                  <Button type="submit" variant="outline" disabled={!pauseEnabled || !pauseReason || Boolean(pendingAction)} aria-describedby={pauseEnabled ? undefined : 'pause-unavailable-help'}>{messages.pauseWorkOrderAction}</Button>
                 </form>
                 {pauseEnabled ? null : (
-                  <p id="pause-unavailable-help" className="text-xs text-muted-foreground">{messages.pauseUnavailableUntilInProgress}</p>
+                  <p id="pause-unavailable-help" className="text-sm text-muted-foreground">{messages.pauseUnavailableUntilInProgress}</p>
                 )}
               </div>
             )}
-          </CardContent>
+          </SectionBlock>
+      ) : null}
+          </div>
         </Card>
       ) : null}
 
@@ -655,19 +674,9 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
 
       {/* LTR-158: rare or destructive actions stay folded. */}
       {canCancelWorkOrder || canReopenWorkOrder ? (
-        <details className="group rounded-xl border bg-card" data-testid="admin-wo-more-actions">
-          <summary className="cursor-pointer select-none px-4 py-3">
-            <span className="font-medium">{messages.moreActions}</span>
-            <span className="block text-xs text-muted-foreground">{messages.moreActionsHelp}</span>
-          </summary>
-          <div className="space-y-4 border-t p-4">
+        <CollapsibleSection testId="admin-wo-more-actions" title={messages.moreActions} description={messages.moreActionsHelp}>
       {canCancelWorkOrder ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{messages.cancelWorkOrderTitle}</CardTitle>
-            <CardDescription>{messages.cancelWorkOrderDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <SectionBlock title={messages.cancelWorkOrderTitle} description={messages.cancelWorkOrderDescription}>
             <form
               className="space-y-3"
               onSubmit={(event) => {
@@ -698,16 +707,10 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 {messages.cancelWorkOrderConfirm}
               </Button>
             </form>
-        </CardContent>
-      </Card>
+          </SectionBlock>
       ) : null}
       {canReopenWorkOrder ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{messages.reopenWorkOrderTitle}</CardTitle>
-            <CardDescription>{messages.reopenWorkOrderDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <SectionBlock title={messages.reopenWorkOrderTitle} description={messages.reopenWorkOrderDescription}>
             <form
               className="space-y-3"
               onSubmit={(event) => {
@@ -738,32 +741,28 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 {messages.reopenWorkOrderConfirm}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+          </SectionBlock>
       ) : null}
-          </div>
-        </details>
+        </CollapsibleSection>
       ) : null}
 
       {/* LTR-126: notes are append-only; this form only changes priority (PM priority is locked). */}
       </div>
       <div className="min-w-0 space-y-5">
-      <section className="space-y-6" aria-label={messages.operationalSummary}>
-        <Card>
-          <CardHeader><CardTitle>{messages.operationalSummary}</CardTitle><CardDescription>{messages.operationalSummaryDescription}</CardDescription></CardHeader>
-          <CardContent><dl className="grid gap-4 sm:grid-cols-2">
-            <Info label={messages.status} value={workOrderStatusLabel(data.status, messages)} />
-            <Info label={messages.priority} value={adminPriorityLabel(data.priority, messages)} />
+      {/* LTR-168: context the Manager does not act on starts folded; status and priority are in the header. */}
+      <section aria-label={messages.operationalSummary}>
+        <CollapsibleSection title={messages.operationalSummary}>
+          <div className="p-4"><dl className="grid gap-4 text-sm sm:grid-cols-2">
             <Info label={messages.age} value={formatAge(data.createdAt, locale)} />
             <Info label={messages.progress} value={`${data.jobsCompleted}/${data.jobsTotal}`} />
             <Info label={messages.mechanicsLabel} value={mechanicNamesLabel(activeMechanics, messages)} />
             <Info label={messages.currentPause} value={data.currentPause ? `${adminPauseReasonLabel(data.currentPause.reason, messages)} · ${formatAdminDate(data.currentPause.startedAt, locale)}` : messages.noCurrentPause} />
             <Info label={messages.latestReportedBlocker} value={data.latestReportedBlocker ? `${adminPauseReasonLabel(data.latestReportedBlocker.reason, messages)}${data.latestReportedBlocker.reportedBy ? ` · ${data.latestReportedBlocker.reportedBy.name}` : ''}` : messages.noLatestReportedBlocker} />
-          </dl></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>{messages.truckDetails}</CardTitle></CardHeader>
-          <CardContent><dl className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+          </dl></div>
+        </CollapsibleSection>
+      </section>
+        <CollapsibleSection title={messages.truckDetails}>
+          <div className="p-4"><dl className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
             <Info label={messages.truck} value={truck.truckNumber} />
             <Info label={messages.make} value={truck.make ?? messages.noValue} />
             <Info label={messages.model} value={truck.model ?? messages.noValue} />
@@ -774,30 +773,20 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             <Info label={messages.vin} value={truck.vin ?? messages.noValue} />
             <Info label={messages.lastReportedLocation} value={truck.location ?? messages.noValue} />
             <Info label={messages.locationUpdatedOn} value={formatAdminDateOnly(truck.locationUpdatedOn, locale)} />
-          </dl></CardContent>
-        </Card>
-      </section>
+          </dl></div>
+        </CollapsibleSection>
 
-      <Card>
-        <CardHeader className="gap-3 sm:flex sm:flex-row sm:items-start sm:justify-between"><div><CardTitle>{messages.recentRepairHistory}</CardTitle><CardDescription>{messages.repairHistoryDescription}</CardDescription></div><label className="w-full space-y-1 sm:w-56"><span className="text-xs font-medium text-muted-foreground">{messages.filterByCategory}</span><Select aria-label={messages.filterByCategory} value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}><option value="">{messages.allCategories}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></label></CardHeader>
-        <CardContent>{historyQuery.error ? <LoadFailure message={messages.repairHistoryLoadError} retryLabel={messages.retry} onRetry={() => void historyQuery.mutate()} /> : historyQuery.isLoading ? <CardListSkeleton count={2} /> : historyItems.length ? <><ul className="divide-y">{historyItems.map((item) => <li key={item.workOrderId} className="py-3 first:pt-0"><div className="flex flex-wrap items-start justify-between gap-2"><div><Link href={`/admin/work-orders/${item.workOrderId}`} className="font-semibold text-primary hover:underline">{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p></div>{item.mileage !== null ? <p className="text-xs text-muted-foreground">{messages.mileage}: {new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(item.mileage)}</p> : null}</div>{item.mechanicNames.length ? <p className="mt-1 text-sm text-muted-foreground">{messages.performedBy}: {item.mechanicNames.join(', ')}</p> : null}{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : item.jobs?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobs.map((job) => <Badge key={`${item.workOrderId}-${job}`} variant="outline">{job}</Badge>)}</div> : null}</li>)}</ul>{historyHasMore ? <Button variant="outline" className="mt-4 w-full" disabled={historyQuery.isValidating} onClick={() => void historyQuery.setSize(historyQuery.size + 1)}>{historyQuery.isValidating ? `${messages.loadMoreRepairs}…` : messages.loadMoreRepairs}</Button> : null}</> : <CompactEmpty>{messages.noRepairHistory}</CompactEmpty>}</CardContent>
-      </Card>
+      <CollapsibleSection title={messages.recentRepairHistory}>
+        <div className="space-y-4 p-4">
+        <label className="block space-y-1 sm:w-56"><span className="text-sm font-medium">{messages.filterByCategory}</span><Select aria-label={messages.filterByCategory} value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}><option value="">{messages.allCategories}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></label>{historyQuery.error ? <LoadFailure message={messages.repairHistoryLoadError} retryLabel={messages.retry} onRetry={() => void historyQuery.mutate()} /> : historyQuery.isLoading ? <CardListSkeleton count={2} /> : historyItems.length ? <><ul className="divide-y">{historyItems.map((item) => <li key={item.workOrderId} className="py-3 first:pt-0"><div className="flex flex-wrap items-start justify-between gap-2"><div><Link href={`/admin/work-orders/${item.workOrderId}`} className="font-semibold text-primary hover:underline">{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p></div>{item.mileage !== null ? <p className="text-xs text-muted-foreground">{messages.mileage}: {new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(item.mileage)}</p> : null}</div>{item.mechanicNames.length ? <p className="mt-1 text-sm text-muted-foreground">{messages.performedBy}: {item.mechanicNames.join(', ')}</p> : null}{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : item.jobs?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobs.map((job) => <Badge key={`${item.workOrderId}-${job}`} variant="outline">{job}</Badge>)}</div> : null}</li>)}</ul>{historyHasMore ? <Button variant="outline" className="mt-4 w-full" disabled={historyQuery.isValidating} onClick={() => void historyQuery.setSize(historyQuery.size + 1)}>{historyQuery.isValidating ? `${messages.loadMoreRepairs}…` : messages.loadMoreRepairs}</Button> : null}</> : <CompactEmpty>{messages.noRepairHistory}</CompactEmpty>}
+        </div>
+      </CollapsibleSection>
 
       </div>
     </div>
-    <details className="group rounded-xl border bg-card" data-testid="admin-wo-history">
-      <summary className="cursor-pointer list-none px-4 py-3">
-        <span className="font-display text-lg font-semibold">{messages.historyAndAudit}</span>
-        <span className="block text-sm text-muted-foreground">{messages.historyAndAuditDescription}</span>
-      </summary>
-      <div className="space-y-5 border-t p-3 sm:p-4">
-        <Card><CardHeader><CardTitle>{messages.workOrderTimes}</CardTitle></CardHeader><CardContent><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info label={messages.created} value={formatAdminDate(data.createdAt, locale)} /><Info label={messages.started} value={formatAdminDate(data.startedAt, locale)} /><Info label={messages.completed} value={formatAdminDate(data.completedAt, locale)} /><Info label={messages.updated} value={formatAdminDate(data.updatedAt, locale)} /><Info label={messages.activeLabor} value={formatDuration(data.totalActiveLaborMs)} /><Info label={messages.waitingTime} value={formatDuration(data.totalWaitingMs)} /></dl></CardContent></Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{messages.timeCorrectionTitle}</CardTitle>
-            <CardDescription>{messages.timeCorrectionDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+    <CollapsibleSection testId="admin-wo-history" title={messages.historyAndAudit} description={messages.historyAndAuditDescription}>
+        <SectionBlock title={messages.workOrderTimes}><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info label={messages.created} value={formatAdminDate(data.createdAt, locale)} /><Info label={messages.started} value={formatAdminDate(data.startedAt, locale)} /><Info label={messages.completed} value={formatAdminDate(data.completedAt, locale)} /><Info label={messages.updated} value={formatAdminDate(data.updatedAt, locale)} /><Info label={messages.activeLabor} value={formatDuration(data.totalActiveLaborMs)} /><Info label={messages.waitingTime} value={formatDuration(data.totalWaitingMs)} /></dl></SectionBlock>
+        <SectionBlock title={messages.timeCorrectionTitle} description={messages.timeCorrectionDescription}>
             {closedTimeSegments(data).length ? (
               <form
                 className="space-y-3"
@@ -870,23 +859,19 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
             ) : (
               <CompactEmpty>{messages.timeCorrectionEmpty}</CompactEmpty>
             )}
-          </CardContent>
-        </Card>
-        <section className="grid gap-4 lg:grid-cols-2">
-          {data.currentPause ? <Card><CardHeader><CardTitle>{messages.currentPause}</CardTitle></CardHeader><CardContent><Pause pause={data.currentPause} locale={locale} messages={messages} /></CardContent></Card> : null}
-          <Card><CardHeader><CardTitle>{messages.pauseHistory}</CardTitle></CardHeader><CardContent>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} messages={messages} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</CardContent></Card>
-        </section>
-        <Card><CardHeader><CardTitle>{messages.activityLog}</CardTitle></CardHeader><CardContent>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => {
+        </SectionBlock>
+          {data.currentPause ? <SectionBlock title={messages.currentPause}><Pause pause={data.currentPause} locale={locale} messages={messages} /></SectionBlock> : null}
+          <SectionBlock title={messages.pauseHistory}>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} messages={messages} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</SectionBlock>
+        <SectionBlock title={messages.activityLog}>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => {
           const detail = adminActivityEventDetail(entry);
           return <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{adminActivityEventLabel(entry.eventType, messages)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name}</p>{detail ? <p className="mt-1 whitespace-pre-wrap text-sm">{detail}</p> : null}</li>;
-        })}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</CardContent></Card>
-      </div>
-    </details>
-    {readyToClose ? (
+        })}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</SectionBlock>
+    </CollapsibleSection>
+    {showStickyComplete ? (
       <div
         role="region"
         aria-label={messages.completeWorkOrderTitle}
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-shop-accent/40 bg-card/95 px-4 py-3 backdrop-blur app-safe-bottom md:left-[var(--admin-aside)]"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-shop-accent/40 bg-card px-4 py-3 shadow-soft app-safe-bottom md:left-[var(--admin-aside)]"
         data-testid="admin-wo-next-action"
       >
         <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

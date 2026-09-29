@@ -37,7 +37,9 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     const blocker = page.getByTestId('admin-blocker').first();
     await expect(blocker.getByText('Blocked · Inspect brake chamber: Waiting for Parts')).toBeVisible();
     await expect(blocker.getByText(/Alejandro 1 · .*: The part arrived/)).toBeVisible();
-    await expect(page.getByText('This Work Order is not currently paused.').first()).toBeVisible();
+    // A blocker does not pause the Work Order: Pause is offered, Resume is not (LTR-168: summary starts folded).
+    await expect(page.getByRole('heading', { name: 'Pause Work Order' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Resume Work Order' })).toHaveCount(0);
 
     await blocker.getByLabel('Note for the mechanic (optional)').fill('Installed from stock');
     await blocker.getByRole('button', { name: 'Resolve' }).click();
@@ -53,7 +55,9 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     await expect(page.getByRole('button', { name: 'Resume Work Order' })).toBeVisible();
     await page.getByRole('button', { name: 'Resume Work Order' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order resumed.' }).first()).toBeVisible();
-    await expect(page.getByText('This Work Order is not currently paused.').first()).toBeVisible();
+    // A blocker does not pause the Work Order: Pause is offered, Resume is not (LTR-168: summary starts folded).
+    await expect(page.getByRole('heading', { name: 'Pause Work Order' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Resume Work Order' })).toHaveCount(0);
 
     // LTR-164 (#9): the mechanic sees who resolved it and the Manager's note.
     await page.evaluate(() => localStorage.removeItem('ltl_shop_token'));
