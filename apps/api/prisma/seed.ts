@@ -168,6 +168,13 @@ async function main() {
       company: 'Lightning',
       owner: 'Luis',
     },
+    // Enough trucks for the demo Work Orders (prisma/reset-demo-work-orders.ts, one scenario per truck).
+    { truckNumber: '931', make: 'Volvo', model: 'VNL 760', year: 2022, mileage: 305400, company: 'Lightning', owner: 'Ana' },
+    { truckNumber: '944', make: 'Freightliner', model: 'Cascadia', year: 2024, mileage: 121800, company: 'Lightning', owner: 'Pedro' },
+    { truckNumber: '957', make: 'Kenworth', model: 'T680', year: 2023, mileage: 187250, company: 'Lightning', owner: 'Sofia' },
+    { truckNumber: '973', make: 'Volvo', model: 'VNL 860', year: 2025, mileage: 64300, company: 'Lightning', owner: 'Jorge' },
+    { truckNumber: '986', make: 'Freightliner', model: 'Cascadia', year: 2022, mileage: 356900, company: 'Lightning', owner: 'Lucia' },
+    { truckNumber: '991', make: 'Kenworth', model: 'T680', year: 2024, mileage: 142000, company: 'Lightning', owner: 'Mateo' },
   ];
 
   for (const t of trucks) {

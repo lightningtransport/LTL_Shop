@@ -439,6 +439,12 @@ Orders (created before LTR-141) keep their pause and finish-the-WO behavior
   deactivates every other user. It never deletes anyone, and it refuses to run
   while a user it would deactivate still has open work. Supabase Auth accounts
   and passwords are managed in the Supabase dashboard.
+- Demo Work Orders: `npm run prisma:reset-demo-work-orders --workspace=@ltl-shop/api`
+  (dry-run by default, `-- --apply` to write, `-- --local` for `apps/api/.env`)
+  deletes every Work Order with its readiness, Ready to Go / Return to Service
+  and mileage-adjustment rows, then builds one Truck per JTBD scenario (M01–M04,
+  MECH01–03, PM) through the API services, acting as the test roster. It refuses
+  to run on production while any active user is outside the test roster.
 - Prisma is the sole schema-migration authority. Do not add a parallel
   migration history under `supabase/migrations`. The existing
   `supabase/migrations/20260825140000_init_domain.sql` is a preserved legacy
