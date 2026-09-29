@@ -59,7 +59,7 @@ export function AdminShell({
 
   return (
     <AdminActorProvider role={user.role}>
-    <div className="app-safe-x app-safe-bottom flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background [--admin-aside:0px] md:[--admin-aside:15rem]">
+    <div className="app-safe-x flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background [--admin-aside:0px] md:[--admin-aside:15rem]">
       <header
         className="app-safe-top sticky top-0 z-40 w-full shrink-0 border-b bg-card/95 backdrop-blur"
         aria-label={messages.shellControls}
@@ -114,7 +114,9 @@ export function AdminShell({
         </aside>
 
         <main className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="mx-auto w-full min-w-0 max-w-[1500px] px-4 py-5 sm:px-5 md:py-6 xl:px-6">{children}</div>
+          {/* LTR-171: the home-indicator space is inside the scroller, so cards scroll under it instead of the
+              page ending early above a flat band. */}
+          <div className="mx-auto w-full min-w-0 max-w-[1500px] px-4 pb-[calc(1.25rem+var(--app-safe-bottom))] pt-5 sm:px-5 md:pb-[calc(1.5rem+var(--app-safe-bottom))] md:pt-6 xl:px-6">{children}</div>
         </main>
       </div>
 
