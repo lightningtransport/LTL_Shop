@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Dialog as DialogPrimitive, Slot } from 'radix-ui';
-import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, Moon, Sun, Wrench, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, Moon, SlidersHorizontal, Sun, Wrench, X } from 'lucide-react';
 import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
@@ -18,7 +18,9 @@ import { jobStatusVariant, phaseVariant, priorityVariant, workOrderStatusVariant
 import { cn } from '@/lib/utils';
 
 export const buttonVariants = cva(
-  'inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
+  // LTR-169: one disabled look for every variant (muted fill, muted text: 5.5:1 in light and dark), instead of a
+  // faded copy of each variant that read as "washed-out blue" next to "grey" and was unreadable in dark mode.
+  'inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:border-transparent disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none',
   {
     variants: {
       variant: {
@@ -761,7 +763,7 @@ export function AdminBackLink({
   className?: string;
 }) {
   return (
-    <Button asChild variant="ghost" className={cn('-ml-3 gap-2', className)}>
+    <Button asChild variant="ghost" className={cn('-ml-3 gap-2 self-start', className)}>
       <Link href={href}>
         <ChevronLeft aria-hidden="true" className="size-4 shrink-0" />
         <span>{children}</span>
@@ -770,33 +772,189 @@ export function AdminBackLink({
   );
 }
 
+/**
+ * LTR-169: the Admin list filter bar, the same shape as Work Orders and Yard. A search field, then:
+ * - with extra `filters`: inline from `md`; on phones a "Filters" button (with the active count) opens a sheet
+ *   holding the fields and Clear / Apply;
+ * - search only: Apply next to the field (Enter also applies), Clear from `md`.
+ */
 export function AdminFilterToolbar({
-  children,
+  search,
+  onSearchChange,
+  searchLabel,
+  filters,
+  activeFilterCount = 0,
   onSubmit,
   onClear,
   clearLabel,
   applyLabel,
+  filtersLabel,
+  closeLabel,
   className,
 }: {
-  children: React.ReactNode;
-  onSubmit: React.FormEventHandler<HTMLFormElement>;
+  search: string;
+  onSearchChange: (value: string) => void;
+  /** Visible placeholder and accessible name of the search field. */
+  searchLabel: string;
+  filters?: React.ReactNode;
+  activeFilterCount?: number;
+  onSubmit: () => void;
   onClear: () => void;
   clearLabel: string;
   applyLabel: string;
+  filtersLabel: string;
+  closeLabel?: string;
+  className?: string;
+}) {
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const filtersButtonRef = React.useRef<HTMLButtonElement>(null);
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSheetOpen(false);
+    onSubmit();
+  };
+  const clear = () => {
+    setSheetOpen(false);
+    onClear();
+  };
+  const actions = (
+    <>
+      <Button type="button" variant="ghost" className="shrink-0" onClick={clear}>{clearLabel}</Button>
+      <Button type="submit" className="shrink-0">{applyLabel}</Button>
+    </>
+  );
+
+  return (
+    <Card className={cn('min-w-0 p-3', className)}>
+      <form role="search" className="flex min-w-0 items-end gap-2" onSubmit={submit}>
+        <Input
+          type="search"
+          autoComplete="off"
+          enterKeyHint="search"
+          className="min-w-0 flex-1"
+          aria-label={searchLabel}
+          placeholder={searchLabel}
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+        {filters ? (
+          <>
+            <div className="hidden min-w-0 items-end gap-2 md:flex">{filters}{actions}</div>
+            <Button
+              ref={filtersButtonRef}
+              type="button"
+              variant="outline"
+              className="shrink-0 md:hidden"
+              aria-expanded={sheetOpen}
+              onClick={() => setSheetOpen(true)}
+            >
+              <SlidersHorizontal aria-hidden="true" className="size-4" />
+              {filtersLabel}
+              {activeFilterCount > 0 ? (
+                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button type="button" variant="ghost" className="hidden shrink-0 md:inline-flex" onClick={clear}>{clearLabel}</Button>
+            <Button type="submit" className="shrink-0">{applyLabel}</Button>
+          </>
+        )}
+      </form>
+      {filters ? (
+        <Modal open={sheetOpen} title={filtersLabel} closeLabel={closeLabel} onClose={() => setSheetOpen(false)} returnFocusRef={filtersButtonRef}>
+          <form className="space-y-4" onSubmit={submit}>
+            {filters}
+            <div className="flex justify-end gap-2 border-t pt-4">{actions}</div>
+          </form>
+        </Modal>
+      ) : null}
+    </Card>
+  );
+}
+
+export type DataTableColumn<T> = {
+  key: string;
+  header: string;
+  cell: (item: T) => React.ReactNode;
+  /** The row's title on phones: first, larger, without its label. Exactly one column should set it. */
+  primary?: boolean;
+  /** Secondary data left out of the phone card (still in the table from `md`). */
+  hideOnMobile?: boolean;
+  /** Extra classes for the cell (desktop), e.g. `whitespace-nowrap`. */
+  className?: string;
+  testId?: string;
+};
+
+/**
+ * LTR-169: the one Admin table. A real table from `md`; on phones each row is a card with the primary column
+ * as its title and every other column as "label: value", so no column falls off screen. One DOM for both,
+ * with explicit ARIA roles, because `display: block` on table elements drops their semantics in Safari.
+ * Order columns by importance: it is the order on phones too.
+ */
+export function DataTable<T>({
+  items,
+  columns,
+  getKey,
+  caption,
+  getRowLabel,
+  className,
+}: {
+  items: T[];
+  columns: DataTableColumn<T>[];
+  getKey: (item: T) => string;
+  /** Screen-reader name of the table. */
+  caption: string;
+  /** Accessible name of each row (defaults to the primary column's text). */
+  getRowLabel?: (item: T) => string;
   className?: string;
 }) {
   return (
-    <form
-      role="search"
-      className={cn('flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-end', className)}
-      onSubmit={onSubmit}
-    >
-      <div className="min-w-0 flex-1">{children}</div>
-      <div className="flex shrink-0 gap-2">
-        <Button type="button" size="sm" variant="ghost" onClick={onClear}>{clearLabel}</Button>
-        <Button type="submit" size="sm">{applyLabel}</Button>
-      </div>
-    </form>
+    <div className={cn('md:overflow-x-auto md:rounded-xl md:border', className)}>
+      <table role="table" className="w-full text-left text-sm max-md:block">
+        <caption className="sr-only">{caption}</caption>
+        <thead role="rowgroup" className="bg-muted/50 text-muted-foreground max-md:hidden">
+          <tr role="row">
+            {columns.map((column) => (
+              <th key={column.key} role="columnheader" scope="col" className="p-3 font-medium">{column.header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody role="rowgroup" className="max-md:block max-md:space-y-3">
+          {items.map((item) => (
+            <tr
+              key={getKey(item)}
+              role="row"
+              aria-label={getRowLabel?.(item)}
+              className="md:border-t max-md:block max-md:rounded-xl max-md:border max-md:bg-card max-md:p-4 max-md:shadow-soft"
+            >
+              {columns.map((column) => (
+                <td
+                  key={column.key}
+                  role="cell"
+                  data-label={column.header}
+                  data-testid={column.testId}
+                  className={cn(
+                    'p-3 align-top',
+                    'max-md:flex max-md:min-w-0 max-md:items-start max-md:justify-between max-md:gap-3 max-md:px-0 max-md:py-1.5',
+                    column.primary
+                      ? 'max-md:pb-2 max-md:pt-0 max-md:text-base'
+                      : 'max-md:border-t max-md:text-right max-md:before:shrink-0 max-md:before:text-left max-md:before:text-muted-foreground max-md:before:content-[attr(data-label)] max-md:[&>*]:min-w-0',
+                    column.hideOnMobile && 'max-md:hidden',
+                    column.className,
+                  )}
+                >
+                  {column.cell(item)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

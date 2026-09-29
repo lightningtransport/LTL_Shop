@@ -70,7 +70,12 @@ test.describe('shared UI consistency', () => {
     for (const path of ['/admin/trucks', '/admin/mechanics', '/admin/history']) {
       await page.goto(path);
       await page.setViewportSize({ width: 320, height: 568 });
-      const apply = page.getByRole('button', { name: 'Apply filters' });
+      // LTR-169: lists with extra filters keep Apply in the Filters sheet on phones, like Work Orders and Yard.
+      const filters = page.getByRole('search').getByRole('button', { name: /^Filters( [0-9]+)?$/ });
+      const hasFilterSheet = (await filters.count()) > 0;
+      if (hasFilterSheet) await filters.click();
+      const scope = hasFilterSheet ? page.getByRole('dialog', { name: 'Filters' }) : page.getByRole('search');
+      const apply = scope.getByRole('button', { name: 'Apply filters' });
       await expect(apply).toBeVisible();
       const box = await apply.boundingBox();
       expect(box?.height).toBeGreaterThanOrEqual(36);

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus } from '@ltl-shop/shared';
-import { AdminFilterToolbar, PageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { AdminFilterToolbar, DataTable, PageHeader, Button, EmptyState, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
 import { truckNextStepText } from '@/lib/truck-next-step';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { useAdminTrucks } from '@/lib/admin-data';
@@ -30,76 +30,83 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
     <div className="space-y-6">
       <PageHeader title={messages.trucksTitle} subtitle={messages.trucksDescription} />
       <AdminFilterToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchLabel={messages.searchTrucks}
+        filtersLabel={messages.filters}
+        closeLabel={messages.closeDialog}
         onClear={() => router.replace('/admin/trucks')}
         clearLabel={messages.clearFilters}
         applyLabel={messages.applyFilters}
-        onSubmit={(event) => {
-          event.preventDefault();
+        onSubmit={() => {
           const next = new URLSearchParams();
           if (search.trim()) next.set('search', search.trim());
           router.replace(`/admin/trucks${next.size ? `?${next}` : ''}`);
         }}
-      >
-        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchTrucks} aria-label={messages.searchTrucks} />
-      </AdminFilterToolbar>
+      />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.trucksTitle} header={false} /> : null}
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p></EmptyState> : null}
       {items.length ? (
-        <div className="overflow-x-auto rounded-xl border">
-          {/* LTR-111: hide the column while every truck is Unknown (no service-status events yet). */}
-          <table className="w-full min-w-[40rem] text-left text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="p-3 font-medium">{messages.trucks}</th>
-                {showOperationalStatus ? <th className="p-3 font-medium">{messages.operationalStatus}</th> : null}
-                <th className="p-3 font-medium">{messages.make}</th>
-                <th className="p-3 font-medium">{messages.company}</th>
-                <th className="p-3 font-medium">{messages.currentWorkOrder}</th>
-                <th className="p-3 font-medium">{messages.nextStepTitle}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.truck.id} className="border-t">
-                  <td className="p-3">
-                    <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/trucks')}>{item.truck.truckNumber}</Link>
-                    <p className="text-muted-foreground">
-                      {[item.truck.year, item.truck.model].filter(Boolean).join(' ') || '—'}
-                    </p>
-                  </td>
-                  {showOperationalStatus ? (
-                    <td className="p-3 text-muted-foreground">
-                      {/* LTR-159: "In Service" contradicts an open Work Order; show nothing then. */}
-                      {item.openWorkOrder && item.operationalStatus === TruckOperationalStatus.IN_SERVICE
-                        ? '—'
-                        : item.operationalStatus === TruckOperationalStatus.IN_SERVICE
-                        ? messages.operationalStatusInService
-                        : item.operationalStatus === TruckOperationalStatus.OFF_DUTY
-                          ? messages.operationalStatusOffDuty
-                          : messages.operationalStatusUnknown}
-                    </td>
-                  ) : null}
-                  <td className="p-3 text-muted-foreground">{item.truck.make ?? '—'}</td>
-                  <td className="p-3 text-muted-foreground">{item.truck.company ?? '—'}</td>
-                  <td className="p-3">
-                    {item.openWorkOrder ? (
-                      <>
-                        <Link className="tap-inline font-medium text-primary hover:underline" href={`/admin/work-orders/${item.openWorkOrder.id}`}>{item.openWorkOrder.displayId}</Link>
-                        <p className="text-muted-foreground">{item.openWorkOrder.primaryCategoryName} · <WorkOrderStatusBadge status={item.openWorkOrder.status}>{workOrderStatusLabel(item.openWorkOrder.status, messages)}</WorkOrderStatusBadge></p>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">{messages.noOpenWorkOrder}</span>
-                    )}
-                  </td>
-                  <td className="p-3" data-testid="truck-next-step-cell">
-                    {item.nextStep && item.nextStep.kind !== 'create_work_order' ? truckNextStepText(item.nextStep, messages) : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        // LTR-169: what matters first (Truck, its Work Order, the next step); make and company last and
+        // only from md, since every Truck is Lightning Transport today.
+        <DataTable
+          items={items}
+          caption={messages.trucksTitle}
+          getKey={(item) => item.truck.id}
+          getRowLabel={(item) => item.truck.truckNumber}
+          columns={[
+            {
+              key: 'truck',
+              header: messages.trucks,
+              primary: true,
+              cell: (item) => (
+                <div>
+                  <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/trucks')}>{item.truck.truckNumber}</Link>
+                  <p className="text-sm text-muted-foreground">{[item.truck.year, item.truck.model].filter(Boolean).join(' ') || '—'}</p>
+                </div>
+              ),
+            },
+            {
+              key: 'work-order',
+              header: messages.currentWorkOrder,
+              cell: (item) => item.openWorkOrder ? (
+                <div className="space-y-1">
+                  <Link className="tap-inline font-medium text-primary hover:underline" href={`/admin/work-orders/${item.openWorkOrder.id}`}>{item.openWorkOrder.displayId}</Link>
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground max-md:justify-end">
+                    {item.openWorkOrder.primaryCategoryName}
+                    <WorkOrderStatusBadge status={item.openWorkOrder.status}>{workOrderStatusLabel(item.openWorkOrder.status, messages)}</WorkOrderStatusBadge>
+                  </p>
+                </div>
+              ) : <span className="text-muted-foreground">{messages.noOpenWorkOrder}</span>,
+            },
+            {
+              key: 'next-step',
+              header: messages.nextStepTitle,
+              testId: 'truck-next-step-cell',
+              cell: (item) => <span>{item.nextStep && item.nextStep.kind !== 'create_work_order' ? truckNextStepText(item.nextStep, messages) : '—'}</span>,
+            },
+            // LTR-111: hide the column while every truck is Unknown (no service-status events yet).
+            ...(showOperationalStatus ? [{
+              key: 'status',
+              header: messages.operationalStatus,
+              cell: (item: (typeof items)[number]) => (
+                <span className="text-muted-foreground">
+                  {/* LTR-159: "In Service" contradicts an open Work Order; show nothing then. */}
+                  {item.openWorkOrder && item.operationalStatus === TruckOperationalStatus.IN_SERVICE
+                    ? '—'
+                    : item.operationalStatus === TruckOperationalStatus.IN_SERVICE
+                      ? messages.operationalStatusInService
+                      : item.operationalStatus === TruckOperationalStatus.OFF_DUTY
+                        ? messages.operationalStatusOffDuty
+                        : messages.operationalStatusUnknown}
+                </span>
+              ),
+            }] : []),
+            { key: 'make', header: messages.make, hideOnMobile: true, cell: (item) => <span className="text-muted-foreground">{item.truck.make ?? '—'}</span> },
+            { key: 'company', header: messages.company, hideOnMobile: true, cell: (item) => <span className="text-muted-foreground">{item.truck.company ?? '—'}</span> },
+          ]}
+        />
       ) : null}
       {hasMore ? <Button type="button" variant="outline" disabled={isValidating} onClick={() => setSize(size + 1)}>{messages.loadMore}</Button> : null}
     </div>

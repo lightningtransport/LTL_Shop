@@ -11,12 +11,14 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 
 | Export | CURRENT use |
 |---|---|
-| `Button` | CVA variants `default`, `secondary`, `outline`, `ghost`, `destructive`; sizes `default`, `sm`, `lg`, `icon`; `asChild` Slot. Touch / mobile controls stay `min-h-11` (44px). Desktop chrome may use `sm`. Do not use deprecated `.btn-*` classes |
+| `Button` | CVA variants `default`, `secondary`, `outline`, `ghost`, `destructive`, with one disabled look for all of them (muted fill and text, AA in both themes; LTR-169); sizes `default`, `sm`, `lg`, `icon`; `asChild` Slot. Touch / mobile controls stay `min-h-11` (44px). Desktop chrome may use `sm`. Do not use deprecated `.btn-*` classes |
 | `Input` | Text fields (`.field`) |
 | `Textarea` | Notes and reasons |
 | `Label` | Programmatically associated labels |
 | `Select` | Native `<select>` with Lucide chevron |
 | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Grouped content. Never put a Card (or any bordered box) inside another Card; split it with `SectionBlock` or dividers (LTR-168). `CardDescription` is one line at most, or left out when the title says it |
+| `DataTable` | The Admin list table (LTR-169): a real table from `md`; on phones each row is a card with the `primary` column as its title and the rest as labeled fields. One DOM with explicit ARIA roles. `hideOnMobile` leaves secondary columns out of the card |
+| `AdminFilterToolbar` | Search + filters for Admin lists (LTR-169); see the composition rules below |
 | `CollapsibleSection` | A folded section with one surface: the title is an `h2` inside the summary, optional one-line description, chevron. Use it for context the user does not act on (summaries, truck data, history, audit, rare actions); it starts closed |
 | `SectionBlock` | One block inside a `Card` or `CollapsibleSection`: `h3.group-title`, optional description, content; blocks are separated by `divide-y` on the parent |
 | `InlineAlert` | Assertive inline error |
@@ -60,7 +62,9 @@ these primitives. They are not a second component library.
 - Every page uses `PageHeader`; do not hand-roll a second title hierarchy or add an eyebrow.
 - Use `AdminBackLink` for labeled back navigation. Keep the icon, label, and target area together.
 - Primary and filter actions use `Button`; labels remain on one line. Action groups wrap as a group at narrow widths rather than allowing individual buttons to become two-line controls.
-- Search and filter controls live in a bordered surface with consistent padding. Simple forms may omit the mobile modal, but they must preserve the same control heights and action alignment.
+- Lists filter through `AdminFilterToolbar` (LTR-169): a search field; extra filters inline from `md` and, on phones, behind a "Filters" button with the active count that opens a sheet with Clear / Apply. Search-only lists keep Apply next to the field. Work Orders and Yard follow the same shape with their own fields.
+- Lists render through `DataTable` (LTR-169): order columns by importance, mark the title column `primary`, and put secondary data last with `hideOnMobile`. Never a horizontally scrolling table on phones.
+- A disabled button shows why, next to it or under the form (LTR-169), unless the reason is on screen already.
 - For list metadata, use a left column with `min-w-0 flex-1` and a right metadata column with `shrink-0 text-right`. Do not use an unbounded `justify-between` row with wrapping content.
 
 ## TARGET gaps (Master PRD §33 only)
@@ -70,7 +74,6 @@ today. Marked TARGET so nobody documents them as existing:
 
 | PRD name | CURRENT substitute | TARGET |
 |---|---|---|
-| Table | Ad-hoc `<table>` in Admin list/catalog | Shared Table primitive |
 | Tabs | Separate routes or view toggle buttons (Yard Board/List) | Shared Tabs |
 | Sheet | `DialogContent` is bottom-sheet on small screens | Dedicated Sheet |
 | Dropdown | Profile and MultiSelect use Dialog, not a menu | Shared Dropdown |

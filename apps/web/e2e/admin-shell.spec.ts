@@ -481,7 +481,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
     await expect(page.getByText('Brakes').first()).toBeVisible();
     await expect(page.getByText('Suspension').first()).toBeVisible();
-    await expect(page.getByText('Inactive').first()).toBeVisible();
+    await expect(page.getByText('Inactive', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
     await page.getByRole('link', { name: 'Brakes' }).click();
     await expect(page).toHaveURL(/\/admin\/catalog\/categories\/00000000-0000-4000-8000-000000000301$/);

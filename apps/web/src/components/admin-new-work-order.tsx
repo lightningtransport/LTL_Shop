@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useActionToast } from './action-toast';
 import { createAdminWorkOrder } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminPriorityLabel } from '@/lib/status-chips';
 import { useTrucks } from '@/lib/shop-data';
 import { OpenWorkOrderTag } from './open-work-order-tag';
 import { rankTruckResults } from '@/lib/truck-search';
@@ -204,7 +205,7 @@ export function AdminNewWorkOrder({
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-muted-foreground">{messages.selectedTruckLabel}</p>
                     <p className="truncate font-semibold">
-                      #{selectedTruck.truck.truckNumber} · {selectedTruck.truck.make} {selectedTruck.truck.model}
+                      {selectedTruck.truck.truckNumber} · {selectedTruck.truck.make} {selectedTruck.truck.model}
                     </p>
                     {openWorkOrderCheck === 'checking' ? (
                       <p className="mt-1 text-xs text-muted-foreground" role="status">{messages.checkingOpenWorkOrder}</p>
@@ -278,7 +279,7 @@ export function AdminNewWorkOrder({
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => selectTruck(item)}
                           >
-                            <span className="min-w-0 flex-1 truncate">#{item.truckNumber} · {item.make} {item.model}</span>
+                            <span className="min-w-0 flex-1 truncate">{item.truckNumber} · {item.make} {item.model}</span>
                             {item.openWorkOrder ? <OpenWorkOrderTag label={messages.truckOpenWorkOrder.replace('{displayId}', item.openWorkOrder.displayId)} /> : null}
                           </Button>
                         </li>
@@ -319,15 +320,15 @@ export function AdminNewWorkOrder({
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground">{messages.priority}</span>
+            <span className="text-sm font-medium">{messages.priority}</span>
             <Select aria-label={messages.priority} value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
               {Object.values(Priority).map((value) => (
-                <option key={value} value={value}>{value.toUpperCase()}</option>
+                <option key={value} value={value}>{adminPriorityLabel(value, messages)}</option>
               ))}
             </Select>
           </label>
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs font-medium text-muted-foreground">{messages.notesOptional}</span>
+            <span className="text-sm font-medium">{messages.notesOptional}</span>
             <Textarea
               aria-label={messages.notesOptional}
               className="min-h-20"

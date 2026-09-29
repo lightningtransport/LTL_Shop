@@ -66,9 +66,6 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
       <PageHeader
         title={messages.shopWorkflow}
         subtitle={messages.shopWorkflowDescription}
-        actions={canWrite ? (
-          <Button type="button" disabled={!dirty || saving} onClick={() => void save()}>{messages.shopWorkflowSave}</Button>
-        ) : null}
       />
       {/* LTR-164 (#1): read-only only once the session says so, not while it loads. */}
       {user && !canWrite ? <p className="text-sm text-muted-foreground">{messages.shopWorkflowReadOnly}</p> : null}
@@ -112,6 +109,9 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
             </ol>
           </CardContent>
         </Card>
+      ) : null}
+      {data?.length && canWrite ? (
+        <Button type="button" className="w-full sm:w-auto" disabled={!dirty || saving} onClick={() => void save()}>{messages.shopWorkflowSave}</Button>
       ) : null}
     </div>
   );
