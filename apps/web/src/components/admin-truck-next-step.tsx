@@ -75,7 +75,7 @@ export function AdminTruckNextStep({
   return (
     <Card className="border-primary/40" data-testid="truck-next-step" data-kind={step.kind}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">{messages.nextStepTitle}</CardTitle>
+        <CardTitle>{messages.nextStepTitle}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {body}
@@ -197,10 +197,10 @@ export function AdminTruckNextStep({
         );
       case 'create_work_order':
         return (
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p>{messages.truckNextStepCreate}</p>
             {canManage ? (
-              <Button asChild size="sm">
+              <Button asChild className="w-full sm:w-auto">
                 <Link href={`/admin/work-orders/new?truck=${truck.truck.id}`}>{messages.truckNextStepCreateAction}</Link>
               </Button>
             ) : null}
@@ -226,9 +226,9 @@ function Action({
   variant?: 'outline';
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="min-w-0 flex-1">{text}</p>
-      <Button type="button" size="sm" variant={variant} disabled={disabled} onClick={onClick}>{label}</Button>
+      <Button type="button" variant={variant} className="w-full sm:w-auto" disabled={disabled} onClick={onClick}>{label}</Button>
     </div>
   );
 }

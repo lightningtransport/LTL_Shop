@@ -222,9 +222,10 @@ export default function WorkOrderDetailPage() {
       />
 
       <div className="card mb-4 space-y-2">
-        <div className="flex items-center justify-between">
+        {/* LTR-168: a long category wraps under the badge instead of around it. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge>
-          <span className="text-sm text-shop-muted">
+          <span className="min-w-0 text-sm text-shop-muted">
             {[jobCategoriesLine(wo.jobs), messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)].filter(Boolean).join(' · ')}
           </span>
         </div>
@@ -880,8 +881,8 @@ function JobTodoButton({
       <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-shop-border text-xs">
         ○
       </span>
-      <span className="min-w-0">
-        <span className="block">{job.displayName}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block break-words">{job.displayName}</span>
         <span className="block text-xs text-muted-foreground">{job.category.name}</span>
         <span className="block text-xs text-muted-foreground">
           {[
@@ -900,7 +901,8 @@ function JobTodoButton({
   return (
     <Button
       variant="outline"
-      className="h-auto w-full justify-start gap-3 p-4 text-left font-normal"
+      // LTR-168: Button is nowrap by default; a long Job name must wrap inside the row, not run off the card.
+      className="h-auto w-full justify-start gap-3 whitespace-normal p-4 text-left font-normal"
       disabled={disabled}
       onClick={onSelect}
     >

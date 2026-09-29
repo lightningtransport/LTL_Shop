@@ -800,6 +800,71 @@ export function AdminFilterToolbar({
   );
 }
 
+/**
+ * LTR-168: a folded section with one surface. The title is a real heading inside the summary, so the page
+ * outline stays intact while it is closed. Inside, separate blocks with `SectionBlock`, never another Card.
+ */
+export function CollapsibleSection({
+  title,
+  description,
+  children,
+  defaultOpen = false,
+  testId,
+  className,
+  ...props
+}: {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  testId?: string;
+  className?: string;
+} & Omit<React.HTMLAttributes<HTMLDetailsElement>, 'title'>) {
+  return (
+    <details
+      className={cn('group rounded-xl border bg-card text-card-foreground shadow-soft', className)}
+      data-testid={testId}
+      open={defaultOpen || undefined}
+      {...props}
+    >
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <h2 className="section-title">{title}</h2>
+          {description ? <span className="mt-0.5 block text-sm text-muted-foreground">{description}</span> : null}
+        </span>
+        <ChevronDown aria-hidden="true" className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="divide-y border-t">{children}</div>
+    </details>
+  );
+}
+
+/** One block inside a Card or CollapsibleSection: a group title and its content, separated by a divider. */
+export function SectionBlock({
+  title,
+  description,
+  children,
+  className,
+  ...props
+}: {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+} & Omit<React.HTMLAttributes<HTMLElement>, 'title'>) {
+  return (
+    <section className={cn('space-y-3 p-4', className)} {...props}>
+      {title ? (
+        <div>
+          <h3 className="group-title">{title}</h3>
+          {description ? <p className="mt-0.5 text-sm text-muted-foreground">{description}</p> : null}
+        </div>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
 export function EmptyState({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-dashed border-shop-border px-4 py-8 text-center text-sm text-shop-muted">

@@ -87,8 +87,11 @@ test('Admin Pause stays disabled on Created and enables on In Progress', async (
 
   await page.goto(`/admin/work-orders/${IN_PROGRESS_ID}`);
   const enabledPause = page.getByRole('button', { name: 'Pausar Work Order' });
-  await expect(enabledPause).toBeEnabled();
+  // LTR-168: no preselected reason; Pause enables once one is chosen.
   await expect(page.getByLabel('Motivo de pausa')).toBeEnabled();
+  await expect(enabledPause).toBeDisabled();
+  await page.getByLabel('Motivo de pausa').selectOption('waiting_for_parts');
+  await expect(enabledPause).toBeEnabled();
   await expect(page.getByText('La pausa está disponible cuando esta Work Order está En progreso.')).toHaveCount(0);
 });
 

@@ -182,14 +182,11 @@ export function AdminTruckWorkPlan({
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <CardTitle id="truck-work-plan-title">{messages.workPlanSection}</CardTitle>
-              <CardDescription>{messages.workPlanDescription}</CardDescription>
-            </div>
+            <CardTitle id="truck-work-plan-title">{messages.workPlanSection}</CardTitle>
             {canAddWork ? (
               <Button
                 type="button"
-                variant={addWorkOpen ? 'secondary' : 'default'}
+                variant={addWorkOpen ? 'outline' : 'default'}
                 onClick={() => {
                   if (addWorkOpen) {
                     setAddWorkOpen(false);
@@ -207,7 +204,7 @@ export function AdminTruckWorkPlan({
             ) : null}
           </div>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-5 divide-y [&>*+*]:pt-5">
           {feedback ? (
             <div
               className={feedback.kind === 'error'
@@ -234,7 +231,7 @@ export function AdminTruckWorkPlan({
           />
 
           {addWorkOpen && canAddWork ? (
-            <div id="work-plan-add-work" className="rounded-xl border p-3">
+            <div id="work-plan-add-work">
               <WorkPlanAddWork
                 plan={plan}
                 messages={messages}
@@ -255,11 +252,11 @@ export function AdminTruckWorkPlan({
           />
 
           <div>
-            <h3 className="mb-2 font-medium">{messages.jobsInPlan}</h3>
+            <h3 className="group-title mb-2">{messages.jobsInPlan}</h3>
             {plan.jobs.length ? (
-              <ul className="divide-y rounded-xl border" aria-label={messages.jobsInPlan}>
+              <ul className="divide-y" aria-label={messages.jobsInPlan}>
                 {plan.jobs.map((job) => (
-                  <li key={job.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm">
+                  <li key={job.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm first:pt-0">
                     <div className="min-w-0">
                       <p className="font-medium">{job.displayName}</p>
                       <p className="text-xs text-muted-foreground">{job.category.name}</p>
@@ -346,9 +343,9 @@ function InspectionPanel({
 }) {
   const outcome = plan.inspection.outcome;
   return (
-    <div className="space-y-3 rounded-xl border p-3" aria-labelledby="work-plan-inspection-title">
+    <div className="space-y-3" aria-labelledby="work-plan-inspection-title">
       <div>
-        <h3 id="work-plan-inspection-title" className="font-medium">{messages.workPlanInspectionTitle}</h3>
+        <h3 id="work-plan-inspection-title" className="group-title">{messages.workPlanInspectionTitle}</h3>
         <p className="text-sm text-muted-foreground">{messages.workPlanInspectionDescription}</p>
       </div>
       {/* LTR-112: always state the inspection result, never a Ready label here. */}
@@ -397,11 +394,8 @@ function WorkPlanSummary({
   canAddWork: boolean;
 }) {
   return (
-    <div className="space-y-3 rounded-xl border p-3" aria-live="polite">
+    <div className="space-y-3" aria-live="polite">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={ready ? 'success' : 'warning'}>
-          {ready ? messages.workPlanReady : messages.workPlanNotReady}
-        </Badge>
         <Badge variant="outline">
           {workPlanPhaseLabel(plan.phase, messages)}
         </Badge>
@@ -414,8 +408,8 @@ function WorkPlanSummary({
       <p className="text-sm text-muted-foreground">{workPlanReadyReasonMessage(plan.readyReason, messages)}</p>
       {/* LTR-159: what to do next lives in the one Next step card above (no second rule here). */}
       <div>
-        <p className="text-xs font-medium text-muted-foreground">{messages.workPlanMandatoryTitle}</p>
-        <ul className="mt-2 space-y-1 text-sm">
+        <h3 className="group-title">{messages.workPlanMandatoryTitle}</h3>
+        <ul className="mt-2 divide-y text-sm">
           {/* LTR-144: PM is a mandatory step. */}
           <MandatoryRow label={messages.pm} phase={plan.mandatory.pm} messages={messages} />
           <MandatoryRow label={messages.alignment} phase={plan.mandatory.alignment} messages={messages} />
@@ -437,8 +431,8 @@ function MandatoryRow({
   messages: AdminMessages;
 }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2">
-      <Badge variant="outline">{label}</Badge>
+    <li className="flex flex-wrap items-center justify-between gap-2 py-2">
+      <span>{label}</span>
       <Badge variant={workPlanMandatoryStatusVariant(phase.status)}>
         {workPlanMandatoryStatusLabel(phase.status, messages)}
         {phase.jobCount ? ` · ${phase.jobCount}` : ''}

@@ -108,8 +108,9 @@ test.describe('Shop Admin Phase 2A', () => {
     const completeHeading = page.getByRole('heading', { name: 'Complete Work Order' });
     const summaryHeading = page.getByRole('heading', { name: 'Operational summary' });
     await expect(completeHeading).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Confirm completion' }).first()).toBeVisible();
-    await expect(page.getByTestId('admin-wo-next-action').getByRole('button', { name: 'Confirm completion' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm completion' })).toHaveCount(1);
+    // LTR-168: the fixed bar only appears once the inline card scrolls away.
+    await expect(page.getByTestId('admin-wo-next-action')).toHaveCount(0);
     await expect(summaryHeading).toBeVisible();
     const completeBox = await completeHeading.boundingBox();
     const summaryBox = await summaryHeading.boundingBox();
@@ -209,8 +210,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.locator('main header').getByText('Shop Admin', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Read only')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Truck details' })).toBeVisible();
+    await expect(page.getByText('120,000')).toBeHidden();
+    await page.getByRole('heading', { name: 'Truck details' }).click();
     await expect(page.getByText('120,000').first()).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Recent repair history' })).toBeVisible();
+    await page.getByRole('heading', { name: 'Recent repair history' }).click();
     await expect(page.getByText('WO-0104').first()).toBeVisible();
     // LTR-109: times, correction, pauses and Activity Log live in "History and audit".
     await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeHidden();
@@ -220,7 +223,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Notes', exact: true })).toBeVisible();
     await page.getByRole('textbox', { name: 'Add note' }).fill('Check the leak again');
     await page.getByRole('button', { name: 'Add note' }).click();
-    await expect(page.getByRole('main').getByText('Note added.')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Note added.' }).first()).toBeVisible();
     await expect(page.getByText('Check the leak again')).toBeVisible();
     await expect(page.getByText(/Shop Manager · /).first()).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Add note' })).toHaveValue('');
@@ -228,10 +231,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Assignments' })).toHaveCount(0);
     await page.getByLabel('Reason for this Job change').fill('Not needed');
     await page.getByRole('button', { name: 'Confirm job cancellation' }).click();
-    await expect(page.getByRole('main').getByText('Job cancelled.')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Job cancelled.' }).first()).toBeVisible();
     await page.getByLabel('Reason for this Job change').fill('Job is still required');
     await page.getByRole('button', { name: 'Confirm job reopen' }).click();
-    await expect(page.getByRole('main').getByText('Job reopened.')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Job reopened.' }).first()).toBeVisible();
     // Cancel WO-0103, not WO-0101: the fixture API keeps state for the whole run,
     // and later tests need WO-0101 to stay open and Waiting / Paused.
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000103');
@@ -240,28 +243,28 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByTestId('admin-wo-more-actions').locator('summary').click();
     await page.getByLabel('Reason for cancellation').fill('Duplicate Work Order');
     await page.getByRole('button', { name: 'Confirm cancellation' }).click();
-    await expect(page.getByRole('main').getByText('Work Order cancelled.')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Work Order cancelled.' }).first()).toBeVisible();
     await expect(page.getByText('Cancelled').first()).toBeVisible();
     await page.getByRole('link', { name: 'Back to Work Orders' }).click();
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
-    await expect(page.getByTestId('admin-wo-next-action').getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
+    await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm completion' }).first()).toBeVisible();
     await page.getByTestId('admin-wo-history').locator('summary').click();
     await page.getByLabel('Time segment').selectOption({ index: 1 });
     await page.getByLabel('Corrected end time').fill('2026-09-06T17:00');
     await page.getByLabel('Reason for time correction').fill('Clock was wrong');
     await page.getByRole('button', { name: 'Apply time correction' }).click();
-    await expect(page.getByRole('main').getByText('Time correction saved.')).toBeVisible();
-    await page.getByTestId('admin-wo-next-action').getByRole('button', { name: 'Confirm completion' }).click();
-    await expect(page.getByRole('main').getByText('Work Order completed.')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Time correction saved.' }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Confirm completion' }).first().click();
+    await expect(page.getByRole('status').filter({ hasText: 'Work Order completed.' }).first()).toBeVisible();
     await page.getByLabel('Reason (optional)').fill('Repairs verified');
     await page.getByRole('button', { name: 'Confirm Return to Service' }).click();
-    await expect(page.getByRole('main').getByText('Truck returned to service.')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Truck returned to service.' }).first()).toBeVisible();
     await page.getByTestId('admin-wo-more-actions').locator('summary').click();
     await page.getByLabel('Reason for reopening').fill('More work found');
     await page.getByRole('button', { name: 'Confirm reopen' }).click();
-    await expect(page.getByRole('main').getByText('Work Order reopened.')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Work Order reopened.' }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
 
     await page.setViewportSize({ width: 1440, height: 700 });
@@ -571,16 +574,24 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
     const nextAction = page.getByTestId('admin-wo-next-action');
-    await expect(nextAction).toBeVisible();
-    const stickyButton = nextAction.getByRole('button', { name: 'Confirm completion' });
-    await expect(stickyButton).toBeVisible();
-    const stickyBox = await stickyButton.boundingBox();
-    expect(stickyBox?.height).toBeGreaterThanOrEqual(44);
+    // LTR-168: Confirm completion is on screen once: the inline card at the top, the fixed bar after scrolling.
+    await expect(page.getByRole('heading', { name: 'Complete Work Order' })).toBeInViewport();
+    await expect(nextAction).toHaveCount(0);
 
     await page.getByTestId('admin-wo-history').locator('summary').click();
     await page.getByRole('heading', { name: 'Activity Log' }).scrollIntoViewIfNeeded();
+    await expect(page.getByRole('heading', { name: 'Complete Work Order' })).not.toBeInViewport();
+    const stickyButton = nextAction.getByRole('button', { name: 'Confirm completion' });
     await expect(nextAction).toBeInViewport();
     await expect(stickyButton).toBeInViewport();
+    const stickyBox = await stickyButton.boundingBox();
+    expect(stickyBox?.height).toBeGreaterThanOrEqual(44);
+    await expect(page.getByRole('button', { name: 'Confirm completion' })).toHaveCount(2);
+    expect(await page.getByRole('button', { name: 'Confirm completion' }).evaluateAll((buttons) =>
+      buttons.filter((button) => {
+        const box = button.getBoundingClientRect();
+        return box.bottom > 0 && box.top < window.innerHeight;
+      }).length)).toBe(1);
     const pauseBox = await page.getByRole('heading', { name: /Pause Work Order|Resume Work Order/ }).first().boundingBox();
     const completeCardBox = await page.getByRole('heading', { name: 'Complete Work Order' }).boundingBox();
     expect(completeCardBox && pauseBox && completeCardBox.y < pauseBox.y).toBe(true);
@@ -591,6 +602,6 @@ test.describe('Shop Admin Phase 2A', () => {
 
     await switchLanguage(page, 'es');
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
-    await expect(page.getByTestId('admin-wo-next-action').getByRole('button', { name: 'Confirmar finalización' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirmar finalización' }).first()).toBeVisible();
   });
 });
