@@ -10,6 +10,8 @@
     "lint": "../../node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "test": "../../node_modules/.bin/vitest run",
     "test:watch": "../../node_modules/.bin/vitest",
+    "test:real": "../../node_modules/.bin/nest build && ../../node_modules/.bin/vitest run -c vitest.real.config.ts",
+    "test:real:setup": "../../node_modules/.bin/tsx test-real/setup-db.ts",
     "prisma:generate": "../../node_modules/.bin/prisma generate",
     "prisma:migrate": "../../node_modules/.bin/prisma migrate dev",
     "prisma:seed": "../../node_modules/.bin/tsx prisma/seed.ts",
