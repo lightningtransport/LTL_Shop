@@ -26,7 +26,7 @@ import {
   LoadFailure,
   PageSkeleton,
   PriorityBadge,
-  ScreenHeader,
+  PageHeader,
   buttonVariants,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -60,7 +60,7 @@ export default function HomePage() {
       return (
         <div>
           <HomeTopBar mode={mode ?? undefined} />
-          <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
+          <PageHeader className="mb-6" title={messages.home} subtitle={messages.homeSubtitle} />
           <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
         </div>
       );
@@ -69,7 +69,7 @@ export default function HomePage() {
       return (
         <div>
           <HomeTopBar mode={mode ?? undefined} />
-          <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
+          <PageHeader className="mb-6" title={messages.home} subtitle={messages.homeSubtitle} />
           <PageSkeleton label={messages.restoringSession} />
         </div>
       );
@@ -81,7 +81,7 @@ export default function HomePage() {
     return (
       <div>
         <HomeTopBar />
-        <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
+        <PageHeader className="mb-6" title={messages.home} subtitle={messages.homeSubtitle} />
         {sessionError ? (
           <LoadFailure
             message={sessionError}
@@ -100,7 +100,7 @@ export default function HomePage() {
     return (
       <div>
         <HomeTopBar />
-        <ScreenHeader title={messages.home} subtitle={messages.homeSubtitle} />
+        <PageHeader className="mb-6" title={messages.home} subtitle={messages.homeSubtitle} />
         <Button asChild className="w-full">
           <Link href={allowedHome}>{messages.openAllowedHome}</Link>
         </Button>
@@ -113,7 +113,8 @@ export default function HomePage() {
     return (
       <div>
         <HomeTopBar />
-        <ScreenHeader
+        <PageHeader
+          className="mb-6"
           title={mode === MechanicMode.PM ? messages.pmHomeTitle : messages.standardHomeTitle}
         />
         <EmptyState>
@@ -135,7 +136,8 @@ export default function HomePage() {
   return (
     <div>
       <HomeTopBar mode={mode} />
-      <ScreenHeader
+      <PageHeader
+        className="mb-6"
         title={isPm ? messages.pmHomeTitle : messages.standardHomeTitle}
         subtitle={isPm ? messages.pmHomeSubtitle : messages.standardHomeSubtitle}
       />
@@ -182,7 +184,7 @@ export default function HomePage() {
         <>
           {/* LTR-134: one unit (the Work Order) per section; what I am working on comes first. */}
           <section className="mb-6">
-              <h2 className="section-label mb-2">{isPm ? messages.pmActiveTitle : messages.activeJobsTitle}</h2>
+              <h2 className="section-title mb-2">{isPm ? messages.pmActiveTitle : messages.activeJobsTitle}</h2>
             <p className="mb-3 text-sm text-shop-muted">
               {isPm ? messages.activePmServices(activeWork.length) : messages.activeJobs(activeWork.length)}
             </p>
@@ -210,7 +212,7 @@ export default function HomePage() {
 
           {data.created.length ? (
             <section className="mb-6">
-              <h2 className="section-label mb-2">{messages.readyToStart}</h2>
+              <h2 className="section-title mb-2">{messages.readyToStart}</h2>
               <p className="mb-3 text-sm text-shop-muted">
                 {messages.ordersReadyToStart(data.created.length)}
               </p>
@@ -224,7 +226,7 @@ export default function HomePage() {
 
           {waitingOnManager.length ? (
             <section className="mb-6">
-              <h2 className="section-label mb-2">{messages.waitingOnManager}</h2>
+              <h2 className="section-title mb-2">{messages.waitingOnManager}</h2>
               <p className="mb-3 text-sm text-shop-muted">
                 {messages.waitingOnManagerHint(waitingOnManager.length)}
               </p>
@@ -237,7 +239,7 @@ export default function HomePage() {
           ) : null}
 
           <section>
-            <h2 className="section-label mb-2">{isPm ? messages.pmPausedTitle : messages.pausedJobsTitle}</h2>
+            <h2 className="section-title mb-2">{isPm ? messages.pmPausedTitle : messages.pausedJobsTitle}</h2>
             <p className="mb-3 text-sm text-shop-muted">
               {isPm ? messages.pausedPmServices(data.paused.length) : messages.pausedJobs(data.paused.length)}
             </p>
@@ -288,7 +290,7 @@ function WorkOrderCard({
     <Card className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-display text-xl font-bold tracking-wide">
+          <p className="font-display text-xl font-bold">
             {messages.truckTitle(wo.truckNumber)}
           </p>
           {vehicleLine(wo.truckVehicle) ? (
@@ -334,7 +336,7 @@ function WorkOrderCard({
                 className={
                   job.status === 'completed'
                     ? 'mt-0.5 text-shop-success'
-                    : 'mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-shop-border text-[10px] text-shop-muted'
+                    : 'mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-shop-border text-xs text-shop-muted'
                 }
               >
                 {job.status === 'completed' ? '✓' : '○'}

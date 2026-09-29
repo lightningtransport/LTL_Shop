@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppCapability, UserRole, type ShopWorkflowStepDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
-import { AdminPageHeader, Button, Card, CardContent, EmptyState, InlineAlert, LoadFailure, PageSkeleton, Select } from './ui';
+import { PageHeader, Button, Card, CardContent, EmptyState, InlineAlert, LoadFailure, PageSkeleton, Select } from './ui';
 import { updateAdminWorkflowSteps, useAdminAssignableMechanics, useAdminWorkflowSteps } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -62,9 +62,8 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
   }
 
   return (
-    <div className="space-y-5">
-      <AdminPageHeader
-        eyebrow={messages.eyebrow}
+    <div className="space-y-6">
+      <PageHeader
         title={messages.shopWorkflow}
         subtitle={messages.shopWorkflowDescription}
         actions={canWrite ? (

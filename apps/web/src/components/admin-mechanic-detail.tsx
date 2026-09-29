@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { UserRole } from '@ltl-shop/shared';
 import { MechanicCapabilityEditor } from './admin-mechanic-roster';
 import { AdminWriteTip } from './admin-write-tip';
-import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { AdminBackLink, PageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { ApiError } from '@/lib/api';
 import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminMechanic } from '@/lib/admin-data';
@@ -21,10 +21,9 @@ export function AdminMechanicDetail({ id, messages }: { id: string; locale: Admi
   if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <AdminBackLink href="/admin/mechanics">{messages.backToMechanics}</AdminBackLink>
-      <AdminPageHeader
-        eyebrow={messages.eyebrow}
+      <PageHeader
         title={data.name}
         subtitle={data.email}
         badges={<>{!data.active ? <Badge variant="secondary">{messages.mechanicInactive}</Badge> : null}{canEditRoster ? null : <Badge variant="outline">{messages.readOnly}</Badge>}</>}

@@ -124,7 +124,7 @@ export const CardTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
-  <h3 ref={ref} className={cn('font-display text-lg font-semibold tracking-wide', className)} {...props} />
+  <h3 ref={ref} className={cn('section-title', className)} {...props} />
 ));
 CardTitle.displayName = 'CardTitle';
 
@@ -155,7 +155,7 @@ export function InlineAlert({
   return (
     <p
       className={cn(
-        'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive',
+        'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive-text',
         className,
       )}
       role="alert"
@@ -167,7 +167,7 @@ export function InlineAlert({
 }
 
 const badgeVariants = cva(
-  'inline-flex min-h-6 items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+  'inline-flex min-h-6 items-center rounded-md border px-2 py-0.5 text-xs font-semibold',
   {
     variants: {
       variant: {
@@ -217,7 +217,7 @@ export const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title ref={ref} className={cn('font-display text-2xl font-bold tracking-wide', className)} {...props} />
+  <DialogPrimitive.Title ref={ref} className={cn('font-display text-xl font-bold leading-tight', className)} {...props} />
 ));
 DialogTitle.displayName = 'DialogTitle';
 
@@ -425,7 +425,7 @@ function ProfileDialog() {
             </DialogClose>
           </div>
 
-          {error ? <p className="mb-4 text-sm font-medium text-destructive" role="alert">{error}</p> : null}
+          {error ? <p className="mb-4 text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
 
           <Button
             className="w-full"
@@ -533,7 +533,7 @@ function UpdatePasswordSheet({
           </div>
 
           <p className="text-sm text-muted-foreground">{copy.hint}</p>
-          {error ? <p className="text-sm font-medium text-destructive" role="alert">{error}</p> : null}
+          {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
 
           <Button className="w-full" type="submit" disabled={isUpdatingPassword}>
             {isUpdatingPassword ? copy.submitting : copy.submit}
@@ -651,84 +651,57 @@ export function AuthBrandHeader({
         className="h-auto w-36 object-contain sm:w-40"
       />
       <div className="mt-5">
-        <h1 className="font-display text-3xl font-bold tracking-wide">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-shop-muted">{subtitle}</p> : null}
+        <h1 className="page-title">{title}</h1>
+        {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
       </div>
     </header>
   );
 }
 
-export function ScreenHeader({
-  eyebrow,
-  title,
-  subtitle,
-  backHref,
-  backLabel,
-}: {
-  eyebrow?: string;
-  title: string;
-  subtitle?: string;
-  backHref?: string;
-  backLabel?: string;
-}) {
-  const { messages } = useShopLocale();
-  const content = (
-    <div className="min-w-0">
-      {eyebrow ? <p className="section-label">{eyebrow}</p> : null}
-      <h1 className="font-display text-3xl font-bold tracking-wide">
-        {title}
-      </h1>
-      {subtitle ? (
-        <p className="mt-1 text-sm text-shop-muted">{subtitle}</p>
-      ) : null}
-    </div>
-  );
-
-  return (
-    <header className="mb-6">
-      {backHref ? (
-        <div className="flex items-center gap-3">
-          <Button asChild variant="secondary" size="icon" className="shrink-0 shadow-sm">
-            <Link href={backHref} aria-label={backLabel ?? messages.backToHome}>
-              <ArrowLeft className="size-5" aria-hidden="true" />
-            </Link>
-          </Button>
-          {content}
-        </div>
-      ) : (
-        content
-      )}
-    </header>
-  );
-}
-
-export function AdminPageHeader({
-  eyebrow,
+/**
+ * LTR-166: the one page header for mechanic, auth-adjacent, and Admin screens. Title, an optional one-line
+ * subtitle, optional meta (updated at), badges beside the title, and actions. No eyebrow above the title.
+ * It has no outer margin: the page stack sets the gap below it (`space-y-6`, or `mb-6` outside a stack).
+ */
+export function PageHeader({
   title,
   subtitle,
   meta,
   badges,
   actions,
+  backHref,
+  backLabel,
   className,
 }: {
-  eyebrow: string;
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   meta?: React.ReactNode;
   badges?: React.ReactNode;
   actions?: React.ReactNode;
+  /** Icon back button beside the title (mechanic screens). Admin screens use AdminBackLink above instead. */
+  backHref?: string;
+  backLabel?: string;
   className?: string;
 }) {
+  const { messages } = useShopLocale();
   return (
     <header className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
-      <div className="min-w-0">
-        <p className="section-label">{eyebrow}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="min-w-0 font-display text-3xl font-bold tracking-wide">{title}</h1>
-          {badges}
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        {backHref ? (
+          <Button asChild variant="secondary" size="icon" className="shrink-0 shadow-sm">
+            <Link href={backHref} aria-label={backLabel ?? messages.backToHome}>
+              <ArrowLeft className="size-5" aria-hidden="true" />
+            </Link>
+          </Button>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 className="page-title min-w-0">{title}</h1>
+            {badges}
+          </div>
+          {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+          {meta ? <div className="mt-1 text-xs text-muted-foreground">{meta}</div> : null}
         </div>
-        {subtitle ? <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p> : null}
-        {meta ? <div className="mt-1 text-xs text-muted-foreground">{meta}</div> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
@@ -831,7 +804,7 @@ export function LoadFailure({
 }) {
   return (
     <div
-      className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+      className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive-text"
       role="alert"
       aria-live="assertive"
     >
@@ -956,5 +929,5 @@ export function PhaseBadge({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <Badge variant={phaseVariant(phase)} className={cn('normal-case tracking-normal', className)}>{children}</Badge>;
+  return <Badge variant={phaseVariant(phase)} className={className}>{children}</Badge>;
 }

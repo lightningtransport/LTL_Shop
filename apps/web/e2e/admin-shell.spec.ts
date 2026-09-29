@@ -203,7 +203,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('link', { name: 'WO-0101' }).first()).toBeVisible();
     await page.getByRole('link', { name: 'WO-0101' }).first().click();
     await expect(page.getByRole('heading', { name: 'T-101' })).toBeVisible();
-    await expect(page.locator('header .section-label')).toHaveText('Shop Admin');
+    // LTR-166: one page header, no "Shop Admin" eyebrow above the title.
+    await expect(page.locator('main header').getByText('Shop Admin', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Read only')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Truck details' })).toBeVisible();
     await expect(page.getByText('120,000').first()).toBeVisible();

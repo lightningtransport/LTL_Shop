@@ -12,7 +12,7 @@ import { useTrucks } from '@/lib/shop-data';
 import { rankTruckResults } from '@/lib/truck-search';
 import { SessionSignInFallback } from './session-sign-in-fallback';
 import { OpenWorkOrderTag } from './open-work-order-tag';
-import { Card, EmptyState, HomeTopBar, Input, Label, LoadFailure, ScreenHeader } from './ui';
+import { Card, EmptyState, HomeTopBar, Input, Label, LoadFailure, PageHeader } from './ui';
 
 /** LTR-133: a mechanic finds any Truck and opens its repair history. */
 export function MechanicTrucksPage({ mode }: { mode: MechanicMode }) {
@@ -32,8 +32,8 @@ export function MechanicTrucksPage({ mode }: { mode: MechanicMode }) {
   return (
     <div>
       <HomeTopBar mode={mode} />
-      <ScreenHeader title={messages.mechanicTrucksTitle} subtitle={messages.mechanicTrucksSubtitle} />
-      <Label className="section-label" htmlFor="mechanic-truck-search">{messages.truck}</Label>
+      <PageHeader className="mb-6" title={messages.mechanicTrucksTitle} subtitle={messages.mechanicTrucksSubtitle} />
+      <Label htmlFor="mechanic-truck-search">{messages.truck}</Label>
       <Input
         id="mechanic-truck-search"
         type="search"

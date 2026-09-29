@@ -7,12 +7,12 @@ const en = getAdminMessages('en');
 describe('adminTruckOrigin (LTR-110)', () => {
   it('keeps Yard Operations when there is no origin', () => {
     expect(adminTruckOrigin(null, en)).toEqual({
-      href: '/admin/yard-operations', backLabel: 'Back to Yard Operations', eyebrow: en.yardOperationsTitle,
+      href: '/admin/yard-operations', backLabel: 'Back to Yard Operations',
     });
   });
 
   it('returns to Trucks, Work Orders, a Work Order or the Dashboard', () => {
-    expect(adminTruckOrigin('/admin/trucks', en)).toMatchObject({ href: '/admin/trucks', backLabel: 'Back to Trucks', eyebrow: en.trucksTitle });
+    expect(adminTruckOrigin('/admin/trucks', en)).toMatchObject({ href: '/admin/trucks', backLabel: 'Back to Trucks' });
     expect(adminTruckOrigin('/admin/work-orders', en)).toMatchObject({ backLabel: 'Back to Work Orders' });
     expect(adminTruckOrigin('/admin/work-orders/abc', en)).toMatchObject({ href: '/admin/work-orders/abc', backLabel: 'Back to Work Order' });
     expect(adminTruckOrigin('/admin', en)).toMatchObject({ backLabel: 'Back to Dashboard' });

@@ -14,8 +14,10 @@ test.describe('shared UI consistency', () => {
 
     for (const path of ['/admin', '/admin/trucks', '/admin/mechanics', '/admin/catalog', '/admin/history', '/admin/work-orders']) {
       await page.goto(path);
-      await expect(page.locator('main .section-label').first()).toBeVisible();
-      await expect(page.locator('main h1.font-display').first()).toBeVisible();
+      // LTR-166: every page uses PageHeader (h1.page-title) and nothing is an uppercase eyebrow.
+      await expect(page.locator('main header h1.page-title').first()).toBeVisible();
+      expect(await page.locator('main *').evaluateAll((els) =>
+        els.filter((el) => getComputedStyle(el).textTransform === 'uppercase' && el.textContent?.trim()).length)).toBe(0);
       for (const viewport of [
         { width: 320, height: 568 },
         { width: 390, height: 844 },

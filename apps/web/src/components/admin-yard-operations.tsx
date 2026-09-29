@@ -33,7 +33,7 @@ import { formatVehicleYmm } from '@/lib/format';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
 import { compactAge, dispatchSignalsByTruck, fillYardText, type YardDispatchSignal } from '@/lib/yard-card';
 import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
-import { AdminPageHeader, Badge, Button, Card, CardDescription, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
+import { PageHeader, Badge, Button, Card, CardDescription, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
 
 const phaseMessageKey = {
   inspection: 'inspection',
@@ -141,8 +141,8 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 
-  return <div className="space-y-5">
-    <AdminPageHeader eyebrow={messages.eyebrow} title={messages.yardOperationsTitle} subtitle={messages.yardOperationsDescription} />
+  return <div className="space-y-6">
+    <PageHeader title={messages.yardOperationsTitle} subtitle={messages.yardOperationsDescription} />
 
     <div role="tablist" aria-label={messages.yardTabsLabel} className="flex gap-1 rounded-xl border bg-muted/40 p-1">
       {(['shop', 'movement'] as const).map((value) => (
@@ -244,7 +244,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
               >
                 {messages.moreFilters}
                 {overflowFilterCount > 0 ? (
-                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
                     {overflowFilterCount}
                   </span>
                 ) : null}
@@ -265,7 +265,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
               <SlidersHorizontal aria-hidden="true" className="size-4" />
               {messages.filters}
               {activeFilterCount > 0 ? (
-                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
                   {activeFilterCount}
                 </span>
               ) : null}
@@ -419,7 +419,7 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
     <Card className="flex min-w-0 items-center justify-between gap-1.5 overflow-hidden px-2.5 py-1.5">
       <div className="min-w-0">
         {/* LTR-114: wrap long labels instead of cutting them on 375px phones. */}
-        <p className="line-clamp-2 text-[11px] leading-tight text-muted-foreground" title={label}>{label}</p>
+        <p className="line-clamp-2 text-xs leading-tight text-muted-foreground" title={label}>{label}</p>
         <p className="font-display text-lg font-bold leading-tight">{value}</p>
       </div>
       <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
@@ -473,7 +473,7 @@ function YardTruckCard({ item, messages, locale, dispatch, canManage = false, on
         <div className="flex flex-wrap items-center gap-1">
           {showPriority && workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : null}
           {showBlocker ? (
-            <Badge variant="warning" className="normal-case tracking-normal">
+            <Badge variant="warning">
               {/* LTR-155 / D17: "Blocked · reason" for a mechanic blocker. */}
               {workOrder?.latestReportedBlocker
                 ? `${messages.blocked} · ${adminPauseReasonLabel(workOrder.latestReportedBlocker.blockerReason ?? workOrder.latestReportedBlocker.reason, messages)}`

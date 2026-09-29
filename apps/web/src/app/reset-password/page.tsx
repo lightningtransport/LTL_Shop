@@ -72,7 +72,7 @@ export default function ResetPasswordPage() {
       <form onSubmit={onSubmit}>
         <Card className="space-y-4">
         <div>
-          <Label className="section-label" htmlFor="new-password">
+          <Label htmlFor="new-password">
             {messages.locale === 'es' ? 'Nueva contraseña' : 'New password'}
           </Label>
           <Input
@@ -87,7 +87,7 @@ export default function ResetPasswordPage() {
           />
         </div>
         <div>
-          <Label className="section-label" htmlFor="confirm-password">
+          <Label htmlFor="confirm-password">
             {messages.locale === 'es' ? 'Confirmar nueva contraseña' : 'Confirm new password'}
           </Label>
           <Input

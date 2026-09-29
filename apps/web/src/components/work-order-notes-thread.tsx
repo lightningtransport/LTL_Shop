@@ -54,7 +54,7 @@ export function WorkOrderNotesThread({
 
   return (
     <section className="card mb-4 space-y-3" aria-labelledby={`${inputId}-title`}>
-      <p id={`${inputId}-title`} className="section-label">{messages.notes}</p>
+      <p id={`${inputId}-title`} className="group-title">{messages.notes}</p>
       {entries.length ? (
         <ul className="space-y-2">
           {entries.map((note) => (

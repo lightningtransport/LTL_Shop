@@ -19,10 +19,9 @@ Use this matrix before adding a new wait, error, or empty treatment.
 
 ## Screen chrome and responsive actions
 
-- Admin screens use `AdminPageHeader` for the eyebrow, title, description,
-  metadata, badges, and header actions. The eyebrow is always the shared
-  `section-label`; individual pages must not introduce a second casing or
-  title scale.
+- Every screen uses `PageHeader` for the title, description, metadata, badges,
+  and header actions. There is no eyebrow above the title (LTR-166);
+  individual pages must not introduce a second title scale or casing.
 - Use `AdminBackLink` for labeled Admin back navigation. The control keeps a
   44px target and a non-wrapping label.
 - Filter forms use a bordered surface and keep Clear / Apply as a `shrink-0`
@@ -108,7 +107,7 @@ Mechanic surfaces already show location only. Keep that. Copy catalogs live in
   separate, capability-gated action (`work_orders.manage`). Do not stamp
   the list “writable.”
 - Work Order **detail** is a Manager/Admin operational surface. Do not label
-  it `Read only` while mutation controls render. Use the Shop Admin eyebrow.
+  it `Read only` while mutation controls render.
   Mechanic, History, and Catalog details that truly cannot mutate may still
   show a `Read only` badge.
 

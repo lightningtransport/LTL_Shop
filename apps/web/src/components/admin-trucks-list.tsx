@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus } from '@ltl-shop/shared';
-import { AdminFilterToolbar, AdminPageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { AdminFilterToolbar, PageHeader, Button, EmptyState, Input, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
 import { truckNextStepText } from '@/lib/truck-next-step';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { useAdminTrucks } from '@/lib/admin-data';
@@ -27,8 +27,8 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (
-    <div className="space-y-5">
-      <AdminPageHeader eyebrow={messages.eyebrow} title={messages.trucksTitle} subtitle={messages.trucksDescription} />
+    <div className="space-y-6">
+      <PageHeader title={messages.trucksTitle} subtitle={messages.trucksDescription} />
       <AdminFilterToolbar
         onClear={() => router.replace('/admin/trucks')}
         clearLabel={messages.clearFilters}

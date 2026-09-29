@@ -20,13 +20,24 @@ Defined as CSS custom properties in `apps/web/src/app/globals.css`:
 | `--secondary`, `--secondary-foreground` | Secondary / success-leaning actions |
 | `--muted`, `--muted-foreground` | Quiet surfaces and helper text |
 | `--accent`, `--accent-foreground` | Hover / selected chrome |
-| `--destructive`, `--destructive-foreground` | Danger |
+| `--destructive`, `--destructive-foreground` | Danger fills (buttons, the critical badge) |
+| `--destructive-text` | Danger text on the page, a card, or a `destructive/10` tint (`text-destructive-text`). Errors use this, never `text-destructive` |
 | `--border`, `--input`, `--ring` | Hairlines, fields, focus ring |
 | `--success` | Positive status |
 | `--warning`, `--warning-foreground`, `--warning-surface` | Caution banners (Yard Phase 1) |
 
 Tailwind maps these 1:1 in `apps/web/tailwind.config.js` (`background`,
 `primary`, `destructive`, `warning-surface`, and so on).
+
+### Contrast (LTR-166)
+
+Text meets WCAG AA (4.5:1; 3:1 at 24px, or 18.66px bold) in light and dark.
+LTR-166 darkened the light `--muted-foreground` / `--shop-muted` (0.5544 → 0.5),
+`--destructive` / `--shop-danger` (0.6368 → 0.55), `--success` / `--shop-success`
+(0.57 → 0.48), and `--shop-accent` (0.5358 → 0.5), and added `--destructive-text`,
+because `text-destructive` in dark mode measured 1.78:1. `--primary` is unchanged
+(white on it is 5.1:1). Check a new pair with `npm run ui-audit` (see
+`apps/web/e2e/ui-audit/README.md`).
 
 ## Shop channel tokens
 
@@ -44,23 +55,46 @@ Use them as `bg-shop-panel`, `text-shop-muted`, `border-shop-border`,
 | `font-display` | Same Inter family; used for titles |
 | `--font-mono` / `font-mono` | JetBrains Mono |
 | `--tracking-normal` | `-0.01em` on `body` |
-| Page title | `font-display text-3xl font-bold tracking-wide` (`ScreenHeader`) |
-| Section label | `.section-label` — 12px, semibold, uppercase, `0.14em` tracking |
-| Body / helper | `text-sm text-muted-foreground` or `text-shop-muted` |
+### Type scale (LTR-166)
 
-Admin pages use the same hierarchy everywhere: `.section-label` eyebrow, one
-`text-3xl font-bold` page title, then a `text-sm` description. Do not switch
-between title case/uppercase eyebrows or `text-2xl font-semibold` page titles
-for convenience on individual screens.
+Six steps, defined in `globals.css` (`@layer components`). Use the class, not
+ad-hoc size/weight combinations.
+
+| Step | Class | Value | Use |
+|---|---|---|---|
+| Page title | `.page-title` | 24px bold, 30px from `md` | The one `h1`, only through `PageHeader` |
+| Section title | `.section-title` | 18px semibold | A page section (`CardTitle` uses it) |
+| Card title | `.card-title` | 16px semibold | A card or list item heading |
+| Group title | `.group-title` | 14px semibold | A group inside a card ("Notes", "Your Jobs") |
+| Body | `text-sm` | 14px | Default text |
+| Secondary | `text-sm text-muted-foreground` | 14px | Descriptions, helper text |
+| Meta | `text-xs text-muted-foreground` | 12px | Timestamps, counts, badges |
+
+Rules:
+
+- Nothing under 12px. No `text-[10px]` / `text-[11px]`.
+- Sentence case. No `uppercase`, no wide tracking: eyebrows, form labels,
+  badges, and nav group labels all read as normal text. `e2e/ui-consistency`
+  fails if Admin list pages render uppercase text.
+- Form labels use `Label` as is (14px medium). Do not restyle them as headings.
+- No eyebrow above the page title. Admin pages dropped the "Shop Admin" eyebrow;
+  where the user came from is the back link's job (`AdminBackLink`).
+- Fields are 16px on every screen size (`.field`): iOS zooms into anything
+  smaller on focus, and iPad is `md`.
 
 ## Spacing and radius
 
-| Token | CURRENT value |
+| Token | Value |
 |---|---|
 | `--radius` | `0.375rem` |
-| Card | `.card` — `rounded-xl`, `p-4` |
-| Stack gaps | typically `space-y-3` / `space-y-5` / `mb-6` |
 | Page gutters | `.app-shell` `px-4`; Admin `px-4 md:px-5 xl:px-6` |
+| Page header → content | 24px: `space-y-6` on the page stack (Admin), or `mb-6` on `PageHeader` outside a stack (mechanic) |
+| Between sections | 24px (`space-y-6` / `mb-6`) |
+| Card padding | `.card` / `CardHeader` / `CardContent`: `p-4` mobile |
+| Inside a card | 12px (`space-y-3`) between blocks, 8px (`gap-2`) between a label and its control or a title and its line |
+
+`PageHeader` has no outer margin, so the page decides the gap. Nested cards
+and per-screen spacing are cleaned up in LTR-168.
 
 ## 44px control baseline
 

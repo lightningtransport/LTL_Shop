@@ -7,7 +7,7 @@ import { UserRole, type AdminMechanicSummaryDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { ActivateMechanicDialog, CreateMechanicDialog } from './admin-mechanic-roster';
 import { AdminWriteTip } from './admin-write-tip';
-import { AdminFilterToolbar, AdminPageHeader, Badge, Button, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { AdminFilterToolbar, PageHeader, Badge, Button, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useCanShowAdminWrites } from '@/lib/admin-actor';
 import { useAdminMechanics } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -34,9 +34,8 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (
-    <div className="space-y-5">
-      <AdminPageHeader
-        eyebrow={messages.eyebrow}
+    <div className="space-y-6">
+      <PageHeader
         title={messages.mechanicsTitle}
         subtitle={canWrite ? messages.mechanicsWriteDescription : messages.mechanicsDescription}
       />

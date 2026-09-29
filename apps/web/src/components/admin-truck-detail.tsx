@@ -20,7 +20,7 @@ import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { AdminTruckWorkPlan } from './admin-truck-work-plan';
 import { AdminTruckNextStep } from './admin-truck-next-step';
 import { useAuth } from '@/lib/auth-context';
-import { AdminBackLink, AdminPageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton, PriorityBadge, WorkOrderStatusBadge } from './ui';
+import { AdminBackLink, PageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton, PriorityBadge, WorkOrderStatusBadge } from './ui';
 
 export function AdminTruckDetail({ id, from = null, locale, messages }: { id: string; from?: string | null; locale: AdminLocale; messages: AdminMessages }) {
   const origin = adminTruckOrigin(from, messages);
@@ -49,18 +49,17 @@ export function AdminTruckDetail({ id, from = null, locale, messages }: { id: st
     void mutateRelated(isYardRelatedListKey, undefined, { revalidate: true, populateCache: false });
   }
 
-  return <div className="space-y-5">
+  return <div className="space-y-6">
     <AdminBackLink href={origin.href}>{origin.backLabel}</AdminBackLink>
-    <AdminPageHeader
-      eyebrow={origin.eyebrow}
+    <PageHeader
       title={data.truck.truckNumber}
       subtitle={formatVehicleYmm(data.truck) || messages.noValue}
       badges={(
         // LTR-51 (#14): a truck back in service with no Work Order is not "Not Ready".
         workPlan.readiness !== 'ready' && !workPlan.workOrder && data.operationalStatus === TruckOperationalStatus.IN_SERVICE ? (
-          <Badge variant="secondary" className="normal-case tracking-normal">{messages.operationalStatusInService}</Badge>
+          <Badge variant="secondary">{messages.operationalStatusInService}</Badge>
         ) : (
-          <Badge variant={workPlan.readiness === 'ready' ? 'success' : 'warning'} className="normal-case tracking-normal">
+          <Badge variant={workPlan.readiness === 'ready' ? 'success' : 'warning'}>
             {workPlan.readiness === 'ready' ? messages.workPlanReady : messages.workPlanNotReady}
           </Badge>
         )

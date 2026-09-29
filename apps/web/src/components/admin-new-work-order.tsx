@@ -22,7 +22,7 @@ import { isAdminWorkOrdersListKey, isWorkOrderRelatedListKey } from '@/lib/swr-c
 import { prependAdminWorkOrderPage, WORK_ORDER_LIST_REVALIDATE } from '@/lib/swr-work-order-cache';
 import {
   AdminBackLink,
-  AdminPageHeader,
+  PageHeader,
   Button,
   Card,
   CardContent,
@@ -191,7 +191,7 @@ export function AdminNewWorkOrder({
   return (
     <div className="flex max-w-2xl flex-col gap-4">
       <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
-      <AdminPageHeader eyebrow={messages.eyebrow} title={messages.newWorkOrderTitle} subtitle={messages.newWorkOrderSubtitle} />
+      <PageHeader title={messages.newWorkOrderTitle} subtitle={messages.newWorkOrderSubtitle} />
 
       <Card>
         <CardHeader>
@@ -265,7 +265,7 @@ export function AdminNewWorkOrder({
                       {trucksLoading ? (
                         <li className="px-4 py-3 text-sm text-muted-foreground">{messages.searchingTrucks}</li>
                       ) : truckError ? (
-                        <li className="px-4 py-3 text-sm text-destructive">{messages.loadError}</li>
+                        <li className="px-4 py-3 text-sm text-destructive-text">{messages.loadError}</li>
                       ) : trucks.length ? trucks.map((item, index) => (
                         <li key={item.id} role="presentation">
                           <Button
