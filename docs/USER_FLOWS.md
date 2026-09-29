@@ -313,7 +313,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Algo lo detiene | Bloquea su PM; no puede terminarlo hasta que el Manager resuelva | ✅ | A11 |
 | Quiere cambiar algo de un PM terminado | Solo lectura | ✅ | E11 |
 | Un mecánico normal intenta hacer un PM | No puede | ✅ | A26 |
-| Work Orders de PM del modelo viejo | Ya no se pueden crear. Falta confirmar en producción que no quede ninguno abierto | 👁 | A28 |
+| Work Orders de PM del modelo viejo | Ya no se pueden crear y en producción no queda ninguno abierto (consultado el 2026-09-29: 0). No aplica | ✅ | A28 |
 
 ---
 

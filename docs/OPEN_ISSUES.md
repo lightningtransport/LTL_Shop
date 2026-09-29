@@ -65,12 +65,12 @@ plan.
 
 **Lo que la auditoría no cubre** (se revisa en pantalla, `USER_FLOWS.md` §6):
 inicio de sesión real, idioma, tema, app instalada, textos y pantallas
-vacías/de error. También queda pendiente consultar producción por Work
-Orders de PM del modelo viejo que sigan abiertos (fila A28):
+vacías/de error.
 
-```bash
-supabase db query --linked --project-ref mjlfynzqmxoezanvyniw "select w.display_id, w.status, t.truck_number from work_orders w join job_categories c on c.id = w.primary_category_id join trucks t on t.id = w.truck_id where c.name = 'PM' and w.status in ('created','in_progress','waiting_paused')"
-```
+**Fila A28 (Work Orders de PM del modelo viejo):** no aplica. Ya no se pueden
+crear y en producción no queda ninguno abierto (consulta de solo lectura del
+2026-09-29: 0). El código de pausa / reanudar / terminar del mecánico PM se
+puede borrar en la limpieza (§3).
 
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
@@ -160,7 +160,8 @@ Código que confunde porque ya no es parte del flujo (ver `SYSTEM.md` §11):
 - Formulario Standard muerto en `apps/web/src/app/work-orders/new/page.tsx`
   (categoría, Jobs, "Select mechanics").
 - Pausa/reanudar/terminar del mecánico: solo sirven para WOs de PM legacy.
-  Decidir cuándo se cierran las que queden abiertas y quitar ese código.
+  En producción no queda ninguno abierto (2026-09-29), así que se puede
+  quitar ese código y la vista `PmWorkOrderDetail`.
 - Columna `pmAuthorized`.
 - Comentarios viejos: `schema.prisma` en `ShopWorkflowStep` ("runtime still
   reads MANDATORY_WORK_PLAN_JOBS") y la migración `20260928030000`.

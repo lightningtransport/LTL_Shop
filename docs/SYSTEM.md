@@ -409,8 +409,9 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
 Existe en el código, pero no es parte del flujo actual. La limpieza está en
 `OPEN_ISSUES.md`.
 
-- **WOs de PM legacy** (creadas antes de LTR-141): conservan pausa y
-  "terminar WO" del mecánico PM. Ya no se pueden crear.
+- **WOs de PM legacy** (creados antes de LTR-141): conservan pausa y
+  "terminar WO" del mecánico PM. Ya no se pueden crear y en producción no
+  queda ninguno abierto (2026-09-29).
 - **Readiness assessments** (modelo viejo de 6 requisitos y "Mark Ready"):
   sin pantalla, endpoints `@deprecated`. La inspección todavía se guarda en
   su requisito `inspection`.
