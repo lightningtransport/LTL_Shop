@@ -44,3 +44,9 @@ The mechanic P0 flow now uses a semantic OKLCH theme in light and dark modes, re
 - Visual evidence was captured from the integrated local browser against the seeded local API and PostgreSQL database.
 - The small circular `N` visible in some images is the Next.js development indicator; it is not part of the production UI.
 - The audit covers the mechanic P0 flow in the requested mobile viewports. It does not claim full WCAG conformance or coverage of future backend/integration states.
+
+## Repeating the audit (LTR-172)
+
+The 2026-09-28 mobile UI review (LTR-165) used the scripts in `apps/web/e2e/ui-audit/`. They crawl every
+screen per role against the e2e fixture, save screenshots, and measure contrast, clipped text, touch targets,
+text size, and field size. See `apps/web/e2e/ui-audit/README.md` to run them.

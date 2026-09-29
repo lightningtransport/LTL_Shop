@@ -877,6 +877,21 @@ createServer(async (request, response) => {
     json(response, 201, created);
     return;
   }
+  // LTR-172: closed Work Orders for Admin History (adminHistoryQuerySchema).
+  if (request.url?.startsWith('/api/admin/history') && request.method === 'GET') {
+    const url = new URL(request.url, 'http://fixture.local');
+    const status = url.searchParams.get('status');
+    const search = url.searchParams.get('search')?.toLowerCase();
+    const completedFrom = url.searchParams.get('completedFrom');
+    const completedBefore = url.searchParams.get('completedBefore');
+    let items = workOrders.filter((item) => ['completed', 'cancelled'].includes(item.status));
+    if (status) items = items.filter((item) => status.split(',').includes(item.status));
+    if (search) items = items.filter((item) => `${item.displayId} ${item.truck.truckNumber} ${item.category.name}`.toLowerCase().includes(search));
+    if (completedFrom) items = items.filter((item) => item.completedAt && new Date(item.completedAt) >= new Date(completedFrom));
+    if (completedBefore) items = items.filter((item) => item.completedAt && new Date(item.completedAt) < new Date(completedBefore));
+    json(response, 200, { items, nextCursor: null });
+    return;
+  }
   if (request.url?.startsWith('/api/admin/work-orders?')) {
     const url = new URL(request.url, 'http://fixture.local');
     const cursor = url.searchParams.get('cursor');
@@ -1490,6 +1505,28 @@ createServer(async (request, response) => {
   const mechanicPlanningMatch = request.url?.match(/^\/api\/work-orders(?:\/([0-9a-f-]+)\/(pause|pause-reason|resume|complete|jobs))?$/i);
   if (request.method === 'POST' && mechanicPlanningMatch && (request.url === '/api/work-orders' || mechanicPlanningMatch[2])) {
     json(response, 403, { message: 'Standard planning is Manager-owned.' });
+    return;
+  }
+  // LTR-172: the mechanic appends notes and work requests. Without this route the POST fell through to the
+  // list catch-all below, and the detail screen crashed on the list-shaped response.
+  const mechanicNoteMatch = request.url?.match(/^\/api\/work-orders\/([0-9a-f-]+)\/notes$/i);
+  if (mechanicNoteMatch && request.method === 'POST') {
+    const summary = workOrders.find((item) => item.id === mechanicNoteMatch[1]);
+    const body = await readJson(request);
+    if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
+    const text = typeof body?.body === 'string' ? body.body.trim() : '';
+    if (!text) { json(response, 400, { message: 'A note is required' }); return; }
+    summary.noteEntries = [...(summary.noteEntries ?? []), {
+      id: `00000000-0000-4000-8000-${String(910000000000 + (summary.noteEntries?.length ?? 0)).padStart(12, '0')}`,
+      kind: body.kind ?? 'note',
+      body: text,
+      author: { id: user.id, name: user.name },
+      createdAt: new Date().toISOString(),
+      handledAt: null,
+      handledBy: null,
+    }];
+    summary.version += 1;
+    json(response, 200, fixtureMechanicWorkOrderDetail(summary));
     return;
   }
   const mechanicDetailMatch = request.url?.match(/^\/api\/work-orders\/([0-9a-f-]+)$/i);

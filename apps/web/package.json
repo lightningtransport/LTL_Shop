@@ -9,7 +9,9 @@
     "dev:3005": "WATCHPACK_POLLING=true ../../node_modules/.bin/next dev --hostname 127.0.0.1 --port 3005",
     "lint": "../../node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "test": "../../node_modules/.bin/vitest run --passWithNoTests --exclude 'e2e/**'",
-    "test:e2e": "../../node_modules/.bin/playwright test"
+    "test:e2e": "../../node_modules/.bin/playwright test",
+    "ui-audit": "node e2e/ui-audit/audit.mjs",
+    "ui-audit:states": "node e2e/ui-audit/states.mjs"
   },
   "dependencies": {
     "@ltl-shop/shared": "*",
