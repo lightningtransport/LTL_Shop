@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-09-29 (código en `main` `1485292`, UI móvil LTR-166 a LTR-170; LTR-171 en su rama)
+**Actualizado:** 2026-09-29 (código en `main` `69aa63c`; comprobado con la auditoría LTR-174)
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en
@@ -45,7 +45,7 @@ su pantalla inicial y separa al System Admin.
 
 | Capability | Da acceso a |
 |---|---|
-| `admin.access` | Entrar a `/admin`. Reabrir WO, corregir tiempos, reabrir Job cancelado, Return to Service. |
+| `admin.access` | Entrar a `/admin`. Reabrir WO, corregir tiempos, reabrir Job cancelado, Return to Service. **El Manager también la tiene**, así que puede hacer todo esto. |
 | `work_orders.manage` | Crear WO, agregar/cancelar Jobs, asignar, prioridad, notas, pausar/reanudar, completar/cancelar WO, resolver bloqueos, editar Shop workflow. |
 | `yard.operations.manage` | Registrar la inspección del Truck. |
 | `mechanic.standard` | Pantallas y acciones del mecánico Standard. |
@@ -96,7 +96,8 @@ created ──(mecánico Standard: Start)──▶ in_progress ◀──▶ wait
   de trabajo, y completar Jobs desde Admin tampoco. El Manager no tiene botón
   de Start (ver defecto #1 en `OPEN_ISSUES.md`).
 - Close exige `in_progress` y ningún Job en `to_do`.
-- Reopen solo si el Truck no tiene otro WO abierto.
+- Reopen (quien tenga `admin.access`, Manager incluido) solo si el Truck no
+  tiene otro WO abierto.
 - Completar un Job **no** completa el WO. WO `completed`, Ready to Go y
   Return to Service son tres cosas distintas.
 - Cada cambio usa `version` (bloqueo optimista) e `idempotencyKey`.
@@ -133,6 +134,10 @@ created ──(mecánico Standard: Start)──▶ in_progress ◀──▶ wait
 ### Tiempo de trabajo (`work_sessions`)
 - **Una sesión por mecánico** (`user_id`) (D18). El tiempo del WO es la
   suma de las sesiones.
+- Un mecánico Standard puede tener sesiones abiertas en varios WOs a la vez
+  (D2); el mecánico PM solo un PM en curso.
+- Arrancar o terminar el PM **no** abre sesión (defecto #1): hoy el tiempo
+  del PM no se registra.
 - Se abre con Start/Continue mientras el mecánico tenga un Job pendiente.
 - Se cierra cuando el mecánico completa, pierde o bloquea su último Job
   disponible en ese WO ("Terminaste tu parte").
@@ -164,6 +169,9 @@ created ──(mecánico Standard: Start)──▶ in_progress ◀──▶ wait
 ---
 
 ## 4. Flujos por rol
+
+Resumen. El detalle paso a paso, con casos límite y estado comprobado, está
+en [`USER_FLOWS.md`](USER_FLOWS.md).
 
 ### Manager
 
@@ -382,7 +390,21 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
 
 ---
 
-## 10. Código heredado que todavía existe
+## 10. Cómo se comprueba que funciona
+
+- **Historias y casos límite:** [`USER_FLOWS.md`](USER_FLOWS.md). Cada fila
+  tiene una prueba en `apps/api/test-real/` que corre contra la API real y
+  una base de datos local aparte (`ltl_shop_test`; nunca la de desarrollo ni
+  producción).
+- `npm run test:real:setup --workspace=@ltl-shop/api` crea, migra y carga esa
+  base (una vez, y después de cada migración nueva).
+- `npm run test:real --workspace=@ltl-shop/api` compila la API, la levanta,
+  corre todo y escribe `apps/api/test-real/results/matrix.md`.
+- Un PR que cambia un flujo cambia su prueba y su fila en `USER_FLOWS.md`.
+
+---
+
+## 11. Código heredado que todavía existe
 
 Existe en el código, pero no es parte del flujo actual. La limpieza está en
 `OPEN_ISSUES.md`.

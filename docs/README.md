@@ -11,6 +11,7 @@ para entender por qué se decidió algo, nunca para saber cómo funciona hoy.
 | Documento | Para qué sirve |
 |---|---|
 | [`SYSTEM.md`](SYSTEM.md) | **Cómo funciona el sistema hoy**: roles, flujos, estados, pantallas y reglas. Empieza aquí. |
+| [`USER_FLOWS.md`](USER_FLOWS.md) | **Historias de usuario, jobs to be done, flujos paso a paso y casos límite** por rol, con el estado comprobado de cada uno. |
 | [`DECISIONS.md`](DECISIONS.md) | Registro único de decisiones de producto (D1–D18), con su estado. |
 | [`OPEN_ISSUES.md`](OPEN_ISSUES.md) | **Plan de cierre** (§0: por qué salen defectos, reglas, matriz de 28 flujos, fases A–D), defectos conocidos, limpieza, salida en vivo, fuera de alcance. |
 | [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md) | Lista para abrir el Shop a usuarios reales. |
@@ -37,8 +38,9 @@ Flujo v3 ya ejecutado.
 
 ## Reglas para mantener esto en orden
 
-1. **Un PR que cambia el comportamiento actualiza `SYSTEM.md` en el mismo PR.**
-   Si no cambia `SYSTEM.md`, el revisor pregunta por qué.
+1. **Un PR que cambia el comportamiento actualiza `SYSTEM.md` y
+   `USER_FLOWS.md` en el mismo PR**, y la prueba de esa fila en
+   `apps/api/test-real/`. Si no cambian, el revisor pregunta por qué.
 2. **Una decisión nueva va a `DECISIONS.md`** con número, fecha y a qué
    reemplaza. No se deja solo en Linear, en un chat o en un documento de
    análisis.

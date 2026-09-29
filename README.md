@@ -9,10 +9,12 @@ Start at [`docs/README.md`](docs/README.md). One source of truth per topic:
 
 1. [`docs/SYSTEM.md`](docs/SYSTEM.md) — how the system works today (roles,
    flows, states, screens, rules).
-2. [`docs/DECISIONS.md`](docs/DECISIONS.md) — product decisions D1–D18.
-3. [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) — known defects, cleanup,
+2. [`docs/USER_FLOWS.md`](docs/USER_FLOWS.md) — user stories, jobs to be
+   done, task flows and edge cases per role, each verified.
+3. [`docs/DECISIONS.md`](docs/DECISIONS.md) — product decisions D1–D18.
+4. [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) — known defects, cleanup,
    go-live work, out of scope.
-4. [`docs/reference/`](docs/reference) — engineering practices, deploy,
+5. [`docs/reference/`](docs/reference) — engineering practices, deploy,
    performance, Ninox, Yard data boundary.
 
 `docs/archive/` is history and never overrides these sources or the code.
@@ -154,6 +156,8 @@ listed in [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) §3.
 
 ```bash
 npm test --workspace=@ltl-shop/api
+npm run test:real:setup --workspace=@ltl-shop/api   # once: flow-test database (local Postgres)
+npm run test:real --workspace=@ltl-shop/api         # flows against the real API (docs/USER_FLOWS.md)
 npm run test:e2e --workspace=@ltl-shop/web   # requires running app
 ```
 

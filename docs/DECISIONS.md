@@ -15,7 +15,7 @@ no se borra.
 | # | Decisión | Fecha | Implementado en |
 |---|---|---|---|
 | **D1** | **Ready to Go solo cuando el WO está completo** (todos los pasos resueltos y WO `completed`). Se calcula, no se marca. El Truck sigue Ready to Go hasta Return to Service. Reemplaza el "Mark Ready" / "Ready for Approval" del modelo viejo de 6 requisitos. | 2026-09 | LTR-90, LTR-150 |
-| **D2** | Un PM en curso por mecánico PM. | 2026-09 | LTR-141 |
+| **D2** | Un PM en curso por mecánico PM. **El mecánico Standard sí puede tener trabajo en curso en varios Trucks a la vez**; se acepta que su tiempo se solape entre Work Orders (obligarlo a pausar sería fricción que no van a seguir). | 2026-09-25 | LTR-95, LTR-125 |
 | **D4 + D9** | El PM es un Job obligatorio dentro del único WO del Truck (no un WO aparte). | 2026-09 | LTR-141, LTR-145 |
 | **D5** | "Blocked" significa una parada real (bloqueo activo o pausa oficial), no "tiene trabajo abierto". | 2026-09 | LTR-92, LTR-98 |
 | **D6** | Los Jobs se agregan desde el Truck / Work Plan. | 2026-09 | LTR-119 |

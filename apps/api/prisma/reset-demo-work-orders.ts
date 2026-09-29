@@ -39,6 +39,7 @@ import { classifyWorkPlanLane } from '../src/admin/yard-work-plan-derivation';
 import { toSharedCapability } from '../src/auth/capabilities';
 import type { AuthUser } from '../src/auth/auth.guard';
 import { TEST_ROSTER } from '../src/admin/test-roster-plan';
+import { WORK_ORDER_ACTIVITY_WHERE, wipeWorkOrders } from './wipe-work-orders';
 
 const local = process.argv.includes('--local');
 const apply = process.argv.includes('--apply');
@@ -422,7 +423,7 @@ async function main() {
     prisma.truckReadinessAssessment.count(),
     prisma.truckServiceStatusEvent.count(),
     prisma.truckMileageAdjustment.count(),
-    prisma.activityLog.count({ where: activityWhere }),
+    prisma.activityLog.count({ where: WORK_ORDER_ACTIVITY_WHERE }),
   ]);
   console.log('\nDelete');
   console.log(`  Work Orders            ${workOrderCount} (${openCount} open) + their Jobs, labor, blockers, notes, team, PM service`);
@@ -442,13 +443,7 @@ async function main() {
     return;
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.activityLog.deleteMany({ where: activityWhere });
-    await tx.truckMileageAdjustment.deleteMany({});
-    await tx.truckServiceStatusEvent.deleteMany({});
-    await tx.truckReadinessAssessment.deleteMany({});
-    await tx.workOrder.deleteMany({});
-  }, { timeout: 60_000 });
+  await prisma.$transaction((tx) => wipeWorkOrders(tx), { timeout: 60_000 });
   console.log('\nDeleted.');
 
   console.log('\nDemo');
@@ -465,18 +460,6 @@ async function main() {
     }
   }
 }
-
-// Every Work Order and readiness entry; nothing else writes the Activity Log.
-const activityWhere = {
-  OR: [
-    { workOrderId: { not: null } },
-    {
-      entityType: {
-        in: ['work_order', 'work_order_job', 'pause_event', 'work_order_note', 'mechanic_assignment', 'pm_service', 'truck', 'readiness_assessment', 'readiness_requirement'],
-      },
-    },
-  ],
-};
 
 function describe(error: unknown) {
   const response = (error as { getResponse?: () => unknown }).getResponse?.();
