@@ -73,10 +73,11 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
               cell: (item) => item.openWorkOrder ? (
                 <div className="space-y-1">
                   <Link className="tap-inline font-medium text-primary hover:underline" href={`/admin/work-orders/${item.openWorkOrder.id}`}>{item.openWorkOrder.displayId}</Link>
-                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground max-md:justify-end">
-                    {item.openWorkOrder.primaryCategoryName}
+                  {/* LTR-189 (W4): a <div>, not a <p> — the badge is a block element and <p> cannot contain it (hydration error). */}
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground max-md:justify-end">
+                    <span>{item.openWorkOrder.primaryCategoryName}</span>
                     <WorkOrderStatusBadge status={item.openWorkOrder.status}>{workOrderStatusLabel(item.openWorkOrder.status, messages)}</WorkOrderStatusBadge>
-                  </p>
+                  </div>
                 </div>
               ) : <span className="text-muted-foreground">{messages.noOpenWorkOrder}</span>,
             },
