@@ -37,8 +37,8 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     const blocker = page.getByTestId('admin-blocker').first();
     await expect(blocker.getByText('Blocked · Inspect brake chamber: Waiting for Parts')).toBeVisible();
     await expect(blocker.getByText(/Alejandro 1 · .*: The part arrived/)).toBeVisible();
-    // A blocker does not pause the Work Order: Pause is offered, Resume is not (LTR-168: summary starts folded).
-    await expect(page.getByRole('heading', { name: 'Pause Work Order' })).toBeVisible();
+    // A blocker does not pause the Work Order: Pause is offered in the header, Resume is not (LTR-174).
+    await expect(page.getByRole('button', { name: 'Pause Work Order' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Resume Work Order' })).toHaveCount(0);
 
     await blocker.getByLabel('Note for the mechanic (optional)').fill('Installed from stock');
@@ -48,15 +48,16 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     await expect(blocker.getByText('Resolved · Inspect brake chamber: Waiting for Parts')).toBeVisible();
     await expect(blocker.getByText('Manager note: Installed from stock')).toBeVisible();
 
-    // The Manager's official pause is separate from Job blockers.
-    await page.getByLabel('Pause reason').selectOption('waiting_for_approval');
+    // The Manager's official pause is separate from Job blockers (LTR-174: Pause asks its reason in a dialog).
     await page.getByRole('button', { name: 'Pause Work Order' }).click();
+    await page.getByLabel('Pause reason').selectOption('waiting_for_approval');
+    await page.getByRole('button', { name: 'Confirm pause' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order paused.' }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Resume Work Order' })).toBeVisible();
     await page.getByRole('button', { name: 'Resume Work Order' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order resumed.' }).first()).toBeVisible();
-    // A blocker does not pause the Work Order: Pause is offered, Resume is not (LTR-168: summary starts folded).
-    await expect(page.getByRole('heading', { name: 'Pause Work Order' })).toBeVisible();
+    // A blocker does not pause the Work Order: Pause is offered in the header, Resume is not.
+    await expect(page.getByRole('button', { name: 'Pause Work Order' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Resume Work Order' })).toHaveCount(0);
 
     // LTR-164 (#9): the mechanic sees who resolved it and the Manager's note.

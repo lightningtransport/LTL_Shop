@@ -13,10 +13,10 @@ test('Admin Pause stays disabled on Created and enables on In Progress', async (
   await loginToAdmin(page, 'manager@lightning.local');
 
   await page.goto(`/admin/work-orders/${CREATED_ID}`);
-  await expect(page.getByRole('heading', { name: 'Pause Work Order' })).toBeVisible();
+  // LTR-174: Pause is a header action; while it is not available the header says why.
   const pause = page.getByRole('button', { name: 'Pause Work Order' });
+  await expect(pause).toBeVisible();
   await expect(pause).toBeDisabled();
-  await expect(page.getByLabel('Pause reason')).toBeDisabled();
   await expect(page.getByText('Pause is available after this Work Order is In Progress.')).toBeVisible();
 
   await switchLanguage(page, 'es');
@@ -24,11 +24,12 @@ test('Admin Pause stays disabled on Created and enables on In Progress', async (
   await expect(page.getByText('La pausa está disponible cuando este Work Order está En progreso.')).toBeVisible();
 
   await page.goto(`/admin/work-orders/${IN_PROGRESS_ID}`);
-  const enabledPause = page.getByRole('button', { name: 'Pausar Work Order' });
-  // LTR-168: no preselected reason; Pause enables once one is chosen.
-  await expect(page.getByLabel('Motivo de pausa')).toBeEnabled();
-  await expect(enabledPause).toBeDisabled();
-  await page.getByLabel('Motivo de pausa').selectOption('waiting_for_parts');
-  await expect(enabledPause).toBeEnabled();
   await expect(page.getByText('La pausa está disponible cuando este Work Order está En progreso.')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Pausar Work Order' }).click();
+  const confirmPause = page.getByRole('button', { name: 'Confirmar pausa' });
+  // LTR-168: no preselected reason; Pause confirms only once one is chosen.
+  await expect(page.getByLabel('Motivo de pausa')).toBeEnabled();
+  await expect(confirmPause).toBeDisabled();
+  await page.getByLabel('Motivo de pausa').selectOption('waiting_for_parts');
+  await expect(confirmPause).toBeEnabled();
 });
