@@ -89,6 +89,8 @@ export function AdminJobTable({
                   <p className={job.status === 'cancelled' ? 'font-medium text-muted-foreground line-through' : 'font-medium'}>{job.displayName}</p>
                   <p className="text-xs text-muted-foreground">{job.category.name}</p>
                   {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
+                  {/* LTR-145: the PM job is finished from the PM service, so the hint sits with the Job, not in a row of its own. */}
+                  {canEdit && isPmJob && !isTerminal ? <p className="mt-1 text-xs text-muted-foreground">{messages.pmJobCompletedFromPmService}</p> : null}
                   {isPmJob && job.startedAt && !isTerminal ? (
                     <p className="mt-1 text-xs text-muted-foreground">
                       {messages.pmJobStartedAt.replace('{date}', formatAdminDate(job.startedAt, locale))}
@@ -115,7 +117,8 @@ export function AdminJobTable({
                   />
                 </div>
                 {canEdit || menuItems.length ? (
-                  <div className="flex flex-wrap items-center gap-2 lg:order-4 lg:justify-end">
+                  // One line on desktop: the PM variant select and the row menu never wrap under each other.
+                  <div className="flex flex-wrap items-center gap-2 lg:order-4 lg:flex-nowrap lg:justify-end">
                     {canEdit ? (
                       isPmJob ? (
                         <PmServiceSelect
@@ -153,9 +156,6 @@ export function AdminJobTable({
                   </div>
                 ) : null}
               </div>
-              {canEdit && isPmJob ? (
-                <p className="text-xs text-muted-foreground lg:order-5 lg:col-span-4">{messages.pmJobCompletedFromPmService}</p>
-              ) : null}
             </li>
           );
         })}
@@ -240,7 +240,7 @@ function PmServiceSelect({ job, messages, disabled, onChange }: {
     <Select
       aria-label={messages.pmServiceVariant}
       title={messages.pmJobCompletedFromPmService}
-      className="h-9 w-auto"
+      className="h-9 w-auto max-w-[11rem]"
       value={job.catalogJobId ?? ''}
       disabled={disabled}
       onChange={(event) => { if (event.target.value && event.target.value !== job.catalogJobId) onChange(event.target.value); }}
