@@ -11,6 +11,7 @@ import {
   type WorkPlanMandatoryPhaseDto,
 } from '@ltl-shop/shared';
 import { ApiError } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import {
   addAdminWorkPlanJobs,
   assignAdminWorkOrderJob,
@@ -81,7 +82,7 @@ export function AdminTruckWorkPlan({
       if (errorValue.status === 400) {
         const code = errorCode(errorValue);
         if (code === 'OPEN_WORK_ORDER_EXISTS' || /pm/i.test(errorValue.message)) return messages.workPlanPmOpenConflict;
-        return errorValue.message || messages.mutationBadRequest;
+        return apiErrorMessage(errorValue, messages, messages.mutationBadRequest);
       }
     }
     return fallback;

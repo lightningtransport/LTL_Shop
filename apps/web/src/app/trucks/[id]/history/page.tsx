@@ -9,6 +9,8 @@ import { formatIsoDate, formatMileage } from '@/lib/format';
 import { useCategories, useRepairHistory } from '@/lib/shop-data';
 import { Badge, Button, Card, EmptyState, LoadFailure, PageSkeleton, PageHeader } from '@/components/ui';
 import { useShopLocale } from '@/lib/locale-context';
+import { intlLocale } from '@/lib/shop-locale';
+import { apiErrorMessage } from '@/lib/api-error-message';
 
 export default function RepairHistoryPage() {
   const { token, sessionLoading } = useAuth();
@@ -29,9 +31,9 @@ export default function RepairHistoryPage() {
   const requestedReturn = searchParams.get('from');
   const backHref = requestedReturn?.startsWith('/') ? requestedReturn : '/';
   const backLabel = backHref === '/work-orders/new' || /^\/mechanic\/(standard|pm)\/new$/.test(backHref)
-    ? (messages.locale === 'es' ? 'Volver al nuevo Work Order' : 'Back to New Work Order')
+    ? messages.backToNewWorkOrder
     : backHref.startsWith('/work-orders/')
-      ? (messages.locale === 'es' ? 'Volver al Work Order' : 'Back to Work Order')
+      ? messages.backToWorkOrder
       : /^\/mechanic\/(standard|pm)\/trucks$/.test(backHref)
         ? messages.backToTrucks
         : messages.backToHome;
@@ -47,17 +49,17 @@ export default function RepairHistoryPage() {
   if (!truck) {
     if (error instanceof Error) {
       return (
-        <LoadFailure message={error.message} onRetry={() => void mutate()} retryLabel={messages.retry} />
+        <LoadFailure message={apiErrorMessage(error, messages, messages.loadError)} onRetry={() => void mutate()} retryLabel={messages.retry} />
       );
     }
-    return <PageSkeleton label={messages.locale === 'es' ? 'Cargando historial de reparaciones' : 'Loading repair history'} />;
+    return <PageSkeleton label={messages.loadingRepairHistory} />;
   }
 
   return (
     <div>
       <PageHeader
         className="mb-6"
-        title={messages.locale === 'es' ? 'Historial de reparaciones' : 'Repair history'}
+        title={messages.repairHistoryTitle}
         subtitle={messages.truckTitle(truck.truckNumber)}
         backHref={backHref}
         backLabel={backLabel}
@@ -81,12 +83,12 @@ export default function RepairHistoryPage() {
 
       <div
         className="mb-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-2"
-        aria-label={messages.locale === 'es' ? 'Filtrar historial de reparaciones por categoría' : 'Filter repair history by category'}
+        aria-label={messages.filterRepairHistory}
       >
         <FilterChip
           active={categoryId === 'all'}
           onClick={() => setCategoryId('all')}
-          label={messages.locale === 'es' ? 'TODOS' : 'ALL'}
+          label={messages.allCategoriesChip}
         />
         {categories.slice(0, 6).map((c) => (
           <FilterChip
@@ -99,7 +101,7 @@ export default function RepairHistoryPage() {
       </div>
 
       {!items.length ? (
-        <EmptyState>{messages.locale === 'es' ? 'No hay historial de reparaciones.' : 'No repair history.'}</EmptyState>
+        <EmptyState>{messages.noRepairHistory}</EmptyState>
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
@@ -108,28 +110,28 @@ export default function RepairHistoryPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{item.primaryCategoryName}</p>
                   <p className="mt-1 text-sm text-shop-muted">
-                    {new Date(item.date).toLocaleDateString(messages.locale === 'es' ? 'es-US' : 'en-US', {
+                    {new Date(item.date).toLocaleDateString(intlLocale(messages.locale), {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
                     })} · #{item.truckNumber}
                   </p>
                   <p className="mt-1 text-sm text-shop-muted">
-                    {messages.locale === 'es' ? 'Mecánico' : 'Mechanic'}: {item.mechanicNames.join(' / ') || '—'}
+                    {messages.mechanicLabel}: {item.mechanicNames.join(' / ') || '—'}
                   </p>
                 </div>
                 <div className="shrink-0 text-right text-xs text-shop-muted">
-                  <span className="block">{messages.locale === 'es' ? 'Millaje' : 'Mileage'}</span>
+                  <span className="block">{messages.mileageLabel}</span>
                   <span className="mt-1 block font-medium text-foreground">{formatMileage(item.mileage)}</span>
                 </div>
               </div>
               <div>
-                <p className="group-title mb-2">{messages.locale === 'es' ? 'Trabajo realizado' : 'Work performed'}</p>
+                <p className="group-title mb-2">{messages.workPerformed}</p>
                 {item.jobs.length ? <div className="flex flex-wrap gap-2">
                   {item.jobs.map((j) => (
                     <Badge key={j} variant="outline">{j}</Badge>
                   ))}
-                </div> : <p className="text-sm text-shop-muted">{messages.locale === 'es' ? 'No se registraron detalles del trabajo.' : 'No work details were recorded.'}</p>}
+                </div> : <p className="text-sm text-shop-muted">{messages.noWorkDetails}</p>}
               </div>
             </article>
           ))}

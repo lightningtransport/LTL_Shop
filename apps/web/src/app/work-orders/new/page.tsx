@@ -18,6 +18,7 @@ import { defaultWorkspacePath } from '@/lib/admin-routing';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import { useCategories, useTrucks } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
@@ -126,13 +127,13 @@ export default function NewWorkOrderPage() {
     } catch {
       if (requestId !== openWoRequest.current) return;
       setOpenWoCheck('error');
-      setError(messages.locale === 'es' ? 'No pudimos verificar los Work Orders abiertos. Reintenta antes de crear el Work Order.' : 'Unable to verify open Work Orders. Retry before creating the Work Order.');
+      setError(messages.openWorkOrderCheckFailed);
     }
   }
 
   async function create() {
     if (!truck || openWoCheck !== 'verified' || !pmCategory) {
-      setError(messages.locale === 'es' ? 'Selecciona una unidad antes de crear el Work Order de PM.' : 'Select a truck before creating the PM Work Order.');
+      setError(messages.selectTruckForPm);
       return;
     }
     setBusy(true);
@@ -162,7 +163,7 @@ export default function NewWorkOrderPage() {
         setHasOpenWo(true);
         setError(messages.workOrderOpen(truck.truckNumber));
       } else {
-        setError(e instanceof Error ? e.message : 'Create failed');
+        setError(apiErrorMessage(e, messages, messages.createFailed));
       }
     } finally {
       setBusy(false);
@@ -170,7 +171,7 @@ export default function NewWorkOrderPage() {
   }
 
   if (sessionLoading && !token) {
-    return <NewWorkOrderLoading mode={mechanicMode} label={messages.locale === 'es' ? 'Restaurando sesión' : 'Restoring session'} />;
+    return <NewWorkOrderLoading mode={mechanicMode} label={messages.restoringSession} />;
   }
 
   if (!token && sessionError) {
@@ -238,7 +239,7 @@ export default function NewWorkOrderPage() {
       <NewWorkOrderLoading mode={mechanicMode}>
         {referenceError ? (
           <LoadFailure
-            message="Unable to load shop reference data."
+            message={messages.referenceDataLoadError}
             onRetry={() => void Promise.all([mutateCategories(), mutateTrucks()])}
             retryLabel={messages.retry}
           />
@@ -345,7 +346,7 @@ export default function NewWorkOrderPage() {
             {openWoCheck === 'checking'
               ? messages.checkingOpenWorkOrder
               : resultsOpen
-                ? `${messages.truckResults(results.length)}${isFallback ? (messages.locale === 'es' ? ' Se muestran coincidencias parciales porque ninguna unidad comienza con tu búsqueda.' : ' Showing contains matches because no truck starts with your search.') : ''}`
+                ? `${messages.truckResults(results.length)}${isFallback ? messages.truckContainsMatchesNote : ''}`
                 : ''}
           </div>
         </div>
@@ -458,7 +459,7 @@ function NewWorkOrderLoading({
         subtitle={mode === MechanicMode.PM ? messages.pmServiceHint : messages.workOrderHint}
         backHref={`/mechanic/${mode}`}
       />
-      {children ?? <PageSkeleton label={label ?? (messages.locale === 'es' ? 'Cargando formulario de Work Order' : 'Loading Work Order form')} />}
+      {children ?? <PageSkeleton label={label ?? messages.loadingWorkOrderForm} />}
     </div>
   );
 }

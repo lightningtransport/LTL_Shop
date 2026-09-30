@@ -9,6 +9,8 @@ import { useAuth } from '@/lib/auth-context';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { apiFetch } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api-error-message';
+import { intlLocale } from '@/lib/shop-locale';
 import { useWorkOrders } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { pauseLabel, statusLabel } from '@/lib/format';
@@ -170,7 +172,7 @@ export default function HomePage() {
       {error ? (
         <div className="mb-4">
           <LoadFailure
-            message={error instanceof Error ? error.message : messages.unableToLoadWorkOrders}
+            message={apiErrorMessage(error, messages, messages.unableToLoadWorkOrders)}
             onRetry={() => void mutate()}
             retryLabel={messages.retry}
           />
@@ -331,7 +333,7 @@ function WorkOrderCard({
       </p>
       {isPm && (pmJob ? pmJob.startedAt : wo.startedAt) && mode !== 'completed' ? (
         <p className="text-xs text-shop-muted">
-          {messages.pmStartedAt(new Intl.DateTimeFormat(messages.locale === 'es' ? 'es-US' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date((pmJob ? pmJob.startedAt : wo.startedAt)!)))}
+          {messages.pmStartedAt(new Intl.DateTimeFormat(intlLocale(messages.locale), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date((pmJob ? pmJob.startedAt : wo.startedAt)!)))}
         </p>
       ) : null}
       {!isPm && mode !== 'completed' && myJobs.length > 0 ? (

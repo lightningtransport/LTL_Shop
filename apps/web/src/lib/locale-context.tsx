@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { BlockerReason, PauseReason } from '@ltl-shop/shared';
+import { API_ERROR_COPY, type ApiErrorCopy } from './api-error-copy';
 import {
   parseShopLocale,
   shopLocaleChangeEvent,
@@ -255,6 +256,77 @@ type Copy = {
   jobStatus: Record<string, string>;
   status: Record<string, string>;
   pauseReason: Record<PauseReason | BlockerReason.QUALITY_CHECK_FAILED, string>;
+  /** LTR-181: profile menu (language, theme, sign out) and the Home header. */
+  theme: string;
+  themeLight: string;
+  themeDark: string;
+  themeAuto: string;
+  signOut: string;
+  signingOut: string;
+  signOutFailed: string;
+  openProfileFor: (name: string) => string;
+  closeProfile: string;
+  homeControls: string;
+  /** LTR-181: app/forbidden.tsx. */
+  forbiddenTitle: string;
+  forbiddenBody: string;
+  forbiddenBack: string;
+  /** LTR-181: login and password recovery. */
+  signInFailed: string;
+  accountNotConfigured: string;
+  resetEmailFailed: string;
+  resetEmailSent: string;
+  useAnotherAccount: string;
+  verifyingRecoveryLink: string;
+  passwordUpdatedTitle: string;
+  passwordUpdatedSubtitle: string;
+  passwordUpdatedBody: string;
+  backToSignIn: string;
+  recoveryLinkUnavailableTitle: string;
+  recoveryLinkUnavailableSubtitle: string;
+  setNewPasswordTitle: string;
+  setNewPasswordSubtitle: string;
+  /** LTR-181: session restore and Supabase Auth failures (auth-context). */
+  secureSessionFailed: string;
+  profileRestoreFailed: string;
+  sessionRestoreFailed: string;
+  sessionRestoreTimedOut: string;
+  authInvalidCredentials: string;
+  authEmailNotConfirmed: string;
+  authRateLimited: string;
+  authWeakPassword: string;
+  authSamePassword: string;
+  /** LTR-181: repair history (trucks/[id]/history). */
+  backToNewWorkOrder: string;
+  backToWorkOrder: string;
+  loadingRepairHistory: string;
+  repairHistoryTitle: string;
+  filterRepairHistory: string;
+  allCategoriesChip: string;
+  noRepairHistory: string;
+  mechanicLabel: string;
+  mileageLabel: string;
+  workPerformed: string;
+  noWorkDetails: string;
+  /** LTR-181: New Work Order and generic action failures. */
+  openWorkOrderCheckFailed: string;
+  selectTruckForPm: string;
+  truckContainsMatchesNote: string;
+  loadingWorkOrderForm: string;
+  createFailed: string;
+  actionFailed: string;
+  referenceDataLoadError: string;
+  /** LTR-181: app/access-denied. */
+  accessDeniedTitle: string;
+  accessDeniedSubtitle: string;
+  accessDeniedBody: string;
+  pmFinishUpdatesMileage: (from: string, to: string) => string;
+  pmFinishCompletes: string;
+  relativeMinutesAgo: (minutes: number) => string;
+  relativeHoursAgo: (hours: number) => string;
+  relativeDaysAgo: (days: number) => string;
+  /** LTR-181: API error codes, shared with the Admin catalog (api-error-copy.ts). */
+  apiError: ApiErrorCopy;
   /** LTR-185 / D19: the Safety workspace. */
   qc: {
     title: string;
@@ -522,6 +594,69 @@ const copy: Record<ShopLocale, Copy> = {
       [PauseReason.OTHER]: 'Other',
       [BlockerReason.QUALITY_CHECK_FAILED]: 'Returned by Safety',
     },
+    theme: 'Theme',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeAuto: 'Auto',
+    signOut: 'Sign out',
+    signingOut: 'Signing out…',
+    signOutFailed: 'Unable to sign out.',
+    openProfileFor: (name) => `Open profile for ${name}`,
+    closeProfile: 'Close profile',
+    homeControls: 'Home controls',
+    forbiddenTitle: 'Shop Admin access denied',
+    forbiddenBody: 'Your account does not have permission to open the administrative workspace.',
+    forbiddenBack: 'Return to mechanic Home',
+    signInFailed: 'Sign in failed.',
+    accountNotConfigured: 'Your account is not configured for the Shop application.',
+    resetEmailFailed: 'Unable to send a reset email.',
+    resetEmailSent: 'If this email has an account, a password-reset link has been sent.',
+    useAnotherAccount: 'Use another account',
+    verifyingRecoveryLink: 'Verifying recovery link',
+    passwordUpdatedTitle: 'Password updated',
+    passwordUpdatedSubtitle: 'Sign in with your new password.',
+    passwordUpdatedBody: 'Your password has been changed successfully.',
+    backToSignIn: 'Back to sign in',
+    recoveryLinkUnavailableTitle: 'Recovery link unavailable',
+    recoveryLinkUnavailableSubtitle: 'Request a new password-reset email and try again.',
+    setNewPasswordTitle: 'Set new password',
+    setNewPasswordSubtitle: 'Choose a new password for your Shop account.',
+    secureSessionFailed: 'Unable to establish the secure application session.',
+    profileRestoreFailed: 'Unable to restore your profile. Please try again.',
+    sessionRestoreFailed: 'Unable to restore your session. Please try again.',
+    sessionRestoreTimedOut: 'Session restoration timed out. Please try again.',
+    authInvalidCredentials: 'Wrong email or password.',
+    authEmailNotConfirmed: 'Confirm your email before signing in.',
+    authRateLimited: 'Too many attempts. Wait a moment and try again.',
+    authWeakPassword: 'Choose a stronger password (at least 8 characters).',
+    authSamePassword: 'The new password must be different from the current one.',
+    backToNewWorkOrder: 'Back to New Work Order',
+    backToWorkOrder: 'Back to Work Order',
+    loadingRepairHistory: 'Loading repair history',
+    repairHistoryTitle: 'Repair history',
+    filterRepairHistory: 'Filter repair history by category',
+    allCategoriesChip: 'ALL',
+    noRepairHistory: 'No repair history.',
+    mechanicLabel: 'Mechanic',
+    mileageLabel: 'Mileage',
+    workPerformed: 'Work performed',
+    noWorkDetails: 'No work details were recorded.',
+    openWorkOrderCheckFailed: 'Unable to verify open Work Orders. Retry before creating the Work Order.',
+    selectTruckForPm: 'Select a truck before creating the PM Work Order.',
+    truckContainsMatchesNote: ' Showing contains matches because no truck starts with your search.',
+    loadingWorkOrderForm: 'Loading Work Order form',
+    createFailed: 'Unable to create the Work Order.',
+    actionFailed: 'Action failed. Try again.',
+    referenceDataLoadError: 'Unable to load shop reference data.',
+    accessDeniedTitle: 'Shop access unavailable',
+    accessDeniedSubtitle: 'Your account is active, but it does not have access to a Shop workspace. Contact a Shop administrator.',
+    accessDeniedBody: 'No operational data was opened. You can sign out from the profile menu and use another account.',
+    pmFinishUpdatesMileage: (from, to) => `This will update the truck mileage from ${from} to ${to} and create an audit record.`,
+    pmFinishCompletes: 'This will complete the PM service.',
+    relativeMinutesAgo: (minutes) => `${minutes} min ago`,
+    relativeHoursAgo: (hours) => `${hours} h ago`,
+    relativeDaysAgo: (days) => `${days} d ago`,
+    apiError: API_ERROR_COPY.en,
     qc: {
       title: 'Quality Check',
       subtitle: 'Trucks ready for your review',
@@ -788,6 +923,69 @@ const copy: Record<ShopLocale, Copy> = {
       [PauseReason.OTHER]: 'Otro',
       [BlockerReason.QUALITY_CHECK_FAILED]: 'Devuelto por Safety',
     },
+    theme: 'Tema',
+    themeLight: 'Claro',
+    themeDark: 'Oscuro',
+    themeAuto: 'Auto',
+    signOut: 'Cerrar sesión',
+    signingOut: 'Cerrando sesión…',
+    signOutFailed: 'No se pudo cerrar la sesión.',
+    openProfileFor: (name) => `Abrir perfil de ${name}`,
+    closeProfile: 'Cerrar perfil',
+    homeControls: 'Controles de Inicio',
+    forbiddenTitle: 'Acceso a Shop Admin denegado',
+    forbiddenBody: 'Tu cuenta no tiene permiso para abrir el espacio administrativo.',
+    forbiddenBack: 'Volver al Inicio de mecánicos',
+    signInFailed: 'No se pudo iniciar sesión.',
+    accountNotConfigured: 'Tu cuenta no está configurada para la aplicación del Shop.',
+    resetEmailFailed: 'No se pudo enviar el correo de restablecimiento.',
+    resetEmailSent: 'Si este correo tiene una cuenta, se envió un enlace para restablecer la contraseña.',
+    useAnotherAccount: 'Usar otra cuenta',
+    verifyingRecoveryLink: 'Verificando enlace de recuperación',
+    passwordUpdatedTitle: 'Contraseña actualizada',
+    passwordUpdatedSubtitle: 'Inicia sesión con tu nueva contraseña.',
+    passwordUpdatedBody: 'Tu contraseña se actualizó correctamente.',
+    backToSignIn: 'Volver a iniciar sesión',
+    recoveryLinkUnavailableTitle: 'Enlace de recuperación no disponible',
+    recoveryLinkUnavailableSubtitle: 'Solicita un nuevo correo para restablecer la contraseña e inténtalo de nuevo.',
+    setNewPasswordTitle: 'Crear nueva contraseña',
+    setNewPasswordSubtitle: 'Elige una nueva contraseña para tu cuenta del Shop.',
+    secureSessionFailed: 'No se pudo establecer la sesión segura de la aplicación.',
+    profileRestoreFailed: 'No se pudo recuperar tu perfil. Inténtalo de nuevo.',
+    sessionRestoreFailed: 'No se pudo recuperar tu sesión. Inténtalo de nuevo.',
+    sessionRestoreTimedOut: 'La recuperación de la sesión tardó demasiado. Inténtalo de nuevo.',
+    authInvalidCredentials: 'Correo o contraseña incorrectos.',
+    authEmailNotConfirmed: 'Confirma tu correo antes de iniciar sesión.',
+    authRateLimited: 'Demasiados intentos. Espera un momento e inténtalo de nuevo.',
+    authWeakPassword: 'Elige una contraseña más segura (al menos 8 caracteres).',
+    authSamePassword: 'La nueva contraseña debe ser distinta de la actual.',
+    backToNewWorkOrder: 'Volver al nuevo Work Order',
+    backToWorkOrder: 'Volver al Work Order',
+    loadingRepairHistory: 'Cargando historial de reparaciones',
+    repairHistoryTitle: 'Historial de reparaciones',
+    filterRepairHistory: 'Filtrar historial de reparaciones por categoría',
+    allCategoriesChip: 'TODOS',
+    noRepairHistory: 'No hay historial de reparaciones.',
+    mechanicLabel: 'Mecánico',
+    mileageLabel: 'Millaje',
+    workPerformed: 'Trabajo realizado',
+    noWorkDetails: 'No se registraron detalles del trabajo.',
+    openWorkOrderCheckFailed: 'No pudimos verificar los Work Orders abiertos. Reintenta antes de crear el Work Order.',
+    selectTruckForPm: 'Selecciona una unidad antes de crear el Work Order de PM.',
+    truckContainsMatchesNote: ' Se muestran coincidencias parciales porque ninguna unidad comienza con tu búsqueda.',
+    loadingWorkOrderForm: 'Cargando formulario de Work Order',
+    createFailed: 'No se pudo crear el Work Order.',
+    actionFailed: 'La acción no se pudo completar. Inténtalo de nuevo.',
+    referenceDataLoadError: 'No se pudieron cargar los datos de referencia del Shop.',
+    accessDeniedTitle: 'Acceso al Shop no disponible',
+    accessDeniedSubtitle: 'Tu cuenta está activa, pero no tiene acceso a un espacio del Shop. Contacta a un administrador del Shop.',
+    accessDeniedBody: 'No se abrió ningún dato operativo. Puedes cerrar sesión desde el menú de perfil y usar otra cuenta.',
+    pmFinishUpdatesMileage: (from, to) => `Esto actualizará el millaje de la unidad de ${from} a ${to} y creará un registro de auditoría.`,
+    pmFinishCompletes: 'Esto completará el servicio de PM.',
+    relativeMinutesAgo: (minutes) => `hace ${minutes} min`,
+    relativeHoursAgo: (hours) => `hace ${hours} h`,
+    relativeDaysAgo: (days) => `hace ${days} d`,
+    apiError: API_ERROR_COPY.es,
     qc: {
       title: 'Quality Check',
       subtitle: 'Unidades listas para revisar',

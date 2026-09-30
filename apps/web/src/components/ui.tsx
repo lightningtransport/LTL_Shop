@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { shouldOpenUpdatePasswordSheet, updatePasswordSheetCopy } from '@/lib/password-change-prompt';
 import { profileInitials } from '@/lib/profile-initials';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import { jobStatusVariant, phaseVariant, priorityVariant, workOrderStatusVariant } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
 
@@ -360,13 +361,11 @@ function ProfileSettings() {
   const router = useRouter();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
-  const es = messages.locale === 'es';
-
   return (
     <div className="space-y-4">
       {/* Native names, so a person who cannot read the current language still finds theirs. */}
       <SegmentedChoice
-        label={es ? 'Idioma' : 'Language'}
+        label={messages.language}
         value={messages.locale}
         options={[
           { value: 'en', label: 'English' },
@@ -380,12 +379,12 @@ function ProfileSettings() {
         }}
       />
       <SegmentedChoice
-        label={es ? 'Tema' : 'Theme'}
+        label={messages.theme}
         value={mounted ? (theme as 'light' | 'dark' | 'system' | undefined) : undefined}
         options={[
-          { value: 'light', label: es ? 'Claro' : 'Light', icon: <Sun aria-hidden="true" className="size-4" /> },
-          { value: 'dark', label: es ? 'Oscuro' : 'Dark', icon: <Moon aria-hidden="true" className="size-4" /> },
-          { value: 'system', label: es ? 'Auto' : 'Auto' },
+          { value: 'light', label: messages.themeLight, icon: <Sun aria-hidden="true" className="size-4" /> },
+          { value: 'dark', label: messages.themeDark, icon: <Moon aria-hidden="true" className="size-4" /> },
+          { value: 'system', label: messages.themeAuto },
         ]}
         onChange={setTheme}
       />
@@ -417,7 +416,7 @@ function ProfileDialog() {
     policyRequiresPasswordChange: mustChangePassword,
     passwordChangeResolved,
   });
-  const passwordCopy = updatePasswordSheetCopy(messages.locale === 'es' ? 'es' : 'en');
+  const passwordCopy = updatePasswordSheetCopy(messages.locale);
 
   function requestProfileMenu() {
     setPasswordSheetOpen(false);
@@ -439,7 +438,7 @@ function ProfileDialog() {
       window.location.replace('/login');
       setMenuOpen(false);
     } catch (logoutError) {
-      setError(logoutError instanceof Error ? logoutError.message : 'Unable to sign out.');
+      setError(apiErrorMessage(logoutError, messages, messages.signOutFailed));
     } finally {
       setIsLoggingOut(false);
     }
@@ -452,7 +451,7 @@ function ProfileDialog() {
         variant="secondary"
         size="icon"
         className="shrink-0 rounded-full border-primary/30 bg-primary/10 text-sm font-bold text-primary"
-        aria-label={messages.locale === 'es' ? `Abrir perfil de ${user.name}` : `Open profile for ${user.name}`}
+        aria-label={messages.openProfileFor(user.name)}
         aria-expanded={menuOpen || passwordSheetOpen}
         aria-haspopup="dialog"
         onClick={requestProfileMenu}
@@ -475,7 +474,7 @@ function ProfileDialog() {
               </DialogDescription>
             </div>
             <DialogClose asChild>
-              <Button variant="ghost" size="icon" aria-label={messages.locale === 'es' ? 'Cerrar perfil' : 'Close profile'}>
+              <Button variant="ghost" size="icon" aria-label={messages.closeProfile}>
                 <X aria-hidden="true" className="size-5" />
               </Button>
             </DialogClose>
@@ -501,7 +500,7 @@ function ProfileDialog() {
             onClick={() => void handleLogout()}
             disabled={isLoggingOut}
           >
-            {isLoggingOut ? (messages.locale === 'es' ? 'Cerrando sesión…' : 'Signing out…') : (messages.locale === 'es' ? 'Cerrar sesión' : 'Sign out')}
+            {isLoggingOut ? messages.signingOut : messages.signOut}
           </Button>
         </DialogContent>
       </Dialog>
@@ -519,7 +518,7 @@ function UpdatePasswordSheet({
 }) {
   const { updatePassword } = useAuth();
   const { messages } = useShopLocale();
-  const copy = updatePasswordSheetCopy(messages.locale === 'es' ? 'es' : 'en');
+  const copy = updatePasswordSheetCopy(messages.locale);
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -551,7 +550,7 @@ function UpdatePasswordSheet({
       await updatePassword(newPassword);
       onOpenChange(false);
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : copy.unable);
+      setError(apiErrorMessage(updateError, messages, copy.unable));
     } finally {
       setIsUpdatingPassword(false);
     }
@@ -633,7 +632,7 @@ export function HomeTopBar({ mode }: { mode?: MechanicMode }) {
       <header
         className="app-topbar"
         role="banner"
-        aria-label={messages.locale === 'es' ? 'Controles de Inicio' : 'Home controls'}
+        aria-label={messages.homeControls}
       >
         <div className="app-topbar-row">
           <Image

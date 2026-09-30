@@ -25,3 +25,8 @@ export function shopLocaleCookieWrite(locale: ShopLocale): string {
 export function shopLocaleChangeEvent(): Event {
   return new Event('ltl-shop-locale-change');
 }
+
+/** Intl tag for dates and numbers. Formatting, not copy: the catalogs never carry this. */
+export function intlLocale(locale: ShopLocale): 'en-US' | 'es-US' {
+  return locale === 'es' ? 'es-US' : 'en-US';
+}

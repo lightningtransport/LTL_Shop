@@ -15,6 +15,7 @@ import {
 } from '@/components/ui';
 import { postLoginPath } from '@/lib/admin-routing';
 import { useShopLocale } from '@/lib/locale-context';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { DEV_LOGIN_ENABLED } from '@/lib/dev-login';
 
@@ -67,7 +68,7 @@ export default function LoginPage() {
       navigationStarted.current = true;
       replaceAppLocation(postLoginPath(signedInUser, requestedPath()), router, { scroll: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : (messages.locale === 'es' ? 'No se pudo iniciar sesión.' : 'Sign in failed.'));
+      setError(apiErrorMessage(err, messages, messages.signInFailed));
     } finally {
       setBusy(false);
     }
@@ -81,11 +82,7 @@ export default function LoginPage() {
       navigationStarted.current = true;
       replaceAppLocation(postLoginPath(signedInUser, requestedPath()), router, { scroll: true });
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Your account is not configured for the Shop application.',
-      );
+      setError(apiErrorMessage(err, messages, messages.accountNotConfigured));
     } finally {
       setBusy(false);
     }
@@ -98,7 +95,7 @@ export default function LoginPage() {
       await requestPasswordReset(email);
       setResetSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : (messages.locale === 'es' ? 'No se pudo enviar el correo de restablecimiento.' : 'Unable to send a reset email.'));
+      setError(apiErrorMessage(err, messages, messages.resetEmailFailed));
     } finally {
       setBusy(false);
     }
@@ -115,7 +112,7 @@ export default function LoginPage() {
           <LoadFailure message={sessionError} onRetry={retrySession} retryLabel={messages.retry} />
           {token ? (
             <Button variant="secondary" className="w-full" onClick={() => void logout()}>
-              {messages.locale === 'es' ? 'Usar otra cuenta' : 'Use another account'}
+              {messages.useAnotherAccount}
             </Button>
           ) : null}
         </div>
@@ -166,7 +163,7 @@ export default function LoginPage() {
         </Button>
         {resetSent ? (
           <p className="text-sm text-muted-foreground" role="status">
-            {messages.locale === 'es' ? 'Si este correo tiene una cuenta, se envió un enlace para restablecer la contraseña.' : 'If this email has an account, a password-reset link has been sent.'}
+            {messages.resetEmailSent}
           </p>
         ) : null}
         {DEV_LOGIN_ENABLED ? (

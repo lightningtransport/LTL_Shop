@@ -8,6 +8,8 @@ Truck, Job, Jobs, Incoming Trucks, PM). Mechanic ES copy sometimes uses
 *unidad* for Truck. Do not “fix” that in a UI polish pass; keep catalogs
 consistent with `YARD_DATA_BOUNDARY_COPY` for Yard Phase 1 cards and with
 `apps/web/src/lib/admin-messages.ts` / `apps/web/src/lib/locale-context.tsx`.
+API error codes have one EN/ES sentence each in `apps/web/src/lib/api-error-copy.ts`
+(exposed as `apiError` by both catalogs and read by `apiErrorMessage()`, LTR-181).
 
 | English (UI) | Spanish (CURRENT catalogs) | Meaning |
 |---|---|---|

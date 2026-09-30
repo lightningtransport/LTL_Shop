@@ -225,17 +225,38 @@ del mecánico; queda cerrado.
 
 ## 4. Idioma — LTR-181
 
-- 62 textos `locale === 'es' ? … : …` escritos directo en 13 archivos, fuera
+- ~~62 textos `locale === 'es' ? … : …` escritos directo en 13 archivos, fuera
   de los catálogos (más en `reset-password`, `trucks/[id]/history`,
   `ui.tsx`). LTR-167 agregó 5 en el menú de perfil (Idioma, Tema, Claro,
-  Oscuro, Auto) aunque la clave `language` ya existe en el catálogo.
-- Textos solo en inglés que quedan en el mecánico ("Create failed", "Action
+  Oscuro, Auto) aunque la clave `language` ya existe en el catálogo.~~ —
+  hecho (LTR-181): 53 textos pasaron a claves de `locale-context.tsx`; los 12
+  restantes eran etiquetas `Intl` (`'es-US' : 'en-US'`), no copy, y ahora
+  salen de `intlLocale()` en `shop-locale.ts`. En `apps/web/src` ya no queda
+  ningún `=== 'es' ?` fuera de los catálogos.
+- ~~Textos solo en inglés que quedan en el mecánico ("Create failed", "Action
   failed", "Unable to load shop reference data", la nota de búsqueda parcial
-  de camiones…). Las pantallas de PM legacy y el formulario Standard ya no
+  de camiones…).~~ — hecho (LTR-181): 15 textos con versión en español
+  (también `access-denied`, el aviso de fin del PM y los errores de sesión de
+  `auth-context`). Las pantallas de PM legacy y el formulario Standard ya no
   existen (LTR-180).
-- 29 lugares leen `.message` de errores de la API (siempre en inglés) y lo
-  muestran al usuario, también en español. `app/error.tsx` y
-  `global-error.tsx` ya están traducidos (LTR-170).
+- ~~29 lugares leen `.message` de errores de la API (siempre en inglés) y lo
+  muestran al usuario, también en español.~~ — hecho (LTR-181): todos pasan
+  por `apiErrorMessage()` (`lib/api-error-message.ts`), que traduce los 43
+  `code` de la API (`lib/api-error-copy.ts`, expuesto como `apiError` en los
+  dos catálogos), usa la copia de red/timeout y, si no hay código, muestra el
+  texto crudo solo en inglés; en español siempre cae al respaldo del
+  catálogo. Los errores de Supabase Auth (credenciales, correo sin confirmar,
+  límite de intentos, contraseña débil o repetida) también se mapean.
+  `app/error.tsx` y `global-error.tsx` ya estaban traducidos (LTR-170).
+- Queda, a propósito:
+  - `updatePasswordSheetCopy()` en `lib/password-change-prompt.ts` es un
+    mini-catálogo aparte (la hoja de contraseña y `reset-password` lo
+    comparten). Mudarlo a `locale-context.tsx` es cosmético.
+  - Los errores de configuración de desarrollo ("Supabase is not
+    configured…") siguen en inglés: no los ve un usuario del taller.
+  - Los valores por defecto de `PageSkeleton`, `LoadFailure` y `MultiSelect`
+    en `ui.tsx` son ingleses, pero ningún llamador los usa (todos pasan copy
+    del catálogo).
 
 ## 5. Para salir en vivo — LTR-45
 
