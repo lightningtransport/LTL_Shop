@@ -385,7 +385,9 @@ Shop Admin, Yard, Work Orders).
 
 **Encabezado (todos los roles):** logo y un botón redondo con las iniciales.
 Ese menú de perfil tiene idioma (English / Español), tema (Light / Dark /
-Auto, que sigue al sistema), cambio de contraseña y, al final, Sign out.
+Auto, que sigue al sistema), cambio de contraseña y, al final, Sign out. Si
+la política exige cambiar la contraseña, el menú abre igual y muestra un aviso
+con el botón que abre la hoja (LTR-179 U6).
 
 La interfaz está en inglés y español (catálogos en
 `apps/web/src/lib/admin-messages.ts` y `apps/web/src/lib/locale-context.tsx`;

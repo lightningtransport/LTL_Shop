@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { WorkOrderStatus } from '@prisma/client';
+import { Prisma, WorkOrderStatus } from '@prisma/client';
 import {
   AppCapability,
   OPEN_WORK_ORDER_STATUSES,
@@ -273,7 +273,16 @@ export class YardWorkPlanService {
       return;
     }
 
-    if (input.expectedVersion === undefined) {
+    // LTR-179 (U10): a retry of a request that landed only partly (some child Jobs were added, then the
+    // process died before the parent record) must not hit VERSION_CONFLICT: its own children bumped the
+    // version. When the first child already replays, skip the version gate and let each child replay.
+    const partial = await this.prisma.workOrderMutation.findUnique({
+      where: { idempotencyKey: childIdempotencyKey(input.idempotencyKey, 0) },
+      select: { workOrderId: true, actorId: true },
+    });
+    const resumingPartial = Boolean(partial && partial.workOrderId === open.id && partial.actorId === user.id);
+
+    if (input.expectedVersion === undefined && !resumingPartial) {
       throw new ConflictException({
         code: 'WORK_ORDER_VERSION_REQUIRED',
         message: 'expectedVersion is required when the Truck already has an open Work Order.',
@@ -281,7 +290,7 @@ export class YardWorkPlanService {
         version: open.version,
       });
     }
-    if (open.version !== input.expectedVersion) {
+    if (!resumingPartial && open.version !== input.expectedVersion) {
       throw new ConflictException({
         code: 'VERSION_CONFLICT',
         message: 'Work Order was updated. Refresh and try again.',
@@ -292,7 +301,7 @@ export class YardWorkPlanService {
 
     await this.assertStandardAssignees(input);
 
-    let expectedVersion = input.expectedVersion;
+    let expectedVersion = resumingPartial ? open.version : input.expectedVersion;
     for (const [index, job] of input.jobs.entries()) {
       // D14: each Job keeps the owner the Manager chose in Hallazgos.
       const result = await this.workOrders.addJobByManager(user, open.id, {
@@ -306,16 +315,21 @@ export class YardWorkPlanService {
       expectedVersion = result.version;
     }
 
-    await this.prisma.workOrderMutation.create({
-      data: {
-        idempotencyKey: input.idempotencyKey,
-        workOrderId: open.id,
-        operation: 'work_plan_add_jobs',
-        payloadHash,
-        actorId: user.id,
-        result: { added: input.jobs.length, version: expectedVersion },
-      },
-    });
+    try {
+      await this.prisma.workOrderMutation.create({
+        data: {
+          idempotencyKey: input.idempotencyKey,
+          workOrderId: open.id,
+          operation: 'work_plan_add_jobs',
+          payloadHash,
+          actorId: user.id,
+          result: { added: input.jobs.length, version: expectedVersion },
+        },
+      });
+    } catch (error) {
+      // LTR-179 (U10): two simultaneous retries with the same key — the other one already recorded it.
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
+    }
   }
 
   /** Checked before the first Job is added, so a bad assignee adds nothing. */

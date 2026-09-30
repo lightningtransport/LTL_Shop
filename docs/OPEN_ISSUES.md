@@ -72,8 +72,8 @@ puede borrar en la limpieza (§3).
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
 Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → recorrido de
-pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ ~~W12~~ ~~W14~~ ~~W15~~ ~~W17~~ ~~W9~~ ~~W5~~ hechos; ~~W16~~ ~~W3~~ ~~W6~~ ~~W7~~ ~~W8~~ ~~W10~~ ~~W13~~ **todos hechos**) → los de §1b
-(LTR-179). El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
+pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ ~~W12~~ ~~W14~~ ~~W15~~ ~~W17~~ ~~W9~~ ~~W5~~ hechos; ~~W16~~ ~~W3~~ ~~W6~~ ~~W7~~ ~~W8~~ ~~W10~~ ~~W13~~ **todos hechos**) → ~~los de §1b
+(LTR-179)~~ hechos (2026-09-30) → Fase C. El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
 **Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
 deciden antes de la Fase D. Cada PR: arreglo + su fila en `test-real/` pasa a
@@ -124,20 +124,20 @@ están en `USER_FLOWS.md` §6.
 
 **Efecto en los defectos:**
 
-## 1b. Defectos menores de la UI móvil (LTR-165, revisión 2026-09-29) — LTR-179
+## 1b. Defectos menores de la UI móvil (LTR-165, revisión 2026-09-29) — LTR-179 — **HECHO (2026-09-30)**
 
 | # | Problema | Dónde |
 |---|---|---|
-| U1 | **Archivo de build en git:** `apps/web/.next-d14/trace` quedó en el repo (#207) y `.gitignore` no cubre `.next-d14`. | `.gitignore`, `apps/web/.next-d14/` |
-| U2 | `next-env.d.ts` apunta a `./.next-e2e/types/routes.d.ts` (ruta local generada). | `apps/web/next-env.d.ts:3` |
-| U3 | En el teléfono, las listas con solo búsqueda (Trucks) ya no tienen botón **Clear** (solo se muestra desde `md`). | `apps/web/src/components/ui.tsx` ~l. 862 |
-| U4 | iPad con la app instalada: el bloque de nombre/rol del menú lateral queda debajo del indicador de inicio (se quitó el padding seguro del contenedor). *(LTR-171)* | `apps/web/src/components/admin-shell.tsx:62` |
-| U5 | El color de la barra de estado sigue al tema del sistema, no al tema elegido en la app (sistema oscuro + app en Light = barra oscura sobre app blanca). *(LTR-171)* | `apps/web/src/app/layout.tsx:50` |
-| U6 | Con cambio de contraseña pendiente, el botón de perfil abre primero la hoja de contraseña; para cambiar de idioma hay que cerrarla. | `apps/web/src/components/ui.tsx` ~l. 414 |
-| U7 | `moreActionsHelp` dice que "More actions" incluye corrección de tiempos; ahora está en "History and audit". | `admin-messages.ts` (~l. 35 / 773) |
-| U8 | Nueve textos del catálogo Admin quedaron sin uso al quitar descripciones (`completeWorkOrderDescription`, `jobsDescription`, `workRequestHint`, …). | `admin-messages.ts` |
-| U9 | Admin en español todavía dice "unidad(es)" en algunos textos y en el selector de Truck de Nuevo Work Order (la regla de LTR-170 es "Trucks"). | `admin-messages.ts` (~l. 988, 1007, 1382–1393) |
-| U10 | `POST …/work-plan/jobs`: si falla a mitad de camino, quedan Jobs agregados sin registro de idempotencia y el reintento recibe `VERSION_CONFLICT`; dos reintentos simultáneos con la misma clave chocan en el índice único. *(Existía antes de #206.)* | `apps/api/src/admin/yard-work-plan.service.ts` ~l. 255–290 |
+| ~~U1~~ | ~~Archivo de build en git~~ — **hecho** (2026-09-30): `apps/web/.next-d14/trace` fuera del repo; `.gitignore` cubre `.next-*`. | `.gitignore` |
+| ~~U2~~ | ~~`next-env.d.ts` apunta a `.next-e2e`~~ — ya apuntaba a `./.next` en main (2026-09-30). | `apps/web/next-env.d.ts` |
+| ~~U3~~ | ~~Sin botón Clear en el teléfono~~ — **hecho** (2026-09-30): aparece en cuanto hay algo que limpiar. | `ui.tsx` |
+| ~~U4~~ | ~~iPad: nombre/rol bajo el indicador de inicio~~ — **hecho** (2026-09-30): padding seguro en el bloque. | `admin-shell.tsx` |
+| ~~U5~~ | ~~Barra de estado sigue al sistema, no al tema de la app~~ — **hecho** (2026-09-30): un solo `theme-color`, actualizado por `BrowserThemeColor`. | `layout.tsx` |
+| ~~U6~~ | ~~Cambio de contraseña pendiente bloquea el menú de perfil~~ — **hecho** (2026-09-30): el menú abre siempre; el cambio pendiente es un aviso dentro con botón. | `ui.tsx` |
+| ~~U7~~ | ~~`moreActionsHelp` menciona corrección de tiempos~~ — **hecho** (2026-09-30). | `admin-messages.ts` |
+| ~~U8~~ | ~~Textos sin uso del Admin~~ — **hecho** (2026-09-30): 11 descripciones borradas de EN/ES. Quedan ~130 claves sin uso en `admin-messages.ts` (Yard fase 1, readiness legacy): las retira LTR-180. | `admin-messages.ts` |
+| ~~U9~~ | ~~Admin en español dice "unidad(es)"~~ — **hecho** (2026-09-30): 15 textos a "Truck(s)", incluido Nuevo Work Order. | `admin-messages.ts` |
+| ~~U10~~ | ~~Reintento de `work-plan/jobs` recibe `VERSION_CONFLICT` tras un fallo a mitad~~ — **hecho** (2026-09-30): si el primer Job hijo ya quedó registrado, se salta la verificación de versión y cada hijo replica; dos reintentos simultáneos no chocan (P2002 se ignora). | `yard-work-plan.service.ts` |
 
 ## 1d. Recorrido de pantallas (2026-09-29, teléfono, EN/ES, API real) — LTR-189
 

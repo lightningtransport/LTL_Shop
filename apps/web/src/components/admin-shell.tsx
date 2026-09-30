@@ -107,7 +107,8 @@ export function AdminShell({
               </div>
             ))}
           </nav>
-          <div className="mt-3 shrink-0 border-t px-1 pt-4 text-sm">
+          {/* LTR-179 (U4): installed on an iPad, the name/role block stays above the home indicator. */}
+          <div className="mt-3 shrink-0 border-t px-1 pb-[var(--app-safe-bottom)] pt-4 text-sm">
             <p className="truncate font-medium">{user.name}</p>
             <p className="mt-1 capitalize text-muted-foreground">{user.role}</p>
           </div>
