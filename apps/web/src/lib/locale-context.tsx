@@ -94,6 +94,7 @@ type Copy = {
   otherWorkOnThisTruck: string;
   noMyJobs: string;
   tapJobToComplete: string;
+  completeJobFor: (name: string) => string;
   finishedYourPart: (truckNumber: string) => string;
   finishedYourPartHint: string;
   continueWork: string;
@@ -343,7 +344,8 @@ const copy: Record<ShopLocale, Copy> = {
     myJobs: 'Your Jobs',
     otherWorkOnThisTruck: 'Other work on this Truck',
     noMyJobs: 'No jobs assigned to you.',
-    tapJobToComplete: 'Tap a Job to complete it.',
+    tapJobToComplete: 'When a Job is done, tap Complete job.',
+    completeJobFor: (name) => `Complete job: ${name}`,
     finishedYourPart: (truckNumber) => `You finished your part on Truck ${truckNumber}.`,
     finishedYourPartHint: 'Your time stopped. If the Manager gives you another Job here, tap Continue.',
     continueWork: 'Continue',
@@ -605,7 +607,8 @@ const copy: Record<ShopLocale, Copy> = {
     myJobs: 'Tus Jobs',
     otherWorkOnThisTruck: 'Otro trabajo en esta unidad',
     noMyJobs: 'No tienes Jobs asignados.',
-    tapJobToComplete: 'Toca un Job para completarlo.',
+    tapJobToComplete: 'Cuando termines un Job, toca Completar Job.',
+    completeJobFor: (name) => `Completar Job: ${name}`,
     finishedYourPart: (truckNumber) => `Terminaste tu parte en la unidad ${truckNumber}.`,
     finishedYourPartHint: 'Tu tiempo se detuvo. Si el Manager te da otro Job aquí, toca Continuar.',
     continueWork: 'Continuar',

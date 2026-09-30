@@ -776,17 +776,17 @@ test.describe('My Assigned Work presentation', () => {
     await expect(page.getByRole('heading', { name: 'Truck 905' })).toBeVisible();
     await expect(page.getByText('Work Order team', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Your Jobs', { exact: true })).toBeVisible();
-    await expect(page.getByText('Tap a Job to complete it.')).toBeVisible();
-    await expect(page.getByRole('button', { name: /^○ Replace pads/ })).toBeVisible();
+    await expect(page.getByText('When a Job is done, tap Complete job.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Complete job: Replace pads' })).toBeVisible();
     await expect(page.getByText('Other work on this Truck')).toBeVisible();
     // Unassigned and other mechanics' Jobs are visible but not completable.
     await expect(page.getByRole('button', { name: /Bleed brakes/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /ABS sensor/ })).toHaveCount(0);
-    await expect(page.getByTestId('job-read-only')).toHaveCount(2);
+    await expect(page.getByTestId('job-read-only')).toHaveCount(3);
     await expect(page.getByText('Create new Work Order')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
-    await page.getByRole('button', { name: /^○ Replace pads/ }).click();
+    await page.getByRole('button', { name: 'Complete job: Replace pads' }).click();
     const finishDialog = page.getByRole('dialog', { name: /Complete job|Completar Job/i });
     await expect(finishDialog).toBeVisible();
     await expect(finishDialog.getByRole('button', { name: 'Close Complete job' })).toHaveCount(0);

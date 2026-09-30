@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
@@ -400,37 +400,44 @@ export default function WorkOrderDetailPage() {
             {myTodo.map((job) => (
               <li key={job.id} className="space-y-1">
                 {job.activeBlocker ? (
-                  <JobTodoButton job={job} currentUserId={user?.id ?? ''} readOnly disabled onSelect={() => undefined} />
+                  <JobTodoCard job={job} currentUserId={user?.id ?? ''} />
                 ) : (
                   <>
-                    <JobTodoButton
-                      job={job}
-                      currentUserId={user?.id ?? ''}
-                      disabled={busy || wo.status !== 'in_progress' || laborStopped}
-                      onSelect={(event) => {
-                        finishJobTriggerRef.current = event.currentTarget;
-                        setFinishNotes('');
-                        setFinishJob({ id: job.id, name: job.displayName });
-                      }}
-                    />
-                    {wo.status === 'in_progress' || wo.status === 'created' ? (
+                    {/* LTR-189 (W12): the Job is a card; "Complete job" is a visible primary button beside "Report Blocker". */}
+                    <JobTodoCard job={job} currentUserId={user?.id ?? ''} />
+                    <div className="flex gap-2">
                       <Button
                         type="button"
-                        variant="outline"
-                        className="w-full"
-                        disabled={busy}
-                        aria-label={messages.reportBlockerFor(job.displayName)}
+                        className="flex-1"
+                        disabled={busy || wo.status !== 'in_progress' || laborStopped}
+                        aria-label={messages.completeJobFor(job.displayName)}
                         onClick={(event) => {
-                          pauseTriggerRef.current = event.currentTarget;
-                          setPauseReason('');
-                          setPauseNotes('');
-                          setBlockerJob({ id: job.id, name: job.displayName });
-                          setPauseOpen(true);
+                          finishJobTriggerRef.current = event.currentTarget;
+                          setFinishNotes('');
+                          setFinishJob({ id: job.id, name: job.displayName });
                         }}
                       >
-                        {messages.reportBlocker}
+                        {messages.jobFinishConfirm}
                       </Button>
-                    ) : null}
+                      {wo.status === 'in_progress' || wo.status === 'created' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1"
+                          disabled={busy}
+                          aria-label={messages.reportBlockerFor(job.displayName)}
+                          onClick={(event) => {
+                            pauseTriggerRef.current = event.currentTarget;
+                            setPauseReason('');
+                            setPauseNotes('');
+                            setBlockerJob({ id: job.id, name: job.displayName });
+                            setPauseOpen(true);
+                          }}
+                        >
+                          {messages.reportBlocker}
+                        </Button>
+                      ) : null}
+                    </div>
                   </>
                 )}
               </li>
@@ -444,7 +451,7 @@ export default function WorkOrderDetailPage() {
             <ul className="mb-3 space-y-2">
               {otherTodo.map((job) => (
                 <li key={job.id}>
-                  <JobTodoButton job={job} currentUserId={user?.id ?? ''} readOnly disabled onSelect={() => undefined} />
+                  <JobTodoCard job={job} currentUserId={user?.id ?? ''} />
                 </li>
               ))}
             </ul>
@@ -864,20 +871,8 @@ function PmWorkOrderDetail({
   );
 }
 
-function JobTodoButton({
-  job,
-  currentUserId,
-  disabled,
-  readOnly = false,
-  onSelect,
-}: {
-  job: WorkOrderJobDto;
-  currentUserId: string;
-  disabled: boolean;
-  /** LTR-154 / D11: another mechanic's or an unassigned Job is listed without "Complete job". */
-  readOnly?: boolean;
-  onSelect: (event: MouseEvent<HTMLButtonElement>) => void;
-}) {
+/** A Job row (LTR-189 W12: never a button; my Jobs get their own action row, other work is read-only). */
+function JobTodoCard({ job, currentUserId }: { job: WorkOrderJobDto; currentUserId: string }) {
   const { messages } = useShopLocale();
   const content = (
     <>
@@ -898,18 +893,5 @@ function JobTodoButton({
       </span>
     </>
   );
-  if (readOnly) {
-    return <div className="card flex items-start gap-3 text-left" data-testid="job-read-only">{content}</div>;
-  }
-  return (
-    <Button
-      variant="outline"
-      // LTR-168: Button is nowrap by default; a long Job name must wrap inside the row, not run off the card.
-      className="h-auto w-full justify-start gap-3 whitespace-normal p-4 text-left font-normal"
-      disabled={disabled}
-      onClick={onSelect}
-    >
-      {content}
-    </Button>
-  );
+  return <div className="card flex items-start gap-3 text-left" data-testid="job-read-only">{content}</div>;
 }
