@@ -40,7 +40,7 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
     await expect(page).toHaveURL(/\/admin/);
     await page.goto('/admin/setup/workflow');
     await expect(page.getByRole('heading', { name: 'Shop workflow' })).toBeVisible();
-    await expect(page.getByText('Manager, no assignment')).toBeVisible();
+    await expect(page.getByText('Safety (Quality Check) takes it from the queue')).toBeVisible();
     await expect(page.getByLabel('Default owner for Quality Check')).toHaveCount(0);
 
     await page.getByLabel('Default owner for PM A Service').selectOption({ label: 'Daniel PM' });

@@ -117,7 +117,7 @@ export function QualityCheckPage() {
                           </Button>
                         </>
                       ) : (
-                        <Button className="flex-1" variant="outline" disabled={busy !== null || !!takenByOther} onClick={() => void run(item, 'take')}>
+                        <Button className="flex-1" disabled={busy !== null || !!takenByOther} onClick={() => void run(item, 'take')}>
                           {t.take}
                         </Button>
                       )}
@@ -155,7 +155,7 @@ export function QualityCheckPage() {
         returnFocusRef={returnTriggerRef}
       >
         <p className="mb-3 text-sm text-shop-muted">{t.returnHint}</p>
-        <Label className="mb-2 block" htmlFor="qc-return-note">{t.returnTruck}</Label>
+        <Label className="mb-2 block" htmlFor="qc-return-note">{t.returnNoteLabel}</Label>
         <Textarea
           id="qc-return-note"
           value={note}
@@ -166,7 +166,7 @@ export function QualityCheckPage() {
         {noteError ? <InlineAlert className="mt-2">{noteError}</InlineAlert> : null}
         <div className="mt-4 flex gap-2">
           <Button variant="outline" className="flex-1" disabled={busy !== null} onClick={() => setReturning(null)}>
-            {messages.closeDialog}
+            {messages.cancelAction}
           </Button>
           <Button
             className="flex-1"

@@ -272,6 +272,7 @@ type Copy = {
     returnTruck: string;
     returnTitle: (truckNumber: string) => string;
     returnHint: string;
+    returnNoteLabel: string;
     returnPlaceholder: string;
     returnNoteRequired: string;
     returnConfirm: string;
@@ -537,6 +538,7 @@ const copy: Record<ShopLocale, Copy> = {
       returnTruck: 'Return',
       returnTitle: (truckNumber) => `Return Truck ${truckNumber}`,
       returnHint: 'What did you find? The Manager will see it and add the work.',
+      returnNoteLabel: 'What you found',
       returnPlaceholder: 'Leak in the rear brake hose',
       returnNoteRequired: 'Say what you found first.',
       returnConfirm: 'Return truck',
@@ -788,10 +790,10 @@ const copy: Record<ShopLocale, Copy> = {
     },
     qc: {
       title: 'Quality Check',
-      subtitle: 'Camiones listos para revisar',
+      subtitle: 'Unidades listas para revisar',
       pending: (count) => `Por revisar · ${count}`,
       returned: (count) => `Devueltos · esperan al Manager · ${count}`,
-      empty: 'No hay camiones esperando Quality Check.',
+      empty: 'No hay unidades esperando Quality Check.',
       noneReturned: 'Nada devuelto.',
       readySince: (when) => `listo ${when}`,
       doneBy: (names) => `Trabajo de ${names}`,
@@ -800,16 +802,17 @@ const copy: Record<ShopLocale, Copy> = {
       take: 'Tomar',
       approve: 'Aprobar',
       returnTruck: 'Devolver',
-      returnTitle: (truckNumber) => `Devolver Truck ${truckNumber}`,
+      returnTitle: (truckNumber) => `Devolver unidad ${truckNumber}`,
       returnHint: '¿Qué encontraste? El Manager lo va a ver y agregará el trabajo.',
+      returnNoteLabel: 'Qué encontraste',
       returnPlaceholder: 'Fuga en la manguera del freno trasero',
       returnNoteRequired: 'Primero escribe qué encontraste.',
-      returnConfirm: 'Devolver camión',
+      returnConfirm: 'Devolver unidad',
       returnedNote: (note, who) => `“${note}” · ${who}`,
       waitingForManager: 'Espera al Manager',
-      approved: (truckNumber) => `Truck ${truckNumber} aprobado`,
-      returnedToast: (truckNumber) => `Truck ${truckNumber} devuelto al Manager`,
-      takenToast: (truckNumber) => `Truck ${truckNumber} es tuyo`,
+      approved: (truckNumber) => `Unidad ${truckNumber} aprobada`,
+      returnedToast: (truckNumber) => `Unidad ${truckNumber} devuelta al Manager`,
+      takenToast: (truckNumber) => `Unidad ${truckNumber} es tuya`,
       loadError: 'No se pudo cargar la lista de Quality Check.',
     },
   },
