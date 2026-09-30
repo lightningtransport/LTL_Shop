@@ -72,7 +72,7 @@ puede borrar en la limpieza (§3).
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
 Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → recorrido de
-pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ hechos; sigue W12) → los de §1b
+pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ ~~W12~~ hechos; sigue W14) → los de §1b
 (LTR-179). El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
 **Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
@@ -161,7 +161,7 @@ empezando por W1 (el que reportó el dueño).
 | W9 | C | Manager | Setup → Shop workflow: la fila de Quality Check dice "Manager, sin asignación". Desde D19 el dueño es Safety. | `admin-messages.ts:43, 785` |
 | W10 | E | Manager | El subtítulo del Work Order dice "Work Order WO-005 · Inspection" (categoría legacy). Sobra. | `admin-work-order-detail.tsx` |
 | ~~W11~~ | C | Mecánico | ~~"Completados" solo listaba Work Orders cerrados~~ — **hecho** (2026-09-30): lista los Jobs que el mecánico completó, en Work Orders abiertos o cerrados. | `mechanic-completed-page.tsx`, `lib/my-completed-jobs.ts` |
-| W12 | C | Mecánico | Detalle del Work Order: la única forma de completar un Job es tocar la tarjeta (sin botón visible; el botón no tiene nombre accesible). "Reportar bloqueo" sí es botón. Falta un botón "Completar" a la par. | `app/work-orders/[id]` (vista mecánico) |
+| ~~W12~~ | C | Mecánico | ~~Sin botón "Completar" visible en el detalle~~ — **hecho** (2026-09-30): cada Job mío es una tarjeta con "Completar Job" (primario) y "Reportar bloqueo" al lado. | `app/work-orders/[id]/detail-client.tsx` |
 | W13 | E | Mecánico | Diálogo "Reportar bloqueo": el texto de ayuda ("Selecciona un motivo…") queda debajo de los botones y detrás del botón flotante. | diálogo de bloqueo |
 | W14 | C | PM | Inicio del PM: con un servicio activo, las cinco tarjetas "Listos para iniciar" siguen con botón primario "Iniciar servicio PM" aunque el texto diga "Termina o pausa WO-009 antes". Deben ir deshabilitadas o secundarias (D2). | `app/page.tsx` ~l. 155 |
 | W15 | C | PM | Detalle del PM: no hay "Pausar" ni notas aunque el inicio pida pausar; el "Guardado" del autoguardado aparece solo al final de los 9 selectores (lejos del campo que se cambió) y no hay botón Guardar, así que el PM no sabe que se guardó hasta bajar; dos tarjetas seguidas tituladas "Servicio de PM". | `components/pm-job-detail.tsx` |

@@ -283,8 +283,9 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     await devLogin(page);
     await expect(page).toHaveURL(/\/mechanic/, { timeout: 15_000 });
     await page.goto(`/work-orders/${jobWoId}`);
-    await expect(page.getByRole('button', { name: /^○ Brake adjustment/ })).toBeEnabled();
-    await expect(page.getByTestId('job-read-only')).toContainText('PM A Service');
+    await expect(page.getByRole('button', { name: 'Complete job: Brake adjustment' })).toBeEnabled();
+    // LTR-189 (W12): my own Job is a read-only card too; the PM job is the one without a Complete button.
+    await expect(page.getByTestId('job-read-only').filter({ hasText: 'PM A Service' })).toHaveCount(1);
     await expect(page.getByRole('button', { name: /PM A Service/ })).toHaveCount(0);
   });
 

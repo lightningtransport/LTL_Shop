@@ -239,8 +239,10 @@ Job…" son enlaces discretos que abren un diálogo donde se escribe el motivo
 Jobs, agrupados por Truck) → abre el WO: ve "Your Jobs" y, en solo lectura,
 "Other work on this truck".
 
-**MECH02 — Trabajar:** Start/Continue abre su sesión → completa cada Job →
-al terminar el último ve "Terminaste tu parte" y su tiempo se detiene.
+**MECH02 — Trabajar:** Start/Continue abre su sesión → cada Job suyo es una
+tarjeta con dos botones debajo, **Completar Job** (primario) y **Reportar
+bloqueo** (LTR-189 W12) → al terminar el último ve "Terminaste tu parte" y su
+tiempo se detiene.
 
 **MECH03 — Bloqueo:** reporta un bloqueo en uno de sus Jobs → si no le queda
 otro Job disponible, su tiempo se detiene → solo puede agregar notas → el
