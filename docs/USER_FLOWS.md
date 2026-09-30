@@ -64,8 +64,9 @@ autoservicio, reemplazar un sistema completo de flotas.
 **Función:** crear Work Order.
 
 **Flujo**
-1. Admin → **Work Orders** → **New Work Order** (o desde el Truck, "Create
-   Work Order").
+1. Admin → **Work Orders** → **New Work Order** (o desde el Truck sin Work
+   Order: el siguiente paso ofrece **New Work Order**; antes puede registrar
+   la inspección de llegada).
 2. Elige el **Truck**. Opcional: prioridad y una nota.
 3. **Create**.
 
@@ -113,9 +114,10 @@ hallazgos, cada Job extra queda en el plan con su dueño.
 **Función:** un dueño por Job.
 
 **Flujo**
-1. En el Truck (Work Plan) o en el Work Order, cada Job tiene su selector de
-   mecánico.
-2. Elige, cambia o quita el dueño.
+1. En el Work Order, cada Job tiene su selector de mecánico (tabla
+   `Job · Mecánico · Estado · Acción`).
+2. Elige, cambia o quita el dueño. En el Truck (Work Plan) el selector solo
+   aparece en los Jobs **sin dueño**: es el paso "asignar".
 
 **Resultado:** el equipo del Work Order son los mecánicos que tienen al menos
 un Job. Un Job sin dueño no lo puede hacer nadie.
@@ -139,7 +141,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 2. **Resolve**, con nota opcional.
 
 **Flujo (problema de todo el camión)**
-1. Work Order → **Controls** → **Pause**, con motivo.
+1. Work Order → **Pause** (arriba, junto al título) → el diálogo pide el motivo.
 2. Cuando se resuelve: **Resume**.
 
 **Resultado:** al resolver, el Job vuelve a "Pending". El reloj del mecánico
@@ -193,7 +195,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 
 ### HU-M6 · Cancelar y reabrir (J4, J10)
 
-**Función:** Work Order → **More actions**.
+**Función:** Work Order → menú **…** (arriba, junto a Pause): Cancel Work Order, Reopen, Return to Service. Cancelar o reabrir un Job: el **…** de su fila en la tabla de Jobs.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|

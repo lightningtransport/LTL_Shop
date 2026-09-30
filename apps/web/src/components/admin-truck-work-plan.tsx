@@ -35,6 +35,7 @@ type Feedback = { kind: 'success' | 'error'; message: string };
 
 const JOB_ROW_GRID = 'lg:grid-cols-[minmax(0,1fr)_13rem_7.5rem]';
 
+
 /**
  * The Truck Work Plan card: readiness tracker (with the D14 inspection), the "Add work" form (D6) and
  * the read-only Jobs summary. LTR-174: assigning, reassigning and completing owned Jobs happens on the
@@ -164,6 +165,56 @@ export function AdminTruckWorkPlan({
     }
   }
 
+  // LTR-174: one row per Job under its step (Job · Mechanic · Status). The Truck assigns only Jobs with no
+  // owner (the `assign` Next step); the rest is done on the Work Order. QC has no picker (Safety takes it, D19).
+  function renderJobRows(jobs: TruckWorkPlanDto['jobs']) {
+    if (!jobs.length) return null;
+    return (
+      <ul className="mt-2 space-y-2 border-l-2 border-border pl-3">
+        {jobs.map((job) => {
+          const canAssignHere = canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic === null && job.lane !== 'quality_check';
+          return (
+            <li key={job.id} className={`grid gap-2 lg:items-center lg:gap-3 ${JOB_ROW_GRID}`}>
+              <div className="flex min-w-0 items-start justify-between gap-3 lg:block">
+                <div className="min-w-0">
+                  <p className="font-medium">{job.displayName}</p>
+                  <p className="text-xs text-muted-foreground">{job.category.name}</p>
+                </div>
+                <div className="shrink-0 lg:hidden">
+                  <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)}>{workPlanJobUiStatusLabel(job.uiStatus, messages)}</Badge>
+                </div>
+              </div>
+              <div className="min-w-0">
+                {job.assignedMechanic === undefined ? null : canAssignHere ? (
+                  <Select
+                    id={`assign-job-${job.id}`}
+                    aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
+                    className="h-9 w-full text-sm"
+                    value=""
+                    disabled={Boolean(pendingAction)}
+                    onChange={(event) => { if (event.target.value) void handleAssign(job.id, event.target.value); }}
+                  >
+                    <option value="">{messages.jobUnassigned}</option>
+                    {(job.lane === 'pm' ? pmMechanics : standardMechanics).map((mechanic) => (
+                      <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
+                    ))}
+                  </Select>
+                ) : (
+                  <p className="text-xs text-muted-foreground" title={job.lane === 'quality_check' ? messages.workPlanQcHint : undefined}>
+                    {job.assignedMechanic ? `${messages.jobAssignee}: ${job.assignedMechanic.name}` : messages.jobUnassigned}
+                  </p>
+                )}
+              </div>
+              <div className="hidden lg:block">
+                <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)}>{workPlanJobUiStatusLabel(job.uiStatus, messages)}</Badge>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
   return (
     <section aria-labelledby="truck-work-plan-title">
       <Card>
@@ -191,6 +242,7 @@ export function AdminTruckWorkPlan({
           <AdminReadinessTracker
             plan={plan}
             messages={messages}
+            renderJobs={(lanes) => renderJobRows(plan.jobs.filter((job) => lanes.includes(job.lane)))}
             inspection={(
               <InspectionPanel
                 plan={plan}
@@ -215,64 +267,6 @@ export function AdminTruckWorkPlan({
               />
             </div>
           ) : null}
-
-          <div>
-            <h3 className="group-title mb-2">{messages.jobsInPlan}</h3>
-            {plan.jobs.length ? (
-              <>
-                <div className={`hidden border-b pb-2 text-xs text-muted-foreground lg:grid lg:gap-3 ${JOB_ROW_GRID}`} aria-hidden="true">
-                  <span>{messages.jobTableJob}</span>
-                  <span>{messages.jobTableMechanic}</span>
-                  <span>{messages.jobTableStatus}</span>
-                </div>
-                <ul className="divide-y" aria-label={messages.jobsInPlan}>
-                  {plan.jobs.map((job) => {
-                    // LTR-174: the Truck assigns only Jobs with no owner (the `assign` Next step); the rest is done on the Work Order.
-                    // LTR-164 (#2) / D19: Quality Check has no picker (Safety takes it).
-                    const canAssignHere = canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic === null && job.lane !== 'quality_check';
-                    return (
-                      <li key={job.id} className={`space-y-2 py-3 text-sm first:pt-0 lg:grid lg:items-center lg:gap-3 lg:space-y-0 ${JOB_ROW_GRID}`}>
-                        <div className="flex items-start justify-between gap-3 lg:contents">
-                          <div className="min-w-0 lg:order-1">
-                            <p className="font-medium">{job.displayName}</p>
-                            <p className="text-xs text-muted-foreground">{job.category.name}</p>
-                          </div>
-                          <div className="shrink-0 lg:order-3">
-                            <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)}>
-                              {workPlanJobUiStatusLabel(job.uiStatus, messages)}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="min-w-0 lg:order-2">
-                          {job.assignedMechanic === undefined ? null : canAssignHere ? (
-                            <Select
-                              id={`assign-job-${job.id}`}
-                              aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
-                              className="h-9 w-full text-sm sm:w-52 lg:w-full"
-                              value=""
-                              disabled={Boolean(pendingAction)}
-                              onChange={(event) => { if (event.target.value) void handleAssign(job.id, event.target.value); }}
-                            >
-                              <option value="">{messages.jobUnassigned}</option>
-                              {(job.lane === 'pm' ? pmMechanics : standardMechanics).map((mechanic) => (
-                                <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
-                              ))}
-                            </Select>
-                          ) : (
-                            <p className="text-xs text-muted-foreground" title={job.lane === 'quality_check' ? messages.workPlanQcHint : undefined}>
-                              {job.assignedMechanic ? `${messages.jobAssignee}: ${job.assignedMechanic.name}` : messages.jobUnassigned}
-                            </p>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
-            ) : (
-              <CompactEmpty>{messages.workPlanNoJobs}</CompactEmpty>
-            )}
-          </div>
 
           {!canAddWork && !canInspect ? (
             <p className="text-sm text-muted-foreground">{messages.permissionReadOnly}</p>

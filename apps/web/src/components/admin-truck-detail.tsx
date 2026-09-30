@@ -109,15 +109,19 @@ function TruckDetailBody({
       badges={(
         <>
           {/* LTR-51 (#14): a truck back in service with no Work Order is not "Not Ready". */}
-          {workPlan.readiness !== 'ready' && !workPlan.workOrder && data.operationalStatus === TruckOperationalStatus.IN_SERVICE ? (
-            <Badge variant="secondary">{messages.operationalStatusInService}</Badge>
-          ) : (
-            <Badge variant={workPlan.readiness === 'ready' ? 'success' : 'warning'}>
-              {workPlan.readiness === 'ready' ? messages.workPlanReady : messages.workPlanNotReady}
+          {!workPlan.workOrder && workPlan.readiness !== 'ready' ? (
+            <Badge variant="secondary">
+              {data.operationalStatus === TruckOperationalStatus.IN_SERVICE ? messages.operationalStatusInService : messages.noOpenWorkOrder}
             </Badge>
+          ) : (
+            <>
+              <Badge variant={workPlan.readiness === 'ready' ? 'success' : 'warning'}>
+                {workPlan.readiness === 'ready' ? messages.workPlanReady : messages.workPlanNotReady}
+              </Badge>
+              {/* The phase is only a badge in the header (SYSTEM.md §6), and only once there is a Work Order. */}
+              <Badge variant="outline">{workPlanPhaseLabel(workPlan.phase, messages)}</Badge>
+            </>
           )}
-          {/* The phase is only a badge in the header (SYSTEM.md §6). */}
-          <Badge variant="outline">{workPlanPhaseLabel(workPlan.phase, messages)}</Badge>
         </>
       )}
       counts={counts}
