@@ -14,7 +14,8 @@ import { Button, CompactEmpty, JobStatusBadge, Modal, Select } from './ui';
 type Job = AdminWorkOrderDetailDto['jobs'][number];
 type Mechanic = { id: string; name: string };
 
-const ROW_GRID = 'lg:grid-cols-[minmax(0,1fr)_13rem_7.5rem_auto]';
+// Fixed columns on desktop so every row lines up: Job (grows) · Mechanic · Status · Action.
+const ROW_GRID = 'lg:grid-cols-[minmax(0,1fr)_13rem_7rem_13rem]';
 
 /**
  * LTR-174: the Jobs of a Work Order as one compact operational table — Job · Mechanic · Status · Action.
@@ -83,13 +84,14 @@ export function AdminJobTable({
               .replace('{parts}', String(data.pmService.partsCount))
             : null;
           return (
-            <li key={job.id} className={`space-y-2 py-3 first:pt-0 lg:grid lg:items-center lg:gap-3 lg:space-y-0 ${ROW_GRID}`} data-testid="admin-wo-job-row">
-              <div className="flex items-start justify-between gap-3 lg:contents">
-                <div className="min-w-0 lg:order-1">
+            <li key={job.id} className={`grid gap-2 py-3 first:pt-0 lg:items-center lg:gap-3 ${ROW_GRID}`} data-testid="admin-wo-job-row">
+              {/* Job */}
+              <div className="flex min-w-0 items-start justify-between gap-3 lg:block">
+                <div className="min-w-0">
                   <p className={job.status === 'cancelled' ? 'font-medium text-muted-foreground line-through' : 'font-medium'}>{job.displayName}</p>
                   <p className="text-xs text-muted-foreground">{job.category.name}</p>
                   {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
-                  {/* LTR-145: the PM job is finished from the PM service, so the hint sits with the Job, not in a row of its own. */}
+                  {/* LTR-145: the PM job is finished from the PM service, so the hint sits with the Job. */}
                   {canEdit && isPmJob && !isTerminal ? <p className="mt-1 text-xs text-muted-foreground">{messages.pmJobCompletedFromPmService}</p> : null}
                   {isPmJob && job.startedAt && !isTerminal ? (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -101,60 +103,63 @@ export function AdminJobTable({
                   {isPmJob && job.status === 'completed' && pmSummary ? <p className="mt-1 text-xs text-muted-foreground">{pmSummary}</p> : null}
                   {job.completionNotes ? <p className="mt-1 whitespace-pre-wrap text-sm">{messages.jobCompletionNotes}: {job.completionNotes}</p> : null}
                 </div>
-                <div className="shrink-0 lg:order-3">
+                {/* Phones: the status sits next to the name; desktop has its own column below. */}
+                <div className="shrink-0 lg:hidden">
                   <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:contents">
-                <div className="min-w-0 text-sm lg:order-2">
-                  <MechanicCell
-                    job={job}
-                    messages={messages}
-                    editable={canEdit && !isQualityCheck}
-                    disabled={pending}
-                    mechanics={withCurrentAssignee(isPmJob ? pmMechanics : assignableMechanics, job.assignedMechanic)}
-                    onAssign={onAssign}
-                  />
-                </div>
-                {canEdit || menuItems.length ? (
-                  // One line on desktop: the PM variant select and the row menu never wrap under each other.
-                  <div className="flex flex-wrap items-center gap-2 lg:order-4 lg:flex-nowrap lg:justify-end">
-                    {canEdit ? (
-                      isPmJob ? (
-                        <PmServiceSelect
-                          job={job}
-                          messages={messages}
-                          disabled={pending}
-                          onChange={(catalogJobId) => onPmServiceChange(job.id, catalogJobId)}
-                        />
-                      ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          // LTR-164 (#2) / D15 / D19: primary only on Quality Check (the Manager's fallback for Safety).
-                          variant={isQualityCheck ? 'default' : 'outline'}
-                          disabled={pending}
-                          onClick={() => onComplete(job.id)}
-                        >
-                          {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.completeJobAction}
-                        </Button>
-                      )
-                    ) : null}
-                    {menuItems.length ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-9"
-                        aria-label={fillPlaceholders(messages.jobRowActions, { job: job.displayName })}
-                        disabled={pending}
-                        onClick={() => setMenuJobId(job.id)}
-                      >
-                        <MoreHorizontal aria-hidden="true" className="size-5" />
-                      </Button>
-                    ) : null}
-                  </div>
+              {/* Mechanic */}
+              <div className="min-w-0 text-sm">
+                <MechanicCell
+                  job={job}
+                  messages={messages}
+                  editable={canEdit && !isQualityCheck}
+                  disabled={pending}
+                  mechanics={withCurrentAssignee(isPmJob ? pmMechanics : assignableMechanics, job.assignedMechanic)}
+                  onAssign={onAssign}
+                />
+              </div>
+              {/* Status (desktop column) */}
+              <div className="hidden lg:block">
+                <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
+              </div>
+              {/* Action: always the same width; the menu keeps its place even when there is no primary action. */}
+              <div className="flex items-center gap-2 lg:justify-end">
+                {canEdit ? (
+                  isPmJob ? (
+                    <PmServiceSelect
+                      job={job}
+                      messages={messages}
+                      disabled={pending}
+                      onChange={(catalogJobId) => onPmServiceChange(job.id, catalogJobId)}
+                    />
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full sm:w-auto lg:w-[9.5rem]"
+                      // LTR-164 (#2) / D15 / D19: primary only on Quality Check (the Manager's fallback for Safety).
+                      variant={isQualityCheck ? 'default' : 'outline'}
+                      disabled={pending}
+                      onClick={() => onComplete(job.id)}
+                    >
+                      {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.completeJobAction}
+                    </Button>
+                  )
                 ) : null}
+                {menuItems.length ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-9 shrink-0"
+                    aria-label={fillPlaceholders(messages.jobRowActions, { job: job.displayName })}
+                    disabled={pending}
+                    onClick={() => setMenuJobId(job.id)}
+                  >
+                    <MoreHorizontal aria-hidden="true" className="size-5" />
+                  </Button>
+                ) : <span aria-hidden="true" className="hidden size-9 shrink-0 lg:block" />}
               </div>
             </li>
           );
@@ -200,7 +205,7 @@ function MechanicCell({
     return (
       <Select
         aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
-        className="h-9 w-full text-sm sm:w-52 lg:w-full"
+        className="h-9 w-full text-sm"
         value={job.assignedMechanic?.id ?? ''}
         disabled={disabled}
         onChange={(event) => { if (event.target.value !== (job.assignedMechanic?.id ?? '')) onAssign(job.id, event.target.value); }}
@@ -240,7 +245,7 @@ function PmServiceSelect({ job, messages, disabled, onChange }: {
     <Select
       aria-label={messages.pmServiceVariant}
       title={messages.pmJobCompletedFromPmService}
-      className="h-9 w-auto max-w-[11rem]"
+      className="h-9 w-full sm:w-auto lg:w-[9.5rem]"
       value={job.catalogJobId ?? ''}
       disabled={disabled}
       onChange={(event) => { if (event.target.value && event.target.value !== job.catalogJobId) onChange(event.target.value); }}

@@ -266,10 +266,9 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await page.goto(`/admin/trucks/${truckId}`);
 
     await expect(page.getByRole('heading', { name: 'Work Plan' }).first()).toBeVisible();
-    await expect(page.getByText('Not Ready — 0 remaining')).toBeVisible();
-    await expect(page.getByText('Inspection is not finished yet.')).toBeVisible();
-    // LTR-174: the readiness tracker lists Inspection, PM, Alignment, Detailing, Quality Check and Close Work Order.
-    await expect(page.getByRole('heading', { name: 'Readiness' })).toBeVisible();
+    // LTR-174: without a Work Order only the arrival inspection exists; the readiness rows come with the Work Order.
+    await expect(page.getByRole('heading', { name: 'Readiness' })).toHaveCount(0);
+    await expect(page.getByText('Not Ready — 0 remaining')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Start assessment' })).toHaveCount(0);
     await expect(page.getByLabel('Outcome: Inspection')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
@@ -281,9 +280,10 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await page.getByRole('button', { name: 'Add to Work Plan' }).click();
 
     await expect(page.getByText('Work Plan updated.').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Readiness' })).toBeVisible();
     const planList = page.getByRole('list', { name: 'Jobs in this Work Order' });
     await expect(planList.getByText('Brake Inspection')).toBeVisible();
-    await expect(planList.getByText('Pending')).toBeVisible();
+    await expect(planList.getByText('Pending').first()).toBeVisible();
     await expect(page.getByText('Not Ready — 1 remaining')).toBeVisible();
     await expect(page.getByText('Open Jobs still need to be completed.')).toBeVisible();
     await expect(page.getByRole('link', { name: /Open Work Order: WO-WP1/ })).toBeVisible();
