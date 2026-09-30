@@ -449,7 +449,7 @@ una historia:
 
 | Historia | Hallazgo |
 |---|---|
-| HU-M3 (asignar y completar Jobs) | W1 tarjeta "Jobs" sin jerarquía; W2 "Completar" visible antes de tiempo |
+| HU-M3 (asignar y completar Jobs) | ~~W1 tarjeta "Jobs" sin jerarquía~~ ✅ (2026-09-30); W2 "Completar" visible antes de tiempo |
 | HU-M1 (ver el taller) | W3 panel repite atención y siguiente paso; W4/W5/W6 lista de Trucks |
 | HU-ME1 (ver lo que me toca) | W11 "Completados" no muestra los Jobs que terminé |
 | HU-ME2 (trabajar y terminar) | W12 no hay botón "Completar" visible |

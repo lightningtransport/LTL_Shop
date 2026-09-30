@@ -227,7 +227,11 @@ en [`USER_FLOWS.md`](USER_FLOWS.md).
 
 Además el Manager puede cancelar el WO o un Job (con motivo), reabrir
 (admin), cambiar la prioridad (las notas solo se agregan) y corregir tiempos
-(admin).
+(admin). En la tarjeta "Jobs" cada Job pendiente muestra una fila de acciones
+(Marcar completado —primario solo en Quality Check—, Asignar / Quitar
+asignación, o el selector de servicio en el PM); "Cancelar Job…" y "Reabrir
+Job…" son enlaces discretos que abren un diálogo donde se escribe el motivo
+(LTR-189, W1).
 
 ### Mecánico Standard
 
