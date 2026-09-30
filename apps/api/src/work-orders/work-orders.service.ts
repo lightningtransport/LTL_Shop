@@ -540,6 +540,10 @@ export class WorkOrdersService {
   async reportBlocker(user: AuthUser, id: string, raw: unknown) {
     const parsed = reportBlockerSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    // LTR-185: "Returned by Safety" is written only by the Quality Check workspace.
+    if (parsed.data.reason === BlockerReason.QUALITY_CHECK_FAILED) {
+      throw new BadRequestException({ code: 'BLOCKER_REASON_NOT_ALLOWED', message: 'That reason is reserved for Safety.' });
+    }
     if (parsed.data.reason === BlockerReason.OTHER && !parsed.data.notes?.trim()) {
       throw new BadRequestException('Notes are required when reason is Other');
     }

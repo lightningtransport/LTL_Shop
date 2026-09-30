@@ -18,6 +18,8 @@ export const USERS = {
   detailing: 'anthony@lightning.local',
   general: 'alejandro-2@lightning.local',
   spare: 'john@lightning.local',
+  safety: 'safety-1@lightning.local',
+  safety2: 'safety-2@lightning.local',
 } as const;
 
 export type Lane = 'inspection' | 'shop_work' | 'pm' | 'alignment' | 'detailing' | 'quality_check';

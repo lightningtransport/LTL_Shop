@@ -8,6 +8,7 @@ import { useSWRConfig } from 'swr';
 import {
   AppCapability,
   BlockerReason,
+  MECHANIC_BLOCKER_REASONS,
   MechanicMode,
   PauseReason,
   type WorkOrderDetailDto,
@@ -588,7 +589,7 @@ export default function WorkOrderDetailPage() {
           >
             <option value="">{messages.selectOption}</option>
             {/* LTR-155 / D12: mechanic reasons only (no Break, End of Shift, other Work Order, Truck Unavailable). */}
-            {Object.values(BlockerReason).map((r) => (
+            {MECHANIC_BLOCKER_REASONS.map((r) => (
               <option key={r} value={r}>
                 {messages.pauseReason[r as unknown as PauseReason]}
               </option>

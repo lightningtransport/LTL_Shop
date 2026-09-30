@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { PauseReason } from '@ltl-shop/shared';
+import { BlockerReason, PauseReason } from '@ltl-shop/shared';
 import {
   parseShopLocale,
   shopLocaleChangeEvent,
@@ -251,7 +251,34 @@ type Copy = {
   priority: Record<string, string>;
   jobStatus: Record<string, string>;
   status: Record<string, string>;
-  pauseReason: Record<PauseReason, string>;
+  pauseReason: Record<PauseReason | BlockerReason.QUALITY_CHECK_FAILED, string>;
+  /** LTR-185 / D19: the Safety workspace. */
+  qc: {
+    title: string;
+    subtitle: string;
+    pending: (count: number) => string;
+    returned: (count: number) => string;
+    empty: string;
+    noneReturned: string;
+    readySince: (when: string) => string;
+    doneBy: (names: string) => string;
+    takenByMe: string;
+    takenBy: (name: string) => string;
+    take: string;
+    approve: string;
+    returnTruck: string;
+    returnTitle: (truckNumber: string) => string;
+    returnHint: string;
+    returnPlaceholder: string;
+    returnNoteRequired: string;
+    returnConfirm: string;
+    returnedNote: (note: string, who: string) => string;
+    waitingForManager: string;
+    approved: (truckNumber: string) => string;
+    returnedToast: (truckNumber: string) => string;
+    takenToast: (truckNumber: string) => string;
+    loadError: string;
+  };
 };
 
 const copy: Record<ShopLocale, Copy> = {
@@ -486,6 +513,33 @@ const copy: Record<ShopLocale, Copy> = {
       [PauseReason.BREAK]: 'Break',
       [PauseReason.END_OF_SHIFT]: 'End of Shift',
       [PauseReason.OTHER]: 'Other',
+      [BlockerReason.QUALITY_CHECK_FAILED]: 'Returned by Safety',
+    },
+    qc: {
+      title: 'Quality Check',
+      subtitle: 'Trucks ready for your review',
+      pending: (count) => `To review · ${count}`,
+      returned: (count) => `Returned · waiting for the Manager · ${count}`,
+      empty: 'No trucks are waiting for Quality Check.',
+      noneReturned: 'Nothing returned.',
+      readySince: (when) => `ready ${when}`,
+      doneBy: (names) => `Work by ${names}`,
+      takenByMe: 'Taken by me',
+      takenBy: (name) => `Taken by ${name}`,
+      take: 'Take',
+      approve: 'Approve',
+      returnTruck: 'Return',
+      returnTitle: (truckNumber) => `Return Truck ${truckNumber}`,
+      returnHint: 'What did you find? The Manager will see it and add the work.',
+      returnPlaceholder: 'Leak in the rear brake hose',
+      returnNoteRequired: 'Say what you found first.',
+      returnConfirm: 'Return truck',
+      returnedNote: (note, who) => `“${note}” · ${who}`,
+      waitingForManager: 'Waiting for the Manager',
+      approved: (truckNumber) => `Truck ${truckNumber} approved`,
+      returnedToast: (truckNumber) => `Truck ${truckNumber} returned to the Manager`,
+      takenToast: (truckNumber) => `Truck ${truckNumber} is yours`,
+      loadError: 'The Quality Check list could not be loaded.',
     },
   },
   es: {
@@ -721,6 +775,33 @@ const copy: Record<ShopLocale, Copy> = {
       [PauseReason.BREAK]: 'Descanso',
       [PauseReason.END_OF_SHIFT]: 'Fin del turno',
       [PauseReason.OTHER]: 'Otro',
+      [BlockerReason.QUALITY_CHECK_FAILED]: 'Devuelto por Safety',
+    },
+    qc: {
+      title: 'Quality Check',
+      subtitle: 'Camiones listos para revisar',
+      pending: (count) => `Por revisar · ${count}`,
+      returned: (count) => `Devueltos · esperan al Manager · ${count}`,
+      empty: 'No hay camiones esperando Quality Check.',
+      noneReturned: 'Nada devuelto.',
+      readySince: (when) => `listo ${when}`,
+      doneBy: (names) => `Trabajo de ${names}`,
+      takenByMe: 'Lo tomé yo',
+      takenBy: (name) => `Lo tomó ${name}`,
+      take: 'Tomar',
+      approve: 'Aprobar',
+      returnTruck: 'Devolver',
+      returnTitle: (truckNumber) => `Devolver Truck ${truckNumber}`,
+      returnHint: '¿Qué encontraste? El Manager lo va a ver y agregará el trabajo.',
+      returnPlaceholder: 'Fuga en la manguera del freno trasero',
+      returnNoteRequired: 'Primero escribe qué encontraste.',
+      returnConfirm: 'Devolver camión',
+      returnedNote: (note, who) => `“${note}” · ${who}`,
+      waitingForManager: 'Espera al Manager',
+      approved: (truckNumber) => `Truck ${truckNumber} aprobado`,
+      returnedToast: (truckNumber) => `Truck ${truckNumber} devuelto al Manager`,
+      takenToast: (truckNumber) => `Truck ${truckNumber} es tuyo`,
+      loadError: 'No se pudo cargar la lista de Quality Check.',
     },
   },
 };

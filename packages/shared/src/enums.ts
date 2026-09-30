@@ -10,6 +10,8 @@ export enum AppCapability {
   MECHANIC_PM = 'mechanic.pm',
   YARD_OPERATIONS_MANAGE = 'yard.operations.manage',
   WORK_ORDERS_MANAGE = 'work_orders.manage',
+  /** LTR-185 / D19: Safety takes, approves or returns the Quality Check. */
+  QUALITY_CHECK_PERFORM = 'quality_check.perform',
 }
 
 export enum MechanicMode {
@@ -77,7 +79,14 @@ export enum BlockerReason {
   WAITING_FOR_BAY = 'waiting_for_bay',
   WAITING_FOR_DRIVER = 'waiting_for_driver',
   OTHER = 'other',
+  /** LTR-185 / D19: Safety returned the truck from Quality Check with a note. Not offered to mechanics. */
+  QUALITY_CHECK_FAILED = 'quality_check_failed',
 }
+
+/** LTR-185: the reasons a mechanic can pick; `quality_check_failed` is only written by Safety. */
+export const MECHANIC_BLOCKER_REASONS: BlockerReason[] = Object.values(BlockerReason).filter(
+  (reason) => reason !== BlockerReason.QUALITY_CHECK_FAILED,
+);
 
 export const BLOCKER_REASON_LABELS: Record<BlockerReason, string> = {
   [BlockerReason.WAITING_FOR_PARTS]: 'Waiting for Parts',
@@ -87,6 +96,7 @@ export const BLOCKER_REASON_LABELS: Record<BlockerReason, string> = {
   [BlockerReason.WAITING_FOR_BAY]: 'Waiting for Bay',
   [BlockerReason.WAITING_FOR_DRIVER]: 'Waiting for Driver',
   [BlockerReason.OTHER]: 'Other',
+  [BlockerReason.QUALITY_CHECK_FAILED]: 'Returned by Safety',
 };
 
 export const BLOCKER_REASON_LABELS_ES: Record<BlockerReason, string> = {
@@ -97,6 +107,7 @@ export const BLOCKER_REASON_LABELS_ES: Record<BlockerReason, string> = {
   [BlockerReason.WAITING_FOR_BAY]: 'En espera de bahía',
   [BlockerReason.WAITING_FOR_DRIVER]: 'En espera del conductor',
   [BlockerReason.OTHER]: 'Otro',
+  [BlockerReason.QUALITY_CHECK_FAILED]: 'Devuelto por Safety',
 };
 
 export enum ActivityEventType {

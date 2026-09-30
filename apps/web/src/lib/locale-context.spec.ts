@@ -190,6 +190,7 @@ describe('shop locale catalogs', () => {
       break: 'Break',
       end_of_shift: 'End of Shift',
       other: 'Other',
+      quality_check_failed: 'Returned by Safety',
     });
     expect(getShopCopy('es').pauseReason).toEqual({
       waiting_for_parts: 'En espera de piezas',
@@ -203,6 +204,7 @@ describe('shop locale catalogs', () => {
       break: 'Descanso',
       end_of_shift: 'Fin del turno',
       other: 'Otro',
+      quality_check_failed: 'Devuelto por Safety',
     });
     for (const reason of Object.keys(getShopCopy('en').pauseReason) as Array<keyof ReturnType<typeof getShopCopy>['pauseReason']>) {
       expect(getShopCopy('en').pauseReason[reason]).toBe(adminPauseReasonLabel(reason, getAdminMessages('en')));

@@ -448,6 +448,7 @@ const messages = {
     waitingForEquipment: 'Waiting for Equipment / Tool',
     waitingForBay: 'Waiting for Bay',
     waitingForDriver: 'Waiting for Driver',
+    returnedBySafety: 'Returned by Safety',
     truckUnavailable: 'Truck Unavailable',
     workingOnAnotherWorkOrder: 'Working on Another Work Order',
     breakPause: 'Break',
@@ -486,6 +487,7 @@ const messages = {
     capabilityAdmin: 'Shop Admin',
     capabilityYard: 'Yard',
     capabilityWorkOrders: 'Work Orders',
+    capabilitySafety: 'Safety (Quality Check)',
     mechanicNotFound: 'This mechanic could not be found.',
     backToMechanics: 'Back to Mechanics',
     completedJobsCount: 'Completed Jobs',
@@ -1186,6 +1188,7 @@ const messages = {
     waitingForEquipment: 'En espera de equipo o herramienta',
     waitingForBay: 'En espera de bahía',
     waitingForDriver: 'En espera del conductor',
+    returnedBySafety: 'Devuelto por Safety',
     truckUnavailable: 'Truck no disponible',
     workingOnAnotherWorkOrder: 'Trabajando en otro Work Order',
     breakPause: 'Descanso',
@@ -1223,6 +1226,7 @@ const messages = {
     capabilityAdmin: 'Shop Admin',
     capabilityYard: 'Patio',
     capabilityWorkOrders: 'Work Orders',
+    capabilitySafety: 'Safety (Quality Check)',
     mechanicNotFound: 'No se encontró este mecánico.',
     backToMechanics: 'Volver a Mecánicos',
     completedJobsCount: 'Jobs completados',
@@ -1493,6 +1497,7 @@ export const ADMIN_PAUSE_REASON_KEY = {
   break: 'breakPause',
   end_of_shift: 'endOfShift',
   other: 'otherPause',
+  quality_check_failed: 'returnedBySafety',
 } as const;
 
 export function adminPauseReasonLabel(reason: string, catalog: AdminMessages): string {
@@ -1507,6 +1512,7 @@ const ADMIN_CAPABILITY_KEY = {
   'admin.access': 'capabilityAdmin',
   'yard.operations.manage': 'capabilityYard',
   'work_orders.manage': 'capabilityWorkOrders',
+  'quality_check.perform': 'capabilitySafety',
 } as const;
 
 /** LTR-169: "Standard", "PM", "Shop Admin"… instead of keys like mechanic.standard. Unknown keys pass through. */

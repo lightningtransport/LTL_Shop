@@ -20,6 +20,7 @@ enum AppCapability {
   MECHANIC_PM            @map("mechanic.pm")
   YARD_OPERATIONS_MANAGE @map("yard.operations.manage")
   WORK_ORDERS_MANAGE     @map("work_orders.manage")
+  QUALITY_CHECK_PERFORM  @map("quality_check.perform")
 }
 
 enum WorkOrderStatus {
@@ -69,6 +70,7 @@ enum BlockerReason {
   other
 
   @@map("blocker_reason")
+  quality_check_failed
 }
 
 enum CatalogStatus {

@@ -10,7 +10,8 @@ export type RosterCapability =
   | 'MECHANIC_STANDARD'
   | 'MECHANIC_PM'
   | 'YARD_OPERATIONS_MANAGE'
-  | 'WORK_ORDERS_MANAGE';
+  | 'WORK_ORDERS_MANAGE'
+  | 'QUALITY_CHECK_PERFORM';
 
 export interface RosterTarget {
   email: string;

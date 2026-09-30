@@ -23,11 +23,11 @@ La columna **Fila** es el número de la prueba que lo comprueba
 (`apps/api/test-real/`, resultados en `apps/api/test-real/results/matrix.md`).
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
-**Resultado de la auditoría:** 56 comprobaciones · 53 funcionan · 1 falla
-(la regla de Safety, por construir) · 2 no aplican.
+**Resultado de la auditoría:** 61 comprobaciones · 59 funcionan · 0 fallan
+· 2 no aplican.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
-respuestas confirman lo construido y 7 muestran huecos (sección 8).
+respuestas confirman lo construido y 7 muestran huecos (sección 7).
 
 ---
 
@@ -126,7 +126,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Cambia el dueño de un Job que ya está en curso | El reloj del mecánico anterior se detiene y ya no puede completarlo | ✅ | E8 |
 | Asigna un mecánico PM a un Job normal, o al revés | No deja | ✅ | E9 |
 | Asigna a una cuenta de administrador o a un usuario inactivo | No deja | ✅ | E9 |
-| Asigna un dueño a Quality Check | Hoy acepta a cualquiera. Decidido (D19): solo una persona de Safety | 🔲 LTR-185 | E9b |
+| Asigna un dueño a Quality Check | Solo acepta a alguien de Safety | ✅ | E9b |
 | Queda un Job sin dueño | Aparece en "Needs attention" y en el siguiente paso | ✅ | A3, A20 |
 
 ### HU-M4 · Destrabar un camión (J3)
@@ -160,24 +160,26 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 
 **Función:** Quality Check, Close, Return to Service.
 
-> **No coincide con el taller.** Aquí el Quality Check lo marca el Manager.
-> En el taller lo hace **personal de Safety** (ver HU-QC1, LTR-185). Mientras
-> se decide, el Manager lo marca cuando Safety le avisa.
+> El Quality Check lo hace **Safety** desde su pantalla (HU-QC1). El Manager
+> conserva "Mark QC complete" como respaldo.
 >
 > **Return to Service se hace cuando el camión sale del patio**, horas o días
 > después de cerrar. Por eso un camión pasa tiempo en Ready to Go, y los
 > defectos #4 y #7 pegan más de lo que parecía.
 
 **Flujo**
-1. Cuando solo falta Quality Check, el siguiente paso ofrece **Mark QC
-   complete**.
+1. Cuando solo falta Quality Check, el camión aparece en la lista de Safety.
+   El siguiente paso del Manager dice "esperando Quality Check" y ofrece
+   **Mark QC complete** como respaldo.
 2. Después ofrece **Close Work Order**. El camión pasa a **Ready to Go**.
 3. **Return to Service** (motivo opcional), desde el Truck, el Work Order o
    la tarjeta del Yard. El camión sale del tablero.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
-| Flujo normal (algún mecánico hizo Start) | QC → Close → Ready to Go → Return to Service | ✅ | A13a, A14 |
+| Flujo normal | Safety aprueba → Close → Ready to Go → Return to Service | ✅ | QC2, A14 |
+| Safety devuelve el camión | Aparece en Needs attention como "Devuelto por Safety", con la nota; el Manager agrega el trabajo y resuelve; el camión vuelve a Safety | ✅ | QC3 |
+| Safety no puede entrar; el Manager marca QC él mismo | Funciona como respaldo | ✅ | QC5, A13a |
 | Cierra con Jobs pendientes | No deja | ✅ | A13a |
 | Completa Jobs él mismo desde Admin | Los completa (menos el PM, que se termina desde su pantalla) | ✅ | A12 |
 | **Solo trabajó el mecánico PM y el Manager completó el resto** (caso WO-009) | Se cierra igual que cualquier otro | ✅ | A13b |
@@ -341,7 +343,35 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 
 ---
 
-## 5. Admin
+## 5. Safety
+
+### HU-QC1 · Aprobar o devolver un camión (J11)
+
+**Quién:** las dos personas de Safety, con cuenta propia.
+
+**Flujo**
+1. Entra y cae en **Quality Check**: la lista de camiones donde todo lo demás
+   ya está hecho, con qué se hizo y quién.
+2. **Tomar** un camión.
+3. Revisa. **Aprobar**, o **Devolver** escribiendo qué encontró.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| Un camión todavía tiene trabajo pendiente | No aparece en la lista; tampoco se puede tomar | ✅ | QC1 |
+| Los dos toman el mismo camión | Gana el primero; el otro lo ve como tomado | ✅ | QC2 |
+| Aprueba | El QC queda a su nombre; el Manager ve "listo para cerrar". Safety no registra tiempo | ✅ | QC2 |
+| Devuelve sin decir qué encontró | No deja | ✅ | QC3 |
+| Devuelve con nota | Pasa a "Devueltos"; el Manager lo ve como bloqueo "Devuelto por Safety" con la nota; nadie lo puede tomar hasta que el Manager resuelva | ✅ | QC3 |
+| El Manager agrega el trabajo y los mecánicos lo terminan | El camión vuelve a la lista, para cualquiera de los dos | ✅ | QC3 |
+| Intenta cerrar, asignar, inspeccionar o entrar a Admin | No puede | ✅ | QC4 |
+| Un mecánico o el Manager intenta usar la lista de Safety | No pueden | ✅ | QC4 |
+| Un mecánico elige el motivo "Devuelto por Safety" | No se le ofrece y la API lo rechaza | ✅ | QC4 |
+| El Manager asigna el QC a alguien de Safety | Puede; esa persona lo ve como suyo | ✅ | QC5, E9b |
+| Idioma | La pantalla existe en inglés y español | 👁 revisado 2026-09-29 | — |
+
+---
+
+## 6. Admin
 
 ### HU-A1 · Corregir sin romper el historial (J10)
 
@@ -363,33 +393,14 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 
 ---
 
-## 6. Historias que el taller necesita y no están construidas
+## 7. Historias que el taller necesita y no están construidas
 
 Salen del cuestionario de operación. Ninguna se construye hasta que su
 decisión esté escrita en [`DECISIONS.md`](DECISIONS.md).
 
-### HU-QC1 · Aprobar un camión (J11) — 🔲 LTR-185 · decidido (D19), por construir
+### HU-QC1 · Aprobar un camión (J11) — ✅ construido (D19)
 
-**Quién:** personal de Safety (dos personas), con cuenta propia.
-
-**Hoy:** no tienen cuenta ni pantalla. El Quality Check lo marca el Manager
-cuando Safety le avisa.
-
-**Flujo decidido**
-1. Safety entra y ve **los camiones que esperan Quality Check** (todo lo
-   demás ya está hecho).
-2. Cualquiera de los dos toma un camión y lo revisa.
-3. **Aprueba** → el camión pasa a "listo para cerrar" y el Manager cierra.
-   O **devuelve con una nota** de lo que encontró → el Manager agrega el
-   trabajo desde el Truck y el camión vuelve a Safety cuando esté hecho.
-
-| ¿Qué pasa si…? | Respuesta decidida |
-|---|---|
-| Los dos de Safety toman el mismo camión | Lo toma el primero; el otro lo ve como tomado |
-| Safety devuelve el camión | Queda registrado quién y por qué; el Manager lo ve en "Needs attention" |
-| Safety quiere ver un camión que no está listo para QC | No aparece en su lista |
-| Safety intenta hacer otra cosa (cerrar, asignar, inspeccionar) | No puede |
-| Safety también revisa la llegada | No; la inspección de llegada sigue siendo del Manager |
+Ahora vive en la sección 5, "Safety".
 
 ### HU-ME5 · Mi tiempo se detiene solo si lo olvido (J7) — 🔲 LTR-186
 
@@ -420,7 +431,7 @@ día 1.
 
 ---
 
-## 7. Lo que solo se comprueba en pantalla
+## 8. Lo que solo se comprueba en pantalla
 
 No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 (`GO_LIVE_CHECKLIST_ES.md`).
@@ -433,7 +444,7 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 
 ---
 
-## 8. Resumen de lo que falla y de lo que falta
+## 9. Resumen de lo que falla y de lo que falta
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
@@ -447,7 +458,6 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 
 | # | Qué falta | A quién le pega | Ticket |
 |---|---|---|---|
-| G1 | El Quality Check lo hace Safety, no el Manager | Safety, Manager | LTR-185 |
 | G2 | El tiempo olvidado debe detenerse solo | Mecánico, costeo | LTR-186 |
 | G5 | El Manager da de alta camiones y mecánicos | Manager | LTR-187 |
 | G7 | El reloj corre en un solo camión a la vez (D21) | Mecánico, costeo | LTR-188 |
