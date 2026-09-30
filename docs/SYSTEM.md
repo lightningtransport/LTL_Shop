@@ -348,7 +348,8 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista). |
 
 **Detalle Admin del WO** (`/admin/work-orders/[id]`), de arriba abajo:
-- **Confirm completion** arriba cuando el WO está listo para cerrar; una barra
+- **Confirm completion** arriba cuando el WO está listo para cerrar (antes la
+  tarjeta no existe: el paso siguiente dice qué falta, LTR-189 W2); una barra
   fija aparece solo al pasar ese botón con el scroll.
 - Jobs con dueño, bloqueos reportados (Resolve), notas y pedidos de trabajo
   (marcar atendido).
