@@ -8,7 +8,6 @@ const user = {
   name: 'Alex Mechanic',
   role: 'mechanic',
   active: true,
-  pmAuthorized: false,
   capabilities: ['mechanic.standard'],
 };
 
@@ -488,7 +487,6 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       id: 'daniel-1',
       email: 'daniel@lightning.local',
       name: 'Daniel',
-      pmAuthorized: true,
       capabilities: ['mechanic.pm'],
     };
     await page.setViewportSize({ width: 390, height: 844 });
@@ -525,15 +523,22 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
   });
 
   test('Daniel PM flow autosaves the service and requires mileage plus a part to finish', async ({ page }) => {
-    const daniel = { ...user, id: 'daniel-1', email: 'daniel@lightning.local', name: 'Daniel', pmAuthorized: true, capabilities: ['mechanic.pm'] };
+    const daniel = { ...user, id: 'daniel-1', email: 'daniel@lightning.local', name: 'Daniel', capabilities: ['mechanic.pm'] };
+    // LTR-180: no legacy PM Work Order; Daniel works the started PM job of the truck Work Order (LTR-146).
+    const pmJobId = 'job-pm';
+    const pmJob = { id: pmJobId, displayName: 'PM A Service', status: 'to_do', startedAt: '2026-01-01T12:01:00.000Z', completedAt: null, assignedMechanic: { id: daniel.id, name: daniel.name } };
     const pmWorkOrder = {
       ...workOrder,
-      primaryCategoryId: 'cat-pm',
-      primaryCategoryName: 'PM',
       status: 'in_progress',
       jobsCompleted: 0,
-      jobsTotal: 0,
-      jobs: [],
+      jobsTotal: 1,
+      pmJob,
+      jobs: [{
+        id: pmJobId, workOrderId: workOrder.id, catalogJobId: 'cj-pm-a', categoryId: 'cat-pm',
+        category: { id: 'cat-pm', name: 'PM' }, displayName: 'PM A Service', customDescription: null,
+        status: 'to_do', completedAt: null, completedById: null, completionNotes: null,
+        assignedMechanic: { id: daniel.id, name: daniel.name }, startedAt: pmJob.startedAt,
+      }],
     };
     const pmDetails = {
       workOrderId: pmWorkOrder.id,
@@ -566,9 +571,9 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
       }
       await json(route, { ...pmDetails, observedMileage: savedMileage, selections: savedSelections });
     });
-    await page.route(`**/api/work-orders/${workOrder.id}/complete`, async (route) => json(route, {
-      ...pmWorkOrder, status: 'completed', notes: null, createdById: daniel.id,
-      completedAt: '2026-01-01T14:00:00.000Z', totalActiveLaborMs: 1, totalWaitingMs: 0,
+    await page.route(`**/api/work-orders/${workOrder.id}/jobs/${pmJobId}/complete`, async (route) => json(route, {
+      ...pmWorkOrder, pmJob: { ...pmJob, status: 'completed', completedAt: '2026-01-01T14:00:00.000Z' }, notes: null, createdById: daniel.id,
+      completedAt: null, totalActiveLaborMs: 1, totalWaitingMs: 0,
       mechanics: [], currentPause: null, truck, version: 2,
     }));
     await devLogin(page);
@@ -576,7 +581,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     // Let the login redirect settle before navigating to the fixture detail.
     await page.waitForTimeout(200);
     await page.goto(`/work-orders/${workOrder.id}`);
-    await expect(page.getByRole('heading', { name: 'Truck Information' })).toBeVisible();
+    await expect(page.getByText('Truck Information', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'PM Service' })).toBeVisible();
     await expect(page.getByText('Jobs To Do', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Your Jobs', { exact: true })).toHaveCount(0);
@@ -862,7 +867,6 @@ test.describe('My Assigned Work presentation', () => {
       id: 'daniel-1',
       email: 'daniel@lightning.local',
       name: 'Daniel',
-      pmAuthorized: true,
       capabilities: ['mechanic.pm'],
     };
     await page.route('**/api/**', async (route) => {

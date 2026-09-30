@@ -7,7 +7,6 @@ const manager = {
   name: 'Shop Manager',
   role: 'manager',
   active: true,
-  pmAuthorized: false,
   capabilities: ['admin.access', 'yard.operations.manage', 'work_orders.manage'],
 };
 

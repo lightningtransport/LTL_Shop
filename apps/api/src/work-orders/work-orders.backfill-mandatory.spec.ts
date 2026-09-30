@@ -4,7 +4,7 @@ import type { AuthUser } from '../auth/auth.guard';
 import { WorkOrdersService } from './work-orders.service';
 
 const manager: AuthUser = {
-  id: 'mgr', email: 'm@l.local', name: 'Manager', role: 'manager', active: true, pmAuthorized: false,
+  id: 'mgr', email: 'm@l.local', name: 'Manager', role: 'manager', active: true,
   capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
 };
 

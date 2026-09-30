@@ -20,7 +20,6 @@ import {
   PauseReason as SharedPauseReason,
   Priority as SharedPriority,
   WorkOrderStatus as SharedWorkOrderStatus,
-  adminAddWorkOrderMechanicSchema,
   adminAssignJobSchema,
   adminUnassignJobSchema,
   adminCancelWorkOrderSchema,
@@ -35,7 +34,6 @@ import {
   adminHistoryQuerySchema,
   adminMechanicCursorSchema,
   adminMechanicsQuerySchema,
-  adminRemoveWorkOrderMechanicSchema,
   adminTruckCursorSchema,
   adminTrucksQuerySchema,
   adminWorkOrderCursorSchema,
@@ -301,12 +299,6 @@ export class AdminService {
     return this.detail(workOrderId);
   }
 
-  async addJob(user: AuthUser, workOrderId: string, body: unknown): Promise<AdminWorkOrderDetailDto> {
-    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
-    await this.workOrders.addJobByManager(user, workOrderId, body);
-    return this.detail(workOrderId);
-  }
-
   async dashboard(): Promise<AdminDashboardDto> {
     const openWhere: Prisma.WorkOrderWhereInput = {
       status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] },
@@ -553,166 +545,6 @@ export class AdminService {
       priority: undefined,
       createdBefore: undefined,
     });
-  }
-
-  async addMechanic(user: AuthUser, workOrderId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
-    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
-    const parsed = adminAddWorkOrderMechanicSchema.safeParse(raw);
-    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
-    const input = parsed.data;
-    const operation = 'admin_add_mechanic';
-    const payloadHash = idempotencyFingerprint({
-      workOrderId,
-      mechanicId: input.mechanicId,
-      expectedVersion: input.expectedVersion,
-    });
-    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
-    if (existing) return existing;
-
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
-        if (!initial) throw new NotFoundException('Work Order not found');
-        await lockTruckMutation(tx, initial.truckId);
-        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
-        if (replay) return replay;
-        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
-        if (!wo) throw new NotFoundException('Work Order not found');
-        this.assertAssignableOpenWorkOrder(wo);
-        if (wo.version !== input.expectedVersion) {
-          throw this.versionConflict('Work Order was updated. Refresh and try again.');
-        }
-        const mechanic = await tx.user.findFirst({
-          where: {
-            id: input.mechanicId,
-            active: true,
-            capabilities: { some: { capability: AppCapability.MECHANIC_STANDARD } },
-          },
-          select: { id: true, name: true },
-        });
-        if (!mechanic) throw new BadRequestException('One or more selected mechanics cannot perform standard work');
-        const assignment = await tx.mechanicAssignment.findUnique({
-          where: { workOrderId_mechanicId: { workOrderId, mechanicId: input.mechanicId } },
-        });
-        if (assignment && !assignment.removedAt) {
-          throw new ConflictException({
-            code: 'ALREADY_ASSIGNED',
-            message: 'This mechanic is already assigned to the Work Order.',
-          });
-        }
-        if (assignment) {
-          await tx.mechanicAssignment.update({
-            where: { id: assignment.id },
-            data: { removedAt: null, addedAt: new Date(), addedById: user.id },
-          });
-        } else {
-          await tx.mechanicAssignment.create({
-            data: { workOrderId, mechanicId: input.mechanicId, addedById: user.id },
-          });
-        }
-        const incremented = await tx.workOrder.updateMany({
-          where: { id: workOrderId, version: input.expectedVersion },
-          data: { version: { increment: 1 } },
-        });
-        if (incremented.count !== 1) {
-          throw this.versionConflict('Work Order was updated. Refresh and try again.');
-        }
-        await this.activity.log(tx, {
-          workOrderId,
-          eventType: SharedActivityEventType.MECHANIC_ADDED,
-          entityType: 'mechanic_assignment',
-          entityId: input.mechanicId,
-          userId: user.id,
-          previousValue: assignment ? { mechanicId: input.mechanicId, removedAt: assignment.removedAt?.toISOString() ?? null } : null,
-          newValue: { mechanicId: input.mechanicId, mechanicName: mechanic.name },
-        });
-        return this.persistWorkOrderMutation(tx, {
-          idempotencyKey: input.idempotencyKey,
-          workOrderId,
-          operation,
-          payloadHash,
-          actorId: user.id,
-        });
-      });
-    } catch (error) {
-      if (this.isUniqueViolation(error)) {
-        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
-        if (replay) return replay;
-      }
-      throw error;
-    }
-  }
-
-  async removeMechanic(user: AuthUser, workOrderId: string, mechanicId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
-    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
-    if (!isUuid(mechanicId)) throw new BadRequestException('Invalid Mechanic id');
-    const parsed = adminRemoveWorkOrderMechanicSchema.safeParse(raw);
-    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
-    const input = parsed.data;
-    const operation = 'admin_remove_mechanic';
-    const payloadHash = idempotencyFingerprint({
-      workOrderId,
-      mechanicId,
-      expectedVersion: input.expectedVersion,
-    });
-    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
-    if (existing) return existing;
-
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
-        if (!initial) throw new NotFoundException('Work Order not found');
-        await lockTruckMutation(tx, initial.truckId);
-        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
-        if (replay) return replay;
-        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
-        if (!wo) throw new NotFoundException('Work Order not found');
-        this.assertAssignableOpenWorkOrder(wo);
-        if (wo.version !== input.expectedVersion) {
-          throw this.versionConflict('Work Order was updated. Refresh and try again.');
-        }
-        const assignment = await tx.mechanicAssignment.findUnique({
-          where: { workOrderId_mechanicId: { workOrderId, mechanicId } },
-        });
-        if (!assignment || assignment.removedAt) throw new NotFoundException('Mechanic assignment not found');
-        if (wo.mechanics.filter((item) => !item.removedAt).length <= 1) {
-          throw new BadRequestException('A Work Order must keep at least one assigned mechanic');
-        }
-        await tx.mechanicAssignment.update({
-          where: { id: assignment.id },
-          data: { removedAt: new Date() },
-        });
-        const incremented = await tx.workOrder.updateMany({
-          where: { id: workOrderId, version: input.expectedVersion },
-          data: { version: { increment: 1 } },
-        });
-        if (incremented.count !== 1) {
-          throw this.versionConflict('Work Order was updated. Refresh and try again.');
-        }
-        await this.activity.log(tx, {
-          workOrderId,
-          eventType: SharedActivityEventType.MECHANIC_REMOVED,
-          entityType: 'mechanic_assignment',
-          entityId: mechanicId,
-          userId: user.id,
-          previousValue: { mechanicId, mechanicName: wo.mechanics.find((item) => item.mechanic.id === mechanicId)?.mechanic.name ?? null },
-          newValue: { mechanicId, removed: true },
-        });
-        return this.persistWorkOrderMutation(tx, {
-          idempotencyKey: input.idempotencyKey,
-          workOrderId,
-          operation,
-          payloadHash,
-          actorId: user.id,
-        });
-      });
-    } catch (error) {
-      if (this.isUniqueViolation(error)) {
-        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
-        if (replay) return replay;
-      }
-      throw error;
-    }
   }
 
   // Manager-first ownership: assign a specific Job to a mechanic. Additive and
@@ -1878,15 +1710,6 @@ export class AdminService {
         if (replay) return replay;
       }
       throw error;
-    }
-  }
-
-  private assertAssignableOpenWorkOrder(wo: DetailRow) {
-    if (wo.primaryCategory.name === 'PM') {
-      throw new BadRequestException('PM Work Orders can only be assigned to their creator');
-    }
-    if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
-      throw new BadRequestException('Cannot change assignments on a closed Work Order');
     }
   }
 

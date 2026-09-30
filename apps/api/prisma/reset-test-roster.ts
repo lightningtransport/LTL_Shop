@@ -45,7 +45,6 @@ async function loadUsers(): Promise<RosterUser[]> {
     name: row.name,
     role: row.role,
     active: row.active,
-    pmAuthorized: row.pmAuthorized,
     capabilities: row.capabilities.map((item) => item.capability as RosterCapability),
     openWork: [
       ...row.assignedJobs.map((job) => `${job.workOrder.displayId}: job "${job.displayName}" assigned`),
@@ -95,7 +94,7 @@ async function main() {
   await prisma.$transaction(async (tx) => {
     const ids = new Map<string, string>();
     for (const target of TEST_ROSTER) {
-      const data = { name: target.name, role: target.role, active: true, pmAuthorized: target.capabilities.includes('MECHANIC_PM') };
+      const data = { name: target.name, role: target.role, active: true };
       const saved = await tx.user.upsert({ where: { email: target.email }, update: data, create: { email: target.email, ...data } });
       ids.set(target.email, saved.id);
     }

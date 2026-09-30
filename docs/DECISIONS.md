@@ -22,7 +22,7 @@ no se borra.
 | **D8** | Las notas solo se agregan; existe "Pedir trabajo" (`work_request`). | 2026-09 | LTR-126 |
 | **D10** | El millaje de PM no puede ser menor que el del Truck; un salto de más de 50 000 pide confirmación. | 2026-09 | — |
 | **D11** | **Cada Job tiene un dueño.** El equipo del WO se deriva de los dueños. Un Job sin dueño no lo ejecuta nadie. `mechanic_assignments` queda como caché. | 2026-09-27 | LTR-154 |
-| **D12** | **El mecánico no pausa; solo bloquea.** Pausar el WO es del Manager. Excepción: los WOs de PM legacy conservan su pausa. | 2026-09-27 | LTR-155 |
+| **D12** | **El mecánico no pausa; solo bloquea.** Pausar el WO es del Manager. (La excepción para WOs de PM legacy se retiró en LTR-180: ya no hay pausa del mecánico.) | 2026-09-27 | LTR-155, LTR-180 |
 | **D13** | **Crear WO = solo Truck** (+ prioridad y nota). Nace con PM, Alignment, Detailing y QC. | 2026-09-27 | LTR-157 |
 | **D14** | **La inspección la hace el Manager en el Truck:** "No issues found" o "Issues found". Con hallazgos agrega Jobs y elige quién los hace. | 2026-09-27 | LTR-158, #204 |
 | **D15** | **Responsable por defecto por paso** (p. ej. PM → Daniel, Detailing → Anthony). La parte de QC ("lo completa el Manager") queda **reemplazada por D19**. | 2026-09-27 | LTR-157 |
@@ -44,7 +44,7 @@ cambia aquí antes de construir encima.
 | PM y "Create PM service" | Cualquier `mechanic.pm` que arranca el PM se lo autoasigna (respetando D2). |
 | WOs abiertos antes de D13 | Sin backfill automático; botón "Agregar pasos que faltan" en el Truck. |
 | Listas | "Truck 922 · 5 Jobs · Next: PM" en lugar de la categoría. |
-| PM legacy (D12) | Conserva su pausa. |
+| PM legacy (D12) | Sin pausa propia desde LTR-180; solo el Manager lo cierra o cancela. |
 
 ## Reemplazadas
 

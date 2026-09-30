@@ -25,9 +25,9 @@ test.describe('LTR-171 installed app', () => {
     await page.goto('/login');
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', /apple-touch-icon\.png/);
     expect(await page.locator('meta[name="theme-color"]').evaluateAll((metas) =>
+      // LTR-179 (U5): one tag, no media query; BrowserThemeColor follows the app theme, not the system.
       metas.map((meta) => `${meta.getAttribute('media')} ${meta.getAttribute('content')}`))).toEqual([
-      '(prefers-color-scheme: light) #ffffff',
-      '(prefers-color-scheme: dark) #0f172a',
+      'null #ffffff',
     ]);
     expect((await request.get('/apple-touch-icon.png')).ok()).toBe(true);
   });

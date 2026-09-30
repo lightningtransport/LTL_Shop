@@ -1,15 +1,32 @@
 import { expect, test, type Page, type Route } from './support/test';
 import { devLogin } from './support/dev-login';
 
-const daniel = { id: '00000000-0000-0000-0000-000000000101', email: 'daniel@lightning.local', name: 'Daniel', role: 'mechanic', active: true, pmAuthorized: true, capabilities: ['mechanic.pm'] };
+const daniel = { id: '00000000-0000-0000-0000-000000000101', email: 'daniel@lightning.local', name: 'Daniel', role: 'mechanic', active: true, capabilities: ['mechanic.pm'] };
 const truck = { id: '00000000-0000-0000-0000-000000000201', truckNumber: '905', make: 'Freightliner', model: 'Cascadia', year: 2022, mileage: 120000, company: 'Lightning Transport', owner: 'Lightning Transport' };
 const pmCategory = { id: '00000000-0000-0000-0000-000000000301', name: 'PM', sortOrder: 1 };
 const oilPartCategory = '00000000-0000-0000-0000-000000000401';
 const oilPart = '00000000-0000-0000-0000-000000000402';
 const woId = '00000000-0000-0000-0000-000000000501';
+const danielPmJobId = '00000000-0000-0000-0000-000000000521';
 
-const summary = (status = 'in_progress') => ({ id: woId, displayId: 'WO-PM-1001', truckId: truck.id, truckNumber: truck.truckNumber, primaryCategoryId: pmCategory.id, primaryCategoryName: 'PM', status, priority: 'normal', jobsCompleted: 0, jobsTotal: 0, jobs: [], currentPauseReason: null, createdAt: '2026-01-01T12:00:00.000Z', startedAt: '2026-01-01T12:01:00.000Z' });
-const detail = (status = 'in_progress') => ({ ...summary(status), notes: '', createdById: daniel.id, completedAt: null, totalActiveLaborMs: 1, totalWaitingMs: 0, mechanics: [], currentPause: null, truck, version: 1 });
+// LTR-180: the legacy PM Work Order is gone. Daniel's PM lives as the started PM job
+// of the truck Work Order (LTR-146), so these fixtures describe that shape.
+const danielPmJob = (status = 'in_progress') => ({
+  id: danielPmJobId, displayName: 'PM A Service', status: status === 'completed' ? 'completed' : 'to_do',
+  startedAt: '2026-01-01T12:01:00.000Z', completedAt: status === 'completed' ? '2026-01-01T13:00:00.000Z' : null,
+  assignedMechanic: { id: daniel.id, name: daniel.name },
+});
+const summary = (status = 'in_progress') => ({ id: woId, displayId: 'WO-1001', truckId: truck.id, truckNumber: truck.truckNumber, primaryCategoryId: 'cat-inspection', primaryCategoryName: 'Inspection', status, priority: 'normal', jobsCompleted: 0, jobsTotal: 1, jobs: [], currentPauseReason: null, createdAt: '2026-01-01T12:00:00.000Z', startedAt: '2026-01-01T12:01:00.000Z', pmJob: danielPmJob(status) });
+const detail = (status = 'in_progress') => ({
+  ...summary(status), notes: '', createdById: 'mgr', completedAt: null, totalActiveLaborMs: 1, totalWaitingMs: 0, laborRunning: true,
+  mechanics: [], currentPause: null, truck, version: 1, noteEntries: [],
+  jobs: [{
+    id: danielPmJobId, workOrderId: woId, catalogJobId: 'cj-pm-a', categoryId: pmCategory.id,
+    category: { id: pmCategory.id, name: 'PM' }, displayName: 'PM A Service', customDescription: null,
+    status: danielPmJob(status).status, completedAt: danielPmJob(status).completedAt, completedById: null, completionNotes: null,
+    assignedMechanic: { id: daniel.id, name: daniel.name }, startedAt: '2026-01-01T12:01:00.000Z',
+  }],
+});
 const pm = (lastCompletedPm: unknown = null, selections: unknown[] = [], observedMileage: number | null = null) => ({ workOrderId: woId, canEdit: true, currentTruckMileage: truck.mileage, observedMileage, lastCompletedPm, categories: [{ id: oilPartCategory, slug: 'oil-filter-1-unit', name: 'Oil Filter 1 Unit', parts: [{ id: oilPart, partNumber: '2234788', displayName: 'PETERBILT Oil Filter Paccar' }] }, { id: '00000000-0000-0000-0000-000000000403', slug: 'fuel-filter', name: 'Fuel Filter', parts: [] }], selections });
 
 async function fulfill(route: Route, body: unknown, status = 200) {
@@ -27,7 +44,7 @@ async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
     const path = new URL(request.url()).pathname;
     if (path === '/api/auth/me') return fulfill(route, { user: daniel });
     if (path === '/api/catalog/categories') return fulfill(route, [pmCategory]);
-    if (path === '/api/mechanics') return fulfill(route, [{ ...daniel, role: 'mechanic' }]);
+    if (path.startsWith('/api/catalog/')) return fulfill(route, []);
     if (path === '/api/trucks') return fulfill(route, [truck]);
     if (path === `/api/trucks/${truck.id}/open-work-order`) return fulfill(route, { exists: false });
     if (path === '/api/work-orders' && request.method() === 'GET') return fulfill(route, { created: [], active: created ? [summary()] : [], paused: [], completed: [] });
@@ -52,7 +69,7 @@ async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
       return fulfill(route, { ...detail(), noteEntries });
     }
     if (path === `/api/work-orders/${woId}`) return fulfill(route, detail());
-    if (path === `/api/work-orders/${woId}/complete`) return fulfill(route, detail('completed'));
+    if (path === `/api/work-orders/${woId}/jobs/${danielPmJobId}/complete`) return fulfill(route, detail('completed'));
     return route.continue();
   });
   return { setLast: (next: unknown) => { currentLast = next; } };
@@ -85,6 +102,7 @@ test.describe('Daniel PM workflow', () => {
     });
     await login(page);
     await chooseTruckAndCreate(page);
+    // The PM mechanic lands on the PM job of the truck Work Order (LTR-146).
     await expect(page.getByRole('heading', { name: /PM Service/i })).toBeVisible();
     await expect(page.getByText('Jobs To Do')).toHaveCount(0);
     await expect.poll(() => createBody).toMatchObject({ primaryCategoryId: pmCategory.id, mechanicIds: [], jobs: [] });
@@ -256,7 +274,7 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
   }
 
   test('Standard mechanic does not get "Complete job" on the PM job of someone else (LTR-151)', async ({ page }) => {
-    const standard = { ...daniel, id: '00000000-0000-0000-0000-000000000102', email: 'mechanic@lightning.local', name: 'Alejandro', pmAuthorized: false, capabilities: ['mechanic.standard'] };
+    const standard = { ...daniel, id: '00000000-0000-0000-0000-000000000102', email: 'mechanic@lightning.local', name: 'Alejandro', capabilities: ['mechanic.standard'] };
     const brakesJobId = '00000000-0000-0000-0000-000000000912';
     const assignee = { id: daniel.id, name: daniel.name };
     const detail = {

@@ -11,7 +11,6 @@ function user(capabilities: AppCapability[], id = 'user-1'): AuthUser {
     name: id,
     role: 'admin',
     active: true,
-    pmAuthorized: capabilities.includes(AppCapability.MECHANIC_PM),
     capabilities,
     supabaseAuthId: null,
   };

@@ -11,7 +11,7 @@ const idempotencyKey = '00000000-0000-4000-8000-000000000023';
 
 const manager = {
   id: 'manager-id', email: 'manager@lightning.local', name: 'Shop Manager', role: 'manager' as const, active: true,
-  pmAuthorized: false, capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
+ capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
 };
 
 const body = { categoryId, displayName: 'Air Leak', expectedVersion: 2, idempotencyKey };

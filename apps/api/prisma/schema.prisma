@@ -141,7 +141,6 @@ model User {
   name            String
   role            UserRole @default(mechanic)
   active          Boolean  @default(true)
-  pmAuthorized    Boolean  @default(false) @map("pm_authorized")
   supabaseAuthId  String?  @unique @map("supabase_auth_id")
   ninoxExternalId String?  @map("ninox_external_id")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -356,7 +355,7 @@ model CatalogJob {
 // LTR-156 / D15, D16: the mandatory steps every new truck Work Order starts with,
 // each mapped to a catalog Job and an optional default mechanic. step_key values
 // come from ShopWorkflowStepKey (shared); text keeps the list extensible.
-// Schema only: runtime still reads MANDATORY_WORK_PLAN_JOBS until LTR-157.
+// Runtime source of the mandatory Work Plan steps since LTR-157 (Setup → Shop workflow).
 model ShopWorkflowStep {
   id                String   @id @default(uuid()) @db.Uuid
   stepKey           String   @unique @map("step_key")

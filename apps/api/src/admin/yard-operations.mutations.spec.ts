@@ -17,7 +17,6 @@ const user = {
   name: 'Manager',
   role: 'manager' as const,
   active: true,
-  pmAuthorized: false,
   capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE],
   supabaseAuthId: null,
 };
@@ -140,51 +139,6 @@ describe('Yard Operations readiness mutations', () => {
     })).resolves.toEqual(stored);
     expect(tx.truck.findUnique).not.toHaveBeenCalled();
     expect(tx.truckReadinessAssessment.create).not.toHaveBeenCalled();
-  });
-
-  it('replays a versioned readiness mutation found after waiting for the truck lock', async () => {
-    const stored = { assessment: { id: assessmentId } };
-    const tx = {
-      $queryRaw: vi.fn().mockResolvedValue([]),
-      readinessMutation: { findUnique: vi.fn().mockResolvedValue({
-        operation: 'mark_ready',
-        targetKey: `assessment:${assessmentId}`,
-        payloadHash: idempotencyFingerprint({ assessmentId, expectedVersion: 1 }),
-        actorId: user.id,
-        result: stored,
-      }) },
-      truckReadinessAssessment: { findUnique: vi.fn().mockResolvedValue({ truckId }) },
-    };
-    const prisma = {
-      readinessMutation: { findUnique: vi.fn().mockResolvedValue(null) },
-      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
-    };
-    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
-
-    await expect(service.markReady(user, assessmentId, {
-      expectedVersion: 1,
-      idempotencyKey: '00000000-0000-4000-8000-000000000023',
-    })).resolves.toEqual(stored);
-    expect(tx.truckReadinessAssessment.findUnique).toHaveBeenCalledTimes(1);
-  });
-
-  it('rejects approval while a requirement is unevaluated', async () => {
-    const tx = {
-      truckReadinessAssessment: {
-        findUnique: vi.fn().mockResolvedValue({ ...assessment, requirements, workOrders: [] }),
-      },
-      readinessMutation: { findUnique: vi.fn().mockResolvedValue(null) },
-    };
-    const prisma = {
-      readinessMutation: { findUnique: vi.fn().mockResolvedValue(null) },
-      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
-    };
-    const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
-
-    await expect(service.markReady(user, assessmentId, {
-      expectedVersion: 1,
-      idempotencyKey: '00000000-0000-4000-8000-000000000012',
-    })).rejects.toMatchObject({ response: { code: 'READINESS_NOT_READY' } });
   });
 
   it('rejects reusing a readiness idempotency key for another target or payload', async () => {

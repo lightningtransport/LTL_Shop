@@ -171,12 +171,6 @@ export const adminMutationMetaSchema = z.object({
   reason: z.string().trim().min(1).max(1000).optional(),
 });
 
-export const adminAddWorkOrderMechanicSchema = adminMutationMetaSchema.extend({
-  mechanicId: z.string().uuid(),
-});
-
-export const adminRemoveWorkOrderMechanicSchema = adminMutationMetaSchema;
-
 export const adminAssignJobSchema = adminMutationMetaSchema.extend({
   mechanicId: z.string().uuid(),
 });
@@ -272,12 +266,6 @@ export const updateReadinessRequirementSchema = z.object({
   }
 });
 
-export const markReadinessReadySchema = adminMutationMetaSchema;
-
-export const closeReadinessAssessmentSchema = adminMutationMetaSchema.extend({
-  reason: z.string().trim().min(1).max(1000),
-});
-
 export const createWorkOrderJobSchema = z.object({
   catalogJobId: z.string().uuid().optional(),
   categoryId: z.string().uuid(),
@@ -301,11 +289,6 @@ export const createWorkOrderSchema = z.object({
 });
 
 export const pauseWorkOrderSchema = z.object({
-  reason: z.nativeEnum(PauseReason),
-  notes: z.string().max(1000).optional(),
-});
-
-export const changePauseReasonSchema = z.object({
   reason: z.nativeEnum(PauseReason),
   notes: z.string().max(1000).optional(),
 });
@@ -397,7 +380,6 @@ export const loginSchema = z.object({
 
 export type CreateWorkOrderInput = z.infer<typeof createWorkOrderSchema>;
 export type PauseWorkOrderInput = z.infer<typeof pauseWorkOrderSchema>;
-export type ChangePauseReasonInput = z.infer<typeof changePauseReasonSchema>;
 export type UpdateWorkOrderNotesInput = z.infer<typeof updateWorkOrderNotesSchema>;
 export type AddWorkOrderNoteInput = z.infer<typeof addWorkOrderNoteSchema>;
 export type CompleteJobInput = z.infer<typeof completeJobSchema>;
@@ -415,8 +397,6 @@ export type AdminRepairHistoryQuery = z.infer<typeof adminRepairHistoryQuerySche
 export type AdminYardOperationsQuery = z.infer<typeof adminYardOperationsQuerySchema>;
 export type AdminYardOperationsCursor = z.infer<typeof adminYardOperationsCursorSchema>;
 export type AdminMutationMetaInput = z.infer<typeof adminMutationMetaSchema>;
-export type AdminAddWorkOrderMechanicInput = z.infer<typeof adminAddWorkOrderMechanicSchema>;
-export type AdminRemoveWorkOrderMechanicInput = z.infer<typeof adminRemoveWorkOrderMechanicSchema>;
 export type AdminCancelWorkOrderInput = z.infer<typeof adminCancelWorkOrderSchema>;
 export type AdminCompleteWorkOrderInput = z.infer<typeof adminCompleteWorkOrderSchema>;
 export type AdminReopenWorkOrderInput = z.infer<typeof adminReopenWorkOrderSchema>;
@@ -428,8 +408,6 @@ export type AdminReopenJobInput = z.infer<typeof adminReopenJobSchema>;
 export type AdminReturnToServiceInput = z.infer<typeof adminReturnToServiceSchema>;
 export type StartReadinessAssessmentInput = z.infer<typeof startReadinessAssessmentSchema>;
 export type UpdateReadinessRequirementInput = z.infer<typeof updateReadinessRequirementSchema>;
-export type MarkReadinessReadyInput = z.infer<typeof markReadinessReadySchema>;
-export type CloseReadinessAssessmentInput = z.infer<typeof closeReadinessAssessmentSchema>;
 export type AddWorkPlanJobsInput = z.infer<typeof addWorkPlanJobsSchema>;
 export type RecordWorkPlanInspectionInput = z.infer<typeof recordWorkPlanInspectionSchema>;
 export type AdminCreateMechanicInput = z.infer<typeof adminCreateMechanicSchema>;

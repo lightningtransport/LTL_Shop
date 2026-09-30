@@ -18,7 +18,6 @@ export class UsersService {
         name: true,
         email: true,
         role: true,
-        pmAuthorized: true,
         capabilities: { select: { capability: true } },
       },
     });

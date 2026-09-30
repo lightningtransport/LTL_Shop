@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
@@ -151,34 +150,6 @@ export class AdminController {
     return this.admin.resumeWorkOrder(request.user!, id);
   }
 
-  @Post('work-orders/:id/jobs')
-  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
-  addWorkOrderJob(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
-    return this.admin.addJob(request.user!, id, body);
-  }
-
-  /**
-   * @deprecated LTR-154 / D11: the team is derived from Job assignments; the web no
-   * longer edits it. Kept for deploy skew; remove in a cleanup PR.
-   */
-  @Post('work-orders/:id/mechanics')
-  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
-  addWorkOrderMechanic(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
-    return this.admin.addMechanic(request.user!, id, body);
-  }
-
-  /** @deprecated LTR-154 / D11: see addWorkOrderMechanic. */
-  @Delete('work-orders/:id/mechanics/:mechanicId')
-  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
-  removeWorkOrderMechanic(
-    @Req() request: Request,
-    @Param('id') id: string,
-    @Param('mechanicId') mechanicId: string,
-    @Body() body: unknown,
-  ) {
-    return this.admin.removeMechanic(request.user!, id, mechanicId, body);
-  }
-
   @Post('work-orders/:id/jobs/:jobId/pm-service')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   changePmService(
@@ -319,39 +290,6 @@ export class AdminController {
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
   recordWorkPlanInspection(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.workPlan.recordInspection(request.user!, id, body);
-  }
-
-  /** @deprecated LTR-150: Phase 1 six-gate readiness has no UI; the Work Plan is the only mode. Remove in a cleanup PR. */
-  @Post('trucks/:id/readiness-assessments')
-  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
-  startReadinessAssessment(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
-    return this.yardOperations.startAssessment(request.user!, id, body);
-  }
-
-  /** @deprecated LTR-150: Phase 1 six-gate readiness has no UI; the Work Plan is the only mode. Remove in a cleanup PR. */
-  @Patch('readiness-assessments/:id/requirements/:type')
-  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
-  updateReadinessRequirement(
-    @Req() request: Request,
-    @Param('id') id: string,
-    @Param('type') type: string,
-    @Body() body: unknown,
-  ) {
-    return this.yardOperations.updateRequirement(request.user!, id, type, body);
-  }
-
-  /** @deprecated LTR-150: Phase 1 six-gate readiness has no UI; the Work Plan is the only mode. Remove in a cleanup PR. */
-  @Post('readiness-assessments/:id/mark-ready')
-  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
-  markReadinessReady(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
-    return this.yardOperations.markReady(request.user!, id, body);
-  }
-
-  /** @deprecated LTR-150: Phase 1 six-gate readiness has no UI; the Work Plan is the only mode. Remove in a cleanup PR. */
-  @Post('readiness-assessments/:id/close')
-  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
-  closeReadinessAssessment(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
-    return this.yardOperations.closeAssessment(request.user!, id, body);
   }
 
   @Get('trucks/:id/repair-history')

@@ -20,11 +20,10 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { useShopLocale } from '@/lib/locale-context';
-import { formatMileage, formatShopDateTime, pauseLabel, statusLabel } from '@/lib/format';
+import { formatShopDateTime, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import { isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel, splitMyJobs } from '@/lib/job-assignment';
-import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
-import { shopKeys, useWorkOrder } from '@/lib/shop-data';
+import { useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
   Button,
@@ -41,7 +40,6 @@ import {
   Textarea,
   WorkspaceNav,
 } from '@/components/ui';
-import { PmServiceCard, type PmDraftState } from '@/components/pm-service-card';
 import { PmJobDetail } from '@/components/pm-job-detail';
 import { WorkOrderNotesThread } from '@/components/work-order-notes-thread';
 import { jobCategoriesLine, liveLaborMs, vehicleLine } from '@/lib/work-order-identity';
@@ -176,24 +174,6 @@ export default function WorkOrderDetailPage() {
     );
   }
 
-  if (wo.primaryCategoryName === 'PM') {
-    return (
-      <PmWorkOrderDetail
-        wo={wo}
-        onUpdated={async (updated) => {
-          await mutateWorkOrder(updated, { revalidate: false });
-          void Promise.all([
-            mutateGlobal(isWorkOrderRelatedListKey),
-            mutateGlobal(
-              (key) => typeof key === 'string' && key.includes('/repair-history'),
-            ),
-            mutateGlobal(shopKeys.pmService(wo.id)),
-          ]).catch(() => undefined);
-        }}
-      />
-    );
-  }
-
   const done = wo.jobs.filter((j) => j.status === 'completed');
   // LTR-154 / D11: the mechanic completes only their own Jobs; the rest of the truck's work is read-only.
   const { mine, others, partDone } = splitMyJobs(wo, user?.id ?? '');
@@ -269,8 +249,6 @@ export default function WorkOrderDetailPage() {
       {error && !finishJob && !pauseOpen ? (
         <InlineAlert className="mb-3">{error}</InlineAlert>
       ) : null}
-
-      {wo.primaryCategoryName === 'PM' ? <PmServiceCard workOrderId={wo.id} /> : null}
 
       {(wo.activeBlockers ?? []).length ? (
         // LTR-155 / D17: the mechanic sees each blocked Job and adds notes; only the Manager resolves.
@@ -657,214 +635,6 @@ export default function WorkOrderDetailPage() {
           >
             {busy ? messages.reportingBlocker : messages.reportBlocker}
           </Button>
-        </div>
-      </Modal>
-    </div>
-  );
-}
-
-function PmWorkOrderDetail({
-  wo,
-  onUpdated,
-}: {
-  wo: WorkOrderDetailDto;
-  onUpdated: (updated: WorkOrderDetailDto) => Promise<void>;
-}) {
-  const { messages } = useShopLocale();
-  const { showToast } = useActionToast();
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState<PmDraftState>({
-    ready: false,
-    pending: false,
-    hasError: false,
-    observedMileage: '',
-    selectedParts: 0,
-  });
-  const [finishOpen, setFinishOpen] = useState(false);
-  const [pauseOpen, setPauseOpen] = useState(false);
-  const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
-  const [pauseNotes, setPauseNotes] = useState('');
-  const [changeReason, setChangeReason] = useState<PauseReason | ''>('');
-  const pauseTriggerRef = useRef<HTMLButtonElement>(null);
-
-  async function run(
-    action: () => Promise<WorkOrderDetailDto>,
-    onSuccess?: () => void,
-  ) {
-    setBusy(true);
-    setError(null);
-    try {
-      const updated = await action();
-      await onUpdated(updated);
-      onSuccess?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const mileage = Number(draft.observedMileage);
-  const validMileage =
-    draft.observedMileage.trim() !== '' && Number.isInteger(mileage) && mileage >= 0;
-  const finishBlocked =
-    busy ||
-    !draft.ready ||
-    draft.pending ||
-    draft.hasError ||
-    !validMileage ||
-    draft.selectedParts < 1;
-  const mileageChangesTruck = validMileage && mileage !== wo.truck.mileage;
-
-  return (
-    <div>
-      <WorkspaceNav mode={MechanicMode.PM} />
-      <PageHeader
-        className="mb-6"
-        title={messages.truckTitle(wo.truckNumber)}
-        subtitle={[vehicleLine(wo.truck), `${messages.workOrder} ${wo.displayId}`, messages.status[wo.status] ?? statusLabel(wo.status, messages.status)].filter(Boolean).join(' · ')}
-        backHref="/mechanic/pm"
-      />
-
-      {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
-
-      <section className="card mb-4 space-y-3" aria-labelledby="pm-truck-information">
-        <h2 id="pm-truck-information" className="group-title">{messages.truckInformation}</h2>
-        <TruckInformationFields truck={wo.truck} locale={messages.locale} />
-        <Button asChild variant="secondary" className="w-full">
-          <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
-            {messages.repairHistory}
-          </Link>
-        </Button>
-      </section>
-
-      {wo.status === 'created' ? (
-        <section className="mb-4">
-          <Button
-            className="w-full"
-            disabled={busy}
-            onClick={() =>
-              run(() =>
-                apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
-                  method: 'POST',
-                }),
-              )
-            }
-          >
-            {messages.startWork}
-          </Button>
-        </section>
-      ) : (
-        <PmServiceCard workOrderId={wo.id} onDraftStateChange={setDraft} />
-      )}
-
-      {wo.status === 'waiting_paused' ? (
-        <section className="card mb-4 space-y-3">
-          <Label htmlFor="pm-change-pause-reason">Change Pause Reason</Label>
-          <Select
-              id="pm-change-pause-reason"
-              value={changeReason || wo.currentPauseReason || ''}
-              onChange={(event) => setChangeReason(event.target.value as PauseReason)}
-            >
-              {Object.values(PauseReason).map((reason) => (
-                <option key={reason} value={reason}>{messages.pauseReason[reason]}</option>
-              ))}
-          </Select>
-          <Button
-            variant="secondary"
-            className="w-full"
-            disabled={busy}
-            onClick={() => run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause-reason`, {
-              method: 'POST',
-              body: JSON.stringify({ reason: changeReason || wo.currentPauseReason }),
-            }))}
-          >
-            Update Pause
-          </Button>
-        </section>
-      ) : null}
-
-      <WorkOrderNotesThread wo={wo} onUpdated={onUpdated} />
-
-      {wo.currentPauseReason ? (
-        <p className="mb-3 text-sm font-medium text-warning-foreground">{pauseLabel(wo.currentPauseReason, messages.pauseReason)}</p>
-      ) : null}
-
-      <section className="mb-4 space-y-2" aria-label="PM work actions">
-        {wo.status === 'created' ? (
-          <>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full"
-              disabled
-              aria-describedby="pm-pause-unavailable"
-            >
-              {messages.pauseWorkOrder}
-            </Button>
-            <p id="pm-pause-unavailable" className="text-sm text-muted-foreground">{messages.pauseUnavailableUntilInProgress}</p>
-          </>
-        ) : null}
-        {canOfficiallyPauseWorkOrder(wo.status) ? (
-          <div className="grid grid-cols-2 gap-2">
-            <Button ref={pauseTriggerRef} variant="secondary" disabled={busy} onClick={() => setPauseOpen(true)}>{messages.pauseWorkOrder}</Button>
-            <Button disabled={finishBlocked} onClick={() => setFinishOpen(true)}>{messages.finishWork}</Button>
-          </div>
-        ) : null}
-        {wo.status === 'waiting_paused' ? (
-          <Button className="w-full" disabled={busy} onClick={() => run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/resume`, { method: 'POST' }))}>Resume Work</Button>
-        ) : null}
-        {canOfficiallyPauseWorkOrder(wo.status) && finishBlocked ? (
-          <p className="text-sm text-muted-foreground">Finish Work requires a saved observed mileage and at least one part.</p>
-        ) : null}
-      </section>
-
-      <Modal open={finishOpen} title={messages.finishWork} closeLabel={messages.closeDialog} onClose={() => { if (!busy) setFinishOpen(false); }}>
-        {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
-        <p className="mb-4 text-sm text-muted-foreground">
-          {mileageChangesTruck
-            ? `This will update the truck mileage from ${formatMileage(wo.truck.mileage)} to ${formatMileage(mileage)} and create an audit record.`
-            : 'This will complete the PM service.'}
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" disabled={busy} onClick={() => { if (!busy) setFinishOpen(false); }}>{messages.cancelAction}</Button>
-          <Button disabled={busy} onClick={() => {
-            if (busy) return;
-            void run(
-              () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/complete`, { method: 'POST' }),
-              () => {
-                setFinishOpen(false);
-                showToast('success', messages.pmFinishedSuccess);
-                router.replace('/mechanic/pm', { scroll: true });
-              },
-            );
-          }}>{busy ? messages.finishingWork : messages.finishWork}</Button>
-        </div>
-      </Modal>
-
-      <Modal open={pauseOpen} title={messages.pauseWorkOrder} closeLabel={messages.closeDialog} onClose={() => setPauseOpen(false)} returnFocusRef={pauseTriggerRef}>
-        <Label className="mb-2 block" htmlFor="pm-pause-reason">{messages.pauseReasonLabel}</Label>
-        <div className="mb-3">
-          <Select id="pm-pause-reason" value={pauseReason} onChange={(event) => setPauseReason(event.target.value as PauseReason)}>
-            <option value="">{messages.selectOption}</option>
-            {Object.values(PauseReason).map((reason) => <option key={reason} value={reason}>{messages.pauseReason[reason]}</option>)}
-          </Select>
-        </div>
-        {pauseReason === PauseReason.OTHER ? (
-          <Textarea className="mb-3" placeholder={messages.reasonRequiredForOther} value={pauseNotes} onChange={(event) => setPauseNotes(event.target.value)} />
-        ) : null}
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={() => setPauseOpen(false)}>{messages.cancelAction}</Button>
-          <Button disabled={!canOfficiallyPauseWorkOrder(wo.status) || !pauseReason || busy} onClick={() => {
-            if (!canOfficiallyPauseWorkOrder(wo.status)) return;
-            setPauseOpen(false);
-            void run(() => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/pause`, {
-              method: 'POST',
-              body: JSON.stringify({ reason: pauseReason, notes: pauseNotes || undefined }),
-            }));
-          }}>{messages.pauseWorkOrder}</Button>
         </div>
       </Modal>
     </div>

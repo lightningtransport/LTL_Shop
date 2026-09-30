@@ -14,7 +14,6 @@ import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { pauseLabel, statusLabel } from '@/lib/format';
 import { useSWRConfig } from 'swr';
 import { isMyJob, isMyPartDone, isStandardWorkWaitingOnManager, jobPersonLabel } from '@/lib/job-assignment';
-import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { useShopLocale } from '@/lib/locale-context';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
@@ -378,47 +377,12 @@ function WorkOrderCard({
           />
         ) : mode === 'completed' ? (
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewCompletedWorkAction} wo={wo} variant="secondary" className="flex-1" />
-        ) : mode === 'paused' ? (
-          isPm ? (
-            <>
-              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewDetails} wo={wo} variant="secondary" className="flex-1" />
-              <WorkOrderActionLink href={`/work-orders/${wo.id}?action=resume`} action={messages.resumeWork} wo={wo} className="flex-1" />
-            </>
-          ) : (
-            <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewDetails} wo={wo} className="w-full" />
-          )
-        ) : mode === 'waiting_on_manager' ? (
+        ) : mode === 'paused' || mode === 'waiting_on_manager' ? (
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewDetails} wo={wo} className="w-full" />
         ) : mode === 'created' ? (
-          isPm ? (
-            <div className="flex w-full flex-col gap-2">
-              <StartWorkAction wo={wo} className="w-full" />
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                disabled
-                aria-describedby={`pause-unavailable-${wo.id}`}
-              >
-                {messages.pauseWorkOrder}
-              </Button>
-              <p id={`pause-unavailable-${wo.id}`} className="text-sm text-shop-muted">{messages.pauseUnavailableUntilInProgress}</p>
-            </div>
-          ) : (
-            <StartWorkAction wo={wo} className="flex-1" />
-          )
+          <StartWorkAction wo={wo} className="flex-1" />
         ) : (
-          isPm && canOfficiallyPauseWorkOrder(wo.status) && wo.jobs.some((job) => job.status === 'to_do') ? <>
-              <WorkOrderActionLink href={`/work-orders/${wo.id}?action=pause`} action={messages.pauseWorkOrder} wo={wo} variant="secondary" className="flex-1" />
-              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewWork} wo={wo} className="flex-1" />
-            </> : !isPm && wo.jobs.some((job) => job.status === 'to_do') ? (
-              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewWork} wo={wo} className="w-full" />
-            ) : isPm ? (
-              // LTR-138: this link opens the PM detail; Finish Work lives there.
-              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.continuePmService} wo={wo} className="w-full" />
-            ) : (
-              <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewWork} wo={wo} className="w-full" />
-            )
+          <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewWork} wo={wo} className="w-full" />
         )}
       </div>
     </Card>

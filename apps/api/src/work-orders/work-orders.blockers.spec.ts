@@ -11,7 +11,6 @@ function actor(capabilities: AppCapability[], id = 'mechanic-1'): AuthUser {
     name: id,
     role: 'mechanic',
     active: true,
-    pmAuthorized: capabilities.includes(AppCapability.MECHANIC_PM),
     capabilities,
     supabaseAuthId: null,
   };

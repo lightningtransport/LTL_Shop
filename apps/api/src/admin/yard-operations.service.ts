@@ -27,12 +27,8 @@ import {
   type AdminYardOperationsQuery,
   startReadinessAssessmentSchema,
   updateReadinessRequirementSchema,
-  markReadinessReadySchema,
-  closeReadinessAssessmentSchema,
   type StartReadinessAssessmentInput,
   type UpdateReadinessRequirementInput,
-  type MarkReadinessReadyInput,
-  type CloseReadinessAssessmentInput,
   adminYardOperationsCursorSchema,
   adminYardOperationsQuerySchema,
   isWorkOrderBlocked,
@@ -46,7 +42,6 @@ import type { AuthUser } from '../auth/auth.guard';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import {
-  deriveReadiness,
   isResidualReady,
   READINESS_REQUIREMENT_TYPES,
   toReadinessAssessmentDto,
@@ -498,155 +493,6 @@ export class YardOperationsService {
               result: result as unknown as Prisma.InputJsonValue,
             },
           });
-          return result;
-        });
-      } catch (error) {
-        if (this.isUniqueViolation(error)) {
-          const existing = await this.findIdempotent(input.idempotencyKey, operation, targetKey, payloadHash, user.id);
-          if (existing) return existing;
-        }
-        throw error;
-      }
-    });
-  }
-
-  async markReady(user: AuthUser, assessmentId: string, raw: unknown) {
-    this.assertUuid(assessmentId, 'Invalid readiness assessment id');
-    const parsed = markReadinessReadySchema.safeParse(raw);
-    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
-    const input: MarkReadinessReadyInput = parsed.data;
-    const operation = 'mark_ready';
-    const targetKey = `assessment:${assessmentId}`;
-    const payloadHash = idempotencyFingerprint({ assessmentId, expectedVersion: input.expectedVersion });
-    return this.withIdempotencyRecovery(input.idempotencyKey, operation, targetKey, payloadHash, user.id, async () => {
-      try {
-        return await this.prisma.$transaction(async (tx) => {
-          const assessmentForLock = await tx.truckReadinessAssessment.findUnique({
-            where: { id: assessmentId },
-            select: { truckId: true },
-          });
-          if (!assessmentForLock) throw new NotFoundException('Readiness assessment not found');
-          await lockTruckMutation(tx, assessmentForLock.truckId);
-          const stored = await this.findIdempotentInTransaction(
-            tx,
-            input.idempotencyKey,
-            operation,
-            targetKey,
-            payloadHash,
-            user.id,
-          );
-          if (stored) return stored;
-          const assessment = await tx.truckReadinessAssessment.findUnique({
-            where: { id: assessmentId },
-            include: { requirements: true, workOrders: { select: { id: true, status: true } } },
-          });
-          if (!assessment) throw new NotFoundException('Readiness assessment not found');
-          if (assessment.status === ReadinessAssessmentStatus.CLOSED) throw new BadRequestException('Closed readiness assessments cannot be approved');
-          const missing = READINESS_REQUIREMENT_TYPES.filter((type) => {
-            const requirement = assessment.requirements.find((item) => item.type === type);
-            return !requirement || [ReadinessRequirementOutcome.NOT_EVALUATED, ReadinessRequirementOutcome.REQUIRED].includes(String(requirement.outcome) as ReadinessRequirementOutcome);
-          });
-          if (missing.length) throw new ConflictException({ code: 'READINESS_NOT_READY', message: 'All readiness requirements must be resolved before approval.', requirements: missing });
-          const invalidWaivers = assessment.requirements.filter((requirement) =>
-            String(requirement.outcome) === ReadinessRequirementOutcome.WAIVED && !requirement.waiverReason,
-          );
-          if (invalidWaivers.length) {
-            throw new ConflictException({
-              code: 'INVALID_WAIVER',
-              message: 'Every waived requirement must have a reason before approval.',
-              requirements: invalidWaivers.map((requirement) => requirement.type),
-            });
-          }
-          const openWorkOrders = assessment.workOrders.filter((workOrder) => (OPEN_WORK_ORDER_STATUSES as string[]).includes(workOrder.status));
-          if (openWorkOrders.length) throw new ConflictException({ code: 'OPEN_WORK_ORDER_EXISTS', message: 'An open linked Work Order blocks readiness approval.', workOrderIds: openWorkOrders.map((item) => item.id) });
-
-          const updated = await tx.truckReadinessAssessment.updateMany({
-            where: { id: assessmentId, version: input.expectedVersion, status: ReadinessAssessmentStatus.UNDER_REVIEW },
-            data: { status: ReadinessAssessmentStatus.READY, readyAt: new Date(), approvedById: user.id, version: { increment: 1 } },
-          });
-          if (!updated.count) throw this.versionConflict('Readiness assessment version changed');
-          const resultRow = await tx.truckReadinessAssessment.findUniqueOrThrow({ where: { id: assessmentId }, include: { requirements: { orderBy: { type: 'asc' } } } });
-          await this.activity.log(tx, {
-            eventType: ActivityEventType.READINESS_APPROVED,
-            entityType: 'readiness_assessment', entityId: assessmentId, userId: user.id,
-            previousValue: { status: assessment.status, version: assessment.version },
-            newValue: { status: resultRow.status, version: resultRow.version, approvedById: user.id },
-            relevantValue: { truckId: assessment.truckId },
-          });
-          const result = { assessment: toReadinessAssessmentDto(resultRow as never) };
-          await tx.readinessMutation.create({ data: {
-            idempotencyKey: input.idempotencyKey,
-            assessmentId,
-            targetKey,
-            operation,
-            payloadHash,
-            actorId: user.id,
-            result: result as unknown as Prisma.InputJsonValue,
-          } });
-          return result;
-        });
-      } catch (error) {
-        if (this.isUniqueViolation(error)) {
-          const existing = await this.findIdempotent(input.idempotencyKey, operation, targetKey, payloadHash, user.id);
-          if (existing) return existing;
-        }
-        throw error;
-      }
-    });
-  }
-
-  async closeAssessment(user: AuthUser, assessmentId: string, raw: unknown) {
-    this.assertUuid(assessmentId, 'Invalid readiness assessment id');
-    const parsed = closeReadinessAssessmentSchema.safeParse(raw);
-    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
-    const input: CloseReadinessAssessmentInput = parsed.data;
-    const operation = 'close_assessment';
-    const targetKey = `assessment:${assessmentId}`;
-    const payloadHash = idempotencyFingerprint({ assessmentId, expectedVersion: input.expectedVersion, reason: input.reason });
-    return this.withIdempotencyRecovery(input.idempotencyKey, operation, targetKey, payloadHash, user.id, async () => {
-      try {
-        return await this.prisma.$transaction(async (tx) => {
-          const assessmentForLock = await tx.truckReadinessAssessment.findUnique({
-            where: { id: assessmentId },
-            select: { truckId: true },
-          });
-          if (!assessmentForLock) throw new NotFoundException('Readiness assessment not found');
-          await lockTruckMutation(tx, assessmentForLock.truckId);
-          const stored = await this.findIdempotentInTransaction(
-            tx,
-            input.idempotencyKey,
-            operation,
-            targetKey,
-            payloadHash,
-            user.id,
-          );
-          if (stored) return stored;
-          const assessment = await tx.truckReadinessAssessment.findUnique({ where: { id: assessmentId }, include: { requirements: true } });
-          if (!assessment) throw new NotFoundException('Readiness assessment not found');
-          if (assessment.status === ReadinessAssessmentStatus.CLOSED) throw new BadRequestException('Readiness assessment is already closed');
-          const updated = await tx.truckReadinessAssessment.updateMany({
-            where: { id: assessmentId, version: input.expectedVersion, status: { in: [ReadinessAssessmentStatus.UNDER_REVIEW, ReadinessAssessmentStatus.READY] } },
-            data: { status: ReadinessAssessmentStatus.CLOSED, closedAt: new Date(), closedById: user.id, closedReason: input.reason, version: { increment: 1 } },
-          });
-          if (!updated.count) throw this.versionConflict('Readiness assessment version changed');
-          const resultRow = await tx.truckReadinessAssessment.findUniqueOrThrow({ where: { id: assessmentId }, include: { requirements: { orderBy: { type: 'asc' } } } });
-          await this.activity.log(tx, {
-            eventType: ActivityEventType.READINESS_ASSESSMENT_CLOSED,
-            entityType: 'readiness_assessment', entityId: assessmentId, userId: user.id,
-            previousValue: { status: assessment.status, version: assessment.version },
-            newValue: { status: resultRow.status, version: resultRow.version, closedReason: input.reason },
-            relevantValue: { truckId: assessment.truckId },
-          });
-          const result = { assessment: toReadinessAssessmentDto(resultRow as never) };
-          await tx.readinessMutation.create({ data: {
-            idempotencyKey: input.idempotencyKey,
-            assessmentId,
-            targetKey,
-            operation,
-            payloadHash,
-            actorId: user.id,
-            result: result as unknown as Prisma.InputJsonValue,
-          } });
           return result;
         });
       } catch (error) {

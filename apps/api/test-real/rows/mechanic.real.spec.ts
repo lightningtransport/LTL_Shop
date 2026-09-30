@@ -96,7 +96,7 @@ describe('Mecánico Standard: ver, trabajar, bloquear', () => {
     ok('Start alignment', await start(USERS.alignment, workOrderId));
     same('dos sesiones abiertas', openSessions(await adminWo(workOrderId)).length, 2);
 
-    refused('el mecánico no pausa', await as(USERS.general).post(`/work-orders/${workOrderId}/pause`, { reason: 'waiting_for_parts' }), 403);
+    refused('el mecánico no pausa (LTR-180: el endpoint ya no existe)', await as(USERS.general).post(`/work-orders/${workOrderId}/pause`, { reason: 'waiting_for_parts' }), 404);
     refused('motivo "other" exige nota', await manager.post(`/admin/work-orders/${workOrderId}/pause`, { reason: 'other' }), 400);
     ok('pausa oficial', await manager.post(`/admin/work-orders/${workOrderId}/pause`, { reason: 'truck_unavailable', notes: 'El camión salió a prueba.' }));
     let workOrder = await adminWo(workOrderId);

@@ -36,7 +36,6 @@ export interface UserDto {
   name: string;
   role: UserRole;
   active: boolean;
-  pmAuthorized: boolean;
   capabilities: AppCapability[];
 }
 

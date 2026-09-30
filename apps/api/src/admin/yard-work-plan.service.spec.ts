@@ -24,7 +24,6 @@ const manager = {
   name: 'Manager',
   role: UserRole.MANAGER,
   active: true,
-  pmAuthorized: false,
   capabilities: [
     AppCapability.ADMIN_ACCESS,
     AppCapability.WORK_ORDERS_MANAGE,
