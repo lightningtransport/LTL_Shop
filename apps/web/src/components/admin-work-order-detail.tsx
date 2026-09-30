@@ -117,7 +117,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const truck = data.truck;
   const isOpen = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status);
   const canCancelWorkOrder = canManageWorkOrders && isOpen;
-  const canCompleteWorkOrder = canManageWorkOrders && ['in_progress', 'created'].includes(data.status);
   const canReopenWorkOrder = data.status === 'completed' || data.status === 'cancelled';
   const canReturnToService = data.status === 'completed' && !data.returnedToServiceAt;
   const canManageJobs = canManageWorkOrders && isOpen && data.category.name !== 'PM';
@@ -125,7 +124,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const canEditFields = canManageWorkOrders && isOpen;
   const canOfficialPause = canManageWorkOrders && isOpen && data.category.name !== 'PM';
   const pauseEnabled = canOfficiallyPauseWorkOrder(data.status);
-  const hasIncompleteJobs = data.category.name !== 'PM' && data.jobs.some((job) => job.status === 'to_do');
   const readyToClose = isAdminWorkOrderReadyToClose({
     canManageWorkOrders,
     status: data.status,
@@ -160,19 +158,18 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     }
   }
 
-  const completeCard = canCompleteWorkOrder ? (
-    <Card ref={readyToClose ? setCompleteCardElement : undefined} className={readyToClose ? 'border-shop-accent/50 bg-shop-accent/5' : undefined}>
+  // LTR-189 (W2): the card only exists once the Work Order can actually close; before that the Next step says what is missing.
+  const completeCard = readyToClose ? (
+    <Card ref={setCompleteCardElement} className="border-shop-accent/50 bg-shop-accent/5">
       <CardHeader>
         <CardTitle>{messages.completeWorkOrderTitle}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {data.category.name === 'PM' ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
-        {hasIncompleteJobs ? <p className="text-sm text-destructive-text">{messages.completeWorkOrderIncompleteJobs}</p> : null}
-        {readyToClose ? <p className="text-sm font-medium">{messages.readyToCloseHint}</p> : null}
+        <p className="text-sm font-medium">{messages.readyToCloseHint}</p>
         <CompleteWorkOrderButton
           messages={messages}
           pending={Boolean(pendingAction)}
-          disabled={hasIncompleteJobs}
           onConfirm={() => void runMutation('complete', messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(data.id, data.version), (failure) => completeError(failure, messages))}
         />
       </CardContent>
@@ -203,7 +200,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </p>
     ) : null}
 
-    {readyToClose ? completeCard : null}
+    {completeCard}
 
     {showNextStep ? (
       <div
@@ -619,8 +616,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         </Card>
       ) : null}
 
-      {!readyToClose ? completeCard : null}
-
       {data.status === 'completed' ? (
         <Card>
           <CardHeader>
@@ -883,19 +878,17 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
 function CompleteWorkOrderButton({
   messages,
   pending,
-  disabled = false,
   onConfirm,
 }: {
   messages: AdminMessages;
   pending: boolean;
-  disabled?: boolean;
   onConfirm: () => void;
 }) {
   return (
     <Button
       type="button"
       className="min-h-11 w-full sm:w-auto"
-      disabled={pending || disabled}
+      disabled={pending}
       onClick={onConfirm}
     >
       {messages.completeWorkOrderConfirm}

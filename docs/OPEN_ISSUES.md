@@ -72,7 +72,7 @@ puede borrar en la limpieza (§3).
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
 Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → recorrido de
-pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ hecho; sigue W2) → los de §1b
+pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ hechos; sigue W4) → los de §1b
 (LTR-179). El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
 **Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
@@ -151,7 +151,7 @@ empezando por W1 (el que reportó el dueño).
 | # | Clase | Rol | Problema | Dónde |
 |---|---|---|---|---|
 | ~~W1~~ | C | Manager | ~~Tarjeta "Jobs" del Work Order sin jerarquía~~ — **hecho** (2026-09-30): fila de acciones por Job y diálogo con motivo para cancelar/reabrir. | `admin-work-order-detail.tsx` |
-| W2 | C | Manager | La tarjeta "Completar Work Order" se muestra con texto de error y botón deshabilitado mientras hay Jobs pendientes. Debe ocultarse (o ser una línea de ayuda) hasta que el Work Order esté listo. | `admin-work-order-detail.tsx` ~l. 166 |
+| ~~W2~~ | C | Manager | ~~"Completar Work Order" visible con error antes de tiempo~~ — **hecho** (2026-09-30): la tarjeta solo existe cuando el Work Order ya puede cerrarse. | `admin-work-order-detail.tsx` |
 | W3 | C | Manager | Panel: el mismo Work Order muestra "Atención: Prioridad crítica" y "Siguiente paso: Bloqueado…" a la vez. Una sola línea: el paso siguiente. | `admin-dashboard.tsx`, `lib/status-chips.ts` |
 | W4 | C | Manager | **Error de hidratación de React** en la lista de Trucks: `WorkOrderStatusBadge` (un `<div>`) va dentro de un `<p>`. Sale en consola en cada carga. | `components/admin-trucks-list.tsx:78` |
 | W5 | C | Manager | Lista de Trucks: cada tarjeta sin evento dice "Estado operacional: Unknown — no hay un evento de estado de servicio registrado" (largo, mitad en inglés). Debe decir "Sin registro" o no mostrarse. | `admin-messages.ts:1293` |
