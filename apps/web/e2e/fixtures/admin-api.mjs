@@ -177,9 +177,13 @@ function rosterDetail(candidate) {
   return { ...rosterSummary(candidate), completedJobCount: 0, recentClosedWorkOrders: [] };
 }
 
+const ROSTER_CAPABILITIES = ['mechanic.standard', 'mechanic.pm', 'quality_check.perform'];
+
 function modeToCapability(mode) {
   if (mode === 'standard') return 'mechanic.standard';
   if (mode === 'pm') return 'mechanic.pm';
+  // D22: Safety is created from the roster like the others.
+  if (mode === 'safety') return 'quality_check.perform';
   return null;
 }
 
@@ -187,10 +191,30 @@ function applyRosterMode(candidate, mode) {
   const capability = modeToCapability(mode);
   if (!capability) return false;
   candidate.capabilities = [
-    ...candidate.capabilities.filter((cap) => cap !== 'mechanic.standard' && cap !== 'mechanic.pm'),
+    ...candidate.capabilities.filter((cap) => !ROSTER_CAPABILITIES.includes(cap)),
     capability,
   ];
   return true;
+}
+
+/** D22: Alejandro 1 has a pending Job and his clock running on WO-0102, so deactivating him is refused. */
+function rosterOpenWork(candidate) {
+  if (candidate.email !== 'mechanic@lightning.local') return null;
+  return {
+    code: 'MECHANIC_HAS_OPEN_WORK',
+    message: "Reassign this person's pending Jobs and stop their labor time before deactivating.",
+    pendingJobs: [
+      { workOrderId: '00000000-0000-4000-8000-000000000102', workOrderDisplayId: 'WO-0102', truckNumber: 'T-102', jobDisplayName: 'Brake pads' },
+    ],
+    runningSession: true,
+  };
+}
+
+/** Same shape as the API: 14 readable characters, letters and digits, no 0/O/1/l/I. Deterministic per call. */
+function fixtureTemporaryPassword(seq) {
+  const base = 'TempKMNP2345abcdefghjk';
+  const start = seq % 5;
+  return base.slice(start, start + 14);
 }
 
 function rosterUserDto(candidate) {
@@ -433,6 +457,12 @@ createServer(async (request, response) => {
   function denyUnlessSystemAdmin() {
     if (user.role === 'admin') return false;
     json(response, 403, { message: 'Only System Admin can change this.' });
+    return true;
+  }
+  // D22: the roster opens to the Shop Manager (admin.access + work_orders.manage) and role admin.
+  function denyUnlessRosterWriter() {
+    if (user.role === 'admin' || (user.capabilities.includes('admin.access') && canManageWorkOrders)) return false;
+    json(response, 403, { message: 'Only the Shop Manager or a System Admin can change the roster.' });
     return true;
   }
   if (request.url === '/api/admin/catalog/jobs' && request.method === 'POST') {
@@ -842,16 +872,16 @@ createServer(async (request, response) => {
     return;
   }
   if (request.url === '/api/admin/mechanics' && request.method === 'POST') {
-    if (denyUnlessSystemAdmin()) return;
+    if (denyUnlessRosterWriter()) return;
     const body = await readJson(request);
     const name = String(body?.name ?? '').trim();
     const email = String(body?.email ?? '').trim().toLowerCase();
     const capability = modeToCapability(body?.mode);
     if (!name) { json(response, 400, { message: 'Enter a name.' }); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { json(response, 400, { message: 'Enter a valid email.' }); return; }
-    if (!capability) { json(response, 400, { message: 'Choose Standard or PM.' }); return; }
+    if (!capability) { json(response, 400, { message: 'Choose Standard, PM or Safety.' }); return; }
     const existing = Object.values(users).find((candidate) => candidate.email.toLowerCase() === email);
-    if (existing) { json(response, 409, { message: 'That email already belongs to a Shop user.' }); return; }
+    if (existing) { json(response, 409, { code: 'MECHANIC_EMAIL_EXISTS', message: 'That email already belongs to a Shop user.' }); return; }
     rosterWriteSeq += 1;
     const created = {
       id: fixtureUuid(rosterWriteSeq),
@@ -862,26 +892,42 @@ createServer(async (request, response) => {
       capabilities: [capability],
     };
     users[email] = created;
-    json(response, 200, rosterUserDto(created));
+    // D22: the access account exists in the fixture, so a temporary password comes back once.
+    json(response, 200, { ...rosterUserDto(created), temporaryPassword: fixtureTemporaryPassword(rosterWriteSeq) });
+    return;
+  }
+  const mechanicResetMatch = request.url?.match(/^\/api\/admin\/mechanics\/([0-9a-f-]+)\/reset-password$/i);
+  if (mechanicResetMatch && request.method === 'POST') {
+    if (denyUnlessRosterWriter()) return;
+    const candidate = Object.values(users).find((item) => item.id === mechanicResetMatch[1]);
+    if (!candidate || candidate.role !== 'mechanic') { json(response, 404, { message: 'Mechanic not found' }); return; }
+    // Retired Mechanic never signed in: no Supabase account to reset.
+    if (candidate.email === 'retired@lightning.local') { json(response, 409, { code: 'AUTH_ACCOUNT_MISSING', message: 'This person has no access account yet.' }); return; }
+    rosterWriteSeq += 1;
+    json(response, 200, { temporaryPassword: fixtureTemporaryPassword(rosterWriteSeq) });
     return;
   }
   const mechanicWriteMatch = request.url?.match(/^\/api\/admin\/mechanics\/([0-9a-f-]+)$/i);
   if (mechanicWriteMatch && request.method === 'PATCH') {
-    if (denyUnlessSystemAdmin()) return;
+    if (denyUnlessRosterWriter()) return;
     const body = await readJson(request);
     if (body?.name === undefined && body?.mode === undefined && body?.active === undefined) {
-      json(response, 400, { message: 'Provide a name, Standard/PM mode, or active flag' });
+      json(response, 400, { message: 'Provide a name, Standard/PM/Safety mode, or active flag' });
       return;
     }
     const candidate = Object.values(users).find((item) => item.id === mechanicWriteMatch[1]);
     if (!candidate || candidate.role !== 'mechanic') { json(response, 404, { message: 'Mechanic not found' }); return; }
+    if (body.active === false && candidate.active) {
+      const openWork = rosterOpenWork(candidate);
+      if (openWork) { json(response, 409, openWork); return; }
+    }
     if (body.name !== undefined) {
       const name = String(body.name).trim();
       if (!name) { json(response, 400, { message: 'Enter a name.' }); return; }
       candidate.name = name;
     }
     if (body.mode !== undefined && !applyRosterMode(candidate, body.mode)) {
-      json(response, 400, { message: 'Choose Standard or PM.' });
+      json(response, 400, { message: 'Choose Standard, PM or Safety.' });
       return;
     }
     if (body.active !== undefined) candidate.active = Boolean(body.active);
@@ -898,7 +944,8 @@ createServer(async (request, response) => {
   if (request.url?.startsWith('/api/admin/mechanics')) {
     const assignable = new URL(request.url, 'http://fixture').searchParams.get('assignable') === 'true';
     const items = Object.values(users)
-      .filter((candidate) => candidate.capabilities.includes('mechanic.standard') || candidate.capabilities.includes('mechanic.pm'))
+      // LTR-185: the roster shows Safety too; Job pickers (`assignable`) do not offer them.
+      .filter((candidate) => candidate.capabilities.some((cap) => (assignable ? cap === 'mechanic.standard' || cap === 'mechanic.pm' : ROSTER_CAPABILITIES.includes(cap))))
       .filter((candidate) => !assignable || candidate.role !== 'admin')
       .filter((candidate) => candidate.active || new URL(request.url, 'http://fixture').searchParams.get('includeInactive') === 'true')
       .map(rosterSummary);

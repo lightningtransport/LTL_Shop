@@ -14,9 +14,12 @@ export enum AppCapability {
   QUALITY_CHECK_PERFORM = 'quality_check.perform',
 }
 
+/** Roster type (D22): exactly one of these capabilities per person with `role: mechanic`. */
 export enum MechanicMode {
   STANDARD = 'standard',
   PM = 'pm',
+  /** LTR-187 / D22: Safety (`quality_check.perform`) is created from the roster like the others. */
+  SAFETY = 'safety',
 }
 
 export enum WorkOrderStatus {

@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-09-29 (código en `main` `69aa63c`; comprobado con la auditoría LTR-174)
+**Actualizado:** 2026-09-30 (LTR-187: el Manager da de alta al personal; comprobado con la auditoría LTR-174)
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en
@@ -38,8 +38,8 @@ su pantalla inicial y separa al System Admin.
 
 | Persona | Rol | Capabilities | Qué hace |
 |---|---|---|---|
-| **Shop Manager** | `manager` | `admin.access`, `work_orders.manage`, `yard.operations.manage` | Crea y planea WOs, inspecciona, asigna, pausa, resuelve bloqueos, hace QC, cierra, Return to Service. |
-| **System Admin** | `admin` | `admin.access` (+ las demás que necesite) | Lo mismo que el Manager, más altas de Jobs de catálogo y mecánicos (solo por API). |
+| **Shop Manager** | `manager` | `admin.access`, `work_orders.manage`, `yard.operations.manage` | Crea y planea WOs, inspecciona, asigna, pausa, resuelve bloqueos, hace QC, cierra, Return to Service. **Da de alta al personal** (Standard, PM, Safety), lo desactiva/reactiva y reinicia contraseñas (D22). |
+| **System Admin** | `admin` | `admin.access` (+ las demás que necesite) | Lo mismo que el Manager (el roster lo abre por rol, aunque solo tenga `admin.access`), más altas de Jobs de catálogo (solo por API). |
 | **Mecánico Standard** | `mechanic` | `mechanic.standard` | Ejecuta sus Jobs asignados. |
 | **Mecánico PM** | `mechanic` | `mechanic.pm` | Hace el PM de los camiones. |
 | **Safety (Quality Check)** | `mechanic` | `quality_check.perform` | Revisa los camiones terminados: los aprueba o los devuelve con una nota (D19). Dos personas. |
@@ -47,7 +47,7 @@ su pantalla inicial y separa al System Admin.
 | Capability | Da acceso a |
 |---|---|
 | `admin.access` | Entrar a `/admin`. Reabrir WO, corregir tiempos, reabrir Job cancelado, Return to Service. **El Manager también la tiene**, así que puede hacer todo esto. |
-| `work_orders.manage` | Crear WO, agregar/cancelar Jobs, asignar, prioridad, notas, pausar/reanudar, completar/cancelar WO, resolver bloqueos, editar Shop workflow. |
+| `work_orders.manage` | Crear WO, agregar/cancelar Jobs, asignar, prioridad, notas, pausar/reanudar, completar/cancelar WO, resolver bloqueos, editar Shop workflow. Con `admin.access`, también el **roster** (`POST/PATCH /api/admin/mechanics`, reset-password; D22). |
 | `yard.operations.manage` | Registrar la inspección del Truck. |
 | `mechanic.standard` | Pantallas y acciones del mecánico Standard. |
 | `mechanic.pm` | Pantallas y acciones del mecánico PM. |
@@ -58,8 +58,35 @@ la termina. La API responde 403.
 
 **Usuarios hoy (roster de prueba, LTR-160):** Crixcrox (admin), Cristian
 (manager), MG (Standard), MPM (PM), MD (Standard, dueño de Detailing), MA
-(Standard, dueño de Alignment). El roster real todavía no existe (ver
-`OPEN_ISSUES.md`).
+(Standard, dueño de Alignment). El roster real lo arma el Manager desde la
+app (**Personal**, abajo).
+
+### Personal (D22, LTR-187)
+
+- **Alta:** Admin → Mecánicos → **Agregar persona**: nombre, correo y tipo
+  (Standard, PM o Safety). La API crea la fila en `users` (`role: mechanic`,
+  una sola capacidad) **y** la cuenta en Supabase Auth con una **contraseña
+  temporal** (14 caracteres legibles) que devuelve **una sola vez**; no se
+  guarda ni se registra. La cuenta nace con `app_metadata.must_change_password
+  = true`, así que la app obliga a cambiarla al entrar; al cambiarla, la web
+  llama `POST /api/auth/password-changed` y la API apaga la marca (solo la
+  service role puede). Si Supabase falla, no se crea nada
+  (`AUTH_ACCOUNT_CREATE_FAILED`); si la fila del Shop falla, la API borra la
+  cuenta recién creada. Correo repetido: `MECHANIC_EMAIL_EXISTS` (409).
+- **Sin service key** (local con `AUTH_DEV_BYPASS`, pruebas de flujo): no se
+  crea cuenta y la respuesta trae `temporaryPassword: null`; la app dice
+  "Cuenta de acceso no creada en este entorno".
+- **Reiniciar contraseña:** `POST /api/admin/mechanics/:id/reset-password`
+  genera otra temporal, la devuelve una vez y vuelve a obligar el cambio.
+  Sin cuenta de Supabase: `AUTH_ACCOUNT_MISSING` (409).
+- **Desactivar:** `PATCH … { active: false }` se rechaza con
+  `MECHANIC_HAS_OPEN_WORK` (409) mientras la persona tenga Jobs `to_do`
+  asignados en WOs abiertos o una sesión de trabajo abierta; el cuerpo lista
+  `pendingJobs` (WO, camión, Job) y `runningSession`. Desactivada, no entra
+  (403 al iniciar sesión) ni aparece para asignar; su historial se conserva.
+  **Reactivar** no tiene regla.
+- Quién puede: Manager (`admin.access` + `work_orders.manage`) y System
+  Admin (por rol). Mecánicos y Safety: 403.
 
 ---
 
@@ -292,9 +319,10 @@ de mecánicos para Jobs no la ofrece.
 ### System Admin
 - Todo lo del Manager.
 - Por API (sin pantalla): crear, renombrar y activar/desactivar Jobs de
-  catálogo (`POST/PATCH /api/admin/catalog/jobs`); crear y activar mecánicos
-  (`POST/PATCH /api/admin/mechanics`). El Manager recibe 403 en esas rutas.
-- Las cuentas de Supabase Auth se crean en el dashboard de Supabase.
+  catálogo (`POST/PATCH /api/admin/catalog/jobs`). El Manager recibe 403 en
+  esas rutas.
+- El roster (`POST/PATCH /api/admin/mechanics`) lo comparte con el Manager
+  (D22); la cuenta de Supabase Auth la crea la API al dar de alta.
 
 ---
 
@@ -348,7 +376,7 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | `/admin/work-orders`, `/admin/work-orders/[id]` | Lista con filtros; detalle del WO (ver abajo). |
 | `/admin/work-orders/new` | Crear WO (solo Truck, prioridad, nota). |
 | `/admin/history` | WOs completados y cancelados. |
-| `/admin/mechanics`, `/admin/mechanics/[id]` | Roster (solo lectura). |
+| `/admin/mechanics`, `/admin/mechanics/[id]` | Roster. Manager y System Admin: Agregar persona (con contraseña temporal), nombre y tipo, Desactivar / Reactivar, Reiniciar contraseña (D22). |
 | `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs (solo lectura). |
 | `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista). |
 
@@ -452,6 +480,10 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
   los WOs y arma un Truck por escenario (M01–M04, MECH01–03, PM). Dry-run por
   defecto; no corre en producción si hay usuarios fuera del roster de prueba.
 - **Nunca** correr `db:seed` en producción: pisa los camiones 905/922/968.
+- `SUPABASE_URL` (o `NEXT_PUBLIC_SUPABASE_URL`) + `SUPABASE_SERVICE_ROLE_KEY`
+  (API, solo servidor): con las dos, la API crea y reinicia cuentas de
+  Supabase Auth desde el roster (D22). Sin ellas, el roster funciona sin
+  cuentas de acceso (`temporaryPassword: null`).
 - Solo en desarrollo: `AUTH_DEV_BYPASS`, `NEXT_PUBLIC_E2E_DEV_LOGIN`.
 
 ---

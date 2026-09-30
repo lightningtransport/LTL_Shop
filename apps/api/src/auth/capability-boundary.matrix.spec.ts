@@ -8,11 +8,13 @@ import { WorkOrdersController } from '../work-orders/work-orders.controller';
 import type { AuthUser } from './auth.guard';
 import { CAPABILITIES_KEY } from './capabilities.decorator';
 import { CapabilitiesGuard } from './capabilities.guard';
+import { RosterWritesGuard } from './roster-writes.guard';
 import { SystemAdminGuard } from './system-admin.guard';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import {
   ADMIN_MUTATION_BOUNDARIES,
   ADMIN_READ_BOUNDARIES,
+  ROSTER_WRITES,
   SYSTEM_ADMIN_ROLE_WRITES,
   WORK_ORDER_MUTATION_BOUNDARIES,
   WORK_ORDER_READ_BOUNDARIES,
@@ -208,6 +210,41 @@ describe('System Admin roster and catalog writes', () => {
       const adminContext = httpContext(method, AdminController, [AppCapability.ADMIN_ACCESS], UserRole.ADMIN);
       expect(capabilities.canActivate(adminContext)).toBe(true);
       expect(systemAdmin.canActivate(adminContext)).toBe(true);
+    },
+  );
+});
+
+describe('Roster writes (D22)', () => {
+  const reflector = new Reflector();
+  const capabilities = new CapabilitiesGuard(reflector);
+  const roster = new RosterWritesGuard();
+  const managerCaps = [
+    AppCapability.ADMIN_ACCESS,
+    AppCapability.WORK_ORDERS_MANAGE,
+    AppCapability.YARD_OPERATIONS_MANAGE,
+  ];
+
+  it.each(ROSTER_WRITES)(
+    'opens $method $path to the Shop Manager and keeps the System Admin by role',
+    ({ handler, enforcement }) => {
+      const method = adminHandler(handler);
+      expect(enforcement).toBe('roster_guard');
+      expect(Reflect.getMetadata(CAPABILITIES_KEY, method)).toBeUndefined();
+      expect(declaredHttpCapabilities(AdminController, method)).toEqual([AppCapability.ADMIN_ACCESS]);
+
+      const managerContext = httpContext(method, AdminController, managerCaps, UserRole.MANAGER);
+      expect(capabilities.canActivate(managerContext)).toBe(true);
+      expect(roster.canActivate(managerContext)).toBe(true);
+
+      const adminContext = httpContext(method, AdminController, [AppCapability.ADMIN_ACCESS], UserRole.ADMIN);
+      expect(capabilities.canActivate(adminContext)).toBe(true);
+      expect(roster.canActivate(adminContext)).toBe(true);
+
+      const readOnlyContext = httpContext(method, AdminController, [AppCapability.ADMIN_ACCESS], UserRole.MANAGER);
+      expect(() => roster.canActivate(readOnlyContext)).toThrow(ForbiddenException);
+      const mechanicContext = httpContext(method, AdminController, [AppCapability.MECHANIC_STANDARD], UserRole.MECHANIC);
+      expect(() => capabilities.canActivate(mechanicContext)).toThrow(ForbiddenException);
+      expect(() => roster.canActivate(mechanicContext)).toThrow(ForbiddenException);
     },
   );
 });

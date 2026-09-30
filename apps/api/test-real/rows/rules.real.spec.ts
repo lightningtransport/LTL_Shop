@@ -32,7 +32,7 @@ describe('Reglas: Custom Jobs y permisos', () => {
     refused('un Job de catálogo no se repite en el WO', await addLights(), 400);
   });
 
-  it('A26 | Permisos: mecánico 403 en crear/pausar/agregar/terminar; Manager 403 en escrituras de System Admin', async () => {
+  it('A26 | Permisos: mecánico 403 en crear/pausar/agregar/terminar y en el roster; Manager 403 en el catálogo', async () => {
     const { truck: row, workOrderId } = await plannedWo('922');
     const free = await truck('931');
     const mechanic = as(USERS.alignment);
@@ -49,9 +49,11 @@ describe('Reglas: Custom Jobs y permisos', () => {
     refused('mecánico: registrar inspección', await mechanic.post(`/admin/trucks/${row.id}/work-plan/inspection`, { outcome: 'no_issues_found', idempotencyKey: randomUUID() }), 403);
     refused('mecánico PM: completar un Job Standard', await as(USERS.pm).post(`/work-orders/${workOrderId}/jobs/${laneJob(await adminWo(workOrderId), 'alignment').id}/complete`, {}), 403);
 
-    const newMechanic = { name: 'Prueba', email: `prueba-${Date.now()}@lightning.local`, workspace: 'standard' };
-    refused('Manager: crear mecánico', await manager.post('/admin/mechanics', newMechanic), 403);
-    refused('Manager: editar mecánico', await manager.patch(`/admin/mechanics/${await userId(USERS.spare)}`, { active: true }), 403);
+    // D22: el roster lo maneja el Manager (fila A29); el mecánico y Safety siguen fuera.
+    const newMechanic = { name: 'Prueba', email: `prueba-${Date.now()}@lightning.local`, mode: 'standard' };
+    refused('mecánico: crear personal', await mechanic.post('/admin/mechanics', newMechanic), 403);
+    refused('Safety: crear personal', await as(USERS.safety).post('/admin/mechanics', newMechanic), 403);
+    refused('mecánico: editar personal', await mechanic.patch(`/admin/mechanics/${await userId(USERS.spare)}`, { active: true }), 403);
     refused('Manager: crear Job de catálogo', await manager.post('/admin/catalog/jobs', { categoryId: standardCategory, displayName: 'Prueba' }), 403);
     refused('Manager: editar Job de catálogo', await manager.patch(`/admin/catalog/jobs/${lights.id}`, { displayName: 'Lights' }), 403);
 

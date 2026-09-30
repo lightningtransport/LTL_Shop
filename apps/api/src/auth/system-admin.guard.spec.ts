@@ -43,10 +43,8 @@ describe('SystemAdminGuard', () => {
     expect(() => guard.canActivate(contextFor(undefined))).toThrow(ForbiddenException);
   });
 
-  it('is attached to roster and catalog writes without replacing class guards', () => {
+  it('is attached to catalog writes (roster writes moved to RosterWritesGuard, D22) without replacing class guards', () => {
     const writes = [
-      AdminController.prototype.createMechanic,
-      AdminController.prototype.updateMechanic,
       AdminController.prototype.createCatalogJob,
       AdminController.prototype.updateCatalogJob,
     ];

@@ -28,6 +28,7 @@ no se borra.
 | **D15** | **Responsable por defecto por paso** (p. ej. PM → Daniel, Detailing → Anthony). La parte de QC ("lo completa el Manager") queda **reemplazada por D19**. | 2026-09-27 | LTR-157 |
 | **D19** | **El Quality Check lo hace Safety.** Safety tiene cuenta propia (`quality_check.perform`) y una pantalla con los camiones que esperan revisión. QC no tiene dueño por defecto: cualquiera de las dos personas de Safety lo toma. Si encuentra algo mal, **devuelve el camión con una nota** (queda como bloqueo "Devuelto por Safety") y el Manager agrega el trabajo. Safety no interviene en la llegada, solo al final. El Manager conserva "Mark QC complete" como respaldo. | 2026-09-29 | LTR-185 |
 | **D21** | **El reloj de un mecánico corre en un solo camión a la vez.** Al hacer Start en otro camión se detiene el del anterior; al volver toca Continue. Reemplaza la parte de D2 (LTR-125) que aceptaba el solape, porque el tiempo se usa para medir y costear. | 2026-09-29 | LTR-188 → ticket propio (por construir) |
+| **D22** | **El Manager da de alta al personal del taller desde el Admin** (Mecánicos → "Agregar"): nombre, correo y tipo (Standard, PM o Safety). La app crea también la cuenta de acceso en Supabase con una **contraseña temporal** que el Manager le pasa a la persona; al primer inicio la app obliga a cambiarla. El Manager puede **desactivar** a alguien solo si no tiene Jobs pendientes ni tiempo corriendo; si los tiene, la app le dice qué reasignar primero. No se borra nada: la persona deja de entrar y de aparecer para asignar. Reactivar vuelve a dejarla entrar. **Camiones: fuera por ahora** (siguen llegando de Ninox); se decide después. | 2026-09-30 | LTR-187 |
 | **D16** | Pantalla **Setup → Shop workflow** para los pasos obligatorios y su responsable por defecto. La editan Manager o System Admin; aplica a WOs nuevos. | 2026-09-27 | LTR-156, LTR-157 |
 | **D17** | **Ciclo del bloqueo:** siempre es de un Job; el mecánico lo reporta y puede agregar notas; **solo el Manager resuelve**; el Job vuelve a Pending. "Truck Unavailable", Break, End of Shift y Working on Another WO no son motivos de bloqueo (lo de todo el camión es pausa oficial). | 2026-09-27 | LTR-155 |
 | **D18** | **Tiempo por mecánico.** Cada sesión tiene `user_id`; el tiempo del WO es la suma. El tiempo de un mecánico se detiene al terminar o bloquear su último Job disponible y vuelve a correr solo cuando toca Continue/Start. | 2026-09-27 | LTR-153, LTR-154 |
@@ -88,7 +89,7 @@ Se deciden aquí; mientras tanto, no se construye nada que dependa de ellas.
 
 | # | Pregunta |
 |---|---|
-| ~~P1~~ | **Cerrada 2026-09-29:** el Manager da de alta camiones y mecánicos, desde la app. Falta construirlo (LTR-187). |
+| ~~P1~~ | **Cerrada 2026-09-29:** el Manager da de alta camiones y mecánicos, desde la app. Detalle en **D22** (2026-09-30): personal sí, con cuenta y contraseña temporal; camiones después. |
 | ~~P2~~ | **Cerrada 2026-09-29:** se lanza sin Off Duty. |
 | ~~P3~~ | **Cerrada 2026-09-29:** el taller trabaja trailers; hacen falta como activos. Falta el cuándo (P11). |
 | P4 | ¿Se muestra o se escribe el `mechanic_status` de Ninox (`E.TA`)? Hoy no. |

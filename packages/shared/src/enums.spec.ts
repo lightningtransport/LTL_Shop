@@ -7,9 +7,11 @@ import {
 } from './enums';
 
 describe('BlockerReason (LTR-153 / D17)', () => {
-  it('is the waiting subset of PauseReason plus Other', () => {
+  it('is the waiting subset of PauseReason plus Other (and the Safety return, LTR-185)', () => {
     const pauseValues = new Set<string>(Object.values(PauseReason));
     for (const reason of Object.values(BlockerReason)) {
+      // LTR-185 / D19: "Returned by Safety" is a blocker reason only; it is never an official pause.
+      if (reason === BlockerReason.QUALITY_CHECK_FAILED) continue;
       expect(pauseValues.has(reason)).toBe(true);
     }
     expect(Object.values(BlockerReason)).not.toContain(PauseReason.BREAK);
