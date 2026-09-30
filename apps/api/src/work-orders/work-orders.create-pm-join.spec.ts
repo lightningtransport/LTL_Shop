@@ -5,7 +5,7 @@ import { TrucksService } from '../trucks/trucks.service';
 import { WorkOrdersService } from './work-orders.service';
 
 const pmMechanic: AuthUser = {
-  id: 'mpm', email: 'mpm@l.local', name: 'MPM', role: 'mechanic', active: true, pmAuthorized: true,
+  id: 'mpm', email: 'mpm@l.local', name: 'MPM', role: 'mechanic', active: true,
   capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
 };
 const input = {

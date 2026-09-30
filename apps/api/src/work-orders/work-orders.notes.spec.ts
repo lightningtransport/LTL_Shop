@@ -5,11 +5,11 @@ import { WorkOrdersService } from './work-orders.service';
 
 const mechanic: AuthUser = {
   id: 'mg', email: 'mg@lightning.local', name: 'MG', role: 'mechanic', active: true,
-  pmAuthorized: false, capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
+ capabilities: [AppCapability.MECHANIC_STANDARD], supabaseAuthId: null,
 };
 const manager: AuthUser = {
   id: 'mgr', email: 'manager@lightning.local', name: 'Manager', role: 'manager', active: true,
-  pmAuthorized: false, capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
+ capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
 };
 
 // LTR-154 / D11: a mechanic reaches a Standard Work Order through a Job assigned to them.

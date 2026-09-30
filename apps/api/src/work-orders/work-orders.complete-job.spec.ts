@@ -9,7 +9,6 @@ const mechanic: AuthUser = {
   name: 'Alejandro',
   role: 'mechanic',
   active: true,
-  pmAuthorized: false,
   capabilities: [AppCapability.MECHANIC_STANDARD],
   supabaseAuthId: null,
 };

@@ -43,9 +43,9 @@ describe('Reglas: Custom Jobs y permisos', () => {
     refused('mecánico: crear WO (Admin)', await mechanic.post('/admin/work-orders', { truckId: free.id, idempotencyKey: randomUUID() }), 403);
     refused('mecánico: crear WO Standard', await mechanic.post('/work-orders', { truckId: free.id, primaryCategoryId: standardCategory, idempotencyKey: randomUUID() }), 403);
     refused('mecánico Standard: crear PM', await mechanic.post('/work-orders', { truckId: free.id, primaryCategoryId: (await prisma.jobCategory.findFirstOrThrow({ where: { name: 'PM' } })).id, idempotencyKey: randomUUID() }), 403);
-    refused('mecánico: pausar', await mechanic.post(`/work-orders/${workOrderId}/pause`, { reason: 'break' }), 403);
-    refused('mecánico: agregar Job', await mechanic.post(`/work-orders/${workOrderId}/jobs`, { categoryId: standardCategory, catalogJobId: lights.id, displayName: 'Lights', ...(await meta(workOrderId)) }), 403);
-    refused('mecánico: terminar el WO', await mechanic.post(`/work-orders/${workOrderId}/complete`), 403);
+    refused('mecánico: pausar (LTR-180: sin endpoint)', await mechanic.post(`/work-orders/${workOrderId}/pause`, { reason: 'break' }), 404);
+    refused('mecánico: agregar Job (LTR-180: sin endpoint)', await mechanic.post(`/work-orders/${workOrderId}/jobs`, { categoryId: standardCategory, catalogJobId: lights.id, displayName: 'Lights', ...(await meta(workOrderId)) }), 404);
+    refused('mecánico: terminar el WO (LTR-180: sin endpoint)', await mechanic.post(`/work-orders/${workOrderId}/complete`), 404);
     refused('mecánico: registrar inspección', await mechanic.post(`/admin/trucks/${row.id}/work-plan/inspection`, { outcome: 'no_issues_found', idempotencyKey: randomUUID() }), 403);
     refused('mecánico PM: completar un Job Standard', await as(USERS.pm).post(`/work-orders/${workOrderId}/jobs/${laneJob(await adminWo(workOrderId), 'alignment').id}/complete`, {}), 403);
 

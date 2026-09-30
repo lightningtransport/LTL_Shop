@@ -1,15 +1,13 @@
 'use client';
 
-import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Check, ChevronDown, Trash2 } from 'lucide-react';
 import { useSWRConfig } from 'swr';
 import {
   AppCapability,
   MechanicMode,
   Priority,
-  type CatalogJobDto,
   type TruckDto,
   type WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
@@ -21,15 +19,8 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { TruckInformationFields } from '@/components/truck-information-fields';
-import {
-  useCatalogJobs,
-  useCategories,
-  useMechanics,
-  useTrucks,
-  type Mechanic,
-} from '@/lib/shop-data';
+import { useCategories, useTrucks } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
-import { CategoryJobList } from '@/components/category-job-list';
 import {
   Button,
   CardListSkeleton,
@@ -38,24 +29,18 @@ import {
   Input,
   Label,
   LoadFailure,
-  Modal,
   PageSkeleton,
   PageHeader,
-  Select,
-  Textarea,
   WorkspaceNav,
 } from '@/components/ui';
 import { useShopLocale } from '@/lib/locale-context';
 import { statusLabel } from '@/lib/format';
 
-type DraftJob = {
-  key: string;
-  catalogJobId?: string;
-  categoryId: string;
-  displayName: string;
-  customDescription?: string;
-};
-
+/**
+ * "Create PM service" for the PM mechanic (LTR-147: joins or creates the
+ * truck's Work Order). A Standard mechanic asks the Shop Manager instead; the
+ * Standard create form was removed in LTR-180.
+ */
 export default function NewWorkOrderPage() {
   const { user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
   const { messages } = useShopLocale();
@@ -63,12 +48,8 @@ export default function NewWorkOrderPage() {
   const pathname = usePathname();
   const { mutate } = useSWRConfig();
   const { data: categoryData, error: categoryError, mutate: mutateCategories } = useCategories(!!token);
-  const { data: mechanicData, error: mechanicError, mutate: mutateMechanics } = useMechanics(!!token);
   const { data: truckData, error: truckError, mutate: mutateTrucks } = useTrucks(!!token);
-  const categories = categoryData ?? [];
-  const mechanics = mechanicData ?? [];
-  const pmCategory = categories.find((category) => category.name === 'PM');
-  const standardCategories = categories.filter((category) => category.name !== 'PM');
+  const pmCategory = (categoryData ?? []).find((category) => category.name === 'PM');
   const explicitPm = pathname.startsWith('/mechanic/pm/');
   const explicitStandard = pathname.startsWith('/mechanic/standard/');
   const isPmOnly = !!user?.capabilities.includes(AppCapability.MECHANIC_PM) &&
@@ -87,27 +68,14 @@ export default function NewWorkOrderPage() {
   // LTR-147: with PM in the Work Plan, Create PM joins the truck's open Work Order.
   const [pmJoin, setPmJoin] = useState<PmJoinPreview | null>(null);
   const pmJoinable = Boolean(pmJoin && ['add', 'join', 'mine'].includes(pmJoin.status));
-  const [categoryId, setCategoryId] = useState('');
-  const [jobs, setJobs] = useState<DraftJob[]>([]);
-  const [workingWith, setWorkingWith] = useState<string[]>([]);
-  const [priority, setPriority] = useState<Priority>(Priority.NORMAL);
-  const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [customJobName, setCustomJobName] = useState('');
-  const [jobQuery, setJobQuery] = useState('');
-  const [workingWithOpen, setWorkingWithOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(-1);
   const [openWoCheck, setOpenWoCheck] = useState<
     'idle' | 'checking' | 'verified' | 'error'
   >('idle');
   const openWoRequest = useRef(0);
-  const workingWithTriggerRef = useRef<HTMLButtonElement>(null);
-  const { data: catalogJobData, error: catalogJobsError, isLoading: catalogJobsLoading } = useCatalogJobs(
-    categoryId,
-    !!token && !!categoryId && !isPmMechanic,
-  );
 
   useEffect(() => {
     if (!sessionLoading && !token && !sessionError) replaceAppLocation('/login', router);
@@ -116,16 +84,6 @@ export default function NewWorkOrderPage() {
     }
   }, [sessionLoading, token, sessionError, user, requiredCapability, router]);
 
-  useEffect(() => {
-    if (isPmMechanic && pmCategory) {
-      setCategoryId(pmCategory.id);
-    }
-  }, [isPmMechanic, pmCategory]);
-
-  const availableCoworkers = mechanics.filter(
-    (mechanic) => mechanic.id !== user?.id,
-  );
-
   const { results, isFallback } = useMemo(() => {
     if (!query.trim() || truck) return { results: [], isFallback: false };
     return rankTruckResults(truckData ?? [], query);
@@ -133,59 +91,16 @@ export default function NewWorkOrderPage() {
 
   const hasSearchTerm = query.trim().replace(/^#/, '').length > 0;
   const resultsOpen = searchOpen && hasSearchTerm && !truck;
-  const createBlocked = busy || hasOpenWo || openWoCheck !== 'verified' || !categoryId || (!isPmMechanic && jobs.length === 0);
-  const createActionLabel = isPmMechanic
-    ? openWoCheck === 'checking'
-      ? messages.checkingTruck
-      : pmJoin?.status === 'mine'
-        ? messages.continuePmService
-        : pmJoinable ? messages.joinPmService : messages.createPmService
-    : !categoryId
-      ? messages.chooseCategory
-      : jobs.length === 0
-        ? messages.addJobToContinue
-        : messages.createWorkOrder;
-  const selectedCategory = standardCategories.find((category) => category.id === categoryId);
-  const selectedCatalogJobIds = useMemo(
-    () => jobs.flatMap((job) => (job.catalogJobId ? [job.catalogJobId] : [])),
-    [jobs],
-  );
+  const createBlocked = busy || hasOpenWo || openWoCheck !== 'verified' || !pmCategory;
+  const createActionLabel = openWoCheck === 'checking'
+    ? messages.checkingTruck
+    : pmJoin?.status === 'mine'
+      ? messages.continuePmService
+      : pmJoinable ? messages.joinPmService : messages.createPmService;
 
   useEffect(() => {
     setActiveResult(results.length ? 0 : -1);
   }, [results]);
-
-  useEffect(() => {
-    setJobQuery('');
-    setCustomJobName('');
-  }, [categoryId]);
-
-  function addJob(job: Omit<DraftJob, 'key'>) {
-    setJobs((current) => {
-      const duplicate = job.catalogJobId
-        ? current.some((existing) => existing.catalogJobId === job.catalogJobId)
-        : current.some((existing) => !existing.catalogJobId && normalizeJobName(existing.displayName) === normalizeJobName(job.displayName));
-      return duplicate ? current : [...current, { ...job, key: crypto.randomUUID() }];
-    });
-  }
-
-  function toggleCatalogJob(job: CatalogJobDto) {
-    setJobs((current) => {
-      if (current.some((existing) => existing.catalogJobId === job.id)) {
-        return current.filter((existing) => existing.catalogJobId !== job.id);
-      }
-      return [...current, {
-        key: crypto.randomUUID(),
-        catalogJobId: job.id,
-        categoryId: job.categoryId,
-        displayName: job.displayName,
-      }];
-    });
-  }
-
-  function requestCategoryChange(nextCategoryId: string) {
-    setCategoryId(nextCategoryId);
-  }
 
   async function selectTruck(t: TruckDto) {
     const requestId = ++openWoRequest.current;
@@ -202,7 +117,7 @@ export default function NewWorkOrderPage() {
         { exists: false } | { exists: true; workOrder?: WorkOrderSummaryDto; pmJoin?: PmJoinPreview }
       >(`/api/trucks/${t.id}/open-work-order`);
       if (requestId !== openWoRequest.current) return;
-      const join = isPmMechanic && open.exists ? open.pmJoin ?? null : null;
+      const join = open.exists ? open.pmJoin ?? null : null;
       setPmJoin(join);
       // A joinable Work Order is not a dead end for the PM mechanic.
       setHasOpenWo(open.exists && !(join && ['add', 'join', 'mine'].includes(join.status)));
@@ -216,8 +131,8 @@ export default function NewWorkOrderPage() {
   }
 
   async function create() {
-    if (!truck || openWoCheck !== 'verified' || !categoryId || (!isPmMechanic && jobs.length === 0)) {
-      setError(isPmMechanic ? (messages.locale === 'es' ? 'Selecciona una unidad antes de crear el Work Order de PM.' : 'Select a truck before creating the PM Work Order.') : (messages.locale === 'es' ? 'Se requieren una unidad, una categoría y al menos un Job.' : 'Truck, category, and at least one job are required.'));
+    if (!truck || openWoCheck !== 'verified' || !pmCategory) {
+      setError(messages.locale === 'es' ? 'Selecciona una unidad antes de crear el Work Order de PM.' : 'Select a truck before creating the PM Work Order.');
       return;
     }
     setBusy(true);
@@ -227,16 +142,10 @@ export default function NewWorkOrderPage() {
         method: 'POST',
         body: JSON.stringify({
           truckId: truck.id,
-          primaryCategoryId: categoryId,
-          priority,
-          ...(isPmMechanic ? {} : { notes: notes || undefined }),
-          mechanicIds: isPmMechanic ? [] : workingWith,
-          jobs: isPmMechanic ? [] : jobs.map((j) => ({
-            catalogJobId: j.catalogJobId,
-            categoryId: j.categoryId,
-            displayName: j.displayName,
-            customDescription: j.customDescription,
-          })),
+          primaryCategoryId: pmCategory.id,
+          priority: Priority.NORMAL,
+          mechanicIds: [],
+          jobs: [],
           idempotencyKey: crypto.randomUUID(),
         }),
       });
@@ -323,14 +232,14 @@ export default function NewWorkOrderPage() {
     );
   }
 
-  const referenceError = categoryError || mechanicError || truckError;
-  if (referenceError || !categoryData || !mechanicData || !truckData) {
+  const referenceError = categoryError || truckError;
+  if (referenceError || !categoryData || !truckData) {
     return (
       <NewWorkOrderLoading mode={mechanicMode}>
         {referenceError ? (
           <LoadFailure
             message="Unable to load shop reference data."
-            onRetry={() => void Promise.all([mutateCategories(), mutateMechanics(), mutateTrucks()])}
+            onRetry={() => void Promise.all([mutateCategories(), mutateTrucks()])}
             retryLabel={messages.retry}
           />
         ) : (
@@ -345,8 +254,8 @@ export default function NewWorkOrderPage() {
       <WorkspaceNav mode={mechanicMode} />
       <PageHeader
         className="mb-6"
-        title={isPmMechanic ? messages.newPmService : messages.newWorkOrder}
-        subtitle={isPmMechanic ? messages.pmServiceHint : messages.workOrderHint}
+        title={messages.newPmService}
+        subtitle={messages.pmServiceHint}
         backHref={`/mechanic/${mechanicMode}`}
       />
 
@@ -497,18 +406,9 @@ export default function NewWorkOrderPage() {
           <p className="mt-1 text-sm">
             {messages.workOrderSummary(openWo.displayId, messages.status[openWo.status] ?? statusLabel(openWo.status, messages.status), openWo.jobsCompleted, openWo.jobsTotal)}
           </p>
-          {openWo.primaryCategoryName === 'PM' && !user.pmAuthorized && user.role !== 'admin' ? (
-            <div className="mt-3 space-y-2">
-              <p className="text-sm">{messages.noAccessToPmWorkOrder}</p>
-              <Button asChild variant="secondary" className="w-full">
-                <Link href="/work-orders/new">{messages.chooseAnotherWorkOrder}</Link>
-              </Button>
-            </div>
-          ) : (
-            <Button asChild className="mt-3 w-full">
-              <Link href={`/work-orders/${openWo.id}`}>{messages.openWorkOrder}</Link>
-            </Button>
-          )}
+          <Button asChild className="mt-3 w-full">
+            <Link href={`/work-orders/${openWo.id}`}>{messages.openWorkOrder}</Link>
+          </Button>
         </div>
       ) : null}
 
@@ -520,156 +420,6 @@ export default function NewWorkOrderPage() {
 
       {truck && !hasOpenWo ? (
         <>
-          {!isPmMechanic ? <section className="card mb-4 space-y-4">
-            {!isPmMechanic ? (
-              <div>
-                <Label htmlFor="work-order-category">
-                  Category
-                </Label>
-                <div className="mt-2">
-                  <Select
-                    id="work-order-category"
-                    value={categoryId}
-                    onChange={(e) => requestCategoryChange(e.target.value)}
-                  >
-                    <option value="" disabled>
-                      Select a category
-                    </option>
-                    {standardCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-            ) : null}
-
-            {!isPmMechanic ? <div>
-              <p className="group-title mb-2">Jobs To Do</p>
-              {!categoryId ? <EmptyState>Choose a category to see its listed jobs.</EmptyState> : null}
-              {categoryId && jobs.length === 0 ? <p className="mb-3 text-sm text-muted-foreground">Select at least one job.</p> : null}
-              {jobs.length ? (
-                <ul className="mb-3 space-y-2">
-                  {jobs.map((j) => (
-                    <li
-                      key={j.key}
-                      className="flex items-center justify-between rounded-xl border border-shop-border px-3 py-2 text-sm"
-                    >
-                      <span>
-                        <span className="block">{j.displayName}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {standardCategories.find((category) => category.id === j.categoryId)?.name ?? 'Category'}
-                        </span>
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0 text-shop-muted hover:bg-shop-accent hover:text-primary-foreground"
-                        aria-label={`Remove ${j.displayName}`}
-                        onClick={() =>
-                          setJobs((prev) => prev.filter((x) => x.key !== j.key))
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {categoryId ? (
-                <div className="space-y-2">
-                  <CategoryJobList
-                    categoryName={selectedCategory?.name ?? ''}
-                    jobs={catalogJobData ?? []}
-                    isLoading={catalogJobsLoading}
-                    error={Boolean(catalogJobsError)}
-                    query={jobQuery}
-                    onQueryChange={setJobQuery}
-                    selectedIds={selectedCatalogJobIds}
-                    onSelect={toggleCatalogJob}
-                    copy={{
-                      searchLabel: messages.searchJobsLabel,
-                      loading: messages.loadingJobs,
-                      loadError: messages.loadError,
-                      emptyCategory: messages.noJobsInCategory,
-                      noMatches: messages.noMatchingCategoryJobs,
-                      listLabel: messages.categoryJobsLabel,
-                      addJob: messages.addCatalogJob,
-                    }}
-                  />
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input
-                      id="new-work-order-custom-job"
-                      aria-label={messages.customJobPlaceholder}
-                      className="flex-1"
-                      placeholder={messages.customJobPlaceholder}
-                      value={customJobName}
-                      onChange={(event) => setCustomJobName(event.target.value)}
-                    />
-                    <Button
-                      disabled={!customJobName.trim() || jobs.some((job) => !job.catalogJobId && normalizeJobName(job.displayName) === normalizeJobName(customJobName))}
-                      onClick={() => {
-                        addJob({ categoryId, displayName: customJobName.trim(), customDescription: customJobName.trim() });
-                        setCustomJobName('');
-                      }}
-                    >
-                      {messages.addCustomJob}
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-            </div> : null}
-
-            {!isPmMechanic ? <div>
-              <p className="group-title" id="working-with-label">
-                Working With
-              </p>
-              <Button
-                ref={workingWithTriggerRef}
-                variant="outline"
-                className="mt-2 w-full justify-between text-left font-normal"
-                aria-labelledby="working-with-label working-with-summary"
-                aria-haspopup="dialog"
-                onClick={() => setWorkingWithOpen(true)}
-              >
-                <span id="working-with-summary">
-                  {selectedMechanicSummary(availableCoworkers, workingWith)}
-                </span>
-                <ChevronDown className="h-5 w-5 text-shop-muted" aria-hidden="true" />
-              </Button>
-            </div> : null}
-
-            {!isPmMechanic ? <div>
-              <p className="group-title mb-2">{messages.priorityLabel}</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {Object.values(Priority).map((p) => (
-                  <Button
-                    key={p}
-                    aria-pressed={priority === p}
-                    variant={priority === p ? 'default' : 'secondary'}
-                    onClick={() => setPriority(p)}
-                  >
-                    {messages.priority[p] ?? p}
-                  </Button>
-                ))}
-              </div>
-            </div> : null}
-
-            {!isPmMechanic ? <div>
-              <Label htmlFor="work-order-notes">
-                {messages.notesOptional}
-              </Label>
-              <Textarea
-                id="work-order-notes"
-                className="mt-2"
-                placeholder={messages.notesPlaceholder}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div> : null}
-          </section> : null}
-
           {error ? (
             <InlineAlert className="mb-3">{error}</InlineAlert>
           ) : null}
@@ -685,15 +435,6 @@ export default function NewWorkOrderPage() {
           </div>
         </>
       ) : null}
-
-      <WorkingWithModal
-        open={workingWithOpen}
-        mechanics={availableCoworkers}
-        selected={workingWith}
-        onChange={setWorkingWith}
-        onClose={() => setWorkingWithOpen(false)}
-        returnFocusRef={workingWithTriggerRef}
-      />
     </div>
   );
 }
@@ -720,77 +461,6 @@ function NewWorkOrderLoading({
       {children ?? <PageSkeleton label={label ?? (messages.locale === 'es' ? 'Cargando formulario de Work Order' : 'Loading Work Order form')} />}
     </div>
   );
-}
-
-function selectedMechanicSummary(mechanics: Mechanic[], selected: string[]) {
-  const names = mechanics
-    .filter((mechanic) => selected.includes(mechanic.id))
-    .map((mechanic) => mechanic.name);
-  if (!names.length) return 'Select mechanics';
-  if (names.length <= 2) return names.join(' / ');
-  return `${names[0]} + ${names.length - 1} more`;
-}
-
-function WorkingWithModal({
-  open,
-  mechanics,
-  selected,
-  onChange,
-  onClose,
-  returnFocusRef,
-}: {
-  open: boolean;
-  mechanics: Mechanic[];
-  selected: string[];
-  onChange: (ids: string[]) => void;
-  onClose: () => void;
-  returnFocusRef: RefObject<HTMLElement | null>;
-}) {
-  return (
-    <Modal
-      open={open}
-      title="Working With"
-      onClose={onClose}
-      returnFocusRef={returnFocusRef}
-    >
-      <fieldset className="space-y-2">
-        <legend className="sr-only">Select mechanics</legend>
-        {mechanics.map((mechanic) => {
-          const checked = selected.includes(mechanic.id);
-          return (
-            <label
-              key={mechanic.id}
-              className="flex min-h-11 cursor-pointer items-center justify-between rounded-xl border border-shop-border px-3 py-2 hover:bg-shop-accent"
-            >
-              <span className="text-sm font-medium">{mechanic.name}</span>
-              <span className="relative flex h-5 w-5 items-center justify-center rounded border border-shop-border bg-shop-panel">
-                <input
-                  type="checkbox"
-                  className="peer absolute inset-0 cursor-pointer opacity-0"
-                  checked={checked}
-                  onChange={() =>
-                    onChange(
-                      checked
-                        ? selected.filter((id) => id !== mechanic.id)
-                        : [...selected, mechanic.id],
-                    )
-                  }
-                />
-                {checked ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
-              </span>
-            </label>
-          );
-        })}
-      </fieldset>
-      <Button className="mt-4 w-full" onClick={onClose}>
-        Done
-      </Button>
-    </Modal>
-  );
-}
-
-function normalizeJobName(name: string) {
-  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
 }
 
 /** LTR-147: what Create PM will do on a truck with an open Work Order. */

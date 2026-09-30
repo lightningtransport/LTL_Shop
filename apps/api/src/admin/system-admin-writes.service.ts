@@ -29,7 +29,6 @@ const mechanicSelect = {
   name: true,
   role: true,
   active: true,
-  pmAuthorized: true,
   capabilities: { select: { capability: true } },
 } as const;
 
@@ -67,7 +66,6 @@ export class SystemAdminWritesService {
           name,
           role: 'mechanic',
           active: true,
-          pmAuthorized: mode === MechanicMode.PM,
           capabilities: {
             create: {
               capability: mechanicCapability(mode),
@@ -129,7 +127,6 @@ export class SystemAdminWritesService {
       const data: Prisma.UserUpdateInput = {};
       if (input.name !== undefined) data.name = input.name;
       if (input.active !== undefined) data.active = input.active;
-      if (input.mode !== undefined) data.pmAuthorized = input.mode === MechanicMode.PM;
       if (Object.keys(data).length) {
         await tx.user.update({ where: { id }, data });
       }
@@ -330,7 +327,6 @@ function toUserDto(row: MechanicRow): UserDto {
     name: row.name,
     role: row.role as UserRole,
     active: row.active,
-    pmAuthorized: row.pmAuthorized,
     capabilities: row.capabilities.map(({ capability }) => toSharedCapability(capability)),
   };
 }

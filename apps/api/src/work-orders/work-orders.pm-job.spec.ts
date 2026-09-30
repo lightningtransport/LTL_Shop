@@ -4,7 +4,7 @@ import type { AuthUser } from '../auth/auth.guard';
 import { WorkOrdersService } from './work-orders.service';
 
 const pmMechanic: AuthUser = {
-  id: 'mpm', email: 'mpm@l.local', name: 'MPM', role: 'mechanic', active: true, pmAuthorized: true,
+  id: 'mpm', email: 'mpm@l.local', name: 'MPM', role: 'mechanic', active: true,
   capabilities: [AppCapability.MECHANIC_PM], supabaseAuthId: null,
 };
 const otherPm: AuthUser = { ...pmMechanic, id: 'mpm2', name: 'MPM 2' };

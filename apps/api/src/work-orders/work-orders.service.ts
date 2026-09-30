@@ -16,7 +16,6 @@ import {
   BlockerReason,
   PauseReason,
   addJobSchema,
-  changePauseReasonSchema,
   completeJobSchema,
   createWorkOrderSchema,
   pauseWorkOrderSchema,
@@ -40,8 +39,6 @@ import {
 } from './work-order.mapper';
 import {
   canCompleteJob,
-  canFinishWorkOrder,
-  computeTotals,
   nextDisplayId,
 } from './work-order.timing';
 import type { AuthUser } from '../auth/auth.guard';
@@ -517,21 +514,10 @@ export class WorkOrdersService {
     });
   }
 
-  // Manager-first ownership: the Manager pauses/resumes officially. These
-  // wrappers reuse the exact mechanic pause/resume mechanics (session close,
-  // PauseEvent, totals) but skip the mechanic-assignment check.
-  async pauseByManager(user: AuthUser, id: string, raw: unknown) {
-    return this.pause(user, id, raw, { managerActor: true });
-  }
-
-  async resumeByManager(user: AuthUser, id: string) {
-    return this.resume(user, id, { managerActor: true });
-  }
-
   // A mechanic-reported blocker records reason/notes without changing Work Order
   // status. Stored as a closed, zero-duration PauseEvent flagged
   // isOfficialPause=false so it never affects waiting totals or the open-pause
-  // lookup used by resume/changePauseReason.
+  // lookup used by resumeByManager.
   /**
    * LTR-155 / D17: a mechanic blocks one of their own pending Jobs. The Work Order
    * status and waiting totals do not change (not an official pause). D18: when
@@ -680,7 +666,11 @@ export class WorkOrdersService {
     });
   }
 
-  async pause(user: AuthUser, id: string, raw: unknown, options: { managerActor?: boolean } = {}) {
+  // Manager-first ownership: only the Manager pauses/resumes officially (session
+  // close, PauseEvent, totals). LTR-180: the mechanic pause/resume endpoints of
+  // legacy PM Work Orders are gone. The HTTP guard already checked
+  // work_orders.manage; nothing is re-checked here.
+  async pauseByManager(user: AuthUser, id: string, raw: unknown) {
     const parsed = pauseWorkOrderSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     if (parsed.data.reason === PauseReason.OTHER && !parsed.data.notes?.trim()) {
@@ -689,10 +679,6 @@ export class WorkOrdersService {
 
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      if (!options.managerActor) {
-        this.assertMechanicAccess(user, wo);
-        this.assertStandardPlanningDenied(wo, 'Standard pause and resume are Manager-owned.');
-      }
       if (wo.status !== 'in_progress') {
         throw new BadRequestException('Only in-progress Work Orders can be paused');
       }
@@ -728,73 +714,11 @@ export class WorkOrdersService {
     });
   }
 
-  async changePauseReason(user: AuthUser, id: string, raw: unknown) {
-    const parsed = changePauseReasonSchema.safeParse(raw);
-    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
-    if (parsed.data.reason === PauseReason.OTHER && !parsed.data.notes?.trim()) {
-      throw new BadRequestException('Notes are required when reason is Other');
-    }
-
+  async resumeByManager(user: AuthUser, id: string) {
     return this.prisma.$transaction(async (tx) => {
       const wo = await this.requireWo(tx, id);
-      this.assertMechanicAccess(user, wo);
-      this.assertStandardPlanningDenied(wo, 'Standard pause and resume are Manager-owned.');
-      if (wo.status !== 'waiting_paused') {
-        throw new BadRequestException('Work Order is not paused');
-      }
-      const openPause = await tx.pauseEvent.findFirst({
-        where: { workOrderId: id, endedAt: null, isOfficialPause: true },
-        orderBy: { startedAt: 'desc' },
-      });
-      if (!openPause) throw new BadRequestException('No open pause event');
-
-      const now = new Date();
-      const durationMs = BigInt(now.getTime() - openPause.startedAt.getTime());
-      await tx.pauseEvent.update({
-        where: { id: openPause.id },
-        data: { endedAt: now, durationMs },
-      });
-      await tx.pauseEvent.create({
-        data: {
-          workOrderId: id,
-          reason: parsed.data.reason,
-          notes: parsed.data.notes,
-          startedAt: now,
-          createdById: user.id,
-          isOfficialPause: true,
-        },
-      });
-      const updated = await tx.workOrder.update({
-        where: { id },
-        data: { version: { increment: 1 } },
-        include: workOrderDetailInclude,
-      });
-      await this.activity.log(tx, {
-        workOrderId: id,
-        eventType: ActivityEventType.PAUSE_REASON_CHANGED,
-        entityType: 'pause_event',
-        entityId: openPause.id,
-        userId: user.id,
-        previousValue: { reason: openPause.reason },
-        newValue: { reason: parsed.data.reason },
-      });
-      return toWorkOrderDetail(updated, user.id);
-    });
-  }
-
-  async resume(user: AuthUser, id: string, options: { managerActor?: boolean } = {}) {
-    return this.prisma.$transaction(async (tx) => {
-      const wo = await this.requireWo(tx, id);
-      if (!options.managerActor) {
-        this.assertMechanicAccess(user, wo);
-        this.assertStandardPlanningDenied(wo, 'Standard pause and resume are Manager-owned.');
-      }
       if (wo.status !== 'waiting_paused') {
         throw new BadRequestException('Only paused Work Orders can be resumed');
-      }
-      // LTR-146 / D2: resuming a PM must not leave the mechanic with two running PMs.
-      if (!options.managerActor && wo.primaryCategory.name === 'PM') {
-        await this.assertNoOtherRunningPm(tx, user.id, { workOrderId: id });
       }
       const now = new Date();
       const openPause = await tx.pauseEvent.findFirst({
@@ -831,28 +755,10 @@ export class WorkOrdersService {
    * Truck). The assignee is an internal option, not part of the public body.
    */
   async addJobByManager(user: AuthUser, id: string, raw: unknown, options: { assignedMechanicId?: string } = {}) {
-    return this.addJob(user, id, raw, { managerActor: true, assignedMechanicId: options.assignedMechanicId });
-  }
-
-  async addJob(
-    user: AuthUser,
-    id: string,
-    raw: unknown,
-    options: { managerActor?: boolean; assignedMechanicId?: string } = {},
-  ) {
     const parsed = addJobSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     const input = parsed.data;
-    const assignedMechanicId = options.managerActor ? options.assignedMechanicId : undefined;
-    if (!options.managerActor) {
-      const existingWo = await this.prisma.workOrder.findUnique({
-        where: { id },
-        include: { primaryCategory: true, mechanics: true, jobs: { select: { assignedMechanicId: true } } },
-      });
-      if (!existingWo) throw new NotFoundException('Work Order not found');
-      this.assertMechanicAccess(user, existingWo);
-      this.assertStandardPlanningDenied(existingWo, 'Standard Jobs are added by a Shop Manager.');
-    }
+    const assignedMechanicId = options.assignedMechanicId;
     const operation = 'add_job';
     // Only hashed when set, so unassigned adds keep their existing fingerprint.
     const payloadHash = idempotencyFingerprint({
@@ -883,7 +789,6 @@ export class WorkOrdersService {
           user.id,
         );
         if (replay) return replay;
-        if (!options.managerActor) this.assertMechanicAccess(user, wo);
         if (wo.primaryCategory.name === 'PM') {
           throw new BadRequestException('PM Work Orders do not use jobs');
         }
@@ -1554,75 +1459,6 @@ export class WorkOrdersService {
     return { ...detail, jobs: detail.jobs.map((item) => (item.id === jobId ? { ...item, completionNotes: notes } : item)) };
   }
 
-  async complete(user: AuthUser, id: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const wo = await tx.workOrder.findUnique({
-        where: { id },
-        include: {
-          truck: true,
-          primaryCategory: true,
-          pmService: { include: { parts: true } },
-          mechanics: true,
-        },
-      });
-      if (!wo) throw new NotFoundException('Work Order not found');
-      this.assertMechanicAccess(user, wo);
-      this.assertStandardPlanningDenied(wo, 'Standard Work Orders are completed by a Shop Manager.');
-      if (wo.status !== 'in_progress') {
-        throw new BadRequestException('Work Order must be in progress to finish');
-      }
-      const isPm = wo.primaryCategory.name === 'PM';
-      let pmObservedMileage: number | null = null;
-      if (isPm) {
-        pmObservedMileage = assertPmServiceReadyToFinish(wo.pmService, wo.truck.mileage);
-      } else {
-        const jobs = await tx.workOrderJob.findMany({ where: { workOrderId: id } });
-        const gate = canFinishWorkOrder(jobs);
-        if (!gate.ok) throw new BadRequestException(gate.message);
-      }
-
-      const now = new Date();
-      await this.closeOpenSession(tx, id, now);
-
-      const sessions = await tx.workSession.findMany({ where: { workOrderId: id } });
-      const pauses = await tx.pauseEvent.findMany({ where: { workOrderId: id } });
-      const totals = computeTotals({ sessions, pauses, now });
-
-      if (isPm && pmObservedMileage != null) {
-        await applyPmObservedMileage(tx, this.activity, {
-          truckId: wo.truckId, workOrderId: wo.id, currentMileage: wo.truck.mileage,
-          observedMileage: pmObservedMileage, userId: user.id,
-        });
-      }
-
-      const updated = await tx.workOrder.update({
-        where: { id },
-        data: {
-          status: 'completed',
-          completedAt: now,
-          completedById: user.id,
-          totalActiveLaborMs: BigInt(totals.totalActiveLaborMs),
-          totalWaitingMs: BigInt(totals.totalWaitingMs),
-          version: { increment: 1 },
-        },
-        include: workOrderDetailInclude,
-      });
-      await this.activity.log(tx, {
-        workOrderId: id,
-        eventType: ActivityEventType.WORK_ORDER_COMPLETED,
-        entityType: 'work_order',
-        entityId: id,
-        userId: user.id,
-        newValue: {
-          status: 'completed',
-          totalActiveLaborMs: totals.totalActiveLaborMs,
-          totalWaitingMs: totals.totalWaitingMs,
-        },
-      });
-      return toWorkOrderDetail(updated, user.id);
-    });
-  }
-
   async getPmService(user: AuthUser, id: string) {
     const wo = await this.prisma.workOrder.findUnique({
       where: { id },
@@ -1775,14 +1611,6 @@ export class WorkOrdersService {
     if (!hasCapability(user, capability)) {
       throw new ForbiddenException(`You do not have access to the ${workspace} workspace.`);
     }
-  }
-
-  private assertStandardPlanningDenied(
-    wo: { primaryCategory: { name: string } },
-    message: string,
-  ) {
-    if (wo.primaryCategory.name === 'PM') return;
-    throw new ForbiddenException(message);
   }
 
   private isAssigned(

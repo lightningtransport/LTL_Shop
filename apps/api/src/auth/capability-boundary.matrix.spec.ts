@@ -33,7 +33,6 @@ function user(capabilities: AppCapability[], id = 'actor-1'): AuthUser {
     name: id,
     role: 'mechanic',
     active: true,
-    pmAuthorized: capabilities.includes(AppCapability.MECHANIC_PM),
     capabilities,
     supabaseAuthId: null,
   };
@@ -233,28 +232,10 @@ describe('Mechanic Work Order mutation capability enforcement', () => {
 
   it.each([
     ['start', (service: WorkOrdersService) => service.start(adminOnly, WO_ID)],
-    ['pause', (service: WorkOrdersService) => service.pause(adminOnly, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS })],
-    [
-      'changePauseReason',
-      (service: WorkOrdersService) =>
-        service.changePauseReason(adminOnly, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS }),
-    ],
-    ['resume', (service: WorkOrdersService) => service.resume(adminOnly, WO_ID)],
     [
       'reportBlocker',
       (service: WorkOrdersService) =>
         service.reportBlocker(adminOnly, WO_ID, { jobId: JOB_ID, reason: PauseReason.WAITING_FOR_PARTS }),
-    ],
-    ['complete', (service: WorkOrdersService) => service.complete(adminOnly, WO_ID)],
-    [
-      'addJob',
-      (service: WorkOrdersService) =>
-        service.addJob(adminOnly, WO_ID, {
-          categoryId: CATEGORY_ID,
-          displayName: 'Inspect pads',
-          expectedVersion: 1,
-          idempotencyKey: '55555555-5555-4555-8555-555555555555',
-        }),
     ],
     ['addNote', (service: WorkOrdersService) => service.addNote(adminOnly, WO_ID, { body: 'Checked' })],
     ['completeJob', (service: WorkOrdersService) => service.completeJob(adminOnly, WO_ID, JOB_ID)],
@@ -265,14 +246,11 @@ describe('Mechanic Work Order mutation capability enforcement', () => {
 
   it.each([
     ['start', (service: WorkOrdersService) => service.start(managerOnly, WO_ID)],
-    ['pause', (service: WorkOrdersService) => service.pause(managerOnly, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS })],
-    ['resume', (service: WorkOrdersService) => service.resume(managerOnly, WO_ID)],
     [
       'reportBlocker',
       (service: WorkOrdersService) =>
         service.reportBlocker(managerOnly, WO_ID, { jobId: JOB_ID, reason: PauseReason.WAITING_FOR_PARTS }),
     ],
-    ['complete', (service: WorkOrdersService) => service.complete(managerOnly, WO_ID)],
   ] as const)('denies mechanic %s for a Manager without mechanic.standard', async (_name, invoke) => {
     const service = workOrderService(assignedStandardWorkOrder());
     await expect(invoke(service)).rejects.toThrow(ForbiddenException);
@@ -336,38 +314,5 @@ describe('Mechanic Work Order mutation capability enforcement', () => {
         jobs: [{ categoryId: CATEGORY_ID, displayName: 'Inspect pads' }],
       }),
     ).rejects.toThrow('Standard Work Orders are created by a Shop Manager.');
-  });
-
-  it.each([
-    ['pause', (service: WorkOrdersService) => service.pause(standard, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS })],
-    [
-      'changePauseReason',
-      (service: WorkOrdersService) =>
-        service.changePauseReason(standard, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS }),
-    ],
-    ['resume', (service: WorkOrdersService) => service.resume(standard, WO_ID)],
-    ['complete', (service: WorkOrdersService) => service.complete(standard, WO_ID)],
-    [
-      'addJob',
-      (service: WorkOrdersService) =>
-        service.addJob(standard, WO_ID, {
-          categoryId: CATEGORY_ID,
-          displayName: 'Inspect pads',
-          expectedVersion: 1,
-          idempotencyKey: '55555555-5555-4555-8555-555555555555',
-        }),
-    ],
-  ] as const)('denies Standard %s for an assigned Standard mechanic', async (_name, invoke) => {
-    const service = workOrderService(assignedStandardWorkOrder());
-    await expect(invoke(service)).rejects.toThrow(ForbiddenException);
-  });
-
-  it('still lets an assigned PM mechanic pass PM pause authorization', async () => {
-    const service = workOrderService(assignedPmWorkOrder());
-    try {
-      await service.pause(pm, WO_ID, { reason: PauseReason.WAITING_FOR_PARTS });
-    } catch (error) {
-      expect(error).not.toBeInstanceOf(ForbiddenException);
-    }
   });
 });

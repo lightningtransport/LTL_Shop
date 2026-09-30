@@ -84,7 +84,7 @@ describe('mandatory Work Plan jobs from the shop workflow (LTR-157 / D13, D15)',
 
   it('lets the Manager create a Work Order with only the truck (no Category, no Jobs)', async () => {
     const manager: AuthUser = {
-      id: 'mgr', email: 'm@l.local', name: 'Manager', role: 'manager', active: true, pmAuthorized: false,
+      id: 'mgr', email: 'm@l.local', name: 'Manager', role: 'manager', active: true,
       capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     };
     const truckId = '11111111-1111-4111-8111-111111111111';

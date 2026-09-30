@@ -26,7 +26,6 @@ export interface RosterUser {
   name: string;
   role: RosterRole;
   active: boolean;
-  pmAuthorized: boolean;
   capabilities: RosterCapability[];
   /** Open Work Orders, to-do Jobs, or active assignments on open Work Orders that still point at this user. */
   openWork: string[];
@@ -77,8 +76,6 @@ export function planRosterReset(users: RosterUser[], roster: RosterTarget[] = TE
     if (user.name !== target.name) changes.push(`name ${user.name} → ${target.name}`);
     if (user.role !== target.role) changes.push(`role ${user.role} → ${target.role}`);
     if (!user.active) changes.push('active false → true');
-    const pmAuthorized = target.capabilities.includes('MECHANIC_PM');
-    if (user.pmAuthorized !== pmAuthorized) changes.push(`pmAuthorized ${user.pmAuthorized} → ${pmAuthorized}`);
     if (!sameSet(user.capabilities, target.capabilities)) {
       changes.push(`capabilities [${[...user.capabilities].sort().join(', ')}] → [${[...target.capabilities].sort().join(', ')}]`);
     }

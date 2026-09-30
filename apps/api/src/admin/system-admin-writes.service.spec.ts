@@ -11,7 +11,6 @@ const ACTOR: AuthUser = {
   name: 'Shop Administrator',
   role: 'admin',
   active: true,
-  pmAuthorized: false,
   capabilities: [SharedCapability.ADMIN_ACCESS],
   supabaseAuthId: null,
 };
@@ -35,7 +34,6 @@ describe('SystemAdminWritesService roster', () => {
           name: data.name,
           role: data.role,
           active: data.active,
-          pmAuthorized: data.pmAuthorized,
           capabilities: [{ capability: data.capabilities.create.capability }],
         })),
       },
@@ -52,14 +50,12 @@ describe('SystemAdminWritesService roster', () => {
       name: 'New Mechanic',
       role: 'mechanic',
       active: true,
-      pmAuthorized: false,
       capabilities: [SharedCapability.MECHANIC_STANDARD],
     });
     expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         role: 'mechanic',
         active: true,
-        pmAuthorized: false,
         capabilities: {
           create: {
             capability: AppCapability.MECHANIC_STANDARD,
@@ -80,7 +76,6 @@ describe('SystemAdminWritesService roster', () => {
           name: data.name,
           role: data.role,
           active: data.active,
-          pmAuthorized: data.pmAuthorized,
           capabilities: [{ capability: data.capabilities.create.capability }],
         })),
       },
@@ -92,7 +87,6 @@ describe('SystemAdminWritesService roster', () => {
       mode: 'pm',
     });
 
-    expect(result.pmAuthorized).toBe(true);
     expect(result.capabilities).toEqual([SharedCapability.MECHANIC_PM]);
     expect(prisma.user.create.mock.calls[0][0].data.capabilities.create.capability).toBe(AppCapability.MECHANIC_PM);
   });
@@ -126,13 +120,11 @@ describe('SystemAdminWritesService roster', () => {
       name: 'Alejandro',
       role: 'mechanic',
       active: false,
-      pmAuthorized: false,
       capabilities: [{ capability: AppCapability.MECHANIC_STANDARD }],
     };
     const updated = {
       ...current,
       active: true,
-      pmAuthorized: true,
       capabilities: [{ capability: AppCapability.MECHANIC_PM }],
     };
     const tx = {
@@ -152,7 +144,6 @@ describe('SystemAdminWritesService roster', () => {
     await expect(service.updateMechanic(ACTOR, MECHANIC_ID, { active: true, mode: 'pm' })).resolves.toMatchObject({
       id: MECHANIC_ID,
       active: true,
-      pmAuthorized: true,
       capabilities: [SharedCapability.MECHANIC_PM],
     });
     expect(tx.userCapability.deleteMany).toHaveBeenCalledWith({
@@ -167,7 +158,7 @@ describe('SystemAdminWritesService roster', () => {
     });
     expect(tx.user.update).toHaveBeenCalledWith({
       where: { id: MECHANIC_ID },
-      data: { active: true, pmAuthorized: true },
+      data: { active: true },
     });
   });
 

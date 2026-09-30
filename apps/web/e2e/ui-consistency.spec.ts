@@ -75,7 +75,8 @@ test.describe('shared UI consistency', () => {
       const hasFilterSheet = (await filters.count()) > 0;
       if (hasFilterSheet) await filters.click();
       const scope = hasFilterSheet ? page.getByRole('dialog', { name: 'Filters' }) : page.getByRole('search');
-      const apply = scope.getByRole('button', { name: 'Apply filters' });
+      // LTR-189 (W6): a search-only list (Trucks) says "Search" instead of "Apply filters".
+      const apply = scope.getByRole('button', { name: hasFilterSheet ? 'Apply filters' : 'Search' });
       await expect(apply).toBeVisible();
       const box = await apply.boundingBox();
       expect(box?.height).toBeGreaterThanOrEqual(36);

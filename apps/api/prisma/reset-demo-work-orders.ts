@@ -336,7 +336,6 @@ function toAuthUser(user: UserRow): AuthUser {
     name: user.name,
     role: user.role,
     active: user.active,
-    pmAuthorized: user.pmAuthorized,
     capabilities: user.capabilities.map(({ capability }) => toSharedCapability(capability)),
     supabaseAuthId: user.supabaseAuthId,
   };

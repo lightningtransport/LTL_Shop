@@ -45,13 +45,11 @@ async function main() {
         name: additionalMechanic.name,
         role: 'mechanic',
         active: true,
-        pmAuthorized: additionalMechanic.name === 'Daniel',
       },
       create: {
         ...additionalMechanic,
         role: 'mechanic',
         active: true,
-        pmAuthorized: additionalMechanic.name === 'Daniel',
       },
     });
   }

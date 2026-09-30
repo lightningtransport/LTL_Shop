@@ -190,28 +190,38 @@ del mecánico; queda cerrado.
   en el teléfono, padding seguro del menú lateral, idioma de
   `global-error.tsx`.
 
-## 3. Limpieza de código — LTR-180
+## 3. Limpieza de código — LTR-180 — **HECHO (2026-09-30)**
 
-Código que confunde porque ya no es parte del flujo (ver `SYSTEM.md` §11):
+**HECHO (2026-09-30, LTR-180).** Ver `SYSTEM.md` §11. La migración `drop_pm_authorized` va por el flujo Release safety antes de desplegar la API.
 
-- Endpoints de readiness sin pantalla: `POST /admin/trucks/:id/readiness-assessments`,
+- ~~Endpoints de readiness sin pantalla: `POST /admin/trucks/:id/readiness-assessments`,
   `PATCH /admin/readiness-assessments/:id/requirements/:type`, `…/mark-ready`,
-  `…/close`. `deriveReadiness` (`yard-operations-derivation.ts`) ya no se
-  llama. Textos `markReady*` sin usar en `admin-messages.ts`.
-- Endpoints de equipo `POST/DELETE /admin/work-orders/:id/mechanics`
-  (`@deprecated`).
-- `POST /admin/work-orders/:id/jobs` (la UI usa `trucks/:id/work-plan/jobs`).
-- `POST /work-orders/:id/jobs` del mecánico (siempre responde 403).
-- Formulario Standard muerto en `apps/web/src/app/work-orders/new/page.tsx`
-  (categoría, Jobs, "Select mechanics").
-- Pausa/reanudar/terminar del mecánico: solo sirven para WOs de PM legacy.
-  En producción no queda ninguno abierto (2026-09-29), así que se puede
-  quitar ese código y la vista `PmWorkOrderDetail`.
-- Columna `pmAuthorized`.
-- Comentarios viejos: `schema.prisma` en `ShopWorkflowStep` ("runtime still
-  reads MANDATORY_WORK_PLAN_JOBS") y la migración `20260928030000`.
-- `supabase/migrations/20260825140000_init_domain.sql`: copia congelada;
-  borrarla o dejarle un README que lo diga.
+  `…/close`. `deriveReadiness` ya no se llama. Textos `markReady*` sin usar.~~
+  Quitados los cuatro endpoints, `markReady`/`closeAssessment` del servicio,
+  `deriveReadiness` y sus esquemas. Se conservan `startAssessment` y
+  `updateRequirement` del servicio porque la inspección del Work Plan
+  (`yard-work-plan.service.ts`) los usa por dentro.
+- ~~Endpoints de equipo `POST/DELETE /admin/work-orders/:id/mechanics`.~~ Quitados.
+- ~~`POST /admin/work-orders/:id/jobs`.~~ Quitado; `addJobByManager` sigue
+  porque el Work Plan lo usa.
+- ~~`POST /work-orders/:id/jobs` del mecánico.~~ Quitado.
+- ~~Formulario Standard muerto en `work-orders/new/page.tsx`.~~ La página solo
+  tiene "Create PM service" (801 → ~430 líneas).
+- ~~Pausa/reanudar/terminar del mecánico y la vista `PmWorkOrderDetail`.~~
+  Quitados los endpoints `POST /work-orders/:id/{pause,pause-reason,resume,complete}`,
+  la vista y los enlaces de pausa/reanudar del inicio del mecánico PM. Un WO de
+  PM legacy que quedara abierto solo lo cierra o cancela el Manager. Los e2e
+  de Daniel ahora corren sobre el PM job del WO del camión.
+- ~~Columna `pmAuthorized`.~~ Migración `20260930120000_drop_pm_authorized_ltr180`
+  (`DROP COLUMN IF EXISTS`, irreversible; el dato se deriva de `mechanic.pm`).
+  Fuera del esquema, la API, los DTOs, el seed y los fixtures.
+- ~~Comentario viejo en `schema.prisma` (`ShopWorkflowStep`).~~ Corregido. El
+  comentario de la migración `20260928030000` ("Schema only… until LTR-154")
+  se queda tal cual: es una migración aplicada y no se reescribe.
+- ~~`supabase/migrations/20260825140000_init_domain.sql`.~~ Se deja con un
+  `README.md` que dice que es copia congelada y que Prisma manda.
+- ~~Textos de Admin sin usar en `admin-messages.ts`.~~ 117 claves fuera de
+  `en` y `es` (readiness Phase 1, feeds del patio, "Add job" viejo, etc.).
 
 ## 4. Idioma — LTR-181
 
@@ -219,8 +229,10 @@ Código que confunde porque ya no es parte del flujo (ver `SYSTEM.md` §11):
   de los catálogos (más en `reset-password`, `trucks/[id]/history`,
   `ui.tsx`). LTR-167 agregó 5 en el menú de perfil (Idioma, Tema, Claro,
   Oscuro, Auto) aunque la clave `language` ya existe en el catálogo.
-- Textos solo en inglés en pantallas de PM legacy y nuevo WO ("Resume Work",
-  "Change Pause Reason", "Jobs To Do", "Create failed", "Action failed"…).
+- Textos solo en inglés que quedan en el mecánico ("Create failed", "Action
+  failed", "Unable to load shop reference data", la nota de búsqueda parcial
+  de camiones…). Las pantallas de PM legacy y el formulario Standard ya no
+  existen (LTR-180).
 - 29 lugares leen `.message` de errores de la API (siempre en inglés) y lo
   muestran al usuario, también en español. `app/error.tsx` y
   `global-error.tsx` ya están traducidos (LTR-170).

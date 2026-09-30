@@ -375,7 +375,7 @@ Shop Admin, Yard, Work Orders).
 |---|---|
 | `/` (= `/mechanic/standard`, `/mechanic/pm`) | Inicio: mi trabajo. Cada rol ve su versión. |
 | `/qc` | Safety: camiones por revisar (Tomar, Aprobar, Devolver) y devueltos. |
-| `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, PM dentro del WO, o PM legacy). |
+| `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, o el PM job dentro del WO con `?view=pm`). |
 | `/mechanic/pm/new` | Create PM service. |
 | `/mechanic/{standard,pm}/trucks`, `/trucks/[id]/history` | Buscar camión e historial de reparaciones. |
 | `/mechanic/{standard,pm}/completed` | Pestaña "Completados": Standard lista los Jobs que ese mecánico completó (el Work Order puede seguir abierto); PM lista los servicios de PM terminados (LTR-189 W11). |
@@ -464,18 +464,20 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
 
 ## 11. Código heredado que todavía existe
 
-Existe en el código, pero no es parte del flujo actual. La limpieza está en
-`OPEN_ISSUES.md`.
+Existe en el código, pero no es parte del flujo actual. LTR-180 (2026-09-30)
+quitó los endpoints de readiness, el equipo por WO, el "Add job" viejo, la
+pausa/reanudar/terminar del mecánico PM legacy, el formulario Standard de
+`work-orders/new`, la columna `pmAuthorized` y 117 textos de Admin sin uso.
 
-- **WOs de PM legacy** (creados antes de LTR-141): conservan pausa y
-  "terminar WO" del mecánico PM. Ya no se pueden crear y en producción no
-  queda ninguno abierto (2026-09-29).
-- **Readiness assessments** (modelo viejo de 6 requisitos y "Mark Ready"):
-  sin pantalla, endpoints `@deprecated`. La inspección todavía se guarda en
-  su requisito `inspection`; desde LTR-177 la evaluación se abre y se cierra
-  con cada visita.
+- **WOs de PM legacy** (creados antes de LTR-141): ya no se pueden crear y en
+  producción no queda ninguno abierto (2026-09-29). Si apareciera uno, el
+  mecánico solo lo ve; lo cierra o cancela el Manager desde Admin.
+- **Readiness assessments** (modelo viejo de 6 requisitos): sin pantalla ni
+  endpoints de escritura. La inspección del Work Plan todavía se guarda en su
+  requisito `inspection` (`YardOperationsService.startAssessment` /
+  `updateRequirement` por dentro); desde LTR-177 la evaluación se abre y se
+  cierra con cada visita. Truck detail y Yard la leen.
 - **`mechanic_assignments`**: ya no es "el equipo"; es un caché de los
-  dueños de Jobs. Los endpoints `POST/DELETE /admin/work-orders/:id/mechanics`
-  están `@deprecated`.
-- **`pmAuthorized`**: columna sin efecto; manda `mechanic.pm`.
-- **`supabase/migrations/`**: copia congelada del esquema inicial.
+  dueños de Jobs.
+- **`supabase/migrations/`**: copia congelada del esquema inicial (ver su
+  `README.md`); las migraciones de Prisma son la fuente de verdad.

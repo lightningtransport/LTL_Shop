@@ -247,7 +247,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager',
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE],
       supabaseAuthId: null,
     }, { truckId: created.truckId })).resolves.toMatchObject({
@@ -492,159 +491,6 @@ describe('AdminService', () => {
     await expect(service.catalogCategoryDetail('00000000-0000-4000-8000-000000000399')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('adds a standard mechanic, reactivates a removed assignment, and refuses PM or closed Work Orders', async () => {
-    const mechanicId = '00000000-0000-4000-8000-000000000001';
-    const manager = {
-      id: baseRow.createdById,
-      email: 'manager@lightning.local',
-      name: 'Shop Manager',
-      role: 'manager' as const,
-      active: true,
-      pmAuthorized: false,
-      capabilities: [AppCapability.ADMIN_ACCESS],
-      supabaseAuthId: null,
-    };
-    const body = {
-      mechanicId,
-      expectedVersion: 1,
-      idempotencyKey: '00000000-0000-4000-8000-000000000701',
-    };
-    const wo = detailRow();
-    const activity = { log: vi.fn() };
-    const tx = assignmentTx(wo, {
-      user: { findFirst: vi.fn().mockResolvedValue({ id: mechanicId, name: 'Alejandro 1' }) },
-      mechanicAssignment: {
-        findUnique: vi.fn().mockResolvedValue(null),
-        create: vi.fn(),
-        update: vi.fn(),
-      },
-    });
-    tx.workOrder.findUnique
-      .mockResolvedValueOnce(wo)
-      .mockResolvedValueOnce(wo)
-      .mockResolvedValueOnce(detailRow({
-        version: 2,
-        mechanics: [{ mechanic: { id: mechanicId, name: 'Alejandro 1' }, addedAt: new Date(), removedAt: null }],
-      }));
-    const prisma = createPrisma();
-    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => unknown) => callback(tx));
-    const service = new AdminService(prisma as never, activity as never, {} as never);
-
-    await expect(service.addMechanic(manager, wo.id, body)).resolves.toMatchObject({ version: 2 });
-    expect(tx.mechanicAssignment.create).toHaveBeenCalled();
-    expect(activity.log).toHaveBeenCalledWith(tx, expect.objectContaining({ eventType: ActivityEventType.MECHANIC_ADDED }));
-
-    const removed = { id: 'asg-1', removedAt: new Date(), mechanicId };
-    tx.mechanicAssignment.findUnique.mockResolvedValue(removed);
-    tx.workOrder.findUnique.mockReset();
-    tx.workOrder.findUnique
-      .mockResolvedValueOnce(wo)
-      .mockResolvedValueOnce(wo)
-      .mockResolvedValueOnce(detailRow({ version: 2 }));
-    await service.addMechanic(manager, wo.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000000702' });
-    expect(tx.mechanicAssignment.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'asg-1' },
-      data: expect.objectContaining({ removedAt: null }),
-    }));
-
-    const pm = assignmentTx(detailRow({ primaryCategory: { ...baseRow.primaryCategory, name: 'PM' } }));
-    prisma.$transaction.mockImplementation(async (callback: (client: typeof pm) => unknown) => callback(pm));
-    await expect(service.addMechanic(manager, wo.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000000703' }))
-      .rejects.toBeInstanceOf(BadRequestException);
-
-    const closed = assignmentTx(detailRow({ status: 'completed' }));
-    prisma.$transaction.mockImplementation(async (callback: (client: typeof closed) => unknown) => callback(closed));
-    await expect(service.addMechanic(manager, wo.id, { ...body, idempotencyKey: '00000000-0000-4000-8000-000000000704' }))
-      .rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it('refuses the last active assignment, version conflicts, and replays idempotent add', async () => {
-    const mechanicId = '00000000-0000-4000-8000-000000000001';
-    const otherId = '00000000-0000-4000-8000-000000000099';
-    const manager = {
-      id: baseRow.createdById,
-      email: 'manager@lightning.local',
-      name: 'Shop Manager',
-      role: 'manager' as const,
-      active: true,
-      pmAuthorized: false,
-      capabilities: [AppCapability.ADMIN_ACCESS],
-      supabaseAuthId: null,
-    };
-    const stored = { id: baseRow.id, version: 3 };
-    const prisma = createPrisma();
-    prisma.workOrderMutation.findUnique.mockResolvedValueOnce({
-      workOrderId: baseRow.id,
-      operation: 'admin_add_mechanic',
-      payloadHash: idempotencyFingerprint({
-        workOrderId: baseRow.id,
-        mechanicId,
-        expectedVersion: 1,
-      }),
-      actorId: manager.id,
-      result: stored,
-    });
-    const service = createService(prisma);
-    await expect(service.addMechanic(manager, baseRow.id, {
-      mechanicId,
-      expectedVersion: 1,
-      idempotencyKey: '00000000-0000-4000-8000-000000000705',
-    })).resolves.toEqual(stored);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-
-    prisma.workOrderMutation.findUnique.mockResolvedValue(null);
-    const stale = assignmentTx(detailRow({ version: 4 }));
-    prisma.$transaction.mockImplementation(async (callback: (client: typeof stale) => unknown) => callback(stale));
-    await expect(service.addMechanic(manager, baseRow.id, {
-      mechanicId,
-      expectedVersion: 1,
-      idempotencyKey: '00000000-0000-4000-8000-000000000706',
-    })).rejects.toBeInstanceOf(ConflictException);
-
-    const last = assignmentTx(detailRow({
-      mechanics: [{ mechanic: { id: mechanicId, name: 'Alejandro 1' }, addedAt: new Date(), removedAt: null }],
-    }), {
-      mechanicAssignment: {
-        findUnique: vi.fn().mockResolvedValue({ id: 'asg-1', removedAt: null, mechanicId }),
-        update: vi.fn(),
-      },
-    });
-    prisma.$transaction.mockImplementation(async (callback: (client: typeof last) => unknown) => callback(last));
-    await expect(service.removeMechanic(manager, baseRow.id, mechanicId, {
-      expectedVersion: 1,
-      idempotencyKey: '00000000-0000-4000-8000-000000000707',
-    })).rejects.toBeInstanceOf(BadRequestException);
-
-    const twoRow = detailRow({
-      mechanics: [
-        { mechanic: { id: mechanicId, name: 'Alejandro 1' }, addedAt: new Date(), removedAt: null },
-        { mechanic: { id: otherId, name: 'Anthony' }, addedAt: new Date(), removedAt: null },
-      ],
-    });
-    const two = assignmentTx(twoRow, {
-      mechanicAssignment: {
-        findUnique: vi.fn().mockResolvedValue({ id: 'asg-2', removedAt: null, mechanicId: otherId }),
-        update: vi.fn(),
-      },
-    });
-    two.workOrder.findUnique
-      .mockResolvedValueOnce(twoRow)
-      .mockResolvedValueOnce(twoRow)
-      .mockResolvedValueOnce(detailRow({
-        version: 2,
-        mechanics: [{ mechanic: { id: mechanicId, name: 'Alejandro 1' }, addedAt: new Date(), removedAt: null }],
-      }));
-    const activity = { log: vi.fn() };
-    const mutating = new AdminService(prisma as never, activity as never, {} as never);
-    prisma.$transaction.mockImplementation(async (callback: (client: typeof two) => unknown) => callback(two));
-    await expect(mutating.removeMechanic(manager, baseRow.id, otherId, {
-      expectedVersion: 1,
-      idempotencyKey: '00000000-0000-4000-8000-000000000708',
-    })).resolves.toMatchObject({ version: 2 });
-    expect(two.mechanicAssignment.update).toHaveBeenCalled();
-    expect(activity.log).toHaveBeenCalledWith(two, expect.objectContaining({ eventType: ActivityEventType.MECHANIC_REMOVED }));
-  });
-
   it('cancels open Standard and PM Work Orders, closes labor, and refuses closed ones', async () => {
     const manager = {
       id: baseRow.createdById,
@@ -652,7 +498,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS],
       supabaseAuthId: null,
     };
@@ -725,7 +570,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS],
       supabaseAuthId: null,
     };
@@ -767,7 +611,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS],
       supabaseAuthId: null,
     };
@@ -818,7 +661,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS],
       supabaseAuthId: null,
     };
@@ -884,7 +726,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS],
       supabaseAuthId: null,
     };
@@ -983,7 +824,7 @@ describe('AdminService', () => {
   it('LTR-145: switches the PM job between PM A and PM B, and refuses completing it as a plain Job', async () => {
     const manager = {
       id: '00000000-0000-4000-8000-000000000002', email: 'manager@lightning.local', name: 'Shop Manager',
-      role: 'manager' as const, active: true, pmAuthorized: false,
+      role: 'manager' as const, active: true,
       capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     };
     const pmJobId = '00000000-0000-4000-8000-000000000777';
@@ -1028,7 +869,7 @@ describe('AdminService', () => {
   it('LTR-146: assigns the PM job to a PM mechanic without adding them to the Standard team', async () => {
     const manager = {
       id: '00000000-0000-4000-8000-000000000002', email: 'manager@lightning.local', name: 'Shop Manager',
-      role: 'manager' as const, active: true, pmAuthorized: false,
+      role: 'manager' as const, active: true,
       capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     };
     const pmJobId = '00000000-0000-4000-8000-000000000778';
@@ -1065,7 +906,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS],
       supabaseAuthId: null,
     };
@@ -1179,7 +1019,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS],
       supabaseAuthId: null,
     };
@@ -1278,7 +1117,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS],
       supabaseAuthId: null,
     };
@@ -1416,7 +1254,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS],
       supabaseAuthId: null,
     };
@@ -1528,7 +1365,6 @@ describe('AdminService', () => {
       name: 'Shop Manager',
       role: 'manager' as const,
       active: true,
-      pmAuthorized: false,
       capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE],
       supabaseAuthId: null,
     };
@@ -1599,7 +1435,7 @@ describe('AdminService', () => {
     const mechanicId = '00000000-0000-4000-8000-000000000004';
     const manager = {
       id: baseRow.createdById, email: 'manager@lightning.local', name: 'Shop Manager', role: 'manager' as const,
-      active: true, pmAuthorized: false, capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE],
+      active: true, capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE],
       supabaseAuthId: null,
     };
     const base = detailRow({});

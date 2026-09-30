@@ -10,7 +10,6 @@ const pmMechanic: AuthUser = {
   name: 'MPM',
   role: 'mechanic',
   active: true,
-  pmAuthorized: true,
   capabilities: [AppCapability.MECHANIC_PM],
   supabaseAuthId: null,
 };
@@ -61,25 +60,5 @@ describe('PM service mileage save / finish (LTR-135)', () => {
     await expect(service.updatePmService(pmMechanic, 'wo-pm', { observedMileage: 364_400, selections: [] }))
       .rejects.toMatchObject({ response: { code: 'MILEAGE_BELOW_CURRENT' } });
     expect(tx.pmService.upsert).not.toHaveBeenCalled();
-  });
-
-  it('does not finish a PM whose saved mileage is now below the truck mileage', async () => {
-    const tx = {
-      workOrder: {
-        findUnique: vi.fn().mockResolvedValue({
-          ...pmWorkOrder(365_686),
-          pmService: { observedMileage: 364_400, parts: [{ id: 'part-1' }] },
-        }),
-      },
-      workSession: { findFirst: vi.fn(), update: vi.fn() },
-      truck: { update: vi.fn() },
-    };
-    const service = new WorkOrdersService({
-      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
-    } as never, { log: vi.fn() } as never);
-
-    await expect(service.complete(pmMechanic, 'wo-pm'))
-      .rejects.toMatchObject({ response: { code: 'MILEAGE_BELOW_CURRENT' } });
-    expect(tx.truck.update).not.toHaveBeenCalled();
   });
 });

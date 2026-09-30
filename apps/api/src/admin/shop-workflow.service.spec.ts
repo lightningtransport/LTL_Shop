@@ -8,7 +8,7 @@ const ANTHONY = '00000000-0000-4000-8000-0000000000a1';
 
 function actor(overrides: Partial<AuthUser> = {}): AuthUser {
   return {
-    id: 'mgr', email: 'm@l.local', name: 'Manager', role: 'manager', active: true, pmAuthorized: false,
+    id: 'mgr', email: 'm@l.local', name: 'Manager', role: 'manager', active: true,
     capabilities: [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE], supabaseAuthId: null,
     ...overrides,
   };

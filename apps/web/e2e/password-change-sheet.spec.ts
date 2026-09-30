@@ -7,7 +7,6 @@ const pmUser = {
   name: 'Dana PM',
   role: 'mechanic',
   active: true,
-  pmAuthorized: true,
   capabilities: ['mechanic.pm'],
   mustChangePassword: false,
 };

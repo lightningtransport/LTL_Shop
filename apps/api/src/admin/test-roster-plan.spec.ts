@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { planRosterReset, TEST_ROSTER, type RosterUser } from './test-roster-plan';
 
 function user(overrides: Partial<RosterUser> & Pick<RosterUser, 'email'>): RosterUser {
-  return { id: overrides.email, name: overrides.email, role: 'mechanic', active: true, pmAuthorized: false, capabilities: [], openWork: [], ...overrides };
+  return { id: overrides.email, name: overrides.email, role: 'mechanic', active: true, capabilities: [], openWork: [], ...overrides };
 }
 
 describe('test roster reset plan (LTR-160)', () => {
@@ -35,7 +35,6 @@ describe('test roster reset plan (LTR-160)', () => {
   it('reports no pending changes once the roster matches', () => {
     const users = TEST_ROSTER.map((target) => user({
       email: target.email, name: target.name, role: target.role, capabilities: target.capabilities,
-      pmAuthorized: target.capabilities.includes('MECHANIC_PM'),
     }));
     const plan = planRosterReset([...users, user({ email: 'old@lightning.local', active: false })]);
     expect(plan.pendingChanges).toBe(0);
