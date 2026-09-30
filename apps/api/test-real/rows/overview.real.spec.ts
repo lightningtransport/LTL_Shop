@@ -2,7 +2,7 @@ import { beforeEach, describe, it } from 'vitest';
 import {
   USERS, Json, activeBlocker, admin, adminCompleteJob, adminWo, as, closeWo, doLane, doPm, laneJob, manager, meta,
   namedJob, ok, plannedWo, prisma, refused, reportBlocker, resetDb, returnToService, same, sameNextStepEverywhere,
-  start, completeJob, createWo, truthy,
+  start, completeJob, createWo, truthy, userId,
 } from '../harness';
 
 describe('Tablero, Yard, notas y tiempos', () => {
@@ -134,10 +134,11 @@ describe('Tablero, Yard, notas y tiempos', () => {
     refused('WO cerrado: el Manager tampoco', await manager.post(`/admin/work-orders/${workOrderId}/notes`, { kind: 'note', body: 'Tarde.' }), 400, 'WORK_ORDER_CLOSED');
   });
 
-  it('A23 | Corrección de tiempos (admin)', async () => {
+  it('A23 | Corrección de tiempos (admin); cada sesión dice de qué mecánico es', async () => {
     const { workOrderId } = await plannedWo('905');
     await doLane(USERS.alignment, workOrderId, 'alignment');
     const session = await prisma.workSession.findFirstOrThrow({ where: { workOrderId } });
+    same('la sesión dice de quién es (LTR-184)', ((await adminWo(workOrderId)).laborSessions as Json[])[0]?.mechanic?.id, await userId(USERS.alignment));
     const endedAt = new Date(session.startedAt.getTime() + 45 * 60_000).toISOString();
     const body = async () => ({
       ...(await meta(workOrderId)), workOrderId, targetType: 'work_session', targetId: session.id, endedAt, reason: 'Olvidó cerrar.',

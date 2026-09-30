@@ -7,6 +7,7 @@ import { isPmCategory, isQualityCheckJob, AppCapability, OPEN_WORK_ORDER_STATUSE
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
+import { laborByMechanic } from '@/lib/labor-by-mechanic';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
@@ -785,7 +786,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </div>
     </div>
     <CollapsibleSection testId="admin-wo-history" title={messages.historyAndAudit} description={messages.historyAndAuditDescription}>
-        <SectionBlock title={messages.workOrderTimes}><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info label={messages.created} value={formatAdminDate(data.createdAt, locale)} /><Info label={messages.started} value={formatAdminDate(data.startedAt, locale)} /><Info label={messages.completed} value={formatAdminDate(data.completedAt, locale)} /><Info label={messages.updated} value={formatAdminDate(data.updatedAt, locale)} /><Info label={messages.activeLabor} value={formatDuration(data.totalActiveLaborMs)} /><Info label={messages.waitingTime} value={formatDuration(data.totalWaitingMs)} /></dl></SectionBlock>
+        <SectionBlock title={messages.workOrderTimes}><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info label={messages.created} value={formatAdminDate(data.createdAt, locale)} /><Info label={messages.started} value={formatAdminDate(data.startedAt, locale)} /><Info label={messages.completed} value={formatAdminDate(data.completedAt, locale)} /><Info label={messages.updated} value={formatAdminDate(data.updatedAt, locale)} /><Info label={messages.activeLabor} value={formatDuration(data.totalActiveLaborMs)} /><Info label={messages.waitingTime} value={formatDuration(data.totalWaitingMs)} /></dl>{laborByMechanic(data).length ? <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4" aria-label={messages.laborByMechanic}>{laborByMechanic(data).map((entry) => <Info key={entry.key} label={entry.name ?? messages.laborUnattributed} value={formatDuration(entry.totalMs)} />)}</dl> : null}</SectionBlock>
         <SectionBlock title={messages.timeCorrectionTitle} description={messages.timeCorrectionDescription}>
             {closedTimeSegments(data).length ? (
               <form
@@ -834,7 +835,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                     <option value="">{messages.timeCorrectionSegment}</option>
                     {closedTimeSegments(data).map((segment) => (
                       <option key={`${segment.targetType}:${segment.id}`} value={`${segment.targetType}:${segment.id}`}>
-                        {segment.targetType === 'work_session' ? messages.activeLabor : messages.waitingTime} · {formatAdminDate(segment.startedAt, locale)}
+                        {segment.targetType === 'work_session' ? `${messages.activeLabor}${segment.mechanic ? ` · ${segment.mechanic.name}` : ''}` : messages.waitingTime} · {formatAdminDate(segment.startedAt, locale)}
                       </option>
                     ))}
                   </Select>
@@ -962,10 +963,10 @@ function timeCorrectionError(errorValue: unknown, messages: AdminMessages) {
 function closedTimeSegments(data: AdminWorkOrderDetailDto) {
   const sessions = (data.laborSessions ?? [])
     .filter((session) => session.endedAt)
-    .map((session) => ({ ...session, targetType: 'work_session' as const, endedAt: session.endedAt! }));
+    .map((session) => ({ ...session, targetType: 'work_session' as const, endedAt: session.endedAt!, mechanic: session.mechanic ?? null }));
   const pauses = data.pauseHistory
     .filter((pause) => pause.endedAt && pause.isOfficialPause !== false)
-    .map((pause) => ({ id: pause.id, startedAt: pause.startedAt, endedAt: pause.endedAt!, targetType: 'pause_event' as const }));
+    .map((pause) => ({ id: pause.id, startedAt: pause.startedAt, endedAt: pause.endedAt!, targetType: 'pause_event' as const, mechanic: null }));
   return [...sessions, ...pauses];
 }
 function toDatetimeLocal(value: string) {

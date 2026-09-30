@@ -379,6 +379,8 @@ export interface AdminTimeSegmentDto {
   startedAt: string;
   endedAt: string | null;
   durationMs: number | null;
+  /** LTR-184 / D18: whose clock this is. Null on sessions from before per-mechanic labor. */
+  mechanic?: { id: string; name: string } | null;
 }
 
 export interface AdminRepairHistoryDto {

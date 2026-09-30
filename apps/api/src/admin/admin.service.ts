@@ -199,6 +199,8 @@ const detailInclude = {
     orderBy: { addedAt: 'asc' as const },
   },
   sessions: {
+    // LTR-184 / D18: the Admin sees whose clock each session is.
+    include: { user: { select: { id: true, name: true } } },
     orderBy: { startedAt: 'asc' as const },
   },
   pauseEvents: {
@@ -2276,6 +2278,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       startedAt: session.startedAt.toISOString(),
       endedAt: session.endedAt?.toISOString() ?? null,
       durationMs: sessionDurationMs(session.startedAt, session.endedAt),
+      mechanic: session.user ? { id: session.user.id, name: session.user.name } : null,
     })),
     pauseHistory: row.pauseEvents
       .filter((pause) => pause.isOfficialPause !== false)

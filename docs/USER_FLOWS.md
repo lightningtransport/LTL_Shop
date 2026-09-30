@@ -381,7 +381,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Corrige sin motivo | No deja | ✅ | A23 |
 | Corrige una sesión que sigue abierta | No deja | ✅ | A23 |
 | Un mecánico intenta corregir tiempos | No puede | ✅ | A23 |
-| Quiere saber de qué mecánico es cada sesión | **El Work Order no lo dice** | ❌ #9 · LTR-184 | — |
+| Quiere saber de qué mecánico es cada sesión | Cada sesión lleva su mecánico; "History and audit" muestra el tiempo por mecánico y el selector de corrección dice de quién es cada una | ✅ | A23 |
 
 ### HU-A2 · Catálogo y personal
 
@@ -448,7 +448,6 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
-| 9 | Las sesiones de tiempo no dicen de qué mecánico son | Admin | C | LTR-184 | — |
 | 3 | No existe revisión de Custom Jobs | Manager | C | decisión P5 | — |
 
 **B** bloqueante · **C** confuso · **E** estético. Detalle técnico en
