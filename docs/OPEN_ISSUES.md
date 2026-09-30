@@ -71,7 +71,7 @@ puede borrar en la limpieza (§3).
 
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
-Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ hecho → #6 (LTR-178) → los C de §1b
+Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → los C de §1b
 (LTR-179). El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
 **Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
@@ -104,7 +104,6 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 |---|---|---|---|
 | 3 | **Custom Jobs sin revisión** — C, pendiente de P5 | Quedan en `review_status = pending_review` para siempre; nada los mapea al catálogo (ver P5 en `DECISIONS.md`). | `work-orders.service.ts` (l. 367, 951) |
 | 5 | **"Mechanic note: undefined"** *(solo visible en pantalla)* — C | Reportado en la revisión de UX del 27-sep. La auditoría confirma que las notas se guardan y se leen bien (fila A22); falta mirarlo en la pantalla del mecánico. | — |
-| 6 | **Texto de QC contradice D15** — C, LTR-178 | `workPlanQcHint` y `workPlanReadyAutomatic` dicen que Quality Check es opcional; QC siempre es obligatorio. En ES además dice "Quality Check" en lugar de "Control de calidad". | `apps/web/src/lib/admin-messages.ts` (EN ~l. 712/731, ES ~l. 1449/1468; también `truckNextStepQc`) |
 
 
 ## 1c. Huecos de operación (cuestionario del 2026-09-29)
