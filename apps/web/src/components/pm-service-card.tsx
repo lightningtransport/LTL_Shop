@@ -187,7 +187,13 @@ export function PmServiceCard({
 
   return (
     <Card className="mb-4 space-y-4" aria-labelledby="pm-service-title">
-      <h2 id="pm-service-title" className="group-title">{messages.pmServiceLabel}</h2>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="pm-service-title" className="group-title">{messages.pmServiceLabel}</h2>
+        {/* LTR-189 (W15): the autosave state is visible where the mechanic is typing, not only under the last part. */}
+        <span className="text-xs text-muted-foreground">
+          {saveStatus === 'saving' ? messages.saving : saveStatus === 'saved' ? messages.autosaved : null}
+        </span>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
@@ -288,7 +294,7 @@ export function PmServiceCard({
 
       <div className="min-h-5 text-sm" aria-live="polite">
         {saveStatus === 'saving' ? <span className="text-muted-foreground">{messages.saving}</span> : null}
-        {saveStatus === 'saved' ? <span className="text-muted-foreground">{messages.saved}</span> : null}
+        {saveStatus === 'saved' ? <span className="text-muted-foreground">{messages.autosaved}</span> : null}
         {saveError ? (
           <span className="text-destructive-text" role="alert">
             {saveError}{' '}

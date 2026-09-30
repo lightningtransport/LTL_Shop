@@ -186,6 +186,7 @@ type Copy = {
   noCompatibleParts: string;
   saving: string;
   saved: string;
+  autosaved: string;
   restoringSession: string;
   loadingWorkOrders: string;
   loadingWorkOrder: string;
@@ -208,6 +209,7 @@ type Copy = {
   continuePmService: string;
   pmStartedAt: (time: string) => string;
   pmAlreadyRunning: (displayId: string) => string;
+  pmServiceTypeLabel: string;
   pmJoinAdd: (displayId: string) => string;
   pmJoinJoin: (displayId: string) => string;
   pmJoinMine: (displayId: string) => string;
@@ -437,6 +439,7 @@ const copy: Record<ShopLocale, Copy> = {
     noCompatibleParts: 'No compatible parts for this truck',
     saving: 'Saving…',
     saved: 'Saved',
+    autosaved: 'Saved automatically',
     restoringSession: 'Restoring session',
     loadingWorkOrders: 'Loading work orders',
     loadingWorkOrder: 'Loading work order',
@@ -458,7 +461,8 @@ const copy: Record<ShopLocale, Copy> = {
     finishWork: 'Finish Work',
     continuePmService: 'Continue PM service',
     pmStartedAt: (time) => `Started ${time}`,
-    pmAlreadyRunning: (displayId) => `Finish or pause ${displayId} before starting another PM service.`,
+    pmAlreadyRunning: (displayId) => `Finish ${displayId} before starting another PM service.`,
+    pmServiceTypeLabel: 'Service type',
     pmJoinAdd: (displayId) => `This truck already has Work Order ${displayId}. Your PM service will be added to it.`,
     pmJoinJoin: (displayId) => `This truck already has Work Order ${displayId} with a PM job. You will take and start it.`,
     pmJoinMine: (displayId) => `You already started the PM on Work Order ${displayId}.`,
@@ -700,6 +704,7 @@ const copy: Record<ShopLocale, Copy> = {
     noCompatibleParts: 'No hay piezas compatibles para este camión',
     saving: 'Guardando…',
     saved: 'Guardado',
+    autosaved: 'Guardado automáticamente',
     restoringSession: 'Restaurando sesión',
     loadingWorkOrders: 'Cargando Work Orders',
     loadingWorkOrder: 'Cargando Work Order',
@@ -721,7 +726,8 @@ const copy: Record<ShopLocale, Copy> = {
     finishWork: 'Terminar trabajo',
     continuePmService: 'Continuar servicio PM',
     pmStartedAt: (time) => `Iniciado ${time}`,
-    pmAlreadyRunning: (displayId) => `Termina o pausa ${displayId} antes de iniciar otro servicio PM.`,
+    pmAlreadyRunning: (displayId) => `Termina ${displayId} antes de iniciar otro servicio PM.`,
+    pmServiceTypeLabel: 'Tipo de servicio',
     pmJoinAdd: (displayId) => `Esta unidad ya tiene el Work Order ${displayId}. Tu servicio PM se agregará ahí.`,
     pmJoinJoin: (displayId) => `Esta unidad ya tiene el Work Order ${displayId} con un job PM. Lo tomarás e iniciarás.`,
     pmJoinMine: (displayId) => `Ya iniciaste el PM en el Work Order ${displayId}.`,

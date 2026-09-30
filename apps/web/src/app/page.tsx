@@ -223,7 +223,7 @@ export default function HomePage() {
               </p>
               <div className="space-y-3">
                 {data.created.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="created" currentUserId={user.id} pmWorkspace={isPm} />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="created" currentUserId={user.id} pmWorkspace={isPm} startBlocked={isPm && activeWork.length > 0} />
                 ))}
               </div>
             </section>
@@ -278,11 +278,14 @@ function WorkOrderCard({
   mode,
   currentUserId,
   pmWorkspace = false,
+  startBlocked = false,
 }: {
   wo: WorkOrderSummaryDto;
   mode: 'created' | 'active' | 'waiting_on_manager' | 'paused' | 'completed';
   currentUserId: string;
   pmWorkspace?: boolean;
+  /** LTR-189 (W14) / D2: another PM service is running, so this one can only be viewed for now. */
+  startBlocked?: boolean;
 }) {
   const { messages } = useShopLocale();
   // LTR-146: in the PM workspace a truck Work Order shows only its PM job.
@@ -368,9 +371,9 @@ function WorkOrderCard({
         {pmJob ? (
           <WorkOrderActionLink
             href={detailHref}
-            action={mode === 'completed' ? messages.viewCompletedWorkAction : pmJob.startedAt ? messages.continuePmService : messages.startPmService}
+            action={mode === 'completed' ? messages.viewCompletedWorkAction : pmJob.startedAt ? messages.continuePmService : startBlocked ? messages.viewWork : messages.startPmService}
             wo={wo}
-            variant={mode === 'completed' ? 'secondary' : undefined}
+            variant={mode === 'completed' || startBlocked ? 'secondary' : undefined}
             className="w-full"
           />
         ) : mode === 'completed' ? (
