@@ -72,7 +72,7 @@ puede borrar en la limpieza (§3).
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
 Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → recorrido de
-pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ ~~W12~~ ~~W14~~ ~~W15~~ ~~W17~~ ~~W9~~ ~~W5~~ hechos; ~~W16~~ hechos; quedan W3, W6, W7, W8, W10, W13) → los de §1b
+pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ ~~W12~~ ~~W14~~ ~~W15~~ ~~W17~~ ~~W9~~ ~~W5~~ hechos; ~~W16~~ ~~W3~~ ~~W6~~ ~~W7~~ ~~W8~~ ~~W10~~ ~~W13~~ **todos hechos**) → los de §1b
 (LTR-179). El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
 **Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
@@ -152,17 +152,17 @@ empezando por W1 (el que reportó el dueño).
 |---|---|---|---|---|
 | ~~W1~~ | C | Manager | ~~Tarjeta "Jobs" del Work Order sin jerarquía~~ — **hecho** (2026-09-30): fila de acciones por Job y diálogo con motivo para cancelar/reabrir. | `admin-work-order-detail.tsx` |
 | ~~W2~~ | C | Manager | ~~"Completar Work Order" visible con error antes de tiempo~~ — **hecho** (2026-09-30): la tarjeta solo existe cuando el Work Order ya puede cerrarse. | `admin-work-order-detail.tsx` |
-| W3 | C | Manager | Panel: el mismo Work Order muestra "Atención: Prioridad crítica" y "Siguiente paso: Bloqueado…" a la vez. Una sola línea: el paso siguiente. | `admin-dashboard.tsx`, `lib/status-chips.ts` |
+| ~~W3~~ | C | Manager | ~~Panel repite "Atención" y "Siguiente paso"~~ — **hecho** (2026-09-30): la línea de atención solo sale cuando no hay paso siguiente. | `admin-work-order-item.tsx` |
 | ~~W4~~ | C | Manager | ~~Error de hidratación de React en la lista de Trucks~~ — **hecho** (2026-09-30): el badge va en un `<div>`. | `admin-trucks-list.tsx` |
 | ~~W5~~ | C | Manager | ~~"Estado operacional: Unknown — no hay un evento…"~~ — **hecho** (2026-09-30): dice "Sin registro" / "Not recorded". | `admin-messages.ts` |
-| W6 | E | Manager | Lista de Trucks: el placeholder de búsqueda se corta en el teléfono; "Aplicar filtros" sale como botón primario en una lista que solo tiene búsqueda. | `admin-trucks-list.tsx`, `admin-messages.ts:906` |
-| W7 | C | Manager | Detalle de Truck → Work Plan: "Marcar completado" sale primario en Detailing y no en el paso siguiente; "Trabajo actual" muestra "Categoría: Inspection" (categoría legacy del Work Order). | `components/admin-truck-detail.tsx` ~l. 79 |
-| W8 | C | Manager | Lista de Work Orders: la tarjeta repite "N Jobs · Siguiente: X" dos veces; el subtítulo "Vista operacional de solo lectura de todos los Work Orders del Shop" es jerga. | `components/admin-work-order-item.tsx`, `admin-messages.ts:890` |
+| ~~W6~~ | E | Manager | ~~Buscador cortado y "Aplicar filtros" primario en Trucks~~ — **hecho** (2026-09-30): "Buscar Trucks" y botón "Buscar". | `admin-trucks-list.tsx` |
+| ~~W7~~ | C | Manager | ~~Work Plan: "Marcar completado" sin jerarquía; "Categoría: Inspection"~~ — **hecho** (2026-09-30): botón visible (primario solo en QC) y sin categoría legacy en "Trabajo actual". | `admin-truck-work-plan.tsx`, `admin-truck-detail.tsx` |
+| ~~W8~~ | C | Manager | ~~Lista de Work Orders repite "N Jobs · Siguiente"; subtítulo en jerga~~ — **hecho** (2026-09-30): con paso siguiente la línea solo cuenta Jobs; subtítulo "Todos los Work Orders del Shop, abiertos y cerrados." | `admin-work-order-item.tsx`, `admin-messages.ts` |
 | ~~W9~~ | C | Manager | ~~Setup → Shop workflow: QC dice "Manager, sin asignación"~~ — **hecho** (2026-09-30): "Safety (Control de calidad) lo toma de la cola". | `admin-messages.ts` |
-| W10 | E | Manager | El subtítulo del Work Order dice "Work Order WO-005 · Inspection" (categoría legacy). Sobra. | `admin-work-order-detail.tsx` |
+| ~~W10~~ | E | Manager | ~~Subtítulo "WO-005 · Inspection"~~ — **hecho** (2026-09-30). | `admin-work-order-detail.tsx` |
 | ~~W11~~ | C | Mecánico | ~~"Completados" solo listaba Work Orders cerrados~~ — **hecho** (2026-09-30): lista los Jobs que el mecánico completó, en Work Orders abiertos o cerrados. | `mechanic-completed-page.tsx`, `lib/my-completed-jobs.ts` |
 | ~~W12~~ | C | Mecánico | ~~Sin botón "Completar" visible en el detalle~~ — **hecho** (2026-09-30): cada Job mío es una tarjeta con "Completar Job" (primario) y "Reportar bloqueo" al lado. | `app/work-orders/[id]/detail-client.tsx` |
-| W13 | E | Mecánico | Diálogo "Reportar bloqueo": el texto de ayuda ("Selecciona un motivo…") queda debajo de los botones y detrás del botón flotante. | diálogo de bloqueo |
+| ~~W13~~ | E | Mecánico | ~~Ayuda escondida en el diálogo de bloqueo~~ — **hecho** (2026-09-30): va encima de los botones. | `detail-client.tsx` |
 | ~~W14~~ | C | PM | ~~Cinco "Iniciar servicio PM" primarios con otro PM activo~~ — **hecho** (2026-09-30): con un PM en curso, las tarjetas "Listos para iniciar" ofrecen "Ver trabajo" (secundario) y el aviso dice "Termina WO-xxx antes de iniciar otro". | `app/page.tsx` |
 | ~~W15~~ | C | PM | ~~Sin pausa ni notas; "Guardado" escondido; dos tarjetas "Servicio de PM"~~ — **hecho** (2026-09-30): el PM no pausa (D17: reporta bloqueo) y el aviso ya no lo promete; hilo de notas en el detalle; "Guardado automáticamente" junto al título; la primera tarjeta se llama "Tipo de servicio". | `pm-job-detail.tsx`, `pm-service-card.tsx` |
 | ~~W16~~ | E | Safety | ~~"Tomar" secundario~~ — **hecho** (2026-09-30): "Tomar" es primario. El aviso antes del refresco de la tarjeta queda como está (es SWR, medio segundo). | `quality-check-page.tsx` |

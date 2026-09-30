@@ -32,12 +32,12 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
       <AdminFilterToolbar
         search={search}
         onSearchChange={setSearch}
-        searchLabel={messages.searchTrucks}
+        searchLabel={messages.searchTrucksShort}
         filtersLabel={messages.filters}
         closeLabel={messages.closeDialog}
         onClear={() => router.replace('/admin/trucks')}
         clearLabel={messages.clearFilters}
-        applyLabel={messages.applyFilters}
+        applyLabel={messages.searchAction}
         onSubmit={() => {
           const next = new URLSearchParams();
           if (search.trim()) next.set('search', search.trim());
