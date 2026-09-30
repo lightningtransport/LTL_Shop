@@ -72,7 +72,7 @@ puede borrar en la limpieza (§3).
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
 Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → recorrido de
-pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ ~~W12~~ hechos; sigue W14) → los de §1b
+pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ ~~W12~~ ~~W14~~ ~~W15~~ hechos; siguen W17, W9, W5) → los de §1b
 (LTR-179). El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
 **Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
@@ -163,8 +163,8 @@ empezando por W1 (el que reportó el dueño).
 | ~~W11~~ | C | Mecánico | ~~"Completados" solo listaba Work Orders cerrados~~ — **hecho** (2026-09-30): lista los Jobs que el mecánico completó, en Work Orders abiertos o cerrados. | `mechanic-completed-page.tsx`, `lib/my-completed-jobs.ts` |
 | ~~W12~~ | C | Mecánico | ~~Sin botón "Completar" visible en el detalle~~ — **hecho** (2026-09-30): cada Job mío es una tarjeta con "Completar Job" (primario) y "Reportar bloqueo" al lado. | `app/work-orders/[id]/detail-client.tsx` |
 | W13 | E | Mecánico | Diálogo "Reportar bloqueo": el texto de ayuda ("Selecciona un motivo…") queda debajo de los botones y detrás del botón flotante. | diálogo de bloqueo |
-| W14 | C | PM | Inicio del PM: con un servicio activo, las cinco tarjetas "Listos para iniciar" siguen con botón primario "Iniciar servicio PM" aunque el texto diga "Termina o pausa WO-009 antes". Deben ir deshabilitadas o secundarias (D2). | `app/page.tsx` ~l. 155 |
-| W15 | C | PM | Detalle del PM: no hay "Pausar" ni notas aunque el inicio pida pausar; el "Guardado" del autoguardado aparece solo al final de los 9 selectores (lejos del campo que se cambió) y no hay botón Guardar, así que el PM no sabe que se guardó hasta bajar; dos tarjetas seguidas tituladas "Servicio de PM". | `components/pm-job-detail.tsx` |
+| ~~W14~~ | C | PM | ~~Cinco "Iniciar servicio PM" primarios con otro PM activo~~ — **hecho** (2026-09-30): con un PM en curso, las tarjetas "Listos para iniciar" ofrecen "Ver trabajo" (secundario) y el aviso dice "Termina WO-xxx antes de iniciar otro". | `app/page.tsx` |
+| ~~W15~~ | C | PM | ~~Sin pausa ni notas; "Guardado" escondido; dos tarjetas "Servicio de PM"~~ — **hecho** (2026-09-30): el PM no pausa (D17: reporta bloqueo) y el aviso ya no lo promete; hilo de notas en el detalle; "Guardado automáticamente" junto al título; la primera tarjeta se llama "Tipo de servicio". | `pm-job-detail.tsx`, `pm-service-card.tsx` |
 | W16 | E | Safety | "Tomar" es el único paso y sale como botón secundario; el aviso "es tuyo" llega antes de que la tarjeta cambie a Aprobar/Devolver. | `components/quality-check-page.tsx` |
 | W17 | C | Safety | Idioma: en español dice "Truck 968 es tuyo", "Devolver Truck 968", "Truck 968 aprobado" mientras la app del mecánico dice "Unidad" (regla en `SYSTEM.md`: el Admin dice Trucks, el mecánico "unidad"; Safety debe seguir al mecánico). El campo de nota del diálogo Devolver se etiqueta "Devolver" y el botón de cancelar se llama "Cerrar" igual que la X. | `lib/locale-context.tsx` ~l. 794–803 |
 

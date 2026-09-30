@@ -13,6 +13,7 @@ import { vehicleLine } from '@/lib/work-order-identity';
 import { useActionToast } from './action-toast';
 import { PmServiceCard, type PmDraftState } from './pm-service-card';
 import { TruckInformationFields } from './truck-information-fields';
+import { WorkOrderNotesThread } from './work-order-notes-thread';
 import { Button, InlineAlert, Label, Modal, PageHeader, Select, Textarea, WorkspaceNav } from './ui';
 
 /**
@@ -85,7 +86,8 @@ export function PmJobDetail({
       {/* LTR-148: PM A ↔ PM B before the PM service is finished. */}
       {!finished && pmJobRow && pmServiceOptions.length > 1 ? (
         <section className="card mb-4 space-y-2">
-          <Label htmlFor="pm-job-service">{messages.pmServiceLabel}</Label>
+          {/* LTR-189 (W15): not "PM service" twice in a row; this card is the A/B choice. */}
+          <Label htmlFor="pm-job-service">{messages.pmServiceTypeLabel}</Label>
           <Select
             id="pm-job-service"
             value={pmJobRow.catalogJobId ?? ''}
@@ -172,6 +174,9 @@ export function PmJobDetail({
           </Button>
         </div>
       </details>
+
+      {/* LTR-189 (W15): the PM mechanic leaves notes and asks for work like any other mechanic. */}
+      <WorkOrderNotesThread wo={wo} onUpdated={onUpdated} />
 
 
       <Modal open={blockerOpen} title={messages.reportBlockerFor(pmJob.displayName)} closeLabel={messages.closeDialog} onClose={() => { if (!busy) setBlockerOpen(false); }}>

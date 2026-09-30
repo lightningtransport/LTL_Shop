@@ -264,8 +264,11 @@ agregue.
 - Arrancar el PM pone el WO en curso y abre el reloj del mecánico PM;
   Finish lo detiene.
 - Un solo PM en curso por mecánico PM (D2).
-- Puede cambiar PM A ↔ PM B y bloquear su PM (lo resuelve el Manager).
-- El PM dentro del WO no tiene pausa.
+- Puede cambiar PM A ↔ PM B ("Tipo de servicio") y bloquear su PM (lo
+  resuelve el Manager). Deja notas y pide trabajo como cualquier mecánico
+  (LTR-189 W15).
+- El PM dentro del WO no tiene pausa; mientras un PM esté en curso, los demás
+  se ven ("Ver trabajo") pero no se inician (D2, LTR-189 W14).
 
 ### Safety (Quality Check)
 

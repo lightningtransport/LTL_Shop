@@ -586,11 +586,12 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByLabel('Observed mileage')).toHaveAttribute('type', 'text');
     await expect(page.getByRole('button', { name: 'Finish Work' })).toBeDisabled();
     // LTR-151 (§8.11): nothing was written yet, so the card does not claim "Saved".
-    await expect(page.getByText('Saved', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Saved automatically', { exact: true })).toHaveCount(0);
     await page.getByLabel('Observed mileage').fill('120500');
     await page.waitForTimeout(650);
     await expect.poll(() => savedBody).toEqual({ observedMileage: 120500, selections: [] });
-    await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+    // LTR-189 (W15): the autosave state shows by the title and under the parts.
+    await expect(page.getByText('Saved automatically', { exact: true }).first()).toBeVisible();
     await page.getByLabel('Oil Filter 1 Unit').selectOption('part-oil');
     await expect.poll(() => savedBody).toEqual({
       observedMileage: 120500,
