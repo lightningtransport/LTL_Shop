@@ -126,6 +126,8 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   (nota opcional). El Job vuelve a Pending y el tiempo del mecánico corre de
   nuevo solo cuando toca Continue.
 - Un Job bloqueado no se puede completar desde la vista del mecánico.
+- Si el Manager cancela el WO, cancela el Job o completa el Job él mismo, el
+  bloqueo se resuelve solo y queda en el historial con el motivo (LTR-176).
 
 ### Pausa oficial
 - Solo el Manager pausa y reanuda el WO (`waiting_paused`). Cierra todas las

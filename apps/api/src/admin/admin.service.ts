@@ -67,6 +67,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
+import { resolveActiveBlockers } from '../work-orders/blockers';
 import { stopLaborForMechanic } from '../work-orders/labor-session';
 import { classifyWorkPlanLane } from './yard-work-plan-derivation';
 import { YardOperationsService } from './yard-operations.service';
@@ -973,6 +974,8 @@ export class AdminService {
             data: { endedAt: now, durationMs: BigInt(now.getTime() - openPause.startedAt.getTime()) },
           });
         }
+        // LTR-176: nothing is left to unblock on a cancelled Work Order.
+        await resolveActiveBlockers(tx, this.activity, { workOrderId, userId: user.id, note: 'Work Order cancelled.' }, now);
         const sessions = await tx.workSession.findMany({ where: { workOrderId } });
         const pauses = await tx.pauseEvent.findMany({ where: { workOrderId } });
         const totals = computeTotals({ sessions, pauses, now });
@@ -1620,6 +1623,8 @@ export class AdminService {
           newValue: { status: JobStatus.cancelled, reason: input.reason },
           relevantValue: { action: 'job_cancelled', reason: input.reason, displayName: job.displayName },
         });
+        // LTR-176: a cancelled Job has nothing left to unblock.
+        await resolveActiveBlockers(tx, this.activity, { workOrderId, jobId, userId: user.id, note: 'Job cancelled.' });
         await stopLaborForMechanic(tx, workOrderId, job.assignedMechanicId);
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
@@ -1725,6 +1730,8 @@ export class AdminService {
             newValue: { status: WorkOrderStatus.in_progress, startedAt: now.toISOString() },
           });
         }
+        // LTR-176: the Manager completing a blocked Job settles its blocker (the work is done).
+        await resolveActiveBlockers(tx, this.activity, { workOrderId, jobId, userId: user.id, note: 'Job completed by the Manager.' }, now);
         await stopLaborForMechanic(tx, workOrderId, job.assignedMechanicId);
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
