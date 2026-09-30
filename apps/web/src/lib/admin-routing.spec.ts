@@ -53,7 +53,7 @@ describe('Shop Admin routing and messages', () => {
       expect(getAdminMessages(locale).currentOperations.toLowerCase()).not.toMatch(/supabase|postgres/);
     }
     expect(getAdminMessages('es').nextPhaseBody).toContain('Work Orders');
-    expect(getAdminMessages('es').nextPhaseBody).toContain('unidades');
+    expect(getAdminMessages('es').nextPhaseBody).toContain('Trucks');
     expect(getAdminMessages('en').lastReportedLocation).toBe('Last reported location');
     expect(getAdminMessages('es').lastReportedLocation).toBe('Ubicación reportada');
     expect(getAdminMessages('en').locationUpdatedOn).toBe('Last reported on');
@@ -68,7 +68,7 @@ describe('Shop Admin routing and messages', () => {
       "Reported by Dispatch: Truck status, expected arrivals, and departures. These are not the Shop's Ready to Go, GPS presence, or dispatch confirmation.",
     );
     expect(getAdminMessages('es').yardOperationsPhase1Body).toBe(
-      'Reportado por Dispatch: estado de la unidad, llegadas y salidas esperadas. No es el Ready to Go del Shop, ni presencia GPS, ni confirmación de despacho.',
+      'Reportado por Dispatch: estado del Truck, llegadas y salidas esperadas. No es el Ready to Go del Shop, ni presencia GPS, ni confirmación de despacho.',
     );
     expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
     expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');

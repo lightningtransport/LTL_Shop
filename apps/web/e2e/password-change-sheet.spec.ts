@@ -53,8 +53,12 @@ test.describe('MPM update password sheet', () => {
     await loginPm(page);
 
     await page.getByRole('button', { name: 'Open profile for Dana PM' }).click();
-    await expect(page.getByRole('heading', { name: 'Update password' })).toBeVisible();
+    // LTR-179 (U6): the menu opens with a banner; the sheet opens from its button, so language and Sign out stay reachable.
     await expect(page.getByText('Your account policy requires a new password for this session.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Update password' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Update password' }).click();
+    await expect(page.getByRole('heading', { name: 'Update password' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Not now' }).click();
@@ -74,13 +78,15 @@ test.describe('MPM update password sheet', () => {
     await page.evaluate(() => sessionStorage.removeItem('ltl_shop_password_change_resolved'));
     await page.reload();
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
-    // A required password change opens its sheet before the profile menu, so set the language directly.
-    await page.evaluate(() => { document.cookie = 'ltl_shop_locale=es; path=/'; });
-    await page.reload();
+    // LTR-179 (U6): the language switch works even with a required password change pending.
+    await page.getByRole('button', { name: 'Open profile for Dana PM' }).click();
+    await page.getByRole('button', { name: 'Español' }).click();
+    await page.getByRole('button', { name: 'Cerrar perfil' }).click();
     await expect(page.getByRole('heading', { name: 'Mecánico de PM' })).toBeVisible();
     await page.getByRole('button', { name: 'Abrir perfil de Dana PM' }).click();
-    await expect(page.getByRole('heading', { name: 'Actualizar contraseña' })).toBeVisible();
     await expect(page.getByText('La política de tu cuenta exige una nueva contraseña para esta sesión.')).toBeVisible();
+    await page.getByRole('button', { name: 'Actualizar contraseña' }).click();
+    await expect(page.getByRole('heading', { name: 'Actualizar contraseña' })).toBeVisible();
     await page.getByRole('button', { name: 'Cerrar actualización de contraseña' }).click();
 
     await page.getByRole('button', { name: 'Abrir perfil de Dana PM' }).click();

@@ -46,11 +46,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // LTR-171: the browser/status bar color follows the theme (light --background / dark --background).
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
-  ],
+  // LTR-171 / LTR-179 (U5): one theme-color tag; BrowserThemeColor keeps it on the theme the user chose in
+  // the app (a media-query pair would follow the system theme instead).
+  themeColor: '#ffffff',
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',

@@ -411,15 +411,15 @@ function ProfileDialog() {
   // Keep the slot while the session restores so the header does not shift when the user arrives.
   if (!user) return <span aria-hidden="true" className="size-11 shrink-0" />;
 
+  // LTR-179 (U6): the menu always opens (language, theme, sign out stay reachable); a pending
+  // password change is a banner inside it that opens the sheet on tap.
+  const passwordChangePending = shouldOpenUpdatePasswordSheet({
+    policyRequiresPasswordChange: mustChangePassword,
+    passwordChangeResolved,
+  });
+  const passwordCopy = updatePasswordSheetCopy(messages.locale === 'es' ? 'es' : 'en');
+
   function requestProfileMenu() {
-    if (shouldOpenUpdatePasswordSheet({
-      policyRequiresPasswordChange: mustChangePassword,
-      passwordChangeResolved,
-    })) {
-      setMenuOpen(false);
-      setPasswordSheetOpen(true);
-      return;
-    }
     setPasswordSheetOpen(false);
     setMenuOpen(true);
   }
@@ -480,6 +480,15 @@ function ProfileDialog() {
               </Button>
             </DialogClose>
           </div>
+
+          {passwordChangePending ? (
+            <div className="mb-5 rounded-xl border border-warning bg-warning-surface px-3 py-3 text-sm text-warning-foreground" role="status">
+              <p>{passwordCopy.description}</p>
+              <Button className="mt-3 w-full" onClick={() => { setMenuOpen(false); setPasswordSheetOpen(true); }}>
+                {passwordCopy.title}
+              </Button>
+            </div>
+          ) : null}
 
           <ProfileSettings />
 
@@ -859,7 +868,8 @@ export function AdminFilterToolbar({
           </>
         ) : (
           <>
-            <Button type="button" variant="ghost" className="hidden shrink-0 md:inline-flex" onClick={clear}>{clearLabel}</Button>
+            {/* LTR-179 (U3): on the phone, Clear appears once there is something to clear. */}
+            <Button type="button" variant="ghost" className={cn('shrink-0', !search && !activeFilterCount && 'hidden md:inline-flex')} onClick={clear}>{clearLabel}</Button>
             <Button type="submit" className="shrink-0">{applyLabel}</Button>
           </>
         )}

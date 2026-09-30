@@ -1,8 +1,7 @@
 node_modules
 dist
 .next
-.next-e2e
-.next-ui-audit
+.next-*
 apps/web/e2e/ui-audit/output
 .turbo
 coverage
