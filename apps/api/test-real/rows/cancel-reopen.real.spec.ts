@@ -35,7 +35,7 @@ describe('Manager y Admin: cancelar y reabrir', () => {
     same('bloqueos activos', await activeBlocker(workOrderId), null);
   });
 
-  it('A15c | Tras cancelar, el siguiente WO del Truck empieza con la inspección pendiente [defecto #4]', async () => {
+  it('A15c | Tras cancelar, el siguiente WO del Truck empieza con la inspección pendiente', async () => {
     const first = await createWo('931');
     await inspect(first.truck.id, 'no_issues_found');
     ok('cancelar WO', await cancelWo(first.workOrderId));
@@ -107,9 +107,11 @@ describe('Manager y Admin: cancelar y reabrir', () => {
     const other = await createWo('957');
     refused('no se reabre si el Truck ya tiene otro WO abierto', await reopen(admin, never.workOrderId, 'Error.'), 400);
     ok('cancelar el otro', await cancelWo(other.workOrderId));
+    same('mientras está cancelado, el Truck no tiene inspección', (await truckDetail(never.truck.id)).workPlan.inspection.outcome, 'not_started');
     ok('reabrir el WO cancelado', await reopen(admin, never.workOrderId, 'Se canceló por error.'));
     workOrder = await adminWo(never.workOrderId);
     same('un WO que nunca empezó vuelve a created', workOrder.status, 'created');
+    same('al reabrir vuelve la inspección de esa visita', (await truckDetail(never.truck.id)).workPlan.inspection.outcome, 'no_issues_found');
     ok('el mecánico puede hacer Start', await start(USERS.alignment, never.workOrderId));
     same('y pasa a in_progress', (await adminWo(never.workOrderId)).status, 'in_progress');
   });

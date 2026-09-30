@@ -32,6 +32,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { closeActiveAssessments } from '../admin/readiness-visit';
 import {
   toWorkOrderDetail,
   toWorkOrderSummary,
@@ -331,15 +332,13 @@ export class WorkOrdersService {
           ? await tx.workOrder.count()
           : await this.prisma.workOrder.count();
         const displayId = nextDisplayId(count + 1);
-        // Keep older unit-test transaction doubles compatible while the real
-        // Prisma client always exposes the additive readiness model.
-        const activeAssessment = tx.truckReadinessAssessment
-          ? await tx.truckReadinessAssessment.findFirst({
-              where: { truckId: input.truckId, status: { in: ['under_review', 'ready'] } },
-              orderBy: { updatedAt: 'desc' },
-              select: { id: true, status: true, version: true, approvedById: true },
-            })
-          : null;
+        // LTR-177: a new Work Order is a new visit. The previous visit's
+        // inspection (its readiness assessment) is closed, so this Work Order
+        // starts with the inspection pending. Older unit-test transaction
+        // doubles do not expose the readiness model.
+        if (tx.truckReadinessAssessment) {
+          await closeActiveAssessments(tx, this.activity, { truckId: input.truckId, userId: user.id, reason: 'new_work_order' });
+        }
         const created = await tx.workOrder.create({
           data: {
             displayId,
@@ -353,7 +352,6 @@ export class WorkOrdersService {
               ? { create: { body: input.notes.trim(), authorId: user.id } }
               : undefined,
             createdById: user.id,
-            readinessAssessmentId: activeAssessment?.id,
             idempotencyKey: input.idempotencyKey,
             idempotencyPayloadHash,
             idempotencyActorId: input.idempotencyKey ? user.id : undefined,
@@ -399,31 +397,6 @@ export class WorkOrdersService {
           userId: user.id,
           newValue: { displayId, status: 'created' },
         });
-
-        if (activeAssessment?.status === 'ready') {
-          await tx.truckReadinessAssessment.update({
-            where: { id: activeAssessment.id },
-            data: {
-              status: 'under_review',
-              readyAt: null,
-              approvedById: null,
-              version: { increment: 1 },
-            },
-          });
-          await this.activity.log(tx, {
-            eventType: ActivityEventType.READINESS_APPROVAL_INVALIDATED,
-            entityType: 'readiness_assessment',
-            entityId: activeAssessment.id,
-            userId: user.id,
-            previousValue: {
-              status: activeAssessment.status,
-              version: activeAssessment.version,
-              approvedById: activeAssessment.approvedById,
-            },
-            newValue: { status: 'under_review', approvedById: null },
-            relevantValue: { reason: 'work_order_created', workOrderId: created.id },
-          });
-        }
 
         return created;
       });

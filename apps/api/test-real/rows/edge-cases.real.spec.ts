@@ -171,7 +171,7 @@ describe('Casos límite', () => {
     same('el Dashboard ya no lo cuenta como Ready to Go', ok('Dashboard', await manager.get('/admin/dashboard')).counts.readyToGo, 0);
   });
 
-  it('E14b | Un WO nuevo sobre un Truck Ready to Go empieza con la inspección pendiente [defecto #4]', async () => {
+  it('E14b | Un WO nuevo sobre un Truck Ready to Go empieza con la inspección pendiente', async () => {
     const done = await closedWo('905');
     const next = ok('abrir otro WO', await manager.post('/admin/work-orders', { truckId: done.truck.id, idempotencyKey: randomUUID() }));
     const detail = await truckDetail(done.truck.id);

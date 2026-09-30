@@ -23,8 +23,8 @@ La columna **Fila** es el número de la prueba que lo comprueba
 (`apps/api/test-real/`, resultados en `apps/api/test-real/results/matrix.md`).
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
-**Resultado de la auditoría:** 56 comprobaciones · 50 funcionan · 4 fallan
-(2 defectos y 1 por construir) · 2 no aplican.
+**Resultado de la auditoría:** 56 comprobaciones · 52 funcionan · 2 fallan
+(1 defecto y 1 por construir) · 2 no aplican.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
 respuestas confirman lo construido y 7 muestran huecos (sección 8).
@@ -81,7 +81,7 @@ Quality Check nunca lleva responsable. El siguiente paso dice "inspeccionar".
 | El camión no existe o la prioridad es inválida | Rechaza con aviso | ✅ | E1 |
 | El responsable por defecto está inactivo | El paso nace "Unassigned" y el siguiente paso lo marca | ✅ | A25 |
 | El camión está Ready to Go (cerrado, sin Return to Service) | Deja abrir otro; el camión deja de estar Ready to Go | ✅ | E14 |
-| …y ese Work Order nuevo | **Hereda la inspección de la visita anterior y se la salta** | ❌ #4 · LTR-177 | E14b |
+| …y ese Work Order nuevo | Empieza con la inspección pendiente, como cualquier visita nueva | ✅ | E14b |
 | Se agrega trabajo a un camión sin Work Order | Crea el Work Order completo con ese trabajo | ✅ | E12 |
 
 ### HU-M2 · Inspeccionar y anotar hallazgos (J1)
@@ -106,7 +106,7 @@ hallazgos, cada Job extra queda en el plan con su dueño.
 | Agrega un Job que no está en el catálogo (Custom) | Lo acepta y lo marca "pendiente de revisión" | ✅ | A24 |
 | …y repite el nombre (aunque cambie mayúsculas o espacios) | No deja repetir | ✅ | A24 |
 | Quiere revisar o mapear ese Custom Job | **No existe la función** | ❌ #3 · decisión P5 | A24 |
-| Se cancela la visita y se abre otra | **El Work Order nuevo hereda la inspección vieja** | ❌ #4 · LTR-177 | A15c |
+| Se cancela la visita y se abre otra | El Work Order nuevo empieza con la inspección pendiente | ✅ | A15c |
 
 ### HU-M3 · Repartir el trabajo (J2)
 
@@ -200,7 +200,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Cancela un paso obligatorio (ej. Alignment) | El paso cuenta como "no aplica" y no se vuelve a pedir | ✅ | A16 |
 | Reabre un Job cancelado | Vuelve a pendiente, con su dueño | ✅ | A16 |
 | Reabre un Work Order completado | Vuelve a "en curso"; los Jobs siguen hechos; se puede volver a cerrar | ✅ | A17 |
-| Reabre un Work Order cancelado que nunca empezó | Vuelve a "created"; el mecánico puede hacer Start | ✅ | A17 |
+| Reabre un Work Order cancelado que nunca empezó | Vuelve a "created" con la inspección de esa visita; el mecánico puede hacer Start | ✅ | A17 |
 | Reabre cuando el camión ya tiene otro Work Order abierto | No deja | ✅ | A17 |
 | Reabre uno que nunca empezó y tiene todo hecho | Se puede cerrar | ✅ | A17b |
 | Cancela o cierra algo ya completado o ya cancelado | No deja | ✅ | E15 |
@@ -437,7 +437,6 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
-| 4 | El Work Order nuevo hereda la inspección de la visita anterior | Manager | **B** | LTR-177 | A15c, E14b |
 | 7 | Las listas no dicen "Return to Service" para un camión Ready to Go | Manager | C | LTR-182 | A19b |
 | 9 | Las sesiones de tiempo no dicen de qué mecánico son | Admin | C | LTR-184 | — |
 | 3 | No existe revisión de Custom Jobs | Manager | C | decisión P5 | — |
