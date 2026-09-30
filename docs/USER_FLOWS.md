@@ -23,8 +23,8 @@ La columna **Fila** es el número de la prueba que lo comprueba
 (`apps/api/test-real/`, resultados en `apps/api/test-real/results/matrix.md`).
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
-**Resultado de la auditoría:** 56 comprobaciones · 52 funcionan · 2 fallan
-(1 defecto y 1 por construir) · 2 no aplican.
+**Resultado de la auditoría:** 56 comprobaciones · 53 funcionan · 1 falla
+(la regla de Safety, por construir) · 2 no aplican.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
 respuestas confirman lo construido y 7 muestran huecos (sección 8).
@@ -184,7 +184,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Completa un Job en un Work Order que nadie empezó | El Work Order pasa a "en curso" | ✅ | A12b |
 | Devuelve a servicio con el Work Order abierto o cancelado | No deja | ✅ | A14, E15 |
 | Devuelve a servicio dos veces | No deja | ✅ | A14 |
-| Mira la **lista** de Trucks o de Work Orders con un camión Ready to Go | **La lista de Trucks dice "crear Work Order" y la de Work Orders no dice nada**; el Truck y el Yard sí dicen "Return to Service" | ❌ #7 · LTR-182 | A19b |
+| Mira la **lista** de Trucks o de Work Orders con un camión Ready to Go | Las dos dicen "Return to Service", igual que el Truck y el Yard | ✅ | A19b |
 | Cancela todos los Jobs pendientes | El Work Order se puede cerrar | ✅ | E16 |
 | **Salida urgente:** el camión tiene que salir sin terminar todo | Con autorización del Manager: cancela con motivo los Jobs que no se harán y cierra | ✅ | E16 |
 | El camión vuelve por algo que quedó mal | Se abre un Work Order nuevo (no se reabre el anterior) | ✅ | A17, E14 |
@@ -217,7 +217,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Yard por fase | Cada camión con trabajo aparece en su fase. Inspection + In the Shop + Ready to Go suman el tablero; Blocked es un subgrupo | ✅ | A21 |
 | Presencia física | Siempre "desconocida"; no se inventa | ✅ | A21 |
 | Pestaña Movement | Dice "sin conexión"; no muestra listas falsas | ✅ | A21 |
-| Siguiente paso | Truck, Work Order, listas y Yard dicen lo mismo en cada etapa | ✅ (menos Ready to Go: ❌ #7) | A19, A19b |
+| Siguiente paso | Truck, Work Order, listas y Yard dicen lo mismo en cada etapa, incluida Ready to Go | ✅ | A19, A19b |
 | Pedidos de trabajo de los mecánicos | Aparecen en el Dashboard hasta que se marcan atendidos | ✅ | A22 |
 
 ### HU-M8 · Configurar el flujo del taller (J2)
@@ -437,7 +437,6 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
-| 7 | Las listas no dicen "Return to Service" para un camión Ready to Go | Manager | C | LTR-182 | A19b |
 | 9 | Las sesiones de tiempo no dicen de qué mecánico son | Admin | C | LTR-184 | — |
 | 3 | No existe revisión de Custom Jobs | Manager | C | decisión P5 | — |
 

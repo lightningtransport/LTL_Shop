@@ -36,7 +36,7 @@ describe('Tablero, Yard, notas y tiempos', () => {
     same('Truck sin WO', (trucks.items as Json[]).find((item) => item.truck.id === truck.id)?.nextStep?.kind, 'create_work_order');
   });
 
-  it('A19b | Siguiente paso de un Truck Ready to Go: igual en Truck, WO, listas y Yard [defecto #7]', async () => {
+  it('A19b | Siguiente paso de un Truck Ready to Go: igual en Truck, WO, listas y Yard', async () => {
     const { truck, workOrderId } = await plannedWo('905');
     await doPm(workOrderId, truck.id);
     await doLane(USERS.alignment, workOrderId, 'alignment');

@@ -292,7 +292,9 @@ aplique:
 | 9 | `work` | (los mecánicos están trabajando) |
 | — | `create_work_order` | Truck sin WO abierto |
 
-Un test de contrato verifica que todas las pantallas devuelven el mismo paso.
+Un test de contrato verifica que todas las pantallas devuelven el mismo paso,
+también para un Truck Ready to Go ("Return to Service") mientras dure
+`YARD_READY_TO_GO_SINCE` (LTR-182).
 
 ---
 
