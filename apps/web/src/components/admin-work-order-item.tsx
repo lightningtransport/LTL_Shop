@@ -39,9 +39,13 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
             {messages.workOrder}{' '}
             <Link className="tap-inline font-medium text-foreground hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>
             {' · '}
-            {workOrderNextJobLine(item, messages)}
+            {/* LTR-189 (W8): with a Next step below, this line only counts the Jobs. */}
+            {nextStepText && item.category.name !== 'PM' && item.nextJobName !== undefined && item.jobsTotal > 0
+              ? messages.workOrderJobsCount.replace('{count}', String(item.jobsTotal))
+              : workOrderNextJobLine(item, messages)}
           </p>
-          {attention ? (
+          {/* LTR-189 (W3): the Next step already says what to do; the attention reason only shows when there is no step. */}
+          {attention && !nextStepText ? (
             <p className="mt-1 text-xs font-semibold text-warning-foreground" data-testid="attention-reason">
               {messages.attentionReasonLabel}: {attention}
             </p>

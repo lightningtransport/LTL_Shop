@@ -295,7 +295,7 @@ export function AdminTruckWorkPlan({
                           type="button"
                           size="sm"
                           // LTR-158 / D15: primary only on Quality Check (the Manager's step); secondary on mechanics' Jobs.
-                          variant={job.lane === 'quality_check' ? 'default' : 'ghost'}
+                          variant={job.lane === 'quality_check' ? 'default' : 'outline'}
                           disabled={Boolean(pendingAction)}
                           onClick={() => void handleCompleteJob(job.id)}
                         >

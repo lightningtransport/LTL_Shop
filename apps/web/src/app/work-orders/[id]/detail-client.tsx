@@ -617,6 +617,8 @@ export default function WorkOrderDetailPage() {
             />
           </div>
         ) : null}
+        {/* LTR-169 / LTR-189 (W13): a disabled button says why — above the buttons, where the floating button cannot cover it. */}
+        {!pauseReason ? <p className="mb-3 text-sm text-muted-foreground">{messages.blockerReasonRequiredHint}</p> : null}
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="secondary"
@@ -656,8 +658,6 @@ export default function WorkOrderDetailPage() {
             {busy ? messages.reportingBlocker : messages.reportBlocker}
           </Button>
         </div>
-        {/* LTR-169: a disabled button says why. */}
-        {!pauseReason ? <p className="mt-3 text-sm text-muted-foreground">{messages.blockerReasonRequiredHint}</p> : null}
       </Modal>
     </div>
   );

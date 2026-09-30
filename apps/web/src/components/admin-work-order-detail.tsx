@@ -182,7 +182,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
     <PageHeader
       title={<Link className="tap-inline text-primary hover:underline" href={adminTruckHref(truck.id, `/admin/work-orders/${data.id}`)}>{truck.truckNumber}</Link>}
-      subtitle={<>{messages.workOrder} {data.displayId} · {data.category.name}</>}
+      subtitle={<>{messages.workOrder} {data.displayId}</>}
       meta={<>{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</>}
       badges={<><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></>}
     />

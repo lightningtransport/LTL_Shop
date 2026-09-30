@@ -443,14 +443,15 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 - Textos: que cada pantalla diga lo que dice este documento.
 
 **Recorrido del 2026-09-29** (teléfono, EN/ES, API real, los 9 escenarios de
-demo): ninguna historia se atora. Lo que confunde está en
+demo): ninguna historia se atora. Los 17 hallazgos quedaron arreglados el
+2026-09-30 (LTR-189). Lo que confundía está en
 [`OPEN_ISSUES.md` §1d](OPEN_ISSUES.md) (W1–W17, LTR-189). Lo que le pega a
 una historia:
 
 | Historia | Hallazgo |
 |---|---|
 | HU-M3 (asignar y completar Jobs) | ~~W1 tarjeta "Jobs" sin jerarquía~~ ✅ (2026-09-30); ~~W2 "Completar" visible antes de tiempo~~ ✅ (2026-09-30) |
-| HU-M1 (ver el taller) | W3 panel repite atención y siguiente paso; ~~W4~~ ✅ (2026-09-30); ~~W5~~ ✅ (2026-09-30); W6 lista de Trucks |
+| HU-M1 (ver el taller) | ~~W3, W4, W5, W6~~ ✅ (2026-09-30) |
 | HU-ME1 (ver lo que me toca) | ~~W11 "Completados" no muestra los Jobs que terminé~~ ✅ (2026-09-30) |
 | HU-ME2 (trabajar y terminar) | ~~W12 no hay botón "Completar" visible~~ ✅ (2026-09-30) |
 | HU-PM1 (registrar un PM) | ~~W14 "Iniciar" primario con otro PM activo; W15 sin pausa, "Guardado" escondido~~ ✅ (2026-09-30) |
