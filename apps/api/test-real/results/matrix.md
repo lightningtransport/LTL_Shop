@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 52 · FALLA 2 · NO APLICA 2 · SIN PROBAR 0
+PASA 53 · FALLA 1 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -31,7 +31,7 @@ PASA 52 · FALLA 2 · NO APLICA 2 · SIN PROBAR 0
 | A17b | Reabrir un WO que nunca empezó, con todos los Jobs hechos: se puede cerrar [defecto #1] | PASA |
 | A18 | "Agregar pasos que faltan" en WO viejo | PASA |
 | A19 | Siguiente paso: todas las pantallas dicen lo mismo en cada etapa de un WO | PASA |
-| A19b | Siguiente paso de un Truck Ready to Go: igual en Truck, WO, listas y Yard [defecto #7] | **FALLA** — Ready to Go: las pantallas no dicen el mismo siguiente paso {"truck":"return_to_service","workOrder":"return_to_service","workOrderList":null,"truckList":"create_work_order","yard":"return_to_service"} |
+| A19b | Siguiente paso de un Truck Ready to Go: igual en Truck, WO, listas y Yard [defecto #7] | PASA |
 | A20 | Dashboard "Needs attention": bloqueo, pausa, sin dueño, +24 h | PASA |
 | A21 | Yard: tablero por fase y contadores (Movement sin integración) | PASA |
 | A22 | Notas y "Pedir trabajo" → Manager marca atendido; WO cerrado rechaza notas | PASA |
@@ -50,7 +50,7 @@ PASA 52 · FALLA 2 · NO APLICA 2 · SIN PROBAR 0
 | E7 | Un mecánico Standard puede tener trabajo en curso en dos Trucks a la vez (decisión 2026-09-25, LTR-125) | PASA |
 | E8 | Quitar o cambiar el dueño de un Job en curso detiene el tiempo de ese mecánico | PASA |
 | E9 | Asignar a quien no corresponde | PASA |
-| E9b | Solo una persona de Safety puede ser dueño del Quality Check (D19) [por construir, LTR-185] | **FALLA** — un mecánico Standard no puede ser dueño de Quality Check: se esperaba 400; POST /admin/work-orders/:id/jobs/:id/assign → 201 {"id":"21ba3c4d-f42e-4389-b492-d8c1f32b8025","displayId":"WO-001","truck":{"id":"fe265159-a018-439e-847d-517eb73015b3","truckNumber":"905","make":"Volvo","model":"VNL 860","year":2025,"mileage":148000,"company":"Lightning","owner":"Carlos","vin":null,"location":null,"locatio |
+| E9b | Solo una persona de Safety puede ser dueño del Quality Check (D19) [por construir, LTR-185] | **FALLA** — un mecánico Standard no puede ser dueño de Quality Check: se esperaba 400; POST /admin/work-orders/:id/jobs/:id/assign → 201 {"id":"a5039d30-194e-49e1-a679-3a62a666aeb9","displayId":"WO-001","truck":{"id":"fe265159-a018-439e-847d-517eb73015b3","truckNumber":"905","make":"Volvo","model":"VNL 860","year":2025,"mileage":149100,"company":"Lightning","owner":"Carlos","vin":null,"location":null,"locatio |
 | E10 | Bloqueo: motivos que no son bloqueo, Job ajeno, Job terminado | PASA |
 | E11 | PM: millaje menor, salto grande, terminar sin millaje o sin partes (D10) | PASA |
 | E12 | Agregar trabajo a un Truck sin WO abierto crea el WO completo | PASA |

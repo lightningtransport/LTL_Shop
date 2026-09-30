@@ -69,6 +69,7 @@ import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { resolveActiveBlockers } from '../work-orders/blockers';
 import { closeActiveAssessments, reopenAssessmentOfWorkOrder } from './readiness-visit';
+import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
 import { stopLaborForMechanic } from '../work-orders/labor-session';
 import { classifyWorkPlanLane } from './yard-work-plan-derivation';
 import { YardOperationsService } from './yard-operations.service';
@@ -154,6 +155,12 @@ const summaryInclude = {
     include: { mechanic: { select: { id: true, name: true } } },
     orderBy: { addedAt: 'asc' as const },
   },
+  // LTR-182: a completed Work Order still says "Return to Service" until it happens.
+  serviceStatusEvents: {
+    where: { status: 'in_service' as const },
+    orderBy: { occurredAt: 'desc' as const },
+    take: 1,
+  },
   pauseEvents: {
     where: {
       OR: [
@@ -210,6 +217,28 @@ const detailInclude = {
 };
 
 type SummaryRow = Prisma.WorkOrderGetPayload<{ include: typeof summaryInclude }>;
+
+/**
+ * LTR-182: the Work Orders a Truck row needs for its Next step: the open one, or
+ * the ones completed since `YARD_READY_TO_GO_SINCE` (newest first) so the row can
+ * say "Return to Service" exactly like Truck Detail and the Yard do.
+ */
+function readyToGoOrOpenWorkOrderWhere(): Prisma.WorkOrderWhereInput {
+  const since = yardReadyToGoSince();
+  const open: Prisma.WorkOrderWhereInput = { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } };
+  if (!since) return open;
+  return { OR: [open, { status: WorkOrderStatus.completed, completedAt: { gte: since } }] };
+}
+
+/** A completed Work Order keeps its truck Ready to Go while it is inside the window and not yet returned to service. */
+function keepsTruckReadyToGo(
+  completedAt: Date | null,
+  serviceEvents: Array<{ status: string; occurredAt: Date }> | undefined,
+): boolean {
+  const since = yardReadyToGoSince();
+  if (!since || !completedAt || completedAt < since) return false;
+  return !returnedToServiceAfter(serviceEvents?.[0] ?? null, completedAt);
+}
 type DetailRow = Prisma.WorkOrderGetPayload<{ include: typeof detailInclude }>;
 
 @Injectable()
@@ -402,7 +431,8 @@ export class AdminService {
       include: {
         ...activeInspectionInclude,
         workOrders: {
-          where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+          // LTR-182: the open Work Order, or else the completed one that keeps the truck Ready to Go.
+          where: readyToGoOrOpenWorkOrderWhere(),
           include: {
             primaryCategory: { select: { name: true } },
             // LTR-159: enough of the Work Plan for the one Next step rule.
@@ -420,7 +450,8 @@ export class AdminService {
             },
           },
           orderBy: { createdAt: 'desc' },
-          take: 1,
+          // One open Work Order per truck; a second row can only be the Ready to Go one.
+          take: 2,
         },
         serviceStatusEvents: {
           orderBy: { occurredAt: 'desc' },
@@ -2158,10 +2189,14 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       createdAt: row.createdAt,
     }),
     nextJobName: nextJobInFlow(jobs),
-    // LTR-159: same Next step as Truck Detail and the Yard (none once completed on a list).
-    nextStep: row.status === 'completed'
+    // LTR-159 / LTR-182: same Next step as Truck Detail and the Yard, including
+    // "Return to Service" while a completed Work Order keeps the truck Ready to Go.
+    nextStep: row.status === 'completed' && !keepsTruckReadyToGo(row.completedAt, row.serviceStatusEvents)
       ? null
-      : workOrderNextStep(row, { inspectionRequirementOutcome: activeInspectionOutcome(row.truck) }),
+      : workOrderNextStep(row, {
+          inspectionRequirementOutcome: activeInspectionOutcome(row.truck),
+          returnedToService: Boolean(row.serviceStatusEvents?.[0]),
+        }),
   };
 }
 
@@ -2316,18 +2351,25 @@ function toTruckSummary(row: {
     id: string;
     displayId: string;
     status: WorkOrderStatus;
+    completedAt?: Date | null;
     primaryCategory: { name: string };
   }>;
   serviceStatusEvents: { status: string; occurredAt: Date }[];
   readinessAssessments?: Array<{ requirements: Array<{ outcome: string }> }>;
 }): AdminTruckSummaryDto {
-  const open = row.workOrders[0] ?? null;
+  const open = row.workOrders.find((item) => (OPEN_WORK_ORDER_STATUSES as string[]).includes(item.status)) ?? null;
+  const latestEvent = row.serviceStatusEvents[0] ?? null;
+  // LTR-182: like Truck Detail, a completed Work Order keeps the truck Ready to Go until Return to Service.
+  const readyToGo = open ? null : row.workOrders.find((item) =>
+    item.status === 'completed' && !returnedToServiceAfter(latestEvent, item.completedAt ?? null)) ?? null;
   const operational = derivedOperationalStatus(row.serviceStatusEvents);
   return {
-    // LTR-159: the same Next step as Truck Detail (no open Work Order → create one).
+    // LTR-159: the same Next step as Truck Detail (no Work Order → create one).
     nextStep: open
       ? workOrderNextStep(open, { inspectionRequirementOutcome: activeInspectionOutcome(row) })
-      : { kind: 'create_work_order' },
+      : readyToGo
+        ? workOrderNextStep(readyToGo, { returnedToService: false })
+        : { kind: 'create_work_order' },
     truck: toTruckDto(row),
     operationalStatus: operational.status,
     operationalStatusAt: operational.at,
