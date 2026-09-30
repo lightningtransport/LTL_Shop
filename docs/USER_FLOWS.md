@@ -23,8 +23,8 @@ La columna **Fila** es el número de la prueba que lo comprueba
 (`apps/api/test-real/`, resultados en `apps/api/test-real/results/matrix.md`).
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
-**Resultado de la auditoría:** 56 comprobaciones · 47 funcionan · 7 fallan
-(4 defectos) · 2 no aplican.
+**Resultado de la auditoría:** 56 comprobaciones · 50 funcionan · 4 fallan
+(2 defectos y 1 por construir) · 2 no aplican.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
 respuestas confirman lo construido y 7 muestran huecos (sección 8).
@@ -126,7 +126,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Cambia el dueño de un Job que ya está en curso | El reloj del mecánico anterior se detiene y ya no puede completarlo | ✅ | E8 |
 | Asigna un mecánico PM a un Job normal, o al revés | No deja | ✅ | E9 |
 | Asigna a una cuenta de administrador o a un usuario inactivo | No deja | ✅ | E9 |
-| Asigna un dueño a Quality Check | **Lo acepta** (la pantalla no lo ofrece, pero el sistema no lo impide) | ❌ #8 · LTR-183 | E9b |
+| Asigna un dueño a Quality Check | Hoy acepta a cualquiera. Decidido (D19): solo una persona de Safety | 🔲 LTR-185 | E9b |
 | Queda un Job sin dueño | Aparece en "Needs attention" y en el siguiente paso | ✅ | A3, A20 |
 
 ### HU-M4 · Destrabar un camión (J3)
@@ -152,9 +152,9 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Pausa un Work Order que nadie ha empezado | No deja | ✅ | A8 |
 | Pausa con motivo "otro" sin nota | No deja | ✅ | A8 |
 | Un mecánico intenta pausar o resolver | No puede | ✅ | A7, A8 |
-| Cancela un Job que estaba bloqueado | **El bloqueo queda vivo**; el siguiente paso sigue pidiendo "resolver" | ❌ #2 · LTR-176 | A16c |
-| Completa él mismo un Job bloqueado | **El bloqueo queda vivo** | ❌ #2 · LTR-176 | A16b |
-| Cancela un Work Order con un bloqueo | **El bloqueo queda vivo** | ❌ #2 · LTR-176 | A15b |
+| Cancela un Job que estaba bloqueado | El bloqueo se resuelve solo ("Job cancelado") | ✅ | A16c |
+| Completa él mismo un Job bloqueado | El bloqueo se resuelve solo ("completado por el Manager") y queda en el historial | ✅ | A16b |
+| Cancela un Work Order con un bloqueo | Todos sus bloqueos se resuelven solos | ✅ | A15b |
 
 ### HU-M5 · Revisar, cerrar y devolver a servicio (J4)
 
@@ -437,10 +437,8 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
-| 2 | Los bloqueos quedan vivos al cancelar o completar | Manager | **B** | LTR-176 | A15b, A16b, A16c |
 | 4 | El Work Order nuevo hereda la inspección de la visita anterior | Manager | **B** | LTR-177 | A15c, E14b |
 | 7 | Las listas no dicen "Return to Service" para un camión Ready to Go | Manager | C | LTR-182 | A19b |
-| 8 | Quality Check acepta dueño — **en pausa**: depende de quién hace QC (LTR-185) | Manager | E | LTR-183 | E9b |
 | 9 | Las sesiones de tiempo no dicen de qué mecánico son | Admin | C | LTR-184 | — |
 | 3 | No existe revisión de Custom Jobs | Manager | C | decisión P5 | — |
 

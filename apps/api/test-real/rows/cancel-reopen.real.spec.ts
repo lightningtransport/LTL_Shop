@@ -27,7 +27,7 @@ describe('Manager y Admin: cancelar y reabrir', () => {
     same('queda en el historial', (ok('historial', await manager.get('/admin/history?limit=100')).items as Json[]).some((item) => item.id === workOrderId), true);
   });
 
-  it('A15b | Cancelar un WO con un Job bloqueado resuelve el bloqueo [defecto #2]', async () => {
+  it('A15b | Cancelar un WO con un Job bloqueado resuelve el bloqueo', async () => {
     const { workOrderId } = await plannedWo('922', [{ category: 'Electrical & Starting', job: 'Battery', assignee: USERS.general }]);
     ok('Start', await start(USERS.general, workOrderId));
     ok('bloqueo en Battery', await reportBlocker(USERS.general, workOrderId, namedJob(await adminWo(workOrderId), 'Battery').id));
@@ -61,18 +61,18 @@ describe('Manager y Admin: cancelar y reabrir', () => {
     same('conserva su dueño', laneJob(detail.workPlan, 'alignment').assignedMechanic?.id, alignment.assignedMechanic?.id);
   });
 
-  it('A16b | Completar desde Admin un Job bloqueado no deja el bloqueo vivo [defecto #2]', async () => {
+  it('A16b | Completar desde Admin un Job bloqueado resuelve su bloqueo', async () => {
     const { truck, workOrderId } = await plannedWo('957', [{ category: 'Electrical & Starting', job: 'Battery', assignee: USERS.general }]);
     const battery = namedJob(await adminWo(workOrderId), 'Battery');
     ok('Start', await start(USERS.general, workOrderId));
     ok('bloqueo en Battery', await reportBlocker(USERS.general, workOrderId, battery.id));
-    const reply = await adminCompleteJob(workOrderId, battery.id);
-    if (reply.status >= 400) return refused('o se rechaza como al mecánico', reply, 400, 'JOB_BLOCKED');
+    ok('el Manager completa el Job bloqueado', await adminCompleteJob(workOrderId, battery.id));
     same('bloqueos activos', await activeBlocker(workOrderId), null);
+    truthy('queda registrado por qué se resolvió', ((await adminWo(workOrderId)).reportedBlockers as Json[])[0]?.resolutionNote, (await adminWo(workOrderId)).reportedBlockers);
     truthy('el siguiente paso no pide resolver', (await truckDetail(truck.id)).nextStep.kind !== 'resolve_blocker');
   });
 
-  it('A16c | Cancelar un Job bloqueado resuelve su bloqueo [defecto #2]', async () => {
+  it('A16c | Cancelar un Job bloqueado resuelve su bloqueo', async () => {
     const { truck, workOrderId } = await plannedWo('968', [{ category: 'Electrical & Starting', job: 'Battery', assignee: USERS.general }]);
     const battery = namedJob(await adminWo(workOrderId), 'Battery');
     ok('Start', await start(USERS.general, workOrderId));

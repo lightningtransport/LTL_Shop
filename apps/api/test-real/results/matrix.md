@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 47 · FALLA 7 · NO APLICA 2 · SIN PROBAR 0
+PASA 50 · FALLA 4 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -22,11 +22,11 @@ PASA 47 · FALLA 7 · NO APLICA 2 · SIN PROBAR 0
 | A13b | M04: Close WO cuando nadie hizo Start (PM + Manager) — caso WO-009 [defecto #1] | PASA |
 | A14 | M04: Ready to Go → Return to Service desde Truck, WO y Yard | PASA |
 | A15 | Cancelar WO (con motivo) → cierra sesiones y pausas; el Truck queda libre | PASA |
-| A15b | Cancelar un WO con un Job bloqueado resuelve el bloqueo [defecto #2] | **FALLA** — bloqueos activos: se esperaba null, llegó {"id":"1012be0c-7b1b-4c24-b917-ae46319bf14b","jobId":"c62b584c-b086-4125-9527-75a6c587bc9e","blockerReason":"waiting_for_parts"} |
+| A15b | Cancelar un WO con un Job bloqueado resuelve el bloqueo | PASA |
 | A15c | Tras cancelar, el siguiente WO del Truck empieza con la inspección pendiente [defecto #4] | **FALLA** — inspección del WO nuevo: se esperaba "not_started", llegó "no_issues_found" |
 | A16 | Cancelar Job / reabrir Job; paso con todos sus Jobs cancelados = no aplica | PASA |
-| A16b | Completar desde Admin un Job bloqueado no deja el bloqueo vivo [defecto #2] | **FALLA** — bloqueos activos: se esperaba null, llegó {"id":"9706deaa-e135-444b-993c-eca9845cd4ac","jobId":"872f046d-1c9f-4ada-893e-ce85bfd7f29a","blockerReason":"waiting_for_parts"} |
-| A16c | Cancelar un Job bloqueado resuelve su bloqueo [defecto #2] | **FALLA** — bloqueos activos: se esperaba null, llegó {"id":"3078aaaf-14f8-44ed-86cd-5487cd9e70da","jobId":"ba86a2f8-5286-4496-aa4d-268104a0b4f7","blockerReason":"waiting_for_parts"} |
+| A16b | Completar desde Admin un Job bloqueado resuelve su bloqueo | PASA |
+| A16c | Cancelar un Job bloqueado resuelve su bloqueo | PASA |
 | A17 | Reabrir WO completado/cancelado → in_progress o created | PASA |
 | A17b | Reabrir un WO que nunca empezó, con todos los Jobs hechos: se puede cerrar [defecto #1] | PASA |
 | A18 | "Agregar pasos que faltan" en WO viejo | PASA |
@@ -50,7 +50,7 @@ PASA 47 · FALLA 7 · NO APLICA 2 · SIN PROBAR 0
 | E7 | Un mecánico Standard puede tener trabajo en curso en dos Trucks a la vez (decisión 2026-09-25, LTR-125) | PASA |
 | E8 | Quitar o cambiar el dueño de un Job en curso detiene el tiempo de ese mecánico | PASA |
 | E9 | Asignar a quien no corresponde | PASA |
-| E9b | Quality Check no acepta dueño (D15) [defecto #8] | **FALLA** — asignar Quality Check: se esperaba 400; POST /admin/work-orders/:id/jobs/:id/assign → 201 {"id":"7a5ce6d3-b0e6-4691-aa43-b7b9b08e1c62","displayId":"WO-001","truck":{"id":"fe265159-a018-439e-847d-517eb73015b3","truckNumber":"905","make":"Volvo","model":"VNL 860","year":2025,"mileage":143600,"company":"Lightning","owner":"Carlos","vin":null,"location":null,"locationUpdatedOn":null},"catego |
+| E9b | Solo una persona de Safety puede ser dueño del Quality Check (D19) [por construir, LTR-185] | **FALLA** — un mecánico Standard no puede ser dueño de Quality Check: se esperaba 400; POST /admin/work-orders/:id/jobs/:id/assign → 201 {"id":"db5fb323-6a11-4cf6-8600-267fad79f1ea","displayId":"WO-001","truck":{"id":"fe265159-a018-439e-847d-517eb73015b3","truckNumber":"905","make":"Volvo","model":"VNL 860","year":2025,"mileage":145800,"company":"Lightning","owner":"Carlos","vin":null,"location":null,"locatio |
 | E10 | Bloqueo: motivos que no son bloqueo, Job ajeno, Job terminado | PASA |
 | E11 | PM: millaje menor, salto grande, terminar sin millaje o sin partes (D10) | PASA |
 | E12 | Agregar trabajo a un Truck sin WO abierto crea el WO completo | PASA |
