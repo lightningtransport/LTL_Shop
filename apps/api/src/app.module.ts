@@ -14,6 +14,7 @@ import { HealthController } from './health.controller';
 import { RequestTimingInterceptor } from './observability/request-timing.interceptor';
 import { SentryHttpFilter } from './observability/sentry-http.filter';
 import { AdminModule } from './admin/admin.module';
+import { QualityCheckModule } from './quality-check/quality-check.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AdminModule } from './admin/admin.module';
     ActivityLogModule,
     IntegrationsModule,
     AdminModule,
+    QualityCheckModule,
   ],
   controllers: [HealthController],
   providers: [

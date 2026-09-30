@@ -42,6 +42,7 @@ su pantalla inicial y separa al System Admin.
 | **System Admin** | `admin` | `admin.access` (+ las demás que necesite) | Lo mismo que el Manager, más altas de Jobs de catálogo y mecánicos (solo por API). |
 | **Mecánico Standard** | `mechanic` | `mechanic.standard` | Ejecuta sus Jobs asignados. |
 | **Mecánico PM** | `mechanic` | `mechanic.pm` | Hace el PM de los camiones. |
+| **Safety (Quality Check)** | `mechanic` | `quality_check.perform` | Revisa los camiones terminados: los aprueba o los devuelve con una nota (D19). Dos personas. |
 
 | Capability | Da acceso a |
 |---|---|
@@ -50,6 +51,7 @@ su pantalla inicial y separa al System Admin.
 | `yard.operations.manage` | Registrar la inspección del Truck. |
 | `mechanic.standard` | Pantallas y acciones del mecánico Standard. |
 | `mechanic.pm` | Pantallas y acciones del mecánico PM. |
+| `quality_check.perform` | La pantalla de Safety (`/qc`): tomar, aprobar o devolver el Quality Check. Nada más. |
 
 El mecánico **nunca** crea WOs, cambia prioridad, agrega Jobs, pausa el WO ni
 la termina. La API responde 403.
@@ -115,7 +117,9 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - El Job trae su categoría (`categoryId`). Un WO puede mezclar categorías.
 - Los Jobs de catálogo no se repiten; los Custom Jobs no repiten nombre
   (normalizado). Los Custom Jobs quedan con `review_status = pending_review`.
-- **Quality Check no tiene dueño**: lo completa el Manager (D15).
+- **Quality Check no tiene dueño por defecto** (D15). Solo una persona de
+  Safety puede ser su dueño: lo toma desde su pantalla (D19). El Manager
+  conserva "Mark complete" como respaldo.
 
 ### Inspección
 - Se registra en el Truck ("No issues found" / "Issues found") y **pertenece a
@@ -128,6 +132,10 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 ### Bloqueo (blocker)
 - Siempre es de **un Job** (D17). Lo reporta el dueño del Job, con un motivo
   de `BlockerReason`. Solo uno activo por Job.
+- **Devolución de Safety:** cuando Safety devuelve un camión, queda como un
+  bloqueo del Job de Quality Check con motivo `quality_check_failed` y la nota
+  de lo que encontró. Ese motivo solo lo escribe Safety; a los mecánicos no se
+  les ofrece.
 - Se guarda en `pause_events` con `is_official_pause = false`, `job_id` y
   `blocker_reason`. No cambia el estado del WO ni el tiempo de espera.
 - El mecánico solo puede **agregar notas**. **Solo el Manager resuelve**
@@ -251,6 +259,25 @@ agregue.
 - Puede cambiar PM A ↔ PM B y bloquear su PM (lo resuelve el Manager).
 - El PM dentro del WO no tiene pausa.
 
+### Safety (Quality Check)
+
+1. Entra y cae en **Quality Check** (`/qc`): solo los camiones donde todo lo
+   demás ya está hecho (PM, Alignment, Detailing y hallazgos completados o
+   cancelados, sin bloqueos).
+2. **Tomar**: el Job de QC pasa a ser suyo; el otro de Safety lo ve tomado.
+   Gana el primero.
+3. **Aprobar**: el QC queda completado a su nombre; el camión pasa a "listo
+   para cerrar" para el Manager. Safety no registra tiempo.
+4. **Devolver** (nota obligatoria): el camión sale de su lista y pasa a
+   "Devueltos, esperan al Manager". El Manager lo ve como bloqueo "Devuelto
+   por Safety" en Dashboard, Truck y WO, agrega el trabajo desde el Truck y
+   resuelve. Cuando ese trabajo se completa, el camión vuelve a la lista de
+   Safety, para cualquiera de los dos.
+
+Safety no puede hacer nada más (403 en Admin y en las rutas del mecánico).
+Aparece en el roster del Manager como "Safety (Quality Check)"; el selector
+de mecánicos para Jobs no la ofrece.
+
 ### System Admin
 - Todo lo del Manager.
 - Por API (sin pantalla): crear, renombrar y activar/desactivar Jobs de
@@ -286,7 +313,7 @@ aplique:
 | 3 | `inspect` | Ir a la inspección |
 | 4 | `add_missing_steps` | Agregar pasos que faltan (WOs viejos) |
 | 5 | `assign` | Asignar el Job sin dueño |
-| 6 | `qc` | Mark QC complete |
+| 6 | `qc` | Esperando a Safety (Manager: Mark QC complete como respaldo) |
 | 7 | `close` | Close Work Order |
 | 8 | `return_to_service` | Return to Service |
 | 9 | `work` | (los mecánicos están trabajando) |
@@ -335,6 +362,7 @@ Shop Admin, Yard, Work Orders).
 | Ruta | Qué es |
 |---|---|
 | `/` (= `/mechanic/standard`, `/mechanic/pm`) | Inicio: mi trabajo. Cada rol ve su versión. |
+| `/qc` | Safety: camiones por revisar (Tomar, Aprobar, Devolver) y devueltos. |
 | `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, PM dentro del WO, o PM legacy). |
 | `/mechanic/pm/new` | Create PM service. |
 | `/mechanic/{standard,pm}/trucks`, `/trucks/[id]/history` | Buscar camión e historial de reparaciones. |

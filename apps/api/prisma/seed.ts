@@ -34,6 +34,9 @@ async function main() {
     { email: 'daniel@lightning.local', name: 'Daniel' },
     { email: 'elliot@lightning.local', name: 'Elliot' },
     { email: 'cristian@ltransl.com', name: 'Cristian' },
+    // LTR-185 / D19: Safety does the Quality Check.
+    { email: 'safety-1@lightning.local', name: 'Safety 1' },
+    { email: 'safety-2@lightning.local', name: 'Safety 2' },
   ];
   for (const additionalMechanic of additionalMechanics) {
     await prisma.user.upsert({
@@ -99,6 +102,8 @@ async function main() {
     { email: 'elliot@lightning.local', capabilities: [AppCapability.MECHANIC_STANDARD] },
     { email: 'cristian@ltransl.com', capabilities: [AppCapability.MECHANIC_STANDARD] },
     { email: 'daniel@lightning.local', capabilities: [AppCapability.MECHANIC_PM] },
+    { email: 'safety-1@lightning.local', capabilities: [AppCapability.QUALITY_CHECK_PERFORM] },
+    { email: 'safety-2@lightning.local', capabilities: [AppCapability.QUALITY_CHECK_PERFORM] },
     {
       email: 'manager@lightning.local',
       capabilities: [

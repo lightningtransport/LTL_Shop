@@ -11,6 +11,8 @@ export function defaultWorkspacePath(user: Pick<UserDto, 'capabilities'>) {
   if (hasCapability(user, AppCapability.ADMIN_ACCESS)) return '/admin';
   if (hasCapability(user, AppCapability.MECHANIC_STANDARD)) return '/mechanic/standard';
   if (hasCapability(user, AppCapability.MECHANIC_PM)) return '/mechanic/pm';
+  // LTR-185 / D19: Safety lands on the Quality Check queue.
+  if (hasCapability(user, AppCapability.QUALITY_CHECK_PERFORM)) return '/qc';
   return '/access-denied';
 }
 

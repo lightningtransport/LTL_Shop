@@ -101,10 +101,12 @@ describe('Casos límite', () => {
     refused('usuario inactivo', await assign(workOrderId, namedJob(workOrder, 'Lights').id, USERS.spare), 400);
   });
 
-  it('E9b | Solo una persona de Safety puede ser dueño del Quality Check (D19) [por construir, LTR-185]', async () => {
+  it('E9b | Solo una persona de Safety puede ser dueño del Quality Check (D19)', async () => {
     const { workOrderId } = await plannedWo('905');
     const qc = laneJob(await adminWo(workOrderId), 'quality_check');
-    refused('un mecánico Standard no puede ser dueño de Quality Check', await assign(workOrderId, qc.id, USERS.general), 400);
+    refused('un mecánico Standard no puede ser dueño de Quality Check', await assign(workOrderId, qc.id, USERS.general), 400, 'QC_OWNER_MUST_BE_SAFETY');
+    refused('el mecánico PM tampoco', await assign(workOrderId, qc.id, USERS.pm), 400, 'QC_OWNER_MUST_BE_SAFETY');
+    ok('alguien de Safety sí', await assign(workOrderId, qc.id, USERS.safety));
   });
 
   it('E10 | Bloqueo: motivos que no son bloqueo, Job ajeno, Job terminado', async () => {

@@ -107,6 +107,13 @@ const mechanicCapabilityWhere: Prisma.UserWhereInput = {
   },
 };
 
+/** LTR-185 / D19: the roster also shows Safety; Job pickers (`assignable`) do not offer them. */
+const rosterCapabilityWhere: Prisma.UserWhereInput = {
+  capabilities: {
+    some: { capability: { in: [AppCapability.MECHANIC_STANDARD, AppCapability.MECHANIC_PM, AppCapability.QUALITY_CHECK_PERFORM] } },
+  },
+};
+
 const mechanicAssignmentInclude = {
   workOrder: {
     select: {
@@ -821,22 +828,28 @@ export class AdminService {
         if (!job) throw new NotFoundException('Job not found');
         // LTR-146: the PM job goes to a PM mechanic, who does not join the Standard team.
         const isPmJob = isPmCategory(job.category.name);
+        // LTR-185 / D19: the Quality Check belongs to Safety, who is not on the team either.
+        const isQcJob = classifyWorkPlanLane(job.category.name, job.displayName) === WorkPlanJobLane.QUALITY_CHECK;
         if (isPmJob && (job.status !== JobStatus.to_do || job.startedAt)) {
           throw new BadRequestException('A started or finished PM job cannot be reassigned');
         }
+        const requiredCapability = isPmJob
+          ? AppCapability.MECHANIC_PM
+          : isQcJob ? AppCapability.QUALITY_CHECK_PERFORM : AppCapability.MECHANIC_STANDARD;
         const mechanic = await tx.user.findFirst({
           where: {
             id: input.mechanicId,
             active: true,
-            capabilities: { some: { capability: isPmJob ? AppCapability.MECHANIC_PM : AppCapability.MECHANIC_STANDARD } },
+            capabilities: { some: { capability: requiredCapability } },
           },
           select: { id: true, name: true },
         });
         if (!mechanic) {
+          if (isQcJob) throw new BadRequestException({ code: 'QC_OWNER_MUST_BE_SAFETY', message: 'Only Safety can own the Quality Check.' });
           throw new BadRequestException(isPmJob ? 'This mechanic cannot perform PM work' : 'This mechanic cannot perform standard work');
         }
-        // PM mechanics reach the Work Order through their PM job only.
-        if (!isPmJob) await joinWorkOrderTeam(tx, workOrderId, input.mechanicId, user.id);
+        // PM mechanics and Safety reach the Work Order through their own Job only.
+        if (!isPmJob && !isQcJob) await joinWorkOrderTeam(tx, workOrderId, input.mechanicId, user.id);
         await tx.workOrderJob.update({
           where: { id: jobId },
           data: { assignedMechanicId: input.mechanicId },
@@ -2050,7 +2063,7 @@ export class AdminService {
   }
 
   private buildMechanicWhere(query: AdminMechanicsQuery, cursor: AdminMechanicCursor | null): Prisma.UserWhereInput {
-    const filters: Prisma.UserWhereInput[] = [mechanicCapabilityWhere];
+    const filters: Prisma.UserWhereInput[] = [query.assignable ? mechanicCapabilityWhere : rosterCapabilityWhere];
     if (query.assignable) filters.push({ role: { not: 'admin' } });
     if (!query.includeInactive) filters.push({ active: true });
     if (query.search) {

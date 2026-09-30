@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSWRConfig } from 'swr';
-import { BlockerReason, MechanicMode, PauseReason, type WorkOrderDetailDto } from '@ltl-shop/shared';
+import { BlockerReason, MECHANIC_BLOCKER_REASONS, MechanicMode, PauseReason, type WorkOrderDetailDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { formatMileage, pauseLabel } from '@/lib/format';
 import { useShopLocale } from '@/lib/locale-context';
@@ -178,7 +178,7 @@ export function PmJobDetail({
         <Label className="mb-2 block" htmlFor="pm-blocker-reason">{messages.blockerReason}</Label>
         <Select id="pm-blocker-reason" className="mb-3" value={blockerReason} disabled={busy} onChange={(event) => setBlockerReason(event.target.value as BlockerReason)}>
           <option value="">{messages.selectOption}</option>
-          {Object.values(BlockerReason).map((reason) => <option key={reason} value={reason}>{messages.pauseReason[reason as unknown as PauseReason]}</option>)}
+          {MECHANIC_BLOCKER_REASONS.map((reason) => <option key={reason} value={reason}>{messages.pauseReason[reason as unknown as PauseReason]}</option>)}
         </Select>
         {blockerReason === BlockerReason.OTHER ? (
           <Textarea className="mb-3" placeholder={messages.reasonRequiredForOther} value={blockerNotes} disabled={busy} onChange={(event) => setBlockerNotes(event.target.value)} />

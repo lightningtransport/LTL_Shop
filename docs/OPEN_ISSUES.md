@@ -48,14 +48,13 @@ npm run test:real --workspace=@ltl-shop/api         # corre todo y escribe la ma
 ```
 
 **Resultado (al cierre de la Fase A):** 56 comprobaciones · 43 funcionan ·
-11 fallan · 2 no aplican. **Hoy:** 53 funcionan · 1 falla (defectos #1, #2, #4 y #7
-arreglados: LTR-175, LTR-176, LTR-177, LTR-182; queda la regla de Safety,
-LTR-185). Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
+11 fallan · 2 no aplican. **Hoy:** 61 comprobaciones · **59 funcionan · 0 fallan** · 2 no aplican
+(defectos #1, #2, #4 y #7 arreglados: LTR-175, 176, 177, 182; Quality Check
+de Safety construido: LTR-185). Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
 fallas son 5 defectos:
 
 | Defecto | Filas que fallan | Clase | Ticket |
 |---|---|---|---|
-| #8 → D19: solo Safety puede ser dueño de QC (por construir) | E9b | — | LTR-185 |
 
 Con esto **la lista de defectos de flujo está cerrada**. Lo que aparezca
 después se anota en §1 con su clase y su fila de prueba, pero no cambia el
@@ -75,8 +74,8 @@ puede borrar en la limpieza (§3).
 Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → #9 (LTR-184) → #6 (LTR-178) → los C de §1b
 (LTR-179). El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
-**En paralelo:** construir el Quality Check de Safety (D19, LTR-185) antes
-de salir en vivo. D20 y P7, P8, P11 se deciden antes de la Fase D. Cada PR: arreglo + su fila en `test-real/` pasa a
+**Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
+deciden antes de la Fase D. Cada PR: arreglo + su fila en `test-real/` pasa a
 PASA + `USER_FLOWS.md` pasa a ✅ + fila borrada de aquí.
 
 ### Fase C — Limpieza (§3, LTR-180) e idioma (§4, LTR-181)
@@ -117,7 +116,6 @@ están en `USER_FLOWS.md` §6.
 
 | # | El taller | La app hoy | Clase | Ticket |
 |---|---|---|---|---|
-| G1 | **El Quality Check lo hace Safety** (dos personas) — **decidido (D19)** | Lo marca el Manager; Safety no tiene cuenta ni pantalla | **B** para salir en vivo | LTR-185 |
 | G2 | El tiempo olvidado debe detenerse solo a cierta hora; el tiempo se usa para costear | Corre hasta que alguien lo corrige a mano | C | LTR-186 |
 | G3 | A veces dos mecánicos trabajan en la misma tarea | Un dueño por Job; el tiempo del ayudante se pierde | C | LTR-188 (P7) |
 | G4 | A veces se manda trabajo a un taller externo | No existe | C | LTR-188 (P8) |
@@ -126,8 +124,6 @@ están en `USER_FLOWS.md` §6.
 | G7 | El reloj debe correr en un solo camión a la vez — **decidido (D21)** | Corre en los dos (D2 viejo) | C | LTR-188 (P9) |
 
 **Efecto en los defectos:**
-- **#8 (LTR-183) quedó absorbido por LTR-185.** Con D19, el Quality Check sí
-  tiene dueño: la persona de Safety que lo toma.
 - **#9 (LTR-184) importa más:** las sesiones no dicen de quién son, y ese
   tiempo se usa para costear.
 
@@ -145,7 +141,6 @@ están en `USER_FLOWS.md` §6.
 | U8 | Nueve textos del catálogo Admin quedaron sin uso al quitar descripciones (`completeWorkOrderDescription`, `jobsDescription`, `workRequestHint`, …). | `admin-messages.ts` |
 | U9 | Admin en español todavía dice "unidad(es)" en algunos textos y en el selector de Truck de Nuevo Work Order (la regla de LTR-170 es "Trucks"). | `admin-messages.ts` (~l. 988, 1007, 1382–1393) |
 | U10 | `POST …/work-plan/jobs`: si falla a mitad de camino, quedan Jobs agregados sin registro de idempotencia y el reintento recibe `VERSION_CONFLICT`; dos reintentos simultáneos con la misma clave chocan en el índice único. *(Existía antes de #206.)* | `apps/api/src/admin/yard-work-plan.service.ts` ~l. 255–290 |
-| U11 | `@vercel/speed-insights` está en `apps/web/package.json` pero no en `package-lock.json`: `tsc` de la web falla en local hasta correr `npm install` (LTR-171). | `package-lock.json` |
 
 ## 2. Pruebas
 
@@ -203,7 +198,9 @@ Código que confunde porque ya no es parte del flujo (ver `SYSTEM.md` §11):
 
 Detalle en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md).
 
-- Roster real y `work_orders.manage` para los Managers reales (P6).
+- Roster real y `work_orders.manage` para los Managers reales (P6), más las
+  dos cuentas de Safety con `quality_check.perform` (hoy "Safety 1" y
+  "Safety 2" en el seed local).
 - Usuarios reales en Supabase Auth; `AUTH_DEV_BYPASS` apagado en producción.
 - Carga única de camiones de Ninox, si la flota de producción no está completa.
 - Smoke con un Manager y un mecánico reales, incluido Safari en un iPhone real.

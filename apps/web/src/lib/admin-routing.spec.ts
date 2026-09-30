@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppCapability } from '@ltl-shop/shared';
-import { postLoginPath } from './admin-routing';
+import { defaultWorkspacePath, postLoginPath } from './admin-routing';
 import { adminPauseReasonLabel, getAdminMessages } from './admin-messages';
 
 describe('Shop Admin routing and messages', () => {
@@ -18,6 +18,11 @@ describe('Shop Admin routing and messages', () => {
   it('routes each mechanic capability to its explicit workspace', () => {
     expect(postLoginPath(standard, '/admin')).toBe('/mechanic/standard');
     expect(postLoginPath(pm)).toBe('/mechanic/pm');
+  });
+
+  it('routes Safety to the Quality Check queue (LTR-185 / D19)', () => {
+    expect(defaultWorkspacePath({ capabilities: [AppCapability.QUALITY_CHECK_PERFORM] })).toBe('/qc');
+    expect(postLoginPath({ capabilities: [AppCapability.QUALITY_CHECK_PERFORM] }, '/admin')).toBe('/qc');
   });
 
   it('does not accept an external redirect target', () => {
