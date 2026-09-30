@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-09-30 (LTR-187: el Manager da de alta al personal; comprobado con la auditoría LTR-174)
+**Actualizado:** 2026-09-30 (LTR-174: detalle del Truck y del Work Order reorganizados; LTR-187: el Manager da de alta al personal)
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en
@@ -385,14 +385,19 @@ computadora dos columnas ≈ 2:1, en el teléfono una sola en el mismo orden):
 - **Encabezado operativo:** número y vehículo, distintivos Ready / Not Ready
   y fase, "N Jobs pendientes · M mecánicos", el **siguiente paso** con su
   botón, y a la derecha **Open Work Order** y **Add work** (D6).
-- **Work Plan** (columna principal): el seguimiento de preparación, una fila
-  por paso — Inspection (con "No issues found" / "Issues found", D14), PM,
-  Alignment, Detailing, Quality Check y Close Work Order — con el estado que
-  trae la API (nada se calcula en pantalla); el formulario de agregar trabajo;
-  y el resumen de Jobs `Job · Mecánico · Estado`, solo lectura salvo el
-  selector de mecánico en los Jobs **sin dueño** (el paso `assign`). Asignar,
-  reasignar y completar se hace en el Work Order; el respaldo del Manager
-  para QC sigue en el siguiente paso.
+- **Work Plan** (columna principal): **una sola lista**, una fila por paso con
+  el estado que trae la API (nada se calcula en pantalla) y, debajo de cada
+  paso, sus Jobs `Job · Mecánico · Estado`: Inspection (con "No issues found"
+  / "Issues found", D14), Shop Work, PM, Alignment, Detailing, Quality Check
+  y Close Work Order. Solo lectura salvo el selector de mecánico en los Jobs
+  **sin dueño** (el paso `assign`). Asignar, reasignar y completar se hace en
+  el Work Order; el respaldo del Manager para QC sigue en el siguiente paso.
+  El formulario de agregar trabajo se despliega desde **Add work**.
+- **Sin Work Order abierto:** el encabezado dice "Sin Work Order abierto" (o
+  "In Service"), sin Ready / Not Ready ni fase; el siguiente paso dice
+  "Registra la inspección de llegada abajo o abre un Work Order" con el botón
+  **New Work Order**; el Work Plan muestra **solo la Inspección** (lo único
+  que existe antes del WO, D14) y, una vez registrada, el motivo que falta.
 - **Contexto** (columna lateral): trabajo actual (WO, estado, prioridad,
   mecánicos, pausa), y plegados datos del Truck e historial de reparaciones.
 
@@ -407,7 +412,8 @@ misma división 2:1 en computadora, una columna en el teléfono):
 - **Confirm completion** cuando el WO está listo para cerrar (antes la
   tarjeta no existe: el paso siguiente dice qué falta, LTR-189 W2); una barra
   fija aparece solo al pasar ese botón con el scroll.
-- **Jobs** como tabla `Job · Mecánico · Estado · Acción`: el selector de
+- **Jobs** como tabla de columnas fijas `Job · Mecánico · Estado · Acción`
+  (en el teléfono cada fila se apila): el selector de
   mecánico asigna, reasigna o quita el dueño (QC no tiene selector: lo toma
   Safety); "Mark complete" es primario solo en QC; el PM job muestra su
   variante de servicio; Cancel / Reopen Job viven en el "…" de cada fila con
