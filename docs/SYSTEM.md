@@ -117,6 +117,14 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   (normalizado). Los Custom Jobs quedan con `review_status = pending_review`.
 - **Quality Check no tiene dueño**: lo completa el Manager (D15).
 
+### Inspección
+- Se registra en el Truck ("No issues found" / "Issues found") y **pertenece a
+  la visita**: cuando se abre un WO nuevo, la inspección anterior se cierra y
+  el WO nuevo empieza con la inspección pendiente. Cancelar el WO también la
+  cierra; reabrirlo la devuelve (LTR-177).
+- Por dentro sigue guardada en la evaluación de readiness del Truck (código
+  heredado, ver §11).
+
 ### Bloqueo (blocker)
 - Siempre es de **un Job** (D17). Lo reporta el dueño del Job, con un motivo
   de `BlockerReason`. Solo uno activo por Job.
@@ -420,7 +428,8 @@ Existe en el código, pero no es parte del flujo actual. La limpieza está en
   queda ninguno abierto (2026-09-29).
 - **Readiness assessments** (modelo viejo de 6 requisitos y "Mark Ready"):
   sin pantalla, endpoints `@deprecated`. La inspección todavía se guarda en
-  su requisito `inspection`.
+  su requisito `inspection`; desde LTR-177 la evaluación se abre y se cierra
+  con cada visita.
 - **`mechanic_assignments`**: ya no es "el equipo"; es un caché de los
   dueños de Jobs. Los endpoints `POST/DELETE /admin/work-orders/:id/mechanics`
   están `@deprecated`.

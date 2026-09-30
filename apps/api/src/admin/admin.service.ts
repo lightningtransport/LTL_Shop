@@ -68,6 +68,7 @@ import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { resolveActiveBlockers } from '../work-orders/blockers';
+import { closeActiveAssessments, reopenAssessmentOfWorkOrder } from './readiness-visit';
 import { stopLaborForMechanic } from '../work-orders/labor-session';
 import { classifyWorkPlanLane } from './yard-work-plan-derivation';
 import { YardOperationsService } from './yard-operations.service';
@@ -976,6 +977,8 @@ export class AdminService {
         }
         // LTR-176: nothing is left to unblock on a cancelled Work Order.
         await resolveActiveBlockers(tx, this.activity, { workOrderId, userId: user.id, note: 'Work Order cancelled.' }, now);
+        // LTR-177: the visit is over; its inspection does not carry over to the next Work Order.
+        await closeActiveAssessments(tx, this.activity, { truckId: wo.truckId, userId: user.id, reason: 'work_order_cancelled', workOrderId }, now);
         const sessions = await tx.workSession.findMany({ where: { workOrderId } });
         const pauses = await tx.pauseEvent.findMany({ where: { workOrderId } });
         const totals = computeTotals({ sessions, pauses, now });
@@ -1179,6 +1182,10 @@ export class AdminService {
           previousValue: { status: wo.status },
           newValue: { status: nextStatus, reason: input.reason },
           relevantValue: { action: 'work_order_reopened', reason: input.reason },
+        });
+        // LTR-177: a cancelled visit gets its inspection back when the Work Order is reopened.
+        await reopenAssessmentOfWorkOrder(tx, this.activity, {
+          truckId: wo.truckId, assessmentId: wo.readinessAssessmentId, userId: user.id, workOrderId,
         });
         const activeAssessment = tx.truckReadinessAssessment
           ? await tx.truckReadinessAssessment.findFirst({

@@ -48,13 +48,12 @@ npm run test:real --workspace=@ltl-shop/api         # corre todo y escribe la ma
 ```
 
 **Resultado (al cierre de la Fase A):** 56 comprobaciones · 43 funcionan ·
-11 fallan · 2 no aplican. **Hoy:** 50 funcionan · 4 fallan (defectos #1 y #2
-arreglados, LTR-175 y LTR-176). Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
+11 fallan · 2 no aplican. **Hoy:** 52 funcionan · 2 fallan (defectos #1, #2 y #4
+arreglados: LTR-175, LTR-176, LTR-177). Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
 fallas son 5 defectos:
 
 | Defecto | Filas que fallan | Clase | Ticket |
 |---|---|---|---|
-| #4 Inspección heredada | A15c, E14b | B | LTR-177 |
 | #7 Listas sin "Return to Service" | A19b | C | LTR-182 |
 | #8 → D19: solo Safety puede ser dueño de QC (por construir) | E9b | — | LTR-185 |
 
@@ -73,8 +72,7 @@ puede borrar en la limpieza (§3).
 
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
-Orden: ~~#1 (LTR-175)~~ ~~#2 (LTR-176)~~ hechos → #4
-(LTR-177) → #7 (LTR-182) → #9 (LTR-184) → #6 (LTR-178) → los C de §1b
+Orden: ~~#1 (LTR-175)~~ ~~#2 (LTR-176)~~ ~~#4 (LTR-177)~~ hechos → #7 (LTR-182) → #9 (LTR-184) → #6 (LTR-178) → los C de §1b
 (LTR-179). El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
 **En paralelo:** construir el Quality Check de Safety (D19, LTR-185) antes
@@ -106,7 +104,6 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 | # | Problema | Qué pasa | Dónde |
 |---|---|---|---|
 | 3 | **Custom Jobs sin revisión** — C, pendiente de P5 | Quedan en `review_status = pending_review` para siempre; nada los mapea al catálogo (ver P5 en `DECISIONS.md`). | `work-orders.service.ts` (l. 367, 951) |
-| 4 | **Inspección que se hereda** — **confirmado** (filas A15c, E14b) — **B**, LTR-177 | La inspección se guarda en una evaluación del Truck que solo se cierra con Return to Service. Si el WO se cancela, o se cierra y se abre otro sin Return to Service, el WO nuevo nace con la inspección de la visita anterior ya "hecha" y el siguiente paso se la salta. | `yard-operations.service.ts`, `yard-work-plan.service.ts` |
 | 5 | **"Mechanic note: undefined"** *(solo visible en pantalla)* — C | Reportado en la revisión de UX del 27-sep. La auditoría confirma que las notas se guardan y se leen bien (fila A22); falta mirarlo en la pantalla del mecánico. | — |
 | 6 | **Texto de QC contradice D15** — C, LTR-178 | `workPlanQcHint` y `workPlanReadyAutomatic` dicen que Quality Check es opcional; QC siempre es obligatorio. En ES además dice "Quality Check" en lugar de "Control de calidad". | `apps/web/src/lib/admin-messages.ts` (EN ~l. 712/731, ES ~l. 1449/1468; también `truckNextStepQc`) |
 | 7 | **Listas sin "Return to Service"** (fila A19b) — C, LTR-182 | Con un Truck Ready to Go, el Truck, el WO y el Yard dicen "Return to Service", pero la lista de Trucks dice "crear Work Order" y la lista de Work Orders no dice nada. En las demás etapas las cinco pantallas coinciden (fila A19). | resumen de WO y lista de Trucks en `admin.service.ts` / `work-order-next-step.ts` |
@@ -132,9 +129,9 @@ están en `USER_FLOWS.md` §6.
 **Efecto en los defectos:**
 - **#8 (LTR-183) quedó absorbido por LTR-185.** Con D19, el Quality Check sí
   tiene dueño: la persona de Safety que lo toma.
-- **#4 (LTR-177) y #7 (LTR-182) suben de importancia.** Return to Service se
-  hace cuando el camión sale del patio, así que los camiones pasan horas o
-  días en Ready to Go. Ahí es donde fallan los dos.
+- **#7 (LTR-182) sube de importancia.** Return to Service se hace cuando el
+  camión sale del patio, así que los camiones pasan horas o días en Ready to
+  Go. Ahí es donde falla.
 - **#9 (LTR-184) importa más:** las sesiones no dicen de quién son, y ese
   tiempo se usa para costear.
 
