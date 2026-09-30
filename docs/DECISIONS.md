@@ -15,7 +15,7 @@ no se borra.
 | # | Decisión | Fecha | Implementado en |
 |---|---|---|---|
 | **D1** | **Ready to Go solo cuando el WO está completo** (todos los pasos resueltos y WO `completed`). Se calcula, no se marca. El Truck sigue Ready to Go hasta Return to Service. Reemplaza el "Mark Ready" / "Ready for Approval" del modelo viejo de 6 requisitos. | 2026-09 | LTR-90, LTR-150 |
-| **D2** | Un PM en curso por mecánico PM. **El mecánico Standard sí puede tener trabajo en curso en varios Trucks a la vez**; se acepta que su tiempo se solape entre Work Orders (obligarlo a pausar sería fricción que no van a seguir). | 2026-09-25 | LTR-95, LTR-125 |
+| **D2** | Un PM en curso por mecánico PM. El mecánico Standard sí puede tener Jobs en varios Trucks a la vez y pasar de uno a otro sin que nadie lo reasigne; **su reloj corre en uno solo a la vez (D21)**. | 2026-09-25 / 2026-09-29 | LTR-95, LTR-125 |
 | **D4 + D9** | El PM es un Job obligatorio dentro del único WO del Truck (no un WO aparte). | 2026-09 | LTR-141, LTR-145 |
 | **D5** | "Blocked" significa una parada real (bloqueo activo o pausa oficial), no "tiene trabajo abierto". | 2026-09 | LTR-92, LTR-98 |
 | **D6** | Los Jobs se agregan desde el Truck / Work Plan. | 2026-09 | LTR-119 |
@@ -25,7 +25,9 @@ no se borra.
 | **D12** | **El mecánico no pausa; solo bloquea.** Pausar el WO es del Manager. Excepción: los WOs de PM legacy conservan su pausa. | 2026-09-27 | LTR-155 |
 | **D13** | **Crear WO = solo Truck** (+ prioridad y nota). Nace con PM, Alignment, Detailing y QC. | 2026-09-27 | LTR-157 |
 | **D14** | **La inspección la hace el Manager en el Truck:** "No issues found" o "Issues found". Con hallazgos agrega Jobs y elige quién los hace. | 2026-09-27 | LTR-158, #204 |
-| **D15** *(en revisión, LTR-185)* | **Responsable por defecto por paso** (p. ej. PM → Daniel, Detailing → Anthony). **QC no tiene dueño**: el Manager lo completa desde el Truck; "Mark complete" es botón primario solo en QC. | 2026-09-27 | LTR-157 |
+| **D15** | **Responsable por defecto por paso** (p. ej. PM → Daniel, Detailing → Anthony). La parte de QC ("lo completa el Manager") queda **reemplazada por D19**. | 2026-09-27 | LTR-157 |
+| **D19** | **El Quality Check lo hace Safety.** Safety tiene cuenta propia y una pantalla con los camiones que esperan revisión. QC no tiene dueño por defecto: cualquiera de las dos personas de Safety lo toma. Si encuentra algo mal, **devuelve el camión con una nota** y el Manager agrega el trabajo. Safety no interviene en la llegada, solo al final. Mientras se construye, el Manager marca QC cuando Safety le avisa. | 2026-09-29 | LTR-185 (por construir) |
+| **D21** | **El reloj de un mecánico corre en un solo camión a la vez.** Al hacer Start en otro camión se detiene el del anterior; al volver toca Continue. Reemplaza la parte de D2 (LTR-125) que aceptaba el solape, porque el tiempo se usa para medir y costear. | 2026-09-29 | LTR-188 → ticket propio (por construir) |
 | **D16** | Pantalla **Setup → Shop workflow** para los pasos obligatorios y su responsable por defecto. La editan Manager o System Admin; aplica a WOs nuevos. | 2026-09-27 | LTR-156, LTR-157 |
 | **D17** | **Ciclo del bloqueo:** siempre es de un Job; el mecánico lo reporta y puede agregar notas; **solo el Manager resuelve**; el Job vuelve a Pending. "Truck Unavailable", Break, End of Shift y Working on Another WO no son motivos de bloqueo (lo de todo el camión es pausa oficial). | 2026-09-27 | LTR-155 |
 | **D18** | **Tiempo por mecánico.** Cada sesión tiene `user_id`; el tiempo del WO es la suma. El tiempo de un mecánico se detiene al terminar o bloquear su último Job disponible y vuelve a correr solo cuando toca Continue/Start. | 2026-09-27 | LTR-153, LTR-154 |
@@ -68,6 +70,8 @@ Respuestas que **confirman** lo construido:
 | Salida urgente sin terminar todo | Sí, con autorización del Manager | Cancelar Jobs con motivo y cerrar |
 | Mecánico ausente | Sus trabajos esperan a que vuelva | Reasignar uno por uno alcanza |
 | Descansos y almuerzo | No hace falta detener el tiempo | D12 (el mecánico no pausa) |
+| PM sin partes | Nunca pasa | El PM exige al menos una parte |
+| Safety en la llegada | No; solo al final | D14 (inspecciona el Manager) |
 | Piezas | Las pide el Manager | D17 |
 | Resolver un bloqueo | Solo el Manager | D17 |
 | PM | Solo una persona (Daniel) | D2 |
@@ -90,10 +94,9 @@ Se deciden aquí; mientras tanto, no se construye nada que dependa de ellas.
 | P4 | ¿Se muestra o se escribe el `mechanic_status` de Ninox (`E.TA`)? Hoy no. |
 | P5 | ¿Quién revisa los Custom Jobs y cómo se mapean al catálogo? |
 | P6 | Roster real del día 1: quién entra y con qué capabilities. Ahora incluye a las dos personas de Safety. |
-| **D19** *(por decidir, LTR-185)* | **Quién hace el Quality Check.** En el taller lo hace Safety. ¿Cuenta y pantalla propias? ¿Se asigna o lo toma cualquiera? ¿Qué pasa si encuentra algo mal? ¿También inspecciona la llegada? Reemplazaría la parte de QC de D15. |
 | **D20** *(por decidir, LTR-186)* | **Hora a la que se detiene solo el tiempo olvidado**, y si queda marcado en el historial. |
 | P7 | Dos mecánicos en la misma tarea (pasa a veces): ¿"ayudante" en el Job, o un Job aparte? (LTR-188) |
 | P8 | Trabajo en taller externo (pasa a veces): ¿Job "externo" sin dueño y sin aviso? (LTR-188) |
-| P9 | El tiempo se usa para medir y costear: ¿se mantiene que el tiempo de un mecánico corra en dos camiones a la vez (D2)? (LTR-188) |
-| P10 | ¿Hay PM sin cambiar partes? Sin responder. Hoy el PM exige al menos una. (LTR-188) |
+| ~~P9~~ | **Cerrada 2026-09-29 → D21:** el reloj corre en un solo camión a la vez. |
+| ~~P10~~ | **Cerrada 2026-09-29:** nunca hay PM sin partes. La app está bien como está (exige al menos una). |
 | P11 | Trailers: ¿para el día 1 o después de salir en vivo? (LTR-188, LTR-56) |

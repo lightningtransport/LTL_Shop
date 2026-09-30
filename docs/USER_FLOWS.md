@@ -266,7 +266,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Completa un Job que ya estaba completado | No deja | ✅ | E6 |
 | Completa el Job de otro | No deja | ✅ | A5 |
 | Hace Start donde no tiene Jobs, o cuando ya terminó los suyos | No deja | ✅ | E5 |
-| Tiene trabajo en dos camiones a la vez | **Se permite**: puede tener los dos en curso y el tiempo se solapa (decisión del 25-sep). Como el tiempo se usa para costear, hay que volver a decidirlo (P9) | ✅ | E7 |
+| Tiene trabajo en dos camiones a la vez | Puede pasar de uno a otro sin que nadie lo reasigne. **Decidido (D21): al hacer Start en el segundo se detiene el reloj del primero.** Hoy corren los dos | 🔲 LTR-188 | E7 |
 | Almuerzo o descanso | No detiene su tiempo; al taller no le importa | ✅ | — |
 | Falta o se va a mitad de turno | Sus Jobs esperan a que vuelva; el Manager puede reasignar uno si urge | ✅ | A4, E8 |
 | El Work Order está pausado, cerrado o cancelado | No puede trabajar en él | ✅ | A8, E15 |
@@ -336,7 +336,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Quiere cambiar algo de un PM terminado | Solo lectura | ✅ | E11 |
 | Un mecánico normal intenta hacer un PM | No puede | ✅ | A26 |
 | Daniel (el único que hace PM) no está | Los camiones esperan en el paso PM. Si urge, el Manager cancela el PM con motivo (salida urgente) | ✅ | A16, E16 |
-| El PM no cambia ninguna parte | Hoy no deja terminar. Falta saber si pasa en el taller (P10) | 🔲 LTR-188 | E11 |
+| El PM no cambia ninguna parte | Nunca pasa; la app exige al menos una parte | ✅ | E11 |
 | Work Orders de PM del modelo viejo | Ya no se pueden crear y en producción no queda ninguno abierto (consultado el 2026-09-29: 0). No aplica | ✅ | A28 |
 
 ---
@@ -368,23 +368,28 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 Salen del cuestionario de operación. Ninguna se construye hasta que su
 decisión esté escrita en [`DECISIONS.md`](DECISIONS.md).
 
-### HU-QC1 · Aprobar un camión (J11) — 🔲 LTR-185
+### HU-QC1 · Aprobar un camión (J11) — 🔲 LTR-185 · decidido (D19), por construir
 
-**Quién:** personal de Safety (dos personas).
+**Quién:** personal de Safety (dos personas), con cuenta propia.
 
-**Hoy:** no tienen cuenta ni pantalla. El Quality Check lo marca el Manager.
+**Hoy:** no tienen cuenta ni pantalla. El Quality Check lo marca el Manager
+cuando Safety le avisa.
 
-**Flujo que hay que diseñar**
-1. Safety ve los camiones que esperan Quality Check.
-2. Revisa el camión.
-3. Aprueba, o devuelve con una nota de lo que encontró.
+**Flujo decidido**
+1. Safety entra y ve **los camiones que esperan Quality Check** (todo lo
+   demás ya está hecho).
+2. Cualquiera de los dos toma un camión y lo revisa.
+3. **Aprueba** → el camión pasa a "listo para cerrar" y el Manager cierra.
+   O **devuelve con una nota** de lo que encontró → el Manager agrega el
+   trabajo desde el Truck y el camión vuelve a Safety cuando esté hecho.
 
-| Por decidir | |
+| ¿Qué pasa si…? | Respuesta decidida |
 |---|---|
-| ¿Cuenta y pantalla propias para Safety? | D19 |
-| ¿Lo toma cualquiera de los dos, o se asigna a uno? | D19 |
-| Si encuentra algo mal, ¿quién agrega el trabajo? | D19 |
-| ¿Safety también hace la inspección de llegada? | D19 |
+| Los dos de Safety toman el mismo camión | Lo toma el primero; el otro lo ve como tomado |
+| Safety devuelve el camión | Queda registrado quién y por qué; el Manager lo ve en "Needs attention" |
+| Safety quiere ver un camión que no está listo para QC | No aparece en su lista |
+| Safety intenta hacer otra cosa (cerrar, asignar, inspeccionar) | No puede |
+| Safety también revisa la llegada | No; la inspección de llegada sigue siendo del Manager |
 
 ### HU-ME5 · Mi tiempo se detiene solo si lo olvido (J7) — 🔲 LTR-186
 
@@ -409,8 +414,8 @@ día 1.
 |---|---|---|
 | P7 | A veces dos mecánicos trabajan juntos en una tarea | Un dueño por Job; el tiempo del ayudante no se registra |
 | P8 | A veces se manda trabajo a un taller externo | No existe; un Job sin dueño sale como problema |
-| P9 | El tiempo se usa para costear | El tiempo de un mecánico puede contarse dos veces (dos camiones a la vez) |
-| P10 | PM sin cambiar partes | No deja terminar |
+| ~~P9~~ | Decidido (D21): el reloj corre en un solo camión a la vez; al hacer Start en otro se detiene el anterior | Hoy corren los dos: **por construir** (LTR-188) |
+| ~~P10~~ | Nunca hay PM sin partes | Correcto como está |
 | P11 | El taller también trabaja trailers | Solo camiones |
 
 ---
@@ -450,4 +455,5 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 | G1 | El Quality Check lo hace Safety, no el Manager | Safety, Manager | LTR-185 |
 | G2 | El tiempo olvidado debe detenerse solo | Mecánico, costeo | LTR-186 |
 | G5 | El Manager da de alta camiones y mecánicos | Manager | LTR-187 |
-| G3, G4, G6, G7 | Dos mecánicos en una tarea, taller externo, trailers, tiempo solapado | Manager | LTR-188 |
+| G7 | El reloj corre en un solo camión a la vez (D21) | Mecánico, costeo | LTR-188 |
+| G3, G4, G6 | Dos mecánicos en una tarea, taller externo, trailers | Manager | LTR-188 |

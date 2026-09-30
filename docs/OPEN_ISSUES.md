@@ -78,8 +78,8 @@ Orden: #1 (LTR-175, con el ajuste manual de WO-009) → #2 (LTR-176) → #4
 (LTR-177) → #7 (LTR-182) → #9 (LTR-184) → #6 (LTR-178) → los C de §1b
 (LTR-179). El #8 (LTR-183) está en pausa hasta decidir D19.
 
-**En paralelo, decisiones:** D19 (quién hace QC, LTR-185) es la única que
-frena la salida en vivo. D20 y P7–P11 se deciden antes de la Fase D. Cada PR: arreglo + su fila en `test-real/` pasa a
+**En paralelo:** construir el Quality Check de Safety (D19, LTR-185) antes
+de salir en vivo. D20 y P7, P8, P11 se deciden antes de la Fase D. Cada PR: arreglo + su fila en `test-real/` pasa a
 PASA + `USER_FLOWS.md` pasa a ✅ + fila borrada de aquí.
 
 ### Fase C — Limpieza (§3, LTR-180) e idioma (§4, LTR-181)
@@ -125,17 +125,18 @@ están en `USER_FLOWS.md` §6.
 
 | # | El taller | La app hoy | Clase | Ticket |
 |---|---|---|---|---|
-| G1 | **El Quality Check lo hace Safety** (dos personas) | Lo marca el Manager; Safety no tiene cuenta ni pantalla (D15) | **B** para salir en vivo | LTR-185 |
+| G1 | **El Quality Check lo hace Safety** (dos personas) — **decidido (D19)** | Lo marca el Manager; Safety no tiene cuenta ni pantalla | **B** para salir en vivo | LTR-185 |
 | G2 | El tiempo olvidado debe detenerse solo a cierta hora; el tiempo se usa para costear | Corre hasta que alguien lo corrige a mano | C | LTR-186 |
 | G3 | A veces dos mecánicos trabajan en la misma tarea | Un dueño por Job; el tiempo del ayudante se pierde | C | LTR-188 (P7) |
 | G4 | A veces se manda trabajo a un taller externo | No existe | C | LTR-188 (P8) |
 | G5 | El Manager da de alta camiones y mecánicos | Sin pantalla; el Manager no tiene permiso | C | LTR-187 |
 | G6 | El taller también trabaja trailers | Solo camiones | por decidir cuándo | LTR-188 (P11), LTR-56 |
-| G7 | El tiempo se usa para costear | El tiempo de un mecánico puede contarse dos veces (D2) | C | LTR-188 (P9) |
+| G7 | El reloj debe correr en un solo camión a la vez — **decidido (D21)** | Corre en los dos (D2 viejo) | C | LTR-188 (P9) |
 
 **Efecto en los defectos:**
-- **#8 (LTR-183) queda en pausa.** Si Safety va a ser dueño del Quality
-  Check, la regla "QC nunca lleva dueño" cambia.
+- **#8 (LTR-183) cambia de sentido.** Con D19, el Quality Check sí tiene
+  dueño: la persona de Safety que lo toma. La regla pasa a ser "solo Safety
+  puede ser dueño de QC" y se construye dentro de LTR-185.
 - **#4 (LTR-177) y #7 (LTR-182) suben de importancia.** Return to Service se
   hace cuando el camión sale del patio, así que los camiones pasan horas o
   días en Ready to Go. Ahí es donde fallan los dos.
