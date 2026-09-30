@@ -1491,11 +1491,31 @@ export class WorkOrdersService {
         update: { workOrderJobId: jobId },
         create: { workOrderId: id, workOrderJobId: jobId },
       });
+      // LTR-175 / D18: starting the PM is starting work. The PM mechanic's own
+      // labor clock runs from here (finishing the PM stops it), and a Work Order
+      // that nobody had started yet is now in progress, like a Standard Start.
+      if (!openSessionFor(wo.sessions, user.id)) {
+        await tx.workSession.create({ data: { workOrderId: id, startedAt: now, userId: user.id } });
+      }
+      const startsWorkOrder = wo.status === 'created';
       const updated = await tx.workOrder.update({
         where: { id },
-        data: { version: { increment: 1 } },
+        data: startsWorkOrder
+          ? { status: 'in_progress', startedAt: now, version: { increment: 1 } }
+          : { version: { increment: 1 } },
         include: workOrderDetailInclude,
       });
+      if (startsWorkOrder) {
+        await this.activity.log(tx, {
+          workOrderId: id,
+          eventType: ActivityEventType.WORK_STARTED,
+          entityType: 'work_order',
+          entityId: id,
+          userId: user.id,
+          previousValue: { status: 'created' },
+          newValue: { status: 'in_progress', startedAt: now.toISOString() },
+        });
+      }
       await this.activity.log(tx, {
         workOrderId: id,
         eventType: ActivityEventType.WORK_STARTED,

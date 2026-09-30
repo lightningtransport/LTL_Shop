@@ -47,13 +47,13 @@ npm run test:real:setup --workspace=@ltl-shop/api   # una vez: crea y carga la b
 npm run test:real --workspace=@ltl-shop/api         # corre todo y escribe la matriz
 ```
 
-**Resultado:** 56 comprobaciones · **43 funcionan** · **11 fallan** · 2 no
-aplican. Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
+**Resultado (al cierre de la Fase A):** 56 comprobaciones · 43 funcionan ·
+11 fallan · 2 no aplican. **Hoy:** 47 funcionan · 7 fallan (defecto #1
+arreglado, LTR-175). Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
 fallas son 5 defectos:
 
 | Defecto | Filas que fallan | Clase | Ticket |
 |---|---|---|---|
-| #1 Work Order atorado en `created` | A9b, A12b, A13b, A17b | B | LTR-175 |
 | #2 Bloqueos que quedan vivos | A15b, A16b, A16c | B | LTR-176 |
 | #4 Inspección heredada | A15c, E14b | B | LTR-177 |
 | #7 Listas sin "Return to Service" | A19b | C | LTR-182 |
@@ -74,7 +74,7 @@ puede borrar en la limpieza (§3).
 
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
-Orden: #1 (LTR-175, con el ajuste manual de WO-009) → #2 (LTR-176) → #4
+Orden: ~~#1 (LTR-175)~~ hecho → #2 (LTR-176) → #4
 (LTR-177) → #7 (LTR-182) → #9 (LTR-184) → #6 (LTR-178) → los C de §1b
 (LTR-179). El #8 (LTR-183) está en pausa hasta decidir D19.
 
@@ -106,7 +106,6 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 
 | # | Problema | Qué pasa | Dónde |
 |---|---|---|---|
-| 1 | **WO atorado en `created`** — **confirmado en producción** (WO-009, Truck 607, 2026-09-29) — **B**, LTR-175 — filas A9b, A12b, A13b, A17b | Solo el Start del mecánico Standard pasa el WO de `created` a `in_progress`. `startPmJob` y `completePmJobInTx` marcan el Job de PM pero no cambian el WO ni abren sesión; completar Jobs desde Admin tampoco. Resultado: si el único que trabajó fue el mecánico de PM y el Manager completó el resto, el WO queda en `created` con todos los Jobs `completed`. El siguiente paso muestra "Close Work Order", pero la API responde 400 *"Work Order must be in progress to finish"* y la tarjeta de cierre del detalle ni aparece. Tampoco se puede hacer Start (no hay Jobs pendientes). Sin salida salvo cancelar. Efecto extra: el tiempo de trabajo del PM queda en 0. **WO-009 necesita un ajuste manual en producción** después del arreglo. | `apps/api/src/work-orders/work-orders.service.ts` (`startPmJob` ~l. 1469, `completePmJobInTx`), `apps/api/src/admin/admin.service.ts` (~l. 1042), `apps/web/src/components/admin-work-order-detail.tsx` (`canCompleteWorkOrder` ~l. 115), `packages/shared/src/truck-next-step.ts` (l. 112) |
 | 2 | **Bloqueos huérfanos** — **confirmado** (filas A15b, A16b, A16c) — **B**, LTR-176 | Cancelar el WO, cancelar el Job o completarlo desde Admin deja vivo el bloqueo de ese Job. El siguiente paso se queda en "Resolve" sobre un Job que ya no existe o ya está hecho. | `AdminService.cancelWorkOrder`, `cancelJob`, `completeJob` |
 | 3 | **Custom Jobs sin revisión** — C, pendiente de P5 | Quedan en `review_status = pending_review` para siempre; nada los mapea al catálogo (ver P5 en `DECISIONS.md`). | `work-orders.service.ts` (l. 367, 951) |
 | 4 | **Inspección que se hereda** — **confirmado** (filas A15c, E14b) — **B**, LTR-177 | La inspección se guarda en una evaluación del Truck que solo se cierra con Return to Service. Si el WO se cancela, o se cierra y se abre otro sin Return to Service, el WO nuevo nace con la inspección de la visita anterior ya "hecha" y el siguiente paso se la salta. | `yard-operations.service.ts`, `yard-work-plan.service.ts` |
@@ -140,9 +139,8 @@ están en `USER_FLOWS.md` §6.
 - **#4 (LTR-177) y #7 (LTR-182) suben de importancia.** Return to Service se
   hace cuando el camión sale del patio, así que los camiones pasan horas o
   días en Ready to Go. Ahí es donde fallan los dos.
-- **#1 (LTR-175) y #9 (LTR-184) importan más:** el tiempo del PM hoy no se
-  registra y las sesiones no dicen de quién son, y ese tiempo se usa para
-  costear.
+- **#9 (LTR-184) importa más:** las sesiones no dicen de quién son, y ese
+  tiempo se usa para costear.
 
 ## 1b. Defectos menores de la UI móvil (LTR-165, revisión 2026-09-29) — LTR-179
 
@@ -158,13 +156,15 @@ están en `USER_FLOWS.md` §6.
 | U8 | Nueve textos del catálogo Admin quedaron sin uso al quitar descripciones (`completeWorkOrderDescription`, `jobsDescription`, `workRequestHint`, …). | `admin-messages.ts` |
 | U9 | Admin en español todavía dice "unidad(es)" en algunos textos y en el selector de Truck de Nuevo Work Order (la regla de LTR-170 es "Trucks"). | `admin-messages.ts` (~l. 988, 1007, 1382–1393) |
 | U10 | `POST …/work-plan/jobs`: si falla a mitad de camino, quedan Jobs agregados sin registro de idempotencia y el reintento recibe `VERSION_CONFLICT`; dos reintentos simultáneos con la misma clave chocan en el índice único. *(Existía antes de #206.)* | `apps/api/src/admin/yard-work-plan.service.ts` ~l. 255–290 |
+| U11 | `@vercel/speed-insights` está en `apps/web/package.json` pero no en `package-lock.json`: `tsc` de la web falla en local hasta correr `npm install` (LTR-171). | `package-lock.json` |
 
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):
   56 comprobaciones, una por fila de `USER_FLOWS.md`. Son la definición de
   "funciona". No corren en `npm test` ni en CI todavía (necesitan Postgres);
-  ponerlas en CI es parte de la Fase B.
+  ponerlas en CI es parte de la Fase B (el CI ya levanta Postgres y corre
+  `prisma migrate deploy`, así que solo falta el seed y el paso).
 - Las 16 pruebas e2e de la web corren **solo contra la API falsa**
   (`apps/web/e2e/fixtures/admin-api.mjs`). Sirven para la pantalla, no para
   saber si el flujo funciona.

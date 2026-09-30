@@ -50,7 +50,7 @@ function setup(wo = workOrder(), options: { runningJob?: unknown; pmService?: un
       update: vi.fn(),
       count: vi.fn().mockResolvedValue(1),
     },
-    workSession: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
+    workSession: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn(), create: vi.fn() },
     pmService: {
       upsert: vi.fn(),
       findUnique: vi.fn().mockResolvedValue(options.pmService ?? null),
@@ -77,6 +77,11 @@ describe('PM job inside the truck Work Order (LTR-146)', () => {
       where: { id: 'job-pm' },
       data: { startedAt: expect.any(Date), assignedMechanicId: 'mpm' },
     });
+    // LTR-175 / D18: starting the PM starts the PM mechanic's labor and the Work Order.
+    expect(tx.workSession.create).toHaveBeenCalledWith({ data: { workOrderId: 'wo-1', startedAt: expect.any(Date), userId: 'mpm' } });
+    expect(tx.workOrder.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'in_progress', startedAt: expect.any(Date) }),
+    }));
     expect(tx.pmService.upsert).toHaveBeenCalledWith({
       where: { workOrderId: 'wo-1' },
       update: { workOrderJobId: 'job-pm' },

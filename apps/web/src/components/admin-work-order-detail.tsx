@@ -112,7 +112,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const truck = data.truck;
   const isOpen = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status);
   const canCancelWorkOrder = canManageWorkOrders && isOpen;
-  const canCompleteWorkOrder = canManageWorkOrders && data.status === 'in_progress';
+  const canCompleteWorkOrder = canManageWorkOrders && ['in_progress', 'created'].includes(data.status);
   const canReopenWorkOrder = data.status === 'completed' || data.status === 'cancelled';
   const canReturnToService = data.status === 'completed' && !data.returnedToServiceAt;
   const canManageJobs = canManageWorkOrders && isOpen && data.category.name !== 'PM';
