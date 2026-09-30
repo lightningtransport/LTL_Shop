@@ -43,8 +43,7 @@ test.describe('shared UI consistency', () => {
   test('Work Order detail labels job pickers, hides System Admin accounts, and uses one empty-mechanics wording (LTR-151)', async ({ page }) => {
     await signInAsManager(page);
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000106');
-    // LTR-154 / D11: the pending Job has an owner; unassign it to get the picker.
-    await page.getByRole('button', { name: 'Unassign' }).first().click();
+    // LTR-154 / D11 / LTR-174: every pending Job row carries its owner picker (with an "Unassigned" option).
     const jobPicker = page.getByRole('combobox', { name: 'Mechanic for Inspect brake chamber' });
     await expect(jobPicker).toBeVisible();
     await expect(jobPicker.locator('option', { hasText: 'Anthony' })).toHaveCount(1);
@@ -61,6 +60,9 @@ test.describe('shared UI consistency', () => {
   test('Return to Service says the Truck leaves Ready to Go (LTR-151)', async ({ page }) => {
     await signInAsManager(page);
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000104');
+    // LTR-174: Return to Service opens from the header "…" menu.
+    await page.getByTestId('admin-wo-more-actions').click();
+    await page.getByRole('button', { name: 'Return to Service' }).click();
     await expect(page.getByText(/The Truck leaves Ready to Go\./)).toBeVisible();
     await expect(page.getByText(/does not change Work Order status, Ready to Go/)).toHaveCount(0);
   });

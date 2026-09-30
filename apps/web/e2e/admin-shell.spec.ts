@@ -222,20 +222,24 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('heading', { name: 'Activity Log' })).toBeVisible();
     // LTR-126: notes are append-only entries with author and time.
     await expect(page.getByRole('heading', { name: 'Notes', exact: true })).toBeVisible();
-    await page.getByRole('textbox', { name: 'Add note' }).fill('Check the leak again');
+    // LTR-174: "Add note" opens the composer; the composer saves with "Save note".
     await page.getByRole('button', { name: 'Add note' }).click();
+    await page.getByRole('textbox', { name: 'Add note' }).fill('Check the leak again');
+    await page.getByRole('button', { name: 'Save note' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Note added.' }).first()).toBeVisible();
     await expect(page.getByText('Check the leak again')).toBeVisible();
     await expect(page.getByText(/Shop Manager · /).first()).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Add note' })).toHaveValue('');
     // LTR-154 / D11: no Work Order team editor; each Job has its own owner.
     await expect(page.getByRole('heading', { name: 'Assignments' })).toHaveCount(0);
-    // LTR-189 (W1): cancel and reopen ask their reason in a dialog, not on every row.
-    await page.getByRole('button', { name: 'Cancel Job…' }).first().click();
+    // LTR-189 (W1) / LTR-174: cancel and reopen live behind the row's "…" and ask their reason in a dialog.
+    await page.getByRole('button', { name: 'Actions for Inspect brake chamber' }).click();
+    await page.getByRole('button', { name: 'Cancel Job…' }).click();
     await page.getByLabel('Reason for this Job change').fill('Not needed');
     await page.getByRole('button', { name: 'Confirm job cancellation' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Job cancelled.' }).first()).toBeVisible();
-    await page.getByRole('button', { name: 'Reopen Job…' }).first().click();
+    await page.getByRole('button', { name: 'Actions for Inspect brake chamber' }).click();
+    await page.getByRole('button', { name: 'Reopen Job…' }).click();
     await page.getByLabel('Reason for this Job change').fill('Job is still required');
     await page.getByRole('button', { name: 'Confirm job reopen' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Job reopened.' }).first()).toBeVisible();
@@ -243,8 +247,9 @@ test.describe('Shop Admin Phase 2A', () => {
     // and later tests need WO-0101 to stay open and Waiting / Paused.
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000103');
     await expect(page.getByRole('heading', { name: 'T-103' })).toBeVisible();
-    // LTR-158: rare actions are folded under "More actions".
-    await page.getByTestId('admin-wo-more-actions').locator('summary').click();
+    // LTR-158 / LTR-174: rare actions are behind the header "…" menu.
+    await page.getByTestId('admin-wo-more-actions').click();
+    await page.getByRole('button', { name: 'Cancel Work Order' }).click();
     await page.getByLabel('Reason for cancellation').fill('Duplicate Work Order');
     await page.getByRole('button', { name: 'Confirm cancellation' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order cancelled.' }).first()).toBeVisible();
@@ -262,10 +267,13 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('status').filter({ hasText: 'Time correction saved.' }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Confirm completion' }).first().click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order completed.' }).first()).toBeVisible();
+    await page.getByTestId('admin-wo-more-actions').click();
+    await page.getByRole('button', { name: 'Return to Service' }).click();
     await page.getByLabel('Reason (optional)').fill('Repairs verified');
     await page.getByRole('button', { name: 'Confirm Return to Service' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Truck returned to service.' }).first()).toBeVisible();
-    await page.getByTestId('admin-wo-more-actions').locator('summary').click();
+    await page.getByTestId('admin-wo-more-actions').click();
+    await page.getByRole('button', { name: 'Reopen Work Order' }).click();
     await page.getByLabel('Reason for reopening').fill('More work found');
     await page.getByRole('button', { name: 'Confirm reopen' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order reopened.' }).first()).toBeVisible();
@@ -596,9 +604,10 @@ test.describe('Shop Admin Phase 2A', () => {
         const box = button.getBoundingClientRect();
         return box.bottom > 0 && box.top < window.innerHeight;
       }).length)).toBe(1);
-    const pauseBox = await page.getByRole('heading', { name: /Pause Work Order|Resume Work Order/ }).first().boundingBox();
+    // Pause is a header button now (no Controls card); the completion card still sits above the Jobs.
+    const jobsBox = await page.getByRole('heading', { name: /^Jobs \(/ }).boundingBox();
     const completeCardBox = await page.getByRole('heading', { name: 'Complete Work Order' }).boundingBox();
-    expect(completeCardBox && pauseBox && completeCardBox.y < pauseBox.y).toBe(true);
+    expect(completeCardBox && jobsBox && completeCardBox.y < jobsBox.y).toBe(true);
 
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
     await expect(page.getByRole('heading', { name: 'T-101' })).toBeVisible();

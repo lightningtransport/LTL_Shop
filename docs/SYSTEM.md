@@ -372,7 +372,7 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 |---|---|
 | `/admin` | Dashboard: métricas, "Needs attention" con el siguiente paso, pedidos de trabajo abiertos. |
 | `/admin/yard-operations` | Tablero del patio por fase. Pestaña `?tab=movement`: tarjetas de agent-reporting (solo lectura). |
-| `/admin/trucks`, `/admin/trucks/[id]` | Lista de camiones con siguiente paso; **el Truck es el lugar de trabajo del Manager**: siguiente paso, inspección, Work Plan, trabajo actual. La fase solo aparece como distintivo en el encabezado; datos del Truck e historial de reparaciones van plegados. |
+| `/admin/trucks`, `/admin/trucks/[id]` | Lista de camiones con siguiente paso; **el Truck es el lugar de trabajo del Manager** y responde "¿puede salir y, si no, qué lo frena?" (ver abajo). |
 | `/admin/work-orders`, `/admin/work-orders/[id]` | Lista con filtros; detalle del WO (ver abajo). |
 | `/admin/work-orders/new` | Crear WO (solo Truck, prioridad, nota). |
 | `/admin/history` | WOs completados y cancelados. |
@@ -380,17 +380,49 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs (solo lectura). |
 | `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista). |
 
-**Detalle Admin del WO** (`/admin/work-orders/[id]`), de arriba abajo:
-- **Confirm completion** arriba cuando el WO está listo para cerrar (antes la
+**Detalle del Truck** (`/admin/trucks/[id]`), de arriba abajo (LTR-174; en
+computadora dos columnas ≈ 2:1, en el teléfono una sola en el mismo orden):
+- **Encabezado operativo:** número y vehículo, distintivos Ready / Not Ready
+  y fase, "N Jobs pendientes · M mecánicos", el **siguiente paso** con su
+  botón, y a la derecha **Open Work Order** y **Add work** (D6).
+- **Work Plan** (columna principal): el seguimiento de preparación, una fila
+  por paso — Inspection (con "No issues found" / "Issues found", D14), PM,
+  Alignment, Detailing, Quality Check y Close Work Order — con el estado que
+  trae la API (nada se calcula en pantalla); el formulario de agregar trabajo;
+  y el resumen de Jobs `Job · Mecánico · Estado`, solo lectura salvo el
+  selector de mecánico en los Jobs **sin dueño** (el paso `assign`). Asignar,
+  reasignar y completar se hace en el Work Order; el respaldo del Manager
+  para QC sigue en el siguiente paso.
+- **Contexto** (columna lateral): trabajo actual (WO, estado, prioridad,
+  mecánicos, pausa), y plegados datos del Truck e historial de reparaciones.
+
+**Detalle Admin del WO** (`/admin/work-orders/[id]`), de arriba abajo (LTR-174;
+misma división 2:1 en computadora, una columna en el teléfono):
+- **Encabezado operativo:** Truck (enlace), número del WO y vehículo,
+  distintivos de prioridad y estado, "N Jobs pendientes · M mecánicos", el
+  **siguiente paso** (mismo texto que el Truck) y a la derecha **Pause** /
+  **Resume** (Pause abre un diálogo que pide el motivo, sin preselección) y el
+  menú **…** con Cancel Work Order, Reopen y Return to Service, cada uno en
+  su diálogo con motivo.
+- **Confirm completion** cuando el WO está listo para cerrar (antes la
   tarjeta no existe: el paso siguiente dice qué falta, LTR-189 W2); una barra
   fija aparece solo al pasar ese botón con el scroll.
-- Jobs con dueño, bloqueos reportados (Resolve), notas y pedidos de trabajo
-  (marcar atendido).
-- **Controls:** prioridad y Pause/Resume (Pause no trae motivo preseleccionado).
-- Plegados: **More actions** (Cancel / Reopen), **History and audit**
-  (tiempos, corrección de tiempos, pausas, Activity Log), resumen operativo,
-  datos del Truck e historial de reparaciones.
-- Los avisos de éxito son solo toasts.
+- **Jobs** como tabla `Job · Mecánico · Estado · Acción`: el selector de
+  mecánico asigna, reasigna o quita el dueño (QC no tiene selector: lo toma
+  Safety); "Mark complete" es primario solo en QC; el PM job muestra su
+  variante de servicio; Cancel / Reopen Job viven en el "…" de cada fila con
+  su diálogo de motivo. Los Jobs se agregan desde el Work Plan del Truck (D6).
+- **Bloqueos reportados:** una línea "· Ninguno" si no hay; si hay, un bloque
+  de aviso con Resolve.
+- **Notas:** entradas y el botón "Add note" que abre el redactor; pedidos de
+  trabajo con "Mark handled".
+- **Contexto** (columna lateral): Truck (enlace), tiempos (labor, espera y
+  por mecánico), mecánicos, prioridad (selector + Update priority); plegados
+  el resumen operativo, datos del Truck e historial de reparaciones.
+- **History and audit** plegado al final (tiempos, corrección de tiempos,
+  pausas, Activity Log).
+- Los estados siempre son distintivos y las acciones siempre botones. Los
+  avisos de éxito son solo toasts.
 
 **Listas** (Trucks, Mechanics, Catalog, History): en el teléfono cada fila es
 una tarjeta. Mechanics e History tienen un panel **Filters** con el número de

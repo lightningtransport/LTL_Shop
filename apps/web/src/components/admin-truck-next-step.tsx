@@ -14,7 +14,7 @@ import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/l
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { useActionToast } from './action-toast';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
-import { Button, Card, CardContent, CardHeader, CardTitle, InlineAlert, Textarea } from './ui';
+import { Button, InlineAlert, Textarea } from './ui';
 
 const LANE_NAME: Partial<Record<WorkPlanJobLane, string>> = {
   [WorkPlanJobLane.PM]: 'PM',
@@ -72,16 +72,15 @@ export function AdminTruckNextStep({
 
   const body = renderStep(step);
 
+  // LTR-174: one box under the operational header (no Card inside a Card), same testid and data-kind.
   return (
-    <Card className="border-primary/40" data-testid="truck-next-step" data-kind={step.kind}>
-      <CardHeader className="pb-2">
-        <CardTitle>{messages.nextStepTitle}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
+    <div className="rounded-xl border border-primary/40 bg-card px-4 py-3 text-sm text-card-foreground shadow-soft" role="status" data-testid="truck-next-step" data-kind={step.kind}>
+      <p className="group-title">{messages.nextStepTitle}</p>
+      <div className="mt-2 space-y-3">
         {body}
         {failure ? <InlineAlert>{failure}</InlineAlert> : null}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 
   function renderStep(current: TruckNextStepDto) {

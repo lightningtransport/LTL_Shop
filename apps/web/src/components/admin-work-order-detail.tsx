@@ -3,16 +3,21 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useSWRConfig } from 'swr';
-import { isPmCategory, isQualityCheckJob, AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { MoreHorizontal } from 'lucide-react';
+import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { intlLocale } from '@/lib/shop-locale';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
+import { formatVehicleYmm } from '@/lib/format';
 import { laborByMechanic } from '@/lib/labor-by-mechanic';
-import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, jobStatusLabel, workOrderStatusLabel } from '@/lib/status-chips';
+import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
+import { AdminContextSidebar, ContextBlock, ContextCard, ContextFacts } from './admin-context-sidebar';
+import { AdminJobTable } from './admin-job-table';
+import { AdminOperationalHeader } from './admin-operational-header';
 import { pauseResumeError } from './pause-resume-error';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
@@ -21,11 +26,10 @@ import { fillPlaceholders } from '@/lib/admin-next-step';
 import { truckNextStepActionLabel, truckNextStepText } from '@/lib/truck-next-step';
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
-import { useCatalogJobs, useCategories } from '@/lib/shop-data';
+import { useCategories } from '@/lib/shop-data';
 import { useActionToast } from './action-toast';
 import {
   AdminBackLink,
-  PageHeader,
   Badge,
   Button,
   Card,
@@ -37,7 +41,6 @@ import {
   CollapsibleSection,
   CompactEmpty,
   EmptyState,
-  JobStatusBadge,
   LoadFailure,
   Modal,
   PageSkeleton,
@@ -49,6 +52,14 @@ import {
   Textarea,
 } from './ui';
 
+type WorkOrderDialog = 'pause' | 'menu' | 'cancel' | 'reopen' | 'return' | null;
+
+/**
+ * LTR-174: "What work are we executing, who, what remains, what's next?" — operational header (Truck,
+ * WO id, badges, counts, Next step, Pause / Resume and "…"), Confirm completion when the Work Order can
+ * close, then the Jobs table, blockers and notes beside a context column (Truck, times, mechanics,
+ * priority; summary, Truck details and repair history folded). History and audit stays at the bottom.
+ */
 export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
   const { showToast } = useActionToast();
@@ -63,9 +74,12 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   // LTR-189 (W1): cancel / reopen a Job from a dialog that asks the reason there, not from a red button on every row.
   const [jobDialog, setJobDialog] = useState<{ kind: 'cancel' | 'reopen'; jobId: string } | null>(null);
   const [jobDialogError, setJobDialogError] = useState<string | null>(null);
+  // LTR-174: Pause, "…" (Cancel / Reopen / Return to Service) and their forms open as dialogs from the header.
+  const [dialog, setDialog] = useState<WorkOrderDialog>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const [noteOpen, setNoteOpen] = useState(false);
   // LTR-168: no preselected reason, so pausing is a choice and never a single accidental tap.
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
-  const [assignDrafts, setAssignDrafts] = useState<Record<string, string>>({});
   const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
   const [draftNotes, setDraftNotes] = useState('');
   const [timeTarget, setTimeTarget] = useState('');
@@ -116,15 +130,20 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const categories = values.filter((category, index) => values.findIndex((candidate) => candidate.id === category.id) === index);
   const activeMechanics = data.mechanics.filter((mechanic) => !mechanic.removedAt);
   const truck = data.truck;
+  const truckHref = adminTruckHref(truck.id, `/admin/work-orders/${data.id}`);
   const isOpen = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status);
+  const isPmWorkOrder = data.category.name === 'PM';
   const canCancelWorkOrder = canManageWorkOrders && isOpen;
   const canReopenWorkOrder = data.status === 'completed' || data.status === 'cancelled';
   const canReturnToService = data.status === 'completed' && !data.returnedToServiceAt;
-  const canManageJobs = canManageWorkOrders && isOpen && data.category.name !== 'PM';
-  const canReopenJob = isOpen && data.category.name !== 'PM';
+  const canManageJobs = canManageWorkOrders && isOpen && !isPmWorkOrder;
+  const canReopenJob = isOpen && !isPmWorkOrder;
   const canEditFields = canManageWorkOrders && isOpen;
-  const canOfficialPause = canManageWorkOrders && isOpen && data.category.name !== 'PM';
+  const canEditPriority = canEditFields && !isPmWorkOrder;
+  const canOfficialPause = canManageWorkOrders && isOpen && !isPmWorkOrder;
   const pauseEnabled = canOfficiallyPauseWorkOrder(data.status);
+  const isPaused = data.status === 'waiting_paused';
+  const hasMenu = canCancelWorkOrder || canReopenWorkOrder || canReturnToService;
   const readyToClose = isAdminWorkOrderReadyToClose({
     canManageWorkOrders,
     status: data.status,
@@ -139,6 +158,10 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const nextStepManagerOwned = Boolean(nextStep && nextStep.kind !== 'work');
   // The "Confirm completion" card already covers closing.
   const showNextStep = Boolean(nextStepText) && !(readyToClose && nextStep?.kind === 'close');
+  const jobsLeft = data.jobs.filter((job) => job.status === 'to_do').length;
+  const counts = isPmWorkOrder ? null : fillPlaceholders(messages.operationalCounts, { jobs: String(jobsLeft), mechanics: String(activeMechanics.length) });
+  const blockers = data.reportedBlockers ?? [];
+  const labor = laborByMechanic(data);
 
   async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
     if (pendingAction) return;
@@ -159,6 +182,12 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     }
   }
 
+  function closeDialog() {
+    if (pendingAction) return;
+    setDialog(null);
+    setDialogError(null);
+  }
+
   // LTR-189 (W2): the card only exists once the Work Order can actually close; before that the Next step says what is missing.
   const completeCard = readyToClose ? (
     <Card ref={setCompleteCardElement} className="border-shop-accent/50 bg-shop-accent/5">
@@ -166,7 +195,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         <CardTitle>{messages.completeWorkOrderTitle}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {data.category.name === 'PM' ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
+        {isPmWorkOrder ? <p className="text-sm text-muted-foreground">{messages.completeWorkOrderPmHelp}</p> : null}
         <p className="text-sm font-medium">{messages.readyToCloseHint}</p>
         <CompleteWorkOrderButton
           messages={messages}
@@ -179,13 +208,64 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
 
   const showStickyComplete = readyToClose && !completeCardInView;
 
+  const dialogJob = jobDialog ? data.jobs.find((job) => job.id === jobDialog.jobId) : undefined;
+
   return <div className={showStickyComplete ? 'space-y-5 pb-28' : 'space-y-5'}>
     <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
-    <PageHeader
-      title={<Link className="tap-inline text-primary hover:underline" href={adminTruckHref(truck.id, `/admin/work-orders/${data.id}`)}>{truck.truckNumber}</Link>}
-      subtitle={<>{messages.workOrder} {data.displayId}</>}
+    <AdminOperationalHeader
+      title={<Link className="tap-inline text-primary hover:underline" href={truckHref}>{truck.truckNumber}</Link>}
+      subtitle={<>{messages.workOrder} {data.displayId}{formatVehicleYmm(truck) ? ` · ${formatVehicleYmm(truck)}` : ''}</>}
       meta={<>{messages.updated}: {formatAdminDate(data.updatedAt, locale)}</>}
       badges={<><PriorityBadge priority={data.priority}>{adminPriorityLabel(data.priority, messages)}</PriorityBadge><WorkOrderStatusBadge status={data.status}>{workOrderStatusLabel(data.status, messages)}</WorkOrderStatusBadge></>}
+      counts={counts}
+      actions={canOfficialPause || hasMenu ? (
+        <>
+          {canOfficialPause ? (
+            isPaused ? (
+              <Button
+                type="button"
+                disabled={Boolean(pendingAction)}
+                onClick={() => void runMutation('resume-wo', messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(data.id), (failure) => pauseResumeError(failure, messages))}
+              >
+                {messages.resumeWorkOrderAction}
+              </Button>
+            ) : (
+              // Secondary: Confirm completion is the primary action on this page.
+              <Button type="button" variant="outline" disabled={!pauseEnabled || Boolean(pendingAction)} onClick={() => setDialog('pause')}>
+                {messages.pauseWorkOrderAction}
+              </Button>
+            )
+          ) : null}
+          {hasMenu ? (
+            <Button type="button" variant="outline" size="icon" aria-label={messages.moreActions} data-testid="admin-wo-more-actions" disabled={Boolean(pendingAction)} onClick={() => setDialog('menu')}>
+              <MoreHorizontal aria-hidden="true" className="size-5" />
+            </Button>
+          ) : null}
+        </>
+      ) : null}
+      note={canOfficialPause && !isPaused && !pauseEnabled ? (
+        <p className="text-sm text-muted-foreground">{messages.pauseUnavailableUntilInProgress}</p>
+      ) : null}
+      nextStep={showNextStep ? (
+        <div
+          className={nextStepManagerOwned && !canManageWorkOrders ? 'rounded-xl border border-warning bg-warning-surface px-4 py-3 text-sm text-warning-foreground' : 'rounded-xl border border-primary/40 bg-card px-4 py-3 text-sm shadow-soft'}
+          role="status"
+          data-testid="admin-wo-next-step"
+          data-kind={nextStep?.kind}
+        >
+          <p className="group-title">{messages.nextStepTitle}</p>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium">{nextStepText}</p>
+            {/* The action lives on the Truck, the Manager's workplace (LTR-158). */}
+            {nextStepAction && canManageWorkOrders ? (
+              <Button asChild size="sm" variant="outline">
+                <Link href={truckHref}>{nextStepAction}</Link>
+              </Button>
+            ) : null}
+          </div>
+          {nextStepManagerOwned && !canManageWorkOrders ? <p className="mt-1">{messages.nextStepNoPermission}</p> : null}
+        </div>
+      ) : null}
     />
     {feedback ? (
       <p
@@ -203,245 +283,57 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
 
     {completeCard}
 
-    {showNextStep ? (
-      <div
-        className={nextStepManagerOwned && !canManageWorkOrders ? 'rounded-xl border border-warning bg-warning-surface px-4 py-3 text-sm text-warning-foreground' : 'rounded-xl border bg-card px-4 py-3 text-sm'}
-        role="status"
-        data-testid="admin-wo-next-step"
-        data-kind={nextStep?.kind}
-      >
-        <p className="group-title">{messages.nextStepTitle}</p>
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-          <p className="font-medium">{nextStepText}</p>
-          {/* The action lives on the Truck, the Manager's workplace (LTR-158). */}
-          {nextStepAction && canManageWorkOrders ? (
-            <Button asChild size="sm" variant="outline">
-              <Link href={adminTruckHref(data.truck.id, `/admin/work-orders/${data.id}`)}>{nextStepAction}</Link>
-            </Button>
-          ) : null}
-        </div>
-        {nextStepManagerOwned && !canManageWorkOrders ? <p className="mt-1">{messages.nextStepNoPermission}</p> : null}
-      </div>
-    ) : null}
-    {/* LTR-109: operational work first (Jobs, team, blockers, notes, actions); context on the side on desktop. */}
-    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(300px,1fr)]">
+    {/* LTR-109 / LTR-174: operational work first (Jobs, blockers, notes); context on the side on desktop. */}
+    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
       <div className="min-w-0 space-y-5">
-      <Card>
-        <CardHeader>
-          <CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle>
-          {canManageJobs ? null : (
-            <CardDescription>
-              {data.category.name === 'PM' ? messages.jobsPmLocked : !isOpen ? messages.jobsClosedLocked : messages.jobsNoPermission}
-            </CardDescription>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {data.jobs.length ? (
-            <ul className="divide-y">
-              {data.jobs.map((job) => {
-                const isToDo = job.status === 'to_do';
-                // LTR-145: the PM job is finished from the PM service (mileage + parts), not "Complete".
-                const isPmJob = isPmCategory(job.category.name);
-                // LTR-164 (#2) / D15: Quality Check has no owner; the Manager completes it.
-                const isQualityCheck = isQualityCheckJob(job.category.name, job.displayName);
-                const isTerminal = job.status === 'completed' || job.status === 'cancelled';
-                const assigneeLine = job.assignedMechanic
-                  ? `${messages.jobAssignee}: ${job.assignedMechanic.name}`
-                  : isPmJob ? messages.pmJobUnassigned : messages.jobUnassigned;
-                return (
-                  <li key={job.id} className="space-y-3 py-4 first:pt-0">
-                    {/* LTR-189 (W1): one header per Job (name + status), then one action row; cancel/reopen live in a dialog. */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className={job.status === 'cancelled' ? 'font-medium text-muted-foreground line-through' : 'font-medium'}>{job.displayName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {job.category.name}
-                          {isTerminal ? null : ` · ${assigneeLine}`}
-                          {job.status === 'completed' && job.completedBy ? ` · ${messages.completedByLabel}: ${job.completedBy.name}` : null}
-                        </p>
-                        {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
-                        {isPmJob && job.startedAt && !isTerminal ? (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {messages.pmJobStartedAt.replace('{date}', formatAdminDate(job.startedAt, locale))}
-                            {data.pmService?.workOrderJobId === job.id
-                              ? ` · ${messages.pmJobServiceSummary
-                                .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : new Intl.NumberFormat(intlLocale(locale)).format(data.pmService.observedMileage))
-                                .replace('{parts}', String(data.pmService.partsCount))}`
-                              : ''}
-                          </p>
-                        ) : null}
-                        {/* LTR-148: a finished PM job keeps its recorded mileage and parts visible. */}
-                        {isPmJob && job.status === 'completed' && data.pmService?.workOrderJobId === job.id ? (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {messages.pmJobServiceSummary
-                              .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : new Intl.NumberFormat(intlLocale(locale)).format(data.pmService.observedMileage))
-                              .replace('{parts}', String(data.pmService.partsCount))}
-                          </p>
-                        ) : null}
-                        {job.completionNotes ? (
-                          <p className="mt-1 whitespace-pre-wrap text-sm">{messages.jobCompletionNotes}: {job.completionNotes}</p>
-                        ) : null}
-                      </div>
-                      <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
-                    </div>
-                    {isTerminal ? (
-                      canReopenJob && job.status === 'cancelled' ? (
-                        <Button type="button" variant="ghost" size="sm" className="-ml-3 text-muted-foreground" disabled={Boolean(pendingAction)} onClick={() => setJobDialog({ kind: 'reopen', jobId: job.id })}>
-                          {messages.reopenJobAction}
-                        </Button>
-                      ) : null
-                    ) : canManageJobs && isToDo ? (
-                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                        {isPmJob ? (
-                          <>
-                            <PmServiceSelect
-                              job={job}
-                              messages={messages}
-                              disabled={Boolean(pendingAction)}
-                              onChange={(catalogJobId) => void runMutation(`pm-service-${job.id}`, messages.pmServiceChangedSuccess, () => changeAdminPmService(data.id, job.id, { catalogJobId, expectedVersion: data.version }), () => messages.pmServiceChangeFailed)}
-                            />
-                            <span className="text-xs text-muted-foreground sm:order-last sm:basis-full">{messages.pmJobCompletedFromPmService}</span>
-                          </>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            // LTR-164 (#2) / D15: primary only on Quality Check (the Manager's step), as on the Truck.
-                            variant={isQualityCheck ? 'default' : 'outline'}
-                            disabled={Boolean(pendingAction)}
-                            onClick={() => {
-                              void runMutation(`complete-job-${job.id}`, messages.completeJobSuccess, async () => {
-                                await completeAdminJob(job.id, { expectedVersion: data.version });
-                              }, (failure) => jobChangeError(failure, messages));
-                            }}
-                          >
-                            {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.completeJobAction}
-                          </Button>
-                        )}
-                        {!isQualityCheck ? (
-                          job.assignedMechanic ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={Boolean(pendingAction)}
-                              onClick={() => {
-                                void runMutation(`unassign-job-${job.id}`, messages.unassignJobSuccess, async () => {
-                                  await unassignAdminWorkOrderJob(id, job.id, data.version);
-                                }, (failure) => jobChangeError(failure, messages));
-                              }}
-                            >
-                              {messages.unassignJobAction}
-                            </Button>
-                          ) : (
-                            <div className="flex gap-2">
-                              <Select
-                                aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
-                                className="min-w-0 flex-1 sm:w-48 sm:flex-none"
-                                value={assignDrafts[job.id] ?? ''}
-                                onChange={(event) => setAssignDrafts((prev) => ({ ...prev, [job.id]: event.target.value }))}
-                              >
-                                <option value="">{messages.assignJobPlaceholder}</option>
-                                {(isPmJob ? pmMechanics : assignableMechanics).map((mechanic) => (
-                                  <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
-                                ))}
-                              </Select>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                disabled={Boolean(pendingAction) || !assignDrafts[job.id]}
-                                onClick={() => {
-                                  const mechanicId = assignDrafts[job.id];
-                                  if (!mechanicId) return;
-                                  void runMutation(`assign-job-${job.id}`, messages.assignJobSuccess, async () => {
-                                    await assignAdminWorkOrderJob(id, job.id, { mechanicId, expectedVersion: data.version });
-                                    setAssignDrafts((prev) => ({ ...prev, [job.id]: '' }));
-                                  }, (failure) => jobChangeError(failure, messages));
-                                }}
-                              >
-                                {messages.assignJobAction}
-                              </Button>
-                            </div>
-                          )
-                        ) : null}
-                        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground sm:ml-auto" disabled={Boolean(pendingAction)} onClick={() => setJobDialog({ kind: 'cancel', jobId: job.id })}>
-                          {messages.cancelJobAction}
-                        </Button>
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <CompactEmpty>{messages.noJobs}</CompactEmpty>
-          )}
-          {canManageJobs ? (
-            // LTR-119 / D6: Jobs are added from the Truck Work Plan (the canonical place).
-            <Button asChild variant="outline">
-              <Link href={`${adminTruckHref(truck.id, `/admin/work-orders/${data.id}`)}#truck-work-plan-title`}>
-                {messages.addWorkInWorkPlan}
-              </Link>
-            </Button>
-          ) : null}
-          {(() => {
-            const dialogJob = jobDialog ? data.jobs.find((job) => job.id === jobDialog.jobId) : undefined;
-            if (!jobDialog || !dialogJob) return null;
-            const isCancel = jobDialog.kind === 'cancel';
-            const closeDialog = () => { if (!pendingAction) { setJobDialog(null); setJobReason(''); setJobDialogError(null); } };
-            return (
-              <Modal open title={isCancel ? messages.cancelJobTitle : messages.reopenJobTitle} closeLabel={messages.closeDialog} onClose={closeDialog}>
-                <div className="space-y-4">
-                  <p className="text-base font-medium">{dialogJob.displayName}</p>
-                  <label className="block space-y-1">
-                    <span className="text-sm font-medium">{messages.jobChangeReason}</span>
-                    <Textarea aria-label={messages.jobChangeReason} value={jobReason} onChange={(event) => { setJobReason(event.target.value); setJobDialogError(null); }} maxLength={1000} />
-                    <span className="block text-xs text-muted-foreground">{messages.jobChangeReasonHelp}</span>
-                  </label>
-                  {jobDialogError ? <p className="text-sm font-medium text-destructive-text" role="alert">{jobDialogError}</p> : null}
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" className="flex-1" disabled={Boolean(pendingAction)} onClick={closeDialog}>{messages.cancel}</Button>
-                    <Button
-                      type="button"
-                      variant={isCancel ? 'destructive' : 'default'}
-                      className="flex-1"
-                      disabled={Boolean(pendingAction)}
-                      onClick={() => {
-                        const reason = jobReason.trim();
-                        if (!reason) {
-                          setJobDialogError(messages.jobChangeReasonRequired);
-                          return;
-                        }
-                        setJobDialogError(null);
-                        void runMutation(`${jobDialog.kind}-job-${dialogJob.id}`, isCancel ? messages.cancelJobSuccess : messages.reopenJobSuccess, async () => {
-                          if (isCancel) await cancelAdminJob(dialogJob.id, { reason, expectedVersion: data.version });
-                          else await reopenAdminJob(dialogJob.id, { reason, expectedVersion: data.version });
-                          setJobReason('');
-                          setJobDialog(null);
-                        }, (failure) => jobChangeError(failure, messages));
-                      }}
-                    >
-                      {pendingAction ? messages.saving : isCancel ? messages.cancelJobConfirm : messages.reopenJobConfirm}
-                    </Button>
-                  </div>
-                </div>
-              </Modal>
-            );
-          })()}
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>{messages.jobs} ({data.jobsCompleted}/{data.jobsTotal})</CardTitle>
+            {canManageJobs ? null : (
+              <CardDescription>
+                {isPmWorkOrder ? messages.jobsPmLocked : !isOpen ? messages.jobsClosedLocked : messages.jobsNoPermission}
+              </CardDescription>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <AdminJobTable
+              data={data}
+              locale={locale}
+              messages={messages}
+              canManageJobs={canManageJobs}
+              canReopenJob={canReopenJob}
+              pendingAction={pendingAction}
+              pmMechanics={pmMechanics}
+              assignableMechanics={assignableMechanics}
+              onAssign={(jobId, mechanicId) => {
+                if (mechanicId) {
+                  void runMutation(`assign-job-${jobId}`, messages.assignJobSuccess, () => assignAdminWorkOrderJob(id, jobId, { mechanicId, expectedVersion: data.version }), (failure) => jobChangeError(failure, messages));
+                } else {
+                  void runMutation(`unassign-job-${jobId}`, messages.unassignJobSuccess, () => unassignAdminWorkOrderJob(id, jobId, data.version), (failure) => jobChangeError(failure, messages));
+                }
+              }}
+              onComplete={(jobId) => void runMutation(`complete-job-${jobId}`, messages.completeJobSuccess, () => completeAdminJob(jobId, { expectedVersion: data.version }), (failure) => jobChangeError(failure, messages))}
+              onPmServiceChange={(jobId, catalogJobId) => void runMutation(`pm-service-${jobId}`, messages.pmServiceChangedSuccess, () => changeAdminPmService(data.id, jobId, { catalogJobId, expectedVersion: data.version }), () => messages.pmServiceChangeFailed)}
+              onJobDialog={(kind, jobId) => { setJobDialogError(null); setJobDialog({ kind, jobId }); }}
+            />
+            {canManageJobs ? (
+              // LTR-119 / D6: Jobs are added from the Truck Work Plan (the canonical place).
+              <Button asChild variant="outline">
+                <Link href={`${truckHref}#truck-work-plan-title`}>
+                  {messages.addWorkInWorkPlan}
+                </Link>
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{messages.reportedBlockers}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {(data.reportedBlockers ?? []).length ? (
-            <ul className="divide-y">
-              {(data.reportedBlockers ?? []).map((blocker) => (
-                <li key={blocker.id} className="py-3 first:pt-0">
-                  {/* LTR-155 / D17: which Job, why, notes; only the Manager resolves (optional note). */}
+        {/* LTR-155 / D17: which Job, why, notes; only the Manager resolves (optional note). One line when there is none. */}
+        {blockers.length ? (
+          <section className="rounded-xl border border-warning bg-warning-surface p-4 text-warning-foreground" aria-labelledby="admin-wo-blockers-title">
+            <h3 id="admin-wo-blockers-title" className="group-title text-warning-foreground">{messages.reportedBlockers}</h3>
+            <ul className="mt-2 divide-y divide-warning/40">
+              {blockers.map((blocker) => (
+                <li key={blocker.id} className="py-3 first:pt-0 last:pb-0">
                   <AdminBlockerResolve
                     workOrderId={data.id}
                     blocker={blocker}
@@ -453,305 +345,187 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 </li>
               ))}
             </ul>
-          ) : <CompactEmpty>{messages.noReportedBlockers}</CompactEmpty>}
-        </CardContent>
-      </Card>
+          </section>
+        ) : (
+          <p className="flex items-center gap-2 px-1 text-sm">
+            <span className="group-title" role="heading" aria-level={3}>{messages.reportedBlockers}</span>
+            <span className="text-muted-foreground">· {messages.noneLabel}</span>
+          </p>
+        )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{messages.notes}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {(data.noteEntries ?? []).length ? (
-            <ul className="space-y-2">
-              {(data.noteEntries ?? []).map((note) => {
-                const isRequest = note.kind === WorkOrderNoteKind.WORK_REQUEST;
-                return (
-                  <li key={note.id} className="rounded-lg border px-3 py-2 text-sm">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {isRequest ? (
-                        <Badge variant={note.handledAt ? 'secondary' : 'warning'}>
-                          {messages.workRequestLabel}{note.handledAt ? '' : ` · ${messages.workRequestOpen}`}
-                        </Badge>
-                      ) : null}
-                      <span className="text-xs text-muted-foreground">
-                        {messages.noteByAt
-                          .replace('{name}', note.author.name)
-                          .replace('{date}', formatAdminDate(note.createdAt, locale))}
-                      </span>
-                    </div>
-                    <p className="mt-1 whitespace-pre-wrap">{note.body}</p>
-                    {isRequest && note.handledAt ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {messages.workRequestHandledByAt
-                          .replace('{name}', note.handledBy?.name ?? '—')
-                          .replace('{date}', formatAdminDate(note.handledAt, locale))}
-                      </p>
-                    ) : null}
-                    {isRequest && !note.handledAt && canManageWorkOrders ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="mt-2"
-                        disabled={Boolean(pendingAction)}
-                        onClick={() => void runMutation(`handle-request-${note.id}`, messages.workRequestHandledSuccess, () => handleAdminWorkRequest(data.id, note.id), () => messages.workRequestHandleFailed)}
-                      >
-                        {messages.markWorkRequestHandled}
-                      </Button>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : <CompactEmpty>{messages.noNotes}</CompactEmpty>}
-          {canEditFields ? (
-            <form
-              className="space-y-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const body = draftNotes.trim();
-                if (!body) return;
-                void runMutation('add-note', messages.noteAddedSuccess, async () => {
-                  await addAdminWorkOrderNote(data.id, body);
-                  setDraftNotes('');
-                }, () => messages.noteAddFailed);
-              }}
-            >
-              <Textarea
-                aria-label={messages.addNote}
-                placeholder={messages.adminNotePlaceholder}
-                value={draftNotes}
-                onChange={(event) => setDraftNotes(event.target.value)}
-                maxLength={2000}
-              />
-              <Button type="submit" variant="outline" disabled={Boolean(pendingAction) || !draftNotes.trim()}>
-                {messages.addNote}
-              </Button>
-            </form>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {/* LTR-168: priority and the official pause are one "Controls" section with two blocks. */}
-      {(canEditFields && data.category.name !== 'PM') || canOfficialPause ? (
-        <Card className="overflow-hidden p-0">
-          <CardHeader className="mb-0 p-4">
-            <CardTitle>{messages.workOrderControls}</CardTitle>
-          </CardHeader>
-          <div className="divide-y border-t">
-      {canEditFields && data.category.name !== 'PM' ? (
-          <SectionBlock title={messages.fieldUpdatesTitle}>
-            <form
-              className="space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void runMutation('fields', messages.fieldUpdatesSuccess, async () => {
-                  await patchAdminWorkOrder(data.id, {
-                    expectedVersion: data.version,
-                    priority: draftPriority,
-                  });
-                }, (failure) => fieldUpdateError(failure, messages));
-              }}
-            >
-              <Select
-                aria-label={messages.priority}
-                value={draftPriority}
-                disabled={data.category.name === 'PM' || Boolean(pendingAction)}
-                onChange={(event) => setDraftPriority(event.target.value as Priority)}
-              >
-                <option value={Priority.LOW}>{messages.lowPriority}</option>
-                <option value={Priority.NORMAL}>{messages.normalPriority}</option>
-                <option value={Priority.HIGH}>{messages.highPriority}</option>
-                <option value={Priority.CRITICAL}>{messages.criticalPriority}</option>
-              </Select>
-
-              <Button type="submit" variant="outline" disabled={Boolean(pendingAction) || draftPriority === data.priority}>
-                {messages.updatePriority}
-              </Button>
-            </form>
-          </SectionBlock>
-      ) : null}
-
-      {canOfficialPause ? (
-          <SectionBlock title={data.status === 'waiting_paused' ? messages.resumeWorkOrderAction : messages.pauseWorkOrderAction}>
-            {data.status === 'waiting_paused' ? (
-              <Button
-                type="button"
-                disabled={Boolean(pendingAction)}
-                onClick={() => void runMutation('resume-wo', messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(data.id), (failure) => pauseResumeError(failure, messages))}
-              >
-                {messages.resumeWorkOrderAction}
-              </Button>
-            ) : (
-              <div className="space-y-2">
-                <form
-                  className="flex flex-col gap-3 sm:flex-row"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (!pauseEnabled || !pauseReason) return;
-                    const reason = pauseReason;
-                    void runMutation('pause-wo', messages.pauseWorkOrderSuccess, async () => {
-                      await pauseAdminWorkOrder(data.id, { reason });
-                      setPauseReason('');
-                    }, (failure) => pauseResumeError(failure, messages));
-                  }}
-                >
-                  <Select aria-label={messages.pauseReasonLabel} value={pauseReason} disabled={!pauseEnabled || Boolean(pendingAction)} onChange={(event) => setPauseReason(event.target.value as PauseReason | '')}>
-                    <option value="" disabled>{messages.pauseReasonPlaceholder}</option>
-                    {Object.values(PauseReason).map((reason) => (
-                      <option key={reason} value={reason}>{adminPauseReasonLabel(reason, messages)}</option>
-                    ))}
-                  </Select>
-                  {/* Secondary: Confirm completion is the primary action on this page. */}
-                  <Button type="submit" variant="outline" disabled={!pauseEnabled || !pauseReason || Boolean(pendingAction)} aria-describedby={pauseEnabled ? undefined : 'pause-unavailable-help'}>{messages.pauseWorkOrderAction}</Button>
-                </form>
-                {pauseEnabled ? null : (
-                  <p id="pause-unavailable-help" className="text-sm text-muted-foreground">{messages.pauseUnavailableUntilInProgress}</p>
-                )}
-              </div>
-            )}
-          </SectionBlock>
-      ) : null}
-          </div>
-        </Card>
-      ) : null}
-
-      {data.status === 'completed' ? (
         <Card>
           <CardHeader>
-            <CardTitle>{messages.returnToServiceTitle}</CardTitle>
-            <CardDescription>{messages.returnToServiceDescription}</CardDescription>
+            <CardTitle>{messages.notes}</CardTitle>
           </CardHeader>
-          <CardContent>
-            {canReturnToService ? (
-              <form
-                className="space-y-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  // LTR-158: the reason is optional.
-                  const reason = returnReason.trim() || undefined;
-                  void runMutation('return-to-service', messages.returnToServiceSuccess, async () => {
-                    await returnAdminWorkOrderToService(data.id, { reason, expectedVersion: data.version });
-                    setReturnReason('');
-                  }, (failure) => returnToServiceError(failure, messages));
-                }}
-              >
-                <label className="block space-y-1">
-                  <span className="text-sm font-medium">{messages.returnToServiceReason}</span>
+          <CardContent className="space-y-3">
+            {(data.noteEntries ?? []).length ? (
+              <ul className="space-y-2">
+                {(data.noteEntries ?? []).map((note) => {
+                  const isRequest = note.kind === WorkOrderNoteKind.WORK_REQUEST;
+                  return (
+                    <li key={note.id} className={isRequest ? 'rounded-lg bg-warning-surface px-3 py-2 text-sm' : 'rounded-lg bg-muted px-3 py-2 text-sm'}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {isRequest ? (
+                          <Badge variant={note.handledAt ? 'secondary' : 'warning'}>
+                            {messages.workRequestLabel}{note.handledAt ? '' : ` · ${messages.workRequestOpen}`}
+                          </Badge>
+                        ) : null}
+                        <span className="text-xs text-muted-foreground">
+                          {messages.noteByAt
+                            .replace('{name}', note.author.name)
+                            .replace('{date}', formatAdminDate(note.createdAt, locale))}
+                        </span>
+                      </div>
+                      <p className="mt-1 whitespace-pre-wrap">{note.body}</p>
+                      {isRequest && note.handledAt ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {messages.workRequestHandledByAt
+                            .replace('{name}', note.handledBy?.name ?? '—')
+                            .replace('{date}', formatAdminDate(note.handledAt, locale))}
+                        </p>
+                      ) : null}
+                      {isRequest && !note.handledAt && canManageWorkOrders ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-2"
+                          disabled={Boolean(pendingAction)}
+                          onClick={() => void runMutation(`handle-request-${note.id}`, messages.workRequestHandledSuccess, () => handleAdminWorkRequest(data.id, note.id), () => messages.workRequestHandleFailed)}
+                        >
+                          {messages.markWorkRequestHandled}
+                        </Button>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : <CompactEmpty>{messages.noNotes}</CompactEmpty>}
+            {/* LTR-126 / D8: append-only. LTR-174: the composer opens from "Add note" and stays open to add another. */}
+            {canEditFields ? (
+              noteOpen ? (
+                <form
+                  className="space-y-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const body = draftNotes.trim();
+                    if (!body) return;
+                    void runMutation('add-note', messages.noteAddedSuccess, async () => {
+                      await addAdminWorkOrderNote(data.id, body);
+                      setDraftNotes('');
+                    }, () => messages.noteAddFailed);
+                  }}
+                >
                   <Textarea
-                    aria-label={messages.returnToServiceReason}
-                    value={returnReason}
-                    onChange={(event) => setReturnReason(event.target.value)}
-                    maxLength={1000}
+                    aria-label={messages.addNote}
+                    placeholder={messages.adminNotePlaceholder}
+                    value={draftNotes}
+                    autoFocus
+                    onChange={(event) => setDraftNotes(event.target.value)}
+                    maxLength={2000}
                   />
-                  <span className="text-xs text-muted-foreground">{messages.returnToServiceReasonHelp}</span>
-                </label>
-                <Button type="submit" disabled={Boolean(pendingAction)}>
-                  {messages.returnToServiceConfirm}
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" disabled={Boolean(pendingAction) || !draftNotes.trim()}>
+                      {messages.saveNote}
+                    </Button>
+                    <Button type="button" variant="ghost" disabled={Boolean(pendingAction)} onClick={() => { setNoteOpen(false); setDraftNotes(''); }}>
+                      {messages.cancel}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <Button type="button" variant="outline" disabled={Boolean(pendingAction)} onClick={() => setNoteOpen(true)}>
+                  {messages.addNote}
                 </Button>
-              </form>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {messages.returnToServiceAlready}
-                {data.returnedToServiceAt ? ` ${formatAdminDate(data.returnedToServiceAt, locale)}` : ''}
-              </p>
-            )}
+              )
+            ) : null}
           </CardContent>
         </Card>
-      ) : null}
-
-      {/* LTR-158: rare or destructive actions stay folded. */}
-      {canCancelWorkOrder || canReopenWorkOrder ? (
-        <CollapsibleSection testId="admin-wo-more-actions" title={messages.moreActions} description={messages.moreActionsHelp}>
-      {canCancelWorkOrder ? (
-          <SectionBlock title={messages.cancelWorkOrderTitle} description={messages.cancelWorkOrderDescription}>
-            <form
-              className="space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const reason = cancelReason.trim();
-                if (!reason) {
-                  setFeedback({ kind: 'error', message: messages.cancelWorkOrderReasonRequired });
-                  return;
-                }
-                void runMutation('cancel', messages.cancelWorkOrderSuccess, async () => {
-                  await cancelAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
-                  setCancelReason('');
-                }, (failure) => cancelError(failure, messages));
-              }}
-            >
-              <label className="block space-y-1">
-                <span className="text-sm font-medium">{messages.cancelWorkOrderReason}</span>
-                <Textarea
-                  aria-label={messages.cancelWorkOrderReason}
-                  value={cancelReason}
-                  onChange={(event) => setCancelReason(event.target.value)}
-                  maxLength={1000}
-                  required
-                />
-                <span className="text-xs text-muted-foreground">{messages.cancelWorkOrderReasonHelp}</span>
-              </label>
-              <Button type="submit" variant="destructive" disabled={Boolean(pendingAction)}>
-                {messages.cancelWorkOrderConfirm}
-              </Button>
-            </form>
-          </SectionBlock>
-      ) : null}
-      {canReopenWorkOrder ? (
-          <SectionBlock title={messages.reopenWorkOrderTitle} description={messages.reopenWorkOrderDescription}>
-            <form
-              className="space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const reason = reopenReason.trim();
-                if (!reason) {
-                  setFeedback({ kind: 'error', message: messages.reopenWorkOrderReasonRequired });
-                  return;
-                }
-                void runMutation('reopen', messages.reopenWorkOrderSuccess, async () => {
-                  await reopenAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
-                  setReopenReason('');
-                }, (failure) => reopenError(failure, messages));
-              }}
-            >
-              <label className="block space-y-1">
-                <span className="text-sm font-medium">{messages.reopenWorkOrderReason}</span>
-                <Textarea
-                  aria-label={messages.reopenWorkOrderReason}
-                  value={reopenReason}
-                  onChange={(event) => setReopenReason(event.target.value)}
-                  maxLength={1000}
-                  required
-                />
-                <span className="text-xs text-muted-foreground">{messages.reopenWorkOrderReasonHelp}</span>
-              </label>
-              <Button type="submit" disabled={Boolean(pendingAction)}>
-                {messages.reopenWorkOrderConfirm}
-              </Button>
-            </form>
-          </SectionBlock>
-      ) : null}
-        </CollapsibleSection>
-      ) : null}
-
-      {/* LTR-126: notes are append-only; this form only changes priority (PM priority is locked). */}
       </div>
-      <div className="min-w-0 space-y-5">
-      {/* LTR-168: context the Manager does not act on starts folded; status and priority are in the header. */}
-      <section aria-label={messages.operationalSummary}>
-        <CollapsibleSection title={messages.operationalSummary}>
-          <div className="p-4"><dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <Info label={messages.age} value={formatAge(data.createdAt, locale)} />
-            <Info label={messages.progress} value={`${data.jobsCompleted}/${data.jobsTotal}`} />
-            <Info label={messages.mechanicsLabel} value={mechanicNamesLabel(activeMechanics, messages)} />
-            <Info label={messages.currentPause} value={data.currentPause ? `${adminPauseReasonLabel(data.currentPause.reason, messages)} · ${formatAdminDate(data.currentPause.startedAt, locale)}` : messages.noCurrentPause} />
-            <Info label={messages.latestReportedBlocker} value={data.latestReportedBlocker ? `${adminPauseReasonLabel(data.latestReportedBlocker.reason, messages)}${data.latestReportedBlocker.reportedBy ? ` · ${data.latestReportedBlocker.reportedBy.name}` : ''}` : messages.noLatestReportedBlocker} />
-          </dl></div>
-        </CollapsibleSection>
-      </section>
+
+      <AdminContextSidebar label={messages.contextSidebarLabel}>
+        <ContextCard>
+          <ContextBlock title={messages.truck}>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <div className="min-w-0">
+                <p className="font-medium">{truck.truckNumber}</p>
+                <p className="text-muted-foreground">{formatVehicleYmm(truck) || messages.noValue}</p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link href={truckHref}>{messages.openTruckAction}</Link>
+              </Button>
+            </div>
+            {data.status === 'completed' && data.returnedToServiceAt ? (
+              <p className="text-sm text-muted-foreground">
+                {messages.returnToServiceAlready} {formatAdminDate(data.returnedToServiceAt, locale)}
+              </p>
+            ) : null}
+          </ContextBlock>
+          <ContextBlock title={messages.workOrderTimes}>
+            <ContextFacts
+              items={[
+                { key: 'active', label: messages.activeLabor, value: formatDuration(data.totalActiveLaborMs) },
+                { key: 'waiting', label: messages.waitingTime, value: formatDuration(data.totalWaitingMs) },
+                ...labor.map((entry) => ({ key: entry.key, label: entry.name ?? messages.laborUnattributed, value: formatDuration(entry.totalMs) })),
+              ]}
+            />
+          </ContextBlock>
+          <ContextBlock title={messages.mechanicsLabel}>
+            {activeMechanics.length ? (
+              <ul className="text-sm">
+                {activeMechanics.map((mechanic) => <li key={mechanic.mechanicId}>{mechanic.mechanicName}</li>)}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">{messages.noMechanicsAssigned}</p>
+            )}
+          </ContextBlock>
+          {canEditPriority ? (
+            <ContextBlock title={messages.fieldUpdatesTitle}>
+              <form
+                className="flex flex-col gap-2 sm:flex-row sm:items-center lg:flex-col lg:items-stretch"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void runMutation('fields', messages.fieldUpdatesSuccess, async () => {
+                    await patchAdminWorkOrder(data.id, {
+                      expectedVersion: data.version,
+                      priority: draftPriority,
+                    });
+                  }, (failure) => fieldUpdateError(failure, messages));
+                }}
+              >
+                <Select
+                  aria-label={messages.priority}
+                  value={draftPriority}
+                  disabled={Boolean(pendingAction)}
+                  onChange={(event) => setDraftPriority(event.target.value as Priority)}
+                >
+                  <option value={Priority.LOW}>{messages.lowPriority}</option>
+                  <option value={Priority.NORMAL}>{messages.normalPriority}</option>
+                  <option value={Priority.HIGH}>{messages.highPriority}</option>
+                  <option value={Priority.CRITICAL}>{messages.criticalPriority}</option>
+                </Select>
+                <Button type="submit" variant="outline" disabled={Boolean(pendingAction) || draftPriority === data.priority}>
+                  {messages.updatePriority}
+                </Button>
+              </form>
+            </ContextBlock>
+          ) : null}
+        </ContextCard>
+
+        {/* LTR-168: context the Manager does not act on starts folded; status and priority are in the header. */}
+        <section aria-label={messages.operationalSummary}>
+          <CollapsibleSection title={messages.operationalSummary}>
+            <div className="p-4"><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-1">
+              <Info label={messages.age} value={formatAge(data.createdAt, locale)} />
+              <Info label={messages.progress} value={`${data.jobsCompleted}/${data.jobsTotal}`} />
+              <Info label={messages.mechanicsLabel} value={mechanicNamesLabel(activeMechanics, messages)} />
+              <Info label={messages.currentPause} value={data.currentPause ? `${adminPauseReasonLabel(data.currentPause.reason, messages)} · ${formatAdminDate(data.currentPause.startedAt, locale)}` : messages.noCurrentPause} />
+              <Info label={messages.latestReportedBlocker} value={data.latestReportedBlocker ? `${adminPauseReasonLabel(data.latestReportedBlocker.reason, messages)}${data.latestReportedBlocker.reportedBy ? ` · ${data.latestReportedBlocker.reportedBy.name}` : ''}` : messages.noLatestReportedBlocker} />
+            </dl></div>
+          </CollapsibleSection>
+        </section>
         <CollapsibleSection title={messages.truckDetails}>
-          <div className="p-4"><dl className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
+          <div className="p-4"><dl className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-1">
             <Info label={messages.truck} value={truck.truckNumber} />
             <Info label={messages.make} value={truck.make ?? messages.noValue} />
             <Info label={messages.model} value={truck.model ?? messages.noValue} />
@@ -765,16 +539,16 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           </dl></div>
         </CollapsibleSection>
 
-      <CollapsibleSection title={messages.recentRepairHistory}>
-        <div className="space-y-4 p-4">
-        <label className="block space-y-1 sm:w-56"><span className="text-sm font-medium">{messages.filterByCategory}</span><Select aria-label={messages.filterByCategory} value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}><option value="">{messages.allCategories}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></label>{historyQuery.error ? <LoadFailure message={messages.repairHistoryLoadError} retryLabel={messages.retry} onRetry={() => void historyQuery.mutate()} /> : historyQuery.isLoading ? <CardListSkeleton count={2} /> : historyItems.length ? <><ul className="divide-y">{historyItems.map((item) => <li key={item.workOrderId} className="py-3 first:pt-0"><div className="flex flex-wrap items-start justify-between gap-2"><div><Link href={`/admin/work-orders/${item.workOrderId}`} className="font-semibold text-primary hover:underline">{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p></div>{item.mileage !== null ? <p className="text-xs text-muted-foreground">{messages.mileage}: {new Intl.NumberFormat(intlLocale(locale)).format(item.mileage)}</p> : null}</div>{item.mechanicNames.length ? <p className="mt-1 text-sm text-muted-foreground">{messages.performedBy}: {item.mechanicNames.join(', ')}</p> : null}{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : item.jobs?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobs.map((job) => <Badge key={`${item.workOrderId}-${job}`} variant="outline">{job}</Badge>)}</div> : null}</li>)}</ul>{historyHasMore ? <Button variant="outline" className="mt-4 w-full" disabled={historyQuery.isValidating} onClick={() => void historyQuery.setSize(historyQuery.size + 1)}>{historyQuery.isValidating ? `${messages.loadMoreRepairs}…` : messages.loadMoreRepairs}</Button> : null}</> : <CompactEmpty>{messages.noRepairHistory}</CompactEmpty>}
-        </div>
-      </CollapsibleSection>
-
-      </div>
+        <CollapsibleSection title={messages.recentRepairHistory}>
+          <div className="space-y-4 p-4">
+          <label className="block space-y-1 sm:w-56"><span className="text-sm font-medium">{messages.filterByCategory}</span><Select aria-label={messages.filterByCategory} value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}><option value="">{messages.allCategories}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></label>{historyQuery.error ? <LoadFailure message={messages.repairHistoryLoadError} retryLabel={messages.retry} onRetry={() => void historyQuery.mutate()} /> : historyQuery.isLoading ? <CardListSkeleton count={2} /> : historyItems.length ? <><ul className="divide-y">{historyItems.map((item) => <li key={item.workOrderId} className="py-3 first:pt-0"><div className="flex flex-wrap items-start justify-between gap-2"><div><Link href={`/admin/work-orders/${item.workOrderId}`} className="font-semibold text-primary hover:underline">{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p></div>{item.mileage !== null ? <p className="text-xs text-muted-foreground">{messages.mileage}: {new Intl.NumberFormat(intlLocale(locale)).format(item.mileage)}</p> : null}</div>{item.mechanicNames.length ? <p className="mt-1 text-sm text-muted-foreground">{messages.performedBy}: {item.mechanicNames.join(', ')}</p> : null}{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : item.jobs?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobs.map((job) => <Badge key={`${item.workOrderId}-${job}`} variant="outline">{job}</Badge>)}</div> : null}</li>)}</ul>{historyHasMore ? <Button variant="outline" className="mt-4 w-full" disabled={historyQuery.isValidating} onClick={() => void historyQuery.setSize(historyQuery.size + 1)}>{historyQuery.isValidating ? `${messages.loadMoreRepairs}…` : messages.loadMoreRepairs}</Button> : null}</> : <CompactEmpty>{messages.noRepairHistory}</CompactEmpty>}
+          </div>
+        </CollapsibleSection>
+      </AdminContextSidebar>
     </div>
+
     <CollapsibleSection testId="admin-wo-history" title={messages.historyAndAudit} description={messages.historyAndAuditDescription}>
-        <SectionBlock title={messages.workOrderTimes}><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info label={messages.created} value={formatAdminDate(data.createdAt, locale)} /><Info label={messages.started} value={formatAdminDate(data.startedAt, locale)} /><Info label={messages.completed} value={formatAdminDate(data.completedAt, locale)} /><Info label={messages.updated} value={formatAdminDate(data.updatedAt, locale)} /><Info label={messages.activeLabor} value={formatDuration(data.totalActiveLaborMs)} /><Info label={messages.waitingTime} value={formatDuration(data.totalWaitingMs)} /></dl>{laborByMechanic(data).length ? <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4" aria-label={messages.laborByMechanic}>{laborByMechanic(data).map((entry) => <Info key={entry.key} label={entry.name ?? messages.laborUnattributed} value={formatDuration(entry.totalMs)} />)}</dl> : null}</SectionBlock>
+        <SectionBlock title={messages.workOrderTimes}><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info label={messages.created} value={formatAdminDate(data.createdAt, locale)} /><Info label={messages.started} value={formatAdminDate(data.startedAt, locale)} /><Info label={messages.completed} value={formatAdminDate(data.completedAt, locale)} /><Info label={messages.updated} value={formatAdminDate(data.updatedAt, locale)} /><Info label={messages.activeLabor} value={formatDuration(data.totalActiveLaborMs)} /><Info label={messages.waitingTime} value={formatDuration(data.totalWaitingMs)} /></dl>{labor.length ? <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4" aria-label={messages.laborByMechanic}>{labor.map((entry) => <Info key={entry.key} label={entry.name ?? messages.laborUnattributed} value={formatDuration(entry.totalMs)} />)}</dl> : null}</SectionBlock>
         <SectionBlock title={messages.timeCorrectionTitle} description={messages.timeCorrectionDescription}>
             {closedTimeSegments(data).length ? (
               <form
@@ -856,6 +630,213 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           return <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{adminActivityEventLabel(entry.eventType, messages)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name}</p>{detail ? <p className="mt-1 whitespace-pre-wrap text-sm">{detail}</p> : null}</li>;
         })}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</SectionBlock>
     </CollapsibleSection>
+
+    {/* LTR-189 (W1): cancel / reopen a Job asks the reason in a dialog. */}
+    {jobDialog && dialogJob ? (() => {
+      const isCancel = jobDialog.kind === 'cancel';
+      const closeJobDialog = () => { if (!pendingAction) { setJobDialog(null); setJobReason(''); setJobDialogError(null); } };
+      return (
+        <Modal open title={isCancel ? messages.cancelJobTitle : messages.reopenJobTitle} closeLabel={messages.closeDialog} onClose={closeJobDialog}>
+          <div className="space-y-4">
+            <p className="text-base font-medium">{dialogJob.displayName}</p>
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">{messages.jobChangeReason}</span>
+              <Textarea aria-label={messages.jobChangeReason} value={jobReason} onChange={(event) => { setJobReason(event.target.value); setJobDialogError(null); }} maxLength={1000} />
+              <span className="block text-xs text-muted-foreground">{messages.jobChangeReasonHelp}</span>
+            </label>
+            {jobDialogError ? <p className="text-sm font-medium text-destructive-text" role="alert">{jobDialogError}</p> : null}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" disabled={Boolean(pendingAction)} onClick={closeJobDialog}>{messages.cancel}</Button>
+              <Button
+                type="button"
+                variant={isCancel ? 'destructive' : 'default'}
+                className="flex-1"
+                disabled={Boolean(pendingAction)}
+                onClick={() => {
+                  const reason = jobReason.trim();
+                  if (!reason) {
+                    setJobDialogError(messages.jobChangeReasonRequired);
+                    return;
+                  }
+                  setJobDialogError(null);
+                  void runMutation(`${jobDialog.kind}-job-${dialogJob.id}`, isCancel ? messages.cancelJobSuccess : messages.reopenJobSuccess, async () => {
+                    if (isCancel) await cancelAdminJob(dialogJob.id, { reason, expectedVersion: data.version });
+                    else await reopenAdminJob(dialogJob.id, { reason, expectedVersion: data.version });
+                    setJobReason('');
+                    setJobDialog(null);
+                  }, (failure) => jobChangeError(failure, messages));
+                }}
+              >
+                {pendingAction ? messages.saving : isCancel ? messages.cancelJobConfirm : messages.reopenJobConfirm}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      );
+    })() : null}
+
+    {/* LTR-174: Pause asks its reason in a dialog (LTR-168: none preselected). Same call as before. */}
+    {dialog === 'pause' ? (
+      <Modal open title={messages.pauseWorkOrderAction} closeLabel={messages.closeDialog} onClose={closeDialog}>
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!pauseEnabled || !pauseReason) return;
+            const reason = pauseReason;
+            void runMutation('pause-wo', messages.pauseWorkOrderSuccess, async () => {
+              await pauseAdminWorkOrder(data.id, { reason });
+              setPauseReason('');
+              setDialog(null);
+            }, (failure) => pauseResumeError(failure, messages));
+          }}
+        >
+          <Select aria-label={messages.pauseReasonLabel} value={pauseReason} disabled={!pauseEnabled || Boolean(pendingAction)} onChange={(event) => setPauseReason(event.target.value as PauseReason | '')}>
+            <option value="" disabled>{messages.pauseReasonPlaceholder}</option>
+            {Object.values(PauseReason).map((reason) => (
+              <option key={reason} value={reason}>{adminPauseReasonLabel(reason, messages)}</option>
+            ))}
+          </Select>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="flex-1" disabled={Boolean(pendingAction)} onClick={closeDialog}>{messages.cancel}</Button>
+            <Button type="submit" className="flex-1" disabled={!pauseEnabled || !pauseReason || Boolean(pendingAction)}>{messages.pauseWorkOrderConfirm}</Button>
+          </div>
+        </form>
+      </Modal>
+    ) : null}
+
+    {/* LTR-158 / LTR-174: rare or destructive actions stay behind "…" and each opens its own dialog. */}
+    {dialog === 'menu' ? (
+      <Modal open title={messages.moreActions} closeLabel={messages.closeDialog} onClose={closeDialog}>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">{messages.moreActionsHelp}</p>
+          {canReturnToService ? (
+            <Button type="button" variant="outline" className="w-full" onClick={() => setDialog('return')}>{messages.returnToServiceTitle}</Button>
+          ) : null}
+          {canReopenWorkOrder ? (
+            <Button type="button" variant="outline" className="w-full" onClick={() => setDialog('reopen')}>{messages.reopenWorkOrderTitle}</Button>
+          ) : null}
+          {canCancelWorkOrder ? (
+            <Button type="button" variant="outline" className="w-full" onClick={() => setDialog('cancel')}>{messages.cancelWorkOrderTitle}</Button>
+          ) : null}
+        </div>
+      </Modal>
+    ) : null}
+
+    {dialog === 'cancel' && canCancelWorkOrder ? (
+      <Modal open title={messages.cancelWorkOrderTitle} closeLabel={messages.closeDialog} onClose={closeDialog}>
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const reason = cancelReason.trim();
+            if (!reason) {
+              setDialogError(messages.cancelWorkOrderReasonRequired);
+              return;
+            }
+            setDialogError(null);
+            void runMutation('cancel', messages.cancelWorkOrderSuccess, async () => {
+              await cancelAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
+              setCancelReason('');
+              setDialog(null);
+            }, (failure) => cancelError(failure, messages));
+          }}
+        >
+          <p className="text-sm text-muted-foreground">{messages.cancelWorkOrderDescription}</p>
+          <label className="block space-y-1">
+            <span className="text-sm font-medium">{messages.cancelWorkOrderReason}</span>
+            <Textarea
+              aria-label={messages.cancelWorkOrderReason}
+              value={cancelReason}
+              onChange={(event) => { setCancelReason(event.target.value); setDialogError(null); }}
+              maxLength={1000}
+              required
+            />
+            <span className="text-xs text-muted-foreground">{messages.cancelWorkOrderReasonHelp}</span>
+          </label>
+          {dialogError ? <p className="text-sm font-medium text-destructive-text" role="alert">{dialogError}</p> : null}
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="flex-1" disabled={Boolean(pendingAction)} onClick={closeDialog}>{messages.cancel}</Button>
+            <Button type="submit" variant="destructive" className="flex-1" disabled={Boolean(pendingAction)}>{messages.cancelWorkOrderConfirm}</Button>
+          </div>
+        </form>
+      </Modal>
+    ) : null}
+
+    {dialog === 'reopen' && canReopenWorkOrder ? (
+      <Modal open title={messages.reopenWorkOrderTitle} closeLabel={messages.closeDialog} onClose={closeDialog}>
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const reason = reopenReason.trim();
+            if (!reason) {
+              setDialogError(messages.reopenWorkOrderReasonRequired);
+              return;
+            }
+            setDialogError(null);
+            void runMutation('reopen', messages.reopenWorkOrderSuccess, async () => {
+              await reopenAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
+              setReopenReason('');
+              setDialog(null);
+            }, (failure) => reopenError(failure, messages));
+          }}
+        >
+          <p className="text-sm text-muted-foreground">{messages.reopenWorkOrderDescription}</p>
+          <label className="block space-y-1">
+            <span className="text-sm font-medium">{messages.reopenWorkOrderReason}</span>
+            <Textarea
+              aria-label={messages.reopenWorkOrderReason}
+              value={reopenReason}
+              onChange={(event) => { setReopenReason(event.target.value); setDialogError(null); }}
+              maxLength={1000}
+              required
+            />
+            <span className="text-xs text-muted-foreground">{messages.reopenWorkOrderReasonHelp}</span>
+          </label>
+          {dialogError ? <p className="text-sm font-medium text-destructive-text" role="alert">{dialogError}</p> : null}
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="flex-1" disabled={Boolean(pendingAction)} onClick={closeDialog}>{messages.cancel}</Button>
+            <Button type="submit" className="flex-1" disabled={Boolean(pendingAction)}>{messages.reopenWorkOrderConfirm}</Button>
+          </div>
+        </form>
+      </Modal>
+    ) : null}
+
+    {dialog === 'return' && canReturnToService ? (
+      <Modal open title={messages.returnToServiceTitle} closeLabel={messages.closeDialog} onClose={closeDialog}>
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            // LTR-158: the reason is optional.
+            const reason = returnReason.trim() || undefined;
+            void runMutation('return-to-service', messages.returnToServiceSuccess, async () => {
+              await returnAdminWorkOrderToService(data.id, { reason, expectedVersion: data.version });
+              setReturnReason('');
+              setDialog(null);
+            }, (failure) => returnToServiceError(failure, messages));
+          }}
+        >
+          <p className="text-sm text-muted-foreground">{messages.returnToServiceDescription}</p>
+          <label className="block space-y-1">
+            <span className="text-sm font-medium">{messages.returnToServiceReason}</span>
+            <Textarea
+              aria-label={messages.returnToServiceReason}
+              value={returnReason}
+              onChange={(event) => setReturnReason(event.target.value)}
+              maxLength={1000}
+            />
+            <span className="text-xs text-muted-foreground">{messages.returnToServiceReasonHelp}</span>
+          </label>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" className="flex-1" disabled={Boolean(pendingAction)} onClick={closeDialog}>{messages.cancel}</Button>
+            <Button type="submit" className="flex-1" disabled={Boolean(pendingAction)}>{messages.returnToServiceConfirm}</Button>
+          </div>
+        </form>
+      </Modal>
+    ) : null}
+
     {showStickyComplete ? (
       <div
         role="region"
@@ -897,13 +878,6 @@ function CompleteWorkOrderButton({
   );
 }
 
-function assignmentError(errorValue: unknown, messages: AdminMessages) {
-  if (errorValue instanceof ApiError) {
-    if (errorValue.status === 400) return messages.assignmentBadRequest;
-    if (errorValue.status === 409) return messages.assignmentConflict;
-  }
-  return messages.assignmentGenericError;
-}
 function cancelError(errorValue: unknown, messages: AdminMessages) {
   if (errorValue instanceof ApiError) {
     if (errorValue.status === 400) return messages.cancelWorkOrderBadRequest;
@@ -974,26 +948,3 @@ function Info({ label, value }: { label: string; value: string }) { return <div>
 function formatAge(value: string, locale: AdminLocale) { const elapsed = Math.max(0, Date.now() - new Date(value).getTime()); const hours = Math.floor(elapsed / 3_600_000); const number = new Intl.NumberFormat(intlLocale(locale)); if (hours < 24) return `${number.format(hours)}h`; const days = Math.floor(hours / 24); return `${number.format(days)}d ${number.format(hours % 24)}h`; }
 function Pause({ pause, locale, messages }: { pause: { reason: string; notes: string | null; startedAt: string; endedAt: string | null; durationMs: number | null }; locale: AdminLocale; messages: AdminMessages }) { return <div><p className="font-medium">{adminPauseReasonLabel(pause.reason, messages)}</p><p className="text-sm text-muted-foreground">{formatAdminDate(pause.startedAt, locale)} → {formatAdminDate(pause.endedAt, locale)}{pause.durationMs !== null ? ` · ${formatDuration(pause.durationMs)}` : ''}</p>{pause.notes ? <p className="mt-1 text-sm">{pause.notes}</p> : null}</div>; }
 function NotFound({ messages }: { messages: AdminMessages }) { return <EmptyState><p>{messages.workOrderNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/work-orders">{messages.backToWorkOrders}</Link></Button></EmptyState>; }
-
-/** LTR-145: PM A ↔ PM B for the PM job (PM Category catalog jobs). */
-function PmServiceSelect({ job, messages, disabled, onChange }: {
-  job: AdminWorkOrderDetailDto['jobs'][number];
-  messages: AdminMessages;
-  disabled: boolean;
-  onChange: (catalogJobId: string) => void;
-}) {
-  const { data: pmJobs } = useCatalogJobs(job.category.id, true);
-  const options = (pmJobs ?? []).filter((item) => /^PM [A-Z] Service$/i.test(item.displayName) || item.id === job.catalogJobId);
-  if (options.length < 2) return null;
-  return (
-    <Select
-      aria-label={messages.pmServiceVariant}
-      className="h-9 w-auto"
-      value={job.catalogJobId ?? ''}
-      disabled={disabled}
-      onChange={(event) => { if (event.target.value && event.target.value !== job.catalogJobId) onChange(event.target.value); }}
-    >
-      {options.map((item) => <option key={item.id} value={item.id}>{item.displayName}</option>)}
-    </Select>
-  );
-}

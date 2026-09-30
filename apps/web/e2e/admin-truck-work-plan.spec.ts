@@ -268,7 +268,8 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByRole('heading', { name: 'Work Plan' }).first()).toBeVisible();
     await expect(page.getByText('Not Ready — 0 remaining')).toBeVisible();
     await expect(page.getByText('Inspection is not finished yet.')).toBeVisible();
-    await expect(page.getByText('Mandatory steps')).toBeVisible();
+    // LTR-174: the readiness tracker lists Inspection, PM, Alignment, Detailing, Quality Check and Close Work Order.
+    await expect(page.getByRole('heading', { name: 'Readiness' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Start assessment' })).toHaveCount(0);
     await expect(page.getByLabel('Outcome: Inspection')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
@@ -331,7 +332,8 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await page.getByRole('button', { name: 'Add to Work Plan' }).click();
 
     const planList = page.getByRole('list', { name: 'Jobs in this Work Order' });
-    await expect(planList.getByText('Unassigned').first()).toBeVisible();
+    // LTR-174: the Truck only offers the picker for a Job with no owner (the `assign` Next step).
+    await expect(planList.getByLabel('Mechanic for Brake Inspection')).toHaveValue('');
     await planList.getByLabel('Mechanic for Brake Inspection').selectOption({ label: 'Alex Mechanic' });
     await expect(page.getByText('Job assigned.').first()).toBeVisible();
     await expect(planList.getByText('Assigned to: Alex Mechanic')).toBeVisible();
