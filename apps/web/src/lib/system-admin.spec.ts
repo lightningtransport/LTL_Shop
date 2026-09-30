@@ -1,8 +1,10 @@
-import { UserRole } from '@ltl-shop/shared';
+import { AppCapability, UserRole } from '@ltl-shop/shared';
 import { describe, expect, it } from 'vitest';
 import { getAdminMessages } from './admin-messages';
 import { ApiError } from './api';
-import { adminWriteFailureMessage, canShowAdminWrites, isRosterEmail, isSystemAdmin } from './system-admin';
+import {
+  adminWriteFailureMessage, canShowAdminWrites, canShowRosterWrites, isRosterEmail, isSystemAdmin, mechanicOpenWorkFromError,
+} from './system-admin';
 
 describe('isSystemAdmin', () => {
   it('allows only the admin role', () => {
@@ -34,6 +36,48 @@ describe('canShowAdminWrites', () => {
   });
 });
 
+describe('canShowRosterWrites (D22)', () => {
+  const managerCaps = [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE, AppCapability.YARD_OPERATIONS_MANAGE];
+
+  it('opens the roster to the Shop Manager, by session role before the profile loads and by capabilities after', () => {
+    expect(canShowRosterWrites(UserRole.MANAGER, null)).toBe(true);
+    expect(canShowRosterWrites(UserRole.MANAGER, { role: UserRole.MANAGER, capabilities: managerCaps })).toBe(true);
+    expect(canShowRosterWrites(undefined, { role: UserRole.MANAGER, capabilities: managerCaps })).toBe(true);
+  });
+
+  it('keeps the System Admin by role and refuses everyone else', () => {
+    expect(canShowRosterWrites(UserRole.ADMIN, null)).toBe(true);
+    expect(canShowRosterWrites('manager', { role: UserRole.ADMIN, capabilities: [AppCapability.ADMIN_ACCESS] })).toBe(true);
+    expect(canShowRosterWrites(UserRole.MANAGER, { role: UserRole.MANAGER, capabilities: [AppCapability.ADMIN_ACCESS] })).toBe(false);
+    expect(canShowRosterWrites(UserRole.MECHANIC, { role: UserRole.MECHANIC, capabilities: [AppCapability.QUALITY_CHECK_PERFORM] })).toBe(false);
+    expect(canShowRosterWrites(undefined, null)).toBe(false);
+  });
+
+  it('does not open catalog writes to the Manager', () => {
+    expect(canShowAdminWrites(UserRole.MANAGER, { role: UserRole.MANAGER })).toBe(false);
+  });
+});
+
+describe('mechanicOpenWorkFromError (D22)', () => {
+  it('reads the pending Jobs and running clock from a MECHANIC_HAS_OPEN_WORK 409', () => {
+    const body = {
+      code: 'MECHANIC_HAS_OPEN_WORK',
+      message: 'Reassign first.',
+      pendingJobs: [{ workOrderId: 'wo-1', workOrderDisplayId: 'WO-0001', truckNumber: '905', jobDisplayName: 'Brake pads' }, { bogus: true }],
+      runningSession: true,
+    };
+    expect(mechanicOpenWorkFromError(new ApiError('Reassign first.', 409, body))).toEqual({
+      pendingJobs: [{ workOrderId: 'wo-1', workOrderDisplayId: 'WO-0001', truckNumber: '905', jobDisplayName: 'Brake pads' }],
+      runningSession: true,
+    });
+  });
+
+  it('ignores other errors', () => {
+    expect(mechanicOpenWorkFromError(new ApiError('dup', 409, { code: 'MECHANIC_EMAIL_EXISTS' }))).toBeNull();
+    expect(mechanicOpenWorkFromError(new Error('boom'))).toBeNull();
+  });
+});
+
 describe('isRosterEmail', () => {
   it('accepts a normal email and rejects blanks', () => {
     expect(isRosterEmail('  ana@shop.example  ')).toBe(true);
@@ -54,6 +98,16 @@ describe('adminWriteFailureMessage', () => {
   it('keeps a 400 message and falls back otherwise', () => {
     expect(adminWriteFailureMessage(new ApiError('Enter a Job name.', 400, null), copy)).toBe('Enter a Job name.');
     expect(adminWriteFailureMessage(new Error('boom'), copy)).toBe('failed');
+  });
+
+  it('maps the coded 409s and 5xx of the roster (D22) through the catalog, keeping the email conflict on its copy', () => {
+    const es = { ...copy, locale: getAdminMessages('es').locale, apiError: getAdminMessages('es').apiError };
+    expect(adminWriteFailureMessage(new ApiError('missing', 409, { code: 'AUTH_ACCOUNT_MISSING', message: 'missing' }), es)).toBe(getAdminMessages('es').apiError.AUTH_ACCOUNT_MISSING);
+    expect(adminWriteFailureMessage(new ApiError('open', 409, { code: 'MECHANIC_HAS_OPEN_WORK', message: 'open' }), es)).toBe(getAdminMessages('es').apiError.MECHANIC_HAS_OPEN_WORK);
+    expect(adminWriteFailureMessage(new ApiError('dup', 409, { code: 'MECHANIC_EMAIL_EXISTS', message: 'dup' }), es)).toBe('conflict');
+    expect(adminWriteFailureMessage(new ApiError('auth', 502, { code: 'AUTH_ACCOUNT_CREATE_FAILED', message: 'auth' }), es)).toBe(getAdminMessages('es').apiError.AUTH_ACCOUNT_CREATE_FAILED);
+    expect(adminWriteFailureMessage(new ApiError('auth', 503, { code: 'AUTH_NOT_CONFIGURED', message: 'auth' }), es)).toBe(getAdminMessages('es').apiError.AUTH_NOT_CONFIGURED);
+    expect(adminWriteFailureMessage(new ApiError('boom', 502, null), es)).toBe('failed');
   });
 
   it('localizes a 400 through the catalog: known codes map, unmapped text stays raw only in English (LTR-181)', () => {

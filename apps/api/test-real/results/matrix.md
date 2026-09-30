@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 59 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 62 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -38,9 +38,12 @@ PASA 59 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A23 | Corrección de tiempos (admin); cada sesión dice de qué mecánico es | PASA |
 | A24 | Custom Job: agregar y duplicados (la revisión no existe: defecto #3) | PASA |
 | A25 | Setup → Shop workflow: cambiar dueño por defecto; dueño inactivo → Unassigned | PASA |
-| A26 | Permisos: mecánico 403 en crear/pausar/agregar/terminar; Manager 403 en escrituras de System Admin | PASA |
+| A26 | Permisos: mecánico 403 en crear/pausar/agregar/terminar y en el roster; Manager 403 en el catálogo | PASA |
 | A27 | NO APLICA: login de Supabase, reset de contraseña, idioma, tema y app instalada son de la web (se prueban en el navegador) | NO APLICA |
 | A28 | NO APLICA: WO de PM legacy (pausa, reanudar, terminar): ya no se pueden crear y no queda ninguno abierto | NO APLICA |
+| A29 | Crear Standard, PM y Safety: entran al roster con su tipo; correo repetido y mecánico no pueden; Safety solo es dueño del QC | PASA |
+| A30 | Desactivar: no deja con Jobs pendientes o tiempo corriendo (dice qué reasignar); sin trabajo abierto deja de entrar y de aparecer; reactivar | PASA |
+| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

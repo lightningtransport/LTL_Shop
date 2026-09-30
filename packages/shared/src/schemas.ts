@@ -17,20 +17,20 @@ import {
 
 export const mechanicModeSchema = z.nativeEnum(MechanicMode);
 
-/** LTR-78. Creates an active mechanic and applies exactly one of Standard or PM. */
+/** LTR-78 / D22. Creates an active person and applies exactly one of Standard, PM or Safety. */
 export const adminCreateMechanicSchema = z.object({
   email: z.string().trim().email().max(320).transform((value) => value.toLowerCase()),
   name: z.string().trim().min(1).max(120),
   mode: mechanicModeSchema,
 });
 
-/** LTR-78. Activate, rename, or switch Standard/PM on an existing mechanic row. */
+/** LTR-78 / D22. Activate or deactivate, rename, or switch Standard/PM/Safety on an existing roster row. */
 export const adminUpdateMechanicSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   mode: mechanicModeSchema.optional(),
   active: z.boolean().optional(),
 }).refine((value) => value.name !== undefined || value.mode !== undefined || value.active !== undefined, {
-  message: 'Provide a name, Standard/PM mode, or active flag',
+  message: 'Provide a name, Standard/PM/Safety mode, or active flag',
 });
 
 /** LTR-77. Adds a job to an existing category. Does not create categories. */

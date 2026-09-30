@@ -110,12 +110,15 @@ Nada de esto bloquea abrir el Shop de **camiones** como está hoy.
 
 ## Falta ingeniería / ops (NEED ENGINEERING)
 
-- Crear usuarios **reales** en Supabase Auth. El email debe coincidir con
-  la fila activa en `users` y con las capacidades correctas.
+- Crear en Supabase Auth solo al **Manager y al System Admin** (mismo email
+  que su fila en `users`). Al resto (mecánicos Standard, PM y **Safety**) los
+  da de alta el Manager desde Admin → Mecánicos, con cuenta y contraseña
+  temporal (D22). Requiere `SUPABASE_SERVICE_ROLE_KEY` en la API.
 - En producción: **`AUTH_DEV_BYPASS` apagado o ausente.** Nunca
   `NEXT_PUBLIC_` para service role ni tokens de Ninox.
 - Completar env de Vercel (web + api): `DATABASE_URL`, `DIRECT_URL`,
   `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_JWT_SECRET` o JWKS, `CORS_ORIGIN`,
+  `SUPABASE_SERVICE_ROLE_KEY` (solo API),
   `NEXT_PUBLIC_SITE_URL`, `DATA_SOURCE=supabase`.
 - Confirmar que la lista de camiones de producción cubre la flota que
   el taller va a buscar. El cruce futuro con Ninox es **solo** `E.A`.

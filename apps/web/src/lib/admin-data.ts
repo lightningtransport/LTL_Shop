@@ -7,7 +7,9 @@ import type {
   ShopWorkflowStepDto,
   AdminCatalogJobWriteDto,
   AdminDashboardDto,
+  AdminMechanicCreatedDto,
   AdminMechanicDetailDto,
+  AdminMechanicPasswordResetDto,
   AdminMechanicSummaryDto,
   AdminPage,
   AdminRepairHistoryDto,
@@ -552,8 +554,9 @@ export function updateAdminCatalogJob(
   });
 }
 
+/** D22: also creates the access account; `temporaryPassword` comes back once (null without Supabase). */
 export function createAdminMechanic(input: { name: string; email: string; mode: MechanicMode }) {
-  return apiFetch<UserDto>(ADMIN_MECHANICS_COLLECTION_PATH, {
+  return apiFetch<AdminMechanicCreatedDto>(ADMIN_MECHANICS_COLLECTION_PATH, {
     method: 'POST',
     body: JSON.stringify({
       name: input.name.trim(),
@@ -570,6 +573,14 @@ export function updateAdminMechanic(
   return apiFetch<UserDto>(`${ADMIN_MECHANICS_COLLECTION_PATH}/${mechanicId}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
+  });
+}
+
+/** D22: a new temporary password, returned once; the app forces a change at the next sign-in. */
+export function resetAdminMechanicPassword(mechanicId: string) {
+  return apiFetch<AdminMechanicPasswordResetDto>(`${ADMIN_MECHANICS_COLLECTION_PATH}/${mechanicId}/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 

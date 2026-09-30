@@ -40,7 +40,7 @@ the production release path.
 - [ ] `DATABASE_URL` + `DIRECT_URL` set (pooler + direct)
 - [ ] Prisma migrate deploy applied
 - [ ] Seed categories/catalog via `prisma:apply-catalog` (or full `db:seed` in local/dev)
-- [ ] Mechanic users inserted in `users` with matching Supabase Auth emails
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` (+ `SUPABASE_URL`) on the API project, server-only: the Manager creates the roster (Standard, PM, Safety) and their Supabase Auth accounts from Admin → Mechanics (D22). Manager/admin rows themselves still need a Supabase user with the same email.
 - [ ] `AUTH_DEV_BYPASS=false`
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` set on Vercel
 - [ ] `SUPABASE_JWT_SECRET` or JWKS reachable from API

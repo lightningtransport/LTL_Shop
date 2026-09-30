@@ -8,6 +8,10 @@ import type { ShopLocale } from './shop-locale';
  */
 export type ApiErrorCode =
   | 'ACTIVE_READINESS_ASSESSMENT_EXISTS'
+  | 'AUTH_ACCOUNT_CREATE_FAILED'
+  | 'AUTH_ACCOUNT_MISSING'
+  | 'AUTH_NOT_CONFIGURED'
+  | 'AUTH_PASSWORD_RESET_FAILED'
   | 'BLOCKER_ALREADY_ACTIVE'
   | 'BLOCKER_ALREADY_RESOLVED'
   | 'BLOCKER_NOT_YOURS'
@@ -21,6 +25,7 @@ export type ApiErrorCode =
   | 'JOB_NOT_PENDING'
   | 'LABOR_ALREADY_RUNNING'
   | 'MECHANIC_EMAIL_EXISTS'
+  | 'MECHANIC_HAS_OPEN_WORK'
   | 'MILEAGE_BELOW_CURRENT'
   | 'MILEAGE_JUMP_CONFIRMATION_REQUIRED'
   | 'NO_PENDING_JOBS'
@@ -58,6 +63,10 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     network: 'Unable to reach the Shop. Please try again.',
     timeout: 'The request took too long. Please try again.',
     ACTIVE_READINESS_ASSESSMENT_EXISTS: 'This Truck already has an active readiness assessment.',
+    AUTH_ACCOUNT_CREATE_FAILED: 'The access account could not be created. Nothing was saved; try again.',
+    AUTH_ACCOUNT_MISSING: 'This person has no access account yet, so there is no password to reset.',
+    AUTH_NOT_CONFIGURED: 'Access accounts are not managed in this environment.',
+    AUTH_PASSWORD_RESET_FAILED: 'The password could not be reset. Try again.',
     BLOCKER_ALREADY_ACTIVE: 'This Job already has an active blocker.',
     BLOCKER_ALREADY_RESOLVED: 'This blocker was already resolved.',
     BLOCKER_NOT_YOURS: 'Only the mechanic who reported this blocker can add to it.',
@@ -71,6 +80,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     JOB_NOT_PENDING: 'This Job is no longer pending.',
     LABOR_ALREADY_RUNNING: 'Your labor time is already running.',
     MECHANIC_EMAIL_EXISTS: 'That email already belongs to an active Shop user.',
+    MECHANIC_HAS_OPEN_WORK: 'Reassign this person\'s pending Jobs and stop their labor time before deactivating.',
     MILEAGE_BELOW_CURRENT: 'Observed mileage cannot be lower than the current mileage. Check the odometer.',
     MILEAGE_JUMP_CONFIRMATION_REQUIRED: 'The mileage is far above the current reading. Confirm the odometer reading.',
     NO_PENDING_JOBS: 'This Work Order has no pending Jobs.',
@@ -105,6 +115,10 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
     timeout: 'La solicitud tardó demasiado. Inténtalo de nuevo.',
     ACTIVE_READINESS_ASSESSMENT_EXISTS: 'Este Truck ya tiene una evaluación de preparación activa.',
+    AUTH_ACCOUNT_CREATE_FAILED: 'No se pudo crear la cuenta de acceso. No se guardó nada; inténtalo de nuevo.',
+    AUTH_ACCOUNT_MISSING: 'Esta persona todavía no tiene cuenta de acceso, así que no hay contraseña que reiniciar.',
+    AUTH_NOT_CONFIGURED: 'Las cuentas de acceso no se manejan en este entorno.',
+    AUTH_PASSWORD_RESET_FAILED: 'No se pudo reiniciar la contraseña. Inténtalo de nuevo.',
     BLOCKER_ALREADY_ACTIVE: 'Este Job ya tiene un bloqueo activo.',
     BLOCKER_ALREADY_RESOLVED: 'Este bloqueo ya fue resuelto.',
     BLOCKER_NOT_YOURS: 'Solo el mecánico que reportó este bloqueo puede agregarle notas.',
@@ -118,6 +132,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     JOB_NOT_PENDING: 'Este Job ya no está pendiente.',
     LABOR_ALREADY_RUNNING: 'Tu tiempo de labor ya está corriendo.',
     MECHANIC_EMAIL_EXISTS: 'Ese email ya pertenece a un usuario activo del Shop.',
+    MECHANIC_HAS_OPEN_WORK: 'Reasigna los Jobs pendientes de esta persona y detén su tiempo antes de desactivarla.',
     MILEAGE_BELOW_CURRENT: 'El millaje observado no puede ser menor que el millaje actual. Revisa el odómetro.',
     MILEAGE_JUMP_CONFIRMATION_REQUIRED: 'El millaje está muy por encima del actual. Confirma la lectura del odómetro.',
     NO_PENDING_JOBS: 'Este Work Order no tiene Jobs pendientes.',

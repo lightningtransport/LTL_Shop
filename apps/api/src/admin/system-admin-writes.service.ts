@@ -1,27 +1,41 @@
 import {
   BadRequestException,
+  BadGatewayException,
   ConflictException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import {
   CatalogStatus,
   MechanicMode,
+  OPEN_WORK_ORDER_STATUSES,
   UserRole,
   adminCreateCatalogJobSchema,
   adminCreateMechanicSchema,
   adminUpdateCatalogJobSchema,
   adminUpdateMechanicSchema,
   type AdminCatalogJobWriteDto,
+  type AdminMechanicCreatedDto,
+  type AdminMechanicOpenWorkDto,
+  type AdminMechanicPasswordResetDto,
+  type AdminMechanicPendingJobDto,
   type UserDto,
 } from '@ltl-shop/shared';
-import { AppCapability, Prisma, type UserRole as PrismaUserRole } from '@prisma/client';
+import { AppCapability, Prisma, type UserRole as PrismaUserRole, type WorkOrderStatus } from '@prisma/client';
 import type { AuthUser } from '../auth/auth.guard';
 import { toSharedCapability } from '../auth/capabilities';
+import { SupabaseAdminClient, SupabaseAdminError } from '../auth/supabase-admin';
+import { generateTemporaryPassword } from '../auth/temporary-password';
 import { normalizeAlias } from '../job-catalog/job-catalog.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-const MECHANIC_CAPS = [AppCapability.MECHANIC_STANDARD, AppCapability.MECHANIC_PM] as const;
+/** D22: the three roster types. Exactly one per person with `role: mechanic`. */
+export const MECHANIC_CAPS = [
+  AppCapability.MECHANIC_STANDARD,
+  AppCapability.MECHANIC_PM,
+  AppCapability.QUALITY_CHECK_PERFORM,
+] as const;
 
 const mechanicSelect = {
   id: true,
@@ -29,6 +43,7 @@ const mechanicSelect = {
   name: true,
   role: true,
   active: true,
+  supabaseAuthId: true,
   capabilities: { select: { capability: true } },
 } as const;
 
@@ -36,20 +51,25 @@ type MechanicRow = Prisma.UserGetPayload<{ select: typeof mechanicSelect }>;
 type CatalogClient = Prisma.TransactionClient | PrismaService;
 
 /**
- * System Admin roster and catalog writes (LTR-78 / LTR-77).
- * `SystemAdminGuard` is the authorization gate (`users.role === admin`).
- * These methods do not re-check capabilities and do not invent new ones.
+ * Roster (D22 / LTR-187) and catalog (LTR-77) writes.
  *
- * Audit uses columns that already exist: `user_capabilities.granted_by_id`
- * / `granted_at` for Standard or PM, and `catalog_jobs.created_by_id` for
- * a new job. Shop login still links Supabase on the first matching email;
- * this service does not provision Supabase Auth.
+ * Roster: `RosterWritesGuard` (Shop Manager or System Admin) is the authorization gate. Creating
+ * a person also creates the Supabase Auth account with a temporary password that is returned once
+ * and never stored or logged; deactivation is refused while the person has Jobs to do or labor
+ * time running (`MECHANIC_HAS_OPEN_WORK`). Nothing is deleted.
+ *
+ * Catalog: `SystemAdminGuard` (`users.role === admin`). These methods do not re-check
+ * capabilities and do not invent new ones. Audit uses columns that already exist:
+ * `user_capabilities.granted_by_id` / `granted_at`, and `catalog_jobs.created_by_id`.
  */
 @Injectable()
 export class SystemAdminWritesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly supabaseAdmin: SupabaseAdminClient,
+  ) {}
 
-  async createMechanic(actor: AuthUser, raw: unknown): Promise<UserDto> {
+  async createMechanic(actor: AuthUser, raw: unknown): Promise<AdminMechanicCreatedDto> {
     const parsed = adminCreateMechanicSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     const { email, name, mode } = parsed.data;
@@ -59,6 +79,9 @@ export class SystemAdminWritesService {
     });
     if (existing) throw this.emailConflict(existing);
 
+    // D22: the access account first, so a failure there creates nothing in the Shop.
+    const account = await this.createAuthAccount(email, name);
+
     try {
       const created = await this.prisma.user.create({
         data: {
@@ -66,6 +89,7 @@ export class SystemAdminWritesService {
           name,
           role: 'mechanic',
           active: true,
+          supabaseAuthId: account?.authId ?? null,
           capabilities: {
             create: {
               capability: mechanicCapability(mode),
@@ -75,8 +99,10 @@ export class SystemAdminWritesService {
         },
         select: mechanicSelect,
       });
-      return toUserDto(created);
+      return { ...toUserDto(created), temporaryPassword: account?.temporaryPassword ?? null };
     } catch (error) {
+      // The Shop row failed: take the auth account back so a retry starts clean.
+      if (account) await this.supabaseAdmin.deleteUser(account.authId).catch(() => undefined);
       if (!isUniqueConflict(error)) throw error;
       const again = await this.prisma.user.findFirst({
         where: { email: { equals: email, mode: 'insensitive' } },
@@ -108,7 +134,13 @@ export class SystemAdminWritesService {
         (MECHANIC_CAPS as readonly AppCapability[]).includes(item.capability),
       );
       if (!input.mode && !hasMechanicCap) {
-        throw new BadRequestException('Choose Standard or PM before changing this mechanic.');
+        throw new BadRequestException('Choose Standard, PM or Safety before changing this person.');
+      }
+
+      // D22: deactivating is refused while the person has Jobs to do or labor time running.
+      if (input.active === false && current.active) {
+        const openWork = await this.openWorkOf(tx, id);
+        if (openWork) throw new ConflictException(openWork);
       }
 
       if (input.mode) {
@@ -135,6 +167,85 @@ export class SystemAdminWritesService {
       if (!updated) throw new NotFoundException('Mechanic not found');
       return toUserDto(updated);
     });
+  }
+
+  /**
+   * D22: a new temporary password when the person lost the first one. Re-arms the forced change.
+   * Returned once, never stored.
+   */
+  async resetPassword(id: string): Promise<AdminMechanicPasswordResetDto> {
+    if (!isUuid(id)) throw new BadRequestException('Invalid Mechanic id');
+    const current = await this.prisma.user.findUnique({ where: { id }, select: mechanicSelect });
+    if (!current || current.role !== 'mechanic') throw new NotFoundException('Mechanic not found');
+    if (!current.supabaseAuthId) {
+      throw new ConflictException({
+        code: 'AUTH_ACCOUNT_MISSING',
+        message: 'This person has no access account yet. It is created on the first real sign-in or by a System Admin.',
+      });
+    }
+    if (!this.supabaseAdmin.isConfigured()) {
+      throw new ServiceUnavailableException({
+        code: 'AUTH_NOT_CONFIGURED',
+        message: 'Access accounts are not managed in this environment.',
+      });
+    }
+    const temporaryPassword = generateTemporaryPassword();
+    try {
+      await this.supabaseAdmin.resetPassword(current.supabaseAuthId, temporaryPassword);
+    } catch (error) {
+      throw this.authFailure(error, 'AUTH_PASSWORD_RESET_FAILED', 'The access account could not be updated. Try again.');
+    }
+    return { temporaryPassword };
+  }
+
+  /** Creates the Supabase Auth user, or returns null when this environment has no service key. */
+  private async createAuthAccount(email: string, name: string): Promise<{ authId: string; temporaryPassword: string } | null> {
+    if (!this.supabaseAdmin.isConfigured()) return null;
+    const temporaryPassword = generateTemporaryPassword();
+    try {
+      const { id } = await this.supabaseAdmin.createUser({ email, password: temporaryPassword, name });
+      return { authId: id, temporaryPassword };
+    } catch (error) {
+      throw this.authFailure(error, 'AUTH_ACCOUNT_CREATE_FAILED', 'The access account could not be created. Nothing was saved; try again.');
+    }
+  }
+
+  private authFailure(error: unknown, code: string, message: string) {
+    if (!(error instanceof SupabaseAdminError)) return error;
+    // Supabase's own message (e.g. "email address already registered") helps the Manager; the key never travels.
+    return new BadGatewayException({ code, message, detail: error.message });
+  }
+
+  /** Jobs still to do on open Work Orders plus any running labor session (D22). */
+  private async openWorkOf(tx: Prisma.TransactionClient, userId: string): Promise<AdminMechanicOpenWorkDto | null> {
+    const [jobs, session] = await Promise.all([
+      tx.workOrderJob.findMany({
+        where: {
+          assignedMechanicId: userId,
+          status: 'to_do',
+          workOrder: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+        },
+        select: {
+          displayName: true,
+          workOrder: { select: { id: true, displayId: true, truck: { select: { truckNumber: true } } } },
+        },
+        orderBy: { addedAt: 'asc' },
+      }),
+      tx.workSession.findFirst({ where: { userId, endedAt: null }, select: { id: true } }),
+    ]);
+    if (!jobs.length && !session) return null;
+    const pendingJobs: AdminMechanicPendingJobDto[] = jobs.map((job) => ({
+      workOrderId: job.workOrder.id,
+      workOrderDisplayId: job.workOrder.displayId,
+      truckNumber: job.workOrder.truck.truckNumber,
+      jobDisplayName: job.displayName,
+    }));
+    return {
+      code: 'MECHANIC_HAS_OPEN_WORK',
+      message: 'Reassign this person\'s pending Jobs and stop their labor time before deactivating.',
+      pendingJobs,
+      runningSession: Boolean(session),
+    };
   }
 
   async createCatalogJob(actor: AuthUser, raw: unknown): Promise<AdminCatalogJobWriteDto> {
@@ -291,7 +402,7 @@ export class SystemAdminWritesService {
     if (existing.role === 'mechanic') {
       throw new ConflictException({
         code: 'MECHANIC_EMAIL_EXISTS',
-        message: 'A mechanic with this email already exists. Update that roster row to activate it or change Standard/PM.',
+        message: 'A person with this email already exists. Open that roster row to reactivate it or change the type.',
         mechanicId: existing.id,
       });
     }
@@ -302,8 +413,12 @@ export class SystemAdminWritesService {
   }
 }
 
-function mechanicCapability(mode: MechanicMode) {
-  return mode === MechanicMode.PM ? AppCapability.MECHANIC_PM : AppCapability.MECHANIC_STANDARD;
+export function mechanicCapability(mode: MechanicMode): AppCapability {
+  switch (mode) {
+    case MechanicMode.PM: return AppCapability.MECHANIC_PM;
+    case MechanicMode.SAFETY: return AppCapability.QUALITY_CHECK_PERFORM;
+    default: return AppCapability.MECHANIC_STANDARD;
+  }
 }
 
 function requireAliasNorm(displayName: string) {

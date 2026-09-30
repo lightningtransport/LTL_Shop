@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react';
 import { useAuth } from './auth-context';
-import { canShowAdminWrites } from './system-admin';
+import { canShowAdminWrites, canShowRosterWrites } from './system-admin';
 
 const AdminActorRoleContext = createContext('manager');
 
@@ -20,4 +20,11 @@ export function useCanShowAdminWrites(): boolean {
   const sessionRole = useContext(AdminActorRoleContext);
   const { user } = useAuth();
   return canShowAdminWrites(sessionRole, user);
+}
+
+/** D22: roster writes (people) open to the Shop Manager too; catalog writes stay on `useCanShowAdminWrites`. */
+export function useCanShowRosterWrites(): boolean {
+  const sessionRole = useContext(AdminActorRoleContext);
+  const { user } = useAuth();
+  return canShowRosterWrites(sessionRole, user);
 }

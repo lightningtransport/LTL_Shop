@@ -39,6 +39,36 @@ export interface UserDto {
   capabilities: AppCapability[];
 }
 
+/**
+ * D22 / LTR-187: `POST /admin/mechanics` also creates the Supabase Auth account. The temporary
+ * password is returned once and never stored; it is null when the API has no Supabase service key
+ * (local dev, flow tests).
+ */
+export interface AdminMechanicCreatedDto extends UserDto {
+  temporaryPassword: string | null;
+}
+
+/** D22: `POST /admin/mechanics/:id/reset-password`. Returned once, never stored. */
+export interface AdminMechanicPasswordResetDto {
+  temporaryPassword: string;
+}
+
+/** D22: a Job still to do that keeps a person from being deactivated. */
+export interface AdminMechanicPendingJobDto {
+  workOrderId: string;
+  workOrderDisplayId: string;
+  truckNumber: string;
+  jobDisplayName: string;
+}
+
+/** D22: the `MECHANIC_HAS_OPEN_WORK` body — what the Manager must reassign or stop first. */
+export interface AdminMechanicOpenWorkDto {
+  code: 'MECHANIC_HAS_OPEN_WORK';
+  message: string;
+  pendingJobs: AdminMechanicPendingJobDto[];
+  runningSession: boolean;
+}
+
 export interface TruckDto {
   id: string;
   truckNumber: string;

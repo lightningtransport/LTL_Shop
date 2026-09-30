@@ -1,9 +1,11 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ConflictException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { AppCapability } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { AppCapability as SharedCapability, CatalogStatus, MechanicMode } from '@ltl-shop/shared';
 import type { AuthUser } from '../auth/auth.guard';
-import { SystemAdminWritesService } from './system-admin-writes.service';
+import { SupabaseAdminClient, SupabaseAdminError } from '../auth/supabase-admin';
+import { isTemporaryPasswordShape } from '../auth/temporary-password';
+import { MECHANIC_CAPS, SystemAdminWritesService, mechanicCapability } from './system-admin-writes.service';
 
 const ACTOR: AuthUser = {
   id: '00000000-0000-4000-8000-0000000000aa',
@@ -19,8 +21,49 @@ const MECHANIC_ID = '00000000-0000-4000-8000-0000000000b1';
 const CATEGORY_ID = '00000000-0000-4000-8000-0000000000c1';
 const JOB_ID = '00000000-0000-4000-8000-0000000000d1';
 
-function serviceWith(prisma: object) {
-  return new SystemAdminWritesService(prisma as never);
+/** Local dev and the flow tests: no service key, so no Supabase account and `temporaryPassword: null`. */
+const unconfiguredAuth = new SupabaseAdminClient(null);
+
+function serviceWith(prisma: object, supabaseAdmin: Pick<SupabaseAdminClient, 'isConfigured'> & Partial<SupabaseAdminClient> = unconfiguredAuth) {
+  return new SystemAdminWritesService(prisma as never, supabaseAdmin as SupabaseAdminClient);
+}
+
+function configuredAuth(overrides: Partial<Record<'createUser' | 'deleteUser' | 'resetPassword', ReturnType<typeof vi.fn>>> = {}) {
+  return {
+    isConfigured: () => true,
+    createUser: overrides.createUser ?? vi.fn().mockResolvedValue({ id: 'auth-user-1' }),
+    deleteUser: overrides.deleteUser ?? vi.fn().mockResolvedValue(undefined),
+    resetPassword: overrides.resetPassword ?? vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+function createPrisma() {
+  return {
+    user: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation(async ({ data }) => ({
+        id: MECHANIC_ID,
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        active: data.active,
+        supabaseAuthId: data.supabaseAuthId ?? null,
+        capabilities: [{ capability: data.capabilities.create.capability }],
+      })),
+    },
+  };
+}
+
+function txWith(current: Record<string, unknown>, openWork: { jobs?: unknown[]; session?: unknown } = {}) {
+  return {
+    user: {
+      findUnique: vi.fn().mockResolvedValueOnce(current).mockResolvedValue({ ...current, active: false }),
+      update: vi.fn(),
+    },
+    userCapability: { deleteMany: vi.fn(), create: vi.fn() },
+    workOrderJob: { findMany: vi.fn().mockResolvedValue(openWork.jobs ?? []) },
+    workSession: { findFirst: vi.fn().mockResolvedValue(openWork.session ?? null) },
+  };
 }
 
 describe('SystemAdminWritesService roster', () => {
@@ -51,6 +94,8 @@ describe('SystemAdminWritesService roster', () => {
       role: 'mechanic',
       active: true,
       capabilities: [SharedCapability.MECHANIC_STANDARD],
+      // No Supabase service key here: no access account, and the Manager is told so.
+      temporaryPassword: null,
     });
     expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
@@ -147,7 +192,7 @@ describe('SystemAdminWritesService roster', () => {
       capabilities: [SharedCapability.MECHANIC_PM],
     });
     expect(tx.userCapability.deleteMany).toHaveBeenCalledWith({
-      where: { userId: MECHANIC_ID, capability: { in: [AppCapability.MECHANIC_STANDARD, AppCapability.MECHANIC_PM] } },
+      where: { userId: MECHANIC_ID, capability: { in: [AppCapability.MECHANIC_STANDARD, AppCapability.MECHANIC_PM, AppCapability.QUALITY_CHECK_PERFORM] } },
     });
     expect(tx.userCapability.create).toHaveBeenCalledWith({
       data: {
@@ -194,6 +239,125 @@ describe('SystemAdminWritesService roster', () => {
     });
 
     await expect(service.updateMechanic(ACTOR, MECHANIC_ID, { active: true })).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('SystemAdminWritesService roster (D22)', () => {
+  it('maps the three roster types to one capability each', () => {
+    expect(mechanicCapability(MechanicMode.STANDARD)).toBe(AppCapability.MECHANIC_STANDARD);
+    expect(mechanicCapability(MechanicMode.PM)).toBe(AppCapability.MECHANIC_PM);
+    expect(mechanicCapability(MechanicMode.SAFETY)).toBe(AppCapability.QUALITY_CHECK_PERFORM);
+    expect([...MECHANIC_CAPS]).toEqual([AppCapability.MECHANIC_STANDARD, AppCapability.MECHANIC_PM, AppCapability.QUALITY_CHECK_PERFORM]);
+  });
+
+  it('creates a Safety user with quality_check.perform and role mechanic', async () => {
+    const prisma = createPrisma();
+    const service = serviceWith(prisma);
+    await expect(service.createMechanic(ACTOR, { email: 'safety-3@lightning.local', name: 'Safety Three', mode: 'safety' })).resolves.toMatchObject({
+      role: 'mechanic',
+      capabilities: [SharedCapability.QUALITY_CHECK_PERFORM],
+      temporaryPassword: null,
+    });
+    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ supabaseAuthId: null, capabilities: { create: expect.objectContaining({ capability: AppCapability.QUALITY_CHECK_PERFORM }) } }),
+    }));
+  });
+
+  it('creates the Supabase account first, stores its id, and returns the temporary password once', async () => {
+    const prisma = createPrisma();
+    const auth = configuredAuth();
+    const service = serviceWith(prisma, auth);
+
+    const created = await service.createMechanic(ACTOR, { email: 'ana@lightning.local', name: 'Ana', mode: 'pm' });
+    expect(created.temporaryPassword).not.toBeNull();
+    expect(isTemporaryPasswordShape(created.temporaryPassword!)).toBe(true);
+    expect(auth.createUser).toHaveBeenCalledWith({ email: 'ana@lightning.local', password: created.temporaryPassword, name: 'Ana' });
+    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ supabaseAuthId: 'auth-user-1' }),
+    }));
+    // Never persisted: the DTO carries it, the row does not.
+    expect(JSON.stringify(prisma.user.create.mock.calls[0][0])).not.toContain(created.temporaryPassword);
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('creates nothing when Supabase refuses the account (AUTH_ACCOUNT_CREATE_FAILED)', async () => {
+    const prisma = createPrisma();
+    const auth = configuredAuth({
+      createUser: vi.fn().mockRejectedValue(new SupabaseAdminError('create', 422, 'email_exists', 'A user with this email address has already been registered')),
+    });
+    const service = serviceWith(prisma, auth);
+
+    const failure = await service.createMechanic(ACTOR, { email: 'dup@lightning.local', name: 'Dup', mode: 'standard' }).catch((error) => error);
+    expect(failure).toBeInstanceOf(BadGatewayException);
+    expect((failure as BadGatewayException).getResponse()).toMatchObject({ code: 'AUTH_ACCOUNT_CREATE_FAILED' });
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('deletes the Supabase account again when the Shop row cannot be written', async () => {
+    const prisma = createPrisma();
+    prisma.user.create.mockRejectedValue(new Error('db down'));
+    const auth = configuredAuth();
+    const service = serviceWith(prisma, auth);
+
+    await expect(service.createMechanic(ACTOR, { email: 'ana@lightning.local', name: 'Ana', mode: 'standard' })).rejects.toThrow('db down');
+    expect(auth.deleteUser).toHaveBeenCalledWith('auth-user-1');
+  });
+
+  it('refuses to deactivate while the person has Jobs to do or labor time running (MECHANIC_HAS_OPEN_WORK)', async () => {
+    const current = { id: MECHANIC_ID, role: 'mechanic', active: true, supabaseAuthId: null, capabilities: [{ capability: AppCapability.MECHANIC_STANDARD }] };
+    const tx = txWith(current, {
+      jobs: [{ displayName: 'Brake pads', workOrder: { id: 'wo-1', displayId: 'WO-0001', truck: { truckNumber: '905' } } }],
+      session: { id: 'session-1' },
+    });
+    const service = serviceWith({ $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)) });
+
+    const failure = await service.updateMechanic(ACTOR, MECHANIC_ID, { active: false }).catch((error) => error);
+    expect(failure).toBeInstanceOf(ConflictException);
+    expect((failure as ConflictException).getResponse()).toEqual({
+      code: 'MECHANIC_HAS_OPEN_WORK',
+      message: expect.any(String),
+      pendingJobs: [{ workOrderId: 'wo-1', workOrderDisplayId: 'WO-0001', truckNumber: '905', jobDisplayName: 'Brake pads' }],
+      runningSession: true,
+    });
+    expect(tx.user.update).not.toHaveBeenCalled();
+    expect(tx.workOrderJob.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ assignedMechanicId: MECHANIC_ID, status: 'to_do' }),
+    }));
+  });
+
+  it('deactivates when nothing is open, and reactivates without any rule', async () => {
+    const current = { id: MECHANIC_ID, role: 'mechanic', active: true, supabaseAuthId: null, capabilities: [{ capability: AppCapability.QUALITY_CHECK_PERFORM }] };
+    const tx = txWith(current);
+    const service = serviceWith({ $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)) });
+    await expect(service.updateMechanic(ACTOR, MECHANIC_ID, { active: false })).resolves.toMatchObject({ active: false });
+    expect(tx.user.update).toHaveBeenCalledWith({ where: { id: MECHANIC_ID }, data: { active: false } });
+
+    const inactive = { ...current, active: false };
+    const tx2 = { ...txWith(inactive), user: { findUnique: vi.fn().mockResolvedValue({ ...inactive, active: true }), update: vi.fn() } };
+    tx2.user.findUnique.mockResolvedValueOnce(inactive);
+    const service2 = serviceWith({ $transaction: vi.fn(async (callback: (client: typeof tx2) => unknown) => callback(tx2)) });
+    await expect(service2.updateMechanic(ACTOR, MECHANIC_ID, { active: true })).resolves.toMatchObject({ active: true });
+    expect(tx2.workOrderJob.findMany).not.toHaveBeenCalled();
+  });
+
+  it('resets the password through Supabase and returns it once; AUTH_ACCOUNT_MISSING without an account', async () => {
+    const withAccount = { id: MECHANIC_ID, email: 'ana@lightning.local', name: 'Ana', role: 'mechanic', active: true, supabaseAuthId: 'auth-user-1', capabilities: [] };
+    const auth = configuredAuth();
+    const service = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue(withAccount) } }, auth);
+    const reset = await service.resetPassword(MECHANIC_ID);
+    expect(isTemporaryPasswordShape(reset.temporaryPassword)).toBe(true);
+    expect(auth.resetPassword).toHaveBeenCalledWith('auth-user-1', reset.temporaryPassword);
+
+    const noAccount = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue({ ...withAccount, supabaseAuthId: null }) } }, auth);
+    const missing = await noAccount.resetPassword(MECHANIC_ID).catch((error) => error);
+    expect(missing).toBeInstanceOf(ConflictException);
+    expect((missing as ConflictException).getResponse()).toMatchObject({ code: 'AUTH_ACCOUNT_MISSING' });
+
+    const unconfigured = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue(withAccount) } });
+    await expect(unconfigured.resetPassword(MECHANIC_ID)).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    const manager = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue({ ...withAccount, role: 'manager' }) } }, auth);
+    await expect(manager.resetPassword(MECHANIC_ID)).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

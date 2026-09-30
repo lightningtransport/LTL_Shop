@@ -235,6 +235,37 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 
 ---
 
+### HU-M9 · Dar de alta al personal (J12) — ✅ (D22, LTR-187)
+
+**Función:** Admin → **Mecánicos → Agregar**. El Manager (y el System Admin)
+crea mecánicos Standard, PM y Safety; la app crea también la cuenta de acceso.
+
+**Flujo**
+1. Agregar → nombre, correo, tipo (Standard / PM / Safety) → **Crear**.
+2. La app muestra una **contraseña temporal** una sola vez; el Manager se la
+   pasa a la persona.
+3. La persona entra con correo y contraseña temporal; la app la obliga a
+   **cambiarla** antes de seguir.
+4. Desde el detalle de la persona el Manager puede **desactivar** (y
+   reactivar) y **reiniciar la contraseña**.
+
+En local y en las pruebas de flujo la API no tiene la service key de
+Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| El correo ya existe | No deja; dice que ya hay una cuenta con ese correo | ✅ | A29 |
+| Crea un Safety | Aparece en la cola de Quality Check y puede ser dueño de ese paso; no puede tomar Jobs de mecánico | ✅ | A29 |
+| Crea un PM | Puede iniciar servicios de PM y ser dueño del paso PM | ✅ | A29 |
+| Desactiva a alguien con Jobs pendientes o tiempo corriendo | No deja; la app dice qué reasignar primero | ✅ | A30 |
+| Desactiva a alguien sin trabajo abierto | Deja de entrar y de aparecer para asignar; su historial se conserva | ✅ | A30 |
+| Reactiva | Vuelve a entrar con su misma contraseña | ✅ | A30 |
+| La persona pierde la contraseña temporal | El Manager la **reinicia** desde el detalle: otra contraseña temporal y cambio obligatorio (en local: "sin cuenta de acceso") | ✅ | A31 |
+| Un mecánico intenta crear personal | No puede | ✅ | A26 |
+| Falla la creación de la cuenta de acceso | No se crea nada; la app avisa y se reintenta | ✅ (unitaria: la API borra la cuenta si falla la fila) | A29 |
+
+---
+
 ## 3. Mecánico Standard
 
 ### HU-ME1 · Ver lo que me toca (J6)
@@ -410,14 +441,9 @@ noche. Solo se arregla a mano, después.
 **Lo que pide el taller:** que se detenga solo a cierta hora. Por decidir: a
 qué hora, y si queda marcado en el historial.
 
-### HU-M9 · Dar de alta camiones y mecánicos (J12) — 🔲 LTR-187
+### HU-M9 · Dar de alta al personal (J12) — decidido (D22)
 
-**Hoy:** camiones, sin pantalla ni función. Mecánicos, solo la cuenta System
-Admin y sin pantalla.
-
-**Lo que pide el taller:** que lo haga el Manager desde la app. Por decidir:
-qué datos pide, si el Manager crea también el acceso, y si hace falta para el
-día 1.
+Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
 ### Por decidir — 🔲 LTR-188
 
@@ -474,6 +500,6 @@ una historia:
 | # | Qué falta | A quién le pega | Ticket |
 |---|---|---|---|
 | G2 | El tiempo olvidado debe detenerse solo | Mecánico, costeo | LTR-186 |
-| G5 | El Manager da de alta camiones y mecánicos | Manager | LTR-187 |
+| ~~G5~~ | El Manager da de alta al personal — **hecho (D22, HU-M9, 2026-09-30)**. Camiones: después | Manager | LTR-187 |
 | G7 | El reloj corre en un solo camión a la vez (D21) | Mecánico, costeo | LTR-188 |
 | G3, G4, G6 | Dos mecánicos en una tarea, taller externo, trailers | Manager | LTR-188 |

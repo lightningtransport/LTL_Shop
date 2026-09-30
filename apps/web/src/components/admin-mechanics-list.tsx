@@ -8,18 +8,19 @@ import { useActionToast } from './action-toast';
 import { ActivateMechanicDialog, CreateMechanicDialog } from './admin-mechanic-roster';
 import { AdminWriteTip } from './admin-write-tip';
 import { AdminFilterToolbar, DataTable, PageHeader, Badge, Button, EmptyState, LoadFailure, PageSkeleton } from './ui';
-import { useCanShowAdminWrites } from '@/lib/admin-actor';
+import { useCanShowRosterWrites } from '@/lib/admin-actor';
 import { useAdminMechanics } from '@/lib/admin-data';
 import { adminCapabilityLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 
 export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
-  const canWrite = useCanShowAdminWrites();
+  // D22: the Shop Manager manages the roster (System Admin too); catalog writes stay System Admin only.
+  const canWrite = useCanShowRosterWrites();
   const { showToast } = useActionToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
-  // LTR-160: deactivated accounts stay hidden unless the System Admin asks to see them (e.g. to reactivate).
+  // LTR-160: deactivated accounts stay hidden unless the Manager asks to see them (e.g. to reactivate).
   const [showInactive, setShowInactive] = useState(searchParams.get('includeInactive') === 'true');
   const [createOpen, setCreateOpen] = useState(false);
   const [activateTarget, setActivateTarget] = useState<AdminMechanicSummaryDto | null>(null);
@@ -118,8 +119,8 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
             open={createOpen}
             messages={messages}
             onClose={() => setCreateOpen(false)}
+            // D22: the dialog stays open on the temporary-password step; Done closes it.
             onCreated={() => {
-              setCreateOpen(false);
               showToast('success', messages.mechanicCreated);
               void mutate();
             }}

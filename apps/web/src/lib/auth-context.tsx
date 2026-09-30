@@ -28,6 +28,15 @@ import {
 } from './password-change-prompt';
 import { passwordResetRedirectUrl } from './site-url';
 
+/** D22: tells the API the temporary password was replaced so the forced change stops (never throws). */
+async function notifyPasswordChanged() {
+  try {
+    await apiFetch<{ cleared: boolean }>('/api/auth/password-changed', { method: 'POST', body: JSON.stringify({}) });
+  } catch {
+    // The password is already changed; the flag clears on the next attempt or a System Admin does it.
+  }
+}
+
 type AuthState = {
   user: UserDto | null;
   token: string | null;
@@ -328,6 +337,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (authError) throw new UserFacingError(authErrorMessage(authError, messagesRef.current, updatePasswordSheetCopy(messagesRef.current.locale).unable));
     setPasswordRecovery(false);
     markPasswordChangeResolved();
+    // D22: only the service role can clear `app_metadata.must_change_password`; the API does it.
+    // Best effort: the password already changed, and this session already resolved the prompt.
+    await notifyPasswordChanged();
   }, [markPasswordChangeResolved]);
 
   const logout = useCallback(async () => {
