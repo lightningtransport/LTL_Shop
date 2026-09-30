@@ -71,7 +71,8 @@ puede borrar en la limpieza (§3).
 
 ### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
 
-Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → los C de §1b
+Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → recorrido de
+pantallas hecho (§1d, LTR-189) → los C de §1d (W1 primero) → los de §1b
 (LTR-179). El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
 **Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
@@ -103,7 +104,7 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 | # | Problema | Qué pasa | Dónde |
 |---|---|---|---|
 | 3 | **Custom Jobs sin revisión** — C, pendiente de P5 | Quedan en `review_status = pending_review` para siempre; nada los mapea al catálogo (ver P5 en `DECISIONS.md`). | `work-orders.service.ts` (l. 367, 951) |
-| 5 | **"Mechanic note: undefined"** *(solo visible en pantalla)* — C | Reportado en la revisión de UX del 27-sep. La auditoría confirma que las notas se guardan y se leen bien (fila A22); falta mirarlo en la pantalla del mecánico. | — |
+| ~~5~~ | ~~"Mechanic note: undefined"~~ — cerrado | No se reproduce en el recorrido de pantallas del 2026-09-29 (§1d). | — |
 
 
 ## 1c. Huecos de operación (cuestionario del 2026-09-29)
@@ -137,6 +138,40 @@ están en `USER_FLOWS.md` §6.
 | U8 | Nueve textos del catálogo Admin quedaron sin uso al quitar descripciones (`completeWorkOrderDescription`, `jobsDescription`, `workRequestHint`, …). | `admin-messages.ts` |
 | U9 | Admin en español todavía dice "unidad(es)" en algunos textos y en el selector de Truck de Nuevo Work Order (la regla de LTR-170 es "Trucks"). | `admin-messages.ts` (~l. 988, 1007, 1382–1393) |
 | U10 | `POST …/work-plan/jobs`: si falla a mitad de camino, quedan Jobs agregados sin registro de idempotencia y el reintento recibe `VERSION_CONFLICT`; dos reintentos simultáneos con la misma clave chocan en el índice único. *(Existía antes de #206.)* | `apps/api/src/admin/yard-work-plan.service.ts` ~l. 255–290 |
+
+## 1d. Recorrido de pantallas (2026-09-29, teléfono, EN/ES, API real) — LTR-189
+
+Recorrido completo de las historias de `USER_FLOWS.md` con los 9 escenarios de
+demo (`reset-demo-work-orders --local --apply`) contra la API real, en un
+viewport de 375 px, en español y con muestreo en inglés. Ningún flujo se atora:
+todo lo que falla aquí es **C (confuso)** o **E (estético)**, salvo W4 que
+lanza un error real en consola. Se arreglan en este orden, uno o dos por PR,
+empezando por W1 (el que reportó el dueño).
+
+| # | Clase | Rol | Problema | Dónde |
+|---|---|---|---|---|
+| W1 | C | Manager | **Tarjeta "Jobs" del Work Order sin jerarquía.** En cada Job pendiente el control más visible es el botón rojo "Confirmar cancelación del Job"; "Marcar completado" es solo texto (y sale primario solo en Quality Check); la fila de PM apila Unassign, chip, selector, ayuda y cancelar sin orden. El campo "Motivo del cambio" queda al final de la tarjeta, lejos de los botones que lo necesitan, y su etiqueta se pega al texto de ayuda. | `components/admin-work-order-detail.tsx`, `admin-messages.ts` (`cancelJobConfirm`, `jobChangeReason`) |
+| W2 | C | Manager | La tarjeta "Completar Work Order" se muestra con texto de error y botón deshabilitado mientras hay Jobs pendientes. Debe ocultarse (o ser una línea de ayuda) hasta que el Work Order esté listo. | `admin-work-order-detail.tsx` ~l. 166 |
+| W3 | C | Manager | Panel: el mismo Work Order muestra "Atención: Prioridad crítica" y "Siguiente paso: Bloqueado…" a la vez. Una sola línea: el paso siguiente. | `admin-dashboard.tsx`, `lib/status-chips.ts` |
+| W4 | C | Manager | **Error de hidratación de React** en la lista de Trucks: `WorkOrderStatusBadge` (un `<div>`) va dentro de un `<p>`. Sale en consola en cada carga. | `components/admin-trucks-list.tsx:78` |
+| W5 | C | Manager | Lista de Trucks: cada tarjeta sin evento dice "Estado operacional: Unknown — no hay un evento de estado de servicio registrado" (largo, mitad en inglés). Debe decir "Sin registro" o no mostrarse. | `admin-messages.ts:1293` |
+| W6 | E | Manager | Lista de Trucks: el placeholder de búsqueda se corta en el teléfono; "Aplicar filtros" sale como botón primario en una lista que solo tiene búsqueda. | `admin-trucks-list.tsx`, `admin-messages.ts:906` |
+| W7 | C | Manager | Detalle de Truck → Work Plan: "Marcar completado" sale primario en Detailing y no en el paso siguiente; "Trabajo actual" muestra "Categoría: Inspection" (categoría legacy del Work Order). | `components/admin-truck-detail.tsx` ~l. 79 |
+| W8 | C | Manager | Lista de Work Orders: la tarjeta repite "N Jobs · Siguiente: X" dos veces; el subtítulo "Vista operacional de solo lectura de todos los Work Orders del Shop" es jerga. | `components/admin-work-order-item.tsx`, `admin-messages.ts:890` |
+| W9 | C | Manager | Setup → Shop workflow: la fila de Quality Check dice "Manager, sin asignación". Desde D19 el dueño es Safety. | `admin-messages.ts:43, 785` |
+| W10 | E | Manager | El subtítulo del Work Order dice "Work Order WO-005 · Inspection" (categoría legacy). Sobra. | `admin-work-order-detail.tsx` |
+| W11 | C | Mecánico | La pestaña **Completados** dice "Trabajo que terminaste" pero solo lista Work Orders cerrados: Alejandro 2 completó Battery en WO-005 y ve "Aún no hay trabajo completado". Listar los Jobs completados por él, o renombrar. | `components/mechanic-completed-page.tsx:28` |
+| W12 | C | Mecánico | Detalle del Work Order: la única forma de completar un Job es tocar la tarjeta (sin botón visible; el botón no tiene nombre accesible). "Reportar bloqueo" sí es botón. Falta un botón "Completar" a la par. | `app/work-orders/[id]` (vista mecánico) |
+| W13 | E | Mecánico | Diálogo "Reportar bloqueo": el texto de ayuda ("Selecciona un motivo…") queda debajo de los botones y detrás del botón flotante. | diálogo de bloqueo |
+| W14 | C | PM | Inicio del PM: con un servicio activo, las cinco tarjetas "Listos para iniciar" siguen con botón primario "Iniciar servicio PM" aunque el texto diga "Termina o pausa WO-009 antes". Deben ir deshabilitadas o secundarias (D2). | `app/page.tsx` ~l. 155 |
+| W15 | C | PM | Detalle del PM: no hay "Pausar" ni notas aunque el inicio pida pausar; el "Guardado" del autoguardado aparece solo al final de los 9 selectores (lejos del campo que se cambió) y no hay botón Guardar, así que el PM no sabe que se guardó hasta bajar; dos tarjetas seguidas tituladas "Servicio de PM". | `components/pm-job-detail.tsx` |
+| W16 | E | Safety | "Tomar" es el único paso y sale como botón secundario; el aviso "es tuyo" llega antes de que la tarjeta cambie a Aprobar/Devolver. | `components/quality-check-page.tsx` |
+| W17 | C | Safety | Idioma: en español dice "Truck 968 es tuyo", "Devolver Truck 968", "Truck 968 aprobado" mientras la app del mecánico dice "Unidad" (regla en `SYSTEM.md`: el Admin dice Trucks, el mecánico "unidad"; Safety debe seguir al mecánico). El campo de nota del diálogo Devolver se etiqueta "Devolver" y el botón de cancelar se llama "Cerrar" igual que la X. | `lib/locale-context.tsx` ~l. 794–803 |
+
+Confirmado en el recorrido: U9 (Nuevo Work Order dice "Unidad"). El defecto #5
+("Mechanic note: undefined") **no se reproduce**: la nota del mecánico se ve
+bien en el Admin ("Mechanic note: Batería nueva instalada.") y en el detalle
+del mecánico; queda cerrado.
 
 ## 2. Pruebas
 

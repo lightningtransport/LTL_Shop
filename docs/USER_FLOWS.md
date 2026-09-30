@@ -442,6 +442,20 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 - Pantallas vacías, de carga y de error.
 - Textos: que cada pantalla diga lo que dice este documento.
 
+**Recorrido del 2026-09-29** (teléfono, EN/ES, API real, los 9 escenarios de
+demo): ninguna historia se atora. Lo que confunde está en
+[`OPEN_ISSUES.md` §1d](OPEN_ISSUES.md) (W1–W17, LTR-189). Lo que le pega a
+una historia:
+
+| Historia | Hallazgo |
+|---|---|
+| HU-M3 (asignar y completar Jobs) | W1 tarjeta "Jobs" sin jerarquía; W2 "Completar" visible antes de tiempo |
+| HU-M1 (ver el taller) | W3 panel repite atención y siguiente paso; W4/W5/W6 lista de Trucks |
+| HU-ME1 (ver lo que me toca) | W11 "Completados" no muestra los Jobs que terminé |
+| HU-ME2 (trabajar y terminar) | W12 no hay botón "Completar" visible |
+| HU-PM1 (registrar un PM) | W14 "Iniciar" primario con otro PM activo; W15 sin pausa, "Guardado" escondido |
+| HU-QC1 (aprobar o devolver) | W16 "Tomar" secundario; W17 dice "Truck" donde el mecánico dice "Unidad" |
+
 ---
 
 ## 9. Resumen de lo que falla y de lo que falta
@@ -449,6 +463,7 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
 | 3 | No existe revisión de Custom Jobs | Manager | C | decisión P5 | — |
+| W1–W17 | Pantallas que confunden (recorrido 2026-09-29, §8) | Todos | C / E | LTR-189 | — |
 
 **B** bloqueante · **C** confuso · **E** estético. Detalle técnico en
 [`OPEN_ISSUES.md`](OPEN_ISSUES.md).
