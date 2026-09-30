@@ -38,6 +38,7 @@ import {
   EmptyState,
   JobStatusBadge,
   LoadFailure,
+  Modal,
   PageSkeleton,
   PriorityBadge,
   SectionBlock,
@@ -58,6 +59,9 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [reopenReason, setReopenReason] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [jobReason, setJobReason] = useState('');
+  // LTR-189 (W1): cancel / reopen a Job from a dialog that asks the reason there, not from a red button on every row.
+  const [jobDialog, setJobDialog] = useState<{ kind: 'cancel' | 'reopen'; jobId: string } | null>(null);
+  const [jobDialogError, setJobDialogError] = useState<string | null>(null);
   // LTR-168: no preselected reason, so pausing is a choice and never a single accidental tap.
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [assignDrafts, setAssignDrafts] = useState<Record<string, string>>({});
@@ -243,174 +247,131 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
                 // LTR-164 (#2) / D15: Quality Check has no owner; the Manager completes it.
                 const isQualityCheck = isQualityCheckJob(job.category.name, job.displayName);
                 const isTerminal = job.status === 'completed' || job.status === 'cancelled';
+                const assigneeLine = job.assignedMechanic
+                  ? `${messages.jobAssignee}: ${job.assignedMechanic.name}`
+                  : isPmJob ? messages.pmJobUnassigned : messages.jobUnassigned;
                 return (
-                  <li key={job.id} className="py-3 first:pt-0">
-                    {isTerminal ? (
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium">{job.displayName}</p>
-                          <p className="text-xs text-muted-foreground">{job.category.name}</p>
-                          {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
-                          {job.status === 'completed' && job.completedBy ? (
-                            <p className="mt-1 text-xs text-muted-foreground">{messages.completedByLabel}: {job.completedBy.name}</p>
-                          ) : null}
-                          {/* LTR-148: a finished PM job keeps its recorded mileage and parts visible. */}
-                          {isPmJob && job.status === 'completed' && data.pmService?.workOrderJobId === job.id ? (
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {messages.pmJobServiceSummary
+                  <li key={job.id} className="space-y-3 py-4 first:pt-0">
+                    {/* LTR-189 (W1): one header per Job (name + status), then one action row; cancel/reopen live in a dialog. */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className={job.status === 'cancelled' ? 'font-medium text-muted-foreground line-through' : 'font-medium'}>{job.displayName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {job.category.name}
+                          {isTerminal ? null : ` · ${assigneeLine}`}
+                          {job.status === 'completed' && job.completedBy ? ` · ${messages.completedByLabel}: ${job.completedBy.name}` : null}
+                        </p>
+                        {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
+                        {isPmJob && job.startedAt && !isTerminal ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {messages.pmJobStartedAt.replace('{date}', formatAdminDate(job.startedAt, locale))}
+                            {data.pmService?.workOrderJobId === job.id
+                              ? ` · ${messages.pmJobServiceSummary
                                 .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(data.pmService.observedMileage))
-                                .replace('{parts}', String(data.pmService.partsCount))}
-                            </p>
-                          ) : null}
-                          {job.completionNotes ? (
-                            <p className="mt-1 whitespace-pre-wrap text-sm">{messages.jobCompletionNotes}: {job.completionNotes}</p>
-                          ) : null}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
-                          {canReopenJob && job.status === 'cancelled' ? (
+                                .replace('{parts}', String(data.pmService.partsCount))}`
+                              : ''}
+                          </p>
+                        ) : null}
+                        {/* LTR-148: a finished PM job keeps its recorded mileage and parts visible. */}
+                        {isPmJob && job.status === 'completed' && data.pmService?.workOrderJobId === job.id ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {messages.pmJobServiceSummary
+                              .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(data.pmService.observedMileage))
+                              .replace('{parts}', String(data.pmService.partsCount))}
+                          </p>
+                        ) : null}
+                        {job.completionNotes ? (
+                          <p className="mt-1 whitespace-pre-wrap text-sm">{messages.jobCompletionNotes}: {job.completionNotes}</p>
+                        ) : null}
+                      </div>
+                      <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
+                    </div>
+                    {isTerminal ? (
+                      canReopenJob && job.status === 'cancelled' ? (
+                        <Button type="button" variant="ghost" size="sm" className="-ml-3 text-muted-foreground" disabled={Boolean(pendingAction)} onClick={() => setJobDialog({ kind: 'reopen', jobId: job.id })}>
+                          {messages.reopenJobAction}
+                        </Button>
+                      ) : null
+                    ) : canManageJobs && isToDo ? (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                        {isPmJob ? (
+                          <>
+                            <PmServiceSelect
+                              job={job}
+                              messages={messages}
+                              disabled={Boolean(pendingAction)}
+                              onChange={(catalogJobId) => void runMutation(`pm-service-${job.id}`, messages.pmServiceChangedSuccess, () => changeAdminPmService(data.id, job.id, { catalogJobId, expectedVersion: data.version }), () => messages.pmServiceChangeFailed)}
+                            />
+                            <span className="text-xs text-muted-foreground sm:order-last sm:basis-full">{messages.pmJobCompletedFromPmService}</span>
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            // LTR-164 (#2) / D15: primary only on Quality Check (the Manager's step), as on the Truck.
+                            variant={isQualityCheck ? 'default' : 'outline'}
+                            disabled={Boolean(pendingAction)}
+                            onClick={() => {
+                              void runMutation(`complete-job-${job.id}`, messages.completeJobSuccess, async () => {
+                                await completeAdminJob(job.id, { expectedVersion: data.version });
+                              }, (failure) => jobChangeError(failure, messages));
+                            }}
+                          >
+                            {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.completeJobAction}
+                          </Button>
+                        )}
+                        {!isQualityCheck ? (
+                          job.assignedMechanic ? (
                             <Button
                               type="button"
+                              variant="outline"
                               size="sm"
                               disabled={Boolean(pendingAction)}
                               onClick={() => {
-                                const reason = jobReason.trim();
-                                if (!reason) {
-                                  setFeedback({ kind: 'error', message: messages.jobChangeReasonRequired });
-                                  return;
-                                }
-                                void runMutation(`reopen-job-${job.id}`, messages.reopenJobSuccess, async () => {
-                                  await reopenAdminJob(job.id, { reason, expectedVersion: data.version });
-                                  setJobReason('');
+                                void runMutation(`unassign-job-${job.id}`, messages.unassignJobSuccess, async () => {
+                                  await unassignAdminWorkOrderJob(id, job.id, data.version);
                                 }, (failure) => jobChangeError(failure, messages));
                               }}
                             >
-                              {messages.reopenJobConfirm}
+                              {messages.unassignJobAction}
                             </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="min-w-0">
-                          <p className="font-medium">{job.displayName}</p>
-                          <p className="text-xs text-muted-foreground">{job.category.name}</p>
-                          {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {job.assignedMechanic
-                              ? `${messages.jobAssignee}: ${job.assignedMechanic.name}`
-                              : isPmJob ? messages.pmJobUnassigned : messages.jobUnassigned}
-                          </p>
-                          {isPmJob && job.startedAt ? (
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {messages.pmJobStartedAt.replace('{date}', formatAdminDate(job.startedAt, locale))}
-                              {data.pmService?.workOrderJobId === job.id
-                                ? ` · ${messages.pmJobServiceSummary
-                                  .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(data.pmService.observedMileage))
-                                  .replace('{parts}', String(data.pmService.partsCount))}`
-                                : ''}
-                            </p>
-                          ) : null}
-                        </div>
-                        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
-                          {canManageJobs && isToDo && !isQualityCheck ? (
-                            job.assignedMechanic ? (
+                          ) : (
+                            <div className="flex gap-2">
+                              <Select
+                                aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
+                                className="min-w-0 flex-1 sm:w-48 sm:flex-none"
+                                value={assignDrafts[job.id] ?? ''}
+                                onChange={(event) => setAssignDrafts((prev) => ({ ...prev, [job.id]: event.target.value }))}
+                              >
+                                <option value="">{messages.assignJobPlaceholder}</option>
+                                {(isPmJob ? pmMechanics : assignableMechanics).map((mechanic) => (
+                                  <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
+                                ))}
+                              </Select>
                               <Button
                                 type="button"
+                                size="sm"
                                 variant="outline"
-                                size="sm"
-                                disabled={Boolean(pendingAction)}
+                                disabled={Boolean(pendingAction) || !assignDrafts[job.id]}
                                 onClick={() => {
-                                  void runMutation(`unassign-job-${job.id}`, messages.unassignJobSuccess, async () => {
-                                    await unassignAdminWorkOrderJob(id, job.id, data.version);
+                                  const mechanicId = assignDrafts[job.id];
+                                  if (!mechanicId) return;
+                                  void runMutation(`assign-job-${job.id}`, messages.assignJobSuccess, async () => {
+                                    await assignAdminWorkOrderJob(id, job.id, { mechanicId, expectedVersion: data.version });
+                                    setAssignDrafts((prev) => ({ ...prev, [job.id]: '' }));
                                   }, (failure) => jobChangeError(failure, messages));
                                 }}
                               >
-                                {messages.unassignJobAction}
+                                {messages.assignJobAction}
                               </Button>
-                            ) : (
-                              <>
-                                <Select
-                                  aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
-                                  className="w-full sm:w-48"
-                                  value={assignDrafts[job.id] ?? ''}
-                                  onChange={(event) => setAssignDrafts((prev) => ({ ...prev, [job.id]: event.target.value }))}
-                                >
-                                  <option value="">{messages.assignJobPlaceholder}</option>
-                                  {(isPmJob ? pmMechanics : assignableMechanics).map((mechanic) => (
-                                    <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
-                                  ))}
-                                </Select>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  disabled={Boolean(pendingAction) || !assignDrafts[job.id]}
-                                  onClick={() => {
-                                    const mechanicId = assignDrafts[job.id];
-                                    if (!mechanicId) return;
-                                    void runMutation(`assign-job-${job.id}`, messages.assignJobSuccess, async () => {
-                                      await assignAdminWorkOrderJob(id, job.id, { mechanicId, expectedVersion: data.version });
-                                      setAssignDrafts((prev) => ({ ...prev, [job.id]: '' }));
-                                    }, (failure) => jobChangeError(failure, messages));
-                                  }}
-                                >
-                                  {messages.assignJobAction}
-                                </Button>
-                              </>
-                            )
-                          ) : null}
-                          <div className="flex flex-wrap items-center gap-2">
-                            <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>
-                            {isPmJob && isToDo && canManageJobs ? (
-                              <PmServiceSelect
-                                job={job}
-                                messages={messages}
-                                disabled={Boolean(pendingAction)}
-                                onChange={(catalogJobId) => void runMutation(`pm-service-${job.id}`, messages.pmServiceChangedSuccess, () => changeAdminPmService(data.id, job.id, { catalogJobId, expectedVersion: data.version }), () => messages.pmServiceChangeFailed)}
-                              />
-                            ) : null}
-                            {isPmJob && isToDo ? <span className="text-xs text-muted-foreground">{messages.pmJobCompletedFromPmService}</span> : null}
-                            {canManageJobs && isToDo && !isPmJob ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                // LTR-164 (#2) / D15: primary only on Quality Check (the Manager's step), as on the Truck.
-                                variant={isQualityCheck ? 'default' : 'ghost'}
-                                disabled={Boolean(pendingAction)}
-                                onClick={() => {
-                                  void runMutation(`complete-job-${job.id}`, messages.completeJobSuccess, async () => {
-                                    await completeAdminJob(job.id, { expectedVersion: data.version });
-                                  }, (failure) => jobChangeError(failure, messages));
-                                }}
-                              >
-                                {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.completeJobAction}
-                              </Button>
-                            ) : null}
-                            {canManageJobs && isToDo ? (
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                disabled={Boolean(pendingAction)}
-                                onClick={() => {
-                                  const reason = jobReason.trim();
-                                  if (!reason) {
-                                    setFeedback({ kind: 'error', message: messages.jobChangeReasonRequired });
-                                    return;
-                                  }
-                                  void runMutation(`cancel-job-${job.id}`, messages.cancelJobSuccess, async () => {
-                                    await cancelAdminJob(job.id, { reason, expectedVersion: data.version });
-                                    setJobReason('');
-                                  }, (failure) => jobChangeError(failure, messages));
-                                }}
-                              >
-                                {messages.cancelJobConfirm}
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
+                            </div>
+                          )
+                        ) : null}
+                        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground sm:ml-auto" disabled={Boolean(pendingAction)} onClick={() => setJobDialog({ kind: 'cancel', jobId: job.id })}>
+                          {messages.cancelJobAction}
+                        </Button>
                       </div>
-                    )}
+                    ) : null}
                   </li>
                 );
               })}
@@ -426,19 +387,50 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               </Link>
             </Button>
           ) : null}
-          {/* LTR-168: the reason field only when a Job here can actually be cancelled or reopened. */}
-          {(canManageJobs && data.jobs.some((job) => job.status === 'to_do')) || (canReopenJob && data.jobs.some((job) => job.status === 'cancelled')) ? (
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">{messages.jobChangeReason}</span>
-              <Textarea
-                aria-label={messages.jobChangeReason}
-                value={jobReason}
-                onChange={(event) => setJobReason(event.target.value)}
-                maxLength={1000}
-              />
-              <span className="text-xs text-muted-foreground">{messages.jobChangeReasonHelp}</span>
-            </label>
-          ) : null}
+          {(() => {
+            const dialogJob = jobDialog ? data.jobs.find((job) => job.id === jobDialog.jobId) : undefined;
+            if (!jobDialog || !dialogJob) return null;
+            const isCancel = jobDialog.kind === 'cancel';
+            const closeDialog = () => { if (!pendingAction) { setJobDialog(null); setJobReason(''); setJobDialogError(null); } };
+            return (
+              <Modal open title={isCancel ? messages.cancelJobTitle : messages.reopenJobTitle} closeLabel={messages.closeDialog} onClose={closeDialog}>
+                <div className="space-y-4">
+                  <p className="text-base font-medium">{dialogJob.displayName}</p>
+                  <label className="block space-y-1">
+                    <span className="text-sm font-medium">{messages.jobChangeReason}</span>
+                    <Textarea aria-label={messages.jobChangeReason} value={jobReason} onChange={(event) => { setJobReason(event.target.value); setJobDialogError(null); }} maxLength={1000} />
+                    <span className="block text-xs text-muted-foreground">{messages.jobChangeReasonHelp}</span>
+                  </label>
+                  {jobDialogError ? <p className="text-sm font-medium text-destructive-text" role="alert">{jobDialogError}</p> : null}
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" disabled={Boolean(pendingAction)} onClick={closeDialog}>{messages.cancel}</Button>
+                    <Button
+                      type="button"
+                      variant={isCancel ? 'destructive' : 'default'}
+                      className="flex-1"
+                      disabled={Boolean(pendingAction)}
+                      onClick={() => {
+                        const reason = jobReason.trim();
+                        if (!reason) {
+                          setJobDialogError(messages.jobChangeReasonRequired);
+                          return;
+                        }
+                        setJobDialogError(null);
+                        void runMutation(`${jobDialog.kind}-job-${dialogJob.id}`, isCancel ? messages.cancelJobSuccess : messages.reopenJobSuccess, async () => {
+                          if (isCancel) await cancelAdminJob(dialogJob.id, { reason, expectedVersion: data.version });
+                          else await reopenAdminJob(dialogJob.id, { reason, expectedVersion: data.version });
+                          setJobReason('');
+                          setJobDialog(null);
+                        }, (failure) => jobChangeError(failure, messages));
+                      }}
+                    >
+                      {pendingAction ? messages.saving : isCancel ? messages.cancelJobConfirm : messages.reopenJobConfirm}
+                    </Button>
+                  </div>
+                </div>
+              </Modal>
+            );
+          })()}
         </CardContent>
       </Card>
 

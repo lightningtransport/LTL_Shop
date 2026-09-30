@@ -230,9 +230,12 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('textbox', { name: 'Add note' })).toHaveValue('');
     // LTR-154 / D11: no Work Order team editor; each Job has its own owner.
     await expect(page.getByRole('heading', { name: 'Assignments' })).toHaveCount(0);
+    // LTR-189 (W1): cancel and reopen ask their reason in a dialog, not on every row.
+    await page.getByRole('button', { name: 'Cancel Job…' }).first().click();
     await page.getByLabel('Reason for this Job change').fill('Not needed');
     await page.getByRole('button', { name: 'Confirm job cancellation' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Job cancelled.' }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Reopen Job…' }).first().click();
     await page.getByLabel('Reason for this Job change').fill('Job is still required');
     await page.getByRole('button', { name: 'Confirm job reopen' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Job reopened.' }).first()).toBeVisible();
