@@ -373,7 +373,7 @@ Shop Admin, Yard, Work Orders).
 | `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, PM dentro del WO, o PM legacy). |
 | `/mechanic/pm/new` | Create PM service. |
 | `/mechanic/{standard,pm}/trucks`, `/trucks/[id]/history` | Buscar camión e historial de reparaciones. |
-| `/mechanic/{standard,pm}/completed` | Trabajo terminado (pestaña "Completados"). |
+| `/mechanic/{standard,pm}/completed` | Pestaña "Completados": Standard lista los Jobs que ese mecánico completó (el Work Order puede seguir abierto); PM lista los servicios de PM terminados (LTR-189 W11). |
 
 ### Todos
 `/login`, `/reset-password`, `/access-denied`.

@@ -8,13 +8,16 @@ import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { useWorkOrders } from '@/lib/shop-data';
+import { myCompletedJobs } from '@/lib/my-completed-jobs';
+import { statusLabel } from '@/lib/format';
 import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
 import { SessionSignInFallback } from './session-sign-in-fallback';
+import { Check } from 'lucide-react';
 import { Card, CardListSkeleton, EmptyState, HomeTopBar, LoadFailure, PageHeader } from './ui';
 
 /** LTR-133: completed work has its own screen in both mechanic workspaces. */
 export function MechanicCompletedPage({ mode }: { mode: MechanicMode }) {
-  const { token, sessionLoading } = useAuth();
+  const { token, sessionLoading, user } = useAuth();
   const { messages } = useShopLocale();
   const router = useRouter();
   const isPm = mode === MechanicMode.PM;
@@ -26,15 +29,43 @@ export function MechanicCompletedPage({ mode }: { mode: MechanicMode }) {
   if (!sessionLoading && !token) return <SessionSignInFallback />;
 
   const completed = data?.completed ?? [];
+  // LTR-189 (W11): a Standard mechanic sees the Jobs they completed (the Work Order may still be open);
+  // the PM workspace keeps listing finished PM services.
+  const myGroups = isPm ? [] : myCompletedJobs(data, user?.id ?? '');
+  const isEmpty = isPm ? !completed.length : !myGroups.length;
   return (
     <div>
       <HomeTopBar mode={mode} />
       <PageHeader className="mb-6" title={messages.mechanicCompletedTitle} subtitle={messages.mechanicCompletedSubtitle} />
       {error ? <LoadFailure message={messages.unableToLoadWorkOrders} onRetry={() => void mutate()} retryLabel={messages.retry} /> : null}
       {!data && !error ? <CardListSkeleton /> : null}
-      {data && !completed.length ? <EmptyState>{messages.noCompletedWork}</EmptyState> : null}
+      {data && isEmpty ? <EmptyState>{messages.noCompletedWork}</EmptyState> : null}
+      {isPm ? null : (
+        <ul className="space-y-2">
+          {myGroups.map(({ wo, jobs }) => (
+            <li key={wo.id}>
+              <Link href={`/work-orders/${wo.id}`} className="block">
+                <Card className="p-3 transition hover:border-primary/50">
+                  <p className="font-display text-lg font-semibold">{messages.truckTitle(wo.truckNumber)}</p>
+                  {vehicleLine(wo.truckVehicle) ? <p className="text-sm text-shop-muted">{vehicleLine(wo.truckVehicle)}</p> : null}
+                  <p className="mt-1 text-sm text-shop-muted">{messages.workOrder} {wo.displayId} · {messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}</p>
+                  <ul className="mt-2 space-y-1">
+                    {jobs.map((job) => (
+                      <li key={job.id} className="flex items-center gap-2 text-sm">
+                        <Check aria-hidden="true" className="size-4 shrink-0 text-success" />
+                        <span>{job.displayName}</span>
+                        <span className="text-shop-muted">· {job.category.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
       <ul className="space-y-2">
-        {completed.map((wo) => {
+        {(isPm ? completed : []).map((wo) => {
           const pmJob = isPm && wo.primaryCategoryName !== 'PM' ? wo.pmJob : null;
           const description = pmJob
             ? messages.pmJobOnWorkOrder(pmJob.displayName, wo.displayId)
