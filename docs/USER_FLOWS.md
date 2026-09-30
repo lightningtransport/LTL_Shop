@@ -23,8 +23,8 @@ La columna **Fila** es el número de la prueba que lo comprueba
 (`apps/api/test-real/`, resultados en `apps/api/test-real/results/matrix.md`).
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
-**Resultado de la auditoría:** 56 comprobaciones · 43 funcionan · 11 fallan
-(5 defectos) · 2 no aplican.
+**Resultado de la auditoría:** 56 comprobaciones · 47 funcionan · 7 fallan
+(4 defectos) · 2 no aplican.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
 respuestas confirman lo construido y 7 muestran huecos (sección 8).
@@ -180,8 +180,8 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Flujo normal (algún mecánico hizo Start) | QC → Close → Ready to Go → Return to Service | ✅ | A13a, A14 |
 | Cierra con Jobs pendientes | No deja | ✅ | A13a |
 | Completa Jobs él mismo desde Admin | Los completa (menos el PM, que se termina desde su pantalla) | ✅ | A12 |
-| **Solo trabajó el mecánico PM y el Manager completó el resto** (caso WO-009) | **El siguiente paso ofrece "Close" pero el sistema lo rechaza. Sin salida.** | ❌ #1 · LTR-175 | A13b |
-| Completa un Job en un Work Order que nadie empezó | **El Work Order sigue en "created"** | ❌ #1 · LTR-175 | A12b |
+| **Solo trabajó el mecánico PM y el Manager completó el resto** (caso WO-009) | Se cierra igual que cualquier otro | ✅ | A13b |
+| Completa un Job en un Work Order que nadie empezó | El Work Order pasa a "en curso" | ✅ | A12b |
 | Devuelve a servicio con el Work Order abierto o cancelado | No deja | ✅ | A14, E15 |
 | Devuelve a servicio dos veces | No deja | ✅ | A14 |
 | Mira la **lista** de Trucks o de Work Orders con un camión Ready to Go | **La lista de Trucks dice "crear Work Order" y la de Work Orders no dice nada**; el Truck y el Yard sí dicen "Return to Service" | ❌ #7 · LTR-182 | A19b |
@@ -202,7 +202,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Reabre un Work Order completado | Vuelve a "en curso"; los Jobs siguen hechos; se puede volver a cerrar | ✅ | A17 |
 | Reabre un Work Order cancelado que nunca empezó | Vuelve a "created"; el mecánico puede hacer Start | ✅ | A17 |
 | Reabre cuando el camión ya tiene otro Work Order abierto | No deja | ✅ | A17 |
-| Reabre uno que nunca empezó y tiene todo hecho | **No se puede cerrar** (mismo problema de WO-009) | ❌ #1 · LTR-175 | A17b |
+| Reabre uno que nunca empezó y tiene todo hecho | Se puede cerrar | ✅ | A17b |
 | Cancela o cierra algo ya completado o ya cancelado | No deja | ✅ | E15 |
 | Dos Managers cambian el mismo Work Order a la vez | Gana el primero; el segundo recibe aviso y no pisa nada | ✅ | E3 |
 
@@ -326,7 +326,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | El camión ya tiene Work Order abierto | Se une a ese; no crea otro | ✅ | A9 |
 | El camión no tiene Work Order | Crea el Work Order completo con los 4 pasos | ✅ | A10 |
 | Arranca el PM | El PM queda suyo aunque el dueño por defecto fuera otro | ✅ | A9 |
-| Arranca el PM y nadie más ha hecho Start | **El Work Order sigue en "created" y su tiempo no se registra** (origen del caso WO-009) | ❌ #1 · LTR-175 | A9b |
+| Arranca el PM y nadie más ha hecho Start | El Work Order pasa a "en curso"; su reloj corre y se detiene al terminar | ✅ | A9b |
 | Millaje menor que el del camión | No deja | ✅ | E11 |
 | Millaje con un salto de más de 50 000 | Pide confirmar | ✅ | E11 |
 | Finish sin millaje o sin partes | No deja | ✅ | E11 |
@@ -437,7 +437,6 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
-| 1 | Un Work Order se queda en "created" si solo trabajó el PM o el Manager; no se puede cerrar | Manager, PM | **B** | LTR-175 | A9b, A12b, A13b, A17b |
 | 2 | Los bloqueos quedan vivos al cancelar o completar | Manager | **B** | LTR-176 | A15b, A16b, A16c |
 | 4 | El Work Order nuevo hereda la inspección de la visita anterior | Manager | **B** | LTR-177 | A15c, E14b |
 | 7 | Las listas no dicen "Return to Service" para un camión Ready to Go | Manager | C | LTR-182 | A19b |

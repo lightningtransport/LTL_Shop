@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 43 · FALLA 11 · NO APLICA 2 · SIN PROBAR 0
+PASA 47 · FALLA 7 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -13,22 +13,22 @@ PASA 43 · FALLA 11 · NO APLICA 2 · SIN PROBAR 0
 | A7 | MECH03: reportar bloqueo → notas → Manager resuelve → Continue | PASA |
 | A8 | M03: pausa oficial → cierra sesiones → Resume reabre las mismas | PASA |
 | A9 | PM: Create PM service se une al WO abierto; millaje; partes; Finish actualiza millaje | PASA |
-| A9b | Arrancar el PM pone el WO en curso y registra el tiempo del mecánico PM [defecto #1] | **FALLA** — estado del WO al arrancar el PM: se esperaba "in_progress", llegó "created" |
+| A9b | Arrancar el PM pone el WO en curso y registra el tiempo del mecánico PM [defecto #1] | PASA |
 | A10 | PM: Create PM service en Truck sin WO → WO completo con los 4 pasos | PASA |
 | A11 | PM: bloquear el PM; D2 un PM en curso por mecánico; cambio PM A ↔ PM B | PASA |
 | A12 | M04: Manager completa Jobs desde Admin ("Mark complete") | PASA |
-| A12b | Si el Manager completa un Job, el WO deja de estar "created" [defecto #1] | **FALLA** — estado del WO: se esperaba "in_progress", llegó "created" |
+| A12b | Si el Manager completa un Job, el WO deja de estar "created" [defecto #1] | PASA |
 | A13a | M04: QC "Mark complete" → Ready to close → Close WO (un mecánico hizo Start) | PASA |
-| A13b | M04: Close WO cuando nadie hizo Start (PM + Manager) — caso WO-009 [defecto #1] | **FALLA** — Close Work Order: POST /admin/work-orders/:id/complete → 400 {"message":"Work Order must be in progress to finish"} |
+| A13b | M04: Close WO cuando nadie hizo Start (PM + Manager) — caso WO-009 [defecto #1] | PASA |
 | A14 | M04: Ready to Go → Return to Service desde Truck, WO y Yard | PASA |
 | A15 | Cancelar WO (con motivo) → cierra sesiones y pausas; el Truck queda libre | PASA |
-| A15b | Cancelar un WO con un Job bloqueado resuelve el bloqueo [defecto #2] | **FALLA** — bloqueos activos: se esperaba null, llegó {"id":"45e7e3a2-2877-4e84-a8e9-58a9b1dad9ae","jobId":"3c46ef2f-2d6b-4edd-bc5c-a60d26b09b08","blockerReason":"waiting_for_parts"} |
+| A15b | Cancelar un WO con un Job bloqueado resuelve el bloqueo [defecto #2] | **FALLA** — bloqueos activos: se esperaba null, llegó {"id":"1012be0c-7b1b-4c24-b917-ae46319bf14b","jobId":"c62b584c-b086-4125-9527-75a6c587bc9e","blockerReason":"waiting_for_parts"} |
 | A15c | Tras cancelar, el siguiente WO del Truck empieza con la inspección pendiente [defecto #4] | **FALLA** — inspección del WO nuevo: se esperaba "not_started", llegó "no_issues_found" |
 | A16 | Cancelar Job / reabrir Job; paso con todos sus Jobs cancelados = no aplica | PASA |
-| A16b | Completar desde Admin un Job bloqueado no deja el bloqueo vivo [defecto #2] | **FALLA** — bloqueos activos: se esperaba null, llegó {"id":"f2ff8923-7759-42c4-8eea-3c6fccce0d7a","jobId":"d1a240fd-db5e-4443-86ee-cebe6a00e027","blockerReason":"waiting_for_parts"} |
-| A16c | Cancelar un Job bloqueado resuelve su bloqueo [defecto #2] | **FALLA** — bloqueos activos: se esperaba null, llegó {"id":"b6882c16-0585-4d00-b9aa-7ebead0e826d","jobId":"c4a10eba-4f42-482f-a04d-7b420f2d1899","blockerReason":"waiting_for_parts"} |
+| A16b | Completar desde Admin un Job bloqueado no deja el bloqueo vivo [defecto #2] | **FALLA** — bloqueos activos: se esperaba null, llegó {"id":"9706deaa-e135-444b-993c-eca9845cd4ac","jobId":"872f046d-1c9f-4ada-893e-ce85bfd7f29a","blockerReason":"waiting_for_parts"} |
+| A16c | Cancelar un Job bloqueado resuelve su bloqueo [defecto #2] | **FALLA** — bloqueos activos: se esperaba null, llegó {"id":"3078aaaf-14f8-44ed-86cd-5487cd9e70da","jobId":"ba86a2f8-5286-4496-aa4d-268104a0b4f7","blockerReason":"waiting_for_parts"} |
 | A17 | Reabrir WO completado/cancelado → in_progress o created | PASA |
-| A17b | Reabrir un WO que nunca empezó, con todos los Jobs hechos: se puede cerrar [defecto #1] | **FALLA** — Close Work Order: POST /admin/work-orders/:id/complete → 400 {"message":"Work Order must be in progress to finish"} |
+| A17b | Reabrir un WO que nunca empezó, con todos los Jobs hechos: se puede cerrar [defecto #1] | PASA |
 | A18 | "Agregar pasos que faltan" en WO viejo | PASA |
 | A19 | Siguiente paso: todas las pantallas dicen lo mismo en cada etapa de un WO | PASA |
 | A19b | Siguiente paso de un Truck Ready to Go: igual en Truck, WO, listas y Yard [defecto #7] | **FALLA** — Ready to Go: las pantallas no dicen el mismo siguiente paso {"truck":"return_to_service","workOrder":"return_to_service","workOrderList":null,"truckList":"create_work_order","yard":"return_to_service"} |
@@ -50,7 +50,7 @@ PASA 43 · FALLA 11 · NO APLICA 2 · SIN PROBAR 0
 | E7 | Un mecánico Standard puede tener trabajo en curso en dos Trucks a la vez (decisión 2026-09-25, LTR-125) | PASA |
 | E8 | Quitar o cambiar el dueño de un Job en curso detiene el tiempo de ese mecánico | PASA |
 | E9 | Asignar a quien no corresponde | PASA |
-| E9b | Quality Check no acepta dueño (D15) [defecto #8] | **FALLA** — asignar Quality Check: se esperaba 400; POST /admin/work-orders/:id/jobs/:id/assign → 201 {"id":"bda131c7-bfc6-4834-a678-23b6a6751136","displayId":"WO-001","truck":{"id":"fe265159-a018-439e-847d-517eb73015b3","truckNumber":"905","make":"Volvo","model":"VNL 860","year":2025,"mileage":142500,"company":"Lightning","owner":"Carlos","vin":null,"location":null,"locationUpdatedOn":null},"catego |
+| E9b | Quality Check no acepta dueño (D15) [defecto #8] | **FALLA** — asignar Quality Check: se esperaba 400; POST /admin/work-orders/:id/jobs/:id/assign → 201 {"id":"7a5ce6d3-b0e6-4691-aa43-b7b9b08e1c62","displayId":"WO-001","truck":{"id":"fe265159-a018-439e-847d-517eb73015b3","truckNumber":"905","make":"Volvo","model":"VNL 860","year":2025,"mileage":143600,"company":"Lightning","owner":"Carlos","vin":null,"location":null,"locationUpdatedOn":null},"catego |
 | E10 | Bloqueo: motivos que no son bloqueo, Job ajeno, Job terminado | PASA |
 | E11 | PM: millaje menor, salto grande, terminar sin millaje o sin partes (D10) | PASA |
 | E12 | Agregar trabajo a un Truck sin WO abierto crea el WO completo | PASA |

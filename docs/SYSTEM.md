@@ -84,18 +84,20 @@ Un WO es **toda la intervención de un Truck**. Solo puede haber **un WO
 abierto por Truck**.
 
 ```
-created ──(mecánico Standard: Start)──▶ in_progress ◀──▶ waiting_paused (pausa oficial del Manager)
+created ──(Start del mecánico, arranque del PM o Job completado por el Manager)──▶ in_progress ◀──▶ waiting_paused (pausa oficial del Manager)
                                    │
                                    ├──(Manager: Close, sin Jobs pendientes)──▶ completed
    cualquier estado abierto ──(Manager: Cancel con motivo)──▶ cancelled
    completed / cancelled ──(admin: Reopen con motivo)──▶ in_progress (o created si nunca empezó)
 ```
 
-- `created` → `in_progress`: **solo** cuando un mecánico Standard toca
-  Start/Continue. Arrancar o terminar el PM **no** mueve el WO ni abre sesión
-  de trabajo, y completar Jobs desde Admin tampoco. El Manager no tiene botón
-  de Start (ver defecto #1 en `OPEN_ISSUES.md`).
-- Close exige `in_progress` y ningún Job en `to_do`.
+- `created` → `in_progress`: cuando empieza el trabajo, sea quien sea:
+  un mecánico Standard toca Start/Continue, el mecánico PM arranca el PM, o
+  el Manager completa un Job desde Admin (LTR-175). El Manager no tiene
+  botón de Start; no le hace falta.
+- Un WO que sigue en `created` sin ningún Job pendiente también se puede
+  cerrar (por ejemplo, uno reabierto que nunca tuvo Start).
+- Close exige `in_progress` (o `created`) y ningún Job en `to_do`.
 - Reopen (quien tenga `admin.access`, Manager incluido) solo si el Truck no
   tiene otro WO abierto.
 - Completar un Job **no** completa el WO. WO `completed`, Ready to Go y
@@ -136,8 +138,8 @@ created ──(mecánico Standard: Start)──▶ in_progress ◀──▶ wait
   suma de las sesiones.
 - Un mecánico Standard puede tener sesiones abiertas en varios WOs a la vez
   (D2); el mecánico PM solo un PM en curso.
-- Arrancar o terminar el PM **no** abre sesión (defecto #1): hoy el tiempo
-  del PM no se registra.
+- Arrancar el PM abre la sesión del mecánico PM y terminarlo la cierra
+  (LTR-175): el tiempo del PM se registra como el de cualquier mecánico.
 - Se abre con Start/Continue mientras el mecánico tenga un Job pendiente.
 - Se cierra cuando el mecánico completa, pierde o bloquea su último Job
   disponible en ese WO ("Terminaste tu parte").
@@ -233,6 +235,8 @@ agregue.
 4. **Finish**: actualiza el millaje del Truck y escribe la auditoría.
    **No** completa el WO; el resto de los pasos sigue.
 
+- Arrancar el PM pone el WO en curso y abre el reloj del mecánico PM;
+  Finish lo detiene.
 - Un solo PM en curso por mecánico PM (D2).
 - Puede cambiar PM A ↔ PM B y bloquear su PM (lo resuelve el Manager).
 - El PM dentro del WO no tiene pausa.

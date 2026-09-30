@@ -1039,7 +1039,9 @@ export class AdminService {
         if (replay) return replay;
         const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!wo) throw new NotFoundException('Work Order not found');
-        if (wo.status !== WorkOrderStatus.in_progress) {
+        // LTR-175: a Work Order whose Jobs were all done by the PM mechanic or by
+        // the Manager may still be `created`; with nothing pending it closes too.
+        if (wo.status !== WorkOrderStatus.in_progress && wo.status !== WorkOrderStatus.created) {
           throw new BadRequestException('Work Order must be in progress to finish');
         }
         if (wo.version !== input.expectedVersion) {
@@ -1072,6 +1074,7 @@ export class AdminService {
           where: { id: workOrderId, version: input.expectedVersion },
           data: {
             status: WorkOrderStatus.completed,
+            startedAt: wo.startedAt ?? now,
             completedAt: now,
             completedById: user.id,
             totalActiveLaborMs: BigInt(totals.totalActiveLaborMs),
@@ -1679,9 +1682,14 @@ export class AdminService {
             message: 'The PM job is completed from the PM service with observed mileage and parts.',
           });
         }
+        // LTR-175: work is happening on this Work Order, so it is no longer "created".
+        const now = new Date();
+        const startsWorkOrder = wo.status === WorkOrderStatus.created;
         const incremented = await tx.workOrder.updateMany({
           where: { id: workOrderId, version: input.expectedVersion },
-          data: { version: { increment: 1 } },
+          data: startsWorkOrder
+            ? { status: WorkOrderStatus.in_progress, startedAt: now, version: { increment: 1 } }
+            : { version: { increment: 1 } },
         });
         if (incremented.count !== 1) {
           throw this.versionConflict('Work Order was updated. Refresh and try again.');
@@ -1690,7 +1698,7 @@ export class AdminService {
           where: { id: jobId },
           data: {
             status: JobStatus.completed,
-            completedAt: new Date(),
+            completedAt: now,
             completedById: user.id,
             cancelledAt: null,
             cancelledReason: null,
@@ -1706,6 +1714,17 @@ export class AdminService {
           newValue: { status: JobStatus.completed, displayName: job.displayName, notes },
           relevantValue: { action: 'job_completed', displayName: job.displayName, notes, actor: 'admin' },
         });
+        if (startsWorkOrder) {
+          await this.activity.log(tx, {
+            workOrderId,
+            eventType: SharedActivityEventType.WORK_STARTED,
+            entityType: 'work_order',
+            entityId: workOrderId,
+            userId: user.id,
+            previousValue: { status: WorkOrderStatus.created },
+            newValue: { status: WorkOrderStatus.in_progress, startedAt: now.toISOString() },
+          });
+        }
         await stopLaborForMechanic(tx, workOrderId, job.assignedMechanicId);
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,

@@ -1135,7 +1135,8 @@ createServer(async (request, response) => {
     const body = await readJson(request);
     if (!summary) { json(response, 404, { message: 'Work Order not found' }); return; }
     if (!body?.idempotencyKey) { json(response, 400, { message: 'An idempotency key is required.' }); return; }
-    if (summary.status !== 'in_progress') {
+    // LTR-175: a `created` Work Order with every Job done closes too.
+    if (summary.status !== 'in_progress' && summary.status !== 'created') {
       json(response, 400, { message: 'Work Order must be in progress to finish' });
       return;
     }
