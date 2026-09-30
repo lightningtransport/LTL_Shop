@@ -161,7 +161,9 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - Se abre con Start/Continue mientras el mecánico tenga un Job pendiente.
 - Se cierra cuando el mecánico completa, pierde o bloquea su último Job
   disponible en ese WO ("Terminaste tu parte").
-- El admin puede corregir una sesión o pausa cerrada, con motivo.
+- El admin puede corregir una sesión o pausa cerrada, con motivo. Cada sesión
+  dice de qué mecánico es y el detalle Admin muestra el tiempo por mecánico
+  (LTR-184).
 
 ### PM service (`pm_services`, `pm_service_parts`)
 - Borrador (millaje observado, partes, notas) mientras el PM está abierto;
