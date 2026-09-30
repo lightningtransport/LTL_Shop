@@ -10,6 +10,8 @@ import type { AdminMessages } from '@/lib/admin-messages';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
 
 const catalogCopy = (messages: AdminMessages) => ({
+  locale: messages.locale,
+  apiError: messages.apiError,
   forbidden: messages.catalogWriteForbidden,
   conflict: messages.catalogWriteConflict,
   failed: messages.catalogWriteFailed,

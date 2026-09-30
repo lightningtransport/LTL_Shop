@@ -1,7 +1,12 @@
+import { API_ERROR_COPY } from './api-error-copy';
+
 export type AdminLocale = 'en' | 'es';
 
 const messages = {
   en: {
+    // LTR-181: `locale` and `apiError` let apiErrorMessage() read this catalog like the mechanic one.
+    locale: 'en',
+    apiError: API_ERROR_COPY.en,
     title: 'Shop Operations',
     description: 'Secure manager workspace for the Lightning Shop.',
     dashboard: 'Dashboard',
@@ -619,6 +624,8 @@ const messages = {
     workPlanPmOpenConflict: 'This Truck has an open PM Work Order. Finish or cancel it before adding Standard Work Plan Jobs.',
   },
   es: {
+    locale: 'es',
+    apiError: API_ERROR_COPY.es,
     title: 'Operaciones del Shop',
     description: 'Espacio seguro para el equipo de gestión del Lightning Shop.',
     dashboard: 'Operaciones',

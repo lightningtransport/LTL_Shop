@@ -1,5 +1,6 @@
 import { UserRole, type UserDto } from '@ltl-shop/shared';
 import { ApiError } from './api';
+import { apiErrorMessage, type ApiErrorCatalog } from './api-error-message';
 
 /** System Admin is `role === admin`. Shop Manager also has `admin.access`. */
 export function isSystemAdminRole(role: string | null | undefined): boolean {
@@ -31,12 +32,16 @@ export function isRosterEmail(value: string): boolean {
 
 export function adminWriteFailureMessage(
   error: unknown,
-  copy: { forbidden: string; conflict: string; failed: string },
+  copy: { forbidden: string; conflict: string; failed: string } & Partial<ApiErrorCatalog>,
 ): string {
   if (error instanceof ApiError) {
     if (error.status === 403) return copy.forbidden;
     if (error.status === 409) return copy.conflict;
-    if (error.status === 400 && error.message) return error.message;
+    if (error.status === 400) {
+      // LTR-181: with the catalog, known codes are localized and Spanish never shows the raw API text.
+      if (copy.locale && copy.apiError) return apiErrorMessage(error, { locale: copy.locale, apiError: copy.apiError }, copy.failed);
+      if (error.message) return error.message;
+    }
   }
   return copy.failed;
 }

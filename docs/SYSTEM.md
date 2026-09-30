@@ -394,6 +394,14 @@ La interfaz está en inglés y español (catálogos en
 reglas de términos en `design-system/glossary-en-es.md`). En español:
 **el Work Order** (masculino); el Admin dice "Trucks" y la app del mecánico
 "unidad"; los pasos se llaman Alineación, Detallado y Control de calidad.
+Todo texto de la UI vive en esos dos catálogos: ningún componente escribe
+`locale === 'es' ? … : …` (las etiquetas `Intl` salen de `intlLocale()` en
+`shop-locale.ts`). La API habla solo inglés; sus errores se muestran con
+`apiErrorMessage()` (`lib/api-error-message.ts`), que mapea cada `code` de la
+API a una frase EN/ES (`lib/api-error-copy.ts`, expuesto como `apiError` en
+los dos catálogos), usa la copia de red/timeout y, si no hay código, cae al
+respaldo del catálogo (el texto crudo solo se ve en inglés). Los errores de
+Supabase Auth se mapean igual (`authErrorMessage()`). *(LTR-181.)*
 
 **App instalada (PWA):** una sola app para todos los roles, nombre "Lightning
 Shop" ("LTL Shop" bajo el ícono), ícono verde con rayo (incluye versión

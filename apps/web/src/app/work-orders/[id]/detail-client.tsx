@@ -19,6 +19,7 @@ import { useActionToast } from '@/components/action-toast';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import { useShopLocale } from '@/lib/locale-context';
 import { formatShopDateTime, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
@@ -128,7 +129,7 @@ export default function WorkOrderDetailPage() {
       if (snapshot && optimisticUpdate) {
         await mutateWorkOrder(snapshot, { revalidate: false });
       }
-      setError(e instanceof Error ? e.message : 'Action failed');
+      setError(apiErrorMessage(e, messages, messages.actionFailed));
       return false;
     } finally {
       setBusy(false);
@@ -155,7 +156,7 @@ export default function WorkOrderDetailPage() {
       );
     }
     if (loadError instanceof Error) {
-      return <LoadFailure message={loadError.message} onRetry={() => void mutateWorkOrder()} retryLabel={messages.retryWorkOrder} />;
+      return <LoadFailure message={apiErrorMessage(loadError, messages, messages.loadError)} onRetry={() => void mutateWorkOrder()} retryLabel={messages.retryWorkOrder} />;
     }
     return <PageSkeleton label={messages.loadingWorkOrder} />;
   }

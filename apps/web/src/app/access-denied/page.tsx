@@ -1,17 +1,19 @@
 'use client';
 
 import { AuthBrandHeader, AppHeaderActions, Card } from '@/components/ui';
+import { useShopLocale } from '@/lib/locale-context';
 
 export default function AccessDeniedPage() {
+  const { messages } = useShopLocale();
   return (
     <div>
       <div className="mb-4 flex justify-end"><AppHeaderActions /></div>
       <AuthBrandHeader
-        title="Shop access unavailable"
-        subtitle="Your account is active, but it does not have access to a Shop workspace. Contact a Shop administrator."
+        title={messages.accessDeniedTitle}
+        subtitle={messages.accessDeniedSubtitle}
       />
       <Card className="text-sm text-muted-foreground">
-        No operational data was opened. You can sign out from the profile menu and use another account.
+        {messages.accessDeniedBody}
       </Card>
     </div>
   );

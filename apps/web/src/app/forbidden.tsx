@@ -12,11 +12,11 @@ export default function Forbidden() {
       <Card className="w-full text-center">
         <CardHeader>
           <ShieldX aria-hidden="true" className="mx-auto size-10 text-destructive-text" />
-          <CardTitle className="mt-3">{messages.locale === 'es' ? 'Acceso a Shop Admin denegado' : 'Shop Admin access denied'}</CardTitle>
-          <CardDescription>{messages.locale === 'es' ? 'Tu cuenta no tiene permiso para abrir el espacio administrativo.' : 'Your account does not have permission to open the administrative workspace.'}</CardDescription>
+          <CardTitle className="mt-3">{messages.forbiddenTitle}</CardTitle>
+          <CardDescription>{messages.forbiddenBody}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild className="w-full"><Link href="/">{messages.locale === 'es' ? 'Volver al Inicio de mecánicos' : 'Return to mechanic Home'}</Link></Button>
+          <Button asChild className="w-full"><Link href="/">{messages.forbiddenBack}</Link></Button>
         </CardContent>
       </Card>
     </main>

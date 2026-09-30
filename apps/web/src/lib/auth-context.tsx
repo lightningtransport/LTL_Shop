@@ -12,6 +12,8 @@ import {
 import { AppCapability, type UserDto } from '@ltl-shop/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError, apiFetch, AUTH_TOKEN_KEY, setAuthToken } from './api';
+import { apiErrorMessage, authErrorMessage, UserFacingError } from './api-error-message';
+import { useShopLocale } from './locale-context';
 import {
   fetchWithDeadline,
   PROFILE_RESTORE_TIMEOUT_MS,
@@ -21,6 +23,7 @@ import {
 import {
   policyRequiresPasswordChange,
   readPasswordChangeResolved,
+  updatePasswordSheetCopy,
   writePasswordChangeResolved,
 } from './password-change-prompt';
 import { passwordResetRedirectUrl } from './site-url';
@@ -76,6 +79,10 @@ function browserSessionStorage() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // LTR-181: errors the screens show come from the catalog. A ref keeps the callbacks stable.
+  const { messages } = useShopLocale();
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const [user, setUser] = useState<UserDto | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -159,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // closed when the secure session cannot be established.
           setUser(res.user);
           if (!serverSession.ok && res.user.capabilities.includes(AppCapability.ADMIN_ACCESS)) {
-            throw new Error('Unable to establish the secure application session.');
+            throw new UserFacingError(messagesRef.current.secureSessionFailed);
           }
           return res.user;
         } catch (profileError) {
@@ -167,11 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (profileError instanceof ApiError && [401, 403].includes(profileError.status)) {
             void clearSession();
           } else {
-            setSessionError(
-              profileError instanceof Error
-                ? profileError.message
-                : 'Unable to restore your profile. Please try again.',
-            );
+            setSessionError(apiErrorMessage(profileError, messagesRef.current, messagesRef.current.profileRestoreFailed));
           }
           throw profileError;
         } finally {
@@ -229,10 +232,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (canUseSupabase()) {
-          const supabase = await withDeadline(getSupabaseClient(), SESSION_RESTORE_TIMEOUT_MS);
+          const supabase = await withDeadline(getSupabaseClient(), SESSION_RESTORE_TIMEOUT_MS, messagesRef.current.sessionRestoreTimedOut);
           const {
             data: { session },
-          } = await withDeadline(supabase.auth.getSession(), SESSION_RESTORE_TIMEOUT_MS);
+          } = await withDeadline(supabase.auth.getSession(), SESSION_RESTORE_TIMEOUT_MS, messagesRef.current.sessionRestoreTimedOut);
 
           if (session?.access_token) {
             applyToken(session.access_token);
@@ -261,11 +264,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Background Supabase restore must not hide the login form. Only keep an
         // error when a saved app token still needs a visible retry.
         if (!cancelled && saved) {
-          setSessionError(
-            initError instanceof Error
-              ? initError.message
-              : 'Unable to restore your session. Please try again.',
-          );
+          // withDeadline already rejects with catalog copy; anything else gets the generic sentence.
+          setSessionError(apiErrorMessage(initError, messagesRef.current, messagesRef.current.sessionRestoreFailed));
         }
       } finally {
         if (!cancelled) setSessionLoading(false);
@@ -293,7 +293,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
       if (authError || !data.session) {
-        throw new Error(authError?.message ?? 'Sign in failed');
+        throw new UserFacingError(authErrorMessage(authError, messagesRef.current, messagesRef.current.signInFailed));
       }
       return loadProfile(data.session.access_token);
     },
@@ -316,7 +316,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: passwordResetRedirectUrl(window.location.origin),
     });
-    if (authError) throw new Error(authError.message);
+    if (authError) throw new UserFacingError(authErrorMessage(authError, messagesRef.current, messagesRef.current.resetEmailFailed));
   }, []);
 
   const updatePassword = useCallback(async (password: string) => {
@@ -325,7 +325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const supabase = await getSupabaseClient();
     const { error: authError } = await supabase.auth.updateUser({ password });
-    if (authError) throw new Error(authError.message);
+    if (authError) throw new UserFacingError(authErrorMessage(authError, messagesRef.current, updatePasswordSheetCopy(messagesRef.current.locale).unable));
     setPasswordRecovery(false);
     markPasswordChangeResolved();
   }, [markPasswordChangeResolved]);
@@ -336,7 +336,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (canUseSupabase()) {
         const supabase = await getSupabaseClient();
         const { error: authError } = await supabase.auth.signOut();
-        if (authError) throw new Error(authError.message);
+        if (authError) throw new UserFacingError(messagesRef.current.signOutFailed);
       }
     } finally {
       await cleared;

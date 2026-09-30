@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppCapability } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { replaceAppLocation } from '@/lib/session-restore';
@@ -17,10 +18,6 @@ import { SessionSignInFallback } from './session-sign-in-fallback';
 import {
   Badge, Button, Card, CardListSkeleton, EmptyState, HomeTopBar, InlineAlert, Label, LoadFailure, Modal, PageHeader, Textarea,
 } from './ui';
-
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
 
 /** LTR-185 / D19: Safety takes a truck ready for Quality Check and approves it or returns it with a note. */
 export function QualityCheckPage() {
@@ -63,7 +60,7 @@ export function QualityCheckPage() {
         setNote('');
       }
     } catch (caught) {
-      setActionError(errorMessage(caught, t.loadError));
+      setActionError(apiErrorMessage(caught, messages, t.loadError));
       void mutate();
     } finally {
       setBusy(null);

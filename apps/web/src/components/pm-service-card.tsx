@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { checkPmObservedMileage, type PmServiceDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
+import { intlLocale } from '@/lib/shop-locale';
 import { formatMileage } from '@/lib/format';
 import { pmSaveStatus } from '@/lib/pm-save-status';
 import { shopKeys, usePmService } from '@/lib/shop-data';
@@ -308,7 +309,7 @@ export function PmServiceCard({
 
 function CompletedPmSummary({ data }: { data: PmServiceDto }) {
   const { messages } = useShopLocale();
-  const dateFormat = new Intl.DateTimeFormat(messages.locale === 'es' ? 'es-US' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  const dateFormat = new Intl.DateTimeFormat(intlLocale(messages.locale), { dateStyle: 'medium', timeStyle: 'short' });
   const usedParts = data.selections.flatMap((selection) => {
     const category = data.categories.find((item) => item.id === selection.partCategoryId);
     const part = category?.parts.find((item) => item.id === selection.partId);

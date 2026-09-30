@@ -1,6 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
+import { getShopCopy } from './locale-context';
 
 /** LTR-185 / D19: what the Safety workspace reads from GET /api/qc/queue. */
 export type QualityCheckItem = {
@@ -38,9 +39,10 @@ export function useQualityCheckQueue(enabled: boolean) {
 /** "hace 40 min" / "40 min ago" without a library: minutes, hours or days. */
 export function relativeTime(iso: string, locale: 'en' | 'es', now = Date.now()): string {
   const minutes = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
-  if (minutes < 60) return locale === 'es' ? `hace ${minutes} min` : `${minutes} min ago`;
+  const copy = getShopCopy(locale);
+  if (minutes < 60) return copy.relativeMinutesAgo(minutes);
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return locale === 'es' ? `hace ${hours} h` : `${hours} h ago`;
+  if (hours < 24) return copy.relativeHoursAgo(hours);
   const days = Math.round(hours / 24);
-  return locale === 'es' ? `hace ${days} d` : `${days} d ago`;
+  return copy.relativeDaysAgo(days);
 }

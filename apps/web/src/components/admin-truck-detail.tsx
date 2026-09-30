@@ -9,6 +9,7 @@ import {
 } from '@ltl-shop/shared';
 import { useSWRConfig } from 'swr';
 import { ApiError } from '@/lib/api';
+import { intlLocale } from '@/lib/shop-locale';
 import { isYardRelatedListKey } from '@/lib/swr-cache-keys';
 import { useAdminTruck } from '@/lib/admin-data';
 import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
@@ -99,7 +100,7 @@ function operationalStatusLabel(status: TruckOperationalStatus, messages: AdminM
 }
 
 function formatNumber(value: number | null, locale: AdminLocale, messages: AdminMessages) {
-  return value === null ? messages.noValue : new Intl.NumberFormat(locale === 'es' ? 'es-US' : 'en-US').format(value);
+  return value === null ? messages.noValue : new Intl.NumberFormat(intlLocale(locale)).format(value);
 }
 
 function Info({ label, value }: { label: string; value: string }) { return <div className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium">{value}</dd></div>; }

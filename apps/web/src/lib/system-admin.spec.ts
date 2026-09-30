@@ -1,5 +1,6 @@
 import { UserRole } from '@ltl-shop/shared';
 import { describe, expect, it } from 'vitest';
+import { getAdminMessages } from './admin-messages';
 import { ApiError } from './api';
 import { adminWriteFailureMessage, canShowAdminWrites, isRosterEmail, isSystemAdmin } from './system-admin';
 
@@ -53,5 +54,14 @@ describe('adminWriteFailureMessage', () => {
   it('keeps a 400 message and falls back otherwise', () => {
     expect(adminWriteFailureMessage(new ApiError('Enter a Job name.', 400, null), copy)).toBe('Enter a Job name.');
     expect(adminWriteFailureMessage(new Error('boom'), copy)).toBe('failed');
+  });
+
+  it('localizes a 400 through the catalog: known codes map, unmapped text stays raw only in English (LTR-181)', () => {
+    const es = { ...copy, locale: getAdminMessages('es').locale, apiError: getAdminMessages('es').apiError };
+    const en = { ...copy, locale: getAdminMessages('en').locale, apiError: getAdminMessages('en').apiError };
+    const codedFailure = new ApiError('That alias exists', 400, { code: 'CATALOG_ALIAS_EXISTS', message: 'That alias exists' });
+    expect(adminWriteFailureMessage(codedFailure, es)).toBe(getAdminMessages('es').apiError.CATALOG_ALIAS_EXISTS);
+    expect(adminWriteFailureMessage(new ApiError('Enter a Job name.', 400, null), es)).toBe('failed');
+    expect(adminWriteFailureMessage(new ApiError('Enter a Job name.', 400, null), en)).toBe('Enter a Job name.');
   });
 });

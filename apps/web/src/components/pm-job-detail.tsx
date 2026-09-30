@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useSWRConfig } from 'swr';
 import { BlockerReason, MECHANIC_BLOCKER_REASONS, MechanicMode, PauseReason, type WorkOrderDetailDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import { formatMileage, pauseLabel } from '@/lib/format';
 import { useShopLocale } from '@/lib/locale-context';
 import { shopKeys, useCatalogJobs } from '@/lib/shop-data';
@@ -66,7 +67,7 @@ export function PmJobDetail({
       void mutate(shopKeys.pmService(wo.id));
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed');
+      setError(apiErrorMessage(err, messages, messages.actionFailed));
     } finally {
       setBusy(false);
     }
@@ -209,8 +210,8 @@ export function PmJobDetail({
         {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
         <p className="mb-4 text-sm text-muted-foreground">
           {mileageChangesTruck
-            ? `This will update the truck mileage from ${formatMileage(wo.truck.mileage)} to ${formatMileage(mileage)} and create an audit record.`
-            : 'This will complete the PM service.'}
+            ? messages.pmFinishUpdatesMileage(formatMileage(wo.truck.mileage), formatMileage(mileage))
+            : messages.pmFinishCompletes}
         </p>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" disabled={busy} onClick={() => { if (!busy) setFinishOpen(false); }}>{messages.cancelAction}</Button>

@@ -10,6 +10,8 @@ import type { AdminMessages } from '@/lib/admin-messages';
 import { adminWriteFailureMessage, isRosterEmail } from '@/lib/system-admin';
 
 const rosterCopy = (messages: AdminMessages) => ({
+  locale: messages.locale,
+  apiError: messages.apiError,
   forbidden: messages.mechanicWriteForbidden,
   conflict: messages.mechanicWriteConflict,
   failed: messages.mechanicWriteFailed,
