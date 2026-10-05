@@ -261,6 +261,15 @@ export enum ShopWorkflowStepKey {
   QUALITY_CHECK = 'quality_check',
 }
 
+/**
+ * LTR-186: why the app closed a labor session. `day_close` = the shop's day close (D20);
+ * `switched_truck` = the mechanic started on another Truck (D21). Other closes have none.
+ */
+export enum WorkSessionEndReason {
+  DAY_CLOSE = 'day_close',
+  SWITCHED_TRUCK = 'switched_truck',
+}
+
 export enum WorkPlanMandatoryStatus {
   PENDING = 'pending',
   IN_PROGRESS = 'in_progress',

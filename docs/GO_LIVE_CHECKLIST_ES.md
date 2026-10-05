@@ -135,6 +135,22 @@ Nada de esto bloquea abrir el Shop de **camiones** como está hoy.
   verde en Vercel no prueba que la base se migró.
 - Catalogo y partes PM: aplicar por el path de release
   (`prisma:apply-catalog`), no con el seed completo de demo.
+- **Cierre del día y un reloj por mecánico (D20, D21, LTR-186):**
+  1. Aplicar la migración `20261005120000_day_close_ltr186` (aditiva:
+     `work_sessions.end_reason` y la tabla `shop_settings` con su fila
+     5:00 p.m., lunes a viernes) por el workflow de Release safety **antes**
+     de desplegar la API nueva.
+  2. Poner `CRON_SECRET` en el proyecto `ltl-shop-api` de Vercel (valor
+     largo y aleatorio, solo servidor; Vercel lo manda como
+     `Authorization: Bearer …` a los crons).
+  3. Desplegar la API: `apps/api/vercel.json` registra dos crons a
+     `/api/internal/day-close`, lunes a viernes 21:05 y 22:05 UTC (5:05 p.m.
+     en horario de verano y de invierno). Son respaldo: el cierre ya se
+     aplica solo al leer o escribir tiempos, y es idempotente.
+  4. Comprobar en Vercel → Settings → Cron Jobs que aparecen los dos y
+     correr uno a mano: responde `{ ok: true, closedSessions: … }`.
+  5. Confirmar con el Manager la hora y los días en Admin → Setup → Shop
+     workflow → Shop hours.
 
 ---
 

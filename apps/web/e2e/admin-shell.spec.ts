@@ -260,6 +260,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm completion' }).first()).toBeVisible();
     await page.getByTestId('admin-wo-history').locator('summary').click();
+    // LTR-186 / D20: a segment the day close stopped says so next to its end time.
+    await expect(page.getByTestId('labor-end-reason').first()).toHaveText('day close');
     await page.getByLabel('Time segment').selectOption({ index: 1 });
     await page.getByLabel('Corrected end time').fill('2026-09-06T17:00');
     await page.getByLabel('Reason for time correction').fill('Clock was wrong');

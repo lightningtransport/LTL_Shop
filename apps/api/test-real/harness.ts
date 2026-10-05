@@ -113,6 +113,12 @@ export async function resetDb() {
   for (const [stepKey, defaultMechanicId] of Object.entries(owners)) {
     await prisma.shopWorkflowStep.updateMany({ where: { stepKey }, data: { defaultMechanicId, active: true } });
   }
+  // LTR-186 / D20: shop hours back to 5:00 p.m., Monday–Friday.
+  await prisma.shopSettings.upsert({
+    where: { id: 1 },
+    update: { dayCloseMinutes: 17 * 60, workdays: [1, 2, 3, 4, 5], updatedById: null },
+    create: { id: 1, dayCloseMinutes: 17 * 60, workdays: [1, 2, 3, 4, 5] },
+  });
 }
 
 // ── Reads ────────────────────────────────────────────────────────────────────
@@ -256,6 +262,15 @@ export async function activeBlocker(workOrderId: string) {
   return prisma.pauseEvent.findFirst({
     where: { workOrderId, isOfficialPause: false, resolvedAt: null },
     select: { id: true, jobId: true, blockerReason: true },
+  });
+}
+
+/** LTR-186: every session of one mechanic, oldest first, with how it ended. */
+export async function sessionsOf(email: string) {
+  return prisma.workSession.findMany({
+    where: { userId: await userId(email) },
+    orderBy: { startedAt: 'asc' },
+    select: { id: true, workOrderId: true, startedAt: true, endedAt: true, endReason: true },
   });
 }
 

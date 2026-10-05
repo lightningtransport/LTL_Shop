@@ -181,8 +181,42 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 ### Tiempo de trabajo (`work_sessions`)
 - **Una sesión por mecánico** (`user_id`) (D18). El tiempo del WO es la
   suma de las sesiones.
-- Un mecánico Standard puede tener sesiones abiertas en varios WOs a la vez
-  (D2); el mecánico PM solo un PM en curso.
+- **Un solo reloj por mecánico (D21, LTR-186).** Un mecánico Standard puede
+  tener Jobs en varios WOs (D2), pero su reloj corre en uno solo: Start /
+  Continue en otro WO (también arrancar o continuar el PM) cierra su sesión
+  abierta en cualquier otro WO con `ended_at = ahora` y
+  `end_reason = switched_truck`. Ese WO no cambia (sus Jobs siguen como
+  estaban). Al volver, el mecánico ve "Tu reloj está en la unidad … · toca
+  Continuar" y Continue cierra el reloj del otro. Reanudar una pausa oficial
+  no le reabre el reloj a quien ya lo tiene corriendo en otro WO.
+- **Cierre del día (D20, LTR-186).** El taller trabaja lunes a viernes
+  hasta las 5:00 p.m. (America/New_York). Una sesión abierta se cierra sola
+  a las **5:00 p.m. del día en que arrancó** si ese día es hábil y arrancó
+  antes de esa hora; si arrancó después o en un día no hábil, a las
+  **11:59:59.999 p.m.** de ese día. Se guarda con `ended_at` = esa hora (no
+  la hora en que alguien mira) y `end_reason = day_close`. Al día siguiente
+  el mecánico toca Continue (su inicio dice "Ayer quedó en curso · toca
+  Continuar"). El Manager ajusta el tramo con la corrección de tiempo si
+  alguien se fue antes.
+  - **Sin programador:** la API corre en Vercel Functions, así que no hay
+    proceso de fondo. Cada lectura o escritura de tiempo (inicio y detalle
+    del mecánico, Start/Continue, completar, bloquear, pausa/reanudar,
+    acciones del Manager sobre el WO, detalle Admin, Work Plan, desactivar
+    personal) primero cierra las sesiones vencidas (`LaborClockService.
+    closeDue()`, `apps/api/src/work-orders/day-close.ts`). Es idempotente.
+  - **Respaldo:** Vercel Cron llama `GET /api/internal/day-close` con
+    `Authorization: Bearer $CRON_SECRET` lunes a viernes a las 21:05 y 22:05
+    UTC (cubre 5:00 p.m. en horario de verano e invierno). Sin la variable
+    o con otro secreto responde 503 / 401.
+  - **Horario del taller** (`shop_settings`, una fila): hora de cierre
+    (`day_close_minutes`, 17:00 por defecto) y días hábiles (`workdays`,
+    ISO lunes = 1). El Manager o el System Admin los cambia en Setup → Shop
+    workflow → Shop hours (`GET/PUT /api/admin/setup/shop-hours`); queda en
+    el Activity Log y aplica desde ese momento.
+- `end_reason` (`day_close`, `switched_truck`) solo lo pone la app; los
+  demás cierres quedan sin motivo. El detalle Admin lo muestra junto a la
+  hora de fin ("cierre del día" / "cambio de camión"); no es una alerta.
+- El mecánico PM solo tiene un PM en curso (D2).
 - Arrancar el PM abre la sesión del mecánico PM y terminarlo la cierra
   (LTR-175): el tiempo del PM se registra como el de cualquier mecánico.
 - Se abre con Start/Continue mientras el mecánico tenga un Job pendiente.
@@ -269,7 +303,8 @@ Jobs, agrupados por Truck) → abre el WO: ve "Your Jobs" y, en solo lectura,
 **MECH02 — Trabajar:** Start/Continue abre su sesión → cada Job suyo es una
 tarjeta con dos botones debajo, **Completar Job** (primario) y **Reportar
 bloqueo** (LTR-189 W12) → al terminar el último ve "Terminaste tu parte" y su
-tiempo se detiene.
+tiempo se detiene. Su reloj corre en un solo camión (D21) y se cierra
+solo a las 5:00 p.m. (D20); al volver toca Continue.
 
 **MECH03 — Bloqueo:** reporta un bloqueo en uno de sus Jobs → si no le queda
 otro Job disponible, su tiempo se detiene → solo puede agregar notas → el
@@ -289,7 +324,9 @@ agregue.
    **No** completa el WO; el resto de los pasos sigue.
 
 - Arrancar el PM pone el WO en curso y abre el reloj del mecánico PM;
-  Finish lo detiene.
+  Finish lo detiene. Si el cierre del día, otro camión o un bloqueo resuelto
+  detuvo su reloj, el PM job muestra **Continue** (`POST …/pm/start` sobre
+  un PM ya arrancado reabre su reloj; LTR-186).
 - Un solo PM en curso por mecánico PM (D2).
 - Puede cambiar PM A ↔ PM B ("Tipo de servicio") y bloquear su PM (lo
   resuelve el Manager). Deja notas y pide trabajo como cualquier mecánico
@@ -378,7 +415,7 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | `/admin/history` | WOs completados y cancelados. |
 | `/admin/mechanics`, `/admin/mechanics/[id]` | Roster. Manager y System Admin: Agregar persona (con contraseña temporal), nombre y tipo, Desactivar / Reactivar, Reiniciar contraseña (D22). |
 | `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs (solo lectura). |
-| `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista). |
+| `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista) y **Shop hours** (hora del cierre del día y días hábiles, con su propio Save; D20). |
 
 **Detalle del Truck** (`/admin/trucks/[id]`), de arriba abajo (LTR-174; en
 computadora dos columnas ≈ 2:1, en el teléfono una sola en el mismo orden):
@@ -425,8 +462,10 @@ misma división 2:1 en computadora, una columna en el teléfono):
 - **Contexto** (columna lateral): Truck (enlace), tiempos (labor, espera y
   por mecánico), mecánicos, prioridad (selector + Update priority); plegados
   el resumen operativo, datos del Truck e historial de reparaciones.
-- **History and audit** plegado al final (tiempos, corrección de tiempos,
-  pausas, Activity Log).
+- **History and audit** plegado al final (tiempos, tramos de trabajo por
+  mecánico con "cierre del día" / "cambio de camión" junto a la hora de fin
+  cuando la app los cerró (D20, D21), corrección de tiempos, pausas,
+  Activity Log).
 - Los estados siempre son distintivos y las acciones siempre botones. Los
   avisos de éxito son solo toasts.
 
@@ -444,6 +483,7 @@ Shop Admin, Yard, Work Orders).
 | `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, o el PM job dentro del WO con `?view=pm`). |
 | `/mechanic/pm/new` | Create PM service. |
 | `/mechanic/{standard,pm}/trucks`, `/trucks/[id]/history` | Buscar camión e historial de reparaciones. |
+| (aviso en el inicio y el detalle) | Si la app detuvo su reloj (cierre del día o cambio de camión) y le queda trabajo: "Ayer quedó en curso · toca Continuar" o "Tu reloj está en la unidad 944 · toca Continuar", junto al botón Continue de siempre. El PM job tiene su propio Continue (D20, D21). |
 | `/mechanic/{standard,pm}/completed` | Pestaña "Completados": Standard lista los Jobs que ese mecánico completó (el Work Order puede seguir abierto); PM lista los servicios de PM terminados (LTR-189 W11). |
 
 ### Todos
@@ -522,6 +562,9 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
   (API, solo servidor): con las dos, la API crea y reinicia cuentas de
   Supabase Auth desde el roster (D22). Sin ellas, el roster funciona sin
   cuentas de acceso (`temporaryPassword: null`).
+- `CRON_SECRET` (API, solo servidor): secreto con el que Vercel Cron llama
+  `GET /api/internal/day-close` (respaldo del cierre del día, D20). Vercel lo
+  manda solo en el encabezado `Authorization: Bearer …`.
 - Solo en desarrollo: `AUTH_DEV_BYPASS`, `NEXT_PUBLIC_E2E_DEV_LOGIN`.
 
 ---

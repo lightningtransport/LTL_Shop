@@ -2,5 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["pdx1"],
   "buildCommand": "cd ../.. && npm run build:shared && cd apps/api && npx prisma generate && npm run prisma:release-gate && npx nest build",
-  "installCommand": "cd ../.. && npm install --include=dev"
+  "installCommand": "cd ../.. && npm install --include=dev",
+  "crons": [
+    { "path": "/api/internal/day-close", "schedule": "5 21 * * 1-5" },
+    { "path": "/api/internal/day-close", "schedule": "5 22 * * 1-5" }
+  ]
 }

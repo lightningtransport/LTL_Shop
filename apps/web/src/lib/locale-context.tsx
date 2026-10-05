@@ -105,6 +105,11 @@ type Copy = {
   resolvedBlockerTitle: (job: string, name: string) => string;
   managerNote: (note: string) => string;
   resolvedBlockerHint: string;
+  /** LTR-186 / D20: the day close stopped my clock here. */
+  dayCloseTapContinue: string;
+  /** LTR-186 / D21: my clock runs on another Truck now. */
+  clockOnTruckTapContinue: (truckNumber: string) => string;
+  clockSwitchedTapContinue: string;
   otherWorkReadOnly: string;
   createWorkOrder: string;
   searchJobsLabel: string;
@@ -430,6 +435,9 @@ const copy: Record<ShopLocale, Copy> = {
     resolvedBlockerTitle: (job, name) => [job, `Resolved by ${name}`].filter(Boolean).join(' · '),
     managerNote: (note) => `Manager note: ${note}`,
     resolvedBlockerHint: 'Tap Continue to keep working.',
+    dayCloseTapContinue: 'Yesterday\'s work is still open · tap Continue',
+    clockOnTruckTapContinue: (truckNumber) => `Your clock is on Truck ${truckNumber} · tap Continue`,
+    clockSwitchedTapContinue: 'Your clock moved to another Truck · tap Continue',
     otherWorkReadOnly: 'Other mechanics do this work. You can see it, not change it.',
     createWorkOrder: 'Create new Work Order',
     searchJobsLabel: 'Search jobs in this category',
@@ -759,6 +767,9 @@ const copy: Record<ShopLocale, Copy> = {
     resolvedBlockerTitle: (job, name) => [job, `Resuelto por ${name}`].filter(Boolean).join(' · '),
     managerNote: (note) => `Nota del Manager: ${note}`,
     resolvedBlockerHint: 'Toca Continuar para seguir trabajando.',
+    dayCloseTapContinue: 'Ayer quedó en curso · toca Continuar',
+    clockOnTruckTapContinue: (truckNumber) => `Tu reloj está en la unidad ${truckNumber} · toca Continuar`,
+    clockSwitchedTapContinue: 'Tu reloj pasó a otra unidad · toca Continuar',
     otherWorkReadOnly: 'Este trabajo lo hacen otros mecánicos. Puedes verlo, no cambiarlo.',
     createWorkOrder: 'Crear nuevo Work Order',
     searchJobsLabel: 'Buscar jobs en esta categoría',

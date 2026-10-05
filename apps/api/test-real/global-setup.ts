@@ -4,7 +4,7 @@ import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import type { GlobalSetupContext } from 'vitest/node';
-import { REAL_DATABASE_URL, assertLocalDatabase } from './env';
+import { REAL_CRON_SECRET, REAL_DATABASE_URL, assertLocalDatabase } from './env';
 
 declare module 'vitest' {
   export interface ProvidedContext {
@@ -85,6 +85,8 @@ export default async function setup({ provide }: GlobalSetupContext) {
       DATA_SOURCE: 'supabase',
       // Every completed Work Order stays Ready to Go until Return to Service (row A21).
       YARD_READY_TO_GO_SINCE: '2000-01-01T00:00:00Z',
+      // LTR-186: the Vercel Cron backstop for the day close (row A32).
+      CRON_SECRET: REAL_CRON_SECRET,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
