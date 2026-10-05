@@ -76,6 +76,7 @@ import { activeInspectionInclude, activeInspectionOutcome, workOrderNextStep, ty
 import { assertPmObservedMileage } from '../work-orders/pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from '../work-orders/pm-finish';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
+import { LaborClockService } from '../work-orders/labor-clock.service';
 import { blockerActivityLogsInclude, blockerLogDetails, toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
 
@@ -255,6 +256,7 @@ export class AdminService {
     private readonly activity: ActivityLogService,
     private readonly workOrders: WorkOrdersService,
     private readonly yard?: YardOperationsService,
+    private readonly clock?: LaborClockService,
   ) {}
 
   // Manager-first ownership: a Manager (work_orders.manage) plans the
@@ -394,6 +396,7 @@ export class AdminService {
 
   async detail(id: string): Promise<AdminWorkOrderDetailDto> {
     if (!isUuid(id)) throw new BadRequestException('Invalid Work Order id');
+    await this.clock?.closeDue();
     const row = await this.prisma.workOrder.findUnique({ where: { id }, include: detailInclude });
     if (!row) throw new NotFoundException('Work Order not found');
     return toAdminDetail(row);
@@ -569,6 +572,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -647,6 +652,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -741,6 +748,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -827,6 +836,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -916,6 +927,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -1015,6 +1028,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -1129,6 +1144,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -1246,6 +1263,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -1344,6 +1363,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -1467,6 +1488,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -1549,6 +1572,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -1655,6 +1680,8 @@ export class AdminService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // LTR-186 / D20: clocks past the day close end at the cutoff before anything here stops them at now.
+        await this.clock?.closeDue(tx);
         const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
         if (!initial) throw new NotFoundException('Work Order not found');
         await lockTruckMutation(tx, initial.truckId);
@@ -2102,6 +2129,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       endedAt: session.endedAt?.toISOString() ?? null,
       durationMs: sessionDurationMs(session.startedAt, session.endedAt),
       mechanic: session.user ? { id: session.user.id, name: session.user.name } : null,
+      endReason: session.endReason ?? null,
     })),
     pauseHistory: row.pauseEvents
       .filter((pause) => pause.isOfficialPause !== false)

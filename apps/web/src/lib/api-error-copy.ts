@@ -46,6 +46,7 @@ export type ApiErrorCode =
   | 'QC_TAKEN'
   | 'RESUME_REQUIRED'
   | 'START_REQUIRED'
+  | 'SHOP_HOURS_INVALID'
   | 'STEP_HAS_NO_OWNER'
   | 'UNKNOWN_STEP'
   | 'VERSION_CONFLICT'
@@ -101,6 +102,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     QC_TAKEN: 'Another Safety reviewer already took this truck.',
     RESUME_REQUIRED: 'Press Continue before completing Jobs.',
     START_REQUIRED: 'Press Start Work before completing Jobs.',
+    SHOP_HOURS_INVALID: 'Choose a day close between 12:00 p.m. and 11:59 p.m. and at least one workday.',
     STEP_HAS_NO_OWNER: 'This step has no owner yet. Assign it first.',
     UNKNOWN_STEP: 'That step is not part of the Shop workflow.',
     VERSION_CONFLICT: 'This Work Order changed in another session. Reload before trying again.',
@@ -153,6 +155,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     QC_TAKEN: 'Otro revisor de Safety ya tomó esta unidad.',
     RESUME_REQUIRED: 'Pulsa Continuar antes de completar Jobs.',
     START_REQUIRED: 'Pulsa Iniciar trabajo antes de completar Jobs.',
+    SHOP_HOURS_INVALID: 'Elige un cierre del día entre las 12:00 p. m. y las 11:59 p. m. y al menos un día hábil.',
     STEP_HAS_NO_OWNER: 'Este paso aún no tiene responsable. Asígnalo primero.',
     UNKNOWN_STEP: 'Ese paso no es parte del flujo del Shop.',
     VERSION_CONFLICT: 'Este Work Order cambió en otra sesión. Recarga antes de intentarlo de nuevo.',

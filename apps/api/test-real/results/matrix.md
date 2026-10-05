@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 62 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 64 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -44,13 +44,15 @@ PASA 62 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A29 | Crear Standard, PM y Safety: entran al roster con su tipo; correo repetido y mecánico no pueden; Safety solo es dueño del QC | PASA |
 | A30 | Desactivar: no deja con Jobs pendientes o tiempo corriendo (dice qué reasignar); sin trabajo abierto deja de entrar y de aparecer; reactivar | PASA |
 | A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | PASA |
+| A32 | Cierre del día: el reloj se cierra a las 5:00 p.m. (no a la hora en que alguien mira), el viernes no corre el fin de semana, fuera de horario a las 11:59 p.m., y al día siguiente "toca Continue" | PASA |
+| A33 | Horario del taller en Setup: el Manager (o el System Admin) cambia la hora y los días; aplica desde ese momento; los demás roles no pueden; datos inválidos no | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |
 | E4 | Usuario inactivo o desconocido no entra | PASA |
 | E5 | Mecánico: Start donde no tiene Jobs, o cuando ya terminó los suyos | PASA |
 | E6 | Completar un Job sin Start, o uno ya completado | PASA |
-| E7 | Un mecánico Standard puede tener trabajo en curso en dos Trucks a la vez (decisión 2026-09-25, LTR-125) | PASA |
+| E7 | Un mecánico con trabajo en dos Trucks: su reloj corre en uno solo; Start en el segundo cierra el del primero ("cambio de camión") y al volver toca Continue (D21) | PASA |
 | E8 | Quitar o cambiar el dueño de un Job en curso detiene el tiempo de ese mecánico | PASA |
 | E9 | Asignar a quien no corresponde | PASA |
 | E9b | Solo una persona de Safety puede ser dueño del Quality Check (D19) | PASA |

@@ -170,6 +170,7 @@ model User {
   truckServiceStatusEvents       TruckServiceStatusEvent[]
   defaultForWorkflowSteps        ShopWorkflowStep[]         @relation("ShopWorkflowStepDefaultMechanic")
   updatedWorkflowSteps           ShopWorkflowStep[]         @relation("ShopWorkflowStepUpdatedBy")
+  updatedShopSettings            ShopSettings[]             @relation("ShopSettingsUpdatedBy")
 
   @@map("users")
 }
@@ -591,13 +592,38 @@ model WorkSession {
   createdAt   DateTime  @default(now()) @map("created_at")
   // LTR-153 / D18: labor is per mechanic. Nullable so historical sessions stay valid.
   userId      String?   @map("user_id") @db.Uuid
+  // LTR-186 / D20, D21: why the app (not the mechanic) closed this session. Null for every other close.
+  endReason   WorkSessionEndReason? @map("end_reason")
 
   workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([workOrderId])
   @@index([workOrderId, userId])
+  @@index([userId, endedAt])
   @@map("work_sessions")
+}
+
+/// LTR-186: day_close = the shop's day close (D20); switched_truck = the mechanic started on another Truck (D21).
+enum WorkSessionEndReason {
+  day_close
+  switched_truck
+
+  @@map("work_session_end_reason")
+}
+
+/// LTR-186 / D20: one row (id = 1). Shop hours the day close reads; the Manager edits them in Setup.
+model ShopSettings {
+  id              Int      @id @default(1)
+  dayCloseMinutes Int      @default(1020) @map("day_close_minutes")
+  /// ISO weekdays (Mon = 1 … Sun = 7).
+  workdays        Int[]    @default([1, 2, 3, 4, 5])
+  updatedById     String?  @map("updated_by_id") @db.Uuid
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  updatedBy User? @relation("ShopSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("shop_settings")
 }
 
 enum WorkOrderNoteKind {

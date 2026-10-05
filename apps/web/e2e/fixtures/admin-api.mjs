@@ -137,6 +137,8 @@ function workflowStepDto(step) {
   };
 }
 
+// LTR-186 / D20: Setup → Shop hours (day close).
+const shopHours = { cutoff: '17:00', workdays: [1, 2, 3, 4, 5], timeZone: 'America/New_York', updatedAt: '2026-09-01T12:00:00.000Z', updatedBy: null };
 let catalogWriteSeq = 900;
 let rosterWriteSeq = 20;
 
@@ -755,6 +757,31 @@ createServer(async (request, response) => {
     job.assignedMechanic = owner ? { id: owner.id, name: owner.name } : null;
     summary.version += 1;
     json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
+  if (request.url === '/api/admin/setup/shop-hours' && request.method === 'GET') {
+    json(response, 200, shopHours);
+    return;
+  }
+  if (request.url === '/api/admin/setup/shop-hours' && request.method === 'PUT') {
+    if (!user.capabilities.includes('work_orders.manage') && user.role !== 'admin') {
+      json(response, 403, { message: 'Only a Shop Manager or a System Admin can change the shop hours.' });
+      return;
+    }
+    const body = await readJson(request);
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(body?.cutoff ?? '');
+    const workdays = Array.isArray(body?.workdays) ? body.workdays : [];
+    if (!match || Number(match[1]) < 12 || !workdays.length || workdays.some((day) => !Number.isInteger(day) || day < 1 || day > 7)) {
+      json(response, 400, { code: 'SHOP_HOURS_INVALID', message: 'Invalid shop hours.' });
+      return;
+    }
+    Object.assign(shopHours, {
+      cutoff: body.cutoff,
+      workdays: [...workdays].sort((left, right) => left - right),
+      updatedAt: new Date().toISOString(),
+      updatedBy: { id: user.id, name: user.name },
+    });
+    json(response, 200, shopHours);
     return;
   }
   if (request.url === '/api/admin/setup/workflow-steps' && request.method === 'GET') {
@@ -1599,6 +1626,8 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status, options = {
       startedAt: '2026-09-06T16:00:00.000Z',
       endedAt: '2026-09-06T17:30:00.000Z',
       durationMs: 5_400_000,
+      // LTR-186: the day close stopped this clock.
+      endReason: 'day_close',
     }],
     jobs: [{
       id: `00000000-0000-4000-8000-0000000005${id.slice(-2)}`,

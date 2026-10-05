@@ -301,8 +301,8 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 | Completa un Job que ya estaba completado | No deja | ✅ | E6 |
 | Completa el Job de otro | No deja | ✅ | A5 |
 | Hace Start donde no tiene Jobs, o cuando ya terminó los suyos | No deja | ✅ | E5 |
-| Tiene trabajo en dos camiones a la vez | Puede pasar de uno a otro sin que nadie lo reasigne; al hacer Start/Continue en el segundo **se cierra su reloj en el primero** ("cambio de camión", D21). Al volver al primero toca Continue | 🔲 | E7 |
-| Vuelve al primer camión | Ve "Tu reloj está en el 944 · toca Continue"; al tocarlo se cierra el del 944 | 🔲 | E7 |
+| Tiene trabajo en dos camiones a la vez | Puede pasar de uno a otro sin que nadie lo reasigne; al hacer Start/Continue en el segundo **se cierra su reloj en el primero** ("cambio de camión", D21). Al volver al primero toca Continue | ✅ | E7 |
+| Vuelve al primer camión | Ve "Tu reloj está en el 944 · toca Continue"; al tocarlo se cierra el del 944 | ✅ | E7 |
 | Almuerzo o descanso | No detiene su tiempo; al taller no le importa | ✅ | — |
 | Falta o se va a mitad de turno | Sus Jobs esperan a que vuelva; el Manager puede reasignar uno si urge | ✅ | A4, E8 |
 | El Work Order está pausado, cerrado o cancelado | No puede trabajar en él | ✅ | A8, E15 |
@@ -436,7 +436,7 @@ decisión esté escrita en [`DECISIONS.md`](DECISIONS.md).
 
 Ahora vive en la sección 5, "Safety".
 
-### HU-ME5 · Mi día de trabajo se cierra solo (J7) — 🔲 en construcción (D20, LTR-186)
+### HU-ME5 · Mi día de trabajo se cierra solo (J7) — ✅ construido (D20, LTR-186)
 
 **Flujo**
 1. El mecánico trabaja en un Job que dura varios días. A las **5:00 p.m.** se va
@@ -448,15 +448,15 @@ Ahora vive en la sección 5, "Safety".
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
-| El reloj sigue corriendo a las 5:00 p.m. de un día hábil | Se cierra a las 5:00; cuenta hasta las 5:00 | 🔲 | A32 |
-| Lo olvida el viernes | Se cierra el viernes a las 5:00; no corre el fin de semana | 🔲 | A32 |
-| Arranca después de las 5:00 (o un sábado) | Se cierra a las 11:59 p.m. de ese día | 🔲 | A32 |
-| Se fue antes de las 5:00 | El Manager ajusta el tramo con la corrección de tiempo; el cierre se ve como "cierre del día" | 🔲 | A32 |
-| Al día siguiente | Su inicio le recuerda tocar Continue en ese camión | 🔲 | A32 |
-| Nadie abrió la app a las 5:00 | Igual cuenta hasta las 5:00 (el cierre se aplica con la hora del cierre, no con la hora en que alguien mira) | 🔲 | A32 |
-| El Manager cambia la hora o los días en Setup | Aplica desde ese momento | 🔲 | A33 |
+| El reloj sigue corriendo a las 5:00 p.m. de un día hábil | Se cierra a las 5:00; cuenta hasta las 5:00 | ✅ | A32 |
+| Lo olvida el viernes | Se cierra el viernes a las 5:00; no corre el fin de semana | ✅ | A32 |
+| Arranca después de las 5:00 (o un sábado) | Se cierra a las 11:59 p.m. de ese día | ✅ | A32 |
+| Se fue antes de las 5:00 | El Manager ajusta el tramo con la corrección de tiempo; el cierre se ve como "cierre del día" | ✅ | A32 |
+| Al día siguiente | Su inicio le recuerda tocar Continue en ese camión | ✅ | A32 |
+| Nadie abrió la app a las 5:00 | Igual cuenta hasta las 5:00 (el cierre se aplica con la hora del cierre, no con la hora en que alguien mira) | ✅ | A32 |
+| El Manager cambia la hora o los días en Setup | Aplica desde ese momento | ✅ | A33 |
 
-### HU-ME6 · Mi reloj corre en un solo camión (J7) — 🔲 en construcción (D21, LTR-186)
+### HU-ME6 · Mi reloj corre en un solo camión (J7) — ✅ construido (D21, LTR-186)
 
 Ver la fila E7 en HU-ME2.
 
@@ -518,7 +518,7 @@ una historia:
 
 | # | Qué falta | A quién le pega | Ticket |
 |---|---|---|---|
-| G2 | El tiempo olvidado debe detenerse solo | Mecánico, costeo | LTR-186 |
+| ~~G2~~ | El tiempo olvidado se detiene solo — **hecho (D20, HU-ME5, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | ~~G5~~ | El Manager da de alta al personal — **hecho (D22, HU-M9, 2026-09-30)**. Camiones: después | Manager | LTR-187 |
-| G7 | El reloj corre en un solo camión a la vez (D21) | Mecánico, costeo | LTR-188 |
+| ~~G7~~ | El reloj corre en un solo camión a la vez — **hecho (D21, HU-ME6, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | G3, G4, G6 | Dos mecánicos en una tarea, taller externo, trailers | Manager | LTR-188 |

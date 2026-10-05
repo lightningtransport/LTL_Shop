@@ -19,6 +19,7 @@ import {
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
+import { LaborClockService } from '../work-orders/labor-clock.service';
 import type { AuthUser } from '../auth/auth.guard';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
@@ -71,6 +72,7 @@ export class YardWorkPlanService {
     private readonly prisma: PrismaService,
     private readonly workOrders: WorkOrdersService,
     private readonly yardOperations: YardOperationsService,
+    private readonly clock?: LaborClockService,
   ) {}
 
   async get(user: AuthUser, truckId: string): Promise<TruckWorkPlanDto> {
@@ -80,6 +82,8 @@ export class YardWorkPlanService {
       select: { id: true },
     });
     if (!truck) throw new NotFoundException('Truck not found');
+    // LTR-186 / D20: a Job reads In Progress only while its mechanic's clock runs.
+    await this.clock?.closeDue();
 
     const [openWorkOrder, assessment] = await Promise.all([
       this.findOpenWorkOrder(truckId),

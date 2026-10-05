@@ -17,6 +17,7 @@ import { pauseLabel, statusLabel } from '@/lib/format';
 import { useSWRConfig } from 'swr';
 import { isMyJob, isMyPartDone, isStandardWorkWaitingOnManager, jobPersonLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
+import { clockStoppedLine } from '@/lib/clock-stopped';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
   Button,
@@ -320,6 +321,11 @@ function WorkOrderCard({
           {wo.resolvedBlockerAwaitingContinue ? (
             <span className="rounded-full bg-shop-accent/15 px-2 py-0.5 text-xs font-semibold text-shop-accent" data-testid="resolved-tap-continue">
               {messages.resolvedTapContinue}
+            </span>
+          ) : clockStoppedLine(wo.myClockStopped, messages) ? (
+            // LTR-186 / D20, D21: the day close or a Truck switch stopped my clock here.
+            <span className="rounded-full bg-shop-accent/15 px-2 py-0.5 text-right text-xs font-semibold text-shop-accent" data-testid="clock-stopped-tap-continue">
+              {clockStoppedLine(wo.myClockStopped, messages)}
             </span>
           ) : null}
         </div>

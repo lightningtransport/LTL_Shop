@@ -43,6 +43,7 @@ import {
 } from './work-order.timing';
 import type { AuthUser } from '../auth/auth.guard';
 import { openSessionFor, stopLaborForMechanic } from './labor-session';
+import { LaborClockService } from './labor-clock.service';
 import { assertPmObservedMileage } from './pm-mileage.guard';
 import { applyPmObservedMileage, assertPmServiceReadyToFinish } from './pm-finish';
 import { isPmJobCategory, resolveMandatoryJobs, type MandatoryJob } from './mandatory-jobs';
@@ -67,6 +68,9 @@ export class WorkOrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityLogService,
+    // LTR-186 / D20, D21: day close and one clock per mechanic. Optional so unit specs that build
+    // the service by hand keep working; Nest always injects it.
+    private readonly clock?: LaborClockService,
   ) {}
 
   async listForMechanic(user: AuthUser, rawMode?: string) {
@@ -90,6 +94,9 @@ export class WorkOrdersService {
         ? { name: 'PM' }
         : undefined;
     const pmMode = categoryFilter?.name === 'PM';
+    // LTR-186 / D20: close yesterday's clocks before showing them.
+    await this.clock?.closeDue();
+    const clockElsewhere = await this.clock?.clockOf(user.id);
     const rows = await this.prisma.workOrder.findMany({
       where: {
         status: { in: ['created', 'in_progress', 'waiting_paused', 'completed'] },
@@ -123,7 +130,7 @@ export class WorkOrdersService {
 
     // LTR-146: in the PM workspace a truck Work Order is bucketed by its PM job, not the WO status.
     const mapped = rows.map((row) => {
-      const summary = toWorkOrderSummary(row, user.id);
+      const summary = toWorkOrderSummary(row, user.id, { clockElsewhere });
       const pmJob = pmMode ? this.activePmJob(row) : null;
       if (!pmJob) return summary;
       const status = pmJob.status === 'completed'
@@ -144,13 +151,14 @@ export class WorkOrdersService {
   }
 
   async getById(user: AuthUser, id: string) {
+    await this.clock?.closeDue();
     const wo = await this.prisma.workOrder.findUnique({
       where: { id },
       include: workOrderDetailInclude,
     });
     if (!wo) throw new NotFoundException('Work Order not found');
     this.assertCanViewWorkOrder(user, wo);
-    return toWorkOrderDetail(wo, user.id);
+    return toWorkOrderDetail(wo, user.id, { clockElsewhere: await this.clock?.clockOf(user.id) });
   }
 
   // Managers plan the intervention; mechanics execute it. The core create logic
@@ -445,6 +453,9 @@ export class WorkOrdersService {
 
   async start(user: AuthUser, id: string) {
     return this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      // LTR-186 / D20: yesterday's open clock closes at the day close, not now.
+      await this.clock?.closeDue(tx, now);
       const wo = await this.requireWo(tx, id);
       this.assertMechanicAccess(user, wo);
       const isPm = wo.primaryCategory.name === 'PM';
@@ -471,7 +482,8 @@ export class WorkOrdersService {
         }
         throw new BadRequestException('Work Order can only be started from created status');
       }
-      const now = new Date();
+      // LTR-186 / D21: one clock per mechanic — starting here stops it on any other Truck.
+      await this.clock?.closeOtherClocks(tx, user.id, id, now);
       await tx.workSession.create({
         data: { workOrderId: id, startedAt: now, userId: user.id },
       });
@@ -534,6 +546,7 @@ export class WorkOrdersService {
       throw new BadRequestException('Notes are required when reason is Other');
     }
     return this.prisma.$transaction(async (tx) => {
+      await this.clock?.closeDue(tx);
       const wo = await this.requireWo(tx, id);
       // LTR-158: the PM mechanic blocks their PM job on the truck Work Order too (D17).
       if (this.pmJobForUser(user, wo)?.id !== parsed.data.jobId) this.assertMechanicAccess(user, wo);
@@ -639,6 +652,7 @@ export class WorkOrdersService {
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     const notes = parsed.data.notes?.trim() || null;
     return this.prisma.$transaction(async (tx) => {
+      await this.clock?.closeDue(tx);
       const blocker = await tx.pauseEvent.findFirst({
         where: { id: blockerId, workOrderId: id, isOfficialPause: false },
       });
@@ -678,6 +692,8 @@ export class WorkOrdersService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // LTR-186 / D20: a clock left open overnight counts to the day close, not to the pause.
+      await this.clock?.closeDue(tx);
       const wo = await this.requireWo(tx, id);
       if (wo.status !== 'in_progress') {
         throw new BadRequestException('Only in-progress Work Orders can be paused');
@@ -716,6 +732,7 @@ export class WorkOrdersService {
 
   async resumeByManager(user: AuthUser, id: string) {
     return this.prisma.$transaction(async (tx) => {
+      await this.clock?.closeDue(tx);
       const wo = await this.requireWo(tx, id);
       if (wo.status !== 'waiting_paused') {
         throw new BadRequestException('Only paused Work Orders can be resumed');
@@ -1183,6 +1200,7 @@ export class WorkOrdersService {
     const notes = parsed.data.notes?.trim() || null;
 
     return this.prisma.$transaction(async (tx) => {
+      await this.clock?.closeDue(tx);
       const wo = await this.requireWo(tx, workOrderId);
       // LTR-146: the PM job is finished from the PM service by its PM mechanic.
       if (this.activePmJob(wo)?.id === jobId) {
@@ -1351,6 +1369,8 @@ export class WorkOrdersService {
   async startPmJob(user: AuthUser, id: string, jobId: string) {
     this.assertCapability(user, AppCapability.MECHANIC_PM, 'PM mechanic');
     return this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      await this.clock?.closeDue(tx, now);
       const initial = await this.requireWo(tx, id);
       await lockTruckMutation(tx, initial.truckId);
       const wo = await this.requireWo(tx, id);
@@ -1358,6 +1378,11 @@ export class WorkOrdersService {
       if (!job) throw new NotFoundException('Job not found');
       if (this.activePmJob(wo)?.id !== jobId) throw new BadRequestException('This is not the PM job of this Work Order');
       if (job.status !== 'to_do') throw new BadRequestException('The PM job is not to do');
+      if (job.startedAt && job.assignedMechanicId === user.id && !openSessionFor(wo.sessions, user.id)) {
+        // LTR-186 / D20, D21: the PM was started and my clock stopped (day close, switched Truck,
+        // resolved blocker). Continue reopens my clock here; the PM itself is unchanged.
+        return this.continuePmJob(tx, user, wo, job, now);
+      }
       if (job.startedAt) throw new BadRequestException({ code: 'PM_JOB_ALREADY_STARTED', message: 'The PM service is already started.' });
       // LTR-157 / D15: the PM mechanic who starts the PM takes it, even when the
       // default owner was someone else (who may be out today). D2 still applies below.
@@ -1366,7 +1391,6 @@ export class WorkOrdersService {
         throw new BadRequestException({ code: 'WORK_ORDER_NOT_WORKABLE', message: 'The Work Order is paused or closed.' });
       }
       await this.assertNoOtherRunningPm(tx, user.id, { jobId });
-      const now = new Date();
       await tx.workOrderJob.update({ where: { id: jobId }, data: { startedAt: now, assignedMechanicId: user.id } });
       await tx.pmService.upsert({
         where: { workOrderId: id },
@@ -1377,6 +1401,8 @@ export class WorkOrdersService {
       // labor clock runs from here (finishing the PM stops it), and a Work Order
       // that nobody had started yet is now in progress, like a Standard Start.
       if (!openSessionFor(wo.sessions, user.id)) {
+        // LTR-186 / D21: one clock per mechanic.
+        await this.clock?.closeOtherClocks(tx, user.id, id, now);
         await tx.workSession.create({ data: { workOrderId: id, startedAt: now, userId: user.id } });
       }
       const startsWorkOrder = wo.status === 'created';
@@ -1409,6 +1435,39 @@ export class WorkOrdersService {
       });
       return toWorkOrderDetail(updated, user.id);
     });
+  }
+
+  /** LTR-186: Continue on a started PM job — reopen the PM mechanic's clock (and stop it anywhere else, D21). */
+  private async continuePmJob(
+    tx: Prisma.TransactionClient,
+    user: AuthUser,
+    wo: Awaited<ReturnType<WorkOrdersService['requireWo']>>,
+    job: { id: string; displayName: string },
+    now: Date,
+  ) {
+    if (wo.status !== 'in_progress') {
+      throw new BadRequestException({ code: 'WORK_ORDER_NOT_WORKABLE', message: 'The Work Order is paused or closed.' });
+    }
+    if (this.activeBlockerForJob(wo, job.id)) {
+      throw new BadRequestException({ code: 'JOB_BLOCKED', message: 'The Manager resolves this blocker before the PM can continue.' });
+    }
+    await this.clock?.closeOtherClocks(tx, user.id, wo.id, now);
+    await tx.workSession.create({ data: { workOrderId: wo.id, startedAt: now, userId: user.id } });
+    const updated = await tx.workOrder.update({
+      where: { id: wo.id },
+      data: { version: { increment: 1 } },
+      include: workOrderDetailInclude,
+    });
+    await this.activity.log(tx, {
+      workOrderId: wo.id,
+      eventType: ActivityEventType.WORK_STARTED,
+      entityType: 'work_order_job',
+      entityId: job.id,
+      userId: user.id,
+      previousValue: { laborRunning: false },
+      newValue: { pmJob: true, displayName: job.displayName, laborRunning: true },
+    });
+    return toWorkOrderDetail(updated, user.id);
   }
 
   /** LTR-146: finishing the PM job records the PM service (mileage + parts); it does not complete the Work Order. */
@@ -1767,6 +1826,8 @@ export class WorkOrdersService {
     }
     const stopped = await tx.workSession.findMany({ where: { workOrderId, endedAt: pausedAt }, select: { userId: true } });
     for (const userId of new Set(stopped.map((session) => session.userId ?? null))) {
+      // LTR-186 / D21: a mechanic whose clock now runs on another Truck is not pulled back; they tap Continue here.
+      if (userId && await tx.workSession.findFirst({ where: { userId, endedAt: null }, select: { id: true } })) continue;
       await tx.workSession.create({ data: { workOrderId, startedAt: now, userId } });
     }
   }

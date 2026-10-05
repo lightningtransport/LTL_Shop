@@ -21,6 +21,7 @@ import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { useShopLocale } from '@/lib/locale-context';
+import { clockStoppedLine } from '@/lib/clock-stopped';
 import { formatShopDateTime, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import { isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel, splitMyJobs } from '@/lib/job-assignment';
@@ -233,6 +234,13 @@ export default function WorkOrderDetailPage() {
       ) : waitingOnManager ? (
         <p className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status">
           {messages.waitingOnManagerBody}
+        </p>
+      ) : null}
+
+      {!wo.resolvedBlocker && needsStart && clockStoppedLine(wo.myClockStopped, messages) ? (
+        // LTR-186 / D20, D21: the day close or a Truck switch stopped my clock here; Continue below.
+        <p className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm font-medium" role="status" data-testid="clock-stopped">
+          {clockStoppedLine(wo.myClockStopped, messages)}
         </p>
       ) : null}
 

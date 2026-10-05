@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AppCapability, UserRole, type ShopWorkflowStepDto } from '@ltl-shop/shared';
+import { AppCapability, MIN_DAY_CLOSE_MINUTES, UserRole, cutoffToMinutes, type ShopWorkflowStepDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
-import { PageHeader, Button, Card, CardContent, EmptyState, InlineAlert, LoadFailure, PageSkeleton, Select } from './ui';
-import { updateAdminWorkflowSteps, useAdminAssignableMechanics, useAdminWorkflowSteps } from '@/lib/admin-data';
+import { PageHeader, Button, Card, CardContent, EmptyState, InlineAlert, Input, LoadFailure, PageSkeleton, Select } from './ui';
+import { updateAdminShopHours, updateAdminWorkflowSteps, useAdminAssignableMechanics, useAdminShopHours, useAdminWorkflowSteps } from '@/lib/admin-data';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
@@ -113,6 +114,101 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
       {data?.length && canWrite ? (
         <Button type="button" className="w-full sm:w-auto" disabled={!dirty || saving} onClick={() => void save()}>{messages.shopWorkflowSave}</Button>
       ) : null}
+      <ShopHoursCard messages={messages} canWrite={canWrite} />
     </div>
+  );
+}
+
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
+
+/**
+ * LTR-186 / D20: the day close. At the cutoff on each workday the app stops every clock still running
+ * (the time counts to the cutoff); mechanics tap Continue the next day. Same write gate as the steps.
+ */
+function ShopHoursCard({ messages, canWrite }: { messages: AdminMessages; canWrite: boolean }) {
+  const { data, error, isLoading, mutate } = useAdminShopHours();
+  const { showToast } = useActionToast();
+  const [cutoff, setCutoff] = useState('');
+  const [workdays, setWorkdays] = useState<number[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!data) return;
+    setCutoff(data.cutoff);
+    setWorkdays(data.workdays);
+  }, [data]);
+
+  const minutes = cutoffToMinutes(cutoff);
+  const valid = minutes !== null && minutes >= MIN_DAY_CLOSE_MINUTES && workdays.length > 0;
+  const dirty = Boolean(data && (cutoff !== data.cutoff || [...workdays].sort().join(',') !== [...data.workdays].sort().join(',')));
+
+  async function save() {
+    if (!valid || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const next = await updateAdminShopHours({ cutoff, workdays: [...workdays].sort((left, right) => left - right) });
+      await mutate(next, { revalidate: false });
+      showToast('success', messages.shopHoursSaved);
+    } catch (failure) {
+      setSaveError(apiErrorMessage(failure, messages, messages.shopHoursSaveFailed));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="space-y-3" aria-labelledby="shop-hours-title" data-testid="shop-hours">
+      <div>
+        <h2 id="shop-hours-title" className="text-lg font-semibold">{messages.shopHours}</h2>
+        <p className="text-sm text-muted-foreground">{messages.shopHoursDescription}</p>
+      </div>
+      {saveError ? <InlineAlert>{saveError}</InlineAlert> : null}
+      {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.shopHours} header={false} /> : null}
+      {data ? (
+        <Card>
+          <CardContent className="space-y-4 p-4">
+            <label className="block max-w-xs space-y-1">
+              <span className="text-sm font-medium">{messages.shopHoursCutoff}</span>
+              <Input
+                type="time"
+                step={60}
+                min="12:00"
+                max="23:59"
+                value={cutoff}
+                disabled={!canWrite || saving}
+                aria-invalid={cutoff !== '' && !valid}
+                onChange={(event) => setCutoff(event.target.value)}
+              />
+            </label>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">{messages.shopHoursWorkdays}</legend>
+              <div className="flex flex-wrap gap-2">
+                {WEEKDAYS.map((day) => (
+                  <label key={day} className="flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={workdays.includes(day)}
+                      disabled={!canWrite || saving}
+                      onChange={(event) => setWorkdays((current) => (
+                        event.target.checked ? [...current, day] : current.filter((item) => item !== day)
+                      ))}
+                    />
+                    {messages[`weekday${day}`]}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <p className="text-xs text-muted-foreground">{messages.shopHoursOffDays}</p>
+            {dirty && !valid ? <p className="text-sm text-warning-foreground" role="alert">{messages.shopHoursInvalid}</p> : null}
+          </CardContent>
+        </Card>
+      ) : null}
+      {data && canWrite ? (
+        <Button type="button" className="w-full sm:w-auto" disabled={!dirty || !valid || saving} onClick={() => void save()}>{messages.shopHoursSave}</Button>
+      ) : null}
+    </section>
   );
 }

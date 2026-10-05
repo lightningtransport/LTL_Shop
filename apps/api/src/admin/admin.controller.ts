@@ -25,6 +25,7 @@ import { YardWorkPlanService } from './yard-work-plan.service';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { SystemAdminWritesService } from './system-admin-writes.service';
 import { ShopWorkflowService } from './shop-workflow.service';
+import { LaborClockService } from '../work-orders/labor-clock.service';
 
 @Controller('admin')
 @UseGuards(AuthGuard, CapabilitiesGuard)
@@ -38,6 +39,7 @@ export class AdminController {
     private readonly dataBoundary: YardDataBoundaryService,
     private readonly systemAdminWrites: SystemAdminWritesService,
     private readonly shopWorkflow: ShopWorkflowService,
+    private readonly clock: LaborClockService,
   ) {}
 
   @Get('access')
@@ -227,6 +229,17 @@ export class AdminController {
   @Put('setup/workflow-steps')
   updateWorkflowSteps(@Req() request: Request, @Body() body: unknown) {
     return this.shopWorkflow.update(request.user!, body);
+  }
+
+  // LTR-186 / D20: Setup → Shop workflow → Shop hours (day close). Writes: same gate as the workflow steps.
+  @Get('setup/shop-hours')
+  shopHours() {
+    return this.clock.getShopHours();
+  }
+
+  @Put('setup/shop-hours')
+  updateShopHours(@Req() request: Request, @Body() body: unknown) {
+    return this.clock.updateShopHours(request.user!, body);
   }
 
   @Get('catalog/categories')

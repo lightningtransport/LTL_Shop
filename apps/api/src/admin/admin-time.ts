@@ -1,4 +1,6 @@
-const SHOP_TIME_ZONE = 'America/New_York' as const;
+import { SHOP_TIME_ZONE } from '../common/shop-time';
+
+export { SHOP_TIME_ZONE };
 
 type LocalDate = { year: number; month: number; day: number };
 

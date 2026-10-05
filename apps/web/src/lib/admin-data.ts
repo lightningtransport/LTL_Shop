@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import type {
   ShopWorkflowStepDto,
+  ShopHoursDto,
   AdminCatalogJobWriteDto,
   AdminDashboardDto,
   AdminMechanicCreatedDto,
@@ -628,6 +629,22 @@ export function useAdminWorkflowSteps() {
     token,
     useSWR<ShopWorkflowStepDto[]>(token ? '/api/admin/setup/workflow-steps' : null, adminReadFetcher, adminReadRetry),
   );
+}
+
+/** LTR-186 / D20: Setup → Shop workflow → Shop hours (day close). */
+export function useAdminShopHours() {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<ShopHoursDto>(token ? '/api/admin/setup/shop-hours' : null, adminReadFetcher, adminReadRetry),
+  );
+}
+
+export function updateAdminShopHours(input: { cutoff: string; workdays: number[] }) {
+  return apiFetch<ShopHoursDto>('/api/admin/setup/shop-hours', {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
 }
 
 export function updateAdminWorkflowSteps(steps: Array<{ stepKey: string; defaultMechanicId: string | null }>) {

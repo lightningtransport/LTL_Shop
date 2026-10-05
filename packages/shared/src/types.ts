@@ -4,6 +4,7 @@ import type { TruckNextStepDto } from './truck-next-step';
 import type {
   AppCapability,
   ActivityEventType,
+  WorkSessionEndReason,
   BlockerReason,
   JobStatus,
   PauseReason,
@@ -229,6 +230,29 @@ export interface WorkOrderSummaryDto {
   resolvedBlockerAwaitingContinue?: boolean;
   /** LTR-164 (#10): PM workspace only. `status` buckets by the PM job; this is the Work Order's own status. */
   workOrderStatus?: WorkOrderStatus;
+  /**
+   * LTR-186 / D20, D21 (mechanic endpoints only): the app stopped my clock here — the day close, or I
+   * started on another Truck — and I still have work here. Tap Continue. Null when it does not apply.
+   */
+  myClockStopped?: MyClockStoppedDto | null;
+}
+
+/** LTR-186: why my clock stopped on this Work Order and, after a switch, where it runs now. */
+export interface MyClockStoppedDto {
+  reason: `${WorkSessionEndReason}`;
+  /** switched_truck only: the Work Order where my clock is running now (absent when it is not running anywhere). */
+  elsewhereWorkOrder?: { id: string; displayId: string; truckNumber: string } | null;
+}
+
+/** LTR-186 / D20: Admin → Setup → Shop workflow → Shop hours. */
+export interface ShopHoursDto {
+  /** Day close in shop time, 24-hour "HH:MM". */
+  cutoff: string;
+  /** ISO weekdays (Monday = 1 … Sunday = 7). */
+  workdays: number[];
+  timeZone: string;
+  updatedAt: string;
+  updatedBy: { id: string; name: string } | null;
 }
 
 export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
@@ -410,6 +434,8 @@ export interface AdminTimeSegmentDto {
   durationMs: number | null;
   /** LTR-184 / D18: whose clock this is. Null on sessions from before per-mechanic labor. */
   mechanic?: { id: string; name: string } | null;
+  /** LTR-186: the app closed it at the day close (D20) or when the mechanic switched Truck (D21). */
+  endReason?: `${WorkSessionEndReason}` | null;
 }
 
 export interface AdminRepairHistoryDto {

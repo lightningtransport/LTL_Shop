@@ -9,6 +9,7 @@ import { apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { formatMileage, pauseLabel } from '@/lib/format';
 import { useShopLocale } from '@/lib/locale-context';
+import { clockStoppedLine } from '@/lib/clock-stopped';
 import { shopKeys, useCatalogJobs } from '@/lib/shop-data';
 import { vehicleLine } from '@/lib/work-order-identity';
 import { useActionToast } from './action-toast';
@@ -57,6 +58,10 @@ export function PmJobDetail({
   const validMileage = draft.observedMileage.trim() !== '' && Number.isInteger(mileage) && mileage >= 0;
   const finishBlocked = busy || Boolean(activeBlocker) || !draft.ready || draft.pending || draft.hasError || !validMileage || draft.selectedParts < 1;
   const mileageChangesTruck = validMileage && mileage !== wo.truck.mileage;
+  // LTR-186 / D20, D21: the PM was started but my clock stopped (day close, another Truck, a resolved
+  // blocker). Continue reopens my clock; the PM service itself is unchanged.
+  const needsContinue = started && !finished && !activeBlocker && wo.status === 'in_progress' && wo.laborRunning === false;
+  const stoppedLine = clockStoppedLine(wo.myClockStopped, messages);
 
   async function run(action: () => Promise<WorkOrderDetailDto>, onSuccess?: () => void) {
     setBusy(true);
@@ -104,6 +109,22 @@ export function PmJobDetail({
           >
             {pmServiceOptions.map((item) => <option key={item.id} value={item.id}>{item.displayName}</option>)}
           </Select>
+        </section>
+      ) : null}
+
+      {needsContinue ? (
+        <section className="card mb-4 space-y-3" data-testid="pm-continue">
+          {stoppedLine ? <p className="text-sm font-medium" role="status">{stoppedLine}</p> : null}
+          <Button
+            className="w-full"
+            disabled={busy}
+            onClick={() => void run(
+              () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/jobs/${pmJob.id}/pm/start`, { method: 'POST' }),
+              () => showToast('success', messages.workStartedSuccess),
+            )}
+          >
+            {busy ? messages.startingWork : messages.continueWork}
+          </Button>
         </section>
       ) : null}
 

@@ -34,6 +34,26 @@ applied. Use this path before application traffic depends on a new schema.
 Local CI Postgres may still run `prisma migrate deploy` directly. That is not
 the production release path.
 
+## Day close cron (LTR-186 / D20)
+
+The API runs on Vercel Functions, so there is no background process. The day
+close is applied lazily (every labor read or write first closes sessions past
+the shop's cutoff, with `ended_at` = the cutoff, idempotent). Vercel Cron is
+the backstop:
+
+- `apps/api/vercel.json` → `crons`: `GET /api/internal/day-close` at
+  `5 21 * * 1-5` and `5 22 * * 1-5` (Vercel Cron is UTC; the two runs cover
+  5:00 p.m. America/New_York in EDT and EST). The second run closes nothing
+  when the first one already did.
+- Set `CRON_SECRET` (server-only, long random value) on `ltl-shop-api`.
+  Vercel sends it as `Authorization: Bearer <CRON_SECRET>`. Without it the
+  endpoint answers 503; with another value, 401. The route is not behind the
+  user `AuthGuard`.
+- Release order: apply migration `20261005120000_day_close_ltr186` through
+  **Release safety** first (additive: `work_sessions.end_reason`,
+  `shop_settings` with its default row), then deploy the API, then check the
+  two jobs under Vercel → Settings → Cron Jobs and run one manually.
+
 ## Staging
 
 - [ ] Supabase project created (separate from Production)
@@ -45,6 +65,7 @@ the production release path.
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` set on Vercel
 - [ ] `SUPABASE_JWT_SECRET` or JWKS reachable from API
 - [ ] API on Vercel Functions in `pdx1` with `CORS_ORIGIN` pointing to the Staging web URL
+- [ ] `CRON_SECRET` on the API project (day close cron, LTR-186)
 - [ ] Sentry DSN (web + api)
 - [ ] PostHog key (optional)
 - [ ] Smoke: login → create WO → Start Work → complete job → pause → resume → finish
