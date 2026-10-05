@@ -173,6 +173,23 @@ Confirmado en el recorrido: U9 (Nuevo Work Order dice "Unidad"). El defecto #5
 bien en el Admin ("Mechanic note: Batería nueva instalada.") y en el detalle
 del mecánico; queda cerrado.
 
+## 1e. Work Order Detail (Admin): rediseño propuesto (2026-10-05) — **ESPERA**
+
+Revisión de la pantalla en producción (WO-010). Ningún flujo se atora: son
+**C** y **E**. La propuesta completa (maqueta navegable, qué hace cada
+botón, plan y decisiones pendientes) está en
+[`proposals/wo-detail-redesign/`](proposals/wo-detail-redesign/README.md).
+Se retoma cuando el dueño responda sus decisiones (§5 de la propuesta).
+
+| # | Clase | Problema | Dónde |
+|---|---|---|---|
+| R1 | C | Datos repetidos: el Truck 3 veces, los tiempos 2, los mecánicos 3 | `admin-work-order-detail.tsx` |
+| R2 | C | "Next step" y la caja de blockers dicen lo mismo; textarea de Resolve siempre abierto | `admin-work-order-detail.tsx`, `admin-blocker-resolve.tsx` |
+| R3 | E | Todo es tarjeta con el mismo peso; "Mark complete" con borde en cada fila | `admin-work-order-detail.tsx`, `admin-job-table.tsx` |
+| R4 | E | Activity Log plano; corrección de tiempo como formulario siempre visible | `admin-work-order-detail.tsx` |
+| R5 | E | "…" (WO y Job) abre un modal para 1–2 opciones | `admin-work-order-detail.tsx`, `admin-job-table.tsx` |
+| R6 | C | Tema oscuro: `--card`, `--muted` y `--accent` son el mismo color; `bg-muted` y el hover no se ven sobre tarjetas (todas las pantallas) | `globals.css` |
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):
