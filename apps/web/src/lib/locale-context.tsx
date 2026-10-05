@@ -111,6 +111,10 @@ type Copy = {
   clockOnTruckTapContinue: (truckNumber: string) => string;
   clockSwitchedTapContinue: string;
   otherWorkReadOnly: string;
+  /** LTR-188 / D23: appended to a helper Job's name. */
+  helperJobSuffix: string;
+  /** LTR-188 / D24: a Job at an external shop (read-only, never the mechanic's). */
+  jobAtExternalShop: string;
   createWorkOrder: string;
   searchJobsLabel: string;
   categoryJobsLabel: string;
@@ -439,6 +443,8 @@ const copy: Record<ShopLocale, Copy> = {
     clockOnTruckTapContinue: (truckNumber) => `Your clock is on Truck ${truckNumber} · tap Continue`,
     clockSwitchedTapContinue: 'Your clock moved to another Truck · tap Continue',
     otherWorkReadOnly: 'Other mechanics do this work. You can see it, not change it.',
+    helperJobSuffix: ' · helper',
+    jobAtExternalShop: 'At external shop',
     createWorkOrder: 'Create new Work Order',
     searchJobsLabel: 'Search jobs in this category',
     categoryJobsLabel: 'Jobs in this Category',
@@ -771,6 +777,8 @@ const copy: Record<ShopLocale, Copy> = {
     clockOnTruckTapContinue: (truckNumber) => `Tu reloj está en la unidad ${truckNumber} · toca Continuar`,
     clockSwitchedTapContinue: 'Tu reloj pasó a otra unidad · toca Continuar',
     otherWorkReadOnly: 'Este trabajo lo hacen otros mecánicos. Puedes verlo, no cambiarlo.',
+    helperJobSuffix: ' · ayudante',
+    jobAtExternalShop: 'En taller externo',
     createWorkOrder: 'Crear nuevo Work Order',
     searchJobsLabel: 'Buscar jobs en esta categoría',
     categoryJobsLabel: 'Jobs en esta Category',

@@ -12,11 +12,12 @@ import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admi
 import { formatVehicleYmm } from '@/lib/format';
 import { laborByMechanic } from '@/lib/labor-by-mechanic';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminHelperJob, returnAdminJobExternal, sendAdminJobExternal, changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
 import { AdminContextSidebar, ContextBlock, ContextCard, ContextFacts } from './admin-context-sidebar';
 import { AdminJobTable } from './admin-job-table';
+import { apiErrorCode } from '@/lib/api-error-message';
 import { AdminOperationalHeader } from './admin-operational-header';
 import { pauseResumeError } from './pause-resume-error';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
@@ -315,6 +316,10 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
               onComplete={(jobId) => void runMutation(`complete-job-${jobId}`, messages.completeJobSuccess, () => completeAdminJob(jobId, { expectedVersion: data.version }), (failure) => jobChangeError(failure, messages))}
               onPmServiceChange={(jobId, catalogJobId) => void runMutation(`pm-service-${jobId}`, messages.pmServiceChangedSuccess, () => changeAdminPmService(data.id, jobId, { catalogJobId, expectedVersion: data.version }), () => messages.pmServiceChangeFailed)}
               onJobDialog={(kind, jobId) => { setJobDialogError(null); setJobDialog({ kind, jobId }); }}
+              // LTR-188 / D23, D24: helper Job and external shop, from the row's "…" and "Returned".
+              onAddHelper={(jobId, mechanicId) => void runMutation(`add-helper-${jobId}`, messages.addHelperSuccess, () => addAdminHelperJob(id, jobId, { mechanicId, expectedVersion: data.version }), (failure) => jobChangeError(failure, messages))}
+              onSendExternal={(jobId, input) => void runMutation(`send-external-${jobId}`, messages.sendExternalSuccess, () => sendAdminJobExternal(id, jobId, { ...input, expectedVersion: data.version }), (failure) => jobChangeError(failure, messages))}
+              onReturnExternal={(jobId, input) => void runMutation(`return-external-${jobId}`, messages.externalReturnSuccess, () => returnAdminJobExternal(id, jobId, { ...input, expectedVersion: data.version }), (failure) => jobChangeError(failure, messages))}
             />
             {canManageJobs ? (
               // LTR-119 / D6: Jobs are added from the Truck Work Plan (the canonical place).
@@ -969,6 +974,9 @@ function fromDatetimeLocal(value: string) {
   return new Date(value).toISOString();
 }
 function jobChangeError(errorValue: unknown, messages: AdminMessages) {
+  // LTR-181 / LTR-188: a known API code says exactly what went wrong (e.g. HELPER_ALREADY_ADDED).
+  const code = errorValue instanceof ApiError && errorValue.status === 400 ? apiErrorCode(errorValue) : null;
+  if (code && code in messages.apiError) return messages.apiError[code as keyof typeof messages.apiError];
   if (errorValue instanceof ApiError) {
     if (errorValue.status === 400) return messages.jobChangeBadRequest;
     if (errorValue.status === 409) return messages.assignmentConflict;

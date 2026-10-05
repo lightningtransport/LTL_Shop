@@ -474,8 +474,10 @@ function YardTruckCard({ item, messages, locale, dispatch, canManage = false, on
       {workOrder ? null : (
         <CompactEmpty className="px-2 py-1 text-xs">{messages.noOpenWorkOrder}</CompactEmpty>
       )}
-      {showPriority || showBlocker ? (
+      {showPriority || showBlocker || item.outOfShop ? (
         <div className="flex flex-wrap items-center gap-1">
+          {/* LTR-188 / D24: a Job sent the whole truck to an external shop. Phase and counters stay. */}
+          {item.outOfShop ? <Badge variant="warning" data-testid="yard-card-out-of-shop">{messages.yardOutOfShop}</Badge> : null}
           {showPriority && workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : null}
           {showBlocker ? (
             <Badge variant="warning">

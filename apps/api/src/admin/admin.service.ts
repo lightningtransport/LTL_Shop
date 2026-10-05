@@ -22,6 +22,9 @@ import {
   WorkOrderStatus as SharedWorkOrderStatus,
   adminAssignJobSchema,
   adminUnassignJobSchema,
+  adminAddHelperJobSchema,
+  adminSendJobExternalSchema,
+  adminReturnJobExternalSchema,
   adminCancelWorkOrderSchema,
   adminCompleteWorkOrderSchema,
   adminReopenWorkOrderSchema,
@@ -69,7 +72,7 @@ import { resolveActiveBlockers } from '../work-orders/blockers';
 import { closeActiveAssessments, reopenAssessmentOfWorkOrder } from './readiness-visit';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
 import { stopLaborForMechanic } from '../work-orders/labor-session';
-import { classifyWorkPlanLane } from './yard-work-plan-derivation';
+import { classifyWorkPlanLane, toJobExternalDto } from './yard-work-plan-derivation';
 import { YardOperationsService } from './yard-operations.service';
 import { joinWorkOrderTeam, workOrderTeam } from '../work-orders/work-order-team';
 import { activeInspectionInclude, activeInspectionOutcome, workOrderNextStep, type NextStepWorkOrderRow } from './work-order-next-step';
@@ -81,6 +84,9 @@ import { blockerActivityLogsInclude, blockerLogDetails, toWorkOrderNoteDto, work
 import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
+
+/** LTR-188 / D24: the four columns that say a Job is at an external shop, cleared. */
+const CLEAR_EXTERNAL = { externalSince: null, externalKind: null, externalNote: null, externalById: null } as const;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function isUuid(id: string) {
   return UUID_RE.test(id);
@@ -151,6 +157,8 @@ const summaryInclude = {
   jobs: {
     select: {
       id: true, status: true, assignedMechanicId: true, displayName: true, addedAt: true,
+      // LTR-188 / D23, D24: helper Jobs and Jobs at an external shop feed the Next step.
+      helperOfJobId: true, externalSince: true, externalKind: true, externalNote: true,
       category: { select: { name: true } },
       assignedMechanic: { select: { id: true, name: true } },
     },
@@ -443,6 +451,7 @@ export class AdminService {
             jobs: {
               select: {
                 id: true, status: true, displayName: true, assignedMechanicId: true,
+                externalSince: true, externalKind: true, externalNote: true,
                 category: { select: { id: true, name: true } },
               },
               orderBy: { addedAt: 'asc' },
@@ -667,37 +676,11 @@ export class AdminService {
         }
         const job = wo.jobs.find((item) => item.id === jobId);
         if (!job) throw new NotFoundException('Job not found');
-        // LTR-146: the PM job goes to a PM mechanic, who does not join the Standard team.
-        const isPmJob = isPmCategory(job.category.name);
-        // LTR-185 / D19: the Quality Check belongs to Safety, who is not on the team either.
-        const isQcJob = classifyWorkPlanLane(job.category.name, job.displayName) === WorkPlanJobLane.QUALITY_CHECK;
-        if (isPmJob && (job.status !== JobStatus.to_do || job.startedAt)) {
-          throw new BadRequestException('A started or finished PM job cannot be reassigned');
+        // LTR-188 / D24: a Job at an external shop gets its owner through "Returned".
+        if (job.externalSince) {
+          throw new BadRequestException({ code: 'JOB_AT_EXTERNAL_SHOP', message: 'This Job is at an external shop. Use Returned first.' });
         }
-        const requiredCapability = isPmJob
-          ? AppCapability.MECHANIC_PM
-          : isQcJob ? AppCapability.QUALITY_CHECK_PERFORM : AppCapability.MECHANIC_STANDARD;
-        const mechanic = await tx.user.findFirst({
-          where: {
-            id: input.mechanicId,
-            active: true,
-            capabilities: { some: { capability: requiredCapability } },
-          },
-          select: { id: true, name: true },
-        });
-        if (!mechanic) {
-          if (isQcJob) throw new BadRequestException({ code: 'QC_OWNER_MUST_BE_SAFETY', message: 'Only Safety can own the Quality Check.' });
-          throw new BadRequestException(isPmJob ? 'This mechanic cannot perform PM work' : 'This mechanic cannot perform standard work');
-        }
-        // PM mechanics and Safety reach the Work Order through their own Job only.
-        if (!isPmJob && !isQcJob) await joinWorkOrderTeam(tx, workOrderId, input.mechanicId, user.id);
-        await tx.workOrderJob.update({
-          where: { id: jobId },
-          data: { assignedMechanicId: input.mechanicId },
-        });
-        if (job.assignedMechanicId && job.assignedMechanicId !== input.mechanicId) {
-          await this.releaseMechanicFromWorkOrder(tx, workOrderId, job.assignedMechanicId);
-        }
+        const mechanic = await this.assignJobInTx(tx, user, workOrderId, job, input.mechanicId);
         const incremented = await tx.workOrder.updateMany({
           where: { id: workOrderId, version: input.expectedVersion },
           data: { version: { increment: 1 } },
@@ -729,6 +712,51 @@ export class AdminService {
       }
       throw error;
     }
+  }
+
+  /**
+   * The owner change of `assignJob` (LTR-146 PM, LTR-185 QC, D11 team), shared with
+   * "Returned → Assign to" (LTR-188 / D24). The caller bumps the version and logs.
+   */
+  private async assignJobInTx(
+    tx: Prisma.TransactionClient,
+    user: AuthUser,
+    workOrderId: string,
+    job: DetailRow['jobs'][number],
+    mechanicId: string,
+  ) {
+    // LTR-146: the PM job goes to a PM mechanic, who does not join the Standard team.
+    const isPmJob = isPmCategory(job.category.name);
+    // LTR-185 / D19: the Quality Check belongs to Safety, who is not on the team either.
+    const isQcJob = classifyWorkPlanLane(job.category.name, job.displayName) === WorkPlanJobLane.QUALITY_CHECK;
+    if (isPmJob && (job.status !== JobStatus.to_do || job.startedAt)) {
+      throw new BadRequestException('A started or finished PM job cannot be reassigned');
+    }
+    const requiredCapability = isPmJob
+      ? AppCapability.MECHANIC_PM
+      : isQcJob ? AppCapability.QUALITY_CHECK_PERFORM : AppCapability.MECHANIC_STANDARD;
+    const mechanic = await tx.user.findFirst({
+      where: {
+        id: mechanicId,
+        active: true,
+        capabilities: { some: { capability: requiredCapability } },
+      },
+      select: { id: true, name: true },
+    });
+    if (!mechanic) {
+      if (isQcJob) throw new BadRequestException({ code: 'QC_OWNER_MUST_BE_SAFETY', message: 'Only Safety can own the Quality Check.' });
+      throw new BadRequestException(isPmJob ? 'This mechanic cannot perform PM work' : 'This mechanic cannot perform standard work');
+    }
+    // PM mechanics and Safety reach the Work Order through their own Job only.
+    if (!isPmJob && !isQcJob) await joinWorkOrderTeam(tx, workOrderId, mechanicId, user.id);
+    await tx.workOrderJob.update({
+      where: { id: job.id },
+      data: { assignedMechanicId: mechanicId },
+    });
+    if (job.assignedMechanicId && job.assignedMechanicId !== mechanicId) {
+      await this.releaseMechanicFromWorkOrder(tx, workOrderId, job.assignedMechanicId);
+    }
+    return mechanic;
   }
 
   async unassignJob(user: AuthUser, workOrderId: string, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
@@ -1519,6 +1547,8 @@ export class AdminService {
             status: JobStatus.cancelled,
             cancelledAt: new Date(),
             cancelledReason: input.reason,
+            // LTR-188 / D24: a cancelled Job is not waiting at an external shop any more.
+            ...CLEAR_EXTERNAL,
           },
         });
         await this.activity.log(tx, {
@@ -1590,59 +1620,7 @@ export class AdminService {
         if (job.status !== JobStatus.to_do) {
           throw new BadRequestException('Job is not in To Do status');
         }
-        // LTR-145: the PM job is finished from the PM service (mileage + parts), not a plain complete.
-        if (isPmCategory(job.category.name)) {
-          throw new BadRequestException({
-            code: 'PM_JOB_USES_PM_SERVICE',
-            message: 'The PM job is completed from the PM service with observed mileage and parts.',
-          });
-        }
-        // LTR-175: work is happening on this Work Order, so it is no longer "created".
-        const now = new Date();
-        const startsWorkOrder = wo.status === WorkOrderStatus.created;
-        const incremented = await tx.workOrder.updateMany({
-          where: { id: workOrderId, version: input.expectedVersion },
-          data: startsWorkOrder
-            ? { status: WorkOrderStatus.in_progress, startedAt: now, version: { increment: 1 } }
-            : { version: { increment: 1 } },
-        });
-        if (incremented.count !== 1) {
-          throw this.versionConflict('Work Order was updated. Refresh and try again.');
-        }
-        await tx.workOrderJob.update({
-          where: { id: jobId },
-          data: {
-            status: JobStatus.completed,
-            completedAt: now,
-            completedById: user.id,
-            cancelledAt: null,
-            cancelledReason: null,
-          },
-        });
-        await this.activity.log(tx, {
-          workOrderId,
-          eventType: SharedActivityEventType.JOB_COMPLETED,
-          entityType: 'work_order_job',
-          entityId: jobId,
-          userId: user.id,
-          previousValue: { status: job.status, displayName: job.displayName },
-          newValue: { status: JobStatus.completed, displayName: job.displayName, notes },
-          relevantValue: { action: 'job_completed', displayName: job.displayName, notes, actor: 'admin' },
-        });
-        if (startsWorkOrder) {
-          await this.activity.log(tx, {
-            workOrderId,
-            eventType: SharedActivityEventType.WORK_STARTED,
-            entityType: 'work_order',
-            entityId: workOrderId,
-            userId: user.id,
-            previousValue: { status: WorkOrderStatus.created },
-            newValue: { status: WorkOrderStatus.in_progress, startedAt: now.toISOString() },
-          });
-        }
-        // LTR-176: the Manager completing a blocked Job settles its blocker (the work is done).
-        await resolveActiveBlockers(tx, this.activity, { workOrderId, jobId, userId: user.id, note: 'Job completed by the Manager.' }, now);
-        await stopLaborForMechanic(tx, workOrderId, job.assignedMechanicId);
+        await this.completeJobInTx(tx, user, wo, job, { notes, expectedVersion: input.expectedVersion });
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
@@ -1658,6 +1636,76 @@ export class AdminService {
       }
       throw error;
     }
+  }
+
+  /**
+   * The Manager completes a pending Job (LTR-145 PM rule, LTR-175 first work,
+   * LTR-176 blockers, D18 labor) and bumps the version. Shared with
+   * "Returned → Complete" (LTR-188 / D24), where completedBy is the Manager.
+   */
+  private async completeJobInTx(
+    tx: Prisma.TransactionClient,
+    user: AuthUser,
+    wo: DetailRow,
+    job: DetailRow['jobs'][number],
+    options: { notes: string | null; expectedVersion: number },
+  ) {
+    const workOrderId = wo.id;
+    // LTR-145: the PM job is finished from the PM service (mileage + parts), not a plain complete.
+    if (isPmCategory(job.category.name)) {
+      throw new BadRequestException({
+        code: 'PM_JOB_USES_PM_SERVICE',
+        message: 'The PM job is completed from the PM service with observed mileage and parts.',
+      });
+    }
+    // LTR-175: work is happening on this Work Order, so it is no longer "created".
+    const now = new Date();
+    const startsWorkOrder = wo.status === WorkOrderStatus.created;
+    const incremented = await tx.workOrder.updateMany({
+      where: { id: workOrderId, version: options.expectedVersion },
+      data: startsWorkOrder
+        ? { status: WorkOrderStatus.in_progress, startedAt: now, version: { increment: 1 } }
+        : { version: { increment: 1 } },
+    });
+    if (incremented.count !== 1) {
+      throw this.versionConflict('Work Order was updated. Refresh and try again.');
+    }
+    await tx.workOrderJob.update({
+      where: { id: job.id },
+      data: {
+        status: JobStatus.completed,
+        completedAt: now,
+        completedById: user.id,
+        cancelledAt: null,
+        cancelledReason: null,
+        // LTR-188 / D24: done is done, wherever it was done.
+        ...CLEAR_EXTERNAL,
+      },
+    });
+    await this.activity.log(tx, {
+      workOrderId,
+      eventType: SharedActivityEventType.JOB_COMPLETED,
+      entityType: 'work_order_job',
+      entityId: job.id,
+      userId: user.id,
+      previousValue: { status: job.status, displayName: job.displayName },
+      newValue: { status: JobStatus.completed, displayName: job.displayName, notes: options.notes },
+      relevantValue: { action: 'job_completed', displayName: job.displayName, notes: options.notes, actor: 'admin' },
+    });
+    if (startsWorkOrder) {
+      await this.activity.log(tx, {
+        workOrderId,
+        eventType: SharedActivityEventType.WORK_STARTED,
+        entityType: 'work_order',
+        entityId: workOrderId,
+        userId: user.id,
+        previousValue: { status: WorkOrderStatus.created },
+        newValue: { status: WorkOrderStatus.in_progress, startedAt: now.toISOString() },
+      });
+    }
+    // LTR-176: the Manager completing a blocked Job settles its blocker (the work is done).
+    await resolveActiveBlockers(tx, this.activity, { workOrderId, jobId: job.id, userId: user.id, note: 'Job completed by the Manager.' }, now);
+    await stopLaborForMechanic(tx, workOrderId, job.assignedMechanicId);
   }
 
   async reopenJob(user: AuthUser, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
@@ -1737,6 +1785,230 @@ export class AdminService {
         if (replay) return replay;
       }
       throw error;
+    }
+  }
+
+  /**
+   * LTR-188 / D23: another Standard mechanic helps on a Job. The helper gets a Job
+   * of their own ("<Job> · helper" in the web; same catalog Job, Category and name)
+   * so the one-owner rule (D11), their clock (D18, D20, D21) and blockers stay per Job.
+   */
+  async addHelperJob(user: AuthUser, workOrderId: string, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    const parsed = adminAddHelperJobSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const payloadHash = idempotencyFingerprint({ workOrderId, jobId, mechanicId: input.mechanicId, expectedVersion: input.expectedVersion });
+    return this.runJobMutation(user, workOrderId, jobId, 'admin_add_helper_job', payloadHash, input, async (tx, wo, job) => {
+      if (job.status !== JobStatus.to_do || job.externalSince) {
+        throw new BadRequestException({ code: 'HELPER_JOB_NOT_OPEN', message: 'A helper can only be added to a pending Job of an open Work Order.' });
+      }
+      const lane = classifyWorkPlanLane(job.category.name, job.displayName);
+      if (lane === WorkPlanJobLane.PM || lane === WorkPlanJobLane.QUALITY_CHECK || job.helperOfJobId) {
+        throw new BadRequestException({ code: 'HELPER_NOT_ALLOWED_HERE', message: 'This Job cannot have a helper.' });
+      }
+      const mechanic = await tx.user.findFirst({
+        where: { id: input.mechanicId, active: true, capabilities: { some: { capability: AppCapability.MECHANIC_STANDARD } } },
+        select: { id: true, name: true },
+      });
+      if (!mechanic || mechanic.id === job.assignedMechanicId) {
+        throw new BadRequestException({ code: 'HELPER_INVALID_MECHANIC', message: 'Choose an active Standard mechanic who does not own this Job.' });
+      }
+      const already = wo.jobs.some((item) => item.helperOfJobId === job.id
+        && item.assignedMechanicId === mechanic.id
+        && item.status !== JobStatus.cancelled);
+      if (already) {
+        throw new BadRequestException({ code: 'HELPER_ALREADY_ADDED', message: 'This mechanic is already helping on this Job.' });
+      }
+      const helper = await tx.workOrderJob.create({
+        data: {
+          workOrderId,
+          catalogJobId: job.catalogJobId,
+          categoryId: job.categoryId,
+          displayName: job.displayName,
+          customDescription: job.customDescription,
+          isCustom: job.isCustom,
+          addedById: user.id,
+          assignedMechanicId: mechanic.id,
+          helperOfJobId: job.id,
+          status: JobStatus.to_do,
+        },
+      });
+      await joinWorkOrderTeam(tx, workOrderId, mechanic.id, user.id);
+      await this.bumpVersion(tx, workOrderId, input.expectedVersion);
+      await this.activity.log(tx, {
+        workOrderId,
+        eventType: SharedActivityEventType.JOB_ADDED,
+        entityType: 'work_order_job',
+        entityId: helper.id,
+        userId: user.id,
+        newValue: {
+          jobId: helper.id,
+          action: 'helper_added',
+          helperOfJobId: job.id,
+          displayName: job.displayName,
+          assignedMechanicId: mechanic.id,
+          mechanicName: mechanic.name,
+        },
+      });
+      await this.activity.log(tx, {
+        workOrderId,
+        eventType: SharedActivityEventType.MECHANIC_ADDED,
+        entityType: 'work_order_job',
+        entityId: helper.id,
+        userId: user.id,
+        previousValue: { jobId: helper.id, assignedMechanicId: null },
+        newValue: { jobId: helper.id, action: 'job_assigned', assignedMechanicId: mechanic.id, mechanicName: mechanic.name },
+      });
+    });
+  }
+
+  /**
+   * LTR-188 / D24: the part or the whole truck goes to an external shop. The Job
+   * stays to do but has no owner and no clock; its owner's clock here stops when it
+   * was their last available Job, and its blocker (if any) is resolved.
+   */
+  async sendJobExternal(user: AuthUser, workOrderId: string, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    const parsed = adminSendJobExternalSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const payloadHash = idempotencyFingerprint({ workOrderId, jobId, kind: input.kind, note: input.note, expectedVersion: input.expectedVersion });
+    return this.runJobMutation(user, workOrderId, jobId, 'admin_send_job_external', payloadHash, input, async (tx, wo, job) => {
+      if (job.status !== JobStatus.to_do) {
+        throw new BadRequestException('Job is not in To Do status');
+      }
+      // D19: the Quality Check is Safety's step at the end; it never goes out.
+      if (classifyWorkPlanLane(job.category.name, job.displayName) === WorkPlanJobLane.QUALITY_CHECK) {
+        throw new BadRequestException({ code: 'EXTERNAL_NOT_ALLOWED_HERE', message: 'The Quality Check cannot go to an external shop.' });
+      }
+      if (job.externalSince) {
+        throw new BadRequestException({ code: 'EXTERNAL_ALREADY', message: 'This Job is already at an external shop.' });
+      }
+      const now = new Date();
+      await tx.workOrderJob.update({
+        where: { id: job.id },
+        data: {
+          assignedMechanicId: null,
+          externalSince: now,
+          externalKind: input.kind,
+          externalNote: input.note,
+          externalById: user.id,
+        },
+      });
+      await resolveActiveBlockers(tx, this.activity, { workOrderId, jobId: job.id, userId: user.id, note: 'Job sent to an external shop.' }, now);
+      // Same path as unassign: off the team when they own nothing else here, clock stops without another available Job.
+      if (job.assignedMechanicId) await this.releaseMechanicFromWorkOrder(tx, workOrderId, job.assignedMechanicId);
+      await this.bumpVersion(tx, workOrderId, input.expectedVersion);
+      await this.activity.log(tx, {
+        workOrderId,
+        eventType: SharedActivityEventType.MANAGER_CORRECTION,
+        entityType: 'work_order_job',
+        entityId: job.id,
+        userId: user.id,
+        previousValue: { jobId: job.id, assignedMechanicId: job.assignedMechanicId },
+        newValue: { jobId: job.id, displayName: job.displayName, kind: input.kind, notes: input.note },
+        relevantValue: { action: 'job_sent_external', kind: input.kind, displayName: job.displayName },
+      });
+    });
+  }
+
+  /** LTR-188 / D24: back from the external shop — complete the Job, or assign it (install / check). */
+  async returnJobExternal(user: AuthUser, workOrderId: string, jobId: string, raw: unknown): Promise<AdminWorkOrderDetailDto> {
+    const parsed = adminReturnJobExternalSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const input = parsed.data;
+    const payloadHash = idempotencyFingerprint({
+      workOrderId, jobId, outcome: input.outcome, mechanicId: input.mechanicId ?? null, expectedVersion: input.expectedVersion,
+    });
+    return this.runJobMutation(user, workOrderId, jobId, 'admin_return_job_external', payloadHash, input, async (tx, wo, job) => {
+      if (job.status !== JobStatus.to_do || !job.externalSince) {
+        throw new BadRequestException({ code: 'JOB_NOT_EXTERNAL', message: 'This Job is not at an external shop.' });
+      }
+      await tx.workOrderJob.update({ where: { id: job.id }, data: CLEAR_EXTERNAL });
+      await this.activity.log(tx, {
+        workOrderId,
+        eventType: SharedActivityEventType.MANAGER_CORRECTION,
+        entityType: 'work_order_job',
+        entityId: job.id,
+        userId: user.id,
+        previousValue: { jobId: job.id, kind: job.externalKind, notes: job.externalNote },
+        newValue: { jobId: job.id, displayName: job.displayName, outcome: input.outcome, assignedMechanicId: input.mechanicId ?? null },
+        relevantValue: { action: 'job_returned_external', outcome: input.outcome, displayName: job.displayName },
+      });
+      if (input.outcome === 'complete') {
+        await this.completeJobInTx(tx, user, wo, { ...job, ...CLEAR_EXTERNAL }, { notes: null, expectedVersion: input.expectedVersion });
+        return;
+      }
+      const mechanic = await this.assignJobInTx(tx, user, workOrderId, { ...job, ...CLEAR_EXTERNAL }, input.mechanicId!);
+      await this.bumpVersion(tx, workOrderId, input.expectedVersion);
+      await this.activity.log(tx, {
+        workOrderId,
+        eventType: SharedActivityEventType.MECHANIC_ADDED,
+        entityType: 'work_order_job',
+        entityId: job.id,
+        userId: user.id,
+        previousValue: { jobId: job.id, assignedMechanicId: null },
+        newValue: { jobId: job.id, action: 'job_assigned', assignedMechanicId: mechanic.id, mechanicName: mechanic.name },
+      });
+    });
+  }
+
+  /**
+   * The shared shell of an Admin Job mutation (LTR-188): idempotency, day close
+   * (D20), truck lock, open non-PM Work Order, expected version, the Job, then
+   * `apply` (which bumps the version) and the stored result.
+   */
+  private async runJobMutation(
+    user: AuthUser,
+    workOrderId: string,
+    jobId: string,
+    operation: string,
+    payloadHash: string,
+    input: { idempotencyKey: string; expectedVersion: number },
+    apply: (tx: Prisma.TransactionClient, wo: DetailRow, job: DetailRow['jobs'][number]) => Promise<void>,
+  ): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
+    if (!isUuid(jobId)) throw new BadRequestException('Invalid Job id');
+    const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+    if (existing) return existing;
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await this.clock?.closeDue(tx);
+        const initial = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!initial) throw new NotFoundException('Work Order not found');
+        await lockTruckMutation(tx, initial.truckId);
+        const replay = await this.findWorkOrderMutationInTx(tx, input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+        const wo = await tx.workOrder.findUnique({ where: { id: workOrderId }, include: detailInclude });
+        if (!wo) throw new NotFoundException('Work Order not found');
+        const job = wo.jobs.find((item) => item.id === jobId);
+        if (!job) throw new NotFoundException('Job not found');
+        if (operation === 'admin_add_helper_job'
+          && (wo.primaryCategory.name === 'PM' || !(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status))) {
+          throw new BadRequestException({ code: 'HELPER_JOB_NOT_OPEN', message: 'A helper can only be added to a pending Job of an open Work Order.' });
+        }
+        this.assertMutableJobs(wo);
+        if (wo.version !== input.expectedVersion) {
+          throw this.versionConflict('Work Order was updated. Refresh and try again.');
+        }
+        await apply(tx, wo, job);
+        return this.persistWorkOrderMutation(tx, { idempotencyKey: input.idempotencyKey, workOrderId, operation, payloadHash, actorId: user.id });
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const replay = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
+        if (replay) return replay;
+      }
+      throw error;
+    }
+  }
+
+  private async bumpVersion(tx: Prisma.TransactionClient, workOrderId: string, expectedVersion: number) {
+    const incremented = await tx.workOrder.updateMany({
+      where: { id: workOrderId, version: expectedVersion },
+      data: { version: { increment: 1 } },
+    });
+    if (incremented.count !== 1) {
+      throw this.versionConflict('Work Order was updated. Refresh and try again.');
     }
   }
 
@@ -2066,21 +2338,24 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
 }
 
 // LTR-164 / D15: Quality Check never has an owner, so it is not an unassigned Job.
+// LTR-188 / D24: neither is a Job at an external shop (no owner on purpose).
 export function countUnassignedJobs(
-  jobs: Array<{ status: string; assignedMechanicId?: string | null; displayName?: string; category?: { name: string } }>,
+  jobs: Array<{ status: string; assignedMechanicId?: string | null; displayName?: string; category?: { name: string }; externalSince?: Date | null }>,
 ): number {
   return jobs.filter((job) => job.status === 'to_do'
     && !job.assignedMechanicId
+    && !job.externalSince
     && classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '') !== WorkPlanJobLane.QUALITY_CHECK).length;
 }
 
 // LTR-157: flow order for "Next: <Job>" on lists and cards.
 const LANE_FLOW_ORDER = ['inspection', 'shop_work', 'pm', 'alignment', 'detailing', 'quality_check'];
 
-function nextJobInFlow(jobs: Array<{ status: string; displayName?: string; category?: { name: string } }>): string | null {
+function nextJobInFlow(jobs: Array<{ status: string; displayName?: string; category?: { name: string }; externalSince?: Date | null }>): string | null {
   const pending = jobs
     .map((job, index) => ({ job, index, rank: LANE_FLOW_ORDER.indexOf(classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '')) }))
-    .filter(({ job }) => job.status === 'to_do')
+    // LTR-188 / D24: a Job at an external shop is not the next thing done here.
+    .filter(({ job }) => job.status === 'to_do' && !job.externalSince)
     .sort((left, right) => left.rank - right.rank || left.index - right.index);
   return pending[0]?.job.displayName ?? null;
 }
@@ -2112,6 +2387,8 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     completedBy: job.completedBy ?? null,
     completionNotes: jobCompletionNotes(row.activityLogs, job.id),
     startedAt: job.startedAt?.toISOString() ?? null,
+    helperOfJobId: job.helperOfJobId ?? null,
+    external: toJobExternalDto(job),
   }));
   return {
     ...summary,

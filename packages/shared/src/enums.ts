@@ -237,6 +237,14 @@ export enum WorkPlanJobUiStatus {
   BLOCKED = 'blocked',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  /** LTR-188 / D24: the Job (still to do) is at an external shop. */
+  EXTERNAL = 'external',
+}
+
+/** LTR-188 / D24: what went to the external shop — the part or the whole truck. */
+export enum JobExternalKind {
+  PART = 'part',
+  TRUCK = 'truck',
 }
 
 export enum WorkPlanJobLane {

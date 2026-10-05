@@ -822,7 +822,8 @@ export class WorkOrdersService {
         if (!category) throw new BadRequestException('Invalid or inactive job category');
         await this.assertCatalogJobsBelongToCategory([input], input.categoryId, tx);
         const currentJobs = await tx.workOrderJob.findMany({
-          where: { workOrderId: id, status: { not: 'cancelled' } },
+          // LTR-188 / D23: a helper Job is a deliberate duplicate of its parent; it never blocks adding work.
+          where: { workOrderId: id, status: { not: 'cancelled' }, helperOfJobId: null },
           select: { catalogJobId: true, displayName: true, category: { select: { name: true } } },
         });
         // LTR-145: one PM job per Work Order (switch A↔B instead of adding a second).
@@ -1378,6 +1379,10 @@ export class WorkOrdersService {
       if (!job) throw new NotFoundException('Job not found');
       if (this.activePmJob(wo)?.id !== jobId) throw new BadRequestException('This is not the PM job of this Work Order');
       if (job.status !== 'to_do') throw new BadRequestException('The PM job is not to do');
+      // LTR-188 / D24: a Job at an external shop waits for the Manager's "Returned".
+      if (job.externalSince) {
+        throw new BadRequestException({ code: 'JOB_AT_EXTERNAL_SHOP', message: 'This Job is at an external shop.' });
+      }
       if (job.startedAt && job.assignedMechanicId === user.id && !openSessionFor(wo.sessions, user.id)) {
         // LTR-186 / D20, D21: the PM was started and my clock stopped (day close, switched Truck,
         // resolved blocker). Continue reopens my clock here; the PM itself is unchanged.

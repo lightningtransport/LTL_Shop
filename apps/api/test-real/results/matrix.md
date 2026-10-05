@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 64 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 66 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -46,6 +46,8 @@ PASA 64 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | PASA |
 | A32 | Cierre del día: el reloj se cierra a las 5:00 p.m. (no a la hora en que alguien mira), el viernes no corre el fin de semana, fuera de horario a las 11:59 p.m., y al día siguiente "toca Continue" | PASA |
 | A33 | Horario del taller en Setup: el Manager (o el System Admin) cambia la hora y los días; aplica desde ese momento; los demás roles no pueden; datos inválidos no | PASA |
+| A34 | Ayudante: Job aparte "· ayudante" con su dueño; su reloj corre a su nombre en ese WO; no deja al mismo dueño, a quien no hace Standard, ni en PM / QC / otro ayudante; el bloqueo del principal no lo bloquea; cancelar el principal no lo cancela; solo el Manager | PASA |
+| A35 | Taller externo: sale la pieza o el camión con nota; sin dueño, sin reloj y sin "sin asignar"; siguiente paso "En taller externo" igual en todas las pantallas; no se puede cerrar; los demás Jobs siguen; el Yard dice "Fuera del taller"; solo el Manager; "Regresó" → completar o asignar | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

@@ -190,6 +190,9 @@ export function AdminTruckNextStep({
             ) : null}
           </form>
         );
+      case 'external':
+        // LTR-188 / D24: nothing to press here; "Returned" lives on the Job's row of the Work Order.
+        return <p>{fillPlaceholders(messages.truckNextStepExternal, { job: current.jobName ?? '' })}</p>;
       case 'work':
         return (
           <p>{fillPlaceholders(messages.truckNextStepWork, { count: String(current.remaining ?? 0), job: current.jobName ?? '' })}</p>
