@@ -260,16 +260,11 @@ del mecánico; queda cerrado.
 
 ## 5. Para salir en vivo — LTR-45
 
-Detalle en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md).
-
-- Roster real y `work_orders.manage` para los Managers reales (P6), más las
-  dos cuentas de Safety con `quality_check.perform` (hoy "Safety 1" y
-  "Safety 2" en el seed local).
-- Usuarios reales en Supabase Auth; `AUTH_DEV_BYPASS` apagado en producción.
-- Carga única de camiones de Ninox, si la flota de producción no está completa.
-- Smoke con un Manager y un mecánico reales, incluido Safari en un iPhone real.
-- Validar en datos de producción: Truck Detail (LTR-59) y Ready vs Complete
-  vs Return to Service (LTR-60, LTR-123). Cerrar la épica LTR-149.
+Paso a paso en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md) (2026-10-05):
+mirar producción, variables, migrar y desplegar, cuentas (el Manager da de alta
+al personal, D22), configurar el taller, limpiar datos de prueba, un día de
+prueba en iPhone real. Terminado cuando el taller trabaja un día completo con
+usuarios reales sin un defecto B.
 
 ## 6. Fuera de alcance (no se construye hasta decidirlo)
 
