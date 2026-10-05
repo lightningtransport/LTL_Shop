@@ -103,4 +103,4 @@ Se deciden aquí; mientras tanto, no se construye nada que dependa de ellas.
 | ~~P8~~ | **Cerrada 2026-10-05 → D24:** "Enviar a taller externo" en el Job (sale la pieza o el camión), sin costos. |
 | ~~P9~~ | **Cerrada 2026-09-29 → D21:** el reloj corre en un solo camión a la vez. |
 | ~~P10~~ | **Cerrada 2026-09-29:** nunca hay PM sin partes. La app está bien como está (exige al menos una). |
-| P11 | Trailers: ¿para el día 1 o después de salir en vivo? (LTR-188, LTR-56) |
+| ~~P11~~ | **Cerrada 2026-10-05:** trailers **después** de salir en vivo, cuando Cristian lo indique (LTR-56). |

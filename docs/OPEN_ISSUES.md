@@ -119,7 +119,7 @@ están en `USER_FLOWS.md` §6.
 | G3 | A veces dos mecánicos trabajan en la misma tarea — **decidido D23 (2026-10-05): Job aparte "· ayudante"; por construir** | Un dueño por Job; el tiempo del ayudante se pierde | C | LTR-188 |
 | G4 | A veces se manda trabajo a un taller externo — **decidido D24 (2026-10-05): "Enviar a taller externo" (pieza o camión); por construir** | No existe | C | LTR-188 |
 | ~~G5~~ | **Hecho 2026-09-30 (D22, LTR-187):** el Manager da de alta al personal (Standard, PM, Safety) con cuenta de acceso y contraseña temporal; desactiva solo sin trabajo abierto; reinicia contraseñas. Filas A29–A31. Camiones: después | — | — | LTR-187 |
-| G6 | El taller también trabaja trailers | Solo camiones | por decidir cuándo | LTR-188 (P11), LTR-56 |
+| G6 | El taller también trabaja trailers — **después de salir en vivo, cuando Cristian lo indique** | Solo camiones | diferido | LTR-56 |
 | ~~G7~~ | **Hecho 2026-10-05 (D21, LTR-186):** Start/Continue en otro camión cierra el reloj del anterior ("cambio de camión"); al volver, "Tu reloj está en la unidad … · toca Continuar". Fila E7 | — | — | LTR-186 |
 
 **Efecto en los defectos:**

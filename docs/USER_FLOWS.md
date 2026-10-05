@@ -502,7 +502,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | ~~P8~~ | Decidido (D24): "Enviar a taller externo" (pieza o camión) | Por construir |
 | ~~P9~~ | Decidido y construido (D21, LTR-186) | — |
 | ~~P10~~ | Nunca hay PM sin partes | Correcto como está |
-| P11 | El taller también trabaja trailers | Solo camiones |
+| ~~P11~~ | Trailers: después de salir en vivo, cuando Cristian lo indique | Solo camiones (LTR-56) |
 
 ---
 
@@ -552,4 +552,4 @@ una historia:
 | ~~G5~~ | El Manager da de alta al personal — **hecho (D22, HU-M9, 2026-09-30)**. Camiones: después | Manager | LTR-187 |
 | ~~G7~~ | El reloj corre en un solo camión a la vez — **hecho (D21, HU-ME6, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | G3, G4 | Ayudante en un Job (D23) y taller externo (D24) — **decididos, por construir** | Manager | LTR-188 |
-| G6 | Trailers (P11: cuándo) | Manager | LTR-188, LTR-56 |
+| G6 | Trailers — después de salir en vivo (P11) | Manager | LTR-56 |
