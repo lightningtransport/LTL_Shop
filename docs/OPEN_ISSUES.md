@@ -115,12 +115,12 @@ están en `USER_FLOWS.md` §6.
 
 | # | El taller | La app hoy | Clase | Ticket |
 |---|---|---|---|---|
-| G2 | El tiempo olvidado debe detenerse solo a cierta hora; el tiempo se usa para costear | Corre hasta que alguien lo corrige a mano | C | LTR-186 |
+| G2 | El tiempo olvidado debe detenerse solo a cierta hora — **decidido D20 (2026-10-05): cierre del día a las 5:00 p.m.; en construcción** | Corre hasta que alguien lo corrige a mano | C | LTR-186 |
 | G3 | A veces dos mecánicos trabajan en la misma tarea | Un dueño por Job; el tiempo del ayudante se pierde | C | LTR-188 (P7) |
 | G4 | A veces se manda trabajo a un taller externo | No existe | C | LTR-188 (P8) |
 | ~~G5~~ | **Hecho 2026-09-30 (D22, LTR-187):** el Manager da de alta al personal (Standard, PM, Safety) con cuenta de acceso y contraseña temporal; desactiva solo sin trabajo abierto; reinicia contraseñas. Filas A29–A31. Camiones: después | — | — | LTR-187 |
 | G6 | El taller también trabaja trailers | Solo camiones | por decidir cuándo | LTR-188 (P11), LTR-56 |
-| G7 | El reloj debe correr en un solo camión a la vez — **decidido (D21)** | Corre en los dos (D2 viejo) | C | LTR-188 (P9) |
+| G7 | El reloj debe correr en un solo camión a la vez — **decidido (D21); en construcción** | Corre en los dos (D2 viejo) | C | LTR-186 |
 
 **Efecto en los defectos:**
 
