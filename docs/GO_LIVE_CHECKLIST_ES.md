@@ -151,6 +151,17 @@ Nada de esto bloquea abrir el Shop de **camiones** como está hoy.
      correr uno a mano: responde `{ ok: true, closedSessions: … }`.
   5. Confirmar con el Manager la hora y los días en Admin → Setup → Shop
      workflow → Shop hours.
+- **Ayudante y taller externo (D23, D24, LTR-188):**
+  1. Aplicar la migración `20261005180000_helper_external_jobs_ltr188`
+     (aditiva: en `work_order_jobs` las columnas `helper_of_job_id`,
+     `external_since`, `external_kind`, `external_note`, `external_by_id`, el
+     tipo `job_external_kind` y su índice) por el workflow de Release safety
+     **antes** de desplegar la API nueva. Va después de
+     `20261005120000_day_close_ltr186`.
+  2. Desplegar la API y luego la web (sin variables nuevas).
+  3. Smoke con el Manager: en un WO abierto, `…` de un Job → Agregar
+     ayudante; `…` de otro Job → Enviar a taller externo (pieza) → el
+     siguiente paso y el Yard; **Regresó** → Completar.
 
 ---
 

@@ -54,6 +54,18 @@ the backstop:
   `shop_settings` with its default row), then deploy the API, then check the
   two jobs under Vercel → Settings → Cron Jobs and run one manually.
 
+## Helper Jobs and external shop (LTR-188 / D23, D24)
+
+- Release order: apply migration `20261005180000_helper_external_jobs_ltr188`
+  through **Release safety** first (additive, idempotent: on
+  `work_order_jobs` the nullable columns `helper_of_job_id` (FK to
+  `work_order_jobs`, `ON DELETE SET NULL`, indexed), `external_since`,
+  `external_kind` (enum `job_external_kind`: `part`, `truck`),
+  `external_note`, `external_by_id` (FK to `users`, `ON DELETE SET NULL`)),
+  then deploy the API, then the web. No new environment variables.
+- The old API ignores the new columns, so applying the migration before the
+  deploy is safe.
+
 ## Staging
 
 - [ ] Supabase project created (separate from Production)

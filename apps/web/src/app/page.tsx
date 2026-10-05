@@ -34,6 +34,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
+import { jobDisplayName } from '@/lib/job-display-name';
 
 export default function HomePage() {
   const { user, token, sessionLoading, sessionError, retrySession } = useAuth();
@@ -359,7 +360,7 @@ function WorkOrderCard({
                     job.status === 'completed' ? 'text-shop-muted line-through' : ''
                   }`}
                 >
-                  {job.displayName}
+                  {jobDisplayName(job, messages.helperJobSuffix)}
                   {job.id === nextJobId ? <span className="ml-2 text-xs font-semibold text-shop-accent">{messages.nextJob}</span> : null}
                 </span>
                 <span className="block text-xs text-shop-muted">

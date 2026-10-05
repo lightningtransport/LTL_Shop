@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-09-29 (auditoría LTR-174 + cuestionario de operación)
+**Actualizado:** 2026-10-05 (LTR-188: HU-M10 ayudante y HU-M11 taller externo construidos; auditoría LTR-174 + cuestionario de operación)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -464,15 +464,45 @@ Ver la fila E7 en HU-ME2.
 
 Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
-### Por decidir — 🔲 LTR-188
+### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
+
+**Flujo**
+1. Work Order → `…` del Job (por ejemplo "Air Leak") → **Agregar ayudante** → elige al mecánico.
+2. La app crea "Air Leak · ayudante" con ese dueño.
+3. El ayudante lo ve en "Tus Jobs", toca Start, ayuda y lo completa.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| El ayudante trabaja | Su reloj corre a su nombre en ese Work Order | ✅ | A34 |
+| Elige como ayudante al mismo dueño, o a alguien que no puede hacer trabajo Standard | No deja | ✅ | A34 |
+| El Job principal se bloquea | El del ayudante sigue; si a él también le afecta, lo reporta | ✅ | A34 |
+| El Job principal se cancela | El Manager decide si cancela también el del ayudante (no se cancela solo) | ✅ | A34 |
+
+### HU-M11 · Mandar trabajo a un taller externo (J3) — ✅ construido (D24, LTR-188)
+
+**Flujo**
+1. Work Order → `…` del Job → **Enviar a taller externo** → elige **sale la pieza** o **sale el camión** → nota (a dónde, cuándo vuelve).
+2. El Job queda "En taller externo": sin dueño, sin reloj, sin alerta de "nadie asignado".
+3. Cuando vuelve: **Regresó** → completarlo o asignarlo a un mecánico.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| Un Job está afuera | El camión no puede quedar Ready to Go; el siguiente paso dice "En taller externo: <Job>" | ✅ | A35 |
+| Sale el camión | El Yard lo muestra "Fuera del taller" | ✅ | A35 |
+| Otros Jobs del mismo camión | Siguen normal | ✅ | A35 |
+| El Job tenía dueño y reloj corriendo | Al enviarlo se le quita el dueño y se cierra su reloj en ese Work Order si no le queda otro Job | ✅ | A35 |
+| Regresa y hay que instalarlo | "Regresó" → asignar a un mecánico; su reloj corre normal | ✅ | A35 |
+| Un mecánico intenta enviarlo afuera | No puede (solo Manager) | ✅ | A35 |
+
+### Por decidir — LTR-188
 
 | # | Situación del taller | Hoy en la app |
 |---|---|---|
-| P7 | A veces dos mecánicos trabajan juntos en una tarea | Un dueño por Job; el tiempo del ayudante no se registra |
-| P8 | A veces se manda trabajo a un taller externo | No existe; un Job sin dueño sale como problema |
-| ~~P9~~ | Decidido (D21): el reloj corre en un solo camión a la vez; al hacer Start en otro se detiene el anterior | Hoy corren los dos: **por construir** (LTR-188) |
+| ~~P7~~ | Decidido y construido (D23, LTR-188): Job aparte para el ayudante | — |
+| ~~P8~~ | Decidido y construido (D24, LTR-188): "Enviar a taller externo" (pieza o camión) | — |
+| ~~P9~~ | Decidido y construido (D21, LTR-186) | — |
 | ~~P10~~ | Nunca hay PM sin partes | Correcto como está |
-| P11 | El taller también trabaja trailers | Solo camiones |
+| ~~P11~~ | Trailers: después de salir en vivo, cuando Cristian lo indique | Solo camiones (LTR-56) |
 
 ---
 
@@ -521,4 +551,5 @@ una historia:
 | ~~G2~~ | El tiempo olvidado se detiene solo — **hecho (D20, HU-ME5, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | ~~G5~~ | El Manager da de alta al personal — **hecho (D22, HU-M9, 2026-09-30)**. Camiones: después | Manager | LTR-187 |
 | ~~G7~~ | El reloj corre en un solo camión a la vez — **hecho (D21, HU-ME6, 2026-10-05)** | Mecánico, costeo | LTR-186 |
-| G3, G4, G6 | Dos mecánicos en una tarea, taller externo, trailers | Manager | LTR-188 |
+| ~~G3, G4~~ | Ayudante en un Job y taller externo — **hechos (D23, D24, HU-M10, HU-M11, 2026-10-05)** | Manager | LTR-188 |
+| G6 | Trailers — después de salir en vivo (P11) | Manager | LTR-56 |

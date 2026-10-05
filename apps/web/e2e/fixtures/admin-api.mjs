@@ -759,6 +759,68 @@ createServer(async (request, response) => {
     json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
+  // LTR-188 / D23: "Add helper" creates the helper's own Job (same name; the web adds "· helper").
+  const helperMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/jobs\/([0-9a-f-]+)\/helper$/i);
+  if (helperMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
+    const summary = workOrders.find((item) => item.id === helperMatch[1]);
+    const job = summary?.jobs?.find((item) => item.id === helperMatch[2]);
+    const body = await readJson(request);
+    if (!summary || !job) { json(response, 404, { message: 'Job not found' }); return; }
+    const helper = userById(body?.mechanicId);
+    if (!helper || helper.id === job.assignedMechanic?.id) {
+      json(response, 400, { code: 'HELPER_INVALID_MECHANIC', message: 'Choose an active Standard mechanic who does not own this Job.' });
+      return;
+    }
+    if (summary.jobs.some((item) => item.helperOfJobId === job.id && item.assignedMechanic?.id === helper.id && item.status !== 'cancelled')) {
+      json(response, 400, { code: 'HELPER_ALREADY_ADDED', message: 'This mechanic is already helping on this Job.' });
+      return;
+    }
+    summary.jobs.push({
+      ...job,
+      id: fixtureUuid(9000 + summary.jobs.length),
+      assignedMechanic: { id: helper.id, name: helper.name },
+      helperOfJobId: job.id,
+      external: null,
+      completedAt: null,
+      completedBy: null,
+      completionNotes: null,
+    });
+    summary.version += 1;
+    syncJobCounts(summary);
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
+  // LTR-188 / D24: "Send to external shop" and "Returned".
+  const externalMatch = request.url?.match(/^\/api\/admin\/work-orders\/([0-9a-f-]+)\/jobs\/([0-9a-f-]+)\/external(\/return)?$/i);
+  if (externalMatch && request.method === 'POST') {
+    if (denyUnlessManage()) return;
+    const summary = workOrders.find((item) => item.id === externalMatch[1]);
+    const job = summary?.jobs?.find((item) => item.id === externalMatch[2]);
+    const body = await readJson(request);
+    if (!summary || !job) { json(response, 404, { message: 'Job not found' }); return; }
+    if (!externalMatch[3]) {
+      if (job.external) { json(response, 400, { code: 'EXTERNAL_ALREADY', message: 'This Job is already at an external shop.' }); return; }
+      if (!String(body?.note ?? '').trim()) { json(response, 400, { message: 'A note is required.' }); return; }
+      job.assignedMechanic = null;
+      job.external = { kind: body.kind, note: String(body.note).trim(), since: '2026-10-05T14:00:00.000Z' };
+    } else {
+      if (!job.external) { json(response, 400, { code: 'JOB_NOT_EXTERNAL', message: 'This Job is not at an external shop.' }); return; }
+      job.external = null;
+      if (body?.outcome === 'assign') {
+        const owner = userById(body?.mechanicId);
+        job.assignedMechanic = owner ? { id: owner.id, name: owner.name } : null;
+      } else {
+        job.status = 'completed';
+        job.completedAt = '2026-10-05T15:00:00.000Z';
+        job.completedBy = { id: users['manager@lightning.local'].id, name: users['manager@lightning.local'].name };
+      }
+    }
+    summary.version += 1;
+    syncJobCounts(summary);
+    json(response, 200, fixtureWorkOrderDetail(summary));
+    return;
+  }
   if (request.url === '/api/admin/setup/shop-hours' && request.method === 'GET') {
     json(response, 200, shopHours);
     return;

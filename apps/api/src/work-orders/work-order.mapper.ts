@@ -6,7 +6,7 @@ import {
   type WorkOrderNoteKind,
   type WorkOrderStatus,
 } from '@prisma/client';
-import { isPmCategory, jobWorkStatus, type BlockerReason } from '@ltl-shop/shared';
+import { isPmCategory, jobWorkStatus, type BlockerReason, type JobExternalKind } from '@ltl-shop/shared';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals } from './work-order.timing';
 import { workOrderTeam } from './work-order-team';
@@ -26,7 +26,21 @@ type JobRow = {
   assignedMechanic?: { id: string; name: string } | null;
   completedBy?: { id: string; name: string } | null;
   startedAt?: Date | null;
+  helperOfJobId?: string | null;
+  externalSince?: Date | null;
+  externalKind?: string | null;
+  externalNote?: string | null;
 };
+
+/** LTR-188 / D24: a Job at an external shop, as the DTOs carry it (null when in the shop). */
+function jobExternal(job: JobRow) {
+  if (!job.externalSince || !job.externalKind || job.status !== 'to_do') return null;
+  return {
+    kind: job.externalKind as JobExternalKind,
+    note: job.externalNote ?? '',
+    since: job.externalSince.toISOString(),
+  };
+}
 
 type PauseRow = {
   id: string;
@@ -136,6 +150,8 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
       activeBlocker: activeBlocker ? toJobActiveBlocker(activeBlocker) : null,
       assignedMechanic: j.assignedMechanic ?? null,
       completedBy: j.completedBy ?? null,
+      helperOfJobId: j.helperOfJobId ?? null,
+      external: jobExternal(j),
     };
   });
   const currentPause = currentOfficialPause(wo.pauseEvents);
@@ -266,6 +282,9 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
     assignedMechanic: j.assignedMechanic ?? null,
     completedBy: j.completedBy ?? null,
     startedAt: j.startedAt?.toISOString() ?? null,
+    // LTR-188 / D23, D24: helper Jobs and Jobs at an external shop (read-only for mechanics).
+    helperOfJobId: j.helperOfJobId ?? null,
+    external: jobExternal(j),
     };
   });
   const viewerOwnsJobs = !!viewerId && wo.jobs.some((j) => jobAssigneeId(j) === viewerId);

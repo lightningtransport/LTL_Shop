@@ -18,6 +18,8 @@ export function workPlanJobUiStatusVariant(status: string): ChipVariant {
   if (status === 'completed') return 'success';
   if (status === 'in_progress') return 'default';
   if (status === 'blocked') return 'warning';
+  // LTR-188 / D24: at an external shop.
+  if (status === 'external') return 'warning';
   if (status === 'cancelled') return 'secondary';
   return 'outline';
 }
@@ -28,6 +30,7 @@ export function workPlanJobUiStatusLabel(status: string, messages: AdminMessages
   if (status === 'blocked') return messages.blocked;
   if (status === 'completed') return messages.jobStatusCompleted;
   if (status === 'cancelled') return messages.jobStatusCancelled;
+  if (status === 'external') return messages.externalStatus;
   return status;
 }
 

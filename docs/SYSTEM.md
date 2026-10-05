@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-09-30 (LTR-174: detalle del Truck y del Work Order reorganizados; LTR-187: el Manager da de alta al personal)
+**Actualizado:** 2026-10-05 (LTR-188: Job de ayudante (D23) y taller externo (D24); LTR-174: detalle del Truck y del Work Order reorganizados; LTR-187: el Manager da de alta al personal)
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en
@@ -147,6 +147,28 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - **Quality Check no tiene dueño por defecto** (D15). Solo una persona de
   Safety puede ser su dueño: lo toma desde su pantalla (D19). El Manager
   conserva "Mark complete" como respaldo.
+- **Job de ayudante** (D23, LTR-188): `helper_of_job_id` apunta al Job que
+  ayuda. Copia catálogo, categoría, nombre y `is_custom` del principal y su
+  dueño es el ayudante; el sufijo "· ayudante / · helper" no se guarda, lo pone
+  la web. Solo en un Job `to_do` de un WO Standard abierto, nunca en el PM, el
+  Quality Check, otro Job de ayudante ni un Job en taller externo; el ayudante
+  es un mecánico Standard activo distinto del dueño, y un solo Job de ayudante
+  por mecánico y principal. Fuera de eso es un Job normal: Start/Continue,
+  reloj, bloqueo, completar, cancelar y reabrir. Bloquear o cancelar el
+  principal **no** toca el del ayudante. La regla de "Job repetido" ignora los
+  Jobs de ayudante. Endpoint `POST /admin/work-orders/:id/jobs/:jobId/helper`.
+- **Taller externo** (D24, LTR-188): `external_since`, `external_kind`
+  (`part` | `truck`), `external_note` y `external_by_id`. Un Job está afuera
+  mientras `external_since` tiene valor; su estado sigue `to_do`. Enviarlo
+  (`POST …/jobs/:jobId/external`, nota obligatoria) le quita el dueño, cierra
+  el reloj de ese mecánico en el WO si no le queda otro Job disponible ahí y
+  resuelve su bloqueo con una nota. No aplica al Quality Check. Mientras está
+  afuera nadie lo puede asignar ni arrancar (`JOB_AT_EXTERNAL_SHOP`); no cuenta
+  como "sin asignar" ni como trabajo del taller. **Regresó**
+  (`POST …/external/return`) limpia las cuatro columnas y lo completa (como
+  el Manager) o se lo asigna a un mecánico con las mismas reglas de Asignar.
+  Cancelar o completar un Job afuera también limpia las columnas. Como sigue
+  `to_do`, el WO no se puede cerrar ni el Truck quedar Ready to Go.
 
 ### Inspección
 - Se registra en el Truck ("No issues found" / "Issues found") y **pertenece a
@@ -171,6 +193,7 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - Un Job bloqueado no se puede completar desde la vista del mecánico.
 - Si el Manager cancela el WO, cancela el Job o completa el Job él mismo, el
   bloqueo se resuelve solo y queda en el historial con el motivo (LTR-176).
+  Lo mismo al enviar el Job a un taller externo (D24).
 
 ### Pausa oficial
 - Solo el Manager pausa y reanuda el WO (`waiting_paused`). Cierra todas las
@@ -294,6 +317,13 @@ asignación, o el selector de servicio en el PM); "Cancelar Job…" y "Reabrir
 Job…" son enlaces discretos que abren un diálogo donde se escribe el motivo
 (LTR-189, W1).
 
+**M05 — Ayudante (D23):** `…` del Job → **Agregar ayudante** → elige al
+mecánico. Se crea "<Job> · ayudante" con ese dueño; él lo ve en "Your Jobs".
+
+**M06 — Taller externo (D24):** `…` del Job → **Enviar a taller externo** →
+"Sale la pieza" o "Sale el camión" + nota. Cuando vuelve: **Regresó** →
+Completar o Asignar a un mecánico. Todo queda en el Activity Log.
+
 ### Mecánico Standard
 
 **MECH01 — Ver mi trabajo:** inicia sesión → "My Assigned Work" (solo sus
@@ -388,11 +418,12 @@ aplique:
 | 2 | `resume` | Resume |
 | 3 | `inspect` | Ir a la inspección |
 | 4 | `add_missing_steps` | Agregar pasos que faltan (WOs viejos) |
-| 5 | `assign` | Asignar el Job sin dueño |
-| 6 | `qc` | Esperando a Safety (Manager: Mark QC complete como respaldo) |
-| 7 | `close` | Close Work Order |
-| 8 | `return_to_service` | Return to Service |
-| 9 | `work` | (los mecánicos están trabajando) |
+| 5 | `assign` | Asignar el Job sin dueño (un Job en taller externo no cuenta) |
+| 6 | `external` | "En taller externo: <Job>" — lo único pendiente fuera de QC está afuera (D24); "Regresó" está en la fila del Job |
+| 7 | `qc` | Esperando a Safety (Manager: Mark QC complete como respaldo) |
+| 8 | `close` | Close Work Order |
+| 9 | `return_to_service` | Return to Service |
+| 10 | `work` | (los mecánicos están trabajando; los Jobs afuera no cuentan) |
 | — | `create_work_order` | Truck sin WO abierto |
 
 Un test de contrato verifica que todas las pantallas devuelven el mismo paso,
@@ -408,7 +439,7 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | Ruta | Qué es |
 |---|---|
 | `/admin` | Dashboard: métricas, "Needs attention" con el siguiente paso, pedidos de trabajo abiertos. |
-| `/admin/yard-operations` | Tablero del patio por fase. Pestaña `?tab=movement`: tarjetas de agent-reporting (solo lectura). |
+| `/admin/yard-operations` | Tablero del patio por fase. Una tarjeta dice **"Fuera del taller"** cuando un Job pendiente de su WO mandó el camión a un taller externo (`outOfShop`, D24); la fase y los contadores no cambian. Pestaña `?tab=movement`: tarjetas de agent-reporting (solo lectura). |
 | `/admin/trucks`, `/admin/trucks/[id]` | Lista de camiones con siguiente paso; **el Truck es el lugar de trabajo del Manager** y responde "¿puede salir y, si no, qué lo frena?" (ver abajo). |
 | `/admin/work-orders`, `/admin/work-orders/[id]` | Lista con filtros; detalle del WO (ver abajo). |
 | `/admin/work-orders/new` | Crear WO (solo Truck, prioridad, nota). |
@@ -454,7 +485,13 @@ misma división 2:1 en computadora, una columna en el teléfono):
   mecánico asigna, reasigna o quita el dueño (QC no tiene selector: lo toma
   Safety); "Mark complete" es primario solo en QC; el PM job muestra su
   variante de servicio; Cancel / Reopen Job viven en el "…" de cada fila con
-  su diálogo de motivo. Los Jobs se agregan desde el Work Plan del Truck (D6).
+  su diálogo de motivo. El "…" también tiene **Agregar ayudante** (no en PM,
+  QC ni en un Job de ayudante; D23) y **Enviar a taller externo** (no en QC;
+  D24). Un Job de ayudante muestra "· ayudante" junto al nombre. Un Job afuera
+  muestra "En taller externo · pieza|camión" (la nota como tooltip), el estado
+  "En taller externo" y el botón **Regresó** (Completar / Asignar a). Los Jobs
+  se agregan desde el Work Plan del Truck (D6). En el Work Plan del Truck esos
+  Jobs se ven igual (estado `external`, sin selector de mecánico).
 - **Bloqueos reportados:** una línea "· Ninguno" si no hay; si hay, un bloque
   de aviso con Resolve.
 - **Notas:** entradas y el botón "Add note" que abre el redactor; pedidos de
@@ -480,7 +517,7 @@ Shop Admin, Yard, Work Orders).
 |---|---|
 | `/` (= `/mechanic/standard`, `/mechanic/pm`) | Inicio: mi trabajo. Cada rol ve su versión. |
 | `/qc` | Safety: camiones por revisar (Tomar, Aprobar, Devolver) y devueltos. |
-| `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, o el PM job dentro del WO con `?view=pm`). |
+| `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, o el PM job dentro del WO con `?view=pm`). Un Job de ayudante dice "· ayudante" (D23); un Job en taller externo aparece en "Other work on this Truck" en solo lectura con "En taller externo" y nunca es del mecánico (D24). |
 | `/mechanic/pm/new` | Create PM service. |
 | `/mechanic/{standard,pm}/trucks`, `/trucks/[id]/history` | Buscar camión e historial de reparaciones. |
 | (aviso en el inicio y el detalle) | Si la app detuvo su reloj (cierre del día o cambio de camión) y le queda trabajo: "Ayer quedó en curso · toca Continuar" o "Tu reloj está en la unidad 944 · toca Continuar", junto al botón Continue de siempre. El PM job tiene su propio Continue (D20, D21). |

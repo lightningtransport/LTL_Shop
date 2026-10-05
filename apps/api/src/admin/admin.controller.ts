@@ -186,6 +186,42 @@ export class AdminController {
     return this.admin.unassignJob(request.user!, id, jobId, body);
   }
 
+  /** LTR-188 / D23: another Standard mechanic helps on a Job — a helper Job of their own. */
+  @Post('work-orders/:id/jobs/:jobId/helper')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  addHelperJob(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.addHelperJob(request.user!, id, jobId, body);
+  }
+
+  /** LTR-188 / D24: the part or the truck goes to an external shop. */
+  @Post('work-orders/:id/jobs/:jobId/external')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  sendJobExternal(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.sendJobExternal(request.user!, id, jobId, body);
+  }
+
+  /** LTR-188 / D24: back from the external shop — complete it or give it to a mechanic. */
+  @Post('work-orders/:id/jobs/:jobId/external/return')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  returnJobExternal(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.returnJobExternal(request.user!, id, jobId, body);
+  }
+
   @Get('mechanics')
   mechanics(@Query() query: Record<string, unknown>) {
     return this.admin.listMechanics(query);

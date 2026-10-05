@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   CatalogStatus,
   MechanicMode,
+  JobExternalKind,
   BlockerReason,
   PauseReason,
   ShopWorkflowStepKey,
@@ -176,6 +177,28 @@ export const adminAssignJobSchema = adminMutationMetaSchema.extend({
 });
 
 export const adminUnassignJobSchema = adminMutationMetaSchema;
+
+/** LTR-188 / D23: `POST /admin/work-orders/:id/jobs/:jobId/helper` — a helper Job for another Standard mechanic. */
+export const adminAddHelperJobSchema = adminMutationMetaSchema.extend({
+  mechanicId: z.string().uuid(),
+});
+
+/** LTR-188 / D24: `POST /admin/work-orders/:id/jobs/:jobId/external` — the part or the truck goes out. */
+export const adminSendJobExternalSchema = adminMutationMetaSchema.extend({
+  kind: z.nativeEnum(JobExternalKind),
+  note: z.string().trim().min(1).max(1000),
+});
+
+/** LTR-188 / D24: `POST /admin/work-orders/:id/jobs/:jobId/external/return` — complete it or give it to a mechanic. */
+export const adminReturnJobExternalSchema = adminMutationMetaSchema
+  .extend({
+    outcome: z.enum(['complete', 'assign']),
+    mechanicId: z.string().uuid().optional(),
+  })
+  .refine((value) => value.outcome !== 'assign' || Boolean(value.mechanicId), {
+    message: 'mechanicId is required to assign',
+    path: ['mechanicId'],
+  });
 
 export const adminCancelWorkOrderSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),

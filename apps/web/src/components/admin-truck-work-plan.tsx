@@ -26,6 +26,8 @@ import {
   workPlanJobUiStatusVariant,
   type WorkPlanJobDraft,
 } from '@/lib/work-plan';
+import { jobDisplayName } from '@/lib/job-display-name';
+import { externalShopLabel } from '@/lib/external-shop';
 import { AdminReadinessTracker } from './admin-readiness-tracker';
 import { WorkPlanAddWork } from './work-plan-add-work';
 import { useActionToast } from './action-toast';
@@ -172,12 +174,13 @@ export function AdminTruckWorkPlan({
     return (
       <ul className="mt-2 space-y-2 border-l-2 border-border pl-3">
         {jobs.map((job) => {
-          const canAssignHere = canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic === null && job.lane !== 'quality_check';
+          // LTR-188 / D24: a Job at an external shop comes back through "Returned" on the Work Order.
+          const canAssignHere = canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic === null && job.lane !== 'quality_check' && !job.external;
           return (
             <li key={job.id} className={`grid gap-2 lg:items-center lg:gap-3 ${JOB_ROW_GRID}`}>
               <div className="flex min-w-0 items-start justify-between gap-3 lg:block">
                 <div className="min-w-0">
-                  <p className="font-medium">{job.displayName}</p>
+                  <p className="font-medium">{jobDisplayName(job, messages.helperJobSuffix)}</p>
                   <p className="text-xs text-muted-foreground">{job.category.name}</p>
                 </div>
                 <div className="shrink-0 lg:hidden">
@@ -185,7 +188,11 @@ export function AdminTruckWorkPlan({
                 </div>
               </div>
               <div className="min-w-0">
-                {job.assignedMechanic === undefined ? null : canAssignHere ? (
+                {job.external ? (
+                  <p className="text-xs text-muted-foreground" title={job.external.note} data-testid="work-plan-job-external">
+                    {externalShopLabel(job.external.kind, messages)}
+                  </p>
+                ) : job.assignedMechanic === undefined ? null : canAssignHere ? (
                   <Select
                     id={`assign-job-${job.id}`}
                     aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}

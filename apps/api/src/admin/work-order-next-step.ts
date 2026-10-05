@@ -26,6 +26,10 @@ export type NextStepWorkOrderRow = {
     customDescription?: string | null;
     assignedMechanic?: { id: string; name: string } | null;
     assignedMechanicId?: string | null;
+    helperOfJobId?: string | null;
+    externalSince?: Date | null;
+    externalKind?: string | null;
+    externalNote?: string | null;
   }>;
   pauseEvents?: Array<{
     id: string;
@@ -57,6 +61,10 @@ export function workOrderNextStep(
       category: { id: job.category?.id ?? '', name: job.category?.name ?? '' },
       status: job.status as never,
       assignedMechanic: owner,
+      helperOfJobId: job.helperOfJobId ?? null,
+      externalSince: job.externalSince ?? null,
+      externalKind: job.externalKind ?? null,
+      externalNote: job.externalNote ?? null,
     }, row.status as never);
   });
   const blocker = (row.pauseEvents ?? []).find((pause) => pause.isOfficialPause === false && !pause.resolvedAt) ?? null;

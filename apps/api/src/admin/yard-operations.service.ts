@@ -33,6 +33,7 @@ import {
   adminYardOperationsQuerySchema,
   isWorkOrderBlocked,
   deriveTruckNextStep,
+  JobExternalKind,
 } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { TrucksService } from '../trucks/trucks.service';
@@ -710,6 +711,8 @@ export class YardOperationsService {
       readyReason: workPlan.readyReason,
       shopWorkRemainingCount: workPlan.shopWorkRemainingCount,
       nextStep,
+      // LTR-188 / D24: a pending Job sent the whole truck to an external shop. Phase and counters stay as they are.
+      outOfShop: workPlan.jobs.some((job) => job.external?.kind === JobExternalKind.TRUCK),
     };
   }
 
@@ -876,6 +879,10 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
           customDescription: job.customDescription,
           category: job.category,
           status: job.status as never,
+          helperOfJobId: job.helperOfJobId,
+          externalSince: job.externalSince,
+          externalKind: job.externalKind,
+          externalNote: job.externalNote,
         })),
     inspectionRequirementOutcome: (inspectionRequirement?.outcome as ReadinessRequirementOutcome | undefined) ?? null,
   };

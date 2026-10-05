@@ -61,6 +61,10 @@ type OpenWorkOrderRow = {
     category: { id: string; name: string };
     assignedMechanic: { id: string; name: string } | null;
     startedAt: Date | null;
+    helperOfJobId: string | null;
+    externalSince: Date | null;
+    externalKind: string | null;
+    externalNote: string | null;
   }>;
   sessions: Array<{ endedAt: Date | null; userId: string | null }>;
   pauseEvents: Array<{ jobId: string | null }>;
@@ -117,6 +121,10 @@ export class YardWorkPlanService {
             assignedMechanic: job.assignedMechanic,
             startedAt: job.startedAt,
             blocked: (workOrder?.pauseEvents ?? []).some((pause) => pause.jobId === job.id),
+            helperOfJobId: job.helperOfJobId,
+            externalSince: job.externalSince,
+            externalKind: job.externalKind,
+            externalNote: job.externalNote,
           })),
       sessions: workOrder?.sessions ?? [],
       inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null,

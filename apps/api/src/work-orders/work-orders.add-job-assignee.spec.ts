@@ -140,3 +140,13 @@ describe('addJobByManager with the Job owner (D14)', () => {
   });
 
 });
+
+describe('duplicate guard and helper Jobs (LTR-188 / D23)', () => {
+  it('ignores helper Jobs when checking for a duplicate Job', async () => {
+    const { tx, service } = setup();
+    await service.addJobByManager(manager, workOrderId, body);
+    expect(tx.workOrderJob.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { workOrderId, status: { not: 'cancelled' }, helperOfJobId: null },
+    }));
+  });
+});

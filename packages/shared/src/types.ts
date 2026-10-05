@@ -7,6 +7,7 @@ import type {
   WorkSessionEndReason,
   BlockerReason,
   JobStatus,
+  JobExternalKind,
   PauseReason,
   WorkOrderNoteKind,
   Priority,
@@ -138,6 +139,17 @@ export interface WorkOrderJobDto {
   completedBy?: { id: string; name: string } | null;
   /** LTR-146: when the PM job was started. */
   startedAt?: string | null;
+  /** LTR-188 / D23: the Job this one helps (a helper Job); the web appends "· helper". */
+  helperOfJobId?: string | null;
+  /** LTR-188 / D24: set while the Job is at an external shop. */
+  external?: JobExternalDto | null;
+}
+
+/** LTR-188 / D24: a Job at an external shop — what went out, the Manager's note and since when. */
+export interface JobExternalDto {
+  kind: JobExternalKind;
+  note: string;
+  since: string;
 }
 
 /** LTR-155 / D17: short form of a Job's active blocker for lists and cards. */
@@ -221,7 +233,7 @@ export interface WorkOrderSummaryDto {
   priority: Priority;
   jobsCompleted: number;
   jobsTotal: number;
-  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic' | 'completedBy' | 'workStatus' | 'activeBlocker'>[];
+  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic' | 'completedBy' | 'workStatus' | 'activeBlocker' | 'helperOfJobId' | 'external'>[];
   mechanics: Pick<MechanicAssignmentDto, 'mechanicId' | 'mechanicName'>[];
   currentPauseReason: PauseReason | null;
   createdAt: string;
@@ -399,6 +411,10 @@ export interface AdminWorkOrderJobDto {
   completionNotes: string | null;
   /** LTR-146: when the PM job was started. */
   startedAt?: string | null;
+  /** LTR-188 / D23: the Job this one helps (a helper Job); the web appends "· helper". */
+  helperOfJobId?: string | null;
+  /** LTR-188 / D24: set while the Job is at an external shop. */
+  external?: JobExternalDto | null;
 }
 
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
@@ -539,6 +555,8 @@ export interface YardOperationsTruckDto {
   shopWorkRemainingCount?: number;
   /** LTR-159: the one Next step rule (same as Truck Detail, Dashboard and Work Order). */
   nextStep?: TruckNextStepDto | null;
+  /** LTR-188 / D24: a pending Job of the truck's Work Order sent the whole truck to an external shop. */
+  outOfShop?: boolean;
 }
 
 export interface YardOperationsCountsDto {
@@ -597,6 +615,10 @@ export interface WorkPlanJobDto {
   lane: WorkPlanJobLane;
   /** LTR-154 / D11: the Job's owner on the Truck Work Plan (null = unassigned). */
   assignedMechanic?: { id: string; name: string } | null;
+  /** LTR-188 / D23: the Job this one helps (a helper Job). */
+  helperOfJobId?: string | null;
+  /** LTR-188 / D24: set while the Job is at an external shop (uiStatus `external`). */
+  external?: JobExternalDto | null;
 }
 
 export interface WorkPlanMandatoryPhaseDto {
