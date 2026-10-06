@@ -344,11 +344,11 @@ function header() {
   const left = pending().length;
   const mechs = [...new Set(live().map((j) => j.mech).filter(Boolean))];
   const stateIcon = { done: ['check', 'bg-success/15 text-success border-success/30'], na: ['minus', 'bg-muted text-muted-foreground border-border'], pending: ['circle-dot', 'bg-warning/10 text-warning-foreground dark:text-warning border-warning/40'], blocked: ['octagon-pause', 'bg-warning/15 text-warning-foreground dark:text-warning border-warning/50'], external: ['building-2', 'bg-primary/10 text-primary border-primary/40'], missing: ['circle-alert', 'bg-destructive/15 text-destructive-text border-destructive/40'], ready: ['flag', 'bg-primary/10 text-primary border-primary/40'], waiting: ['circle', 'bg-card text-muted-foreground border-border'] };
-  const stepper = `<ol class="flex flex-wrap items-center gap-1.5" aria-label="Readiness">${st.map((s, i) => {
+  const stepper = `<ol class="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:mx-0 sm:[mask-image:none] sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0" aria-label="Readiness">${st.map((s, i) => {
       const [icn, cls] = stateIcon[s.state];
       const n = s.left?.length;
       const tip = { done: 'Done', na: 'Not applicable', pending: `${n} pending`, blocked: 'Blocked', external: 'At external shop', missing: 'Missing', ready: 'Ready to close', waiting: 'Waiting for the other steps' }[s.state];
-      return `${i ? `<li aria-hidden="true" class="hidden text-border sm:block">${ic('chevron-right', 's14')}</li>` : ''}<li><a href="#step-${s.key}" onclick="openStep('${s.key}')" title="${s.label}: ${tip}" class="inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium ${cls}">${ic(icn, 's14')}${s.label}${n && s.state !== 'done' ? ` <span class="tnum">${n}</span>` : ''}<span class="sr-only">: ${tip}</span></a></li>`;
+      return `${i ? `<li aria-hidden="true" class="hidden text-border sm:block">${ic('chevron-right', 's14')}</li>` : ''}<li><a href="#step-${s.key}" onclick="openStep('${s.key}')" title="${s.label}: ${tip}" class="relative inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-medium ${cls}">${ic(icn, 's14')}${s.label}${n && s.state !== 'done' ? ` <span class="tnum">${n}</span>` : ''}<span class="sr-only">: ${tip}</span></a></li>`;
     }).join('')}</ol>`;
 
   let actions = '';
@@ -367,7 +367,7 @@ function header() {
     <div class="rounded-xl border bg-card p-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         ${stepper}
-        ${S.wo ? `<div class="flex shrink-0 items-center gap-3 text-muted-foreground"><span class="tnum"><b class="font-semibold text-foreground">${left}</b> job${left === 1 ? '' : 's'} left</span><span class="h-4 w-px bg-border"></span><span class="flex items-center gap-2"><span class="flex -space-x-1">${mechs.map((m) => `<span class="rounded-full ring-2 ring-card">${av(m, 'size-7')}</span>`).join('')}</span>${mechs.length}</span></div>` : `<p class="text-muted-foreground">The Work Plan starts with the arrival inspection.</p>`}
+        ${S.wo ? `<div class="flex shrink-0 items-center justify-between gap-3 text-muted-foreground sm:justify-start"><span class="tnum"><b class="font-semibold text-foreground">${left}</b> job${left === 1 ? '' : 's'} left</span><span class="h-4 w-px bg-border"></span><span class="flex items-center gap-2"><span class="flex -space-x-1">${mechs.slice(0, 3).map((m) => `<span class="rounded-full ring-2 ring-card">${av(m, 'size-7')}</span>`).join('')}${mechs.length > 3 ? `<span class="grid size-7 place-items-center rounded-full bg-muted text-[12px] font-semibold text-muted-foreground ring-2 ring-card">+${mechs.length - 3}</span>` : ''}</span>${mechs.length} mechanic${mechs.length === 1 ? '' : 's'}</span></div>` : `<p class="text-muted-foreground">The Work Plan starts with the arrival inspection.</p>`}
       </div>
     </div>
   </section>`;
@@ -449,7 +449,7 @@ function plan() {
 }
 const stepHead = (s, icn, iconCls, meta, collapsible) => `<button ${collapsible ? `onclick="UI.open['${s.key}']=!isOpenStep('${s.key}');render()" aria-expanded="${isOpenStep(s.key)}"` : 'tabindex="-1"'} class="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left ${collapsible ? 'hover:bg-accent/50' : 'cursor-default'}">
     <span class="grid size-6 shrink-0 place-items-center rounded-full ${iconCls}">${ic(icn, 's14')}</span>
-    <span class="font-semibold">${s.label}</span><span class="text-muted-foreground">${meta}</span>
+    <span class="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-1.5"><span class="font-semibold">${s.label}</span><span class="text-xs text-muted-foreground sm:text-sm">${meta.replace(/^· /, '<span class="hidden sm:inline">· </span>')}</span></span>
     ${collapsible ? ic('chevron-down', `s14 ml-auto text-muted-foreground transition ${isOpenStep(s.key) ? 'rotate-180' : ''}`) : ''}</button>`;
 const isOpenStep = (key) => key in UI.open ? UI.open[key] : !['done', 'na'].includes(steps().find((s) => s.key === key)?.state);
 function openStep(key) { UI.open[key] = true; render(); flash('step-' + key); }
@@ -457,11 +457,11 @@ function openStep(key) { UI.open[key] = true; render(); flash('step-' + key); }
 function inspectionSection(s) {
   const r = S.inspection.result;
   const body = !r
-    ? `<div class="space-y-3 px-4 pb-4 pl-[52px]"><p class="text-muted-foreground">Record whether this Truck still needs work before it can leave.</p>${S.canManage ? `<div class="flex flex-wrap gap-2"><button onclick="recordInspection('no_issues')" class="${BTN.outline} h-10 sm:h-9">No issues found</button><button onclick="recordInspection('issues')" class="${BTN.outline} h-10 sm:h-9">Issues found</button></div>` : ''}</div>`
+    ? `<div class="space-y-3 px-4 pb-4 sm:pl-[52px]"><p class="text-muted-foreground">Record whether this Truck still needs work before it can leave.</p>${S.canManage ? `<div class="flex flex-wrap gap-2"><button onclick="recordInspection('no_issues')" class="${BTN.outline} h-10 sm:h-9">No issues found</button><button onclick="recordInspection('issues')" class="${BTN.outline} h-10 sm:h-9">Issues found</button></div>` : ''}</div>`
     : '';
   const meta = !r ? '· Pending' : r === 'issues' ? `· Issues found · ${S.inspection.at}` : `· No issues found · ${S.inspection.at}`;
   return `<div id="step-inspection">${stepHead(s, r ? 'check' : 'circle-dot', r ? 'bg-success/15 text-success' : 'bg-warning/10 text-warning-foreground dark:text-warning', meta, false)}
-    ${r && S.canManage && (!S.wo || woOpen()) ? `<div class="-mt-2 px-4 pb-3 pl-[52px]"><button onclick="openMenu(this, inspectionMenu(), 'start')" class="text-sm font-medium text-primary hover:underline">Change</button></div>` : ''}${body}</div>`;
+    ${r && S.canManage && (!S.wo || woOpen()) ? `<div class="-mt-1 px-4 pb-3 pl-[52px]"><button onclick="openMenu(this, inspectionMenu(), 'start')" class="text-sm font-medium text-primary hover:underline">Change</button></div>` : ''}${body}</div>`;
 }
 function closeSection(s) {
   const meta = { done: `· ${S.wo.id} completed ${S.wo.completedAt}`, ready: '· Ready to close', waiting: '· When every step is done' }[s.state];
@@ -477,7 +477,7 @@ function laneSection(s) {
   const ordered = rows.filter((j) => !j.helperOf).flatMap((j) => [j, ...rows.filter((h) => h.helperOf === j.id)]);
   const collapsible = s.jobs.length > 0;
   return `<div id="step-${s.key}">${stepHead(s, icon[0], icon[1], meta, collapsible)}
-    ${collapsible && isOpenStep(s.key) ? `<ul class="pb-2">${ordered.map(jobRow).join('')}</ul>` : ''}</div>`;
+    ${collapsible && isOpenStep(s.key) ? `<ul class="space-y-1 pb-3 sm:space-y-0 sm:pb-2">${ordered.map(jobRow).join('')}</ul>` : ''}</div>`;
 }
 function jobRow(j) {
   const ext = j.status === 'to_do' && j.external;
@@ -494,10 +494,10 @@ function jobRow(j) {
     : blocked ? `<span class="inline-flex items-center gap-1.5 text-warning-foreground dark:text-warning">${ic('octagon-pause', 's14')}Blocked</span>`
     : `<span class="inline-flex items-center gap-1.5 text-muted-foreground"><span class="size-2 rounded-full border-[1.5px] border-muted-foreground"></span>To do</span>`;
   const muted = j.status !== 'to_do';
-  return `<li id="row-${j.id}" class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-2 pl-[52px] pr-2 sm:grid-cols-[minmax(0,1fr)_180px_100px_auto]">
-    <div class="flex min-w-0 gap-1.5">${j.helperOf ? ic('corner-down-right', 's14 mt-0.5 text-muted-foreground') : ''}<div class="min-w-0"><p class="truncate ${j.status === 'cancelled' ? 'text-muted-foreground line-through' : muted ? 'text-foreground/80' : 'font-medium'}">${nameHtml(j)}</p><p class="truncate text-xs text-muted-foreground">${j.helperOf ? `Helps ${MECH[S.jobs.find((x) => x.id === j.helperOf).mech]?.name ?? 'on the main Job'}` : j.cat}${j.doneAt ? ` · ${j.doneAt}` : ''}</p></div></div>
-    <div class="min-w-0 max-sm:order-2 max-sm:col-start-1">${who}</div>
-    <div class="justify-self-end max-sm:order-1 max-sm:text-xs sm:justify-self-start">${status}</div>
+  return `<li id="row-${j.id}" class="mx-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-md border-l-2 border-border py-2 pl-3 pr-1 sm:mx-0 sm:rounded-none sm:border-l-0 sm:pl-[52px] sm:pr-2 sm:grid-cols-[minmax(0,1fr)_180px_100px_auto]">
+    <div class="flex min-w-0 gap-1.5">${j.helperOf ? ic('corner-down-right', 's14 mt-0.5 text-muted-foreground') : ''}<div class="min-w-0"><p class="break-words sm:truncate ${j.status === 'cancelled' ? 'text-muted-foreground line-through' : muted ? 'text-foreground/80' : 'font-medium'}">${nameHtml(j)}</p><p class="truncate text-xs text-muted-foreground">${j.helperOf ? `Helps ${MECH[S.jobs.find((x) => x.id === j.helperOf).mech]?.name ?? 'on the main Job'}` : j.cat}${j.doneAt ? ` · ${j.doneAt}` : ''}</p></div></div>
+    <div class="min-w-0 max-sm:order-2 max-sm:col-start-1 max-sm:-ml-0.5">${who}</div>
+    <div class="self-start justify-self-end whitespace-nowrap max-sm:order-1 max-sm:pt-0.5 max-sm:text-xs sm:self-center sm:justify-self-start">${status}</div>
     ${S.wo ? `<a href="#" onclick="event.preventDefault();goWo('${j.id}')" class="grid size-10 place-items-center justify-self-end rounded-md text-muted-foreground hover:bg-accent hover:text-foreground max-sm:order-3 sm:size-8" title="Manage in Work Order" aria-label="Manage ${nameText(j)} in Work Order">${ic('square-arrow-out-up-right', 's14')}</a>` : ''}
   </li>`;
 }
@@ -512,14 +512,14 @@ function aside() {
         <dt class="text-muted-foreground">Vehicle</dt><dd class="text-right font-medium">2024 Mack Anthem</dd>
         <dt class="text-muted-foreground">Mileage</dt><dd class="tnum text-right font-medium">367,393 mi</dd>
         <dt class="text-muted-foreground">VIN</dt><dd class="flex items-center justify-end gap-1.5 font-mono text-[13px]">1M1AN4GY0RM000601<button onclick="toast('success','VIN copied')" class="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Copy VIN">${ic('copy', 's14')}</button></dd>
-        <dt class="text-muted-foreground">Company</dt><dd class="text-right font-medium">CDT · owner Demo Fleet LLC</dd>
+        <dt class="text-muted-foreground">Company</dt><dd class="text-right font-medium">CDT<span class="block text-xs font-normal text-muted-foreground">Owner: Demo Fleet LLC</span></dd>
         <dt class="text-muted-foreground">Operational</dt><dd class="text-right font-medium ${S.operational === 'in_service' ? 'text-success' : 'text-muted-foreground'}">${S.operational === 'in_service' ? 'In Service' : 'Not recorded'}</dd>
       </dl>
       <div class="flex items-start gap-2.5 border-t px-4 py-3 text-muted-foreground">${ic('map-pin', 'mt-0.5')}<p><span class="text-foreground">Orient Rd, Tampa, FL 33610</span><br><span class="text-xs">Reported Oct 5, 2026</span></p></div>
     </section>
     <section class="rounded-xl border bg-card" data-testid="truck-history">
-      <div class="flex items-center justify-between gap-2 border-b px-4 py-2.5"><div><h2 class="text-base font-semibold">Repair history</h2><p class="text-xs text-muted-foreground">Completed Work Orders for this Truck</p></div>
-        <div class="relative"><label for="rh-filter" class="sr-only">Filter by category</label><select id="rh-filter" onchange="UI.histFilter=this.value;render()" class="native h-9 rounded-md border bg-background pl-2.5 pr-8 text-sm text-muted-foreground"><option value="">All</option>${[...new Set(S.history.map((h) => h.cat))].map((c) => `<option ${UI.histFilter === c ? 'selected' : ''}>${c}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground')}</div>
+      <div class="flex items-center justify-between gap-2 border-b px-4 py-2.5"><div class="min-w-0"><h2 class="text-base font-semibold">Repair history</h2><p class="hidden text-xs text-muted-foreground sm:block">Completed Work Orders for this Truck</p></div>
+        <div class="relative"><label for="rh-filter" class="sr-only">Filter by category</label><select id="rh-filter" onchange="UI.histFilter=this.value;render()" class="native h-10 shrink-0 rounded-md border sm:h-9 bg-background pl-2.5 pr-8 text-sm text-muted-foreground"><option value="">All</option>${[...new Set(S.history.map((h) => h.cat))].map((c) => `<option ${UI.histFilter === c ? 'selected' : ''}>${c}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground')}</div>
       </div>
       ${shown.length ? `<ul class="divide-y">${shown.map((h) => `<li class="space-y-1 px-4 py-3"><div class="flex items-baseline justify-between gap-2"><a href="#" class="font-mono text-[13px] font-medium text-primary hover:underline">${h.wo}</a><span class="tnum text-xs text-muted-foreground">${h.mileage} mi</span></div><p class="text-muted-foreground">${h.cat} · ${h.date} · ${h.by}</p><div class="flex flex-wrap gap-1 pt-0.5">${h.jobs.map((x) => `<span class="rounded-md border px-1.5 py-px text-xs text-muted-foreground">${x}</span>`).join('')}</div></li>`).join('')}</ul>
         ${list.length > 3 ? `<div class="border-t p-2"><button onclick="UI.histAll=!UI.histAll;render()" class="${BTN.ghost} h-10 w-full">${UI.histAll ? 'Show less' : `Load more (${list.length - 3})`}</button></div>` : ''}`
