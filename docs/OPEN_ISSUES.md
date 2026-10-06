@@ -238,6 +238,32 @@ sitio) y el Yard "¿dónde está cada camión?". Se retoma con las decisiones de
 | D10 | E | ~~Título "Shop Operations"; "Ready to close WO"~~ — **hecho** (2026-10-06, Etapas 1 y 6): "Ready to close"; pestañas "Shop" / "Dispatch". **Sigue:** "UNAVAILABLE" y "Unable to load current administrative data." | `admin-messages.ts`, `yard-data-boundary-copy.ts` |
 | ~~D11~~ | C | ~~Filtros de prioridad y estado del Yard también miran WOs cerradas~~ — **confirmado y hecho** (2026-10-06, Etapa 6): se comparan en memoria con la WO actual del camión; la base ya no filtra "alguna WO del camión" | `yard-operations.service.ts` (`matchesDerivedFilters`) |
 
+## 1h. Fidelidad a las maquetas (Admin) (2026-10-06) — **EN CURSO** · Linear [LTR-190](https://linear.app/ltransl/issue/LTR-190)
+
+Las Etapas 1–7 construyeron el comportamiento, pero sobre los componentes de antes; las pantallas no se
+ven como las maquetas aprobadas (`docs/proposals/{wo,truck}-detail-redesign/mockup.html`,
+`dashboard-yard-redesign/mockup.html`). Plan: [`proposals/ETAPA8_PLAN.md`](proposals/ETAPA8_PLAN.md).
+Preguntas para el final: [`proposals/PENDIENTES_UI.md`](proposals/PENDIENTES_UI.md).
+Decidido por el dueño el 2026-10-06:
+- Título "Truck N".
+- Marco común igual a la maqueta.
+- Se agregan los campos de API que faltan.
+- El Yard sin "More filters".
+
+| # | Clase | Problema | Dónde |
+|---|---|---|---|
+| F1 | E | **Primitivas distintas a la maqueta:** `Button` `rounded-lg font-semibold` (maqueta `rounded-md font-medium`, `h-11 sm:h-9`); `Card` con `p-4 shadow-soft` (maqueta sin sombra, cabecera `border-b px-4 py-3`); `.page-title` `font-bold` (maqueta `font-semibold md:text-[28px]`); el botón `sm` baja el texto a 12 px | `ui.tsx`, `globals.css` |
+| F2 | C | **Color equivocado:** `Badge warning` usa `shop-accent` (azul), así que "Not Ready", "Paused" y "High" salen azules en vez de ámbar; "In progress" es un relleno sólido; "Critical" es sólido en vez de tinte; los chips no tienen punto | `ui.tsx`, `lib/status-chips.ts` |
+| F3 | E | **Menús, popovers y diálogos:** usan `bg-popover`, que en oscuro es el color del fondo (no el de la tarjeta). No tienen iconos, cabecera ni separador, y no son hoja inferior en el teléfono. Diálogos: título `text-xl font-bold`, botones estirados, "Cancel" en vez de "Back" | `ui.tsx` (`Modal`), menús, `mechanic-picker.tsx` |
+| F4 | E | **Toasts sólidos** (verde o rojo) y centrados; en la maqueta son neutros, con icono, abajo a la derecha | `action-toast.tsx` |
+| F5 | E | **Avatares grises:** la maqueta usa un color por mecánico | Truck, WO, Yard |
+| F6 | C | **Marco:** en la maqueta el menú lateral va a todo lo alto con la marca y hay migas de pan ("Work Orders › WO-010"). Los ítems son `h-9`, sin negrita, y el activo `bg-accent`. La app tiene la barra a todo lo ancho, sin migas, y el ítem activo con borde. El cuerpo tiene un degradado que la maqueta no tiene | `admin-shell.tsx`, `globals.css` |
+| F7 | C | **WO:**<br>• **Encabezado:** "918" en vez de "Truck 918"; prioridad antes que estado; sin "Opened" ni WO en letra mono.<br>• Falta la franja de métricas.<br>• **Siguiente paso:** sin tonos, sin icono y sin título/subtítulo; el blocker va en una caja dentro de otra; "Complete Work Order" es una tarjeta aparte.<br>• **Jobs:** columnas apretadas a anchos medianos, mecánico como botón con borde, estado sin icono, PM en un select, cerrados plegados por defecto.<br>• **Notas:** sin avatar y con un campo de 112 px.<br>• **Columna derecha:** sin ubicación, la prioridad en un select.<br>• **History:** plegado y sin línea de tiempo | `admin-work-order-detail.tsx`, `admin-job-table.tsx`, `work-order-history.tsx` |
+| F8 | C | **Truck:**<br>• **Encabezado:** "601" en vez de "Truck 601"; el chip sin el paso ni el punto; el chip de la WO sin icono.<br>• **Pasos:** sueltos (no van en una tarjeta con "N jobs left" y avatares); el pendiente sale neutro (debe ser ámbar) y el externo ámbar (debe ser azul).<br>• **Siguiente paso:** una sola caja para todos los tipos.<br>• **Work Plan:** cajas dentro de la tarjeta; iconos sin color; inspección plegable.<br>• **Add work:** categorías en un select; los Jobs que ya están se ocultan en vez de mostrar "· on plan"; sin pie fijo ni dueños por defecto.<br>• **Repair history:** sin filtro | `admin-truck-*.tsx`, `truck-stepper.tsx`, `work-plan-add-work.tsx` |
+| F9 | E | **Dashboard:**<br>• **Filas:** "918" en vez de "Truck 918"; una sola frase (maqueta: título y detalle); botones sin icono.<br>• **Grupos:** `bg-muted/60` (maqueta `bg-sunken`).<br>• **"Leaving soon":** sin el paso y sin "Open Truck".<br>• **Pedidos de trabajo:** sin enlace al Truck | `admin-dashboard.tsx` |
+| F10 | C | **Yard:**<br>• **Filtros:** "More filters" de sobra; falta el chip "Leaving soon".<br>• **Carriles:** cada uno es una caja propia (maqueta: una sola tarjeta con filas); en el teléfono no hay grupos plegables.<br>• **Tarjeta:** muestra la alerta **y** el siguiente paso; avatares grises; Return to Service fuera de la tarjeta.<br>• **Dispatch:** en una columna de cajas pequeñas (maqueta: 3 columnas con estado en el taller); sin "Dispatch didn't answer" | `admin-yard-operations.tsx`, `admin-yard-data-boundary-cards.tsx` |
+| F11 | C | **Datos que la API no manda:**<br>• fecha de la inspección;<br>• hora en que se completó cada Job del Work Plan;<br>• prioridad y fecha de cierre de la WO en el Work Plan;<br>• paso de la WO en el resumen;<br>• `truckId` de los pedidos de trabajo;<br>• "Leaving soon" en el Yard;<br>• totales por paso;<br>• estado en el taller para Dispatch;<br>• nombre del Job fuera del taller;<br>• motivo de cancelación (WO y Job);<br>• tramo "corregido" | `packages/shared/src/types.ts`, `apps/api/src/admin/*` |
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):
