@@ -136,6 +136,19 @@ Mechanics and managers install the web app on the phone's home screen.
   In standalone mode `html` paints `var(--background)`, so opening the app never flashes the
   other theme.
 
+## Stage 8: mockup fidelity (2026-10-06)
+
+The tokens already matched the mockups (Stage 7). Stage 8 changed how they are used:
+- **Surfaces:** cards and fields without shadow; `bg-sunken` for group headers, column headers and lock
+  bands; menus and dialogs on `bg-card` (not `bg-popover`, which is the page color in dark).
+- **Buttons:** `rounded-md font-medium`, 44px on touch and 36px with a fine pointer; icons before the label.
+- **Chips:** tinted (`border-x/40 bg-x/10 text-x`) with a dot for status; `warning` is amber, never the blue
+  `shop-accent`.
+- **Type:** `.page-title` 24/28px semibold; section titles 16px semibold; `.tnum` for numbers.
+- **Motion:** `anim-sheet-in`, `anim-pop-in`, `anim-flash`, `anim-spin`, all off with reduced motion.
+- **Segmented control:** `.seg` (`aria-checked` / `aria-pressed`) for Priority.
+- **Mechanic tones:** sky, violet, emerald, rose, cyan, amber, slate (AA in both themes).
+
 ## Layout shells
 
 | Surface | Constraint |

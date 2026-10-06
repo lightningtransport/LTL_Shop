@@ -1,8 +1,10 @@
 # Propuesta: rediseño de Work Order Detail (Admin)
 
-**Clasificación:** PROPUESTA — no es el estado actual de la app.
+**Clasificación:** PROPUESTA, ya construida (ver Etapa 8 abajo).
 **Fecha:** 2026-10-05 (actualizada el mismo día con LTR-186 y LTR-188) · **Rama:** `claude/ui-screen-improvement-baa9cf` · **Sin PR todavía.**
 **Pantalla:** `/admin/work-orders/[id]` → `apps/web/src/components/admin-work-order-detail.tsx`
+
+**Etapa 8 (2026-10-06): construido igual a la maqueta** (`mockup.html`): encabezado "Truck 918", franja de métricas, aviso del siguiente paso con tonos, Jobs en cuadrícula con avatares, notas con avatar, 4 tarjetas laterales e History siempre abierto. Lo que quedó distinto está en [`PENDIENTES_UI.md`](../PENDIENTES_UI.md).
 
 El dueño aprobó la dirección visual. **Construido** en la Etapa 5 (2026-10-06, rama
 `claude/exciting-lehmann-09883c`): "…" de la WO y de cada Job como menús; el blocker dentro del aviso

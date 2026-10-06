@@ -599,7 +599,7 @@ export function AdminWorkOrderDetail({
           title={messages.recentRepairHistory}
           action={(
             <div className="w-44 shrink-0">
-              <Select aria-label={messages.filterByCategory} className="h-9 pl-2.5 text-sm text-muted-foreground" value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}>
+              <Select aria-label={messages.filterByCategory} className="h-10 pl-2.5 text-base text-muted-foreground sm:h-9 sm:text-sm" value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}>
                 <option value="">{messages.allCategories}</option>
                 {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
               </Select>
@@ -878,7 +878,7 @@ export function AdminWorkOrderDetail({
 
 /** The meta line's separator. */
 function Dot() {
-  return <span aria-hidden="true" className="mx-1.5 text-border">•</span>;
+  return <span aria-hidden="true" className="mx-1.5 text-muted-foreground">•</span>;
 }
 
 function cancelError(errorValue: unknown, messages: AdminMessages) {

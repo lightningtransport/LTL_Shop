@@ -416,7 +416,7 @@ function RepairHistory({
       title={<span className="flex flex-col"><span>{messages.repairHistorySection}</span><span className="hidden text-xs font-normal text-muted-foreground sm:block">{messages.repairHistorySectionDescription}</span></span>}
       action={(
         <div className="w-40 shrink-0">
-          <Select aria-label={messages.filterByCategory} className="h-10 pl-2.5 text-sm text-muted-foreground sm:h-9" value={category} onChange={(event) => setCategory(event.target.value)}>
+          <Select aria-label={messages.filterByCategory} className="h-10 pl-2.5 text-base text-muted-foreground sm:h-9 sm:text-sm" value={category} onChange={(event) => setCategory(event.target.value)}>
             <option value="">{messages.repairAll}</option>
             {(categoryData ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </Select>

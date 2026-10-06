@@ -35,7 +35,23 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 | `WorkspaceNav` | Standard / PM / Back to Shop Admin |
 | `AuthBrandHeader` | Login / access-denied brand block |
 | `PageHeader` | The one page header (LTR-166): `.page-title`, optional subtitle, meta, badges, actions, and a mechanic icon back button (`backHref`). No eyebrow, no outer margin |
-| `AdminBackLink` | Consistent labeled back navigation with icon and 44px target |
+| `AdminBackLink` | Labeled back navigation with icon and 44px target. Detail screens (Work Order, Truck) use the breadcrumb instead (Stage 8) |
+| `SectionCard`, `CountChip` | Stage 8 (mockups): a card with a header row (`h2` 16px semibold, optional count chip, an action on the right) and full-bleed content. Jobs, Notes, Work Plan, Truck, Priority, Repair history, the Dashboard queue |
+| `DialogActions` | Stage 8: the dialog footer — "Back" and the confirmation, `flex-col-reverse` on phones, right-aligned from `sm`, buttons not stretched |
+| `Modal` `description` | Stage 8: one line under the title, in the dialog header |
+| `Badge` `dot` | Stage 8: a colored dot before the label (status chips). Tinted variants: `border-x/40 bg-x/10 text-x`; `warning` is amber |
+
+## Stage 8 components (mockup fidelity, 2026-10-06)
+
+| File | Use |
+|---|---|
+| `admin-breadcrumb.tsx` | `useAdminBreadcrumb([{ label, href }, { label }])`: a page names itself in the top bar ("Work Orders › WO-010"). Phones show only the parent, as a back link ("‹ T-102") |
+| `responsive-menu.tsx` | `ResponsiveMenu`: every "…" menu. A dropdown on the card color with a header label, icons and dividers on desktop; a bottom sheet with a grab handle on phones. Items may be links |
+| `mechanic-avatar.tsx` | `MechanicAvatar` / `MechanicAvatarStack`: initials in the mechanic's own tone (`lib/mechanic-tone.ts`, a hash of the id); decorative, the name is always next to it or in a label |
+| `next-step-callout.tsx` | `NextStepCallout`: the Next step as one box — tone (`warning`, `primary`, `success`, `muted`, `danger`), icon tile, eyebrow, title, sub line, action on the right, optional footer. Work Order (`work-order-next-step.tsx`) and Truck (`admin-truck-next-step.tsx`) map the API's step to it |
+| `work-order-metrics.tsx` | The Work Order strip: progress with a split bar (done, blocked, external), labor, waiting, age, mechanics; one compact card on phones |
+| `mechanic-picker.tsx` | Search list of mechanics with avatars; popover on desktop, bottom sheet on phones; "Unassign" last |
+| `side-sheet.tsx` | Add work: a 460px panel on the right; a 92vh bottom sheet on phones; the form brings its own sticky footer |
 
 ## Loading, empty, failure (see `patterns.md`)
 
@@ -52,17 +68,18 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 | File | CURRENT use |
 |---|---|
 | `apps/web/src/components/app-frame.tsx` | Mechanic/auth: `<main class="app-shell">`. Admin: unscoped `#main-content` wrapper so `AdminShell` owns layout |
-| `apps/web/src/components/admin-shell.tsx` | Desktop sidebar + mobile nav grid; locale switcher; 44px nav buttons |
+| `apps/web/src/components/admin-shell.tsx` | Stage 8: full-height sidebar with the brand on top and the user at the bottom; top bar with the breadcrumb and the profile button; mobile nav in a sheet |
 
 Feature screens (dashboard, Yard board, Work Order detail, catalog) compose
 these primitives. They are not a second component library.
 
 ## Admin composition rules
 
-- Every page uses `PageHeader`; do not hand-roll a second title hierarchy or add an eyebrow.
-- Use `AdminBackLink` for labeled back navigation. Keep the icon, label, and target area together.
+- Every page has one `.page-title` (`PageHeader` on lists; the detail screens, the Dashboard and the Yard build their header from the mockups in a `<header>`); no eyebrow.
+- Detail screens name themselves with `useAdminBreadcrumb`; the breadcrumb is the way back (Stage 8). `AdminBackLink` stays for screens without one.
+- "…" menus use `ResponsiveMenu`; a section uses `SectionCard`; the Next step uses `NextStepCallout` (Stage 8).
 - Primary and filter actions use `Button`; labels remain on one line. Action groups wrap as a group at narrow widths rather than allowing individual buttons to become two-line controls.
-- Lists filter through `AdminFilterToolbar` (LTR-169): a search field; extra filters inline from `md` and, on phones, behind a "Filters" button with the active count that opens a sheet with Clear / Apply. Search-only lists keep Apply next to the field. Work Orders and Yard follow the same shape with their own fields.
+- Lists filter through `AdminFilterToolbar` (LTR-169): a search field; extra filters inline from `md` and, on phones, behind a "Filters" button with the active count that opens a sheet with Clear / Apply. Search-only lists keep Apply next to the field. Work Orders follows the same shape with its own fields. The Yard has only search and quick chips (Stage 8, owner decision); its URL still accepts the other filters.
 - Lists render through `DataTable` (LTR-169): order columns by importance, mark the title column `primary`, and put secondary data last with `hideOnMobile`. Never a horizontally scrolling table on phones.
 - A disabled button shows why, next to it or under the form (LTR-169), unless the reason is on screen already.
 - For list metadata, use a left column with `min-w-0 flex-1` and a right metadata column with `shrink-0 text-right`. Do not use an unbounded `justify-between` row with wrapping content.

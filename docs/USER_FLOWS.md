@@ -197,7 +197,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 
 ### HU-M6 · Cancelar y reabrir (J4, J10)
 
-**Función:** Work Order → menú **…** (arriba, junto a Pause): Cancel Work Order, Reopen, Return to Service. Cancelar o reabrir un Job: el **…** de su fila en la tabla de Jobs.
+**Función:** Work Order → menú **…** (arriba, junto a Pause): Correct time…, Reopen, Cancel Work Order. **Return to Service** está en el aviso del siguiente paso cuando el WO está completado (Etapa 8). Cancelar o reabrir un Job: el **…** de su fila en la tabla de Jobs.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
@@ -419,7 +419,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Corrige sin motivo | No deja | ✅ | A23 |
 | Corrige una sesión que sigue abierta | No deja | ✅ | A23 |
 | Un mecánico intenta corregir tiempos | No puede | ✅ | A23 |
-| Quiere saber de qué mecánico es cada sesión | Cada sesión lleva su mecánico; "History and audit" muestra el tiempo por mecánico y el selector de corrección dice de quién es cada una | ✅ | A23 |
+| Quiere saber de qué mecánico es cada sesión | Cada sesión lleva su mecánico; "Labor by mechanic" muestra el tiempo por mecánico y cada tramo de History › Times dice de quién es | ✅ | A23 |
 
 ### HU-A2 · Catálogo y personal
 

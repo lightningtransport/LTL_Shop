@@ -1,8 +1,10 @@
 # Propuesta: rediseño de Dashboard y Yard Operations (Admin)
 
-**Clasificación:** PROPUESTA — no es el estado actual de la app.
+**Clasificación:** PROPUESTA, ya construida (ver Etapa 8 abajo).
 **Fecha:** 2026-10-05 · **Rama:** `claude/exciting-lehmann-09883c` · **Sin PR todavía.**
 **Pantallas:** `/admin` → `admin-dashboard.tsx`; `/admin/yard-operations` → `admin-yard-operations.tsx`
+
+**Etapa 8 (2026-10-06): construido igual a la maqueta** (`mockup.html`): el Dashboard con filas de dos líneas y botones con icono; el Yard con "Leaving soon" como filtro rápido (cuenta sobre todas las páginas), sin "More filters", carriles en una tarjeta con la cuenta de `byPhase`, pasos plegables en el teléfono y Dispatch en 3 columnas. Lo que quedó distinto está en [`PENDIENTES_UI.md`](../PENDIENTES_UI.md).
 
 **Estado (2026-10-06):** construido en la rama `claude/exciting-lehmann-09883c` — Dashboard (Etapa 3)
 y Yard (Etapa 6): filtros rápidos con conteo y "Mostrando N de M", carriles por paso, tarjeta con una
