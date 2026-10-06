@@ -186,13 +186,13 @@ Se retoma cuando el dueño responda sus decisiones (§5 de la propuesta).
 
 | # | Clase | Problema | Dónde |
 |---|---|---|---|
-| R1 | C | Datos repetidos: el Truck 3 veces, los tiempos 2, los mecánicos 3 | `admin-work-order-detail.tsx` |
-| R2 | C | "Next step" y la caja de blockers dicen lo mismo; textarea de Resolve siempre abierto | `admin-work-order-detail.tsx`, `admin-blocker-resolve.tsx` |
-| R3 | E | Todo es tarjeta con el mismo peso; "Mark complete" con borde en cada fila | `admin-work-order-detail.tsx`, `admin-job-table.tsx` |
-| R4 | E | Activity Log plano; corrección de tiempo como formulario siempre visible | `admin-work-order-detail.tsx` |
-| R5 | E | "…" (WO y Job) abre un modal para 1–2 opciones | `admin-work-order-detail.tsx`, `admin-job-table.tsx` |
+| ~~R1~~ | C | ~~Datos repetidos: el Truck 3 veces, los tiempos 2, los mecánicos 3~~ — **hecho** (2026-10-06, Etapa 5): una tarjeta Truck (millaje, VIN, empresa), tiempos con barras por mecánico y prioridad; sin Operational summary ni Truck details; los tiempos completos solo en Historial › Tiempos | `admin-work-order-detail.tsx` |
+| ~~R2~~ | C | ~~"Next step" y la caja de blockers dicen lo mismo; textarea de Resolve siempre abierto~~ — **hecho** (2026-10-06, Etapa 5): cuando el paso es resolver, el blocker vive en el aviso del Next step; la nota se abre con Resolve; los resueltos van plegados | `admin-work-order-detail.tsx`, `admin-blocker-resolve.tsx` |
+| ~~R3~~ | E | ~~Todo es tarjeta con el mismo peso; "Mark complete" con borde en cada fila~~ — **hecho** (2026-10-06, Etapa 5): Jobs bloqueados arriba con borde ámbar, estado como punto + texto, "Mark complete" discreto (primario solo en QC), selector de mecánico con búsqueda y "Quitar asignación", hechos y cancelados plegados | `admin-job-table.tsx`, `lib/work-order-jobs.ts` |
+| ~~R4~~ | E | ~~Activity Log plano; corrección de tiempo como formulario siempre visible~~ — **hecho** (2026-10-06, Etapa 5): Historial con pestañas (Actividad por día con "Ver todo", Tiempos, Pausas); "Corregir…" en cada tramo abre un diálogo que valida fin > inicio y motivo | `work-order-history.tsx` |
+| ~~R5~~ | E | ~~"…" (WO y Job) abre un modal para 1–2 opciones~~ — **hecho** (2026-10-06, Etapa 5): menús desplegables; el "…" de la WO suma "Corregir tiempo…" | `admin-work-order-detail.tsx`, `admin-job-table.tsx` |
 | R6 | C | Tema oscuro: `--card`, `--muted` y `--accent` son el mismo color; `bg-muted` y el hover no se ven sobre tarjetas (todas las pantallas) | `globals.css` |
-| ~~R7~~ | E | ~~"Labor segments" en mayúsculas~~ — **hecho** (2026-10-06, Etapa 1): usa `group-title`. **Sigue:** los tramos salen dos veces (lista y select); se une en el rediseño de la WO | `admin-work-order-detail.tsx` (`LaborSegments`) |
+| ~~R7~~ | E | ~~"Labor segments" en mayúsculas; los tramos salen dos veces (lista y select)~~ — **hecho** (2026-10-06, Etapas 1 y 5): `group-title` y una sola lista de tramos | `work-order-history.tsx` |
 | ~~R8~~ | E | ~~Error de "Send to external shop" con `text-destructive`~~ — **hecho** (2026-10-06, Etapa 1): `text-destructive-text` | `admin-job-table.tsx` |
 | R9 | E | Las clases con transparencia sobre colores del tema (`bg-primary/10`, `border-primary/40`, `bg-destructive/10`, `bg-muted/40`…) **no generan CSS**: en `tailwind.config.js` esos colores son `var(--x)` sin `<alpha-value>`, así que Tailwind 3 las descarta. Ejemplos: `InlineAlert` no tiene su fondo ni su borde rojos; el borde del Next step del Truck es el gris normal. Son 17 archivos. Arreglo: definir los colores con `color-mix(in oklch, var(--x) calc(<alpha-value> * 100%), transparent)` y revisar el resultado en todas las pantallas (se hace con R6, Etapa 7). Encontrado el 2026-10-06; el código nuevo no usa esas clases | `tailwind.config.js`, `ui.tsx` y otros |
 

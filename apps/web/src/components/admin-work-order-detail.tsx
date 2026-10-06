@@ -4,19 +4,21 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
 import { MoreHorizontal } from 'lucide-react';
-import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { DropdownMenu } from 'radix-ui';
+import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind } from '@ltl-shop/shared';
 import { adminTruckHref, adminWorkOrderOrigin } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { intlLocale } from '@/lib/shop-locale';
-import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
+import { formatAdminDate, formatDuration } from '@/lib/admin-format';
 import { formatVehicleYmm } from '@/lib/format';
 import { laborByMechanic } from '@/lib/labor-by-mechanic';
-import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
+import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { addAdminHelperJob, returnAdminJobExternal, sendAdminJobExternal, changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
 import { AdminContextSidebar, ContextBlock, ContextCard, ContextFacts } from './admin-context-sidebar';
 import { AdminJobTable } from './admin-job-table';
+import { timeSegments, WorkOrderHistory, type HistoryTab, type TimeSegment } from './work-order-history';
 import { apiErrorCode } from '@/lib/api-error-message';
 import { AdminOperationalHeader } from './admin-operational-header';
 import { CloseWorkOrderDialog } from './close-work-order-dialog';
@@ -24,7 +26,6 @@ import { NextStepAction } from './next-step-action';
 import { pauseResumeError } from './pause-resume-error';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
-import { mechanicNamesLabel } from '@/lib/admin-work-summary';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { truckNextStepText } from '@/lib/truck-next-step';
 import { useAuth } from '@/lib/auth-context';
@@ -48,14 +49,14 @@ import {
   Modal,
   PageSkeleton,
   PriorityBadge,
-  SectionBlock,
   WorkOrderStatusBadge,
-  Input,
   Select,
   Textarea,
 } from './ui';
 
-type WorkOrderDialog = 'pause' | 'menu' | 'cancel' | 'reopen' | 'return' | null;
+const MENU_ITEM = 'flex min-h-11 cursor-pointer select-none items-center rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-accent';
+
+type WorkOrderDialog = 'pause' | 'cancel' | 'reopen' | 'return' | null;
 
 /**
  * LTR-174: "What work are we executing, who, what remains, what's next?" — operational header (Truck,
@@ -94,17 +95,14 @@ export function AdminWorkOrderDetail({
   // LTR-174: Pause, "…" (Cancel / Reopen / Return to Service) and their forms open as dialogs from the header.
   const [dialog, setDialog] = useState<WorkOrderDialog>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
-  const [noteOpen, setNoteOpen] = useState(false);
   // Owner decision (2026-10-05): "Confirm completion" confirms in a dialog (card and sticky bar).
   const [closeOpen, setCloseOpen] = useState(false);
   // LTR-168: no preselected reason, so pausing is a choice and never a single accidental tap.
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
   const [draftNotes, setDraftNotes] = useState('');
-  const [timeTarget, setTimeTarget] = useState('');
-  const [timeStartedAt, setTimeStartedAt] = useState('');
-  const [timeEndedAt, setTimeEndedAt] = useState('');
-  const [timeReason, setTimeReason] = useState('');
+  // Stage 5 (R4): History and audit as tabs; "Correct time…" in the "…" opens it on Times.
+  const [historyTab, setHistoryTab] = useState<HistoryTab>('activity');
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const { data: categoryData } = useCategories(true);
@@ -148,10 +146,7 @@ export function AdminWorkOrderDetail({
     arrivalHandled.current = true;
     if (action === 'pause' && canManageWorkOrders && canOfficiallyPauseWorkOrder(data.status) && data.category.name !== 'PM') setDialog('pause');
     const hash = window.location.hash;
-    if (hash.startsWith('#job-')) {
-      setHighlightedJobId(hash.slice('#job-'.length));
-      window.requestAnimationFrame(() => document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'center' }));
-    }
+    if (hash.startsWith('#job-')) setHighlightedJobId(hash.slice('#job-'.length));
   }, [data, user, action, canManageWorkOrders]);
 
   if (isLoading) return <PageSkeleton label={messages.workOrdersTitle} />;
@@ -178,7 +173,8 @@ export function AdminWorkOrderDetail({
   const canOfficialPause = canManageWorkOrders && isOpen && !isPmWorkOrder;
   const pauseEnabled = canOfficiallyPauseWorkOrder(data.status);
   const isPaused = data.status === 'waiting_paused';
-  const hasMenu = canCancelWorkOrder || canReopenWorkOrder || canReturnToService;
+  const canCorrectTime = canManageWorkOrders && timeSegments(data).some((segment) => segment.endedAt);
+  const hasMenu = canCancelWorkOrder || canReopenWorkOrder || canReturnToService || canCorrectTime;
   const readyToClose = isAdminWorkOrderReadyToClose({
     canManageWorkOrders,
     status: data.status,
@@ -195,6 +191,11 @@ export function AdminWorkOrderDetail({
   const jobsLeft = data.jobs.filter((job) => job.status === 'to_do').length;
   const counts = isPmWorkOrder ? null : fillPlaceholders(messages.operationalCounts, { jobs: String(jobsLeft), mechanics: String(activeMechanics.length) });
   const blockers = data.reportedBlockers ?? [];
+  // Stage 5 (R2): an active blocker lives in the Next step when that is the step; the rest stay below.
+  const activeBlockers = blockers.filter((blocker) => !blocker.resolvedAt);
+  const resolvedBlockers = blockers.filter((blocker) => blocker.resolvedAt);
+  const blockersInNextStep = nextStep?.kind === 'resolve_blocker' && activeBlockers.length > 0;
+  const blockedJobIds = activeBlockers.flatMap((blocker) => (blocker.job ? [blocker.job.id] : []));
   const labor = laborByMechanic(data);
 
   async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
@@ -220,6 +221,44 @@ export function AdminWorkOrderDetail({
   async function refreshAfterAction() {
     await mutate();
     void mutateRelated(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
+  }
+
+  async function correctTime(segment: TimeSegment, input: { startedAt: string; endedAt: string; reason: string }) {
+    if (pendingAction) return false;
+    setPendingAction('time');
+    setFeedback(null);
+    try {
+      await correctAdminTime({
+        workOrderId: data!.id,
+        targetType: segment.targetType,
+        targetId: segment.id,
+        expectedVersion: data!.version,
+        reason: input.reason,
+        startedAt: input.startedAt,
+        endedAt: input.endedAt,
+      });
+      await refreshAfterAction();
+      showToast('success', messages.timeCorrectionSuccess);
+      return true;
+    } catch (failure) {
+      const message = timeCorrectionError(failure, messages);
+      setFeedback({ kind: 'error', message });
+      showToast('error', message);
+      return false;
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  function openTimes() {
+    setHistoryTab('times');
+    const history = document.querySelector<HTMLDetailsElement>('[data-testid="admin-wo-history"]');
+    if (history) history.open = true;
+    // After the menu has closed and given focus back to its button: then go to the Times tab.
+    window.setTimeout(() => {
+      history?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus({ preventScroll: true });
+    }, 50);
   }
 
   function closeDialog() {
@@ -277,9 +316,22 @@ export function AdminWorkOrderDetail({
             )
           ) : null}
           {hasMenu ? (
-            <Button type="button" variant="outline" size="icon" aria-label={messages.moreActions} data-testid="admin-wo-more-actions" disabled={Boolean(pendingAction)} onClick={() => setDialog('menu')}>
-              <MoreHorizontal aria-hidden="true" className="size-5" />
-            </Button>
+            // Stage 5 (R5): a menu, not a modal, for one to three rare actions; each opens its own dialog.
+            <DropdownMenu.Root modal={false}>
+              <DropdownMenu.Trigger asChild>
+                <Button type="button" variant="outline" size="icon" aria-label={messages.moreActions} data-testid="admin-wo-more-actions" disabled={Boolean(pendingAction)}>
+                  <MoreHorizontal aria-hidden="true" className="size-5" />
+                </Button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content align="end" sideOffset={6} collisionPadding={8} className="z-50 min-w-56 rounded-xl border bg-popover p-1 text-popover-foreground shadow-soft" data-testid="admin-wo-more-menu">
+                  {canReturnToService ? <DropdownMenu.Item className={MENU_ITEM} onSelect={() => setDialog('return')}>{messages.returnToServiceTitle}</DropdownMenu.Item> : null}
+                  {canReopenWorkOrder ? <DropdownMenu.Item className={MENU_ITEM} onSelect={() => setDialog('reopen')}>{messages.reopenWorkOrderTitle}</DropdownMenu.Item> : null}
+                  {canCorrectTime ? <DropdownMenu.Item className={MENU_ITEM} onSelect={openTimes}>{messages.menuCorrectTime}</DropdownMenu.Item> : null}
+                  {canCancelWorkOrder ? <DropdownMenu.Item className={`${MENU_ITEM} text-destructive-text`} onSelect={() => setDialog('cancel')}>{messages.cancelWorkOrderTitle}</DropdownMenu.Item> : null}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           ) : null}
         </>
       ) : null}
@@ -294,25 +346,43 @@ export function AdminWorkOrderDetail({
           data-kind={nextStep?.kind}
         >
           <p className="group-title">{messages.nextStepTitle}</p>
-          <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-            <p className="font-medium">{nextStepText}</p>
-            {/* Stage 2 / T2: the step acts here; only the inspection and a new Work Order go to the Truck. */}
-            <NextStepAction
-              step={nextStep}
-              place="work-order"
-              truck={truck}
-              workOrderDisplayId={data.displayId}
-              expectedVersion={data.version}
-              fromPath={`/admin/work-orders/${data.id}`}
-              canManage={canManageWorkOrders}
-              messages={messages}
-              onChanged={refreshAfterAction}
-              onResolve={blockers.some((blocker) => !blocker.resolvedAt) && canManageWorkOrders ? () => {
-                const target = document.getElementById('admin-wo-blockers-title');
-                target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              } : undefined}
-            />
-          </div>
+          {blockersInNextStep ? (
+            // Stage 5 (R2): the blocker is the Next step — one box, the note opens with "Resolve".
+            <ul className="mt-2 space-y-3" aria-label={messages.reportedBlockers}>
+              {activeBlockers.map((blocker) => (
+                <li key={blocker.id} className="rounded-lg bg-warning-surface px-3 py-2 text-warning-foreground">
+                  <AdminBlockerResolve
+                    workOrderId={data.id}
+                    blocker={blocker}
+                    locale={locale}
+                    messages={messages}
+                    canResolve={canManageWorkOrders && isOpen}
+                    noteOnDemand
+                    onResolved={refreshAfterAction}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium">{nextStepText}</p>
+              {/* Stage 2 / T2: the step acts here; only the inspection and a new Work Order go to the Truck. */}
+              <NextStepAction
+                step={nextStep}
+                place="work-order"
+                truck={truck}
+                workOrderDisplayId={data.displayId}
+                expectedVersion={data.version}
+                fromPath={`/admin/work-orders/${data.id}`}
+                canManage={canManageWorkOrders}
+                messages={messages}
+                onChanged={refreshAfterAction}
+                onResolve={activeBlockers.length && canManageWorkOrders ? () => {
+                  document.getElementById('admin-wo-blockers-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } : undefined}
+              />
+            </div>
+          )}
           {nextStepManagerOwned && !canManageWorkOrders ? <p className="mt-1">{messages.nextStepNoPermission}</p> : null}
         </div>
       ) : null}
@@ -348,6 +418,7 @@ export function AdminWorkOrderDetail({
           <CardContent className="space-y-4">
             <AdminJobTable
               highlightedJobId={highlightedJobId}
+              blockedJobIds={blockedJobIds}
               data={data}
               locale={locale}
               messages={messages}
@@ -382,12 +453,13 @@ export function AdminWorkOrderDetail({
           </CardContent>
         </Card>
 
-        {/* LTR-155 / D17: which Job, why, notes; only the Manager resolves (optional note). One line when there is none. */}
-        {blockers.length ? (
+        {/* LTR-155 / D17: which Job, why, notes; only the Manager resolves (optional note). Stage 5 (R2): active
+            blockers not already in the Next step (another step comes first), then the resolved ones, folded. */}
+        {activeBlockers.length && !blockersInNextStep ? (
           <section className="rounded-xl border border-warning bg-warning-surface p-4 text-warning-foreground" aria-labelledby="admin-wo-blockers-title">
             <h3 id="admin-wo-blockers-title" className="group-title text-warning-foreground">{messages.reportedBlockers}</h3>
-            <ul className="mt-2 divide-y divide-warning/40">
-              {blockers.map((blocker) => (
+            <ul className="mt-2 divide-y">
+              {activeBlockers.map((blocker) => (
                 <li key={blocker.id} className="py-3 first:pt-0 last:pb-0">
                   <AdminBlockerResolve
                     workOrderId={data.id}
@@ -395,18 +467,25 @@ export function AdminWorkOrderDetail({
                     locale={locale}
                     messages={messages}
                     canResolve={canManageWorkOrders && isOpen}
-                    onResolved={() => mutate()}
+                    noteOnDemand
+                    onResolved={refreshAfterAction}
                   />
                 </li>
               ))}
             </ul>
           </section>
-        ) : (
-          <p className="flex items-center gap-2 px-1 text-sm">
-            <span className="group-title" role="heading" aria-level={3}>{messages.reportedBlockers}</span>
-            <span className="text-muted-foreground">· {messages.noneLabel}</span>
-          </p>
-        )}
+        ) : null}
+        {resolvedBlockers.length ? (
+          <CollapsibleSection testId="admin-wo-resolved-blockers" title={fillPlaceholders(messages.resolvedBlockersGroup, { count: String(resolvedBlockers.length) })}>
+            <ul className="divide-y px-4">
+              {resolvedBlockers.map((blocker) => (
+                <li key={blocker.id} className="py-3">
+                  <AdminBlockerResolve workOrderId={data.id} blocker={blocker} locale={locale} messages={messages} canResolve={false} onResolved={refreshAfterAction} />
+                </li>
+              ))}
+            </ul>
+          </CollapsibleSection>
+        ) : null}
 
         <Card>
           <CardHeader>
@@ -456,51 +535,44 @@ export function AdminWorkOrderDetail({
                 })}
               </ul>
             ) : <CompactEmpty>{messages.noNotes}</CompactEmpty>}
-            {/* LTR-126 / D8: append-only. LTR-174: the composer opens from "Add note" and stays open to add another. */}
+            {/* LTR-126 / D8: append-only. Stage 5: the composer is always there, under the thread, with "Post". */}
             {canEditFields ? (
-              noteOpen ? (
-                <form
-                  className="space-y-2"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const body = draftNotes.trim();
-                    if (!body) return;
-                    void runMutation('add-note', messages.noteAddedSuccess, async () => {
-                      await addAdminWorkOrderNote(data.id, body);
-                      setDraftNotes('');
-                    }, () => messages.noteAddFailed);
-                  }}
-                >
-                  <Textarea
-                    aria-label={messages.addNote}
-                    placeholder={messages.adminNotePlaceholder}
-                    value={draftNotes}
-                    autoFocus
-                    onChange={(event) => setDraftNotes(event.target.value)}
-                    maxLength={2000}
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="submit" disabled={Boolean(pendingAction) || !draftNotes.trim()}>
-                      {messages.saveNote}
-                    </Button>
-                    <Button type="button" variant="ghost" disabled={Boolean(pendingAction)} onClick={() => { setNoteOpen(false); setDraftNotes(''); }}>
-                      {messages.cancel}
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <Button type="button" variant="outline" disabled={Boolean(pendingAction)} onClick={() => setNoteOpen(true)}>
-                  {messages.addNote}
-                </Button>
-              )
+              <form
+                className="space-y-2 border-t pt-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const body = draftNotes.trim();
+                  if (!body) return;
+                  void runMutation('add-note', messages.noteAddedSuccess, async () => {
+                    await addAdminWorkOrderNote(data.id, body);
+                    setDraftNotes('');
+                  }, () => messages.noteAddFailed);
+                }}
+              >
+                <Textarea
+                  aria-label={messages.addNote}
+                  placeholder={messages.adminNotePlaceholder}
+                  value={draftNotes}
+                  rows={2}
+                  onChange={(event) => setDraftNotes(event.target.value)}
+                  maxLength={2000}
+                />
+                <div className="flex justify-end">
+                  <Button type="submit" size="sm" disabled={Boolean(pendingAction) || !draftNotes.trim()}>
+                    {messages.postNote}
+                  </Button>
+                </div>
+              </form>
             ) : null}
           </CardContent>
         </Card>
       </div>
 
       <AdminContextSidebar label={messages.contextSidebarLabel}>
+        {/* Stage 5 (R1): each fact once — the Truck, the times (labor by mechanic as bars) and priority. Status,
+            progress and mechanics are in the header and the Jobs; no Operational summary or Truck details. */}
         <ContextCard>
-          <ContextBlock title={messages.truck}>
+          <ContextBlock title={messages.truck} testId="admin-wo-truck-card">
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
               <div className="min-w-0">
                 <p className="font-medium">{truck.truckNumber}</p>
@@ -510,6 +582,13 @@ export function AdminWorkOrderDetail({
                 <Link href={truckHref}>{messages.openTruckAction}</Link>
               </Button>
             </div>
+            <ContextFacts
+              items={[
+                { key: 'mileage', label: messages.mileage, value: truck.mileage === null ? messages.noValue : new Intl.NumberFormat(intlLocale(locale)).format(truck.mileage) },
+                { key: 'vin', label: messages.vin, value: <span className="break-all font-mono text-[0.8125rem]">{truck.vin ?? messages.noValue}</span> },
+                { key: 'company', label: messages.company, value: truck.company ?? messages.noValue },
+              ]}
+            />
             {data.status === 'completed' && data.returnedToServiceAt ? (
               <p className="text-sm text-muted-foreground">
                 {messages.returnToServiceAlready} {formatAdminDate(data.returnedToServiceAt, locale)}
@@ -521,18 +600,23 @@ export function AdminWorkOrderDetail({
               items={[
                 { key: 'active', label: messages.activeLabor, value: formatDuration(data.totalActiveLaborMs) },
                 { key: 'waiting', label: messages.waitingTime, value: formatDuration(data.totalWaitingMs) },
-                ...labor.map((entry) => ({ key: entry.key, label: entry.name ?? messages.laborUnattributed, value: formatDuration(entry.totalMs) })),
               ]}
             />
-          </ContextBlock>
-          <ContextBlock title={messages.mechanicsLabel}>
-            {activeMechanics.length ? (
-              <ul className="text-sm">
-                {activeMechanics.map((mechanic) => <li key={mechanic.mechanicId}>{mechanic.mechanicName}</li>)}
+            {labor.length ? (
+              <ul className="space-y-2 pt-1 text-sm" aria-label={messages.laborByMechanic}>
+                {labor.map((entry) => (
+                  <li key={entry.key}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 truncate">{entry.name ?? messages.laborUnattributed}</span>
+                      <span className="font-medium tabular-nums">{formatDuration(entry.totalMs)}</span>
+                    </div>
+                    <div aria-hidden="true" className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(4, Math.round((entry.totalMs / Math.max(1, labor[0].totalMs)) * 100))}%` }} />
+                    </div>
+                  </li>
+                ))}
               </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">{messages.noMechanicsAssigned}</p>
-            )}
+            ) : null}
           </ContextBlock>
           {canEditPriority ? (
             <ContextBlock title={messages.fieldUpdatesTitle}>
@@ -567,33 +651,6 @@ export function AdminWorkOrderDetail({
           ) : null}
         </ContextCard>
 
-        {/* LTR-168: context the Manager does not act on starts folded; status and priority are in the header. */}
-        <section aria-label={messages.operationalSummary}>
-          <CollapsibleSection title={messages.operationalSummary}>
-            <div className="p-4"><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-1">
-              <Info label={messages.age} value={formatAge(data.createdAt, locale)} />
-              <Info label={messages.progress} value={`${data.jobsCompleted}/${data.jobsTotal}`} />
-              <Info label={messages.mechanicsLabel} value={mechanicNamesLabel(activeMechanics, messages)} />
-              <Info label={messages.currentPause} value={data.currentPause ? `${adminPauseReasonLabel(data.currentPause.reason, messages)} · ${formatAdminDate(data.currentPause.startedAt, locale)}` : messages.noCurrentPause} />
-              <Info label={messages.latestReportedBlocker} value={data.latestReportedBlocker ? `${adminPauseReasonLabel(data.latestReportedBlocker.reason, messages)}${data.latestReportedBlocker.reportedBy ? ` · ${data.latestReportedBlocker.reportedBy.name}` : ''}` : messages.noLatestReportedBlocker} />
-            </dl></div>
-          </CollapsibleSection>
-        </section>
-        <CollapsibleSection title={messages.truckDetails}>
-          <div className="p-4"><dl className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-1">
-            <Info label={messages.truck} value={truck.truckNumber} />
-            <Info label={messages.make} value={truck.make ?? messages.noValue} />
-            <Info label={messages.model} value={truck.model ?? messages.noValue} />
-            <Info label={messages.year} value={truck.year ? String(truck.year) : messages.noValue} />
-            <Info label={messages.mileage} value={truck.mileage === null ? messages.noValue : new Intl.NumberFormat(intlLocale(locale)).format(truck.mileage)} />
-            <Info label={messages.company} value={truck.company ?? messages.noValue} />
-            <Info label={messages.owner} value={truck.owner ?? messages.noValue} />
-            <Info label={messages.vin} value={truck.vin ?? messages.noValue} />
-            <Info label={messages.lastReportedLocation} value={truck.location ?? messages.noValue} />
-            <Info label={messages.locationUpdatedOn} value={formatAdminDateOnly(truck.locationUpdatedOn, locale)} />
-          </dl></div>
-        </CollapsibleSection>
-
         <CollapsibleSection title={messages.recentRepairHistory}>
           <div className="space-y-4 p-4">
           <label className="block space-y-1 sm:w-56"><span className="text-sm font-medium">{messages.filterByCategory}</span><Select aria-label={messages.filterByCategory} value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}><option value="">{messages.allCategories}</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></label>{historyQuery.error ? <LoadFailure message={messages.repairHistoryLoadError} retryLabel={messages.retry} onRetry={() => void historyQuery.mutate()} /> : historyQuery.isLoading ? <CardListSkeleton count={2} /> : historyItems.length ? <><ul className="divide-y">{historyItems.map((item) => <li key={item.workOrderId} className="py-3 first:pt-0"><div className="flex flex-wrap items-start justify-between gap-2"><div><Link href={`/admin/work-orders/${item.workOrderId}`} className="font-semibold text-primary hover:underline">{item.displayId}</Link><p className="text-sm text-muted-foreground">{item.primaryCategoryName} · {formatAdminDate(item.date, locale)}</p></div>{item.mileage !== null ? <p className="text-xs text-muted-foreground">{messages.mileage}: {new Intl.NumberFormat(intlLocale(locale)).format(item.mileage)}</p> : null}</div>{item.mechanicNames.length ? <p className="mt-1 text-sm text-muted-foreground">{messages.performedBy}: {item.mechanicNames.join(', ')}</p> : null}{item.jobDetails?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobDetails.map((job) => <Badge key={`${item.workOrderId}-${job.displayName}`} variant="outline">{job.displayName}</Badge>)}</div> : item.jobs?.length ? <div className="mt-1 flex flex-wrap gap-1">{item.jobs.map((job) => <Badge key={`${item.workOrderId}-${job}`} variant="outline">{job}</Badge>)}</div> : null}</li>)}</ul>{historyHasMore ? <Button variant="outline" className="mt-4 w-full" disabled={historyQuery.isValidating} onClick={() => void historyQuery.setSize(historyQuery.size + 1)}>{historyQuery.isValidating ? `${messages.loadMoreRepairs}…` : messages.loadMoreRepairs}</Button> : null}</> : <CompactEmpty>{messages.noRepairHistory}</CompactEmpty>}
@@ -603,87 +660,16 @@ export function AdminWorkOrderDetail({
     </div>
 
     <CollapsibleSection testId="admin-wo-history" title={messages.historyAndAudit} description={messages.historyAndAuditDescription}>
-        <SectionBlock title={messages.workOrderTimes}><dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><Info label={messages.created} value={formatAdminDate(data.createdAt, locale)} /><Info label={messages.started} value={formatAdminDate(data.startedAt, locale)} /><Info label={messages.completed} value={formatAdminDate(data.completedAt, locale)} /><Info label={messages.updated} value={formatAdminDate(data.updatedAt, locale)} /><Info label={messages.activeLabor} value={formatDuration(data.totalActiveLaborMs)} /><Info label={messages.waitingTime} value={formatDuration(data.totalWaitingMs)} /></dl>{labor.length ? <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4" aria-label={messages.laborByMechanic}>{labor.map((entry) => <Info key={entry.key} label={entry.name ?? messages.laborUnattributed} value={formatDuration(entry.totalMs)} />)}</dl> : null}<LaborSegments data={data} locale={locale} messages={messages} /></SectionBlock>
-        <SectionBlock title={messages.timeCorrectionTitle} description={messages.timeCorrectionDescription}>
-            {closedTimeSegments(data).length ? (
-              <form
-                className="space-y-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const selected = closedTimeSegments(data).find((segment) => `${segment.targetType}:${segment.id}` === timeTarget);
-                  if (!selected) {
-                    setFeedback({ kind: 'error', message: messages.timeCorrectionSegmentRequired });
-                    return;
-                  }
-                  const reason = timeReason.trim();
-                  if (!reason) {
-                    setFeedback({ kind: 'error', message: messages.timeCorrectionReasonRequired });
-                    return;
-                  }
-                  void runMutation('time', messages.timeCorrectionSuccess, async () => {
-                    await correctAdminTime({
-                      workOrderId: data.id,
-                      targetType: selected.targetType,
-                      targetId: selected.id,
-                      expectedVersion: data.version,
-                      reason,
-                      startedAt: timeStartedAt ? fromDatetimeLocal(timeStartedAt) : selected.startedAt,
-                      endedAt: timeEndedAt ? fromDatetimeLocal(timeEndedAt) : selected.endedAt,
-                    });
-                    setTimeReason('');
-                  }, (failure) => timeCorrectionError(failure, messages));
-                }}
-              >
-                <label className="block space-y-1">
-                  <span className="text-sm font-medium">{messages.timeCorrectionSegment}</span>
-                  <Select
-                    aria-label={messages.timeCorrectionSegment}
-                    value={timeTarget}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setTimeTarget(value);
-                      const selected = closedTimeSegments(data).find((segment) => `${segment.targetType}:${segment.id}` === value);
-                      if (selected) {
-                        setTimeStartedAt(toDatetimeLocal(selected.startedAt));
-                        setTimeEndedAt(toDatetimeLocal(selected.endedAt));
-                      }
-                    }}
-                  >
-                    <option value="">{messages.timeCorrectionSegment}</option>
-                    {closedTimeSegments(data).map((segment) => (
-                      <option key={`${segment.targetType}:${segment.id}`} value={`${segment.targetType}:${segment.id}`}>
-                        {segment.targetType === 'work_session' ? `${messages.activeLabor}${segment.mechanic ? ` · ${segment.mechanic.name}` : ''}` : messages.waitingTime} · {formatAdminDate(segment.startedAt, locale)}{laborEndLabel(segment.endReason, messages) ? ` · ${laborEndLabel(segment.endReason, messages)}` : ''}
-                      </option>
-                    ))}
-                  </Select>
-                </label>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block space-y-1">
-                    <span className="text-sm font-medium">{messages.timeCorrectionStartedAt}</span>
-                    <Input type="datetime-local" aria-label={messages.timeCorrectionStartedAt} value={timeStartedAt} onChange={(event) => setTimeStartedAt(event.target.value)} />
-                  </label>
-                  <label className="block space-y-1">
-                    <span className="text-sm font-medium">{messages.timeCorrectionEndedAt}</span>
-                    <Input type="datetime-local" aria-label={messages.timeCorrectionEndedAt} value={timeEndedAt} onChange={(event) => setTimeEndedAt(event.target.value)} />
-                  </label>
-                </div>
-                <label className="block space-y-1">
-                  <span className="text-sm font-medium">{messages.timeCorrectionReason}</span>
-                  <Textarea aria-label={messages.timeCorrectionReason} value={timeReason} onChange={(event) => setTimeReason(event.target.value)} maxLength={1000} required />
-                  <span className="text-xs text-muted-foreground">{messages.timeCorrectionReasonHelp}</span>
-                </label>
-                <Button type="submit" disabled={Boolean(pendingAction) || !timeTarget}>{messages.timeCorrectionConfirm}</Button>
-              </form>
-            ) : (
-              <CompactEmpty>{messages.timeCorrectionEmpty}</CompactEmpty>
-            )}
-        </SectionBlock>
-          {data.currentPause ? <SectionBlock title={messages.currentPause}><Pause pause={data.currentPause} locale={locale} messages={messages} /></SectionBlock> : null}
-          <SectionBlock title={messages.pauseHistory}>{data.pauseHistory.length ? <ul className="divide-y">{data.pauseHistory.map((pause) => <li key={pause.id} className="py-3 first:pt-0"><Pause pause={pause} locale={locale} messages={messages} /><p className="mt-1 text-xs text-muted-foreground">{pause.createdBy.name}</p></li>)}</ul> : <CompactEmpty>{messages.noPauseHistory}</CompactEmpty>}</SectionBlock>
-        <SectionBlock title={messages.activityLog}>{data.activityLog.length ? <ol className="divide-y">{data.activityLog.map((entry) => {
-          const detail = adminActivityEventDetail(entry);
-          return <li key={entry.id} className="py-3 first:pt-0"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{adminActivityEventLabel(entry.eventType, messages)}</p><time className="text-xs text-muted-foreground">{formatAdminDate(entry.createdAt, locale)}</time></div><p className="mt-1 text-sm text-muted-foreground">{entry.user.name}</p>{detail ? <p className="mt-1 whitespace-pre-wrap text-sm">{detail}</p> : null}</li>;
-        })}</ol> : <CompactEmpty>{messages.noActivity}</CompactEmpty>}</SectionBlock>
+      <WorkOrderHistory
+        data={data}
+        locale={locale}
+        messages={messages}
+        tab={historyTab}
+        onTabChange={setHistoryTab}
+        canCorrect={canManageWorkOrders}
+        pending={Boolean(pendingAction)}
+        onCorrect={correctTime}
+      />
     </CollapsibleSection>
 
     {/* LTR-189 (W1): cancel / reopen a Job asks the reason in a dialog. */}
@@ -757,24 +743,6 @@ export function AdminWorkOrderDetail({
             <Button type="submit" className="flex-1" disabled={!pauseEnabled || !pauseReason || Boolean(pendingAction)}>{messages.pauseWorkOrderConfirm}</Button>
           </div>
         </form>
-      </Modal>
-    ) : null}
-
-    {/* LTR-158 / LTR-174: rare or destructive actions stay behind "…" and each opens its own dialog. */}
-    {dialog === 'menu' ? (
-      <Modal open title={messages.moreActions} closeLabel={messages.closeDialog} onClose={closeDialog}>
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">{messages.moreActionsHelp}</p>
-          {canReturnToService ? (
-            <Button type="button" variant="outline" className="w-full" onClick={() => setDialog('return')}>{messages.returnToServiceTitle}</Button>
-          ) : null}
-          {canReopenWorkOrder ? (
-            <Button type="button" variant="outline" className="w-full" onClick={() => setDialog('reopen')}>{messages.reopenWorkOrderTitle}</Button>
-          ) : null}
-          {canCancelWorkOrder ? (
-            <Button type="button" variant="outline" className="w-full" onClick={() => setDialog('cancel')}>{messages.cancelWorkOrderTitle}</Button>
-          ) : null}
-        </div>
       </Modal>
     ) : null}
 
@@ -979,54 +947,6 @@ function timeCorrectionError(errorValue: unknown, messages: AdminMessages) {
   }
   return messages.timeCorrectionGenericError;
 }
-/** LTR-186: why the app closed a labor segment — the day close (D20) or a Truck switch (D21). */
-function laborEndLabel(endReason: string | null | undefined, messages: AdminMessages) {
-  if (endReason === 'day_close') return messages.laborEndDayClose;
-  if (endReason === 'switched_truck') return messages.laborEndSwitchedTruck;
-  return null;
-}
-/** LTR-186: each mechanic's labor segments with a discreet "day close" / "switched truck" next to the end. */
-function LaborSegments({ data, locale, messages }: { data: AdminWorkOrderDetailDto; locale: AdminLocale; messages: AdminMessages }) {
-  const sessions = data.laborSessions ?? [];
-  if (!sessions.length) return null;
-  return (
-    <div className="mt-4" data-testid="labor-segments">
-      <p className="group-title">{messages.laborSessions}</p>
-      <ul className="mt-2 divide-y text-sm">
-        {sessions.map((session) => {
-          const label = laborEndLabel(session.endReason, messages);
-          return (
-            <li key={session.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2">
-              <span className="min-w-0">{session.mechanic?.name ?? messages.laborUnattributed}</span>
-              <span className="text-muted-foreground">
-                {formatAdminDate(session.startedAt, locale)} → {session.endedAt ? formatAdminDate(session.endedAt, locale) : messages.laborSessionRunning}
-                {label ? <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs" data-testid="labor-end-reason">{label}</span> : null}
-                {session.durationMs !== null ? ` · ${formatDuration(session.durationMs)}` : ''}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-function closedTimeSegments(data: AdminWorkOrderDetailDto) {
-  const sessions = (data.laborSessions ?? [])
-    .filter((session) => session.endedAt)
-    .map((session) => ({ ...session, targetType: 'work_session' as const, endedAt: session.endedAt!, mechanic: session.mechanic ?? null }));
-  const pauses = data.pauseHistory
-    .filter((pause) => pause.endedAt && pause.isOfficialPause !== false)
-    .map((pause) => ({ id: pause.id, startedAt: pause.startedAt, endedAt: pause.endedAt!, targetType: 'pause_event' as const, mechanic: null, endReason: null }));
-  return [...sessions, ...pauses];
-}
-function toDatetimeLocal(value: string) {
-  const date = new Date(value);
-  const pad = (part: number) => String(part).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-function fromDatetimeLocal(value: string) {
-  return new Date(value).toISOString();
-}
 function jobChangeError(errorValue: unknown, messages: AdminMessages) {
   // LTR-181 / LTR-188: a known API code says exactly what went wrong (e.g. HELPER_ALREADY_ADDED).
   const code = errorValue instanceof ApiError && errorValue.status === 400 ? apiErrorCode(errorValue) : null;
@@ -1037,7 +957,4 @@ function jobChangeError(errorValue: unknown, messages: AdminMessages) {
   }
   return messages.jobChangeGenericError;
 }
-function Info({ label, value }: { label: string; value: string }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }
-function formatAge(value: string, locale: AdminLocale) { const elapsed = Math.max(0, Date.now() - new Date(value).getTime()); const hours = Math.floor(elapsed / 3_600_000); const number = new Intl.NumberFormat(intlLocale(locale)); if (hours < 24) return `${number.format(hours)}h`; const days = Math.floor(hours / 24); return `${number.format(days)}d ${number.format(hours % 24)}h`; }
-function Pause({ pause, locale, messages }: { pause: { reason: string; notes: string | null; startedAt: string; endedAt: string | null; durationMs: number | null }; locale: AdminLocale; messages: AdminMessages }) { return <div><p className="font-medium">{adminPauseReasonLabel(pause.reason, messages)}</p><p className="text-sm text-muted-foreground">{formatAdminDate(pause.startedAt, locale)} → {formatAdminDate(pause.endedAt, locale)}{pause.durationMs !== null ? ` · ${formatDuration(pause.durationMs)}` : ''}</p>{pause.notes ? <p className="mt-1 text-sm">{pause.notes}</p> : null}</div>; }
 function NotFound({ messages }: { messages: AdminMessages }) { return <EmptyState><p>{messages.workOrderNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/work-orders">{messages.backToWorkOrders}</Link></Button></EmptyState>; }

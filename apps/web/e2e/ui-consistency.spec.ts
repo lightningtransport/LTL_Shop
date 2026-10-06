@@ -43,18 +43,22 @@ test.describe('shared UI consistency', () => {
   test('Work Order detail labels job pickers, hides System Admin accounts, and uses one empty-mechanics wording (LTR-151)', async ({ page }) => {
     await signInAsManager(page);
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000106');
-    // LTR-154 / D11 / LTR-174: every pending Job row carries its owner picker (with an "Unassigned" option).
-    const jobPicker = page.getByRole('combobox', { name: 'Mechanic for Inspect brake chamber' });
-    await expect(jobPicker).toBeVisible();
-    await expect(jobPicker.locator('option', { hasText: 'Anthony' })).toHaveCount(1);
-    await expect(jobPicker.locator('option', { hasText: 'iBrain Admin' })).toHaveCount(0);
-    await expect(jobPicker.locator('option', { hasText: 'Cristian Perez' })).toHaveCount(0);
+    // LTR-154 / D11 / Stage 5: every pending Job row carries its owner picker (search, with "Unassign").
+    await page.getByRole('button', { name: 'Mechanic for Inspect brake chamber' }).click();
+    const picker = page.getByTestId('mechanic-picker');
+    await expect(picker.getByRole('option', { name: /Anthony/ })).toHaveCount(1);
+    await expect(picker.getByRole('option', { name: /iBrain Admin/ })).toHaveCount(0);
+    await expect(picker.getByRole('option', { name: /Cristian Perez/ })).toHaveCount(0);
+    await expect(picker.getByRole('option', { name: 'Unassign' })).toBeVisible();
+    await picker.getByRole('searchbox').or(picker.getByRole('textbox')).fill('anth');
+    await expect(picker.getByRole('option', { name: /Alejandro/ })).toHaveCount(0);
+    await page.keyboard.press('Escape');
     await expect(page.getByRole('combobox', { name: 'Select mechanic', exact: true })).toHaveCount(0);
 
+    // Stage 5 (R1): the mechanics are not repeated in an Operational summary.
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000103');
-    const summary = page.getByRole('region', { name: 'Operational summary' });
-    const mechanicsRow = summary.locator('div').filter({ has: page.getByText('Mechanics', { exact: true }) }).last();
-    await expect(mechanicsRow.locator('dd')).toHaveText('No mechanics assigned');
+    await expect(page.getByRole('heading', { name: 'T-103' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Operational summary' })).toHaveCount(0);
   });
 
   test('Return to Service says the Truck leaves Ready to Go (LTR-151)', async ({ page }) => {
@@ -62,7 +66,7 @@ test.describe('shared UI consistency', () => {
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000104');
     // LTR-174: Return to Service opens from the header "…" menu.
     await page.getByTestId('admin-wo-more-actions').click();
-    await page.getByRole('button', { name: 'Return to Service' }).click();
+    await page.getByRole('menuitem', { name: 'Return to Service' }).click();
     await expect(page.getByText(/The Truck leaves Ready to Go\./)).toBeVisible();
     await expect(page.getByText(/does not change Work Order status, Ready to Go/)).toHaveCount(0);
   });

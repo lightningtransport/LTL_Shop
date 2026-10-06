@@ -53,8 +53,8 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
     await page.getByRole('button', { name: 'Create Work Order' }).click();
     await expect(page).toHaveURL(/\/admin\/work-orders\/00000000-0000-4000-8000-000000000199/);
     // LTR-174: on the Work Order each pending Job shows its owner in the mechanic picker.
-    await expect(page.getByRole('combobox', { name: 'Mechanic for PM A Service' }).locator('option:checked')).toHaveText('Daniel PM');
-    await expect(page.getByRole('combobox', { name: 'Mechanic for Detailing' }).locator('option:checked')).toHaveText('Anthony');
+    await expect(page.getByRole('button', { name: 'Mechanic for PM A Service' })).toContainText('Daniel PM');
+    await expect(page.getByRole('button', { name: 'Mechanic for Detailing' })).toContainText('Anthony');
   });
 
   test('LTR-186 / D20: the Manager sets the shop hours (day close and workdays) in Setup', async ({ page }) => {

@@ -4,8 +4,15 @@
 **Fecha:** 2026-10-05 (actualizada el mismo día con LTR-186 y LTR-188) · **Rama:** `claude/ui-screen-improvement-baa9cf` · **Sin PR todavía.**
 **Pantalla:** `/admin/work-orders/[id]` → `apps/web/src/components/admin-work-order-detail.tsx`
 
-El dueño aprobó la dirección visual. Falta responder las decisiones de §5 y
-después implementar (§6). Nada de esto está construido en la app.
+El dueño aprobó la dirección visual. **Construido** en la Etapa 5 (2026-10-06, rama
+`claude/exciting-lehmann-09883c`): "…" de la WO y de cada Job como menús; el blocker dentro del aviso
+del Next step (nota al pulsar Resolve, resueltos plegados); Jobs con bloqueados arriba, estado como
+punto + texto, selector de mecánico con búsqueda y "Quitar asignación", hechos y cancelados plegados;
+notas con campo en línea y "Publicar"; columna derecha sin datos repetidos (tarjeta Truck, tiempos con
+barras por mecánico, prioridad); Historial con pestañas y "Corregir…" por tramo en un diálogo. Antes
+(Etapas 2 y 4): el Next step actúa aquí, cerrar confirma, "Back to Truck" y la fila resaltada.
+**Pendiente:** la franja de métricas del encabezado y el título "Truck 918" (decisión abierta),
+Priority segmentado y los tokens del tema oscuro (Etapa 7).
 
 ## 1. Cómo verla
 

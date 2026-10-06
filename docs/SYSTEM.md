@@ -498,36 +498,45 @@ sola en el mismo orden):
 misma división 2:1 en computadora, una columna en el teléfono):
 - **Encabezado operativo:** Truck (enlace), número del WO y vehículo,
   distintivos de prioridad y estado, "N Jobs pendientes · M mecánicos", el
-  **siguiente paso** (mismo texto que el Truck) y a la derecha **Pause** /
-  **Resume** (Pause abre un diálogo que pide el motivo, sin preselección) y el
-  menú **…** con Cancel Work Order, Reopen y Return to Service, cada uno en
-  su diálogo con motivo.
+  **siguiente paso** (mismo texto que el Truck; actúa aquí, D26; si el paso es
+  resolver un bloqueo, el bloqueo vive en ese aviso y la nota se abre con
+  Resolve) y a la derecha **Pause** / **Resume** (Pause abre un diálogo que
+  pide el motivo, sin preselección) y el menú desplegable **…** con Return to
+  Service, Reopen, **Corregir tiempo…** (abre Historial › Tiempos) y Cancel
+  Work Order, cada uno en su diálogo con motivo. Si llegas desde el Truck, el
+  enlace de vuelta dice "Volver al Truck N" y `#job-<id>` resalta esa fila.
 - **Confirm completion** cuando el WO está listo para cerrar (antes la
   tarjeta no existe: el paso siguiente dice qué falta, LTR-189 W2); una barra
   fija aparece solo al pasar ese botón con el scroll.
 - **Jobs** como tabla de columnas fijas `Job · Mecánico · Estado · Acción`
-  (en el teléfono cada fila se apila): el selector de
-  mecánico asigna, reasigna o quita el dueño (QC no tiene selector: lo toma
-  Safety); "Mark complete" es primario solo en QC; el PM job muestra su
-  variante de servicio; Cancel / Reopen Job viven en el "…" de cada fila con
-  su diálogo de motivo. El "…" también tiene **Agregar ayudante** (no en PM,
+  (en el teléfono cada fila se apila; etapa 5): primero los abiertos, los
+  bloqueados arriba con borde ámbar, los de taller externo después y QC al
+  final; un ayudante va bajo su Job; los hechos y cancelados en un grupo
+  plegado. El estado es un punto y una palabra. El selector de mecánico tiene
+  búsqueda y "Quitar asignación" (QC no tiene selector: lo toma Safety);
+  "Mark complete" es discreto y primario solo en QC; el PM job muestra su
+  variante de servicio; Cancel / Reopen Job viven en el menú "…" de cada fila
+  con su diálogo de motivo. El "…" también tiene **Agregar ayudante** (no en PM,
   QC ni en un Job de ayudante; D23) y **Enviar a taller externo** (no en QC;
   D24). Un Job de ayudante muestra "· ayudante" junto al nombre. Un Job afuera
   muestra "En taller externo · pieza|camión" (la nota como tooltip), el estado
   "En taller externo" y el botón **Regresó** (Completar / Asignar a). Los Jobs
   se agregan desde el Work Plan del Truck (D6). En el Work Plan del Truck esos
   Jobs se ven igual (estado `external`, sin selector de mecánico).
-- **Bloqueos reportados:** una línea "· Ninguno" si no hay; si hay, un bloque
-  de aviso con Resolve.
-- **Notas:** entradas y el botón "Add note" que abre el redactor; pedidos de
-  trabajo con "Mark handled".
-- **Contexto** (columna lateral): Truck (enlace), tiempos (labor, espera y
-  por mecánico), mecánicos, prioridad (selector + Update priority); plegados
-  el resumen operativo, datos del Truck e historial de reparaciones.
-- **History and audit** plegado al final (tiempos, tramos de trabajo por
-  mecánico con "cierre del día" / "cambio de camión" junto a la hora de fin
-  cuando la app los cerró (D20, D21), corrección de tiempos, pausas,
-  Activity Log).
+- **Bloqueos reportados:** los activos que no están ya en el siguiente paso,
+  en un bloque de aviso con Resolve; los resueltos, plegados ("Bloqueos
+  resueltos · N"). Nada si no hay.
+- **Notas:** el hilo y, debajo, el campo siempre visible con **Publicar**;
+  pedidos de trabajo con "Mark handled".
+- **Contexto** (columna lateral, cada dato una vez): tarjeta **Truck**
+  (vehículo, millaje, VIN, empresa, enlace), tiempos (labor, espera y una
+  barra por mecánico), prioridad (selector + Update priority) e historial de
+  reparaciones plegado.
+- **History and audit** plegado al final, con pestañas: **Actividad** (por
+  día, lo último primero, "Ver todo"), **Tiempos** (totales y una sola lista
+  de tramos de trabajo y pausas, con "cierre del día" / "cambio de camión"
+  cuando la app los cerró, D20, D21; cada tramo cerrado tiene **Corregir…**,
+  un diálogo que valida fin > inicio y motivo) y **Pausas**.
 - Los estados siempre son distintivos y las acciones siempre botones. Los
   avisos de éxito son solo toasts.
 

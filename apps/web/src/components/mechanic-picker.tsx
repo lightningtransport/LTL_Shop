@@ -23,6 +23,7 @@ export function MechanicPicker({
   open,
   onOpenChange,
   onPick,
+  onUnassign,
 }: {
   trigger: ReactNode;
   title: string;
@@ -33,6 +34,8 @@ export function MechanicPicker({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPick: (mechanic: PickerMechanic) => void;
+  /** Stage 5: "Unassign" at the top of the list while the Job has an owner (Work Order only). */
+  onUnassign?: () => void;
 }) {
   const [query, setQuery] = useState('');
   const shown = useMemo(() => filterPickerMechanics(mechanics, query), [mechanics, query]);
@@ -55,11 +58,22 @@ export function MechanicPicker({
               value={query}
               placeholder={messages.mechanicSearchPlaceholder}
               onChange={(event) => setQuery(event.target.value)}
-              className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+              className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0"
             />
           </label>
           <p className="truncate px-2.5 pb-1 pt-2 text-xs text-muted-foreground">{title}</p>
           <div role="listbox" aria-label={title} className="max-h-64 overflow-auto">
+            {!loading && onUnassign && currentId ? (
+              <button
+                type="button"
+                role="option"
+                aria-selected={false}
+                className="flex min-h-11 w-full items-center rounded-lg px-2.5 text-left text-sm text-muted-foreground hover:bg-accent focus-visible:bg-accent"
+                onClick={() => { setQuery(''); onUnassign(); }}
+              >
+                {messages.unassignJobAction}
+              </button>
+            ) : null}
             {loading ? <p className="px-2.5 py-3 text-sm text-muted-foreground">{messages.mechanicPickerLoading}</p> : null}
             {!loading && shown.map((mechanic) => (
               <button
