@@ -20,11 +20,10 @@ import {
 import { useCatalogJobs, useCategories } from '@/lib/shop-data';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
 import { CategoryJobList } from './category-job-list';
+import { Info, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
-  Badge,
   Button,
-  CompactEmpty,
-  EmptyState,
   InlineAlert,
   Input,
   Select,
@@ -38,6 +37,7 @@ export function WorkPlanAddWork({
   preferredCategoryName,
   standardMechanics = [],
   onSubmit,
+  onCancel,
 }: {
   plan: TruckWorkPlanDto;
   messages: AdminMessages;
@@ -47,6 +47,7 @@ export function WorkPlanAddWork({
   /** D14: active Standard mechanics the Manager can name as each Job is added. */
   standardMechanics?: ReadonlyArray<{ id: string; name: string }>;
   onSubmit: (jobs: WorkPlanJobDraft[]) => Promise<boolean | void> | boolean | void;
+  onCancel?: () => void;
 }) {
   const [categoryId, setCategoryId] = useState('');
   const [jobQuery, setJobQuery] = useState('');
@@ -76,15 +77,17 @@ export function WorkPlanAddWork({
     () => drafts.flatMap((job) => (job.catalogJobId ? [job.catalogJobId] : [])),
     [drafts],
   );
-  const availableJobs = useMemo(
-    () => (catalogJobs ?? []).filter((job) => !existingCatalogIds.includes(job.id)),
-    [catalogJobs, existingCatalogIds],
-  );
   const customIsDuplicate = Boolean(customName.trim())
     && (
       draftContainsCustomName(drafts, customName)
       || isDuplicateCustomOnPlan(existingCustomNames, customName)
     );
+
+  // Stage 8 (mockup): the first category starts chosen.
+  useEffect(() => {
+    if (categoryId || preferredCategoryName || !standardCategories.length) return;
+    setCategoryId(standardCategories[0].id);
+  }, [categoryId, preferredCategoryName, standardCategories]);
 
   useEffect(() => {
     if (!preferredCategoryName || !standardCategories.length) return;
@@ -194,145 +197,166 @@ export function WorkPlanAddWork({
   }
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{messages.workPlanIssuesFoundHelp}</p>
-      {categoriesError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
-      {categoriesLoading && !categories ? (
-        <p className="text-sm text-muted-foreground">{messages.loadingCategories}</p>
-      ) : null}
-      {!categoriesLoading && !categoriesError && standardCategories.length === 0 ? (
-        <EmptyState>{messages.noCategoriesAvailable}</EmptyState>
-      ) : null}
-      {standardCategories.length ? (
-        <label className="block space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">{messages.category}</span>
-          <Select
-            aria-label={messages.jobPickerCategoryLabel}
-            value={categoryId}
-            disabled={disabled}
-            onChange={(event) => {
-              setCategoryId(event.target.value);
-              setJobQuery('');
-              setCustomName('');
-              setCatalogNotice(null);
-              setCatalogError(null);
-            }}
-          >
-            <option value="">{messages.category}</option>
-            {standardCategories.map((category) => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
-          </Select>
-        </label>
-      ) : null}
-      {selectedCategory ? (
-        <div className="space-y-2">
-          {selectedCategory.name === 'Detailing' ? (
-            <p className="text-xs text-muted-foreground">{messages.workPlanDetailingHint}</p>
-          ) : null}
-          {selectedCategory.name === 'Suspension & Steering' ? (
-            <p className="text-xs text-muted-foreground">{messages.workPlanAlignmentHint}</p>
-          ) : null}
-          {selectedCategory.name === 'Quality Check' ? (
-            <p className="text-xs text-muted-foreground">{messages.workPlanQcHint}</p>
-          ) : null}
-          <CategoryJobList
-            categoryName={selectedCategory.name}
-            jobs={availableJobs}
-            isLoading={jobsLoading}
-            error={Boolean(jobsError)}
-            query={jobQuery}
-            onQueryChange={setJobQuery}
-            selectedIds={selectedCatalogJobIds}
-            onSelect={toggleCatalogJob}
-            copy={{
-              searchLabel: messages.searchJobsLabel,
-              loading: messages.loadingJobs,
-              loadError: messages.loadError,
-              emptyCategory: messages.noJobsInCategory,
-              emptyCategoryHint: messages.emptyCategoryCustomHint,
-              noMatches: messages.noMatchingCategoryJobs,
-              listLabel: messages.categoryJobsLabel,
-              addJob: messages.addCatalogJob,
-            }}
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              aria-label={messages.customJobPlaceholder}
-              className="flex-1"
-              placeholder={messages.customJobPlaceholder}
-              value={customName}
-              disabled={disabled}
-              onChange={(event) => setCustomName(event.target.value)}
-            />
-            <Button type="button" disabled={disabled || catalogSaving || !customName.trim() || customIsDuplicate} onClick={addCustomJob}>
-              {catalogSaving ? messages.addCustomJobToCatalogBusy : messages.addCustomJob}
-            </Button>
+    <div className="flex min-h-full flex-col">
+      <div className="flex-1 space-y-5 px-5 py-4">
+        {categoriesError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
+        {categoriesLoading && !categories ? <p className="text-muted-foreground">{messages.loadingCategories}</p> : null}
+        {!categoriesLoading && !categoriesError && standardCategories.length === 0 ? (
+          <p className="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground">{messages.noCategoriesAvailable}</p>
+        ) : null}
+        {standardCategories.length ? (
+          <div className="space-y-2">
+            <p className="font-medium" id="add-work-category-label">{messages.category}</p>
+            {/* Stage 8 (mockup): the categories as buttons, the first one already chosen. */}
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={messages.jobPickerCategoryLabel}>
+              {standardCategories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={category.id === categoryId}
+                  disabled={disabled}
+                  className={cn(
+                    'min-h-9 rounded-md border px-2.5 text-xs font-medium',
+                    category.id === categoryId ? 'border-primary bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  )}
+                  onClick={() => {
+                    setCategoryId(category.id);
+                    setJobQuery('');
+                    setCustomName('');
+                    setCatalogNotice(null);
+                    setCatalogError(null);
+                  }}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
+            {selectedCategory && CATEGORY_HINT[selectedCategory.name] ? (
+              <p className="flex gap-2 rounded-md bg-sunken px-3 py-2 text-muted-foreground">
+                <Info aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />{messages[CATEGORY_HINT[selectedCategory.name]!]}
+              </p>
+            ) : null}
           </div>
-          {canAddToCatalog ? (
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="size-5"
-                checked={alsoAddToCatalog}
-                disabled={disabled || catalogSaving}
-                onChange={(event) => setAlsoAddToCatalog(event.target.checked)}
-              />
-              <span>{messages.addCustomJobToCatalog}</span>
-            </label>
-          ) : null}
-          {customIsDuplicate ? <p className="text-sm text-muted-foreground" role="status">{messages.customJobDuplicate}</p> : null}
-          {catalogNotice ? <p className="text-sm text-muted-foreground" role="status">{catalogNotice}</p> : null}
-          {catalogError ? <InlineAlert>{catalogError}</InlineAlert> : null}
-        </div>
-      ) : null}
-      <div className="space-y-2">
-        <p className="text-sm font-medium">{messages.jobsInPlan}</p>
-        {drafts.length ? (
-          <ul className="divide-y rounded-xl border">
-            {drafts.map((job) => (
-              <li key={job.key} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm">
-                <span className="min-w-0">
-                  <span className="font-medium">{job.displayName}</span>
-                  <Badge variant="outline" className="ml-2">{job.categoryName}</Badge>
-                </span>
-                {/* D14: the PM job goes to a PM mechanic and Quality Check has no owner; both are set on the plan. */}
-                {job.categoryName !== 'PM' && job.categoryName !== 'Quality Check' ? (
-                  <label className="flex items-center gap-2 sm:ml-auto">
-                    <span className="shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{messages.workPlanJobOwnerLabel}</span>
+        ) : null}
+        {selectedCategory ? (
+          <>
+            <CategoryJobList
+              categoryName={selectedCategory.name}
+              jobs={catalogJobs ?? []}
+              isLoading={jobsLoading}
+              error={Boolean(jobsError)}
+              query={jobQuery}
+              onQueryChange={setJobQuery}
+              selectedIds={selectedCatalogJobIds}
+              onPlanIds={existingCatalogIds}
+              onSelect={toggleCatalogJob}
+              copy={{
+                searchLabel: messages.searchJobsLabel,
+                loading: messages.loadingJobs,
+                loadError: messages.loadError,
+                emptyCategory: messages.noJobsInCategory,
+                emptyCategoryHint: messages.emptyCategoryCustomHint,
+                noMatches: messages.noMatchingCategoryJobs,
+                listLabel: messages.categoryJobsLabel,
+                addJob: messages.addCatalogJob,
+                onPlan: messages.addWorkOnPlan,
+              }}
+            />
+            <form className="space-y-1.5" onSubmit={(event) => { event.preventDefault(); addCustomJob(); }}>
+              <label htmlFor="add-work-custom" className="font-medium">{messages.addWorkCustomLabel}</label>
+              <div className="flex gap-2">
+                <Input
+                  id="add-work-custom"
+                  aria-label={messages.customJobPlaceholder}
+                  className="min-w-0 flex-1"
+                  placeholder={messages.customJobPlaceholder}
+                  maxLength={120}
+                  value={customName}
+                  disabled={disabled}
+                  onChange={(event) => setCustomName(event.target.value)}
+                />
+                <Button type="submit" variant="outline" aria-label={messages.addCustomJob} disabled={disabled || catalogSaving || !customName.trim() || customIsDuplicate}>
+                  {catalogSaving ? messages.addCustomJobToCatalogBusy : messages.addShort}
+                </Button>
+              </div>
+              {customIsDuplicate ? <p className="text-destructive-text" role="alert">{messages.customJobDuplicate}</p> : null}
+              {canAddToCatalog ? (
+                <label className="flex min-h-9 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={alsoAddToCatalog}
+                    disabled={disabled || catalogSaving}
+                    onChange={(event) => setAlsoAddToCatalog(event.target.checked)}
+                  />
+                  <span>{messages.addCustomJobToCatalog}</span>
+                </label>
+              ) : null}
+              <p className="text-xs text-muted-foreground">{fillPlaceholders(messages.addWorkCustomGoesTo, { category: selectedCategory.name })}</p>
+              {catalogNotice ? <p className="text-muted-foreground" role="status">{catalogNotice}</p> : null}
+              {catalogError ? <InlineAlert>{catalogError}</InlineAlert> : null}
+            </form>
+          </>
+        ) : null}
+        <div className="space-y-2">
+          <p className="font-medium">{messages.addWorkToAdd} <span className="tnum text-muted-foreground">{drafts.length}</span></p>
+          {drafts.length ? (
+            <ul className="divide-y rounded-lg border">
+              {drafts.map((job) => (
+                <li key={job.key} className="flex items-center gap-2 px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      {job.displayName}
+                      {job.customDescription ? <span className="text-xs font-normal text-muted-foreground"> · {messages.addWorkCustomShort}</span> : null}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{job.categoryName}</p>
+                  </div>
+                  {/* D14: Quality Check is Safety's; the PM job goes to a PM mechanic on the plan. */}
+                  {job.categoryName === 'Quality Check' ? (
+                    <span className="text-muted-foreground">Safety</span>
+                  ) : job.categoryName !== 'PM' ? (
                     <Select
                       aria-label={fillPlaceholders(messages.workPlanJobOwnerFor, { job: job.displayName })}
-                      className="w-full sm:w-44"
+                      className="h-10 w-36 sm:h-9"
                       value={job.assignedMechanicId ?? ''}
                       disabled={disabled}
                       onChange={(event) => setDraftOwner(job.key, event.target.value)}
                     >
-                      <option value="">{messages.jobUnassigned}</option>
+                      <option value="">{messages.workPlanJobOwnerLabel}</option>
                       {standardMechanics.map((mechanic) => (
                         <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
                       ))}
                     </Select>
-                  </label>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={disabled}
-                  onClick={() => setDrafts((current) => current.filter((item) => item.key !== job.key))}
-                >
-                  {messages.removeJobAction}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <CompactEmpty>{messages.noJobsYet}</CompactEmpty>
-        )}
+                  ) : null}
+                  <button
+                    type="button"
+                    className="grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent sm:size-9"
+                    aria-label={`${messages.removeJobAction} ${job.displayName}`}
+                    disabled={disabled}
+                    onClick={() => setDrafts((current) => current.filter((item) => item.key !== job.key))}
+                  >
+                    <X aria-hidden="true" className="size-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-muted-foreground">{messages.addWorkPickHint}</p>}
+        </div>
       </div>
-      <Button type="button" className="w-full" disabled={disabled || submitting || drafts.length === 0} onClick={() => void submit()}>
-        {submitting ? messages.workPlanAddingWork : messages.workPlanAddWorkSubmit}
-      </Button>
+      <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t bg-card px-5 py-3 pb-[calc(0.75rem+var(--app-safe-bottom))] sm:flex-row sm:items-center sm:justify-end">
+        {!drafts.length ? <p className="text-xs text-muted-foreground sm:mr-auto">{messages.addWorkAtLeastOne}</p> : null}
+        {onCancel ? <Button type="button" variant="outline" onClick={onCancel}>{messages.cancel}</Button> : null}
+        <Button type="button" aria-label={messages.workPlanAddWorkSubmit} disabled={disabled || submitting || drafts.length === 0} onClick={() => void submit()}>
+          {submitting ? messages.workPlanAddingWork : drafts.length ? fillPlaceholders(messages.addWorkSubmitCount, { count: String(drafts.length) }) : messages.workPlanAddWorkSubmit}
+        </Button>
+      </div>
     </div>
   );
 }
+
+const CATEGORY_HINT: Record<string, 'workPlanDetailingHint' | 'workPlanAlignmentHint' | 'workPlanQcHint'> = {
+  Detailing: 'workPlanDetailingHint',
+  'Suspension & Steering': 'workPlanAlignmentHint',
+  'Quality Check': 'workPlanQcHint',
+};

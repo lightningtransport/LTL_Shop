@@ -18,7 +18,9 @@ Estas son las decisiones que siguen abiertas al terminar la actualización de la
 
 Las que el revisor marque al cerrar cada pantalla de la Etapa 8 se anotan aquí.
 
-_(vacío por ahora)_
+- **Work Order (8.2):** el aviso en pausa no dice quién pausó ("by Crixcrox"): la pausa oficial no trae su autor en `currentPause`.
+- **Truck (8.3):** "Add work" no pone los **dueños por defecto** de PM, Alignment y Detailing en el panel: la web no tiene esa configuración (Setup → Shop workflow); la API los aplica al crear los pasos obligatorios.
+- **Truck (8.3):** el aviso "Blocker" del Truck no dice "(+N more)": el Truck solo trae el último blocker reportado.
 
 ## Resuelto por el dueño el 2026-10-06
 

@@ -21,7 +21,7 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await expect(page).toHaveURL(/\/admin\/trucks\/.*001001/);
     // Stage 4: the Next step comes first; the Truck's data and repair history are open beside the Work Plan.
     await expect(page.getByTestId('truck-next-step')).toBeVisible();
-    await expect(page.getByTestId('truck-details').getByText('Last reported location')).toBeVisible();
+    await expect(page.getByTestId('truck-details').getByRole('heading', { name: 'Truck', exact: true })).toBeVisible();
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
     await expect(page.getByText(/in yard/i)).toHaveCount(0);
@@ -53,7 +53,7 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await openYardOperations(page);
     await page.getByRole('link', { name: 'Y-101' }).first().click();
     await expect(page.getByTestId('truck-status-chip')).toHaveText('Ready to Go');
-    await expect(page.getByTestId('truck-work-order-chip')).toContainText('WO-RTG · Completed');
+    await expect(page.getByTestId('truck-work-order-chip')).toContainText(/WO-RTG.*Completed/);
     await expect(page.getByTestId('operational-counts')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Current Work' })).toHaveCount(0);
   });
@@ -62,10 +62,10 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await login(page, 'ibrain@ltransl.com');
     await openYardOperations(page);
     await page.getByRole('link', { name: 'Y-102' }).click();
-    await expect(page.getByText('Truck details', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('truck-details').getByText('Operational')).toBeVisible();
     await switchLanguage(page, 'es');
-    await expect(page.getByTestId('truck-details').getByText('Datos del truck')).toBeVisible();
-    await expect(page.getByText('Ubicación reportada')).toBeVisible();
+    await expect(page.getByTestId('truck-details').getByText('Operativo')).toBeVisible();
+    await expect(page.getByText('Solo lectura. Solo un Shop Manager puede cambiar este Truck.')).toBeVisible();
     await expect(page.getByText('Presencia desconocida')).toHaveCount(0);
     await expect(page.getByText(/no tienes permiso para cambiar/i)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Iniciar evaluación' })).toHaveCount(0);

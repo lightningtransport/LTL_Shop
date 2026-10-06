@@ -96,6 +96,7 @@ test.describe('shared UI consistency', () => {
     // Stage 4: repair history is open beside the Work Plan (with "Load more").
     const history = page.getByRole('region', { name: 'Repair history' });
     await expect(history).toBeVisible();
-    await expect(history.locator('li .shrink-0.text-right').first()).toBeVisible();
+    // Stage 8 (mockup): the mileage sits on the Work Order's line, right-aligned, in "mi".
+    await expect(history.locator('li').first().getByText(/ mi$/)).toBeVisible();
   });
 });

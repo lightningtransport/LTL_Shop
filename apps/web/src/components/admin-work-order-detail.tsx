@@ -598,10 +598,12 @@ export function AdminWorkOrderDetail({
         <SectionCard
           title={messages.recentRepairHistory}
           action={(
-            <Select aria-label={messages.filterByCategory} className="h-9 w-auto max-w-[11rem] text-sm text-muted-foreground" value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}>
-              <option value="">{messages.allCategories}</option>
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-            </Select>
+            <div className="w-44 shrink-0">
+              <Select aria-label={messages.filterByCategory} className="h-9 pl-2.5 text-sm text-muted-foreground" value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}>
+                <option value="">{messages.allCategories}</option>
+                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+              </Select>
+            </div>
           )}
         >
           {historyQuery.error ? (

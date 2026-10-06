@@ -1,8 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { WorkPlanInspectionOutcome, WorkPlanJobLane, type AdminTruckDetailDto, type RecordWorkPlanInspectionInput, type TruckNextStepDto } from '@ltl-shop/shared';
+import { useState, type ReactNode } from 'react';
+import {
+  Building2,
+  CheckCheck,
+  CircleAlert,
+  CircleCheck,
+  CirclePause,
+  ClipboardCheck,
+  FilePlus,
+  Flag,
+  ListPlus,
+  Play,
+  Plus,
+  ShieldCheck,
+  SquareArrowOutUpRight,
+  Truck as TruckIcon,
+  UserPlus,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react';
+import { WorkPlanInspectionOutcome, WorkPlanJobLane, type AdminTruckDetailDto, type RecordWorkPlanInspectionInput } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import {
   completeAdminJob,
@@ -11,10 +30,11 @@ import {
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { useActionToast } from './action-toast';
-import { AdminBlockerResolve } from './admin-blocker-resolve';
-import { InspectionButtons } from './admin-truck-work-plan';
 import { CloseWorkOrderDialog } from './close-work-order-dialog';
 import { NextStepAction } from './next-step-action';
+import { NextStepCallout, type CalloutTone } from './next-step-callout';
+import { BlockerCallout } from './work-order-next-step';
+import { formatShortDateTime } from '@/lib/work-order-view';
 import { ReturnToServiceDialog } from './return-to-service-dialog';
 import { Button, InlineAlert } from './ui';
 
@@ -80,202 +100,219 @@ export function AdminTruckNextStep({
     }
   }
 
-  const body = renderStep(step);
-
-  // LTR-174: one box under the operational header (no Card inside a Card), same testid and data-kind.
-  return (
-    <div className="rounded-xl border border-primary/40 bg-card px-4 py-3 text-sm text-card-foreground shadow-soft" role="status" data-testid="truck-next-step" data-kind={step.kind}>
-      <p className="group-title">{messages.nextStepTitle}</p>
-      <div className="mt-2 space-y-3">
-        {body}
-        {failure ? <InlineAlert>{failure}</InlineAlert> : null}
-      </div>
-    </div>
+  const date = (value: string | null | undefined) => formatShortDateTime(value, locale);
+  const workOrder = truck.workPlan.workOrder;
+  const readOnly = !canManage ? <p className="text-muted-foreground">{messages.calloutStepReadOnly}</p> : null;
+  const failureLine = failure ? <InlineAlert>{failure}</InlineAlert> : null;
+  const box = (props: { tone: CalloutTone; icon: LucideIcon; eyebrow: string; title: string; sub?: string | null; actions?: ReactNode; extra?: ReactNode }) => (
+    <NextStepCallout
+      id="next-step"
+      testId="truck-next-step"
+      kind={step!.kind}
+      tone={props.tone}
+      icon={props.icon}
+      eyebrow={props.eyebrow}
+      title={props.title}
+      sub={props.sub}
+      actions={props.actions}
+      extra={<>{props.extra}{readOnly}{failureLine}</>}
+    />
   );
+  const act = (label: string, Icon: LucideIcon | null, onClick: () => void, variant?: 'outline') => canManage ? (
+    <Button type="button" variant={variant} disabled={pending} onClick={onClick}>{Icon ? <Icon aria-hidden="true" /> : null}{pending ? messages.saving : label}</Button>
+  ) : null;
 
-  function renderStep(current: TruckNextStepDto) {
-    switch (current.kind) {
-      case 'resolve_blocker': {
-        const blocker = truck.activeWorkOrder?.latestReportedBlocker;
-        if (!blocker || !current.workOrderId) return null;
-        return (
-          <div className="rounded-lg bg-warning-surface px-3 py-2 text-warning-foreground">
-            <AdminBlockerResolve
-              workOrderId={current.workOrderId}
-              blocker={blocker}
-              locale={locale}
-              messages={messages}
-              canResolve={canManage}
-              noteOnDemand
-              onResolved={onChanged}
-            />
-          </div>
-        );
-      }
-      case 'resume':
-        return (
-          <Action
-            text={fillPlaceholders(messages.truckNextStepResume, { reason: current.reason ? adminPauseReasonLabel(current.reason, messages) : '' })}
-            label={messages.resumeWorkOrderAction}
-            disabled={!canManage || pending}
-            onClick={() => void run(messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(current.workOrderId!))}
-          />
-        );
-      case 'inspect':
-        // Stage 4: the inspection is recorded right here (D14), not by scrolling to the Work Plan.
-        return (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="min-w-0 flex-1">{messages.truckNextStepInspect}</p>
-            {truck.workPlan.capabilities.canRecordInspection ? (
-              <InspectionButtons messages={messages} pending={inspectionPending} onRecord={onRecordInspection} />
-            ) : null}
-          </div>
-        );
-      case 'add_missing_steps':
-        return (
-          <Action
-            text={fillPlaceholders(messages.truckNextStepMissingSteps, {
-              steps: (current.missingLanes ?? []).map((lane) => LANE_NAME[lane] ?? lane).join(', '),
-            })}
-            label={messages.truckNextStepMissingStepsAction}
-            disabled={!canManage || pending}
-            onClick={() => void run(messages.truckNextStepMissingStepsSuccess, () => apiFetch(
-              `/api/admin/trucks/${truck.truck.id}/work-plan/backfill-mandatory`,
-              { method: 'POST', body: JSON.stringify({ expectedVersion: version }) },
-            ))}
-          />
-        );
-      case 'assign':
-        // Stage 2/4: the mechanic picker opens next to the button (PM → PM mechanics).
-        return (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="min-w-0 flex-1">{fillPlaceholders(messages.truckNextStepAssign, { job: current.jobName ?? '' })}</p>
-            <NextStepAction
-              step={current}
-              place="work-order"
-              truck={{ id: truck.truck.id, truckNumber: truck.truck.truckNumber }}
-              workOrderDisplayId={truck.workPlan.workOrder?.displayId ?? ''}
-              expectedVersion={version}
-              fromPath={fromPath}
-              canManage={canManage}
-              messages={messages}
-              onChanged={onChanged}
-            />
-          </div>
-        );
-      case 'qc':
-        return (
-          <Action
-            text={messages.truckNextStepQc}
-            label={messages.truckNextStepQcAction}
-            disabled={!canManage || pending}
-            onClick={() => void run(messages.workPlanJobCompleted, () => completeAdminJob(current.jobId!, { expectedVersion: version }))}
-          />
-        );
-      case 'close':
-        // Owner decision (2026-10-05): closing confirms — it makes the Truck Ready to Go.
-        return (
-          <>
-            <Action
-              text={messages.truckNextStepClose}
-              label={messages.truckNextStepCloseAction}
-              disabled={!canManage || pending}
-              onClick={() => setCloseOpen(true)}
-            />
-            {current.workOrderId ? (
-              <CloseWorkOrderDialog
-                open={closeOpen}
-                workOrderId={current.workOrderId}
-                workOrderDisplayId={truck.workPlan.workOrder?.displayId ?? ''}
-                truckNumber={truck.truck.truckNumber}
-                expectedVersion={version}
-                messages={messages}
-                onClose={() => setCloseOpen(false)}
-                onDone={onChanged}
-              />
-            ) : null}
-          </>
-        );
-      case 'return_to_service':
-        // D7 / UX-4-002: one button and a confirmation dialog (optional reason), the same as the Yard.
-        return (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p>{messages.truckNextStepReturnToService}</p>
-            {canManage && current.workOrderId ? (
-              <>
-                <Button type="button" className="w-full sm:w-auto" onClick={() => setReturnOpen(true)}>{messages.returnToServiceTitle}</Button>
-                <ReturnToServiceDialog
-                  open={returnOpen}
-                  truckNumber={truck.truck.truckNumber}
-                  workOrderId={current.workOrderId}
-                  expectedVersion={version}
-                  messages={messages}
-                  onClose={() => setReturnOpen(false)}
-                  onDone={onChanged}
-                />
-              </>
-            ) : null}
-          </div>
-        );
-      case 'external':
-        // LTR-188 / D24, T3: "Returned" lives on the Job's row of the Work Order, so the step links there.
-        return (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p>{fillPlaceholders(messages.truckNextStepExternal, { job: current.jobName ?? '' })}</p>
-            {current.workOrderId ? (
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href={`/admin/work-orders/${current.workOrderId}?from=${encodeURIComponent(fromPath)}${current.jobId ? `#job-${current.jobId}` : ''}`}>{messages.openInWorkOrder}</Link>
-              </Button>
-            ) : null}
-          </div>
-        );
-      case 'work':
-        return (
-          <p>{fillPlaceholders(messages.truckNextStepWork, { count: String(current.remaining ?? 0), job: current.jobName ?? '' })}</p>
-        );
-      case 'create_work_order': {
-        // Owner decision (2026-10-05): New Work Order is a dialog here. After "Issues found", adding the
-        // work is what opens the Work Order, so Add work comes first.
-        const outcome = truck.workPlan.inspection.outcome;
-        const issues = outcome === WorkPlanInspectionOutcome.ISSUES_FOUND && truck.workPlan.capabilities.canAddWork;
-        const text = outcome === WorkPlanInspectionOutcome.ISSUES_FOUND
-          ? messages.truckNextStepCreateAfterIssues
-          : outcome === WorkPlanInspectionOutcome.NO_ISSUES_FOUND ? messages.truckNextStepCreateAfterNoIssues : messages.truckNextStepCreate;
-        return (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="min-w-0 flex-1">{text}</p>
-            {canManage ? (
-              <div className="flex flex-col gap-2 sm:flex-row">
-                {issues ? <Button type="button" className="w-full sm:w-auto" onClick={onAddWork}>{messages.workPlanAddWork}</Button> : null}
-                <Button type="button" variant={issues ? 'outline' : 'default'} className="w-full sm:w-auto" onClick={onNewWorkOrder}>{messages.truckNextStepCreateAction}</Button>
-              </div>
-            ) : null}
-          </div>
-        );
-      }
-      default:
-        return null;
+  // Stage 8 (mockup): one callout per Next step kind — tone, icon, title, sub and the action that moves it forward.
+  switch (step.kind) {
+    case 'resolve_blocker': {
+      const blocker = truck.activeWorkOrder?.latestReportedBlocker;
+      if (!blocker || !step.workOrderId) return null;
+      return (
+        <BlockerCallout
+          testId="truck-next-step"
+          blocker={blocker}
+          more={0}
+          workOrderId={step.workOrderId}
+          locale={locale}
+          messages={messages}
+          canResolve={canManage}
+          footer={null}
+          onResolved={onChanged}
+        />
+      );
     }
+    case 'resume':
+      return box({
+        tone: 'warning',
+        icon: CirclePause,
+        eyebrow: messages.calloutTruckPausedEyebrow,
+        title: fillPlaceholders(messages.truckNextStepResume, { reason: step.reason ? adminPauseReasonLabel(step.reason, messages) : '' }),
+        sub: fillPlaceholders(messages.calloutTruckPausedSub, { date: date(truck.activeWorkOrder?.currentPause?.startedAt) }),
+        actions: act(messages.resumeShort, Play, () => void run(messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(step.workOrderId!))),
+      });
+    case 'inspect':
+      // Stage 4: the inspection is recorded right here (D14). "Issues found" is the primary one.
+      return box({
+        tone: 'primary',
+        icon: ClipboardCheck,
+        eyebrow: messages.calloutNextStep,
+        title: messages.calloutInspectTitle,
+        sub: messages.calloutTruckInspectSub,
+        actions: truck.workPlan.capabilities.canRecordInspection ? (
+          <>
+            <Button type="button" variant="outline" disabled={inspectionPending} onClick={() => onRecordInspection(WorkPlanInspectionOutcome.NO_ISSUES_FOUND)}>{messages.workPlanNoIssuesFound}</Button>
+            <Button type="button" disabled={inspectionPending} onClick={() => onRecordInspection(WorkPlanInspectionOutcome.ISSUES_FOUND)}>{messages.workPlanIssuesFound}</Button>
+          </>
+        ) : null,
+      });
+    case 'add_missing_steps':
+      return box({
+        tone: 'danger',
+        icon: CircleAlert,
+        eyebrow: messages.calloutNextStep,
+        title: fillPlaceholders(messages.truckNextStepMissingSteps, { steps: (step.missingLanes ?? []).map((lane) => LANE_NAME[lane] ?? lane).join(', ') }),
+        sub: messages.calloutMissingSub,
+        actions: act(messages.truckNextStepMissingStepsAction, ListPlus, () => void run(messages.truckNextStepMissingStepsSuccess, () => apiFetch(
+          `/api/admin/trucks/${truck.truck.id}/work-plan/backfill-mandatory`,
+          { method: 'POST', body: JSON.stringify({ expectedVersion: version }) },
+        ))),
+      });
+    case 'assign': {
+      const job = truck.workPlan.jobs.find((candidate) => candidate.id === step.jobId);
+      return box({
+        tone: 'primary',
+        icon: UserPlus,
+        eyebrow: messages.calloutNextStep,
+        title: fillPlaceholders(messages.truckNextStepAssign, { job: step.jobName ?? '' }),
+        sub: job ? job.category.name : null,
+        // Stage 2/4: the mechanic picker opens next to the button (PM → PM mechanics).
+        actions: (
+          <NextStepAction
+            step={step}
+            place="work-order"
+            truck={{ id: truck.truck.id, truckNumber: truck.truck.truckNumber }}
+            workOrderDisplayId={workOrder?.displayId ?? ''}
+            expectedVersion={version}
+            fromPath={fromPath}
+            canManage={canManage}
+            messages={messages}
+            onChanged={onChanged}
+          />
+        ),
+      });
+    }
+    case 'qc':
+      return box({
+        tone: 'primary',
+        icon: ShieldCheck,
+        eyebrow: messages.calloutQc,
+        title: messages.calloutQcTitle,
+        sub: messages.calloutQcSub,
+        actions: act(messages.truckNextStepQcAction, null, () => void run(messages.workPlanJobCompleted, () => completeAdminJob(step.jobId!, { expectedVersion: version })), 'outline'),
+      });
+    case 'close':
+      // Owner decision (2026-10-05): closing confirms — it makes the Truck Ready to Go.
+      return (
+        <>
+          {box({
+            tone: 'primary',
+            icon: Flag,
+            eyebrow: messages.calloutNextStep,
+            title: messages.calloutCloseTitle,
+            sub: messages.calloutCloseSub,
+            actions: act(messages.truckNextStepCloseAction, CheckCheck, () => setCloseOpen(true)),
+          })}
+          {step.workOrderId ? (
+            <CloseWorkOrderDialog
+              open={closeOpen}
+              workOrderId={step.workOrderId}
+              workOrderDisplayId={workOrder?.displayId ?? ''}
+              truckNumber={truck.truck.truckNumber}
+              expectedVersion={version}
+              messages={messages}
+              onClose={() => setCloseOpen(false)}
+              onDone={onChanged}
+            />
+          ) : null}
+        </>
+      );
+    case 'return_to_service':
+      // D7 / UX-4-002: one button and a confirmation dialog (optional reason), the same as the Yard.
+      return (
+        <>
+          {box({
+            tone: 'success',
+            icon: CircleCheck,
+            eyebrow: messages.calloutReadyToGo,
+            title: messages.calloutRtsTitle,
+            sub: fillPlaceholders(messages.calloutRtsSub, { workOrder: workOrder?.displayId ?? '', date: date(workOrder?.completedAt) }),
+            actions: step.workOrderId ? act(messages.returnToServiceTitle, TruckIcon, () => setReturnOpen(true)) : null,
+          })}
+          {canManage && step.workOrderId ? (
+            <ReturnToServiceDialog
+              open={returnOpen}
+              truckNumber={truck.truck.truckNumber}
+              workOrderId={step.workOrderId}
+              expectedVersion={version}
+              messages={messages}
+              onClose={() => setReturnOpen(false)}
+              onDone={onChanged}
+            />
+          ) : null}
+        </>
+      );
+    case 'external': {
+      // LTR-188 / D24, T3: "Returned" lives on the Job's row of the Work Order, so the step links there.
+      const job = truck.workPlan.jobs.find((candidate) => candidate.id === step.jobId);
+      const what = job?.external ? fillPlaceholders(job.external.kind === 'truck' ? messages.calloutExternalTruck : messages.calloutExternalPart, { date: date(job.external.since), note: job.external.note }) : '';
+      return box({
+        tone: 'primary',
+        icon: Building2,
+        eyebrow: messages.calloutWaiting,
+        title: fillPlaceholders(messages.calloutExternalTitle, { job: step.jobName ?? '' }),
+        sub: what ? `${what}${messages.calloutTruckExternalHint}` : messages.calloutTruckExternalHint.trim(),
+        actions: step.workOrderId ? (
+          <Button asChild variant="outline">
+            <Link href={`/admin/work-orders/${step.workOrderId}?from=${encodeURIComponent(fromPath)}${step.jobId ? `#job-${step.jobId}` : ''}`}>
+              <SquareArrowOutUpRight aria-hidden="true" />{messages.openInWorkOrder}
+            </Link>
+          </Button>
+        ) : null,
+      });
+    }
+    case 'work':
+      return box({
+        tone: 'muted',
+        icon: Wrench,
+        eyebrow: messages.calloutNextStep,
+        title: messages.calloutWorkingTitle,
+        sub: fillPlaceholders(messages.calloutWorkingSub, { count: String(step.remaining ?? 0), job: step.jobName ?? '' }),
+      });
+    case 'create_work_order': {
+      // Owner decision (2026-10-05): New Work Order is a dialog here. After "Issues found", adding the
+      // work is what opens the Work Order, so Add work comes first.
+      const outcome = truck.workPlan.inspection.outcome;
+      const issues = outcome === WorkPlanInspectionOutcome.ISSUES_FOUND;
+      const sub = issues
+        ? messages.calloutTruckCreateIssues
+        : outcome === WorkPlanInspectionOutcome.NO_ISSUES_FOUND ? messages.calloutTruckCreateNoIssues : messages.calloutTruckCreateNone;
+      return box({
+        tone: 'muted',
+        icon: FilePlus,
+        eyebrow: messages.calloutNextStep,
+        title: messages.calloutTruckCreateTitle,
+        sub,
+        actions: canManage ? (
+          <>
+            {issues && truck.workPlan.capabilities.canAddWork ? <Button type="button" onClick={onAddWork}><Plus aria-hidden="true" />{messages.workPlanAddWork}</Button> : null}
+            <Button type="button" variant={outcome === WorkPlanInspectionOutcome.NO_ISSUES_FOUND ? 'default' : 'outline'} onClick={onNewWorkOrder}>
+              <FilePlus aria-hidden="true" />{messages.truckNextStepCreateAction}
+            </Button>
+          </>
+        ) : null,
+      });
+    }
+    default:
+      return null;
   }
-}
-
-function Action({
-  text,
-  label,
-  onClick,
-  disabled = false,
-  variant,
-}: {
-  text: string;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  variant?: 'outline';
-}) {
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <p className="min-w-0 flex-1">{text}</p>
-      <Button type="button" variant={variant} className="w-full sm:w-auto" disabled={disabled} onClick={onClick}>{label}</Button>
-    </div>
-  );
 }

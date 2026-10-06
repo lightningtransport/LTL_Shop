@@ -214,7 +214,8 @@ export function WorkOrderNextStep({
   return box({ tone: 'muted', icon: Wrench, eyebrow: messages.calloutNextStep, title: messages.calloutWorkTitle, sub, kind: step?.kind ?? 'work' });
 }
 
-function BlockerCallout({
+export function BlockerCallout({
+  testId = 'admin-wo-next-step',
   blocker,
   more,
   workOrderId,
@@ -224,7 +225,8 @@ function BlockerCallout({
   footer,
   onResolved,
 }: {
-  blocker: Blocker;
+  testId?: string;
+  blocker: Blocker | PauseEventDto;
   more: number;
   workOrderId: string;
   locale: AdminLocale;
@@ -238,7 +240,7 @@ function BlockerCallout({
   const [note, setNote] = useState('');
   const [pending, setPending] = useState(false);
   const reason = adminPauseReasonLabel(blocker.blockerReason ?? blocker.reason, messages);
-  const reporter = blocker.reportedBy?.name ?? blocker.createdBy?.name ?? messages.noValue;
+  const reporter = blocker.reportedBy?.name ?? ('createdBy' in blocker ? blocker.createdBy?.name : null) ?? messages.noValue;
 
   async function resolve() {
     if (pending) return;
@@ -259,7 +261,7 @@ function BlockerCallout({
   return (
     <NextStepCallout
       id="next-step"
-      testId="admin-wo-next-step"
+      testId={testId}
       kind="resolve_blocker"
       tone="warning"
       icon={TriangleAlert}

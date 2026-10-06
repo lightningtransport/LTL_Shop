@@ -32,25 +32,25 @@ export function SideSheet({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <DialogPrimitive.Content
           data-testid={testId}
           aria-describedby={undefined}
           onOpenAutoFocus={(event) => event.preventDefault()}
-          className="fixed inset-x-0 bottom-0 top-[calc(0.5rem+var(--app-safe-top))] z-50 flex flex-col rounded-t-xl border bg-popover text-popover-foreground shadow-xl focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:top-0 sm:w-full sm:max-w-xl sm:rounded-none sm:rounded-l-xl"
+          className="anim-sheet-in fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-2xl border-t bg-card text-card-foreground shadow-2xl focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[460px] sm:rounded-none sm:border-l sm:border-t-0"
         >
           <div className="flex items-start justify-between gap-3 border-b px-5 py-4">
             <div className="min-w-0 space-y-1">
-              <DialogPrimitive.Title className="font-display text-xl font-bold leading-tight">{title}</DialogPrimitive.Title>
-              {description ? <div className="text-sm text-muted-foreground">{description}</div> : null}
+              <DialogPrimitive.Title className="text-base font-semibold">{title}</DialogPrimitive.Title>
+              {description ? <div className="text-muted-foreground">{description}</div> : null}
             </div>
             <DialogPrimitive.Close asChild>
-              <Button variant="ghost" size="icon" aria-label={closeLabel}>
+              <Button variant="ghost" size="icon" className="-mr-2 shrink-0" aria-label={closeLabel}>
                 <X aria-hidden="true" className="size-5" />
               </Button>
             </DialogPrimitive.Close>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
           {footer ? <div className="border-t px-5 py-3 pb-[calc(0.75rem+var(--app-safe-bottom))]">{footer}</div> : null}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

@@ -39,9 +39,9 @@ describe('Truck readiness steps (stage 4 / UX-4-001)', () => {
       ['alignment', 'external', 1],
       ['detailing', 'missing', 0],
       ['quality_check', 'not_applicable', 0],
-      ['close', 'pending', 0],
+      ['close', 'waiting', 0],
     ]);
-    expect(steps.filter(truckStepStartsOpen).map((step) => step.key)).toEqual(['shop_work', 'alignment', 'detailing', 'close']);
+    expect(steps.filter(truckStepStartsOpen).map((step) => step.key)).toEqual(['shop_work', 'alignment', 'detailing']);
   });
 
   it('Shop Work with no Jobs does not apply; close is ready when only the Work Order is open', () => {

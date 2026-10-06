@@ -7,7 +7,7 @@ import type { TruckOperationalStatus, TruckWorkPlanDto, WorkPlanMandatoryPhaseDt
  */
 export const TRUCK_STEPS = ['inspection', 'shop_work', 'pm', 'alignment', 'detailing', 'quality_check', 'close'] as const;
 export type TruckStepKey = (typeof TRUCK_STEPS)[number];
-export type TruckStepState = 'done' | 'pending' | 'blocked' | 'external' | 'missing' | 'not_applicable' | 'ready';
+export type TruckStepState = 'done' | 'pending' | 'blocked' | 'external' | 'missing' | 'not_applicable' | 'ready' | 'waiting';
 export type TruckStep = { key: TruckStepKey; state: TruckStepState; remaining: number };
 
 type Jobs = TruckWorkPlanDto['jobs'];
@@ -48,7 +48,8 @@ export function truckSteps(plan: TruckWorkPlanDto): TruckStep[] {
 
   const close: TruckStep = plan.workOrder.status === 'completed'
     ? { key: 'close', state: 'done', remaining: 0 }
-    : { key: 'close', state: plan.readyReason === 'work_order_open' ? 'ready' : 'pending', remaining: 0 };
+    // Stage 8 (mockup): Close waits (neutral) until every other step is done.
+    : { key: 'close', state: plan.readyReason === 'work_order_open' ? 'ready' : 'waiting', remaining: 0 };
 
   return [
     inspection,
@@ -63,7 +64,7 @@ export function truckSteps(plan: TruckWorkPlanDto): TruckStep[] {
 
 /** A finished step starts folded on the Work Plan; the rest start open. */
 export function truckStepStartsOpen(step: TruckStep) {
-  return step.state !== 'done' && step.state !== 'not_applicable';
+  return step.state !== 'done' && step.state !== 'not_applicable' && step.state !== 'waiting';
 }
 
 /** The one status chip of the header (UX-4-001: no second phase badge). */

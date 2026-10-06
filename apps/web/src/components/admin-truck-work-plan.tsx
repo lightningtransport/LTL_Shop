@@ -9,8 +9,7 @@ import {
   type RecordWorkPlanInspectionInput,
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
-import { DropdownMenu } from 'radix-ui';
-import { ArrowUpRight, ChevronDown } from 'lucide-react';
+import { Building2, Check, ChevronDown, CircleSlash, CornerDownRight, Info, Lock, OctagonPause, Package, ShieldCheck, SquareArrowOutUpRight, Truck, UserPlus } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import {
@@ -20,19 +19,20 @@ import {
   useAdminAssignableMechanics,
 } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminMessages } from '@/lib/admin-messages';
+import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { formatShortDateTime } from '@/lib/work-order-view';
 import { useCategories } from '@/lib/shop-data';
-import { workPlanJobUiStatusLabel, workPlanReadyReasonMessage, type WorkPlanJobDraft } from '@/lib/work-plan';
+import { workPlanJobUiStatusLabel, type WorkPlanJobDraft } from '@/lib/work-plan';
 import { jobDisplayName } from '@/lib/job-display-name';
-import { externalShopLabel } from '@/lib/external-shop';
-import { profileInitials } from '@/lib/profile-initials';
 import type { TruckStep, TruckStepKey } from '@/lib/truck-stepper';
 import { WorkPlanAddWork } from './work-plan-add-work';
 import { MechanicPicker, type PickerMechanic } from './mechanic-picker';
 import { SideSheet } from './side-sheet';
-import { TruckStepIcon, truckStepLabel, truckStepStateLabel } from './truck-stepper';
+import { STEP_TONE, TruckStepIcon, truckStepLabel } from './truck-stepper';
+import { MechanicAvatar } from './mechanic-avatar';
+import { ResponsiveMenu } from './responsive-menu';
 import { useActionToast } from './action-toast';
-import { Button, Card, CardContent, CardHeader, CardTitle } from './ui';
+import { Button } from './ui';
 
 type PlanJob = TruckWorkPlanDto['jobs'][number];
 
@@ -44,15 +44,6 @@ const STEP_LANES: Record<TruckStepKey, string[]> = {
   detailing: ['detailing'],
   quality_check: ['quality_check'],
   close: [],
-};
-
-const DOT: Record<string, string> = {
-  completed: 'bg-shop-success',
-  in_progress: 'bg-primary',
-  blocked: 'bg-warning',
-  external: 'bg-warning',
-  cancelled: 'bg-muted-foreground',
-  pending: 'border border-muted-foreground bg-transparent',
 };
 
 /**
@@ -69,6 +60,7 @@ export function AdminTruckWorkPlan({
   steps,
   isStepOpen,
   onToggleStep,
+  locale,
   messages,
   addWorkOpen,
   onAddWorkOpenChange,
@@ -86,6 +78,7 @@ export function AdminTruckWorkPlan({
   steps: TruckStep[];
   isStepOpen: (step: TruckStep) => boolean;
   onToggleStep: (key: TruckStepKey, open: boolean) => void;
+  locale: AdminLocale;
   messages: AdminMessages;
   addWorkOpen: boolean;
   onAddWorkOpenChange: (open: boolean) => void;
@@ -192,61 +185,103 @@ export function AdminTruckWorkPlan({
   }
 
   function renderJobs(key: TruckStepKey) {
-    const jobs = jobsFor(key);
+    // Pending first, then done and cancelled; a helper right under its Job.
+    const jobs = [...jobsFor(key)].sort((left, right) => (left.status === JobStatus.TO_DO ? 0 : 1) - (right.status === JobStatus.TO_DO ? 0 : 1));
     if (!jobs.length) return null;
     return (
-      <ul className="divide-y rounded-lg border">
+      <ul className="space-y-1 pb-3 sm:space-y-0 sm:pb-2">
         {jobs.map((job) => {
           // LTR-188 / D24: a Job at an external shop comes back through "Returned" on the Work Order. QC is Safety's (D19).
-          const canAssignHere = canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic === null && job.lane !== 'quality_check' && !job.external;
+          const canAssignHere = canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && !job.assignedMechanic && job.lane !== 'quality_check' && !job.external;
           const name = jobDisplayName(job, messages.helperJobSuffix);
           const href = manageHref(job);
-          const owner = job.external ? (
-            <span title={job.external.note} data-testid="work-plan-job-external">{externalShopLabel(job.external.kind, messages)}</span>
-          ) : job.assignedMechanic ? (
-            <span className="inline-flex items-center gap-1">
-              <span aria-hidden="true" className="grid size-6 place-items-center rounded-full bg-muted text-xs font-semibold text-foreground">{profileInitials(job.assignedMechanic.name)}</span>
-              {`${messages.jobAssignee}: ${job.assignedMechanic.name}`}
-            </span>
-          ) : job.lane === 'quality_check' ? (
-            <span title={messages.workPlanQcHint}>{messages.qcBySafety}</span>
-          ) : job.assignedMechanic === null ? (
-            <span>{messages.jobUnassigned}</span>
-          ) : null;
+          const open = job.status === JobStatus.TO_DO;
+          const parent = job.helperOfJobId ? plan.jobs.find((other) => other.id === job.helperOfJobId) : undefined;
+          let who: ReactNode;
+          if (open && job.external) {
+            const Icon = job.external.kind === 'truck' ? Truck : Package;
+            who = <span className="flex min-w-0 items-center gap-2 text-muted-foreground" title={job.external.note} data-testid="work-plan-job-external"><Icon aria-hidden="true" className="size-3.5 shrink-0" /><span className="truncate">{job.external.kind === 'truck' ? messages.jobTruckOut : messages.jobPartOut}</span></span>;
+          } else if (job.lane === 'quality_check') {
+            who = (
+              <span className="flex items-center gap-2 text-muted-foreground" title={messages.workPlanQcHint}>
+                <span className="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60"><ShieldCheck aria-hidden="true" className="size-3.5" /></span>
+                Safety
+              </span>
+            );
+          } else if (canAssignHere) {
+            who = (
+              <MechanicPicker
+                open={pickerJobId === job.id}
+                onOpenChange={(next) => setPickerJobId(next ? job.id : null)}
+                title={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
+                mechanics={job.lane === 'pm' ? pmMechanics : standardMechanics}
+                loading={mechanicsLoading}
+                messages={messages}
+                onPick={(mechanic) => void handleAssign(job.id, mechanic)}
+                trigger={(
+                  <button
+                    id={`assign-job-${job.id}`}
+                    type="button"
+                    aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: name })}
+                    disabled={Boolean(pendingAction)}
+                    className="-ml-2 flex h-10 items-center gap-2 rounded-md border border-dashed border-primary/50 px-2 text-primary hover:bg-primary/10 disabled:opacity-60 lg:h-9"
+                  >
+                    <UserPlus aria-hidden="true" className="size-3.5" />{messages.truckNextStepAssignAction}
+                  </button>
+                )}
+              />
+            );
+          } else if (job.assignedMechanic) {
+            who = (
+              <span className="flex min-w-0 items-center gap-2">
+                <MechanicAvatar id={job.assignedMechanic.id} name={job.assignedMechanic.name} size="sm" />
+                <span className="truncate"><span className="sr-only">{messages.jobAssignee}: </span>{job.assignedMechanic.name}</span>
+              </span>
+            );
+          } else {
+            who = <span className="text-muted-foreground">{messages.jobUnassigned}</span>;
+          }
+          const status = job.status === JobStatus.COMPLETED ? (
+            <span className="inline-flex items-center gap-1.5 text-success"><Check aria-hidden="true" className="size-3.5" />{messages.jobDoneShort}</span>
+          ) : job.status === JobStatus.CANCELLED ? (
+            <span className="inline-flex items-center gap-1.5 text-muted-foreground"><CircleSlash aria-hidden="true" className="size-3.5" />{messages.jobStatusCancelled}</span>
+          ) : job.uiStatus === 'external' ? (
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-primary"><Building2 aria-hidden="true" className="size-3.5" />{messages.jobExternalShort}</span>
+          ) : job.uiStatus === 'blocked' ? (
+            <span className="inline-flex items-center gap-1.5 text-warning-foreground dark:text-warning"><OctagonPause aria-hidden="true" className="size-3.5" />{messages.blockedShort}</span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-muted-foreground"><span aria-hidden="true" className="size-2 rounded-full border-[1.5px] border-muted-foreground" />{workPlanJobUiStatusLabel(job.uiStatus, messages)}</span>
+          );
+          const sub = parent
+            ? parent.assignedMechanic ? fillPlaceholders(messages.jobHelps, { name: parent.assignedMechanic.name }) : messages.jobHelpsMain
+            : job.category.name;
           return (
-            <li key={job.id} className={`flex items-center gap-3 px-3 py-2.5 ${job.helperOfJobId ? 'pl-8' : ''}`} data-testid="truck-job-row" data-status={job.uiStatus}>
-              <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${DOT[job.uiStatus] ?? DOT.pending}`} />
-              <div className="min-w-0 flex-1">
-                <p className={`font-medium ${job.status === JobStatus.CANCELLED ? 'text-muted-foreground line-through' : ''}`}>{name}</p>
-                <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                  <span>{workPlanJobUiStatusLabel(job.uiStatus, messages)}</span>
-                  {owner ? <><span aria-hidden="true">·</span>{owner}</> : null}
-                </p>
+            <li
+              key={job.id}
+              className="mx-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-md border-l-2 border-border py-2 pl-3 pr-1 sm:mx-0 sm:grid-cols-[minmax(0,1fr)_180px_100px_auto] sm:rounded-none sm:border-l-0 sm:pl-[52px] sm:pr-2"
+              data-testid="truck-job-row"
+              data-status={job.uiStatus}
+            >
+              <div className="flex min-w-0 gap-1.5">
+                {job.helperOfJobId ? <CornerDownRight aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> : null}
+                <div className="min-w-0">
+                  <p className={`break-words sm:truncate ${job.status === JobStatus.CANCELLED ? 'text-muted-foreground line-through' : open ? 'font-medium' : 'text-foreground/80'}`}>
+                    {job.displayName}
+                    {job.helperOfJobId ? <span className="font-normal text-muted-foreground">{messages.helperJobSuffix}</span> : null}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{sub}{job.completedAt ? ` · ${formatShortDateTime(job.completedAt, locale)}` : ''}</p>
+                </div>
               </div>
-              {canAssignHere ? (
-                <MechanicPicker
-                  open={pickerJobId === job.id}
-                  onOpenChange={(open) => setPickerJobId(open ? job.id : null)}
-                  title={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
-                  mechanics={job.lane === 'pm' ? pmMechanics : standardMechanics}
-                  loading={mechanicsLoading}
-                  messages={messages}
-                  onPick={(mechanic) => void handleAssign(job.id, mechanic)}
-                  trigger={(
-                    <Button id={`assign-job-${job.id}`} type="button" size="sm" variant="outline" disabled={Boolean(pendingAction)}>
-                      {messages.truckNextStepAssignAction}
-                    </Button>
-                  )}
-                />
-              ) : null}
+              <div className="min-w-0 max-sm:order-2 max-sm:col-start-1 max-sm:-ml-0.5">{who}</div>
+              <div className="self-start justify-self-end whitespace-nowrap max-sm:order-1 max-sm:pt-0.5 max-sm:text-xs sm:self-center sm:justify-self-start">{status}</div>
               {href ? (
                 <Link
                   href={href}
-                  className="tap-inline inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="grid size-10 place-items-center justify-self-end rounded-md text-muted-foreground hover:bg-accent hover:text-foreground max-sm:order-3 sm:size-8"
                   aria-label={fillPlaceholders(messages.manageJobInWorkOrder, { job: name })}
                   title={messages.manageInWorkOrder}
                 >
-                  <ArrowUpRight aria-hidden="true" className="size-4" />
+                  <SquareArrowOutUpRight aria-hidden="true" className="size-3.5" />
                 </Link>
               ) : null}
             </li>
@@ -256,44 +291,74 @@ export function AdminTruckWorkPlan({
     );
   }
 
+  function stepMeta(step: TruckStep) {
+    const lane = jobsFor(step.key);
+    const live = lane.filter((job) => job.status !== JobStatus.CANCELLED);
+    switch (step.state) {
+      case 'done':
+        return step.key === 'close'
+          ? fillPlaceholders(messages.stepMetaCloseDone, { workOrder: plan.workOrder?.displayId ?? '', date: formatShortDateTime(plan.workOrder?.completedAt, locale) })
+          : fillPlaceholders(messages.stepMetaDone, { count: String(live.filter((job) => job.status === JobStatus.COMPLETED).length) });
+      case 'not_applicable': return messages.stepMetaNa;
+      case 'missing': return messages.stepMetaMissing;
+      case 'pending': return step.remaining ? fillPlaceholders(messages.stepMetaPendingCount, { count: String(step.remaining) }) : messages.stepMetaPending;
+      case 'blocked': return messages.blockedShort;
+      case 'external': return messages.externalStatus;
+      case 'ready': return messages.readinessReadyToClose;
+      case 'waiting': return messages.stepMetaCloseWaiting;
+    }
+  }
+
   const recorded = plan.inspection.outcome !== WorkPlanInspectionOutcome.NOT_STARTED;
+  const inspectionMeta = !recorded
+    ? messages.stepMetaPending
+    : fillPlaceholders(plan.inspection.outcome === WorkPlanInspectionOutcome.ISSUES_FOUND ? messages.stepMetaIssues : messages.stepMetaNoIssues, { date: formatShortDateTime(plan.inspection.recordedAt, locale) });
 
   return (
-    <section aria-labelledby="truck-work-plan-title">
-      <Card>
-        <CardHeader>
-          <CardTitle id="truck-work-plan-title" tabIndex={-1}>{messages.workPlanSection}</CardTitle>
-          {recorded ? <p className="text-sm text-muted-foreground">{workPlanReadyReasonMessage(plan.readyReason, messages)}</p> : null}
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <ul className="space-y-2" aria-label={messages.jobsInPlan}>
-            {steps.map((step) => (
-              <StepSection
-                key={step.key}
+    <section aria-labelledby="truck-work-plan-title" className="overflow-hidden rounded-xl border bg-card text-card-foreground">
+      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+        <h2 id="truck-work-plan-title" tabIndex={-1} className="scroll-mt-24 text-base font-semibold">{messages.workPlanSection}</h2>
+        <span className="text-xs text-muted-foreground">{plan.workOrder ? fillPlaceholders(messages.workPlanJobsOn, { workOrder: plan.workOrder.displayId }) : messages.workPlanNoWorkOrderYet}</span>
+      </div>
+      <ul className="divide-y" aria-label={messages.jobsInPlan}>
+        {steps.map((step) => {
+          const jobs = jobsFor(step.key);
+          // Inspection and Close never fold; a step folds only when it has Jobs.
+          const collapsible = step.key !== 'inspection' && step.key !== 'close' && jobs.length > 0;
+          const open = collapsible && isStepOpen(step);
+          const state = step.key === 'inspection' ? (recorded ? 'done' : 'pending') : step.state;
+          const meta = step.key === 'inspection' ? inspectionMeta : stepMeta(step);
+          return (
+            <li key={step.key} id={`truck-step-${step.key}`} className="scroll-mt-24" data-state={step.state}>
+              <StepHead
                 step={step}
-                open={isStepOpen(step)}
-                onToggle={(open) => onToggleStep(step.key, open)}
+                state={state}
+                meta={meta}
+                collapsible={collapsible}
+                open={open}
                 messages={messages}
-              >
-                {step.key === 'inspection' ? (
-                  <InspectionControl
-                    plan={plan}
-                    messages={messages}
-                    canInspect={canInspect && !inspectionInNextStep}
-                    pending={inspectionPending || Boolean(pendingAction)}
-                    onRecord={onRecordInspection}
-                  />
-                ) : null}
-                {step.key === 'quality_check' && !jobsFor('quality_check').length ? <p className="text-sm text-muted-foreground">{messages.workPlanQcHint}</p> : null}
-                {renderJobs(step.key)}
-              </StepSection>
-            ))}
-          </ul>
-          {!canAddWork && !canInspect ? (
-            <p className="text-sm text-muted-foreground">{messages.permissionReadOnly}</p>
-          ) : null}
-        </CardContent>
-      </Card>
+                onToggle={() => onToggleStep(step.key, !open)}
+              />
+              {step.key === 'inspection' ? (
+                <InspectionControl
+                  plan={plan}
+                  messages={messages}
+                  canInspect={canInspect && !inspectionInNextStep}
+                  pending={inspectionPending || Boolean(pendingAction)}
+                  onRecord={onRecordInspection}
+                />
+              ) : null}
+              {open ? renderJobs(step.key) : null}
+            </li>
+          );
+        })}
+      </ul>
+      {!plan.workOrder ? (
+        <p className="flex items-center gap-2 border-t bg-sunken px-4 py-3 text-muted-foreground"><Info aria-hidden="true" className="size-3.5 shrink-0" />{messages.workPlanStepsAppear}</p>
+      ) : null}
+      {!canAddWork && !canInspect ? (
+        <p className="flex items-center gap-2 border-t bg-sunken px-4 py-3 text-muted-foreground"><Lock aria-hidden="true" className="size-3.5 shrink-0" />{messages.permissionReadOnly}</p>
+      ) : null}
 
       {canAddWork ? (
         <SideSheet
@@ -312,6 +377,7 @@ export function AdminTruckWorkPlan({
               submitting={pendingAction === 'add-work'}
               standardMechanics={standardMechanics}
               onSubmit={handleAddWork}
+              onCancel={() => onAddWorkOpenChange(false)}
             />
           </div>
         </SideSheet>
@@ -320,31 +386,42 @@ export function AdminTruckWorkPlan({
   );
 }
 
-function StepSection({ step, open, onToggle, messages, children }: { step: TruckStep; open: boolean; onToggle: (open: boolean) => void; messages: AdminMessages; children?: ReactNode }) {
-  const contentId = `truck-step-${step.key}-content`;
-  const hasContent = Array.isArray(children) ? children.some(Boolean) : Boolean(children);
+function StepHead({ step, state, meta, collapsible, open, messages, onToggle }: {
+  step: TruckStep;
+  state: TruckStep['state'];
+  meta: string;
+  collapsible: boolean;
+  open: boolean;
+  messages: AdminMessages;
+  onToggle: () => void;
+}) {
+  const content = (
+    <>
+      <span className={`grid size-6 shrink-0 place-items-center rounded-full ${STEP_TONE[state].tile}`}><TruckStepIcon state={state} /></span>
+      <span className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+        <span className="font-semibold">{truckStepLabel(step.key, messages)}</span>
+        <span className="text-xs text-muted-foreground sm:text-sm"><span className="hidden sm:inline">· </span>{meta}</span>
+      </span>
+      {collapsible ? <ChevronDown aria-hidden="true" className={`ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} /> : null}
+    </>
+  );
+  if (!collapsible) return <div className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5">{content}</div>;
   return (
-    <li id={`truck-step-${step.key}`} className="scroll-mt-24 rounded-xl border" data-state={step.state}>
-      <button
-        type="button"
-        className="flex min-h-12 w-full items-center gap-2 rounded-xl px-3 text-left text-sm hover:bg-accent"
-        aria-expanded={hasContent ? open : undefined}
-        aria-controls={hasContent ? contentId : undefined}
-        onClick={() => hasContent && onToggle(!open)}
-      >
-        <TruckStepIcon state={step.state} />
-        <span className="font-medium">{truckStepLabel(step.key, messages)}</span>
-        <span className="ml-auto text-xs text-muted-foreground">{truckStepStateLabel(step, messages)}</span>
-        {hasContent ? <ChevronDown aria-hidden="true" className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} /> : null}
-      </button>
-      {hasContent && open ? <div id={contentId} className="space-y-3 px-3 pb-3">{children}</div> : null}
-    </li>
+    <button
+      type="button"
+      className="flex min-h-11 w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-accent/50"
+      aria-expanded={open}
+      aria-controls={`truck-step-${step.key}-content`}
+      onClick={onToggle}
+    >
+      {content}
+    </button>
   );
 }
 
 /**
- * D14 / UX-4-003: pending → the two buttons; recorded → the outcome as text with "Change" (a menu
- * with the other outcome), so a recorded result never looks like a primary button.
+ * D14 / UX-4-003 / Stage 8 (mockup): pending → the prompt and the two buttons; recorded → the outcome is in the
+ * step's line, with "Change" as a link (a menu with both outcomes), so a recorded result never looks like a button.
  */
 function InspectionControl({
   plan,
@@ -362,36 +439,28 @@ function InspectionControl({
   const outcome = plan.inspection.outcome;
   if (outcome === WorkPlanInspectionOutcome.NOT_STARTED) {
     return (
-      <div className="space-y-2" data-testid="truck-inspection">
-        <p className="text-sm text-muted-foreground">{messages.workPlanInspectionNotStarted}</p>
+      <div className="space-y-3 px-4 pb-4 sm:pl-[52px]" data-testid="truck-inspection">
+        <p className="text-muted-foreground">{messages.inspectionPrompt}</p>
         {canInspect ? <InspectionButtons messages={messages} pending={pending} onRecord={onRecord} /> : null}
       </div>
     );
   }
   const label = outcome === WorkPlanInspectionOutcome.ISSUES_FOUND ? messages.workPlanIssuesFound : messages.workPlanNoIssuesFound;
-  const other = outcome === WorkPlanInspectionOutcome.ISSUES_FOUND ? WorkPlanInspectionOutcome.NO_ISSUES_FOUND : WorkPlanInspectionOutcome.ISSUES_FOUND;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2" data-testid="truck-inspection">
-      <p className="text-sm">{fillPlaceholders(messages.inspectionRecordedOutcome, { outcome: label })}</p>
+    <div className="-mt-1 px-4 pb-3 pl-[52px]" data-testid="truck-inspection">
+      <span className="sr-only">{fillPlaceholders(messages.inspectionRecordedOutcome, { outcome: label })}</span>
       {canInspect ? (
-        <DropdownMenu.Root modal={false}>
-          <DropdownMenu.Trigger asChild>
-            <Button type="button" size="sm" variant="ghost" disabled={pending}>
-              {messages.inspectionChange}
-              <ChevronDown aria-hidden="true" className="ml-1 size-4" />
-            </Button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-xl border bg-popover p-1 text-popover-foreground shadow-soft">
-              <DropdownMenu.Item
-                className="flex min-h-11 cursor-pointer select-none items-center rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-accent"
-                onSelect={() => onRecord(other)}
-              >
-                {other === WorkPlanInspectionOutcome.ISSUES_FOUND ? messages.workPlanIssuesFound : messages.workPlanNoIssuesFound}
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        <ResponsiveMenu
+          label={messages.inspection}
+          align="start"
+          items={([WorkPlanInspectionOutcome.NO_ISSUES_FOUND, WorkPlanInspectionOutcome.ISSUES_FOUND] as const).map((value) => ({
+            key: value,
+            label: value === WorkPlanInspectionOutcome.ISSUES_FOUND ? messages.workPlanIssuesFound : messages.workPlanNoIssuesFound,
+            icon: value === outcome ? Check : undefined,
+            onSelect: () => { if (value !== outcome) onRecord(value); },
+          }))}
+          trigger={<button type="button" disabled={pending} className="text-sm font-medium text-primary hover:underline disabled:opacity-60">{messages.inspectionChange}</button>}
+        />
       ) : null}
     </div>
   );
