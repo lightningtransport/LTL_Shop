@@ -150,6 +150,9 @@
       <li><b class="text-foreground">Mecánico</b>: selector con búsqueda; “Unassign” desasigna. QC no tiene selector (lo toma Safety).</li>
       <li><b class="text-foreground">Complete</b> (job): sin confirmación, igual que hoy; la fila pasa a Done.</li>
       <li><b class="text-foreground">“…” del job</b>: Cancel job (pendiente) o Reopen job (cancelado), motivo obligatorio.</li>
+      <li><b class="text-foreground">Add helper</b> (D23): en el “…” de un Job Standard pendiente. Crea “Job · helper” con su propio dueño, debajo del Job principal.</li>
+      <li><b class="text-foreground">Send to external shop</b> (D24): sale la pieza o el camión + nota obligatoria. El Job queda sin dueño ni reloj; <b class="text-foreground">Returned</b> lo completa o lo asigna. Si solo queda eso, el siguiente paso es esperar.</li>
+      <li><b class="text-foreground">Times</b> (D20/D21): tramos con “Day close” (5:00 PM) o “Switched truck”; el tramo en curso no se corrige.</li>
       <li><b class="text-foreground">PM A / PM B</b>: cambia el servicio PM; el job PM se completa desde el PM service.</li>
       <li>Sin jobs pendientes: <b class="text-foreground">Confirm completion</b> arriba y barra fija al hacer scroll.</li>
       <li><b class="text-foreground">Priority</b>: elegir + Update (como hoy). <b class="text-foreground">Notes</b>: Post; las work requests se marcan como atendidas.</li>
@@ -198,6 +201,10 @@ function seed() {
       { id: 'j6', name: 'Fuel Filters', cat: 'Fuel System', kind: 'std', status: 'completed', mech: 'mg', doneBy: 'mg', doneAt: 'Oct 2, 3:53 PM', note: 'Ready' },
       { id: 'j7', name: 'Air Leak', cat: 'Air & Brake System', kind: 'std', status: 'completed', mech: 'mg', doneBy: 'mg', doneAt: 'Oct 2, 4:04 PM' },
       { id: 'j8', name: 'Replace Air Hose', cat: 'Air & Brake System', kind: 'std', status: 'completed', mech: 'mg', doneBy: 'mg', doneAt: 'Oct 2, 4:04 PM' },
+      // D23: a helper Job is its own Job ("<Job> · helper") with its own owner.
+      { id: 'j10', name: 'Alignment', helperOf: 'j2', cat: 'Suspension & Steering', kind: 'std', status: 'to_do', mech: 'jt' },
+      // D24: at an external shop — no owner, no clock, not "unassigned".
+      { id: 'j9', name: 'Radiator Repair', cat: 'Cooling System', kind: 'std', status: 'to_do', mech: null, external: { kind: 'part', note: 'Radiator to Diesel Pro, Barstow. Back Oct 7.', at: 'Oct 4, 10:30 AM' } },
     ],
     blockers: [
       { id: 'b1', job: 'j1', reason: 'Waiting for Parts', by: 'mg', at: 'Oct 2, 3:59 PM', notes: ['Cartridge is cracked, part ordered.'], resolved: null },
@@ -208,8 +215,10 @@ function seed() {
       { id: 'n2', by: 'ma', at: 'Oct 3, 8:10 AM', body: 'Left mud flap is torn, should we replace it while the truck is here?', kind: 'request', handled: null },
     ],
     segments: [
+      { id: 's4', type: 'labor', mech: 'ma', day: 'Oct 5', start: '2026-10-05T11:40', end: null },
+      { id: 's3', type: 'labor', mech: 'mg', day: 'Oct 3', start: '2026-10-03T08:02', end: '2026-10-03T09:15', endReason: 'switched_truck' },
+      { id: 's2', type: 'labor', mech: 'mg', day: 'Oct 2', start: '2026-10-02T15:59', end: '2026-10-02T17:00', endReason: 'day_close' },
       { id: 's1', type: 'labor', mech: 'mg', day: 'Oct 2', start: '2026-10-02T15:50', end: '2026-10-02T15:53' },
-      { id: 's2', type: 'labor', mech: 'mg', day: 'Oct 2', start: '2026-10-02T15:59', end: '2026-10-02T16:01' },
     ],
     pauses: [],
     history: [
@@ -217,6 +226,11 @@ function seed() {
       { id: 'rh2', wo: 'WO-0003', cat: 'PM', date: 'Jun 2, 2026', mileage: '262,118', by: ['Marco PM'], jobs: ['PM B Service'] },
     ],
     activity: [
+      ['Oct 5, 2026', 'play', 'primary', '<b>Miguel Ángel</b> continued work', null, '11:40 AM'],
+      ['Oct 4, 2026', 'building-2', 'primary', '<b>Crixcrox</b> sent <b>Radiator Repair</b> to an external shop', 'The part goes out · “Radiator to Diesel Pro, Barstow. Back Oct 7.”', '10:30 AM'],
+      ['Oct 3, 2026', 'user-plus', 'muted', '<b>Crixcrox</b> added a helper on <b>Alignment</b>', 'Jorge Torres', '9:40 AM'],
+      ['Oct 3, 2026', 'arrow-left-right', 'muted', '<b>Manuel García</b>’s clock stopped: switched truck', 'Started on Truck 742', '9:15 AM'],
+      ['Oct 2, 2026', 'moon', 'muted', 'Day close: the app stopped running clocks at 5:00 PM', 'Manuel García', '5:00 PM'],
       ['Oct 2, 2026', 'check', 'success', '<b>Manuel García</b> completed <b>Replace Air Hose</b>', null, '4:04 PM'],
       ['Oct 2, 2026', 'check', 'success', '<b>Manuel García</b> completed <b>Air Leak</b>', null, '4:04 PM'],
       ['Oct 2, 2026', 'play', 'primary', '<b>Manuel García</b> started work', null, '3:59 PM'],
@@ -246,6 +260,15 @@ const openBlocker = (jobId) => S.blockers.find((b) => b.job === jobId && !b.reso
 const jobsLeft = () => S.jobs.filter((j) => j.status === 'to_do');
 const readyToClose = () => S.canManage && isOpen() && jobsLeft().length === 0 && S.jobs.some((j) => j.status === 'completed');
 const readyReturn = () => S.status === 'completed' && !S.returnedAt;
+const isExternal = (j) => j.status === 'to_do' && Boolean(j.external);
+// D23: a helper goes on a pending Standard Job that is not a helper Job and not out.
+const canAddHelper = (j) => j.status === 'to_do' && j.kind === 'std' && !j.helperOf && !j.external;
+// D24: anything pending except Quality Check, and not already out.
+const canSendExternal = (j) => j.status === 'to_do' && j.kind !== 'qc' && !j.external;
+const nameHtml = (j) => `${j.name}${j.helperOf ? '<span class="font-normal text-muted-foreground"> · helper</span>' : ''}`;
+const nameText = (j) => `${j.name}${j.helperOf ? ' · helper' : ''}`;
+const extWhat = (j) => j.external.kind === 'truck' ? 'The truck is out' : 'The part is out';
+const updatedLabel = () => `${S.activity[0].day.replace(', 2026', '')}, ${S.activity[0].at}`;
 const pendingBtn = (key, label) => UI.pending === key ? `${ic('loader-circle', 'spin s14')}Saving…` : label;
 function log(icon, tone, text, detail) { S.activity.unshift({ id: id(), day: 'Oct 5, 2026', icon, tone, text, detail, at: now() }); }
 
@@ -316,11 +339,12 @@ function header() {
   const done = S.jobs.filter((j) => j.status === 'completed').length;
   const total = S.jobs.filter((j) => j.status !== 'cancelled').length;
   const blocked = jobsLeft().filter((j) => openBlocker(j.id)).length;
+  const out = jobsLeft().filter(isExternal).length;
   const mechs = [...new Set(S.jobs.flatMap((j) => [j.mech, j.doneBy]).filter((m) => m && m !== 'cr'))];
   const avatars = (size) => `<div class="flex -space-x-1">${mechs.map((m) => `<span class="rounded-full ring-2 ring-card">${av(m, size)}</span>`).join('')}</div>`;
-  const bar = `<div class="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-muted-foreground/20" role="img" aria-label="${done} of ${total} jobs done, ${blocked} blocked"><span class="bg-success" style="width:${(done / total) * 100}%"></span><span class="bg-warning" style="width:${(blocked / total) * 100}%"></span></div>`;
+  const bar = `<div class="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-muted-foreground/20" role="img" aria-label="${done} of ${total} jobs done, ${blocked} blocked, ${out} at an external shop"><span class="bg-success" style="width:${(done / total) * 100}%"></span><span class="bg-warning" style="width:${(blocked / total) * 100}%"></span><span class="bg-primary/70" style="width:${(out / total) * 100}%"></span></div>`;
   const waiting = S.pauses.length ? '12m' : '0m';
-  const updated = S.activity[0].day.startsWith('Oct 5') ? S.activity[0].at : 'Oct 2, 4:04 PM';
+  const updated = updatedLabel();
 
   let actions = '';
   if (S.canManage) {
@@ -407,19 +431,32 @@ function nextStep() {
       S.canManage && UI.resolving !== b.id ? `<button onclick="UI.resolving='${b.id}';UI.resolveNote='';render();document.getElementById('resolve-note').focus()" class="${BTN.primary} h-11 sm:h-9">${ic('check')}Resolve</button>` : '',
       notesHtml + form + (!S.canManage ? '<p class="text-muted-foreground">Only a Shop Manager can resolve blockers.</p>' : ''));
   }
+  const left0 = jobsLeft();
+  const outside = left0.filter(isExternal);
+  if (outside.length && !left0.some((j) => !j.external && j.kind !== 'qc')) {
+    const j = outside[0];
+    return callout('primary', 'building-2', `Next step · Waiting${outside.length > 1 ? ` (+${outside.length - 1} more)` : ''}`, `At external shop: ${j.name}`, `${extWhat(j)} since ${j.external.at} · “${esc(j.external.note)}”${j.external.kind === 'truck' ? ' · Yard shows the truck as Out of shop.' : ''}`,
+      S.canManage ? `<button onclick="openDialog('returnExt','${j.id}')" class="${BTN.primary} h-11 sm:h-9">${ic('package-check')}Returned</button>` : '');
+  }
   if (readyToClose()) return callout('primary', 'flag', 'Next step', 'All jobs are done', 'Jobs are done. Confirm completion to close this Work Order.',
     `<button onclick="completeWO()" class="${BTN.primary} h-11 sm:h-9" ${UI.pending ? 'disabled' : ''}>${pendingBtn('complete-wo', `${ic('check-check')}Confirm completion`)}</button>`);
   const left = jobsLeft();
   if (!left.length) return callout('muted', 'flag', 'Next step', 'All jobs are done', 'A Shop Manager confirms completion to close this Work Order.', '');
-  const unassigned = left.filter((j) => !j.mech && j.kind !== 'qc').length;
-  return callout('muted', 'wrench', 'Next step', unassigned ? `Assign ${unassigned} job${unassigned > 1 ? 's' : ''}` : 'Work in progress', `${left.length} job${left.length === 1 ? '' : 's'} left${unassigned ? ` · ${unassigned} without a mechanic` : ' · every job has a mechanic'}`, '');
+  const inShop = left.filter((j) => !j.external);
+  const unassigned = inShop.filter((j) => !j.mech && j.kind !== 'qc').length;
+  const outN = left.length - inShop.length;
+  return callout('muted', 'wrench', 'Next step', unassigned ? `Assign ${unassigned} job${unassigned > 1 ? 's' : ''}` : 'Work in progress', `${inShop.length} job${inShop.length === 1 ? '' : 's'} left in the shop${unassigned ? ` · ${unassigned} without a mechanic` : ' · every job has a mechanic'}${outN ? ` · ${outN} at an external shop` : ''}`, '');
 }
 
 /* Jobs */
 const GRID = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_200px_130px_150px] lg:gap-4';
 function jobs() {
   const order = { std: 0, pm: 1, qc: 2 };
-  const open = jobsLeft().sort((a, b) => (openBlocker(b.id) ? 1 : 0) - (openBlocker(a.id) ? 1 : 0) || order[a.kind] - order[b.kind]);
+  // Blocked first, then shop work, then Jobs at an external shop; Quality Check is always last.
+  const rank = (j) => j.kind === 'qc' ? 99 : (openBlocker(j.id) ? 0 : isExternal(j) ? 2 : 1) * 10 + order[j.kind];
+  const sorted = jobsLeft().filter((j) => !j.helperOf).sort((a, b) => rank(a) - rank(b));
+  const helpers = jobsLeft().filter((j) => j.helperOf);
+  const open = sorted.flatMap((j) => [j, ...helpers.filter((h) => h.helperOf === j.id)]).concat(helpers.filter((h) => !sorted.some((j) => j.id === h.helperOf)));
   const closed = S.jobs.filter((j) => j.status !== 'to_do');
   const lock = !S.canManage ? 'Only a Shop Manager (Work Orders manage) can change Jobs.' : !isOpen() ? 'Jobs cannot change on a closed Work Order.' : '';
   return `<section class="overflow-hidden rounded-xl border bg-card" aria-labelledby="jobs-title">
@@ -437,23 +474,29 @@ function jobs() {
 function openRow(j) {
   const blocked = openBlocker(j.id);
   const editable = canEdit();
+  const ext = isExternal(j);
   let mech;
-  if (j.kind === 'qc') mech = `<span class="flex h-10 items-center gap-2 px-2 text-muted-foreground max-lg:order-2 max-lg:-ml-2 lg:h-9" title="Quality Check is always required and is done by Safety."><span class="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60">${ic('shield-check', 's14')}</span>Safety</span>`;
-  else if (editable) mech = `<button onclick="openMenu(this, mechPicker('${j.id}'), 'start')" aria-haspopup="listbox" aria-label="Mechanic for ${j.name}" class="flex h-10 min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-accent max-lg:order-2 max-lg:-ml-2 max-lg:justify-self-start lg:h-9 ${UI.pending === 'assign-' + j.id ? 'opacity-60' : ''}">${j.mech ? av(j.mech) + `<span class="truncate">${MECH[j.mech].name}</span>` : `<span class="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60">${ic('user-plus', 's14 text-muted-foreground')}</span><span class="text-muted-foreground">Assign</span>`}${UI.pending === 'assign-' + j.id ? ic('loader-circle', 'spin s14 ml-auto') : ic('chevrons-up-down', 's14 ml-auto text-muted-foreground')}</button>`;
+  if (ext) mech = `<span class="flex h-10 min-w-0 items-center gap-2 text-muted-foreground max-lg:order-2 lg:h-9" title="${esc(j.external.note)}">${ic(j.external.kind === 'truck' ? 'truck' : 'package', 's14')}<span class="truncate">${j.external.kind === 'truck' ? 'Truck out' : 'Part out'} · ${esc(j.external.note)}</span></span>`;
+  else if (j.kind === 'qc') mech = `<span class="flex h-10 items-center gap-2 px-2 text-muted-foreground max-lg:order-2 max-lg:-ml-2 lg:h-9" title="Quality Check is always required and is done by Safety."><span class="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60">${ic('shield-check', 's14')}</span>Safety</span>`;
+  else if (editable) mech = `<button onclick="openMenu(this, mechPicker('${j.id}'), 'start')" aria-haspopup="listbox" aria-label="Mechanic for ${nameText(j)}" class="flex h-10 min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-accent max-lg:order-2 max-lg:-ml-2 max-lg:justify-self-start lg:h-9 ${UI.pending === 'assign-' + j.id ? 'opacity-60' : ''}">${j.mech ? av(j.mech) + `<span class="truncate">${MECH[j.mech].name}</span>` : `<span class="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60">${ic('user-plus', 's14 text-muted-foreground')}</span><span class="text-muted-foreground">Assign</span>`}${UI.pending === 'assign-' + j.id ? ic('loader-circle', 'spin s14 ml-auto') : ic('chevrons-up-down', 's14 ml-auto text-muted-foreground')}</button>`;
   else mech = `<span class="flex h-10 items-center gap-2 max-lg:order-2 lg:h-9">${j.mech ? av(j.mech) + MECH[j.mech].name : '<span class="text-muted-foreground">Unassigned</span>'}</span>`;
-  const status = blocked
+  const status = ext
+    ? `<span class="inline-flex items-center gap-1.5 justify-self-end whitespace-nowrap text-primary max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('building-2', 's14')}At external shop</span>`
+    : blocked
     ? `<span class="inline-flex items-center gap-1.5 justify-self-end text-warning max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('octagon-pause', 's14')}Blocked</span>`
     : `<span class="inline-flex items-center gap-1.5 justify-self-end text-muted-foreground max-lg:order-1 max-lg:text-xs lg:justify-self-start"><span class="size-2 rounded-full border-[1.5px] border-muted-foreground"></span>To do</span>`;
   let action = '';
   if (editable) {
-    if (j.kind === 'pm') action = `<button onclick="openMenu(this, pmMenu('${j.id}'))" aria-haspopup="menu" title="The PM job is completed from the PM service (mileage and parts)." class="${BTN.outline} h-10 lg:h-8">${UI.pending === 'pm-' + j.id ? ic('loader-circle', 'spin s14') : ''}PM ${j.pm}${ic('chevron-down', 's14 text-muted-foreground')}</button>`;
+    if (ext) action = `<button onclick="openDialog('returnExt','${j.id}')" class="${BTN.outline} h-10 lg:h-8" ${UI.pending ? 'disabled' : ''}>${pendingBtn('ret-' + j.id, `${ic('package-check', 's14')}Returned`)}</button>`;
+    else if (j.kind === 'pm') action = `<button onclick="openMenu(this, pmMenu('${j.id}'))" aria-haspopup="menu" title="The PM job is completed from the PM service (mileage and parts)." class="${BTN.outline} h-10 lg:h-8">${UI.pending === 'pm-' + j.id ? ic('loader-circle', 'spin s14') : ''}PM ${j.pm}${ic('chevron-down', 's14 text-muted-foreground')}</button>`;
     else if (j.kind === 'qc') action = `<button onclick="completeJob('${j.id}')" class="${BTN.primary} h-10 lg:h-8" ${UI.pending ? 'disabled' : ''}>${pendingBtn('complete-' + j.id, 'Complete')}</button>`;
     else action = `<button onclick="completeJob('${j.id}')" class="${BTN.ghost} h-10 px-2.5 lg:h-8" ${UI.pending ? 'disabled' : ''}>${pendingBtn('complete-' + j.id, `${ic('circle-check', 's14')}Complete`)}</button>`;
-    action += `<button onclick="openMenu(this, jobMenu('${j.id}'))" aria-haspopup="menu" aria-label="Actions for ${j.name}" class="grid size-10 place-items-center rounded-md text-muted-foreground hover:bg-accent lg:size-8">${ic('ellipsis')}</button>`;
+    action += `<button onclick="openMenu(this, jobMenu('${j.id}'))" aria-haspopup="menu" aria-label="Actions for ${nameText(j)}" class="grid size-10 place-items-center rounded-md text-muted-foreground hover:bg-accent lg:size-8">${ic('ellipsis')}</button>`;
   }
-  const sub = j.kind === 'pm' ? 'PM · completed from the PM service (mileage and parts)' : j.kind === 'qc' ? 'Final step · Safety takes it from their screen' : j.cat;
+  const parent = j.helperOf && S.jobs.find((x) => x.id === j.helperOf);
+  const sub = j.kind === 'pm' ? 'PM · completed from the PM service (mileage and parts)' : j.kind === 'qc' ? 'Final step · Safety takes it from their screen' : parent ? `Helps ${parent.mech ? MECH[parent.mech].name : 'on the main Job'}` : j.cat;
   return `<li id="row-${j.id}" class="${GRID} ${blocked ? 'bg-warning/[0.05] shadow-[inset_3px_0_0_var(--warning)]' : ''}">
-    <div class="min-w-0"><p class="font-medium">${j.name}</p><p class="text-xs text-muted-foreground">${sub}</p></div>
+    <div class="flex min-w-0 gap-1.5">${parent ? ic('corner-down-right', 's14 mt-0.5 text-muted-foreground') : ''}<div class="min-w-0"><p class="font-medium">${nameHtml(j)}</p><p class="text-xs text-muted-foreground">${sub}</p></div></div>
     ${mech}${status}<div class="flex items-center justify-end gap-1 max-lg:order-3">${action}</div></li>`;
 }
 function closedRow(j) {
@@ -461,9 +504,9 @@ function closedRow(j) {
   const status = cancelled
     ? `<span class="inline-flex items-center gap-1.5 justify-self-end text-muted-foreground max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('circle-slash', 's14')}Cancelled</span>`
     : `<span class="inline-flex items-center gap-1.5 justify-self-end text-success max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('check', 's14')}Done ${j.doneAt.split(', ').pop()}</span>`;
-  const menu = cancelled && canEdit() ? `<button onclick="openMenu(this, jobMenu('${j.id}'))" aria-haspopup="menu" aria-label="Actions for ${j.name}" class="grid size-10 place-items-center rounded-md hover:bg-accent lg:size-8">${ic('ellipsis')}</button>` : '';
+  const menu = cancelled && canEdit() ? `<button onclick="openMenu(this, jobMenu('${j.id}'))" aria-haspopup="menu" aria-label="Actions for ${nameText(j)}" class="grid size-10 place-items-center rounded-md hover:bg-accent lg:size-8">${ic('ellipsis')}</button>` : '';
   return `<li id="row-${j.id}" class="${GRID} text-muted-foreground">
-    <div class="min-w-0"><p class="font-medium ${cancelled ? 'line-through' : 'text-foreground/80'}">${j.name}</p><p class="text-xs">${j.cat}${j.note ? ` · <span class="italic">“${esc(j.note)}”</span>` : ''}${cancelled && j.cancelReason ? ` · “${esc(j.cancelReason)}”` : ''}</p></div>
+    <div class="min-w-0"><p class="font-medium ${cancelled ? 'line-through' : 'text-foreground/80'}">${nameHtml(j)}</p><p class="text-xs">${j.cat}${j.note ? ` · <span class="italic">“${esc(j.note)}”</span>` : ''}${cancelled && j.cancelReason ? ` · “${esc(j.cancelReason)}”` : ''}</p></div>
     <span class="max-lg:order-2 max-lg:text-xs lg:px-2">${cancelled ? '—' : `<span class="lg:sr-only">Completed by </span>${MECH[j.doneBy].name}`}</span>${status}
     <div class="flex justify-end max-lg:order-3">${menu}</div></li>`;
 }
@@ -550,13 +593,13 @@ function history() {
       + (S.activity.length > 7 ? `<button onclick="UI.showAllActivity=!UI.showAllActivity;render()" class="${BTN.outline} mt-5 h-10 w-full text-muted-foreground">${UI.showAllActivity ? 'Show less' : `Show all ${S.activity.length} events`}</button>` : '');
   } else if (UI.tab === 'times') {
     panel = `<dl class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        ${[['Created', 'Oct 1, 9:26 AM'], ['Started', 'Oct 2, 3:50 PM'], ['Completed', S.completedAt || '—'], ['Updated', S.activity[0].day.startsWith('Oct 5') ? `Oct 5, ${S.activity[0].at}` : 'Oct 2, 4:04 PM'], ['Active labor', '5m'], ['Waiting', S.pauses.length ? '12m' : '0m']].map(([k, v]) => `<div><dt class="text-xs text-muted-foreground">${k}</dt><dd class="tnum mt-1 font-medium ${v === '—' ? 'text-muted-foreground' : ''}">${v}</dd></div>`).join('')}
+        ${[['Created', 'Oct 1, 9:26 AM'], ['Started', 'Oct 2, 3:50 PM'], ['Completed', S.completedAt || '—'], ['Updated', updatedLabel()], ['Active labor', '5m'], ['Waiting', S.pauses.length ? '12m' : '0m']].map(([k, v]) => `<div><dt class="text-xs text-muted-foreground">${k}</dt><dd class="tnum mt-1 font-medium ${v === '—' ? 'text-muted-foreground' : ''}">${v}</dd></div>`).join('')}
       </dl>
       <div class="mt-5 overflow-hidden rounded-lg border">
-        <div class="flex flex-col gap-0.5 bg-sunken px-3 py-2 text-xs text-muted-foreground sm:flex-row sm:justify-between"><span class="font-medium">Closed time segments</span><span>Totals are recalculated from these segments. Open time cannot be edited.</span></div>
+        <div class="space-y-0.5 bg-sunken px-3 py-2 text-xs text-muted-foreground"><p class="font-medium">Labor segments</p><p>Totals are recalculated from these segments. Open time cannot be edited. <b class="font-medium">Day close</b>: the app stops running clocks at 5:00 PM. <b class="font-medium">Switched truck</b>: the mechanic started on another truck.</p></div>
         <ul class="divide-y">${S.segments.map((s) => `<li class="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <span><span class="font-medium">${s.type === 'labor' ? `Active labor · ${MECH[s.mech].name}` : 'Waiting time'}</span><br class="sm:hidden"><span class="tnum text-muted-foreground"> ${fmtRange(s)}</span>${s.corrected ? `<span class="ml-2 rounded-md border px-1.5 py-px text-xs text-muted-foreground">Corrected</span>` : ''}</span>
-          ${S.canManage ? `<button onclick="openDialog('time','${s.id}')" class="${BTN.ghost} h-10 self-start text-primary sm:h-8 sm:self-auto">Correct…</button>` : ''}</li>`).join('')}</ul>
+          <span><span class="font-medium">${s.type === 'labor' ? `Active labor · ${MECH[s.mech].name}` : 'Waiting time'}</span><br class="sm:hidden"><span class="tnum ${s.end ? 'text-muted-foreground' : 'text-success'}"> ${fmtRange(s)}</span>${endChip(s)}${s.corrected ? `<span class="ml-2 rounded-md border px-1.5 py-px text-xs text-muted-foreground">Corrected</span>` : ''}</span>
+          ${S.canManage && s.end ? `<button onclick="openDialog('time','${s.id}')" class="${BTN.ghost} h-10 self-start text-primary sm:h-8 sm:self-auto">Correct…</button>` : ''}</li>`).join('')}</ul>
       </div>`;
   } else {
     panel = S.pauses.length ? `<ul class="divide-y">${S.pauses.map((p) => `<li class="py-3 first:pt-0"><p class="font-medium">${p.reason}</p><p class="tnum text-muted-foreground">Oct 5, ${p.start} → ${p.end ? `Oct 5, ${p.end}` : 'now'}</p><p class="mt-0.5 text-xs text-muted-foreground">Crixcrox</p></li>`).join('')}</ul>`
@@ -574,9 +617,13 @@ function history() {
 }
 function fmtRange(s) {
   const f = (v) => { const d = new Date(v); let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = ((h + 11) % 12) + 1; return `${h}:${String(d.getMinutes()).padStart(2, '0')} ${ap}`; };
+  if (!s.end) return `${s.day}, ${f(s.start)} → running`;
   const mins = Math.round((new Date(s.end) - new Date(s.start)) / 60000);
-  return `${s.day}, ${f(s.start)} → ${f(s.end)} · ${mins}m`;
+  return `${s.day}, ${f(s.start)} → ${f(s.end)} · ${mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`}`;
 }
+// D20 / D21: why the app closed a segment. Shown as a quiet chip next to the end time.
+const END = { day_close: ['Day close', 'moon'], switched_truck: ['Switched truck', 'arrow-left-right'] };
+const endChip = (s) => s.endReason ? `<span class="ml-2 inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-xs text-muted-foreground">${ic(END[s.endReason][1], 's14')}${END[s.endReason][0]}</span>` : '';
 
 /* Sticky "Confirm completion" bar while the callout is off screen. */
 let stickyObs;
@@ -609,7 +656,13 @@ function woMenu() {
 function goTimes() { closeLayer(); UI.tab = 'times'; render(); document.getElementById('history').scrollIntoView({ behavior: 'smooth' }); }
 function jobMenu(jid) {
   const j = S.jobs.find((x) => x.id === jid);
-  return `<p class="truncate px-2.5 pb-1 pt-1.5 text-xs text-muted-foreground">${j.name}</p>` + (j.status === 'to_do' ? item('Cancel job…', `openDialog('cancelJob','${jid}')`, 'circle-slash', true) : item('Reopen job…', `openDialog('reopenJob','${jid}')`, 'rotate-ccw'));
+  const head = `<p class="truncate px-2.5 pb-1 pt-1.5 text-xs text-muted-foreground">${nameText(j)}</p>`;
+  if (j.status !== 'to_do') return head + item('Reopen job…', `openDialog('reopenJob','${jid}')`, 'rotate-ccw');
+  const extra = [
+    canAddHelper(j) ? item('Add helper…', `openDialog('helper','${jid}')`, 'user-plus') : '',
+    canSendExternal(j) ? item('Send to external shop…', `openDialog('sendExt','${jid}')`, 'building-2') : '',
+  ].join('');
+  return head + extra + (extra ? sep : '') + item('Cancel job…', `openDialog('cancelJob','${jid}')`, 'circle-slash', true);
 }
 function pmMenu(jid) {
   const j = S.jobs.find((x) => x.id === jid);
@@ -683,10 +736,34 @@ function openDialog(kind, arg) {
     reopenJob: { title: 'Reopen job', desc: `<span class="font-medium text-foreground">${j?.name}</span> goes back to To do.`,
       body: reason('Required for cancel and reopen. Stored in the Activity Log.'), confirm: 'Confirm job reopen',
       run: () => { const v = val('f-reason'); if (!v) return err('Write why this job is reopened.'); act('dialog', `${j.name} reopened`, () => { j.status = 'to_do'; delete j.cancelReason; log('rotate-ccw', 'primary', `<b>Crixcrox</b> reopened <b>${j.name}</b>`, `“${v}”`); flash(j.id); }); } },
-    time: { title: 'Correct time', desc: seg ? `${seg.type === 'labor' ? `Active labor · ${MECH[seg.mech].name}` : 'Waiting time'} · ${fmtRange(seg)}` : '',
+    helper: (() => {
+      if (kind !== 'helper') return null;
+      const taken = S.jobs.filter((x) => x.helperOf === j.id && x.status === 'to_do').map((x) => x.mech);
+      const pool = STANDARD.filter((m) => m !== j.mech && !taken.includes(m));
+      return { title: `Add a helper on ${j.name}`, desc: `The helper gets a Job of their own (“${j.name} · helper”): it shows in their Jobs and their clock runs as usual. A blocker on the main Job does not block the helper.`,
+        body: pool.length ? field('Helper', `<div class="relative"><select id="f-helper" class="native h-11 w-full rounded-md border bg-background pl-3 pr-9 text-base"><option value="" selected disabled>Choose a mechanic</option>${pool.map((m) => `<option value="${m}">${MECH[m].name}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground')}</div>`) : '<p class="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground">No other Standard mechanic is available.</p>',
+        confirm: 'Add helper',
+        run: () => { const m = val('f-helper'); if (!m) return err('Choose a mechanic.'); act('dialog', 'Helper added.', () => { const h = { id: id(), name: j.name, helperOf: j.id, cat: j.cat, kind: 'std', status: 'to_do', mech: m }; S.jobs.push(h); log('user-plus', 'muted', `<b>Crixcrox</b> added a helper on <b>${j.name}</b>`, MECH[m].name); flash(h.id); }); } };
+    })(),
+    sendExt: kind !== 'sendExt' ? null : { title: `Send ${j.name} to an external shop`, desc: 'The Job stays pending without an owner or clock until it comes back. The truck cannot be Ready to Go meanwhile.',
+      body: `<fieldset class="space-y-1.5"><legend class="mb-1.5 font-medium">What goes out?</legend>${[['part', 'The part goes out', 'package'], ['truck', 'The truck goes out', 'truck']].map(([v, l, i], n) => `<label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10"><input type="radio" name="f-kind" value="${v}" ${n ? '' : 'checked'} class="size-4 accent-[var(--primary)]">${ic(i, 's14 text-muted-foreground')}${l}</label>`).join('')}</fieldset>${field('Note (where it goes, when it comes back)', textarea('f-reason'))}`,
+      confirm: 'Send to external shop',
+      run: () => { const k = document.querySelector('input[name=f-kind]:checked').value, v = val('f-reason'); if (!v) return err('Write where it goes and when it comes back.'); act('dialog', 'Sent to the external shop.', () => { j.prevMech = j.mech; j.mech = null; j.external = { kind: k, note: v, at: `Oct 5, ${now()}` }; log('building-2', 'primary', `<b>Crixcrox</b> sent <b>${nameText(j)}</b> to an external shop`, `${k === 'truck' ? 'The truck goes out' : 'The part goes out'} · “${v}”`); flash(j.id); }); } },
+    returnExt: (() => {
+      if (kind !== 'returnExt') return null;
+      const pool = j.kind === 'pm' ? PM_MECHS : STANDARD;
+      return { title: `${j.name} is back`, desc: `${extWhat(j)} since ${j.external.at} · “${esc(j.external.note)}”`,
+        body: `<fieldset class="space-y-1.5"><legend class="mb-1.5 font-medium">What happens now?</legend>
+          <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10"><input type="radio" name="f-out" value="complete" checked onchange="document.getElementById('f-assign-wrap').classList.add('hidden')" class="size-4 accent-[var(--primary)]">Complete the Job (nothing left to do here)</label>
+          <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10"><input type="radio" name="f-out" value="assign" onchange="document.getElementById('f-assign-wrap').classList.remove('hidden')" class="size-4 accent-[var(--primary)]">Assign to a mechanic (install or check)</label></fieldset>
+          <div id="f-assign-wrap" class="hidden">${field('Mechanic', `<div class="relative"><select id="f-assign" class="native h-11 w-full rounded-md border bg-background pl-3 pr-9 text-base"><option value="">Choose a mechanic</option>${pool.map((m) => `<option value="${m}" ${m === j.prevMech ? 'selected' : ''}>${MECH[m].name}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground')}</div>`)}</div>`,
+        confirm: 'Confirm',
+        run: () => { const o = document.querySelector('input[name=f-out]:checked').value, m = val('f-assign'); if (o === 'assign' && !m) return err('Choose who installs or checks it.'); act('ret-' + j.id, 'The Job is back from the external shop.', () => { j.external = null; if (o === 'complete') { j.status = 'completed'; j.doneBy = 'cr'; j.doneAt = `Oct 5, ${now()}`; } else j.mech = m; log('package-check', 'success', `<b>Crixcrox</b> marked <b>${nameText(j)}</b> back from the external shop`, o === 'complete' ? 'Completed' : `Assigned to ${MECH[m].name}`); flash(j.id); }); } };
+    })(),
+    time: { title: 'Correct time', desc: seg ? `${seg.type === 'labor' ? `Active labor · ${MECH[seg.mech].name}` : 'Waiting time'} · ${fmtRange(seg)}${seg.endReason === 'day_close' ? '. Closed by the day close: correct it only if the mechanic left earlier.' : seg.endReason === 'switched_truck' ? '. Closed because the mechanic started on another truck.' : ''}` : '',
       body: seg ? `<div class="grid gap-3 sm:grid-cols-2">${field('Corrected start', `<input id="f-start" type="datetime-local" value="${seg.start}" class="h-11 w-full rounded-md border bg-background px-3 text-base">`)}${field('Corrected end', `<input id="f-end" type="datetime-local" value="${seg.end}" class="h-11 w-full rounded-md border bg-background px-3 text-base">`)}</div>${reason('Required. Original and corrected times are stored in the Activity Log.')}` : '',
       confirm: 'Apply correction',
-      run: () => { const a = val('f-start'), b = val('f-end'), v = val('f-reason'); if (!a || !b) return err('Enter both times.'); if (new Date(b) <= new Date(a)) return err('The end time must be after the start time.'); if (!v) return err('Write why the time is corrected.'); act('dialog', 'Time corrected. Totals recalculated.', () => { const before = fmtRange(seg); seg.start = a; seg.end = b; seg.corrected = true; log('clock', 'primary', '<b>Crixcrox</b> corrected a time segment', `${before} → ${fmtRange(seg)} · “${v}”`); }); } },
+      run: () => { const a = val('f-start'), b = val('f-end'), v = val('f-reason'); if (!a || !b) return err('Enter both times.'); if (new Date(b) <= new Date(a)) return err('The end time must be after the start time.'); if (!v) return err('Write why the time is corrected.'); act('dialog', 'Time corrected. Totals recalculated.', () => { const before = fmtRange(seg); seg.start = a; seg.end = b; seg.corrected = true; seg.endReason = null; log('clock', 'primary', '<b>Crixcrox</b> corrected a time segment', `${before} → ${fmtRange(seg)} · “${v}”`); }); } },
   }[kind];
   window.__dialogRun = D.run;
   document.getElementById('layer').innerHTML = `<div class="fixed inset-0 z-40 bg-black/60" onclick="closeLayer()"></div>
@@ -734,7 +811,8 @@ const PRESETS = {
   blocked: ['En progreso + blocker', () => {}],
   progress: ['En progreso (sin blocker)', () => { S.blockers.find((b) => b.id === 'b1').resolved = { by: 'cr', at: 'Oct 3, 9:00 AM', note: 'Part arrived' }; }],
   paused: ['Pausada', () => { S.status = 'waiting_paused'; S.pause = { reason: 'Waiting for Parts', at: 'Oct 5, 11:50 AM' }; S.pauses = [{ reason: 'Waiting for Parts', start: '11:50 AM', end: null }]; }],
-  ready: ['Lista para cerrar', () => { S.blockers.forEach((b) => { b.resolved ||= { by: 'cr', at: 'Oct 3, 9:00 AM', note: '' }; }); S.jobs.forEach((j) => { if (j.status === 'to_do') { j.status = 'completed'; j.doneBy = j.mech || 'cr'; j.doneAt = 'Oct 4, 2:10 PM'; } }); }],
+  external: ['Esperando taller externo', () => { S.blockers.forEach((b) => { b.resolved ||= { by: 'cr', at: 'Oct 3, 9:00 AM', note: '' }; }); S.jobs.forEach((j) => { if (j.status === 'to_do' && j.kind !== 'qc' && !j.external) { j.status = 'completed'; j.doneBy = j.mech || 'cr'; j.doneAt = 'Oct 4, 2:10 PM'; } }); }],
+  ready: ['Lista para cerrar', () => { S.blockers.forEach((b) => { b.resolved ||= { by: 'cr', at: 'Oct 3, 9:00 AM', note: '' }; }); S.jobs.forEach((j) => { if (j.status === 'to_do') { j.status = 'completed'; j.external = null; j.doneBy = j.mech || 'cr'; j.doneAt = 'Oct 4, 2:10 PM'; } }); }],
   completed: ['Completada', () => { PRESETS.ready[1](); S.status = 'completed'; S.completedAt = 'Oct 4, 2:15 PM'; }],
   cancelled: ['Cancelada', () => { S.status = 'cancelled'; S.closeReason = 'Truck sold, work not needed'; }],
 };

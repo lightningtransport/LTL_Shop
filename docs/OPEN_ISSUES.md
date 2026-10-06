@@ -189,6 +189,8 @@ Se retoma cuando el dueño responda sus decisiones (§5 de la propuesta).
 | R4 | E | Activity Log plano; corrección de tiempo como formulario siempre visible | `admin-work-order-detail.tsx` |
 | R5 | E | "…" (WO y Job) abre un modal para 1–2 opciones | `admin-work-order-detail.tsx`, `admin-job-table.tsx` |
 | R6 | C | Tema oscuro: `--card`, `--muted` y `--accent` son el mismo color; `bg-muted` y el hover no se ven sobre tarjetas (todas las pantallas) | `globals.css` |
+| R7 | E | "Labor segments" (LTR-186) en mayúsculas con `tracking-wide`; la regla es sentence case. Además los tramos salen dos veces (lista y select de corrección) | `admin-work-order-detail.tsx` (`LaborSegments`) |
+| R8 | E | El error de "Send to external shop" (LTR-188) usa `text-destructive`; en oscuro no se lee (debe ser `text-destructive-text`) | `admin-job-table.tsx` (`SendExternalDialog`) |
 
 ## 2. Pruebas
 

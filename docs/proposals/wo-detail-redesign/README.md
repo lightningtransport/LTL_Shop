@@ -1,7 +1,7 @@
 # Propuesta: rediseño de Work Order Detail (Admin)
 
 **Clasificación:** PROPUESTA — no es el estado actual de la app.
-**Fecha:** 2026-10-05 · **Rama:** `claude/ui-screen-improvement-baa9cf` · **Sin PR todavía.**
+**Fecha:** 2026-10-05 (actualizada el mismo día con LTR-186 y LTR-188) · **Rama:** `claude/ui-screen-improvement-baa9cf` · **Sin PR todavía.**
 **Pantalla:** `/admin/work-orders/[id]` → `apps/web/src/components/admin-work-order-detail.tsx`
 
 El dueño aprobó la dirección visual. Falta responder las decisiones de §5 y
@@ -20,8 +20,8 @@ Abrir `http://127.0.0.1:4455/mockup.html`. También funciona abriendo el
 archivo directo en el navegador.
 
 - Botón **Demo** (arriba a la derecha): cambia el estado de la Work Order
-  (en progreso con blocker, en progreso, pausada, lista para cerrar,
-  completada, cancelada), activa **solo lectura** (sin `work_orders.manage`)
+  (en progreso con blocker, en progreso, pausada, esperando taller externo,
+  lista para cerrar, completada, cancelada), activa **solo lectura** (sin `work_orders.manage`)
   y **simular error** en la próxima acción.
 - Botón sol/luna: tema claro / oscuro. Revisada en 1440 px y 375 px.
 
@@ -54,6 +54,18 @@ Revisión de la pantalla en producción (WO-010, Truck 918) el 2026-10-03:
 | 7 | History | Una sección plegada con todo adentro | **Tabs**: Activity (línea de tiempo por día, "Show all"), Times (tiempos + segmentos), Pauses |
 | 8 | Corrección de tiempo | Formulario fijo | "Correct…" en cada segmento → diálogo con validación |
 
+### 3b. Lo que llegó a `main` después de la primera versión
+
+La rama se actualizó con `main` (#240 LTR-186, #241 LTR-188) y la maqueta
+ya lo incluye:
+
+| Novedad | Regla | Cómo queda en la propuesta |
+|---|---|---|
+| **Ayudante** (D23) | "Add helper" en el `…` de un Job Standard pendiente (no PM, no QC, no otro ayudante, no en taller externo). Crea un Job aparte "<Job> · helper" con su dueño. Un blocker del principal no bloquea al ayudante | Opción en el menú de la fila → diálogo con el mecánico (sin el dueño ni quien ya ayuda). La fila del ayudante va **debajo de su Job**, con ↳ y "Helps <dueño>" |
+| **Taller externo** (D24) | "Send to external shop" en el `…` (no QC). Sale la pieza o el camión + nota obligatoria. Sin dueño ni reloj, no cuenta como "sin asignar". "Returned" lo completa o lo asigna | Estado "At external shop", en la columna Mecánico "Part out / Truck out · nota". Acción **Returned** → diálogo Complete / Assign to. Van después del trabajo del taller y antes de QC. Segmento azul en la barra de progreso |
+| **Siguiente paso "external"** | Si lo único pendiente (además de QC) está afuera, el siguiente paso es esperar | Aviso "At external shop: <Job>" con la nota y **Returned**. Si salió el camión: "Yard shows the truck as Out of shop" |
+| **Cierre del día y cambio de camión** (D20, D21) | A las 5:00 PM la app cierra los relojes; al empezar en otro camión se cierra el anterior | History › Times: **una sola lista** de tramos (antes eran dos: "Labor segments" y el select de corrección) con chip "Day close" / "Switched truck", el tramo en curso en verde y "Correct…" solo en tramos cerrados. El diálogo explica por qué se cerró. Activity muestra ambos eventos |
+
 ## 4. Comportamiento de cada acción
 
 Los textos de diálogos y ayudas son los de `admin-messages.ts`. Ninguna
@@ -67,7 +79,8 @@ regla de negocio cambia; solo dónde y cómo se muestra.
 | **Resolve blocker** | Nota opcional en línea → Confirm resolve. El Next step se recalcula |
 | **Mecánico del Job** | Selector con búsqueda; "Unassign" desasigna. Job PM: solo mecánicos PM. Quality Check: sin selector ("Safety") |
 | **Complete (Job)** | Sin confirmación, como hoy. La fila pasa a "Done" |
-| **"…" del Job** | Pendiente: Cancel job. Cancelado: Reopen job. Diálogo con motivo obligatorio. Los hechos no tienen menú (como hoy) |
+| **"…" del Job** | Pendiente: Add helper (D23), Send to external shop (D24), Cancel job. Cancelado: Reopen job. Cancel / Reopen con motivo obligatorio. Los hechos no tienen menú (como hoy) |
+| **Returned** (Job afuera) | Diálogo: Complete el Job, o Assign to (mecánico obligatorio; propone al dueño anterior) |
 | **PM A / PM B** | Menú; el Job PM se completa desde el PM service |
 | **Todos los Jobs hechos** | Aviso "All jobs are done" con **Confirm completion**; barra fija abajo cuando el aviso sale de pantalla (como hoy) |
 | **Completada** | Next step "Return the truck to service" → diálogo (motivo opcional). Después, la tarjeta Truck dice "Returned to service" |
@@ -87,8 +100,9 @@ controles de 44 px; sin scroll horizontal a 375 px.
 3. Completada y devuelta → "Truck returned to service".
 4. Pausada → "Paused · motivo" + Resume.
 5. Blocker abierto en un Job pendiente → el blocker + Resolve.
-6. Sin Jobs pendientes → "All jobs are done" + Confirm completion.
-7. Si no → "Assign N jobs" o "Work in progress".
+6. Solo queda trabajo en taller externo (y QC) → "At external shop: <Job>" + Returned.
+7. Sin Jobs pendientes → "All jobs are done" + Confirm completion.
+8. Si no → "Assign N jobs" o "Work in progress" (cuenta solo Jobs del taller).
 
 En la app esto debe salir de `data.nextStep` (la regla única de la API,
 LTR-159), no recalcularse en el cliente. La maqueta lo imita.
@@ -134,7 +148,16 @@ rama con `main` y anotar los defectos en `OPEN_ISSUES.md` §1e (ya están).
 Selectores `data-testid` que usan las pruebas y deben seguir existiendo:
 `admin-wo-next-step`, `admin-wo-more-actions`, `admin-wo-job-row`,
 `admin-wo-history`, `admin-wo-next-action`, `admin-blocker`,
-`operational-counts`.
+`operational-counts`; y los de LTR-186/188: `admin-wo-job-add-helper`,
+`admin-wo-add-helper-dialog`, `admin-wo-job-send-external`,
+`admin-wo-send-external-dialog`, `admin-wo-job-external`,
+`admin-wo-job-external-where`, `admin-wo-job-returned`,
+`admin-wo-return-external-dialog`, `labor-segments`, `labor-end-reason`.
+
+Detalles del código nuevo que el rediseño corrige de paso (R7, R8 en
+`OPEN_ISSUES.md`): el título "Labor segments" usa `uppercase tracking-wide`
+(la regla es sentence case) y el error de "Send to external shop" usa
+`text-destructive` (la regla es `text-destructive-text`).
 
 ## 7. Hallazgo: tokens del tema oscuro
 
