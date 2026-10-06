@@ -17,6 +17,7 @@ import { pauseLabel, statusLabel } from '@/lib/format';
 import { useSWRConfig } from 'swr';
 import { isMyJob, isMyPartDone, isStandardWorkWaitingOnManager, jobPersonLabel } from '@/lib/job-assignment';
 import { useShopLocale } from '@/lib/locale-context';
+import { clockStoppedLine } from '@/lib/clock-stopped';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
 import {
   Button,
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
+import { jobDisplayName } from '@/lib/job-display-name';
 
 export default function HomePage() {
   const { user, token, sessionLoading, sessionError, retrySession } = useAuth();
@@ -321,6 +323,11 @@ function WorkOrderCard({
             <span className="rounded-full bg-shop-accent/15 px-2 py-0.5 text-xs font-semibold text-shop-accent" data-testid="resolved-tap-continue">
               {messages.resolvedTapContinue}
             </span>
+          ) : clockStoppedLine(wo.myClockStopped, messages) ? (
+            // LTR-186 / D20, D21: the day close or a Truck switch stopped my clock here.
+            <span className="rounded-full bg-shop-accent/15 px-2 py-0.5 text-right text-xs font-semibold text-shop-accent" data-testid="clock-stopped-tap-continue">
+              {clockStoppedLine(wo.myClockStopped, messages)}
+            </span>
           ) : null}
         </div>
       </div>
@@ -353,7 +360,7 @@ function WorkOrderCard({
                     job.status === 'completed' ? 'text-shop-muted line-through' : ''
                   }`}
                 >
-                  {job.displayName}
+                  {jobDisplayName(job, messages.helperJobSuffix)}
                   {job.id === nextJobId ? <span className="ml-2 text-xs font-semibold text-shop-accent">{messages.nextJob}</span> : null}
                 </span>
                 <span className="block text-xs text-shop-muted">

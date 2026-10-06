@@ -6,7 +6,7 @@ import {
   type WorkOrderNoteKind,
   type WorkOrderStatus,
 } from '@prisma/client';
-import { isPmCategory, jobWorkStatus, type BlockerReason } from '@ltl-shop/shared';
+import { isPmCategory, jobWorkStatus, type BlockerReason, type JobExternalKind } from '@ltl-shop/shared';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals } from './work-order.timing';
 import { workOrderTeam } from './work-order-team';
@@ -26,7 +26,21 @@ type JobRow = {
   assignedMechanic?: { id: string; name: string } | null;
   completedBy?: { id: string; name: string } | null;
   startedAt?: Date | null;
+  helperOfJobId?: string | null;
+  externalSince?: Date | null;
+  externalKind?: string | null;
+  externalNote?: string | null;
 };
+
+/** LTR-188 / D24: a Job at an external shop, as the DTOs carry it (null when in the shop). */
+function jobExternal(job: JobRow) {
+  if (!job.externalSince || !job.externalKind || job.status !== 'to_do') return null;
+  return {
+    kind: job.externalKind as JobExternalKind,
+    note: job.externalNote ?? '',
+    since: job.externalSince.toISOString(),
+  };
+}
 
 type PauseRow = {
   id: string;
@@ -101,13 +115,17 @@ export type WorkOrderWithRelations = {
   primaryCategory: { id: string; name: string };
   jobs: JobRow[];
   pauseEvents?: PauseRow[];
-  sessions?: { id: string; startedAt: Date; endedAt: Date | null; userId?: string | null }[];
+  sessions?: { id: string; startedAt: Date; endedAt: Date | null; userId?: string | null; endReason?: string | null }[];
   mechanics?: MechanicRow[];
   activityLogs?: JobCompletionLog[];
   noteEntries?: NoteRow[];
 };
 
-export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string) {
+/** LTR-186 / D21: the Work Order where the viewer's clock runs now (null: nowhere). */
+export type ClockElsewhere = { id: string; displayId: string; truckNumber: string } | null;
+type ViewerOptions = { clockElsewhere?: ClockElsewhere };
+
+export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string, options: ViewerOptions = {}) {
   const isPm = wo.primaryCategory.name === 'PM';
   // PM is a single service. Legacy jobs remain in the database for audit but
   // are never presented as a checklist or progress metric.
@@ -132,6 +150,8 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
       activeBlocker: activeBlocker ? toJobActiveBlocker(activeBlocker) : null,
       assignedMechanic: j.assignedMechanic ?? null,
       completedBy: j.completedBy ?? null,
+      helperOfJobId: j.helperOfJobId ?? null,
+      external: jobExternal(j),
     };
   });
   const currentPause = currentOfficialPause(wo.pauseEvents);
@@ -157,7 +177,32 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
     createdAt: wo.createdAt.toISOString(),
     startedAt: wo.startedAt?.toISOString() ?? null,
     ...(viewerId ? { resolvedBlockerAwaitingContinue: resolvedBlockerAwaitingContinue(wo, viewerId) } : {}),
+    ...(viewerId ? { myClockStopped: myClockStopped(wo, viewerId, options.clockElsewhere) } : {}),
   };
+}
+
+/**
+ * LTR-186 / D20, D21: the app stopped my clock on this Work Order — the day close, or I started on
+ * another Truck — and I still have workable Jobs here, so the card and the detail say "tap Continue".
+ * `clockElsewhere` is where my clock runs now; when the caller did not look it up it is left out.
+ */
+export function myClockStopped(wo: WorkOrderWithRelations, viewerId: string, clockElsewhere?: ClockElsewhere) {
+  if (wo.status !== 'in_progress') return null;
+  const sessions = wo.sessions ?? [];
+  if (sessions.some((session) => session.endedAt === null && (!session.userId || session.userId === viewerId))) return null;
+  const workable = wo.jobs.some((job) => (
+    job.status === 'to_do' && jobAssigneeId(job) === viewerId && !activeBlockerForJob(wo.pauseEvents, job.id)
+  ));
+  if (!workable) return null;
+  const last = sessions
+    .filter((session) => session.userId === viewerId && session.endedAt)
+    .sort((left, right) => right.endedAt!.getTime() - left.endedAt!.getTime())[0];
+  if (last?.endReason === 'day_close') return { reason: 'day_close' as const };
+  if (last?.endReason === 'switched_truck') {
+    if (clockElsewhere === undefined) return { reason: 'switched_truck' as const };
+    return { reason: 'switched_truck' as const, elsewhereWorkOrder: clockElsewhere && clockElsewhere.id !== wo.id ? clockElsewhere : null };
+  }
+  return null;
 }
 
 /**
@@ -207,7 +252,7 @@ function pmJobSummary(wo: WorkOrderWithRelations) {
  * rest of the truck's work are split out; without it (Manager) labor is running
  * while any mechanic has a session open.
  */
-export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string) {
+export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string, options: ViewerOptions = {}) {
   const summary = toWorkOrderSummary(wo);
   const currentPause = currentOfficialPause(wo.pauseEvents);
   const sessions = wo.sessions ?? [];
@@ -237,6 +282,9 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string)
     assignedMechanic: j.assignedMechanic ?? null,
     completedBy: j.completedBy ?? null,
     startedAt: j.startedAt?.toISOString() ?? null,
+    // LTR-188 / D23, D24: helper Jobs and Jobs at an external shop (read-only for mechanics).
+    helperOfJobId: j.helperOfJobId ?? null,
+    external: jobExternal(j),
     };
   });
   const viewerOwnsJobs = !!viewerId && wo.jobs.some((j) => jobAssigneeId(j) === viewerId);
@@ -275,6 +323,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string)
       .filter((pause) => pause.isOfficialPause === false && !pause.resolvedAt)
       .map((pause) => toPauseEventDto(pause, wo.activityLogs)),
     ...(viewerId ? { resolvedBlocker: resolvedBlockerOrNull(wo, viewerId) } : {}),
+    ...(viewerId ? { myClockStopped: myClockStopped(wo, viewerId, options.clockElsewhere) } : {}),
     // LTR-164 (#6): "Start Work" until I have worked here once, then "Continue".
     ...(viewerId ? { myLaborStarted: sessions.some((session) => !session.userId || session.userId === viewerId) } : {}),
     noteEntries: (wo.noteEntries ?? []).map(toWorkOrderNoteDto),
@@ -416,7 +465,7 @@ export const workOrderDetailInclude = {
     orderBy: { addedAt: 'asc' as const },
   },
   sessions: {
-    select: { id: true, startedAt: true, endedAt: true, userId: true },
+    select: { id: true, startedAt: true, endedAt: true, userId: true, endReason: true },
   },
   pauseEvents: {
     include: {

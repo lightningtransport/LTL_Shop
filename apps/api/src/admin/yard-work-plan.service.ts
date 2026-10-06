@@ -19,6 +19,7 @@ import {
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
+import { LaborClockService } from '../work-orders/labor-clock.service';
 import type { AuthUser } from '../auth/auth.guard';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
@@ -60,6 +61,10 @@ type OpenWorkOrderRow = {
     category: { id: string; name: string };
     assignedMechanic: { id: string; name: string } | null;
     startedAt: Date | null;
+    helperOfJobId: string | null;
+    externalSince: Date | null;
+    externalKind: string | null;
+    externalNote: string | null;
   }>;
   sessions: Array<{ endedAt: Date | null; userId: string | null }>;
   pauseEvents: Array<{ jobId: string | null }>;
@@ -71,6 +76,7 @@ export class YardWorkPlanService {
     private readonly prisma: PrismaService,
     private readonly workOrders: WorkOrdersService,
     private readonly yardOperations: YardOperationsService,
+    private readonly clock?: LaborClockService,
   ) {}
 
   async get(user: AuthUser, truckId: string): Promise<TruckWorkPlanDto> {
@@ -80,6 +86,8 @@ export class YardWorkPlanService {
       select: { id: true },
     });
     if (!truck) throw new NotFoundException('Truck not found');
+    // LTR-186 / D20: a Job reads In Progress only while its mechanic's clock runs.
+    await this.clock?.closeDue();
 
     const [openWorkOrder, assessment] = await Promise.all([
       this.findOpenWorkOrder(truckId),
@@ -113,6 +121,10 @@ export class YardWorkPlanService {
             assignedMechanic: job.assignedMechanic,
             startedAt: job.startedAt,
             blocked: (workOrder?.pauseEvents ?? []).some((pause) => pause.jobId === job.id),
+            helperOfJobId: job.helperOfJobId,
+            externalSince: job.externalSince,
+            externalKind: job.externalKind,
+            externalNote: job.externalNote,
           })),
       sessions: workOrder?.sessions ?? [],
       inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null,

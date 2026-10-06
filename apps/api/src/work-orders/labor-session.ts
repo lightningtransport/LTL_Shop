@@ -56,7 +56,8 @@ export async function stopLaborWhenNoPendingJobs(
   return stopLaborForMechanic(tx, workOrderId, null, now);
 }
 
-async function persistTotals(tx: Prisma.TransactionClient, workOrderId: string, now: Date) {
+/** Recompute and store a Work Order's labor and waiting totals from its segments. */
+export async function persistTotals(tx: Prisma.TransactionClient, workOrderId: string, now: Date) {
   const sessions = await tx.workSession.findMany({ where: { workOrderId } });
   const pauses = await tx.pauseEvent.findMany({ where: { workOrderId } });
   const totals = computeTotals({ sessions, pauses, now });
@@ -67,4 +68,29 @@ async function persistTotals(tx: Prisma.TransactionClient, workOrderId: string, 
       totalWaitingMs: BigInt(totals.totalWaitingMs),
     },
   });
+}
+
+/**
+ * LTR-186 / D21: a mechanic's clock runs on one Work Order at a time. Starting (or continuing) on
+ * `workOrderId` closes their open sessions on every other Work Order now, marked `switched_truck`.
+ * Those Work Orders are otherwise untouched (their Jobs stay as they are). Returns the closed ones.
+ */
+export async function closeOtherClocks(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  workOrderId: string,
+  now: Date = new Date(),
+): Promise<string[]> {
+  const others = await tx.workSession.findMany({
+    where: { userId, endedAt: null, workOrderId: { not: workOrderId } },
+    select: { id: true, workOrderId: true },
+  });
+  if (!others.length) return [];
+  await tx.workSession.updateMany({
+    where: { id: { in: others.map((session) => session.id) }, endedAt: null },
+    data: { endedAt: now, endReason: 'switched_truck' },
+  });
+  const workOrderIds = [...new Set(others.map((session) => session.workOrderId))];
+  for (const id of workOrderIds) await persistTotals(tx, id, now);
+  return workOrderIds;
 }

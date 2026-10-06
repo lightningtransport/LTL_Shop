@@ -25,6 +25,7 @@ import { YardWorkPlanService } from './yard-work-plan.service';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { SystemAdminWritesService } from './system-admin-writes.service';
 import { ShopWorkflowService } from './shop-workflow.service';
+import { LaborClockService } from '../work-orders/labor-clock.service';
 
 @Controller('admin')
 @UseGuards(AuthGuard, CapabilitiesGuard)
@@ -38,6 +39,7 @@ export class AdminController {
     private readonly dataBoundary: YardDataBoundaryService,
     private readonly systemAdminWrites: SystemAdminWritesService,
     private readonly shopWorkflow: ShopWorkflowService,
+    private readonly clock: LaborClockService,
   ) {}
 
   @Get('access')
@@ -184,6 +186,42 @@ export class AdminController {
     return this.admin.unassignJob(request.user!, id, jobId, body);
   }
 
+  /** LTR-188 / D23: another Standard mechanic helps on a Job — a helper Job of their own. */
+  @Post('work-orders/:id/jobs/:jobId/helper')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  addHelperJob(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.addHelperJob(request.user!, id, jobId, body);
+  }
+
+  /** LTR-188 / D24: the part or the truck goes to an external shop. */
+  @Post('work-orders/:id/jobs/:jobId/external')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  sendJobExternal(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.sendJobExternal(request.user!, id, jobId, body);
+  }
+
+  /** LTR-188 / D24: back from the external shop — complete it or give it to a mechanic. */
+  @Post('work-orders/:id/jobs/:jobId/external/return')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  returnJobExternal(
+    @Req() request: Request,
+    @Param('id') id: string,
+    @Param('jobId') jobId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.returnJobExternal(request.user!, id, jobId, body);
+  }
+
   @Get('mechanics')
   mechanics(@Query() query: Record<string, unknown>) {
     return this.admin.listMechanics(query);
@@ -227,6 +265,17 @@ export class AdminController {
   @Put('setup/workflow-steps')
   updateWorkflowSteps(@Req() request: Request, @Body() body: unknown) {
     return this.shopWorkflow.update(request.user!, body);
+  }
+
+  // LTR-186 / D20: Setup → Shop workflow → Shop hours (day close). Writes: same gate as the workflow steps.
+  @Get('setup/shop-hours')
+  shopHours() {
+    return this.clock.getShopHours();
+  }
+
+  @Put('setup/shop-hours')
+  updateShopHours(@Req() request: Request, @Body() body: unknown) {
+    return this.clock.updateShopHours(request.user!, body);
   }
 
   @Get('catalog/categories')

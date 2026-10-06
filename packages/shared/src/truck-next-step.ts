@@ -1,4 +1,4 @@
-import { WorkPlanInspectionOutcome, WorkPlanJobLane } from './enums';
+import { JobExternalKind, WorkPlanInspectionOutcome, WorkPlanJobLane } from './enums';
 
 /**
  * LTR-158 / D14: the one "Next step" rule for a Truck. The first matching kind
@@ -10,6 +10,7 @@ export type TruckNextStepKind =
   | 'inspect'
   | 'add_missing_steps'
   | 'assign'
+  | 'external'
   | 'qc'
   | 'close'
   | 'return_to_service'
@@ -30,6 +31,8 @@ export interface TruckNextStepDto {
   missingLanes?: WorkPlanJobLane[];
   /** `work`: Jobs still to do. */
   remaining?: number;
+  /** `external` (LTR-188 / D24): what went to the external shop. */
+  externalKind?: JobExternalKind | `${JobExternalKind}`;
 }
 
 export type TruckNextStepInput = {
@@ -41,6 +44,8 @@ export type TruckNextStepInput = {
     status: string;
     lane: WorkPlanJobLane | `${WorkPlanJobLane}`;
     assignedMechanic?: { id: string; name: string } | null;
+    /** LTR-188 / D24: set while the Job is at an external shop (it is not unassigned, and not work here). */
+    external?: { kind: JobExternalKind | `${JobExternalKind}` } | null;
   }>;
   activeBlocker?: {
     id: string;
@@ -104,11 +109,27 @@ export function deriveTruckNextStep(input: TruckNextStepInput): TruckNextStepDto
     .filter((job) => job.status === 'to_do')
     .sort((left, right) => FLOW_ORDER.indexOf(left.lane) - FLOW_ORDER.indexOf(right.lane));
   // D15: Quality Check has no owner; every other pending Job needs one.
-  const unassigned = pending.find((job) => job.lane !== WorkPlanJobLane.QUALITY_CHECK && !job.assignedMechanic);
+  // LTR-188 / D24: a Job at an external shop has no owner on purpose — it is not "unassigned".
+  const unassigned = pending.find((job) => job.lane !== WorkPlanJobLane.QUALITY_CHECK && !job.external && !job.assignedMechanic);
   if (unassigned) return { kind: 'assign', workOrderId: wo.id, jobId: unassigned.id, jobName: unassigned.displayName };
 
-  const qc = pending.find((job) => job.lane === WorkPlanJobLane.QUALITY_CHECK);
-  if (qc && pending.length === 1) return { kind: 'qc', workOrderId: wo.id, jobId: qc.id, jobName: qc.displayName };
+  // LTR-188 / D24: the only work left (besides Quality Check) is at an external shop → wait for it.
+  const external = pending.filter((job) => job.external);
+  const inShop = pending.filter((job) => !job.external);
+  if (external.length && !inShop.some((job) => job.lane !== WorkPlanJobLane.QUALITY_CHECK)) {
+    const first = external[0];
+    return {
+      kind: 'external',
+      workOrderId: wo.id,
+      jobId: first.id,
+      jobName: first.displayName,
+      externalKind: first.external!.kind,
+    };
+  }
+
+  const qc = inShop.find((job) => job.lane === WorkPlanJobLane.QUALITY_CHECK);
+  if (qc && inShop.length === 1) return { kind: 'qc', workOrderId: wo.id, jobId: qc.id, jobName: qc.displayName };
   if (!pending.length) return { kind: 'close', workOrderId: wo.id };
-  return { kind: 'work', workOrderId: wo.id, jobId: pending[0].id, jobName: pending[0].displayName, remaining: pending.length };
+  // External Jobs are not work in the shop (D24).
+  return { kind: 'work', workOrderId: wo.id, jobId: inShop[0].id, jobName: inShop[0].displayName, remaining: inShop.length };
 }

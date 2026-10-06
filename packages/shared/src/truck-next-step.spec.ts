@@ -90,4 +90,47 @@ describe('deriveTruckNextStep (LTR-158 / D14)', () => {
   it('nothing for a cancelled Work Order', () => {
     expect(deriveTruckNextStep(base({ workOrder: { id: 'wo-1', status: 'cancelled' } }))).toBeNull();
   });
+
+  describe('external shop (LTR-188 / D24)', () => {
+    const outside = (item: ReturnType<typeof job>, kind: 'part' | 'truck' = 'part') => ({ ...item, assignedMechanic: null, external: { kind } });
+
+    it('assign skips a Job at an external shop (it has no owner on purpose)', () => {
+      const jobs = fullPlan().map((item) => (item.lane === WorkPlanJobLane.SHOP_WORK ? outside(item) : item));
+      expect(deriveTruckNextStep(base({ jobs }))?.kind).toBe('work');
+      expect(deriveTruckNextStep(base({ jobs }))).toMatchObject({ kind: 'work', jobId: 'PM A Service', remaining: 4 });
+    });
+
+    it('external when the only work left besides QC is outside', () => {
+      const jobs = fullPlan().map((item) => {
+        if (item.lane === WorkPlanJobLane.SHOP_WORK) return outside(item, 'truck');
+        if (item.lane === WorkPlanJobLane.QUALITY_CHECK) return item;
+        return { ...item, status: 'completed' };
+      });
+      expect(deriveTruckNextStep(base({ jobs }))).toEqual({
+        kind: 'external', workOrderId: 'wo-1', jobId: 'Brakes', jobName: 'Brakes', externalKind: 'truck',
+      });
+    });
+
+    it('external when it is the only Job left (never close or QC while a Job is out)', () => {
+      const jobs = fullPlan().map((item) => (item.lane === WorkPlanJobLane.SHOP_WORK ? outside(item) : { ...item, status: 'completed' }));
+      expect(deriveTruckNextStep(base({ jobs }))).toMatchObject({ kind: 'external', jobName: 'Brakes', externalKind: 'part' });
+    });
+
+    it('an unassigned in-shop Job still comes first', () => {
+      const jobs = fullPlan().map((item) => {
+        if (item.lane === WorkPlanJobLane.SHOP_WORK) return outside(item);
+        if (item.lane === WorkPlanJobLane.DETAILING) return { ...item, assignedMechanic: null };
+        return { ...item, status: 'completed' };
+      });
+      expect(deriveTruckNextStep(base({ jobs }))).toMatchObject({ kind: 'assign', jobId: 'Detailing' });
+    });
+
+    it('a blocker still wins over external', () => {
+      const jobs = fullPlan().map((item) => (item.lane === WorkPlanJobLane.SHOP_WORK ? outside(item) : { ...item, status: 'completed' }));
+      expect(deriveTruckNextStep(base({
+        jobs,
+        activeBlocker: { id: 'b-1', reason: 'other', startedAt: '2026-10-05T10:00:00Z' },
+      }))?.kind).toBe('resolve_blocker');
+    });
+  });
 });

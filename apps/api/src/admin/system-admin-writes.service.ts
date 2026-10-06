@@ -29,6 +29,7 @@ import { SupabaseAdminClient, SupabaseAdminError } from '../auth/supabase-admin'
 import { generateTemporaryPassword } from '../auth/temporary-password';
 import { normalizeAlias } from '../job-catalog/job-catalog.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { LaborClockService } from '../work-orders/labor-clock.service';
 
 /** D22: the three roster types. Exactly one per person with `role: mechanic`. */
 export const MECHANIC_CAPS = [
@@ -67,6 +68,7 @@ export class SystemAdminWritesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabaseAdmin: SupabaseAdminClient,
+    private readonly clock?: LaborClockService,
   ) {}
 
   async createMechanic(actor: AuthUser, raw: unknown): Promise<AdminMechanicCreatedDto> {
@@ -123,6 +125,8 @@ export class SystemAdminWritesService {
     const input = parsed.data;
 
     return this.prisma.$transaction(async (tx) => {
+      // LTR-186 / D20: yesterday's clock is closed by the day close, so it does not block deactivating.
+      await this.clock?.closeDue(tx);
       const current = await tx.user.findUnique({
         where: { id },
         select: mechanicSelect,

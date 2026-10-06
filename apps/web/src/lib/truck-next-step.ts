@@ -33,6 +33,9 @@ export function truckNextStepText(step: TruckNextStepDto | null | undefined, mes
       });
     case 'assign':
       return fillPlaceholders(messages.truckNextStepAssign, { job: step.jobName ?? '' });
+    case 'external':
+      // LTR-188 / D24: waiting on an external shop.
+      return fillPlaceholders(messages.truckNextStepExternal, { job: step.jobName ?? '' });
     case 'qc':
       return messages.truckNextStepQc;
     case 'close':

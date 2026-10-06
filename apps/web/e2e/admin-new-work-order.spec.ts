@@ -45,7 +45,7 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
 
     await page.getByLabel('Default owner for PM A Service').selectOption({ label: 'Daniel PM' });
     await page.getByLabel('Default owner for Detailing').selectOption({ label: 'Anthony' });
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Shop workflow saved.' }).first()).toBeVisible();
 
     await page.goto('/admin/work-orders/new');
@@ -55,5 +55,31 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
     // LTR-174: on the Work Order each pending Job shows its owner in the mechanic picker.
     await expect(page.getByRole('combobox', { name: 'Mechanic for PM A Service' }).locator('option:checked')).toHaveText('Daniel PM');
     await expect(page.getByRole('combobox', { name: 'Mechanic for Detailing' }).locator('option:checked')).toHaveText('Anthony');
+  });
+
+  test('LTR-186 / D20: the Manager sets the shop hours (day close and workdays) in Setup', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin/);
+    await page.goto('/admin/setup/workflow');
+    const hours = page.getByTestId('shop-hours');
+    await expect(hours.getByRole('heading', { name: 'Shop hours' })).toBeVisible();
+    const cutoff = hours.getByLabel('Day close (Eastern time)');
+    await expect(cutoff).toHaveValue(/^\d\d:\d\d$/);
+    await expect(hours.getByRole('button', { name: 'Save shop hours' })).toBeDisabled();
+    // The fixture API is shared by every browser project: change to whatever it is not yet.
+    const target = (await cutoff.inputValue()) === '18:30' ? '19:15' : '18:30';
+    const saturday = !(await hours.getByLabel('Sat').isChecked());
+
+    await cutoff.fill('09:00');
+    await expect(hours.getByRole('alert')).toHaveText('Choose a time between 12:00 p.m. and 11:59 p.m. and at least one day.');
+    await expect(hours.getByRole('button', { name: 'Save shop hours' })).toBeDisabled();
+    await cutoff.fill(target);
+    await hours.getByLabel('Sat').setChecked(saturday);
+    await hours.getByRole('button', { name: 'Save shop hours' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Shop hours saved.' }).first()).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByTestId('shop-hours').getByLabel('Day close (Eastern time)')).toHaveValue(target);
+    await expect(page.getByTestId('shop-hours').getByLabel('Sat')).toBeChecked({ checked: saturday });
   });
 });

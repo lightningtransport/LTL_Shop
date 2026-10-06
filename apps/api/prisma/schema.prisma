@@ -68,9 +68,9 @@ enum BlockerReason {
   waiting_for_bay
   waiting_for_driver
   other
+  quality_check_failed
 
   @@map("blocker_reason")
-  quality_check_failed
 }
 
 enum CatalogStatus {
@@ -152,6 +152,7 @@ model User {
   addedJobs                      WorkOrderJob[]             @relation("JobAddedBy")
   completedJobs                  WorkOrderJob[]             @relation("JobCompletedBy")
   assignedJobs                   WorkOrderJob[]             @relation("JobAssignedTo")
+  sentExternalJobs               WorkOrderJob[]             @relation("JobSentExternalBy")
   pauseEvents                    PauseEvent[]               @relation("PauseCreatedBy")
   reportedPauseEvents            PauseEvent[]               @relation("PauseReportedBy")
   resolvedPauseEvents            PauseEvent[]               @relation("PauseResolvedBy")
@@ -170,6 +171,7 @@ model User {
   truckServiceStatusEvents       TruckServiceStatusEvent[]
   defaultForWorkflowSteps        ShopWorkflowStep[]         @relation("ShopWorkflowStepDefaultMechanic")
   updatedWorkflowSteps           ShopWorkflowStep[]         @relation("ShopWorkflowStepUpdatedBy")
+  updatedShopSettings            ShopSettings[]             @relation("ShopSettingsUpdatedBy")
 
   @@map("users")
 }
@@ -190,15 +192,15 @@ model UserCapability {
 }
 
 model Truck {
-  id              String   @id @default(uuid()) @db.Uuid
-  truckNumber     String   @unique @map("truck_number")
-  make            String?
-  model           String?
-  year            Int?
-  mileage         Int?
-  company         String?
-  owner           String?
-  ninoxExternalId String?  @map("ninox_external_id")
+  id                       String    @id @default(uuid()) @db.Uuid
+  truckNumber              String    @unique @map("truck_number")
+  make                     String?
+  model                    String?
+  year                     Int?
+  mileage                  Int?
+  company                  String?
+  owner                    String?
+  ninoxExternalId          String?   @map("ninox_external_id")
   /// Live production column. Kept on the Prisma model so migrate cannot DROP it.
   /// Not exposed on TruckDto (debug/internal only).
   samsaraId                Decimal?  @map("samsara_id") @db.Decimal
@@ -215,8 +217,8 @@ model Truck {
   /// Declared catalog insurance E.Y4. Also used to fill `company` on first insert.
   insurance                String?
   licensePlate             String?   @map("license_plate")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
 
   workOrders           WorkOrder[]
   mileageAdjustments   TruckMileageAdjustment[]
@@ -276,14 +278,14 @@ model TruckReadinessAssessment {
 }
 
 model ReadinessMutation {
-  idempotencyKey String                   @id @map("idempotency_key")
-  assessmentId   String                   @map("assessment_id") @db.Uuid
-  targetKey      String                   @map("target_key")
+  idempotencyKey String   @id @map("idempotency_key")
+  assessmentId   String   @map("assessment_id") @db.Uuid
+  targetKey      String   @map("target_key")
   operation      String
-  payloadHash    String                   @map("payload_hash")
-  actorId        String                   @map("actor_id") @db.Uuid
+  payloadHash    String   @map("payload_hash")
+  actorId        String   @map("actor_id") @db.Uuid
   result         Json
-  createdAt      DateTime                 @default(now()) @map("created_at")
+  createdAt      DateTime @default(now()) @map("created_at")
 
   assessment TruckReadinessAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
@@ -342,8 +344,8 @@ model CatalogJob {
   createdById     String?       @map("created_by_id") @db.Uuid
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  category      JobCategory    @relation(fields: [categoryId], references: [id])
-  createdBy     User?          @relation("CatalogJobCreatedBy", fields: [createdById], references: [id])
+  category      JobCategory        @relation(fields: [categoryId], references: [id])
+  createdBy     User?              @relation("CatalogJobCreatedBy", fields: [createdById], references: [id])
   aliases       JobAlias[]
   workOrderJobs WorkOrderJob[]
   workflowSteps ShopWorkflowStep[]
@@ -386,27 +388,27 @@ model JobAlias {
 }
 
 model WorkOrder {
-  id                    String          @id @default(uuid()) @db.Uuid
-  displayId             String          @unique @map("display_id")
-  truckId               String          @map("truck_id") @db.Uuid
-  primaryCategoryId     String          @map("primary_category_id") @db.Uuid
-  status                WorkOrderStatus @default(created)
-  priority              Priority        @default(normal)
-  notes                 String?
-  createdAt             DateTime        @default(now()) @map("created_at")
-  createdById           String          @map("created_by_id") @db.Uuid
-  startedAt             DateTime?       @map("started_at")
-  completedAt           DateTime?       @map("completed_at")
-  completedById         String?         @map("completed_by_id") @db.Uuid
-  totalActiveLaborMs    BigInt          @default(0) @map("total_active_labor_ms")
-  totalWaitingMs        BigInt          @default(0) @map("total_waiting_ms")
-  idempotencyKey        String?         @unique @map("idempotency_key")
-  idempotencyPayloadHash String?        @map("idempotency_payload_hash")
-  idempotencyActorId    String?         @map("idempotency_actor_id") @db.Uuid
-  version               Int             @default(1)
-  ninoxExternalId       String?         @map("ninox_external_id")
-  readinessAssessmentId String?         @map("readiness_assessment_id") @db.Uuid
-  updatedAt             DateTime        @updatedAt @map("updated_at")
+  id                     String          @id @default(uuid()) @db.Uuid
+  displayId              String          @unique @map("display_id")
+  truckId                String          @map("truck_id") @db.Uuid
+  primaryCategoryId      String          @map("primary_category_id") @db.Uuid
+  status                 WorkOrderStatus @default(created)
+  priority               Priority        @default(normal)
+  notes                  String?
+  createdAt              DateTime        @default(now()) @map("created_at")
+  createdById            String          @map("created_by_id") @db.Uuid
+  startedAt              DateTime?       @map("started_at")
+  completedAt            DateTime?       @map("completed_at")
+  completedById          String?         @map("completed_by_id") @db.Uuid
+  totalActiveLaborMs     BigInt          @default(0) @map("total_active_labor_ms")
+  totalWaitingMs         BigInt          @default(0) @map("total_waiting_ms")
+  idempotencyKey         String?         @unique @map("idempotency_key")
+  idempotencyPayloadHash String?         @map("idempotency_payload_hash")
+  idempotencyActorId     String?         @map("idempotency_actor_id") @db.Uuid
+  version                Int             @default(1)
+  ninoxExternalId        String?         @map("ninox_external_id")
+  readinessAssessmentId  String?         @map("readiness_assessment_id") @db.Uuid
+  updatedAt              DateTime        @updatedAt @map("updated_at")
 
   truck                         Truck                     @relation(fields: [truckId], references: [id])
   primaryCategory               JobCategory               @relation(fields: [primaryCategoryId], references: [id])
@@ -545,59 +547,103 @@ model TruckMileageAdjustment {
 }
 
 model WorkOrderJob {
-  id                 String    @id @default(uuid()) @db.Uuid
-  workOrderId        String    @map("work_order_id") @db.Uuid
-  catalogJobId       String?   @map("catalog_job_id") @db.Uuid
-  categoryId         String    @map("category_id") @db.Uuid
-  displayName        String    @map("display_name")
-  customDescription  String?   @map("custom_description")
-  isCustom           Boolean   @default(false) @map("is_custom")
-  status             JobStatus @default(to_do)
-  addedAt            DateTime  @default(now()) @map("added_at")
-  addedById          String    @map("added_by_id") @db.Uuid
-  completedAt        DateTime? @map("completed_at")
-  completedById      String?   @map("completed_by_id") @db.Uuid
-  cancelledAt        DateTime? @map("cancelled_at")
-  cancelledReason    String?   @map("cancelled_reason")
+  id                 String           @id @default(uuid()) @db.Uuid
+  workOrderId        String           @map("work_order_id") @db.Uuid
+  catalogJobId       String?          @map("catalog_job_id") @db.Uuid
+  categoryId         String           @map("category_id") @db.Uuid
+  displayName        String           @map("display_name")
+  customDescription  String?          @map("custom_description")
+  isCustom           Boolean          @default(false) @map("is_custom")
+  status             JobStatus        @default(to_do)
+  addedAt            DateTime         @default(now()) @map("added_at")
+  addedById          String           @map("added_by_id") @db.Uuid
+  completedAt        DateTime?        @map("completed_at")
+  completedById      String?          @map("completed_by_id") @db.Uuid
+  cancelledAt        DateTime?        @map("cancelled_at")
+  cancelledReason    String?          @map("cancelled_reason")
   // Manager review fields for custom jobs
-  mappedCatalogJobId String?   @map("mapped_catalog_job_id") @db.Uuid
-  reviewStatus       String?   @map("review_status")
-  ninoxExternalId    String?   @map("ninox_external_id")
+  mappedCatalogJobId String?          @map("mapped_catalog_job_id") @db.Uuid
+  reviewStatus       String?          @map("review_status")
+  ninoxExternalId    String?          @map("ninox_external_id")
   // Manager-first ownership: optional per-Job assignment. Nullable so historical
   // Jobs stay valid and an unassigned Job visually inherits the WO general team.
-  assignedMechanicId String?   @map("assigned_mechanic_id") @db.Uuid
+  assignedMechanicId String?          @map("assigned_mechanic_id") @db.Uuid
   // LTR-141 / LTR-143: when the PM job was started (the end is completedAt).
-  startedAt          DateTime? @map("started_at")
+  startedAt          DateTime?        @map("started_at")
+  // LTR-188 / D23: a helper Job is its own Job (own owner, own clock) for another mechanic on the parent's work.
+  helperOfJobId      String?          @map("helper_of_job_id") @db.Uuid
+  // LTR-188 / D24: the Job is at an external shop while externalSince is set (status stays to_do).
+  externalSince      DateTime?        @map("external_since")
+  externalKind       JobExternalKind? @map("external_kind")
+  externalNote       String?          @map("external_note")
+  externalById       String?          @map("external_by_id") @db.Uuid
 
-  workOrder        WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  catalogJob       CatalogJob? @relation(fields: [catalogJobId], references: [id])
-  category         JobCategory @relation(fields: [categoryId], references: [id])
-  addedBy          User        @relation("JobAddedBy", fields: [addedById], references: [id])
-  completedBy      User?       @relation("JobCompletedBy", fields: [completedById], references: [id])
-  assignedMechanic User?       @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
+  workOrder        WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalogJob       CatalogJob?    @relation(fields: [catalogJobId], references: [id])
+  category         JobCategory    @relation(fields: [categoryId], references: [id])
+  addedBy          User           @relation("JobAddedBy", fields: [addedById], references: [id])
+  completedBy      User?          @relation("JobCompletedBy", fields: [completedById], references: [id])
+  assignedMechanic User?          @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
+  externalBy       User?          @relation("JobSentExternalBy", fields: [externalById], references: [id], onDelete: SetNull)
+  helperOf         WorkOrderJob?  @relation("JobHelperOf", fields: [helperOfJobId], references: [id], onDelete: SetNull)
+  helpers          WorkOrderJob[] @relation("JobHelperOf")
   pmService        PmService?
   blockers         PauseEvent[]
 
   @@index([workOrderId, status])
   @@index([assignedMechanicId])
+  @@index([helperOfJobId])
   @@map("work_order_jobs")
 }
 
+/// LTR-188 / D24: what went to the external shop — the part or the whole truck.
+enum JobExternalKind {
+  part
+  truck
+
+  @@map("job_external_kind")
+}
+
 model WorkSession {
-  id          String    @id @default(uuid()) @db.Uuid
-  workOrderId String    @map("work_order_id") @db.Uuid
-  startedAt   DateTime  @map("started_at")
-  endedAt     DateTime? @map("ended_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id          String                @id @default(uuid()) @db.Uuid
+  workOrderId String                @map("work_order_id") @db.Uuid
+  startedAt   DateTime              @map("started_at")
+  endedAt     DateTime?             @map("ended_at")
+  createdAt   DateTime              @default(now()) @map("created_at")
   // LTR-153 / D18: labor is per mechanic. Nullable so historical sessions stay valid.
-  userId      String?   @map("user_id") @db.Uuid
+  userId      String?               @map("user_id") @db.Uuid
+  // LTR-186 / D20, D21: why the app (not the mechanic) closed this session. Null for every other close.
+  endReason   WorkSessionEndReason? @map("end_reason")
 
   workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([workOrderId])
   @@index([workOrderId, userId])
+  @@index([userId, endedAt])
   @@map("work_sessions")
+}
+
+/// LTR-186: day_close = the shop's day close (D20); switched_truck = the mechanic started on another Truck (D21).
+enum WorkSessionEndReason {
+  day_close
+  switched_truck
+
+  @@map("work_session_end_reason")
+}
+
+/// LTR-186 / D20: one row (id = 1). Shop hours the day close reads; the Manager edits them in Setup.
+model ShopSettings {
+  id              Int      @id @default(1)
+  dayCloseMinutes Int      @default(1020) @map("day_close_minutes")
+  /// ISO weekdays (Mon = 1 … Sun = 7).
+  workdays        Int[]    @default([1, 2, 3, 4, 5])
+  updatedById     String?  @map("updated_by_id") @db.Uuid
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  updatedBy User? @relation("ShopSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("shop_settings")
 }
 
 enum WorkOrderNoteKind {
@@ -626,33 +672,33 @@ model WorkOrderNote {
 }
 
 model PauseEvent {
-  id          String      @id @default(uuid()) @db.Uuid
-  workOrderId String      @map("work_order_id") @db.Uuid
-  reason      PauseReason
-  notes       String?
-  startedAt   DateTime    @map("started_at")
-  endedAt     DateTime?   @map("ended_at")
-  durationMs  BigInt?     @map("duration_ms")
-  createdById String      @map("created_by_id") @db.Uuid
-  createdAt   DateTime    @default(now()) @map("created_at")
+  id              String         @id @default(uuid()) @db.Uuid
+  workOrderId     String         @map("work_order_id") @db.Uuid
+  reason          PauseReason
+  notes           String?
+  startedAt       DateTime       @map("started_at")
+  endedAt         DateTime?      @map("ended_at")
+  durationMs      BigInt?        @map("duration_ms")
+  createdById     String         @map("created_by_id") @db.Uuid
+  createdAt       DateTime       @default(now()) @map("created_at")
   // Manager-first ownership: distinguish an official Work Order pause (Manager)
   // from a mechanic-reported blocker. Default true keeps historical rows as
   // official pauses. reportedById records the mechanic who raised the blocker.
-  isOfficialPause Boolean @default(true) @map("is_official_pause")
-  reportedById String?    @map("reported_by_id") @db.Uuid
+  isOfficialPause Boolean        @default(true) @map("is_official_pause")
+  reportedById    String?        @map("reported_by_id") @db.Uuid
   // LTR-98 / D3: a mechanic-reported blocker stays active until resolved.
-  resolvedAt   DateTime?  @map("resolved_at")
-  resolvedById String?    @map("resolved_by_id") @db.Uuid
+  resolvedAt      DateTime?      @map("resolved_at")
+  resolvedById    String?        @map("resolved_by_id") @db.Uuid
   // LTR-153 / D17: a blocker always belongs to one Job. Nullable for official
   // pauses and historical rows. blockerReason replaces reason for new blockers.
-  jobId         String?        @map("job_id") @db.Uuid
-  blockerReason BlockerReason? @map("blocker_reason")
+  jobId           String?        @map("job_id") @db.Uuid
+  blockerReason   BlockerReason? @map("blocker_reason")
 
   workOrder  WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   job        WorkOrderJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
-  createdBy  User      @relation("PauseCreatedBy", fields: [createdById], references: [id])
-  reportedBy User?     @relation("PauseReportedBy", fields: [reportedById], references: [id])
-  resolvedBy User?     @relation("PauseResolvedBy", fields: [resolvedById], references: [id])
+  createdBy  User          @relation("PauseCreatedBy", fields: [createdById], references: [id])
+  reportedBy User?         @relation("PauseReportedBy", fields: [reportedById], references: [id])
+  resolvedBy User?         @relation("PauseResolvedBy", fields: [resolvedById], references: [id])
 
   @@index([workOrderId])
   @@index([jobId])

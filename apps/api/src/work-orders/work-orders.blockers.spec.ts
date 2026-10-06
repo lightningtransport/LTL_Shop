@@ -280,7 +280,9 @@ describe('Work Order blocker lifecycle', () => {
       },
       workSession: {
         // Mechanic A and B were working when the Manager paused; C had already finished.
-        findMany: vi.fn().mockResolvedValue([{ userId: 'mech-a' }, { userId: 'mech-b' }]),
+        findMany: vi.fn().mockResolvedValue([{ userId: 'mech-a' }, { userId: 'mech-b' }, { userId: 'mech-d' }]),
+        // LTR-186 / D21: D's clock now runs on another Truck, so resuming does not pull it back here.
+        findFirst: vi.fn(async ({ where }: { where: { userId: string } }) => (where.userId === 'mech-d' ? { id: 'elsewhere' } : null)),
         create: vi.fn(),
       },
     };

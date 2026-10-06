@@ -260,6 +260,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm completion' }).first()).toBeVisible();
     await page.getByTestId('admin-wo-history').locator('summary').click();
+    // LTR-186 / D20: a segment the day close stopped says so next to its end time.
+    await expect(page.getByTestId('labor-end-reason').first()).toHaveText('day close');
     await page.getByLabel('Time segment').selectOption({ index: 1 });
     await page.getByLabel('Corrected end time').fill('2026-09-06T17:00');
     await page.getByLabel('Reason for time correction').fill('Clock was wrong');
@@ -617,4 +619,58 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByRole('button', { name: 'Confirmar finalización' }).first()).toBeVisible();
   });
+
+  test('Admin WO Jobs: Add helper, Send to external shop and Returned from the row (LTR-188 / D23, D24)', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
+    await expect(page.getByRole('heading', { name: 'T-101' })).toBeVisible();
+
+    // D23: the helper gets a Job of their own, shown with "· helper".
+    await page.getByRole('button', { name: 'Actions for Inspect brake chamber', exact: true }).click();
+    await page.getByRole('button', { name: 'Add helper' }).click();
+    const helperDialog = page.getByTestId('admin-wo-add-helper-dialog');
+    await helperDialog.getByLabel('Helper').selectOption({ label: 'Anthony' });
+    await helperDialog.getByRole('button', { name: 'Add helper' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Helper added.' }).first()).toBeVisible();
+    await expect(page.getByTestId('admin-wo-job-row')).toHaveCount(2);
+    await expect(page.getByTestId('admin-wo-job-row').nth(1)).toContainText('Inspect brake chamber · helper');
+
+    // A helper Job cannot get its own helper; it can still go to an external shop.
+    await page.getByRole('button', { name: 'Actions for Inspect brake chamber · helper' }).click();
+    await expect(page.getByTestId('admin-wo-job-add-helper')).toHaveCount(0);
+    await expect(page.getByTestId('admin-wo-job-send-external')).toBeVisible();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+
+    // D24: the truck goes out with a note; the row says where it is and offers "Returned".
+    await page.getByRole('button', { name: 'Actions for Inspect brake chamber', exact: true }).click();
+    await page.getByTestId('admin-wo-job-send-external').click();
+    const sendDialog = page.getByTestId('admin-wo-send-external-dialog');
+    await sendDialog.getByRole('button', { name: 'Confirm' }).click();
+    await expect(sendDialog.getByRole('alert')).toHaveText('Write where it goes and when it comes back.');
+    await sendDialog.getByRole('radio', { name: 'The truck goes out' }).check();
+    await sendDialog.getByLabel('Note (where it goes, when it comes back)').fill('Body shop on 5th, back Monday');
+    await sendDialog.getByRole('button', { name: 'Confirm' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Sent to the external shop.' }).first()).toBeVisible();
+    const firstRow = page.getByTestId('admin-wo-job-row').first();
+    await expect(firstRow.getByTestId('admin-wo-job-external-where')).toHaveText('At external shop · truck');
+    await expect(firstRow.getByTestId('admin-wo-job-external-where')).toHaveAttribute('title', 'Body shop on 5th, back Monday');
+    await expect(firstRow.getByTestId('admin-wo-job-external').first()).toBeVisible();
+    await expect(firstRow.getByRole('button', { name: 'Mark complete' })).toHaveCount(0);
+
+    // Returned → Assign to a mechanic.
+    await firstRow.getByTestId('admin-wo-job-returned').click();
+    const returnDialog = page.getByTestId('admin-wo-return-external-dialog');
+    await returnDialog.getByRole('radio', { name: 'Assign to' }).check();
+    await expect(returnDialog.getByRole('button', { name: 'Confirm' })).toBeDisabled();
+    await returnDialog.getByRole('combobox', { name: 'Assign to' }).selectOption({ label: 'Alejandro 1' });
+    await returnDialog.getByRole('button', { name: 'Confirm' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'The Job is back from the external shop.' }).first()).toBeVisible();
+    await expect(firstRow.getByTestId('admin-wo-job-external-where')).toHaveCount(0);
+
+    await switchLanguage(page, 'es');
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
+    await expect(page.getByTestId('admin-wo-job-row').nth(1)).toContainText('Inspect brake chamber · ayudante');
+  });
 });
+

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, it } from 'vitest';
 import {
   USERS, Json, adminCompleteJob, adminWo, as, assign, cancelWo, catalogJob, closeWo, completeJob, createPmService,
-  createWo, doLane, doPm, inspect, laneJob, laneOf, manager, meta, namedJob, ok, openSessionUsers, plannedWo, prisma,
+  createWo, doLane, doPm, inspect, laneJob, laneOf, manager, mechanicWo, meta, namedJob, ok, openSessionUsers, plannedWo, prisma,
   refused, reportBlocker, resetDb, returnToService, same, savePm, start, truck, truckDetail, truthy, unassign, userId,
 } from '../harness';
 
@@ -71,13 +71,31 @@ describe('Casos límite', () => {
     refused('el Manager tampoco lo completa dos veces', await adminCompleteJob(workOrderId, alignment.id), 400);
   });
 
-  it('E7 | Un mecánico Standard puede tener trabajo en curso en dos Trucks a la vez (decisión 2026-09-25, LTR-125)', async () => {
+  it('E7 | Un mecánico con trabajo en dos Trucks: su reloj corre en uno solo; Start en el segundo cierra el del primero ("cambio de camión") y al volver toca Continue (D21)', async () => {
     const first = await plannedWo('905');
     const second = await plannedWo('922');
-    ok('Start en el primero', await start(USERS.alignment, first.workOrderId));
-    ok('Start en el segundo', await start(USERS.alignment, second.workOrderId));
-    same('su tiempo corre en los dos (se acepta que se solape)', await prisma.workSession.count({ where: { userId: await userId(USERS.alignment), endedAt: null } }), 2);
-    same('los dos WO en curso', [(await adminWo(first.workOrderId)).status, (await adminWo(second.workOrderId)).status], ['in_progress', 'in_progress']);
+    const mechanic = await userId(USERS.alignment);
+    ok('Start en el primero (905)', await start(USERS.alignment, first.workOrderId));
+    ok('Start en el segundo (922)', await start(USERS.alignment, second.workOrderId));
+    const open = await prisma.workSession.findMany({ where: { userId: mechanic, endedAt: null }, select: { workOrderId: true } });
+    same('un solo reloj abierto, en el segundo', open.map((session) => session.workOrderId), [second.workOrderId]);
+    const onFirst = await prisma.workSession.findFirstOrThrow({ where: { userId: mechanic, workOrderId: first.workOrderId }, select: { endReason: true, endedAt: true } });
+    same('el del primero se cerró como "cambio de camión"', [onFirst.endReason, Boolean(onFirst.endedAt)], ['switched_truck', true]);
+    const firstWo = await adminWo(first.workOrderId);
+    same('el primero sigue en curso y su Job sigue pendiente', [firstWo.status, laneJob(firstWo, 'alignment').status], ['in_progress', 'to_do']);
+    same('el Admin ve el tramo como "cambio de camión"', firstWo.laborSessions.map((segment: Json) => segment.endReason), ['switched_truck']);
+
+    const back = await mechanicWo(USERS.alignment, first.workOrderId);
+    same('vuelve al primero: "Tu reloj está en el 922 · toca Continue"', [back.laborRunning, back.myClockStopped?.reason, back.myClockStopped?.elsewhereWorkOrder?.truckNumber], [false, 'switched_truck', '922']);
+    const list = ok('su inicio', await as(USERS.alignment).get('/work-orders?mode=standard'));
+    same('la tarjeta del 905 dice lo mismo', list.active.find((item: Json) => item.id === first.workOrderId)?.myClockStopped?.elsewhereWorkOrder?.truckNumber, '922');
+    same('la del 922 no tiene aviso (su reloj corre ahí)', list.active.find((item: Json) => item.id === second.workOrderId)?.myClockStopped, null);
+
+    ok('toca Continue en el primero', await start(USERS.alignment, first.workOrderId));
+    const after = await prisma.workSession.findMany({ where: { userId: mechanic, endedAt: null }, select: { workOrderId: true } });
+    same('el reloj pasa al primero; sigue habiendo uno solo', after.map((session) => session.workOrderId), [first.workOrderId]);
+    same('el del 922 se cerró como "cambio de camión"', (await mechanicWo(USERS.alignment, second.workOrderId)).myClockStopped?.elsewhereWorkOrder?.truckNumber, '905');
+    same('los dos WO siguen en curso', [(await adminWo(first.workOrderId)).status, (await adminWo(second.workOrderId)).status], ['in_progress', 'in_progress']);
   });
 
   it('E8 | Quitar o cambiar el dueño de un Job en curso detiene el tiempo de ese mecánico', async () => {

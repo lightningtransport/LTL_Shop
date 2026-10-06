@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-09-30 (LTR-174: detalle del Truck y del Work Order reorganizados; LTR-187: el Manager da de alta al personal)
+**Actualizado:** 2026-10-05 (LTR-188: Job de ayudante (D23) y taller externo (D24); LTR-174: detalle del Truck y del Work Order reorganizados; LTR-187: el Manager da de alta al personal)
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en
@@ -147,6 +147,28 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - **Quality Check no tiene dueño por defecto** (D15). Solo una persona de
   Safety puede ser su dueño: lo toma desde su pantalla (D19). El Manager
   conserva "Mark complete" como respaldo.
+- **Job de ayudante** (D23, LTR-188): `helper_of_job_id` apunta al Job que
+  ayuda. Copia catálogo, categoría, nombre y `is_custom` del principal y su
+  dueño es el ayudante; el sufijo "· ayudante / · helper" no se guarda, lo pone
+  la web. Solo en un Job `to_do` de un WO Standard abierto, nunca en el PM, el
+  Quality Check, otro Job de ayudante ni un Job en taller externo; el ayudante
+  es un mecánico Standard activo distinto del dueño, y un solo Job de ayudante
+  por mecánico y principal. Fuera de eso es un Job normal: Start/Continue,
+  reloj, bloqueo, completar, cancelar y reabrir. Bloquear o cancelar el
+  principal **no** toca el del ayudante. La regla de "Job repetido" ignora los
+  Jobs de ayudante. Endpoint `POST /admin/work-orders/:id/jobs/:jobId/helper`.
+- **Taller externo** (D24, LTR-188): `external_since`, `external_kind`
+  (`part` | `truck`), `external_note` y `external_by_id`. Un Job está afuera
+  mientras `external_since` tiene valor; su estado sigue `to_do`. Enviarlo
+  (`POST …/jobs/:jobId/external`, nota obligatoria) le quita el dueño, cierra
+  el reloj de ese mecánico en el WO si no le queda otro Job disponible ahí y
+  resuelve su bloqueo con una nota. No aplica al Quality Check. Mientras está
+  afuera nadie lo puede asignar ni arrancar (`JOB_AT_EXTERNAL_SHOP`); no cuenta
+  como "sin asignar" ni como trabajo del taller. **Regresó**
+  (`POST …/external/return`) limpia las cuatro columnas y lo completa (como
+  el Manager) o se lo asigna a un mecánico con las mismas reglas de Asignar.
+  Cancelar o completar un Job afuera también limpia las columnas. Como sigue
+  `to_do`, el WO no se puede cerrar ni el Truck quedar Ready to Go.
 
 ### Inspección
 - Se registra en el Truck ("No issues found" / "Issues found") y **pertenece a
@@ -171,6 +193,7 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - Un Job bloqueado no se puede completar desde la vista del mecánico.
 - Si el Manager cancela el WO, cancela el Job o completa el Job él mismo, el
   bloqueo se resuelve solo y queda en el historial con el motivo (LTR-176).
+  Lo mismo al enviar el Job a un taller externo (D24).
 
 ### Pausa oficial
 - Solo el Manager pausa y reanuda el WO (`waiting_paused`). Cierra todas las
@@ -181,8 +204,42 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 ### Tiempo de trabajo (`work_sessions`)
 - **Una sesión por mecánico** (`user_id`) (D18). El tiempo del WO es la
   suma de las sesiones.
-- Un mecánico Standard puede tener sesiones abiertas en varios WOs a la vez
-  (D2); el mecánico PM solo un PM en curso.
+- **Un solo reloj por mecánico (D21, LTR-186).** Un mecánico Standard puede
+  tener Jobs en varios WOs (D2), pero su reloj corre en uno solo: Start /
+  Continue en otro WO (también arrancar o continuar el PM) cierra su sesión
+  abierta en cualquier otro WO con `ended_at = ahora` y
+  `end_reason = switched_truck`. Ese WO no cambia (sus Jobs siguen como
+  estaban). Al volver, el mecánico ve "Tu reloj está en la unidad … · toca
+  Continuar" y Continue cierra el reloj del otro. Reanudar una pausa oficial
+  no le reabre el reloj a quien ya lo tiene corriendo en otro WO.
+- **Cierre del día (D20, LTR-186).** El taller trabaja lunes a viernes
+  hasta las 5:00 p.m. (America/New_York). Una sesión abierta se cierra sola
+  a las **5:00 p.m. del día en que arrancó** si ese día es hábil y arrancó
+  antes de esa hora; si arrancó después o en un día no hábil, a las
+  **11:59:59.999 p.m.** de ese día. Se guarda con `ended_at` = esa hora (no
+  la hora en que alguien mira) y `end_reason = day_close`. Al día siguiente
+  el mecánico toca Continue (su inicio dice "Ayer quedó en curso · toca
+  Continuar"). El Manager ajusta el tramo con la corrección de tiempo si
+  alguien se fue antes.
+  - **Sin programador:** la API corre en Vercel Functions, así que no hay
+    proceso de fondo. Cada lectura o escritura de tiempo (inicio y detalle
+    del mecánico, Start/Continue, completar, bloquear, pausa/reanudar,
+    acciones del Manager sobre el WO, detalle Admin, Work Plan, desactivar
+    personal) primero cierra las sesiones vencidas (`LaborClockService.
+    closeDue()`, `apps/api/src/work-orders/day-close.ts`). Es idempotente.
+  - **Respaldo:** Vercel Cron llama `GET /api/internal/day-close` con
+    `Authorization: Bearer $CRON_SECRET` lunes a viernes a las 21:05 y 22:05
+    UTC (cubre 5:00 p.m. en horario de verano e invierno). Sin la variable
+    o con otro secreto responde 503 / 401.
+  - **Horario del taller** (`shop_settings`, una fila): hora de cierre
+    (`day_close_minutes`, 17:00 por defecto) y días hábiles (`workdays`,
+    ISO lunes = 1). El Manager o el System Admin los cambia en Setup → Shop
+    workflow → Shop hours (`GET/PUT /api/admin/setup/shop-hours`); queda en
+    el Activity Log y aplica desde ese momento.
+- `end_reason` (`day_close`, `switched_truck`) solo lo pone la app; los
+  demás cierres quedan sin motivo. El detalle Admin lo muestra junto a la
+  hora de fin ("cierre del día" / "cambio de camión"); no es una alerta.
+- El mecánico PM solo tiene un PM en curso (D2).
 - Arrancar el PM abre la sesión del mecánico PM y terminarlo la cierra
   (LTR-175): el tiempo del PM se registra como el de cualquier mecánico.
 - Se abre con Start/Continue mientras el mecánico tenga un Job pendiente.
@@ -260,6 +317,13 @@ asignación, o el selector de servicio en el PM); "Cancelar Job…" y "Reabrir
 Job…" son enlaces discretos que abren un diálogo donde se escribe el motivo
 (LTR-189, W1).
 
+**M05 — Ayudante (D23):** `…` del Job → **Agregar ayudante** → elige al
+mecánico. Se crea "<Job> · ayudante" con ese dueño; él lo ve en "Your Jobs".
+
+**M06 — Taller externo (D24):** `…` del Job → **Enviar a taller externo** →
+"Sale la pieza" o "Sale el camión" + nota. Cuando vuelve: **Regresó** →
+Completar o Asignar a un mecánico. Todo queda en el Activity Log.
+
 ### Mecánico Standard
 
 **MECH01 — Ver mi trabajo:** inicia sesión → "My Assigned Work" (solo sus
@@ -269,7 +333,8 @@ Jobs, agrupados por Truck) → abre el WO: ve "Your Jobs" y, en solo lectura,
 **MECH02 — Trabajar:** Start/Continue abre su sesión → cada Job suyo es una
 tarjeta con dos botones debajo, **Completar Job** (primario) y **Reportar
 bloqueo** (LTR-189 W12) → al terminar el último ve "Terminaste tu parte" y su
-tiempo se detiene.
+tiempo se detiene. Su reloj corre en un solo camión (D21) y se cierra
+solo a las 5:00 p.m. (D20); al volver toca Continue.
 
 **MECH03 — Bloqueo:** reporta un bloqueo en uno de sus Jobs → si no le queda
 otro Job disponible, su tiempo se detiene → solo puede agregar notas → el
@@ -289,7 +354,9 @@ agregue.
    **No** completa el WO; el resto de los pasos sigue.
 
 - Arrancar el PM pone el WO en curso y abre el reloj del mecánico PM;
-  Finish lo detiene.
+  Finish lo detiene. Si el cierre del día, otro camión o un bloqueo resuelto
+  detuvo su reloj, el PM job muestra **Continue** (`POST …/pm/start` sobre
+  un PM ya arrancado reabre su reloj; LTR-186).
 - Un solo PM en curso por mecánico PM (D2).
 - Puede cambiar PM A ↔ PM B ("Tipo de servicio") y bloquear su PM (lo
   resuelve el Manager). Deja notas y pide trabajo como cualquier mecánico
@@ -351,11 +418,12 @@ aplique:
 | 2 | `resume` | Resume |
 | 3 | `inspect` | Ir a la inspección |
 | 4 | `add_missing_steps` | Agregar pasos que faltan (WOs viejos) |
-| 5 | `assign` | Asignar el Job sin dueño |
-| 6 | `qc` | Esperando a Safety (Manager: Mark QC complete como respaldo) |
-| 7 | `close` | Close Work Order |
-| 8 | `return_to_service` | Return to Service |
-| 9 | `work` | (los mecánicos están trabajando) |
+| 5 | `assign` | Asignar el Job sin dueño (un Job en taller externo no cuenta) |
+| 6 | `external` | "En taller externo: <Job>" — lo único pendiente fuera de QC está afuera (D24); "Regresó" está en la fila del Job |
+| 7 | `qc` | Esperando a Safety (Manager: Mark QC complete como respaldo) |
+| 8 | `close` | Close Work Order |
+| 9 | `return_to_service` | Return to Service |
+| 10 | `work` | (los mecánicos están trabajando; los Jobs afuera no cuentan) |
 | — | `create_work_order` | Truck sin WO abierto |
 
 Un test de contrato verifica que todas las pantallas devuelven el mismo paso,
@@ -371,14 +439,14 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | Ruta | Qué es |
 |---|---|
 | `/admin` | Dashboard: métricas, "Needs attention" con el siguiente paso, pedidos de trabajo abiertos. |
-| `/admin/yard-operations` | Tablero del patio por fase. Pestaña `?tab=movement`: tarjetas de agent-reporting (solo lectura). |
+| `/admin/yard-operations` | Tablero del patio por fase. Una tarjeta dice **"Fuera del taller"** cuando un Job pendiente de su WO mandó el camión a un taller externo (`outOfShop`, D24); la fase y los contadores no cambian. Pestaña `?tab=movement`: tarjetas de agent-reporting (solo lectura). |
 | `/admin/trucks`, `/admin/trucks/[id]` | Lista de camiones con siguiente paso; **el Truck es el lugar de trabajo del Manager** y responde "¿puede salir y, si no, qué lo frena?" (ver abajo). |
 | `/admin/work-orders`, `/admin/work-orders/[id]` | Lista con filtros; detalle del WO (ver abajo). |
 | `/admin/work-orders/new` | Crear WO (solo Truck, prioridad, nota). |
 | `/admin/history` | WOs completados y cancelados. |
 | `/admin/mechanics`, `/admin/mechanics/[id]` | Roster. Manager y System Admin: Agregar persona (con contraseña temporal), nombre y tipo, Desactivar / Reactivar, Reiniciar contraseña (D22). |
 | `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs (solo lectura). |
-| `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista). |
+| `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista) y **Shop hours** (hora del cierre del día y días hábiles, con su propio Save; D20). |
 
 **Detalle del Truck** (`/admin/trucks/[id]`), de arriba abajo (LTR-174; en
 computadora dos columnas ≈ 2:1, en el teléfono una sola en el mismo orden):
@@ -417,7 +485,13 @@ misma división 2:1 en computadora, una columna en el teléfono):
   mecánico asigna, reasigna o quita el dueño (QC no tiene selector: lo toma
   Safety); "Mark complete" es primario solo en QC; el PM job muestra su
   variante de servicio; Cancel / Reopen Job viven en el "…" de cada fila con
-  su diálogo de motivo. Los Jobs se agregan desde el Work Plan del Truck (D6).
+  su diálogo de motivo. El "…" también tiene **Agregar ayudante** (no en PM,
+  QC ni en un Job de ayudante; D23) y **Enviar a taller externo** (no en QC;
+  D24). Un Job de ayudante muestra "· ayudante" junto al nombre. Un Job afuera
+  muestra "En taller externo · pieza|camión" (la nota como tooltip), el estado
+  "En taller externo" y el botón **Regresó** (Completar / Asignar a). Los Jobs
+  se agregan desde el Work Plan del Truck (D6). En el Work Plan del Truck esos
+  Jobs se ven igual (estado `external`, sin selector de mecánico).
 - **Bloqueos reportados:** una línea "· Ninguno" si no hay; si hay, un bloque
   de aviso con Resolve.
 - **Notas:** entradas y el botón "Add note" que abre el redactor; pedidos de
@@ -425,8 +499,10 @@ misma división 2:1 en computadora, una columna en el teléfono):
 - **Contexto** (columna lateral): Truck (enlace), tiempos (labor, espera y
   por mecánico), mecánicos, prioridad (selector + Update priority); plegados
   el resumen operativo, datos del Truck e historial de reparaciones.
-- **History and audit** plegado al final (tiempos, corrección de tiempos,
-  pausas, Activity Log).
+- **History and audit** plegado al final (tiempos, tramos de trabajo por
+  mecánico con "cierre del día" / "cambio de camión" junto a la hora de fin
+  cuando la app los cerró (D20, D21), corrección de tiempos, pausas,
+  Activity Log).
 - Los estados siempre son distintivos y las acciones siempre botones. Los
   avisos de éxito son solo toasts.
 
@@ -441,9 +517,10 @@ Shop Admin, Yard, Work Orders).
 |---|---|
 | `/` (= `/mechanic/standard`, `/mechanic/pm`) | Inicio: mi trabajo. Cada rol ve su versión. |
 | `/qc` | Safety: camiones por revisar (Tomar, Aprobar, Devolver) y devueltos. |
-| `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, o el PM job dentro del WO con `?view=pm`). |
+| `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, o el PM job dentro del WO con `?view=pm`). Un Job de ayudante dice "· ayudante" (D23); un Job en taller externo aparece en "Other work on this Truck" en solo lectura con "En taller externo" y nunca es del mecánico (D24). |
 | `/mechanic/pm/new` | Create PM service. |
 | `/mechanic/{standard,pm}/trucks`, `/trucks/[id]/history` | Buscar camión e historial de reparaciones. |
+| (aviso en el inicio y el detalle) | Si la app detuvo su reloj (cierre del día o cambio de camión) y le queda trabajo: "Ayer quedó en curso · toca Continuar" o "Tu reloj está en la unidad 944 · toca Continuar", junto al botón Continue de siempre. El PM job tiene su propio Continue (D20, D21). |
 | `/mechanic/{standard,pm}/completed` | Pestaña "Completados": Standard lista los Jobs que ese mecánico completó (el Work Order puede seguir abierto); PM lista los servicios de PM terminados (LTR-189 W11). |
 
 ### Todos
@@ -522,6 +599,9 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
   (API, solo servidor): con las dos, la API crea y reinicia cuentas de
   Supabase Auth desde el roster (D22). Sin ellas, el roster funciona sin
   cuentas de acceso (`temporaryPassword: null`).
+- `CRON_SECRET` (API, solo servidor): secreto con el que Vercel Cron llama
+  `GET /api/internal/day-close` (respaldo del cierre del día, D20). Vercel lo
+  manda solo en el encabezado `Authorization: Bearer …`.
 - Solo en desarrollo: `AUTH_DEV_BYPASS`, `NEXT_PUBLIC_E2E_DEV_LOGIN`.
 
 ---

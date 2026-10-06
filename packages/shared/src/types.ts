@@ -4,8 +4,10 @@ import type { TruckNextStepDto } from './truck-next-step';
 import type {
   AppCapability,
   ActivityEventType,
+  WorkSessionEndReason,
   BlockerReason,
   JobStatus,
+  JobExternalKind,
   PauseReason,
   WorkOrderNoteKind,
   Priority,
@@ -137,6 +139,17 @@ export interface WorkOrderJobDto {
   completedBy?: { id: string; name: string } | null;
   /** LTR-146: when the PM job was started. */
   startedAt?: string | null;
+  /** LTR-188 / D23: the Job this one helps (a helper Job); the web appends "· helper". */
+  helperOfJobId?: string | null;
+  /** LTR-188 / D24: set while the Job is at an external shop. */
+  external?: JobExternalDto | null;
+}
+
+/** LTR-188 / D24: a Job at an external shop — what went out, the Manager's note and since when. */
+export interface JobExternalDto {
+  kind: JobExternalKind;
+  note: string;
+  since: string;
 }
 
 /** LTR-155 / D17: short form of a Job's active blocker for lists and cards. */
@@ -220,7 +233,7 @@ export interface WorkOrderSummaryDto {
   priority: Priority;
   jobsCompleted: number;
   jobsTotal: number;
-  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic' | 'completedBy' | 'workStatus' | 'activeBlocker'>[];
+  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic' | 'completedBy' | 'workStatus' | 'activeBlocker' | 'helperOfJobId' | 'external'>[];
   mechanics: Pick<MechanicAssignmentDto, 'mechanicId' | 'mechanicName'>[];
   currentPauseReason: PauseReason | null;
   createdAt: string;
@@ -229,6 +242,29 @@ export interface WorkOrderSummaryDto {
   resolvedBlockerAwaitingContinue?: boolean;
   /** LTR-164 (#10): PM workspace only. `status` buckets by the PM job; this is the Work Order's own status. */
   workOrderStatus?: WorkOrderStatus;
+  /**
+   * LTR-186 / D20, D21 (mechanic endpoints only): the app stopped my clock here — the day close, or I
+   * started on another Truck — and I still have work here. Tap Continue. Null when it does not apply.
+   */
+  myClockStopped?: MyClockStoppedDto | null;
+}
+
+/** LTR-186: why my clock stopped on this Work Order and, after a switch, where it runs now. */
+export interface MyClockStoppedDto {
+  reason: `${WorkSessionEndReason}`;
+  /** switched_truck only: the Work Order where my clock is running now (absent when it is not running anywhere). */
+  elsewhereWorkOrder?: { id: string; displayId: string; truckNumber: string } | null;
+}
+
+/** LTR-186 / D20: Admin → Setup → Shop workflow → Shop hours. */
+export interface ShopHoursDto {
+  /** Day close in shop time, 24-hour "HH:MM". */
+  cutoff: string;
+  /** ISO weekdays (Monday = 1 … Sunday = 7). */
+  workdays: number[];
+  timeZone: string;
+  updatedAt: string;
+  updatedBy: { id: string; name: string } | null;
 }
 
 export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
@@ -375,6 +411,10 @@ export interface AdminWorkOrderJobDto {
   completionNotes: string | null;
   /** LTR-146: when the PM job was started. */
   startedAt?: string | null;
+  /** LTR-188 / D23: the Job this one helps (a helper Job); the web appends "· helper". */
+  helperOfJobId?: string | null;
+  /** LTR-188 / D24: set while the Job is at an external shop. */
+  external?: JobExternalDto | null;
 }
 
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
@@ -410,6 +450,8 @@ export interface AdminTimeSegmentDto {
   durationMs: number | null;
   /** LTR-184 / D18: whose clock this is. Null on sessions from before per-mechanic labor. */
   mechanic?: { id: string; name: string } | null;
+  /** LTR-186: the app closed it at the day close (D20) or when the mechanic switched Truck (D21). */
+  endReason?: `${WorkSessionEndReason}` | null;
 }
 
 export interface AdminRepairHistoryDto {
@@ -513,6 +555,8 @@ export interface YardOperationsTruckDto {
   shopWorkRemainingCount?: number;
   /** LTR-159: the one Next step rule (same as Truck Detail, Dashboard and Work Order). */
   nextStep?: TruckNextStepDto | null;
+  /** LTR-188 / D24: a pending Job of the truck's Work Order sent the whole truck to an external shop. */
+  outOfShop?: boolean;
 }
 
 export interface YardOperationsCountsDto {
@@ -571,6 +615,10 @@ export interface WorkPlanJobDto {
   lane: WorkPlanJobLane;
   /** LTR-154 / D11: the Job's owner on the Truck Work Plan (null = unassigned). */
   assignedMechanic?: { id: string; name: string } | null;
+  /** LTR-188 / D23: the Job this one helps (a helper Job). */
+  helperOfJobId?: string | null;
+  /** LTR-188 / D24: set while the Job is at an external shop (uiStatus `external`). */
+  external?: JobExternalDto | null;
 }
 
 export interface WorkPlanMandatoryPhaseDto {

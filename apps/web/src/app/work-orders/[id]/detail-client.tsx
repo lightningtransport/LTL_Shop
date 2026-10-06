@@ -21,8 +21,10 @@ import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { useShopLocale } from '@/lib/locale-context';
+import { clockStoppedLine } from '@/lib/clock-stopped';
 import { formatShopDateTime, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
+import { jobDisplayName } from '@/lib/job-display-name';
 import { isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel, splitMyJobs } from '@/lib/job-assignment';
 import { useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
@@ -233,6 +235,13 @@ export default function WorkOrderDetailPage() {
       ) : waitingOnManager ? (
         <p className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status">
           {messages.waitingOnManagerBody}
+        </p>
+      ) : null}
+
+      {!wo.resolvedBlocker && needsStart && clockStoppedLine(wo.myClockStopped, messages) ? (
+        // LTR-186 / D20, D21: the day close or a Truck switch stopped my clock here; Continue below.
+        <p className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm font-medium" role="status" data-testid="clock-stopped">
+          {clockStoppedLine(wo.myClockStopped, messages)}
         </p>
       ) : null}
 
@@ -454,7 +463,7 @@ export default function WorkOrderDetailPage() {
               >
                 <span className="mt-0.5">✓</span>
                 <span className="min-w-0">
-                  <span className="block">{job.displayName}</span>
+                  <span className="block">{jobDisplayName(job, messages.helperJobSuffix)}</span>
                   <span className="block text-xs text-muted-foreground">{job.category.name}</span>
                   <span className="block text-xs text-muted-foreground">
                     {jobPersonLabel(job, user?.id ?? '', messages)}
@@ -651,10 +660,11 @@ function JobTodoCard({ job, currentUserId }: { job: WorkOrderJobDto; currentUser
         ○
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block break-words">{job.displayName}</span>
+        <span className="block break-words">{jobDisplayName(job, messages.helperJobSuffix)}</span>
         <span className="block text-xs text-muted-foreground">{job.category.name}</span>
         <span className="block text-xs text-muted-foreground">
-          {[
+          {/* LTR-188 / D24: a Job at an external shop has no owner here; it only says where it is. */}
+          {job.external ? messages.jobAtExternalShop : [
             jobAssignmentLabel(job.assignedMechanic, currentUserId, messages),
             job.activeBlocker
               ? messages.blockedWithReason(pauseLabel(job.activeBlocker.reason, messages.pauseReason) ?? '')
@@ -664,5 +674,5 @@ function JobTodoCard({ job, currentUserId }: { job: WorkOrderJobDto; currentUser
       </span>
     </>
   );
-  return <div className="card flex items-start gap-3 text-left" data-testid="job-read-only">{content}</div>;
+  return <div className="card flex items-start gap-3 text-left" data-testid="job-read-only" data-external={job.external ? job.external.kind : undefined}>{content}</div>;
 }

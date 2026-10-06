@@ -12,6 +12,8 @@ import {
   isPmCategory,
   isQualityCheckJob,
   jobWorkStatus,
+  type JobExternalDto,
+  type JobExternalKind,
   type WorkPlanJobDto,
   type WorkPlanMandatoryPhaseDto,
 } from '@ltl-shop/shared';
@@ -28,7 +30,29 @@ export type WorkPlanDerivationJob = {
   startedAt?: Date | null;
   /** LTR-155 / D17: the Job has an unresolved mechanic blocker. */
   blocked?: boolean;
+  /** LTR-188 / D23: the Job this one helps. */
+  helperOfJobId?: string | null;
+  /** LTR-188 / D24: the Job is at an external shop while `externalSince` is set. */
+  externalSince?: Date | null;
+  externalKind?: string | null;
+  externalNote?: string | null;
 };
+
+/** LTR-188 / D24: the Job's external-shop state as the DTOs carry it (null when it is in the shop). */
+export function toJobExternalDto(job: {
+  status?: string;
+  externalSince?: Date | null;
+  externalKind?: string | null;
+  externalNote?: string | null;
+}): JobExternalDto | null {
+  if (!job.externalSince || !job.externalKind) return null;
+  if (job.status !== undefined && job.status !== JobStatus.TO_DO) return null;
+  return {
+    kind: job.externalKind as JobExternalKind,
+    note: job.externalNote ?? '',
+    since: job.externalSince.toISOString(),
+  };
+}
 
 export type WorkPlanDerivationWorkOrder = {
   id: string;
@@ -134,6 +158,7 @@ export function toWorkPlanJobDto(
         blocked: job.blocked,
       }, sessions)]
     : toWorkPlanJobUiStatus(job.status, workOrderStatus);
+  const external = toJobExternalDto(job);
   return {
     id: job.id,
     catalogJobId: job.catalogJobId,
@@ -141,9 +166,12 @@ export function toWorkPlanJobDto(
     customDescription: job.customDescription,
     category: job.category,
     status: job.status as JobStatus,
-    uiStatus,
+    // LTR-188 / D24: a Job at an external shop reads "At external shop", not Pending.
+    uiStatus: external ? WorkPlanJobUiStatus.EXTERNAL : uiStatus,
     lane: classifyWorkPlanLane(job.category.name, job.displayName),
     ...(job.assignedMechanic !== undefined ? { assignedMechanic: job.assignedMechanic } : {}),
+    helperOfJobId: job.helperOfJobId ?? null,
+    external,
   };
 }
 

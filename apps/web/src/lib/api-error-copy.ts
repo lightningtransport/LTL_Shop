@@ -19,8 +19,16 @@ export type ApiErrorCode =
   | 'CATALOG_ALIAS_EXISTS'
   | 'CATALOG_JOB_EXISTS'
   | 'DUPLICATE_STEP'
+  | 'EXTERNAL_ALREADY'
+  | 'EXTERNAL_NOT_ALLOWED_HERE'
+  | 'HELPER_ALREADY_ADDED'
+  | 'HELPER_INVALID_MECHANIC'
+  | 'HELPER_JOB_NOT_OPEN'
+  | 'HELPER_NOT_ALLOWED_HERE'
   | 'IDEMPOTENCY_KEY_REUSE'
+  | 'JOB_AT_EXTERNAL_SHOP'
   | 'JOB_BLOCKED'
+  | 'JOB_NOT_EXTERNAL'
   | 'JOB_NOT_ASSIGNED_TO_YOU'
   | 'JOB_NOT_PENDING'
   | 'LABOR_ALREADY_RUNNING'
@@ -46,6 +54,7 @@ export type ApiErrorCode =
   | 'QC_TAKEN'
   | 'RESUME_REQUIRED'
   | 'START_REQUIRED'
+  | 'SHOP_HOURS_INVALID'
   | 'STEP_HAS_NO_OWNER'
   | 'UNKNOWN_STEP'
   | 'VERSION_CONFLICT'
@@ -74,8 +83,16 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     CATALOG_ALIAS_EXISTS: 'That alias is already used by another catalog Job.',
     CATALOG_JOB_EXISTS: 'That Job name is already in the Job Catalog.',
     DUPLICATE_STEP: 'This Work Order already has that step.',
+    EXTERNAL_ALREADY: 'This Job is already at an external shop.',
+    EXTERNAL_NOT_ALLOWED_HERE: 'The Quality Check cannot go to an external shop.',
+    HELPER_ALREADY_ADDED: 'This mechanic is already helping on this Job.',
+    HELPER_INVALID_MECHANIC: 'Choose an active Standard mechanic who does not own this Job.',
+    HELPER_JOB_NOT_OPEN: 'A helper can only be added to a pending Job of an open Work Order.',
+    HELPER_NOT_ALLOWED_HERE: 'This Job cannot have a helper (PM, Quality Check or a helper Job).',
     IDEMPOTENCY_KEY_REUSE: 'This request was already sent. Reload to see the result.',
+    JOB_AT_EXTERNAL_SHOP: 'This Job is at an external shop. Use Returned first.',
     JOB_BLOCKED: 'This Job has an active blocker. The Manager resolves it first.',
+    JOB_NOT_EXTERNAL: 'This Job is not at an external shop.',
     JOB_NOT_ASSIGNED_TO_YOU: 'This Job is not assigned to you.',
     JOB_NOT_PENDING: 'This Job is no longer pending.',
     LABOR_ALREADY_RUNNING: 'Your labor time is already running.',
@@ -101,6 +118,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     QC_TAKEN: 'Another Safety reviewer already took this truck.',
     RESUME_REQUIRED: 'Press Continue before completing Jobs.',
     START_REQUIRED: 'Press Start Work before completing Jobs.',
+    SHOP_HOURS_INVALID: 'Choose a day close between 12:00 p.m. and 11:59 p.m. and at least one workday.',
     STEP_HAS_NO_OWNER: 'This step has no owner yet. Assign it first.',
     UNKNOWN_STEP: 'That step is not part of the Shop workflow.',
     VERSION_CONFLICT: 'This Work Order changed in another session. Reload before trying again.',
@@ -126,8 +144,16 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     CATALOG_ALIAS_EXISTS: 'Ese alias ya lo usa otro Job del catálogo.',
     CATALOG_JOB_EXISTS: 'Ese nombre de Job ya está en el Job Catalog.',
     DUPLICATE_STEP: 'Este Work Order ya tiene ese paso.',
+    EXTERNAL_ALREADY: 'Este Job ya está en un taller externo.',
+    EXTERNAL_NOT_ALLOWED_HERE: 'El Quality Check no puede ir a un taller externo.',
+    HELPER_ALREADY_ADDED: 'Este mecánico ya es ayudante en este Job.',
+    HELPER_INVALID_MECHANIC: 'Elige un mecánico Standard activo que no sea el dueño de este Job.',
+    HELPER_JOB_NOT_OPEN: 'Solo se agrega un ayudante a un Job pendiente de un Work Order abierto.',
+    HELPER_NOT_ALLOWED_HERE: 'Este Job no admite ayudante (PM, Quality Check o Job de ayudante).',
     IDEMPOTENCY_KEY_REUSE: 'Esta solicitud ya se envió. Recarga para ver el resultado.',
+    JOB_AT_EXTERNAL_SHOP: 'Este Job está en un taller externo. Primero usa "Regresó".',
     JOB_BLOCKED: 'Este Job tiene un bloqueo activo. El Manager lo resuelve primero.',
+    JOB_NOT_EXTERNAL: 'Este Job no está en un taller externo.',
     JOB_NOT_ASSIGNED_TO_YOU: 'Este Job no está asignado a ti.',
     JOB_NOT_PENDING: 'Este Job ya no está pendiente.',
     LABOR_ALREADY_RUNNING: 'Tu tiempo de labor ya está corriendo.',
@@ -153,6 +179,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     QC_TAKEN: 'Otro revisor de Safety ya tomó esta unidad.',
     RESUME_REQUIRED: 'Pulsa Continuar antes de completar Jobs.',
     START_REQUIRED: 'Pulsa Iniciar trabajo antes de completar Jobs.',
+    SHOP_HOURS_INVALID: 'Elige un cierre del día entre las 12:00 p. m. y las 11:59 p. m. y al menos un día hábil.',
     STEP_HAS_NO_OWNER: 'Este paso aún no tiene responsable. Asígnalo primero.',
     UNKNOWN_STEP: 'Ese paso no es parte del flujo del Shop.',
     VERSION_CONFLICT: 'Este Work Order cambió en otra sesión. Recarga antes de intentarlo de nuevo.',
