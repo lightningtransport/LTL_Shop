@@ -31,7 +31,7 @@ test.describe('V2-002 TARGET ownership cutover', () => {
 
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000106', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'T-106' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('button', { name: 'Pause Work Order' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
     // D6 / LTR-150: work is added from the Truck Work Plan (covered by admin-truck-work-plan.spec.ts).
     await expect(page.getByRole('button', { name: 'Add job +' })).toHaveCount(0);
     const addWork = page.getByRole('link', { name: 'Add work in the Work Plan' });

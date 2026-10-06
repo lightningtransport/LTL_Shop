@@ -107,9 +107,9 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByTestId('dashboard-group-close')).toContainText('All Jobs are done. Close the Work Order to make the Truck Ready to Go.');
     await page.getByRole('link', { name: 'WO-0102' }).first().click();
     await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
-    const completeHeading = page.getByRole('heading', { name: 'Complete Work Order' });
-    // Stage 5 (R1): no Operational summary; the Jobs come right after the complete card.
-    const summaryHeading = page.getByRole('heading', { name: /^Jobs \(/ });
+    // Stage 8 (mockup): Confirm completion lives in the Next step callout; the Jobs card comes after it.
+    const completeHeading = page.getByTestId('admin-wo-next-step');
+    const summaryHeading = page.getByRole('heading', { name: /^Jobs/ });
     await expect(completeHeading).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm completion' })).toHaveCount(1);
     // LTR-168: the fixed bar only appears once the inline card scrolls away.
@@ -217,20 +217,17 @@ test.describe('Shop Admin Phase 2A', () => {
     // Stage 5 (R1): one Truck card with its data, not a folded "Truck details" repeating it.
     await expect(page.getByRole('heading', { name: 'Truck details' })).toHaveCount(0);
     await expect(page.getByTestId('admin-wo-truck-card').getByText('120,000')).toBeVisible();
-    await page.getByRole('heading', { name: 'Recent repair history' }).click();
     await expect(page.getByText('WO-0104').first()).toBeVisible();
-    // LTR-109 / Stage 5 (R4): "History and audit" is folded and has tabs: Activity, Times, Pauses.
-    await expect(page.getByRole('tab', { name: 'Activity' })).toBeHidden();
-    await page.getByTestId('admin-wo-history').locator('summary').click();
-    await expect(page.getByRole('tab', { name: 'Activity' })).toHaveAttribute('aria-selected', 'true');
+    // Stage 8 (mockup): History is always open, with its tabs in the header: Activity, Times, Pauses.
+    await expect(page.getByRole('tab', { name: /^Activity/ })).toHaveAttribute('aria-selected', 'true');
     // LTR-126: notes are append-only entries with author and time.
-    await expect(page.getByRole('heading', { name: 'Notes', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Notes/ })).toBeVisible();
     // Stage 5: the composer is always under the thread and posts with "Post".
     await page.getByRole('textbox', { name: 'Add note' }).fill('Check the leak again');
     await page.getByRole('button', { name: 'Post' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Note added.' }).first()).toBeVisible();
     await expect(page.getByText('Check the leak again')).toBeVisible();
-    await expect(page.getByText(/Shop Manager · /).first()).toBeVisible();
+    await expect(page.locator('[aria-labelledby="admin-wo-notes-title"]').getByText('Shop Manager', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Add note' })).toHaveValue('');
     // LTR-154 / D11: no Work Order team editor; each Job has its own owner.
     await expect(page.getByRole('heading', { name: 'Assignments' })).toHaveCount(0);
@@ -240,8 +237,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByLabel('Reason for this Job change').fill('Not needed');
     await page.getByRole('button', { name: 'Confirm job cancellation' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Job cancelled.' }).first()).toBeVisible();
-    // A cancelled Job goes to the folded "Done and cancelled" group.
-    await page.getByTestId('admin-wo-closed-jobs-toggle').click();
+    // A cancelled Job goes to the "Done and cancelled" group (open by default, Stage 8).
+    await expect(page.getByTestId('admin-wo-closed-jobs-toggle')).toHaveAttribute('aria-expanded', 'true');
     await page.getByRole('button', { name: 'Actions for Inspect brake chamber' }).click();
     await page.getByRole('menuitem', { name: 'Reopen Job…' }).click();
     await page.getByLabel('Reason for this Job change').fill('Job is still required');
@@ -258,7 +255,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: 'Confirm cancellation' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order cancelled.' }).first()).toBeVisible();
     await expect(page.getByText('Cancelled').first()).toBeVisible();
-    await page.getByRole('link', { name: 'Back to Work Orders' }).click();
+    await page.getByTestId('admin-breadcrumb').getByRole('link', { name: 'Work Orders' }).click();
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
     await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.').first()).toBeVisible();
@@ -268,7 +265,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('menuitem', { name: 'Correct time…' }).click();
     await expect(page.getByRole('tab', { name: 'Times' })).toHaveAttribute('aria-selected', 'true');
     // LTR-186 / D20: a segment the day close stopped says so next to its end time.
-    await expect(page.getByTestId('labor-end-reason').first()).toHaveText('day close');
+    await expect(page.getByTestId('labor-end-reason').first()).toHaveText('Day close');
     await page.getByTestId('time-segment').getByRole('button', { name: /^Correct / }).first().click();
     await page.getByLabel('Corrected end time').fill('2026-09-06T17:00');
     await page.getByLabel('Reason for time correction').fill('Clock was wrong');
@@ -278,9 +275,8 @@ test.describe('Shop Admin Phase 2A', () => {
     // Owner decision (2026-10-05): closing confirms in a dialog.
     await page.getByTestId('close-work-order-dialog').getByRole('button', { name: 'Close Work Order' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order completed.' }).first()).toBeVisible();
-    // Return to Service from the "…" menu (the fixture sends no Next step, so the step box has no button here).
-    await page.getByTestId('admin-wo-more-actions').click();
-    await page.getByRole('menuitem', { name: 'Return to Service' }).click();
+    // Stage 8 (mockup): Return to Service is the completed Work Order's Next step, not in the "…".
+    await page.getByTestId('admin-wo-next-step').getByRole('button', { name: 'Return to Service' }).click();
     await page.getByLabel('Reason (optional)').fill('Repairs verified');
     await page.getByRole('button', { name: 'Confirm Return to Service' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Truck returned to service.' }).first()).toBeVisible();
@@ -606,13 +602,13 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000102');
     await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
     const nextAction = page.getByTestId('admin-wo-next-action');
-    // LTR-168: Confirm completion is on screen once: the inline card at the top, the fixed bar after scrolling.
-    await expect(page.getByRole('heading', { name: 'Complete Work Order' })).toBeInViewport();
+    // LTR-168: Confirm completion is on screen once: the Next step callout at the top, the fixed bar after scrolling.
+    const callout = page.getByTestId('admin-wo-next-step');
+    await expect(callout).toBeInViewport();
     await expect(nextAction).toHaveCount(0);
 
-    await page.getByTestId('admin-wo-history').locator('summary').click();
-    await page.getByRole('tab', { name: 'Pauses' }).scrollIntoViewIfNeeded();
-    await expect(page.getByRole('heading', { name: 'Complete Work Order' })).not.toBeInViewport();
+    await page.getByRole('tab', { name: /^Pauses/ }).scrollIntoViewIfNeeded();
+    await expect(callout).not.toBeInViewport();
     const stickyButton = nextAction.getByRole('button', { name: 'Confirm completion' });
     await expect(nextAction).toBeInViewport();
     await expect(stickyButton).toBeInViewport();
@@ -624,9 +620,9 @@ test.describe('Shop Admin Phase 2A', () => {
         const box = button.getBoundingClientRect();
         return box.bottom > 0 && box.top < window.innerHeight;
       }).length)).toBe(1);
-    // Pause is a header button now (no Controls card); the completion card still sits above the Jobs.
-    const jobsBox = await page.getByRole('heading', { name: /^Jobs \(/ }).boundingBox();
-    const completeCardBox = await page.getByRole('heading', { name: 'Complete Work Order' }).boundingBox();
+    // Pause is a header button now (no Controls card); the callout still sits above the Jobs.
+    const jobsBox = await page.getByRole('heading', { name: /^Jobs/ }).boundingBox();
+    const completeCardBox = await callout.boundingBox();
     expect(completeCardBox && jobsBox && completeCardBox.y < jobsBox.y).toBe(true);
 
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
@@ -671,10 +667,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await sendDialog.getByRole('button', { name: 'Confirm' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Sent to the external shop.' }).first()).toBeVisible();
     const firstRow = page.getByTestId('admin-wo-job-row').first();
-    await expect(firstRow.getByTestId('admin-wo-job-external-where')).toHaveText('At external shop · truck');
+    await expect(firstRow.getByTestId('admin-wo-job-external-where')).toHaveText('Truck out · Body shop on 5th, back Monday');
     await expect(firstRow.getByTestId('admin-wo-job-external-where')).toHaveAttribute('title', 'Body shop on 5th, back Monday');
     await expect(firstRow.getByTestId('admin-wo-job-external').first()).toBeVisible();
-    await expect(firstRow.getByRole('button', { name: 'Mark complete' })).toHaveCount(0);
+    await expect(firstRow.getByRole('button', { name: /^Mark complete/ })).toHaveCount(0);
 
     // Returned → Assign to a mechanic.
     await firstRow.getByTestId('admin-wo-job-returned').click();

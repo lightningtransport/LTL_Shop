@@ -29,7 +29,8 @@ test.describe('Stage 4 Truck ↔ Work Order', () => {
     await devLogin(page, 'manager@lightning.local');
     const truckPath = '/admin/trucks/00000000-0000-4000-8001-000000000102';
     await page.goto(`/admin/work-orders/00000000-0000-4000-8000-000000000102?from=${encodeURIComponent(truckPath)}#job-00000000-0000-4000-8000-000000000502`);
-    await expect(page.getByRole('link', { name: 'Back to Truck T-102' })).toHaveAttribute('href', truckPath);
+    // Stage 8 (mockup): the breadcrumb goes back to the Truck ("Trucks › T-102 › WO-0102").
+    await expect(page.getByTestId('admin-breadcrumb').getByRole('link', { name: 'T-102' })).toHaveAttribute('href', truckPath);
     const row = page.locator('#job-00000000-0000-4000-8000-000000000502');
     await expect(row).toBeInViewport();
     await expect(row).toHaveAttribute('data-highlighted', 'true');

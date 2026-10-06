@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ChevronRight, ClipboardList, Gauge, History, Library, ListChecks, Menu, Truck, UsersRound, Warehouse } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardList, Gauge, History, Library, ListChecks, Menu, Truck, UsersRound, Warehouse } from 'lucide-react';
 import { AdminNavLink } from './admin-nav-link';
 import { AdminBreadcrumbProvider, useAdminCrumbs, type Crumb } from './admin-breadcrumb';
 import { AppHeaderActions, Button, Modal } from './ui';
@@ -141,8 +141,12 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
                 <nav aria-label={messages.breadcrumbLabel} className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-muted-foreground" data-testid="admin-breadcrumb">
                   {crumbs.map((crumb, index) => {
                     const last = index === crumbs.length - 1;
+                    // Phones: only the parent, as a back link ("‹ T-102"); a single crumb stays as it is.
+                    const parent = index === crumbs.length - 2;
+                    const phoneHidden = crumbs.length > 1 ? !parent : false;
                     return (
-                      <span key={`${crumb.label}-${index}`} className={`flex min-w-0 items-center gap-1.5 ${last ? '' : 'max-sm:hidden'}`}>
+                      <span key={`${crumb.label}-${index}`} className={`flex min-w-0 items-center gap-1.5 ${phoneHidden ? 'max-sm:hidden' : ''}`}>
+                        {parent ? <ChevronLeft aria-hidden="true" className="size-4 shrink-0 sm:hidden" /> : null}
                         {index > 0 ? <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 max-sm:hidden" /> : null}
                         {crumb.href && !last ? (
                           <AdminNavLink href={crumb.href} className="tap-inline truncate hover:text-foreground">{crumb.label}</AdminNavLink>
