@@ -176,7 +176,7 @@ Confirmado en el recorrido: U9 (Nuevo Work Order dice "Unidad"). El defecto #5
 bien en el Admin ("Mechanic note: Batería nueva instalada.") y en el detalle
 del mecánico; queda cerrado.
 
-## 1e. Work Order Detail (Admin): rediseño propuesto (2026-10-05) — **ESPERA**
+## 1e. Work Order Detail (Admin): rediseño propuesto (2026-10-05) — **ESPERA** · Linear [LTR-190](https://linear.app/ltransl/issue/LTR-190)
 
 Revisión de la pantalla en producción (WO-010). Ningún flujo se atora: son
 **C** y **E**. La propuesta completa (maqueta navegable, qué hace cada
@@ -197,7 +197,7 @@ Se retoma cuando el dueño responda sus decisiones (§5 de la propuesta).
 | ~~R9~~ | E | ~~Las clases con transparencia sobre colores del tema no generan CSS~~ — **hecho** (2026-10-06, Etapa 7): `tailwind.config.js` define cada color del tema con `color-mix(in oklch, var(--x) calc(<alpha-value> * 100%), transparent)`; `bg-primary/10` es 10 % y `bg-primary` sigue siendo el color completo. Aparecen los fondos y bordes que el código ya pedía (p. ej. `InlineAlert` en rojo). También: avatares a 12 px con contraste ≥ 4.5 y filtros rápidos del Yard a 44 px | `tailwind.config.js`, `globals.css` |
 | ~~R10~~ | E | ~~Prueba e2e inestable: en la suite completa, `admin-system-admin-writes` "manager adds a Safety person…" a veces recibe "Enter a valid email." en el segundo "Add person". **Causa:** `Modal` pone el foco en el primer campo en un `requestAnimationFrame`; si alguien (o la prueba) ya empezó a escribir en otro campo, ese foco tardío se lo quita y el texto cae en Name, con Email vacío. Con la máquina cargada pasa en la prueba; con una persona rápida, en la app. La primera vez la prueba espera el foco; la segunda no~~ — **hecho** (2026-10-06): el foco tardío solo se mueve si el foco sigue fuera del diálogo (`shouldTakeInitialFocus`); la prueba espera el foco antes de escribir y una prueba nueva fuerza la carrera (falla sin el arreglo). Suite completa 114/114 | `ui.tsx` (`Modal`), `lib/modal-initial-focus.ts`, `e2e/admin-system-admin-writes.spec.ts` |
 
-## 1f. Truck Detail (Admin) y reparto Truck ↔ Work Order (2026-10-05) — **EN CURSO** (Etapa 4 hecha el 2026-10-06)
+## 1f. Truck Detail (Admin) y reparto Truck ↔ Work Order (2026-10-05) — **EN CURSO** (Etapa 4 hecha el 2026-10-06) · Linear [LTR-190](https://linear.app/ltransl/issue/LTR-190)
 
 Auditoría en [`ux-audit/admin-truck-wo/`](ux-audit/admin-truck-wo/05-navegacion-ia.md) y
 propuesta con maqueta en [`proposals/truck-detail-redesign/`](proposals/truck-detail-redesign/README.md).
@@ -217,7 +217,7 @@ step actúa donde estás. Se retoma con las decisiones de §6 de esa propuesta.
 | ~~T9~~ | E | ~~Pasos y Jobs con el mismo estilo y 12 badges; "Issues found" registrado como botón primario; textarea de Return to Service siempre abierto~~ — **hecho** (2026-10-06, Etapas 1 y 4): un chip de estado, stepper de pasos, cada paso con icono y resumen (los terminados plegados), Jobs con punto de estado; la inspección registrada es texto con "Change" | `admin-truck-detail.tsx`, `admin-truck-work-plan.tsx`, `truck-stepper.tsx` |
 | T10 | E | ~~Éxito dos veces (banner + toast); h3 sin h2; Repair history sin paginar~~ — **hecho** (2026-10-06, Etapa 4): solo toast, error en línea bajo el encabezado con "Reload Truck", títulos h2, Repair history con "Load more". **Sigue:** tarjeta dentro de tarjeta en `CategoryJobList` (dentro del panel Add work) | `category-job-list.tsx` |
 
-## 1g. Dashboard y Yard Operations (Admin) (2026-10-05) — **EN CURSO** (Etapas 1, 3 y 6 hechas el 2026-10-06)
+## 1g. Dashboard y Yard Operations (Admin) (2026-10-05) — **EN CURSO** (Etapas 1, 3 y 6 hechas el 2026-10-06) · Linear [LTR-190](https://linear.app/ltransl/issue/LTR-190)
 
 Auditoría en [`ux-audit/admin-dashboard-yard/`](ux-audit/admin-dashboard-yard/05-navegacion-ia.md)
 y propuesta con maqueta en [`proposals/dashboard-yard-redesign/`](proposals/dashboard-yard-redesign/README.md).
