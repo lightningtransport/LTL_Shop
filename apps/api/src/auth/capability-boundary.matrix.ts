@@ -3,7 +3,7 @@ import { AdminController } from '../admin/admin.controller';
 import { WorkOrdersController } from '../work-orders/work-orders.controller';
 import { CAPABILITIES_KEY } from './capabilities.decorator';
 
-export type CapabilityBoundaryKind = 'http_guard' | 'service' | 'system_admin_role' | 'roster_guard';
+export type CapabilityBoundaryKind = 'http_guard' | 'service' | 'manager_writes_guard';
 
 export type CapabilityBoundaryEntry = {
   method: string;
@@ -336,19 +336,19 @@ export const ALL_MUTATION_BOUNDARIES = [
 ];
 
 /**
- * D22 / LTR-187. Roster writes are gated by `RosterWritesGuard`: the Shop Manager
- * (`admin.access` + `work_orders.manage`, the Work Order write pair) or the System
- * Admin by role (`users.role === admin`, even with `admin.access` alone). They stay
- * out of `ADMIN_MUTATION_BOUNDARIES` because the role path is not a capability.
+ * D22 / LTR-187 (roster) and D25 (Job catalog). These writes are gated by `ManagerWritesGuard`:
+ * the Shop Manager (`admin.access` + `work_orders.manage`, the Work Order write pair) or the
+ * System Admin by role (`users.role === admin`, even with `admin.access` alone). They stay out
+ * of `ADMIN_MUTATION_BOUNDARIES` because the role path is not a capability. No category writes.
  */
-export const ROSTER_WRITES: CapabilityBoundaryEntry[] = [
+export const MANAGER_WRITES: CapabilityBoundaryEntry[] = [
   {
     method: 'POST',
     path: '/admin/mechanics',
     handler: 'createMechanic',
     controller: 'admin',
     expected: [ADMIN, WORK_ORDERS],
-    enforcement: 'roster_guard',
+    enforcement: 'manager_writes_guard',
     notes: 'D22. Manager or role admin. Creates Standard, PM or Safety plus the Supabase account (temporary password returned once).',
   },
   {
@@ -357,7 +357,7 @@ export const ROSTER_WRITES: CapabilityBoundaryEntry[] = [
     handler: 'updateMechanic',
     controller: 'admin',
     expected: [ADMIN, WORK_ORDERS],
-    enforcement: 'roster_guard',
+    enforcement: 'manager_writes_guard',
     notes: 'D22. Rename, switch type, deactivate (refused with open work: MECHANIC_HAS_OPEN_WORK) or reactivate. Does not edit manager or admin accounts.',
   },
   {
@@ -366,37 +366,26 @@ export const ROSTER_WRITES: CapabilityBoundaryEntry[] = [
     handler: 'resetMechanicPassword',
     controller: 'admin',
     expected: [ADMIN, WORK_ORDERS],
-    enforcement: 'roster_guard',
+    enforcement: 'manager_writes_guard',
     notes: 'D22. New temporary password, returned once; AUTH_ACCOUNT_MISSING without a Supabase account.',
   },
-];
-
-/**
- * LTR-77. Catalog writes are intentionally absent from
- * `ADMIN_MUTATION_BOUNDARIES`. That list treats `admin.access` as sufficient,
- * and Shop Manager already has it. The HTTP gate is `SystemAdminGuard`:
- * `users.role === admin`. Class-level `admin.access` still applies, so a
- * role-admin user without `admin.access` cannot call them either.
- * No new capability is added.
- */
-export const SYSTEM_ADMIN_ROLE_WRITES: CapabilityBoundaryEntry[] = [
   {
     method: 'POST',
     path: '/admin/catalog/jobs',
     handler: 'createCatalogJob',
     controller: 'admin',
-    expected: [ADMIN],
-    enforcement: 'system_admin_role',
-    notes: 'LTR-77. role === admin. Adds a job to an existing active category. No category create and no Custom Job review.',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'manager_writes_guard',
+    notes: 'D25 (was role admin only, LTR-77). Adds a Job to an existing active category; same name in the category → CATALOG_JOB_EXISTS + jobId. No category create.',
   },
   {
     method: 'PATCH',
     path: '/admin/catalog/jobs/:id',
     handler: 'updateCatalogJob',
     controller: 'admin',
-    expected: [ADMIN],
-    enforcement: 'system_admin_role',
-    notes: 'LTR-77. role === admin. Rename or activate/deactivate. Catalog job id is stable.',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'manager_writes_guard',
+    notes: 'D25. Rename or activate/deactivate. Catalog job id is stable.',
   },
 ];
 

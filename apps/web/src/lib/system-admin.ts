@@ -12,32 +12,17 @@ export function isSystemAdmin(user: Pick<UserDto, 'role'> | null | undefined): b
 }
 
 /**
- * Roster and catalog writes follow the Admin request role from middleware,
- * and the client profile when that has loaded. Either source must be
- * `role === admin`. `admin.access` is not a write grant.
- *
- * The client profile is null on the first paint and stays null when profile
- * restore fails, which left these screens on the read-only subtitle.
- */
-export function canShowAdminWrites(
-  sessionRole: string | null | undefined,
-  user: Pick<UserDto, 'role'> | null | undefined,
-): boolean {
-  return isSystemAdminRole(sessionRole) || isSystemAdmin(user);
-}
-
-/**
- * D22 / LTR-187: the roster (create, deactivate, reset password) belongs to the Shop Manager as
- * well as the System Admin. Mirrors the API's `RosterWritesGuard`: role admin, or the Work Order
+ * D22 / LTR-187 (roster) and D25 (Job catalog): these Admin writes belong to the Shop Manager as
+ * well as the System Admin. Mirrors the API's `ManagerWritesGuard`: role admin, or the Work Order
  * write pair (`admin.access` + `work_orders.manage`). The session role alone (before the profile
- * loads) opens it for manager and admin; a loaded profile decides by capabilities.
- * Catalog writes keep `canShowAdminWrites`.
+ * loads) opens it for manager and admin; a loaded profile decides by capabilities. Either source
+ * with `role === admin` opens it (the profile is null on the first paint and when restore fails).
  */
-export function canShowRosterWrites(
+export function canShowManagerWrites(
   sessionRole: string | null | undefined,
   user: Pick<UserDto, 'role' | 'capabilities'> | null | undefined,
 ): boolean {
-  if (canShowAdminWrites(sessionRole, user)) return true;
+  if (isSystemAdminRole(sessionRole) || isSystemAdmin(user)) return true;
   if (user) {
     return user.capabilities.includes(AppCapability.ADMIN_ACCESS)
       && user.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);

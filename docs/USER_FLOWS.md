@@ -106,7 +106,8 @@ hallazgos, cada Job extra queda en el plan con su dueño.
 | Agrega dos veces el mismo Job de catálogo | No deja repetir | ✅ | A24 |
 | Agrega un Job que no está en el catálogo (Custom) | Lo acepta y lo marca "pendiente de revisión" | ✅ | A24 |
 | …y repite el nombre (aunque cambie mayúsculas o espacios) | No deja repetir | ✅ | A24 |
-| Quiere revisar o mapear ese Custom Job | **No existe la función** | ❌ #3 · decisión P5 | A24 |
+| Quiere que ese Job quede en el catálogo | Al crearlo marca "Agregar también al catálogo": entra como Job de catálogo (D25) | ✅ | A36 |
+| Quiere revisar o mapear los Custom Jobs viejos | **Todavía no existe la bandeja** (va después, LTR-57) | ❌ #3 | A24 |
 | Se cancela la visita y se abre otra | El Work Order nuevo empieza con la inspección pendiente | ✅ | A15c |
 
 ### HU-M3 · Repartir el trabajo (J2)
@@ -421,10 +422,10 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 
 | Qué | Respuesta | Estado | Fila |
 |---|---|---|---|
-| Crear o editar Jobs de catálogo | El Manager y el System Admin, en Admin → Job Catalog (D25) | 🔲 | A36 |
-| Agrega un Job personalizado y marca "Agregar también al catálogo" | Entra al catálogo y al Work Order como Job de catálogo; la próxima vez se elige de la lista | 🔲 | A36 |
-| Un Job con el mismo nombre ya está en esa categoría | No deja duplicarlo; ofrece elegir el que existe | 🔲 | A36 |
-| Un mecánico o Safety intenta escribir el catálogo | No puede | 🔲 | A26 |
+| Crear o editar Jobs de catálogo | El Manager y el System Admin, en Admin → Job Catalog (D25) | ✅ | A36 |
+| Agrega un Job personalizado y marca "Agregar también al catálogo" | Entra al catálogo y al Work Order como Job de catálogo; la próxima vez se elige de la lista | ✅ | A36 |
+| Un Job con el mismo nombre ya está en esa categoría | No deja duplicarlo; ofrece elegir el que existe | ✅ | A36 |
+| Un mecánico o Safety intenta escribir el catálogo | No puede | ✅ | A26 |
 | Alta y baja de personal | El Manager y el System Admin (D22, HU-M9) | ✅ | A29–A31 |
 | Usuario inactivo, desconocido o sin sesión | No entra | ✅ | E4 |
 
@@ -541,7 +542,7 @@ una historia:
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
-| 3 | Custom Jobs viejos sin revisar — **decidido D25:** el Manager mantiene el catálogo (en construcción); la bandeja de revisión va después | Manager | E | LTR-57 | A36 |
+| 3 | Custom Jobs viejos sin revisar — **D25:** el Manager ya mantiene el catálogo y guarda Jobs nuevos en él (hecho, A36); la bandeja de revisión va después | Manager | E | LTR-57 | A24, A36 |
 
 **B** bloqueante · **C** confuso · **E** estético. Detalle técnico en
 [`OPEN_ISSUES.md`](OPEN_ISSUES.md).

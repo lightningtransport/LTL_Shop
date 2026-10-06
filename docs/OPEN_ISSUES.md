@@ -48,9 +48,9 @@ npm run test:real --workspace=@ltl-shop/api         # corre todo y escribe la ma
 ```
 
 **Resultado (al cierre de la Fase A):** 56 comprobaciones · 43 funcionan ·
-11 fallan · 2 no aplican. **Hoy:** 68 comprobaciones · **66 funcionan · 0 fallan** · 2 no aplican
+11 fallan · 2 no aplican. **Hoy:** 69 comprobaciones · **67 funcionan · 0 fallan** · 2 no aplican
 (defectos #1, #2, #4 y #7 arreglados: LTR-175, 176, 177, 182; Quality Check
-de Safety construido: LTR-185; personal del taller A29–A31: LTR-187; cierre del día y un reloj por mecánico A32, A33, E7: LTR-186; ayudante y taller externo A34, A35: LTR-188). Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
+de Safety construido: LTR-185; personal del taller A29–A31: LTR-187; cierre del día y un reloj por mecánico A32, A33, E7: LTR-186; ayudante y taller externo A34, A35: LTR-188; el Manager mantiene el catálogo A36: D25). Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
 fallas son 5 defectos:
 
 | Defecto | Filas que fallan | Clase | Ticket |
@@ -106,7 +106,7 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 
 | # | Problema | Qué pasa | Dónde |
 |---|---|---|---|
-| 3 | **Custom Jobs sin revisión** — **E (bajó de C), decidido D25 (2026-10-05)** | El Manager mantiene el catálogo y puede guardar un Job personalizado en el catálogo al crearlo (en construcción, fila A36). Los Custom Jobs viejos siguen en `pending_review` sin pantalla; la bandeja para revisarlos va después (LTR-57). | `work-orders.service.ts` (l. 367, 851), `admin.controller.ts` (catálogo) |
+| 3 | **Custom Jobs sin revisión** — **E (bajó de C), decidido D25 (2026-10-05)** | **Hecho (2026-10-05):** el Manager agrega y edita Jobs del catálogo (Admin → Job Catalog) y, en el Work Plan, puede marcar "Agregar también al catálogo" al crear un Job personalizado; un nombre repetido en la categoría no se acepta y se elige el que existe (fila A36; A26 sin 403 para el Manager). **Sigue:** los Custom Jobs viejos quedan en `pending_review` sin pantalla; la bandeja para revisarlos va después (LTR-57). | `work-orders.service.ts` (l. 367, 851), `admin.controller.ts` (catálogo) |
 | ~~5~~ | ~~"Mechanic note: undefined"~~ — cerrado | No se reproduce en el recorrido de pantallas del 2026-09-29 (§1d). | — |
 
 
@@ -274,8 +274,8 @@ usuarios reales sin un defecto B.
 - Presencia física en el patio (Samsara), McLeod, Dispatch, Schedule_Teams.
 - Off Duty (decidido: se lanza sin eso), sincronizar con Ninox (P4).
 - Trailers como activos: el taller los necesita; falta decidir cuándo (P11).
-- Pantallas para escribir catálogo, categorías y permisos (hoy solo por API
-  o nada). Alta de camiones y mecánicos **sí** entra: LTR-187.
+- Pantallas para escribir categorías y permisos. Alta de mecánicos **sí**
+  entra (LTR-187, D22) y los Jobs del catálogo también (D25); camiones después.
 - Rendimiento por Job, tiempos por Job, espera por motivo.
 - Espacios de trabajo de Detailing, Body Shop, Trailer e Inspector.
 - Notificaciones push (decidido: solo dentro de la app).

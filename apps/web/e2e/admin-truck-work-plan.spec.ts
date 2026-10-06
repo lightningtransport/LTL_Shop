@@ -322,6 +322,72 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByRole('list', { name: 'Jobs in this Work Order' }).getByText('Cab wash')).toBeVisible();
   });
 
+  test('Manager adds a custom Job also to the catalog: it goes on as a catalog Job; a name already there selects that one (D25)', async ({ page }) => {
+    const plan = emptyPlan();
+    plan.inspection.outcome = 'issues_found';
+    plan.workOrder = { id: '00000000-0000-4000-8000-00000000bbb1', displayId: 'WO-WP1', status: 'created', version: 3, primaryCategoryName: categories[0].name };
+    const bodies: AddJobsBody[] = [];
+    await mockWorkPlanApi(page, plan, bodies);
+    const created: typeof catalogJobs = [];
+    const catalogPosts: Array<{ categoryId: string; displayName: string }> = [];
+    // Registered after mockWorkPlanApi, so these win for the catalog list and the catalog write.
+    await page.route('**/api/catalog/jobs**', async (route) => {
+      const categoryId = new URL(route.request().url()).searchParams.get('categoryId');
+      return json(route, [...catalogJobs, ...created].filter((job) => !categoryId || job.categoryId === categoryId));
+    });
+    await page.route('**/api/admin/catalog/jobs', async (route) => {
+      const body = route.request().postDataJSON() as { categoryId: string; displayName: string };
+      catalogPosts.push(body);
+      const existing = [...catalogJobs, ...created].find((job) => (
+        job.categoryId === body.categoryId && job.displayName.toLowerCase() === body.displayName.trim().toLowerCase()
+      ));
+      if (existing) {
+        return json(route, { code: 'CATALOG_JOB_EXISTS', message: 'A catalog job with this name already exists in the category.', jobId: existing.id }, 409);
+      }
+      const job = { id: '00000000-0000-4000-8000-000000000901', categoryId: body.categoryId, displayName: body.displayName.trim(), aliases: [body.displayName.trim()] };
+      created.push(job);
+      return json(route, { ...job, status: 'active' });
+    });
+    await loginManager(page);
+    await page.goto(`/admin/trucks/${truckId}`);
+
+    await page.getByLabel('Job Category').selectOption({ label: 'Air & Brake System' });
+    const alsoCatalog = page.getByLabel('Also add to the catalog');
+    await expect(alsoCatalog).not.toBeChecked();
+
+    await page.getByLabel('Custom job name').fill('  Air dryer cartridge ');
+    await alsoCatalog.check();
+    await page.getByRole('button', { name: 'Add custom job' }).click();
+    await expect(page.getByLabel('Custom job name')).toHaveValue('');
+    await expect(alsoCatalog).not.toBeChecked();
+    // It is now a catalog Job: selected in the category list, which reloaded with it.
+    await expect(page.getByRole('button', { name: 'Add Air dryer cartridge' })).toHaveAttribute('aria-pressed', 'true');
+
+    await page.getByLabel('Custom job name').fill('brake inspection');
+    await alsoCatalog.check();
+    await page.getByRole('button', { name: 'Add custom job' }).click();
+    await expect(page.getByText('"Brake Inspection" is already in the catalog. We selected it from the list.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add Brake Inspection' })).toHaveAttribute('aria-pressed', 'true');
+
+    await page.getByLabel('Custom job name').fill('Mirror bracket');
+    await page.getByRole('button', { name: 'Add custom job' }).click();
+
+    await page.getByRole('button', { name: 'Add to Work Plan' }).click();
+    await expect(page.getByText('Work Plan updated.').first()).toBeVisible();
+    expect(catalogPosts).toEqual([
+      { categoryId: categories[0].id, displayName: 'Air dryer cartridge' },
+      { categoryId: categories[0].id, displayName: 'brake inspection' },
+    ]);
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0].jobs).toEqual([
+      expect.objectContaining({ catalogJobId: '00000000-0000-4000-8000-000000000901', displayName: 'Air dryer cartridge' }),
+      expect.objectContaining({ catalogJobId: catalogJobs[0].id, displayName: 'Brake Inspection' }),
+      expect.objectContaining({ displayName: 'Mirror bracket', customDescription: 'Mirror bracket' }),
+    ]);
+    expect(bodies[0].jobs[0]).not.toHaveProperty('customDescription');
+    expect(bodies[0].jobs[2]).not.toHaveProperty('catalogJobId');
+  });
+
   test('Manager sets the owner of a Job from the Work Plan (LTR-154 / D11)', async ({ page }) => {
     await mockWorkPlanApi(page, emptyPlan());
     await loginManager(page);

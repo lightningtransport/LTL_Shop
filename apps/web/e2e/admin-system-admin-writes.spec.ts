@@ -7,7 +7,7 @@ async function loginToAdmin(page: Page, email: string) {
   await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
 }
 
-test('manager manages the roster (D22) but stays read-only on the Job Catalog', async ({ page }) => {
+test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page }) => {
   await loginToAdmin(page, 'manager@lightning.local');
 
   await page.goto('/admin/mechanics');
@@ -24,13 +24,24 @@ test('manager manages the roster (D22) but stays read-only on the Job Catalog', 
 
   await page.goto('/admin/catalog');
   await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
-  await expect(page.getByText('Read-only Categories, Jobs, and aliases')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add Job' })).toHaveCount(0);
+  await expect(page.getByText('Read-only Categories, Jobs, and aliases')).toHaveCount(0);
+  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
+  await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
+  // Categories do not change (D25).
   await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);
   await page.getByRole('link', { name: 'Brakes' }).click();
   await expect(page.getByRole('heading', { name: 'Brakes' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add Job' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Rename Job' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Rename Job' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Add Job' }).first().click();
+  const jobDialog = page.getByRole('dialog');
+  await expect(jobDialog.getByLabel('Job name')).toBeFocused();
+  await jobDialog.getByLabel('Job name').fill('replace BRAKE pads');
+  await jobDialog.getByRole('button', { name: 'Add Job' }).click();
+  await expect(jobDialog.getByText('That Job name is already in the Job Catalog.')).toBeVisible();
+  await jobDialog.getByLabel('Job name').fill('Adjust slack adjusters');
+  await jobDialog.getByRole('button', { name: 'Add Job' }).click();
+  await expect(page.getByText('Job added.')).toBeVisible();
+  await expect(page.getByText('Adjust slack adjusters', { exact: true })).toBeVisible();
 });
 
 test('manager adds a Safety person and gets the temporary password once (D22, HU-M9)', async ({ page }) => {
@@ -125,7 +136,7 @@ test('system admin with only admin.access sees catalog and roster writes', async
   await page.goto('/admin/catalog');
   await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
   await expect(page.getByText('Read-only Categories, Jobs, and aliases')).toHaveCount(0);
-  await expect(page.getByTestId('pd-light-tip')).toContainText('System Admin only');
+  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);
 
@@ -147,7 +158,7 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await loginToAdmin(page, 'admin@lightning.local');
 
   await page.goto('/admin/catalog');
-  await expect(page.getByTestId('pd-light-tip')).toContainText('System Admin only');
+  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
   await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Add Job' }).click();
   const jobDialog = page.getByRole('dialog');
