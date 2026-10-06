@@ -224,9 +224,9 @@ sitio) y el Yard "¿dónde está cada camión?". Se retoma con las decisiones de
 
 | # | Clase | Problema | Dónde |
 |---|---|---|---|
-| D1 | C | "Needs attention" lista las WOs abiertas > 24 h y deja fuera los Ready to Go; máximo 8, "View all" sin filtro (UX-5-002, UX-5-007) | `admin.service.ts` (lista de atención), `admin-dashboard.tsx` |
+| ~~D1~~ | C | ~~"Needs attention" lista las WOs abiertas > 24 h, deja fuera los Ready to Go, máximo 8~~ — **hecho** (2026-10-06, Etapa 3): el Dashboard es una cola "Needs you" con todo lo que espera al Manager (API `queue`: WOs abiertas + Truck Ready to Go), agrupada por acción y sin corte; cada fila actúa ahí (D26). "View all" se reemplazó por los enlaces de historia | `admin.service.ts` (`getDashboardQueue`), `admin-dashboard.tsx`, `lib/dashboard-queue.ts` |
 | ~~D2~~ | C | ~~Los botones del Next step del Dashboard llevan al Truck; en solo lectura "Resolve" es un callejón sin salida~~ — Etapa 1 (sin permiso no hay botón) y **hecho** (2026-10-06, Etapa 2): el mismo `NextStepAction` actúa en el Dashboard y en la lista de Work Orders | `admin-work-order-item.tsx`, `next-step-action.tsx` |
-| D3 | C | Métricas: 7 iguales al título, "Ready to Go" sin filtro; "Waiting / Paused" y "paused (blocked)" cuentan cosas distintas (UX-5-003, UX-4-001) | `admin-dashboard.tsx`, `admin-yard-operations.tsx` |
+| D3 | C | ~~Métricas del Dashboard: 7 iguales al título, "Ready to Go" sin filtro~~ — **hecho** (2026-10-06, Etapa 3): 4 contadores (Blocked or paused, Ready to close, Ready to Go, Unassigned) que filtran la cola; "Blocked" = pausas + blockers (D5), como el Yard; la historia es una línea de enlaces. **Sigue:** el resumen del Yard (Etapa 6) | `admin-dashboard.tsx`, `admin-yard-operations.tsx` |
 | ~~D4~~ | C | ~~Volver del Truck al Yard pierde filtros, búsqueda, vista y pestaña~~ — **hecho** (2026-10-06, Etapa 1): `yardOperationsFromPath` | `admin-yard-operations.tsx`, `lib/yard-operations-routing.ts` |
 | ~~D5~~ | C | ~~El Yard no se refresca solo~~ — **hecho** (2026-10-06, Etapa 1): cada 30 s | `lib/admin-data.ts` |
 | D6 | C | Contadores del Yard globales con filtro activo; columnas que cuentan solo lo cargado (UX-6-002, UX-5-009). **hecho** (2026-10-06, Etapa 1): el texto dice "in the whole shop". **Sigue:** contar sobre el filtro (API) | `yard-operations.service.ts:772-806` |

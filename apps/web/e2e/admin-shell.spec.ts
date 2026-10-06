@@ -96,13 +96,14 @@ test.describe('Shop Admin Phase 2A', () => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
-    await expect(page.getByText('Current shop operations')).toBeVisible();
+    await expect(page.getByText('What needs you now, in order. Each action happens here.')).toBeVisible();
     await expect(page.getByText(/^Updated /)).toHaveCount(1);
-    await expect(page.getByText('Created, in progress, or waiting / paused')).toBeVisible();
     await expect(page.getByText(/supabase|postgres|Source:|Generated/i)).toHaveCount(0);
-    await expect(page.getByText('Open Work Orders').first()).toBeVisible();
-    await expect(page.getByText('Jobs ready to close first')).toBeVisible();
-    await expect(page.getByText('Jobs are done. Confirm completion to close this Work Order.')).toBeVisible();
+    // Stage 3: four counters, one queue grouped by the action; history counts are links.
+    await expect(page.getByTestId('dashboard-counter-blocked')).toBeVisible();
+    await expect(page.getByRole('link', { name: /open Work Orders$/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Needs you/ })).toBeVisible();
+    await expect(page.getByTestId('dashboard-group-close')).toContainText('All Jobs are done. Close the Work Order to make the Truck Ready to Go.');
     await page.getByRole('link', { name: 'WO-0102' }).first().click();
     await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
     const completeHeading = page.getByRole('heading', { name: 'Complete Work Order' });
@@ -138,8 +139,9 @@ test.describe('Shop Admin Phase 2A', () => {
 
     await switchLanguage(page, 'es');
     await expect(page.getByRole('heading', { name: 'Operaciones', exact: true })).toBeVisible();
-    await expect(page.getByText('Operaciones actuales del Shop')).toBeVisible();
-    await expect(page.getByText('Primero los listos para cerrar')).toBeVisible();
+    await expect(page.getByText('Lo que te necesita ahora, en orden. Cada acción se hace aquí.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Te necesita/ })).toBeVisible();
+    await expect(page.getByTestId('dashboard-group-close')).toContainText('Listos para cerrar');
     await expect(page.getByText(/^Actualizado /)).toHaveCount(1);
     await expect(page.getByText(/supabase|postgres|Fuente:|Generado/i)).toHaveCount(0);
     const esNav = page.getByRole('complementary', { name: 'Navegación de Shop Admin' });
@@ -156,7 +158,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Current shop operations' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Filter what needs you' })).toBeVisible();
 
     const openNav = page.getByRole('button', { name: 'Open Shop Admin navigation' });
     await expect(openNav).toBeVisible();
@@ -298,23 +300,30 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole('link', { name: /^Open Work Orders\b/ }).click();
+    await page.getByRole('link', { name: /open Work Orders$/ }).click();
     await expect(page).toHaveURL(/status=created%2Cin_progress%2Cwaiting_paused/);
     await page.goBack();
 
+    // Stage 3: the history counts are links with the same explicit filters as before.
     const verifyMetric = async (name: RegExp, expected: Record<string, string>) => {
-      await page.getByRole('region', { name: 'Current shop operations' }).getByRole('link', { name }).click();
+      await page.getByRole('region', { name: 'Filter what needs you' }).getByRole('link', { name }).click();
       await page.waitForURL((url) => Object.entries(expected).every(([key, value]) => url.searchParams.get(key) === value));
       const url = new URL(page.url());
       for (const [key, value] of Object.entries(expected)) expect(url.searchParams.get(key)).toBe(value);
       await page.goBack();
       await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 });
     };
-    await verifyMetric(/Waiting \/ Paused/, { status: 'waiting_paused' });
-    await verifyMetric(/High \/ Critical open/, { status: 'created,in_progress,waiting_paused', priority: 'high,critical' });
-    await verifyMetric(/Open more than 24 hours/, { status: 'created,in_progress,waiting_paused', createdBefore: '2026-09-05T18:30:00.000Z' });
-    await verifyMetric(/Completed today/, { status: 'completed', completedFrom: '2026-09-06T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
-    await verifyMetric(/Completed in the last 7 days/, { status: 'completed', completedFrom: '2026-08-31T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
+    await verifyMetric(/completed today$/, { status: 'completed', completedFrom: '2026-09-06T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
+    await verifyMetric(/in the last 7 days$/, { status: 'completed', completedFrom: '2026-08-31T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
+
+    // A counter filters the queue to its group, and toggles back.
+    const closeCounter = page.getByTestId('dashboard-counter-close');
+    await closeCounter.click();
+    await expect(closeCounter).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('dashboard-group-close')).toBeVisible();
+    await expect(page.getByTestId('dashboard-group-blocked')).toHaveCount(0);
+    await closeCounter.click();
+    await expect(page.getByTestId('dashboard-group-blocked')).toBeVisible();
 
     await page.goto('/admin/work-orders');
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
@@ -554,7 +563,7 @@ test.describe('Shop Admin Phase 2A', () => {
     expect(localeCookie?.expires ?? 0).toBeGreaterThan(Date.now() / 1000 + 30_000_000);
   });
 
-  test('Dashboard Work Orders and View all navigate on the first click ten times', async ({ page }) => {
+  test('Dashboard Work Orders and the open Work Orders link navigate on the first click ten times', async ({ page }) => {
     test.setTimeout(180_000);
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
@@ -570,8 +579,8 @@ test.describe('Shop Admin Phase 2A', () => {
     for (let attempt = 0; attempt < 10; attempt += 1) {
       await page.goto('/admin');
       await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
-      await page.getByRole('link', { name: 'View all Work Orders' }).click();
-      await expect(page).toHaveURL(/\/admin\/work-orders$/);
+      await page.getByRole('link', { name: /open Work Orders$/ }).click();
+      await expect(page).toHaveURL(/\/admin\/work-orders\?status=created/);
     }
 
     await page.setViewportSize({ width: 390, height: 844 });

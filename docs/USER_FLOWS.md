@@ -223,7 +223,9 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Presencia física | Siempre "desconocida"; no se inventa | ✅ | A21 |
 | Pestaña Movement | Dice "sin conexión"; no muestra listas falsas | ✅ | A21 |
 | Siguiente paso | Truck, Work Order, listas y Yard dicen lo mismo en cada etapa, incluida Ready to Go | ✅ | A19, A19b |
-| Pedidos de trabajo de los mecánicos | Aparecen en el Dashboard hasta que se marcan atendidos | ✅ | A22 |
+| Pedidos de trabajo de los mecánicos | Aparecen en el Dashboard hasta que se marcan atendidos (se marcan ahí mismo) | ✅ | A22 |
+| Cola del Dashboard (Etapa 3) | Todo lo que espera al Manager, agrupado por acción, incluidos los Ready to Go, sin corte en 8; cada fila se hace ahí (D26). Contadores que filtran | 👁 | e2e `next-step-in-place`, `admin-shell` |
+| Sale pronto y no está listo | Salidas de Dispatch de hoy o del siguiente día hábil, cruzadas con WOs abiertas | 👁 | unit `dashboard-queue.spec.ts` |
 
 ### HU-M8 · Configurar el flujo del taller (J2)
 

@@ -480,6 +480,12 @@ export interface AdminDashboardDto {
     readyToGo?: number;
   };
   attention: AdminWorkOrderSummaryDto[];
+  /**
+   * D1 / UX-5-002 (stage 3): every open Work Order and every Truck still Ready to Go, each with its
+   * Next step (same rule as everywhere). The Dashboard groups them by the action the Manager takes.
+   * Additive: `attention` stays for older clients.
+   */
+  queue?: AdminWorkOrderSummaryDto[];
   /** LTR-126: mechanic work requests the Manager has not handled yet (newest first). */
   openWorkRequests?: AdminOpenWorkRequestDto[];
 }

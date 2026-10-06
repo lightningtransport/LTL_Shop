@@ -445,7 +445,7 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 
 | Ruta | Qué es |
 |---|---|
-| `/admin` | Dashboard: métricas, "Needs attention" con el siguiente paso, pedidos de trabajo abiertos. |
+| `/admin` | Dashboard: responde "¿qué hago ahora?" (D26). Cuatro contadores (Blocked or paused, Ready to close, Ready to Go, Unassigned) que filtran una cola "Needs you" con todo lo que espera al Manager —WOs abiertas y Trucks Ready to Go, agrupadas por acción—, cada fila con su acción ahí mismo (Resolve con nota a pedido, Resume, Close con confirmación, Return to Service, Assign, inspección, Mark QC complete); "Sale pronto y no está listo" (salidas de Dispatch cruzadas con WOs abiertas, hoy y el siguiente día hábil); pedidos de trabajo con "Mark handled". La historia (abiertas, completadas hoy y en 7 días) es una línea de enlaces a la lista filtrada. |
 | `/admin/yard-operations` | Tablero del patio por fase. Una tarjeta dice **"Fuera del taller"** cuando un Job pendiente de su WO mandó el camión a un taller externo (`outOfShop`, D24); la fase y los contadores no cambian. Pestaña `?tab=movement`: tarjetas de agent-reporting (solo lectura). |
 | `/admin/trucks`, `/admin/trucks/[id]` | Lista de camiones con siguiente paso; **el Truck es el lugar de trabajo del Manager** y responde "¿puede salir y, si no, qué lo frena?" (ver abajo). |
 | `/admin/work-orders`, `/admin/work-orders/[id]` | Lista con filtros; detalle del WO (ver abajo). |

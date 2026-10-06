@@ -548,6 +548,10 @@ createServer(async (request, response) => {
         workOrders.find((item) => item.displayId === 'WO-0101'),
         workOrders.find((item) => item.displayId === 'WO-0103'),
       ],
+      // Stage 3 (D1): every open Work Order and every Truck still Ready to Go, with its Next step.
+      queue: workOrders
+        .filter((item) => ['created', 'in_progress', 'waiting_paused'].includes(item.status) || (item.status === 'completed' && !item.returnedToServiceAt))
+        .map((item) => ({ ...item, nextStep: fixtureNextStepForWorkOrder(item) })),
     });
     return;
   }
@@ -1710,6 +1714,20 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status, options = {
     }],
     returnedToServiceAt: null,
   };
+}
+
+/** Stage 3: a reduced Next step rule for Work Orders (the API's is deriveTruckNextStep). */
+function fixtureNextStepForWorkOrder(workOrder) {
+  const workOrderId = workOrder.id;
+  if (workOrder.status === 'completed') return workOrder.returnedToServiceAt ? null : { kind: 'return_to_service', workOrderId };
+  const blocker = workOrder.latestReportedBlocker;
+  if (blocker && !blocker.resolvedAt) return { kind: 'resolve_blocker', workOrderId, blockerId: blocker.id, jobName: blocker.job?.displayName, reason: blocker.reason };
+  if (workOrder.status === 'waiting_paused') return { kind: 'resume', workOrderId, reason: workOrder.currentPause?.reason };
+  const pending = (workOrder.jobs ?? []).filter((job) => job.status === 'to_do');
+  const unassigned = pending.find((job) => !job.assignedMechanic);
+  if (unassigned) return { kind: 'assign', workOrderId, jobId: unassigned.id, jobName: unassigned.displayName };
+  if (!pending.length) return { kind: 'close', workOrderId };
+  return { kind: 'work', workOrderId, jobId: pending[0].id, jobName: pending[0].displayName, remaining: pending.length };
 }
 
 function findFixtureJob(jobId) {

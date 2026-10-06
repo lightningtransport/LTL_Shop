@@ -30,14 +30,14 @@ test.describe('shared UI consistency', () => {
     }
   });
 
-  test('Dashboard metrics name the metric and its value (LTR-151)', async ({ page }) => {
+  test('Dashboard counters name the group and its value, and say when they filter (LTR-151, stage 3)', async ({ page }) => {
     await signInAsManager(page);
-    const metrics = page.getByRole('region', { name: 'Current shop operations' }).getByRole('link');
-    await expect(metrics.first()).toBeVisible();
-    for (const label of await metrics.evaluateAll((links) => links.map((link) => link.getAttribute('aria-label')))) {
-      expect(label).toMatch(/^.+: \d+$/);
-    }
-    await expect(page.getByRole('link', { name: /^Open Work Orders: \d+$/ })).toBeVisible();
+    const counters = page.getByRole('region', { name: 'Filter what needs you' }).getByRole('button');
+    await expect(counters).toHaveCount(4);
+    for (const text of await counters.allInnerTexts()) expect(text.replace(/\s+/g, ' ')).toMatch(/^.+ \d+$/);
+    await expect(counters.first()).toHaveAttribute('aria-pressed', 'false');
+    await counters.first().click();
+    await expect(counters.first()).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('Work Order detail labels job pickers, hides System Admin accounts, and uses one empty-mechanics wording (LTR-151)', async ({ page }) => {
