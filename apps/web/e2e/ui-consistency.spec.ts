@@ -90,8 +90,7 @@ test.describe('shared UI consistency', () => {
     await signInAsManager(page);
     await page.goto('/admin/trucks');
     await page.locator('main table tbody a').first().click();
-    // LTR-158: repair history is folded below the Work Plan.
-    await page.getByTestId('truck-history').locator('summary').click();
+    // Stage 4: repair history is open beside the Work Plan (with "Load more").
     const history = page.getByRole('region', { name: 'Repair history' });
     await expect(history).toBeVisible();
     await expect(history.locator('li .shrink-0.text-right').first()).toBeVisible();

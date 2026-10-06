@@ -7,8 +7,13 @@
 navegación e IA, 04 jerarquía visual) y la propuesta hermana
 [`wo-detail-redesign/`](../wo-detail-redesign/README.md).
 
-El dueño confirmó el **reparto Truck ↔ Work Order** (§2) el 2026-10-05. Faltan las decisiones de
-§6 y después implementar (§7). Nada de esto está construido.
+El dueño confirmó el **reparto Truck ↔ Work Order** (§2) el 2026-10-05 y las decisiones de §6.
+**Construido** en la Etapa 4 (2026-10-06, rama `claude/exciting-lehmann-09883c`): encabezado con un
+chip, chip del WO y "…", stepper, Next step que actúa en el Truck (inspección, Assign, New Work
+Order en diálogo), Work Plan por paso con Jobs de lectura y ↗ Manage in Work Order, Add work en
+panel lateral, columna de datos abierta con Load more, y en la WO "Back to Truck", la fila resaltada
+y la pausa desde el "…". **Pendiente:** categorías del panel como botones y "Who does it?" con
+búsqueda (siguen el select de hoy), y el filtro por categoría del historial.
 
 ## 1. Cómo verla
 

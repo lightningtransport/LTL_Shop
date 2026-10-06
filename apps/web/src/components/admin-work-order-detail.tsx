@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
 import { MoreHorizontal } from 'lucide-react';
 import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
-import { adminTruckHref } from '@/lib/admin-truck-origin';
+import { adminTruckHref, adminWorkOrderOrigin } from '@/lib/admin-truck-origin';
 import { ApiError } from '@/lib/api';
 import { intlLocale } from '@/lib/shop-locale';
 import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admin-format';
@@ -63,7 +63,21 @@ type WorkOrderDialog = 'pause' | 'menu' | 'cancel' | 'reopen' | 'return' | null;
  * close, then the Jobs table, blockers and notes beside a context column (Truck, times, mechanics,
  * priority; summary, Truck details and repair history folded). History and audit stays at the bottom.
  */
-export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
+export function AdminWorkOrderDetail({
+  id,
+  from = null,
+  action = null,
+  locale,
+  messages,
+}: {
+  id: string;
+  /** Stage 4 (T4): where the Work Order was opened from (its Truck), for the back link. */
+  from?: string | null;
+  /** Stage 4: `pause` opens the pause dialog ("Pause Work Order…" in the Truck's "…"). */
+  action?: string | null;
+  locale: AdminLocale;
+  messages: AdminMessages;
+}) {
   const { user } = useAuth();
   const { showToast } = useActionToast();
   const { mutate: mutateRelated } = useSWRConfig();
@@ -125,6 +139,21 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     return () => observer.disconnect();
   }, [completeCardElement]);
 
+  // Stage 4: arriving from the Truck — "Pause Work Order…" opens the pause dialog; "Manage in Work
+  // Order" (#job-<id>) brings the Job's row into view, highlighted.
+  const arrivalHandled = useRef(false);
+  const [highlightedJobId, setHighlightedJobId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!data || !user || arrivalHandled.current) return;
+    arrivalHandled.current = true;
+    if (action === 'pause' && canManageWorkOrders && canOfficiallyPauseWorkOrder(data.status) && data.category.name !== 'PM') setDialog('pause');
+    const hash = window.location.hash;
+    if (hash.startsWith('#job-')) {
+      setHighlightedJobId(hash.slice('#job-'.length));
+      window.requestAnimationFrame(() => document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'center' }));
+    }
+  }, [data, user, action, canManageWorkOrders]);
+
   if (isLoading) return <PageSkeleton label={messages.workOrdersTitle} />;
   if (error instanceof ApiError && error.status === 404) return <NotFound messages={messages} />;
   if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
@@ -136,6 +165,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const activeMechanics = data.mechanics.filter((mechanic) => !mechanic.removedAt);
   const truck = data.truck;
   const truckHref = adminTruckHref(truck.id, `/admin/work-orders/${data.id}`);
+  const origin = adminWorkOrderOrigin(from, truck.truckNumber, messages);
   const isOpen = (OPEN_WORK_ORDER_STATUSES as string[]).includes(data.status);
   const isPmWorkOrder = data.category.name === 'PM';
   const canCancelWorkOrder = canManageWorkOrders && isOpen;
@@ -221,7 +251,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const dialogJob = jobDialog ? data.jobs.find((job) => job.id === jobDialog.jobId) : undefined;
 
   return <div className={showStickyComplete ? 'space-y-5 pb-28' : 'space-y-5'}>
-    <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
+    <AdminBackLink href={origin.href}>{origin.backLabel}</AdminBackLink>
     <AdminOperationalHeader
       title={<Link className="tap-inline text-primary hover:underline" href={truckHref}>{truck.truckNumber}</Link>}
       subtitle={<>{messages.workOrder} {data.displayId}{formatVehicleYmm(truck) ? ` · ${formatVehicleYmm(truck)}` : ''}</>}
@@ -317,6 +347,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           </CardHeader>
           <CardContent className="space-y-4">
             <AdminJobTable
+              highlightedJobId={highlightedJobId}
               data={data}
               locale={locale}
               messages={messages}

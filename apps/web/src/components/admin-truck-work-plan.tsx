@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   AppCapability,
   JobStatus,
@@ -8,65 +9,101 @@ import {
   type RecordWorkPlanInspectionInput,
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
+import { DropdownMenu } from 'radix-ui';
+import { ArrowUpRight, ChevronDown } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import {
   addAdminWorkPlanJobs,
   assignAdminWorkOrderJob,
   fetchAdminTruckWorkPlan,
-  recordAdminWorkPlanInspection,
-  unassignAdminWorkOrderJob,
   useAdminAssignableMechanics,
 } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { useCategories } from '@/lib/shop-data';
-import {
-  workPlanJobUiStatusLabel,
-  workPlanJobUiStatusVariant,
-  type WorkPlanJobDraft,
-} from '@/lib/work-plan';
+import { workPlanJobUiStatusLabel, workPlanReadyReasonMessage, type WorkPlanJobDraft } from '@/lib/work-plan';
 import { jobDisplayName } from '@/lib/job-display-name';
 import { externalShopLabel } from '@/lib/external-shop';
-import { AdminReadinessTracker } from './admin-readiness-tracker';
+import { profileInitials } from '@/lib/profile-initials';
+import type { TruckStep, TruckStepKey } from '@/lib/truck-stepper';
 import { WorkPlanAddWork } from './work-plan-add-work';
+import { MechanicPicker, type PickerMechanic } from './mechanic-picker';
+import { SideSheet } from './side-sheet';
+import { TruckStepIcon, truckStepLabel, truckStepStateLabel } from './truck-stepper';
 import { useActionToast } from './action-toast';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, CompactEmpty, Select } from './ui';
+import { Button, Card, CardContent, CardHeader, CardTitle } from './ui';
 
-type Feedback = { kind: 'success' | 'error'; message: string };
+type PlanJob = TruckWorkPlanDto['jobs'][number];
 
-const JOB_ROW_GRID = 'lg:grid-cols-[minmax(0,1fr)_13rem_7.5rem]';
+const STEP_LANES: Record<TruckStepKey, string[]> = {
+  inspection: ['inspection'],
+  shop_work: ['shop_work'],
+  pm: ['pm'],
+  alignment: ['alignment'],
+  detailing: ['detailing'],
+  quality_check: ['quality_check'],
+  close: [],
+};
 
+const DOT: Record<string, string> = {
+  completed: 'bg-shop-success',
+  in_progress: 'bg-primary',
+  blocked: 'bg-warning',
+  external: 'bg-warning',
+  cancelled: 'bg-muted-foreground',
+  pending: 'border border-muted-foreground bg-transparent',
+};
 
 /**
- * The Truck Work Plan card: readiness tracker (with the D14 inspection), the "Add work" form (D6) and
- * the read-only Jobs summary. LTR-174: assigning, reassigning and completing owned Jobs happens on the
- * Work Order; the Truck keeps the mechanic Select only for Jobs with no owner (the `assign` Next step).
+ * Stage 4 (UX-4-004, UX-5-003, T4, T5, T9, T10): the Truck's Work Plan — one section per step with
+ * its state (finished steps folded), the Jobs read-only under their step and "Manage in Work Order"
+ * on every row (the Work Order does the rest). Only a Job with no owner has Assign here. Add work
+ * opens in a side panel. Success is a toast; errors go to the Truck's error line (`onError`).
  */
 export function AdminTruckWorkPlan({
   truckId,
+  truckNumber,
+  fromPath,
   plan,
+  steps,
+  isStepOpen,
+  onToggleStep,
   messages,
   addWorkOpen,
   onAddWorkOpenChange,
+  inspectionPending,
+  inspectionInNextStep,
+  onRecordInspection,
   onPlanUpdated,
+  onError,
 }: {
   truckId: string;
+  truckNumber: string;
+  /** This Truck's path, for the Work Order's back link. */
+  fromPath: string;
   plan: TruckWorkPlanDto;
+  steps: TruckStep[];
+  isStepOpen: (step: TruckStep) => boolean;
+  onToggleStep: (key: TruckStepKey, open: boolean) => void;
   messages: AdminMessages;
   addWorkOpen: boolean;
   onAddWorkOpenChange: (open: boolean) => void;
+  inspectionPending: boolean;
+  /** The Next step already shows the two inspection buttons (`inspect`); the section only states it. */
+  inspectionInNextStep: boolean;
+  onRecordInspection: (outcome: RecordWorkPlanInspectionInput['outcome']) => void;
   onPlanUpdated: (next: TruckWorkPlanDto) => Promise<void> | void;
+  onError: (message: string | null) => void;
 }) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [pickerJobId, setPickerJobId] = useState<string | null>(null);
   const { showToast } = useActionToast();
-  const [preferredCategoryName, setPreferredCategoryName] = useState<string | null>(null);
   const canInspect = plan.capabilities.canRecordInspection;
   const canAddWork = plan.capabilities.canAddWork;
   useCategories(true);
-  // LTR-154 / D11: the Manager sets each Job's one owner here (PM job → PM mechanic).
-  const { data: mechanicPages } = useAdminAssignableMechanics();
+  // LTR-154 / D11: a Job's one owner (PM job → PM mechanic).
+  const { data: mechanicPages, isLoading: mechanicsLoading } = useAdminAssignableMechanics();
   const { standardMechanics, pmMechanics } = useMemo(() => {
     const active = (mechanicPages?.flatMap((page) => page.items) ?? []).filter((mechanic) => mechanic.active);
     return {
@@ -74,11 +111,6 @@ export function AdminTruckWorkPlan({
       pmMechanics: active.filter((mechanic) => mechanic.capabilities.includes(AppCapability.MECHANIC_PM)),
     };
   }, [mechanicPages]);
-
-  function openAddWork(categoryName?: string | null) {
-    setPreferredCategoryName(categoryName ?? null);
-    onAddWorkOpenChange(true);
-  }
 
   function mutationError(errorValue: unknown, fallback: string, forbidden: string) {
     if (errorValue instanceof ApiError) {
@@ -96,7 +128,7 @@ export function AdminTruckWorkPlan({
   async function run<T>(action: string, operation: () => Promise<T>) {
     if (pendingAction) return null;
     setPendingAction(action);
-    setFeedback(null);
+    onError(null);
     try {
       return await operation();
     } finally {
@@ -104,20 +136,9 @@ export function AdminTruckWorkPlan({
     }
   }
 
-  async function handleInspection(outcome: RecordWorkPlanInspectionInput['outcome']) {
-    try {
-      const next = await run('inspection', () => recordAdminWorkPlanInspection(truckId, outcome));
-      if (!next) return;
-      await onPlanUpdated(next);
-      if (outcome === WorkPlanInspectionOutcome.ISSUES_FOUND) openAddWork(null);
-      setFeedback({ kind: 'success', message: messages.workPlanInspectionRecorded });
-      showToast('success', messages.workPlanInspectionRecorded);
-    } catch (errorValue) {
-      setFeedback({
-        kind: 'error',
-        message: mutationError(errorValue, messages.workPlanInspectionFailed, messages.workPlanInspectionForbidden),
-      });
-    }
+  function fail(message: string) {
+    onError(message);
+    showToast('error', message);
   }
 
   async function handleAddWork(jobs: WorkPlanJobDraft[]) {
@@ -135,86 +156,99 @@ export function AdminTruckWorkPlan({
       if (!next) return false;
       await onPlanUpdated(next);
       onAddWorkOpenChange(false);
-      setFeedback({ kind: 'success', message: messages.workPlanJobsAdded });
       showToast('success', messages.workPlanJobsAdded);
       return true;
     } catch (errorValue) {
-      setFeedback({
-        kind: 'error',
-        message: mutationError(errorValue, messages.workPlanAddWorkFailed, messages.workPlanAddWorkForbidden),
-      });
+      fail(mutationError(errorValue, messages.workPlanAddWorkFailed, messages.workPlanAddWorkForbidden));
       return false;
     }
   }
 
-  async function handleAssign(jobId: string, mechanicId: string) {
+  async function handleAssign(jobId: string, mechanic: PickerMechanic) {
     if (!plan.workOrder) return;
     const workOrder = plan.workOrder;
+    setPickerJobId(null);
     try {
-      await run(`assign-${jobId}`, () => (mechanicId
-        ? assignAdminWorkOrderJob(workOrder.id, jobId, { mechanicId, expectedVersion: workOrder.version })
-        : unassignAdminWorkOrderJob(workOrder.id, jobId, workOrder.version)));
-      const next = await fetchAdminTruckWorkPlan(truckId);
-      await onPlanUpdated(next);
-      const message = mechanicId ? messages.assignJobSuccess : messages.unassignJobSuccess;
-      setFeedback({ kind: 'success', message });
-      showToast('success', message);
+      await run(`assign-${jobId}`, () => assignAdminWorkOrderJob(workOrder.id, jobId, { mechanicId: mechanic.id, expectedVersion: workOrder.version }));
+      await onPlanUpdated(await fetchAdminTruckWorkPlan(truckId));
+      showToast('success', messages.assignJobSuccess);
     } catch (errorValue) {
-      setFeedback({
-        kind: 'error',
-        message: mutationError(errorValue, messages.assignmentGenericError, messages.workPlanAddWorkForbidden),
-      });
+      // T6: the assign error is its own, not the add-work one.
+      fail(mutationError(errorValue, messages.assignmentGenericError, messages.assignJobForbidden));
     }
   }
 
-  // LTR-174: one row per Job under its step (Job · Mechanic · Status). The Truck assigns only Jobs with no
-  // owner (the `assign` Next step); the rest is done on the Work Order. QC has no picker (Safety takes it, D19).
-  function renderJobRows(jobs: TruckWorkPlanDto['jobs']) {
+  function jobsFor(key: TruckStepKey) {
+    const lanes = STEP_LANES[key];
+    const own = plan.jobs.filter((job) => lanes.includes(job.lane));
+    // D23: a helper Job sits right under the Job it helps.
+    const parents = own.filter((job) => !job.helperOfJobId || !own.some((other) => other.id === job.helperOfJobId));
+    return parents.flatMap((job) => [job, ...own.filter((other) => other.helperOfJobId === job.id)]);
+  }
+
+  function manageHref(job: PlanJob) {
+    if (!plan.workOrder) return null;
+    return `/admin/work-orders/${plan.workOrder.id}?from=${encodeURIComponent(fromPath)}#job-${job.id}`;
+  }
+
+  function renderJobs(key: TruckStepKey) {
+    const jobs = jobsFor(key);
     if (!jobs.length) return null;
     return (
-      <ul className="mt-2 space-y-2 border-l-2 border-border pl-3">
+      <ul className="divide-y rounded-lg border">
         {jobs.map((job) => {
-          // LTR-188 / D24: a Job at an external shop comes back through "Returned" on the Work Order.
+          // LTR-188 / D24: a Job at an external shop comes back through "Returned" on the Work Order. QC is Safety's (D19).
           const canAssignHere = canAddWork && plan.workOrder && job.status === JobStatus.TO_DO && job.assignedMechanic === null && job.lane !== 'quality_check' && !job.external;
+          const name = jobDisplayName(job, messages.helperJobSuffix);
+          const href = manageHref(job);
+          const owner = job.external ? (
+            <span title={job.external.note} data-testid="work-plan-job-external">{externalShopLabel(job.external.kind, messages)}</span>
+          ) : job.assignedMechanic ? (
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden="true" className="grid size-4 place-items-center rounded-full bg-accent text-[0.6rem] font-semibold text-primary">{profileInitials(job.assignedMechanic.name)}</span>
+              {`${messages.jobAssignee}: ${job.assignedMechanic.name}`}
+            </span>
+          ) : job.lane === 'quality_check' ? (
+            <span title={messages.workPlanQcHint}>{messages.qcBySafety}</span>
+          ) : job.assignedMechanic === null ? (
+            <span>{messages.jobUnassigned}</span>
+          ) : null;
           return (
-            <li key={job.id} className={`grid gap-2 lg:items-center lg:gap-3 ${JOB_ROW_GRID}`}>
-              <div className="flex min-w-0 items-start justify-between gap-3 lg:block">
-                <div className="min-w-0">
-                  <p className="font-medium">{jobDisplayName(job, messages.helperJobSuffix)}</p>
-                  <p className="text-xs text-muted-foreground">{job.category.name}</p>
-                </div>
-                <div className="shrink-0 lg:hidden">
-                  <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)}>{workPlanJobUiStatusLabel(job.uiStatus, messages)}</Badge>
-                </div>
+            <li key={job.id} className={`flex items-center gap-3 px-3 py-2.5 ${job.helperOfJobId ? 'pl-8' : ''}`} data-testid="truck-job-row" data-status={job.uiStatus}>
+              <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${DOT[job.uiStatus] ?? DOT.pending}`} />
+              <div className="min-w-0 flex-1">
+                <p className={`font-medium ${job.status === JobStatus.CANCELLED ? 'text-muted-foreground line-through' : ''}`}>{name}</p>
+                <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  <span>{workPlanJobUiStatusLabel(job.uiStatus, messages)}</span>
+                  {owner ? <><span aria-hidden="true">·</span>{owner}</> : null}
+                </p>
               </div>
-              <div className="min-w-0">
-                {job.external ? (
-                  <p className="text-xs text-muted-foreground" title={job.external.note} data-testid="work-plan-job-external">
-                    {externalShopLabel(job.external.kind, messages)}
-                  </p>
-                ) : job.assignedMechanic === undefined ? null : canAssignHere ? (
-                  <Select
-                    id={`assign-job-${job.id}`}
-                    aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
-                    className="h-9 w-full text-sm"
-                    value=""
-                    disabled={Boolean(pendingAction)}
-                    onChange={(event) => { if (event.target.value) void handleAssign(job.id, event.target.value); }}
-                  >
-                    <option value="">{messages.jobUnassigned}</option>
-                    {(job.lane === 'pm' ? pmMechanics : standardMechanics).map((mechanic) => (
-                      <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>
-                    ))}
-                  </Select>
-                ) : (
-                  <p className="text-xs text-muted-foreground" title={job.lane === 'quality_check' ? messages.workPlanQcHint : undefined}>
-                    {job.assignedMechanic ? `${messages.jobAssignee}: ${job.assignedMechanic.name}` : messages.jobUnassigned}
-                  </p>
-                )}
-              </div>
-              <div className="hidden lg:block">
-                <Badge variant={workPlanJobUiStatusVariant(job.uiStatus)}>{workPlanJobUiStatusLabel(job.uiStatus, messages)}</Badge>
-              </div>
+              {canAssignHere ? (
+                <MechanicPicker
+                  open={pickerJobId === job.id}
+                  onOpenChange={(open) => setPickerJobId(open ? job.id : null)}
+                  title={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
+                  mechanics={job.lane === 'pm' ? pmMechanics : standardMechanics}
+                  loading={mechanicsLoading}
+                  messages={messages}
+                  onPick={(mechanic) => void handleAssign(job.id, mechanic)}
+                  trigger={(
+                    <Button id={`assign-job-${job.id}`} type="button" size="sm" variant="outline" disabled={Boolean(pendingAction)}>
+                      {messages.truckNextStepAssignAction}
+                    </Button>
+                  )}
+                />
+              ) : null}
+              {href ? (
+                <Link
+                  href={href}
+                  className="tap-inline inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+                  aria-label={fillPlaceholders(messages.manageJobInWorkOrder, { job: name })}
+                  title={messages.manageInWorkOrder}
+                >
+                  <ArrowUpRight aria-hidden="true" className="size-4" />
+                </Link>
+              ) : null}
             </li>
           );
         })}
@@ -222,70 +256,97 @@ export function AdminTruckWorkPlan({
     );
   }
 
+  const recorded = plan.inspection.outcome !== WorkPlanInspectionOutcome.NOT_STARTED;
+
   return (
     <section aria-labelledby="truck-work-plan-title">
       <Card>
         <CardHeader>
-          <CardTitle id="truck-work-plan-title">{messages.workPlanSection}</CardTitle>
+          <CardTitle id="truck-work-plan-title" tabIndex={-1}>{messages.workPlanSection}</CardTitle>
+          {recorded ? <p className="text-sm text-muted-foreground">{workPlanReadyReasonMessage(plan.readyReason, messages)}</p> : null}
         </CardHeader>
-        <CardContent className="space-y-5 divide-y [&>*+*]:pt-5">
-          {feedback ? (
-            <div
-              className={feedback.kind === 'error'
-                ? 'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive-text'
-                : 'rounded-xl border border-shop-success/30 bg-shop-success/10 px-3 py-2 text-sm text-shop-success'}
-              role={feedback.kind === 'error' ? 'alert' : 'status'}
-              aria-live="polite"
-            >
-              {feedback.message}
-              {feedback.kind === 'error' && feedback.message === messages.mutationConflict ? (
-                <Button type="button" variant="outline" size="sm" className="ml-3" onClick={() => void onPlanUpdated(plan)}>
-                  {messages.reloadTruck}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-
-          <AdminReadinessTracker
-            plan={plan}
-            messages={messages}
-            renderJobs={(lanes) => renderJobRows(plan.jobs.filter((job) => lanes.includes(job.lane)))}
-            inspection={(
-              <InspectionPanel
-                plan={plan}
+        <CardContent className="space-y-3">
+          <ul className="space-y-2" aria-label={messages.jobsInPlan}>
+            {steps.map((step) => (
+              <StepSection
+                key={step.key}
+                step={step}
+                open={isStepOpen(step)}
+                onToggle={(open) => onToggleStep(step.key, open)}
                 messages={messages}
-                canInspect={canInspect}
-                pending={Boolean(pendingAction)}
-                onRecord={(outcome) => void handleInspection(outcome)}
-              />
-            )}
-          />
-
-          {addWorkOpen && canAddWork ? (
-            <div id="work-plan-add-work">
-              <WorkPlanAddWork
-                plan={plan}
-                messages={messages}
-                disabled={Boolean(pendingAction)}
-                submitting={pendingAction === 'add-work'}
-                preferredCategoryName={preferredCategoryName}
-                standardMechanics={standardMechanics}
-                onSubmit={handleAddWork}
-              />
-            </div>
-          ) : null}
-
+              >
+                {step.key === 'inspection' ? (
+                  <InspectionControl
+                    plan={plan}
+                    messages={messages}
+                    canInspect={canInspect && !inspectionInNextStep}
+                    pending={inspectionPending || Boolean(pendingAction)}
+                    onRecord={onRecordInspection}
+                  />
+                ) : null}
+                {step.key === 'quality_check' && !jobsFor('quality_check').length ? <p className="text-sm text-muted-foreground">{messages.workPlanQcHint}</p> : null}
+                {renderJobs(step.key)}
+              </StepSection>
+            ))}
+          </ul>
           {!canAddWork && !canInspect ? (
             <p className="text-sm text-muted-foreground">{messages.permissionReadOnly}</p>
           ) : null}
         </CardContent>
       </Card>
+
+      {canAddWork ? (
+        <SideSheet
+          open={addWorkOpen}
+          title={fillPlaceholders(messages.addWorkPanelTitle, { truck: truckNumber })}
+          description={plan.workOrder ? undefined : messages.addWorkPanelNoWorkOrder}
+          closeLabel={messages.closeDialog}
+          onClose={() => onAddWorkOpenChange(false)}
+          testId="work-plan-add-work-panel"
+        >
+          <div id="work-plan-add-work">
+            <WorkPlanAddWork
+              plan={plan}
+              messages={messages}
+              disabled={Boolean(pendingAction)}
+              submitting={pendingAction === 'add-work'}
+              standardMechanics={standardMechanics}
+              onSubmit={handleAddWork}
+            />
+          </div>
+        </SideSheet>
+      ) : null}
     </section>
   );
 }
 
-/** The Inspection row of the readiness tracker: the recorded outcome and the D14 buttons. */
-function InspectionPanel({
+function StepSection({ step, open, onToggle, messages, children }: { step: TruckStep; open: boolean; onToggle: (open: boolean) => void; messages: AdminMessages; children?: ReactNode }) {
+  const contentId = `truck-step-${step.key}-content`;
+  const hasContent = Array.isArray(children) ? children.some(Boolean) : Boolean(children);
+  return (
+    <li id={`truck-step-${step.key}`} className="scroll-mt-24 rounded-xl border" data-state={step.state}>
+      <button
+        type="button"
+        className="flex min-h-12 w-full items-center gap-2 rounded-xl px-3 text-left text-sm hover:bg-accent"
+        aria-expanded={hasContent ? open : undefined}
+        aria-controls={hasContent ? contentId : undefined}
+        onClick={() => hasContent && onToggle(!open)}
+      >
+        <TruckStepIcon state={step.state} />
+        <span className="font-medium">{truckStepLabel(step.key, messages)}</span>
+        <span className="ml-auto text-xs text-muted-foreground">{truckStepStateLabel(step, messages)}</span>
+        {hasContent ? <ChevronDown aria-hidden="true" className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} /> : null}
+      </button>
+      {hasContent && open ? <div id={contentId} className="space-y-3 px-3 pb-3">{children}</div> : null}
+    </li>
+  );
+}
+
+/**
+ * D14 / UX-4-003: pending → the two buttons; recorded → the outcome as text with "Change" (a menu
+ * with the other outcome), so a recorded result never looks like a primary button.
+ */
+function InspectionControl({
   plan,
   messages,
   canInspect,
@@ -299,40 +360,53 @@ function InspectionPanel({
   onRecord: (outcome: RecordWorkPlanInspectionInput['outcome']) => void;
 }) {
   const outcome = plan.inspection.outcome;
-  return (
-    <div className="space-y-2" aria-labelledby="work-plan-inspection-title">
-      {/* LTR-112: always state the inspection result, never a Ready label here. */}
-      {outcome === 'not_started' ? (
+  if (outcome === WorkPlanInspectionOutcome.NOT_STARTED) {
+    return (
+      <div className="space-y-2" data-testid="truck-inspection">
         <p className="text-sm text-muted-foreground">{messages.workPlanInspectionNotStarted}</p>
-      ) : outcome === 'no_issues_found' ? (
-        <p className="text-sm text-muted-foreground">{messages.workPlanNoIssuesFoundHelp}</p>
-      ) : (
-        <p className="text-sm text-muted-foreground">{messages.workPlanIssuesFoundHelp}</p>
-      )}
+        {canInspect ? <InspectionButtons messages={messages} pending={pending} onRecord={onRecord} /> : null}
+      </div>
+    );
+  }
+  const label = outcome === WorkPlanInspectionOutcome.ISSUES_FOUND ? messages.workPlanIssuesFound : messages.workPlanNoIssuesFound;
+  const other = outcome === WorkPlanInspectionOutcome.ISSUES_FOUND ? WorkPlanInspectionOutcome.NO_ISSUES_FOUND : WorkPlanInspectionOutcome.ISSUES_FOUND;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2" data-testid="truck-inspection">
+      <p className="text-sm">{fillPlaceholders(messages.inspectionRecordedOutcome, { outcome: label })}</p>
       {canInspect ? (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={outcome === 'no_issues_found' ? 'secondary' : 'outline'}
-            disabled={pending}
-            aria-pressed={outcome === 'no_issues_found'}
-            onClick={() => onRecord(WorkPlanInspectionOutcome.NO_ISSUES_FOUND)}
-          >
-            {messages.workPlanNoIssuesFound}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={outcome === 'issues_found' ? 'default' : 'outline'}
-            disabled={pending}
-            aria-pressed={outcome === 'issues_found'}
-            onClick={() => onRecord(WorkPlanInspectionOutcome.ISSUES_FOUND)}
-          >
-            {messages.workPlanIssuesFound}
-          </Button>
-        </div>
+        <DropdownMenu.Root modal={false}>
+          <DropdownMenu.Trigger asChild>
+            <Button type="button" size="sm" variant="ghost" disabled={pending}>
+              {messages.inspectionChange}
+              <ChevronDown aria-hidden="true" className="ml-1 size-4" />
+            </Button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-xl border bg-popover p-1 text-popover-foreground shadow-soft">
+              <DropdownMenu.Item
+                className="flex min-h-11 cursor-pointer select-none items-center rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-accent"
+                onSelect={() => onRecord(other)}
+              >
+                {other === WorkPlanInspectionOutcome.ISSUES_FOUND ? messages.workPlanIssuesFound : messages.workPlanNoIssuesFound}
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       ) : null}
+    </div>
+  );
+}
+
+/** The two D14 buttons, also used by the Next step `inspect`. */
+export function InspectionButtons({ messages, pending, onRecord }: { messages: AdminMessages; pending: boolean; onRecord: (outcome: RecordWorkPlanInspectionInput['outcome']) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onRecord(WorkPlanInspectionOutcome.NO_ISSUES_FOUND)}>
+        {messages.workPlanNoIssuesFound}
+      </Button>
+      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onRecord(WorkPlanInspectionOutcome.ISSUES_FOUND)}>
+        {messages.workPlanIssuesFound}
+      </Button>
     </div>
   );
 }

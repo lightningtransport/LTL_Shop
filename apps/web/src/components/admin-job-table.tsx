@@ -50,6 +50,7 @@ export function AdminJobTable({
   onAddHelper,
   onSendExternal,
   onReturnExternal,
+  highlightedJobId = null,
 }: {
   data: AdminWorkOrderDetailDto;
   locale: AdminLocale;
@@ -67,6 +68,8 @@ export function AdminJobTable({
   onAddHelper?: (jobId: string, mechanicId: string) => void;
   onSendExternal?: (jobId: string, input: { kind: ExternalKind; note: string }) => void;
   onReturnExternal?: (jobId: string, input: { outcome: 'complete' | 'assign'; mechanicId?: string }) => void;
+  /** Stage 4 (T4): the Job opened with "Manage in Work Order" (`#job-<id>`), highlighted. */
+  highlightedJobId?: string | null;
 }) {
   const [menuJobId, setMenuJobId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<JobDialog | null>(null);
@@ -109,7 +112,7 @@ export function AdminJobTable({
               .replace('{parts}', String(data.pmService.partsCount))
             : null;
           return (
-            <li key={job.id} className={`grid gap-2 py-3 first:pt-0 lg:items-center lg:gap-3 ${ROW_GRID}`} data-testid="admin-wo-job-row">
+            <li key={job.id} id={`job-${job.id}`} className={`grid scroll-mt-24 gap-2 rounded-lg py-3 first:pt-0 lg:items-center lg:gap-3 ${ROW_GRID} ${highlightedJobId === job.id ? 'bg-accent px-2 ring-1 ring-primary' : ''}`} data-testid="admin-wo-job-row" data-highlighted={highlightedJobId === job.id ? 'true' : undefined}>
               {/* Job */}
               <div className="flex min-w-0 items-start justify-between gap-3 lg:block">
                 <div className="min-w-0">

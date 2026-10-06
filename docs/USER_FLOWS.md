@@ -65,8 +65,9 @@ autoservicio, reemplazar un sistema completo de flotas.
 
 **Flujo**
 1. Admin → **Work Orders** → **New Work Order** (o desde el Truck sin Work
-   Order: el siguiente paso ofrece **New Work Order**; antes puede registrar
-   la inspección de llegada).
+   Order: el siguiente paso, o el "…", ofrece **New Work Order**, que abre un
+   diálogo con prioridad y nota, crea el WO y deja al Manager en el Truck;
+   antes puede registrar la inspección de llegada).
 2. Elige el **Truck**. Opcional: prioridad y una nota.
 3. **Create**.
 

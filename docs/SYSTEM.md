@@ -455,26 +455,44 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs. Manager y System Admin: Agregar Job a una categoría activa, Renombrar y Activar (D25); un nombre repetido en la categoría no se acepta. Las categorías son de solo lectura. |
 | `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista) y **Shop hours** (hora del cierre del día y días hábiles, con su propio Save; D20). |
 
-**Detalle del Truck** (`/admin/trucks/[id]`), de arriba abajo (LTR-174; en
-computadora dos columnas ≈ 2:1, en el teléfono una sola en el mismo orden):
-- **Encabezado operativo:** número y vehículo, distintivos Ready / Not Ready
-  y fase, "N Jobs pendientes · M mecánicos", el **siguiente paso** con su
-  botón, y a la derecha **Open Work Order** y **Add work** (D6).
-- **Work Plan** (columna principal): **una sola lista**, una fila por paso con
-  el estado que trae la API (nada se calcula en pantalla) y, debajo de cada
-  paso, sus Jobs `Job · Mecánico · Estado`: Inspection (con "No issues found"
-  / "Issues found", D14), Shop Work, PM, Alignment, Detailing, Quality Check
-  y Close Work Order. Solo lectura salvo el selector de mecánico en los Jobs
-  **sin dueño** (el paso `assign`). Asignar, reasignar y completar se hace en
-  el Work Order; el respaldo del Manager para QC sigue en el siguiente paso.
-  El formulario de agregar trabajo se despliega desde **Add work**.
-- **Sin Work Order abierto:** el encabezado dice "Sin Work Order abierto" (o
-  "In Service"), sin Ready / Not Ready ni fase; el siguiente paso dice
-  "Registra la inspección de llegada abajo o abre un Work Order" con el botón
-  **New Work Order**; el Work Plan muestra **solo la Inspección** (lo único
-  que existe antes del WO, D14) y, una vez registrada, el motivo que falta.
-- **Contexto** (columna lateral): trabajo actual (WO, estado, prioridad,
-  mecánicos, pausa), y plegados datos del Truck e historial de reparaciones.
+**Detalle del Truck** (`/admin/trucks/[id]`), de arriba abajo (LTR-174, rediseño
+Etapa 4 del 2026-10-06; en computadora dos columnas ≈ 2:1, en el teléfono una
+sola en el mismo orden):
+- **Encabezado operativo:** número, vehículo y empresa, **un solo chip** de
+  estado (Not Ready, Ready to close, Ready to Go, In Service o "Sin Work Order
+  abierto") y el **chip del WO** ("WO-004 · In progress ↗"; completado dice
+  "Completed"). A la derecha **Add work** y el menú **…**: abrir el WO,
+  **Pause Work Order…** (lleva al WO con su diálogo de pausa; solo con el WO
+  In progress), **New Work Order** (diálogo) y **Copy link**. Debajo, "N Jobs
+  pendientes · M mecánicos".
+- **Pasos para salir del taller:** una fila de píldoras (Inspection, Shop
+  Work, PM, Alignment, Detailing, Quality Check, Close Work Order) con su
+  estado: hecho, pendiente con número, bloqueado, en taller externo, falta,
+  no aplica o listo para cerrar. Solo ordena lo que trae el Work Plan de la
+  API. Cada píldora lleva a su paso. En el teléfono es una fila con scroll
+  lateral.
+- **Siguiente paso:** actúa en el Truck (D26). La inspección se registra en
+  el mismo aviso; Assign abre el selector de mecánico; Resolve pide la nota
+  al pedirla; Close y Return to Service confirman en un diálogo (D27); New
+  Work Order es un diálogo (prioridad y nota) y el Manager se queda en el
+  Truck. Después de "Issues found" sin WO, primero **Add work**.
+  `external` lleva a la fila del Job en el WO.
+- **Work Plan** (columna principal): un bloque por paso con icono, nombre y
+  resumen; los terminados empiezan plegados. Debajo, sus Jobs de **solo
+  lectura**: punto de estado, nombre, estado y dueño, y **↗ Manage in Work
+  Order** (abre el WO en esa fila, resaltada, con "Back to Truck"). Solo un
+  Job **sin dueño** tiene **Assign** (selector con búsqueda). La inspección
+  registrada es texto con **Change**. Éxito = toast; los errores salen bajo
+  el encabezado con **Reload Truck** cuando hubo conflicto.
+- **Add work** abre un **panel lateral** (hoja en el teléfono). `#add-work`
+  lo abre desde el WO. Se abre solo al registrar "Issues found" sin Jobs,
+  salvo que el siguiente paso pida antes cerrar, Return to Service, un
+  blocker o una pausa.
+- **Sin Work Order abierto:** el Work Plan muestra **solo la Inspección**
+  (D14) y, una vez registrada, el motivo que falta.
+- **Contexto** (columna lateral, abierta): datos del Truck (millaje, empresa,
+  dueño, VIN con copiar, estado operativo, ubicación) e historial de
+  reparaciones con **Load more**.
 
 **Detalle Admin del WO** (`/admin/work-orders/[id]`), de arriba abajo (LTR-174;
 misma división 2:1 en computadora, una columna en el teléfono):

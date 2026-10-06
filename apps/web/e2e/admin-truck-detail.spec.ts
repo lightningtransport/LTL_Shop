@@ -19,18 +19,16 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await openYardOperations(page);
     await page.getByRole('link', { name: 'Y-101' }).first().click();
     await expect(page).toHaveURL(/\/admin\/trucks\/.*001001/);
-    // LTR-158 / D14: the Next step comes first; truck data is folded below the Work Plan.
+    // Stage 4: the Next step comes first; the Truck's data and repair history are open beside the Work Plan.
     await expect(page.getByTestId('truck-next-step')).toBeVisible();
-    await expect(page.getByText('Last reported location')).toBeHidden();
-    await page.getByTestId('truck-details').locator('summary').click();
-    await expect(page.getByText('Last reported location')).toBeVisible();
+    await expect(page.getByTestId('truck-details').getByText('Last reported location')).toBeVisible();
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
     await expect(page.getByText(/in yard/i)).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Current Work' })).toBeVisible();
+    // Current Work is gone: the Work Order chip in the header says it.
+    await expect(page.getByRole('heading', { name: 'Current Work' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Work Plan', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Issues found', exact: true })).toBeVisible();
-    await page.getByTestId('truck-history').locator('summary').click();
     await expect(page.getByRole('heading', { name: 'Repair history' })).toBeVisible();
     // The Phase 1 six-gate editor, Mark Ready and its Blockers card are gone.
     await expect(page.getByRole('heading', { name: 'Blockers' })).toHaveCount(0);
@@ -39,18 +37,25 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await expect(page.getByRole('button', { name: 'End review', exact: true })).toHaveCount(0);
   });
 
-  test('Current Work does not list the completed Work Order of a Ready to Go Truck (LTR-151)', async ({ page }) => {
+  test('A Ready to Go Truck says its Work Order is completed, not open (LTR-151, T1)', async ({ page }) => {
     await page.route(/\/api\/admin\/trucks\/[0-9a-f-]+$/, async (route) => {
       const response = await route.fetch();
       const body = await response.json();
-      if (body.activeWorkOrder) body.activeWorkOrder = { ...body.activeWorkOrder, status: 'completed' };
+      body.workPlan = {
+        ...body.workPlan,
+        readiness: 'ready',
+        phase: 'ready_to_go',
+        workOrder: { id: '00000000-0000-4000-8000-0000000000aa', displayId: 'WO-RTG', status: 'completed', version: 3, primaryCategoryName: 'Engine' },
+      };
       await route.fulfill({ response, json: body });
     });
     await login(page, 'manager@lightning.local');
     await openYardOperations(page);
     await page.getByRole('link', { name: 'Y-101' }).first().click();
-    await expect(page.getByRole('heading', { name: 'Current Work' })).toBeVisible();
-    await expect(page.getByText('No open Work Orders are linked to this Truck.')).toBeVisible();
+    await expect(page.getByTestId('truck-status-chip')).toHaveText('Ready to Go');
+    await expect(page.getByTestId('truck-work-order-chip')).toContainText('WO-RTG · Completed');
+    await expect(page.getByTestId('operational-counts')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Current Work' })).toHaveCount(0);
   });
 
   test('read-only Admin sees readiness data but no mutation controls in Spanish', async ({ page }) => {
@@ -59,7 +64,7 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await page.getByRole('link', { name: 'Y-102' }).click();
     await expect(page.getByText('Truck details', { exact: true })).toBeVisible();
     await switchLanguage(page, 'es');
-    await page.getByTestId('truck-details').locator('summary').filter({ hasText: 'Datos del truck' }).click();
+    await expect(page.getByTestId('truck-details').getByText('Datos del truck')).toBeVisible();
     await expect(page.getByText('Ubicación reportada')).toBeVisible();
     await expect(page.getByText('Presencia desconocida')).toHaveCount(0);
     await expect(page.getByText(/no tienes permiso para cambiar/i)).toBeVisible();

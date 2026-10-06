@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { WorkPlanJobLane, type AdminTruckDetailDto, type TruckNextStepDto } from '@ltl-shop/shared';
+import { WorkPlanInspectionOutcome, WorkPlanJobLane, type AdminTruckDetailDto, type RecordWorkPlanInspectionInput, type TruckNextStepDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import {
   completeAdminJob,
@@ -12,7 +12,9 @@ import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/l
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { useActionToast } from './action-toast';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
+import { InspectionButtons } from './admin-truck-work-plan';
 import { CloseWorkOrderDialog } from './close-work-order-dialog';
+import { NextStepAction } from './next-step-action';
 import { ReturnToServiceDialog } from './return-to-service-dialog';
 import { Button, InlineAlert } from './ui';
 
@@ -33,12 +35,25 @@ export function AdminTruckNextStep({
   locale,
   messages,
   canManage,
+  fromPath,
+  inspectionPending,
+  onRecordInspection,
+  onAddWork,
+  onNewWorkOrder,
   onChanged,
 }: {
   truck: AdminTruckDetailDto;
   locale: AdminLocale;
   messages: AdminMessages;
   canManage: boolean;
+  /** This Truck's path, for the Work Order's back link. */
+  fromPath: string;
+  inspectionPending: boolean;
+  onRecordInspection: (outcome: RecordWorkPlanInspectionInput['outcome']) => void;
+  /** Opens the Add work panel. */
+  onAddWork: () => void;
+  /** Opens the New Work Order dialog (owner decision 2026-10-05: the Manager stays on the Truck). */
+  onNewWorkOrder: () => void;
   onChanged: () => Promise<unknown> | void;
 }) {
   const step = truck.nextStep;
@@ -63,12 +78,6 @@ export function AdminTruckNextStep({
     } finally {
       setPending(false);
     }
-  }
-
-  function scrollTo(id: string) {
-    const target = document.getElementById(id);
-    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    if (target instanceof HTMLElement) target.focus({ preventScroll: true });
   }
 
   const body = renderStep(step);
@@ -97,6 +106,7 @@ export function AdminTruckNextStep({
               locale={locale}
               messages={messages}
               canResolve={canManage}
+              noteOnDemand
               onResolved={onChanged}
             />
           </div>
@@ -112,13 +122,14 @@ export function AdminTruckNextStep({
           />
         );
       case 'inspect':
+        // Stage 4: the inspection is recorded right here (D14), not by scrolling to the Work Plan.
         return (
-          <Action
-            text={messages.truckNextStepInspect}
-            label={messages.truckNextStepInspectAction}
-            variant="outline"
-            onClick={() => scrollTo('truck-work-plan-title')}
-          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="min-w-0 flex-1">{messages.truckNextStepInspect}</p>
+            {truck.workPlan.capabilities.canRecordInspection ? (
+              <InspectionButtons messages={messages} pending={inspectionPending} onRecord={onRecordInspection} />
+            ) : null}
+          </div>
         );
       case 'add_missing_steps':
         return (
@@ -135,14 +146,22 @@ export function AdminTruckNextStep({
           />
         );
       case 'assign':
+        // Stage 2/4: the mechanic picker opens next to the button (PM → PM mechanics).
         return (
-          <Action
-            text={fillPlaceholders(messages.truckNextStepAssign, { job: current.jobName ?? '' })}
-            label={messages.truckNextStepAssignAction}
-            variant="outline"
-            disabled={!canManage}
-            onClick={() => scrollTo(`assign-job-${current.jobId}`)}
-          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="min-w-0 flex-1">{fillPlaceholders(messages.truckNextStepAssign, { job: current.jobName ?? '' })}</p>
+            <NextStepAction
+              step={current}
+              place="work-order"
+              truck={{ id: truck.truck.id, truckNumber: truck.truck.truckNumber }}
+              workOrderDisplayId={truck.workPlan.workOrder?.displayId ?? ''}
+              expectedVersion={version}
+              fromPath={fromPath}
+              canManage={canManage}
+              messages={messages}
+              onChanged={onChanged}
+            />
+          </div>
         );
       case 'qc':
         return (
@@ -205,7 +224,7 @@ export function AdminTruckNextStep({
             <p>{fillPlaceholders(messages.truckNextStepExternal, { job: current.jobName ?? '' })}</p>
             {current.workOrderId ? (
               <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href={`/admin/work-orders/${current.workOrderId}`}>{messages.openInWorkOrder}</Link>
+                <Link href={`/admin/work-orders/${current.workOrderId}?from=${encodeURIComponent(fromPath)}${current.jobId ? `#job-${current.jobId}` : ''}`}>{messages.openInWorkOrder}</Link>
               </Button>
             ) : null}
           </div>
@@ -214,17 +233,26 @@ export function AdminTruckNextStep({
         return (
           <p>{fillPlaceholders(messages.truckNextStepWork, { count: String(current.remaining ?? 0), job: current.jobName ?? '' })}</p>
         );
-      case 'create_work_order':
+      case 'create_work_order': {
+        // Owner decision (2026-10-05): New Work Order is a dialog here. After "Issues found", adding the
+        // work is what opens the Work Order, so Add work comes first.
+        const outcome = truck.workPlan.inspection.outcome;
+        const issues = outcome === WorkPlanInspectionOutcome.ISSUES_FOUND && truck.workPlan.capabilities.canAddWork;
+        const text = outcome === WorkPlanInspectionOutcome.ISSUES_FOUND
+          ? messages.truckNextStepCreateAfterIssues
+          : outcome === WorkPlanInspectionOutcome.NO_ISSUES_FOUND ? messages.truckNextStepCreateAfterNoIssues : messages.truckNextStepCreate;
         return (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p>{messages.truckNextStepCreate}</p>
+            <p className="min-w-0 flex-1">{text}</p>
             {canManage ? (
-              <Button asChild className="w-full sm:w-auto">
-                <Link href={`/admin/work-orders/new?truck=${truck.truck.id}`}>{messages.truckNextStepCreateAction}</Link>
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {issues ? <Button type="button" className="w-full sm:w-auto" onClick={onAddWork}>{messages.workPlanAddWork}</Button> : null}
+                <Button type="button" variant={issues ? 'outline' : 'default'} className="w-full sm:w-auto" onClick={onNewWorkOrder}>{messages.truckNextStepCreateAction}</Button>
+              </div>
             ) : null}
           </div>
         );
+      }
       default:
         return null;
     }

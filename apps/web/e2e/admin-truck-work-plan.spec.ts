@@ -280,13 +280,17 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await page.getByRole('button', { name: 'Add to Work Plan' }).click();
 
     await expect(page.getByText('Work Plan updated.').first()).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Readiness' })).toBeVisible();
+    // Stage 4: the steps to leave the shop appear with the Work Order; the header says what it is.
+    await expect(page.getByTestId('truck-stepper')).toBeVisible();
     const planList = page.getByRole('list', { name: 'Jobs in this Work Order' });
     await expect(planList.getByText('Brake Inspection')).toBeVisible();
     await expect(planList.getByText('Pending').first()).toBeVisible();
-    await expect(page.getByText('Not Ready — 1 remaining')).toBeVisible();
+    await expect(page.getByTestId('operational-counts')).toHaveText('1 Jobs left · 0 mechanics');
     await expect(page.getByText('Open Jobs still need to be completed.')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open Work Order: WO-WP1/ })).toBeVisible();
+    await expect(page.getByTestId('truck-work-order-chip')).toContainText('WO-WP1 · Created');
+    // T4: each Job opens its row on the Work Order, which comes back to this Truck.
+    await expect(planList.getByRole('link', { name: 'Manage Brake Inspection in the Work Order' }))
+      .toHaveAttribute('href', /\/admin\/work-orders\/00000000-0000-4000-8000-00000000bbb1\?from=%2Fadmin%2Ftrucks%2F.*#job-/);
     await expect(page.getByRole('heading', { name: 'Required Work' })).toHaveCount(0);
   });
 
@@ -295,7 +299,9 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await loginManager(page);
     await page.goto(`/admin/trucks/${truckId}`);
     await page.getByRole('button', { name: 'No issues found' }).click();
-    await expect(page.getByText('Inspection is resolved without Shop Work Jobs. Alignment and Detailing are still required.')).toBeVisible();
+    // Stage 4 (UX-4-003): a recorded inspection is text with "Change", not a pressed button.
+    await expect(page.getByText('Inspection: No issues found')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Change' })).toBeVisible();
     await expect(page.getByText('Alignment is required and not complete.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Required Work' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
@@ -398,9 +404,9 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await page.getByRole('button', { name: 'Add to Work Plan' }).click();
 
     const planList = page.getByRole('list', { name: 'Jobs in this Work Order' });
-    // LTR-174: the Truck only offers the picker for a Job with no owner (the `assign` Next step).
-    await expect(planList.getByLabel('Mechanic for Brake Inspection')).toHaveValue('');
-    await planList.getByLabel('Mechanic for Brake Inspection').selectOption({ label: 'Alex Mechanic' });
+    // LTR-174: the Truck only offers Assign for a Job with no owner; Stage 4: it opens the mechanic picker.
+    await planList.getByRole('button', { name: 'Assign' }).click();
+    await page.getByTestId('mechanic-picker').getByRole('option', { name: /Alex Mechanic/ }).click();
     await expect(page.getByText('Job assigned.').first()).toBeVisible();
     await expect(planList.getByText('Assigned to: Alex Mechanic')).toBeVisible();
   });
@@ -435,7 +441,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     ]);
     const planList = page.getByRole('list', { name: 'Jobs in this Work Order' });
     await expect(planList.getByText('Assigned to: Alex Mechanic')).toHaveCount(1);
-    await expect(planList.getByLabel('Mechanic for Air leak at tank')).toHaveValue('');
+    await expect(planList.getByRole('button', { name: 'Assign' })).toHaveCount(1);
   });
 
   test('Next step closes the Work Order and returns the Truck to service from the Truck (LTR-158)', async ({ page }) => {

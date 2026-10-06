@@ -194,8 +194,9 @@ Se retoma cuando el dueño responda sus decisiones (§5 de la propuesta).
 | R6 | C | Tema oscuro: `--card`, `--muted` y `--accent` son el mismo color; `bg-muted` y el hover no se ven sobre tarjetas (todas las pantallas) | `globals.css` |
 | ~~R7~~ | E | ~~"Labor segments" en mayúsculas~~ — **hecho** (2026-10-06, Etapa 1): usa `group-title`. **Sigue:** los tramos salen dos veces (lista y select); se une en el rediseño de la WO | `admin-work-order-detail.tsx` (`LaborSegments`) |
 | ~~R8~~ | E | ~~Error de "Send to external shop" con `text-destructive`~~ — **hecho** (2026-10-06, Etapa 1): `text-destructive-text` | `admin-job-table.tsx` |
+| R9 | E | Las clases con transparencia sobre colores del tema (`bg-primary/10`, `border-primary/40`, `bg-destructive/10`, `bg-muted/40`…) **no generan CSS**: en `tailwind.config.js` esos colores son `var(--x)` sin `<alpha-value>`, así que Tailwind 3 las descarta. Ejemplos: `InlineAlert` no tiene su fondo ni su borde rojos; el borde del Next step del Truck es el gris normal. Son 17 archivos. Arreglo: definir los colores con `color-mix(in oklch, var(--x) calc(<alpha-value> * 100%), transparent)` y revisar el resultado en todas las pantallas (se hace con R6, Etapa 7). Encontrado el 2026-10-06; el código nuevo no usa esas clases | `tailwind.config.js`, `ui.tsx` y otros |
 
-## 1f. Truck Detail (Admin) y reparto Truck ↔ Work Order (2026-10-05) — **ESPERA**
+## 1f. Truck Detail (Admin) y reparto Truck ↔ Work Order (2026-10-05) — **EN CURSO** (Etapa 4 hecha el 2026-10-06)
 
 Auditoría en [`ux-audit/admin-truck-wo/`](ux-audit/admin-truck-wo/05-navegacion-ia.md) y
 propuesta con maqueta en [`proposals/truck-detail-redesign/`](proposals/truck-detail-redesign/README.md).
@@ -207,13 +208,13 @@ step actúa donde estás. Se retoma con las decisiones de §6 de esa propuesta.
 | ~~T1~~ | C | ~~El Truck en Ready to Go dice "Open Work Order: WO-x" y "No open Work Orders"~~ — **hecho** (2026-10-06, Etapa 1): el enlace dice "WO-x · Completed", sin "0 Jobs left · N mechanics" ni el badge "Ready to Go" repetido | `admin-truck-detail.tsx` |
 | ~~T2~~ | C | ~~El Next step de la WO lleva al Truck para Resolve / Assign / Close / Return to Service~~ — **hecho** (2026-10-06, Etapa 2): `NextStepAction` actúa en la WO (Resolve lleva al bloque de blockers; Assign abre el selector; Close y Return to Service piden confirmar). Solo la inspección y un WO nuevo van al Truck | `next-step-action.tsx`, `admin-work-order-detail.tsx` |
 | ~~T3~~ | C | ~~Next step `external` sin acción~~ — **hecho** (2026-10-06, Etapa 1): botón "Open in Work Order" | `admin-truck-next-step.tsx` |
-| T4 | C | Jobs del Truck sin enlace a su fila en la WO; la WO vuelve siempre a la lista (UX-5-002, UX-5-003) | `admin-truck-work-plan.tsx`, `admin-work-order-detail.tsx` |
-| T5 | C | Add work se abre al final del Work Plan, fuera de la vista; el deep link de la WO no lo abre (UX-5-006) | `work-plan-add-work.tsx` |
-| T6 | C | Errores con nombres de permisos ("requires work_orders.manage"); el error de asignar reusa el de agregar trabajo | `admin-messages.ts`, `admin-truck-work-plan.tsx` |
-| T7 | E | La carga fallida del Truck dice "Unable to load Yard Operations." | `admin-truck-detail.tsx` |
+| ~~T4~~ | C | ~~Jobs del Truck sin enlace a su fila en la WO; la WO vuelve siempre a la lista~~ — **hecho** (2026-10-06, Etapa 4): cada Job del Truck tiene ↗ "Manage in Work Order" (`#job-<id>`, la fila se resalta) y la WO abierta desde el Truck dice "Back to Truck 601" | `admin-truck-work-plan.tsx`, `admin-work-order-detail.tsx`, `admin-job-table.tsx` |
+| ~~T5~~ | C | ~~Add work se abre al final del Work Plan, fuera de la vista; el deep link de la WO no lo abre~~ — **hecho** (2026-10-06, Etapa 4): panel lateral (hoja en el teléfono); `#add-work` lo abre | `work-plan-add-work.tsx`, `side-sheet.tsx` |
+| ~~T6~~ | C | ~~Errores con nombres de permisos ("requires work_orders.manage"); el error de asignar reusa el de agregar trabajo~~ — **hecho** (2026-10-06, Etapa 4): "Only a Shop Manager can…" y error propio para asignar | `admin-messages.ts`, `admin-truck-work-plan.tsx` |
+| ~~T7~~ | E | ~~La carga fallida del Truck dice "Unable to load Yard Operations."~~ — **hecho** (2026-10-06, Etapa 4): "Unable to load Truck details." | `admin-truck-detail.tsx` |
 | ~~T8~~ | E | ~~Aviso de Job custom duplicado con texto equivocado~~ — **hecho** (2026-10-06, Etapa 1): "A Job with this name is already on the Work Plan or in this list." | `work-plan-add-work.tsx` |
-| T9 | E | Pasos y Jobs con el mismo estilo y 12 badges; "Issues found" registrado como botón primario; textarea de Return to Service siempre abierto (UX-4-001…004) | `admin-readiness-tracker.tsx`, `admin-truck-next-step.tsx` |
-| T10 | E | Éxito dos veces (banner + toast); tarjeta dentro de tarjeta en `CategoryJobList`; h3 sin h2; Repair history sin paginar | `admin-truck-work-plan.tsx`, `category-job-list.tsx`, `admin-truck-detail.tsx` |
+| ~~T9~~ | E | ~~Pasos y Jobs con el mismo estilo y 12 badges; "Issues found" registrado como botón primario; textarea de Return to Service siempre abierto~~ — **hecho** (2026-10-06, Etapas 1 y 4): un chip de estado, stepper de pasos, cada paso con icono y resumen (los terminados plegados), Jobs con punto de estado; la inspección registrada es texto con "Change" | `admin-truck-detail.tsx`, `admin-truck-work-plan.tsx`, `truck-stepper.tsx` |
+| T10 | E | ~~Éxito dos veces (banner + toast); h3 sin h2; Repair history sin paginar~~ — **hecho** (2026-10-06, Etapa 4): solo toast, error en línea bajo el encabezado con "Reload Truck", títulos h2, Repair history con "Load more". **Sigue:** tarjeta dentro de tarjeta en `CategoryJobList` (dentro del panel Add work) | `category-job-list.tsx` |
 
 ## 1g. Dashboard y Yard Operations (Admin) (2026-10-05) — **ESPERA**
 

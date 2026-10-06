@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getAdminMessages } from './admin-messages';
-import { adminTruckHref, adminTruckOrigin } from './admin-truck-origin';
+import { adminTruckHref, adminTruckOrigin, adminWorkOrderOrigin } from './admin-truck-origin';
 
 const en = getAdminMessages('en');
 
@@ -25,5 +25,17 @@ describe('adminTruckOrigin (LTR-110)', () => {
 
   it('builds the link with an encoded origin', () => {
     expect(adminTruckHref('t-1', '/admin/work-orders/wo-1')).toBe('/admin/trucks/t-1?from=%2Fadmin%2Fwork-orders%2Fwo-1');
+  });
+});
+
+describe('Work Order back link (stage 4 / T4)', () => {
+  const messages = getAdminMessages('en');
+  it('goes back to the Truck it came from', () => {
+    expect(adminWorkOrderOrigin('/admin/trucks/t1?from=%2Fadmin', '601', messages)).toEqual({ href: '/admin/trucks/t1?from=%2Fadmin', backLabel: 'Back to Truck 601' });
+  });
+  it('falls back to the Work Orders list for missing or foreign origins', () => {
+    expect(adminWorkOrderOrigin(null, '601', messages).href).toBe('/admin/work-orders');
+    expect(adminWorkOrderOrigin('//evil.com/admin', '601', messages).href).toBe('/admin/work-orders');
+    expect(adminWorkOrderOrigin('https://evil.com', '601', messages).href).toBe('/admin/work-orders');
   });
 });
