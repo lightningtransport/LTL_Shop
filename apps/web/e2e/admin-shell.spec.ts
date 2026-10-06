@@ -98,13 +98,13 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
     await expect(page.getByText('What needs you now, in order. Each action happens here.')).toBeVisible();
-    await expect(page.getByText(/^Updated /)).toHaveCount(1);
+    await expect(page.getByText(/^Live · updated /)).toHaveCount(1);
     await expect(page.getByText(/supabase|postgres|Source:|Generated/i)).toHaveCount(0);
     // Stage 3: four counters, one queue grouped by the action; history counts are links.
     await expect(page.getByTestId('dashboard-counter-blocked')).toBeVisible();
     await expect(page.getByRole('link', { name: /open Work Orders$/ })).toBeVisible();
     await expect(page.getByRole('heading', { name: /^Needs you/ })).toBeVisible();
-    await expect(page.getByTestId('dashboard-group-close')).toContainText('All Jobs are done. Close the Work Order to make the Truck Ready to Go.');
+    await expect(page.getByTestId('dashboard-group-close')).toContainText('Closing makes the truck Ready to Go.');
     await page.getByRole('link', { name: 'WO-0102' }).first().click();
     await expect(page.getByRole('heading', { name: 'T-102' })).toBeVisible();
     // Stage 8 (mockup): Confirm completion lives in the Next step callout; the Jobs card comes after it.
@@ -144,7 +144,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Lo que te necesita ahora, en orden. Cada acción se hace aquí.')).toBeVisible();
     await expect(page.getByRole('heading', { name: /^Te necesita/ })).toBeVisible();
     await expect(page.getByTestId('dashboard-group-close')).toContainText('Listos para cerrar');
-    await expect(page.getByText(/^Actualizado /)).toHaveCount(1);
+    await expect(page.getByText(/^En vivo · actualizado /)).toHaveCount(1);
     await expect(page.getByText(/supabase|postgres|Fuente:|Generado/i)).toHaveCount(0);
     const esNav = page.getByRole('complementary', { name: 'Navegación de Shop Admin' });
     await expect(esNav.getByRole('link', { name: 'Operaciones', exact: true })).toBeVisible();

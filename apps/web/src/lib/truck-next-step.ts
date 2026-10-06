@@ -55,7 +55,7 @@ export function truckNextStepText(step: TruckNextStepDto | null | undefined, mes
 export function truckNextStepActionLabel(step: TruckNextStepDto | null | undefined, messages: AdminMessages): string | null {
   switch (step?.kind) {
     case 'resolve_blocker': return messages.resolveBlocker;
-    case 'resume': return messages.resumeWorkOrderAction;
+    case 'resume': return messages.resumeShort;
     case 'inspect': return messages.truckNextStepInspectAction;
     case 'add_missing_steps': return messages.truckNextStepMissingStepsAction;
     case 'assign': return messages.truckNextStepAssignAction;

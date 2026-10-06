@@ -21,6 +21,9 @@ Las que el revisor marque al cerrar cada pantalla de la Etapa 8 se anotan aquí.
 - **Work Order (8.2):** el aviso en pausa no dice quién pausó ("by Crixcrox"): la pausa oficial no trae su autor en `currentPause`.
 - **Truck (8.3):** "Add work" no pone los **dueños por defecto** de PM, Alignment y Detailing en el panel: la web no tiene esa configuración (Setup → Shop workflow); la API los aplica al crear los pasos obligatorios.
 - **Truck (8.3):** el aviso "Blocker" del Truck no dice "(+N more)": el Truck solo trae el último blocker reportado.
+- **Dashboard (8.4):** "Leaving soon" y "Unassigned" no dicen el paso (PM, Shop Work…): derivarlo para cada fila del resumen es caro en la API (decisión de la Etapa 8.6).
+- **Dashboard (8.4):** la inspección sigue siendo un enlace al Truck, no los dos botones de la maqueta (pregunta P3 abierta).
+- **Dashboard (8.4):** el bloque Workspaces sigue donde estaba (pregunta P4 abierta).
 
 ## Resuelto por el dueño el 2026-10-06
 

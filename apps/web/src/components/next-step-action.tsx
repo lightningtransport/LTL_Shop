@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { CheckCheck, ClipboardCheck, FilePlus, ListPlus, Play, SquareArrowOutUpRight, Truck as TruckIcon, UserPlus, type LucideIcon } from 'lucide-react';
 import { AppCapability, isPmCategory, type AdminWorkOrderDetailDto, type TruckNextStepDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { assignAdminWorkOrderJob, completeAdminJob, resumeAdminWorkOrder, useAdminAssignableMechanics } from '@/lib/admin-data';
@@ -15,6 +16,16 @@ import { CloseWorkOrderDialog } from './close-work-order-dialog';
 import { MechanicPicker, type PickerMechanic } from './mechanic-picker';
 import { ReturnToServiceDialog } from './return-to-service-dialog';
 import { Button } from './ui';
+
+const STEP_ICON: Partial<Record<TruckNextStepDto['kind'], LucideIcon>> = {
+  resume: Play,
+  add_missing_steps: ListPlus,
+  close: CheckCheck,
+  return_to_service: TruckIcon,
+  inspect: ClipboardCheck,
+  create_work_order: FilePlus,
+  external: SquareArrowOutUpRight,
+};
 
 /** Where the button is: it decides which steps navigate (only what lives on another screen). */
 export type NextStepPlace = 'dashboard' | 'work-order-list' | 'work-order';
@@ -79,14 +90,16 @@ export function NextStepAction({
     }
   }
 
+  // Stage 8 (mockups): full-size buttons with the step's icon.
+  const Icon = STEP_ICON[step.kind];
   const button = (text: string, onClick: () => void, variant: 'default' | 'outline' = 'default') => (
-    <Button type="button" size="sm" variant={variant} disabled={pending} onClick={onClick} data-testid="next-step-action" data-kind={step.kind}>
-      {pending ? messages.saving : text}
+    <Button type="button" variant={variant} disabled={pending} onClick={onClick} data-testid="next-step-action" data-kind={step.kind}>
+      {Icon && !pending ? <Icon aria-hidden="true" /> : null}{pending ? messages.saving : text}
     </Button>
   );
   const link = (text: string, href: string) => (
-    <Button asChild size="sm" variant="outline" data-testid="next-step-action" data-kind={step.kind}>
-      <Link href={href}>{text}</Link>
+    <Button asChild variant="outline" data-testid="next-step-action" data-kind={step.kind}>
+      <Link href={href}>{Icon ? <Icon aria-hidden="true" /> : null}{text}</Link>
     </Button>
   );
 
@@ -214,7 +227,8 @@ function AssignAction({ step, workOrderId, expectedVersion, messages, onChanged 
       messages={messages}
       onPick={(mechanic) => void pick(mechanic)}
       trigger={(
-        <Button type="button" size="sm" disabled={pending} aria-haspopup="listbox" data-testid="next-step-action" data-kind="assign">
+        <Button type="button" disabled={pending} aria-haspopup="listbox" data-testid="next-step-action" data-kind="assign">
+          {pending ? null : <UserPlus aria-hidden="true" />}
           {pending ? messages.saving : messages.truckNextStepAssignAction}
         </Button>
       )}
