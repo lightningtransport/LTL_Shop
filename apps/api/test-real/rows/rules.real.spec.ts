@@ -32,7 +32,7 @@ describe('Reglas: Custom Jobs y permisos', () => {
     refused('un Job de catálogo no se repite en el WO', await addLights(), 400);
   });
 
-  it('A26 | Permisos: mecánico 403 en crear/pausar/agregar/terminar y en el roster; Manager 403 en el catálogo', async () => {
+  it('A26 | Permisos: mecánico 403 en crear/pausar/agregar/terminar, en el roster y en el catálogo; Safety 403 en roster y catálogo', async () => {
     const { truck: row, workOrderId } = await plannedWo('922');
     const free = await truck('931');
     const mechanic = as(USERS.alignment);
@@ -54,11 +54,15 @@ describe('Reglas: Custom Jobs y permisos', () => {
     refused('mecánico: crear personal', await mechanic.post('/admin/mechanics', newMechanic), 403);
     refused('Safety: crear personal', await as(USERS.safety).post('/admin/mechanics', newMechanic), 403);
     refused('mecánico: editar personal', await mechanic.patch(`/admin/mechanics/${await userId(USERS.spare)}`, { active: true }), 403);
-    refused('Manager: crear Job de catálogo', await manager.post('/admin/catalog/jobs', { categoryId: standardCategory, displayName: 'Prueba' }), 403);
-    refused('Manager: editar Job de catálogo', await manager.patch(`/admin/catalog/jobs/${lights.id}`, { displayName: 'Lights' }), 403);
+    // D25: el catálogo de Jobs lo mantiene el Manager (fila A36); el mecánico y Safety siguen fuera.
+    const newCatalogJob = { categoryId: standardCategory, displayName: 'Prueba' };
+    refused('mecánico: crear Job de catálogo', await mechanic.post('/admin/catalog/jobs', newCatalogJob), 403);
+    refused('Safety: crear Job de catálogo', await as(USERS.safety).post('/admin/catalog/jobs', newCatalogJob), 403);
+    refused('mecánico: editar Job de catálogo', await mechanic.patch(`/admin/catalog/jobs/${lights.id}`, { displayName: 'Lights' }), 403);
+    refused('Safety: editar Job de catálogo', await as(USERS.safety).patch(`/admin/catalog/jobs/${lights.id}`, { displayName: 'Lights' }), 403);
 
-    const asAdmin = await admin.patch(`/admin/catalog/jobs/${lights.id}`, { displayName: 'Lights' });
-    truthy('System Admin sí puede escribir el catálogo', asAdmin.status !== 403, asAdmin);
+    ok('Manager sí puede escribir el catálogo', await manager.patch(`/admin/catalog/jobs/${lights.id}`, { displayName: 'Lights' }));
+    ok('System Admin sí puede escribir el catálogo', await admin.patch(`/admin/catalog/jobs/${lights.id}`, { displayName: 'Lights' }));
     const users = await prisma.user.findMany({ where: { active: true }, include: { capabilities: true } });
     same('ningún usuario activo sin capabilities', users.filter((user) => !user.capabilities.length).map((user) => user.email), []);
     const reads = ok('Manager: leer roster', await manager.get('/admin/mechanics?assignable=true'));
