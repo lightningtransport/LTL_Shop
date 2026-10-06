@@ -268,9 +268,12 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: 'Apply time correction' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Time correction saved.' }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Confirm completion' }).first().click();
+    // Owner decision (2026-10-05): closing confirms in a dialog.
+    await page.getByTestId('close-work-order-dialog').getByRole('button', { name: 'Close Work Order' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order completed.' }).first()).toBeVisible();
+    // Return to Service from the "…" menu (the fixture sends no Next step, so the step box has no button here).
     await page.getByTestId('admin-wo-more-actions').click();
-    await page.getByRole('button', { name: 'Return to Service' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Return to Service' }).click();
     await page.getByLabel('Reason (optional)').fill('Repairs verified');
     await page.getByRole('button', { name: 'Confirm Return to Service' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Truck returned to service.' }).first()).toBeVisible();

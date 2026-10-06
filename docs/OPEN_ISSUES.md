@@ -205,7 +205,7 @@ step actúa donde estás. Se retoma con las decisiones de §6 de esa propuesta.
 | # | Clase | Problema | Dónde |
 |---|---|---|---|
 | ~~T1~~ | C | ~~El Truck en Ready to Go dice "Open Work Order: WO-x" y "No open Work Orders"~~ — **hecho** (2026-10-06, Etapa 1): el enlace dice "WO-x · Completed", sin "0 Jobs left · N mechanics" ni el badge "Ready to Go" repetido | `admin-truck-detail.tsx` |
-| T2 | C | El Next step de la WO lleva al Truck para Resolve / Assign / Close / Return to Service, que la WO ya tiene (UX-5-004) | `admin-work-order-detail.tsx` |
+| ~~T2~~ | C | ~~El Next step de la WO lleva al Truck para Resolve / Assign / Close / Return to Service~~ — **hecho** (2026-10-06, Etapa 2): `NextStepAction` actúa en la WO (Resolve lleva al bloque de blockers; Assign abre el selector; Close y Return to Service piden confirmar). Solo la inspección y un WO nuevo van al Truck | `next-step-action.tsx`, `admin-work-order-detail.tsx` |
 | ~~T3~~ | C | ~~Next step `external` sin acción~~ — **hecho** (2026-10-06, Etapa 1): botón "Open in Work Order" | `admin-truck-next-step.tsx` |
 | T4 | C | Jobs del Truck sin enlace a su fila en la WO; la WO vuelve siempre a la lista (UX-5-002, UX-5-003) | `admin-truck-work-plan.tsx`, `admin-work-order-detail.tsx` |
 | T5 | C | Add work se abre al final del Work Plan, fuera de la vista; el deep link de la WO no lo abre (UX-5-006) | `work-plan-add-work.tsx` |
@@ -225,7 +225,7 @@ sitio) y el Yard "¿dónde está cada camión?". Se retoma con las decisiones de
 | # | Clase | Problema | Dónde |
 |---|---|---|---|
 | D1 | C | "Needs attention" lista las WOs abiertas > 24 h y deja fuera los Ready to Go; máximo 8, "View all" sin filtro (UX-5-002, UX-5-007) | `admin.service.ts` (lista de atención), `admin-dashboard.tsx` |
-| D2 | C | Los botones del Next step del Dashboard llevan al Truck (UX-5-005). ~~En solo lectura "Resolve" es un callejón sin salida~~ — **hecho** (2026-10-06, Etapa 1): sin permiso no hay botón. **Sigue:** actuar en el sitio (Etapa 2) | `admin-work-order-item.tsx` |
+| ~~D2~~ | C | ~~Los botones del Next step del Dashboard llevan al Truck; en solo lectura "Resolve" es un callejón sin salida~~ — Etapa 1 (sin permiso no hay botón) y **hecho** (2026-10-06, Etapa 2): el mismo `NextStepAction` actúa en el Dashboard y en la lista de Work Orders | `admin-work-order-item.tsx`, `next-step-action.tsx` |
 | D3 | C | Métricas: 7 iguales al título, "Ready to Go" sin filtro; "Waiting / Paused" y "paused (blocked)" cuentan cosas distintas (UX-5-003, UX-4-001) | `admin-dashboard.tsx`, `admin-yard-operations.tsx` |
 | ~~D4~~ | C | ~~Volver del Truck al Yard pierde filtros, búsqueda, vista y pestaña~~ — **hecho** (2026-10-06, Etapa 1): `yardOperationsFromPath` | `admin-yard-operations.tsx`, `lib/yard-operations-routing.ts` |
 | ~~D5~~ | C | ~~El Yard no se refresca solo~~ — **hecho** (2026-10-06, Etapa 1): cada 30 s | `lib/admin-data.ts` |

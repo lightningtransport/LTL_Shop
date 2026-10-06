@@ -12,19 +12,21 @@ import { formatAdminDate, formatAdminDateOnly, formatDuration } from '@/lib/admi
 import { formatVehicleYmm } from '@/lib/format';
 import { laborByMechanic } from '@/lib/labor-by-mechanic';
 import { adminActivityEventDetail, adminActivityEventLabel, adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { addAdminHelperJob, returnAdminJobExternal, sendAdminJobExternal, changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, completeAdminWorkOrder, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
+import { addAdminHelperJob, returnAdminJobExternal, sendAdminJobExternal, changeAdminPmService, addAdminWorkOrderNote, handleAdminWorkRequest, assignAdminWorkOrderJob, cancelAdminJob, cancelAdminWorkOrder, completeAdminJob, correctAdminTime, patchAdminWorkOrder, pauseAdminWorkOrder, reopenAdminJob, reopenAdminWorkOrder, resumeAdminWorkOrder, returnAdminWorkOrderToService, unassignAdminWorkOrderJob, useAdminAssignableMechanics, useAdminRepairHistory, useAdminWorkOrder } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
 import { AdminContextSidebar, ContextBlock, ContextCard, ContextFacts } from './admin-context-sidebar';
 import { AdminJobTable } from './admin-job-table';
 import { apiErrorCode } from '@/lib/api-error-message';
 import { AdminOperationalHeader } from './admin-operational-header';
+import { CloseWorkOrderDialog } from './close-work-order-dialog';
+import { NextStepAction } from './next-step-action';
 import { pauseResumeError } from './pause-resume-error';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
 import { mechanicNamesLabel } from '@/lib/admin-work-summary';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import { truckNextStepActionLabel, truckNextStepText } from '@/lib/truck-next-step';
+import { truckNextStepText } from '@/lib/truck-next-step';
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { useCategories } from '@/lib/shop-data';
@@ -79,6 +81,8 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   const [dialog, setDialog] = useState<WorkOrderDialog>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
+  // Owner decision (2026-10-05): "Confirm completion" confirms in a dialog (card and sticky bar).
+  const [closeOpen, setCloseOpen] = useState(false);
   // LTR-168: no preselected reason, so pausing is a choice and never a single accidental tap.
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
@@ -154,7 +158,6 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
   // LTR-159: the same Next step as the Truck, Dashboard and Yard (the API's one rule).
   const nextStep = data.nextStep ?? null;
   const nextStepText = truckNextStepText(nextStep, messages);
-  const nextStepAction = truckNextStepActionLabel(nextStep, messages);
   // Everything except plain work in progress is the Shop Manager's to do.
   const nextStepManagerOwned = Boolean(nextStep && nextStep.kind !== 'work');
   // The "Confirm completion" card already covers closing.
@@ -183,6 +186,12 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
     }
   }
 
+  // Stage 2: refresh this Work Order and the lists after an action done by a shared component.
+  async function refreshAfterAction() {
+    await mutate();
+    void mutateRelated(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
+  }
+
   function closeDialog() {
     if (pendingAction) return;
     setDialog(null);
@@ -201,7 +210,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
         <CompleteWorkOrderButton
           messages={messages}
           pending={Boolean(pendingAction)}
-          onConfirm={() => void runMutation('complete', messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(data.id, data.version), (failure) => completeError(failure, messages))}
+          onConfirm={() => setCloseOpen(true)}
         />
       </CardContent>
     </Card>
@@ -257,12 +266,22 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           <p className="group-title">{messages.nextStepTitle}</p>
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
             <p className="font-medium">{nextStepText}</p>
-            {/* The action lives on the Truck, the Manager's workplace (LTR-158). */}
-            {nextStepAction && canManageWorkOrders ? (
-              <Button asChild size="sm" variant="outline">
-                <Link href={truckHref}>{nextStepAction}</Link>
-              </Button>
-            ) : null}
+            {/* Stage 2 / T2: the step acts here; only the inspection and a new Work Order go to the Truck. */}
+            <NextStepAction
+              step={nextStep}
+              place="work-order"
+              truck={truck}
+              workOrderDisplayId={data.displayId}
+              expectedVersion={data.version}
+              fromPath={`/admin/work-orders/${data.id}`}
+              canManage={canManageWorkOrders}
+              messages={messages}
+              onChanged={refreshAfterAction}
+              onResolve={blockers.some((blocker) => !blocker.resolvedAt) && canManageWorkOrders ? () => {
+                const target = document.getElementById('admin-wo-blockers-title');
+                target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              } : undefined}
+            />
           </div>
           {nextStepManagerOwned && !canManageWorkOrders ? <p className="mt-1">{messages.nextStepNoPermission}</p> : null}
         </div>
@@ -842,6 +861,17 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
       </Modal>
     ) : null}
 
+    <CloseWorkOrderDialog
+      open={closeOpen}
+      workOrderId={data.id}
+      workOrderDisplayId={data.displayId}
+      truckNumber={truck.truckNumber}
+      expectedVersion={data.version}
+      messages={messages}
+      onClose={() => setCloseOpen(false)}
+      onDone={refreshAfterAction}
+    />
+
     {showStickyComplete ? (
       <div
         role="region"
@@ -854,7 +884,7 @@ export function AdminWorkOrderDetail({ id, locale, messages }: { id: string; loc
           <CompleteWorkOrderButton
             messages={messages}
             pending={Boolean(pendingAction)}
-            onConfirm={() => void runMutation('complete', messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(data.id, data.version), (failure) => completeError(failure, messages))}
+            onConfirm={() => setCloseOpen(true)}
           />
         </div>
       </div>
@@ -889,13 +919,6 @@ function cancelError(errorValue: unknown, messages: AdminMessages) {
     if (errorValue.status === 409) return messages.assignmentConflict;
   }
   return messages.cancelWorkOrderGenericError;
-}
-function completeError(errorValue: unknown, messages: AdminMessages) {
-  if (errorValue instanceof ApiError) {
-    if (errorValue.status === 400) return messages.completeWorkOrderBadRequest;
-    if (errorValue.status === 409) return messages.assignmentConflict;
-  }
-  return messages.completeWorkOrderGenericError;
 }
 function reopenError(errorValue: unknown, messages: AdminMessages) {
   if (errorValue instanceof ApiError) {

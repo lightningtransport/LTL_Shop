@@ -6,13 +6,13 @@ import { WorkPlanJobLane, type AdminTruckDetailDto, type TruckNextStepDto } from
 import { apiFetch } from '@/lib/api';
 import {
   completeAdminJob,
-  completeAdminWorkOrder,
   resumeAdminWorkOrder,
 } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { useActionToast } from './action-toast';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
+import { CloseWorkOrderDialog } from './close-work-order-dialog';
 import { ReturnToServiceDialog } from './return-to-service-dialog';
 import { Button, InlineAlert } from './ui';
 
@@ -46,6 +46,7 @@ export function AdminTruckNextStep({
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
   if (!step) return null;
   const version = truck.workPlan.workOrder?.version ?? 0;
 
@@ -153,13 +154,28 @@ export function AdminTruckNextStep({
           />
         );
       case 'close':
+        // Owner decision (2026-10-05): closing confirms — it makes the Truck Ready to Go.
         return (
-          <Action
-            text={messages.truckNextStepClose}
-            label={messages.truckNextStepCloseAction}
-            disabled={!canManage || pending}
-            onClick={() => void run(messages.completeWorkOrderSuccess, () => completeAdminWorkOrder(current.workOrderId!, version))}
-          />
+          <>
+            <Action
+              text={messages.truckNextStepClose}
+              label={messages.truckNextStepCloseAction}
+              disabled={!canManage || pending}
+              onClick={() => setCloseOpen(true)}
+            />
+            {current.workOrderId ? (
+              <CloseWorkOrderDialog
+                open={closeOpen}
+                workOrderId={current.workOrderId}
+                workOrderDisplayId={truck.workPlan.workOrder?.displayId ?? ''}
+                truckNumber={truck.truck.truckNumber}
+                expectedVersion={version}
+                messages={messages}
+                onClose={() => setCloseOpen(false)}
+                onDone={onChanged}
+              />
+            ) : null}
+          </>
         );
       case 'return_to_service':
         // D7 / UX-4-002: one button and a confirmation dialog (optional reason), the same as the Yard.

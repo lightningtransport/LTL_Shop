@@ -469,6 +469,8 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     const card = page.getByTestId('truck-next-step');
     await expect(card).toHaveAttribute('data-kind', 'close');
     await card.getByRole('button', { name: 'Close Work Order' }).click();
+    // Owner decision (2026-10-05): closing confirms in a dialog.
+    await page.getByTestId('close-work-order-dialog').getByRole('button', { name: 'Close Work Order' }).click();
     await expect.poll(() => closed).toBe(true);
     await expect(card).toHaveAttribute('data-kind', 'return_to_service');
 
