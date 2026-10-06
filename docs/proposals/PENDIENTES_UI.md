@@ -31,6 +31,8 @@ Lo que quedó distinto de las maquetas al cerrar cada pantalla. Ninguna cambia l
 - **Yard (8.5):** las columnas de Dispatch se llaman "Incoming Trucks", "Upcoming Departures" y "Dispatch status" (no "Arriving / Leaving / Where Dispatch has them"): ese texto es compartido con la API y su prueba lo fija (decisión anterior: no traducir "Incoming Trucks").
 - **Yard (8.5):** la tarjeta conserva la línea "Dispatch: expected in …" de las llegadas (la maqueta no la tiene; es un dato que ya se usaba).
 
+- **Work Order (G2, después del merge):** "Complete" en un Job pendiente es un botón con borde que dice "Mark complete" (la maqueta lo tiene sin borde, con un check): así se leía como un estado.
+
 ## Verificación final (Etapa 8.7)
 
 - e2e completa: 114/114 en Chromium y 114/114 en WebKit (perfil de teléfono, API de prueba).
