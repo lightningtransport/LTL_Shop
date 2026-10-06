@@ -68,10 +68,13 @@ test('manager adds a Safety person and gets the temporary password once (D22, HU
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('row', { name: /Sofia Safety/ })).toContainText('Safety (Quality Check)');
 
-  // The same email twice is refused with the conflict copy.
+  // The same email twice is refused with the conflict copy. R10: wait for the dialog's own focus (as above)
+  // and check the email is in its field before sending.
   await page.getByRole('button', { name: 'Add person' }).click();
+  await expect(page.getByRole('dialog').getByLabel('Name')).toBeFocused();
   await page.getByRole('dialog').getByLabel('Name').fill('Sofia Again');
   await page.getByRole('dialog').getByLabel('Email').fill('sofia@lightning.local');
+  await expect(page.getByRole('dialog').getByLabel('Email')).toHaveValue('sofia@lightning.local');
   await page.getByRole('dialog').getByRole('button', { name: 'Add person' }).click();
   await expect(page.getByRole('dialog').getByRole('alert')).toContainText('That email already belongs to a Shop user.');
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
@@ -237,4 +240,22 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await expect(page.getByText('Agrega personas Standard, PM o Safety. La app crea su cuenta de acceso con una contraseña temporal.')).toBeVisible();
   await expect(page.getByText(/solo lectura/i)).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
+test('R10: a dialog never takes focus away from a field the Manager is already typing in', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/mechanics');
+  // Make the dialog's own first-field focus late on purpose (a busy phone), then type in Email right away.
+  await page.evaluate(() => {
+    const original = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (callback) => window.setTimeout(() => original(callback), 400) as unknown as number;
+  });
+  await page.getByRole('button', { name: 'Add person' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Email').click();
+  await page.keyboard.type('fast@lightning.local');
+  await page.waitForTimeout(700);
+  await expect(dialog.getByLabel('Email')).toBeFocused();
+  await expect(dialog.getByLabel('Email')).toHaveValue('fast@lightning.local');
+  await expect(dialog.getByLabel('Name')).toHaveValue('');
 });

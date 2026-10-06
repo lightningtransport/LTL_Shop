@@ -12,6 +12,7 @@ import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
+import { shouldTakeInitialFocus } from '@/lib/modal-initial-focus';
 import { shouldOpenUpdatePasswordSheet, updatePasswordSheetCopy } from '@/lib/password-change-prompt';
 import { profileInitials } from '@/lib/profile-initials';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -1147,7 +1148,10 @@ export function Modal({
           );
           if (!initialControl) return;
           event.preventDefault();
-          window.requestAnimationFrame(() => initialControl.focus());
+          // R10: not when someone already moved into another field of the dialog (their typing would land here).
+          window.requestAnimationFrame(() => {
+            if (shouldTakeInitialFocus(contentRef.current, document.activeElement)) initialControl.focus();
+          });
         }}
         onCloseAutoFocus={(event) => {
           const focusTarget = returnFocusRef?.current ?? capturedFocusRef.current;
