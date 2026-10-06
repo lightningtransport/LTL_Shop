@@ -96,7 +96,7 @@ regla de negocio cambia; solo dónde y cómo se muestra.
 | **"…" del Job** | Pendiente: Add helper (D23), Send to external shop (D24), Cancel job. Cancelado: Reopen job. Cancel / Reopen con motivo obligatorio. Los hechos no tienen menú (como hoy) |
 | **Returned** (Job afuera) | Diálogo: Complete el Job, o Assign to (mecánico obligatorio; propone al dueño anterior) |
 | **PM A / PM B** | Menú; el Job PM se completa desde el PM service |
-| **Todos los Jobs hechos** | Aviso "All jobs are done" con **Confirm completion**; barra fija abajo cuando el aviso sale de pantalla (como hoy) |
+| **Todos los Jobs hechos** | Aviso "All jobs are done" con **Confirm completion** → diálogo de confirmación; barra fija abajo cuando el aviso sale de pantalla |
 | **Completada** | Next step "Return the truck to service" → diálogo (motivo opcional). Después, la tarjeta Truck dice "Returned to service" |
 | **Priority** | Elegir nivel → aparecen Update priority / Reset (como hoy) |
 | **Notes** | Post; work request → Mark handled |
@@ -124,8 +124,10 @@ LTR-159), no recalcularse en el cliente. La maqueta lo imita.
 ## 5. Decisiones pendientes (las responde el dueño)
 
 - [ ] **Título:** "Truck 918" (propuesta) o el número de WO.
-- [ ] **Confirmación:** ¿Complete del Job y Confirm completion piden
-      confirmación? Hoy no (la maqueta tampoco).
+- [x] **Confirmación (decidido 2026-10-05):** **Confirm completion** abre un diálogo ("WO-010
+      closes as Completed and Truck 918 becomes Ready to Go… You can reopen it later from '…',
+      with a reason."), desde el aviso y desde la barra fija. **Complete del Job sigue con un
+      toque**: es frecuente, afecta solo a ese Job y se reabre fácil.
 - [ ] **Copiar VIN:** botón nuevo en la tarjeta Truck. ¿Se queda?
 - [ ] **Tokens del tema oscuro (§7):** ¿en esta rama o en un PR aparte?
       Afecta todas las pantallas.

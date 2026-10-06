@@ -439,7 +439,7 @@ function nextStep() {
       S.canManage ? `<button onclick="openDialog('returnExt','${j.id}')" class="${BTN.primary} h-11 sm:h-9">${ic('package-check')}Returned</button>` : '');
   }
   if (readyToClose()) return callout('primary', 'flag', 'Next step', 'All jobs are done', 'Jobs are done. Confirm completion to close this Work Order.',
-    `<button onclick="completeWO()" class="${BTN.primary} h-11 sm:h-9" ${UI.pending ? 'disabled' : ''}>${pendingBtn('complete-wo', `${ic('check-check')}Confirm completion`)}</button>`);
+    `<button onclick="openDialog('completeWo')" class="${BTN.primary} h-11 sm:h-9" ${UI.pending ? 'disabled' : ''}>${pendingBtn('complete-wo', `${ic('check-check')}Confirm completion`)}</button>`);
   const left = jobsLeft();
   if (!left.length) return callout('muted', 'flag', 'Next step', 'All jobs are done', 'A Shop Manager confirms completion to close this Work Order.', '');
   const inShop = left.filter((j) => !j.external);
@@ -636,7 +636,7 @@ function watchSticky() {
     // Toasts sit above the bar so they never cover its button.
     toasts.style.bottom = e.isIntersecting ? '' : (isPhone() ? '120px' : '76px');
     host.innerHTML = e.isIntersecting ? '' : `<div role="region" aria-label="Complete Work Order" class="sheet-in fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur md:left-60">
-      <div class="mx-auto flex max-w-[1440px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between md:px-2"><p class="font-medium">Jobs are done. Confirm completion to close this Work Order.</p><button onclick="completeWO()" class="${BTN.primary} h-11 sm:h-9">${ic('check-check')}Confirm completion</button></div></div>`;
+      <div class="mx-auto flex max-w-[1440px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between md:px-2"><p class="font-medium">Jobs are done. Confirm completion to close this Work Order.</p><button onclick="openDialog('completeWo')" class="${BTN.primary} h-11 sm:h-9">${ic('check-check')}Confirm completion</button></div></div>`;
     lucide.createIcons();
   });
   stickyObs.observe(document.getElementById('next-step'));
@@ -717,6 +717,8 @@ function openDialog(kind, arg) {
   const seg = arg && S.segments.find((x) => x.id === arg);
   const reason = (help) => field('Reason', textarea('f-reason'), help);
   const D = {
+    // 2-B (2026-10-05): closing changes the Truck for the whole shop, so it confirms. Job Complete stays one tap.
+    completeWo: { title: 'Complete Work Order', desc: 'WO-010 closes as Completed and Truck 918 becomes Ready to Go: the Yard shows it for Return to Service. You can reopen it later from “…”, with a reason.', body: '', confirm: 'Confirm completion', run: () => completeWO() },
     pause: { title: 'Pause Work Order', desc: 'Stops the Work Order clock. Mechanics cannot start work until you resume.',
       body: field('Reason', `<div class="relative"><select id="f-pause" class="native h-11 w-full rounded-md border bg-background pl-3 pr-9 text-base"><option value="" disabled selected>Choose a reason</option>${PAUSE_REASONS.map((r) => `<option>${r}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground')}</div>`),
       confirm: 'Confirm pause',
