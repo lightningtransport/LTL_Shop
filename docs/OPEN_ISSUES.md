@@ -212,6 +212,27 @@ step actúa donde estás. Se retoma con las decisiones de §6 de esa propuesta.
 | T9 | E | Pasos y Jobs con el mismo estilo y 12 badges; "Issues found" registrado como botón primario; textarea de Return to Service siempre abierto (UX-4-001…004) | `admin-readiness-tracker.tsx`, `admin-truck-next-step.tsx` |
 | T10 | E | Éxito dos veces (banner + toast); tarjeta dentro de tarjeta en `CategoryJobList`; h3 sin h2; Repair history sin paginar | `admin-truck-work-plan.tsx`, `category-job-list.tsx`, `admin-truck-detail.tsx` |
 
+## 1g. Dashboard y Yard Operations (Admin) (2026-10-05) — **ESPERA**
+
+Auditoría en [`ux-audit/admin-dashboard-yard/`](ux-audit/admin-dashboard-yard/05-navegacion-ia.md)
+y propuesta con maqueta en [`proposals/dashboard-yard-redesign/`](proposals/dashboard-yard-redesign/README.md).
+El dueño confirmó el reparto: el Dashboard responde "¿qué hago ahora?" (cola de acciones en el
+sitio) y el Yard "¿dónde está cada camión?". Se retoma con las decisiones de §6 de esa propuesta.
+
+| # | Clase | Problema | Dónde |
+|---|---|---|---|
+| D1 | C | "Needs attention" lista las WOs abiertas > 24 h y deja fuera los Ready to Go; máximo 8, "View all" sin filtro (UX-5-002, UX-5-007) | `admin.service.ts` (lista de atención), `admin-dashboard.tsx` |
+| D2 | C | Los botones del Next step del Dashboard llevan al Truck; en solo lectura "Resolve" es un callejón sin salida (UX-5-005, UX-6-003) | `admin-work-order-item.tsx` |
+| D3 | C | Métricas: 7 iguales al título, "Ready to Go" sin filtro; "Waiting / Paused" y "paused (blocked)" cuentan cosas distintas (UX-5-003, UX-4-001) | `admin-dashboard.tsx`, `admin-yard-operations.tsx` |
+| D4 | C | Volver del Truck al Yard pierde filtros, búsqueda, vista y pestaña (UX-5-006) | `admin-yard-operations.tsx:456` |
+| D5 | C | El Yard no se refresca solo (UX-6-001) | `lib/admin-data.ts` (`useAdminYardOperations`) |
+| D6 | C | Contadores del Yard globales con filtro activo; columnas que cuentan solo lo cargado (UX-6-002, UX-5-009) | `yard-operations.service.ts:772-806` |
+| D7 | C | Return to Service del Yard sin confirmar y con error genérico; distinto de Truck y WO (UX-5-008, UX-6-006) | `admin-yard-operations.tsx:503-535` |
+| D8 | C | Dispatch (Movement) sin cruce con el taller; chips sin enlace; "Updated" con la hora de la consulta aunque no haya datos (UX-5-004, UX-6-008) | `admin-yard-data-boundary-cards.tsx`, `yard-data-boundary.service.ts` |
+| D9 | E | Tablero con 5 columnas vacías y scroll horizontal; tarjeta a 12 px con badge de fase repetido; "Apply filters" como único primario (UX-4-004…006) | `admin-yard-operations.tsx` |
+| D10 | E | Título "Shop Operations" vs menú "Dashboard"; textos técnicos ("Ready to close WO", "paused (blocked)", "UNAVAILABLE", "Unable to load current administrative data.") (UX-5-001, UX-6-005) | `admin-messages.ts`, `yard-data-boundary-copy.ts` |
+| D11 | E | Filtros de prioridad y estado del Yard también miran WOs cerradas (por verificar) | `yard-operations.service.ts:729-738` |
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):

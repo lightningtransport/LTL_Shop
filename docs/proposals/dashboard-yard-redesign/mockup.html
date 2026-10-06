@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard and Yard Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: Object.fromEntries(['background', 'foreground', 'card', 'muted', 'muted-foreground', 'primary', 'primary-foreground', 'accent', 'border', 'ring', 'success', 'warning', 'warning-foreground', 'warning-surface', 'destructive', 'destructive-text', 'sunken'].map((n) => [n, tok(n)])),
+        borderColor: { DEFAULT: 'var(--border)' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      },
+    },
+  };
+</script>
+<style>
+  /* Same tokens as the WO and Truck proposals (globals.css + the proposed dark fix and --sunken). */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--background); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  svg.lucide.s14 { width: 14px; height: 14px; }
+  svg.lucide.s20 { width: 20px; height: 20px; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .spin { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast-in { animation: tin .18s ease-out; }
+  @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+  .sheet-in { animation: sin .2s ease-out; }
+  @keyframes sin { from { transform: translateY(24px); opacity: 0; } }
+  .side-in { animation: side .2s ease-out; }
+  @keyframes side { from { transform: translateX(24px); opacity: 0; } }
+  .pop-in { animation: pin .12s ease-out; }
+  @keyframes pin { from { opacity: 0; } }
+  @media (min-width: 640px) { [role=dialog].sheet-in { animation-name: pin; } }
+  .flash { animation: flash 1.4s ease-out; }
+  @keyframes flash { from { background-color: color-mix(in oklch, var(--primary) 16%, transparent); } }
+  select.native { appearance: none; background-image: none; }
+</style>
+</head>
+<body class="min-h-screen font-sans text-sm antialiased">
+
+<aside class="fixed inset-y-0 left-0 hidden w-60 flex-col border-r bg-background md:flex">
+  <div class="flex h-14 items-center gap-2 border-b px-4">
+    <div class="grid size-7 place-items-center rounded-md bg-success/20 text-success"><i data-lucide="zap"></i></div>
+    <span class="font-semibold">LTL Shop</span><span class="text-xs text-muted-foreground">Admin</span>
+  </div>
+  <nav class="flex-1 space-y-5 p-3" id="side-nav"></nav>
+  <div class="border-t p-3"><p class="font-medium">Crixcrox</p><p class="text-xs text-muted-foreground">Admin</p></div>
+</aside>
+
+<div class="md:pl-60">
+  <header class="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b bg-background/90 px-4 backdrop-blur md:px-6">
+    <div class="flex min-w-0 items-center gap-1">
+      <button onclick="toggleMobileNav()" class="-ml-2 grid size-10 place-items-center rounded-md text-muted-foreground hover:bg-accent md:hidden" aria-label="Menu"><i data-lucide="menu"></i></button>
+      <span id="crumb" class="truncate font-medium"></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleDemo()" class="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-primary/40 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"><i data-lucide="flask-conical" class="s14"></i>Demo</button>
+      <button onclick="document.documentElement.classList.toggle('dark')" class="grid size-8 place-items-center rounded-md border text-muted-foreground hover:bg-accent" aria-label="Theme"><i data-lucide="sun-moon"></i></button>
+      <div class="grid size-8 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">CR</div>
+    </div>
+  </header>
+  <div id="mobile-nav" class="hidden border-b bg-card p-2 md:hidden"></div>
+  <main id="view" class="mx-auto max-w-[1440px] space-y-6 px-4 pb-24 pt-6 md:px-6"></main>
+</div>
+
+<div id="layer"></div>
+<div id="toasts" class="pointer-events-none fixed inset-x-3 bottom-3 z-[70] flex flex-col items-center gap-2 sm:inset-x-auto sm:right-4 sm:items-end"></div>
+
+<div id="demo" class="fixed inset-x-3 bottom-3 z-[65] hidden max-h-[75vh] overflow-auto rounded-xl border bg-card p-4 shadow-2xl sm:inset-x-auto sm:right-4 sm:top-16 sm:bottom-auto sm:w-[380px]">
+  <div class="mb-3 flex items-center justify-between"><p class="font-semibold">Panel de demo</p><button onclick="toggleDemo()" class="grid size-8 place-items-center rounded-md hover:bg-accent" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
+  <p class="mb-2 text-xs text-muted-foreground">Escenario</p>
+  <div class="grid grid-cols-2 gap-1.5" id="presets"></div>
+  <div class="mt-4 space-y-2 border-t pt-3">
+    <label class="flex items-center justify-between gap-3"><span>Solo lectura (sin work_orders.manage)</span><input type="checkbox" id="opt-ro" class="size-4 accent-[var(--primary)]" onchange="S.canManage=!this.checked; render()"></label>
+    <label class="flex items-center justify-between gap-3"><span>Simular error en la próxima acción</span><input type="checkbox" id="opt-fail" class="size-4 accent-[var(--primary)]" onchange="S.failNext=this.checked"></label>
+    <label class="flex items-center justify-between gap-3"><span>Dispatch sin datos</span><input type="checkbox" id="opt-dispatch" class="size-4 accent-[var(--primary)]" onchange="S.dispatchOff=this.checked; render()"></label>
+  </div>
+  <details class="mt-4 border-t pt-3">
+    <summary class="cursor-pointer font-medium">Reparto Dashboard ↔ Yard</summary>
+    <ul class="mt-2 list-disc space-y-1.5 pl-4 text-muted-foreground">
+      <li><b class="text-foreground">Dashboard</b>: “¿qué hago ahora?”. Cola de acciones; cada fila se resuelve ahí (Resolve, Resume, Close, QC, Assign, Return to Service, pedidos). Los contadores filtran la cola.</li>
+      <li><b class="text-foreground">Yard</b>: “¿dónde está cada camión?”. Tablero por paso; columnas vacías plegadas; alertas en la tarjeta; filtros rápidos que se conservan al volver.</li>
+      <li><b class="text-foreground">Dispatch</b> se cruza con el taller: “sale pronto y no está listo” en el Dashboard y en la tarjeta; la pestaña Dispatch muestra el estado en el taller de cada camión.</li>
+      <li>Lo que hagas en una pantalla se ve en la otra (estado compartido).</li>
+    </ul>
+  </details>
+  <button onclick="reset()" class="mt-4 h-9 w-full rounded-md border font-medium hover:bg-accent">Reiniciar demo</button>
+</div>
+
+<script>
+/* ───────────────────────── Demo data ───────────────────────── */
+const MECH = {
+  ma: { name: 'Miguel Ángel', ini: 'MA', tone: 'sky' }, md: { name: 'Mario Díaz', ini: 'MD', tone: 'violet' },
+  mg: { name: 'Manuel García', ini: 'MG', tone: 'emerald' }, lr: { name: 'Luis Ramos', ini: 'LR', tone: 'rose' },
+  jt: { name: 'Jorge Torres', ini: 'JT', tone: 'cyan' }, mp: { name: 'Marco PM', ini: 'MP', tone: 'amber' },
+};
+const STANDARD = ['ma', 'md', 'mg', 'lr', 'jt'];
+const TONE = {
+  sky: 'bg-sky-500/20 text-sky-700 dark:text-sky-300', violet: 'bg-violet-500/20 text-violet-700 dark:text-violet-300',
+  emerald: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300', rose: 'bg-rose-500/20 text-rose-700 dark:text-rose-300',
+  cyan: 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300', amber: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+};
+const PHASES = [
+  ['inspection', 'Inspection'], ['shop_work', 'Shop Work'], ['pm', 'PM'], ['alignment', 'Alignment'],
+  ['detailing', 'Detailing'], ['quality_check', 'Quality Check'], ['ready_to_close', 'Ready to close'], ['ready_to_go', 'Ready to Go'],
+];
+const phaseLabel = (k) => PHASES.find((p) => p[0] === k)[1];
+const TODAY = 'Oct 5';
+const SOON = ['Oct 5', 'Oct 6']; // "leaving soon" = departs today or tomorrow
+
+let clock = 12 * 60 + 5;
+function now() { clock += 1; const h = Math.floor(clock / 60), m = clock % 60; return `Oct 5, ${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
+
+const T = (o) => ({ status: 'in_progress', pri: 'normal', blocker: null, pause: null, unassigned: null, out: null, inspect: false, left: 0, total: 0, next: null, mechs: [], dispatch: {}, ...o });
+function seed() {
+  return {
+    canManage: true, failNext: false, dispatchOff: false, completedToday: 0, completed7: 6,
+    trucks: [
+      T({ n: '918', veh: '2026 Peterbilt 579', wo: 'WO-010', age: '4d', phase: 'shop_work', left: 5, total: 8, next: 'Air Dryer', mechs: ['ma', 'md', 'mg', 'mp'], blocker: { job: 'Air Dryer', reason: 'Waiting for Parts', by: 'mg', at: 'Oct 2, 3:59 PM', note: 'Cartridge cracked, part ordered.' }, dispatch: { loc: '301 Yard' } }),
+      T({ n: '611', veh: '2024 Volvo VNL 860', wo: 'WO-014', age: '2d', phase: 'pm', left: 2, total: 5, next: 'PM A Service', mechs: ['mp', 'ma'], status: 'waiting_paused', pause: { reason: 'Waiting for Approval', at: 'Oct 5, 9:20 AM' }, dispatch: { loc: '301 Yard' } }),
+      T({ n: '604', veh: '2024 Volvo VNL 860', wo: 'WO-012', age: '3d', phase: 'ready_to_close', left: 0, total: 6, mechs: ['ma', 'md', 'mp'], dispatch: { loc: '301 Yard', departs: 'Oct 7' } }),
+      T({ n: '609', veh: '2025 Volvo VNL 860', wo: 'WO-013', age: '3d', phase: 'quality_check', left: 1, total: 5, next: 'Quality Check', mechs: ['ma', 'md', 'mp'], dispatch: { loc: '301 Yard' } }),
+      T({ n: '600', veh: '2024 Mack Anthem', wo: 'WO-003', age: '6d', phase: 'pm', left: 4, total: 5, next: 'PM A Service', mechs: ['ma', 'md', 'mp'], unassigned: 'Lights', status: 'created', dispatch: { loc: '301 Yard' } }),
+      T({ n: '601', veh: '2024 Mack Anthem', wo: 'WO-004', age: '6d', phase: 'pm', left: 3, total: 5, next: 'PM A Service', mechs: ['ma', 'md', 'mg', 'mp'], dispatch: { loc: '301 Yard', departs: 'Oct 6' } }),
+      T({ n: '277', veh: '2022 Freightliner Cascadia', wo: 'WO-001', age: '6d', phase: 'pm', left: 1, total: 4, next: 'PM B Service', mechs: ['ma', 'md', 'mp'], dispatch: { loc: 'Outside' } }),
+      T({ n: '613', veh: '2026 Peterbilt 579', wo: 'WO-015', age: '5h', phase: 'inspection', left: 4, total: 4, next: 'Inspection', mechs: ['ma', 'md', 'mp'], inspect: true, dispatch: { loc: '301 Yard' } }),
+      T({ n: '615', veh: '2026 Peterbilt 579', wo: 'WO-016', age: '2d', phase: 'alignment', left: 2, total: 6, next: 'Alignment', mechs: ['ma', 'md'], out: { kind: 'truck', job: 'Radiator Repair', note: 'Diesel Pro, Barstow · back Oct 7' }, dispatch: { loc: 'Outside' } }),
+      T({ n: '282', veh: '2024 Cascadia Freightliner', wo: 'WO-002', age: '6d', phase: 'ready_to_go', status: 'completed', pri: 'high', total: 6, mechs: ['ma', 'md', 'mg'], dispatch: { loc: '301 Yard', departs: 'Oct 6' } }),
+      T({ n: '602', veh: '2024 Volvo VNL 860', wo: 'WO-005', age: '6d', phase: 'ready_to_go', status: 'completed', pri: 'critical', total: 5, mechs: ['ma', 'md', 'mg', 'mp'], dispatch: { loc: '301 Yard' } }),
+      T({ n: '603', veh: '2024 Volvo VNL 860', wo: 'WO-006', age: '6d', phase: 'ready_to_go', status: 'completed', total: 4, mechs: ['ma', 'md', 'mp'], dispatch: { loc: '301 Yard' } }),
+      T({ n: '605', veh: '2024 Volvo VNL 860', wo: 'WO-007', age: '6d', phase: 'ready_to_go', status: 'completed', total: 4, mechs: ['ma', 'md', 'mp'], dispatch: { loc: '301 Yard', departs: 'Oct 5' } }),
+    ],
+    requests: [
+      { id: 'r1', truck: '601', wo: 'WO-004', by: 'ma', at: 'Oct 5, 8:10 AM', body: 'Left mud flap is torn. Replace it while the truck is here?' },
+      { id: 'r2', truck: '918', wo: 'WO-010', by: 'md', at: 'Oct 4, 4:45 PM', body: 'Windshield has a chip on the passenger side.' },
+    ],
+    // Dispatch lists for the Dispatch tab (Trucks not in the shop are only here).
+    incoming: [['613', 'Oct 5'], ['812', 'Oct 5'], ['856', 'Oct 5'], ['926', 'Oct 8'], ['829', 'Oct 9'], ['602', 'Oct 12']],
+    departures: [['605', 'Oct 5'], ['282', 'Oct 6'], ['601', 'Oct 6'], ['604', 'Oct 7'], ['825', 'Oct 7'], ['908', 'Oct 8']],
+    elsewhere: { '301 Yard': ['812', '817', '818', '822', '828'], 'Outside': ['896', '914', '939'], 'Freightliner': ['960', '964'] },
+  };
+}
+let S = seed();
+const freshUI = () => ({ view: (location.hash || '#dashboard').slice(1) === 'yard' ? 'yard' : 'dashboard', focus: null, resolving: null, note: '', pending: null, alert: null, yf: { chip: 'all', q: '' }, ytab: 'board', open: {} });
+let UI = freshUI();
+
+/* ───────────────────────── Helpers ───────────────────────── */
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const ic = (name, cls = '') => `<i data-lucide="${name}" class="${cls}"></i>`;
+const av = (m, size = 'size-6') => `<span title="${MECH[m].name}" class="grid ${size} shrink-0 place-items-center rounded-full text-[12px] font-semibold ${TONE[MECH[m].tone]}">${MECH[m].ini}</span>`;
+const avs = (ms, size = 'size-6') => `<span class="flex -space-x-1">${ms.map((m) => `<span class="rounded-full ring-2 ring-card">${av(m, size)}</span>`).join('')}</span>`;
+const BTN = {
+  primary: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 font-medium text-primary-foreground hover:opacity-90 disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground',
+  outline: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 font-medium hover:bg-accent disabled:pointer-events-none disabled:text-muted-foreground disabled:opacity-70',
+  ghost: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-60',
+};
+const pendingBtn = (key, label) => UI.pending === key ? `${ic('loader-circle', 'spin s14')}Saving…` : label;
+const tr = (n) => S.trucks.find((t) => t.n === n);
+const leavingSoon = (t) => !S.dispatchOff && t.dispatch.departs && SOON.includes(t.dispatch.departs) && t.status !== 'completed';
+const isBlocked = (t) => Boolean(t.blocker || t.pause);
+
+// The one Next step rule (packages/shared/src/truck-next-step.ts), reduced to what these screens need.
+function kind(t) {
+  if (t.status === 'completed') return 'return_to_service';
+  if (t.blocker) return 'resolve_blocker';
+  if (t.pause) return 'resume';
+  if (t.inspect) return 'inspect';
+  if (t.unassigned) return 'assign';
+  if (t.out && t.left <= 1) return 'external';
+  if (t.phase === 'quality_check') return 'qc';
+  if (t.phase === 'ready_to_close') return 'close';
+  return 'work';
+}
+function stepText(t) {
+  switch (kind(t)) {
+    case 'return_to_service': return 'Ready to Go. Return it to service when it leaves the shop.';
+    case 'resolve_blocker': return `Blocked · ${t.blocker.job}: ${t.blocker.reason}`;
+    case 'resume': return `Paused: ${t.pause.reason}`;
+    case 'inspect': return 'Record the inspection: no issues, or issues that need Shop Work.';
+    case 'assign': return `Nobody is assigned to ${t.unassigned}.`;
+    case 'external': return `At external shop: ${t.out.job}`;
+    case 'qc': return 'Waiting for Safety (Quality Check).';
+    case 'close': return 'All Jobs are done. Close the Work Order.';
+    default: return `${t.left} Jobs left · next: ${t.next}`;
+  }
+}
+
+function act(key, success, fn) {
+  if (UI.pending) return;
+  UI.pending = key; UI.alert = null; render();
+  setTimeout(() => {
+    UI.pending = null;
+    if (S.failNext) {
+      S.failNext = false; document.getElementById('opt-fail').checked = false;
+      UI.alert = 'This Work Order changed in another session. Refresh before trying again.';
+      closeLayer(); toast('error', UI.alert);
+    } else { fn(); closeLayer(); toast('success', success); }
+    render();
+  }, 550);
+}
+function toast(kind, text) {
+  const el = document.createElement('div');
+  el.className = `toast-in pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-lg border bg-card px-3.5 py-3 shadow-xl sm:w-[360px] ${kind === 'error' ? 'border-destructive/50' : ''}`;
+  el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  el.innerHTML = `${ic(kind === 'error' ? 'circle-alert' : kind === 'info' ? 'square-arrow-out-up-right' : 'circle-check', kind === 'error' ? 'mt-0.5 text-destructive-text' : kind === 'info' ? 'mt-0.5 text-primary' : 'mt-0.5 text-success')}<p class="flex-1">${esc(text)}</p>`;
+  document.getElementById('toasts').appendChild(el); lucide.createIcons();
+  setTimeout(() => el.remove(), 3800);
+}
+function goTruck(n) {
+  const from = UI.view === 'yard' ? `/admin/yard-operations${UI.yf.chip !== 'all' ? `?filter=${UI.yf.chip}` : ''}${UI.yf.q ? `${UI.yf.chip !== 'all' ? '&' : '?'}search=${encodeURIComponent(UI.yf.q)}` : ''}` : '/admin';
+  toast('info', `Opens Truck ${n}. “Back” returns to ${from} with the same filters.`);
+}
+
+/* ───────────────────────── Shell ───────────────────────── */
+function nav() {
+  const link = (v, icn, label) => `<a href="#${v}" onclick="go('${v}')" class="flex h-9 items-center gap-2.5 rounded-md px-2 ${UI.view === v ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}">${ic(icn)}${label}</a>`;
+  const dead = (icn, label) => `<a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground">${ic(icn)}${label}</a>`;
+  return `<div class="space-y-0.5"><p class="px-2 pb-1 text-xs text-muted-foreground">Operations</p>${link('dashboard', 'gauge', 'Dashboard')}${link('yard', 'warehouse', 'Yard Operations')}${dead('clipboard-list', 'Work Orders')}${dead('truck', 'Trucks')}</div>
+    <div class="space-y-0.5"><p class="px-2 pb-1 text-xs text-muted-foreground">Setup</p>${dead('users', 'Mechanics')}${dead('library', 'Job Catalog')}${dead('workflow', 'Shop workflow')}</div>`;
+}
+function go(v) { UI.view = v; UI.focus = null; document.getElementById('mobile-nav').classList.add('hidden'); render(); scrollTo(0, 0); }
+function toggleMobileNav() { document.getElementById('mobile-nav').classList.toggle('hidden'); }
+
+function render() {
+  document.getElementById('side-nav').innerHTML = nav();
+  document.getElementById('mobile-nav').innerHTML = `<nav class="space-y-3">${nav()}</nav>`;
+  document.getElementById('crumb').textContent = UI.view === 'yard' ? 'Yard Operations' : 'Dashboard';
+  document.getElementById('view').innerHTML = (UI.alert ? `<div role="alert" class="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/15 px-4 py-3 text-destructive-text">${ic('circle-alert', 'mt-0.5')}<p class="flex-1">${esc(UI.alert)}</p><button onclick="UI.alert=null;render()" class="font-medium hover:underline">Refresh</button></div>` : '') + (UI.view === 'yard' ? yard() : dashboard());
+  document.getElementById('presets').innerHTML = presets();
+  const c = document.getElementById('dlg-confirm');
+  if (c && UI.pending) { c.disabled = true; c.innerHTML = `${ic('loader-circle', 'spin s14')}Saving…`; }
+  lucide.createIcons();
+}
+const updated = () => `<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span class="relative flex size-2"><span class="absolute inline-flex size-full animate-ping rounded-full bg-success/60"></span><span class="relative inline-flex size-2 rounded-full bg-success"></span></span>Live · updated just now</span>`;
+
+/* ───────────────────────── Dashboard: "What do I do now?" ───────────────────────── */
+const GROUPS = [
+  { key: 'blocked', label: 'Blocked or paused', icon: 'octagon-pause', tone: 'warning', test: (t) => isBlocked(t) },
+  { key: 'close', label: 'Ready to close', icon: 'flag', tone: 'primary', test: (t) => kind(t) === 'close' },
+  { key: 'rtg', label: 'Ready to Go', icon: 'truck', tone: 'success', test: (t) => kind(t) === 'return_to_service' },
+  { key: 'unassigned', label: 'Unassigned', icon: 'user-plus', tone: 'primary', test: (t) => kind(t) === 'assign' },
+  { key: 'inspect', label: 'Inspection to record', icon: 'clipboard-check', tone: 'primary', test: (t) => kind(t) === 'inspect' },
+  { key: 'qc', label: 'Waiting for Safety', icon: 'shield-check', tone: 'muted', test: (t) => kind(t) === 'qc' },
+];
+const toneCls = { warning: 'text-warning-foreground dark:text-warning', primary: 'text-primary', success: 'text-success', muted: 'text-muted-foreground' };
+
+function dashboard() {
+  const counters = ['blocked', 'close', 'rtg', 'unassigned'].map((k) => { const g = GROUPS.find((x) => x.key === k); return { ...g, n: S.trucks.filter(g.test).length }; });
+  const groups = GROUPS.map((g) => ({ ...g, items: S.trucks.filter(g.test) })).filter((g) => g.items.length && (!UI.focus || UI.focus === g.key));
+  const soon = S.trucks.filter(leavingSoon);
+  const reqs = S.requests.filter((r) => !r.handled);
+  const total = groups.reduce((a, g) => a + g.items.length, 0) + (UI.focus ? 0 : reqs.length);
+  const open = S.trucks.filter((t) => t.status !== 'completed').length;
+  return `
+  <section class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1"><h1 class="text-2xl font-semibold tracking-tight md:text-[28px]">Dashboard</h1><p class="text-muted-foreground">What needs you now, in order. Each action happens here.</p></div>
+    ${updated()}
+  </section>
+
+  <section class="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Filter the queue">
+    ${counters.map((c) => `<button onclick="UI.focus=UI.focus==='${c.key}'?null:'${c.key}';render()" aria-pressed="${UI.focus === c.key}" class="flex items-center justify-between gap-2 rounded-xl border bg-card px-4 py-3 text-left hover:bg-accent ${UI.focus === c.key ? 'border-primary ring-1 ring-primary' : ''}">
+      <span><span class="block text-xs text-muted-foreground">${c.label}</span><span class="tnum text-xl font-semibold ${c.n ? toneCls[c.tone] : 'text-muted-foreground'}">${c.n}</span></span>${ic(c.icon, `s20 ${c.n ? toneCls[c.tone] : 'text-muted-foreground'}`)}</button>`).join('')}
+  </section>
+  <p class="-mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+    <a href="#" onclick="event.preventDefault();toast('info','Opens Work Orders filtered to open.')" class="hover:text-foreground hover:underline">${open} open Work Orders</a>
+    <a href="#" onclick="event.preventDefault();toast('info','Opens Work Orders completed today (Eastern Time).')" class="hover:text-foreground hover:underline">${S.completedToday} completed today</a>
+    <a href="#" onclick="event.preventDefault();toast('info','Opens Work Orders completed in the last 7 days.')" class="hover:text-foreground hover:underline">${S.completed7} in the last 7 days</a>
+  </p>
+
+  ${!UI.focus && soon.length ? `<section class="rounded-xl border border-warning/40 bg-warning-surface/50">
+    <div class="flex items-center gap-2 px-4 pt-3">${ic('calendar-clock', 'text-warning-foreground dark:text-warning')}<h2 class="font-semibold">Leaving soon and not ready</h2><span class="text-xs text-muted-foreground">· departures reported by Dispatch</span></div>
+    <ul class="divide-y divide-warning/20 px-1 pb-1">${soon.map((t) => `<li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5">
+      <a href="#" onclick="event.preventDefault();goTruck('${t.n}')" class="font-semibold text-primary hover:underline">Truck ${t.n}</a>
+      <span>leaves <b class="font-semibold">${t.dispatch.departs}</b> · ${t.left} job${t.left === 1 ? '' : 's'} left · ${phaseLabel(t.phase)}</span>
+      <span class="text-muted-foreground">${kind(t) === 'work' ? `next: ${t.next}` : esc(stepText(t))}</span>
+      <a href="#" onclick="event.preventDefault();goTruck('${t.n}')" class="ml-auto inline-flex h-9 items-center gap-1 text-sm font-medium text-primary hover:underline">Open Truck${ic('arrow-right', 's14')}</a></li>`).join('')}</ul>
+  </section>` : ''}
+
+  <section class="overflow-hidden rounded-xl border bg-card" aria-labelledby="queue-title">
+    <div class="flex items-center justify-between gap-3 border-b px-4 py-3">
+      <h2 id="queue-title" class="text-base font-semibold">Needs you <span class="tnum text-muted-foreground">${total}</span></h2>
+      ${UI.focus ? `<button onclick="UI.focus=null;render()" class="${BTN.ghost} h-8 text-xs">${ic('x', 's14')}Show all</button>` : ''}
+    </div>
+    ${!groups.length && (UI.focus || !reqs.length) ? `<div class="flex flex-col items-center gap-1 px-4 py-10 text-center text-muted-foreground">${ic('circle-check', 's20 text-success')}<p class="font-medium text-foreground">Nothing waiting on you</p><p>Checked ${TODAY}, 12:05 PM. New blockers and finished work show up here.</p></div>` : ''}
+    ${groups.map((g) => `<div>
+      <h3 class="flex items-center gap-2 border-b bg-sunken px-4 py-2 text-xs font-medium ${toneCls[g.tone]}">${ic(g.icon, 's14')}${g.label} <span class="tnum text-muted-foreground">${g.items.length}</span></h3>
+      <ul class="divide-y">${g.items.map(queueRow).join('')}</ul></div>`).join('')}
+    ${!UI.focus && reqs.length ? `<div><h3 class="flex items-center gap-2 border-y bg-sunken px-4 py-2 text-xs font-medium text-primary">${ic('message-square-plus', 's14')}Work requests <span class="tnum text-muted-foreground">${reqs.length}</span></h3>
+      <ul class="divide-y">${reqs.map(reqRow).join('')}</ul></div>` : ''}
+  </section>`;
+}
+function rowShell(t, body, actions) {
+  return `<li id="q-${t.n}" class="grid gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${isBlocked(t) ? 'shadow-[inset_3px_0_0_var(--warning)]' : ''}">
+    <div class="min-w-0 space-y-0.5">
+      <p class="flex flex-wrap items-baseline gap-x-2"><a href="#" onclick="event.preventDefault();goTruck('${t.n}')" class="font-semibold text-primary hover:underline">Truck ${t.n}</a><span class="text-xs text-muted-foreground">${t.veh} · <span class="font-mono">${t.wo}</span></span>${t.pri === 'critical' ? '<span class="rounded-md border border-destructive/50 bg-destructive/20 px-1.5 text-xs font-medium text-destructive-text">Critical</span>' : t.pri === 'high' ? '<span class="rounded-md border border-warning/40 px-1.5 text-xs font-medium text-warning-foreground dark:text-warning">High</span>' : ''}</p>
+      ${body}
+    </div>
+    ${actions ? `<div class="flex flex-wrap gap-2 sm:justify-end">${actions}</div>` : ''}
+  </li>`;
+}
+function queueRow(t) {
+  const k = kind(t);
+  const ro = !S.canManage;
+  const roLine = '<p class="text-xs text-muted-foreground">Only a Shop Manager can take this step.</p>';
+  const B = (key, label, on, cls = BTN.primary) => ro ? '' : `<button onclick="${on}" class="${cls} h-11 sm:h-9" ${UI.pending ? 'disabled' : ''}>${pendingBtn(key, label)}</button>`;
+  switch (k) {
+    case 'resolve_blocker': {
+      const b = t.blocker;
+      const form = UI.resolving === t.n ? `<form class="mt-2 space-y-2" onsubmit="event.preventDefault();resolve('${t.n}')"><label class="sr-only" for="note-${t.n}">Note for the mechanic (optional)</label><textarea id="note-${t.n}" rows="2" maxlength="1000" placeholder="Note for the mechanic (optional)" oninput="UI.note=this.value" class="w-full rounded-md border bg-background px-3 py-2 text-base outline-none placeholder:text-muted-foreground focus:border-ring">${esc(UI.note)}</textarea>
+        <div class="flex gap-2"><button class="${BTN.primary} h-11 sm:h-9" ${UI.pending ? 'disabled' : ''}>${pendingBtn('res-' + t.n, 'Confirm resolve')}</button><button type="button" onclick="UI.resolving=null;render()" class="${BTN.ghost} h-11 sm:h-9">Cancel</button></div></form>` : '';
+      return rowShell(t, `<p><b class="font-medium">${b.job}</b> is blocked · ${b.reason}</p><p class="text-xs text-muted-foreground">${MECH[b.by].name} · ${b.at} · “${esc(b.note)}”</p>${form}${ro ? roLine : ''}`,
+        UI.resolving === t.n || ro ? '' : `<button onclick="UI.resolving='${t.n}';UI.note='';render();document.getElementById('note-${t.n}').focus()" class="${BTN.primary} h-11 sm:h-9">${ic('check')}Resolve</button>`);
+    }
+    case 'resume': return rowShell(t, `<p>Paused · ${t.pause.reason}</p><p class="text-xs text-muted-foreground">Since ${t.pause.at}</p>${ro ? roLine : ''}`, B('resume-' + t.n, `${ic('play')}Resume`, `resume('${t.n}')`));
+    case 'close': return rowShell(t, `<p>All ${t.total} Jobs are done</p><p class="text-xs text-muted-foreground">Closing makes the truck Ready to Go.</p>${ro ? roLine : ''}`, B('close-' + t.n, `${ic('check-check')}Close Work Order`, `closeWo('${t.n}')`));
+    case 'return_to_service': return rowShell(t, `<p>Ready to Go${t.dispatch.departs && !S.dispatchOff ? ` · <span class="text-warning-foreground dark:text-warning">Dispatch: leaves ${t.dispatch.departs}</span>` : ''}</p><p class="text-xs text-muted-foreground">Return it to service when it leaves the shop.</p>${ro ? roLine : ''}`, B('rts-' + t.n, `${ic('truck')}Return to Service`, `openRts('${t.n}')`, BTN.outline));
+    case 'assign': return rowShell(t, `<p>Nobody is assigned to <b class="font-medium">${t.unassigned}</b></p><p class="text-xs text-muted-foreground">${phaseLabel(t.phase)} · ${t.left} jobs left</p>${ro ? roLine : ''}`, ro ? '' : `<button onclick="openMenu(this, picker('${t.n}'))" aria-haspopup="listbox" class="${BTN.primary} h-11 sm:h-9">${ic('user-plus')}Assign</button>`);
+    case 'inspect': return rowShell(t, `<p>Arrival inspection not recorded</p><p class="text-xs text-muted-foreground">Arrived ${t.age} ago · Work Order opened</p>${ro ? roLine : ''}`, ro ? '' : `${B('insp0-' + t.n, 'No issues found', `inspect('${t.n}',false)`, BTN.outline)}${B('insp1-' + t.n, 'Issues found', `inspect('${t.n}',true)`)}`);
+    case 'qc': return rowShell(t, `<p>Everything else is done. Safety reviews the truck.</p><p class="text-xs text-muted-foreground">Mark it here only if Safety cannot.</p>${ro ? roLine : ''}`, B('qc-' + t.n, 'Mark QC complete', `qc('${t.n}')`, BTN.outline));
+  }
+  return '';
+}
+function reqRow(r) {
+  return `<li class="grid gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <div class="min-w-0 space-y-0.5"><p class="flex flex-wrap items-baseline gap-x-2"><a href="#" onclick="event.preventDefault();goTruck('${r.truck}')" class="font-semibold text-primary hover:underline">Truck ${r.truck}</a><span class="font-mono text-xs text-muted-foreground">${r.wo}</span></p>
+      <p>“${esc(r.body)}”</p><p class="text-xs text-muted-foreground">${MECH[r.by].name} · ${r.at}</p></div>
+    <div class="flex flex-wrap gap-2 sm:justify-end"><a href="#" onclick="event.preventDefault();toast('info','Opens ${r.wo} at this request (add the work from the Truck Work Plan).')" class="${BTN.ghost} h-11 sm:h-9">Open Work Order</a>${S.canManage ? `<button onclick="handled('${r.id}')" class="${BTN.outline} h-11 sm:h-9" ${UI.pending ? 'disabled' : ''}>${pendingBtn('req-' + r.id, `${ic('check', 's14')}Mark handled`)}</button>` : ''}</div></li>`;
+}
+
+/* ───────────────────────── Yard: "Where is each truck?" ───────────────────────── */
+const CHIPS = [
+  ['all', 'All', () => true], ['blocked', 'Blocked', isBlocked], ['soon', 'Leaving soon', leavingSoon],
+  ['high', 'High priority', (t) => t.pri === 'high' || t.pri === 'critical'], ['out', 'Out of shop', (t) => t.out?.kind === 'truck'],
+];
+function yardList() {
+  const chip = CHIPS.find((c) => c[0] === UI.yf.chip)[2]; const q = UI.yf.q.trim().toLowerCase();
+  return S.trucks.filter((t) => chip(t) && (!q || `${t.n} ${t.wo} ${t.veh} ${t.mechs.map((m) => MECH[m].name).join(' ')}`.toLowerCase().includes(q)));
+}
+function yard() {
+  const list = yardList();
+  const tabs = [['board', 'Shop'], ['dispatch', 'Dispatch']];
+  return `
+  <section class="flex flex-wrap items-end justify-between gap-3">
+    <div class="space-y-1"><h1 class="text-2xl font-semibold tracking-tight md:text-[28px]">Yard Operations</h1><p class="text-muted-foreground">Where each truck is in the shop, step by step.</p></div>
+    ${updated()}
+  </section>
+  <div class="flex gap-5 border-b" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${UI.ytab === k}" onclick="UI.ytab='${k}';render()" class="tab -mb-px h-11 border-b-2 font-medium ${UI.ytab === k ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}">${l}</button>`).join('')}</div>
+  ${UI.ytab === 'dispatch' ? dispatchTab() : `
+  <section class="flex flex-col gap-3 lg:flex-row lg:items-center" aria-label="Filters">
+    <label class="flex h-10 items-center gap-2 rounded-md border bg-background px-3 focus-within:border-ring lg:w-72">${ic('search', 's14 text-muted-foreground')}<span class="sr-only">Search trucks</span><input id="y-q" value="${esc(UI.yf.q)}" oninput="UI.yf.q=this.value;render();const e=document.getElementById('y-q');e.focus();e.setSelectionRange(e.value.length,e.value.length)" placeholder="Truck, Work Order or mechanic" class="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"></label>
+    <div class="flex flex-wrap gap-1.5">${CHIPS.map(([k, l, f]) => { const n = S.trucks.filter(f).length; return `<button onclick="UI.yf.chip='${k}';render()" aria-pressed="${UI.yf.chip === k}" class="inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm ${UI.yf.chip === k ? 'border-primary bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}">${l}<span class="tnum text-xs">${n}</span></button>`; }).join('')}</div>
+    ${UI.yf.chip !== 'all' || UI.yf.q ? `<button onclick="UI.yf={chip:'all',q:''};render()" class="${BTN.ghost} h-9 lg:ml-auto">Clear</button>` : ''}
+  </section>
+  <p class="-mt-3 text-xs text-muted-foreground">${list.length === S.trucks.length ? `${list.length} trucks in the shop` : `Showing ${list.length} of ${S.trucks.length} trucks`} · filters stay when you open a truck and come back</p>
+  ${!list.length ? `<div class="flex flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center text-muted-foreground"><p>No trucks match${UI.yf.q ? ` “${esc(UI.yf.q)}”` : ''}${UI.yf.chip !== 'all' ? ` in “${CHIPS.find((c) => c[0] === UI.yf.chip)[1]}”` : ''}.</p><button onclick="UI.yf={chip:'all',q:''};render()" class="${BTN.outline} h-9">Clear filters</button></div>` : board(list) + phoneList(list)}`}`;
+}
+function board(list) {
+  // Lanes top to bottom in shop order: the board fits the width (no sideways scroll) and empty steps shrink to one line.
+  return `<section class="hidden overflow-hidden rounded-xl border bg-card lg:block" aria-label="Board by step">${PHASES.map(([k, l], i) => {
+    const items = list.filter((t) => t.phase === k);
+    if (!items.length) return `<div class="flex items-center gap-3 border-t px-4 py-2 text-xs text-muted-foreground first:border-t-0"><span class="w-32 shrink-0">${i + 1}. ${l}</span><span>No trucks</span></div>`;
+    return `<div class="grid grid-cols-[8rem_minmax(0,1fr)] gap-3 border-t px-4 py-3 first:border-t-0">
+      <h3 class="pt-1 text-sm font-semibold">${i + 1}. ${l}<span class="tnum ml-1.5 font-normal text-muted-foreground">${items.length}</span></h3>
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-2">${items.map(card).join('')}</div></div>`;
+  }).join('')}</section>`;
+}
+function phoneList(list) {
+  return `<section class="space-y-4 lg:hidden">${PHASES.map(([k, l]) => {
+    const items = list.filter((t) => t.phase === k); if (!items.length) return '';
+    const open = UI.open[k] ?? true;
+    return `<div><button onclick="UI.open['${k}']=!${open};render()" aria-expanded="${open}" class="flex min-h-11 w-full items-center gap-2 font-semibold">${l}<span class="tnum rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border">${items.length}</span>${ic('chevron-down', `s14 ml-auto text-muted-foreground transition ${open ? 'rotate-180' : ''}`)}</button>${open ? `<div class="mt-1 space-y-2">${items.map(card).join('')}</div>` : ''}</div>`;
+  }).join('')}<p class="text-center text-xs text-muted-foreground">Empty steps are hidden.</p></section>`;
+}
+function alertLine(t) {
+  if (t.blocker) return ['warning', 'octagon-pause', `Blocked · ${t.blocker.job}: ${t.blocker.reason}`];
+  if (t.pause) return ['warning', 'circle-pause', `Paused · ${t.pause.reason}`];
+  if (leavingSoon(t)) return ['warning', 'calendar-clock', `Leaves ${t.dispatch.departs} · ${t.left} job${t.left === 1 ? '' : 's'} left`];
+  if (t.out?.kind === 'truck') return ['primary', 'building-2', `Out of shop · ${t.out.job}`];
+  if (t.unassigned) return ['primary', 'user-plus', `Nobody on ${t.unassigned}`];
+  return null;
+}
+function card(t) {
+  const a = alertLine(t);
+  const done = t.total - t.left;
+  const rtg = t.status === 'completed';
+  return `<article class="rounded-lg border bg-card ${a?.[0] === 'warning' ? 'shadow-[inset_3px_0_0_var(--warning)]' : ''}">
+    <a href="#" onclick="event.preventDefault();goTruck('${t.n}')" class="block space-y-1.5 p-3 hover:bg-accent/40" aria-label="Truck ${t.n}: ${phaseLabel(t.phase)}. ${esc(a ? a[2] : stepText(t))}">
+      <div class="flex items-start justify-between gap-2"><span class="text-base font-semibold">${t.n}</span>${t.pri === 'critical' ? '<span class="rounded-md border border-destructive/50 bg-destructive/20 px-1.5 text-xs font-medium text-destructive-text">Critical</span>' : t.pri === 'high' ? '<span class="rounded-md border border-warning/40 px-1.5 text-xs font-medium text-warning-foreground dark:text-warning">High</span>' : ''}</div>
+      <p class="truncate text-xs text-muted-foreground">${t.veh} · <span class="font-mono">${t.wo}</span> · ${t.age}</p>
+      ${a ? `<p class="flex items-start gap-1.5 text-xs font-medium ${a[0] === 'warning' ? 'text-warning-foreground dark:text-warning' : 'text-primary'}">${ic(a[1], 's14 mt-px')}<span>${esc(a[2])}</span></p>` : `<p class="text-xs text-foreground/90">${rtg ? (t.dispatch.departs && !S.dispatchOff ? `Dispatch: leaves ${t.dispatch.departs}` : 'Waiting to leave the shop') : esc(stepText(t))}</p>`}
+      ${rtg ? '' : `<div class="flex items-center gap-2 pt-0.5"><div class="h-1 flex-1 overflow-hidden rounded-full bg-muted-foreground/20"><div class="h-1 rounded-full bg-success" style="width:${(done / t.total) * 100}%"></div></div><span class="tnum text-xs text-muted-foreground">${done}/${t.total}</span>${avs(t.mechs, 'size-6')}</div>`}
+    </a>
+    ${rtg && S.canManage ? `<div class="border-t p-2"><button onclick="openRts('${t.n}')" class="${BTN.outline} h-10 w-full sm:h-8" ${UI.pending ? 'disabled' : ''}>${ic('truck', 's14')}Return to Service</button></div>` : ''}
+  </article>`;
+}
+function dispatchTab() {
+  if (S.dispatchOff) return `<div class="flex flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center text-muted-foreground">${ic('plug-zap', 's20')}<p class="font-medium text-foreground">Dispatch didn't answer</p><p>The shop board still works. Arrivals and departures will show again when Dispatch answers.</p><button onclick="S.dispatchOff=false;document.getElementById('opt-dispatch').checked=false;render()" class="${BTN.outline} h-9">Try again</button></div>`;
+  const shopChip = (n) => { const t = tr(n); return t ? `<span class="inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-xs ${t.status === 'completed' ? 'border-success/40 text-success' : 'border-primary/40 text-primary'}">${t.status === 'completed' ? 'Ready to Go' : `In shop · ${phaseLabel(t.phase)}`}</span>` : '<span class="text-xs text-muted-foreground">Not in shop</span>'; };
+  const row = (n, right, warn) => `<li class="flex items-center gap-3 px-4 py-2.5"><a href="#" onclick="event.preventDefault();goTruck('${n}')" class="w-14 font-semibold text-primary hover:underline">${n}</a><span class="min-w-0 flex-1">${shopChip(n)}${warn ? ` <span class="ml-1 inline-flex items-center gap-1 text-xs text-warning-foreground dark:text-warning">${ic('triangle-alert', 's14')}${warn}</span>` : ''}</span><span class="tnum shrink-0 text-muted-foreground">${right}</span></li>`;
+  const sortShop = (arr) => arr.slice().sort((a, b) => (tr(b[0]) ? 1 : 0) - (tr(a[0]) ? 1 : 0));
+  const conflicts = S.trucks.filter((t) => t.dispatch.loc === 'Outside' && t.status !== 'completed' && t.out?.kind !== 'truck');
+  return `<p class="text-muted-foreground">Reported by Dispatch: where each truck is, arrivals and departures. Dispatch data updated ${TODAY}, 11:58 AM. Not the shop's Ready to Go, and not GPS.</p>
+  ${conflicts.length ? `<div class="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning-surface/50 px-4 py-3">${ic('triangle-alert', 'mt-0.5 text-warning-foreground dark:text-warning')}<p>${conflicts.map((t) => `<b>Truck ${t.n}</b>`).join(', ')}: Dispatch says “Outside”, but ${conflicts.length > 1 ? 'they have' : 'it has'} an open Work Order in the shop. Check with Dispatch.</p></div>` : ''}
+  <div class="grid gap-4 lg:grid-cols-3">
+    <section class="overflow-hidden rounded-xl border bg-card"><h2 class="flex items-center gap-2 border-b px-4 py-3 font-semibold">${ic('arrow-down-to-line', 'text-muted-foreground')}Arriving</h2><ul class="divide-y">${sortShop(S.incoming).map(([n, d]) => row(n, d)).join('')}</ul></section>
+    <section class="overflow-hidden rounded-xl border bg-card"><h2 class="flex items-center gap-2 border-b px-4 py-3 font-semibold">${ic('arrow-up-from-line', 'text-muted-foreground')}Leaving</h2><ul class="divide-y">${sortShop(S.departures).map(([n, d]) => { const t = tr(n); return row(n, d, t && t.status !== 'completed' && SOON.includes(d) ? `${t.left} jobs left` : ''); }).join('')}</ul></section>
+    <section class="overflow-hidden rounded-xl border bg-card"><h2 class="flex items-center gap-2 border-b px-4 py-3 font-semibold">${ic('map-pin', 'text-muted-foreground')}Where Dispatch has them</h2>
+      ${['301 Yard', 'Outside', 'Freightliner'].map((loc) => { const inShop = S.trucks.filter((t) => t.dispatch.loc === loc).map((t) => t.n); const all = inShop.concat(S.elsewhere[loc] || []); return `<div class="border-b px-4 py-3 last:border-b-0"><p class="mb-2 text-xs font-medium text-muted-foreground">${loc} · ${all.length}</p><div class="flex flex-wrap gap-1.5">${all.map((n) => `<a href="#" onclick="event.preventDefault();goTruck('${n}')" class="inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs hover:bg-accent ${tr(n) ? 'border-primary/40 text-primary' : 'text-muted-foreground'}">${n}${tr(n) ? ic('wrench', 's14') : ''}</a>`).join('')}</div></div>`; }).join('')}
+      <p class="px-4 pb-3 text-xs text-muted-foreground">${ic('wrench', 's14 inline')} = has an open Work Order in the shop</p></section>
+  </div>`;
+}
+
+/* ───────────────────────── Menus, dialogs ───────────────────────── */
+const isPhone = () => matchMedia('(max-width: 639px)').matches;
+function openMenu(anchor, html) {
+  closeLayer(); const layer = document.getElementById('layer');
+  if (isPhone()) layer.innerHTML = `<div class="fixed inset-0 z-50 bg-black/50" onclick="closeLayer()"></div><div role="menu" class="sheet-in fixed inset-x-0 bottom-0 z-[60] max-h-[80vh] overflow-auto rounded-t-2xl border-t bg-card p-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl"><div class="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-muted-foreground/30"></div>${html}</div>`;
+  else { const r = anchor.getBoundingClientRect(); const w = 252; const left = Math.max(8, r.right - w); const below = innerHeight - r.bottom > 300;
+    layer.innerHTML = `<div class="fixed inset-0 z-50" onclick="closeLayer()"></div><div role="menu" class="pop-in absolute z-[60] rounded-lg border bg-card p-1 shadow-xl" style="width:${w}px;left:${left}px;${below ? `top:${r.bottom + scrollY + 6}px` : `top:${r.top + scrollY - 6}px;transform:translateY(-100%)`}">${html}</div>`; }
+  lucide.createIcons(); if (!isPhone()) document.getElementById('mech-search')?.focus();
+}
+function closeLayer() { document.getElementById('layer').innerHTML = ''; }
+addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLayer(); });
+function picker(n) {
+  const t = tr(n);
+  return `<div class="p-1"><label class="flex items-center gap-2 rounded-md border bg-background px-2.5 focus-within:border-ring">${ic('search', 's14 text-muted-foreground')}<span class="sr-only">Search mechanics</span><input id="mech-search" autocomplete="off" placeholder="Search mechanics…" oninput="filterMech(this.value)" class="h-10 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"></label></div>
+    <p class="truncate px-2.5 pb-1 pt-2 text-xs text-muted-foreground">${t.unassigned} · Truck ${n}</p>
+    <div role="listbox">${STANDARD.map((m) => `<button role="option" data-name="${MECH[m].name.toLowerCase()}" onclick="assign('${n}','${m}')" class="mech-opt flex h-11 w-full items-center gap-2.5 rounded-md px-2.5 hover:bg-accent sm:h-9">${av(m)}<span class="flex-1 text-left">${MECH[m].name}</span></button>`).join('')}<p id="mech-empty" class="hidden px-2.5 py-3 text-center text-muted-foreground">No mechanic matches.</p></div>`;
+}
+function filterMech(q) { let n = 0; document.querySelectorAll('.mech-opt').forEach((b) => { const hit = b.dataset.name.includes(q.toLowerCase()); b.classList.toggle('hidden', !hit); n += hit; }); document.getElementById('mech-empty').classList.toggle('hidden', n > 0); }
+function openRts(n) {
+  closeLayer(); const t = tr(n);
+  window.__run = () => act('rts-' + n, `Truck ${n} returned to service.`, () => { S.trucks = S.trucks.filter((x) => x.n !== n); S.completedToday += 0; });
+  document.getElementById('layer').innerHTML = `<div class="fixed inset-0 z-50 bg-black/60" onclick="closeLayer()"></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="dlg-title" class="sheet-in fixed inset-x-0 bottom-0 z-[60] max-h-[90vh] overflow-auto rounded-t-2xl border-t bg-card p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[480px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border">
+      <form class="space-y-4" onsubmit="event.preventDefault();window.__run()">
+        <div class="flex items-start justify-between gap-3"><div class="space-y-1"><h3 id="dlg-title" class="text-base font-semibold">Return Truck ${n} to service</h3><p class="text-muted-foreground">${t.wo} is completed. The truck leaves Ready to Go and the board. This does not change the Work Order, presence, or Off Duty.</p></div><button type="button" onclick="closeLayer()" class="-mr-2 -mt-1 grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent" aria-label="Close dialog">${ic('x')}</button></div>
+        <div class="space-y-1.5"><label class="font-medium" for="f-reason">Reason (optional)</label><textarea id="f-reason" rows="2" maxlength="1000" class="w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring"></textarea><p class="text-xs text-muted-foreground">Stored with the service-status event and the Activity Log.</p></div>
+        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onclick="closeLayer()" class="${BTN.outline} h-11 sm:h-9">Back</button><button id="dlg-confirm" class="${BTN.primary} h-11 sm:h-9">Return to Service</button></div>
+      </form></div>`;
+  lucide.createIcons(); document.getElementById('f-reason').focus();
+}
+
+/* ───────────────────────── Actions (shared state: both screens see them) ───────────────────────── */
+function resolve(n) { const t = tr(n); act('res-' + n, 'Blocker resolved.', () => { t.blocker = null; UI.resolving = null; }); }
+function resume(n) { const t = tr(n); act('resume-' + n, 'Work Order resumed.', () => { t.pause = null; t.status = 'in_progress'; }); }
+function closeWo(n) { const t = tr(n); act('close-' + n, `${t.wo} completed. Truck ${n} is Ready to Go.`, () => { t.status = 'completed'; t.phase = 'ready_to_go'; S.completedToday += 1; S.completed7 += 1; }); }
+function qc(n) { const t = tr(n); act('qc-' + n, 'Quality Check marked complete.', () => { t.left = 0; t.phase = 'ready_to_close'; }); }
+function assign(n, m) { const t = tr(n); closeLayer(); act('assign-' + n, `${MECH[m].name} assigned to ${t.unassigned}.`, () => { t.unassigned = null; if (!t.mechs.includes(m)) t.mechs.push(m); }); }
+function inspect(n, issues) { const t = tr(n); act(`insp${issues ? 1 : 0}-` + n, 'Inspection recorded.', () => { t.inspect = false; t.phase = issues ? 'shop_work' : 'pm'; if (issues) setTimeout(() => toast('info', `Opens Truck ${n} with Add work open.`), 700); }); }
+function handled(id) { const r = S.requests.find((x) => x.id === id); act('req-' + id, 'Work request marked handled.', () => { r.handled = true; }); }
+
+/* ───────────────────────── Demo presets ───────────────────────── */
+const PRESETS = {
+  normal: ['Día normal', () => {}],
+  calm: ['Todo al día', () => { S.trucks = S.trucks.filter((t) => kind(t) === 'work' && !leavingSoon(t)); S.requests = []; }],
+  busy: ['Muchos Ready to Go', () => { ['606', '608', '610', '612', '614', '616'].forEach((n, i) => S.trucks.push(T({ n, veh: '2025 Volvo VNL 860', wo: `WO-02${i}`, age: '1d', phase: 'ready_to_go', status: 'completed', total: 4, mechs: ['ma', 'md'], dispatch: { loc: '301 Yard' } }))); }],
+};
+let preset = 'normal';
+function presets() { return Object.entries(PRESETS).map(([k, [l]]) => `<button onclick="applyPreset('${k}')" class="min-h-9 rounded-md border px-2 text-xs font-medium ${preset === k ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-accent'}">${l}</button>`).join(''); }
+function applyPreset(k) { const keep = { canManage: S.canManage, dispatchOff: S.dispatchOff }; S = seed(); Object.assign(S, keep); preset = k; PRESETS[k][1](); UI = { ...freshUI(), view: UI.view }; closeLayer(); render(); }
+function reset() { ['opt-ro', 'opt-fail', 'opt-dispatch'].forEach((i) => { document.getElementById(i).checked = false; }); S = seed(); preset = 'normal'; UI = { ...freshUI(), view: UI.view }; closeLayer(); render(); }
+function toggleDemo() { document.getElementById('demo').classList.toggle('hidden'); }
+addEventListener('hashchange', () => { const v = location.hash.slice(1) === 'yard' ? 'yard' : 'dashboard'; if (v !== UI.view) go(v); });
+
+render();
+</script>
+</body>
+</html>
