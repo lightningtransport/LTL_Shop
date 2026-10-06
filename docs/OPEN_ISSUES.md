@@ -192,6 +192,26 @@ Se retoma cuando el dueño responda sus decisiones (§5 de la propuesta).
 | R7 | E | "Labor segments" (LTR-186) en mayúsculas con `tracking-wide`; la regla es sentence case. Además los tramos salen dos veces (lista y select de corrección) | `admin-work-order-detail.tsx` (`LaborSegments`) |
 | R8 | E | El error de "Send to external shop" (LTR-188) usa `text-destructive`; en oscuro no se lee (debe ser `text-destructive-text`) | `admin-job-table.tsx` (`SendExternalDialog`) |
 
+## 1f. Truck Detail (Admin) y reparto Truck ↔ Work Order (2026-10-05) — **ESPERA**
+
+Auditoría en [`ux-audit/admin-truck-wo/`](ux-audit/admin-truck-wo/05-navegacion-ia.md) y
+propuesta con maqueta en [`proposals/truck-detail-redesign/`](proposals/truck-detail-redesign/README.md).
+El dueño confirmó el reparto: el Truck responde "¿puede salir?" y la Work Order ejecuta; el Next
+step actúa donde estás. Se retoma con las decisiones de §6 de esa propuesta.
+
+| # | Clase | Problema | Dónde |
+|---|---|---|---|
+| T1 | C | El Truck en Ready to Go dice "Open Work Order: WO-x" y "No open Work Orders" a la vez (UX-5-001) | `admin-truck-detail.tsx` |
+| T2 | C | El Next step de la WO lleva al Truck para Resolve / Assign / Close / Return to Service, que la WO ya tiene (UX-5-004) | `admin-work-order-detail.tsx` |
+| T3 | C | Next step `external` en el Truck sin acción ni enlace a "Returned" (UX-5-005) | `admin-truck-next-step.tsx` |
+| T4 | C | Jobs del Truck sin enlace a su fila en la WO; la WO vuelve siempre a la lista (UX-5-002, UX-5-003) | `admin-truck-work-plan.tsx`, `admin-work-order-detail.tsx` |
+| T5 | C | Add work se abre al final del Work Plan, fuera de la vista; el deep link de la WO no lo abre (UX-5-006) | `work-plan-add-work.tsx` |
+| T6 | C | Errores con nombres de permisos ("requires work_orders.manage"); el error de asignar reusa el de agregar trabajo | `admin-messages.ts`, `admin-truck-work-plan.tsx` |
+| T7 | E | La carga fallida del Truck dice "Unable to load Yard Operations." | `admin-truck-detail.tsx` |
+| T8 | E | El aviso de Job custom duplicado muestra "Jobs in this Work Order" | `work-plan-add-work.tsx:198` |
+| T9 | E | Pasos y Jobs con el mismo estilo y 12 badges; "Issues found" registrado como botón primario; textarea de Return to Service siempre abierto (UX-4-001…004) | `admin-readiness-tracker.tsx`, `admin-truck-next-step.tsx` |
+| T10 | E | Éxito dos veces (banner + toast); tarjeta dentro de tarjeta en `CategoryJobList`; h3 sin h2; Repair history sin paginar | `admin-truck-work-plan.tsx`, `category-job-list.tsx`, `admin-truck-detail.tsx` |
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):

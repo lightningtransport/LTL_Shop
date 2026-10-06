@@ -66,6 +66,20 @@ ya lo incluye:
 | **Siguiente paso "external"** | Si lo único pendiente (además de QC) está afuera, el siguiente paso es esperar | Aviso "At external shop: <Job>" con la nota y **Returned**. Si salió el camión: "Yard shows the truck as Out of shop" |
 | **Cierre del día y cambio de camión** (D20, D21) | A las 5:00 PM la app cierra los relojes; al empezar en otro camión se cierra el anterior | History › Times: **una sola lista** de tramos (antes eran dos: "Labor segments" y el select de corrección) con chip "Day close" / "Switched truck", el tramo en curso en verde y "Correct…" solo en tramos cerrados. El diálogo explica por qué se cerró. Activity muestra ambos eventos |
 
+### 3c. Reparto Truck ↔ Work Order (decidido el 2026-10-05)
+
+Viene de la auditoría [`ux-audit/admin-truck-wo/05-navegacion-ia.md`](../../ux-audit/admin-truck-wo/05-navegacion-ia.md)
+y de la propuesta [`truck-detail-redesign/`](../truck-detail-redesign/README.md) §2. Para esta
+pantalla significa:
+
+- La WO es **el único lugar con acciones de Job** (dueño, Complete, helper, taller externo,
+  Returned, cancelar o reabrir). El Truck solo asigna los Jobs sin dueño y enlaza aquí con
+  `#job-<id>`: la WO abre esa fila y la resalta.
+- **El Next step actúa aquí.** Hoy la app lleva al Truck para Resolve, Assign, Close y Return to
+  Service (T2). La maqueta ya lo hace en el sitio. La única salida es `inspect` → "Go to the
+  inspection" (Truck).
+- **El back link sabe de dónde vienes:** "Back to Truck 918" si llegaste desde el Truck (`?from=`).
+
 ## 4. Comportamiento de cada acción
 
 Los textos de diálogos y ayudas son los de `admin-messages.ts`. Ninguna

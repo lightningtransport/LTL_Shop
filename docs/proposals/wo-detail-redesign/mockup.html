@@ -324,14 +324,14 @@ function render() {
 function statusBadge() {
   const m = {
     in_progress: ['In progress', 'border-primary/30 bg-primary/10 text-primary', 'bg-primary'],
-    waiting_paused: ['Paused', 'border-warning/40 bg-warning/10 text-warning', 'bg-warning'],
+    waiting_paused: ['Paused', 'border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning', 'bg-warning'],
     completed: ['Completed', 'border-success/40 bg-success/10 text-success', 'bg-success'],
     cancelled: ['Cancelled', 'border-border bg-muted text-muted-foreground', 'bg-muted-foreground'],
   }[S.status];
   return `<span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${m[1]}"><span class="size-1.5 rounded-full ${m[2]}"></span>${m[0]}</span>`;
 }
 function priorityBadge() {
-  const m = { low: ['Low priority', 'text-muted-foreground'], normal: ['Normal priority', 'text-muted-foreground'], high: ['High priority', 'border-warning/40 text-warning'], critical: ['Critical priority', 'border-destructive/50 bg-destructive/20 text-destructive-text'] }[S.priority];
+  const m = { low: ['Low priority', 'text-muted-foreground'], normal: ['Normal priority', 'text-muted-foreground'], high: ['High priority', 'border-warning/40 text-warning-foreground dark:text-warning'], critical: ['Critical priority', 'border-destructive/50 bg-destructive/20 text-destructive-text'] }[S.priority];
   return `<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${m[1]}">${m[0]}</span>`;
 }
 
@@ -384,7 +384,7 @@ function header() {
 
 function callout(tone, icon, eyebrow, title, sub, actionsHtml, extra = '') {
   const t = {
-    warning: ['border-warning/40 bg-warning-surface/60', 'bg-warning/15 text-warning', 'text-warning-foreground/80'],
+    warning: ['border-warning/40 bg-warning-surface/60', 'bg-warning/15 text-warning-foreground dark:text-warning', 'text-warning-foreground/80'],
     primary: ['border-primary/40 bg-primary/[0.06]', 'bg-primary/15 text-primary', 'text-primary'],
     success: ['border-success/40 bg-success/[0.06]', 'bg-success/15 text-success', 'text-success'],
     muted: ['border-border bg-card', 'bg-muted text-muted-foreground', 'text-muted-foreground'],
@@ -483,7 +483,7 @@ function openRow(j) {
   const status = ext
     ? `<span class="inline-flex items-center gap-1.5 justify-self-end whitespace-nowrap text-primary max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('building-2', 's14')}At external shop</span>`
     : blocked
-    ? `<span class="inline-flex items-center gap-1.5 justify-self-end text-warning max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('octagon-pause', 's14')}Blocked</span>`
+    ? `<span class="inline-flex items-center gap-1.5 justify-self-end text-warning-foreground dark:text-warning max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('octagon-pause', 's14')}Blocked</span>`
     : `<span class="inline-flex items-center gap-1.5 justify-self-end text-muted-foreground max-lg:order-1 max-lg:text-xs lg:justify-self-start"><span class="size-2 rounded-full border-[1.5px] border-muted-foreground"></span>To do</span>`;
   let action = '';
   if (editable) {
@@ -518,7 +518,7 @@ function notes() {
     return `<li class="flex gap-3 ${req ? 'rounded-lg border border-warning/30 bg-warning-surface/40 p-3' : ''}">
       ${av(n.by, 'size-8')}
       <div class="min-w-0 flex-1">
-        <p class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="font-medium">${MECH[n.by].name}</span><span class="text-xs text-muted-foreground">${n.at}</span>${req ? `<span class="rounded-md border px-1.5 py-px text-xs font-medium ${n.handled ? 'text-muted-foreground' : 'border-warning/40 text-warning'}">Work request${n.handled ? '' : ' · Open'}</span>` : ''}</p>
+        <p class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="font-medium">${MECH[n.by].name}</span><span class="text-xs text-muted-foreground">${n.at}</span>${req ? `<span class="rounded-md border px-1.5 py-px text-xs font-medium ${n.handled ? 'text-muted-foreground' : 'border-warning/40 text-warning-foreground dark:text-warning'}">Work request${n.handled ? '' : ' · Open'}</span>` : ''}</p>
         <p class="mt-0.5 whitespace-pre-wrap text-foreground/90">${esc(n.body)}</p>
         ${req && n.handled ? `<p class="mt-1 text-xs text-muted-foreground">Handled by ${MECH[n.handled.by].name} · ${n.handled.at}</p>` : ''}
         ${req && !n.handled && S.canManage ? `<button onclick="handleRequest('${n.id}')" class="${BTN.outline} mt-2 h-10 sm:h-8" ${UI.pending ? 'disabled' : ''}>${pendingBtn('req-' + n.id, `${ic('check', 's14')}Mark handled`)}</button>` : ''}

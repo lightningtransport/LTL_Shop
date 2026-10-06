@@ -16,7 +16,8 @@ para entender por qué se decidió algo, nunca para saber cómo funciona hoy.
 | [`OPEN_ISSUES.md`](OPEN_ISSUES.md) | **Plan de cierre** (§0: por qué salen defectos, reglas, matriz de 28 flujos, fases A–D), defectos conocidos, limpieza, salida en vivo, fuera de alcance. |
 | [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md) | Lista para abrir el Shop a usuarios reales. |
 | [`design-system/`](design-system/README.md) | Tokens, componentes, patrones y glosario EN/ES. |
-| [`proposals/`](proposals/wo-detail-redesign/README.md) | Propuestas de diseño **no construidas** (hoy: rediseño de Work Order Detail, con maqueta). |
+| [`proposals/`](proposals/wo-detail-redesign/README.md) | Propuestas de diseño **no construidas**, con maqueta: [Work Order Detail](proposals/wo-detail-redesign/README.md) y [Truck Detail](proposals/truck-detail-redesign/README.md). |
+| [`ux-audit/`](ux-audit/admin-truck-wo/00-contexto.md) | Auditorías UX con las skills `audit-ux-*` (hoy: Truck ↔ Work Order). |
 
 ### Referencia técnica (`reference/`)
 
