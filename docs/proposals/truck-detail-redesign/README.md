@@ -94,7 +94,7 @@ Hallazgos de [`05-navegacion-ia.md`](../../ux-audit/admin-truck-wo/05-navegacion
 
 | Paso | Texto | Acción en el Truck |
 |---|---|---|
-| Sin WO (`create_work_order`) | "No open Work Order", y la frase según la inspección: pendiente → "Record the arrival inspection below…"; Issues found → "Add the work: that opens the Work Order…"; No issues → "Open a Work Order for the required steps" | Issues found: **Add work** (primario) + New Work Order. Si no: **New Work Order** |
+| Sin WO (`create_work_order`) | "No open Work Order", y la frase según la inspección: pendiente → "Record the arrival inspection below…"; Issues found → "Add the work: that opens the Work Order…"; No issues → "Open a Work Order for the required steps" | Issues found: **Add work** (primario) + New Work Order. Si no: **New Work Order** → diálogo (prioridad, nota) → la WO nace en "Created" y te quedas en el Truck |
 | `return_to_service` | "Return it to service when it leaves the shop" + WO y fecha | **Return to Service** → diálogo con motivo opcional |
 | `resolve_blocker` | "<Job> is blocked · <motivo>", quién y cuándo, notas del mecánico | **Resolve** → nota opcional en línea → Confirm resolve |
 | `resume` | "You paused this Work Order: <motivo>." | **Resume** |
@@ -103,7 +103,7 @@ Hallazgos de [`05-navegacion-ia.md`](../../ux-audit/admin-truck-wo/05-navegacion
 | `assign` | "Nobody is assigned to <Job>." | **Assign** → selector con búsqueda (PM solo mecánicos PM) |
 | `external` | "At external shop: <Job>" + nota y desde cuándo | **Open in Work Order** (a la fila con Returned) |
 | `qc` | "Everything else is done" · Safety lo revisa | **Mark QC complete** (respaldo, outline) |
-| `close` | "All Jobs are done" | **Close Work Order** |
+| `close` | "All Jobs are done" | **Close Work Order** → diálogo de confirmación |
 | `work` | "Mechanics are working" · "N jobs left · next: <Job>" | — |
 
 ### Add work (panel)
@@ -130,12 +130,22 @@ Manager can change this Truck." y en el Next step "Only a Shop Manager can take 
 
 ## 6. Decisiones pendientes (las responde el dueño)
 
-- [ ] **New Work Order desde el Truck:** ¿se queda como enlace a `/admin/work-orders/new`
-      (como hoy) o es un diálogo en el Truck (prioridad + nota)?
-- [ ] **Close Work Order** desde el Next step: ¿pide confirmación? Hoy no (va junto con la
-      misma pregunta en la WO).
-- [ ] **Pause Work Order…** en el "…" del Truck: ¿se agrega como atajo a la WO (propuesto) o no?
-- [ ] **Stepper:** ¿se repite en el Dashboard o en las tarjetas del Yard? Fuera de esta propuesta.
+Decididas por el dueño el 2026-10-05:
+
+- [x] **New Work Order → diálogo en el Truck** (prioridad, por defecto Normal, y nota opcional;
+      texto de `createMandatoryStepsHelp`). Crea la WO con los cuatro pasos obligatorios y **te
+      quedas en el Truck**. Está en el Next step `create_work_order` y en el "…". La pantalla
+      `/admin/work-orders/new` sigue para la lista de Work Orders.
+- [x] **Close Work Order pide confirmación:** un diálogo dice "WO-x closes as Completed and
+      Truck 601 becomes Ready to Go… You can reopen it from the Work Order, with a reason.".
+      Completar un **Job** sigue con un toque (sin confirmación), en las dos pantallas.
+- [x] **Pause Work Order… en el "…" del Truck** es un atajo que **lleva a la WO** con el diálogo
+      de pausa (solo con la WO en In progress). Pause sigue viviendo solo en la WO; Resume sale
+      en el Next step.
+
+Pendiente, fuera de esta propuesta:
+
+- [ ] **Stepper:** ¿se repite en el Dashboard o en las tarjetas del Yard?
 
 ## 7. Plan de implementación
 
@@ -146,7 +156,8 @@ Antes de codificar: sincronizar la rama con `main`. Los defectos están en
    - Un componente que usen el Truck y la WO.
    - Base: `admin-truck-next-step.tsx`, que ya actúa en el sitio, y quitar el `Link` a
      `truckHref` de `admin-work-order-detail.tsx`.
-   - Return to Service a diálogo; inspección dentro del aviso.
+   - Return to Service, New Work Order y Close Work Order en diálogo; inspección dentro del aviso.
+   - New Work Order reutiliza la llamada de `admin-new-work-order.tsx` (truck, prioridad, nota).
 2. **Encabezado.**
    - `admin-operational-header.tsx` (compartido): un chip de estado, chip de la WO
      (`displayId` + estado; con la WO completada dice "Completed") y el stepper desde

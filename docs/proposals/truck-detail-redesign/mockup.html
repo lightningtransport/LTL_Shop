@@ -226,7 +226,7 @@ let UI = freshUI();
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const ic = (name, cls = '') => `<i data-lucide="${name}" class="${cls}"></i>`;
 const av = (m, size = 'size-6') => m ? `<span title="${MECH[m].name}" class="grid ${size} shrink-0 place-items-center rounded-full text-[12px] font-semibold ${TONE[MECH[m].tone]}">${MECH[m].ini}</span>` : '';
-const woOpen = () => S.wo && (S.wo.status === 'in_progress' || S.wo.status === 'waiting_paused');
+const woOpen = () => S.wo && ['created', 'in_progress', 'waiting_paused'].includes(S.wo.status);
 const canAdd = () => S.canManage && (!S.wo || woOpen());
 const live = () => S.jobs.filter((j) => j.status !== 'cancelled');
 const pending = () => S.jobs.filter((j) => j.status === 'to_do');
@@ -334,7 +334,7 @@ function statusChip() {
 }
 function woChip() {
   if (!S.wo) return '';
-  const st = { in_progress: ['In progress', 'text-primary'], waiting_paused: ['Paused', 'text-warning-foreground dark:text-warning'], completed: ['Completed', 'text-success'] }[S.wo.status];
+  const st = { created: ['Created', 'text-muted-foreground'], in_progress: ['In progress', 'text-primary'], waiting_paused: ['Paused', 'text-warning-foreground dark:text-warning'], completed: ['Completed', 'text-success'] }[S.wo.status];
   return `<a href="#" onclick="event.preventDefault();goWo()" class="inline-flex h-8 items-center gap-2 rounded-md border bg-card px-2.5 hover:bg-accent" title="Open the Work Order">
     ${ic('clipboard-list', 's14 text-muted-foreground')}<span class="font-mono text-[13px]">${S.wo.id}</span><span class="${st[1]}">· ${st[0]}</span>${S.wo.priority !== 'normal' ? `<span class="text-muted-foreground">· ${S.wo.priority[0].toUpperCase() + S.wo.priority.slice(1)}</span>` : ''}${ic('arrow-up-right', 's14 text-muted-foreground')}</a>`;
 }
@@ -401,7 +401,7 @@ function nextStepView() {
       // Same rule; the sentence follows what is already recorded so it never asks twice.
       const r = S.inspection.result;
       const sub = !r ? 'Record the arrival inspection below, or open a Work Order. Adding work also opens one.' : r === 'issues' ? 'Issues found. Add the work: that opens the Work Order with its required steps.' : 'No issues found. Open a Work Order for the required steps (PM, Alignment, Detailing, Quality Check).';
-      const btns = !S.canManage ? '' : (r === 'issues' ? `<button onclick="openAdd()" class="${BTN.primary} h-11 sm:h-9">${ic('plus')}Add work</button>` : '') + `<button onclick="toast('info','Opens New Work Order for Truck 601 (priority and note).')" class="${r === 'no_issues' ? BTN.primary : BTN.outline} h-11 sm:h-9">${ic('file-plus')}New Work Order</button>`;
+      const btns = !S.canManage ? '' : (r === 'issues' ? `<button onclick="openAdd()" class="${BTN.primary} h-11 sm:h-9">${ic('plus')}Add work</button>` : '') + `<button onclick="openDialog('newWo')" class="${r === 'no_issues' ? BTN.primary : BTN.outline} h-11 sm:h-9">${ic('file-plus')}New Work Order</button>`;
       return callout('muted', 'file-plus', 'Next step', 'No open Work Order', sub, btns, ro());
     }
     case 'return_to_service': return callout('success', 'circle-check', 'Next step · Ready to Go', 'Return it to service when it leaves the shop', `${S.wo.id} completed ${S.wo.completedAt}. Yard shows it as Ready to Go until you return it.`,
@@ -425,7 +425,7 @@ function nextStepView() {
     case 'external': return callout('primary', 'building-2', 'Next step · Waiting', `At external shop: ${nameText(n.job)}`, `${n.job.external.kind === 'truck' ? 'The truck is out' : 'The part is out'} since ${n.job.external.at} · “${esc(n.job.external.note)}”. Mark it “Returned” in the Work Order.`,
       `<button onclick="goWo('${n.job.id}')" class="${BTN.outline} h-11 sm:h-9">${ic('square-arrow-out-up-right')}Open in Work Order</button>`);
     case 'qc': return callout('primary', 'shield-check', 'Next step · Waiting for Safety', 'Everything else is done', 'Safety reviews the truck; mark Quality Check complete here only if they cannot.', P('qc', 'Mark QC complete', 'completeQc()', BTN.outline), ro());
-    case 'close': return callout('primary', 'flag', 'Next step', 'All Jobs are done', 'Close the Work Order to make the Truck Ready to Go.', P('close', `${ic('check-check')}Close Work Order`, 'closeWo()'), ro());
+    case 'close': return callout('primary', 'flag', 'Next step', 'All Jobs are done', 'Close the Work Order to make the Truck Ready to Go.', P('close', `${ic('check-check')}Close Work Order`, "openDialog('close')"), ro());
     case 'work': return callout('muted', 'wrench', 'Next step', 'Mechanics are working', `${n.count} job${n.count === 1 ? '' : 's'} left · next: ${nameText(n.job)}`, '');
   }
 }
@@ -608,7 +608,7 @@ function truckMenu() {
   const out = [];
   if (S.wo) out.push(item(`Open ${S.wo.id}`, 'closeLayer();goWo()', 'clipboard-list'));
   if (woOpen() && S.wo.status === 'in_progress') out.push(item('Pause Work Order…', "closeLayer();toast('info','Pause lives in the Work Order: opens '+S.wo.id+' with the Pause dialog.')", 'pause'));
-  if (!S.wo || S.wo.status === 'completed') out.push(item('New Work Order', "closeLayer();toast('info','Opens New Work Order for Truck 601.')", 'file-plus'));
+  if (!S.wo || S.wo.status === 'completed') out.push(item('New Work Order…', "openDialog('newWo')", 'file-plus'));
   out.push(sep, item('Copy Truck link', "closeLayer();toast('success','Link copied')", 'link'));
   return `<p class="px-2.5 pb-1 pt-1.5 text-xs text-muted-foreground">Truck 601</p>${out.join('')}`;
 }
@@ -655,6 +655,15 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (document.getE
 function openDialog(kind) {
   closeLayer();
   const D = {
+    // 1-B (2026-10-05): create the Work Order here and stay on the Truck.
+    newWo: kind !== 'newWo' ? null : { title: 'New Work Order', desc: 'The Work Order starts with PM, Alignment, Detailing and QC, each with its default owner. Add extra work from the Truck after the inspection.',
+      body: `<div class="space-y-1.5"><label class="font-medium" for="f-priority">Priority</label><div class="relative"><select id="f-priority" class="native h-11 w-full rounded-md border bg-background pl-3 pr-9 text-base">${['Low', 'Normal', 'High', 'Critical'].map((x) => `<option ${x === 'Normal' ? 'selected' : ''}>${x}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground')}</div></div>
+        <div class="space-y-1.5"><label class="font-medium" for="f-note">Notes (optional)</label><textarea id="f-note" rows="3" maxlength="2000" placeholder="Add context the assigned mechanics should know" class="w-full rounded-md border bg-background px-3 py-2 text-base outline-none placeholder:text-muted-foreground focus:border-ring"></textarea></div>`,
+      confirm: 'Create Work Order',
+      run: () => { const pr = document.getElementById('f-priority').value.toLowerCase(); act('newwo', 'Work Order WO-011 created.', () => { S.wo = { id: 'WO-011', status: 'created', priority: pr, pause: null, completedAt: null, opened: now() }; S.jobs = Object.entries(DEFAULT).map(([lane, d]) => J({ name: d.name, cat: d.cat, lane, mech: d.mech })); S.blockers = []; S.operational = 'unknown'; }); } },
+    // 2-B (2026-10-05): closing changes the Truck for the whole shop, so it confirms.
+    close: kind !== 'close' ? null : { title: 'Close Work Order', desc: `${S.wo?.id} closes as Completed and Truck 601 becomes Ready to Go: the Yard shows it for Return to Service. You can reopen it from the Work Order, with a reason.`,
+      body: '', confirm: 'Close Work Order', run: () => closeWo() },
     return: { title: 'Return to Service', desc: 'Marks Truck 601 In Service after this completed Work Order. The Truck leaves Ready to Go. This does not change Work Order status, presence, or Off Duty.',
       body: `<div class="space-y-1.5"><label class="font-medium" for="f-reason">Reason (optional)</label><textarea id="f-reason" rows="3" maxlength="1000" class="w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring"></textarea><p class="text-xs text-muted-foreground">Optional. When given, it is stored with the Truck service-status event and the Activity Log.</p></div>`,
       confirm: 'Return to Service', run: () => act('rts', 'Truck returned to service.', () => { S.history.unshift({ wo: S.wo.id, cat: 'Air & Brake System', date: 'Oct 5, 2026', mileage: '367,393', by: 'Manuel García', jobs: live().filter((j) => j.lane === 'shop_work').map((j) => j.name) }); S.wo = null; S.operational = 'in_service'; S.inspection = { result: null }; S.jobs = []; S.blockers = []; }) },
@@ -668,7 +677,7 @@ function openDialog(kind) {
         <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onclick="closeLayer()" class="${BTN.outline} h-11 sm:h-9">Back</button><button id="dlg-confirm" class="${BTN.primary} h-11 sm:h-9">${D.confirm}</button></div>
       </form></div>`;
   lucide.createIcons();
-  document.querySelector('#layer textarea')?.focus();
+  document.querySelector('#layer select, #layer textarea, #dlg-confirm')?.focus();
 }
 
 /* ───────────────────────── Actions ───────────────────────── */
