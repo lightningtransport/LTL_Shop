@@ -57,7 +57,8 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addStyleTag({ content: ':root { --app-safe-top: 59px; --app-safe-bottom: 48px; }' });
     const menu = page.getByRole('button', { name: 'Open Shop Admin navigation' });
-    const logo = header.getByRole('img', { name: 'Lightning Transport and Logistics' });
+    // Stage 8 (mockups): the brand is in the sidebar; the top bar carries the breadcrumb.
+    const logo = header.getByTestId('admin-breadcrumb');
     const profile = page.getByRole('button', { name: /Open profile for / });
 
     await expect.poll(async () => header.evaluate((element) => getComputedStyle(element).paddingTop)).toBe('59px');

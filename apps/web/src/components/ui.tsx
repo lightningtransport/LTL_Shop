@@ -22,21 +22,23 @@ import { cn } from '@/lib/utils';
 export const buttonVariants = cva(
   // LTR-169: one disabled look for every variant (muted fill, muted text: 5.5:1 in light and dark), instead of a
   // faded copy of each variant that read as "washed-out blue" next to "grey" and was unreadable in dark mode.
-  'inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:border-transparent disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none',
+  // Stage 8 (mockups): rounded-md, medium weight, 44px on touch and 36px with a mouse (the mockups' h-11 sm:h-9,
+  // but by pointer so a touch tablet keeps 44px, LTR-167).
+  'inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors [@media(pointer:fine)]:min-h-9 disabled:pointer-events-none disabled:border-transparent disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:opacity-90',
         secondary: 'border bg-card text-card-foreground hover:bg-accent',
         outline: 'border bg-background text-foreground hover:bg-accent',
-        ghost: 'text-foreground hover:bg-accent',
+        ghost: 'text-muted-foreground hover:bg-accent hover:text-foreground',
         destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
       },
       size: {
-        default: 'min-h-11',
-        sm: 'min-h-11 px-3 py-2 text-sm [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:text-xs',
-        lg: 'min-h-12 px-5 py-3 text-base',
-        icon: 'size-11 p-0',
+        default: '',
+        sm: 'px-2.5 [@media(pointer:fine)]:min-h-8',
+        lg: 'min-h-12 px-5 text-base',
+        icon: 'size-11 min-h-0 p-0 [@media(pointer:fine)]:size-9 [&_svg]:size-5',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },
@@ -171,27 +173,45 @@ export function InlineAlert({
   );
 }
 
+// Stage 8 (F2, mockups): tinted chips, never a solid fill; warning is amber (it used to be `shop-accent`, a blue).
 const badgeVariants = cva(
-  'inline-flex min-h-6 items-center rounded-md border px-2 py-0.5 text-xs font-semibold',
+  'inline-flex min-h-6 items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium',
   {
     variants: {
       variant: {
-        default: 'border-primary bg-primary text-primary-foreground',
+        default: 'border-primary/30 bg-primary/10 text-primary',
         secondary: 'border-border bg-muted text-muted-foreground',
-        outline: 'border-border text-foreground',
-        destructive: 'border-destructive bg-destructive text-destructive-foreground',
-        success: 'border-shop-success/40 bg-shop-success/15 text-shop-success',
-        warning: 'border-shop-accent/40 bg-shop-accent/15 text-shop-accent',
+        outline: 'border-border text-muted-foreground',
+        destructive: 'border-destructive/50 bg-destructive/20 text-destructive-text',
+        success: 'border-success/40 bg-success/10 text-success',
+        warning: 'border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning',
       },
     },
     defaultVariants: { variant: 'default' },
   },
 );
 
-export type BadgeProps = React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof badgeVariants>;
+const BADGE_DOT: Record<NonNullable<VariantProps<typeof badgeVariants>['variant']>, string> = {
+  default: 'bg-primary',
+  secondary: 'bg-muted-foreground',
+  outline: 'bg-muted-foreground',
+  destructive: 'bg-destructive-text',
+  success: 'bg-success',
+  warning: 'bg-warning',
+};
 
-export function Badge({ className, variant, ...props }: BadgeProps) {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+export type BadgeProps = React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof badgeVariants> & {
+  /** A leading status dot (the mockups' state chips). */
+  dot?: boolean;
+};
+
+export function Badge({ className, variant, dot = false, children, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props}>
+      {dot ? <span aria-hidden="true" className={cn('size-1.5 shrink-0 rounded-full', BADGE_DOT[variant ?? 'default'])} /> : null}
+      {children}
+    </div>
+  );
 }
 
 export const Dialog = DialogPrimitive.Root;
@@ -203,11 +223,12 @@ export const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-1rem-var(--app-safe-top)-var(--app-safe-bottom))] overflow-y-auto rounded-t-xl border bg-popover p-5 pb-[calc(1.25rem+var(--app-safe-bottom))] text-popover-foreground shadow-xl focus:outline-none sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:pb-5',
+        // Stage 8 (F3): a bottom sheet on phones, a centered 480px card from `sm`; the card color, not the page's.
+        'anim-sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-1rem-var(--app-safe-top)-var(--app-safe-bottom))] overflow-y-auto rounded-t-2xl border bg-card p-5 pb-[calc(1.25rem+var(--app-safe-bottom))] text-card-foreground shadow-2xl focus:outline-none sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-[480px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:pb-5 sm:[animation-name:shop-pop-in]',
         className,
       )}
       {...props}
@@ -222,7 +243,7 @@ export const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title ref={ref} className={cn('font-display text-xl font-bold leading-tight', className)} {...props} />
+  <DialogPrimitive.Title ref={ref} className={cn('text-base font-semibold leading-snug', className)} {...props} />
 ));
 DialogTitle.displayName = 'DialogTitle';
 
@@ -1118,6 +1139,7 @@ export function Modal({
   onClose,
   returnFocusRef,
   closeLabel,
+  description,
 }: {
   open: boolean;
   title: string;
@@ -1125,6 +1147,8 @@ export function Modal({
   onClose: () => void;
   returnFocusRef?: React.RefObject<HTMLElement | null>;
   closeLabel?: string;
+  /** Stage 8 (mockups): one line under the title, in the dialog's header. */
+  description?: React.ReactNode;
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const capturedFocusRef = React.useRef<HTMLElement | null>(null);
@@ -1141,7 +1165,7 @@ export function Modal({
     <DialogPrimitive.Root open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         ref={contentRef}
-        aria-describedby={undefined}
+        {...(description ? {} : { 'aria-describedby': undefined })}
         onOpenAutoFocus={(event) => {
           const initialControl = contentRef.current?.querySelector<HTMLElement>(
             'input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
@@ -1160,10 +1184,13 @@ export function Modal({
           focusTarget.focus();
         }}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <DialogTitle>{title}</DialogTitle>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1 pt-1.5">
+            <DialogTitle>{title}</DialogTitle>
+            {description ? <DialogPrimitive.Description className="text-sm text-muted-foreground">{description}</DialogPrimitive.Description> : null}
+          </div>
           <DialogPrimitive.Close asChild>
-            <Button variant="ghost" size="icon" aria-label={closeLabel ?? 'Close'}>
+            <Button variant="ghost" size="icon" className="-mr-2 -mt-1 shrink-0" aria-label={closeLabel ?? 'Close'}>
               <X aria-hidden="true" className="size-5" />
             </Button>
           </DialogPrimitive.Close>
@@ -1172,6 +1199,51 @@ export function Modal({
       </DialogContent>
     </DialogPrimitive.Root>
   );
+}
+
+/** Stage 8 (mockups): a dialog's buttons — stacked on phones (confirm on top), right-aligned from `sm`. */
+export function DialogActions({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn('flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end', className)}>{children}</div>;
+}
+
+/**
+ * Stage 8 (mockups): a section card — header row with a divider (`h2` 16px, an optional count chip and an
+ * action on the right), content full-bleed underneath.
+ */
+export function SectionCard({
+  title,
+  count,
+  action,
+  children,
+  className,
+  headerClassName,
+  titleId,
+  ...props
+}: {
+  title: React.ReactNode;
+  count?: number | null;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  headerClassName?: string;
+  titleId?: string;
+} & Omit<React.HTMLAttributes<HTMLElement>, 'title'>) {
+  return (
+    <section className={cn('overflow-hidden rounded-xl border bg-card text-card-foreground', className)} aria-labelledby={titleId} {...props}>
+      <div className={cn('flex min-h-12 items-center justify-between gap-3 border-b px-4 py-2.5', headerClassName)}>
+        <h2 id={titleId} className="flex min-w-0 items-center gap-2 text-base font-semibold">
+          {title}
+          {count !== undefined && count !== null ? <CountChip>{count}</CountChip> : null}
+        </h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+export function CountChip({ children }: { children: React.ReactNode }) {
+  return <span className="tnum rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border">{children}</span>;
 }
 
 export function PriorityBadge({
@@ -1191,7 +1263,7 @@ export function WorkOrderStatusBadge({
   status: string;
   children: React.ReactNode;
 }) {
-  return <Badge variant={workOrderStatusVariant(status)}>{children}</Badge>;
+  return <Badge dot variant={workOrderStatusVariant(status)}>{children}</Badge>;
 }
 
 export function JobStatusBadge({

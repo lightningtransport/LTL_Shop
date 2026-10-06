@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useShopLocale } from '@/lib/locale-context';
+import { CircleAlert, CircleCheck } from 'lucide-react';
 import { Button } from './ui';
 
 export type ActionToastKind = 'success' | 'error';
@@ -61,28 +62,25 @@ export function ActionToastProvider({ children }: { children: React.ReactNode })
     <ActionToastContext.Provider value={{ showToast }}>
       {children}
       {toast ? (
+        // Stage 8 (F4, mockups): a neutral card with a colored icon, bottom-right from `sm`; it rises above a
+        // fixed bar at the bottom (the Work Order's "Confirm completion") through --toast-lift.
         <div
-          className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center px-4 pb-[calc(1rem+var(--app-safe-bottom))]"
+          className="pointer-events-none fixed inset-x-3 bottom-[calc(0.75rem+var(--app-safe-bottom)+var(--toast-lift,0px))] z-[60] flex justify-center sm:inset-x-auto sm:right-4 sm:justify-end"
         >
           <div
             key={toast.id}
             role={toast.kind === 'error' ? 'alert' : 'status'}
             aria-live={toast.kind === 'error' ? 'assertive' : 'polite'}
             className={cn(
-              'pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg',
-              toast.kind === 'error'
-                ? 'border-destructive/40 bg-destructive text-destructive-foreground'
-                : 'border-shop-success/40 bg-shop-success text-white',
+              'anim-toast-in pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-lg border bg-card px-3.5 py-3 text-sm text-card-foreground shadow-xl sm:w-[360px]',
+              toast.kind === 'error' ? 'border-destructive/50' : '',
             )}
           >
-            <p className="min-w-0 flex-1 font-medium">{toast.message}</p>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 shrink-0 px-2 text-current hover:bg-white/15 hover:text-current"
-              onClick={dismiss}
-            >
+            {toast.kind === 'error'
+              ? <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive-text" />
+              : <CircleCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />}
+            <p className="min-w-0 flex-1">{toast.message}</p>
+            <Button type="button" variant="ghost" size="sm" className="-my-1 -mr-1.5 shrink-0" onClick={dismiss}>
               {messages.dismissNotice}
             </Button>
           </div>

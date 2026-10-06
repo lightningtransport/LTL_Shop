@@ -1,17 +1,21 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { Popover } from 'radix-ui';
-import { Check, Search } from 'lucide-react';
+import { Dialog as DialogPrimitive, Popover } from 'radix-ui';
+import { Check, Search, UserX } from 'lucide-react';
 import type { AdminMessages } from '@/lib/admin-messages';
-import { profileInitials } from '@/lib/profile-initials';
 import { filterPickerMechanics, type PickerMechanic } from '@/lib/mechanic-search';
+import { useIsPhone } from '@/lib/use-is-phone';
+import { MechanicAvatar } from './mechanic-avatar';
 
 export type { PickerMechanic } from '@/lib/mechanic-search';
 
+const OPTION = 'flex min-h-11 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm hover:bg-accent focus-visible:bg-accent [@media(pointer:fine)]:min-h-9';
+
 /**
- * Stage 2: the mechanic picker opened from a button (Next step "Assign" on the Dashboard and the Work
- * Order): a search field and the mechanics who can take the Job, next to the button that opened it.
+ * Stage 2 / Stage 8 (mockups): the mechanic picker — a search field, a caption ("{Job} · Standard mechanics"),
+ * the mechanics with their avatar color, and "Unassign" last. Next to its button on desktop; a bottom sheet on
+ * phones.
  */
 export function MechanicPicker({
   trigger,
@@ -34,63 +38,88 @@ export function MechanicPicker({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPick: (mechanic: PickerMechanic) => void;
-  /** Stage 5: "Unassign" at the top of the list while the Job has an owner (Work Order only). */
+  /** Stage 5: "Unassign" while the Job has an owner (Work Order only). */
   onUnassign?: () => void;
 }) {
+  const phone = useIsPhone();
   const [query, setQuery] = useState('');
   const shown = useMemo(() => filterPickerMechanics(mechanics, query), [mechanics, query]);
+  const change = (next: boolean) => { if (!next) setQuery(''); onOpenChange(next); };
+
+  const body = (
+    <div data-testid="mechanic-picker">
+      <label className="flex items-center gap-2 rounded-md border bg-background px-2.5 focus-within:border-ring">
+        <Search aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="sr-only">{messages.mechanicSearchLabel}</span>
+        <input
+          autoFocus
+          value={query}
+          placeholder={messages.mechanicSearchPlaceholder}
+          onChange={(event) => setQuery(event.target.value)}
+          className="h-10 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none"
+        />
+      </label>
+      <p className="truncate px-2.5 pb-1 pt-2 text-xs text-muted-foreground">{title}</p>
+      <div role="listbox" aria-label={title} className="max-h-64 overflow-auto">
+        {loading ? <p className="px-2.5 py-3 text-sm text-muted-foreground">{messages.mechanicPickerLoading}</p> : null}
+        {!loading && shown.map((mechanic) => (
+          <button
+            key={mechanic.id}
+            type="button"
+            role="option"
+            aria-selected={mechanic.id === currentId}
+            className={OPTION}
+            onClick={() => { setQuery(''); onPick(mechanic); }}
+          >
+            <MechanicAvatar id={mechanic.id} name={mechanic.name} size="sm" />
+            <span className="min-w-0 flex-1 truncate">{mechanic.name}</span>
+            {mechanic.id === currentId ? <Check aria-hidden="true" className="size-4 text-primary" /> : null}
+          </button>
+        ))}
+        {!loading && !shown.length ? <p className="px-2.5 py-3 text-sm text-muted-foreground">{messages.mechanicNoMatches}</p> : null}
+      </div>
+      {!loading && onUnassign && currentId ? (
+        <>
+          <div role="separator" className="my-1 h-px bg-border" />
+          <button type="button" role="option" aria-selected={false} className={`${OPTION} text-muted-foreground`} onClick={() => { setQuery(''); onUnassign(); }}>
+            <UserX aria-hidden="true" className="size-4 opacity-80" />
+            {messages.unassignJobAction}
+          </button>
+        </>
+      ) : null}
+    </div>
+  );
+
+  if (phone) {
+    return (
+      <DialogPrimitive.Root open={open} onOpenChange={change}>
+        <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
+          <DialogPrimitive.Content
+            aria-describedby={undefined}
+            className="anim-sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t bg-card p-2 pb-[calc(0.5rem+var(--app-safe-bottom))] text-card-foreground shadow-2xl focus:outline-none"
+          >
+            <div aria-hidden="true" className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-muted-foreground/40" />
+            <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
+            {body}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    );
+  }
+
   return (
-    <Popover.Root open={open} onOpenChange={(next) => { if (!next) setQuery(''); onOpenChange(next); }}>
+    <Popover.Root open={open} onOpenChange={change}>
       <Popover.Trigger asChild>{trigger}</Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
-          align="end"
+          align="start"
           sideOffset={6}
           collisionPadding={8}
-          className="z-50 w-[min(18rem,calc(100vw-1rem))] rounded-xl border bg-popover p-1 text-popover-foreground shadow-soft"
-          data-testid="mechanic-picker"
+          className="anim-pop-in z-50 w-[min(18rem,calc(100vw-1rem))] rounded-lg border bg-card p-1 text-card-foreground shadow-xl"
         >
-          <label className="flex items-center gap-2 rounded-lg border bg-background px-3 focus-within:border-ring">
-            <Search aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <span className="sr-only">{messages.mechanicSearchLabel}</span>
-            <input
-              autoFocus
-              value={query}
-              placeholder={messages.mechanicSearchPlaceholder}
-              onChange={(event) => setQuery(event.target.value)}
-              className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0"
-            />
-          </label>
-          <p className="truncate px-2.5 pb-1 pt-2 text-xs text-muted-foreground">{title}</p>
-          <div role="listbox" aria-label={title} className="max-h-64 overflow-auto">
-            {!loading && onUnassign && currentId ? (
-              <button
-                type="button"
-                role="option"
-                aria-selected={false}
-                className="flex min-h-11 w-full items-center rounded-lg px-2.5 text-left text-sm text-muted-foreground hover:bg-accent focus-visible:bg-accent"
-                onClick={() => { setQuery(''); onUnassign(); }}
-              >
-                {messages.unassignJobAction}
-              </button>
-            ) : null}
-            {loading ? <p className="px-2.5 py-3 text-sm text-muted-foreground">{messages.mechanicPickerLoading}</p> : null}
-            {!loading && shown.map((mechanic) => (
-              <button
-                key={mechanic.id}
-                type="button"
-                role="option"
-                aria-selected={mechanic.id === currentId}
-                className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm hover:bg-accent focus-visible:bg-accent"
-                onClick={() => { setQuery(''); onPick(mechanic); }}
-              >
-                <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-foreground">{profileInitials(mechanic.name)}</span>
-                <span className="min-w-0 flex-1 truncate">{mechanic.name}</span>
-                {mechanic.id === currentId ? <Check aria-hidden="true" className="size-4 text-primary" /> : null}
-              </button>
-            ))}
-            {!loading && !shown.length ? <p className="px-2.5 py-3 text-sm text-muted-foreground">{messages.mechanicNoMatches}</p> : null}
-          </div>
+          {body}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

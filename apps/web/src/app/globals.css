@@ -148,7 +148,6 @@ html[data-display='standalone'] body {
 body {
   @apply min-h-screen bg-background font-body text-foreground antialiased;
   letter-spacing: var(--tracking-normal);
-  background-image: radial-gradient(ellipse at top, oklch(from var(--primary) l c h / 0.08), transparent 48%);
 }
 
 :focus-visible {
@@ -223,20 +222,20 @@ body {
   }
   /* 16px on every screen: iOS (iPhone and iPad) zooms into fields under 16px on focus (LTR-166). */
   .field {
-    @apply min-h-11 w-full rounded-lg border bg-background px-4 py-2.5 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring;
+    @apply min-h-11 w-full rounded-md border bg-background px-3 py-2.5 text-base text-foreground outline-none placeholder:text-muted-foreground focus:border-ring;
   }
   .card {
-    @apply rounded-xl border bg-card p-4 text-card-foreground shadow-soft;
+    @apply rounded-xl border bg-card p-4 text-card-foreground;
   }
 
   /* LTR-166 type scale (docs/design-system/foundations.md). Body text is `text-sm`, secondary text is
      `text-sm text-muted-foreground`, and meta (timestamps, counts) is `text-xs text-muted-foreground`.
      Nothing goes under 12px, and nothing is uppercased: labels and headings stay in sentence case. */
   .page-title {
-    @apply font-display text-2xl font-bold leading-tight text-foreground md:text-3xl;
+    @apply font-display text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-[28px];
   }
   .section-title {
-    @apply font-display text-lg font-semibold leading-snug text-foreground;
+    @apply text-base font-semibold leading-snug text-foreground;
   }
   .card-title {
     @apply text-base font-semibold leading-snug text-foreground;
@@ -250,4 +249,28 @@ body {
 select.field {
   appearance: none;
   padding-right: 2.75rem;
+}
+
+/* Stage 8: small pieces of the approved mockups (the mockup.html files in docs/proposals). */
+.tnum { font-variant-numeric: tabular-nums; }
+.seg[aria-pressed='true'], .seg[aria-checked='true'] {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 0 0 1px var(--border);
+}
+.anim-spin { animation: shop-spin 0.8s linear infinite; }
+@keyframes shop-spin { to { transform: rotate(360deg); } }
+.anim-toast-in { animation: shop-toast-in 0.18s ease-out; }
+@keyframes shop-toast-in { from { opacity: 0; transform: translateY(8px); } }
+.anim-sheet-in { animation: shop-sheet-in 0.2s ease-out; }
+@keyframes shop-sheet-in { from { transform: translateY(24px); opacity: 0; } }
+.anim-pop-in { animation: shop-pop-in 0.12s ease-out; }
+@keyframes shop-pop-in { from { opacity: 0; } }
+.anim-flash { animation: shop-flash 1.2s ease-out; }
+@keyframes shop-flash { from { background-color: color-mix(in oklch, var(--primary) 14%, transparent); } }
+@media (prefers-reduced-motion: reduce) {
+  .anim-toast-in { animation: none; }
+  .anim-sheet-in { animation: none; }
+  .anim-pop-in { animation: none; }
+  .anim-flash { animation: none; }
 }

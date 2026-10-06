@@ -7,6 +7,8 @@ const themed = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> 
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Stage 8: the theme is a class on <html> (next-themes, attribute="class"); `dark:` follows it, as in the mockups.
+  darkMode: 'class',
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
