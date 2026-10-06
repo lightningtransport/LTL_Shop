@@ -65,8 +65,9 @@ autoservicio, reemplazar un sistema completo de flotas.
 
 **Flujo**
 1. Admin → **Work Orders** → **New Work Order** (o desde el Truck sin Work
-   Order: el siguiente paso ofrece **New Work Order**; antes puede registrar
-   la inspección de llegada).
+   Order: el siguiente paso, o el "…", ofrece **New Work Order**, que abre un
+   diálogo con prioridad y nota, crea el WO y deja al Manager en el Truck;
+   antes puede registrar la inspección de llegada).
 2. Elige el **Truck**. Opcional: prioridad y una nota.
 3. **Create**.
 
@@ -196,7 +197,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 
 ### HU-M6 · Cancelar y reabrir (J4, J10)
 
-**Función:** Work Order → menú **…** (arriba, junto a Pause): Cancel Work Order, Reopen, Return to Service. Cancelar o reabrir un Job: el **…** de su fila en la tabla de Jobs.
+**Función:** Work Order → menú **…** (arriba, junto a Pause): Correct time…, Reopen, Cancel Work Order. **Return to Service** está en el aviso del siguiente paso cuando el WO está completado (Etapa 8). Cancelar o reabrir un Job: el **…** de su fila en la tabla de Jobs.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
@@ -223,7 +224,9 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Presencia física | Siempre "desconocida"; no se inventa | ✅ | A21 |
 | Pestaña Movement | Dice "sin conexión"; no muestra listas falsas | ✅ | A21 |
 | Siguiente paso | Truck, Work Order, listas y Yard dicen lo mismo en cada etapa, incluida Ready to Go | ✅ | A19, A19b |
-| Pedidos de trabajo de los mecánicos | Aparecen en el Dashboard hasta que se marcan atendidos | ✅ | A22 |
+| Pedidos de trabajo de los mecánicos | Aparecen en el Dashboard hasta que se marcan atendidos (se marcan ahí mismo) | ✅ | A22 |
+| Cola del Dashboard (Etapa 3) | Todo lo que espera al Manager, agrupado por acción, incluidos los Ready to Go, sin corte en 8; cada fila se hace ahí (D26). Contadores que filtran | 👁 | e2e `next-step-in-place`, `admin-shell` |
+| Sale pronto y no está listo | Salidas de Dispatch de hoy o del siguiente día hábil, cruzadas con WOs abiertas | 👁 | unit `dashboard-queue.spec.ts` |
 
 ### HU-M8 · Configurar el flujo del taller (J2)
 
@@ -416,7 +419,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Corrige sin motivo | No deja | ✅ | A23 |
 | Corrige una sesión que sigue abierta | No deja | ✅ | A23 |
 | Un mecánico intenta corregir tiempos | No puede | ✅ | A23 |
-| Quiere saber de qué mecánico es cada sesión | Cada sesión lleva su mecánico; "History and audit" muestra el tiempo por mecánico y el selector de corrección dice de quién es cada una | ✅ | A23 |
+| Quiere saber de qué mecánico es cada sesión | Cada sesión lleva su mecánico; "Labor by mechanic" muestra el tiempo por mecánico y cada tramo de History › Times dice de quién es | ✅ | A23 |
 
 ### HU-A2 · Catálogo y personal
 

@@ -10,12 +10,17 @@ import { cn } from '@/lib/utils';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { mechanicNamesLabel, workOrderNextJobLine } from '@/lib/admin-work-summary';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
-import { truckNextStepActionLabel, truckNextStepText } from '@/lib/truck-next-step';
+import { truckNextStepText } from '@/lib/truck-next-step';
+import { NextStepAction } from './next-step-action';
 
-export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders', onBlockerResolved }: {
+export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders', canManage = true, onBlockerResolved, onChanged }: {
   item: AdminWorkOrderSummaryDto; locale: AdminLocale; messages: AdminMessages; compact?: boolean; fromPath?: string;
+  /** D2 / UX-6-003: without work_orders.manage the step has no button (it led to a Truck where nothing can be done). */
+  canManage?: boolean;
   /** LTR-155 / D17: when set (Dashboard), the active blocker can be resolved in place. */
   onBlockerResolved?: () => Promise<unknown> | void;
+  /** Stage 2: refresh after a Next step action done here. */
+  onChanged?: () => Promise<unknown> | void;
 }) {
   const statusChip = (
     <WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge>
@@ -27,8 +32,6 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
   // LTR-121: same reason and copy on the Dashboard and the Work Order list.
   const attention = adminAttentionReasonLabel(item.attentionReason, messages);
   const nextStepText = truckNextStepText(item.nextStep, messages);
-  // Resolve happens inline on the Dashboard (LTR-155); every other action opens the Truck.
-  const nextStepAction = item.nextStep?.kind === 'resolve_blocker' && onBlockerResolved ? null : truckNextStepActionLabel(item.nextStep, messages);
 
   return (
     <article className={cn('rounded-xl border bg-card p-4 shadow-sm', compact && 'bg-background p-3 shadow-none xl:grid xl:grid-cols-[minmax(180px,1.2fr)_minmax(220px,1fr)_auto] xl:items-center xl:gap-4')}>
@@ -54,11 +57,17 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
           {nextStepText ? (
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm" data-testid="work-order-next-step" data-kind={item.nextStep?.kind}>
               <span>{messages.nextStepTitle}: {nextStepText}</span>
-              {nextStepAction ? (
-                <Button asChild size="sm" variant="outline">
-                  <Link href={adminTruckHref(item.truck.id, fromPath)}>{nextStepAction}</Link>
-                </Button>
-              ) : null}
+              {/* Stage 2: the action happens here (resolve stays in the blocker box below); no button without permission. */}
+              <NextStepAction
+                step={item.nextStep}
+                place={onBlockerResolved ? 'dashboard' : 'work-order-list'}
+                truck={item.truck}
+                workOrderDisplayId={item.displayId}
+                fromPath={fromPath}
+                canManage={canManage}
+                messages={messages}
+                onChanged={() => (onChanged ?? onBlockerResolved)?.()}
+              />
             </div>
           ) : null}
         </div>

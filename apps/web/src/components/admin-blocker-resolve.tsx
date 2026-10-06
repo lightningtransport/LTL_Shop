@@ -15,6 +15,7 @@ import { Button, Textarea } from './ui';
  * note. Used on the Dashboard, the Truck and the Work Order detail.
  */
 export function AdminBlockerResolve({
+  noteOnDemand = false,
   workOrderId,
   blocker,
   locale,
@@ -28,8 +29,11 @@ export function AdminBlockerResolve({
   messages: AdminMessages;
   canResolve: boolean;
   onResolved: () => Promise<unknown> | void;
+  /** Stage 3 (UX-4-002): the note box opens only after "Resolve", not always (Dashboard). */
+  noteOnDemand?: boolean;
 }) {
   const [note, setNote] = useState('');
+  const [noteOpen, setNoteOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const { showToast } = useActionToast();
   const reason = adminPauseReasonLabel(blocker.blockerReason ?? blocker.reason, messages);
@@ -83,6 +87,27 @@ export function AdminBlockerResolve({
             <p className="text-xs text-muted-foreground">{fillPlaceholders(messages.blockerResolutionNote, { note: blocker.resolutionNote })}</p>
           ) : null}
         </>
+      ) : canResolve && noteOnDemand && !noteOpen ? (
+        <div className="pt-1">
+          <Button type="button" size="sm" onClick={() => setNoteOpen(true)}>{messages.resolveBlocker}</Button>
+        </div>
+      ) : canResolve && noteOnDemand ? (
+        <form className="space-y-2 pt-1" onSubmit={(event) => { event.preventDefault(); void resolve(); }}>
+          <Textarea
+            aria-label={messages.resolveBlockerNoteLabel}
+            placeholder={messages.resolveBlockerNoteLabel}
+            value={note}
+            rows={2}
+            maxLength={1000}
+            disabled={pending}
+            autoFocus
+            onChange={(event) => setNote(event.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" size="sm" disabled={pending}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
+            <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => { setNoteOpen(false); setNote(''); }}>{messages.cancel}</Button>
+          </div>
+        </form>
       ) : canResolve ? (
         <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-end">
           <Textarea

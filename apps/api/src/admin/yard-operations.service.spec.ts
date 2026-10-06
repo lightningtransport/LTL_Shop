@@ -147,7 +147,7 @@ describe('YardOperationsService', () => {
     const page = await service.list({ limit: 1 });
     expect(page.items.map((item) => item.truck.truckNumber)).toEqual(['100']);
     expect(page.nextCursor).toBeTypeOf('string');
-    expect(page.counts).toEqual({ notStarted: 0, underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
+    expect(page.counts).toMatchObject({ notStarted: 0, underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
     const unavailableFeeds = { status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 };
     expect(page.workLocation).toEqual(unavailableFeeds);
     expect(page.incomingTrucks).toEqual(unavailableFeeds);
@@ -384,7 +384,10 @@ describe('YardOperationsService', () => {
 
     expect(page.items).toEqual([]);
     expect(page.nextCursor).toBeNull();
-    expect(page.counts).toEqual({ notStarted: 0, underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
+    expect(page.counts).toEqual({
+      notStarted: 0, underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2,
+      matching: 0, total: 0, quick: { all: 0, blocked: 0, highPriority: 0, outOfShop: 0, leavingSoon: 0 }, byPhase: {},
+    });
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[1][0].where)).toBe(true);
   });
@@ -445,6 +448,62 @@ describe('YardOperationsService', () => {
     expect(page.counts.blocked).toBe(1);
     const blockedOnly = await service.list({ limit: 25, blocked: 'true' });
     expect(blockedOnly.items.map((item) => item.truck.truckNumber)).toEqual(['906']);
+  });
+
+  describe('Stage 6: counts follow the filters; priority and status read the current Work Order (D6, D11)', () => {
+    function board() {
+      const critical = truck('277', '00000000-0000-4000-8000-000000000001');
+      critical.workOrders = [{ ...workPlanWorkOrderRow(), status: WorkOrderStatus.IN_PROGRESS, priority: 'critical' }];
+      const paused = truck('906', '00000000-0000-4000-8000-000000000002');
+      paused.workOrders = [{ ...workPlanWorkOrderRow(), id: '00000000-0000-4000-8000-000000000202', status: WorkOrderStatus.WAITING_PAUSED }];
+      const normal = truck('601', '00000000-0000-4000-8000-000000000003');
+      normal.workOrders = [{ ...workPlanWorkOrderRow(), id: '00000000-0000-4000-8000-000000000203', status: WorkOrderStatus.IN_PROGRESS }];
+      return [critical, paused, normal];
+    }
+
+    it('a priority filter matches the current Work Order in memory, never an old closed one', async () => {
+      const prisma = createPrisma();
+      prisma.truck.findMany.mockResolvedValue(board());
+      prisma.truck.count.mockResolvedValue(3);
+      const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+      const page = await service.list({ limit: 25, priority: 'high,critical' });
+      expect(page.items.map((item) => item.truck.truckNumber)).toEqual(['277']);
+      // D11: no database filter on "any Work Order of the truck" (that included closed ones).
+      for (const call of prisma.truck.findMany.mock.calls) expect(JSON.stringify(call[0].where)).not.toContain('priority');
+    });
+
+    it('the buckets count the filtered trucks; total and the quick counts come with them', async () => {
+      const prisma = createPrisma();
+      prisma.truck.findMany.mockResolvedValue(board());
+      prisma.truck.count.mockResolvedValue(3);
+      const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+      const all = await service.list({ limit: 25 });
+      expect(all.counts).toMatchObject({ matching: 3, total: 3, quick: { all: 3, blocked: 1, highPriority: 1, outOfShop: 0 } });
+
+      const blockedOnly = await service.list({ limit: 25, blocked: 'true' });
+      expect(blockedOnly.items.map((item) => item.truck.truckNumber)).toEqual(['906']);
+      // The quick counts keep their numbers when one of them is on; "Showing 1 of 3".
+      expect(blockedOnly.counts).toMatchObject({ matching: 1, total: 3, blocked: 1, quick: { all: 3, blocked: 1, highPriority: 1 } });
+      expect(blockedOnly.counts.underReview + blockedOnly.counts.notStarted! + blockedOnly.counts.readyToGo).toBe(1);
+    });
+
+    it('Stage 8: "Leaving soon" counts and filters the open Trucks the web names from Dispatch; lanes count every page', async () => {
+      const prisma = createPrisma();
+      prisma.truck.findMany.mockResolvedValue(board());
+      prisma.truck.count.mockResolvedValue(3);
+      const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+      const all = await service.list({ limit: 1, soonTrucks: '601,999' });
+      expect(all.counts.quick?.leavingSoon).toBe(1);
+      // The lane counts cover every page, not only the one loaded (limit 1).
+      expect(Object.values(all.counts.byPhase ?? {}).reduce((sum, count) => sum + count, 0)).toBe(3);
+
+      const soon = await service.list({ limit: 25, soonTrucks: '601,999', soon: 'true' });
+      expect(soon.items.map((item) => item.truck.truckNumber)).toEqual(['601']);
+      expect(soon.counts).toMatchObject({ matching: 1, total: 3, quick: { all: 3, leavingSoon: 1 } });
+    });
   });
 
   it('LTR-75: an open Work Order enters the board on the derived Work Plan phase', async () => {

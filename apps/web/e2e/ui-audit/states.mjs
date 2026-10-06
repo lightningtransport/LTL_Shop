@@ -173,10 +173,11 @@ async function step(name, fn) {
   });
   await step('manager-more-actions', async () => {
     await visit(page, '/admin/work-orders/00000000-0000-4000-8000-000000000102');
-    const moreActions = page.getByText(/Más acciones|More actions/i).first();
-    await moreActions.click();
-    await moreActions.scrollIntoViewIfNeeded();
+    // Stage 5: the "…" is a dropdown menu (no "More actions" modal any more).
+    await page.getByTestId('admin-wo-more-actions').click();
+    await page.getByTestId('admin-wo-more-menu').waitFor();
     await shot(page, 'manager-more-actions');
+    await page.keyboard.press('Escape');
   });
   await step('manager-pause-controls', async () => {
     await page.getByRole('button', { name: /^Pausar Work Order$|^Pause Work Order$/i }).first().scrollIntoViewIfNeeded();

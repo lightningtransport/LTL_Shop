@@ -70,6 +70,31 @@ describe('YardWorkPlanService', () => {
     expect(plan.capabilities.canAddWork).toBe(true);
   });
 
+  it('Stage 8: sends when the inspection was recorded, when each Job was done, and the Work Order priority', async () => {
+    const recordedAt = new Date('2026-10-04T13:12:00.000Z');
+    const doneAt = new Date('2026-10-04T19:10:00.000Z');
+    const prisma = {
+      truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },
+      workOrder: { findFirst: vi.fn().mockResolvedValue(openWorkOrder({
+        priority: 'high',
+        completedAt: null,
+        jobs: [{
+          id: '00000000-0000-4000-8000-000000000021', catalogJobId: null, displayName: 'Brake Inspection', customDescription: null,
+          status: JobStatus.COMPLETED, completedAt: doneAt, category: { id: categoryId, name: 'Air & Brake System' },
+        }],
+      })) },
+      truckReadinessAssessment: { findFirst: vi.fn().mockResolvedValue({
+        id: 'a1',
+        requirements: [{ type: ReadinessRequirementType.INSPECTION, outcome: ReadinessRequirementOutcome.REQUIRED, evaluatedAt: recordedAt }],
+      }) },
+    };
+    const service = new YardWorkPlanService(prisma as never, {} as never, {} as never);
+    const plan = await service.get(manager, truckId);
+    expect(plan.inspection).toEqual({ outcome: WorkPlanInspectionOutcome.ISSUES_FOUND, recordedAt: recordedAt.toISOString() });
+    expect(plan.jobs[0].completedAt).toBe(doneAt.toISOString());
+    expect(plan.workOrder).toMatchObject({ priority: 'high', completedAt: null });
+  });
+
   it('creates a Standard Work Order when the Truck has none', async () => {
     const prisma = {
       truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },

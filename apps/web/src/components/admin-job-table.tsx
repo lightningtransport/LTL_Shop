@@ -1,17 +1,39 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import {
+  Building2,
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
+  CircleCheck,
+  CircleSlash,
+  CornerDownRight,
+  MoreHorizontal,
+  OctagonPause,
+  Package,
+  PackageCheck,
+  RotateCcw,
+  ShieldCheck,
+  Truck,
+  UserPlus,
+  Users,
+  XCircle,
+} from 'lucide-react';
 import { isPmCategory, isQualityCheckJob, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { intlLocale } from '@/lib/shop-locale';
 import { formatAdminDate } from '@/lib/admin-format';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { jobStatusLabel } from '@/lib/status-chips';
 import { jobDisplayName } from '@/lib/job-display-name';
-import { externalShopLabel } from '@/lib/external-shop';
 import { useCatalogJobs } from '@/lib/shop-data';
-import { Badge, Button, CompactEmpty, JobStatusBadge, Modal, Select, Textarea } from './ui';
+import { formatTime } from '@/lib/work-order-view';
+import { cn } from '@/lib/utils';
+import { MechanicAvatar } from './mechanic-avatar';
+import { MechanicPicker } from './mechanic-picker';
+import { ResponsiveMenu, type MenuItem } from './responsive-menu';
+import { orderJobs } from '@/lib/work-order-jobs';
+import { Button, CompactEmpty, DialogActions, Modal, Select, Textarea } from './ui';
 
 type Job = AdminWorkOrderDetailDto['jobs'][number];
 type Mechanic = { id: string; name: string };
@@ -22,17 +44,18 @@ type JobDialog =
   | { kind: 'external'; jobId: string }
   | { kind: 'return'; jobId: string };
 
-// Fixed columns on desktop so every row lines up: Job (grows) · Mechanic · Status · Action.
-const ROW_GRID = 'lg:grid-cols-[minmax(0,1fr)_13rem_7rem_13rem]';
+// Stage 8 (mockup): Job (grows) · Mechanic 200px · Status 130px · Action 150px; two lines on phones.
+const GRID = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_200px_130px_150px] lg:gap-4';
+const STATUS = 'inline-flex items-center gap-1.5 justify-self-end whitespace-nowrap max-lg:order-1 max-lg:text-xs lg:justify-self-start';
 
 /**
- * LTR-174: the Jobs of a Work Order as one compact operational table — Job · Mechanic · Status · Action.
- * On phones each row stacks (name and status first, then the controls), the LTR-189 W1 card-row pattern.
- * Every control keeps its existing call: the mechanic Select assigns / unassigns (D11), "Mark complete"
- * is primary only on Quality Check (D15 / D19), the PM job is finished from the PM service (LTR-145),
- * and Cancel / Reopen live behind the row's "…" and keep the reason dialog owned by the detail.
- * LTR-188: the "…" also has "Add helper" (D23) and "Send to external shop" (D24); a Job at an
- * external shop shows where it is and "Returned" (complete it or give it to a mechanic).
+ * LTR-174 / Stage 5 (R3, R5) / Stage 8 (mockup): the Jobs of a Work Order — Job · Mechanic · Status · Action,
+ * inside the Jobs card. Open Jobs first, the blocked ones on top and tinted; a helper right under its Job; Jobs
+ * at an external shop after the shop's work and Quality Check last. Done and cancelled Jobs are grouped (open by
+ * default, muted). The mechanic is a ghost button with the avatar that opens the picker ("Unassign" included,
+ * D11); "Complete" is quiet except on Quality Check (D15 / D19); the PM job switches PM A ↔ B from a menu and is
+ * finished from the PM service (LTR-145). The row's "…" holds Add helper (D23), Send to external shop (D24),
+ * Cancel / Reopen (the reason dialog is the detail's). A Job at an external shop shows where it is and "Returned".
  */
 export function AdminJobTable({
   data,
@@ -50,6 +73,10 @@ export function AdminJobTable({
   onAddHelper,
   onSendExternal,
   onReturnExternal,
+  highlightedJobId = null,
+  blockedJobIds = [],
+  returnRequest = null,
+  onReturnRequestHandled,
 }: {
   data: AdminWorkOrderDetailDto;
   locale: AdminLocale;
@@ -67,172 +94,298 @@ export function AdminJobTable({
   onAddHelper?: (jobId: string, mechanicId: string) => void;
   onSendExternal?: (jobId: string, input: { kind: ExternalKind; note: string }) => void;
   onReturnExternal?: (jobId: string, input: { outcome: 'complete' | 'assign'; mechanicId?: string }) => void;
+  /** Stage 4 (T4): the Job opened with "Manage in Work Order" (`#job-<id>`), highlighted. */
+  highlightedJobId?: string | null;
+  /** Stage 5: Jobs with an active mechanic blocker (they go on top). */
+  blockedJobIds?: string[];
+  /** Stage 8: "Returned" in the Next step opens this table's dialog for that Job. */
+  returnRequest?: string | null;
+  onReturnRequestHandled?: () => void;
 }) {
-  const [menuJobId, setMenuJobId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<JobDialog | null>(null);
+  const [pickerJobId, setPickerJobId] = useState<string | null>(null);
+  // Stage 8 (mockup): the done and cancelled group starts open.
+  const [closedOpen, setClosedOpen] = useState(true);
+  // Stage 4/5 (T4): the Job asked for with `#job-<id>` comes into view — its group opens if it is done or cancelled.
+  useEffect(() => {
+    if (!highlightedJobId) return;
+    if (data.jobs.some((job) => job.id === highlightedJobId && job.status !== 'to_do')) setClosedOpen(true);
+    const timer = window.setTimeout(() => document.getElementById(`job-${highlightedJobId}`)?.scrollIntoView({ block: 'center' }), 50);
+    return () => window.clearTimeout(timer);
+    // Only when a Job is asked for, not on every refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightedJobId]);
+  useEffect(() => {
+    if (!returnRequest) return;
+    setDialog({ kind: 'return', jobId: returnRequest });
+    onReturnRequestHandled?.();
+  }, [returnRequest, onReturnRequestHandled]);
   const dialogJob = dialog ? data.jobs.find((job) => job.id === dialog.jobId) : undefined;
   const pending = Boolean(pendingAction);
-  const menuJob = menuJobId ? data.jobs.find((job) => job.id === menuJobId) : undefined;
   const number = new Intl.NumberFormat(intlLocale(locale));
+  const { open, closed } = useMemo(() => orderJobs(data.jobs, blockedJobIds), [data.jobs, blockedJobIds]);
 
-  if (!data.jobs.length) return <CompactEmpty>{messages.noJobs}</CompactEmpty>;
+  if (!data.jobs.length) return <p className="px-4 py-6 text-center text-muted-foreground">{messages.jobsEmpty}</p>;
 
+  function rowMenu(job: Job, name: string, items: MenuItem[]) {
+    if (!items.length) return <span aria-hidden="true" className="hidden size-8 shrink-0 lg:block" />;
+    return (
+      <ResponsiveMenu
+        label={name}
+        items={items}
+        trigger={(
+          <button
+            type="button"
+            className="grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50 lg:size-8"
+            aria-label={fillPlaceholders(messages.jobRowActions, { job: name })}
+            disabled={pending}
+          >
+            <MoreHorizontal aria-hidden="true" className="size-4" />
+          </button>
+        )}
+      />
+    );
+  }
+
+  function openRow(job: Job) {
+    const isPmJob = isPmCategory(job.category.name);
+    const isQualityCheck = isQualityCheckJob(job.category.name, job.displayName);
+    const isExternal = Boolean(job.external);
+    const isBlocked = blockedJobIds.includes(job.id);
+    const canEdit = canManageJobs;
+    const canHelp = canEdit && Boolean(onAddHelper) && canAddHelper(job);
+    const canSendOut = canEdit && Boolean(onSendExternal) && !isQualityCheck && !isExternal;
+    const name = jobDisplayName(job, messages.helperJobSuffix);
+    const parent = job.helperOfJobId ? data.jobs.find((other) => other.id === job.helperOfJobId) : undefined;
+    const pmSummary = data.pmService?.workOrderJobId === job.id
+      ? messages.pmJobServiceSummary
+        .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : number.format(data.pmService.observedMileage))
+        .replace('{parts}', String(data.pmService.partsCount))
+      : null;
+    const sub = isPmJob
+      ? messages.jobPmSub
+      : isQualityCheck
+        ? messages.jobQcSub
+        : job.helperOfJobId
+          ? parent?.assignedMechanic ? fillPlaceholders(messages.jobHelps, { name: parent.assignedMechanic.name }) : messages.jobHelpsMain
+          : job.category.name;
+    const highlighted = highlightedJobId === job.id;
+
+    const items: MenuItem[] = [];
+    if (canHelp) items.push({ key: 'helper', label: messages.addHelperAction, icon: Users, testId: 'admin-wo-job-add-helper', onSelect: () => setDialog({ kind: 'helper', jobId: job.id }) });
+    if (canSendOut) items.push({ key: 'external', label: messages.sendExternalAction, icon: Building2, testId: 'admin-wo-job-send-external', onSelect: () => setDialog({ kind: 'external', jobId: job.id }) });
+    if (canEdit) items.push({ key: 'cancel', label: messages.cancelJobAction, icon: XCircle, destructive: true, separatorBefore: items.length > 0, onSelect: () => onJobDialog('cancel', job.id) });
+
+    let mechanic;
+    if (isExternal && job.external) {
+      const Icon = job.external.kind === 'truck' ? Truck : Package;
+      mechanic = (
+        <span className="flex h-10 min-w-0 items-center gap-2 text-muted-foreground max-lg:order-2 lg:h-9" title={job.external.note} data-testid="admin-wo-job-external-where">
+          <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="truncate">{job.external.kind === 'truck' ? messages.jobTruckOut : messages.jobPartOut} · {job.external.note}</span>
+        </span>
+      );
+    } else if (isQualityCheck) {
+      mechanic = (
+        <span className="flex h-10 items-center gap-2 px-2 text-muted-foreground max-lg:order-2 max-lg:-ml-2 lg:h-9" title={messages.workPlanQcHint}>
+          <span className="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60"><ShieldCheck aria-hidden="true" className="size-3.5" /></span>
+          Safety
+        </span>
+      );
+    } else if (canEdit) {
+      mechanic = (
+        <MechanicPicker
+          open={pickerJobId === job.id}
+          onOpenChange={(next) => setPickerJobId(next ? job.id : null)}
+          title={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
+          mechanics={withCurrentAssignee(isPmJob ? pmMechanics : assignableMechanics, job.assignedMechanic)}
+          currentId={job.assignedMechanic?.id ?? null}
+          messages={messages}
+          onPick={(person) => { setPickerJobId(null); if (person.id !== job.assignedMechanic?.id) onAssign(job.id, person.id); }}
+          onUnassign={() => { setPickerJobId(null); onAssign(job.id, ''); }}
+          trigger={(
+            <button
+              type="button"
+              className={cn('flex h-10 min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-accent disabled:opacity-60 max-lg:order-2 max-lg:-ml-2 max-lg:justify-self-start lg:h-9', pendingAction === `assign-job-${job.id}` && 'opacity-60')}
+              aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
+              disabled={pending}
+            >
+              {job.assignedMechanic ? (
+                <>
+                  <MechanicAvatar id={job.assignedMechanic.id} name={job.assignedMechanic.name} size="sm" />
+                  <span className="truncate">{job.assignedMechanic.name}</span>
+                </>
+              ) : (
+                <>
+                  <span className="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60"><UserPlus aria-hidden="true" className="size-3.5 text-muted-foreground" /></span>
+                  <span className="text-muted-foreground">{messages.jobAssignShort}</span>
+                </>
+              )}
+              <ChevronsUpDown aria-hidden="true" className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          )}
+        />
+      );
+    } else {
+      mechanic = (
+        <span className="flex h-10 min-w-0 items-center gap-2 max-lg:order-2 lg:h-9">
+          {job.assignedMechanic ? (
+            <><MechanicAvatar id={job.assignedMechanic.id} name={job.assignedMechanic.name} size="sm" /><span className="truncate">{job.assignedMechanic.name}</span></>
+          ) : <span className="text-muted-foreground">{isPmJob ? messages.pmJobUnassigned : messages.jobUnassigned}</span>}
+        </span>
+      );
+    }
+
+    const status = isExternal ? (
+      <span className={cn(STATUS, 'text-primary')} data-testid="admin-wo-job-external" data-status="external"><Building2 aria-hidden="true" className="size-3.5" />{messages.externalStatus}</span>
+    ) : isBlocked ? (
+      <span className={cn(STATUS, 'text-warning-foreground dark:text-warning')} data-status="blocked"><OctagonPause aria-hidden="true" className="size-3.5" />{messages.blockedShort}</span>
+    ) : (
+      <span className={cn(STATUS, 'text-muted-foreground')} data-status="to_do"><span aria-hidden="true" className="size-2 rounded-full border-[1.5px] border-muted-foreground" />{messages.jobToDo}</span>
+    );
+
+    let action = null;
+    if (canEdit) {
+      if (isExternal) {
+        action = onReturnExternal ? (
+          <Button type="button" size="sm" variant="outline" className="h-10 lg:h-8" disabled={pending} data-testid="admin-wo-job-returned" onClick={() => setDialog({ kind: 'return', jobId: job.id })}>
+            <PackageCheck aria-hidden="true" />
+            {pendingAction === `return-external-${job.id}` ? messages.saving : messages.externalReturnedAction}
+          </Button>
+        ) : null;
+      } else if (isPmJob) {
+        action = <PmServiceMenu job={job} messages={messages} disabled={pending} onChange={(catalogJobId) => onPmServiceChange(job.id, catalogJobId)} />;
+      } else {
+        // LTR-164 (#2) / D15 / D19: primary only on Quality Check (the Manager's fallback for Safety); quiet elsewhere.
+        action = (
+          <Button
+            type="button"
+            size="sm"
+            variant={isQualityCheck ? 'default' : 'ghost'}
+            className={cn('h-10 lg:h-8', !isQualityCheck && 'text-foreground')}
+            disabled={pending}
+            aria-label={`${messages.completeJobAction}: ${name}`}
+            onClick={() => onComplete(job.id)}
+          >
+            {isQualityCheck ? null : <CircleCheck aria-hidden="true" />}
+            {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.jobCompleteShort}
+          </Button>
+        );
+      }
+    }
+
+    return (
+      <li
+        key={job.id}
+        id={`job-${job.id}`}
+        className={cn(
+          GRID,
+          'scroll-mt-24',
+          isBlocked && 'bg-warning/[0.05] shadow-[inset_3px_0_0_var(--warning)]',
+          highlighted && 'bg-accent shadow-[inset_3px_0_0_var(--primary)]',
+        )}
+        data-testid="admin-wo-job-row"
+        data-highlighted={highlighted ? 'true' : undefined}
+      >
+        <div className="flex min-w-0 gap-1.5">
+          {job.helperOfJobId ? <CornerDownRight aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> : null}
+          <div className="min-w-0">
+            <p className="font-medium">
+              {job.displayName}
+              {/* LTR-188 / D23: "· helper" comes from the catalogs, never from the stored name. */}
+              {job.helperOfJobId ? <span className="font-normal text-muted-foreground">{messages.helperJobSuffix}</span> : null}
+            </p>
+            <p className="text-xs text-muted-foreground">{sub}</p>
+            {job.customDescription ? <p className="mt-1 text-muted-foreground">{job.customDescription}</p> : null}
+            {isPmJob && job.startedAt ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {messages.pmJobStartedAt.replace('{date}', formatAdminDate(job.startedAt, locale))}
+                {pmSummary ? ` · ${pmSummary}` : ''}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {mechanic}
+        {status}
+        <div className="flex items-center justify-end gap-1 max-lg:order-3">
+          {action}
+          {rowMenu(job, name, items)}
+        </div>
+      </li>
+    );
+  }
+
+  function closedRow(job: Job) {
+    const cancelled = job.status === 'cancelled';
+    const isPmJob = isPmCategory(job.category.name);
+    const name = jobDisplayName(job, messages.helperJobSuffix);
+    const canReopen = canReopenJob && cancelled;
+    const pmSummary = isPmJob && data.pmService?.workOrderJobId === job.id
+      ? messages.pmJobServiceSummary
+        .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : number.format(data.pmService.observedMileage))
+        .replace('{parts}', String(data.pmService.partsCount))
+      : null;
+    const highlighted = highlightedJobId === job.id;
+    const items: MenuItem[] = canReopen ? [{ key: 'reopen', label: messages.reopenJobAction, icon: RotateCcw, onSelect: () => onJobDialog('reopen', job.id) }] : [];
+    return (
+      <li
+        key={job.id}
+        id={`job-${job.id}`}
+        className={cn(GRID, 'scroll-mt-24 text-muted-foreground', highlighted && 'bg-accent shadow-[inset_3px_0_0_var(--primary)]')}
+        data-testid="admin-wo-job-row"
+        data-highlighted={highlighted ? 'true' : undefined}
+      >
+        <div className="min-w-0">
+          <p className={cn('font-medium', cancelled ? 'line-through' : 'text-foreground/80')}>
+            {job.displayName}
+            {job.helperOfJobId ? <span className="font-normal">{messages.helperJobSuffix}</span> : null}
+          </p>
+          <p className="text-xs">
+            {job.category.name}
+            {job.completionNotes ? <> · <span className="italic">“{job.completionNotes}”</span></> : null}
+            {cancelled && job.cancelledReason ? ` · “${job.cancelledReason}”` : ''}
+            {pmSummary ? ` · ${pmSummary}` : ''}
+          </p>
+        </div>
+        <span className="max-lg:order-2 max-lg:text-xs lg:px-2">
+          {cancelled ? '—' : job.completedBy ? <><span className="lg:sr-only">{messages.completedByLabel} </span>{job.completedBy.name}</> : '—'}
+        </span>
+        {cancelled ? (
+          <span className={cn(STATUS, 'text-muted-foreground')} data-status="cancelled"><CircleSlash aria-hidden="true" className="size-3.5" />{messages.jobStatusCancelled}</span>
+        ) : (
+          <span className={cn(STATUS, 'text-success')} data-status="completed"><Check aria-hidden="true" className="size-3.5" />{fillPlaceholders(messages.jobDone, { time: formatTime(job.completedAt, locale) })}</span>
+        )}
+        <div className="flex justify-end max-lg:order-3">{items.length ? rowMenu(job, name, items) : null}</div>
+      </li>
+    );
+  }
+
+  const closedLabel = fillPlaceholders(messages.jobsClosedGroup, { count: String(closed.length) });
   return (
     <div>
-      <div className={`hidden border-b pb-2 text-xs text-muted-foreground lg:grid lg:gap-3 ${ROW_GRID}`} aria-hidden="true">
+      <div className="hidden grid-cols-[minmax(0,1fr)_200px_130px_150px] gap-4 border-b bg-sunken px-4 py-2 text-xs text-muted-foreground lg:grid" aria-hidden="true">
         <span>{messages.jobTableJob}</span>
         <span>{messages.jobTableMechanic}</span>
         <span>{messages.jobTableStatus}</span>
         <span className="text-right">{messages.jobTableAction}</span>
       </div>
-      <ul className="divide-y" aria-label={messages.jobs}>
-        {data.jobs.map((job) => {
-          const isToDo = job.status === 'to_do';
-          const isPmJob = isPmCategory(job.category.name);
-          const isQualityCheck = isQualityCheckJob(job.category.name, job.displayName);
-          const isTerminal = job.status === 'completed' || job.status === 'cancelled';
-          const isExternal = Boolean(job.external) && isToDo;
-          const canEdit = canManageJobs && isToDo;
-          const menuItems = [
-            ...(canEdit ? ['cancel' as const] : []),
-            ...(canReopenJob && job.status === 'cancelled' ? ['reopen' as const] : []),
-            ...(canEdit && onAddHelper && canAddHelper(job) ? ['helper' as const] : []),
-            ...(canEdit && onSendExternal && !isQualityCheck && !isExternal ? ['external' as const] : []),
-          ];
-          const name = jobDisplayName(job, messages.helperJobSuffix);
-          const statusBadge = isExternal
-            ? <Badge variant="warning" data-testid="admin-wo-job-external">{messages.externalStatus}</Badge>
-            : <JobStatusBadge status={job.status}>{jobStatusLabel(job.status, messages)}</JobStatusBadge>;
-          const pmSummary = data.pmService?.workOrderJobId === job.id
-            ? messages.pmJobServiceSummary
-              .replace('{mileage}', data.pmService.observedMileage === null ? messages.noValue : number.format(data.pmService.observedMileage))
-              .replace('{parts}', String(data.pmService.partsCount))
-            : null;
-          return (
-            <li key={job.id} className={`grid gap-2 py-3 first:pt-0 lg:items-center lg:gap-3 ${ROW_GRID}`} data-testid="admin-wo-job-row">
-              {/* Job */}
-              <div className="flex min-w-0 items-start justify-between gap-3 lg:block">
-                <div className="min-w-0">
-                  <p className={job.status === 'cancelled' ? 'font-medium text-muted-foreground line-through' : 'font-medium'}>
-                    {job.displayName}
-                    {/* LTR-188 / D23: "· helper" comes from the catalogs, never from the stored name. */}
-                    {job.helperOfJobId ? <span className="font-normal text-muted-foreground">{messages.helperJobSuffix}</span> : null}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{job.category.name}</p>
-                  {job.customDescription ? <p className="mt-1 text-sm text-muted-foreground">{job.customDescription}</p> : null}
-                  {/* LTR-145: the PM job is finished from the PM service, so the hint sits with the Job. */}
-                  {canEdit && isPmJob && !isTerminal ? <p className="mt-1 text-xs text-muted-foreground">{messages.pmJobCompletedFromPmService}</p> : null}
-                  {isPmJob && job.startedAt && !isTerminal ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {messages.pmJobStartedAt.replace('{date}', formatAdminDate(job.startedAt, locale))}
-                      {pmSummary ? ` · ${pmSummary}` : ''}
-                    </p>
-                  ) : null}
-                  {/* LTR-148: a finished PM job keeps its recorded mileage and parts visible. */}
-                  {isPmJob && job.status === 'completed' && pmSummary ? <p className="mt-1 text-xs text-muted-foreground">{pmSummary}</p> : null}
-                  {job.completionNotes ? <p className="mt-1 whitespace-pre-wrap text-sm">{messages.jobCompletionNotes}: {job.completionNotes}</p> : null}
-                </div>
-                {/* Phones: the status sits next to the name; desktop has its own column below. */}
-                <div className="shrink-0 lg:hidden">
-                  {statusBadge}
-                </div>
-              </div>
-              {/* Mechanic */}
-              <div className="min-w-0 text-sm">
-                <MechanicCell
-                  job={job}
-                  messages={messages}
-                  editable={canEdit && !isQualityCheck && !isExternal}
-                  disabled={pending}
-                  mechanics={withCurrentAssignee(isPmJob ? pmMechanics : assignableMechanics, job.assignedMechanic)}
-                  onAssign={onAssign}
-                />
-              </div>
-              {/* Status (desktop column) */}
-              <div className="hidden lg:block">
-                {statusBadge}
-              </div>
-              {/* Action: always the same width; the menu keeps its place even when there is no primary action. */}
-              <div className="flex items-center gap-2 lg:justify-end">
-                {canEdit && isExternal ? (
-                  onReturnExternal ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="w-full sm:w-auto lg:w-[9.5rem]"
-                      disabled={pending}
-                      data-testid="admin-wo-job-returned"
-                      onClick={() => setDialog({ kind: 'return', jobId: job.id })}
-                    >
-                      {pendingAction === `return-external-${job.id}` ? messages.saving : messages.externalReturnedAction}
-                    </Button>
-                  ) : null
-                ) : canEdit ? (
-                  isPmJob ? (
-                    <PmServiceSelect
-                      job={job}
-                      messages={messages}
-                      disabled={pending}
-                      onChange={(catalogJobId) => onPmServiceChange(job.id, catalogJobId)}
-                    />
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="w-full sm:w-auto lg:w-[9.5rem]"
-                      // LTR-164 (#2) / D15 / D19: primary only on Quality Check (the Manager's fallback for Safety).
-                      variant={isQualityCheck ? 'default' : 'outline'}
-                      disabled={pending}
-                      onClick={() => onComplete(job.id)}
-                    >
-                      {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.completeJobAction}
-                    </Button>
-                  )
-                ) : null}
-                {menuItems.length ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-9 shrink-0"
-                    aria-label={fillPlaceholders(messages.jobRowActions, { job: name })}
-                    disabled={pending}
-                    onClick={() => setMenuJobId(job.id)}
-                  >
-                    <MoreHorizontal aria-hidden="true" className="size-5" />
-                  </Button>
-                ) : <span aria-hidden="true" className="hidden size-9 shrink-0 lg:block" />}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      {menuJob ? (
-        <Modal open title={jobDisplayName(menuJob, messages.helperJobSuffix)} closeLabel={messages.closeDialog} onClose={() => setMenuJobId(null)}>
-          <div className="space-y-2">
-            {canManageJobs && menuJob.status === 'to_do' && onAddHelper && canAddHelper(menuJob) ? (
-              <Button type="button" variant="outline" className="w-full" data-testid="admin-wo-job-add-helper" onClick={() => { setMenuJobId(null); setDialog({ kind: 'helper', jobId: menuJob.id }); }}>
-                {messages.addHelperAction}
-              </Button>
-            ) : null}
-            {canManageJobs && menuJob.status === 'to_do' && onSendExternal && !menuJob.external && !isQualityCheckJob(menuJob.category.name, menuJob.displayName) ? (
-              <Button type="button" variant="outline" className="w-full" data-testid="admin-wo-job-send-external" onClick={() => { setMenuJobId(null); setDialog({ kind: 'external', jobId: menuJob.id }); }}>
-                {messages.sendExternalAction}
-              </Button>
-            ) : null}
-            {canManageJobs && menuJob.status === 'to_do' ? (
-              <Button type="button" variant="outline" className="w-full" onClick={() => { setMenuJobId(null); onJobDialog('cancel', menuJob.id); }}>
-                {messages.cancelJobAction}
-              </Button>
-            ) : null}
-            {canReopenJob && menuJob.status === 'cancelled' ? (
-              <Button type="button" variant="outline" className="w-full" onClick={() => { setMenuJobId(null); onJobDialog('reopen', menuJob.id); }}>
-                {messages.reopenJobAction}
-              </Button>
-            ) : null}
-          </div>
-        </Modal>
+      {open.length ? <ul className="divide-y" aria-label={messages.jobs}>{open.map(openRow)}</ul> : null}
+      {closed.length ? (
+        <>
+          <button
+            type="button"
+            className={cn('flex min-h-11 w-full items-center gap-2 bg-sunken px-4 py-2.5 text-left text-muted-foreground hover:text-foreground', open.length && 'border-t')}
+            aria-expanded={closedOpen}
+            aria-controls="admin-wo-closed-jobs"
+            data-testid="admin-wo-closed-jobs-toggle"
+            onClick={() => setClosedOpen(!closedOpen)}
+          >
+            <CircleCheck aria-hidden="true" className="size-3.5 text-success" />
+            {closedLabel}
+            <ChevronDown aria-hidden="true" className={cn('ml-auto size-3.5 transition-transform', closedOpen && 'rotate-180')} />
+          </button>
+          {closedOpen ? <ul id="admin-wo-closed-jobs" className="divide-y border-t" aria-label={closedLabel}>{closed.map(closedRow)}</ul> : null}
+        </>
       ) : null}
       {dialog?.kind === 'helper' && dialogJob && onAddHelper ? (
         <AddHelperDialog
@@ -299,10 +452,10 @@ function AddHelperDialog({ job, messages, mechanics, disabled, onClose, onConfir
             </Select>
           </label>
         ) : <CompactEmpty>{messages.addHelperNoMechanics}</CompactEmpty>}
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={onClose}>{messages.cancel}</Button>
-          <Button type="submit" className="flex-1" disabled={disabled || !mechanicId}>{messages.addHelperConfirm}</Button>
-        </div>
+        <DialogActions>
+          <Button type="button" variant="outline" onClick={onClose}>{messages.dialogBack}</Button>
+          <Button type="submit" disabled={disabled || !mechanicId}>{messages.addHelperConfirm}</Button>
+        </DialogActions>
       </form>
     </Modal>
   );
@@ -347,11 +500,11 @@ function SendExternalDialog({ job, messages, disabled, onClose, onConfirm }: {
             onChange={(event) => { setNote(event.target.value); setError(null); }}
           />
         </label>
-        {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={onClose}>{messages.cancel}</Button>
-          <Button type="submit" className="flex-1" disabled={disabled}>{messages.sendExternalConfirm}</Button>
-        </div>
+        {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
+        <DialogActions>
+          <Button type="button" variant="outline" onClick={onClose}>{messages.dialogBack}</Button>
+          <Button type="submit" disabled={disabled}>{messages.sendExternalConfirm}</Button>
+        </DialogActions>
       </form>
     </Modal>
   );
@@ -393,57 +546,13 @@ function ReturnExternalDialog({ job, messages, mechanics, disabled, onClose, onC
             {mechanics.map((mechanic) => <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>)}
           </Select>
         ) : null}
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={onClose}>{messages.cancel}</Button>
-          <Button type="submit" className="flex-1" disabled={disabled || !ready}>{messages.externalReturnConfirm}</Button>
-        </div>
+        <DialogActions>
+          <Button type="button" variant="outline" onClick={onClose}>{messages.dialogBack}</Button>
+          <Button type="submit" disabled={disabled || !ready}>{messages.externalReturnConfirm}</Button>
+        </DialogActions>
       </form>
     </Modal>
   );
-}
-
-function MechanicCell({
-  job,
-  messages,
-  editable,
-  disabled,
-  mechanics,
-  onAssign,
-}: {
-  job: Job;
-  messages: AdminMessages;
-  editable: boolean;
-  disabled: boolean;
-  mechanics: Mechanic[];
-  onAssign: (jobId: string, mechanicId: string) => void;
-}) {
-  const isQualityCheck = isQualityCheckJob(job.category.name, job.displayName);
-  // LTR-188 / D24: where it is instead of an owner; the note is the tooltip.
-  if (job.external && job.status === 'to_do') {
-    return <span className="text-muted-foreground" title={job.external.note} data-testid="admin-wo-job-external-where">{externalShopLabel(job.external.kind, messages)}</span>;
-  }
-  if (editable) {
-    return (
-      <Select
-        aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
-        className="h-9 w-full text-sm"
-        value={job.assignedMechanic?.id ?? ''}
-        disabled={disabled}
-        onChange={(event) => { if (event.target.value !== (job.assignedMechanic?.id ?? '')) onAssign(job.id, event.target.value); }}
-      >
-        <option value="">{messages.jobUnassigned}</option>
-        {mechanics.map((mechanic) => <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>)}
-      </Select>
-    );
-  }
-  if (job.status === 'completed') {
-    return job.completedBy ? <span className="text-muted-foreground">{messages.completedByLabel}: {job.completedBy.name}</span> : null;
-  }
-  const text = job.assignedMechanic
-    ? `${messages.jobAssignee}: ${job.assignedMechanic.name}`
-    : isPmCategory(job.category.name) ? messages.pmJobUnassigned : messages.jobUnassigned;
-  // LTR-164 (#2) / D19: Quality Check has no picker — Safety takes it from their own screen.
-  return <span className="text-muted-foreground" title={isQualityCheck ? messages.workPlanQcHint : undefined}>{text}</span>;
 }
 
 /** Keep the current owner selectable even when they are no longer in the assignable list. */
@@ -452,8 +561,8 @@ function withCurrentAssignee(mechanics: Mechanic[], current: Mechanic | null | u
   return [current, ...mechanics];
 }
 
-/** LTR-145: PM A ↔ PM B for the PM job (PM Category catalog jobs). */
-function PmServiceSelect({ job, messages, disabled, onChange }: {
+/** LTR-145: PM A ↔ PM B for the PM job (PM Category catalog jobs), as a menu button ("PM A ⌄"). */
+function PmServiceMenu({ job, messages, disabled, onChange }: {
   job: Job;
   messages: AdminMessages;
   disabled: boolean;
@@ -461,17 +570,23 @@ function PmServiceSelect({ job, messages, disabled, onChange }: {
 }) {
   const { data: pmJobs } = useCatalogJobs(job.category.id, true);
   const options = (pmJobs ?? []).filter((item) => /^PM [A-Z] Service$/i.test(item.displayName) || item.id === job.catalogJobId);
+  const short = (name: string) => name.replace(/ Service$/i, '');
   if (options.length < 2) return null;
   return (
-    <Select
-      aria-label={messages.pmServiceVariant}
-      title={messages.pmJobCompletedFromPmService}
-      className="h-9 w-full sm:w-auto lg:w-[9.5rem]"
-      value={job.catalogJobId ?? ''}
-      disabled={disabled}
-      onChange={(event) => { if (event.target.value && event.target.value !== job.catalogJobId) onChange(event.target.value); }}
-    >
-      {options.map((item) => <option key={item.id} value={item.id}>{item.displayName}</option>)}
-    </Select>
+    <ResponsiveMenu
+      label={messages.pmServiceMenu}
+      items={options.map((item) => ({
+        key: item.id,
+        label: item.displayName,
+        icon: item.id === job.catalogJobId ? Check : undefined,
+        onSelect: () => { if (item.id !== job.catalogJobId) onChange(item.id); },
+      }))}
+      trigger={(
+        <Button type="button" size="sm" variant="outline" className="h-10 lg:h-8" aria-label={messages.pmServiceVariant} title={messages.pmJobCompletedFromPmService} disabled={disabled}>
+          {short(job.displayName)}
+          <ChevronDown aria-hidden="true" className="text-muted-foreground" />
+        </Button>
+      )}
+    />
   );
 }

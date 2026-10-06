@@ -84,6 +84,9 @@ import { blockerActivityLogsInclude, blockerLogDetails, toWorkOrderNoteDto, work
 import { getShopDashboardWindows } from './admin-time';
 
 const ATTENTION_LIMIT = 8;
+// D1 / UX-5-002 (stage 3): the Dashboard queue lists everything that waits on the Manager. A shop has
+// tens of open Work Orders, not thousands; the cap only guards against a runaway query.
+const DASHBOARD_QUEUE_LIMIT = 200;
 
 /** LTR-188 / D24: the four columns that say a Job is at an external shop, cleared. */
 const CLEAR_EXTERNAL = { externalSince: null, externalKind: null, externalNote: null, externalById: null } as const;
@@ -344,7 +347,7 @@ export class AdminService {
           where: { kind: 'work_request', handledAt: null, workOrder: openWhere },
           include: {
             author: { select: { id: true, name: true } },
-            workOrder: { select: { id: true, displayId: true, truck: { select: { truckNumber: true } } } },
+            workOrder: { select: { id: true, displayId: true, truck: { select: { id: true, truckNumber: true } } } },
           },
           orderBy: { createdAt: 'desc' },
           take: 20,
@@ -352,6 +355,7 @@ export class AdminService {
       ]);
     // LTR-164 (#12): one Ready to Go rule, the Yard's (Work Plan phase), so both surfaces agree.
     const readyToGo = (await this.yard?.countReadyToGoTrucks()) ?? 0;
+    const queue = await this.getDashboardQueue(openWhere);
 
     return {
       generatedAt: now.toISOString(),
@@ -364,6 +368,7 @@ export class AdminService {
       },
       counts: { open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days, readyToGo },
       attention,
+      queue,
       openWorkRequests: workRequests.map((request) => ({
         id: request.id,
         body: request.body,
@@ -372,6 +377,8 @@ export class AdminService {
         workOrderId: request.workOrder.id,
         workOrderDisplayId: request.workOrder.displayId,
         truckNumber: request.workOrder.truck.truckNumber,
+        // Stage 8: the Dashboard row links to the Truck.
+        truckId: request.workOrder.truck.id,
       })),
     };
   }
@@ -2094,6 +2101,38 @@ export class AdminService {
     return result;
   }
 
+  /**
+   * D1 / UX-5-002 (stage 3): every open Work Order and every Truck still Ready to Go (its latest
+   * completed Work Order, not Returned to Service, no newer open one), each with the one Next step.
+   * The Dashboard groups them by what the Manager has to do; nothing is cut at eight.
+   */
+  private async getDashboardQueue(openWhere: Prisma.WorkOrderWhereInput): Promise<AdminWorkOrderSummaryDto[]> {
+    const open = (await this.prisma.workOrder.findMany({
+      where: openWhere,
+      include: summaryInclude,
+      orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
+      take: DASHBOARD_QUEUE_LIMIT,
+    })) ?? [];
+    const since = yardReadyToGoSince();
+    const completed = since
+      ? (await this.prisma.workOrder.findMany({
+          where: { status: WorkOrderStatus.completed, completedAt: { gte: since } },
+          include: summaryInclude,
+          orderBy: [{ completedAt: 'desc' }, { id: 'desc' }],
+          take: DASHBOARD_QUEUE_LIMIT,
+        })) ?? []
+      : [];
+    const trucksWithOpenWork = new Set(open.map((row) => row.truckId));
+    const seenTrucks = new Set<string>();
+    const readyToGo = completed.filter((row) => {
+      // Only the latest completed Work Order of a Truck, and only while the Truck has no open one.
+      if (seenTrucks.has(row.truckId) || trucksWithOpenWork.has(row.truckId)) return false;
+      seenTrucks.add(row.truckId);
+      return keepsTruckReadyToGo(row.completedAt, row.serviceStatusEvents);
+    });
+    return [...open, ...readyToGo].map(toAdminSummary).filter((item) => Boolean(item.nextStep));
+  }
+
   private async getAttention(openWhere: Prisma.WorkOrderWhereInput) {
     const base = { include: summaryInclude, take: ATTENTION_LIMIT } as const;
     const [critical, high, paused, stale, readyToClose, blocked] = await Promise.all([
@@ -2386,6 +2425,8 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     completedAt: job.completedAt?.toISOString() ?? null,
     completedBy: job.completedBy ?? null,
     completionNotes: jobCompletionNotes(row.activityLogs, job.id),
+    // Stage 8: the reason shows on the cancelled row (it is stored on the Job).
+    cancelledReason: job.status === 'cancelled' ? job.cancelledReason ?? null : null,
     startedAt: job.startedAt?.toISOString() ?? null,
     helperOfJobId: job.helperOfJobId ?? null,
     external: toJobExternalDto(job),

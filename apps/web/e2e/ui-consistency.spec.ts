@@ -30,39 +30,42 @@ test.describe('shared UI consistency', () => {
     }
   });
 
-  test('Dashboard metrics name the metric and its value (LTR-151)', async ({ page }) => {
+  test('Dashboard counters name the group and its value, and say when they filter (LTR-151, stage 3)', async ({ page }) => {
     await signInAsManager(page);
-    const metrics = page.getByRole('region', { name: 'Current shop operations' }).getByRole('link');
-    await expect(metrics.first()).toBeVisible();
-    for (const label of await metrics.evaluateAll((links) => links.map((link) => link.getAttribute('aria-label')))) {
-      expect(label).toMatch(/^.+: \d+$/);
-    }
-    await expect(page.getByRole('link', { name: /^Open Work Orders: \d+$/ })).toBeVisible();
+    const counters = page.getByRole('region', { name: 'Filter what needs you' }).getByRole('button');
+    await expect(counters).toHaveCount(4);
+    for (const text of await counters.allInnerTexts()) expect(text.replace(/\s+/g, ' ')).toMatch(/^.+ \d+$/);
+    await expect(counters.first()).toHaveAttribute('aria-pressed', 'false');
+    await counters.first().click();
+    await expect(counters.first()).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('Work Order detail labels job pickers, hides System Admin accounts, and uses one empty-mechanics wording (LTR-151)', async ({ page }) => {
     await signInAsManager(page);
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000106');
-    // LTR-154 / D11 / LTR-174: every pending Job row carries its owner picker (with an "Unassigned" option).
-    const jobPicker = page.getByRole('combobox', { name: 'Mechanic for Inspect brake chamber' });
-    await expect(jobPicker).toBeVisible();
-    await expect(jobPicker.locator('option', { hasText: 'Anthony' })).toHaveCount(1);
-    await expect(jobPicker.locator('option', { hasText: 'iBrain Admin' })).toHaveCount(0);
-    await expect(jobPicker.locator('option', { hasText: 'Cristian Perez' })).toHaveCount(0);
+    // LTR-154 / D11 / Stage 5: every pending Job row carries its owner picker (search, with "Unassign").
+    await page.getByRole('button', { name: 'Mechanic for Inspect brake chamber' }).click();
+    const picker = page.getByTestId('mechanic-picker');
+    await expect(picker.getByRole('option', { name: /Anthony/ })).toHaveCount(1);
+    await expect(picker.getByRole('option', { name: /iBrain Admin/ })).toHaveCount(0);
+    await expect(picker.getByRole('option', { name: /Cristian Perez/ })).toHaveCount(0);
+    await expect(picker.getByRole('option', { name: 'Unassign' })).toBeVisible();
+    await picker.getByRole('searchbox').or(picker.getByRole('textbox')).fill('anth');
+    await expect(picker.getByRole('option', { name: /Alejandro/ })).toHaveCount(0);
+    await page.keyboard.press('Escape');
     await expect(page.getByRole('combobox', { name: 'Select mechanic', exact: true })).toHaveCount(0);
 
+    // Stage 5 (R1): the mechanics are not repeated in an Operational summary.
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000103');
-    const summary = page.getByRole('region', { name: 'Operational summary' });
-    const mechanicsRow = summary.locator('div').filter({ has: page.getByText('Mechanics', { exact: true }) }).last();
-    await expect(mechanicsRow.locator('dd')).toHaveText('No mechanics assigned');
+    await expect(page.getByRole('heading', { name: 'T-103' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Operational summary' })).toHaveCount(0);
   });
 
   test('Return to Service says the Truck leaves Ready to Go (LTR-151)', async ({ page }) => {
     await signInAsManager(page);
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000104');
-    // LTR-174: Return to Service opens from the header "…" menu.
-    await page.getByTestId('admin-wo-more-actions').click();
-    await page.getByRole('button', { name: 'Return to Service' }).click();
+    // Stage 8 (mockup): Return to Service is the completed Work Order's Next step.
+    await page.getByTestId('admin-wo-next-step').getByRole('button', { name: 'Return to Service' }).click();
     await expect(page.getByText(/The Truck leaves Ready to Go\./)).toBeVisible();
     await expect(page.getByText(/does not change Work Order status, Ready to Go/)).toHaveCount(0);
   });
@@ -90,10 +93,10 @@ test.describe('shared UI consistency', () => {
     await signInAsManager(page);
     await page.goto('/admin/trucks');
     await page.locator('main table tbody a').first().click();
-    // LTR-158: repair history is folded below the Work Plan.
-    await page.getByTestId('truck-history').locator('summary').click();
+    // Stage 4: repair history is open beside the Work Plan (with "Load more").
     const history = page.getByRole('region', { name: 'Repair history' });
     await expect(history).toBeVisible();
-    await expect(history.locator('li .shrink-0.text-right').first()).toBeVisible();
+    // Stage 8 (mockup): the mileage sits on the Work Order's line, right-aligned, in "mi".
+    await expect(history.locator('li').first().getByText(/ mi$/)).toBeVisible();
   });
 });

@@ -33,32 +33,39 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
     await page.goto(`/admin/work-orders/${BLOCKER_WO_ID}`, { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'T-106' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: 'Reported blockers' })).toBeVisible();
-    const blocker = page.getByTestId('admin-blocker').first();
-    await expect(blocker.getByText('Blocked · Inspect brake chamber: Waiting for Parts')).toBeVisible();
-    await expect(blocker.getByText(/Alejandro 1 · .*: The part arrived/)).toBeVisible();
+    // Stage 8 (mockup): the blocker is the Next step callout, with the mechanic's note.
+    const callout = page.getByTestId('admin-wo-next-step');
+    await expect(callout).toHaveAttribute('data-kind', 'resolve_blocker');
+    await expect(callout.getByText('Inspect brake chamber is blocked · Waiting for Parts')).toBeVisible();
+    const blocker = callout.getByTestId('admin-blocker');
+    await expect(blocker.getByText('Mechanic: “The part arrived”')).toBeVisible();
     // A blocker does not pause the Work Order: Pause is offered in the header, Resume is not (LTR-174).
-    await expect(page.getByRole('button', { name: 'Pause Work Order' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Resume Work Order' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Resume', exact: true })).toHaveCount(0);
 
+    // Stage 5 (R2): the note box opens with "Resolve"; "Confirm resolve" sends it.
+    await callout.getByRole('button', { name: 'Resolve' }).click();
     await blocker.getByLabel('Note for the mechanic (optional)').fill('Installed from stock');
-    await blocker.getByRole('button', { name: 'Resolve' }).click();
+    await blocker.getByRole('button', { name: 'Confirm resolve' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Blocker resolved.' }).first()).toBeVisible();
-    // LTR-164 (#9): a resolved blocker reads "Resolved" and keeps the Manager's note.
-    await expect(blocker.getByText('Resolved · Inspect brake chamber: Waiting for Parts')).toBeVisible();
-    await expect(blocker.getByText('Manager note: Installed from stock')).toBeVisible();
+    // LTR-164 (#9): a resolved blocker reads "Resolved" and keeps the Manager's note (folded with the resolved ones).
+    const resolvedGroup = page.getByTestId('admin-wo-resolved-blockers');
+    await resolvedGroup.getByRole('button', { name: /1 resolved blocker · Inspect brake chamber/ }).click();
+    await expect(resolvedGroup.getByText('Inspect brake chamber: Waiting for Parts')).toBeVisible();
+    await expect(resolvedGroup.getByText(/· “Installed from stock”/)).toBeVisible();
 
     // The Manager's official pause is separate from Job blockers (LTR-174: Pause asks its reason in a dialog).
-    await page.getByRole('button', { name: 'Pause Work Order' }).click();
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await page.getByLabel('Pause reason').selectOption('waiting_for_approval');
     await page.getByRole('button', { name: 'Confirm pause' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order paused.' }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Resume Work Order' })).toBeVisible();
-    await page.getByRole('button', { name: 'Resume Work Order' }).click();
+    // Resume is in the header and in the paused Next step.
+    await expect(page.getByRole('button', { name: 'Resume', exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Resume', exact: true }).first().click();
     await expect(page.getByRole('status').filter({ hasText: 'Work Order resumed.' }).first()).toBeVisible();
     // A blocker does not pause the Work Order: Pause is offered in the header, Resume is not.
-    await expect(page.getByRole('button', { name: 'Pause Work Order' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Resume Work Order' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Resume', exact: true })).toHaveCount(0);
 
     // LTR-164 (#9): the mechanic sees who resolved it and the Manager's note.
     await page.evaluate(() => localStorage.removeItem('ltl_shop_token'));

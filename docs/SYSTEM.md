@@ -445,8 +445,8 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 
 | Ruta | Qué es |
 |---|---|
-| `/admin` | Dashboard: métricas, "Needs attention" con el siguiente paso, pedidos de trabajo abiertos. |
-| `/admin/yard-operations` | Tablero del patio por fase. Una tarjeta dice **"Fuera del taller"** cuando un Job pendiente de su WO mandó el camión a un taller externo (`outOfShop`, D24); la fase y los contadores no cambian. Pestaña `?tab=movement`: tarjetas de agent-reporting (solo lectura). |
+| `/admin` | Dashboard: responde "¿qué hago ahora?" (D26). Cuatro contadores (Blocked or paused, Ready to close, Ready to Go, Unassigned) que filtran una cola "Needs you" con todo lo que espera al Manager —WOs abiertas y Trucks Ready to Go, agrupadas por acción—, cada fila con su acción ahí mismo (Resolve con nota a pedido, Resume, **Close Work Order de un toque** — decisión P5 del 2026-10-06; se reabre desde el WO —, Return to Service con su diálogo, Assign, **inspección con dos botones**: "No issues found" se registra ahí e "Issues found" se registra y abre el Truck con Add work — P3 —, Mark QC complete); "Sale pronto y no está listo" (salidas de Dispatch cruzadas con WOs abiertas, hoy y el siguiente día hábil); pedidos de trabajo con "Mark handled" y el enlace al Truck. La historia (abiertas, completadas hoy y en 7 días) es una línea de enlaces a la lista filtrada. Etapa 8 (igual a la maqueta): encabezado con "Live", la cola en una tarjeta con los grupos sobre fondo hundido, filas "Truck 918" de dos líneas (qué pasa y el detalle: quién y cuándo en un blocker, "Desde" en una pausa, "Los N Jobs están hechos", "Dispatch: sale …" en Ready to Go) y botones con icono a la derecha. Los accesos a las pantallas de mecánico (**Workspaces**) ya no están en el Dashboard: son un grupo al final del menú lateral, solo para quien también es mecánico (P4). |
+| `/admin/yard-operations` | "¿Dónde está cada camión?" (Etapas 6 y 8). Encabezado con "Live". Pestaña **Shop**: búsqueda (Truck, Work Order o mecánico) y, en la misma fila, filtros rápidos que se aplican al tocar, con su conteo: Todos, Bloqueados (pausa o blocker, D5), **Sale pronto** (Dispatch: hoy o el siguiente día hábil; la web manda `soonTrucks` y la API cuenta y filtra en todas las páginas), Prioridad alta, Fuera del taller (`outOfShop`, D24). Sin "More filters" (decisión del dueño, Etapa 8); la URL sigue aceptando `readiness`, `phase`, `workOrderStatus` y `priority` desde enlaces. Debajo, "N camiones en el taller" o "Mostrando N de M" (la API cuenta sobre el filtro, D6; se refresca cada 30 s). En computadora, **una tarjeta** con un carril por paso (Inspection … Ready to Go; un paso vacío es una línea; la cuenta de cada carril sale de `byPhase`); en el teléfono, un paso plegable por grupo y los vacíos ocultos. La tarjeta: número, prioridad si es alta, vehículo · WO · edad, **la alerta o el siguiente paso** con icono y tono (bloqueado, en pausa, fuera del taller · Job, sale pronto con Jobs pendientes, nadie en un Job), barra verde, avatares; Ready to Go tiene Return to Service dentro (diálogo). Pestaña **Dispatch** (`?tab=movement`): 3 columnas — Incoming Trucks y Upcoming Departures como filas (el camión, dónde lo tiene el taller: "En el taller · paso", Ready to Go o "No está en el taller", "N jobs pendientes" si sale pronto sin estar listo, y la fecha) y Dispatch status (chips por lugar; una llave marca WO abierta) — y un aviso cuando Dispatch dice Outside y el taller tiene una WO abierta. Si Dispatch no responde: "Dispatch no respondió" y Reintentar. |
 | `/admin/trucks`, `/admin/trucks/[id]` | Lista de camiones con siguiente paso; **el Truck es el lugar de trabajo del Manager** y responde "¿puede salir y, si no, qué lo frena?" (ver abajo). |
 | `/admin/work-orders`, `/admin/work-orders/[id]` | Lista con filtros; detalle del WO (ver abajo). |
 | `/admin/work-orders/new` | Crear WO (solo Truck, prioridad, nota). |
@@ -455,63 +455,100 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs. Manager y System Admin: Agregar Job a una categoría activa, Renombrar y Activar (D25); un nombre repetido en la categoría no se acepta. Las categorías son de solo lectura. |
 | `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista) y **Shop hours** (hora del cierre del día y días hábiles, con su propio Save; D20). |
 
-**Detalle del Truck** (`/admin/trucks/[id]`), de arriba abajo (LTR-174; en
-computadora dos columnas ≈ 2:1, en el teléfono una sola en el mismo orden):
-- **Encabezado operativo:** número y vehículo, distintivos Ready / Not Ready
-  y fase, "N Jobs pendientes · M mecánicos", el **siguiente paso** con su
-  botón, y a la derecha **Open Work Order** y **Add work** (D6).
-- **Work Plan** (columna principal): **una sola lista**, una fila por paso con
-  el estado que trae la API (nada se calcula en pantalla) y, debajo de cada
-  paso, sus Jobs `Job · Mecánico · Estado`: Inspection (con "No issues found"
-  / "Issues found", D14), Shop Work, PM, Alignment, Detailing, Quality Check
-  y Close Work Order. Solo lectura salvo el selector de mecánico en los Jobs
-  **sin dueño** (el paso `assign`). Asignar, reasignar y completar se hace en
-  el Work Order; el respaldo del Manager para QC sigue en el siguiente paso.
-  El formulario de agregar trabajo se despliega desde **Add work**.
-- **Sin Work Order abierto:** el encabezado dice "Sin Work Order abierto" (o
-  "In Service"), sin Ready / Not Ready ni fase; el siguiente paso dice
-  "Registra la inspección de llegada abajo o abre un Work Order" con el botón
-  **New Work Order**; el Work Plan muestra **solo la Inspección** (lo único
-  que existe antes del WO, D14) y, una vez registrada, el motivo que falta.
-- **Contexto** (columna lateral): trabajo actual (WO, estado, prioridad,
-  mecánicos, pausa), y plegados datos del Truck e historial de reparaciones.
+**Detalle del Truck** (`/admin/trucks/[id]`), de arriba abajo (LTR-174, Etapa 4;
+igual a la maqueta desde la Etapa 8, 2026-10-06; en computadora la columna
+principal y una lateral de 340 px, en el teléfono una sola en el mismo orden):
+- **Migas de pan** arriba: "Yard Operations › 601" (o la pantalla de origen);
+  en el teléfono, "‹ origen" para volver.
+- **Encabezado:** "Truck 601", **un solo chip** de estado con punto ("Not
+  Ready · PM" nombra el paso que lo frena; Ready to close en ámbar; Ready to
+  Go; In Service; "Sin Work Order abierto"), el vehículo y la empresa, y el
+  **chip del WO** con icono, número, estado en su color y prioridad si no es
+  normal. A la derecha **+ Add work** y el menú **…** (hoja en el teléfono):
+  abrir el WO, **Pause Work Order…** (solo con el WO In progress), **New Work
+  Order** (diálogo) y **Copy link**. En solo lectura: "Solo lectura…" y sin
+  botones.
+- **Tarjeta de pasos:** píldoras de color (hecho verde, pendiente ámbar con
+  número, bloqueado, taller externo azul, falta en rojo, no aplica, Close en
+  espera neutro o listo) con flechas entre ellas; a la derecha "N jobs
+  pendientes" y los avatares con "N mecánicos". Sin WO: "El Work Plan empieza
+  con la inspección de llegada". Cada píldora lleva a su paso.
+- **Siguiente paso:** un aviso con tono e icono por tipo (`NextStepCallout`);
+  actúa en el Truck (D26). Inspección: "No issues found" y **"Issues found"**
+  (principal); Assign abre el selector; el blocker se resuelve ahí con nota
+  opcional; Close y Return to Service confirman en un diálogo (D27); "Mark QC
+  complete" con borde; New Work Order es un diálogo. Después de "Issues
+  found" sin WO, primero **Add work**. `external` lleva a la fila del Job en
+  el WO. Sin permiso, el aviso dice por qué.
+- **Work Plan:** una tarjeta ("Jobs on WO-004"); una fila por paso con su
+  icono de color y resumen ("1 pendiente", "Issues found · Oct 4, 9:12 AM");
+  Inspección y Close nunca se pliegan; los terminados empiezan plegados. Sus
+  Jobs son de **solo lectura**: nombre, dueño con avatar (QC: Safety; taller
+  externo: Part out / Truck out), estado con icono y **↗** (abre el WO en esa
+  fila, resaltada). Solo un Job **sin dueño** tiene **Assign** con borde
+  punteado. La inspección registrada tiene **Change** (enlace, menú con las
+  dos opciones). Los errores salen bajo el encabezado con **Reload Truck**.
+- **Add work:** panel de 460 px a la derecha (hoja de 92 vh en el teléfono):
+  categorías como botones (la primera elegida), búsqueda, Jobs como chips
+  (los que ya están en el plan, apagados con "· en el plan"), Job
+  personalizado, "Por agregar (N)" con "¿Quién lo hace?" y un pie fijo con
+  Cancel y "Add to Work Plan (N)". `#add-work` lo abre desde el WO. Se abre
+  solo al registrar "Issues found" sin Jobs, salvo que el siguiente paso pida
+  antes cerrar, Return to Service, un blocker o una pausa.
+- **Contexto:** tarjeta **Truck** (vehículo, millaje en mi, VIN con copiar,
+  empresa y dueño, estado operativo, ubicación con su fecha) y **Repair
+  history** con el filtro por categoría en la cabecera y **Load more**.
 
 **Detalle Admin del WO** (`/admin/work-orders/[id]`), de arriba abajo (LTR-174;
-misma división 2:1 en computadora, una columna en el teléfono):
-- **Encabezado operativo:** Truck (enlace), número del WO y vehículo,
-  distintivos de prioridad y estado, "N Jobs pendientes · M mecánicos", el
-  **siguiente paso** (mismo texto que el Truck) y a la derecha **Pause** /
-  **Resume** (Pause abre un diálogo que pide el motivo, sin preselección) y el
-  menú **…** con Cancel Work Order, Reopen y Return to Service, cada uno en
-  su diálogo con motivo.
-- **Confirm completion** cuando el WO está listo para cerrar (antes la
-  tarjeta no existe: el paso siguiente dice qué falta, LTR-189 W2); una barra
-  fija aparece solo al pasar ese botón con el scroll.
-- **Jobs** como tabla de columnas fijas `Job · Mecánico · Estado · Acción`
-  (en el teléfono cada fila se apila): el selector de
-  mecánico asigna, reasigna o quita el dueño (QC no tiene selector: lo toma
-  Safety); "Mark complete" es primario solo en QC; el PM job muestra su
-  variante de servicio; Cancel / Reopen Job viven en el "…" de cada fila con
-  su diálogo de motivo. El "…" también tiene **Agregar ayudante** (no en PM,
-  QC ni en un Job de ayudante; D23) y **Enviar a taller externo** (no en QC;
-  D24). Un Job de ayudante muestra "· ayudante" junto al nombre. Un Job afuera
-  muestra "En taller externo · pieza|camión" (la nota como tooltip), el estado
-  "En taller externo" y el botón **Regresó** (Completar / Asignar a). Los Jobs
-  se agregan desde el Work Plan del Truck (D6). En el Work Plan del Truck esos
-  Jobs se ven igual (estado `external`, sin selector de mecánico).
-- **Bloqueos reportados:** una línea "· Ninguno" si no hay; si hay, un bloque
-  de aviso con Resolve.
-- **Notas:** entradas y el botón "Add note" que abre el redactor; pedidos de
-  trabajo con "Mark handled".
-- **Contexto** (columna lateral): Truck (enlace), tiempos (labor, espera y
-  por mecánico), mecánicos, prioridad (selector + Update priority); plegados
-  el resumen operativo, datos del Truck e historial de reparaciones.
-- **History and audit** plegado al final (tiempos, tramos de trabajo por
-  mecánico con "cierre del día" / "cambio de camión" junto a la hora de fin
-  cuando la app los cerró (D20, D21), corrección de tiempos, pausas,
-  Activity Log).
-- Los estados siempre son distintivos y las acciones siempre botones. Los
-  avisos de éxito son solo toasts.
+igual a la maqueta desde la Etapa 8, 2026-10-06; columna principal y una
+lateral de 340 px en computadora, una columna en el teléfono):
+- **Migas de pan:** "Work Orders › WO-010", o "Trucks › 601 › WO-010" si llegó
+  desde el Truck (`#job-<id>` resalta esa fila); en el teléfono, "‹ padre".
+- **Encabezado:** "Truck 918", estado y después prioridad ("Critical
+  priority"); una línea con el WO en letra mono, vehículo, Opened y Updated;
+  **Open Truck**, **Pause** / **Resume** (Pause abre un diálogo que pide el
+  motivo, sin preselección) y el menú **…** "Work Order": **Correct time…**
+  (abre History › Times), Reopen y Cancel Work Order, cada uno con su diálogo
+  ("Back" y la confirmación). En solo lectura: "Solo lectura…".
+- **Métricas:** progreso con barra (hechos, bloqueados, en taller externo),
+  labor activa, espera, edad y avatares; en el teléfono una tarjeta compacta.
+- **Siguiente paso** (`NextStepCallout`): primero el estado del WO
+  (cancelado con su motivo, completado → **Return to Service** o devuelto, en
+  pausa → Resume), después un blocker activo (el primero, "+N more"; se
+  resuelve ahí con nota opcional de 2 filas) y luego el paso de la API
+  (inspección, faltan pasos, asignar, taller externo con **Regresó**, QC,
+  **Confirm completion** cuando está listo para cerrar, trabajo en curso).
+  Los blockers resueltos se pliegan al pie del aviso. Una barra fija con
+  Confirm completion aparece solo al pasar el aviso con el scroll.
+- **Jobs** (tarjeta con su cuenta y "+ Add work in Work Plan"): columnas
+  `Job · Mecánico · Estado · Acción` (200, 130 y 150 px; dos líneas en el
+  teléfono); primero los abiertos, el bloqueado arriba y teñido, los de taller
+  externo después y QC al final; un ayudante bajo su Job ("Ayuda a …"). El
+  mecánico es un botón con avatar que abre el selector con búsqueda (sin
+  dueño: "Asignar" punteado; QC: Safety; externo: Part out / Truck out y la
+  nota). Estado con icono (Por hacer, Blocked, At external shop, Done hora,
+  Cancelled). "Complete" discreto con icono, primario solo en QC; el PM cambia
+  A ↔ B en un menú y se completa desde el servicio PM. El "…" de la fila
+  (hoja en el teléfono): **Agregar ayudante** (D23), **Enviar a taller
+  externo** (D24), Cancel / Reopen Job con su diálogo de motivo. Hechos y
+  cancelados en un grupo **abierto** y apagado (con el motivo de
+  cancelación). Sin permiso: una banda con candado dice por qué.
+- **Notas:** hilo con avatar, nombre y hora; los pedidos de trabajo en su
+  recuadro con "Mark handled"; el campo de una línea crece y tiene **Post**
+  adentro.
+- **Columna lateral:** **Truck** (Unit, Vehicle, millaje en mi, VIN con
+  copiar, empresa · dueño, ubicación), **Priority** (botones segmentados;
+  Update y Reset solo si cambió), **Labor by mechanic** y **Repair history**
+  con el filtro en la cabecera.
+- **History** siempre abierto, con las pestañas en su cabecera: **Activity**
+  (línea de tiempo por día con icono y tono por evento, frases con los
+  nombres en negrita, 7 eventos y "Ver los N"), **Times** (6 totales y un
+  recuadro de tramos de trabajo y pausas, los más nuevos primero, con "Cierre
+  del día" / "Cambio de camión" (D20, D21) y "Corregido"; cada tramo cerrado
+  tiene **Corregir…**, un diálogo que valida ambos tiempos, fin > inicio y
+  motivo) y **Pauses**.
+- Los avisos de éxito son toasts (neutros, con icono, abajo a la derecha);
+  un error queda entre el encabezado y el aviso con **Reload**.
 
 **Listas** (Trucks, Mechanics, Catalog, History): en el teléfono cada fila es
 una tarjeta. Mechanics e History tienen un panel **Filters** con el número de

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Priority, WorkOrderStatus } from '@prisma/client';
+import { Prisma, WorkOrderStatus } from '@prisma/client';
 import {
   ActivityEventType,
   ReadinessRequirementOutcome,
@@ -634,7 +634,7 @@ export class YardOperationsService {
       };
     }
 
-    const counts = await this.getCounts();
+    const counts = await this.getCounts(query);
     const feeds = this.movementFeeds();
 
     return {
@@ -713,15 +713,62 @@ export class YardOperationsService {
       nextStep,
       // LTR-188 / D24: a pending Job sent the whole truck to an external shop. Phase and counters stay as they are.
       outOfShop: workPlan.jobs.some((job) => job.external?.kind === JobExternalKind.TRUCK),
+      outOfShopJobName: workPlan.jobs.find((job) => job.external?.kind === JobExternalKind.TRUCK)?.displayName ?? null,
     };
   }
 
-  private matchesDerivedFilters(item: YardOperationsTruckDto, query: AdminYardOperationsQuery) {
+  /**
+   * Stage 8 (D8): the shop's side for the Dispatch tab — Work Plan step, Ready to Go and Jobs left — for the
+   * Truck numbers Dispatch names. One query; Trucks with no shop engagement come back without a step.
+   */
+  async shopStatusByTruckNumber(numbers: string[]): Promise<Map<string, { phase: string; readyToGo: boolean; jobsLeft: number; truckId: string; openWorkOrder: { id: string; displayId: string } | null; outOfShop: boolean }>> {
+    const result = new Map<string, { phase: string; readyToGo: boolean; jobsLeft: number; truckId: string; openWorkOrder: { id: string; displayId: string } | null; outOfShop: boolean }>();
+    if (!numbers.length) return result;
+    const rows = await this.prisma.truck.findMany({
+      where: { AND: [activeYardEngagement(), { truckNumber: { in: numbers } }] },
+      include: yardTruckInclude as never,
+    }) as unknown as YardTruckRow[];
+    await this.attachReadyWorkOrders(rows);
+    for (const row of rows) {
+      if (isCompletedOnlyWithoutReadyWork(row)) continue;
+      const item = this.toTruckItem(row);
+      const workOrder = item.activeWorkOrder;
+      const open = workOrder && workOrder.status !== 'completed' && workOrder.status !== 'cancelled' ? workOrder : null;
+      result.set(row.truckNumber, {
+        phase: item.phase,
+        readyToGo: item.phase === 'ready_to_go',
+        jobsLeft: workOrder ? Math.max(0, workOrder.jobsTotal - workOrder.jobsCompleted) : 0,
+        truckId: row.id,
+        openWorkOrder: open ? { id: open.id, displayId: open.displayId } : null,
+        outOfShop: Boolean(item.outOfShop),
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Filters that read the Truck's current Work Order (open, or completed and still Ready to Go).
+   * D11: priority and Work Order status look at that Work Order only, never at older closed ones.
+   * `skipQuick` leaves out the quick filters (blocked, priority, out of shop) to count them.
+   */
+  private matchesDerivedFilters(item: YardOperationsTruckDto, query: AdminYardOperationsQuery, skipQuick = false) {
     const readiness = workPlanBoardReadinessFilter(item.phase);
     const blocked = isWorkPlanBoardBlocked(item.activeWorkOrder ? [item.activeWorkOrder] : []);
+    const workOrder = item.activeWorkOrder;
     return (!query.readiness || query.readiness.includes(readiness as YardReadinessFilter))
       && (!query.phase || (query.phase as string[]).includes(item.phase))
-      && (query.blocked === undefined || query.blocked === blocked);
+      && (!query.workOrderStatus || Boolean(workOrder && (query.workOrderStatus as string[]).includes(workOrder.status)))
+      && (skipQuick || query.blocked === undefined || query.blocked === blocked)
+      && (skipQuick || !query.priority || Boolean(workOrder && (query.priority as string[]).includes(workOrder.priority)))
+      && (skipQuick || query.outOfShop === undefined || query.outOfShop === Boolean(item.outOfShop))
+      && (skipQuick || !query.soon || this.leavingSoon(item, query));
+  }
+
+  /** Stage 8: an open Truck that Dispatch expects to leave soon (the web sends those numbers). */
+  private leavingSoon(item: YardOperationsTruckDto, query: AdminYardOperationsQuery) {
+    const workOrder = item.activeWorkOrder;
+    const open = Boolean(workOrder && workOrder.status !== 'completed' && workOrder.status !== 'cancelled');
+    return open && Boolean(query.soonTrucks?.includes(item.truck.truckNumber));
   }
 
   private buildWhere(query: AdminYardOperationsQuery, cursor: AdminYardOperationsCursor | null): Prisma.TruckWhereInput {
@@ -737,12 +784,7 @@ export class YardOperationsService {
         { workOrders: { some: { mechanics: { some: { removedAt: null, mechanic: { name: contains } } } } } },
       ] });
     }
-    if (query.workOrderStatus) {
-      filters.push({ workOrders: { some: { status: { in: query.workOrderStatus as WorkOrderStatus[] } } } });
-    }
-    if (query.priority) {
-      filters.push({ workOrders: { some: { priority: { in: query.priority as Priority[] } } } });
-    }
+    // D11: Work Order status and priority are matched in memory against the current Work Order.
     if (query.mechanicId) {
       filters.push({ workOrders: { some: { mechanics: { some: { mechanicId: query.mechanicId, removedAt: null } } } } });
     }
@@ -769,8 +811,60 @@ export class YardOperationsService {
     return Buffer.from(JSON.stringify({ truckNumber: item.truck.truckNumber, id: item.truck.id })).toString('base64url');
   }
 
-  private async getCounts() {
-    return this.getWorkPlanBoardCounts();
+  /**
+   * Stage 6 (D6, UX-6-002): the board's counts follow the filters — the buckets count the Trucks that
+   * match every filter (all pages, not only the loaded one), `total` is the board without filters and
+   * `quick` counts each quick filter with the other filters applied.
+   */
+  private async getCounts(query: AdminYardOperationsQuery) {
+    const [presenceUnknown, allRows] = await Promise.all([this.prisma.truck.count(), this.boardRows(null)]);
+    const toItems = (rows: YardTruckRow[]) => rows.filter((row) => !isCompletedOnlyWithoutReadyWork(row)).map((row) => this.toTruckItem(row));
+    const allItems = toItems(allRows);
+    // Search and mechanic narrow in the database (same as the list); the rest is matched in memory.
+    const items = query.search || query.mechanicId ? toItems(await this.boardRows(query)) : allItems;
+    const matching = items.filter((item) => this.matchesDerivedFilters(item, query));
+    const quickScope = items.filter((item) => this.matchesDerivedFilters(item, query, true));
+    let notStarted = 0;
+    let underReview = 0;
+    let readyToGo = 0;
+    let blocked = 0;
+    for (const item of matching) {
+      const readiness = workPlanBoardReadinessFilter(item.phase);
+      if (readiness === YardReadinessFilter.NOT_STARTED) notStarted += 1;
+      if (readiness === YardReadinessFilter.UNDER_REVIEW) underReview += 1;
+      if (readiness === YardReadinessFilter.READY) readyToGo += 1;
+      if (isWorkPlanBoardBlocked(item.activeWorkOrder ? [item.activeWorkOrder] : [])) blocked += 1;
+    }
+    return {
+      notStarted,
+      underReview,
+      readyToGo,
+      blocked,
+      presenceUnknown,
+      matching: matching.length,
+      total: allItems.length,
+      quick: {
+        all: quickScope.length,
+        blocked: quickScope.filter((item) => isWorkPlanBoardBlocked(item.activeWorkOrder ? [item.activeWorkOrder] : [])).length,
+        highPriority: quickScope.filter((item) => item.activeWorkOrder && ['high', 'critical'].includes(item.activeWorkOrder.priority)).length,
+        outOfShop: quickScope.filter((item) => item.outOfShop).length,
+        leavingSoon: quickScope.filter((item) => this.leavingSoon(item, query)).length,
+      },
+      byPhase: matching.reduce<Record<string, number>>((counts, item) => {
+        counts[item.phase] = (counts[item.phase] ?? 0) + 1;
+        return counts;
+      }, {}),
+    };
+  }
+
+  /** Board rows (with their Ready to Go Work Order); `query` narrows by search / mechanic, no cursor. */
+  private async boardRows(query: AdminYardOperationsQuery | null) {
+    const rows = await this.prisma.truck.findMany({
+      where: query ? this.buildWhere(query, null) : activeYardEngagement(),
+      include: yardTruckInclude as never,
+    }) as unknown as YardTruckRow[];
+    await this.attachReadyWorkOrders(rows);
+    return rows;
   }
 
   /** LTR-164 (#12): the Dashboard's Ready to Go metric is the Yard's Work Plan count. */

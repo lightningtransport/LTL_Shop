@@ -2,38 +2,40 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-import { Ban, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { Building2, CalendarClock, ChevronDown, CirclePause, OctagonPause, PlugZap, Search, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
 import { AppCapability, Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
-import { returnAdminWorkOrderToService, useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
-import { apiFetch } from '@/lib/api';
+import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
 import { useAuth } from '@/lib/auth-context';
 import { truckNextStepText } from '@/lib/truck-next-step';
-import { useActionToast } from './action-toast';
+import { cn } from '@/lib/utils';
+import { formatShortDateTime } from '@/lib/work-order-view';
+import { ReturnToServiceDialog } from './return-to-service-dialog';
+import { MechanicAvatarStack } from './mechanic-avatar';
 import {
   buildYardOperationsQuery,
   countActiveYardOperationsFilters,
-  countOverflowYardOperationsFilters,
   DEFAULT_YARD_OPERATIONS_FILTERS,
   readYardOperationsFilters,
-  YARD_OVERFLOW_FILTER_KEYS,
-  YARD_PRIORITIES,
-  YARD_READINESS_FILTERS,
-  YARD_TOOLBAR_FILTER_KEYS,
-  YARD_WORK_ORDER_STATUSES,
+  withYardQuickFilter,
+  YARD_QUICK_FILTERS,
   WORK_PLAN_YARD_PHASES,
   type YardBoardColumnPhase,
   type YardOperationsFilters,
+  type YardQuickFilter,
+  yardApiQuery,
+  yardOperationsFromPath,
+  yardQuickFilterOf,
 } from '@/lib/yard-operations-routing';
-import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
-import { workPlanPhaseLabel } from '@/lib/work-plan';
+import { nextShopDay, shopDay } from '@/lib/dashboard-queue';
+import { adminPriorityLabel } from '@/lib/status-chips';
 import { formatVehicleYmm } from '@/lib/format';
-import { formatAdminDate, formatAdminDateOnly } from '@/lib/admin-format';
-import { compactAge, dispatchSignalsByTruck, fillYardText, type YardDispatchSignal } from '@/lib/yard-card';
+import { formatAdminDateOnly } from '@/lib/admin-format';
+import { compactAge, dispatchSignalsByTruck, fillYardText, yardCardAlert, type YardCardAlert, type YardDispatchSignal } from '@/lib/yard-card';
 import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
-import { PageHeader, Badge, Button, Card, CardDescription, CardTitle, CompactEmpty, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PhaseBadge, PriorityBadge, Select } from './ui';
+import { Button, LoadFailure, PageSkeleton, PriorityBadge } from './ui';
 
 const phaseMessageKey = {
   inspection: 'inspection',
@@ -46,36 +48,40 @@ const phaseMessageKey = {
   shop_work: 'shopWork',
 } as const satisfies Record<YardBoardColumnPhase, keyof AdminMessages>;
 
-const readinessMessageKey = {
-  not_started: 'notStarted',
-  under_review: 'inTheShop',
-  ready: 'readyToGo',
-} as const;
-
-const priorityMessageKey = { low: 'lowPriority', normal: 'normalPriority', high: 'highPriority', critical: 'criticalPriority' } as const;
-
 export function AdminYardOperations({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<YardOperationsFilters>(() => readYardOperationsFilters(searchParams));
-  const [view, setView] = useState<'board' | 'list'>(() => searchParams.get('view') === 'list' ? 'list' : 'board');
-  // LTR-120: the Shop's own readiness and Dispatch movement are separate tabs.
+  // LTR-120: the Shop's own board and Dispatch are separate tabs.
   const tab: 'shop' | 'movement' = searchParams.get('tab') === 'movement' ? 'movement' : 'shop';
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [movementSearch, setMovementSearch] = useState('');
+  const [closedLanes, setClosedLanes] = useState<Record<string, boolean>>({});
   const query = searchParams.toString();
-  const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminYardOperations(query);
-  const { user } = useAuth();
-  const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
+  // D4 / UX-5-006: the Truck's back link returns here with the same search, filters and tab.
+  const yardFromPath = useMemo(() => yardOperationsFromPath(query), [query]);
   const {
     data: yardBoundary,
     error: yardBoundaryError,
     isLoading: yardBoundaryLoading,
+    mutate: retryBoundary,
   } = useAdminYardDataBoundary();
+  // "Leaving soon" = today or the next shop day (same window as the Dashboard).
+  const today = useMemo(() => shopDay(new Date()), []);
+  const soonUntil = useMemo(() => nextShopDay(today), [today]);
+  const departures = yardBoundary?.upcomingDepartures.status === 'ok' ? yardBoundary.upcomingDepartures.items : [];
+  // Stage 8: the API counts and filters "Leaving soon" over every page from the Trucks Dispatch has leaving.
+  const apiQuery = useMemo(() => yardApiQuery(query, departures, today, soonUntil), [query, departures, today, soonUntil]);
+  const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminYardOperations(apiQuery);
+  const { user } = useAuth();
+  const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
+  // UX-6-001: the board refreshes every 30 s; the header says when it last did.
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  useEffect(() => {
+    if (data) setUpdatedAt(new Date().toISOString());
+  }, [data]);
 
   useEffect(() => {
     const fromUrl = readYardOperationsFilters(searchParams);
-    setView(searchParams.get('view') === 'list' ? 'list' : 'board');
     setFilters((current) => ({
       ...fromUrl,
       search: current.search !== fromUrl.search ? current.search : fromUrl.search,
@@ -87,28 +93,14 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const lastPage = data?.[data.length - 1];
   const hasMore = Boolean(lastPage?.nextCursor);
   const counts = data?.[0]?.counts;
-  const boardPhases = WORK_PLAN_YARD_PHASES;
   const appliedFilters = useMemo(() => readYardOperationsFilters(searchParams), [searchParams]);
-  const activeFilterCount = countActiveYardOperationsFilters(appliedFilters);
-  const overflowFilterCount = countOverflowYardOperationsFilters(appliedFilters);
-  const filtersButtonLabel = activeFilterCount > 0 ? `${messages.filters} (${activeFilterCount})` : messages.filters;
-  const moreFiltersLabel = overflowFilterCount > 0 ? `${messages.moreFilters} (${overflowFilterCount})` : messages.moreFilters;
-
-  function updateFilter(key: keyof YardOperationsFilters, value: string) {
-    setFilters((current) => ({ ...current, [key]: value }));
-  }
+  const quick = yardQuickFilterOf(appliedFilters);
+  const anyFilter = Boolean(appliedFilters.search) || countActiveYardOperationsFilters(appliedFilters) > 0 || Boolean(appliedFilters.outOfShop) || Boolean(appliedFilters.soon);
 
   function commitFilters(next: YardOperationsFilters) {
     const params = buildYardOperationsQuery(next);
-    if (view === 'list') params.set('view', 'list');
     if (tab === 'movement') params.set('tab', 'movement');
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
-  }
-
-  function applyFilters(event: React.FormEvent) {
-    event.preventDefault();
-    commitFilters(filters);
-    setFiltersOpen(false);
   }
 
   useEffect(() => {
@@ -117,21 +109,11 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
       commitFilters({ ...appliedFilters, search: filters.search });
     }, 300);
     return () => window.clearTimeout(handle);
-  }, [appliedFilters, filters.search, view, tab, router]);
+  }, [appliedFilters, filters.search, tab, router]);
 
   function clearFilters() {
     setFilters(DEFAULT_YARD_OPERATIONS_FILTERS);
     router.replace(tab === 'movement' ? '/admin/yard-operations?tab=movement' : '/admin/yard-operations');
-    setFiltersOpen(false);
-  }
-
-  function updateView(nextView: 'board' | 'list') {
-    setView(nextView);
-    const params = new URLSearchParams(searchParams.toString());
-    if (nextView === 'board') params.delete('view');
-    else params.set('view', nextView);
-    params.delete('cursor');
-    router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 
   function updateTab(nextTab: 'shop' | 'movement') {
@@ -141,10 +123,41 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 
-  return <div className="space-y-6">
-    <PageHeader title={messages.yardOperationsTitle} subtitle={messages.yardOperationsDescription} />
+  const quickLabels: Record<YardQuickFilter, string> = {
+    all: messages.yardQuickAll,
+    blocked: messages.yardQuickBlocked,
+    soon: messages.yardQuickSoon,
+    high: messages.yardQuickHigh,
+    out: messages.yardQuickOut,
+  };
+  const quickCounts: Record<YardQuickFilter, number | undefined> = {
+    all: counts?.quick?.all,
+    blocked: counts?.quick?.blocked,
+    soon: counts?.quick?.leavingSoon,
+    high: counts?.quick?.highPriority,
+    out: counts?.quick?.outOfShop,
+  };
+  const matching = counts?.matching;
+  const total = counts?.total;
 
-    <div role="tablist" aria-label={messages.yardTabsLabel} className="flex gap-1 rounded-xl border bg-muted/40 p-1">
+  return <div className="space-y-5">
+    <header className="flex flex-wrap items-end justify-between gap-3">
+      <div className="space-y-1">
+        <h1 className="page-title">{messages.yardOperationsTitle}</h1>
+        <p className="text-muted-foreground">{messages.yardSubtitle}</p>
+      </div>
+      {updatedAt && tab === 'shop' ? (
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground" data-testid="yard-live">
+          <span aria-hidden="true" className="relative flex size-2">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-success/60 motion-reduce:animate-none" />
+            <span className="relative inline-flex size-2 rounded-full bg-success" />
+          </span>
+          {fillYardText(messages.yardLive, { time: formatShortDateTime(updatedAt, locale) })}
+        </span>
+      ) : null}
+    </header>
+
+    <div role="tablist" aria-label={messages.yardTabsLabel} className="flex gap-5 border-b">
       {(['shop', 'movement'] as const).map((value) => (
         <button
           key={value}
@@ -153,7 +166,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           id={`yard-tab-${value}`}
           aria-selected={tab === value}
           aria-controls={`yard-panel-${value}`}
-          className={`min-h-11 flex-1 rounded-lg px-3 text-sm font-medium ${tab === value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          className={cn('-mb-px h-11 border-b-2 font-medium', tab === value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}
           onClick={() => updateTab(value)}
         >
           {value === 'shop' ? messages.yardTabShop : messages.yardTabMovement}
@@ -161,279 +174,164 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
       ))}
     </div>
 
-    {tab === 'movement' ? <div role="tabpanel" id="yard-panel-movement" aria-labelledby="yard-tab-movement">
-    <Card className="p-3" role="region" aria-labelledby="yard-movement-title">
-      <div className="mb-2 space-y-1">
-        <CardTitle id="yard-movement-title" className="text-sm">{messages.yardOperationsPhase1}</CardTitle>
-        <CardDescription>{messages.yardOperationsPhase1Body}</CardDescription>
-        {yardBoundary?.asOf ? (
-          <p className="text-xs text-muted-foreground" data-testid="yard-movement-source">
-            {fillYardText(messages.yardMovementSource, { time: formatAdminDate(yardBoundary.asOf, locale) })}
-          </p>
+    {tab === 'movement' ? (
+      <div role="tabpanel" id="yard-panel-movement" aria-labelledby="yard-tab-movement">
+      <section role="region" aria-labelledby="yard-movement-title" className="space-y-4">
+        <h2 id="yard-movement-title" className="sr-only">{messages.yardOperationsPhase1}</h2>
+        <p className="text-muted-foreground">
+          {messages.yardOperationsPhase1Body}
+          {yardBoundary?.asOf && !yardBoundaryError ? (
+            <> <span data-testid="yard-movement-source">{fillYardText(messages.yardMovementSource, { time: formatShortDateTime(yardBoundary.asOf, locale) })}</span></>
+          ) : null}
+        </p>
+        {yardBoundary && [yardBoundary.workLocation, yardBoundary.incomingTrucks, yardBoundary.upcomingDepartures].some((section) => section.status === 'ok' && section.items.length > 0) ? (
+          <label className="flex h-11 items-center gap-2 rounded-md border bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10 lg:w-72">
+            <Search aria-hidden="true" className="size-3.5 text-muted-foreground" />
+            <span className="sr-only">{messages.yardMovementSearch}</span>
+            <input
+              type="search"
+              className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+              aria-label={messages.yardMovementSearch}
+              placeholder={messages.yardMovementSearch}
+              value={movementSearch}
+              onChange={(event) => setMovementSearch(event.target.value)}
+            />
+          </label>
         ) : null}
-      </div>
-      {yardBoundary && [yardBoundary.workLocation, yardBoundary.incomingTrucks, yardBoundary.upcomingDepartures].some((section) => section.status === 'ok' && section.items.length > 0) ? <Input
-        type="search"
-        className="mb-2 h-9"
-        aria-label={messages.yardMovementSearch}
-        placeholder={messages.yardMovementSearch}
-        value={movementSearch}
-        onChange={(event) => setMovementSearch(event.target.value)}
-      /> : null}
-      <AdminYardDataBoundaryCards
-        locale={locale}
-        boundary={yardBoundary}
-        loading={yardBoundaryLoading}
-        fetchFailed={Boolean(yardBoundaryError) && yardBoundary === undefined}
-        expanded
-        search={movementSearch}
-      />
-    </Card>
-    </div> : isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : <div role="tabpanel" id="yard-panel-shop" aria-labelledby="yard-tab-shop" className="flex flex-col gap-5">
-
-      <section className="order-1 xl:order-none" aria-labelledby="yard-summary-title">
-        <h2 id="yard-summary-title" className="sr-only">{messages.yardSummaryMetrics}</h2>
-        {counts ? (
-          // LTR-100 / D5: exclusive buckets that add up to the board; Blocked (official pause) is a subset.
-          <>
-            <div className="grid min-w-0 grid-cols-3 gap-2">
-              <SummaryMetric label={messages.inspection} value={counts.notStarted ?? 0} Icon={ClipboardCheck} />
-              <SummaryMetric label={messages.inTheShop} value={counts.underReview} Icon={ClipboardCheck} />
-              <SummaryMetric label={messages.readyToGo} value={counts.readyToGo} Icon={ShieldCheck} />
-            </div>
-            {counts.blocked ? (
-              <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
-                <Ban aria-hidden="true" className="size-3.5" />
-                {messages.blockedOfTotal.replace('{count}', String(counts.blocked))}
-              </p>
-            ) : null}
-          </>
-        ) : null}
+        {/* UX-6-008: Dispatch did not answer — say so and offer a retry; the shop board keeps working. */}
+        {yardBoundaryError && yardBoundary === undefined ? (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center text-muted-foreground">
+            <PlugZap aria-hidden="true" className="size-5" />
+            <p className="font-medium text-foreground">{messages.yardDispatchNoAnswer}</p>
+            <p>{messages.yardDispatchNoAnswerBody}</p>
+            <Button type="button" variant="outline" onClick={() => void retryBoundary()}>{messages.yardDispatchRetry}</Button>
+          </div>
+        ) : (
+          <AdminYardDataBoundaryCards
+            locale={locale}
+            boundary={yardBoundary}
+            loading={yardBoundaryLoading}
+            fetchFailed={Boolean(yardBoundaryError) && yardBoundary === undefined}
+            expanded
+            search={movementSearch}
+            today={today}
+            soonUntil={soonUntil}
+          />
+        )}
       </section>
-
-      <Card className="order-1 min-w-0 p-3 xl:order-none">
-        <form role="search" className="min-w-0" onSubmit={applyFilters}>
-          <div className="flex min-w-0 flex-wrap items-end gap-2 xl:flex-nowrap xl:gap-1.5">
-            <label className="min-w-0 flex-1 space-y-1 xl:flex-[1.35]">
-              <span className="sr-only">{messages.yardSearch}</span>
-              <span className="relative block min-w-0">
-                <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground xl:hidden" />
-                <Input
-                  type="search"
-                  autoComplete="off"
-                  enterKeyHint="search"
-                  aria-label={messages.yardSearch}
-                  title={messages.yardSearch}
-                  placeholder={messages.yardSearch}
-                  className="min-w-0 pl-9 max-xl:placeholder:text-transparent xl:min-h-9 xl:px-3 xl:pl-3"
-                  value={filters.search}
-                  onChange={(event) => updateFilter('search', event.target.value)}
-                />
-              </span>
-            </label>
-            <div className="hidden min-w-0 xl:contents">
-              <YardFilterFields filters={filters} messages={messages} onChange={updateFilter} variant="toolbar" compact boardPhases={boardPhases} />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                aria-label={moreFiltersLabel}
-                aria-expanded={filtersOpen}
-                onClick={() => setFiltersOpen(true)}
-              >
-                {messages.moreFilters}
-                {overflowFilterCount > 0 ? (
-                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
-                    {overflowFilterCount}
-                  </span>
-                ) : null}
-              </Button>
-              <div className="flex shrink-0 gap-1.5">
-                <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={clearFilters}>{messages.clearFilters}</Button>
-                <Button type="submit" size="sm" className="shrink-0">{messages.applyFilters}</Button>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="shrink-0 xl:hidden"
-              aria-label={filtersButtonLabel}
-              aria-expanded={filtersOpen}
-              onClick={() => setFiltersOpen(true)}
-            >
-              <SlidersHorizontal aria-hidden="true" className="size-4" />
-              {messages.filters}
-              {activeFilterCount > 0 ? (
-                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
-                  {activeFilterCount}
-                </span>
-              ) : null}
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      <Modal
-        open={filtersOpen}
-        title={messages.filters}
-        closeLabel={messages.closeDialog}
-        onClose={() => setFiltersOpen(false)}
-      >
-        <form className="space-y-3" onSubmit={applyFilters}>
-          <YardFilterFields filters={filters} messages={messages} onChange={updateFilter} variant="sheet" boardPhases={boardPhases} />
-          <div className="flex items-end justify-end gap-2 border-t pt-3">
-            <Button type="button" variant="ghost" onClick={clearFilters}>{messages.clearFilters}</Button>
-            <Button type="submit">{messages.applyFilters}</Button>
-          </div>
-        </form>
-      </Modal>
-
-      <div className="hidden items-center justify-end gap-2 xl:flex" aria-label={messages.view}>
-        <span className="text-sm text-muted-foreground">{messages.view}</span>
-        <Button type="button" variant={view === 'board' ? 'secondary' : 'ghost'} size="sm" aria-pressed={view === 'board'} onClick={() => updateView('board')}>{messages.boardView}</Button>
-        <Button type="button" variant={view === 'list' ? 'secondary' : 'ghost'} size="sm" aria-pressed={view === 'list'} onClick={() => updateView('list')}>{messages.listView}</Button>
       </div>
+    ) : isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : (
+      <div role="tabpanel" id="yard-panel-shop" aria-labelledby="yard-tab-shop" className="flex flex-col gap-4">
+        {/* Stage 8 (mockup): search and the quick filters on one row; no "More filters" (owner decision). The URL
+            still accepts readiness, phase, Work Order status and priority from links on other screens. */}
+        <section className="flex flex-col gap-3 lg:flex-row lg:items-center" aria-label={messages.yardQuickFilters}>
+          <form role="search" className="lg:w-72" onSubmit={(event) => { event.preventDefault(); commitFilters({ ...appliedFilters, search: filters.search }); }}>
+            <label className="flex h-11 items-center gap-2 rounded-md border bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10">
+              <Search aria-hidden="true" className="size-3.5 text-muted-foreground" />
+              <span className="sr-only">{messages.yardSearch}</span>
+              <input
+                type="search"
+                autoComplete="off"
+                enterKeyHint="search"
+                aria-label={messages.yardSearch}
+                placeholder={messages.yardSearch}
+                className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+                value={filters.search}
+                onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+              />
+            </label>
+          </form>
+          <div role="group" aria-label={messages.yardQuickFilters} className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0" data-testid="yard-quick-filters">
+            {YARD_QUICK_FILTERS.map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={quick === value}
+                data-testid={`yard-quick-${value}`}
+                onClick={() => commitFilters(withYardQuickFilter({ ...appliedFilters, search: filters.search }, value))}
+                className={cn(
+                  'inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm [@media(pointer:fine)]:h-9',
+                  quick === value ? 'border-primary bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                )}
+              >
+                {quickLabels[value]}
+                {quickCounts[value] !== undefined ? <span className="tnum text-xs">{quickCounts[value]}</span> : null}
+              </button>
+            ))}
+          </div>
+          {anyFilter ? <Button type="button" variant="ghost" size="sm" className="self-start lg:ml-auto lg:self-auto" onClick={clearFilters}><X aria-hidden="true" />{messages.clearFilters}</Button> : null}
+        </section>
 
-      {items.length === 0 ? <div className="order-2 xl:order-none"><EmptyState><p>{messages.noYardOperations}</p><p className="mt-1 text-sm text-muted-foreground">{messages.noYardOperationsBody}</p></EmptyState></div> : <>
-        <section className={view === 'board' ? 'hidden xl:block' : 'hidden'} aria-labelledby="yard-board-title">
-          <div className="mb-2"><h2 id="yard-board-title" className="font-display text-lg font-semibold">{messages.yardBoard}</h2></div>
-          <div className="overflow-x-auto rounded-xl border bg-muted/40 p-2">
-            <div
-              className="grid gap-2"
-              // LTR-169: an empty phase only needs its title and "no trucks"; the space goes to phases with cards,
-              // so a 1366px screen fits the board without cutting off Truck numbers or the last column.
-              style={{
-                gridTemplateColumns: boardPhases
-                  .map((phase) => (items.some((item) => item.phase === phase) ? 'minmax(172px, 1.6fr)' : 'minmax(92px, 1fr)'))
-                  .join(' '),
-                minWidth: `${boardPhases.reduce((sum, phase) => sum + (items.some((item) => item.phase === phase) ? 180 : 100), 0)}px`,
-              }}
-            >
-              {boardPhases.map((phase) => {
-                const phaseItems = items.filter((item) => item.phase === phase);
+        <p className="-mt-1 text-xs text-muted-foreground" data-testid="yard-showing">
+          {matching !== undefined && total !== undefined
+            ? matching === total ? fillYardText(messages.yardInShopCount, { count: String(total) }) : fillYardText(messages.yardShowing, { count: String(matching), total: String(total) })
+            : null}
+          {' · '}{messages.yardFiltersStay}
+        </p>
+
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center text-muted-foreground">
+            <p>{anyFilter
+              ? fillYardText(messages.yardNoMatch, {
+                query: appliedFilters.search ? fillYardText(messages.yardNoMatchQuery, { query: appliedFilters.search }) : '',
+                chip: quick !== 'all' ? fillYardText(messages.yardNoMatchChip, { chip: quickLabels[quick] }) : '',
+              })
+              : messages.noYardOperations}</p>
+            {!anyFilter ? <p>{messages.noYardOperationsBody}</p> : null}
+            {anyFilter ? <Button type="button" variant="outline" onClick={clearFilters}>{messages.clearFilters}</Button> : null}
+          </div>
+        ) : (
+          // Stage 6 (UX-4-004, D9) / Stage 8 (mockup): desktop — one card, a lane per step top to bottom (an empty step
+          // is one line); phones — a foldable list per step, empty steps hidden. No sideways scroll.
+          <section aria-labelledby="yard-lanes-title" className="space-y-4 lg:space-y-0 lg:overflow-hidden lg:rounded-xl lg:border lg:bg-card" data-testid="yard-lanes">
+            <h2 id="yard-lanes-title" className="sr-only">{messages.yardLanes}</h2>
+            {WORK_PLAN_YARD_PHASES.map((phase, index) => {
+              const phaseItems = items.filter((item) => item.phase === phase);
+              const laneCount = counts?.byPhase?.[phase] ?? phaseItems.length;
+              const label = messages[phaseMessageKey[phase]];
+              if (!phaseItems.length) {
                 return (
-                  <div key={phase} className="min-w-0" data-phase={phase}>
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <h3 className="font-display text-sm font-semibold">{workPlanPhaseLabel(phase, messages)}</h3>
-                      <Badge variant="secondary">{phaseItems.length}</Badge>
-                    </div>
-                    <div className="space-y-2">
-                      {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} canManage={canManageWorkOrders} onChanged={() => mutate()} />)}
-                      {phaseItems.length === 0 ? (
-                        <CompactEmpty className="text-xs">{messages.noTrucksInPhase}</CompactEmpty>
-                      ) : null}
-                    </div>
+                  <div key={phase} data-phase={phase} className={cn('hidden items-center gap-3 px-4 py-2 text-xs text-muted-foreground lg:flex', index > 0 && 'border-t')}>
+                    <h3 className="w-32 shrink-0"><span aria-hidden="true">{index + 1}. </span>{label}</h3>
+                    <span>{messages.yardNoTrucksLane}</span>
                   </div>
                 );
-              })}
-            </div>
-          </div>
-        </section>
-        <section className={view === 'list' ? 'order-2 space-y-3 xl:order-none' : 'order-2 space-y-3 xl:order-none xl:hidden'} aria-labelledby="yard-list-title">
-          <div><h2 id="yard-list-title" className="font-display text-lg font-semibold">{messages.yardGroupedList}</h2></div>
-          {boardPhases.map((phase) => {
-            const phaseItems = items.filter((item) => item.phase === phase);
-            return phaseItems.length ? (
-              <section key={phase} aria-labelledby={`yard-group-${phase}`}>
-                <div className="mb-2 flex items-center gap-2">
-                  <h3 id={`yard-group-${phase}`} className="font-display text-sm font-semibold">{messages[phaseMessageKey[phase]]}</h3>
-                  <Badge variant="secondary">{phaseItems.length}</Badge>
-                </div>
-                <div className="space-y-2">{phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} canManage={canManageWorkOrders} onChanged={() => mutate()} />)}</div>
-              </section>
-            ) : null;
-          })}
-        </section>
-      </>}
-      {hasMore ? <Button variant="outline" className="order-2 w-full xl:order-none" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.yardLoadMore}…` : messages.yardLoadMore}</Button> : null}
-    </div>}
+              }
+              const open = !closedLanes[phase];
+              return (
+                <section key={phase} aria-labelledby={`yard-group-${phase}`} data-phase={phase} className={cn('lg:grid lg:grid-cols-[8rem_minmax(0,1fr)] lg:gap-3 lg:px-4 lg:py-3', index > 0 && 'lg:border-t')}>
+                  <h3 id={`yard-group-${phase}`} className="lg:pt-1">
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      className="flex min-h-11 w-full items-center gap-2 text-left font-semibold lg:pointer-events-none lg:min-h-0 lg:text-sm"
+                      onClick={() => setClosedLanes((current) => ({ ...current, [phase]: open }))}
+                    >
+                      <span aria-hidden="true" className="hidden lg:inline">{index + 1}.</span>
+                      {label}
+                      <span aria-hidden="true" className="tnum rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border lg:bg-transparent lg:px-0 lg:ring-0">{laneCount}</span>
+                      <ChevronDown aria-hidden="true" className={cn('ml-auto size-3.5 text-muted-foreground transition-transform lg:hidden', open && 'rotate-180')} />
+                    </button>
+                  </h3>
+                  <div className={cn('mt-1 gap-2 lg:mt-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]', open ? 'grid' : 'hidden')}>
+                    {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} soonUntil={soonUntil} canManage={canManageWorkOrders} fromPath={yardFromPath} onChanged={() => mutate()} />)}
+                  </div>
+                </section>
+              );
+            })}
+            <p className="text-center text-xs text-muted-foreground lg:hidden">{messages.yardEmptyHidden}</p>
+          </section>
+        )}
+        {hasMore ? <Button variant="outline" className="w-full" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.yardLoadMore}…` : messages.yardLoadMore}</Button> : null}
+      </div>
+    )}
   </div>;
 }
 
-function YardFilterFields({
-  filters,
-  messages,
-  onChange,
-  variant,
-  compact = false,
-  boardPhases,
-}: {
-  filters: YardOperationsFilters;
-  messages: AdminMessages;
-  onChange: (key: keyof YardOperationsFilters, value: string) => void;
-  variant: 'toolbar' | 'sheet';
-  compact?: boolean;
-  boardPhases: ReadonlyArray<YardBoardColumnPhase>;
-}) {
-  // LTR-169: block, or the sheet's space-y never reaches the inline <label> (4px between fields).
-  const fieldClass = compact ? 'min-w-0 flex-1 space-y-1' : 'block space-y-2';
-  const labelClass = compact ? 'block text-xs font-medium' : 'text-sm font-medium';
-  const controlClass = compact ? 'min-h-9 px-3 pr-9' : undefined;
-  const render = (key: keyof YardOperationsFilters) => (
-    <YardFilterField key={key} fieldKey={key} filters={filters} messages={messages} onChange={onChange} fieldClass={fieldClass} labelClass={labelClass} controlClass={controlClass} boardPhases={boardPhases} />
-  );
-
-  if (variant === 'toolbar') {
-    return <>{YARD_TOOLBAR_FILTER_KEYS.map(render)}</>;
-  }
-
-  return <>
-    <div className="space-y-3 xl:hidden">{YARD_TOOLBAR_FILTER_KEYS.map(render)}</div>
-    {YARD_OVERFLOW_FILTER_KEYS.map(render)}
-  </>;
-}
-
-function YardFilterField({
-  fieldKey,
-  filters,
-  messages,
-  onChange,
-  fieldClass,
-  labelClass,
-  controlClass,
-  boardPhases,
-}: {
-  fieldKey: keyof YardOperationsFilters;
-  filters: YardOperationsFilters;
-  messages: AdminMessages;
-  onChange: (key: keyof YardOperationsFilters, value: string) => void;
-  fieldClass: string;
-  labelClass: string;
-  controlClass?: string;
-  boardPhases: ReadonlyArray<YardBoardColumnPhase>;
-}) {
-  if (fieldKey === 'search') return null;
-  if (fieldKey === 'readiness') {
-    return <label className={fieldClass}><span className={labelClass} title={messages.readiness}>{messages.readiness}</span><Select className={controlClass} aria-label={messages.readiness} value={filters.readiness} onChange={(event) => onChange('readiness', event.target.value)}><option value="">{messages.allReadiness}</option>{YARD_READINESS_FILTERS.map((value) => <option key={value} value={value}>{messages[readinessMessageKey[value]]}</option>)}</Select></label>;
-  }
-  if (fieldKey === 'phase') {
-    return <label className={fieldClass}><span className={labelClass} title={messages.phase}>{messages.phase}</span><Select className={controlClass} aria-label={messages.phase} value={filters.phase} onChange={(event) => onChange('phase', event.target.value)}><option value="">{messages.allPhases}</option>{boardPhases.map((value) => <option key={value} value={value}>{messages[phaseMessageKey[value]]}</option>)}</Select></label>;
-  }
-  if (fieldKey === 'workOrderStatus') {
-    return <label className={fieldClass}><span className={labelClass} title={messages.workOrderStatus}>{messages.workOrderStatus}</span><Select className={controlClass} aria-label={messages.workOrderStatus} value={filters.workOrderStatus} onChange={(event) => onChange('workOrderStatus', event.target.value)}><option value="">{messages.allWorkOrderStatuses}</option>{YARD_WORK_ORDER_STATUSES.map((value) => <option key={value} value={value}>{workOrderStatusLabel(value, messages)}</option>)}</Select></label>;
-  }
-  if (fieldKey === 'priority') {
-    return <label className={fieldClass}><span className={labelClass} title={messages.priority}>{messages.priority}</span><Select className={controlClass} aria-label={messages.priority} value={filters.priority} onChange={(event) => onChange('priority', event.target.value)}><option value="">{messages.allPriorities}</option>{YARD_PRIORITIES.map((value) => <option key={value} value={value}>{messages[priorityMessageKey[value]]}</option>)}</Select></label>;
-  }
-  return <label className={fieldClass}><span className={labelClass} title={messages.blockedFilter}>{messages.blockedFilter}</span><Select className={controlClass} aria-label={messages.blockedFilter} value={filters.blocked} onChange={(event) => onChange('blocked', event.target.value)}><option value="">{messages.allBlockerStates}</option><option value="true">{messages.blockedOnly}</option><option value="false">{messages.unblockedOnly}</option></Select></label>;
-}
-
-function SummaryMetric({ label, value, Icon }: { label: string; value: number; Icon: typeof ClipboardCheck }) {
-  return (
-    <Card className="flex min-w-0 items-center justify-between gap-1.5 overflow-hidden px-2.5 py-1.5">
-      <div className="min-w-0">
-        {/* LTR-114: wrap long labels instead of cutting them on 375px phones. */}
-        <p className="line-clamp-2 text-xs leading-tight text-muted-foreground" title={label}>{label}</p>
-        <p className="font-display text-lg font-bold leading-tight">{value}</p>
-      </div>
-      <Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
-    </Card>
-  );
-}
-
-function YardTruckCard({ item, messages, locale, dispatch, canManage = false, onChanged }: {
+function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, canManage = false, fromPath = '/admin/yard-operations', onChanged }: {
   item: YardOperationsTruckDto;
+  /** Where the Truck's back link returns (the Yard with its current query). */
+  fromPath?: string;
   /** LTR-159: Return to Service from a Ready to Go card. */
   canManage?: boolean;
   onChanged?: () => Promise<unknown> | void;
@@ -441,95 +339,115 @@ function YardTruckCard({ item, messages, locale, dispatch, canManage = false, on
   locale: AdminLocale;
   /** LTR-120: Dispatch movement shown only as a signal, never as a phase. */
   dispatch?: YardDispatchSignal;
+  /** Last day of "leaving soon" (YYYY-MM-DD). */
+  soonUntil?: string | null;
 }) {
   const workOrder = item.activeWorkOrder;
   const vehicle = formatVehicleYmm(item.truck);
+  const readyToGo = item.nextStep?.kind === 'return_to_service';
   // LTR-159: the same Next step as the Truck, Dashboard and Work Order.
-  const nextStepText = item.nextStep && item.nextStep.kind !== 'create_work_order' ? truckNextStepText(item.nextStep, messages) : null;
-  const mechanicNames = (workOrder?.mechanics ?? []).filter((mechanic) => !mechanic.removedAt).map((mechanic) => mechanic.mechanicName).join(', ');
-  const showPriority = Boolean(workOrder && workOrder.priority !== Priority.NORMAL);
-  // LTR-92 / D5: Blocked means an official pause (or LTR-98 active blocker), not "has open work".
-  const showBlocker = workOrder?.status === 'waiting_paused' || Boolean(workOrder?.latestReportedBlocker);
+  const nextStepText = readyToGo
+    ? dispatch?.departs ? fillYardText(messages.dashDispatchLeaves, { date: formatAdminDateOnly(dispatch.departs, locale) }) : messages.yardWaitingToLeave
+    : item.nextStep && item.nextStep.kind !== 'create_work_order' ? truckNextStepText(item.nextStep, messages) : null;
+  const mechanics = (workOrder?.mechanics ?? []).filter((mechanic) => !mechanic.removedAt).map((mechanic) => ({ id: mechanic.mechanicId, name: mechanic.mechanicName }));
+  const showPriority = Boolean(workOrder && (workOrder.priority === Priority.HIGH || workOrder.priority === Priority.CRITICAL));
+  // Stage 6 (UX-4-005) / Stage 8: the alert line or the Next step (not both), the most urgent first.
+  const alert = yardCardAlert(item, dispatch, soonUntil);
+  const alertText = alert ? yardAlertText(alert, messages, locale, item.outOfShopJobName ?? null) : null;
+  const warning = alert && (alert.kind === 'blocked' || alert.kind === 'paused' || alert.kind === 'leaves');
+  const AlertIcon = alert ? ALERT_ICON[alert.kind] : null;
+  const describedBy = useId();
+  const rts = readyToGo && canManage && item.nextStep?.workOrderId ? item.nextStep.workOrderId : null;
 
-  const card = (
-    <Link
-      href={adminTruckHref(item.truck.id, '/admin/yard-operations')}
-      aria-label={item.truck.truckNumber}
-      className="card block space-y-1.5 p-2 hover:bg-accent/40"
-      data-testid="yard-truck-card"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="truncate font-display text-sm font-semibold text-primary">{item.truck.truckNumber}</span>
-        <PhaseBadge phase={item.phase}>{workPlanPhaseLabel(item.phase, messages)}</PhaseBadge>
-      </div>
-      {vehicle ? <p className="truncate text-xs text-muted-foreground" title={vehicle}>{vehicle}</p> : null}
-      {workOrder ? (
-        <p className="truncate text-xs text-muted-foreground">{messages.workOrder} {workOrder.displayId} · {compactAge(workOrder.createdAt)}</p>
-      ) : null}
-      {/* LTR-101: what is missing and who is on it. */}
-      {nextStepText ? <p className="truncate text-xs font-medium text-foreground" title={nextStepText} data-testid="yard-card-next-step">{nextStepText}</p> : null}
-      {mechanicNames ? <p className="truncate text-xs text-muted-foreground" title={mechanicNames}>{mechanicNames}</p> : null}
-      {dispatch?.expectedIn ? <p className="truncate text-xs text-muted-foreground" data-testid="yard-card-dispatch">{fillYardText(messages.yardDispatchExpectedIn, { date: formatAdminDateOnly(dispatch.expectedIn, locale) })}</p> : null}
-      {dispatch?.departs ? <p className="truncate text-xs text-muted-foreground" data-testid="yard-card-dispatch">{fillYardText(messages.yardDispatchDeparts, { date: formatAdminDateOnly(dispatch.departs, locale) })}</p> : null}
-      {workOrder ? null : (
-        <CompactEmpty className="px-2 py-1 text-xs">{messages.noOpenWorkOrder}</CompactEmpty>
-      )}
-      {showPriority || showBlocker || item.outOfShop ? (
-        <div className="flex flex-wrap items-center gap-1">
-          {/* LTR-188 / D24: a Job sent the whole truck to an external shop. Phase and counters stay. */}
-          {item.outOfShop ? <Badge variant="warning" data-testid="yard-card-out-of-shop">{messages.yardOutOfShop}</Badge> : null}
+  return (
+    <article className={cn('rounded-lg border bg-card', warning && 'shadow-[inset_3px_0_0_var(--warning)]')}>
+      <Link
+        href={adminTruckHref(item.truck.id, fromPath)}
+        aria-label={item.truck.truckNumber}
+        aria-describedby={`${describedBy}-line`}
+        className="block space-y-1.5 rounded-lg p-3 hover:bg-accent/40"
+        data-testid="yard-truck-card"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <span className="truncate text-base font-semibold">{item.truck.truckNumber}</span>
           {showPriority && workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : null}
-          {showBlocker ? (
-            <Badge variant="warning">
-              {/* LTR-155 / D17: "Blocked · reason" for a mechanic blocker. */}
-              {workOrder?.latestReportedBlocker
-                ? `${messages.blocked} · ${adminPauseReasonLabel(workOrder.latestReportedBlocker.blockerReason ?? workOrder.latestReportedBlocker.reason, messages)}`
-                : messages.blocked}
-            </Badge>
-          ) : null}
+        </div>
+        <p className="truncate text-xs text-muted-foreground">
+          {[vehicle, workOrder ? null : messages.noOpenWorkOrder].filter(Boolean).join(' · ')}
+          {workOrder ? <>{vehicle ? ' · ' : ''}<span className="font-mono">{workOrder.displayId}</span> · {compactAge(workOrder.createdAt)}</> : null}
+        </p>
+        {alert && alertText && AlertIcon ? (
+          <p
+            id={`${describedBy}-line`}
+            className={cn('flex items-start gap-1.5 text-xs font-medium', warning ? 'text-warning-foreground dark:text-warning' : 'text-primary')}
+            data-testid={alert.kind === 'out_of_shop' ? 'yard-card-out-of-shop' : alert.kind === 'leaves' ? 'yard-card-dispatch' : 'yard-card-alert'}
+            data-kind={alert.kind}
+          >
+            <AlertIcon aria-hidden="true" className="mt-px size-3.5 shrink-0" /><span>{alertText}</span>
+          </p>
+        ) : nextStepText ? (
+          // LTR-101: what is missing (the same Next step everywhere).
+          <p id={`${describedBy}-line`} className="line-clamp-2 text-xs text-foreground/90" title={nextStepText} data-testid="yard-card-next-step">{nextStepText}</p>
+        ) : null}
+        {dispatch?.expectedIn ? <p className="truncate text-xs text-muted-foreground" data-testid="yard-card-dispatch">{fillYardText(messages.yardDispatchExpectedIn, { date: formatAdminDateOnly(dispatch.expectedIn, locale) })}</p> : null}
+        {workOrder && !readyToGo ? (
+          <div className="flex items-center gap-2 pt-0.5" title={fillYardText(messages.yardJobsProgress, { done: String(workOrder.jobsCompleted), total: String(workOrder.jobsTotal) })}>
+            <span aria-hidden="true" className="h-1 flex-1 overflow-hidden rounded-full bg-muted-foreground/20">
+              <span className="block h-1 rounded-full bg-success" style={{ width: `${workOrder.jobsTotal ? (workOrder.jobsCompleted / workOrder.jobsTotal) * 100 : 0}%` }} />
+            </span>
+            <span className="tnum text-xs text-muted-foreground">{workOrder.jobsCompleted}/{workOrder.jobsTotal}</span>
+            <MechanicAvatarStack mechanics={mechanics} max={3} />
+          </div>
+        ) : null}
+      </Link>
+      {rts ? (
+        <div className="border-t p-2">
+          <YardReturnToService workOrderId={rts} truckNumber={item.truck.truckNumber} messages={messages} onChanged={onChanged} />
         </div>
       ) : null}
-    </Link>
-  );
-  if (item.nextStep?.kind !== 'return_to_service' || !canManage || !item.nextStep.workOrderId) return card;
-  return (
-    <div className="space-y-1">
-      {card}
-      <YardReturnToService workOrderId={item.nextStep.workOrderId} messages={messages} onChanged={onChanged} />
-    </div>
+    </article>
   );
 }
 
-function YardReturnToService({ workOrderId, messages, onChanged }: {
+const ALERT_ICON: Record<YardCardAlert['kind'], LucideIcon> = {
+  blocked: OctagonPause,
+  paused: CirclePause,
+  out_of_shop: Building2,
+  leaves: CalendarClock,
+  nobody: UserPlus,
+};
+
+function yardAlertText(alert: YardCardAlert, messages: AdminMessages, locale: AdminLocale, outJob: string | null) {
+  switch (alert.kind) {
+    case 'blocked': return `${messages.blocked} · ${adminPauseReasonLabel(alert.reason, messages)}`;
+    case 'paused': return alert.reason ? fillYardText(messages.yardAlertPaused, { reason: adminPauseReasonLabel(alert.reason, messages) }) : messages.yardAlertPausedNoReason;
+    case 'out_of_shop': return outJob ? fillYardText(messages.yardOutOfShopJob, { job: outJob }) : messages.yardOutOfShop;
+    case 'leaves': return fillYardText(messages.yardAlertLeaves, { date: formatAdminDateOnly(alert.date, locale), count: String(alert.jobsLeft) });
+    case 'nobody': return fillYardText(messages.yardAlertNobody, { job: alert.job });
+  }
+}
+
+function YardReturnToService({ workOrderId, truckNumber, messages, onChanged }: {
   workOrderId: string;
+  truckNumber: string;
   messages: AdminMessages;
   onChanged?: () => Promise<unknown> | void;
 }) {
-  const { showToast } = useActionToast();
-  const [pending, setPending] = useState(false);
+  // D7 / UX-5-008: the same confirmation dialog as the Truck (optional reason), never a single tap.
+  const [open, setOpen] = useState(false);
   return (
-    <Button
-      type="button"
-      size="sm"
-      variant="outline"
-      className="w-full"
-      disabled={pending}
-      onClick={async () => {
-        setPending(true);
-        try {
-          // The reason is optional (LTR-158); the version comes from the Work Order itself.
-          const wo = await apiFetch<{ version: number }>(`/api/admin/work-orders/${workOrderId}`);
-          await returnAdminWorkOrderToService(workOrderId, { expectedVersion: wo.version });
-          showToast('success', messages.returnToServiceSuccess);
-          await onChanged?.();
-        } catch {
-          showToast('error', messages.truckNextStepFailed);
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
-      {messages.returnToServiceTitle}
-    </Button>
+    <>
+      <Button type="button" variant="outline" className="h-10 w-full sm:h-8" onClick={() => setOpen(true)}>
+        <Truck aria-hidden="true" />{messages.returnToServiceTitle}
+      </Button>
+      <ReturnToServiceDialog
+        open={open}
+        truckNumber={truckNumber}
+        workOrderId={workOrderId}
+        messages={messages}
+        onClose={() => setOpen(false)}
+        onDone={onChanged}
+      />
+    </>
   );
 }

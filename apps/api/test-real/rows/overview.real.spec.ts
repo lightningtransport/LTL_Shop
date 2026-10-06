@@ -96,8 +96,20 @@ describe('Tablero, Yard, notas y tiempos', () => {
     same('recién llegado', phase(fresh.truck.id), 'inspection');
     same('con hallazgos', phase(working.truck.id), 'shop_work');
     same('cerrado', phase(ready.truck.id), 'ready_to_go');
-    const { presenceUnknown, ...buckets } = yard.counts;
+    const { presenceUnknown, matching, total, quick, byPhase, ...buckets } = yard.counts;
     same('Inspection + In the Shop + Ready to Go suman el tablero; Blocked es un subconjunto', buckets, { notStarted: 1, underReview: 2, readyToGo: 1, blocked: 1 });
+    // Etapa 6 (D6): "Mostrando N de M" y los filtros rápidos con su conteo.
+    same('sin filtro se muestran todos', [matching, total], [4, 4]);
+    same('filtros rápidos', quick, { all: 4, blocked: 1, highPriority: 0, outOfShop: 0, leavingSoon: 0 });
+    // Etapa 8: el número de cada carril cuenta todas las páginas.
+    same('camiones por paso', byPhase, { shop_work: 2, inspection: 1, ready_to_go: 1 });
+    // Etapa 8: "Leaving soon" con los números que la web toma de Dispatch (solo camiones con WO abierta).
+    const soon = ok('Yard sale pronto', await manager.get(`/admin/yard-operations?limit=100&soonTrucks=922,944&soon=true`));
+    same('sale pronto: solo el abierto (el Ready to Go no cuenta)', (soon.items as Json[]).map((item) => item.truck.id), [working.truck.id]);
+    same('conteo de sale pronto', soon.counts.quick.leavingSoon, 1);
+    const onlyBlocked = ok('Yard bloqueados', await manager.get('/admin/yard-operations?limit=100&blocked=true'));
+    same('el filtro "Bloqueados" deja solo el camión bloqueado', (onlyBlocked.items as Json[]).map((item) => item.truck.id), [blocked.truck.id]);
+    same('los contadores siguen el filtro: Mostrando 1 de 4', [onlyBlocked.counts.matching, onlyBlocked.counts.total, onlyBlocked.counts.blocked], [1, 4, 1]);
     same('Presencia siempre desconocida', (yard.items as Json[]).every((item) => item.presence?.state === 'unknown'), true);
     truthy('cuenta de presencia desconocida', presenceUnknown >= 4, presenceUnknown);
     same('Movement sin integración', [yard.incomingTrucks.status, yard.upcomingDepartures.status, yard.workLocation.status], ['unavailable', 'unavailable', 'unavailable']);

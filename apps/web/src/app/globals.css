@@ -28,6 +28,8 @@
   --warning: oklch(0.74 0.15 80);
   --warning-foreground: oklch(0.38 0.09 72);
   --warning-surface: oklch(0.965 0.035 92);
+  /* R6: a step below the card (table headers, folded groups). */
+  --sunken: oklch(0.965 0.006 247.9);
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-serif: var(--font-sans);
   --font-mono: var(--font-jetbrains-mono), monospace;
@@ -88,9 +90,10 @@
   --primary-foreground: oklch(0.2077 0.0398 265.7549);
   --secondary: oklch(0.8712 0.1363 154.4491);
   --secondary-foreground: oklch(0.2664 0.0628 152.9343);
-  --muted: oklch(0.2795 0.0368 260.031);
+  /* R6 (2026-10-06): muted and accent were the card color, so `bg-muted` and hovers did not show on cards. */
+  --muted: oklch(0.31 0.037 259);
   --muted-foreground: oklch(0.7107 0.0351 256.7878);
-  --accent: oklch(0.2795 0.0368 260.031);
+  --accent: oklch(0.33 0.04 258);
   --accent-foreground: oklch(0.7535 0.139 232.6615);
   --destructive: oklch(0.3958 0.1331 25.723);
   --destructive-text: oklch(0.78 0.12 22);
@@ -102,6 +105,7 @@
   --warning: oklch(0.82 0.14 91.6054);
   --warning-foreground: oklch(0.92 0.12 91.6054);
   --warning-surface: oklch(0.29 0.05 78);
+  --sunken: oklch(0.24 0.038 263);
   --shadow-2xs: 0 10px 15px -5px hsl(0 0% 0% / 0.2);
   --shadow-xs: var(--shadow-2xs);
   --shadow-sm: 0 10px 15px -5px hsl(0 0% 0% / 0.4), 0 1px 2px -6px hsl(0 0% 0% / 0.4);
@@ -144,7 +148,6 @@ html[data-display='standalone'] body {
 body {
   @apply min-h-screen bg-background font-body text-foreground antialiased;
   letter-spacing: var(--tracking-normal);
-  background-image: radial-gradient(ellipse at top, oklch(from var(--primary) l c h / 0.08), transparent 48%);
 }
 
 :focus-visible {
@@ -219,20 +222,20 @@ body {
   }
   /* 16px on every screen: iOS (iPhone and iPad) zooms into fields under 16px on focus (LTR-166). */
   .field {
-    @apply min-h-11 w-full rounded-lg border bg-background px-4 py-2.5 text-base text-foreground shadow-sm outline-none placeholder:text-muted-foreground focus:border-ring;
+    @apply min-h-11 w-full rounded-md border bg-background px-3 py-2.5 text-base text-foreground outline-none placeholder:text-muted-foreground focus:border-ring;
   }
   .card {
-    @apply rounded-xl border bg-card p-4 text-card-foreground shadow-soft;
+    @apply rounded-xl border bg-card p-4 text-card-foreground;
   }
 
   /* LTR-166 type scale (docs/design-system/foundations.md). Body text is `text-sm`, secondary text is
      `text-sm text-muted-foreground`, and meta (timestamps, counts) is `text-xs text-muted-foreground`.
      Nothing goes under 12px, and nothing is uppercased: labels and headings stay in sentence case. */
   .page-title {
-    @apply font-display text-2xl font-bold leading-tight text-foreground md:text-3xl;
+    @apply font-display text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-[28px];
   }
   .section-title {
-    @apply font-display text-lg font-semibold leading-snug text-foreground;
+    @apply text-base font-semibold leading-snug text-foreground;
   }
   .card-title {
     @apply text-base font-semibold leading-snug text-foreground;
@@ -246,4 +249,28 @@ body {
 select.field {
   appearance: none;
   padding-right: 2.75rem;
+}
+
+/* Stage 8: small pieces of the approved mockups (the mockup.html files in docs/proposals). */
+.tnum { font-variant-numeric: tabular-nums; }
+.seg[aria-pressed='true'], .seg[aria-checked='true'] {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 0 0 1px var(--border);
+}
+.anim-spin { animation: shop-spin 0.8s linear infinite; }
+@keyframes shop-spin { to { transform: rotate(360deg); } }
+.anim-toast-in { animation: shop-toast-in 0.18s ease-out; }
+@keyframes shop-toast-in { from { opacity: 0; transform: translateY(8px); } }
+.anim-sheet-in { animation: shop-sheet-in 0.2s ease-out; }
+@keyframes shop-sheet-in { from { transform: translateY(24px); opacity: 0; } }
+.anim-pop-in { animation: shop-pop-in 0.12s ease-out; }
+@keyframes shop-pop-in { from { opacity: 0; } }
+.anim-flash { animation: shop-flash 1.2s ease-out; }
+@keyframes shop-flash { from { background-color: color-mix(in oklch, var(--primary) 14%, transparent); } }
+@media (prefers-reduced-motion: reduce) {
+  .anim-toast-in { animation: none; }
+  .anim-sheet-in { animation: none; }
+  .anim-pop-in { animation: none; }
+  .anim-flash { animation: none; }
 }

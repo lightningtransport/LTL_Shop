@@ -92,8 +92,13 @@ describe('AdminService', () => {
       attention: [],
     });
     expect(prisma.workOrder.count).toHaveBeenCalledTimes(6);
-    // LTR-121: critical, high, paused, open, ready to close, active blocker.
-    expect(prisma.workOrder.findMany).toHaveBeenCalledTimes(6);
+    // LTR-121: critical, high, paused, open, ready to close, active blocker; then (stage 3) the queue of
+    // open Work Orders. Without YARD_READY_TO_GO_SINCE there is no Ready to Go window to read.
+    expect(prisma.workOrder.findMany).toHaveBeenCalledTimes(7);
+    expect(prisma.workOrder.findMany.mock.calls[6][0]).toMatchObject({
+      where: { status: { in: ['created', 'in_progress', 'waiting_paused'] } },
+      take: 200,
+    });
     expect(prisma.workOrder.findMany.mock.calls[5][0].where).toMatchObject({
       pauseEvents: { some: { isOfficialPause: false, resolvedAt: null } },
     });
@@ -174,7 +179,7 @@ describe('AdminService', () => {
     prisma.workOrderNote.findMany.mockResolvedValue([{
       id: 'n-1', body: 'Brake lights out', createdAt: new Date('2026-09-25T12:00:00Z'),
       author: { id: 'mg', name: 'MG' },
-      workOrder: { id: 'wo-1', displayId: 'WO-001', truck: { truckNumber: '277' } },
+      workOrder: { id: 'wo-1', displayId: 'WO-001', truck: { id: 't-277', truckNumber: '277' } },
     }]);
 
     const result = await createService(prisma).dashboard();
@@ -182,7 +187,7 @@ describe('AdminService', () => {
     expect(prisma.workOrderNote.findMany.mock.calls[0][0].where).toMatchObject({ kind: 'work_request', handledAt: null });
     expect(result.openWorkRequests).toEqual([{
       id: 'n-1', body: 'Brake lights out', author: { id: 'mg', name: 'MG' }, createdAt: '2026-09-25T12:00:00.000Z',
-      workOrderId: 'wo-1', workOrderDisplayId: 'WO-001', truckNumber: '277',
+      workOrderId: 'wo-1', workOrderDisplayId: 'WO-001', truckNumber: '277', truckId: 't-277',
     }]);
   });
 
@@ -295,6 +300,19 @@ describe('AdminService', () => {
         newValue: expect.objectContaining({ notes: 'Replaced the air hose' }),
       })],
     });
+  });
+
+  it('Stage 8: a cancelled Job carries its reason; other Jobs do not', async () => {
+    const created = detailRow({
+      jobs: [
+        { ...detailRow().jobs[0], status: 'cancelled', cancelledReason: 'Not needed' },
+        { ...detailRow().jobs[0], id: '00000000-0000-4000-8000-0000000000aa', status: 'to_do', cancelledReason: 'stale' },
+      ],
+    });
+    const prisma = createPrisma();
+    prisma.workOrder.findUnique.mockResolvedValue(created);
+    const detail = await createService(prisma).detail(created.id);
+    expect(detail.jobs.map((job) => job.cancelledReason)).toEqual(['Not needed', null]);
   });
 
   it('uses a stable sort-value plus UUID cursor without repeating the boundary row', async () => {
@@ -1640,5 +1658,49 @@ describe('Dashboard Ready to Go (LTR-164 #12)', () => {
     expect(yard.countReadyToGoTrucks).toHaveBeenCalledTimes(1);
     // The Dashboard no longer counts completed Work Orders on its own.
     expect(prisma.truck.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('Dashboard queue (stage 3 / D1, UX-5-002)', () => {
+  afterEach(() => { delete process.env.YARD_READY_TO_GO_SINCE; });
+
+  function queueService(open: unknown[], completed: unknown[]) {
+    const prisma = createPrisma();
+    prisma.workOrder.count.mockResolvedValue(0);
+    // Six attention queries first, then the open queue, then the completed (Ready to Go) window.
+    [[], [], [], [], [], []].forEach((value) => prisma.workOrder.findMany.mockResolvedValueOnce(value));
+    prisma.workOrder.findMany.mockResolvedValueOnce(open).mockResolvedValueOnce(completed);
+    return createService(prisma);
+  }
+
+  it('lists every open Work Order, not only eight, each with its Next step', async () => {
+    const open = Array.from({ length: 10 }, (_, index) => ({
+      ...baseRow, id: `open-${index}`, displayId: `WO-${index}`, truckId: `truck-${index}`,
+      truck: { ...baseRow.truck, id: `truck-${index}`, truckNumber: `T-${index}` },
+      status: 'in_progress', jobs: [{ status: 'to_do', assignedMechanicId: null }],
+    }));
+    const result = await queueService(open, []).dashboard();
+    expect(result.queue).toHaveLength(10);
+    expect(result.queue?.every((item) => item.nextStep)).toBe(true);
+  });
+
+  it('adds a Truck still Ready to Go (latest completed, not returned, no newer open Work Order)', async () => {
+    process.env.YARD_READY_TO_GO_SINCE = '2026-01-01T00:00:00.000Z';
+    const completed = (id: string, truckId: string, completedAt: string, extra: Record<string, unknown> = {}) => ({
+      ...baseRow, id, displayId: id, truckId, status: 'completed', completedAt: new Date(completedAt),
+      truck: { ...baseRow.truck, id: truckId, truckNumber: truckId },
+      jobs: [{ status: 'completed', assignedMechanicId: 'mechanic-1' }], serviceStatusEvents: [], ...extra,
+    });
+    const openOnBusyTruck = { ...baseRow, id: 'open-busy', displayId: 'WO-BUSY', truckId: 'busy', status: 'in_progress', truck: { ...baseRow.truck, id: 'busy', truckNumber: 'busy' } };
+    const result = await queueService([openOnBusyTruck], [
+      completed('WO-READY', 'ready', '2026-10-04T15:00:00.000Z'),
+      completed('WO-OLDER', 'ready', '2026-09-20T15:00:00.000Z'),
+      completed('WO-RETURNED', 'returned', '2026-10-03T15:00:00.000Z', {
+        serviceStatusEvents: [{ status: 'in_service', occurredAt: new Date('2026-10-04T09:00:00.000Z') }],
+      }),
+      completed('WO-BUSY-OLD', 'busy', '2026-10-02T15:00:00.000Z'),
+    ]).dashboard();
+    const ready = result.queue?.filter((item) => item.nextStep?.kind === 'return_to_service').map((item) => item.displayId);
+    expect(ready).toEqual(['WO-READY']);
   });
 });

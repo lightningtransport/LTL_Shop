@@ -25,9 +25,16 @@ Defined as CSS custom properties in `apps/web/src/app/globals.css`:
 | `--border`, `--input`, `--ring` | Hairlines, fields, focus ring |
 | `--success` | Positive status |
 | `--warning`, `--warning-foreground`, `--warning-surface` | Caution banners (Yard Phase 1) |
+| `--sunken` | A step below the card: table headers, folded groups (R6) |
 
 Tailwind maps these 1:1 in `apps/web/tailwind.config.js` (`background`,
-`primary`, `destructive`, `warning-surface`, and so on).
+`primary`, `destructive`, `warning-surface`, `sunken`, and so on). Each one
+is `color-mix(in oklch, var(--x) calc(<alpha-value> * 100%), transparent)`, so
+an opacity modifier works: `bg-primary/10`, `border-destructive/30`. Before R9
+(2026-10-06) those classes produced no CSS.
+
+In dark mode `--muted` (0.31) and `--accent` (0.33) sit above `--card` (0.2795),
+so quiet surfaces and hovers show on cards (R6; they used to be the card color).
 
 ### Contrast (LTR-166)
 
@@ -41,7 +48,8 @@ because `text-destructive` in dark mode measured 1.78:1. `--primary` is unchange
 
 ## Shop channel tokens
 
-Tailwind 3 opacity utilities need channel-only values. The same file defines
+Older channel-only tokens (still used; the theme colors above also take an
+opacity now). The same file defines
 `--shop-bg`, `--shop-panel`, `--shop-border`, `--shop-accent`,
 `--shop-accent-dark`, `--shop-muted`, `--shop-danger`, `--shop-success`.
 Use them as `bg-shop-panel`, `text-shop-muted`, `border-shop-border`,
@@ -127,6 +135,19 @@ Mechanics and managers install the web app on the phone's home screen.
   `theme-color` meta follows the system theme (`#ffffff` / `#0f172a`, the dark `--background`).
   In standalone mode `html` paints `var(--background)`, so opening the app never flashes the
   other theme.
+
+## Stage 8: mockup fidelity (2026-10-06)
+
+The tokens already matched the mockups (Stage 7). Stage 8 changed how they are used:
+- **Surfaces:** cards and fields without shadow; `bg-sunken` for group headers, column headers and lock
+  bands; menus and dialogs on `bg-card` (not `bg-popover`, which is the page color in dark).
+- **Buttons:** `rounded-md font-medium`, 44px on touch and 36px with a fine pointer; icons before the label.
+- **Chips:** tinted (`border-x/40 bg-x/10 text-x`) with a dot for status; `warning` is amber, never the blue
+  `shop-accent`.
+- **Type:** `.page-title` 24/28px semibold; section titles 16px semibold; `.tnum` for numbers.
+- **Motion:** `anim-sheet-in`, `anim-pop-in`, `anim-flash`, `anim-spin`, all off with reduced motion.
+- **Segmented control:** `.seg` (`aria-checked` / `aria-pressed`) for Priority.
+- **Mechanic tones:** sky, violet, emerald, rose, cyan, amber, slate (AA in both themes).
 
 ## Layout shells
 

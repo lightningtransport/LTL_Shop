@@ -111,6 +111,59 @@ describe('YardDataBoundaryService', () => {
     expect(String(fetchImpl.mock.calls[0][0])).toContain(new URL(DEFAULT_AGENT_REPORTING_URL).host);
   });
 
+  it('Stage 6 (D8): adds the shop side of each Truck Dispatch names — link, open Work Order, out of shop', async () => {
+    const fetchImpl = vi.fn(async (input: URL) => {
+      const url = String(input);
+      if (url.includes('report=trucks')) return jsonResponse({ data: [{ truck_number: 277, yard_location: 'Outside' }], has_more: false });
+      if (url.includes('report=returns')) return jsonResponse({ data: [{ Truck: '905', 'Return Date': '2026-09-22' }], has_more: false });
+      return jsonResponse({ data: [], has_more: false });
+    });
+    const findMany = vi.fn().mockResolvedValue([
+      { id: 't-277', truckNumber: '277', workOrders: [{ id: 'wo-1', displayId: 'WO-001', jobs: [] }] },
+      { id: 't-905', truckNumber: '905', workOrders: [] },
+    ]);
+    const service = new YardDataBoundaryService(config({ AGENT_REPORTING_KEY: 'server-only-key' }), { truck: { findMany } } as never);
+    const dto = await service.get(NOW, fetchImpl as unknown as typeof fetch);
+
+    expect(findMany.mock.calls[0][0].where).toEqual({ truckNumber: { in: ['277', '905'] } });
+    expect(dto.shop).toEqual([
+      { truckNumber: '277', truckId: 't-277', openWorkOrder: { id: 'wo-1', displayId: 'WO-001' }, outOfShop: false, phase: null, readyToGo: false, jobsLeft: 0 },
+      { truckNumber: '905', truckId: 't-905', openWorkOrder: null, outOfShop: false, phase: null, readyToGo: false, jobsLeft: 0 },
+    ]);
+  });
+
+  it('Stage 8: the shop side carries the Work Plan step, Ready to Go and Jobs left from the Yard', async () => {
+    const fetchImpl = vi.fn(async (input: URL) => {
+      const url = String(input);
+      if (url.includes('report=trucks')) return jsonResponse({ data: [{ truck_number: 277, yard_location: '301 Yard' }, { truck_number: 601, yard_location: '301 Yard' }], has_more: false });
+      return jsonResponse({ data: [], has_more: false });
+    });
+    const findMany = vi.fn().mockResolvedValue([
+      { id: 't-277', truckNumber: '277', workOrders: [{ id: 'wo-1', displayId: 'WO-001', jobs: [] }] },
+      { id: 't-601', truckNumber: '601', workOrders: [] },
+    ]);
+    const yard = { shopStatusByTruckNumber: vi.fn().mockResolvedValue(new Map([
+      ['277', { phase: 'pm', readyToGo: false, jobsLeft: 3 }],
+      ['601', { phase: 'ready_to_go', readyToGo: true, jobsLeft: 0 }],
+    ])) };
+    const service = new YardDataBoundaryService(config({ AGENT_REPORTING_KEY: 'server-only-key' }), { truck: { findMany } } as never, yard as never);
+    const dto = await service.get(NOW, fetchImpl as unknown as typeof fetch);
+    expect(yard.shopStatusByTruckNumber).toHaveBeenCalledWith(['277', '601']);
+    expect(dto.shop).toEqual([
+      expect.objectContaining({ truckNumber: '277', phase: 'pm', readyToGo: false, jobsLeft: 3 }),
+      expect.objectContaining({ truckNumber: '601', phase: 'ready_to_go', readyToGo: true, jobsLeft: 0 }),
+    ]);
+  });
+
+  it('Stage 6: Dispatch still answers when the shop lookup fails', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ data: [{ truck_number: 277, yard_location: 'Outside' }], has_more: false }));
+    const findMany = vi.fn().mockRejectedValue(new Error('db down'));
+    const service = new YardDataBoundaryService(config({ AGENT_REPORTING_KEY: 'server-only-key' }), { truck: { findMany } } as never);
+    const dto = await service.get(NOW, fetchImpl as unknown as typeof fetch);
+    expect(dto.workLocation.status).toBe('ok');
+    expect(dto.shop).toBeUndefined();
+  });
+
   it('keeps HTTP 200-shaped error sections when one upstream report fails', async () => {
     const fetchImpl = vi.fn(async (input: URL) => {
       const url = String(input);

@@ -59,3 +59,61 @@ export function dispatchSignalsByTruck(boundary?: {
   }
   return signals;
 }
+
+/**
+ * Stage 6 (UX-4-005): the one alert line of a Yard card, the most urgent first — blocked (a mechanic
+ * blocker), paused (official pause), out of the shop (D24), leaving soon with work left (Dispatch,
+ * today or the next shop day), nobody on a Job. Null when nothing needs the Manager's eye.
+ */
+export type YardCardAlert =
+  | { kind: 'blocked'; reason: string }
+  | { kind: 'paused'; reason: string | null }
+  | { kind: 'out_of_shop' }
+  | { kind: 'leaves'; date: string; jobsLeft: number }
+  | { kind: 'nobody'; job: string };
+
+export function yardCardAlert(
+  item: {
+    outOfShop?: boolean;
+    nextStep?: { kind: string; jobName?: string } | null;
+    activeWorkOrder: {
+      status: string;
+      jobsCompleted: number;
+      jobsTotal: number;
+      currentPause?: { reason: string } | null;
+      latestReportedBlocker?: { reason: string; blockerReason?: string | null } | null;
+    } | null;
+  },
+  dispatch: YardDispatchSignal | undefined,
+  soonUntil: string | null,
+): YardCardAlert | null {
+  const workOrder = item.activeWorkOrder;
+  if (workOrder?.latestReportedBlocker) {
+    return { kind: 'blocked', reason: workOrder.latestReportedBlocker.blockerReason ?? workOrder.latestReportedBlocker.reason };
+  }
+  if (workOrder?.status === 'waiting_paused') return { kind: 'paused', reason: workOrder.currentPause?.reason ?? null };
+  if (item.outOfShop) return { kind: 'out_of_shop' };
+  const open = workOrder && workOrder.status !== 'completed' && workOrder.status !== 'cancelled';
+  if (open && dispatch?.departs && soonUntil && dispatch.departs.slice(0, 10) <= soonUntil) {
+    return { kind: 'leaves', date: dispatch.departs, jobsLeft: Math.max(0, workOrder.jobsTotal - workOrder.jobsCompleted) };
+  }
+  if (item.nextStep?.kind === 'assign' && item.nextStep.jobName) return { kind: 'nobody', job: item.nextStep.jobName };
+  return null;
+}
+
+/**
+ * Stage 6 (D8): Trucks Dispatch reports outside while the shop has an open Work Order for them (and
+ * no Job sent the whole truck out, D24) — the two sources disagree, so the Dispatch tab says it.
+ */
+export function dispatchShopConflicts(
+  workLocation: { status: string; items: { truckNumber: string; location: string | null }[] } | undefined,
+  shop: Array<{ truckNumber: string; truckId: string; openWorkOrder: { id: string; displayId: string } | null; outOfShop: boolean }> | undefined,
+) {
+  if (!workLocation || workLocation.status !== 'ok' || !shop?.length) return [];
+  const byNumber = new Map(shop.map((truck) => [truck.truckNumber, truck]));
+  return workLocation.items.flatMap((item) => {
+    const truck = byNumber.get(item.truckNumber);
+    if (!truck?.openWorkOrder || truck.outOfShop || !/outside/i.test(item.location ?? '')) return [];
+    return [{ truckNumber: item.truckNumber, truckId: truck.truckId, location: item.location!.trim(), workOrder: truck.openWorkOrder }];
+  });
+}

@@ -409,6 +409,8 @@ export interface AdminWorkOrderJobDto {
   completedAt: string | null;
   completedBy: { id: string; name: string } | null;
   completionNotes: string | null;
+  /** Stage 8: why a cancelled Job was cancelled (null otherwise). */
+  cancelledReason?: string | null;
   /** LTR-146: when the PM job was started. */
   startedAt?: string | null;
   /** LTR-188 / D23: the Job this one helps (a helper Job); the web appends "· helper". */
@@ -480,6 +482,12 @@ export interface AdminDashboardDto {
     readyToGo?: number;
   };
   attention: AdminWorkOrderSummaryDto[];
+  /**
+   * D1 / UX-5-002 (stage 3): every open Work Order and every Truck still Ready to Go, each with its
+   * Next step (same rule as everywhere). The Dashboard groups them by the action the Manager takes.
+   * Additive: `attention` stays for older clients.
+   */
+  queue?: AdminWorkOrderSummaryDto[];
   /** LTR-126: mechanic work requests the Manager has not handled yet (newest first). */
   openWorkRequests?: AdminOpenWorkRequestDto[];
 }
@@ -492,6 +500,8 @@ export interface AdminOpenWorkRequestDto {
   workOrderId: string;
   workOrderDisplayId: string;
   truckNumber: string;
+  /** Stage 8: the Dashboard row links to the Truck. */
+  truckId?: string;
 }
 
 export interface YardPresenceDto {
@@ -557,6 +567,8 @@ export interface YardOperationsTruckDto {
   nextStep?: TruckNextStepDto | null;
   /** LTR-188 / D24: a pending Job of the truck's Work Order sent the whole truck to an external shop. */
   outOfShop?: boolean;
+  /** Stage 8: the Job that sent it out ("Out of shop · Radiator Repair"). */
+  outOfShopJobName?: string | null;
 }
 
 export interface YardOperationsCountsDto {
@@ -566,6 +578,14 @@ export interface YardOperationsCountsDto {
   readyToGo: number;
   blocked: number;
   presenceUnknown: number;
+  /** Stage 6 (D6): trucks matching every filter of the request (the buckets above count only these). */
+  matching?: number;
+  /** Stage 6: trucks on the board with no filter. */
+  total?: number;
+  /** Stage 6: the quick filters' counts — every filter applied except the quick ones (blocked, priority, out of shop). */
+  quick?: { all: number; blocked: number; highPriority: number; outOfShop: number; leavingSoon?: number };
+  /** Stage 8: Trucks per board step, every filter applied (the lane counts, over every page). */
+  byPhase?: Record<string, number>;
 }
 
 export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto> {
@@ -619,6 +639,8 @@ export interface WorkPlanJobDto {
   helperOfJobId?: string | null;
   /** LTR-188 / D24: set while the Job is at an external shop (uiStatus `external`). */
   external?: JobExternalDto | null;
+  /** Stage 8: when the Job was completed ("Done 3:53 PM"). */
+  completedAt?: string | null;
 }
 
 export interface WorkPlanMandatoryPhaseDto {
@@ -637,13 +659,17 @@ export interface WorkPlanCapabilitiesDto {
 export interface TruckWorkPlanDto {
   /** @deprecated LTR-150: always true; kept for web/API deploy skew. */
   sliceEnabled: boolean;
-  inspection: { outcome: WorkPlanInspectionOutcome };
+  /** Stage 8: `recordedAt` is when the inspection result was recorded (null while pending). */
+  inspection: { outcome: WorkPlanInspectionOutcome; recordedAt?: string | null };
   workOrder: {
     id: string;
     displayId: string;
     status: WorkOrderStatus;
     version: number;
     primaryCategoryName: string;
+    /** Stage 8: for the Work Order chip and the Close step. */
+    priority?: Priority;
+    completedAt?: string | null;
   } | null;
   jobs: WorkPlanJobDto[];
   remainingJobCount: number;
@@ -757,6 +783,23 @@ export interface YardDataBoundaryDto {
   workLocation: YardWorkLocationSectionDto;
   incomingTrucks: YardDataBoundarySectionDto<YardIncomingTruckItemDto>;
   upcomingDepartures: YardDataBoundarySectionDto<YardUpcomingDepartureItemDto>;
+  /**
+   * Stage 6 (D8, UX-5-004): the shop's side of each Truck Dispatch names — so the Dispatch tab links
+   * to the Truck and says when Dispatch and the shop disagree. Only Trucks the shop knows.
+   */
+  shop?: YardDispatchShopTruckDto[];
+}
+
+export interface YardDispatchShopTruckDto {
+  truckNumber: string;
+  truckId: string;
+  openWorkOrder: { id: string; displayId: string } | null;
+  /** LTR-188 / D24: a pending Job sent the whole truck to an external shop. */
+  outOfShop: boolean;
+  /** Stage 8: where the Truck is in the shop (Work Plan step) and how many Jobs are left. */
+  phase?: string | null;
+  readyToGo?: boolean;
+  jobsLeft?: number;
 }
 
 export interface PmPartDto {

@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WO Detail Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: Object.fromEntries(['background', 'foreground', 'card', 'muted', 'muted-foreground', 'primary', 'primary-foreground', 'accent', 'border', 'ring', 'success', 'warning', 'warning-foreground', 'warning-surface', 'destructive', 'destructive-text', 'sunken'].map((n) => [n, tok(n)])),
+        borderColor: { DEFAULT: 'var(--border)' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      },
+    },
+  };
+</script>
+<style>
+  /* Tokens from apps/web/src/app/globals.css. Proposed changes (dark): --accent and --muted no longer equal --card; new --sunken. */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  /* The CDN injects Tailwind's preflight (border-color #e5e7eb) after this sheet; `html *` outranks it. */
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--background); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  svg.lucide.s14 { width: 14px; height: 14px; }
+  svg.lucide.s20 { width: 20px; height: 20px; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .tab[aria-selected='true'] { color: var(--foreground); box-shadow: inset 0 -2px 0 var(--primary); }
+  .seg[aria-pressed='true'] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / .2), 0 0 0 1px var(--border); }
+  .tl { background-color: var(--card); background-image: linear-gradient(var(--tl), var(--tl)); }
+  .spin { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast-in { animation: tin .18s ease-out; }
+  @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+  .sheet-in { animation: sin .2s ease-out; }
+  @keyframes sin { from { transform: translateY(24px); opacity: 0; } }
+  .pop-in { animation: pin .12s ease-out; }
+  /* Centered dialogs keep their translate; only phones slide up. */
+  @media (min-width: 640px) { [role=dialog].sheet-in { animation-name: pin; } }
+  @keyframes pin { from { opacity: 0; } }
+  .flash { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background-color: color-mix(in oklch, var(--primary) 14%, transparent); } }
+  select.native { appearance: none; background-image: none; }
+</style>
+</head>
+<body class="min-h-screen font-sans text-sm antialiased">
+
+<!-- Sidebar (unchanged; outside this screen's scope) -->
+<aside class="fixed inset-y-0 left-0 hidden w-60 flex-col border-r bg-background md:flex">
+  <div class="flex h-14 items-center gap-2 border-b px-4">
+    <div class="grid size-7 place-items-center rounded-md bg-success/20 text-success"><i data-lucide="zap"></i></div>
+    <span class="font-semibold">LTL Shop</span><span class="text-xs text-muted-foreground">Admin</span>
+  </div>
+  <nav class="flex-1 space-y-5 p-3">
+    <div class="space-y-0.5">
+      <p class="px-2 pb-1 text-xs text-muted-foreground">Operations</p>
+      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="gauge"></i>Dashboard</a>
+      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="warehouse"></i>Yard Operations</a>
+      <a class="flex h-9 items-center gap-2.5 rounded-md bg-accent px-2 font-medium text-foreground"><i data-lucide="clipboard-list"></i>Work Orders</a>
+      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="truck"></i>Trucks</a>
+    </div>
+    <div class="space-y-0.5">
+      <p class="px-2 pb-1 text-xs text-muted-foreground">Setup</p>
+      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="users"></i>Mechanics</a>
+      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="library"></i>Job Catalog</a>
+      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="workflow"></i>Shop workflow</a>
+    </div>
+    <div class="space-y-0.5">
+      <p class="px-2 pb-1 text-xs text-muted-foreground">Audit</p>
+      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="history"></i>History</a>
+    </div>
+  </nav>
+  <div class="border-t p-3"><p class="font-medium">Crixcrox</p><p class="text-xs text-muted-foreground">Admin</p></div>
+</aside>
+
+<div class="md:pl-60">
+  <header class="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b bg-background/90 px-4 backdrop-blur md:px-6">
+    <div class="flex min-w-0 items-center gap-1">
+      <button class="-ml-2 grid size-10 place-items-center rounded-md text-muted-foreground hover:bg-accent md:hidden" aria-label="Menu"><i data-lucide="menu"></i></button>
+      <nav class="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-muted-foreground" aria-label="Breadcrumb">
+        <a href="#" class="hover:text-foreground">Work Orders</a><i data-lucide="chevron-right" class="s14"></i><span class="font-medium text-foreground">WO-010</span>
+      </nav>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleDemo()" class="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-primary/40 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"><i data-lucide="flask-conical" class="s14"></i>Demo</button>
+      <button onclick="document.documentElement.classList.toggle('dark')" class="grid size-8 place-items-center rounded-md border text-muted-foreground hover:bg-accent" aria-label="Theme"><i data-lucide="sun-moon"></i></button>
+      <div class="grid size-8 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">CR</div>
+    </div>
+  </header>
+
+  <main id="main" class="mx-auto max-w-[1440px] space-y-6 px-4 pb-28 pt-6 md:px-6">
+    <div id="v-header"></div>
+    <div id="v-alert"></div>
+    <div id="v-next"></div>
+    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div class="min-w-0 space-y-6"><div id="v-jobs"></div><div id="v-notes"></div></div>
+      <aside id="v-aside" class="space-y-6" aria-label="Work Order context"></aside>
+    </div>
+    <div id="v-history"></div>
+  </main>
+</div>
+
+<div id="v-sticky"></div>
+<div id="layer"></div>
+<div id="toasts" class="pointer-events-none fixed inset-x-3 bottom-3 z-[60] flex flex-col items-center gap-2 sm:inset-x-auto sm:right-4 sm:items-end"></div>
+
+<!-- Demo panel (Spanish; not part of the product) -->
+<div id="demo" class="fixed inset-x-3 bottom-3 z-50 hidden max-h-[75vh] overflow-auto rounded-xl border bg-card p-4 shadow-2xl sm:inset-x-auto sm:right-4 sm:top-16 sm:bottom-auto sm:w-[360px]">
+  <div class="mb-3 flex items-center justify-between"><p class="font-semibold">Panel de demo</p><button onclick="toggleDemo()" class="grid size-8 place-items-center rounded-md hover:bg-accent" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
+  <p class="mb-2 text-xs text-muted-foreground">Estado de la Work Order</p>
+  <div class="grid grid-cols-2 gap-1.5" id="presets"></div>
+  <div class="mt-4 space-y-2 border-t pt-3">
+    <label class="flex items-center justify-between gap-3"><span>Solo lectura (sin work_orders.manage)</span><input type="checkbox" id="opt-ro" class="size-4 accent-[var(--primary)]" onchange="S.canManage=!this.checked; render()"></label>
+    <label class="flex items-center justify-between gap-3"><span>Simular error en la próxima acción</span><input type="checkbox" id="opt-fail" class="size-4 accent-[var(--primary)]" onchange="S.failNext=this.checked"></label>
+  </div>
+  <details class="mt-4 border-t pt-3">
+    <summary class="cursor-pointer font-medium">Qué hace cada acción</summary>
+    <ul class="mt-2 list-disc space-y-1.5 pl-4 text-muted-foreground">
+      <li><b class="text-foreground">Pause</b>: diálogo con motivo obligatorio (sin preselección). Solo en In progress. Al pausar aparece <b class="text-foreground">Resume</b>.</li>
+      <li><b class="text-foreground">“…”</b>: menú. Abierta: Correct time, Cancel. Completada: Return to Service, Reopen. Cancelada: Reopen. Cada una abre su diálogo.</li>
+      <li><b class="text-foreground">Resolve</b>: nota opcional en línea, confirma, el siguiente paso se recalcula.</li>
+      <li><b class="text-foreground">Mecánico</b>: selector con búsqueda; “Unassign” desasigna. QC no tiene selector (lo toma Safety).</li>
+      <li><b class="text-foreground">Complete</b> (job): sin confirmación, igual que hoy; la fila pasa a Done.</li>
+      <li><b class="text-foreground">“…” del job</b>: Cancel job (pendiente) o Reopen job (cancelado), motivo obligatorio.</li>
+      <li><b class="text-foreground">Add helper</b> (D23): en el “…” de un Job Standard pendiente. Crea “Job · helper” con su propio dueño, debajo del Job principal.</li>
+      <li><b class="text-foreground">Send to external shop</b> (D24): sale la pieza o el camión + nota obligatoria. El Job queda sin dueño ni reloj; <b class="text-foreground">Returned</b> lo completa o lo asigna. Si solo queda eso, el siguiente paso es esperar.</li>
+      <li><b class="text-foreground">Times</b> (D20/D21): tramos con “Day close” (5:00 PM) o “Switched truck”; el tramo en curso no se corrige.</li>
+      <li><b class="text-foreground">PM A / PM B</b>: cambia el servicio PM; el job PM se completa desde el PM service.</li>
+      <li>Sin jobs pendientes: <b class="text-foreground">Confirm completion</b> arriba y barra fija al hacer scroll.</li>
+      <li><b class="text-foreground">Priority</b>: elegir + Update (como hoy). <b class="text-foreground">Notes</b>: Post; las work requests se marcan como atendidas.</li>
+      <li><b class="text-foreground">History › Times › Correct…</b>: diálogo con validación (fin &gt; inicio, motivo).</li>
+      <li>Errores: mensaje en línea + toast (activa “Simular error”).</li>
+    </ul>
+  </details>
+  <button onclick="reset()" class="mt-4 h-9 w-full rounded-md border font-medium hover:bg-accent">Reiniciar demo</button>
+</div>
+
+<script>
+/* ───────────────────────── Demo data ───────────────────────── */
+const MECH = {
+  ma: { name: 'Miguel Ángel', ini: 'MA', tone: 'sky' },
+  md: { name: 'Mario Díaz', ini: 'MD', tone: 'violet' },
+  mg: { name: 'Manuel García', ini: 'MG', tone: 'emerald' },
+  lr: { name: 'Luis Ramos', ini: 'LR', tone: 'rose' },
+  jt: { name: 'Jorge Torres', ini: 'JT', tone: 'cyan' },
+  mp: { name: 'Marco PM', ini: 'MP', tone: 'amber' },
+  cr: { name: 'Crixcrox', ini: 'CR', tone: 'slate' },
+};
+const STANDARD = ['ma', 'md', 'mg', 'lr', 'jt'];
+const PM_MECHS = ['mp'];
+const PAUSE_REASONS = ['Waiting for Parts', 'Waiting for Approval', 'Waiting for Vendor', 'Waiting for Equipment / Tool', 'Waiting for Bay', 'Waiting for Driver', 'Truck Unavailable', 'Working on Another Work Order', 'Break', 'End of Shift', 'Other'];
+const TONE = {
+  sky: 'bg-sky-500/20 text-sky-700 dark:text-sky-300', violet: 'bg-violet-500/20 text-violet-700 dark:text-violet-300',
+  emerald: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300', rose: 'bg-rose-500/20 text-rose-700 dark:text-rose-300',
+  cyan: 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300', amber: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+  slate: 'bg-slate-500/20 text-slate-700 dark:text-slate-300',
+};
+
+let clock = 12 * 60 + 5; // demo "now": Oct 5, 12:05 PM, advances one minute per action
+function now() { clock += 1; const h = Math.floor(clock / 60), m = clock % 60; return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; }
+let uid = 100; const id = () => `x${uid++}`;
+
+function seed() {
+  return {
+    status: 'in_progress', priority: 'normal', draftPriority: 'normal', canManage: true, failNext: false,
+    pause: null, returnedAt: null, closeReason: null, completedAt: null,
+    jobs: [
+      { id: 'j1', name: 'Air Dryer', cat: 'Air & Brake System', kind: 'std', status: 'to_do', mech: 'mg' },
+      { id: 'j2', name: 'Alignment', cat: 'Suspension & Steering', kind: 'std', status: 'to_do', mech: 'ma' },
+      { id: 'j3', name: 'Detailing', cat: 'Detailing', kind: 'std', status: 'to_do', mech: 'md' },
+      { id: 'j4', name: 'PM A Service', cat: 'PM', kind: 'pm', status: 'to_do', mech: 'mp', pm: 'A' },
+      { id: 'j5', name: 'Quality Check', cat: 'Quality Check', kind: 'qc', status: 'to_do', mech: null },
+      { id: 'j6', name: 'Fuel Filters', cat: 'Fuel System', kind: 'std', status: 'completed', mech: 'mg', doneBy: 'mg', doneAt: 'Oct 2, 3:53 PM', note: 'Ready' },
+      { id: 'j7', name: 'Air Leak', cat: 'Air & Brake System', kind: 'std', status: 'completed', mech: 'mg', doneBy: 'mg', doneAt: 'Oct 2, 4:04 PM' },
+      { id: 'j8', name: 'Replace Air Hose', cat: 'Air & Brake System', kind: 'std', status: 'completed', mech: 'mg', doneBy: 'mg', doneAt: 'Oct 2, 4:04 PM' },
+      // D23: a helper Job is its own Job ("<Job> · helper") with its own owner.
+      { id: 'j10', name: 'Alignment', helperOf: 'j2', cat: 'Suspension & Steering', kind: 'std', status: 'to_do', mech: 'jt' },
+      // D24: at an external shop — no owner, no clock, not "unassigned".
+      { id: 'j9', name: 'Radiator Repair', cat: 'Cooling System', kind: 'std', status: 'to_do', mech: null, external: { kind: 'part', note: 'Radiator to Diesel Pro, Barstow. Back Oct 7.', at: 'Oct 4, 10:30 AM' } },
+    ],
+    blockers: [
+      { id: 'b1', job: 'j1', reason: 'Waiting for Parts', by: 'mg', at: 'Oct 2, 3:59 PM', notes: ['Cartridge is cracked, part ordered.'], resolved: null },
+      { id: 'b0', job: 'j6', reason: 'Waiting for Parts', by: 'mg', at: 'Oct 2, 3:50 PM', notes: ['compren la pieza'], resolved: { by: 'cr', at: 'Oct 2, 3:53 PM', note: 'ya la compramos' } },
+    ],
+    notes: [
+      { id: 'n1', by: 'mg', at: 'Oct 2, 3:50 PM', body: 'The air dryer cartridge is cracked, ordered a replacement through parts.', kind: 'note' },
+      { id: 'n2', by: 'ma', at: 'Oct 3, 8:10 AM', body: 'Left mud flap is torn, should we replace it while the truck is here?', kind: 'request', handled: null },
+    ],
+    segments: [
+      { id: 's4', type: 'labor', mech: 'ma', day: 'Oct 5', start: '2026-10-05T11:40', end: null },
+      { id: 's3', type: 'labor', mech: 'mg', day: 'Oct 3', start: '2026-10-03T08:02', end: '2026-10-03T09:15', endReason: 'switched_truck' },
+      { id: 's2', type: 'labor', mech: 'mg', day: 'Oct 2', start: '2026-10-02T15:59', end: '2026-10-02T17:00', endReason: 'day_close' },
+      { id: 's1', type: 'labor', mech: 'mg', day: 'Oct 2', start: '2026-10-02T15:50', end: '2026-10-02T15:53' },
+    ],
+    pauses: [],
+    history: [
+      { id: 'rh1', wo: 'WO-0007', cat: 'Brakes', date: 'Aug 14, 2026', mileage: '281,402', by: ['Manuel García'], jobs: ['Brake chamber', 'Slack adjuster'] },
+      { id: 'rh2', wo: 'WO-0003', cat: 'PM', date: 'Jun 2, 2026', mileage: '262,118', by: ['Marco PM'], jobs: ['PM B Service'] },
+    ],
+    activity: [
+      ['Oct 5, 2026', 'play', 'primary', '<b>Miguel Ángel</b> continued work', null, '11:40 AM'],
+      ['Oct 4, 2026', 'building-2', 'primary', '<b>Crixcrox</b> sent <b>Radiator Repair</b> to an external shop', 'The part goes out · “Radiator to Diesel Pro, Barstow. Back Oct 7.”', '10:30 AM'],
+      ['Oct 3, 2026', 'user-plus', 'muted', '<b>Crixcrox</b> added a helper on <b>Alignment</b>', 'Jorge Torres', '9:40 AM'],
+      ['Oct 3, 2026', 'arrow-left-right', 'muted', '<b>Manuel García</b>’s clock stopped: switched truck', 'Started on Truck 742', '9:15 AM'],
+      ['Oct 2, 2026', 'moon', 'muted', 'Day close: the app stopped running clocks at 5:00 PM', 'Manuel García', '5:00 PM'],
+      ['Oct 2, 2026', 'check', 'success', '<b>Manuel García</b> completed <b>Replace Air Hose</b>', null, '4:04 PM'],
+      ['Oct 2, 2026', 'check', 'success', '<b>Manuel García</b> completed <b>Air Leak</b>', null, '4:04 PM'],
+      ['Oct 2, 2026', 'play', 'primary', '<b>Manuel García</b> started work', null, '3:59 PM'],
+      ['Oct 2, 2026', 'triangle-alert', 'warning', '<b>Manuel García</b> reported a blocker on <b>Air Dryer</b>', 'Waiting for Parts', '3:59 PM'],
+      ['Oct 2, 2026', 'list-plus', 'muted', '<b>Crixcrox</b> added 3 jobs and 2 mechanics', 'Air Dryer, Air Leak, Replace Air Hose · Manuel García, Marco PM', '3:58 PM'],
+      ['Oct 2, 2026', 'circle-check', 'success', '<b>Crixcrox</b> resolved the blocker on <b>Fuel Filters</b>', '“ya la compramos”', '3:53 PM'],
+      ['Oct 2, 2026', 'check', 'success', '<b>Manuel García</b> completed <b>Fuel Filters</b>', '“Ready”', '3:53 PM'],
+      ['Oct 2, 2026', 'message-square', 'muted', '<b>Manuel García</b> added a note', null, '3:50 PM'],
+      ['Oct 2, 2026', 'triangle-alert', 'warning', '<b>Manuel García</b> reported a blocker on <b>Fuel Filters</b>', 'Waiting for Parts', '3:50 PM'],
+      ['Oct 2, 2026', 'play', 'primary', '<b>Manuel García</b> started work', null, '3:50 PM'],
+      ['Oct 1, 2026', 'list-plus', 'muted', '<b>Crixcrox</b> added <b>Fuel Filters</b>', null, '9:27 AM'],
+      ['Oct 1, 2026', 'file-plus', 'muted', '<b>Crixcrox</b> created the Work Order', null, '9:26 AM'],
+    ].map(([day, icon, tone, text, detail, at]) => ({ id: id(), day, icon, tone, text, detail, at })),
+  };
+}
+let S = seed();
+const freshUI = () => ({ tab: 'activity', showAllActivity: false, closedOpen: true, resolving: null, resolveNote: '', resolvedOpen: false, pending: null, alert: null, noteDraft: '', historyFilter: '' });
+let UI = freshUI();
+
+/* ───────────────────────── Helpers ───────────────────────── */
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const ic = (name, cls = '') => `<i data-lucide="${name}" class="${cls}"></i>`;
+const av = (m, size = 'size-6') => m ? `<span title="${MECH[m].name}" class="grid ${size} shrink-0 place-items-center rounded-full text-[12px] font-semibold ${TONE[MECH[m].tone]}">${MECH[m].ini}</span>` : '';
+const isOpen = () => S.status === 'in_progress' || S.status === 'waiting_paused';
+const canEdit = () => S.canManage && isOpen();
+const openBlocker = (jobId) => S.blockers.find((b) => b.job === jobId && !b.resolved);
+const jobsLeft = () => S.jobs.filter((j) => j.status === 'to_do');
+const readyToClose = () => S.canManage && isOpen() && jobsLeft().length === 0 && S.jobs.some((j) => j.status === 'completed');
+const readyReturn = () => S.status === 'completed' && !S.returnedAt;
+const isExternal = (j) => j.status === 'to_do' && Boolean(j.external);
+// D23: a helper goes on a pending Standard Job that is not a helper Job and not out.
+const canAddHelper = (j) => j.status === 'to_do' && j.kind === 'std' && !j.helperOf && !j.external;
+// D24: anything pending except Quality Check, and not already out.
+const canSendExternal = (j) => j.status === 'to_do' && j.kind !== 'qc' && !j.external;
+const nameHtml = (j) => `${j.name}${j.helperOf ? '<span class="font-normal text-muted-foreground"> · helper</span>' : ''}`;
+const nameText = (j) => `${j.name}${j.helperOf ? ' · helper' : ''}`;
+const extWhat = (j) => j.external.kind === 'truck' ? 'The truck is out' : 'The part is out';
+const updatedLabel = () => `${S.activity[0].day.replace(', 2026', '')}, ${S.activity[0].at}`;
+const pendingBtn = (key, label) => UI.pending === key ? `${ic('loader-circle', 'spin s14')}Saving…` : label;
+function log(icon, tone, text, detail) { S.activity.unshift({ id: id(), day: 'Oct 5, 2026', icon, tone, text, detail, at: now() }); }
+
+const BTN = {
+  primary: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 font-medium text-primary-foreground hover:opacity-90 disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground',
+  outline: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 font-medium hover:bg-accent disabled:pointer-events-none disabled:text-muted-foreground disabled:opacity-70',
+  ghost: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-60',
+  danger: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-destructive px-3 font-medium text-white hover:opacity-90 disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground',
+};
+
+/* Every mutation goes through here: pending state, optional simulated failure, toast. */
+function act(key, success, fn) {
+  if (UI.pending) return;
+  UI.pending = key; UI.alert = null; render();
+  setTimeout(() => {
+    UI.pending = null;
+    if (S.failNext) {
+      S.failNext = false; document.getElementById('opt-fail').checked = false;
+      UI.alert = 'This Work Order changed in another session. Reload before trying again.';
+      closeLayer(); toast('error', UI.alert);
+    } else {
+      fn(); closeLayer(); toast('success', success);
+    }
+    render();
+  }, 550);
+}
+
+function toast(kind, text) {
+  const el = document.createElement('div');
+  el.className = `toast-in pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-lg border bg-card px-3.5 py-3 shadow-xl sm:w-[360px] ${kind === 'error' ? 'border-destructive/50' : ''}`;
+  el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  el.innerHTML = `${ic(kind === 'error' ? 'circle-alert' : 'circle-check', kind === 'error' ? 'mt-0.5 text-destructive-text' : 'mt-0.5 text-success')}<p class="flex-1">${esc(text)}</p>`;
+  document.getElementById('toasts').appendChild(el); lucide.createIcons();
+  setTimeout(() => el.remove(), 3800);
+}
+
+/* ───────────────────────── Render ───────────────────────── */
+function render() {
+  document.getElementById('v-header').innerHTML = header();
+  document.getElementById('v-alert').innerHTML = UI.alert ? `<div role="alert" class="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/15 px-4 py-3 text-destructive-text">${ic('circle-alert', 'mt-0.5')}<p class="flex-1">${esc(UI.alert)}</p><button onclick="UI.alert=null;render()" class="font-medium underline-offset-2 hover:underline">Reload</button></div>` : '';
+  document.getElementById('v-next').innerHTML = nextStep();
+  document.getElementById('v-jobs').innerHTML = jobs();
+  document.getElementById('v-notes').innerHTML = notes();
+  document.getElementById('v-aside').innerHTML = aside();
+  document.getElementById('v-history').innerHTML = history();
+  document.getElementById('presets').innerHTML = presets();
+  const c = document.getElementById('dlg-confirm');
+  if (c && UI.pending) { c.disabled = true; c.innerHTML = `${ic('loader-circle', 'spin s14')}Saving…`; }
+  lucide.createIcons();
+  watchSticky();
+}
+
+function statusBadge() {
+  const m = {
+    in_progress: ['In progress', 'border-primary/30 bg-primary/10 text-primary', 'bg-primary'],
+    waiting_paused: ['Paused', 'border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning', 'bg-warning'],
+    completed: ['Completed', 'border-success/40 bg-success/10 text-success', 'bg-success'],
+    cancelled: ['Cancelled', 'border-border bg-muted text-muted-foreground', 'bg-muted-foreground'],
+  }[S.status];
+  return `<span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${m[1]}"><span class="size-1.5 rounded-full ${m[2]}"></span>${m[0]}</span>`;
+}
+function priorityBadge() {
+  const m = { low: ['Low priority', 'text-muted-foreground'], normal: ['Normal priority', 'text-muted-foreground'], high: ['High priority', 'border-warning/40 text-warning-foreground dark:text-warning'], critical: ['Critical priority', 'border-destructive/50 bg-destructive/20 text-destructive-text'] }[S.priority];
+  return `<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${m[1]}">${m[0]}</span>`;
+}
+
+function header() {
+  const done = S.jobs.filter((j) => j.status === 'completed').length;
+  const total = S.jobs.filter((j) => j.status !== 'cancelled').length;
+  const blocked = jobsLeft().filter((j) => openBlocker(j.id)).length;
+  const out = jobsLeft().filter(isExternal).length;
+  const mechs = [...new Set(S.jobs.flatMap((j) => [j.mech, j.doneBy]).filter((m) => m && m !== 'cr'))];
+  const avatars = (size) => `<div class="flex -space-x-1">${mechs.map((m) => `<span class="rounded-full ring-2 ring-card">${av(m, size)}</span>`).join('')}</div>`;
+  const bar = `<div class="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-muted-foreground/20" role="img" aria-label="${done} of ${total} jobs done, ${blocked} blocked, ${out} at an external shop"><span class="bg-success" style="width:${(done / total) * 100}%"></span><span class="bg-warning" style="width:${(blocked / total) * 100}%"></span><span class="bg-primary/70" style="width:${(out / total) * 100}%"></span></div>`;
+  const waiting = S.pauses.length ? '12m' : '0m';
+  const updated = updatedLabel();
+
+  let actions = '';
+  if (S.canManage) {
+    if (S.status === 'waiting_paused') actions += `<button onclick="resume()" class="${BTN.primary} h-11 flex-1 sm:h-9 sm:flex-none" ${UI.pending ? 'disabled' : ''}>${pendingBtn('resume', `${ic('play')}Resume`)}</button>`;
+    else if (isOpen()) actions += `<button onclick="openDialog('pause')" class="${BTN.outline} h-11 flex-1 sm:h-9 sm:flex-none" ${UI.pending ? 'disabled' : ''}>${ic('pause')}Pause</button>`;
+    actions += `<button onclick="openMenu(this, woMenu())" class="${BTN.outline} size-11 px-0 sm:size-9" aria-label="More actions" aria-haspopup="menu">${ic('ellipsis')}</button>`;
+  }
+
+  return `<section class="space-y-5">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div class="min-w-0 space-y-1.5">
+        <div class="flex flex-wrap items-center gap-2.5"><h1 class="text-2xl font-semibold tracking-tight md:text-[28px]">Truck 918</h1>${statusBadge()}${priorityBadge()}</div>
+        <p class="text-muted-foreground"><span class="font-mono text-[13px] text-foreground/90">WO-010</span><span class="mx-1.5 text-border">•</span>2026 Peterbilt 579<span class="hidden sm:inline"><span class="mx-1.5 text-border">•</span>Opened Oct 1, 9:26 AM</span><span class="mx-1.5 text-border">•</span>Updated ${updated}</p>
+        ${!S.canManage ? `<p class="flex items-center gap-1.5 pt-1 text-muted-foreground">${ic('eye', 's14')}View only. Only a Shop Manager can change this Work Order.</p>` : ''}
+      </div>
+      <div class="flex items-center gap-2 sm:shrink-0">
+        <a href="#" class="${BTN.ghost} hidden h-9 sm:inline-flex">${ic('truck')}Open Truck</a>${actions}
+      </div>
+    </div>
+    <div class="space-y-3 rounded-xl border bg-card p-4 sm:hidden">
+      <div class="flex items-center justify-between gap-3"><p class="tnum text-lg font-semibold">${done}<span class="text-muted-foreground">/${total} jobs</span></p>${avatars('size-7')}</div>${bar}
+      <dl class="grid grid-cols-3 divide-x border-t pt-3 text-center">
+        <div><dt class="text-xs text-muted-foreground">Labor</dt><dd class="tnum font-semibold">5m</dd></div>
+        <div><dt class="text-xs text-muted-foreground">Waiting</dt><dd class="tnum font-semibold">${waiting}</dd></div>
+        <div><dt class="text-xs text-muted-foreground">Age</dt><dd class="tnum font-semibold">4d 2h</dd></div>
+      </dl>
+    </div>
+    <dl class="hidden overflow-hidden rounded-xl border bg-card sm:grid sm:grid-cols-3 lg:grid-cols-5 [&>div]:p-4">
+      <div class="space-y-2 max-lg:col-span-3 max-lg:border-b lg:border-r"><dt class="text-xs text-muted-foreground">Progress</dt><dd class="tnum text-xl font-semibold">${done}<span class="text-muted-foreground">/${total} jobs</span></dd>${bar}</div>
+      <div class="space-y-1 border-r"><dt class="text-xs text-muted-foreground">Active labor</dt><dd class="tnum text-xl font-semibold">5m</dd></div>
+      <div class="space-y-1 border-r"><dt class="text-xs text-muted-foreground">Waiting</dt><dd class="tnum text-xl font-semibold">${waiting}</dd></div>
+      <div class="space-y-1 max-lg:hidden lg:border-r"><dt class="text-xs text-muted-foreground">Age</dt><dd class="tnum text-xl font-semibold">4d 2h</dd></div>
+      <div class="space-y-1.5"><dt class="text-xs text-muted-foreground">Mechanics</dt><dd class="flex items-center gap-2">${avatars('size-7')}<span class="text-muted-foreground">${mechs.length}</span></dd></div>
+    </dl>
+  </section>`;
+}
+
+function callout(tone, icon, eyebrow, title, sub, actionsHtml, extra = '') {
+  const t = {
+    warning: ['border-warning/40 bg-warning-surface/60', 'bg-warning/15 text-warning-foreground dark:text-warning', 'text-warning-foreground/80'],
+    primary: ['border-primary/40 bg-primary/[0.06]', 'bg-primary/15 text-primary', 'text-primary'],
+    success: ['border-success/40 bg-success/[0.06]', 'bg-success/15 text-success', 'text-success'],
+    muted: ['border-border bg-card', 'bg-muted text-muted-foreground', 'text-muted-foreground'],
+  }[tone];
+  return `<section id="next-step" class="rounded-xl border ${t[0]}" role="status">
+    <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
+      <div class="hidden size-9 shrink-0 place-items-center rounded-lg sm:grid ${t[1]}">${ic(icon)}</div>
+      <div class="min-w-0 flex-1 space-y-1">
+        <p class="flex items-center gap-2 text-xs ${t[2]}"><span class="sm:hidden">${ic(icon, 's14')}</span>${eyebrow}</p>
+        <p class="font-semibold">${title}</p>${sub ? `<p class="text-muted-foreground">${sub}</p>` : ''}${extra}
+      </div>
+      ${actionsHtml ? `<div class="flex shrink-0 flex-col gap-2 sm:flex-row">${actionsHtml}</div>` : ''}
+    </div>${resolvedFooter()}
+  </section>`;
+}
+function resolvedFooter() {
+  const resolved = S.blockers.filter((b) => b.resolved);
+  if (!resolved.length) return '';
+  const names = resolved.map((b) => S.jobs.find((j) => j.id === b.job).name).join(', ');
+  return `<button onclick="UI.resolvedOpen=!UI.resolvedOpen;render()" aria-expanded="${UI.resolvedOpen}" class="flex min-h-11 w-full items-center gap-2 border-t border-inherit px-4 py-2.5 text-left text-muted-foreground hover:text-foreground">${ic('circle-check', 's14 text-success')}<span class="min-w-0 truncate">${resolved.length} resolved blocker${resolved.length > 1 ? 's' : ''} · ${names}</span>${ic('chevron-down', `s14 ml-auto transition ${UI.resolvedOpen ? 'rotate-180' : ''}`)}</button>
+  ${UI.resolvedOpen ? `<ul class="divide-y border-t border-inherit">${resolved.map((b) => `<li class="space-y-0.5 px-4 py-3 text-muted-foreground"><p><span class="font-medium text-foreground">${S.jobs.find((j) => j.id === b.job).name}: ${b.reason}</span> · reported by ${MECH[b.by].name}, ${b.at}</p>${b.notes.map((n) => `<p>Mechanic: “${esc(n)}”</p>`).join('')}<p>Resolved by ${MECH[b.resolved.by].name}, ${b.resolved.at}${b.resolved.note ? ` · “${esc(b.resolved.note)}”` : ''}</p></li>`).join('')}</ul>` : ''}`;
+}
+
+function nextStep() {
+  if (S.status === 'cancelled') return callout('muted', 'circle-x', 'Cancelled', 'This Work Order was cancelled', `${S.closeReason ? `“${esc(S.closeReason)}” · ` : ''}Reopen it from “…” to change Jobs.`, '');
+  if (S.status === 'completed') {
+    if (S.returnedAt) return callout('success', 'circle-check', 'Done', 'Truck returned to service', `Completed ${S.completedAt} · returned ${S.returnedAt}`, '');
+    return callout('primary', 'truck', 'Next step', 'Return the truck to service', `Work Order completed ${S.completedAt}. The truck is Ready to Go until you return it.`,
+      S.canManage ? `<button onclick="openDialog('return')" class="${BTN.primary} h-11 sm:h-9">Return to Service</button>` : '');
+  }
+  if (S.status === 'waiting_paused') return callout('warning', 'circle-pause', 'Paused', `Paused · ${S.pause.reason}`, `Since ${S.pause.at} by Crixcrox. Mechanics cannot start work while paused.`,
+    S.canManage ? `<button onclick="resume()" class="${BTN.primary} h-11 sm:h-9" ${UI.pending ? 'disabled' : ''}>${pendingBtn('resume', `${ic('play')}Resume`)}</button>` : '');
+  const b = S.blockers.find((x) => !x.resolved && S.jobs.find((j) => j.id === x.job).status === 'to_do');
+  if (b) {
+    const job = S.jobs.find((j) => j.id === b.job);
+    const others = S.blockers.filter((x) => !x.resolved).length - 1;
+    const form = UI.resolving === b.id ? `<form class="space-y-2 pt-2" onsubmit="event.preventDefault();resolveBlocker('${b.id}')">
+        <label class="sr-only" for="resolve-note">Note for the mechanic (optional)</label>
+        <textarea id="resolve-note" rows="2" maxlength="1000" placeholder="Note for the mechanic (optional)" oninput="UI.resolveNote=this.value" class="w-full rounded-md border bg-background px-3 py-2 text-base outline-none placeholder:text-muted-foreground focus:border-ring">${esc(UI.resolveNote)}</textarea>
+        <div class="flex gap-2"><button class="${BTN.primary} h-11 flex-1 sm:h-9 sm:flex-none" ${UI.pending ? 'disabled' : ''}>${pendingBtn('resolve', 'Confirm resolve')}</button><button type="button" onclick="UI.resolving=null;render()" class="${BTN.ghost} h-11 sm:h-9">Cancel</button></div>
+      </form>` : '';
+    const notesHtml = b.notes.map((n) => `<p class="text-foreground/90">Mechanic: “${esc(n)}”</p>`).join('');
+    return callout('warning', 'triangle-alert', `Next step · Blocker${others > 0 ? ` (+${others} more)` : ''}`, `${job.name} is blocked · ${b.reason}`, `Reported by ${MECH[b.by].name} · ${b.at}`,
+      S.canManage && UI.resolving !== b.id ? `<button onclick="UI.resolving='${b.id}';UI.resolveNote='';render();document.getElementById('resolve-note').focus()" class="${BTN.primary} h-11 sm:h-9">${ic('check')}Resolve</button>` : '',
+      notesHtml + form + (!S.canManage ? '<p class="text-muted-foreground">Only a Shop Manager can resolve blockers.</p>' : ''));
+  }
+  const left0 = jobsLeft();
+  const outside = left0.filter(isExternal);
+  if (outside.length && !left0.some((j) => !j.external && j.kind !== 'qc')) {
+    const j = outside[0];
+    return callout('primary', 'building-2', `Next step · Waiting${outside.length > 1 ? ` (+${outside.length - 1} more)` : ''}`, `At external shop: ${j.name}`, `${extWhat(j)} since ${j.external.at} · “${esc(j.external.note)}”${j.external.kind === 'truck' ? ' · Yard shows the truck as Out of shop.' : ''}`,
+      S.canManage ? `<button onclick="openDialog('returnExt','${j.id}')" class="${BTN.primary} h-11 sm:h-9">${ic('package-check')}Returned</button>` : '');
+  }
+  if (readyToClose()) return callout('primary', 'flag', 'Next step', 'All jobs are done', 'Jobs are done. Confirm completion to close this Work Order.',
+    `<button onclick="openDialog('completeWo')" class="${BTN.primary} h-11 sm:h-9" ${UI.pending ? 'disabled' : ''}>${pendingBtn('complete-wo', `${ic('check-check')}Confirm completion`)}</button>`);
+  const left = jobsLeft();
+  if (!left.length) return callout('muted', 'flag', 'Next step', 'All jobs are done', 'A Shop Manager confirms completion to close this Work Order.', '');
+  const inShop = left.filter((j) => !j.external);
+  const unassigned = inShop.filter((j) => !j.mech && j.kind !== 'qc').length;
+  const outN = left.length - inShop.length;
+  return callout('muted', 'wrench', 'Next step', unassigned ? `Assign ${unassigned} job${unassigned > 1 ? 's' : ''}` : 'Work in progress', `${inShop.length} job${inShop.length === 1 ? '' : 's'} left in the shop${unassigned ? ` · ${unassigned} without a mechanic` : ' · every job has a mechanic'}${outN ? ` · ${outN} at an external shop` : ''}`, '');
+}
+
+/* Jobs */
+const GRID = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_200px_130px_150px] lg:gap-4';
+function jobs() {
+  const order = { std: 0, pm: 1, qc: 2 };
+  // Blocked first, then shop work, then Jobs at an external shop; Quality Check is always last.
+  const rank = (j) => j.kind === 'qc' ? 99 : (openBlocker(j.id) ? 0 : isExternal(j) ? 2 : 1) * 10 + order[j.kind];
+  const sorted = jobsLeft().filter((j) => !j.helperOf).sort((a, b) => rank(a) - rank(b));
+  const helpers = jobsLeft().filter((j) => j.helperOf);
+  const open = sorted.flatMap((j) => [j, ...helpers.filter((h) => h.helperOf === j.id)]).concat(helpers.filter((h) => !sorted.some((j) => j.id === h.helperOf)));
+  const closed = S.jobs.filter((j) => j.status !== 'to_do');
+  const lock = !S.canManage ? 'Only a Shop Manager (Work Orders manage) can change Jobs.' : !isOpen() ? 'Jobs cannot change on a closed Work Order.' : '';
+  return `<section class="overflow-hidden rounded-xl border bg-card" aria-labelledby="jobs-title">
+    <div class="flex items-center justify-between gap-3 border-b px-4 py-3">
+      <div class="flex items-center gap-2"><h2 id="jobs-title" class="text-base font-semibold">Jobs</h2><span class="tnum rounded-md bg-muted px-1.5 text-xs text-muted-foreground ring-1 ring-border">${S.jobs.length}</span></div>
+      ${canEdit() ? `<a href="#" onclick="event.preventDefault();toast('success','Opens Truck 918 › Work Plan (where Jobs are added).')" class="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 font-medium text-primary hover:bg-accent">${ic('plus')}<span class="sm:hidden">Add work</span><span class="hidden sm:inline">Add work in Work Plan</span></a>` : ''}
+    </div>
+    ${lock ? `<p class="flex items-center gap-2 border-b bg-sunken px-4 py-2.5 text-muted-foreground">${ic('lock', 's14')}${lock}</p>` : ''}
+    <div class="hidden grid-cols-[minmax(0,1fr)_200px_130px_150px] gap-4 border-b bg-sunken px-4 py-2 text-xs text-muted-foreground lg:grid" aria-hidden="true"><span>Job</span><span>Mechanic</span><span>Status</span><span class="text-right">Action</span></div>
+    ${open.length ? `<ul class="divide-y">${open.map(openRow).join('')}</ul>` : closed.length ? '' : `<p class="px-4 py-6 text-center text-muted-foreground">No jobs yet. Add work in the Truck Work Plan.</p>`}
+    ${closed.length ? `<button onclick="UI.closedOpen=!UI.closedOpen;render()" aria-expanded="${UI.closedOpen}" class="flex min-h-11 w-full items-center gap-2 border-t bg-sunken px-4 py-2.5 text-left text-muted-foreground hover:text-foreground">${ic('circle-check', 's14 text-success')}Done and cancelled · ${closed.length}${ic('chevron-down', `s14 ml-auto transition ${UI.closedOpen ? 'rotate-180' : ''}`)}</button>
+      ${UI.closedOpen ? `<ul class="divide-y border-t">${closed.map(closedRow).join('')}</ul>` : ''}` : ''}
+  </section>`;
+}
+function openRow(j) {
+  const blocked = openBlocker(j.id);
+  const editable = canEdit();
+  const ext = isExternal(j);
+  let mech;
+  if (ext) mech = `<span class="flex h-10 min-w-0 items-center gap-2 text-muted-foreground max-lg:order-2 lg:h-9" title="${esc(j.external.note)}">${ic(j.external.kind === 'truck' ? 'truck' : 'package', 's14')}<span class="truncate">${j.external.kind === 'truck' ? 'Truck out' : 'Part out'} · ${esc(j.external.note)}</span></span>`;
+  else if (j.kind === 'qc') mech = `<span class="flex h-10 items-center gap-2 px-2 text-muted-foreground max-lg:order-2 max-lg:-ml-2 lg:h-9" title="Quality Check is always required and is done by Safety."><span class="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60">${ic('shield-check', 's14')}</span>Safety</span>`;
+  else if (editable) mech = `<button onclick="openMenu(this, mechPicker('${j.id}'), 'start')" aria-haspopup="listbox" aria-label="Mechanic for ${nameText(j)}" class="flex h-10 min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-accent max-lg:order-2 max-lg:-ml-2 max-lg:justify-self-start lg:h-9 ${UI.pending === 'assign-' + j.id ? 'opacity-60' : ''}">${j.mech ? av(j.mech) + `<span class="truncate">${MECH[j.mech].name}</span>` : `<span class="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60">${ic('user-plus', 's14 text-muted-foreground')}</span><span class="text-muted-foreground">Assign</span>`}${UI.pending === 'assign-' + j.id ? ic('loader-circle', 'spin s14 ml-auto') : ic('chevrons-up-down', 's14 ml-auto text-muted-foreground')}</button>`;
+  else mech = `<span class="flex h-10 items-center gap-2 max-lg:order-2 lg:h-9">${j.mech ? av(j.mech) + MECH[j.mech].name : '<span class="text-muted-foreground">Unassigned</span>'}</span>`;
+  const status = ext
+    ? `<span class="inline-flex items-center gap-1.5 justify-self-end whitespace-nowrap text-primary max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('building-2', 's14')}At external shop</span>`
+    : blocked
+    ? `<span class="inline-flex items-center gap-1.5 justify-self-end text-warning-foreground dark:text-warning max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('octagon-pause', 's14')}Blocked</span>`
+    : `<span class="inline-flex items-center gap-1.5 justify-self-end text-muted-foreground max-lg:order-1 max-lg:text-xs lg:justify-self-start"><span class="size-2 rounded-full border-[1.5px] border-muted-foreground"></span>To do</span>`;
+  let action = '';
+  if (editable) {
+    if (ext) action = `<button onclick="openDialog('returnExt','${j.id}')" class="${BTN.outline} h-10 lg:h-8" ${UI.pending ? 'disabled' : ''}>${pendingBtn('ret-' + j.id, `${ic('package-check', 's14')}Returned`)}</button>`;
+    else if (j.kind === 'pm') action = `<button onclick="openMenu(this, pmMenu('${j.id}'))" aria-haspopup="menu" title="The PM job is completed from the PM service (mileage and parts)." class="${BTN.outline} h-10 lg:h-8">${UI.pending === 'pm-' + j.id ? ic('loader-circle', 'spin s14') : ''}PM ${j.pm}${ic('chevron-down', 's14 text-muted-foreground')}</button>`;
+    else if (j.kind === 'qc') action = `<button onclick="completeJob('${j.id}')" class="${BTN.primary} h-10 lg:h-8" ${UI.pending ? 'disabled' : ''}>${pendingBtn('complete-' + j.id, 'Complete')}</button>`;
+    else action = `<button onclick="completeJob('${j.id}')" class="${BTN.ghost} h-10 px-2.5 lg:h-8" ${UI.pending ? 'disabled' : ''}>${pendingBtn('complete-' + j.id, `${ic('circle-check', 's14')}Complete`)}</button>`;
+    action += `<button onclick="openMenu(this, jobMenu('${j.id}'))" aria-haspopup="menu" aria-label="Actions for ${nameText(j)}" class="grid size-10 place-items-center rounded-md text-muted-foreground hover:bg-accent lg:size-8">${ic('ellipsis')}</button>`;
+  }
+  const parent = j.helperOf && S.jobs.find((x) => x.id === j.helperOf);
+  const sub = j.kind === 'pm' ? 'PM · completed from the PM service (mileage and parts)' : j.kind === 'qc' ? 'Final step · Safety takes it from their screen' : parent ? `Helps ${parent.mech ? MECH[parent.mech].name : 'on the main Job'}` : j.cat;
+  return `<li id="row-${j.id}" class="${GRID} ${blocked ? 'bg-warning/[0.05] shadow-[inset_3px_0_0_var(--warning)]' : ''}">
+    <div class="flex min-w-0 gap-1.5">${parent ? ic('corner-down-right', 's14 mt-0.5 text-muted-foreground') : ''}<div class="min-w-0"><p class="font-medium">${nameHtml(j)}</p><p class="text-xs text-muted-foreground">${sub}</p></div></div>
+    ${mech}${status}<div class="flex items-center justify-end gap-1 max-lg:order-3">${action}</div></li>`;
+}
+function closedRow(j) {
+  const cancelled = j.status === 'cancelled';
+  const status = cancelled
+    ? `<span class="inline-flex items-center gap-1.5 justify-self-end text-muted-foreground max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('circle-slash', 's14')}Cancelled</span>`
+    : `<span class="inline-flex items-center gap-1.5 justify-self-end text-success max-lg:order-1 max-lg:text-xs lg:justify-self-start">${ic('check', 's14')}Done ${j.doneAt.split(', ').pop()}</span>`;
+  const menu = cancelled && canEdit() ? `<button onclick="openMenu(this, jobMenu('${j.id}'))" aria-haspopup="menu" aria-label="Actions for ${nameText(j)}" class="grid size-10 place-items-center rounded-md hover:bg-accent lg:size-8">${ic('ellipsis')}</button>` : '';
+  return `<li id="row-${j.id}" class="${GRID} text-muted-foreground">
+    <div class="min-w-0"><p class="font-medium ${cancelled ? 'line-through' : 'text-foreground/80'}">${nameHtml(j)}</p><p class="text-xs">${j.cat}${j.note ? ` · <span class="italic">“${esc(j.note)}”</span>` : ''}${cancelled && j.cancelReason ? ` · “${esc(j.cancelReason)}”` : ''}</p></div>
+    <span class="max-lg:order-2 max-lg:text-xs lg:px-2">${cancelled ? '—' : `<span class="lg:sr-only">Completed by </span>${MECH[j.doneBy].name}`}</span>${status}
+    <div class="flex justify-end max-lg:order-3">${menu}</div></li>`;
+}
+
+/* Notes */
+function notes() {
+  const list = S.notes.map((n) => {
+    const req = n.kind === 'request';
+    return `<li class="flex gap-3 ${req ? 'rounded-lg border border-warning/30 bg-warning-surface/40 p-3' : ''}">
+      ${av(n.by, 'size-8')}
+      <div class="min-w-0 flex-1">
+        <p class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="font-medium">${MECH[n.by].name}</span><span class="text-xs text-muted-foreground">${n.at}</span>${req ? `<span class="rounded-md border px-1.5 py-px text-xs font-medium ${n.handled ? 'text-muted-foreground' : 'border-warning/40 text-warning-foreground dark:text-warning'}">Work request${n.handled ? '' : ' · Open'}</span>` : ''}</p>
+        <p class="mt-0.5 whitespace-pre-wrap text-foreground/90">${esc(n.body)}</p>
+        ${req && n.handled ? `<p class="mt-1 text-xs text-muted-foreground">Handled by ${MECH[n.handled.by].name} · ${n.handled.at}</p>` : ''}
+        ${req && !n.handled && S.canManage ? `<button onclick="handleRequest('${n.id}')" class="${BTN.outline} mt-2 h-10 sm:h-8" ${UI.pending ? 'disabled' : ''}>${pendingBtn('req-' + n.id, `${ic('check', 's14')}Mark handled`)}</button>` : ''}
+      </div></li>`;
+  }).join('');
+  return `<section class="rounded-xl border bg-card" aria-labelledby="notes-title">
+    <div class="flex items-center gap-2 border-b px-4 py-3"><h2 id="notes-title" class="text-base font-semibold">Notes</h2><span class="tnum rounded-md bg-muted px-1.5 text-xs text-muted-foreground ring-1 ring-border">${S.notes.length}</span></div>
+    <div class="space-y-4 p-4">
+      ${S.notes.length ? `<ul class="space-y-4">${list}</ul>` : '<p class="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground">No notes recorded.</p>'}
+      ${canEdit() ? `<form onsubmit="event.preventDefault();postNote()" class="flex items-end gap-2 rounded-lg border bg-background p-1.5 pl-3 focus-within:border-ring">
+        <label for="note-input" class="sr-only">Add note</label>
+        <textarea id="note-input" rows="1" maxlength="2000" placeholder="Add a note for the team…" oninput="UI.noteDraft=this.value;this.style.height='auto';this.style.height=this.scrollHeight+'px';document.getElementById('note-post').disabled=!this.value.trim()" class="max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-base outline-none placeholder:text-muted-foreground">${esc(UI.noteDraft)}</textarea>
+        <button id="note-post" class="${BTN.primary} h-9" ${!UI.noteDraft.trim() || UI.pending ? 'disabled' : ''}>${pendingBtn('note', 'Post')}</button>
+      </form><p class="text-xs text-muted-foreground">Notes are permanent and visible to mechanics on this Work Order.</p>` : ''}
+    </div>
+  </section>`;
+}
+
+/* Context column */
+function aside() {
+  const filtered = S.history.filter((h) => !UI.historyFilter || h.cat === UI.historyFilter);
+  return `<section class="rounded-xl border bg-card">
+      <div class="flex items-center justify-between border-b px-4 py-3"><h2 class="text-base font-semibold">Truck</h2><a href="#" class="inline-flex h-9 items-center gap-1 font-medium text-primary hover:underline">Open${ic('arrow-up-right', 's14')}</a></div>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 p-4">
+        <dt class="text-muted-foreground">Unit</dt><dd class="text-right font-medium">918</dd>
+        <dt class="text-muted-foreground">Vehicle</dt><dd class="text-right font-medium">2026 Peterbilt 579</dd>
+        <dt class="text-muted-foreground">Mileage</dt><dd class="tnum text-right font-medium">296,710 mi</dd>
+        <dt class="text-muted-foreground">VIN</dt><dd class="flex items-center justify-end gap-1.5 font-mono text-[13px]">1XPBD49X6TD785091<button onclick="toast('success','VIN copied')" class="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Copy VIN">${ic('copy', 's14')}</button></dd>
+        <dt class="text-muted-foreground">Company</dt><dd class="text-right font-medium">CTC · owner CDT</dd>
+      </dl>
+      <div class="flex items-start gap-2.5 border-t px-4 py-3 text-muted-foreground">${ic('map-pin', 'mt-0.5')}<p><span class="text-foreground">High Desert Road, Barstow, CA 92347</span><br><span class="text-xs">Reported Oct 3, 2026</span></p></div>
+      ${S.returnedAt ? `<p class="flex items-center gap-2 border-t px-4 py-3 text-success">${ic('circle-check', 's14')}Returned to service ${S.returnedAt}</p>` : ''}
+    </section>
+    ${canEdit() ? `<section class="rounded-xl border bg-card">
+      <div class="border-b px-4 py-3"><h2 class="text-base font-semibold">Priority</h2></div>
+      <div class="space-y-3 p-4">
+        <div class="grid grid-cols-4 gap-1 rounded-lg bg-sunken p-1 ring-1 ring-border" role="radiogroup" aria-label="Priority">
+          ${['low', 'normal', 'high', 'critical'].map((p) => `<button role="radio" aria-checked="${S.draftPriority === p}" aria-pressed="${S.draftPriority === p}" onclick="S.draftPriority='${p}';render()" class="seg h-9 rounded-md text-muted-foreground hover:text-foreground">${p[0].toUpperCase() + p.slice(1)}</button>`).join('')}
+        </div>
+        ${S.draftPriority !== S.priority ? `<div class="flex gap-2"><button onclick="savePriority()" class="${BTN.primary} h-10 flex-1 sm:h-9" ${UI.pending ? 'disabled' : ''}>${pendingBtn('priority', 'Update priority')}</button><button onclick="S.draftPriority=S.priority;render()" class="${BTN.ghost} h-10 sm:h-9">Reset</button></div>` : ''}
+      </div>
+    </section>` : ''}
+    <section class="rounded-xl border bg-card">
+      <div class="border-b px-4 py-3"><h2 class="text-base font-semibold">Labor by mechanic</h2></div>
+      <ul class="space-y-3 p-4">
+        <li><div class="flex justify-between"><span>Manuel García</span><span class="tnum font-medium">4m</span></div><div class="mt-1.5 h-1 rounded-full bg-muted-foreground/20"><div class="h-1 w-[80%] rounded-full bg-primary"></div></div></li>
+        <li><div class="flex justify-between"><span class="text-muted-foreground">Before per-mechanic labor</span><span class="tnum font-medium">1m</span></div><div class="mt-1.5 h-1 rounded-full bg-muted-foreground/20"><div class="h-1 w-[20%] rounded-full bg-muted-foreground/60"></div></div></li>
+      </ul>
+    </section>
+    <section class="rounded-xl border bg-card">
+      <div class="flex items-center justify-between gap-2 border-b px-4 py-2.5"><h2 class="text-base font-semibold">Repair history</h2>
+        <div class="relative"><label for="rh-filter" class="sr-only">Filter by category</label><select id="rh-filter" onchange="UI.historyFilter=this.value;render()" class="native h-9 rounded-md border bg-background pl-2.5 pr-8 text-sm text-muted-foreground"><option value="">All categories</option>${['Brakes', 'PM', 'Electrical'].map((c) => `<option ${UI.historyFilter === c ? 'selected' : ''}>${c}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground')}</div>
+      </div>
+      ${filtered.length ? `<ul class="divide-y">${filtered.map((h) => `<li class="space-y-1 px-4 py-3"><div class="flex items-baseline justify-between gap-2"><a href="#" class="font-mono text-[13px] font-medium text-primary hover:underline">${h.wo}</a><span class="tnum text-xs text-muted-foreground">${h.mileage} mi</span></div><p class="text-muted-foreground">${h.cat} · ${h.date} · ${h.by.join(', ')}</p><div class="flex flex-wrap gap-1 pt-0.5">${h.jobs.map((x) => `<span class="rounded-md border px-1.5 py-px text-xs text-muted-foreground">${x}</span>`).join('')}</div></li>`).join('')}</ul>`
+        : `<div class="flex flex-col items-center gap-1 px-4 py-6 text-center text-muted-foreground">${ic('file-clock', 's20')}<p>${UI.historyFilter ? `No ${UI.historyFilter} repairs for this truck.` : 'No completed repairs yet for this truck.'}</p></div>`}
+    </section>`;
+}
+
+/* History */
+function history() {
+  const tabs = [['activity', 'Activity', S.activity.length], ['times', 'Times', null], ['pauses', 'Pauses', S.pauses.length]];
+  let panel = '';
+  if (UI.tab === 'activity') {
+    const items = UI.showAllActivity ? S.activity : S.activity.slice(0, 7);
+    const days = [...new Set(items.map((a) => a.day))];
+    const toneVar = { success: 'success', primary: 'primary', warning: 'warning', destructive: 'destructive-text', muted: 'muted-foreground' };
+    panel = days.map((d, i) => `<p class="mb-3 text-xs font-medium text-muted-foreground ${i ? 'mt-6' : ''}">${d}</p>
+      <ol class="relative ml-3 space-y-4 border-l pl-6">${items.filter((a) => a.day === d).map((a) => `<li class="relative">
+        <span class="tl absolute -left-[37px] grid size-6 place-items-center rounded-full ring-4 ring-card" style="--tl: color-mix(in oklch, var(--${toneVar[a.tone]}) 18%, transparent); color: var(--${toneVar[a.tone]})">${ic(a.icon, 's14')}</span>
+        <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-x-3"><p class="[&_b]:font-medium">${a.text}</p><time class="tnum shrink-0 text-xs text-muted-foreground">${a.at}</time></div>
+        ${a.detail ? `<p class="mt-1 text-muted-foreground">${esc(a.detail)}</p>` : ''}</li>`).join('')}</ol>`).join('')
+      + (S.activity.length > 7 ? `<button onclick="UI.showAllActivity=!UI.showAllActivity;render()" class="${BTN.outline} mt-5 h-10 w-full text-muted-foreground">${UI.showAllActivity ? 'Show less' : `Show all ${S.activity.length} events`}</button>` : '');
+  } else if (UI.tab === 'times') {
+    panel = `<dl class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        ${[['Created', 'Oct 1, 9:26 AM'], ['Started', 'Oct 2, 3:50 PM'], ['Completed', S.completedAt || '—'], ['Updated', updatedLabel()], ['Active labor', '5m'], ['Waiting', S.pauses.length ? '12m' : '0m']].map(([k, v]) => `<div><dt class="text-xs text-muted-foreground">${k}</dt><dd class="tnum mt-1 font-medium ${v === '—' ? 'text-muted-foreground' : ''}">${v}</dd></div>`).join('')}
+      </dl>
+      <div class="mt-5 overflow-hidden rounded-lg border">
+        <div class="space-y-0.5 bg-sunken px-3 py-2 text-xs text-muted-foreground"><p class="font-medium">Labor segments</p><p>Totals are recalculated from these segments. Open time cannot be edited. <b class="font-medium">Day close</b>: the app stops running clocks at 5:00 PM. <b class="font-medium">Switched truck</b>: the mechanic started on another truck.</p></div>
+        <ul class="divide-y">${S.segments.map((s) => `<li class="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <span><span class="font-medium">${s.type === 'labor' ? `Active labor · ${MECH[s.mech].name}` : 'Waiting time'}</span><br class="sm:hidden"><span class="tnum ${s.end ? 'text-muted-foreground' : 'text-success'}"> ${fmtRange(s)}</span>${endChip(s)}${s.corrected ? `<span class="ml-2 rounded-md border px-1.5 py-px text-xs text-muted-foreground">Corrected</span>` : ''}</span>
+          ${S.canManage && s.end ? `<button onclick="openDialog('time','${s.id}')" class="${BTN.ghost} h-10 self-start text-primary sm:h-8 sm:self-auto">Correct…</button>` : ''}</li>`).join('')}</ul>
+      </div>`;
+  } else {
+    panel = S.pauses.length ? `<ul class="divide-y">${S.pauses.map((p) => `<li class="py-3 first:pt-0"><p class="font-medium">${p.reason}</p><p class="tnum text-muted-foreground">Oct 5, ${p.start} → ${p.end ? `Oct 5, ${p.end}` : 'now'}</p><p class="mt-0.5 text-xs text-muted-foreground">Crixcrox</p></li>`).join('')}</ul>`
+      : `<div class="flex flex-col items-center gap-1 py-6 text-center text-muted-foreground">${ic('circle-pause', 's20')}<p>No official pauses on this Work Order.</p></div>`;
+  }
+  return `<section id="history" class="rounded-xl border bg-card" aria-labelledby="history-title">
+    <div class="flex flex-wrap items-center justify-between gap-x-2 border-b px-4">
+      <h2 id="history-title" class="py-3 text-base font-semibold">History</h2>
+      <div class="-mx-4 flex w-[calc(100%+2rem)] gap-5 overflow-x-auto border-t px-4 sm:mx-0 sm:w-auto sm:border-t-0 sm:px-0" role="tablist">
+        ${tabs.map(([k, l, n]) => `<button role="tab" aria-selected="${UI.tab === k}" onclick="UI.tab='${k}';render()" class="tab h-12 whitespace-nowrap font-medium text-muted-foreground hover:text-foreground">${l}${n !== null ? ` <span class="tnum text-xs">${n}</span>` : ''}</button>`).join('')}
+      </div>
+    </div>
+    <div class="p-4" role="tabpanel">${panel}</div>
+  </section>`;
+}
+function fmtRange(s) {
+  const f = (v) => { const d = new Date(v); let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = ((h + 11) % 12) + 1; return `${h}:${String(d.getMinutes()).padStart(2, '0')} ${ap}`; };
+  if (!s.end) return `${s.day}, ${f(s.start)} → running`;
+  const mins = Math.round((new Date(s.end) - new Date(s.start)) / 60000);
+  return `${s.day}, ${f(s.start)} → ${f(s.end)} · ${mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`}`;
+}
+// D20 / D21: why the app closed a segment. Shown as a quiet chip next to the end time.
+const END = { day_close: ['Day close', 'moon'], switched_truck: ['Switched truck', 'arrow-left-right'] };
+const endChip = (s) => s.endReason ? `<span class="ml-2 inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-xs text-muted-foreground">${ic(END[s.endReason][1], 's14')}${END[s.endReason][0]}</span>` : '';
+
+/* Sticky "Confirm completion" bar while the callout is off screen. */
+let stickyObs;
+function watchSticky() {
+  const host = document.getElementById('v-sticky');
+  stickyObs?.disconnect();
+  const toasts = document.getElementById('toasts');
+  if (!readyToClose()) { host.innerHTML = ''; toasts.style.bottom = ''; return; }
+  stickyObs = new IntersectionObserver(([e]) => {
+    // Toasts sit above the bar so they never cover its button.
+    toasts.style.bottom = e.isIntersecting ? '' : (isPhone() ? '120px' : '76px');
+    host.innerHTML = e.isIntersecting ? '' : `<div role="region" aria-label="Complete Work Order" class="sheet-in fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl backdrop-blur md:left-60">
+      <div class="mx-auto flex max-w-[1440px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between md:px-2"><p class="font-medium">Jobs are done. Confirm completion to close this Work Order.</p><button onclick="openDialog('completeWo')" class="${BTN.primary} h-11 sm:h-9">${ic('check-check')}Confirm completion</button></div></div>`;
+    lucide.createIcons();
+  });
+  stickyObs.observe(document.getElementById('next-step'));
+}
+
+/* ───────────────────────── Menus, pickers, dialogs ───────────────────────── */
+const item = (label, onclick, icon, danger) => `<button role="menuitem" onclick="${onclick}" class="flex h-11 w-full items-center gap-2.5 rounded-md px-2.5 text-left hover:bg-accent sm:h-9 ${danger ? 'text-destructive-text hover:bg-destructive/15' : ''}">${ic(icon, 'opacity-80')}${label}</button>`;
+const sep = '<div class="my-1 h-px bg-border"></div>';
+function woMenu() {
+  const out = [];
+  if (isOpen()) out.push(item('Correct time…', "goTimes()", 'clock'), sep, item('Cancel Work Order…', "openDialog('cancel')", 'circle-x', true));
+  // Return to Service lives in the Next step callout, so the menu only keeps the rare action.
+  if (S.status === 'completed') out.push(item('Reopen Work Order…', "openDialog('reopen')", 'rotate-ccw'));
+  if (S.status === 'cancelled') out.push(item('Reopen Work Order…', "openDialog('reopen')", 'rotate-ccw'));
+  return `<p class="px-2.5 pb-1 pt-1.5 text-xs text-muted-foreground">Work Order</p>${out.join('')}`;
+}
+function goTimes() { closeLayer(); UI.tab = 'times'; render(); document.getElementById('history').scrollIntoView({ behavior: 'smooth' }); }
+function jobMenu(jid) {
+  const j = S.jobs.find((x) => x.id === jid);
+  const head = `<p class="truncate px-2.5 pb-1 pt-1.5 text-xs text-muted-foreground">${nameText(j)}</p>`;
+  if (j.status !== 'to_do') return head + item('Reopen job…', `openDialog('reopenJob','${jid}')`, 'rotate-ccw');
+  const extra = [
+    canAddHelper(j) ? item('Add helper…', `openDialog('helper','${jid}')`, 'user-plus') : '',
+    canSendExternal(j) ? item('Send to external shop…', `openDialog('sendExt','${jid}')`, 'building-2') : '',
+  ].join('');
+  return head + extra + (extra ? sep : '') + item('Cancel job…', `openDialog('cancelJob','${jid}')`, 'circle-slash', true);
+}
+function pmMenu(jid) {
+  const j = S.jobs.find((x) => x.id === jid);
+  return `<p class="px-2.5 pb-1 pt-1.5 text-xs text-muted-foreground">PM service</p>` + ['A', 'B'].map((v) => `<button role="menuitemradio" aria-checked="${j.pm === v}" onclick="setPm('${jid}','${v}')" class="flex h-11 w-full items-center gap-2.5 rounded-md px-2.5 hover:bg-accent sm:h-9">${j.pm === v ? ic('check', 's14 text-primary') : '<span class="w-3.5"></span>'}PM ${v} Service</button>`).join('')
+    + `<p class="mt-1 border-t px-2.5 pb-1 pt-2 text-xs text-muted-foreground">Completed from the PM service (mileage and parts).</p>`;
+}
+function mechPicker(jid) {
+  const j = S.jobs.find((x) => x.id === jid);
+  const pool = j.kind === 'pm' ? PM_MECHS : STANDARD;
+  return `<div class="p-1"><label class="flex items-center gap-2 rounded-md border bg-background px-2.5 focus-within:border-ring">${ic('search', 's14 text-muted-foreground')}<span class="sr-only">Search mechanics</span><input id="mech-search" autocomplete="off" placeholder="Search mechanics…" oninput="filterMech(this.value)" class="h-10 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"></label></div>
+    <p class="truncate px-2.5 pb-1 pt-2 text-xs text-muted-foreground">${j.name} · ${j.kind === 'pm' ? 'PM mechanics' : 'Standard mechanics'}</p>
+    <div role="listbox" aria-label="Mechanic for ${j.name}" class="max-h-64 overflow-auto">
+      ${pool.map((m) => `<button role="option" data-name="${MECH[m].name.toLowerCase()}" aria-selected="${j.mech === m}" onclick="assign('${jid}','${m}')" class="mech-opt flex h-11 w-full items-center gap-2.5 rounded-md px-2.5 hover:bg-accent sm:h-9">${av(m)}<span class="flex-1 text-left">${MECH[m].name}</span>${j.mech === m ? ic('check', 's14 text-primary') : ''}</button>`).join('')}
+      <p id="mech-empty" class="hidden px-2.5 py-3 text-center text-muted-foreground">No mechanic matches.</p>
+    </div>
+    ${j.mech ? `${sep}<button onclick="assign('${jid}',null)" class="flex h-11 w-full items-center gap-2.5 rounded-md px-2.5 text-muted-foreground hover:bg-accent sm:h-9">${ic('user-x', 's14')}Unassign</button>` : ''}`;
+}
+function filterMech(q) {
+  let n = 0; document.querySelectorAll('.mech-opt').forEach((b) => { const hit = b.dataset.name.includes(q.toLowerCase()); b.classList.toggle('hidden', !hit); n += hit; });
+  document.getElementById('mech-empty').classList.toggle('hidden', n > 0);
+}
+
+/* Desktop: popover anchored to the button. Phone: bottom sheet. */
+const isPhone = () => matchMedia('(max-width: 639px)').matches;
+function openMenu(anchor, html, align = 'end') {
+  closeLayer();
+  const layer = document.getElementById('layer');
+  if (isPhone()) {
+    layer.innerHTML = `<div class="fixed inset-0 z-40 bg-black/50" onclick="closeLayer()"></div><div role="menu" class="sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-auto rounded-t-2xl border-t bg-card p-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl"><div class="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-muted-foreground/30"></div>${html}</div>`;
+  } else {
+    const r = anchor.getBoundingClientRect();
+    const width = 248; const left = align === 'end' ? Math.max(8, r.right - width) : Math.min(r.left, innerWidth - width - 8);
+    // Page coordinates, so the popover scrolls with its anchor instead of closing.
+    const below = innerHeight - r.bottom > 300;
+    const pos = below ? `top:${r.bottom + scrollY + 6}px` : `top:${r.top + scrollY - 6}px;transform:translateY(-100%)`;
+    layer.innerHTML = `<div class="fixed inset-0 z-40" onclick="closeLayer()"></div><div role="menu" class="pop-in absolute z-50 rounded-lg border bg-card p-1 shadow-xl" style="width:${width}px;left:${left + scrollX}px;${pos}">${html}</div>`;
+  }
+  lucide.createIcons();
+  if (!isPhone()) (document.getElementById('mech-search') || layer.querySelector('[role=menu] button'))?.focus();
+}
+function closeLayer() { document.getElementById('layer').innerHTML = ''; }
+addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLayer(); });
+
+function field(label, inner, help) { return `<div class="space-y-1.5"><label class="font-medium" for="${inner.match(/id="([^"]+)"/)[1]}">${label}</label>${inner}${help ? `<p class="text-xs text-muted-foreground">${help}</p>` : ''}</div>`; }
+const textarea = (fid) => `<textarea id="${fid}" rows="3" maxlength="1000" class="w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring"></textarea>`;
+const val = (fid) => document.getElementById(fid)?.value.trim();
+function err(msg) { const e = document.getElementById('dlg-error'); e.textContent = msg; e.classList.remove('hidden'); }
+
+function openDialog(kind, arg) {
+  closeLayer();
+  const j = arg && S.jobs.find((x) => x.id === arg);
+  const seg = arg && S.segments.find((x) => x.id === arg);
+  const reason = (help) => field('Reason', textarea('f-reason'), help);
+  const D = {
+    // 2-B (2026-10-05): closing changes the Truck for the whole shop, so it confirms. Job Complete stays one tap.
+    completeWo: { title: 'Complete Work Order', desc: 'WO-010 closes as Completed and Truck 918 becomes Ready to Go: the Yard shows it for Return to Service. You can reopen it later from “…”, with a reason.', body: '', confirm: 'Confirm completion', run: () => completeWO() },
+    pause: { title: 'Pause Work Order', desc: 'Stops the Work Order clock. Mechanics cannot start work until you resume.',
+      body: field('Reason', `<div class="relative"><select id="f-pause" class="native h-11 w-full rounded-md border bg-background pl-3 pr-9 text-base"><option value="" disabled selected>Choose a reason</option>${PAUSE_REASONS.map((r) => `<option>${r}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground')}</div>`),
+      confirm: 'Confirm pause',
+      run: () => { const v = val('f-pause'); if (!v) return err('Choose a reason to pause.'); act('dialog', 'Work Order paused', () => { const at = now(); S.status = 'waiting_paused'; S.pause = { reason: v, at: `Oct 5, ${at}` }; S.pauses.unshift({ reason: v, start: at, end: null }); log('circle-pause', 'warning', '<b>Crixcrox</b> paused the Work Order', v); }); } },
+    cancel: { title: 'Cancel Work Order', desc: 'This closes the Work Order as cancelled. Open labor and wait time stop. Jobs stay as they are; they are not cancelled separately.',
+      body: reason('Required. This reason is stored in the Activity Log.'), confirm: 'Cancel Work Order', danger: true,
+      run: () => { const v = val('f-reason'); if (!v) return err('Write why this Work Order is cancelled.'); act('dialog', 'Work Order cancelled', () => { S.status = 'cancelled'; S.closeReason = v; S.pause = null; log('circle-x', 'destructive', '<b>Crixcrox</b> cancelled the Work Order', `“${v}”`); }); } },
+    reopen: { title: 'Reopen Work Order', desc: 'This opens a completed or cancelled Work Order again. Jobs stay as they are. The Truck cannot already have another open Work Order.',
+      body: reason('Required. This reason is stored in the Activity Log.'), confirm: 'Reopen Work Order',
+      run: () => { const v = val('f-reason'); if (!v) return err('Write why this Work Order is reopened.'); act('dialog', 'Work Order reopened', () => { S.status = 'in_progress'; S.completedAt = null; S.returnedAt = null; S.closeReason = null; log('rotate-ccw', 'primary', '<b>Crixcrox</b> reopened the Work Order', `“${v}”`); }); } },
+    return: { title: 'Return to Service', desc: 'Marks Truck 918 In Service after this completed Work Order. The Truck leaves Ready to Go. This does not change Work Order status, presence, or Off Duty.',
+      body: field('Reason (optional)', textarea('f-reason'), 'Optional. When given, it is stored with the Truck service-status event and the Activity Log.'), confirm: 'Return to Service',
+      run: () => { const v = val('f-reason'); act('dialog', 'Truck 918 returned to service', () => { S.returnedAt = `Oct 5, ${now()}`; log('truck', 'success', '<b>Crixcrox</b> returned the truck to service', v ? `“${v}”` : null); }); } },
+    cancelJob: { title: 'Cancel job', desc: `<span class="font-medium text-foreground">${j?.name}</span> stops counting toward progress. You can reopen it later.`,
+      body: reason('Required for cancel and reopen. Stored in the Activity Log.'), confirm: 'Confirm job cancellation', danger: true,
+      run: () => { const v = val('f-reason'); if (!v) return err('Write why this job is cancelled.'); act('dialog', `${j.name} cancelled`, () => { j.status = 'cancelled'; j.cancelReason = v; log('circle-slash', 'muted', `<b>Crixcrox</b> cancelled <b>${j.name}</b>`, `“${v}”`); flash(j.id); }); } },
+    reopenJob: { title: 'Reopen job', desc: `<span class="font-medium text-foreground">${j?.name}</span> goes back to To do.`,
+      body: reason('Required for cancel and reopen. Stored in the Activity Log.'), confirm: 'Confirm job reopen',
+      run: () => { const v = val('f-reason'); if (!v) return err('Write why this job is reopened.'); act('dialog', `${j.name} reopened`, () => { j.status = 'to_do'; delete j.cancelReason; log('rotate-ccw', 'primary', `<b>Crixcrox</b> reopened <b>${j.name}</b>`, `“${v}”`); flash(j.id); }); } },
+    helper: (() => {
+      if (kind !== 'helper') return null;
+      const taken = S.jobs.filter((x) => x.helperOf === j.id && x.status === 'to_do').map((x) => x.mech);
+      const pool = STANDARD.filter((m) => m !== j.mech && !taken.includes(m));
+      return { title: `Add a helper on ${j.name}`, desc: `The helper gets a Job of their own (“${j.name} · helper”): it shows in their Jobs and their clock runs as usual. A blocker on the main Job does not block the helper.`,
+        body: pool.length ? field('Helper', `<div class="relative"><select id="f-helper" class="native h-11 w-full rounded-md border bg-background pl-3 pr-9 text-base"><option value="" selected disabled>Choose a mechanic</option>${pool.map((m) => `<option value="${m}">${MECH[m].name}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground')}</div>`) : '<p class="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground">No other Standard mechanic is available.</p>',
+        confirm: 'Add helper',
+        run: () => { const m = val('f-helper'); if (!m) return err('Choose a mechanic.'); act('dialog', 'Helper added.', () => { const h = { id: id(), name: j.name, helperOf: j.id, cat: j.cat, kind: 'std', status: 'to_do', mech: m }; S.jobs.push(h); log('user-plus', 'muted', `<b>Crixcrox</b> added a helper on <b>${j.name}</b>`, MECH[m].name); flash(h.id); }); } };
+    })(),
+    sendExt: kind !== 'sendExt' ? null : { title: `Send ${j.name} to an external shop`, desc: 'The Job stays pending without an owner or clock until it comes back. The truck cannot be Ready to Go meanwhile.',
+      body: `<fieldset class="space-y-1.5"><legend class="mb-1.5 font-medium">What goes out?</legend>${[['part', 'The part goes out', 'package'], ['truck', 'The truck goes out', 'truck']].map(([v, l, i], n) => `<label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10"><input type="radio" name="f-kind" value="${v}" ${n ? '' : 'checked'} class="size-4 accent-[var(--primary)]">${ic(i, 's14 text-muted-foreground')}${l}</label>`).join('')}</fieldset>${field('Note (where it goes, when it comes back)', textarea('f-reason'))}`,
+      confirm: 'Send to external shop',
+      run: () => { const k = document.querySelector('input[name=f-kind]:checked').value, v = val('f-reason'); if (!v) return err('Write where it goes and when it comes back.'); act('dialog', 'Sent to the external shop.', () => { j.prevMech = j.mech; j.mech = null; j.external = { kind: k, note: v, at: `Oct 5, ${now()}` }; log('building-2', 'primary', `<b>Crixcrox</b> sent <b>${nameText(j)}</b> to an external shop`, `${k === 'truck' ? 'The truck goes out' : 'The part goes out'} · “${v}”`); flash(j.id); }); } },
+    returnExt: (() => {
+      if (kind !== 'returnExt') return null;
+      const pool = j.kind === 'pm' ? PM_MECHS : STANDARD;
+      return { title: `${j.name} is back`, desc: `${extWhat(j)} since ${j.external.at} · “${esc(j.external.note)}”`,
+        body: `<fieldset class="space-y-1.5"><legend class="mb-1.5 font-medium">What happens now?</legend>
+          <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10"><input type="radio" name="f-out" value="complete" checked onchange="document.getElementById('f-assign-wrap').classList.add('hidden')" class="size-4 accent-[var(--primary)]">Complete the Job (nothing left to do here)</label>
+          <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10"><input type="radio" name="f-out" value="assign" onchange="document.getElementById('f-assign-wrap').classList.remove('hidden')" class="size-4 accent-[var(--primary)]">Assign to a mechanic (install or check)</label></fieldset>
+          <div id="f-assign-wrap" class="hidden">${field('Mechanic', `<div class="relative"><select id="f-assign" class="native h-11 w-full rounded-md border bg-background pl-3 pr-9 text-base"><option value="">Choose a mechanic</option>${pool.map((m) => `<option value="${m}" ${m === j.prevMech ? 'selected' : ''}>${MECH[m].name}</option>`).join('')}</select>${ic('chevron-down', 's14 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground')}</div>`)}</div>`,
+        confirm: 'Confirm',
+        run: () => { const o = document.querySelector('input[name=f-out]:checked').value, m = val('f-assign'); if (o === 'assign' && !m) return err('Choose who installs or checks it.'); act('ret-' + j.id, 'The Job is back from the external shop.', () => { j.external = null; if (o === 'complete') { j.status = 'completed'; j.doneBy = 'cr'; j.doneAt = `Oct 5, ${now()}`; } else j.mech = m; log('package-check', 'success', `<b>Crixcrox</b> marked <b>${nameText(j)}</b> back from the external shop`, o === 'complete' ? 'Completed' : `Assigned to ${MECH[m].name}`); flash(j.id); }); } };
+    })(),
+    time: { title: 'Correct time', desc: seg ? `${seg.type === 'labor' ? `Active labor · ${MECH[seg.mech].name}` : 'Waiting time'} · ${fmtRange(seg)}${seg.endReason === 'day_close' ? '. Closed by the day close: correct it only if the mechanic left earlier.' : seg.endReason === 'switched_truck' ? '. Closed because the mechanic started on another truck.' : ''}` : '',
+      body: seg ? `<div class="grid gap-3 sm:grid-cols-2">${field('Corrected start', `<input id="f-start" type="datetime-local" value="${seg.start}" class="h-11 w-full rounded-md border bg-background px-3 text-base">`)}${field('Corrected end', `<input id="f-end" type="datetime-local" value="${seg.end}" class="h-11 w-full rounded-md border bg-background px-3 text-base">`)}</div>${reason('Required. Original and corrected times are stored in the Activity Log.')}` : '',
+      confirm: 'Apply correction',
+      run: () => { const a = val('f-start'), b = val('f-end'), v = val('f-reason'); if (!a || !b) return err('Enter both times.'); if (new Date(b) <= new Date(a)) return err('The end time must be after the start time.'); if (!v) return err('Write why the time is corrected.'); act('dialog', 'Time corrected. Totals recalculated.', () => { const before = fmtRange(seg); seg.start = a; seg.end = b; seg.corrected = true; seg.endReason = null; log('clock', 'primary', '<b>Crixcrox</b> corrected a time segment', `${before} → ${fmtRange(seg)} · “${v}”`); }); } },
+  }[kind];
+  window.__dialogRun = D.run;
+  document.getElementById('layer').innerHTML = `<div class="fixed inset-0 z-40 bg-black/60" onclick="closeLayer()"></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="dlg-title" class="sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[90vh] overflow-auto rounded-t-2xl border-t bg-card p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[480px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border">
+      <form class="space-y-4" onsubmit="event.preventDefault();window.__dialogRun()">
+        <div class="flex items-start justify-between gap-3"><div class="space-y-1"><h3 id="dlg-title" class="text-base font-semibold">${D.title}</h3>${D.desc ? `<p class="text-muted-foreground">${D.desc}</p>` : ''}</div><button type="button" onclick="closeLayer()" class="-mr-2 -mt-1 grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent" aria-label="Close dialog">${ic('x')}</button></div>
+        ${D.body}
+        <p id="dlg-error" role="alert" class="hidden font-medium text-destructive-text"></p>
+        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onclick="closeLayer()" class="${BTN.outline} h-11 sm:h-9">Back</button><button id="dlg-confirm" class="${D.danger ? BTN.danger : BTN.primary} h-11 sm:h-9">${D.confirm}</button></div>
+      </form>
+    </div>`;
+  lucide.createIcons();
+  document.querySelector('#layer select, #layer textarea, #layer input')?.focus();
+}
+function flash(jid) { setTimeout(() => document.getElementById('row-' + jid)?.classList.add('flash'), 30); }
+
+/* ───────────────────────── Actions ───────────────────────── */
+function completeJob(jid) {
+  const j = S.jobs.find((x) => x.id === jid);
+  act('complete-' + jid, `${j.name} completed`, () => {
+    j.status = 'completed'; j.doneBy = j.kind === 'qc' ? 'cr' : (j.mech || 'cr'); j.doneAt = `Oct 5, ${now()}`;
+    log('check', 'success', `<b>Crixcrox</b> completed <b>${j.name}</b>`, null); flash(jid);
+  });
+}
+function assign(jid, m) {
+  const j = S.jobs.find((x) => x.id === jid); closeLayer();
+  if (j.mech === m) return;
+  act('assign-' + jid, m ? `${MECH[m].name} assigned to ${j.name}` : `${j.name} unassigned`, () => {
+    j.mech = m; log(m ? 'user-plus' : 'user-x', 'muted', m ? `<b>Crixcrox</b> assigned <b>${MECH[m].name}</b> to <b>${j.name}</b>` : `<b>Crixcrox</b> unassigned <b>${j.name}</b>`, null); flash(jid);
+  });
+}
+function setPm(jid, v) { const j = S.jobs.find((x) => x.id === jid); closeLayer(); if (j.pm === v) return; act('pm-' + jid, `Changed to PM ${v} Service`, () => { j.pm = v; j.name = `PM ${v} Service`; log('repeat', 'muted', `<b>Crixcrox</b> changed the PM service to <b>PM ${v}</b>`, null); }); }
+function resolveBlocker(bid) {
+  const b = S.blockers.find((x) => x.id === bid); const note = UI.resolveNote.trim();
+  act('resolve', 'Blocker resolved', () => { b.resolved = { by: 'cr', at: `Oct 5, ${now()}`, note }; UI.resolving = null; UI.resolveNote = ''; log('circle-check', 'success', `<b>Crixcrox</b> resolved the blocker on <b>${S.jobs.find((j) => j.id === b.job).name}</b>`, note ? `“${note}”` : null); });
+}
+function resume() { act('resume', 'Work Order resumed', () => { S.status = 'in_progress'; S.pause = null; if (S.pauses[0]) S.pauses[0].end = now(); log('play', 'primary', '<b>Crixcrox</b> resumed the Work Order', null); }); }
+function completeWO() { act('complete-wo', 'Work Order completed', () => { S.status = 'completed'; S.completedAt = `Oct 5, ${now()}`; log('flag', 'success', '<b>Crixcrox</b> completed the Work Order', null); window.scrollTo({ top: 0, behavior: 'smooth' }); }); }
+function savePriority() { const p = S.draftPriority; act('priority', 'Priority updated', () => { S.priority = p; log('signal', 'muted', `<b>Crixcrox</b> changed priority to <b>${p[0].toUpperCase() + p.slice(1)}</b>`, null); }); }
+function postNote() { const body = UI.noteDraft.trim(); if (!body) return; act('note', 'Note added', () => { S.notes.push({ id: id(), by: 'cr', at: `Oct 5, ${now()}`, body, kind: 'note' }); UI.noteDraft = ''; log('message-square', 'muted', '<b>Crixcrox</b> added a note', null); }); }
+function handleRequest(nid) { const n = S.notes.find((x) => x.id === nid); act('req-' + nid, 'Work request marked handled', () => { n.handled = { by: 'cr', at: `Oct 5, ${now()}` }; log('check', 'muted', '<b>Crixcrox</b> marked a work request handled', null); }); }
+
+/* ───────────────────────── Demo presets ───────────────────────── */
+const PRESETS = {
+  blocked: ['En progreso + blocker', () => {}],
+  progress: ['En progreso (sin blocker)', () => { S.blockers.find((b) => b.id === 'b1').resolved = { by: 'cr', at: 'Oct 3, 9:00 AM', note: 'Part arrived' }; }],
+  paused: ['Pausada', () => { S.status = 'waiting_paused'; S.pause = { reason: 'Waiting for Parts', at: 'Oct 5, 11:50 AM' }; S.pauses = [{ reason: 'Waiting for Parts', start: '11:50 AM', end: null }]; }],
+  external: ['Esperando taller externo', () => { S.blockers.forEach((b) => { b.resolved ||= { by: 'cr', at: 'Oct 3, 9:00 AM', note: '' }; }); S.jobs.forEach((j) => { if (j.status === 'to_do' && j.kind !== 'qc' && !j.external) { j.status = 'completed'; j.doneBy = j.mech || 'cr'; j.doneAt = 'Oct 4, 2:10 PM'; } }); }],
+  ready: ['Lista para cerrar', () => { S.blockers.forEach((b) => { b.resolved ||= { by: 'cr', at: 'Oct 3, 9:00 AM', note: '' }; }); S.jobs.forEach((j) => { if (j.status === 'to_do') { j.status = 'completed'; j.external = null; j.doneBy = j.mech || 'cr'; j.doneAt = 'Oct 4, 2:10 PM'; } }); }],
+  completed: ['Completada', () => { PRESETS.ready[1](); S.status = 'completed'; S.completedAt = 'Oct 4, 2:15 PM'; }],
+  cancelled: ['Cancelada', () => { S.status = 'cancelled'; S.closeReason = 'Truck sold, work not needed'; }],
+};
+let preset = 'blocked';
+function presets() { return Object.entries(PRESETS).map(([k, [l]]) => `<button onclick="applyPreset('${k}')" class="h-9 rounded-md border px-2 text-xs font-medium ${preset === k ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-accent'}">${l}</button>`).join(''); }
+function applyPreset(k) {
+  const keep = S.canManage; S = seed(); S.canManage = keep; preset = k; PRESETS[k][1]();
+  UI = { ...freshUI(), tab: UI.tab }; closeLayer(); render();
+}
+function reset() { document.getElementById('opt-ro').checked = false; document.getElementById('opt-fail').checked = false; S = seed(); preset = 'blocked'; UI = freshUI(); closeLayer(); render(); }
+function toggleDemo() { document.getElementById('demo').classList.toggle('hidden'); }
+
+render();
+</script>
+</body>
+</html>

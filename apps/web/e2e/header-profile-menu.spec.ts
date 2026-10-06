@@ -57,8 +57,8 @@ test.describe('LTR-167 header and profile menu', () => {
     await expect(header.getByRole('button', { name: /Switch to Spanish|ES$/ })).toHaveCount(0);
 
     await switchLanguage(page, 'es');
-    await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Operaciones', exact: true })).toBeVisible();
     await switchLanguage(page, 'en');
-    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
   });
 });
