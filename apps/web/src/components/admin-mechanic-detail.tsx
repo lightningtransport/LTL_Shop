@@ -6,12 +6,12 @@ import { MechanicAccessCard, MechanicCapabilityEditor } from './admin-mechanic-r
 import { AdminWriteTip } from './admin-write-tip';
 import { AdminBackLink, PageHeader, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, CompactEmpty, EmptyState, LoadFailure, PageSkeleton } from './ui';
 import { ApiError } from '@/lib/api';
-import { useCanShowRosterWrites } from '@/lib/admin-actor';
+import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminMechanic } from '@/lib/admin-data';
 import { adminCapabilityLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 
 export function AdminMechanicDetail({ id, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
-  const canWrite = useCanShowRosterWrites();
+  const canWrite = useCanShowManagerWrites();
   const { data, error, isLoading, mutate } = useAdminMechanic(id);
   const canEditRoster = canWrite && data?.role === UserRole.MECHANIC;
   if (isLoading) return <PageSkeleton label={messages.mechanicsTitle} />;

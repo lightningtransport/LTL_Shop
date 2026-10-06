@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 66 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 67 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -38,7 +38,7 @@ PASA 66 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A23 | Corrección de tiempos (admin); cada sesión dice de qué mecánico es | PASA |
 | A24 | Custom Job: agregar y duplicados (la revisión no existe: defecto #3) | PASA |
 | A25 | Setup → Shop workflow: cambiar dueño por defecto; dueño inactivo → Unassigned | PASA |
-| A26 | Permisos: mecánico 403 en crear/pausar/agregar/terminar y en el roster; Manager 403 en el catálogo | PASA |
+| A26 | Permisos: mecánico 403 en crear/pausar/agregar/terminar, en el roster y en el catálogo; Safety 403 en roster y catálogo | PASA |
 | A27 | NO APLICA: login de Supabase, reset de contraseña, idioma, tema y app instalada son de la web (se prueban en el navegador) | NO APLICA |
 | A28 | NO APLICA: WO de PM legacy (pausa, reanudar, terminar): ya no se pueden crear y no queda ninguno abierto | NO APLICA |
 | A29 | Crear Standard, PM y Safety: entran al roster con su tipo; correo repetido y mecánico no pueden; Safety solo es dueño del QC | PASA |
@@ -48,6 +48,7 @@ PASA 66 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A33 | Horario del taller en Setup: el Manager (o el System Admin) cambia la hora y los días; aplica desde ese momento; los demás roles no pueden; datos inválidos no | PASA |
 | A34 | Ayudante: Job aparte "· ayudante" con su dueño; su reloj corre a su nombre en ese WO; no deja al mismo dueño, a quien no hace Standard, ni en PM / QC / otro ayudante; el bloqueo del principal no lo bloquea; cancelar el principal no lo cancela; solo el Manager | PASA |
 | A35 | Taller externo: sale la pieza o el camión con nota; sin dueño, sin reloj y sin "sin asignar"; siguiente paso "En taller externo" igual en todas las pantallas; no se puede cerrar; los demás Jobs siguen; el Yard dice "Fuera del taller"; solo el Manager; "Regresó" → completar o asignar | PASA |
+| A36 | El Manager crea un Job de catálogo, entra al Work Order como Job de catálogo; mismo nombre en la categoría no se duplica; mecánico y Safety no pueden | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

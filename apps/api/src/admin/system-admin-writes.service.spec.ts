@@ -437,6 +437,31 @@ describe('SystemAdminWritesService catalog', () => {
     });
   });
 
+  it('D25: refuses the same Job name in the category, trimmed and case-insensitive, with the existing jobId', async () => {
+    const findFirst = vi.fn().mockResolvedValue({ id: JOB_ID });
+    const create = vi.fn();
+    const service = serviceWith({
+      $transaction: vi.fn(async (callback: (client: unknown) => unknown) => callback({
+        jobCategory: { findUnique: vi.fn().mockResolvedValue({ id: CATEGORY_ID, status: 'active' }) },
+        catalogJob: { findFirst, create },
+      })),
+    });
+    await expect(service.createCatalogJob(ACTOR, {
+      categoryId: CATEGORY_ID,
+      displayName: '  AIR HOSE  ',
+    })).rejects.toMatchObject({
+      status: 409,
+      response: { code: 'CATALOG_JOB_EXISTS', jobId: JOB_ID },
+    });
+    expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        categoryId: CATEGORY_ID,
+        displayName: { equals: 'AIR HOSE', mode: 'insensitive' },
+      }),
+    }));
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('renames and activates a catalog job without changing its id', async () => {
     const tx = {
       catalogJob: {

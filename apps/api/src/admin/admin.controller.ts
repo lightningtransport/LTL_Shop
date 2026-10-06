@@ -16,8 +16,7 @@ import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { Capabilities } from '../auth/capabilities.decorator';
 import { CapabilitiesGuard } from '../auth/capabilities.guard';
-import { RosterWritesGuard } from '../auth/roster-writes.guard';
-import { SystemAdminGuard } from '../auth/system-admin.guard';
+import { ManagerWritesGuard } from '../auth/manager-writes.guard';
 import { TrucksService } from '../trucks/trucks.service';
 import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
@@ -229,19 +228,19 @@ export class AdminController {
 
   // D22 / LTR-187: the Shop Manager manages the roster; the System Admin keeps role access.
   @Post('mechanics')
-  @UseGuards(RosterWritesGuard)
+  @UseGuards(ManagerWritesGuard)
   createMechanic(@Req() request: Request, @Body() body: unknown) {
     return this.systemAdminWrites.createMechanic(request.user!, body);
   }
 
   @Patch('mechanics/:id')
-  @UseGuards(RosterWritesGuard)
+  @UseGuards(ManagerWritesGuard)
   updateMechanic(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.systemAdminWrites.updateMechanic(request.user!, id, body);
   }
 
   @Post('mechanics/:id/reset-password')
-  @UseGuards(RosterWritesGuard)
+  @UseGuards(ManagerWritesGuard)
   resetMechanicPassword(@Param('id') id: string) {
     return this.systemAdminWrites.resetPassword(id);
   }
@@ -289,13 +288,13 @@ export class AdminController {
   }
 
   @Post('catalog/jobs')
-  @UseGuards(SystemAdminGuard)
+  @UseGuards(ManagerWritesGuard)
   createCatalogJob(@Req() request: Request, @Body() body: unknown) {
     return this.systemAdminWrites.createCatalogJob(request.user!, body);
   }
 
   @Patch('catalog/jobs/:id')
-  @UseGuards(SystemAdminGuard)
+  @UseGuards(ManagerWritesGuard)
   updateCatalogJob(@Param('id') id: string, @Body() body: unknown) {
     return this.systemAdminWrites.updateCatalogJob(id, body);
   }

@@ -8,13 +8,13 @@ import { useActionToast } from './action-toast';
 import { ActivateMechanicDialog, CreateMechanicDialog } from './admin-mechanic-roster';
 import { AdminWriteTip } from './admin-write-tip';
 import { AdminFilterToolbar, DataTable, PageHeader, Badge, Button, EmptyState, LoadFailure, PageSkeleton } from './ui';
-import { useCanShowRosterWrites } from '@/lib/admin-actor';
+import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminMechanics } from '@/lib/admin-data';
 import { adminCapabilityLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 
 export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
-  // D22: the Shop Manager manages the roster (System Admin too); catalog writes stay System Admin only.
-  const canWrite = useCanShowRosterWrites();
+  // D22: the Shop Manager manages the roster (System Admin too); the Job catalog too (D25).
+  const canWrite = useCanShowManagerWrites();
   const { showToast } = useActionToast();
   const router = useRouter();
   const searchParams = useSearchParams();

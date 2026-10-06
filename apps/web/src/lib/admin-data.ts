@@ -559,11 +559,11 @@ export function recordAdminWorkPlanInspection(
 }
 
 /**
- * System Admin writes from main abbc0ff (`SystemAdminGuard`: role admin plus
- * admin.access). Shop Manager is 403. Live once API prod is READY.
- * No idempotency key on these bodies.
+ * Roster (D22) and Job catalog (D25) writes. API gate `ManagerWritesGuard`: the Shop Manager
+ * (admin.access + work_orders.manage) or the System Admin by role. No idempotency key on these bodies.
+ * A catalog Job name already in the category → 409 CATALOG_JOB_EXISTS with the existing `jobId`.
  *
- * POST /api/admin/mechanics { email, name, mode: 'standard' | 'pm' } → UserDto
+ * POST /api/admin/mechanics { email, name, mode: 'standard' | 'pm' | 'safety' } → UserDto
  * PATCH /api/admin/mechanics/:id { name?, mode?, active? } → UserDto
  * POST /api/admin/catalog/jobs { categoryId, displayName, status? } → job + categoryId
  * PATCH /api/admin/catalog/jobs/:id { displayName?, status? } → same job id

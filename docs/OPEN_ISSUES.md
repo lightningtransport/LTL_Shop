@@ -48,9 +48,9 @@ npm run test:real --workspace=@ltl-shop/api         # corre todo y escribe la ma
 ```
 
 **Resultado (al cierre de la Fase A):** 56 comprobaciones · 43 funcionan ·
-11 fallan · 2 no aplican. **Hoy:** 68 comprobaciones · **66 funcionan · 0 fallan** · 2 no aplican
+11 fallan · 2 no aplican. **Hoy:** 69 comprobaciones · **67 funcionan · 0 fallan** · 2 no aplican
 (defectos #1, #2, #4 y #7 arreglados: LTR-175, 176, 177, 182; Quality Check
-de Safety construido: LTR-185; personal del taller A29–A31: LTR-187; cierre del día y un reloj por mecánico A32, A33, E7: LTR-186; ayudante y taller externo A34, A35: LTR-188). Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
+de Safety construido: LTR-185; personal del taller A29–A31: LTR-187; cierre del día y un reloj por mecánico A32, A33, E7: LTR-186; ayudante y taller externo A34, A35: LTR-188; el Manager mantiene el catálogo A36: D25). Matriz completa: `apps/api/test-real/results/matrix.md`. Las 11
 fallas son 5 defectos:
 
 | Defecto | Filas que fallan | Clase | Ticket |
@@ -69,25 +69,28 @@ crear y en producción no queda ninguno abierto (consulta de solo lectura del
 2026-09-29: 0). El código de pausa / reanudar / terminar del mecánico PM se
 puede borrar en la limpieza (§3).
 
-### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
+### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **HECHA (2026-10-05)**
 
 Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → recorrido de
 pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ ~~W12~~ ~~W14~~ ~~W15~~ ~~W17~~ ~~W9~~ ~~W5~~ hechos; ~~W16~~ ~~W3~~ ~~W6~~ ~~W7~~ ~~W8~~ ~~W10~~ ~~W13~~ **todos hechos**) → ~~los de §1b
 (LTR-179)~~ hechos (2026-09-30) → Fase C. El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
-**Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
-deciden antes de la Fase D. Cada PR: arreglo + su fila en `test-real/` pasa a
-PASA + `USER_FLOWS.md` pasa a ✅ + fila borrada de aquí.
+**Hecho:** el Quality Check de Safety (D19, LTR-185); alta del personal (D22,
+LTR-187); cierre del día y un reloj por mecánico (D20, D21, LTR-186); ayudante
+y taller externo (D23, D24, LTR-188). P11 (trailers) queda para después de
+salir en vivo. Regla que sigue vigente para cualquier arreglo: su fila en
+`test-real/` pasa a PASA + `USER_FLOWS.md` pasa a ✅ + fila borrada de aquí.
 
-### Fase C — Limpieza (§3, LTR-180) e idioma (§4, LTR-181)
+### Fase C — Limpieza (§3, LTR-180) e idioma (§4, LTR-181) — **HECHA (2026-09-30)**
 
 Borrar el código heredado y unificar los textos, para que nadie vuelva a
 construir sobre algo muerto.
 
-### Fase D — Salir en vivo (§5) — LTR-45
+### Fase D — Salir en vivo (§5) — LTR-45 — **SIGUE**
 
-Roster real, Auth real, bypass apagado, prueba con un Manager y un mecánico
-reales. **El uso real es lo que confirma que está terminado.**
+Paso a paso en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md): migrar y
+desplegar, cuentas reales, bypass apagado, un día de prueba con gente real.
+**El uso real es lo que confirma que está terminado.**
 
 ### Cómo saber que terminamos
 
@@ -103,7 +106,7 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 
 | # | Problema | Qué pasa | Dónde |
 |---|---|---|---|
-| 3 | **Custom Jobs sin revisión** — C, pendiente de P5 | Quedan en `review_status = pending_review` para siempre; nada los mapea al catálogo (ver P5 en `DECISIONS.md`). | `work-orders.service.ts` (l. 367, 951) |
+| 3 | **Custom Jobs sin revisión** — **E (bajó de C), decidido D25 (2026-10-05)** | **Hecho (2026-10-05):** el Manager agrega y edita Jobs del catálogo (Admin → Job Catalog) y, en el Work Plan, puede marcar "Agregar también al catálogo" al crear un Job personalizado; un nombre repetido en la categoría no se acepta y se elige el que existe (fila A36; A26 sin 403 para el Manager). **Sigue:** los Custom Jobs viejos quedan en `pending_review` sin pantalla; la bandeja para revisarlos va después (LTR-57). | `work-orders.service.ts` (l. 367, 851), `admin.controller.ts` (catálogo) |
 | ~~5~~ | ~~"Mechanic note: undefined"~~ — cerrado | No se reproduce en el recorrido de pantallas del 2026-09-29 (§1d). | — |
 
 
@@ -320,24 +323,19 @@ sitio) y el Yard "¿dónde está cada camión?". Se retoma con las decisiones de
 
 ## 5. Para salir en vivo — LTR-45
 
-Detalle en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md).
-
-- Roster real y `work_orders.manage` para los Managers reales (P6), más las
-  dos cuentas de Safety con `quality_check.perform` (hoy "Safety 1" y
-  "Safety 2" en el seed local).
-- Usuarios reales en Supabase Auth; `AUTH_DEV_BYPASS` apagado en producción.
-- Carga única de camiones de Ninox, si la flota de producción no está completa.
-- Smoke con un Manager y un mecánico reales, incluido Safari en un iPhone real.
-- Validar en datos de producción: Truck Detail (LTR-59) y Ready vs Complete
-  vs Return to Service (LTR-60, LTR-123). Cerrar la épica LTR-149.
+Paso a paso en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md) (2026-10-05):
+mirar producción, variables, migrar y desplegar, cuentas (el Manager da de alta
+al personal, D22), configurar el taller, limpiar datos de prueba, un día de
+prueba en iPhone real. Terminado cuando el taller trabaja un día completo con
+usuarios reales sin un defecto B.
 
 ## 6. Fuera de alcance (no se construye hasta decidirlo)
 
 - Presencia física en el patio (Samsara), McLeod, Dispatch, Schedule_Teams.
 - Off Duty (decidido: se lanza sin eso), sincronizar con Ninox (P4).
 - Trailers como activos: el taller los necesita; falta decidir cuándo (P11).
-- Pantallas para escribir catálogo, categorías y permisos (hoy solo por API
-  o nada). Alta de camiones y mecánicos **sí** entra: LTR-187.
+- Pantallas para escribir categorías y permisos. Alta de mecánicos **sí**
+  entra (LTR-187, D22) y los Jobs del catálogo también (D25); camiones después.
 - Rendimiento por Job, tiempos por Job, espera por motivo.
 - Espacios de trabajo de Detailing, Body Shop, Trailer e Inspector.
 - Notificaciones push (decidido: solo dentro de la app).

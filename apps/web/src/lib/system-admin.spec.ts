@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { getAdminMessages } from './admin-messages';
 import { ApiError } from './api';
 import {
-  adminWriteFailureMessage, canShowAdminWrites, canShowRosterWrites, isRosterEmail, isSystemAdmin, mechanicOpenWorkFromError,
+  adminWriteFailureMessage, canShowManagerWrites, isRosterEmail, isSystemAdmin, mechanicOpenWorkFromError,
 } from './system-admin';
 
 describe('isSystemAdmin', () => {
@@ -16,45 +16,23 @@ describe('isSystemAdmin', () => {
   });
 });
 
-describe('canShowAdminWrites', () => {
-  it('shows writes for a System Admin session even before the client profile loads', () => {
-    expect(canShowAdminWrites(UserRole.ADMIN, null)).toBe(true);
-    expect(canShowAdminWrites(UserRole.ADMIN, undefined)).toBe(true);
-    expect(canShowAdminWrites(UserRole.ADMIN, { role: UserRole.MANAGER })).toBe(true);
-  });
-
-  it('keeps Shop Manager read-only, including when only admin.access would be present', () => {
-    expect(canShowAdminWrites(UserRole.MANAGER, null)).toBe(false);
-    expect(canShowAdminWrites(UserRole.MANAGER, { role: UserRole.MANAGER })).toBe(false);
-    expect(canShowAdminWrites(undefined, { role: UserRole.MANAGER })).toBe(false);
-    expect(canShowAdminWrites('manager', { role: UserRole.MECHANIC })).toBe(false);
-  });
-
-  it('accepts a loaded client profile with role admin when the session role is missing', () => {
-    expect(canShowAdminWrites(undefined, { role: UserRole.ADMIN })).toBe(true);
-    expect(canShowAdminWrites('manager', { role: UserRole.ADMIN })).toBe(true);
-  });
-});
-
-describe('canShowRosterWrites (D22)', () => {
+describe('canShowManagerWrites (D22 roster, D25 catalog)', () => {
   const managerCaps = [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE, AppCapability.YARD_OPERATIONS_MANAGE];
 
-  it('opens the roster to the Shop Manager, by session role before the profile loads and by capabilities after', () => {
-    expect(canShowRosterWrites(UserRole.MANAGER, null)).toBe(true);
-    expect(canShowRosterWrites(UserRole.MANAGER, { role: UserRole.MANAGER, capabilities: managerCaps })).toBe(true);
-    expect(canShowRosterWrites(undefined, { role: UserRole.MANAGER, capabilities: managerCaps })).toBe(true);
+  it('opens the roster and the Job catalog to the Shop Manager, by session role before the profile loads and by capabilities after', () => {
+    expect(canShowManagerWrites(UserRole.MANAGER, null)).toBe(true);
+    expect(canShowManagerWrites(UserRole.MANAGER, { role: UserRole.MANAGER, capabilities: managerCaps })).toBe(true);
+    expect(canShowManagerWrites(undefined, { role: UserRole.MANAGER, capabilities: managerCaps })).toBe(true);
   });
 
   it('keeps the System Admin by role and refuses everyone else', () => {
-    expect(canShowRosterWrites(UserRole.ADMIN, null)).toBe(true);
-    expect(canShowRosterWrites('manager', { role: UserRole.ADMIN, capabilities: [AppCapability.ADMIN_ACCESS] })).toBe(true);
-    expect(canShowRosterWrites(UserRole.MANAGER, { role: UserRole.MANAGER, capabilities: [AppCapability.ADMIN_ACCESS] })).toBe(false);
-    expect(canShowRosterWrites(UserRole.MECHANIC, { role: UserRole.MECHANIC, capabilities: [AppCapability.QUALITY_CHECK_PERFORM] })).toBe(false);
-    expect(canShowRosterWrites(undefined, null)).toBe(false);
-  });
-
-  it('does not open catalog writes to the Manager', () => {
-    expect(canShowAdminWrites(UserRole.MANAGER, { role: UserRole.MANAGER })).toBe(false);
+    expect(canShowManagerWrites(UserRole.ADMIN, null)).toBe(true);
+    expect(canShowManagerWrites(UserRole.ADMIN, undefined)).toBe(true);
+    expect(canShowManagerWrites(undefined, { role: UserRole.ADMIN, capabilities: [AppCapability.ADMIN_ACCESS] })).toBe(true);
+    expect(canShowManagerWrites('manager', { role: UserRole.ADMIN, capabilities: [AppCapability.ADMIN_ACCESS] })).toBe(true);
+    expect(canShowManagerWrites(UserRole.MANAGER, { role: UserRole.MANAGER, capabilities: [AppCapability.ADMIN_ACCESS] })).toBe(false);
+    expect(canShowManagerWrites(UserRole.MECHANIC, { role: UserRole.MECHANIC, capabilities: [AppCapability.QUALITY_CHECK_PERFORM] })).toBe(false);
+    expect(canShowManagerWrites(undefined, null)).toBe(false);
   });
 });
 

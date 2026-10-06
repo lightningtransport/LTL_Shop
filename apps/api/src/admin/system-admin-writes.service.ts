@@ -52,15 +52,16 @@ type MechanicRow = Prisma.UserGetPayload<{ select: typeof mechanicSelect }>;
 type CatalogClient = Prisma.TransactionClient | PrismaService;
 
 /**
- * Roster (D22 / LTR-187) and catalog (LTR-77) writes.
+ * Roster (D22 / LTR-187) and catalog (LTR-77, D25) writes.
  *
- * Roster: `RosterWritesGuard` (Shop Manager or System Admin) is the authorization gate. Creating
+ * Roster and catalog: `ManagerWritesGuard` (Shop Manager or System Admin) is the authorization gate. Creating
  * a person also creates the Supabase Auth account with a temporary password that is returned once
  * and never stored or logged; deactivation is refused while the person has Jobs to do or labor
  * time running (`MECHANIC_HAS_OPEN_WORK`). Nothing is deleted.
  *
- * Catalog: `SystemAdminGuard` (`users.role === admin`). These methods do not re-check
- * capabilities and do not invent new ones. Audit uses columns that already exist:
+ * Catalog (D25): a Job name already in the category (trimmed, case-insensitive) is refused with
+ * `CATALOG_JOB_EXISTS` and the existing `jobId`. These methods do not re-check capabilities and
+ * do not invent new ones. Audit uses columns that already exist:
  * `user_capabilities.granted_by_id` / `granted_at`, and `catalog_jobs.created_by_id`.
  */
 @Injectable()

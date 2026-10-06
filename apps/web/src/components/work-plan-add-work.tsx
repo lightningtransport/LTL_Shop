@@ -1,8 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { CatalogJobDto, TruckWorkPlanDto } from '@ltl-shop/shared';
+import { useSWRConfig } from 'swr';
+import type { CatalogJobDto, JobCategoryDto, TruckWorkPlanDto } from '@ltl-shop/shared';
+import { useCanShowManagerWrites } from '@/lib/admin-actor';
+import { createAdminCatalogJob } from '@/lib/admin-data';
 import type { AdminMessages } from '@/lib/admin-messages';
+import { ApiError } from '@/lib/api';
+import { apiErrorCode } from '@/lib/api-error-message';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import {
   draftContainsCatalogJob,
@@ -13,6 +18,7 @@ import {
   type WorkPlanJobDraft,
 } from '@/lib/work-plan';
 import { useCatalogJobs, useCategories } from '@/lib/shop-data';
+import { adminWriteFailureMessage } from '@/lib/system-admin';
 import { CategoryJobList } from './category-job-list';
 import {
   Badge,
@@ -46,8 +52,20 @@ export function WorkPlanAddWork({
   const [jobQuery, setJobQuery] = useState('');
   const [customName, setCustomName] = useState('');
   const [drafts, setDrafts] = useState<WorkPlanJobDraft[]>([]);
+  // D25: the Manager (or System Admin) can save the custom Job into the catalog as it is added.
+  const canAddToCatalog = useCanShowManagerWrites();
+  const [alsoAddToCatalog, setAlsoAddToCatalog] = useState(false);
+  const [catalogSaving, setCatalogSaving] = useState(false);
+  const [catalogNotice, setCatalogNotice] = useState<string | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const { mutate } = useSWRConfig();
   const { data: categories, error: categoriesError, isLoading: categoriesLoading } = useCategories(true);
-  const { data: catalogJobs, error: jobsError, isLoading: jobsLoading } = useCatalogJobs(categoryId, Boolean(categoryId));
+  const {
+    data: catalogJobs,
+    error: jobsError,
+    isLoading: jobsLoading,
+    mutate: refreshCatalogJobs,
+  } = useCatalogJobs(categoryId, Boolean(categoryId));
 
   // LTR-145: the PM Category is a normal Work Plan step.
   const standardCategories = categories ?? [];
@@ -77,25 +95,79 @@ export function WorkPlanAddWork({
     setCustomName('');
   }, [preferredCategoryName, standardCategories]);
 
+  function catalogDraft(category: JobCategoryDto, job: Pick<CatalogJobDto, 'id' | 'displayName'>): WorkPlanJobDraft {
+    return {
+      key: crypto.randomUUID(),
+      catalogJobId: job.id,
+      categoryId: category.id,
+      categoryName: category.name,
+      displayName: job.displayName,
+    };
+  }
+
   function toggleCatalogJob(job: CatalogJobDto) {
     if (!selectedCategory || disabled) return;
     setDrafts((current) => {
       if (draftContainsCatalogJob(current, job.id)) {
         return current.filter((draft) => draft.catalogJobId !== job.id);
       }
-      return [...current, {
-        key: crypto.randomUUID(),
-        catalogJobId: job.id,
-        categoryId: selectedCategory.id,
-        categoryName: selectedCategory.name,
-        displayName: job.displayName,
-      }];
+      return [...current, catalogDraft(selectedCategory, job)];
     });
   }
 
+  function selectCatalogJob(category: JobCategoryDto, job: Pick<CatalogJobDto, 'id' | 'displayName'>) {
+    setDrafts((current) => (draftContainsCatalogJob(current, job.id) ? current : [...current, catalogDraft(category, job)]));
+  }
+
+  /**
+   * D25: "Also add to the catalog". The Job is created in the catalog first and goes on the
+   * draft as a catalog Job. When the name is already in that category (CATALOG_JOB_EXISTS), the
+   * existing catalog Job is selected instead.
+   */
+  async function addCustomJobToCatalog(category: JobCategoryDto, name: string) {
+    setCatalogSaving(true);
+    try {
+      const created = await createAdminCatalogJob({ categoryId: category.id, displayName: name });
+      selectCatalogJob(category, created);
+      setCustomName('');
+      setAlsoAddToCatalog(false);
+      void mutate((key) => typeof key === 'string' && key.startsWith('/api/admin/catalog/'));
+      await refreshCatalogJobs();
+    } catch (failure) {
+      const existingId = apiErrorCode(failure) === 'CATALOG_JOB_EXISTS' && failure instanceof ApiError
+        ? (failure.body as { jobId?: unknown }).jobId
+        : null;
+      const list = existingId ? (await refreshCatalogJobs()) ?? catalogJobs ?? [] : [];
+      const existing = list.find((job) => job.id === existingId)
+        ?? list.find((job) => job.displayName.trim().toLowerCase() === name.toLowerCase());
+      if (existing && !existingCatalogIds.includes(existing.id)) {
+        selectCatalogJob(category, existing);
+        setCustomName('');
+        setAlsoAddToCatalog(false);
+        setCatalogNotice(fillPlaceholders(messages.customJobAlreadyInCatalog, { job: existing.displayName }));
+      } else {
+        setCatalogError(adminWriteFailureMessage(failure, {
+          locale: messages.locale,
+          apiError: messages.apiError,
+          forbidden: messages.catalogWriteForbidden,
+          conflict: messages.catalogWriteConflict,
+          failed: messages.catalogWriteFailed,
+        }));
+      }
+    } finally {
+      setCatalogSaving(false);
+    }
+  }
+
   function addCustomJob() {
-    if (!selectedCategory || !customName.trim() || customIsDuplicate || disabled) return;
+    if (!selectedCategory || !customName.trim() || customIsDuplicate || disabled || catalogSaving) return;
     const name = customName.trim();
+    setCatalogNotice(null);
+    setCatalogError(null);
+    if (canAddToCatalog && alsoAddToCatalog) {
+      void addCustomJobToCatalog(selectedCategory, name);
+      return;
+    }
     setDrafts((current) => [...current, {
       key: crypto.randomUUID(),
       categoryId: selectedCategory.id,
@@ -142,6 +214,8 @@ export function WorkPlanAddWork({
               setCategoryId(event.target.value);
               setJobQuery('');
               setCustomName('');
+              setCatalogNotice(null);
+              setCatalogError(null);
             }}
           >
             <option value="">{messages.category}</option>
@@ -191,11 +265,25 @@ export function WorkPlanAddWork({
               disabled={disabled}
               onChange={(event) => setCustomName(event.target.value)}
             />
-            <Button type="button" disabled={disabled || !customName.trim() || customIsDuplicate} onClick={addCustomJob}>
-              {messages.addCustomJob}
+            <Button type="button" disabled={disabled || catalogSaving || !customName.trim() || customIsDuplicate} onClick={addCustomJob}>
+              {catalogSaving ? messages.addCustomJobToCatalogBusy : messages.addCustomJob}
             </Button>
           </div>
+          {canAddToCatalog ? (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-5"
+                checked={alsoAddToCatalog}
+                disabled={disabled || catalogSaving}
+                onChange={(event) => setAlsoAddToCatalog(event.target.checked)}
+              />
+              <span>{messages.addCustomJobToCatalog}</span>
+            </label>
+          ) : null}
           {customIsDuplicate ? <p className="text-sm text-muted-foreground" role="status">{messages.jobsInPlan}</p> : null}
+          {catalogNotice ? <p className="text-sm text-muted-foreground" role="status">{catalogNotice}</p> : null}
+          {catalogError ? <InlineAlert>{catalogError}</InlineAlert> : null}
         </div>
       ) : null}
       <div className="space-y-2">

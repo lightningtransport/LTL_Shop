@@ -6,12 +6,12 @@ import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
 import { AdminWriteTip } from './admin-write-tip';
 import { DataTable, PageHeader, Badge, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
-import { useCanShowAdminWrites } from '@/lib/admin-actor';
+import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
-  const canWrite = useCanShowAdminWrites();
+  const canWrite = useCanShowManagerWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategories();
   const [search, setSearch] = useState('');
   const items = useMemo(() => {

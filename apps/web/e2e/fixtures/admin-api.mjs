@@ -140,6 +140,46 @@ function workflowStepDto(step) {
 // LTR-186 / D20: Setup → Shop hours (day close).
 const shopHours = { cutoff: '17:00', workdays: [1, 2, 3, 4, 5], timeZone: 'America/New_York', updatedAt: '2026-09-01T12:00:00.000Z', updatedBy: null };
 let catalogWriteSeq = 900;
+// Work Plan picker list (`/api/catalog/jobs`). D25: Jobs the Manager adds to the catalog join it.
+const catalogJobs = [
+  {
+    id: '00000000-0000-4000-8000-000000000801',
+    categoryId: '00000000-0000-4000-8000-000000000301',
+    displayName: 'Inspect brake chamber',
+    aliases: ['inspect brake chamber', 'Brake chamber'],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000803',
+    categoryId: '00000000-0000-4000-8000-000000000301',
+    displayName: 'Brake Inspection',
+    aliases: ['brake inspect'],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000802',
+    categoryId: '00000000-0000-4000-8000-000000000302',
+    displayName: 'Inspect shocks',
+    aliases: ['inspect shocks'],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000804',
+    categoryId: '00000000-0000-4000-8000-000000000302',
+    displayName: 'Suspension Inspection',
+    aliases: ['suspension inspect'],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000805',
+    categoryId: '00000000-0000-4000-8000-000000000302',
+    displayName: '3 in 1',
+    aliases: ['3in1', '3-in-1'],
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000806',
+    categoryId: '00000000-0000-4000-8000-000000000302',
+    displayName: 'Alignment',
+    aliases: ['alignment'],
+  },
+];
+let createdCatalogJobs = [];
 let rosterWriteSeq = 20;
 
 function fixtureUuid(seq) {
@@ -322,6 +362,7 @@ function resetFixtureState() {
   for (const [key, value] of fresh.workPlanByTruck) workPlanByTruck.set(key, value);
   workflowSteps.splice(0, workflowSteps.length, ...fresh.workflowSteps);
   catalogWriteSeq = 900;
+  createdCatalogJobs = [];
   rosterWriteSeq = 20;
 }
 
@@ -372,44 +413,8 @@ createServer(async (request, response) => {
   if (request.url?.startsWith('/api/catalog/jobs')) {
     const url = new URL(request.url, 'http://fixture.local');
     const categoryId = url.searchParams.get('categoryId');
-    const jobs = [
-      {
-        id: '00000000-0000-4000-8000-000000000801',
-        categoryId: '00000000-0000-4000-8000-000000000301',
-        displayName: 'Inspect brake chamber',
-        aliases: ['inspect brake chamber', 'Brake chamber'],
-      },
-      {
-        id: '00000000-0000-4000-8000-000000000803',
-        categoryId: '00000000-0000-4000-8000-000000000301',
-        displayName: 'Brake Inspection',
-        aliases: ['brake inspect'],
-      },
-      {
-        id: '00000000-0000-4000-8000-000000000802',
-        categoryId: '00000000-0000-4000-8000-000000000302',
-        displayName: 'Inspect shocks',
-        aliases: ['inspect shocks'],
-      },
-      {
-        id: '00000000-0000-4000-8000-000000000804',
-        categoryId: '00000000-0000-4000-8000-000000000302',
-        displayName: 'Suspension Inspection',
-        aliases: ['suspension inspect'],
-      },
-      {
-        id: '00000000-0000-4000-8000-000000000805',
-        categoryId: '00000000-0000-4000-8000-000000000302',
-        displayName: '3 in 1',
-        aliases: ['3in1', '3-in-1'],
-      },
-      {
-        id: '00000000-0000-4000-8000-000000000806',
-        categoryId: '00000000-0000-4000-8000-000000000302',
-        displayName: 'Alignment',
-        aliases: ['alignment'],
-      },
-    ].filter((job) => !categoryId || job.categoryId === categoryId);
+    const jobs = [...catalogJobs, ...createdCatalogJobs]
+      .filter((job) => !categoryId || job.categoryId === categoryId);
     json(response, 200, jobs);
     return;
   }
@@ -456,27 +461,25 @@ createServer(async (request, response) => {
     json(response, 403, { message: 'You do not have access to manage Work Orders.' });
     return true;
   }
-  function denyUnlessSystemAdmin() {
-    if (user.role === 'admin') return false;
-    json(response, 403, { message: 'Only System Admin can change this.' });
-    return true;
-  }
-  // D22: the roster opens to the Shop Manager (admin.access + work_orders.manage) and role admin.
-  function denyUnlessRosterWriter() {
+  // D22 roster and D25 Job catalog: open to the Shop Manager (admin.access + work_orders.manage) and role admin.
+  function denyUnlessManagerWriter() {
     if (user.role === 'admin' || (user.capabilities.includes('admin.access') && canManageWorkOrders)) return false;
-    json(response, 403, { message: 'Only the Shop Manager or a System Admin can change the roster.' });
+    json(response, 403, { message: 'Only the Shop Manager or a System Admin can change this.' });
     return true;
   }
   if (request.url === '/api/admin/catalog/jobs' && request.method === 'POST') {
-    if (denyUnlessSystemAdmin()) return;
+    if (denyUnlessManagerWriter()) return;
     const body = await readJson(request);
     const category = adminCatalog.find((item) => item.id === body?.categoryId);
     if (!category) { json(response, 404, { message: 'Category not found' }); return; }
     if (category.status !== 'active') { json(response, 400, { message: 'Add jobs only to an active category.' }); return; }
     const displayName = String(body?.displayName ?? '').trim();
     if (!displayName) { json(response, 400, { message: 'Enter a Job name.' }); return; }
-    if (category.jobs.some((job) => job.displayName.toLowerCase() === displayName.toLowerCase())) {
-      json(response, 409, { message: 'That job name is already used by another catalog job.' });
+    const sameName = (job) => job.displayName.toLowerCase() === displayName.toLowerCase();
+    const duplicate = category.jobs.find(sameName)
+      ?? [...catalogJobs, ...createdCatalogJobs].find((job) => job.categoryId === category.id && sameName(job));
+    if (duplicate) {
+      json(response, 409, { code: 'CATALOG_JOB_EXISTS', message: 'A catalog job with this name already exists in the category.', jobId: duplicate.id });
       return;
     }
     catalogWriteSeq += 1;
@@ -487,12 +490,13 @@ createServer(async (request, response) => {
       aliases: [displayName],
     };
     category.jobs.push(created);
+    if (created.status === 'active') createdCatalogJobs.push({ id: created.id, categoryId: category.id, displayName, aliases: [displayName] });
     json(response, 200, { ...created, categoryId: category.id });
     return;
   }
   const catalogJobPatch = request.url?.match(/^\/api\/admin\/catalog\/jobs\/([0-9a-f-]+)$/i);
   if (catalogJobPatch && request.method === 'PATCH') {
-    if (denyUnlessSystemAdmin()) return;
+    if (denyUnlessManagerWriter()) return;
     const body = await readJson(request);
     const displayName = body?.displayName === undefined ? undefined : String(body.displayName).trim();
     const status = body?.status;
@@ -961,7 +965,7 @@ createServer(async (request, response) => {
     return;
   }
   if (request.url === '/api/admin/mechanics' && request.method === 'POST') {
-    if (denyUnlessRosterWriter()) return;
+    if (denyUnlessManagerWriter()) return;
     const body = await readJson(request);
     const name = String(body?.name ?? '').trim();
     const email = String(body?.email ?? '').trim().toLowerCase();
@@ -987,7 +991,7 @@ createServer(async (request, response) => {
   }
   const mechanicResetMatch = request.url?.match(/^\/api\/admin\/mechanics\/([0-9a-f-]+)\/reset-password$/i);
   if (mechanicResetMatch && request.method === 'POST') {
-    if (denyUnlessRosterWriter()) return;
+    if (denyUnlessManagerWriter()) return;
     const candidate = Object.values(users).find((item) => item.id === mechanicResetMatch[1]);
     if (!candidate || candidate.role !== 'mechanic') { json(response, 404, { message: 'Mechanic not found' }); return; }
     // Retired Mechanic never signed in: no Supabase account to reset.
@@ -998,7 +1002,7 @@ createServer(async (request, response) => {
   }
   const mechanicWriteMatch = request.url?.match(/^\/api\/admin\/mechanics\/([0-9a-f-]+)$/i);
   if (mechanicWriteMatch && request.method === 'PATCH') {
-    if (denyUnlessRosterWriter()) return;
+    if (denyUnlessManagerWriter()) return;
     const body = await readJson(request);
     if (body?.name === undefined && body?.mode === undefined && body?.active === undefined) {
       json(response, 400, { message: 'Provide a name, Standard/PM/Safety mode, or active flag' });

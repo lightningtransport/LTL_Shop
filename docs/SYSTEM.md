@@ -38,8 +38,8 @@ su pantalla inicial y separa al System Admin.
 
 | Persona | Rol | Capabilities | Qué hace |
 |---|---|---|---|
-| **Shop Manager** | `manager` | `admin.access`, `work_orders.manage`, `yard.operations.manage` | Crea y planea WOs, inspecciona, asigna, pausa, resuelve bloqueos, hace QC, cierra, Return to Service. **Da de alta al personal** (Standard, PM, Safety), lo desactiva/reactiva y reinicia contraseñas (D22). |
-| **System Admin** | `admin` | `admin.access` (+ las demás que necesite) | Lo mismo que el Manager (el roster lo abre por rol, aunque solo tenga `admin.access`), más altas de Jobs de catálogo (solo por API). |
+| **Shop Manager** | `manager` | `admin.access`, `work_orders.manage`, `yard.operations.manage` | Crea y planea WOs, inspecciona, asigna, pausa, resuelve bloqueos, hace QC, cierra, Return to Service. **Da de alta al personal** (Standard, PM, Safety), lo desactiva/reactiva y reinicia contraseñas (D22). **Mantiene el catálogo de Jobs**: agrega, renombra y activa Jobs de catálogo; las categorías no cambian (D25). |
+| **System Admin** | `admin` | `admin.access` (+ las demás que necesite) | Lo mismo que el Manager (el roster y el catálogo de Jobs los abre por rol, aunque solo tenga `admin.access`). |
 | **Mecánico Standard** | `mechanic` | `mechanic.standard` | Ejecuta sus Jobs asignados. |
 | **Mecánico PM** | `mechanic` | `mechanic.pm` | Hace el PM de los camiones. |
 | **Safety (Quality Check)** | `mechanic` | `quality_check.perform` | Revisa los camiones terminados: los aprueba o los devuelve con una nota (D19). Dos personas. |
@@ -47,7 +47,7 @@ su pantalla inicial y separa al System Admin.
 | Capability | Da acceso a |
 |---|---|
 | `admin.access` | Entrar a `/admin`. Reabrir WO, corregir tiempos, reabrir Job cancelado, Return to Service. **El Manager también la tiene**, así que puede hacer todo esto. |
-| `work_orders.manage` | Crear WO, agregar/cancelar Jobs, asignar, prioridad, notas, pausar/reanudar, completar/cancelar WO, resolver bloqueos, editar Shop workflow. Con `admin.access`, también el **roster** (`POST/PATCH /api/admin/mechanics`, reset-password; D22). |
+| `work_orders.manage` | Crear WO, agregar/cancelar Jobs, asignar, prioridad, notas, pausar/reanudar, completar/cancelar WO, resolver bloqueos, editar Shop workflow. Con `admin.access`, también el **roster** (`POST/PATCH /api/admin/mechanics`, reset-password; D22) y los **Jobs de catálogo** (`POST/PATCH /api/admin/catalog/jobs`; D25). Mecánicos y Safety reciben 403. |
 | `yard.operations.manage` | Registrar la inspección del Truck. |
 | `mechanic.standard` | Pantallas y acciones del mecánico Standard. |
 | `mechanic.pm` | Pantallas y acciones del mecánico PM. |
@@ -143,7 +143,14 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   dueño no lo puede ejecutar nadie; aparece en "Needs attention".
 - El Job trae su categoría (`categoryId`). Un WO puede mezclar categorías.
 - Los Jobs de catálogo no se repiten; los Custom Jobs no repiten nombre
-  (normalizado). Los Custom Jobs quedan con `review_status = pending_review`.
+  (normalizado). Los Custom Jobs quedan con `review_status = pending_review`
+  (la bandeja para revisarlos va después, LTR-57).
+- **"Agregar también al catálogo"** (D25): al agregar un Job personalizado en
+  el Work Plan, el Manager puede marcarlo (apagado por defecto). El Job entra
+  primero al catálogo de esa categoría y al WO como **Job de catálogo**
+  (`catalogJobId`, no personalizado). Si el nombre ya está en la categoría
+  (sin importar mayúsculas ni espacios; `CATALOG_JOB_EXISTS`), la app lo dice
+  y elige el Job que ya existe.
 - **Quality Check no tiene dueño por defecto** (D15). Solo una persona de
   Safety puede ser su dueño: lo toma desde su pantalla (D19). El Manager
   conserva "Mark complete" como respaldo.
@@ -288,7 +295,8 @@ en [`USER_FLOWS.md`](USER_FLOWS.md).
    Unassigned).
 3. En el Truck (`/admin/trucks/[id]`) registra la inspección:
    **No issues found** o **Issues found**. Con Issues found agrega los Jobs
-   extra y elige "¿Quién lo hace?" en cada uno (D14).
+   extra y elige "¿Quién lo hace?" en cada uno (D14). Un Job personalizado
+   puede entrar también al catálogo con "Agregar también al catálogo" (D25).
 
 **M02 — Asignar**
 - Un dueño por Job, desde el Work Plan del Truck o el detalle Admin del WO.
@@ -385,11 +393,10 @@ de mecánicos para Jobs no la ofrece.
 
 ### System Admin
 - Todo lo del Manager.
-- Por API (sin pantalla): crear, renombrar y activar/desactivar Jobs de
-  catálogo (`POST/PATCH /api/admin/catalog/jobs`). El Manager recibe 403 en
-  esas rutas.
-- El roster (`POST/PATCH /api/admin/mechanics`) lo comparte con el Manager
-  (D22); la cuenta de Supabase Auth la crea la API al dar de alta.
+- El roster (`POST/PATCH /api/admin/mechanics`, D22) y los Jobs de catálogo
+  (`POST/PATCH /api/admin/catalog/jobs`, D25) los comparte con el Manager; la
+  cuenta de Supabase Auth la crea la API al dar de alta. Las categorías no
+  tienen escritura.
 
 ---
 
@@ -445,7 +452,7 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | `/admin/work-orders/new` | Crear WO (solo Truck, prioridad, nota). |
 | `/admin/history` | WOs completados y cancelados. |
 | `/admin/mechanics`, `/admin/mechanics/[id]` | Roster. Manager y System Admin: Agregar persona (con contraseña temporal), nombre y tipo, Desactivar / Reactivar, Reiniciar contraseña (D22). |
-| `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs (solo lectura). |
+| `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs. Manager y System Admin: Agregar Job a una categoría activa, Renombrar y Activar (D25); un nombre repetido en la categoría no se acepta. Las categorías son de solo lectura. |
 | `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista) y **Shop hours** (hora del cierre del día y días hábiles, con su propio Save; D20). |
 
 **Detalle del Truck** (`/admin/trucks/[id]`), de arriba abajo (LTR-174; en
