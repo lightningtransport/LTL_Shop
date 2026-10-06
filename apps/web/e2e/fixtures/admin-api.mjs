@@ -684,8 +684,15 @@ createServer(async (request, response) => {
         items: [
           { truckNumber: '277', location: '301 Yard' },
           { truckNumber: '905', location: '301 Yard' },
+          // Stage 6 (D8): Dispatch says outside while the shop works on Y-103.
+          { truckNumber: 'Y-103', location: 'Outside' },
         ],
       },
+      // Stage 6: the shop's side of the Trucks Dispatch names.
+      shop: [
+        { truckNumber: 'Y-101', truckId: '00000000-0000-4000-8000-000000001001', openWorkOrder: null, outOfShop: false },
+        { truckNumber: 'Y-103', truckId: '00000000-0000-4000-8000-000000001003', openWorkOrder: { id: '00000000-0000-4000-8000-000000002003', displayId: 'WO-103' }, outOfShop: false },
+      ],
       incomingTrucks: {
         status: 'ok',
         items: [
@@ -709,22 +716,35 @@ createServer(async (request, response) => {
     const workOrderStatus = url.searchParams.get('workOrderStatus')?.split(',');
     const priority = url.searchParams.get('priority')?.split(',');
     const blocked = url.searchParams.get('blocked');
-    let items = yardOperations.filter((item) => {
+    const outOfShop = url.searchParams.get('outOfShop');
+    // Stage 6: quick filters (blocked, priority, out of shop) are left out to count them.
+    const matches = (item, skipQuick = false) => {
       if (search && !`${item.truck.truckNumber} ${item.truck.make} ${item.truck.model} ${item.activeWorkOrder?.displayId ?? ''}`.toLowerCase().includes(search)) return false;
       if (readiness?.length && !readiness.includes(item.assessment?.status ?? 'not_started')) return false;
       if (phase?.length && !phase.includes(item.phase)) return false;
       if (workOrderStatus?.length && !workOrderStatus.includes(item.activeWorkOrder?.status ?? '')) return false;
+      if (skipQuick) return true;
       if (priority?.length && !priority.includes(item.activeWorkOrder?.priority ?? '')) return false;
       if (blocked === 'true' && item.blockers.length === 0) return false;
       if (blocked === 'false' && item.blockers.length > 0) return false;
+      if (outOfShop === 'true' && !item.outOfShop) return false;
       return true;
-    });
+    };
+    let items = yardOperations.filter((item) => matches(item));
+    const quickScope = yardOperations.filter((item) => matches(item, true));
+    const quick = {
+      all: quickScope.length,
+      blocked: quickScope.filter((item) => item.blockers.length > 0).length,
+      highPriority: quickScope.filter((item) => ['high', 'critical'].includes(item.activeWorkOrder?.priority ?? '')).length,
+      outOfShop: quickScope.filter((item) => item.outOfShop).length,
+    };
+    const matching = items.length;
     if (cursor) items = items.slice(4);
-    const hasCursor = !cursor && !search && !readiness && !phase && !workOrderStatus && !priority && !blocked;
+    const hasCursor = !cursor && !search && !readiness && !phase && !workOrderStatus && !priority && !blocked && !outOfShop;
     json(response, 200, {
       items: hasCursor ? items.slice(0, 4) : items,
       nextCursor: hasCursor ? 'yard-page-2' : null,
-      counts: { notStarted: 2, underReview: 6, readyToGo: 1, blocked: 1, presenceUnknown: 9 },
+      counts: { notStarted: 2, underReview: 6, readyToGo: 1, blocked: 1, presenceUnknown: 9, matching, total: yardOperations.length, quick },
       workLocation: {
         status: 'ok',
         total: 2,

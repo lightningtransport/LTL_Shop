@@ -572,6 +572,12 @@ export interface YardOperationsCountsDto {
   readyToGo: number;
   blocked: number;
   presenceUnknown: number;
+  /** Stage 6 (D6): trucks matching every filter of the request (the buckets above count only these). */
+  matching?: number;
+  /** Stage 6: trucks on the board with no filter. */
+  total?: number;
+  /** Stage 6: the quick filters' counts — every filter applied except the quick ones (blocked, priority, out of shop). */
+  quick?: { all: number; blocked: number; highPriority: number; outOfShop: number };
 }
 
 export interface YardOperationsPageDto extends AdminPage<YardOperationsTruckDto> {
@@ -763,6 +769,19 @@ export interface YardDataBoundaryDto {
   workLocation: YardWorkLocationSectionDto;
   incomingTrucks: YardDataBoundarySectionDto<YardIncomingTruckItemDto>;
   upcomingDepartures: YardDataBoundarySectionDto<YardUpcomingDepartureItemDto>;
+  /**
+   * Stage 6 (D8, UX-5-004): the shop's side of each Truck Dispatch names — so the Dispatch tab links
+   * to the Truck and says when Dispatch and the shop disagree. Only Trucks the shop knows.
+   */
+  shop?: YardDispatchShopTruckDto[];
+}
+
+export interface YardDispatchShopTruckDto {
+  truckNumber: string;
+  truckId: string;
+  openWorkOrder: { id: string; displayId: string } | null;
+  /** LTR-188 / D24: a pending Job sent the whole truck to an external shop. */
+  outOfShop: boolean;
 }
 
 export interface PmPartDto {

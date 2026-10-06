@@ -1,15 +1,18 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { ShieldCheck, Truck, type LucideIcon } from 'lucide-react';
 import type {
   YardDataBoundaryDto,
+  YardDispatchShopTruckDto,
   YardIncomingTruckItemDto,
   YardUpcomingDepartureItemDto,
   YardWorkLocationItemDto,
 } from '@ltl-shop/shared';
 import { getAdminMessages, type AdminLocale } from '@/lib/admin-messages';
-import { groupWorkLocations, matchesTruckSearch } from '@/lib/yard-card';
+import { dispatchShopConflicts, fillYardText, groupWorkLocations, matchesTruckSearch } from '@/lib/yard-card';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { formatAdminDateOnly } from '@/lib/admin-format';
 import {
   formatYardBoundaryDrivers,
@@ -46,10 +49,28 @@ export function AdminYardDataBoundaryCards({
   const workLocationItems = (boundary?.workLocation.items ?? []).filter((item) => matchesTruckSearch(item.truckNumber, search));
   const incomingItems = (boundary?.incomingTrucks.items ?? []).filter((item) => matchesTruckSearch(item.truckNumber, search));
   const departureItems = (boundary?.upcomingDepartures.items ?? []).filter((item) => matchesTruckSearch(item.truckNumber, search));
+  // Stage 6 (D8): the shop's side of each Truck — chips open the Truck; open Work Orders are marked.
+  const shop = new Map((boundary?.shop ?? []).map((truck) => [truck.truckNumber, truck]));
+  const conflicts = dispatchShopConflicts(boundary?.workLocation, boundary?.shop);
+  const messages = getAdminMessages(locale);
 
   // LTR-103: full-width sections without nested scroll boxes.
   return (
     <div className="grid min-w-0 grid-cols-1 gap-2">
+      {conflicts.length ? (
+        <div className="rounded-lg border border-warning bg-warning-surface px-3 py-2 text-sm text-warning-foreground" role="status" data-testid="yard-dispatch-conflicts">
+          <p className="font-medium">{messages.yardDispatchConflictTitle}</p>
+          <ul className="mt-1 space-y-1">
+            {conflicts.map((conflict) => (
+              <li key={conflict.truckNumber}>
+                <Link className="underline underline-offset-2" href={adminTruckHref(conflict.truckId, DISPATCH_FROM)}>
+                  {fillYardText(messages.yardDispatchConflict, { truck: conflict.truckNumber, location: conflict.location, workOrder: conflict.workOrder.displayId })}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <BoundaryCard
         cardId="workLocation"
         icon={ICONS.workLocation}
@@ -62,7 +83,7 @@ export function AdminYardDataBoundaryCards({
         preview={workLocationPreview(boundary?.workLocation.items ?? [], boundary?.workLocation.summary)}
       >
         {boundary?.workLocation.status === 'ok' ? (
-          <WorkLocationItems locale={locale} items={workLocationItems} />
+          <WorkLocationItems locale={locale} items={workLocationItems} shop={shop} />
         ) : null}
       </BoundaryCard>
       <BoundaryCard
@@ -77,7 +98,7 @@ export function AdminYardDataBoundaryCards({
         preview={movementPreview(locale, boundary?.incomingTrucks.items ?? [], 'returnDate')}
       >
         {boundary?.incomingTrucks.status === 'ok' ? (
-          <MovementItems locale={locale} items={incomingItems} dateKey="returnDate" />
+          <MovementItems locale={locale} items={incomingItems} dateKey="returnDate" shop={shop} />
         ) : null}
       </BoundaryCard>
       <BoundaryCard
@@ -92,7 +113,7 @@ export function AdminYardDataBoundaryCards({
         preview={movementPreview(locale, boundary?.upcomingDepartures.items ?? [], 'outDate')}
       >
         {boundary?.upcomingDepartures.status === 'ok' ? (
-          <MovementItems locale={locale} items={departureItems} dateKey="outDate" />
+          <MovementItems locale={locale} items={departureItems} dateKey="outDate" shop={shop} />
         ) : null}
       </BoundaryCard>
     </div>
@@ -176,13 +197,32 @@ function movementPreview(
 }
 
 const LIST_PREVIEW = 12;
+const DISPATCH_FROM = '/admin/yard-operations?tab=movement';
+
+type Chip = { key: string; label: string; title?: string; href?: string; inShop?: boolean };
+type ShopByNumber = Map<string, YardDispatchShopTruckDto>;
+
+/** Stage 6: a chip opens its Truck when the shop knows it; an open Work Order marks it (and sorts it first). */
+function shopChip(truckNumber: string, chip: Omit<Chip, 'href' | 'inShop'>, shop: ShopByNumber, locale: AdminLocale): Chip {
+  const truck = shop.get(truckNumber);
+  if (!truck) return chip;
+  const messages = getAdminMessages(locale);
+  return {
+    ...chip,
+    href: adminTruckHref(truck.truckId, DISPATCH_FROM),
+    inShop: Boolean(truck.openWorkOrder),
+    title: [chip.title, truck.openWorkOrder ? fillYardText(messages.yardDispatchInShop, { workOrder: truck.openWorkOrder.displayId }) : null].filter(Boolean).join(' · ') || undefined,
+  };
+}
 
 function WorkLocationItems({
   locale,
   items,
+  shop,
 }: {
   locale: AdminLocale;
   items: YardWorkLocationItemDto[];
+  shop: ShopByNumber;
 }) {
   const messages = getAdminMessages(locale);
   if (!items.length) return <p>{messages.yardNoTrucksMatch}</p>;
@@ -195,7 +235,7 @@ function WorkLocationItems({
         {groups.map((group) => (
           <li key={group.location} className="min-w-0">
             <p className="font-medium text-foreground">{group.location} <span className="text-muted-foreground">· {group.trucks.length}</span></p>
-            <ChipList locale={locale} chips={group.trucks.map((truck) => ({ key: truck, label: truck }))} />
+            <ChipList locale={locale} chips={group.trucks.map((truck) => shopChip(truck, { key: truck, label: truck }, shop, locale))} />
           </li>
         ))}
       </ul>
@@ -207,10 +247,12 @@ function MovementItems({
   locale,
   items,
   dateKey,
+  shop,
 }: {
   locale: AdminLocale;
   items: Array<YardIncomingTruckItemDto | YardUpcomingDepartureItemDto>;
   dateKey: 'returnDate' | 'outDate';
+  shop: ShopByNumber;
 }) {
   const messages = getAdminMessages(locale);
   if (!items.length) return <p>{messages.yardNoTrucksMatch}</p>;
@@ -222,25 +264,31 @@ function MovementItems({
           ? (item as YardIncomingTruckItemDto).returnDate
           : (item as YardUpcomingDepartureItemDto).outDate;
         const drivers = formatYardBoundaryDrivers(item.drivers);
-        return {
+        return shopChip(item.truckNumber, {
           key: `${item.truckNumber}-${date ?? 'undated'}-${index}`,
           label: date ? `${item.truckNumber} · ${formatAdminDateOnly(date, locale)}` : item.truckNumber,
           title: drivers || undefined,
-        };
-      })}
+        }, shop, locale);
+      // Trucks the shop is working on first (stable otherwise).
+      }).map((chip, index) => ({ chip, index })).sort((left, right) => Number(Boolean(right.chip.inShop)) - Number(Boolean(left.chip.inShop)) || left.index - right.index).map((entry) => entry.chip)}
     />
   );
 }
 
-function ChipList({ locale, chips }: { locale: AdminLocale; chips: { key: string; label: string; title?: string }[] }) {
+function ChipList({ locale, chips }: { locale: AdminLocale; chips: Chip[] }) {
   const messages = getAdminMessages(locale);
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? chips : chips.slice(0, LIST_PREVIEW);
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1">
-      {visible.map((chip) => (
-        <span key={chip.key} title={chip.title} className="rounded-md border bg-background px-1.5 py-0.5 text-foreground">{chip.label}</span>
-      ))}
+      {visible.map((chip) => {
+        const body = <>{chip.inShop ? <span aria-hidden="true" className="mr-1 inline-block size-1.5 rounded-full bg-primary align-middle" /> : null}{chip.label}</>;
+        return chip.href ? (
+          <Link key={chip.key} href={chip.href} title={chip.title} data-in-shop={chip.inShop ? 'true' : undefined} className="tap-inline rounded-md border bg-background px-1.5 py-0.5 text-primary hover:underline">{body}</Link>
+        ) : (
+          <span key={chip.key} title={chip.title} className="rounded-md border bg-background px-1.5 py-0.5 text-foreground">{body}</span>
+        );
+      })}
       {chips.length > LIST_PREVIEW ? (
         <button type="button" className="px-1 text-primary underline-offset-2 hover:underline" onClick={() => setShowAll((value) => !value)}>
           {showAll ? messages.yardShowLess : messages.yardShowAll.replace('{count}', String(chips.length))}

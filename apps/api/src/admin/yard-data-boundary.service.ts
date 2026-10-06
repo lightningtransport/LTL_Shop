@@ -1,7 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { JobExternalKind, WorkOrderStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import {
+  OPEN_WORK_ORDER_STATUSES,
   YARD_DATA_BOUNDARY_SECTION_MESSAGE,
+  type YardDispatchShopTruckDto,
   type YardDataBoundaryDto,
   type YardDataBoundarySectionDto,
   type YardIncomingTruckItemDto,
@@ -13,6 +16,7 @@ import {
   AgentReportingConfigError,
   getAgentReportingConfig,
 } from '../integrations/agent-reporting/agent-reporting.client';
+import { PrismaService } from '../prisma/prisma.service';
 import { getShopWeekWindows } from './admin-time';
 import {
   mapIncomingTrucks,
@@ -23,7 +27,10 @@ import {
 
 @Injectable()
 export class YardDataBoundaryService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Optional() private readonly prisma?: PrismaService,
+  ) {}
 
   async get(
     now = new Date(),
@@ -53,7 +60,47 @@ export class YardDataBoundaryService {
       this.loadDepartures(client, windows),
     ]);
 
-    return { asOf, windows, workLocation, incomingTrucks, upcomingDepartures };
+    const shop = await this.shopSide([workLocation, incomingTrucks, upcomingDepartures]);
+    return { asOf, windows, workLocation, incomingTrucks, upcomingDepartures, ...(shop ? { shop } : {}) };
+  }
+
+  /**
+   * Stage 6 (D8, UX-5-004): the shop's side of the Trucks Dispatch names — the Truck to link to, its
+   * open Work Order and whether a Job sent the whole truck out (D24). One query for all of them;
+   * Dispatch keeps working when this fails.
+   */
+  private async shopSide(
+    sections: Array<{ status: string; items: Array<{ truckNumber: string }> }>,
+  ): Promise<YardDispatchShopTruckDto[] | null> {
+    if (!this.prisma) return null;
+    const numbers = [...new Set(sections.filter((section) => section.status === 'ok').flatMap((section) => section.items.map((item) => item.truckNumber)))];
+    if (!numbers.length) return [];
+    try {
+      const trucks = await this.prisma.truck.findMany({
+        where: { truckNumber: { in: numbers } },
+        select: {
+          id: true,
+          truckNumber: true,
+          workOrders: {
+            where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+            select: { id: true, displayId: true, jobs: { where: { externalSince: { not: null }, externalKind: JobExternalKind.truck }, select: { id: true } } },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      });
+      return trucks.map((truck) => {
+        const open = truck.workOrders[0] ?? null;
+        return {
+          truckNumber: truck.truckNumber,
+          truckId: truck.id,
+          openWorkOrder: open ? { id: open.id, displayId: open.displayId } : null,
+          outOfShop: Boolean(open?.jobs.length),
+        };
+      });
+    } catch {
+      return null;
+    }
   }
 
   private envSnapshot(): NodeJS.ProcessEnv {

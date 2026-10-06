@@ -96,8 +96,14 @@ describe('Tablero, Yard, notas y tiempos', () => {
     same('recién llegado', phase(fresh.truck.id), 'inspection');
     same('con hallazgos', phase(working.truck.id), 'shop_work');
     same('cerrado', phase(ready.truck.id), 'ready_to_go');
-    const { presenceUnknown, ...buckets } = yard.counts;
+    const { presenceUnknown, matching, total, quick, ...buckets } = yard.counts;
     same('Inspection + In the Shop + Ready to Go suman el tablero; Blocked es un subconjunto', buckets, { notStarted: 1, underReview: 2, readyToGo: 1, blocked: 1 });
+    // Etapa 6 (D6): "Mostrando N de M" y los filtros rápidos con su conteo.
+    same('sin filtro se muestran todos', [matching, total], [4, 4]);
+    same('filtros rápidos', quick, { all: 4, blocked: 1, highPriority: 0, outOfShop: 0 });
+    const onlyBlocked = ok('Yard bloqueados', await manager.get('/admin/yard-operations?limit=100&blocked=true'));
+    same('el filtro "Bloqueados" deja solo el camión bloqueado', (onlyBlocked.items as Json[]).map((item) => item.truck.id), [blocked.truck.id]);
+    same('los contadores siguen el filtro: Mostrando 1 de 4', [onlyBlocked.counts.matching, onlyBlocked.counts.total, onlyBlocked.counts.blocked], [1, 4, 1]);
     same('Presencia siempre desconocida', (yard.items as Json[]).every((item) => item.presence?.state === 'unknown'), true);
     truthy('cuenta de presencia desconocida', presenceUnknown >= 4, presenceUnknown);
     same('Movement sin integración', [yard.incomingTrucks.status, yard.upcomingDepartures.status, yard.workLocation.status], ['unavailable', 'unavailable', 'unavailable']);

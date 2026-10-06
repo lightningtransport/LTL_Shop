@@ -7,18 +7,20 @@ import {
   DEFAULT_YARD_OPERATIONS_FILTERS,
   readYardOperationsFilters,
   WORK_PLAN_YARD_PHASES,
+  withYardQuickFilter,
   yardOperationsFromPath,
+  yardQuickFilterOf,
 } from './yard-operations-routing';
 
 describe('Yard Operations URL filters', () => {
   it('round-trips supported filters without adding unsupported mechanic options', () => {
-    const query = buildYardOperationsQuery({ search: 'Y-103', readiness: 'under_review', phase: 'required_work', workOrderStatus: 'in_progress', priority: 'critical', blocked: 'true' });
+    const query = buildYardOperationsQuery({ search: 'Y-103', readiness: 'under_review', phase: 'required_work', workOrderStatus: 'in_progress', priority: 'critical', blocked: 'true', outOfShop: '' });
     expect(query.toString()).toBe('search=Y-103&readiness=under_review&phase=required_work&workOrderStatus=in_progress&priority=critical&blocked=true');
-    expect(readYardOperationsFilters(query)).toEqual({ search: 'Y-103', readiness: 'under_review', phase: 'required_work', workOrderStatus: 'in_progress', priority: 'critical', blocked: 'true' });
+    expect(readYardOperationsFilters(query)).toEqual({ search: 'Y-103', readiness: 'under_review', phase: 'required_work', workOrderStatus: 'in_progress', priority: 'critical', blocked: 'true', outOfShop: '' });
   });
 
   it('does not preserve a cursor when applying new filters', () => {
-    const query = buildYardOperationsQuery({ search: '', readiness: '', phase: '', workOrderStatus: '', priority: '', blocked: '' });
+    const query = buildYardOperationsQuery(DEFAULT_YARD_OPERATIONS_FILTERS);
     expect(query.has('cursor')).toBe(false);
   });
 
@@ -39,6 +41,19 @@ describe('Yard Operations URL filters', () => {
       workOrderStatus: 'in_progress',
       priority: 'critical',
     })).toBe(2);
+  });
+});
+
+describe('Yard quick filters (stage 6)', () => {
+  it('one quick filter at a time, kept in the URL, the other filters untouched', () => {
+    const base = { ...DEFAULT_YARD_OPERATIONS_FILTERS, search: '601', phase: 'pm' };
+    const high = withYardQuickFilter(base, 'high');
+    expect(yardQuickFilterOf(high)).toBe('high');
+    expect(buildYardOperationsQuery(high).toString()).toBe('search=601&phase=pm&priority=high%2Ccritical');
+    const out = withYardQuickFilter(high, 'out');
+    expect(out).toMatchObject({ priority: '', outOfShop: 'true', search: '601', phase: 'pm' });
+    expect(yardQuickFilterOf(withYardQuickFilter(out, 'all'))).toBe('all');
+    expect(yardQuickFilterOf({ ...DEFAULT_YARD_OPERATIONS_FILTERS, blocked: 'true' })).toBe('blocked');
   });
 });
 

@@ -154,12 +154,13 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await page.setViewportSize({ width: 1440, height: 1024 });
     await page.goto('/admin/yard-operations');
     await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible();
-    for (const phase of ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close WO', 'Ready to Go']) {
+    for (const phase of ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
     await expect(page.getByRole('heading', { name: 'Needs evaluation', exact: true })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Required Work', exact: true })).toHaveCount(0);
-    await expect(page.getByTestId('yard-truck-card').getByText('Shop Work').first()).toBeVisible();
+    // Stage 6: the step is the lane; the card does not repeat it.
+    await expect(page.locator('[data-phase="shop_work"]').getByTestId('yard-truck-card').first()).toBeVisible();
 
     await page.getByRole('link', { name: 'Y-WP2', exact: true }).click();
     // LTR-110: Yard links carry ?from= so Truck Detail can link back to the board.
@@ -186,7 +187,7 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
 
     await page.setViewportSize({ width: 1440, height: 1024 });
     await page.goto('/admin/yard-operations');
-    const headings = ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close WO', 'Ready to Go'];
+    const headings = ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go'];
     for (const phase of headings) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }

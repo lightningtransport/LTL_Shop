@@ -3,6 +3,13 @@
 **Clasificación:** PROPUESTA — no es el estado actual de la app.
 **Fecha:** 2026-10-05 · **Rama:** `claude/exciting-lehmann-09883c` · **Sin PR todavía.**
 **Pantallas:** `/admin` → `admin-dashboard.tsx`; `/admin/yard-operations` → `admin-yard-operations.tsx`
+
+**Estado (2026-10-06):** construido en la rama `claude/exciting-lehmann-09883c` — Dashboard (Etapa 3)
+y Yard (Etapa 6): filtros rápidos con conteo y "Mostrando N de M", carriles por paso, tarjeta con una
+línea de alerta, pestañas Shop / Dispatch, Dispatch cruzado con el taller. **Pendiente:** "Leaving
+soon" como filtro rápido del Yard (hoy es la alerta de la tarjeta y el bloque del Dashboard; depende
+de la decisión sobre la confiabilidad de Dispatch, §6), grupos plegables en el teléfono y el conteo de
+cada carril sobre todas las páginas.
 **Base:** la auditoría [`docs/ux-audit/admin-dashboard-yard/`](../../ux-audit/admin-dashboard-yard/)
 (05 navegación e IA, 04 jerarquía, 06 estados) y el reparto ya decidido para Truck y WO
 ([`truck-detail-redesign`](../truck-detail-redesign/README.md) §2).

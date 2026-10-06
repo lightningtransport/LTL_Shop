@@ -111,6 +111,36 @@ describe('YardDataBoundaryService', () => {
     expect(String(fetchImpl.mock.calls[0][0])).toContain(new URL(DEFAULT_AGENT_REPORTING_URL).host);
   });
 
+  it('Stage 6 (D8): adds the shop side of each Truck Dispatch names — link, open Work Order, out of shop', async () => {
+    const fetchImpl = vi.fn(async (input: URL) => {
+      const url = String(input);
+      if (url.includes('report=trucks')) return jsonResponse({ data: [{ truck_number: 277, yard_location: 'Outside' }], has_more: false });
+      if (url.includes('report=returns')) return jsonResponse({ data: [{ Truck: '905', 'Return Date': '2026-09-22' }], has_more: false });
+      return jsonResponse({ data: [], has_more: false });
+    });
+    const findMany = vi.fn().mockResolvedValue([
+      { id: 't-277', truckNumber: '277', workOrders: [{ id: 'wo-1', displayId: 'WO-001', jobs: [] }] },
+      { id: 't-905', truckNumber: '905', workOrders: [] },
+    ]);
+    const service = new YardDataBoundaryService(config({ AGENT_REPORTING_KEY: 'server-only-key' }), { truck: { findMany } } as never);
+    const dto = await service.get(NOW, fetchImpl as unknown as typeof fetch);
+
+    expect(findMany.mock.calls[0][0].where).toEqual({ truckNumber: { in: ['277', '905'] } });
+    expect(dto.shop).toEqual([
+      { truckNumber: '277', truckId: 't-277', openWorkOrder: { id: 'wo-1', displayId: 'WO-001' }, outOfShop: false },
+      { truckNumber: '905', truckId: 't-905', openWorkOrder: null, outOfShop: false },
+    ]);
+  });
+
+  it('Stage 6: Dispatch still answers when the shop lookup fails', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ data: [{ truck_number: 277, yard_location: 'Outside' }], has_more: false }));
+    const findMany = vi.fn().mockRejectedValue(new Error('db down'));
+    const service = new YardDataBoundaryService(config({ AGENT_REPORTING_KEY: 'server-only-key' }), { truck: { findMany } } as never);
+    const dto = await service.get(NOW, fetchImpl as unknown as typeof fetch);
+    expect(dto.workLocation.status).toBe('ok');
+    expect(dto.shop).toBeUndefined();
+  });
+
   it('keeps HTTP 200-shaped error sections when one upstream report fails', async () => {
     const fetchImpl = vi.fn(async (input: URL) => {
       const url = String(input);

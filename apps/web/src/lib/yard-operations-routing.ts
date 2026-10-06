@@ -7,6 +7,7 @@ export type YardOperationsFilters = {
   workOrderStatus: string;
   priority: string;
   blocked: string;
+  outOfShop: string;
 };
 
 export const DEFAULT_YARD_OPERATIONS_FILTERS: YardOperationsFilters = {
@@ -16,6 +17,7 @@ export const DEFAULT_YARD_OPERATIONS_FILTERS: YardOperationsFilters = {
   workOrderStatus: '',
   priority: '',
   blocked: '',
+  outOfShop: '',
 };
 
 export function readYardOperationsFilters(params: URLSearchParams | { get(name: string): string | null }): YardOperationsFilters {
@@ -26,6 +28,7 @@ export function readYardOperationsFilters(params: URLSearchParams | { get(name: 
     workOrderStatus: params.get('workOrderStatus') ?? '',
     priority: params.get('priority') ?? '',
     blocked: params.get('blocked') ?? '',
+    outOfShop: params.get('outOfShop') ?? '',
   };
 }
 
@@ -39,6 +42,8 @@ export function buildYardOperationsQuery(filters: YardOperationsFilters) {
 
 const YARD_FILTER_KEYS = ['readiness', 'phase', 'workOrderStatus', 'priority', 'blocked'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
 export const YARD_TOOLBAR_FILTER_KEYS = ['readiness', 'phase', 'blocked'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
+/** Stage 6: the filters in the "More filters" sheet (the quick filters cover blocked, high priority and out of shop). */
+export const YARD_SHEET_FILTER_KEYS = ['readiness', 'phase', 'workOrderStatus', 'priority'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
 export const YARD_OVERFLOW_FILTER_KEYS = ['workOrderStatus', 'priority'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
 
 /** Count of readiness/phase/WO status/priority/blocked values that are not defaults. Search is excluded. */
@@ -93,4 +98,28 @@ export function yardOperationsFromPath(query: string) {
   params.delete('cursor');
   const kept = params.toString();
   return kept ? `/admin/yard-operations?${kept}` : '/admin/yard-operations';
+}
+
+/**
+ * Stage 6 (UX-5-009, UX-6-002): the quick filters on top of the board. They apply on tap, one at a
+ * time, and stay in the URL like every other filter.
+ */
+export const YARD_QUICK_FILTERS = ['all', 'blocked', 'high', 'out'] as const;
+export type YardQuickFilter = (typeof YARD_QUICK_FILTERS)[number];
+
+const HIGH_PRIORITIES = `${Priority.HIGH},${Priority.CRITICAL}`;
+
+export function yardQuickFilterOf(filters: YardOperationsFilters): YardQuickFilter {
+  if (filters.blocked === 'true') return 'blocked';
+  if (filters.priority === HIGH_PRIORITIES) return 'high';
+  if (filters.outOfShop === 'true') return 'out';
+  return 'all';
+}
+
+export function withYardQuickFilter(filters: YardOperationsFilters, quick: YardQuickFilter): YardOperationsFilters {
+  const next = { ...filters, blocked: '', priority: '', outOfShop: '' };
+  if (quick === 'blocked') next.blocked = 'true';
+  if (quick === 'high') next.priority = HIGH_PRIORITIES;
+  if (quick === 'out') next.outOfShop = 'true';
+  return next;
 }

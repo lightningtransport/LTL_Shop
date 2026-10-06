@@ -164,6 +164,8 @@ export const adminYardOperationsQuerySchema = z.object({
   priority: commaSeparatedEnum(Priority).optional(),
   mechanicId: z.string().uuid().optional(),
   blocked: queryBoolean.optional(),
+  /** Stage 6: quick filter — a pending Job sent the whole truck to an external shop (D24). */
+  outOfShop: queryBoolean.optional(),
 });
 
 export const adminMutationMetaSchema = z.object({
