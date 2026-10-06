@@ -247,7 +247,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             aria-pressed={quick === value}
             data-testid={`yard-quick-${value}`}
             onClick={() => commitFilters(withYardQuickFilter({ ...appliedFilters, search: filters.search }, value))}
-            className={`relative inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm font-medium ${quick === value ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:bg-accent'}`}
+            className={`relative inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-sm font-medium ${quick === value ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:bg-accent'}`}
           >
             {quickLabels[value]}
             {quickCounts[value] !== undefined ? <span className={`tabular-nums ${quick === value ? '' : 'text-muted-foreground'}`}>{quickCounts[value]}</span> : null}
@@ -431,7 +431,7 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
           {mechanics.length ? (
             <span className="flex shrink-0 -space-x-1" title={mechanics.map((mechanic) => mechanic.mechanicName).join(', ')}>
               {mechanics.slice(0, 3).map((mechanic) => (
-                <span key={mechanic.mechanicId} aria-hidden="true" className="grid size-5 place-items-center rounded-full border border-background bg-accent text-[0.6rem] font-semibold text-primary">{profileInitials(mechanic.mechanicName)}</span>
+                <span key={mechanic.mechanicId} aria-hidden="true" className="grid size-6 place-items-center rounded-full border border-background bg-muted text-xs font-semibold text-foreground">{profileInitials(mechanic.mechanicName)}</span>
               ))}
               <span className="sr-only">{mechanics.map((mechanic) => mechanic.mechanicName).join(', ')}</span>
             </span>

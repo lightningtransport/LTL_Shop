@@ -28,6 +28,8 @@
   --warning: oklch(0.74 0.15 80);
   --warning-foreground: oklch(0.38 0.09 72);
   --warning-surface: oklch(0.965 0.035 92);
+  /* R6: a step below the card (table headers, folded groups). */
+  --sunken: oklch(0.965 0.006 247.9);
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-serif: var(--font-sans);
   --font-mono: var(--font-jetbrains-mono), monospace;
@@ -88,9 +90,10 @@
   --primary-foreground: oklch(0.2077 0.0398 265.7549);
   --secondary: oklch(0.8712 0.1363 154.4491);
   --secondary-foreground: oklch(0.2664 0.0628 152.9343);
-  --muted: oklch(0.2795 0.0368 260.031);
+  /* R6 (2026-10-06): muted and accent were the card color, so `bg-muted` and hovers did not show on cards. */
+  --muted: oklch(0.31 0.037 259);
   --muted-foreground: oklch(0.7107 0.0351 256.7878);
-  --accent: oklch(0.2795 0.0368 260.031);
+  --accent: oklch(0.33 0.04 258);
   --accent-foreground: oklch(0.7535 0.139 232.6615);
   --destructive: oklch(0.3958 0.1331 25.723);
   --destructive-text: oklch(0.78 0.12 22);
@@ -102,6 +105,7 @@
   --warning: oklch(0.82 0.14 91.6054);
   --warning-foreground: oklch(0.92 0.12 91.6054);
   --warning-surface: oklch(0.29 0.05 78);
+  --sunken: oklch(0.24 0.038 263);
   --shadow-2xs: 0 10px 15px -5px hsl(0 0% 0% / 0.2);
   --shadow-xs: var(--shadow-2xs);
   --shadow-sm: 0 10px 15px -5px hsl(0 0% 0% / 0.4), 0 1px 2px -6px hsl(0 0% 0% / 0.4);

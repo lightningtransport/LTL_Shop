@@ -84,7 +84,7 @@ export function MechanicPicker({
                 className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm hover:bg-accent focus-visible:bg-accent"
                 onClick={() => { setQuery(''); onPick(mechanic); }}
               >
-                <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-primary">{profileInitials(mechanic.name)}</span>
+                <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-foreground">{profileInitials(mechanic.name)}</span>
                 <span className="min-w-0 flex-1 truncate">{mechanic.name}</span>
                 {mechanic.id === currentId ? <Check aria-hidden="true" className="size-4 text-primary" /> : null}
               </button>

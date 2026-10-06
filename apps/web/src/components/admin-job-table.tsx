@@ -255,7 +255,7 @@ export function AdminJobTable({
 
   return (
     <div>
-      <div className={`hidden border-b pb-2 text-xs text-muted-foreground lg:grid lg:gap-3 ${ROW_GRID}`} aria-hidden="true">
+      <div className={`hidden rounded-md bg-sunken px-2 py-1.5 text-xs text-muted-foreground lg:grid lg:gap-3 ${ROW_GRID}`} aria-hidden="true">
         <span>{messages.jobTableJob}</span>
         <span>{messages.jobTableMechanic}</span>
         <span>{messages.jobTableStatus}</span>
@@ -266,7 +266,7 @@ export function AdminJobTable({
         <div className={open.length ? 'mt-2 border-t pt-2' : ''}>
           <button
             type="button"
-            className="flex min-h-11 w-full items-center gap-2 rounded-lg px-1 text-left text-sm text-muted-foreground hover:bg-accent"
+            className="flex min-h-11 w-full items-center gap-2 rounded-lg bg-sunken px-2 text-left text-sm text-muted-foreground hover:bg-accent"
             aria-expanded={closedOpen}
             aria-controls="admin-wo-closed-jobs"
             data-testid="admin-wo-closed-jobs-toggle"
@@ -494,7 +494,7 @@ function MechanicCell({
           >
             <span className="inline-flex min-w-0 items-center gap-2">
               {job.assignedMechanic ? (
-                <span aria-hidden="true" className="grid size-5 shrink-0 place-items-center rounded-full bg-accent text-[0.65rem] font-semibold text-primary">{profileInitials(job.assignedMechanic.name)}</span>
+                <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-foreground">{profileInitials(job.assignedMechanic.name)}</span>
               ) : null}
               <span className={`truncate ${job.assignedMechanic ? '' : 'text-muted-foreground'}`}>{job.assignedMechanic?.name ?? messages.jobUnassigned}</span>
             </span>

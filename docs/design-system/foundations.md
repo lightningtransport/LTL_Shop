@@ -25,9 +25,16 @@ Defined as CSS custom properties in `apps/web/src/app/globals.css`:
 | `--border`, `--input`, `--ring` | Hairlines, fields, focus ring |
 | `--success` | Positive status |
 | `--warning`, `--warning-foreground`, `--warning-surface` | Caution banners (Yard Phase 1) |
+| `--sunken` | A step below the card: table headers, folded groups (R6) |
 
 Tailwind maps these 1:1 in `apps/web/tailwind.config.js` (`background`,
-`primary`, `destructive`, `warning-surface`, and so on).
+`primary`, `destructive`, `warning-surface`, `sunken`, and so on). Each one
+is `color-mix(in oklch, var(--x) calc(<alpha-value> * 100%), transparent)`, so
+an opacity modifier works: `bg-primary/10`, `border-destructive/30`. Before R9
+(2026-10-06) those classes produced no CSS.
+
+In dark mode `--muted` (0.31) and `--accent` (0.33) sit above `--card` (0.2795),
+so quiet surfaces and hovers show on cards (R6; they used to be the card color).
 
 ### Contrast (LTR-166)
 
@@ -41,7 +48,8 @@ because `text-destructive` in dark mode measured 1.78:1. `--primary` is unchange
 
 ## Shop channel tokens
 
-Tailwind 3 opacity utilities need channel-only values. The same file defines
+Older channel-only tokens (still used; the theme colors above also take an
+opacity now). The same file defines
 `--shop-bg`, `--shop-panel`, `--shop-border`, `--shop-accent`,
 `--shop-accent-dark`, `--shop-muted`, `--shop-danger`, `--shop-success`.
 Use them as `bg-shop-panel`, `text-shop-muted`, `border-shop-border`,

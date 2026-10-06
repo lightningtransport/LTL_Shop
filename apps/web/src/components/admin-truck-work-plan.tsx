@@ -205,7 +205,7 @@ export function AdminTruckWorkPlan({
             <span title={job.external.note} data-testid="work-plan-job-external">{externalShopLabel(job.external.kind, messages)}</span>
           ) : job.assignedMechanic ? (
             <span className="inline-flex items-center gap-1">
-              <span aria-hidden="true" className="grid size-4 place-items-center rounded-full bg-accent text-[0.6rem] font-semibold text-primary">{profileInitials(job.assignedMechanic.name)}</span>
+              <span aria-hidden="true" className="grid size-6 place-items-center rounded-full bg-muted text-xs font-semibold text-foreground">{profileInitials(job.assignedMechanic.name)}</span>
               {`${messages.jobAssignee}: ${job.assignedMechanic.name}`}
             </span>
           ) : job.lane === 'quality_check' ? (

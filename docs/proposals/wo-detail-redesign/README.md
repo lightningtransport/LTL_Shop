@@ -136,7 +136,7 @@ LTR-159), no recalcularse en el cliente. La maqueta lo imita.
       with a reason."), desde el aviso y desde la barra fija. **Complete del Job sigue con un
       toque**: es frecuente, afecta solo a ese Job y se reabre fácil.
 - [ ] **Copiar VIN:** botón nuevo en la tarjeta Truck. ¿Se queda?
-- [ ] **Tokens del tema oscuro (§7):** ¿en esta rama o en un PR aparte?
+- [x] **Tokens del tema oscuro (§7):** hechos en esta rama (Etapa 7, 2026-10-06), con `--sunken`, y las opacidades de los colores del tema (R9).
       Afecta todas las pantallas.
 
 Ya decidido: Priority mantiene elegir + **Update** (no guarda al tocar).
