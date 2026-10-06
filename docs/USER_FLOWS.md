@@ -494,7 +494,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Regresa y hay que instalarlo | "Regresó" → asignar a un mecánico; su reloj corre normal | ✅ | A35 |
 | Un mecánico intenta enviarlo afuera | No puede (solo Manager) | ✅ | A35 |
 
-### Por decidir — LTR-188
+### Decisiones de operación (LTR-188) — todas cerradas
 
 | # | Situación del taller | Hoy en la app |
 |---|---|---|
@@ -539,7 +539,6 @@ una historia:
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
 | 3 | No existe revisión de Custom Jobs | Manager | C | decisión P5 | — |
-| W1–W17 | Pantallas que confunden (recorrido 2026-09-29, §8) | Todos | C / E | LTR-189 | — |
 
 **B** bloqueante · **C** confuso · **E** estético. Detalle técnico en
 [`OPEN_ISSUES.md`](OPEN_ISSUES.md).

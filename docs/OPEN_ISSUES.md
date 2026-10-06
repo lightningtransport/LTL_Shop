@@ -69,25 +69,28 @@ crear y en producción no queda ninguno abierto (consulta de solo lectura del
 2026-09-29: 0). El código de pausa / reanudar / terminar del mecánico PM se
 puede borrar en la limpieza (§3).
 
-### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **SIGUE**
+### Fase B — Arreglar bloqueantes (B) y confusos (C), uno por PR — **HECHA (2026-10-05)**
 
 Orden: ~~#1~~ ~~#2~~ ~~#4~~ ~~#7~~ hechos (LTR-175, 176, 177, 182) → ~~#9 (LTR-184)~~ ~~#6 (LTR-178)~~ hechos → recorrido de
 pantallas hecho (§1d, LTR-189) → los C de §1d (~~W1~~ ~~W2~~ ~~W4~~ ~~W11~~ ~~W12~~ ~~W14~~ ~~W15~~ ~~W17~~ ~~W9~~ ~~W5~~ hechos; ~~W16~~ ~~W3~~ ~~W6~~ ~~W7~~ ~~W8~~ ~~W10~~ ~~W13~~ **todos hechos**) → ~~los de §1b
 (LTR-179)~~ hechos (2026-09-30) → Fase C. El #8 pasó a LTR-185 (D19: solo Safety puede ser dueño de QC).
 
-**Hecho:** el Quality Check de Safety (D19, LTR-185). D20 y P7, P8, P11 se
-deciden antes de la Fase D. Cada PR: arreglo + su fila en `test-real/` pasa a
-PASA + `USER_FLOWS.md` pasa a ✅ + fila borrada de aquí.
+**Hecho:** el Quality Check de Safety (D19, LTR-185); alta del personal (D22,
+LTR-187); cierre del día y un reloj por mecánico (D20, D21, LTR-186); ayudante
+y taller externo (D23, D24, LTR-188). P11 (trailers) queda para después de
+salir en vivo. Regla que sigue vigente para cualquier arreglo: su fila en
+`test-real/` pasa a PASA + `USER_FLOWS.md` pasa a ✅ + fila borrada de aquí.
 
-### Fase C — Limpieza (§3, LTR-180) e idioma (§4, LTR-181)
+### Fase C — Limpieza (§3, LTR-180) e idioma (§4, LTR-181) — **HECHA (2026-09-30)**
 
 Borrar el código heredado y unificar los textos, para que nadie vuelva a
 construir sobre algo muerto.
 
-### Fase D — Salir en vivo (§5) — LTR-45
+### Fase D — Salir en vivo (§5) — LTR-45 — **SIGUE**
 
-Roster real, Auth real, bypass apagado, prueba con un Manager y un mecánico
-reales. **El uso real es lo que confirma que está terminado.**
+Paso a paso en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md): migrar y
+desplegar, cuentas reales, bypass apagado, un día de prueba con gente real.
+**El uso real es lo que confirma que está terminado.**
 
 ### Cómo saber que terminamos
 
@@ -260,16 +263,11 @@ del mecánico; queda cerrado.
 
 ## 5. Para salir en vivo — LTR-45
 
-Detalle en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md).
-
-- Roster real y `work_orders.manage` para los Managers reales (P6), más las
-  dos cuentas de Safety con `quality_check.perform` (hoy "Safety 1" y
-  "Safety 2" en el seed local).
-- Usuarios reales en Supabase Auth; `AUTH_DEV_BYPASS` apagado en producción.
-- Carga única de camiones de Ninox, si la flota de producción no está completa.
-- Smoke con un Manager y un mecánico reales, incluido Safari en un iPhone real.
-- Validar en datos de producción: Truck Detail (LTR-59) y Ready vs Complete
-  vs Return to Service (LTR-60, LTR-123). Cerrar la épica LTR-149.
+Paso a paso en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md) (2026-10-05):
+mirar producción, variables, migrar y desplegar, cuentas (el Manager da de alta
+al personal, D22), configurar el taller, limpiar datos de prueba, un día de
+prueba en iPhone real. Terminado cuando el taller trabaja un día completo con
+usuarios reales sin un defecto B.
 
 ## 6. Fuera de alcance (no se construye hasta decidirlo)
 

@@ -97,7 +97,7 @@ Se deciden aquí; mientras tanto, no se construye nada que dependa de ellas.
 | ~~P3~~ | **Cerrada 2026-09-29:** el taller trabaja trailers; hacen falta como activos. Falta el cuándo (P11). |
 | P4 | ¿Se muestra o se escribe el `mechanic_status` de Ninox (`E.TA`)? Hoy no. |
 | P5 | ¿Quién revisa los Custom Jobs y cómo se mapean al catálogo? |
-| P6 | Roster real del día 1: quién entra y con qué capabilities. Ahora incluye a las dos personas de Safety. |
+| ~~P6~~ | **Cerrada 2026-10-05:** el roster del día 1 lo arma el Manager desde la app (D22) en la fase 4 de [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md): Daniel (PM), los mecánicos (Standard), Safety 1 y 2 (Safety). |
 | ~~D20~~ | **Decidida 2026-10-05:** ver D20 en Vigentes (cierre del día a las 5:00 p.m., el tiempo cuenta hasta el cierre). |
 | ~~P7~~ | **Cerrada 2026-10-05 → D23:** Job aparte para el ayudante. |
 | ~~P8~~ | **Cerrada 2026-10-05 → D24:** "Enviar a taller externo" en el Job (sale la pieza o el camión), sin costos. |

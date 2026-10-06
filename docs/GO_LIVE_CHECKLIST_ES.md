@@ -1,189 +1,238 @@
-# Lista para abrir el Shop a usuarios reales
+# Salida en vivo — paso a paso
 
-**Para:** Cristian
-**Fecha:** 2026-09-20 (rutas y banderas actualizadas 2026-09-29)
-**Preguntas abiertas:** se deciden en `docs/DECISIONS.md` (P1–P6)
-**Idioma:** español, lenguaje claro
-**Código de apoyo:** `docs/reference/NINOX_SHOP_MAPPING.md` y
-`apps/api/src/integrations/ninox/ninox.mapping.ts`
+**Para:** Cristian · **Fecha:** 2026-10-05 · **Ticket:** LTR-45
+**Lista anterior (Ninox, septiembre):** [`archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md`](archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md)
 
-Esta lista cierra lo que falta para que **personas reales** usen LTL_Shop.
-No pide otro escaneo de MappingTool para camiones.
+Este documento es el orden exacto para abrir el Shop a personas reales. Cada
+paso dice **quién lo hace** (Tú / Yo) y **cómo saber que salió bien**. No
+saltes de fase: cada una depende de la anterior.
 
-## Semilla de camiones (lunes)
-
-Hay un job **de una sola vez**: baja TrucksDB `E` (solo GET), hace
-**upsert** en Supabase por VIN + `truckNumber` (`E.A` / `E.CG`), y **no
-vuelve a preguntar a Ninox**. Nunca escribe en Ninox. `E.X1`/`E.AN` van
-a la ubicación reportada, **no** a Presence. `E.Y1`/`E.TA` no mueven el
-tablero.
-
-Comando: `npm run prisma:seed-ninox-trucks --workspace=@ltl-shop/api`
-
-Detalle: `docs/reference/NINOX_TRUCK_SEED.md`.
-
-## ¿Con el scan de MappingTool hecho, puede lanzar el Shop?
-
-**Casi: el mapper ya no bloquea.** El Shop funciona con **Supabase / Prisma**.
-El cliente Ninox de la API sigue siendo un stub. Para el lunes falta **correr
-una vez** la semilla (migración + credenciales Ninox + script) si la flota
-de producción no está completa.
-
-La única llave de negocio que hacía falta ya está confirmada:
-
-**número de camión del Shop (`truckNumber`) = `trucks.truck_number` = Ninox `E.A`**
-
-Lo que falta para el go-live es trabajo de **producto, ingeniería, auth,
-datos y ambiente del Shop**. No es un hueco de MappingTool, salvo que
-decidan:
-
-- meter **trailers UC** como activos (el ID de Ninox sigue **sin resolver**;
-  no se inventa), o
-- **sincronizar en vivo** el estado mecánico de Ninox (`E.TA`).
-
-Las fases del patio / Work Plan **no** son `E.TA`.
+**Tiempo total:** unas 2 horas de trabajo, más un día de prueba.
+**Cuándo:** las fases 3 y 4 fuera del horario del taller (después de las
+5:00 p.m. o en fin de semana): hay unos minutos en que la API vieja y la base
+nueva no se entienden.
 
 ---
 
-## Hecho (DONE)
+## Fase 0 — Qué necesitas a mano
 
-- MappingTool ya escaneó `lightningtransport.ninoxdb.com`: **163 tablas**.
-- **TrucksDB = tabla `E`** (117 campos).
-- **Número de camión = `E.A`.**
-- **mechanic_status = `E.TA`.**
-- El Shop guarda camiones en Postgres. La llave operativa es `truckNumber`.
-- No hay IDs de tablas Ninox en Prisma (correcto). `ninox_external_id` es
-  leftover de import, no la llave de cruce.
-- El cliente Ninox solo responde un ping. `DATA_SOURCE=supabase`.
-- Auth de producción es Supabase Auth + fila en `users` + capacidades
-  (`admin.access`, `mechanic.standard`, `mechanic.pm`,
-  `work_orders.manage`, `yard.operations.manage`).
-- En local, `AUTH_DEV_BYPASS=true` y Dev Login sirven para desarrollo.
-  Eso **no** es el modo de usuarios reales.
-- El seed local crea 3 camiones de demo (`905`, `922`, `968`) y usuarios
-  `@lightning.local`. **No se corre contra producción.**
-- Producción ya tuvo ~162 camiones cargados de forma histórica (la mayoría
-  con leftover Ninox/Samsara). El Shop **no** llama a Ninox ni a Samsara
-  para buscar o mostrar el camión.
-- Work Orders, PM, Admin y Yard Phase 1 ya existen en código.
-- El camino de deploy (Vercel + Prisma migrate por el workflow aprobado)
-  está documentado en `docs/reference/DEPLOY.md`.
+- Acceso a **GitHub** (pestaña Actions del repo `LTL_Shop`).
+- Acceso a **Vercel**, equipo `ltl8`, proyectos `ltl-shop-api` y `ltl-shop-web`.
+  (Yo no tengo acceso a ese equipo; esos pasos son tuyos.)
+- Acceso a **Supabase**, proyecto de producción `mjlfynzqmxoezanvyniw`, y la
+  CLI de Supabase con sesión iniciada.
+- Un **iPhone** con Safari para la prueba final.
+- La lista del personal del día 1: nombre, correo y tipo (Standard, PM,
+  Safety) de cada persona.
 
 ---
 
-## Falta de Ninox (NEED FROM NINOX)
+## Fase 1 — Mirar cómo está producción (sin cambiar nada)
 
-Nada de esto bloquea abrir el Shop de **camiones** como está hoy.
+Por qué: hoy producción tiene la API de una versión anterior. Cuando hay
+migraciones pendientes, el build de la API en Vercel se niega a desplegar
+(`prisma:release-gate`), así que **la API vieja sigue corriendo** mientras la
+web ya puede estar en la versión nueva.
 
-- **Trailers UC:** tabla y campo en Ninox **siguen sin ID**. No inventar.
-  En el Shop, “Trailer” hoy es una **categoría de trabajo**, no una flota
-  de trailers sincronizada.
-- **Valores de `E.TA`:** si más adelante quieren copiar el estado mecánico
-  de Ninox, Ninox debe decir qué textos o códigos tiene ese campo.
-- **Formato de `E.A`:** si quieren reconciliar listas (ceros a la
-  izquierda, espacios, `#`), Ninox/ops debe confirmar cómo se escribe el
-  número allá versus `truckNumber` aquí.
-- **Token / API de Ninox:** solo si deciden un sync futuro. El código
-  actual **no** lee secretos `NINOX_*`. No hace falta para el lanzamiento.
+**1.1 · Tú — migraciones pendientes.** GitHub → Actions → **Release safety**
+→ *Run workflow* con **Run prisma migrate deploy = desactivado** y
+**Probe API = activado**.
+- Esperado: el paso "Check Prisma migration status" **falla** y lista las
+  migraciones pendientes. Deberían ser algunas de estas, en este orden:
+  `20260930020000_safety_quality_check_ltr185`,
+  `20260930120000_drop_pm_authorized_ltr180`,
+  `20261005120000_day_close_ltr186`,
+  `20261005180000_helper_external_jobs_ltr188`.
+- Si lista otras más viejas, avísame antes de seguir.
 
----
+**1.2 · Tú — lecturas de la base (solo lectura).** En tu terminal:
 
-## Falta decisión de producto (NEED PRODUCT DECISION)
+```bash
+supabase db query --linked --project-ref mjlfynzqmxoezanvyniw "select migration_name, finished_at from _prisma_migrations order by finished_at desc limit 6;"
+```
 
-- **¿Lanzamos el Shop sin sync Ninox?** Recomendación: **sí**. El scan ya
-  cerró la llave. Dual-write permanente sigue diferido a propósito.
-- **¿Se muestra o se escribe `E.TA` (mechanic_status)?** Hoy el Shop usa
-  sus propios eventos (por ejemplo Returned to Service / Unknown) y fases
-  de patio derivadas. No usa `E.TA`.
-- **¿Los trailers son activos propios o solo un tipo de trabajo?** Mientras
-  sean solo categoría de Job, el ID UC no bloquea.
-- **¿Quién da de alta un camión nuevo?** Hoy no hay editor Admin de
-  camiones. Sin Ninox en vivo, alguien tiene que cargar o importar la
-  fila en `trucks`.
-- **Roster real:** qué personas entran el día 1, con qué capacidad
-  (mecánico Standard, PM, Manager con `work_orders.manage`, Admin).
-- **Off Duty:** no hay mutación todavía. ¿Se lanza sin eso?
-- **No correr `db:seed` en producción.** Eso pisaría camiones CTC reales
-  `905` / `922` / `968` con datos de demo.
+```bash
+supabase db query --linked --project-ref mjlfynzqmxoezanvyniw "select email, name, role, active from users order by role, name;"
+```
 
----
+```bash
+supabase db query --linked --project-ref mjlfynzqmxoezanvyniw "select count(*) as trucks from trucks;"
+```
 
-## Falta ingeniería / ops (NEED ENGINEERING)
+```bash
+supabase db query --linked --project-ref mjlfynzqmxoezanvyniw "select display_id, status from work_orders where status in ('created','in_progress','waiting_paused') order by display_id;"
+```
 
-- Crear en Supabase Auth solo al **Manager y al System Admin** (mismo email
-  que su fila en `users`). Al resto (mecánicos Standard, PM y **Safety**) los
-  da de alta el Manager desde Admin → Mecánicos, con cuenta y contraseña
-  temporal (D22). Requiere `SUPABASE_SERVICE_ROLE_KEY` en la API.
-- En producción: **`AUTH_DEV_BYPASS` apagado o ausente.** Nunca
-  `NEXT_PUBLIC_` para service role ni tokens de Ninox.
-- Completar env de Vercel (web + api): `DATABASE_URL`, `DIRECT_URL`,
-  `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_JWT_SECRET` o JWKS, `CORS_ORIGIN`,
-  `SUPABASE_SERVICE_ROLE_KEY` (solo API),
-  `NEXT_PUBLIC_SITE_URL`, `DATA_SOURCE=supabase`.
-- Confirmar que la lista de camiones de producción cubre la flota que
-  el taller va a buscar. El cruce futuro con Ninox es **solo** `E.A`.
-  Tres filas con pinta de demo (`9050`, `9220`, `9680`) no tienen id
-  Ninox leftover; no son los CTC `905` / `922` / `968`.
-- Aplicar la migración `20260920020000_ninox_truck_seed` y correr
-  **una vez** `prisma:seed-ninox-trucks` con `NINOX_*` de servidor.
-  Después borrar el token. No usar `db:seed` de demo en producción.
-- **No implementar** el adapter Ninox en la API para el día 1. Si
-  `DATA_SOURCE=ninox`, el ping de runtime falla: el adapter no existe.
-- Smoke con un Manager y un mecánico reales: login → crear OT → Start
-  Work → completar job → blocker → PM si aplica → patio.
-- Migraciones Prisma solo por el workflow de Release safety. Un deploy
-  verde en Vercel no prueba que la base se migró.
-- Catalogo y partes PM: aplicar por el path de release
-  (`prisma:apply-catalog`), no con el seed completo de demo.
-- **Cierre del día y un reloj por mecánico (D20, D21, LTR-186):**
-  1. Aplicar la migración `20261005120000_day_close_ltr186` (aditiva:
-     `work_sessions.end_reason` y la tabla `shop_settings` con su fila
-     5:00 p.m., lunes a viernes) por el workflow de Release safety **antes**
-     de desplegar la API nueva.
-  2. Poner `CRON_SECRET` en el proyecto `ltl-shop-api` de Vercel (valor
-     largo y aleatorio, solo servidor; Vercel lo manda como
-     `Authorization: Bearer …` a los crons).
-  3. Desplegar la API: `apps/api/vercel.json` registra dos crons a
-     `/api/internal/day-close`, lunes a viernes 21:05 y 22:05 UTC (5:05 p.m.
-     en horario de verano y de invierno). Son respaldo: el cierre ya se
-     aplica solo al leer o escribir tiempos, y es idempotente.
-  4. Comprobar en Vercel → Settings → Cron Jobs que aparecen los dos y
-     correr uno a mano: responde `{ ok: true, closedSessions: … }`.
-  5. Confirmar con el Manager la hora y los días en Admin → Setup → Shop
-     workflow → Shop hours.
-- **Ayudante y taller externo (D23, D24, LTR-188):**
-  1. Aplicar la migración `20261005180000_helper_external_jobs_ltr188`
-     (aditiva: en `work_order_jobs` las columnas `helper_of_job_id`,
-     `external_since`, `external_kind`, `external_note`, `external_by_id`, el
-     tipo `job_external_kind` y su índice) por el workflow de Release safety
-     **antes** de desplegar la API nueva. Va después de
-     `20261005120000_day_close_ltr186`.
-  2. Desplegar la API y luego la web (sin variables nuevas).
-  3. Smoke con el Manager: en un WO abierto, `…` de un Job → Agregar
-     ayudante; `…` de otro Job → Enviar a taller externo (pieza) → el
-     siguiente paso y el Yard; **Regresó** → Completar.
+Pásame el resultado: con eso confirmo qué falta y qué Work Orders de prueba
+hay que limpiar en la fase 6.
+
+**1.3 · Tú — Vercel.** En `ltl-shop-api` y `ltl-shop-web` → *Deployments*:
+anota qué commit está en **Production** y si el último build de la API dice
+*Error* (esperado mientras haya migraciones pendientes).
 
 ---
 
-## Qué no es bloqueo de mapper
+## Fase 2 — Variables de entorno
 
-| Tema | ¿Bloquea el launch del Shop? |
-|---|---|
-| Faltan IDs de las otras 162 tablas Ninox | No |
-| Cliente Ninox es stub | No. Así debe quedar para el día 1 |
-| Prisma no guarda table IDs de Ninox | No. La llave es el número de camión |
-| `E.TA` no mueve el Work Plan | No. Son sistemas distintos |
-| Trailer UC sin ID | No, si Trailer sigue siendo categoría de Job |
-| Samsara / McLeod / Dispatch | No. Presencia sigue `UNKNOWN` |
+**2.1 · Tú — Vercel, proyecto `ltl-shop-api`** (Settings → Environment
+Variables → Production). Nunca con prefijo `NEXT_PUBLIC_`:
+
+| Variable | Valor | Para qué |
+|---|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → *service_role* | Que el Manager cree cuentas con contraseña temporal (D22) |
+| `SUPABASE_URL` | `https://mjlfynzqmxoezanvyniw.supabase.co` | Lo mismo |
+| `CRON_SECRET` | Un texto largo y aleatorio (por ejemplo, 40 caracteres) | Respaldo del cierre del día a las 5:00 p.m. (D20) |
+| `DATA_SOURCE` | `supabase` | Ya debería estar |
+| `AUTH_DEV_BYPASS` | **No debe existir** (o `false`) | Sin esto, cualquiera entraría sin contraseña |
+| `SENTRY_DSN` | Opcional | Ver errores en producción |
+
+**2.2 · Tú — Vercel, proyecto `ltl-shop-web`:** confirma que
+**`NEXT_PUBLIC_E2E_DEV_LOGIN` no existe** (si existe, la pantalla de login
+muestra "Dev login"). Opcional: `NEXT_PUBLIC_SENTRY_DSN`.
+
+**2.3 · Tú — Supabase → Authentication → URL Configuration:**
+- *Site URL*: `https://ltl-shop-web.vercel.app`
+- *Redirect URLs*: agrega `https://ltl-shop-web.vercel.app/reset-password`
+  (para "Olvidé mi contraseña").
+
+✅ **Listo cuando:** las variables están guardadas. Todavía no despliegues.
 
 ---
 
-## Orden sugerido para Cristian
+## Fase 3 — Migrar la base y desplegar (fuera de horario)
 
-1. Decidir: **Shop abre sin Ninox en vivo** (recomendado).
-2. Cerrar roster y capacidades. Invitar Auth de verdad.
-3. Revisar que los camiones de producción tengan el número correcto
-   (`truckNumber` = el mismo que Ninox `E.A` cuando comparen listas).
-4. Apagar Dev Bypass. Smoke con gente real.
-5. Dejar trailers UC y sync `E.TA` para después, con IDs verificados,
-   sin inventar campos.
+Hazlo **todo seguido**: entre el paso 3.1 y el 3.2 la API vieja falla porque
+la migración `drop_pm_authorized` quita una columna que ella todavía lee.
+
+**3.1 · Tú — aplicar migraciones.** GitHub → Actions → **Release safety** →
+*Run workflow* con **Run prisma migrate deploy = activado** y **Probe API =
+activado**.
+- Aplica las migraciones pendientes y vuelve a cargar el catálogo de Jobs.
+- Esperado: el job termina en verde. (El último paso, "Verify API", puede
+  fallar si la API vieja ya no responde bien; en ese caso sigue con 3.2.)
+
+**3.2 · Tú — desplegar la API.** Vercel → `ltl-shop-api` → *Deployments* →
+último commit de `main` → **Redeploy** (sin caché).
+- Esperado: el build pasa (ahora la base está al día).
+
+**3.3 · Tú — desplegar la web.** Vercel → `ltl-shop-web` → **Redeploy** del
+último commit de `main`.
+
+**3.4 · Tú / Yo — comprobar.**
+- `https://ltl-shop-api.vercel.app/api/health` responde `"ok": true`
+  (puedo revisarlo yo).
+- Vercel → `ltl-shop-api` → Settings → **Cron Jobs**: aparecen dos trabajos a
+  `/api/internal/day-close`. Toca **Run** en uno: responde
+  `{ "ok": true, "closedSessions": … }`.
+- Vuelve a correr **Release safety** con migrate **desactivado**: ahora debe
+  salir en **verde** (sin pendientes).
+
+**Si algo sale mal:** no vuelvas a una API de antes del 30 de septiembre
+(PR #235): esa versión todavía usa la columna que se borró. Mándame el error
+del build o del job y lo vemos.
+
+---
+
+## Fase 4 — Cuentas
+
+**4.1 · Tú — tu cuenta y la del System Admin (Supabase).**
+Supabase → Authentication → Users → **Add user**: tu correo y una contraseña,
+con *Auto Confirm User*. Repite para la cuenta System Admin. El correo debe
+ser **exactamente** el mismo que su fila en `users` (consulta 1.2). Si no
+tienen fila, avísame y te paso cómo crearla.
+- ✅ Entras a `https://ltl-shop-web.vercel.app/login` con tu correo y ves el
+  Admin.
+
+**4.2 · Tú — el resto del personal (desde la app).**
+Admin → **Mecánicos** → **Agregar persona**, uno por uno: nombre, correo y
+tipo:
+- **Daniel** → PM.
+- Cada mecánico → Standard.
+- **Safety 1** y **Safety 2** → Safety (con sus nombres y correos reales).
+
+Cada vez la app muestra una **contraseña temporal una sola vez**: cópiala y
+dásela a esa persona. Al entrar por primera vez la app le pide cambiarla.
+- ✅ La persona entra con su correo y la contraseña temporal, cambia la
+  contraseña y ve su pantalla (mecánico, PM o Quality Check).
+
+**4.3 · Tú — desactivar las cuentas de prueba** (MG, MPM, MD, MA y cualquier
+otra que no sea real): Mecánicos → la persona → **Desactivar**. Si la app
+dice que tiene trabajo abierto, haz primero la fase 6 y vuelve aquí.
+
+---
+
+## Fase 5 — Configurar el taller
+
+**5.1 · Tú — Setup → Shop workflow:**
+- Responsable por defecto de **PM** → Daniel; de **Alignment** y
+  **Detailing** → quien los haga normalmente. **Quality Check** lo toma
+  Safety desde su pantalla (no lleva responsable).
+- **Horario del taller:** cierre 5:00 p.m., lunes a viernes. Guardar.
+
+**5.2 · Tú / Yo — camiones.** Con el conteo de la consulta 1.2: si falta
+algún camión que el taller va a buscar, avísame; la carga se hace una sola
+vez con el script de Ninox (nunca con `db:seed`, que pisaría datos reales).
+
+**5.3 · Catálogo de Jobs:** ya lo cargó la fase 3. Abre Admin → Job Catalog y
+confirma que están las categorías que usa el taller.
+
+---
+
+## Fase 6 — Limpiar datos de prueba
+
+Con la lista de la consulta 1.2 (Work Orders abiertos):
+
+**6.1 · Tú — cancelar los Work Orders de prueba desde la app.** Work Order →
+menú **…** → **Cancel Work Order** → motivo "Prueba antes de salir en vivo".
+Así queda registrado y los camiones quedan libres.
+
+**No** corras scripts de reseteo ni `db:seed` en producción.
+
+---
+
+## Fase 7 — Un día de prueba con gente real
+
+Con tu iPhone (Safari) y al menos un mecánico, Daniel y una persona de Safety.
+Primero instala la app: Safari → Compartir → **Agregar a pantalla de inicio**.
+
+| # | Quién | Qué | Debe pasar |
+|---|---|---|---|
+| 1 | Manager | Nuevo Work Order para un camión real | Nace con PM, Alignment, Detailing y Quality Check y sus responsables |
+| 2 | Manager | Inspección: "Issues found" → Agregar trabajo | El Job aparece en el Work Plan |
+| 3 | Manager | Asigna el Job a un mecánico | El mecánico lo ve en su inicio |
+| 4 | Mecánico | Start → trabaja → Completar Job | Su tiempo aparece en el Work Order |
+| 5 | Mecánico | Reportar bloqueo en otro Job | El Manager lo ve en el Dashboard |
+| 6 | Manager | Resolver el bloqueo | El mecánico ve "Resuelto · toca Continuar" |
+| 7 | Manager | **Agregar ayudante** en un Job | El ayudante lo ve y su tiempo corre a su nombre |
+| 8 | Manager | **Enviar a taller externo** (pieza) → **Regresó** | El siguiente paso dice "En taller externo"; al volver se completa |
+| 9 | Daniel | Crear/iniciar el PM, millaje y partes, Terminar | El paso PM queda completo |
+| 10 | Safety | Quality Check: Tomar → Devolver con nota | El Manager ve "Devuelto por Safety" |
+| 11 | Safety | Tomar → Aprobar | El Manager puede cerrar |
+| 12 | Manager | Cerrar Work Order → Return to Service | El camión sale del tablero |
+| 13 | Mecánico | Deja un Job a medias al irse | Al día siguiente su reloj cerró a las 5:00 y ve "Ayer quedó en curso · toca Continuar" |
+| 14 | Mecánico | Start en un camión y después en otro | El reloj del primero se cierra ("cambio de camión") |
+
+Cualquier cosa que falle o confunda: mándame captura y la registro en
+`OPEN_ISSUES.md` con su clase (B bloqueante, C confuso, E estético).
+
+---
+
+## Fase 8 — Día 1 y después
+
+- **Primer día:** revisa el Dashboard a media mañana y al final del día;
+  corrige tiempos raros desde Work Order → Historial y auditoría → Corrección
+  de tiempo.
+- **Volver atrás:** en Vercel, *Promote* el deploy anterior de la API o la
+  web. La base **no** se deshace: solo se puede volver a deploys posteriores
+  al PR #235 (30 de septiembre).
+- **Terminado cuando:** el taller trabaja un día completo con usuarios reales
+  sin un defecto B. Entonces se cierran LTR-45 y LTR-173.
+
+## Quién hace qué
+
+| Paso | Tú | Yo |
+|---|---|---|
+| Release safety, Vercel, Supabase (fases 1–4) | ✅ | Te guío y reviso resultados |
+| Health de la API | | ✅ |
+| Alta de personal, configuración, limpieza (fases 4–6) | ✅ | |
+| Prueba del día y arreglos (fases 7–8) | Pruebas y me reportas | Registro y arreglo |
