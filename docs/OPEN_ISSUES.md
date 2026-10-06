@@ -106,7 +106,7 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 
 | # | Problema | Qué pasa | Dónde |
 |---|---|---|---|
-| 3 | **Custom Jobs sin revisión** — C, pendiente de P5 | Quedan en `review_status = pending_review` para siempre; nada los mapea al catálogo (ver P5 en `DECISIONS.md`). | `work-orders.service.ts` (l. 367, 951) |
+| 3 | **Custom Jobs sin revisión** — **E (bajó de C), decidido D25 (2026-10-05)** | El Manager mantiene el catálogo y puede guardar un Job personalizado en el catálogo al crearlo (en construcción, fila A36). Los Custom Jobs viejos siguen en `pending_review` sin pantalla; la bandeja para revisarlos va después (LTR-57). | `work-orders.service.ts` (l. 367, 851), `admin.controller.ts` (catálogo) |
 | ~~5~~ | ~~"Mechanic note: undefined"~~ — cerrado | No se reproduce en el recorrido de pantallas del 2026-09-29 (§1d). | — |
 
 

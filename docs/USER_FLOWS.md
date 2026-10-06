@@ -421,8 +421,11 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 
 | Qué | Respuesta | Estado | Fila |
 |---|---|---|---|
-| Crear o editar Jobs de catálogo y mecánicos | Solo la cuenta System Admin, y hoy **sin pantalla** | ✅ (sin pantalla: fuera de alcance) | A26 |
-| El Manager intenta esas escrituras | No puede | ✅ | A26 |
+| Crear o editar Jobs de catálogo | El Manager y el System Admin, en Admin → Job Catalog (D25) | 🔲 | A36 |
+| Agrega un Job personalizado y marca "Agregar también al catálogo" | Entra al catálogo y al Work Order como Job de catálogo; la próxima vez se elige de la lista | 🔲 | A36 |
+| Un Job con el mismo nombre ya está en esa categoría | No deja duplicarlo; ofrece elegir el que existe | 🔲 | A36 |
+| Un mecánico o Safety intenta escribir el catálogo | No puede | 🔲 | A26 |
+| Alta y baja de personal | El Manager y el System Admin (D22, HU-M9) | ✅ | A29–A31 |
 | Usuario inactivo, desconocido o sin sesión | No entra | ✅ | E4 |
 
 ---
@@ -538,7 +541,7 @@ una historia:
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
-| 3 | No existe revisión de Custom Jobs | Manager | C | decisión P5 | — |
+| 3 | Custom Jobs viejos sin revisar — **decidido D25:** el Manager mantiene el catálogo (en construcción); la bandeja de revisión va después | Manager | E | LTR-57 | A36 |
 
 **B** bloqueante · **C** confuso · **E** estético. Detalle técnico en
 [`OPEN_ISSUES.md`](OPEN_ISSUES.md).
