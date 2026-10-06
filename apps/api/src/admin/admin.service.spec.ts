@@ -179,7 +179,7 @@ describe('AdminService', () => {
     prisma.workOrderNote.findMany.mockResolvedValue([{
       id: 'n-1', body: 'Brake lights out', createdAt: new Date('2026-09-25T12:00:00Z'),
       author: { id: 'mg', name: 'MG' },
-      workOrder: { id: 'wo-1', displayId: 'WO-001', truck: { truckNumber: '277' } },
+      workOrder: { id: 'wo-1', displayId: 'WO-001', truck: { id: 't-277', truckNumber: '277' } },
     }]);
 
     const result = await createService(prisma).dashboard();
@@ -187,7 +187,7 @@ describe('AdminService', () => {
     expect(prisma.workOrderNote.findMany.mock.calls[0][0].where).toMatchObject({ kind: 'work_request', handledAt: null });
     expect(result.openWorkRequests).toEqual([{
       id: 'n-1', body: 'Brake lights out', author: { id: 'mg', name: 'MG' }, createdAt: '2026-09-25T12:00:00.000Z',
-      workOrderId: 'wo-1', workOrderDisplayId: 'WO-001', truckNumber: '277',
+      workOrderId: 'wo-1', workOrderDisplayId: 'WO-001', truckNumber: '277', truckId: 't-277',
     }]);
   });
 
@@ -300,6 +300,19 @@ describe('AdminService', () => {
         newValue: expect.objectContaining({ notes: 'Replaced the air hose' }),
       })],
     });
+  });
+
+  it('Stage 8: a cancelled Job carries its reason; other Jobs do not', async () => {
+    const created = detailRow({
+      jobs: [
+        { ...detailRow().jobs[0], status: 'cancelled', cancelledReason: 'Not needed' },
+        { ...detailRow().jobs[0], id: '00000000-0000-4000-8000-0000000000aa', status: 'to_do', cancelledReason: 'stale' },
+      ],
+    });
+    const prisma = createPrisma();
+    prisma.workOrder.findUnique.mockResolvedValue(created);
+    const detail = await createService(prisma).detail(created.id);
+    expect(detail.jobs.map((job) => job.cancelledReason)).toEqual(['Not needed', null]);
   });
 
   it('uses a stable sort-value plus UUID cursor without repeating the boundary row', async () => {

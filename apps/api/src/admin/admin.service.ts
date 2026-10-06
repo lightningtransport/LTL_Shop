@@ -347,7 +347,7 @@ export class AdminService {
           where: { kind: 'work_request', handledAt: null, workOrder: openWhere },
           include: {
             author: { select: { id: true, name: true } },
-            workOrder: { select: { id: true, displayId: true, truck: { select: { truckNumber: true } } } },
+            workOrder: { select: { id: true, displayId: true, truck: { select: { id: true, truckNumber: true } } } },
           },
           orderBy: { createdAt: 'desc' },
           take: 20,
@@ -377,6 +377,8 @@ export class AdminService {
         workOrderId: request.workOrder.id,
         workOrderDisplayId: request.workOrder.displayId,
         truckNumber: request.workOrder.truck.truckNumber,
+        // Stage 8: the Dashboard row links to the Truck.
+        truckId: request.workOrder.truck.id,
       })),
     };
   }
@@ -2423,6 +2425,8 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     completedAt: job.completedAt?.toISOString() ?? null,
     completedBy: job.completedBy ?? null,
     completionNotes: jobCompletionNotes(row.activityLogs, job.id),
+    // Stage 8: the reason shows on the cancelled row (it is stored on the Job).
+    cancelledReason: job.status === 'cancelled' ? job.cancelledReason ?? null : null,
     startedAt: job.startedAt?.toISOString() ?? null,
     helperOfJobId: job.helperOfJobId ?? null,
     external: toJobExternalDto(job),

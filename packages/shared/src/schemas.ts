@@ -166,6 +166,14 @@ export const adminYardOperationsQuerySchema = z.object({
   blocked: queryBoolean.optional(),
   /** Stage 6: quick filter — a pending Job sent the whole truck to an external shop (D24). */
   outOfShop: queryBoolean.optional(),
+  /**
+   * Stage 8: Truck numbers Dispatch expects to leave soon (today or the next shop day). The web already has the
+   * Dispatch departures; it sends them so the API can count and filter "Leaving soon" over every page.
+   */
+  soonTrucks: z.string().trim().max(2000).optional()
+    .transform((value) => (value ? value.split(',').map((item) => item.trim()).filter(Boolean).slice(0, 200) : undefined)),
+  /** Stage 8: quick filter "Leaving soon" (the open Trucks among `soonTrucks`). */
+  soon: queryBoolean.optional(),
 });
 
 export const adminMutationMetaSchema = z.object({

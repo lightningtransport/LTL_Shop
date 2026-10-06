@@ -17,6 +17,7 @@ import {
   getAgentReportingConfig,
 } from '../integrations/agent-reporting/agent-reporting.client';
 import { PrismaService } from '../prisma/prisma.service';
+import { YardOperationsService } from './yard-operations.service';
 import { getShopWeekWindows } from './admin-time';
 import {
   mapIncomingTrucks,
@@ -30,6 +31,7 @@ export class YardDataBoundaryService {
   constructor(
     private readonly config: ConfigService,
     @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly yard?: YardOperationsService,
   ) {}
 
   async get(
@@ -89,13 +91,17 @@ export class YardDataBoundaryService {
           },
         },
       });
+      // Stage 8: the step, Ready to Go and Jobs left come from the Yard's own derivation (same as the board).
+      const status = this.yard ? await this.yard.shopStatusByTruckNumber(trucks.map((truck) => truck.truckNumber)) : new Map();
       return trucks.map((truck) => {
         const open = truck.workOrders[0] ?? null;
+        const shop = status.get(truck.truckNumber);
         return {
           truckNumber: truck.truckNumber,
           truckId: truck.id,
           openWorkOrder: open ? { id: open.id, displayId: open.displayId } : null,
           outOfShop: Boolean(open?.jobs.length),
+          ...(shop ? { phase: shop.phase, readyToGo: shop.readyToGo, jobsLeft: shop.jobsLeft } : { phase: null, readyToGo: false, jobsLeft: 0 }),
         };
       });
     } catch {

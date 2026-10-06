@@ -130,11 +130,19 @@ export class YardWorkPlanService {
       inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null,
     });
 
+    // Stage 8: dates and priority the Truck screen shows (inspection recorded, Job done, Work Order closed).
+    const extra = workOrder as (typeof workOrder & { priority?: string; completedAt?: Date | null }) | null;
+    const completedAtByJob = new Map((workOrder?.jobs ?? []).map((job) => [job.id, (job as { completedAt?: Date | null }).completedAt ?? null]));
+    const inspectionRecordedAt = derived.inspection.outcome !== 'not_started'
+      ? (inspectionRequirement as { evaluatedAt?: Date | null } | undefined)?.evaluatedAt ?? null
+      : null;
     return {
       // Deprecated (LTR-150): Work Plan and PM phase are the only mode; kept for web/API deploy skew.
       sliceEnabled: true,
       pmPhaseEnabled: true,
       ...derived,
+      inspection: { ...derived.inspection, recordedAt: inspectionRecordedAt?.toISOString() ?? null },
+      jobs: derived.jobs.map((job) => ({ ...job, completedAt: completedAtByJob.get(job.id)?.toISOString() ?? null })),
       workOrder: workOrder
         ? {
             id: workOrder.id,
@@ -142,6 +150,8 @@ export class YardWorkPlanService {
             status: workOrder.status as never,
             version: workOrder.version,
             primaryCategoryName: workOrder.primaryCategory.name,
+            priority: (extra?.priority ?? undefined) as never,
+            completedAt: extra?.completedAt?.toISOString() ?? null,
           }
         : null,
       capabilities: {

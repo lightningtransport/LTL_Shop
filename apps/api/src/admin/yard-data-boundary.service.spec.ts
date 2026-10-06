@@ -127,8 +127,31 @@ describe('YardDataBoundaryService', () => {
 
     expect(findMany.mock.calls[0][0].where).toEqual({ truckNumber: { in: ['277', '905'] } });
     expect(dto.shop).toEqual([
-      { truckNumber: '277', truckId: 't-277', openWorkOrder: { id: 'wo-1', displayId: 'WO-001' }, outOfShop: false },
-      { truckNumber: '905', truckId: 't-905', openWorkOrder: null, outOfShop: false },
+      { truckNumber: '277', truckId: 't-277', openWorkOrder: { id: 'wo-1', displayId: 'WO-001' }, outOfShop: false, phase: null, readyToGo: false, jobsLeft: 0 },
+      { truckNumber: '905', truckId: 't-905', openWorkOrder: null, outOfShop: false, phase: null, readyToGo: false, jobsLeft: 0 },
+    ]);
+  });
+
+  it('Stage 8: the shop side carries the Work Plan step, Ready to Go and Jobs left from the Yard', async () => {
+    const fetchImpl = vi.fn(async (input: URL) => {
+      const url = String(input);
+      if (url.includes('report=trucks')) return jsonResponse({ data: [{ truck_number: 277, yard_location: '301 Yard' }, { truck_number: 601, yard_location: '301 Yard' }], has_more: false });
+      return jsonResponse({ data: [], has_more: false });
+    });
+    const findMany = vi.fn().mockResolvedValue([
+      { id: 't-277', truckNumber: '277', workOrders: [{ id: 'wo-1', displayId: 'WO-001', jobs: [] }] },
+      { id: 't-601', truckNumber: '601', workOrders: [] },
+    ]);
+    const yard = { shopStatusByTruckNumber: vi.fn().mockResolvedValue(new Map([
+      ['277', { phase: 'pm', readyToGo: false, jobsLeft: 3 }],
+      ['601', { phase: 'ready_to_go', readyToGo: true, jobsLeft: 0 }],
+    ])) };
+    const service = new YardDataBoundaryService(config({ AGENT_REPORTING_KEY: 'server-only-key' }), { truck: { findMany } } as never, yard as never);
+    const dto = await service.get(NOW, fetchImpl as unknown as typeof fetch);
+    expect(yard.shopStatusByTruckNumber).toHaveBeenCalledWith(['277', '601']);
+    expect(dto.shop).toEqual([
+      expect.objectContaining({ truckNumber: '277', phase: 'pm', readyToGo: false, jobsLeft: 3 }),
+      expect.objectContaining({ truckNumber: '601', phase: 'ready_to_go', readyToGo: true, jobsLeft: 0 }),
     ]);
   });
 

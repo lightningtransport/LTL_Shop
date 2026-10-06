@@ -386,7 +386,7 @@ describe('YardOperationsService', () => {
     expect(page.nextCursor).toBeNull();
     expect(page.counts).toEqual({
       notStarted: 0, underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2,
-      matching: 0, total: 0, quick: { all: 0, blocked: 0, highPriority: 0, outOfShop: 0 },
+      matching: 0, total: 0, quick: { all: 0, blocked: 0, highPriority: 0, outOfShop: 0, leavingSoon: 0 }, byPhase: {},
     });
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
     expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[1][0].where)).toBe(true);
@@ -487,6 +487,22 @@ describe('YardOperationsService', () => {
       // The quick counts keep their numbers when one of them is on; "Showing 1 of 3".
       expect(blockedOnly.counts).toMatchObject({ matching: 1, total: 3, blocked: 1, quick: { all: 3, blocked: 1, highPriority: 1 } });
       expect(blockedOnly.counts.underReview + blockedOnly.counts.notStarted! + blockedOnly.counts.readyToGo).toBe(1);
+    });
+
+    it('Stage 8: "Leaving soon" counts and filters the open Trucks the web names from Dispatch; lanes count every page', async () => {
+      const prisma = createPrisma();
+      prisma.truck.findMany.mockResolvedValue(board());
+      prisma.truck.count.mockResolvedValue(3);
+      const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
+
+      const all = await service.list({ limit: 1, soonTrucks: '601,999' });
+      expect(all.counts.quick?.leavingSoon).toBe(1);
+      // The lane counts cover every page, not only the one loaded (limit 1).
+      expect(Object.values(all.counts.byPhase ?? {}).reduce((sum, count) => sum + count, 0)).toBe(3);
+
+      const soon = await service.list({ limit: 25, soonTrucks: '601,999', soon: 'true' });
+      expect(soon.items.map((item) => item.truck.truckNumber)).toEqual(['601']);
+      expect(soon.counts).toMatchObject({ matching: 1, total: 3, quick: { all: 3, leavingSoon: 1 } });
     });
   });
 

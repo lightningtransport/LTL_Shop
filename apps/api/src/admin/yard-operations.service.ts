@@ -713,7 +713,37 @@ export class YardOperationsService {
       nextStep,
       // LTR-188 / D24: a pending Job sent the whole truck to an external shop. Phase and counters stay as they are.
       outOfShop: workPlan.jobs.some((job) => job.external?.kind === JobExternalKind.TRUCK),
+      outOfShopJobName: workPlan.jobs.find((job) => job.external?.kind === JobExternalKind.TRUCK)?.displayName ?? null,
     };
+  }
+
+  /**
+   * Stage 8 (D8): the shop's side for the Dispatch tab — Work Plan step, Ready to Go and Jobs left — for the
+   * Truck numbers Dispatch names. One query; Trucks with no shop engagement come back without a step.
+   */
+  async shopStatusByTruckNumber(numbers: string[]): Promise<Map<string, { phase: string; readyToGo: boolean; jobsLeft: number; truckId: string; openWorkOrder: { id: string; displayId: string } | null; outOfShop: boolean }>> {
+    const result = new Map<string, { phase: string; readyToGo: boolean; jobsLeft: number; truckId: string; openWorkOrder: { id: string; displayId: string } | null; outOfShop: boolean }>();
+    if (!numbers.length) return result;
+    const rows = await this.prisma.truck.findMany({
+      where: { AND: [activeYardEngagement(), { truckNumber: { in: numbers } }] },
+      include: yardTruckInclude as never,
+    }) as unknown as YardTruckRow[];
+    await this.attachReadyWorkOrders(rows);
+    for (const row of rows) {
+      if (isCompletedOnlyWithoutReadyWork(row)) continue;
+      const item = this.toTruckItem(row);
+      const workOrder = item.activeWorkOrder;
+      const open = workOrder && workOrder.status !== 'completed' && workOrder.status !== 'cancelled' ? workOrder : null;
+      result.set(row.truckNumber, {
+        phase: item.phase,
+        readyToGo: item.phase === 'ready_to_go',
+        jobsLeft: workOrder ? Math.max(0, workOrder.jobsTotal - workOrder.jobsCompleted) : 0,
+        truckId: row.id,
+        openWorkOrder: open ? { id: open.id, displayId: open.displayId } : null,
+        outOfShop: Boolean(item.outOfShop),
+      });
+    }
+    return result;
   }
 
   /**
@@ -730,7 +760,15 @@ export class YardOperationsService {
       && (!query.workOrderStatus || Boolean(workOrder && (query.workOrderStatus as string[]).includes(workOrder.status)))
       && (skipQuick || query.blocked === undefined || query.blocked === blocked)
       && (skipQuick || !query.priority || Boolean(workOrder && (query.priority as string[]).includes(workOrder.priority)))
-      && (skipQuick || query.outOfShop === undefined || query.outOfShop === Boolean(item.outOfShop));
+      && (skipQuick || query.outOfShop === undefined || query.outOfShop === Boolean(item.outOfShop))
+      && (skipQuick || !query.soon || this.leavingSoon(item, query));
+  }
+
+  /** Stage 8: an open Truck that Dispatch expects to leave soon (the web sends those numbers). */
+  private leavingSoon(item: YardOperationsTruckDto, query: AdminYardOperationsQuery) {
+    const workOrder = item.activeWorkOrder;
+    const open = Boolean(workOrder && workOrder.status !== 'completed' && workOrder.status !== 'cancelled');
+    return open && Boolean(query.soonTrucks?.includes(item.truck.truckNumber));
   }
 
   private buildWhere(query: AdminYardOperationsQuery, cursor: AdminYardOperationsCursor | null): Prisma.TruckWhereInput {
@@ -810,7 +848,12 @@ export class YardOperationsService {
         blocked: quickScope.filter((item) => isWorkPlanBoardBlocked(item.activeWorkOrder ? [item.activeWorkOrder] : [])).length,
         highPriority: quickScope.filter((item) => item.activeWorkOrder && ['high', 'critical'].includes(item.activeWorkOrder.priority)).length,
         outOfShop: quickScope.filter((item) => item.outOfShop).length,
+        leavingSoon: quickScope.filter((item) => this.leavingSoon(item, query)).length,
       },
+      byPhase: matching.reduce<Record<string, number>>((counts, item) => {
+        counts[item.phase] = (counts[item.phase] ?? 0) + 1;
+        return counts;
+      }, {}),
     };
   }
 
