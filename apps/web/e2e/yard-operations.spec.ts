@@ -82,10 +82,9 @@ test.describe('Yard Operations Phase 1', () => {
     await page.getByRole('tab', { name: 'Shop', exact: true }).click();
     await page.getByRole('searchbox', { name: 'Truck, Work Order or mechanic' }).fill('Y-103');
     await expect(page).toHaveURL(/search=Y-103/, { timeout: 5_000 });
-    await page.getByRole('button', { name: /More filters/ }).click();
-    const sheet = page.getByRole('dialog');
-    await sheet.getByLabel('Phase', { exact: true }).selectOption('shop_work');
-    await sheet.getByRole('button', { name: 'Apply filters' }).click();
+    // Stage 8 (owner decision): no "More filters"; the URL still accepts phase from links on other screens.
+    await expect(page.getByRole('button', { name: /More filters/ })).toHaveCount(0);
+    await page.goto('/admin/yard-operations?search=Y-103&phase=shop_work');
     await expect(page).toHaveURL(/search=Y-103/);
     await expect(page).toHaveURL(/phase=shop_work/);
     await expect(page.locator('[data-phase="shop_work"]').getByRole('link', { name: 'Y-103', exact: true })).toBeVisible();
@@ -98,15 +97,15 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByTestId('yard-quick-all')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('yard-quick-all')).toContainText('9');
     await expect(page.getByTestId('yard-quick-high')).toContainText('2');
-    await expect(page.getByTestId('yard-showing')).toContainText('Showing 9 of 9 trucks');
-    await expect(page.getByTestId('yard-showing')).toContainText(/Live · updated /);
+    await expect(page.getByTestId('yard-showing')).toContainText('9 trucks in the shop');
+    await expect(page.getByTestId('yard-live')).toContainText(/Live · updated /);
     await quick.getByRole('button', { name: /High priority/ }).click();
     await expect(page).toHaveURL(/priority=high%2Ccritical/);
     await expect(page.getByTestId('yard-quick-high')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('yard-showing')).toContainText('Showing 2 of 9 trucks');
     // The quick counts stay the same while one of them is on.
     await expect(page.getByTestId('yard-quick-all')).toContainText('9');
-    await page.getByTestId('yard-showing').getByRole('button', { name: 'Clear' }).click();
+    await page.getByRole('button', { name: 'Clear', exact: true }).click();
     await expect(page).not.toHaveURL(/priority=/);
   });
 
@@ -143,19 +142,25 @@ test.describe('Yard Operations Phase 1', () => {
   test('one lane per step on every width, empty steps in one line, no sideways scroll (D9)', async ({ page }) => {
     for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 834, height: 1194 }, { width: 1440, height: 1024 }]) {
       await page.setViewportSize(viewport);
-      for (const phase of ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']) {
+      // Stage 8 (mockup): desktop lists every step (an empty one is one line); phones hide the empty steps.
+      const phases = viewport.width >= 1024
+        ? ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']
+        : ['Inspection', 'Shop Work', 'PM'];
+      for (const phase of phases) {
         await expect(page.getByTestId('yard-lanes').getByRole('heading', { name: phase, exact: true })).toBeVisible();
       }
+      if (viewport.width < 1024) await expect(page.getByText('Empty steps are hidden.')).toBeVisible();
       await expect(page.getByRole('link', { name: 'Y-101', exact: true })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(overflow, `horizontal overflow at ${viewport.width}px`).toBe(false);
     }
+    await page.setViewportSize({ width: 1440, height: 1024 });
     await expect(page.getByText('No trucks', { exact: false }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Load more Trucks' }).click();
     await expect(page.getByTestId('yard-lanes').getByRole('link', { name: 'Y-108', exact: true })).toBeVisible();
   });
 
-  test('cards: Truck number, one alert line, no repeated phase badge; More filters sheet (UX-4-005)', async ({ page }) => {
+  test('cards: Truck number, one alert line, no repeated phase badge (UX-4-005)', async ({ page }) => {
     const lanes = page.getByTestId('yard-lanes');
     const y101 = lanes.getByTestId('yard-truck-card').filter({ hasText: 'Y-101' });
     await expect(y101).toBeVisible();
@@ -179,15 +184,10 @@ test.describe('Yard Operations Phase 1', () => {
     await page.goBack();
     await expect(page).toHaveURL(/\/admin\/yard-operations/);
 
-    await page.getByRole('button', { name: /More filters/ }).click();
-    const more = page.getByRole('dialog');
-    await expect(more.getByLabel('Readiness', { exact: true })).toBeVisible();
-    await expect(more.getByLabel('Phase', { exact: true })).toBeVisible();
-    await expect(more.getByLabel('Work Order status')).toBeVisible();
-    await more.getByLabel('Priority').selectOption('critical');
-    await more.getByRole('button', { name: 'Apply filters' }).click();
-    await expect(page).toHaveURL(/priority=critical/);
-    await expect(page.getByRole('button', { name: 'More filters (1)' })).toBeVisible();
+    // Stage 8: "Leaving soon" is a quick filter; it stays in the URL like the others.
+    await page.getByTestId('yard-quick-soon').click();
+    await expect(page).toHaveURL(/soon=true/);
+    await expect(page.getByTestId('yard-quick-soon')).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('does not clip Yard search or data-boundary labels at 390 and desktop', async ({ page }) => {

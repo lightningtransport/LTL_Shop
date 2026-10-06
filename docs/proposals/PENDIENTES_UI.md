@@ -24,6 +24,8 @@ Las que el revisor marque al cerrar cada pantalla de la Etapa 8 se anotan aquí.
 - **Dashboard (8.4):** "Leaving soon" y "Unassigned" no dicen el paso (PM, Shop Work…): derivarlo para cada fila del resumen es caro en la API (decisión de la Etapa 8.6).
 - **Dashboard (8.4):** la inspección sigue siendo un enlace al Truck, no los dos botones de la maqueta (pregunta P3 abierta).
 - **Dashboard (8.4):** el bloque Workspaces sigue donde estaba (pregunta P4 abierta).
+- **Yard (8.5):** las columnas de Dispatch se llaman "Incoming Trucks", "Upcoming Departures" y "Dispatch status" (no "Arriving / Leaving / Where Dispatch has them"): ese texto es compartido con la API y su prueba lo fija (decisión anterior: no traducir "Incoming Trucks").
+- **Yard (8.5):** la tarjeta conserva la línea "Dispatch: expected in …" de las llegadas (la maqueta no la tiene; es un dato que ya se usaba).
 
 ## Resuelto por el dueño el 2026-10-06
 
