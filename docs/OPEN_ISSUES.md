@@ -176,7 +176,7 @@ Confirmado en el recorrido: U9 (Nuevo Work Order dice "Unidad"). El defecto #5
 bien en el Admin ("Mechanic note: Batería nueva instalada.") y en el detalle
 del mecánico; queda cerrado.
 
-## 1e. Work Order Detail (Admin): rediseño propuesto (2026-10-05) — **ESPERA** · Linear [LTR-190](https://linear.app/ltransl/issue/LTR-190)
+## 1e. Work Order Detail (Admin): rediseño propuesto (2026-10-05) — **EN CURSO** (Etapas 2, 5 y 7 hechas el 2026-10-06) · Linear [LTR-190](https://linear.app/ltransl/issue/LTR-190)
 
 Revisión de la pantalla en producción (WO-010). Ningún flujo se atora: son
 **C** y **E**. La propuesta completa (maqueta navegable, qué hace cada
