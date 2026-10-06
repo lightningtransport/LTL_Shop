@@ -97,7 +97,8 @@ function TruckDetailBody({
   }, []);
 
   const ownerCount = new Set(workPlan.jobs.map((job) => job.assignedMechanic?.id).filter(Boolean)).size;
-  const counts = workPlan.workOrder
+  // T1: a completed Work Order has nothing left; "0 Jobs left · N mechanics" is not shown for it.
+  const counts = workPlan.workOrder && workPlan.workOrder.status !== 'completed'
     ? fillPlaceholders(messages.operationalCounts, { jobs: String(workPlan.remainingJobCount), mechanics: String(ownerCount) })
     : null;
 
@@ -118,8 +119,9 @@ function TruckDetailBody({
               <Badge variant={workPlan.readiness === 'ready' ? 'success' : 'warning'}>
                 {workPlan.readiness === 'ready' ? messages.workPlanReady : messages.workPlanNotReady}
               </Badge>
-              {/* The phase is only a badge in the header (SYSTEM.md §6), and only once there is a Work Order. */}
-              <Badge variant="outline">{workPlanPhaseLabel(workPlan.phase, messages)}</Badge>
+              {/* The phase is only a badge in the header (SYSTEM.md §6), and only once there is a Work Order.
+                  T9: at Ready to Go the readiness badge already says it, so the phase is not repeated. */}
+              {workPlan.phase === 'ready_to_go' ? null : <Badge variant="outline">{workPlanPhaseLabel(workPlan.phase, messages)}</Badge>}
             </>
           )}
         </>
@@ -130,7 +132,10 @@ function TruckDetailBody({
           {workPlan.workOrder ? (
             <Button asChild variant="outline">
               <Link href={`/admin/work-orders/${workPlan.workOrder.id}`}>
-                {messages.workPlanOpenWorkOrder}: {workPlan.workOrder.displayId}
+                {/* T1 / UX-5-001: a completed Work Order is not "open"; the link says what it is. */}
+                {workPlan.workOrder.status === 'completed'
+                  ? fillPlaceholders(messages.workPlanCompletedWorkOrder, { workOrder: workPlan.workOrder.displayId })
+                  : `${messages.workPlanOpenWorkOrder}: ${workPlan.workOrder.displayId}`}
               </Link>
             </Button>
           ) : null}

@@ -12,8 +12,10 @@ import { mechanicNamesLabel, workOrderNextJobLine } from '@/lib/admin-work-summa
 import { AdminBlockerResolve } from './admin-blocker-resolve';
 import { truckNextStepActionLabel, truckNextStepText } from '@/lib/truck-next-step';
 
-export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders', onBlockerResolved }: {
+export function AdminWorkOrderItem({ item, locale, messages, compact = false, fromPath = '/admin/work-orders', canManage = true, onBlockerResolved }: {
   item: AdminWorkOrderSummaryDto; locale: AdminLocale; messages: AdminMessages; compact?: boolean; fromPath?: string;
+  /** D2 / UX-6-003: without work_orders.manage the step has no button (it led to a Truck where nothing can be done). */
+  canManage?: boolean;
   /** LTR-155 / D17: when set (Dashboard), the active blocker can be resolved in place. */
   onBlockerResolved?: () => Promise<unknown> | void;
 }) {
@@ -28,7 +30,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
   const attention = adminAttentionReasonLabel(item.attentionReason, messages);
   const nextStepText = truckNextStepText(item.nextStep, messages);
   // Resolve happens inline on the Dashboard (LTR-155); every other action opens the Truck.
-  const nextStepAction = item.nextStep?.kind === 'resolve_blocker' && onBlockerResolved ? null : truckNextStepActionLabel(item.nextStep, messages);
+  const nextStepAction = !canManage || (item.nextStep?.kind === 'resolve_blocker' && onBlockerResolved) ? null : truckNextStepActionLabel(item.nextStep, messages);
 
   return (
     <article className={cn('rounded-xl border bg-card p-4 shadow-sm', compact && 'bg-background p-3 shadow-none xl:grid xl:grid-cols-[minmax(180px,1.2fr)_minmax(220px,1fr)_auto] xl:items-center xl:gap-4')}>

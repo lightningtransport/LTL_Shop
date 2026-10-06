@@ -95,7 +95,7 @@ test.describe('Shop Admin Phase 2A', () => {
   test('manager login opens the responsive Admin shell in EN and ES', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
     await expect(page.getByText('Current shop operations')).toBeVisible();
     await expect(page.getByText(/^Updated /)).toHaveCount(1);
     await expect(page.getByText('Created, in progress, or waiting / paused')).toBeVisible();
@@ -116,7 +116,7 @@ test.describe('Shop Admin Phase 2A', () => {
     const summaryBox = await summaryHeading.boundingBox();
     expect(completeBox && summaryBox && completeBox.y < summaryBox.y).toBe(true);
     await page.goto('/admin');
-    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
 
     for (const viewport of [
       { width: 320, height: 568 },
@@ -137,7 +137,7 @@ test.describe('Shop Admin Phase 2A', () => {
     }
 
     await switchLanguage(page, 'es');
-    await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Operaciones', exact: true })).toBeVisible();
     await expect(page.getByText('Operaciones actuales del Shop')).toBeVisible();
     await expect(page.getByText('Primero los listos para cerrar')).toBeVisible();
     await expect(page.getByText(/^Actualizado /)).toHaveCount(1);
@@ -155,7 +155,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Current shop operations' })).toBeVisible();
 
     const openNav = page.getByRole('button', { name: 'Open Shop Admin navigation' });
@@ -179,7 +179,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
     await page.getByRole('button', { name: 'Close Shop Admin navigation' }).click();
     await switchLanguage(page, 'es');
-    await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Operaciones', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Abrir navegación de Shop Admin' }).click();
     const esMobileNav = page.getByRole('dialog').getByRole('navigation', { name: 'Navegación móvil de Shop Admin' });
     for (const name of ['Operaciones', 'Work Orders', 'Operaciones del patio', 'Trucks', 'Mecánicos', 'Catálogo de Jobs', 'Historial']) {
@@ -293,7 +293,7 @@ test.describe('Shop Admin Phase 2A', () => {
     test.setTimeout(90_000);
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole('link', { name: /^Open Work Orders\b/ }).click();
     await expect(page).toHaveURL(/status=created%2Cin_progress%2Cwaiting_paused/);
@@ -305,7 +305,7 @@ test.describe('Shop Admin Phase 2A', () => {
       const url = new URL(page.url());
       for (const [key, value] of Object.entries(expected)) expect(url.searchParams.get(key)).toBe(value);
       await page.goBack();
-      await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 });
     };
     await verifyMetric(/Waiting \/ Paused/, { status: 'waiting_paused' });
     await verifyMetric(/High \/ Critical open/, { status: 'created,in_progress,waiting_paused', priority: 'high,critical' });
@@ -428,7 +428,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
   test('admin role can load dashboard and pagination completes', async ({ page }) => {
     await devLogin(page, 'admin@lightning.local');
-    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
     await openAdminNavLink(page, 'Work Orders');
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await page.getByRole('button', { name: 'Load more' }).click();
@@ -537,13 +537,14 @@ test.describe('Shop Admin Phase 2A', () => {
 
     await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'es', url: cookieUrl }]);
     const adminEsHtml = await (await page.request.get('/admin')).text();
-    expect(adminEsHtml).toContain('Operaciones del Shop');
-    expect(adminEsHtml).not.toContain('Shop Operations');
+    // The server renders the Spanish loading state; the English one never appears (no EN/ES flash).
+    expect(adminEsHtml).toContain('Operaciones actuales del Shop');
+    expect(adminEsHtml).not.toContain('Current shop operations');
 
     await page.goto('/admin');
-    await expect(page.getByRole('heading', { name: 'Operaciones del Shop' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Operaciones', exact: true })).toBeVisible();
     await switchLanguage(page, 'en');
-    await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
     const localeCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'ltl_shop_locale');
     expect(localeCookie?.value).toMatch(/^(en|es)$/);
     expect(localeCookie?.path).toBe('/');
@@ -558,14 +559,14 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     for (let attempt = 0; attempt < 10; attempt += 1) {
       await page.goto('/admin');
-      await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
       await page.getByRole('complementary', { name: 'Shop Admin navigation' }).getByRole('link', { name: 'Work Orders', exact: true }).click();
       await expect(page).toHaveURL(/\/admin\/work-orders$/);
     }
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
       await page.goto('/admin');
-      await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
       await page.getByRole('link', { name: 'View all Work Orders' }).click();
       await expect(page).toHaveURL(/\/admin\/work-orders$/);
     }
@@ -573,7 +574,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     for (let attempt = 0; attempt < 10; attempt += 1) {
       await page.goto('/admin');
-      await expect(page.getByRole('heading', { name: 'Shop Operations' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Open Shop Admin navigation' }).click();
       await page.getByRole('dialog').getByRole('link', { name: 'Work Orders', exact: true }).click();
       await expect(page).toHaveURL(/\/admin\/work-orders$/);

@@ -472,8 +472,9 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect.poll(() => closed).toBe(true);
     await expect(card).toHaveAttribute('data-kind', 'return_to_service');
 
-    // The reason is optional.
+    // D7: Return to Service confirms in a dialog; the reason is optional.
     await card.getByRole('button', { name: 'Return to Service' }).click();
+    await page.getByTestId('return-to-service-dialog').getByRole('button', { name: 'Confirm Return to Service' }).click();
     await expect.poll(() => rtsBody).toMatchObject({ expectedVersion: 4 });
     expect(rtsBody).not.toHaveProperty('reason');
     await expect(card).toHaveAttribute('data-kind', 'create_work_order');

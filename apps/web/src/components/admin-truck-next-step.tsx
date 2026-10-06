@@ -8,13 +8,13 @@ import {
   completeAdminJob,
   completeAdminWorkOrder,
   resumeAdminWorkOrder,
-  returnAdminWorkOrderToService,
 } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { useActionToast } from './action-toast';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
-import { Button, InlineAlert, Textarea } from './ui';
+import { ReturnToServiceDialog } from './return-to-service-dialog';
+import { Button, InlineAlert } from './ui';
 
 const LANE_NAME: Partial<Record<WorkPlanJobLane, string>> = {
   [WorkPlanJobLane.PM]: 'PM',
@@ -45,7 +45,7 @@ export function AdminTruckNextStep({
   const { showToast } = useActionToast();
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const [reason, setReason] = useState('');
+  const [returnOpen, setReturnOpen] = useState(false);
   if (!step) return null;
   const version = truck.workPlan.workOrder?.version ?? 0;
 
@@ -162,37 +162,38 @@ export function AdminTruckNextStep({
           />
         );
       case 'return_to_service':
+        // D7 / UX-4-002: one button and a confirmation dialog (optional reason), the same as the Yard.
         return (
-          <form
-            className="space-y-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void run(messages.returnToServiceSuccess, async () => {
-                await returnAdminWorkOrderToService(current.workOrderId!, { reason: reason.trim() || undefined, expectedVersion: version });
-                setReason('');
-              });
-            }}
-          >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p>{messages.truckNextStepReturnToService}</p>
-            {canManage ? (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                <Textarea
-                  aria-label={messages.returnToServiceReason}
-                  placeholder={messages.returnToServiceReason}
-                  rows={1}
-                  maxLength={1000}
-                  value={reason}
-                  disabled={pending}
-                  onChange={(event) => setReason(event.target.value)}
+            {canManage && current.workOrderId ? (
+              <>
+                <Button type="button" className="w-full sm:w-auto" onClick={() => setReturnOpen(true)}>{messages.returnToServiceTitle}</Button>
+                <ReturnToServiceDialog
+                  open={returnOpen}
+                  truckNumber={truck.truck.truckNumber}
+                  workOrderId={current.workOrderId}
+                  expectedVersion={version}
+                  messages={messages}
+                  onClose={() => setReturnOpen(false)}
+                  onDone={onChanged}
                 />
-                <Button type="submit" disabled={pending}>{messages.returnToServiceTitle}</Button>
-              </div>
+              </>
             ) : null}
-          </form>
+          </div>
         );
       case 'external':
-        // LTR-188 / D24: nothing to press here; "Returned" lives on the Job's row of the Work Order.
-        return <p>{fillPlaceholders(messages.truckNextStepExternal, { job: current.jobName ?? '' })}</p>;
+        // LTR-188 / D24, T3: "Returned" lives on the Job's row of the Work Order, so the step links there.
+        return (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p>{fillPlaceholders(messages.truckNextStepExternal, { job: current.jobName ?? '' })}</p>
+            {current.workOrderId ? (
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href={`/admin/work-orders/${current.workOrderId}`}>{messages.openInWorkOrder}</Link>
+              </Button>
+            ) : null}
+          </div>
+        );
       case 'work':
         return (
           <p>{fillPlaceholders(messages.truckNextStepWork, { count: String(current.remaining ?? 0), job: current.jobName ?? '' })}</p>

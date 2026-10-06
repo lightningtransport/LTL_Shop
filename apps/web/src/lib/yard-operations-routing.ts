@@ -82,3 +82,15 @@ export const YARD_WORK_ORDER_STATUSES = [
 ] as const;
 
 export const YARD_PRIORITIES = [Priority.LOW, Priority.NORMAL, Priority.HIGH, Priority.CRITICAL] as const;
+
+/**
+ * D4 / UX-5-006: where the Truck's back link returns from a Yard card — the Yard with its current
+ * search, filters, view and tab, so "Back to Yard Operations" never drops what the Manager set.
+ * The pagination cursor is not kept: going back starts at the first page.
+ */
+export function yardOperationsFromPath(query: string) {
+  const params = new URLSearchParams(query);
+  params.delete('cursor');
+  const kept = params.toString();
+  return kept ? `/admin/yard-operations?${kept}` : '/admin/yard-operations';
+}

@@ -7,6 +7,7 @@ import {
   DEFAULT_YARD_OPERATIONS_FILTERS,
   readYardOperationsFilters,
   WORK_PLAN_YARD_PHASES,
+  yardOperationsFromPath,
 } from './yard-operations-routing';
 
 describe('Yard Operations URL filters', () => {
@@ -53,5 +54,17 @@ describe('WORK_PLAN_YARD_PHASES', () => {
       WorkPlanPhase.READY_TO_CLOSE,
       WorkPlanPhase.READY_TO_GO,
     ]);
+  });
+});
+
+describe('yardOperationsFromPath (D4 / UX-5-006)', () => {
+  it('keeps search, filters, view and tab so the Truck back link returns to the same Yard', () => {
+    expect(yardOperationsFromPath('search=918&blocked=true&view=list&tab=movement'))
+      .toBe('/admin/yard-operations?search=918&blocked=true&view=list&tab=movement');
+  });
+
+  it('drops the pagination cursor and falls back to the plain Yard', () => {
+    expect(yardOperationsFromPath('phase=pm&cursor=yard-page-2')).toBe('/admin/yard-operations?phase=pm');
+    expect(yardOperationsFromPath('')).toBe('/admin/yard-operations');
   });
 });

@@ -7,11 +7,10 @@ import { Ban, ClipboardCheck, Search, ShieldCheck, SlidersHorizontal } from 'luc
 import { AppCapability, Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
-import { returnAdminWorkOrderToService, useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
-import { apiFetch } from '@/lib/api';
+import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
 import { useAuth } from '@/lib/auth-context';
 import { truckNextStepText } from '@/lib/truck-next-step';
-import { useActionToast } from './action-toast';
+import { ReturnToServiceDialog } from './return-to-service-dialog';
 import {
   buildYardOperationsQuery,
   countActiveYardOperationsFilters,
@@ -26,6 +25,7 @@ import {
   WORK_PLAN_YARD_PHASES,
   type YardBoardColumnPhase,
   type YardOperationsFilters,
+  yardOperationsFromPath,
 } from '@/lib/yard-operations-routing';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { workPlanPhaseLabel } from '@/lib/work-plan';
@@ -64,6 +64,8 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [movementSearch, setMovementSearch] = useState('');
   const query = searchParams.toString();
+  // D4 / UX-5-006: the Truck's back link returns here with the same search, filters, view and tab.
+  const yardFromPath = useMemo(() => yardOperationsFromPath(query), [query]);
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminYardOperations(query);
   const { user } = useAuth();
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
@@ -319,7 +321,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                       <Badge variant="secondary">{phaseItems.length}</Badge>
                     </div>
                     <div className="space-y-2">
-                      {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} canManage={canManageWorkOrders} onChanged={() => mutate()} />)}
+                      {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} canManage={canManageWorkOrders} fromPath={yardFromPath} onChanged={() => mutate()} />)}
                       {phaseItems.length === 0 ? (
                         <CompactEmpty className="text-xs">{messages.noTrucksInPhase}</CompactEmpty>
                       ) : null}
@@ -340,7 +342,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                   <h3 id={`yard-group-${phase}`} className="font-display text-sm font-semibold">{messages[phaseMessageKey[phase]]}</h3>
                   <Badge variant="secondary">{phaseItems.length}</Badge>
                 </div>
-                <div className="space-y-2">{phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} canManage={canManageWorkOrders} onChanged={() => mutate()} />)}</div>
+                <div className="space-y-2">{phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} canManage={canManageWorkOrders} fromPath={yardFromPath} onChanged={() => mutate()} />)}</div>
               </section>
             ) : null;
           })}
@@ -432,8 +434,10 @@ function SummaryMetric({ label, value, Icon }: { label: string; value: number; I
   );
 }
 
-function YardTruckCard({ item, messages, locale, dispatch, canManage = false, onChanged }: {
+function YardTruckCard({ item, messages, locale, dispatch, canManage = false, fromPath = '/admin/yard-operations', onChanged }: {
   item: YardOperationsTruckDto;
+  /** Where the Truck's back link returns (the Yard with its current query). */
+  fromPath?: string;
   /** LTR-159: Return to Service from a Ready to Go card. */
   canManage?: boolean;
   onChanged?: () => Promise<unknown> | void;
@@ -453,7 +457,7 @@ function YardTruckCard({ item, messages, locale, dispatch, canManage = false, on
 
   const card = (
     <Link
-      href={adminTruckHref(item.truck.id, '/admin/yard-operations')}
+      href={adminTruckHref(item.truck.id, fromPath)}
       aria-label={item.truck.truckNumber}
       className="card block space-y-1.5 p-2 hover:bg-accent/40"
       data-testid="yard-truck-card"
@@ -495,41 +499,32 @@ function YardTruckCard({ item, messages, locale, dispatch, canManage = false, on
   return (
     <div className="space-y-1">
       {card}
-      <YardReturnToService workOrderId={item.nextStep.workOrderId} messages={messages} onChanged={onChanged} />
+      <YardReturnToService workOrderId={item.nextStep.workOrderId} truckNumber={item.truck.truckNumber} messages={messages} onChanged={onChanged} />
     </div>
   );
 }
 
-function YardReturnToService({ workOrderId, messages, onChanged }: {
+function YardReturnToService({ workOrderId, truckNumber, messages, onChanged }: {
   workOrderId: string;
+  truckNumber: string;
   messages: AdminMessages;
   onChanged?: () => Promise<unknown> | void;
 }) {
-  const { showToast } = useActionToast();
-  const [pending, setPending] = useState(false);
+  // D7 / UX-5-008: the same confirmation dialog as the Truck (optional reason), never a single tap.
+  const [open, setOpen] = useState(false);
   return (
-    <Button
-      type="button"
-      size="sm"
-      variant="outline"
-      className="w-full"
-      disabled={pending}
-      onClick={async () => {
-        setPending(true);
-        try {
-          // The reason is optional (LTR-158); the version comes from the Work Order itself.
-          const wo = await apiFetch<{ version: number }>(`/api/admin/work-orders/${workOrderId}`);
-          await returnAdminWorkOrderToService(workOrderId, { expectedVersion: wo.version });
-          showToast('success', messages.returnToServiceSuccess);
-          await onChanged?.();
-        } catch {
-          showToast('error', messages.truckNextStepFailed);
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
-      {messages.returnToServiceTitle}
-    </Button>
+    <>
+      <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => setOpen(true)}>
+        {messages.returnToServiceTitle}
+      </Button>
+      <ReturnToServiceDialog
+        open={open}
+        truckNumber={truckNumber}
+        workOrderId={workOrderId}
+        messages={messages}
+        onClose={() => setOpen(false)}
+        onDone={onChanged}
+      />
+    </>
   );
 }

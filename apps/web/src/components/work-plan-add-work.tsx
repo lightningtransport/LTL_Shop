@@ -281,7 +281,7 @@ export function WorkPlanAddWork({
               <span>{messages.addCustomJobToCatalog}</span>
             </label>
           ) : null}
-          {customIsDuplicate ? <p className="text-sm text-muted-foreground" role="status">{messages.jobsInPlan}</p> : null}
+          {customIsDuplicate ? <p className="text-sm text-muted-foreground" role="status">{messages.customJobDuplicate}</p> : null}
           {catalogNotice ? <p className="text-sm text-muted-foreground" role="status">{catalogNotice}</p> : null}
           {catalogError ? <InlineAlert>{catalogError}</InlineAlert> : null}
         </div>

@@ -215,7 +215,8 @@ export function useAdminYardOperations(query: string) {
         return `/api/admin/yard-operations?${params.toString()}`;
       },
       adminReadFetcher,
-      adminInfiniteOptions,
+      // D5 / UX-6-001: the board refreshes on its own (30s, like the Dashboard) so nobody decides on stale data.
+      { ...adminInfiniteOptions, refreshInterval: 30_000 },
     ),
   );
 }

@@ -347,7 +347,7 @@ function SendExternalDialog({ job, messages, disabled, onClose, onConfirm }: {
             onChange={(event) => { setNote(event.target.value); setError(null); }}
           />
         </label>
-        {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
+        {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
         <div className="flex gap-2">
           <Button type="button" variant="outline" className="flex-1" onClick={onClose}>{messages.cancel}</Button>
           <Button type="submit" className="flex-1" disabled={disabled}>{messages.sendExternalConfirm}</Button>

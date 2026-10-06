@@ -937,7 +937,7 @@ function LaborSegments({ data, locale, messages }: { data: AdminWorkOrderDetailD
   if (!sessions.length) return null;
   return (
     <div className="mt-4" data-testid="labor-segments">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{messages.laborSessions}</p>
+      <p className="group-title">{messages.laborSessions}</p>
       <ul className="mt-2 divide-y text-sm">
         {sessions.map((session) => {
           const label = laborEndLabel(session.endReason, messages);
