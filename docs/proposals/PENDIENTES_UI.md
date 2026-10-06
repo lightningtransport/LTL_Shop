@@ -6,14 +6,16 @@
 que siguen abiertas al terminar la actualización de la UI (Etapa 8,
 [`ETAPA8_PLAN.md`](ETAPA8_PLAN.md)). Cada una dice qué hace la app mientras tanto.
 
-| # | Pregunta | Qué hace la app mientras tanto |
+**Respondidas por el dueño el 2026-10-06** (se implementan en la Etapa 8.8):
+
+| # | Pregunta | Decisión |
 |---|---|---|
-| P1 | ¿Son confiables día a día los datos de Dispatch? | Se usan, marcados como "reported by Dispatch": "Leaving soon" (Dashboard, chip y alerta del Yard) y la columna Dispatch |
-| P2 | ¿Return to Service por lotes desde el Yard? | De a uno, con su diálogo |
-| P3 | ¿Inspección desde el Dashboard (botones "No issues / Issues found" en la fila) o solo un enlace al Truck? | Enlace al Truck ("Go to the inspection") |
-| P4 | ¿Dónde va el bloque Workspaces (accesos a las pantallas de mecánico)? | Sigue en el Dashboard |
-| P5 | La maqueta del Dashboard cierra la WO de un toque; D27 pide confirmar. ¿Se mantiene D27? | Pide confirmar (D27) |
-| P6 | ¿Se repite el stepper de pasos en el Dashboard o en las tarjetas del Yard? | Solo en el Truck |
+| P1 | ¿Son confiables día a día los datos de Dispatch? | Sí. "Leaving soon" (Dashboard, chip y alerta del Yard) y la pestaña Dispatch los siguen usando, marcados como "reported by Dispatch" |
+| P2 | ¿Return to Service por lotes desde el Yard? | No hace falta: de a uno, con su diálogo |
+| P3 | ¿Inspección desde el Dashboard? | **Dos botones en la fila**: "No issues found" se registra ahí; "Issues found" se registra y abre el Truck con Add work abierto |
+| P4 | ¿Dónde va el bloque Workspaces? | **En el menú lateral**: un grupo "Workspaces" al final, solo para quien también es mecánico (Standard / PM). Sale del Dashboard |
+| P5 | ¿Cerrar la WO de un toque? | **Solo en el Dashboard**, como la maqueta (se reabre desde la WO). En la WO y el Truck sigue confirmando (D27 cambiado) |
+| P6 | ¿Stepper en el Dashboard o en el Yard? | **Solo en el Truck** (sin cambios): el Dashboard dice el paso en la fila y en el Yard el carril es el paso |
 
 ## Diferencias menores aceptadas
 
@@ -26,8 +28,6 @@ Lo que quedó distinto de las maquetas al cerrar cada pantalla. Ninguna cambia l
 - **Truck (8.3):** "Add work" no pone los **dueños por defecto** de PM, Alignment y Detailing en el panel: la web no tiene esa configuración (Setup → Shop workflow); la API los aplica al crear los pasos obligatorios.
 - **Truck (8.3):** el aviso "Blocker" del Truck no dice "(+N more)": el Truck solo trae el último blocker reportado.
 - **Dashboard (8.4):** "Leaving soon" y "Unassigned" no dicen el paso (PM, Shop Work…): derivarlo para cada fila del resumen es caro en la API (decisión de la Etapa 8.6).
-- **Dashboard (8.4):** la inspección sigue siendo un enlace al Truck, no los dos botones de la maqueta (pregunta P3 abierta).
-- **Dashboard (8.4):** el bloque Workspaces sigue donde estaba (pregunta P4 abierta).
 - **Yard (8.5):** las columnas de Dispatch se llaman "Incoming Trucks", "Upcoming Departures" y "Dispatch status" (no "Arriving / Leaving / Where Dispatch has them"): ese texto es compartido con la API y su prueba lo fija (decisión anterior: no traducir "Incoming Trucks").
 - **Yard (8.5):** la tarjeta conserva la línea "Dispatch: expected in …" de las llegadas (la maqueta no la tiene; es un dato que ya se usaba).
 

@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, Building2, CalendarClock, Check, CircleAlert, CircleCheck, ClipboardCheck, Flag, MessageSquarePlus, OctagonPause, ShieldCheck, Truck, UserPlus, Wrench, X, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Building2, CalendarClock, Check, CircleAlert, CircleCheck, ClipboardCheck, Flag, MessageSquarePlus, OctagonPause, ShieldCheck, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
 import { AppCapability, type AdminOpenWorkRequestDto, type AdminWorkOrderSummaryDto } from '@ltl-shop/shared';
 import { NextStepAction } from './next-step-action';
 import { useActionToast } from './action-toast';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, LoadFailure, PageSkeleton, PriorityBadge, Textarea } from './ui';
+import { Button, LoadFailure, PageSkeleton, PriorityBadge, Textarea } from './ui';
 import { formatAdminDateOnly } from '@/lib/admin-format';
 import { handleAdminWorkRequest, resolveAdminBlocker, useAdminDashboard, useAdminYardDataBoundary } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -53,8 +53,6 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
   if (isLoading) return <PageSkeleton label={messages.currentOperations} />;
   if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
-  const canStandard = !!user?.capabilities.includes(AppCapability.MECHANIC_STANDARD);
-  const canPm = !!user?.capabilities.includes(AppCapability.MECHANIC_PM);
   const canManage = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const counts = dashboardCounts(queue);
   const groups = groupDashboardQueue(queue, focus);
@@ -87,7 +85,6 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
         {fillPlaceholders(messages.dashLive, { time: formatShortDateTime(data.generatedAt, locale) })}
       </span>
     </header>
-    {canStandard || canPm ? <Workspaces messages={messages} canStandard={canStandard} canPm={canPm} /> : null}
 
     {/* UX-4-001: four counters that filter the queue below, the same "Blocked" as the Yard (D5). */}
     <section className="space-y-3" aria-label={messages.dashboardCountersLabel}>
@@ -384,31 +381,5 @@ function RequestRow({ request, locale, messages, canManage, onChanged }: {
         ) : null}
       </div>
     </li>
-  );
-}
-
-/** Shortcuts to the mechanic workspaces for people who also wrench (unchanged; its place is still an open decision). */
-function Workspaces({ messages, canStandard, canPm }: { messages: AdminMessages; canStandard: boolean; canPm: boolean }) {
-  return (
-    <section aria-labelledby="admin-workspaces-title">
-      <div className="mb-3">
-        <h2 id="admin-workspaces-title" className="text-base font-semibold">{messages.workspaces}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{messages.workspacesBody}</p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {canStandard ? (
-          <Card>
-            <CardHeader><Wrench aria-hidden="true" className="size-5 text-primary" /><CardTitle>{messages.standardWorkspace}</CardTitle><CardDescription>{messages.standardWorkspaceBody}</CardDescription></CardHeader>
-            <CardContent><Button asChild className="w-full"><Link href="/mechanic/standard">{messages.openStandardWorkspace}</Link></Button></CardContent>
-          </Card>
-        ) : null}
-        {canPm ? (
-          <Card>
-            <CardHeader><ClipboardCheck aria-hidden="true" className="size-5 text-primary" /><CardTitle>{messages.pmWorkspace}</CardTitle><CardDescription>{messages.pmWorkspaceBody}</CardDescription></CardHeader>
-            <CardContent><Button asChild className="w-full"><Link href="/mechanic/pm">{messages.openPmWorkspace}</Link></Button></CardContent>
-          </Card>
-        ) : null}
-      </div>
-    </section>
   );
 }

@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, ClipboardList, Gauge, History, Library, ListChecks, Menu, Truck, UsersRound, Warehouse } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
+import { AppCapability } from '@ltl-shop/shared';
+import { useAuth } from '@/lib/auth-context';
 import { AdminNavLink } from './admin-nav-link';
 import { AdminBreadcrumbProvider, useAdminCrumbs, type Crumb } from './admin-breadcrumb';
 import { AppHeaderActions, Button, Modal } from './ui';
@@ -79,7 +81,13 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
     setMobileNavOpen(false);
   }, [pathname]);
 
-  const navGroups = (onNavigate?: () => void) => navigationGroups.map((group) => (
+  // P4 (owner, 2026-10-06): the mechanic workspaces are a sidebar group, only for people who also wrench.
+  const { user: authUser } = useAuth();
+  const workspaces: Array<{ href: string; label: string; icon: typeof Wrench }> = [];
+  if (authUser?.capabilities.includes(AppCapability.MECHANIC_STANDARD)) workspaces.push({ href: '/mechanic/standard', label: messages.standardWorkspace, icon: Wrench });
+  if (authUser?.capabilities.includes(AppCapability.MECHANIC_PM)) workspaces.push({ href: '/mechanic/pm', label: messages.pmWorkspace, icon: ClipboardCheck });
+
+  const navGroups = (onNavigate?: () => void) => [...navigationGroups.map((group) => (
     <div key={group.title} className="space-y-0.5">
       <p className="px-2 pb-1 text-xs text-muted-foreground">{messages[group.title]}</p>
       {group.items.map(({ message, icon: Icon, href }) => {
@@ -97,7 +105,16 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
         );
       })}
     </div>
-  ));
+  )), workspaces.length ? (
+    <div key="workspaces" className="space-y-0.5" data-testid="admin-nav-workspaces">
+      <p className="px-2 pb-1 text-xs text-muted-foreground">{messages.workspaces}</p>
+      {workspaces.map(({ href, label, icon: Icon }) => (
+        <AdminNavLink key={href} href={href} onClick={onNavigate} className={`${NAV_ITEM} text-muted-foreground hover:bg-accent hover:text-foreground`}>
+          <Icon aria-hidden="true" className="size-4 shrink-0" />{label}
+        </AdminNavLink>
+      ))}
+    </div>
+  ) : null];
 
   return (
     <div className="app-safe-x flex h-full min-h-0 w-full min-w-0 overflow-hidden bg-background text-sm [--admin-aside:0px] md:[--admin-aside:15rem]">

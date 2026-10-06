@@ -452,17 +452,17 @@ test.describe('Shop Admin Phase 2A', () => {
     test(`${email} opens Standard and PM without signing in again`, async ({ page }) => {
       await devLogin(page, email);
       await expect(page).toHaveURL(/\/admin$/);
-      await expect(page.getByRole('heading', { name: 'Workspaces' })).toBeVisible();
-
-      await page.getByRole('link', { name: 'Open Standard Mechanic' }).click();
+      // P4 (owner, 2026-10-06): the workspaces are a group in the navigation, not a Dashboard block.
+      await expect(page.getByRole('heading', { name: 'Workspaces' })).toHaveCount(0);
+      await openAdminNavLink(page, 'Standard Mechanic');
       await expect(page).toHaveURL(/\/mechanic\/standard$/);
       await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
       await page.getByRole('link', { name: 'Back to Shop Admin' }).click();
       await expect(page).toHaveURL(/\/admin$/);
 
       await switchLanguage(page, 'es');
-      await expect(page.getByRole('heading', { name: 'Espacios de trabajo' })).toBeVisible();
-      await page.getByRole('link', { name: 'Abrir Mecánico PM' }).click();
+      await page.getByRole('button', { name: 'Abrir navegación de Shop Admin' }).click();
+      await page.getByRole('navigation', { name: 'Navegación móvil de Shop Admin' }).getByRole('link', { name: 'Mecánico PM', exact: true }).click();
       await expect(page).toHaveURL(/\/mechanic\/pm$/);
       // The shared ltl_shop_locale cookie keeps the PM workspace in Spanish.
       await expect(page.getByRole('heading', { name: 'Mecánico de PM' })).toBeVisible();

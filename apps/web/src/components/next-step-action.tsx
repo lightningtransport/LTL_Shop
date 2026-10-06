@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { CheckCheck, ClipboardCheck, FilePlus, ListPlus, Play, SquareArrowOutUpRight, Truck as TruckIcon, UserPlus, type LucideIcon } from 'lucide-react';
-import { AppCapability, isPmCategory, type AdminWorkOrderDetailDto, type TruckNextStepDto } from '@ltl-shop/shared';
+import { AppCapability, isPmCategory, WorkPlanInspectionOutcome, type AdminWorkOrderDetailDto, type TruckNextStepDto } from '@ltl-shop/shared';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
-import { assignAdminWorkOrderJob, completeAdminJob, resumeAdminWorkOrder, useAdminAssignableMechanics } from '@/lib/admin-data';
+import { assignAdminWorkOrderJob, completeAdminJob, completeAdminWorkOrder, recordAdminWorkPlanInspection, resumeAdminWorkOrder, useAdminAssignableMechanics } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
@@ -64,6 +65,7 @@ export function NextStepAction({
   onResolve?: () => void;
 }) {
   const { showToast } = useActionToast();
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [dialog, setDialog] = useState<'close' | 'return' | null>(null);
   const label = truckNextStepActionLabel(step, messages);
@@ -120,6 +122,11 @@ export function NextStepAction({
         { method: 'POST', body: JSON.stringify({ expectedVersion: await version() }) },
       )));
     case 'close':
+      // P5 (owner, 2026-10-06): on the Dashboard, closing is one tap, like the mockup (it can be reopened from the
+      // Work Order). The Work Order and the Truck still confirm (D27).
+      if (place === 'dashboard' && workOrderId) {
+        return button(label ?? '', () => void run(messages.completeWorkOrderSuccess, messages.completeWorkOrderGenericError, async () => completeAdminWorkOrder(workOrderId, await version())));
+      }
       return workOrderId ? (
         <>
           {button(label ?? '', () => setDialog('close'))}
@@ -155,7 +162,26 @@ export function NextStepAction({
         <AssignAction step={step} workOrderId={workOrderId} expectedVersion={expectedVersion} messages={messages} onChanged={onChanged} />
       ) : null;
     case 'inspect':
-      // The inspection is recorded on the Truck (D14).
+      // P3 (owner, 2026-10-06): on the Dashboard the inspection is recorded in the row. "Issues found" then opens
+      // the Truck with Add work open (the work has to be added there). Elsewhere it is recorded on the Truck (D14).
+      if (place === 'dashboard') {
+        return (
+          <>
+            {button(messages.workPlanNoIssuesFound, () => void run(messages.workPlanInspectionRecorded, messages.workPlanInspectionFailed, () => recordAdminWorkPlanInspection(truck.id, WorkPlanInspectionOutcome.NO_ISSUES_FOUND)), 'outline')}
+            <Button
+              type="button"
+              disabled={pending}
+              data-testid="next-step-action-issues"
+              onClick={() => void run(messages.workPlanInspectionRecorded, messages.workPlanInspectionFailed, async () => {
+                await recordAdminWorkPlanInspection(truck.id, WorkPlanInspectionOutcome.ISSUES_FOUND);
+                router.push(`${truckHref}#add-work`);
+              })}
+            >
+              {messages.workPlanIssuesFound}
+            </Button>
+          </>
+        );
+      }
       return link(label ?? '', `${truckHref}#truck-work-plan-title`);
     case 'create_work_order':
       return link(label ?? '', truckHref);
