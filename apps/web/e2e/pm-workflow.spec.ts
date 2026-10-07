@@ -315,6 +315,17 @@ test.describe('PM redesign (Stage PM-4)', () => {
     await expect(list.getByText(/154,300 mi · 1 part/)).toBeVisible();
   });
 
+  test('Block C: without a connection the PM screen shows one Offline notice', async ({ page, context }) => {
+    await mockPmApi(page);
+    await login(page);
+    await page.goto(`/work-orders/${woId}`);
+    await expect(page.getByLabel('Observed mileage')).toBeVisible();
+    await context.setOffline(true);
+    await expect(page.getByTestId('offline-strip')).toHaveText(/Offline · your changes are kept on this phone/);
+    await context.setOffline(false);
+    await expect(page.getByTestId('offline-strip')).toHaveCount(0);
+  });
+
   test('Create PM service names what will happen on a truck with an open Work Order', async ({ page }) => {
     await mockPmApi(page);
     await page.route(`**/api/trucks/${truck.id}/open-work-order`, (route) => fulfill(route, { exists: true, pmJoin: { displayId: 'WO-010', status: 'add', assignedMechanicName: null } }));

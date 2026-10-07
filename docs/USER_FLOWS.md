@@ -366,7 +366,9 @@ hasta que lo publica con el botón (decisión del 2026-10-07, también para el P
 ### HU-PM1 · Registrar un mantenimiento preventivo (J9)
 
 **Flujo**
-1. Inicio → **Create PM service** → elige el Truck.
+1. Inicio: el PM en curso arriba; "Waiting for PM" por prioridad y antigüedad, con
+   "Next up · Start PM on Truck N" en el primero. O **Create PM service** → elige
+   el Truck (el botón dice qué pasa: crear, "Add PM to WO-010", continuar).
 2. Anota el **millaje observado**.
 3. Elige las **partes** usadas (solo aparecen las que sirven para ese
    camión). El millaje y las partes se guardan solos; las notas se
@@ -389,6 +391,9 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Millaje con salto sin confirmar | Las piezas esperan: no se pueden elegir hasta confirmar el millaje (antes se veían elegidas sin guardarse) | ✅ | e2e bloque A |
 | Borra el millaje para reescribirlo | No se guarda vacío; queda el último millaje guardado | ✅ | e2e bloque A |
 | Se corta la conexión mientras anota | Dice "Not saved"; lo anotado queda en el teléfono (también si sale y vuelve) y se envía solo cuando vuelve la conexión | ✅ | e2e bloque A |
+| Activa una pieza | Queda elegida la más usada en camiones de esa marca y modelo ("Most used on this model · 11 of 12 PMs"); sin historial, la elige él (D-PM1) | ✅ | A9c · e2e |
+| Busca Finish | Va fijo abajo y dice exactamente qué falta ("Add at least one part", "Confirm the mileage above", "Choose the part for…") o "Ready to finish · 210,000 mi · 1 part"; la confirmación muestra el millaje y las piezas | ✅ | e2e |
+| Cambia PM A ↔ PM B | Se aplica al elegir y ofrece "Undo" (D-PM5) | ✅ | A11 |
 | Cambia de PM A a PM B | Cambia el mismo Job; nunca quedan dos PM | ✅ | A11 |
 | Algo lo detiene | Bloquea su PM; no puede terminarlo hasta que el Manager resuelva | ✅ | A11 |
 | Quiere cambiar algo de un PM terminado | Solo lectura | ✅ | E11 |

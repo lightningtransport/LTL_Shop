@@ -15,6 +15,7 @@ import { vehicleLine } from '@/lib/work-order-identity';
 import { intlLocale } from '@/lib/shop-locale';
 import { useActionToast } from './action-toast';
 import { PmInProgressNotice } from './pm-in-progress-notice';
+import { OfflineStrip } from './offline-strip';
 import { PmServiceCard, type PmDraftState } from './pm-service-card';
 import { TruckInformationFields } from './truck-information-fields';
 import { WorkOrderNotesThread } from './work-order-notes-thread';
@@ -106,6 +107,7 @@ export function PmJobDetail({
   return (
     <div>
       <WorkspaceNav mode={MechanicMode.PM} />
+      <OfflineStrip message={messages.offlineKeptOnPhone} />
       <PageHeader
         className="mb-6"
         title={messages.truckTitle(wo.truckNumber)}

@@ -243,6 +243,7 @@ type Copy = {
   clockStripOpen: string;
   clockStripStopped: string;
   offlineNotSent: string;
+  offlineKeptOnPhone: string;
   reportBlocker: string;
   activeBlockers: string;
   blockerWaitsForManager: string;
@@ -719,6 +720,7 @@ const copy: Record<ShopLocale, Copy> = {
     clockStripOpen: 'Open',
     clockStripStopped: 'Your clock is stopped · tap Continue on a Truck',
     offlineNotSent: 'Offline · your changes are not sent',
+    offlineKeptOnPhone: "Offline · your changes are kept on this phone and will be sent when you're back online",
     reportBlocker: 'Report Blocker',
     activeBlockers: 'Active blockers',
     blockerWaitsForManager: 'Only the Manager resolves a blocker. Add a note if something changes.',
@@ -1193,6 +1195,7 @@ const copy: Record<ShopLocale, Copy> = {
     clockStripOpen: 'Abrir',
     clockStripStopped: 'Tu reloj está detenido · toca Continuar en una unidad',
     offlineNotSent: 'Sin conexión · no se envía nada',
+    offlineKeptOnPhone: 'Sin conexión · lo que anotas queda en este teléfono y se envía cuando vuelva la conexión',
     reportBlocker: 'Reportar bloqueo',
     activeBlockers: 'Bloqueos activos',
     blockerWaitsForManager: 'Solo el Manager resuelve el bloqueo. Agrega una nota si algo cambia.',

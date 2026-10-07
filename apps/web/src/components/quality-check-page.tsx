@@ -26,6 +26,7 @@ import { MechanicAvatar, MechanicAvatarStack } from './mechanic-avatar';
 import { ResponsiveMenu } from './responsive-menu';
 import { SessionSignInFallback } from './session-sign-in-fallback';
 import { SideSheet } from './side-sheet';
+import { OfflineStrip } from './offline-strip';
 import {
   Badge, Button, CardListSkeleton, CountChip, DialogActions, HomeTopBar, InlineAlert, Label, Modal, PageHeader, PriorityBadge,
   SectionCard, Textarea,
@@ -146,6 +147,8 @@ export function QualityCheckPage() {
         ))}
       </nav>
 
+      {/* Block C (Q10): one notice without a connection. */}
+      <OfflineStrip message={messages.offlineNotSent} />
       {actionError && !openId ? <InlineAlert className="mb-3">{actionError}</InlineAlert> : null}
 
       {tab === 'done' ? (
