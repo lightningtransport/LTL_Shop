@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PM Mechanic Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: Object.fromEntries(['background', 'foreground', 'card', 'muted', 'muted-foreground', 'primary', 'primary-foreground', 'accent', 'border', 'ring', 'success', 'warning', 'warning-foreground', 'warning-surface', 'destructive', 'destructive-text', 'sunken'].map((name) => [name, tok(name)])),
+        borderColor: { DEFAULT: 'var(--border)' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      },
+    },
+  };
+</script>
+<style>
+  /* Same tokens as the Safety QC and Admin mockups and apps/web/src/app/globals.css. */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--sunken); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  svg.lucide.s14 { width: 14px; height: 14px; }
+  svg.lucide.s20 { width: 20px; height: 20px; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sheet-in { animation: sin .2s ease-out; } @keyframes sin { from { transform: translateY(24px); opacity: 0; } }
+  .side-in { animation: sdi .2s ease-out; } @keyframes sdi { from { transform: translateX(24px); opacity: 0; } }
+  .toast-in { animation: tin .18s ease-out; } @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+  .pulse { animation: pls 1.4s ease-in-out infinite; } @keyframes pls { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .sheet-in, .side-in, .toast-in, .pulse { animation: none; } }
+  details > summary { list-style: none; } details > summary::-webkit-details-marker { display: none; }
+  details[open] .chev { transform: rotate(180deg); }
+</style>
+</head>
+<body class="min-h-screen font-sans text-sm antialiased">
+
+<!-- Demo controls (not part of the app) -->
+<div class="sticky top-0 z-50 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2 text-xs backdrop-blur">
+  <b class="mr-2">PM Mechanic · proposal</b>
+  <div class="flex overflow-hidden rounded-md border" role="group" aria-label="Device">
+    <button data-device="phone" class="dev h-8 px-3">Phone</button><button data-device="desktop" class="dev h-8 border-l px-3">Desktop</button>
+  </div>
+  <button id="theme" class="h-8 rounded-md border px-3">Dark</button>
+  <button id="net" class="h-8 rounded-md border px-3">Go offline</button>
+  <span class="ml-2 text-muted-foreground">Demo:</span>
+  <div id="presets" class="flex flex-wrap gap-1"></div>
+  <button id="reset" class="ml-auto h-8 rounded-md border px-3">Reset</button>
+</div>
+
+<div id="stage" class="flex justify-center p-0 sm:p-8"></div>
+
+<script>
+/* ───────── Demo data ───────── */
+// Parts that fit a Volvo VNL (sample from apps/api/test/fixtures/pm-parts.csv). `top` = most used on this model.
+const CATS = [
+  { id: 'oil1', name: 'Oil Filter 1 Unit', parts: [['21707132', 'Volvo Long Life Oil Filter'], ['LF3654', 'Fleetguard Oil Filter']], top: '21707132', use: '11 of 12' },
+  { id: 'oil2', name: 'Oil Filter 2 Unit', parts: [['21707133', 'Volvo Long Life Oil Filter (2)'], ['23658092', 'Volvo Long Life Oil Filter (2)'], ['WL10651', 'WIX Oil Filter Volvo 2 Units']], top: '21707133', use: '9 of 12' },
+  { id: 'fuel', name: 'Fuel Filter', parts: [['WF10447', 'WIX Fuel Filter Volvo'], ['LFF8897', 'Fuel Filter 4 Micron MP7 EPA']], top: 'WF10447', use: '10 of 12' },
+  { id: 'paper', name: 'Paper Fuel Filter', parts: [['WF10005', 'Paper Fuel Filter Peterbilt - Volvo'], ['P550851', 'Paper Fuel Filter Peterbilt - Volvo']], top: 'WF10005', use: '7 of 12' },
+  { id: 'cabin', name: 'Cabin Air Filter', parts: [['23582260', 'Volvo Cabin Air Filter'], ['WX49084', 'WIX Cabin Filter Volvo']], top: '23582260', use: '8 of 12' },
+  { id: 'desic', name: 'Desiccant Filter', parts: [['K096286', 'Bendix Desiccant Cartridge'], ['109495', 'Bendix AD-IS Cartridge']], top: null },
+  { id: 'engair', name: 'Engine Air Filter', parts: [['P608766', 'Donaldson Engine Air Filter']], top: 'P608766', use: '6 of 12' },
+  { id: 'wiper', name: 'Wiper Blades', parts: [], top: null },
+  { id: 'cool', name: 'Coolant Filter', parts: [['WF2076', 'Fleetguard Coolant Filter']], top: 'WF2076', use: '5 of 12' },
+];
+const cat = (id) => CATS.find((c) => c.id === id);
+const partName = (c, no) => { const p = c.parts.find(([n]) => n === no); return p ? `${p[0]} — ${p[1]}` : ''; };
+const REASONS = ['Waiting for Parts', 'Waiting for Approval', 'Waiting for Vendor', 'Waiting for Equipment / Tool', 'Waiting for Bay', 'Waiting for Driver', 'Other'];
+const JUMP = 50000;
+
+function seed() {
+  return {
+    trucks: [
+      { id: 't968', n: '968', wo: 'WO-016', veh: '2023 Volvo VNL 860', vin: '4V4NC9EH5PN000968', miles: 210000, last: { miles: 160120, date: 'Jun 12', wo: 'WO-002' }, pri: 'normal', wait: 4, svc: 'PM A', st: 'running', started: '8:05 AM' },
+      { id: 't605', n: '605', wo: 'WO-005', veh: '2022 Volvo VNL 760', vin: '4V4NC9EH0NN000605', miles: 241880, last: { miles: 196400, date: 'May 30', wo: 'WO-001' }, pri: 'critical', wait: 3, svc: 'PM A', st: 'waiting' },
+      { id: 't603', n: '603', wo: 'WO-003', veh: '2024 Freightliner Cascadia', vin: '3AKJHHDR0RS000603', miles: 203950, last: { miles: 154300, date: 'Jul 2', wo: 'WO-004' }, pri: 'high', wait: 2, svc: 'PM B', st: 'waiting' },
+      { id: 't944', n: '944', wo: 'WO-014', veh: '2021 Peterbilt 579', vin: '1XPBD49X1MD000944', miles: 352110, last: { miles: 301200, date: 'Jun 20', wo: 'WO-007' }, pri: 'normal', wait: 5, svc: 'PM A', st: 'waiting' },
+      { id: 't612', n: '612', wo: 'WO-012', veh: '2023 Volvo VNL 760', vin: '4V4NC9EH7PN000612', miles: 48210, last: null, pri: 'normal', wait: 1, svc: 'PM A', st: 'waiting' },
+      { id: 't609', n: '609', wo: 'WO-009', veh: '2022 Freightliner Cascadia', vin: '3AKJHHDR4NS000609', miles: 287400, last: { miles: 239010, date: 'May 18', wo: 'WO-003' }, pri: 'normal', wait: 6, svc: 'PM A', st: 'paused', paused: { reason: 'Waiting for Parts', since: 'yesterday', note: 'Cristian: fuel filters arrive Thursday.' } },
+    ],
+    pm: { tid: 't968', saved: 210000, input: '210000', mstate: 'ok', jumpOk: false, on: {}, parts: {}, pending: {},
+      notes: [{ by: 'Cristian · Manager', at: '8:40 AM', body: 'Check the left mirror bracket too, it was loose last week.' }], noteDraft: '', blocker: null },
+    done: [
+      { id: 'd606', n: '606', wo: 'WO-006', veh: '2024 Freightliner Cascadia', svc: 'PM A', group: 'Today', date: 'Oct 7', at: '11:40 AM', miles: 154300, prev: 'WO-001 · 104,880 mi', parts: ['Oil Filter 1 Unit: LF3654 — Fleetguard Oil Filter'] },
+      { id: 'd607', n: '607', wo: 'WO-008', veh: '2022 Volvo VNL 760', svc: 'PM B', group: 'Yesterday', date: 'Oct 6', at: '3:15 PM', miles: 188020, prev: 'WO-002 · 139,500 mi', parts: ['Oil Filter 1 Unit: 21707132 — Volvo Long Life Oil Filter', 'Fuel Filter: WF10447 — WIX Fuel Filter Volvo', 'Cabin Air Filter: 23582260 — Volvo Cabin Air Filter'] },
+      { id: 'd931', n: '931', wo: 'WO-013', veh: '2022 Volvo VNL 760', svc: 'PM A', group: 'Yesterday', date: 'Oct 6', at: '9:02 AM', miles: 402115, prev: 'No PM before this one', parts: ['Oil Filter 2 Unit: 21707133 — Volvo Long Life Oil Filter (2)', 'Fuel Filter: WF10447 — WIX Fuel Filter Volvo', 'Coolant Filter: WF2076 — Fleetguard Coolant Filter'] },
+      { id: 'd602', n: '602', wo: 'WO-005', veh: '2024 Volvo VNL 860', svc: 'PM A', group: 'Mon, Oct 5', date: 'Oct 5', at: '2:44 PM', miles: 212040, prev: 'WO-001 · 161,900 mi', parts: ['Oil Filter 1 Unit: 21707132 — Volvo Long Life Oil Filter', 'Engine Air Filter: P608766 — Donaldson Engine Air Filter'] },
+    ],
+    // Create PM service: what the truck search knows.
+    fleet: [
+      { n: '957', veh: '2023 Volvo VNL 760', wo: null },
+      { n: '857', veh: '2021 Freightliner Cascadia', wo: null },
+      { n: '910', veh: '2024 Peterbilt 579', wo: 'WO-010', kind: 'add' },
+      { n: '944', veh: '2021 Peterbilt 579', wo: 'WO-014', kind: 'join' },
+      { n: '968', veh: '2023 Volvo VNL 860', wo: 'WO-016', kind: 'mine' },
+      { n: '605', veh: '2022 Volvo VNL 760', wo: 'WO-005', kind: 'join' },
+    ],
+  };
+}
+let S = seed();
+let UI = null;
+UI = fresh();
+function fresh() { return { device: UI?.device ?? (innerWidth < 900 ? 'phone' : 'desktop'), offline: false, screen: 'pm', tid: 't968', doneId: null, dialog: null, toast: null, state: 'ok', saving: false, q: '', pick: null, blk: null, blkNote: '', blkErr: null, prevSvc: null }; }
+
+const ic = (n, c = '') => `<i data-lucide="${n}" class="${c}"></i>`;
+const mi = (n) => `${Number(n).toLocaleString('en-US')} mi`;
+const BTN = {
+  primary: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 font-medium text-primary-foreground hover:opacity-90',
+  outline: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 font-medium hover:bg-accent',
+  ghost: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 font-medium text-muted-foreground hover:bg-accent hover:text-foreground',
+  off: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-dashed bg-muted px-3 font-medium text-muted-foreground cursor-not-allowed',
+};
+const chip = (tone, text, icon) => {
+  const t = { warn: 'border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning', ok: 'border-success/40 bg-success/10 text-success', bad: 'border-destructive/50 bg-destructive/20 text-destructive-text', pri: 'border-primary/40 bg-primary/10 text-primary', mute: 'bg-muted text-muted-foreground' }[tone];
+  const dot = { warn: 'bg-warning', ok: 'bg-success', bad: 'bg-destructive-text', pri: 'bg-primary', mute: 'bg-muted-foreground' }[tone];
+  return `<span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium ${t}">${icon ? ic(icon, 's14') : `<span class="size-1.5 rounded-full ${dot}"></span>`}${text}</span>`;
+};
+const PRI = { critical: chip('bad', 'Critical'), high: chip('warn', 'High'), normal: '' };
+const count = (n) => `<span class="tnum ml-1 rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border">${n}</span>`;
+const tr = (id) => S.trucks.find((t) => t.id === id);
+const running = () => S.trucks.find((t) => t.st === 'running') ?? null;
+const rank = (t) => ({ critical: 0, high: 1, normal: 2 })[t.pri] * 100 - t.wait;
+const section = (title, content, extra = '') => `<section class="rounded-xl border bg-card ${extra}"><h2 class="flex items-center border-b px-4 py-2.5 text-base font-semibold">${title}</h2>${content}</section>`;
+
+/* ───────── PM logic (same rules as packages/shared/src/pm-mileage.ts) ───────── */
+function chosen(P) { return Object.keys(P.on).filter((k) => P.on[k] && P.parts[k]); }
+function missingChoice(P) { return Object.keys(P.on).find((k) => P.on[k] && !P.parts[k]); }
+function partsLocked(P) { return ['jump', 'empty', 'below'].includes(P.mstate); }
+function finishReason(P) {
+  if (P.blocker) return ['Blocked · waiting for the Manager', 'octagon-pause', 'warn'];
+  if (UI.offline && Object.keys(P.pending).length) return ['Waiting to save… (offline)', 'wifi-off', 'warn'];
+  if (P.mstate === 'empty') return ['Enter the mileage above', 'gauge', 'warn'];
+  if (P.mstate === 'below') return ['Check the mileage above', 'circle-alert', 'bad'];
+  if (P.mstate === 'jump') return ['Confirm the mileage above', 'triangle-alert', 'warn'];
+  const m = missingChoice(P); if (m) return [`Choose the part for ${cat(m).name}`, 'list-checks', 'warn'];
+  if (!chosen(P).length) return ['Add at least one part', 'package', 'warn'];
+  return null;
+}
+function commitMileage(P, t) {
+  const v = P.input;
+  if (v === '') { P.mstate = 'empty'; return; }
+  const n = Number(v);
+  if (n < t.miles) { P.mstate = 'below'; return; }
+  if (n - t.miles > JUMP && !(P.jumpOk && P.saved === n)) { P.mstate = 'jump'; return; }
+  P.mstate = 'ok';
+  if (P.saved !== n) { P.saved = n; touch('mileage'); }
+}
+function touch(key) {
+  const P = S.pm;
+  if (UI.offline) { P.pending[key] = true; return; }
+  UI.saving = true; clearTimeout(window.__s); window.__s = setTimeout(() => { UI.saving = false; render(); }, 650);
+}
+
+/* ───────── Render ───────── */
+function render() {
+  const a = document.activeElement; const stage = document.getElementById('stage');
+  const fid = a && a.id && stage.contains(a) ? a.id : null;
+  const sel = fid && typeof a.selectionStart === 'number' ? [a.selectionStart, a.selectionEnd] : null;
+  document.querySelectorAll('.dev').forEach((b) => b.className = `dev h-8 px-3 ${b.dataset.device === 'desktop' ? 'border-l' : ''} ${UI.device === b.dataset.device ? 'bg-primary text-primary-foreground' : ''}`);
+  document.getElementById('net').textContent = UI.offline ? 'Go online' : 'Go offline';
+  document.getElementById('net').className = `h-8 rounded-md border px-3 ${UI.offline ? 'bg-warning/20' : ''}`;
+  const phone = UI.device === 'phone';
+  const narrow = innerWidth < 520;
+  const frame = phone
+    ? (narrow ? 'w-full h-[812px]' : 'w-[383px] h-[812px] rounded-[2rem] border-4')
+    : 'w-full max-w-[1280px] h-[max(600px,calc(100vh-170px))] rounded-xl border';
+  stage.innerHTML = `<div class="${frame} relative flex flex-col overflow-hidden bg-background shadow-xl">${app(phone)}</div>`;
+  document.getElementById('presets').innerHTML = Object.entries(PRESETS).map(([k, [l]]) => `<button data-preset="${k}" class="h-8 rounded-md border px-2 hover:bg-accent">${l}</button>`).join('');
+  lucide.createIcons();
+  if (fid) { const el = document.getElementById(fid); if (el) { el.focus({ preventScroll: true }); if (sel && el.setSelectionRange) try { el.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text field */ } } }
+}
+
+const TABS = [['home', 'My work', 'wrench'], ['trucks', 'Trucks', 'history'], ['done', 'Completed', 'clipboard-check']];
+function appHeader(phone) {
+  return `<header class="flex h-14 shrink-0 items-center justify-between border-b px-4">
+    <div class="flex items-center gap-2"><span class="grid size-7 place-items-center rounded-md bg-primary/15 text-primary">${ic('zap', 's14')}</span><b>LTL Shop</b><span class="text-xs text-muted-foreground">PM Mechanic</span></div>
+    ${!phone ? `<nav class="flex gap-1" aria-label="PM Mechanic">${TABS.map(([k, l, i]) => `<button data-tab="${k}" class="${UI.screen === k || (k === 'home' && UI.screen !== 'trucks' && UI.screen !== 'done') ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'} inline-flex h-9 items-center gap-2 rounded-md px-3 font-medium">${ic(i)}${l}</button>`).join('')}</nav>` : ''}
+    <span title="Daniel" class="grid size-9 place-items-center rounded-full bg-amber-500/20 text-[11px] font-semibold text-amber-700 dark:text-amber-300">MPM</span></header>`;
+}
+const offlineStrip = () => UI.offline ? `<div class="flex shrink-0 items-start gap-2 border-b border-warning/40 bg-warning-surface px-4 py-2 text-[13px] text-warning-foreground" role="status">${ic('wifi-off', 'mt-0.5')}<span><b class="font-semibold">Offline</b> · your changes are kept on this phone and will be sent when you're back online</span></div>` : '';
+
+function app(phone) {
+  const tabbed = ['home', 'trucks', 'done'].includes(UI.screen);
+  let body;
+  if (UI.screen === 'home') body = home(phone);
+  else if (UI.screen === 'trucks') body = trucksTab();
+  else if (UI.screen === 'done') body = doneTab();
+  else if (UI.screen === 'new') body = createScreen(phone);
+  else body = pmScreen(phone);
+  const bottom = phone && tabbed ? `<nav class="grid shrink-0 grid-cols-3 border-t bg-card" aria-label="PM Mechanic">${TABS.map(([k, l, i]) => `<button data-tab="${k}" class="flex h-14 flex-col items-center justify-center gap-0.5 text-xs ${UI.screen === k ? 'text-primary' : 'text-muted-foreground'}">${ic(i, 's20')}<span>${l}</span></button>`).join('')}</nav>` : '';
+  const toast = UI.toast && !UI.dialog ? `<div class="toast-in absolute ${phone ? 'bottom-28' : 'bottom-24'} left-1/2 z-40 flex w-[min(92%,380px)] -translate-x-1/2 items-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-xl" role="status">${ic(UI.toast[0] === 'ok' ? 'circle-check' : 'info', UI.toast[0] === 'ok' ? 'text-success' : 'text-primary')}<span class="flex-1">${UI.toast[1]}</span>${UI.toast[2] ? `<button data-act="${UI.toast[3]}" class="${BTN.ghost} h-9 text-primary">${UI.toast[2]}</button>` : ''}</div>` : '';
+  return `${!phone || tabbed ? appHeader(phone) : ''}${offlineStrip()}${body}${bottom}${UI.dialog ? dialog(phone) : ''}${toast}`;
+}
+
+/* ───────── My work (home) ───────── */
+function home(phone) {
+  const wrap = (inner) => `<main class="min-h-0 flex-1 overflow-y-auto"><div class="${phone ? '' : 'mx-auto max-w-[720px]'} space-y-5 px-4 pb-8 pt-5">${inner}</div></main>`;
+  const head = `<div><h1 class="text-2xl font-semibold tracking-tight">PM Mechanic</h1><p class="text-muted-foreground">One PM at a time. Most urgent truck first.</p></div>`;
+  if (UI.state === 'loading') return wrap(head + `<div class="pulse h-11 rounded-md bg-muted"></div>${[1, 2, 3].map(() => '<div class="pulse h-24 rounded-xl bg-muted"></div>').join('')}`);
+  const run = running();
+  const waiting = S.trucks.filter((t) => t.st === 'waiting').sort((a, b) => rank(a) - rank(b));
+  const paused = S.trucks.filter((t) => t.st === 'paused');
+  if (!run && !waiting.length && !paused.length) {
+    return wrap(head + `<div class="flex flex-col items-center gap-1 rounded-xl border border-dashed px-4 py-10 text-center text-muted-foreground">${ic('circle-check', 's20 text-success')}<p class="mt-1 font-medium text-foreground">No trucks waiting for PM</p><p>When the Manager plans a PM, the truck shows up here.</p><button data-act="new" class="${BTN.primary} mt-4 h-11 w-full sm:w-auto">${ic('plus')}Create PM service</button></div>`);
+  }
+  let html = head;
+  if (run) {
+    const P = S.pm;
+    html += `<section aria-label="In progress"><p class="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">In progress</p>
+      <div class="rounded-xl border border-primary bg-card ring-1 ring-primary">
+        <button data-open="${run.id}" class="block w-full space-y-1 rounded-t-xl p-3 text-left hover:bg-accent/40">
+          <div class="flex flex-wrap items-center gap-2"><span class="text-lg font-semibold">Truck ${run.n}</span>${chip('pri', run.svc)}${P.blocker ? chip('warn', 'Blocked') : ''}<span class="ml-auto tnum text-xs text-muted-foreground">Started ${run.started}</span></div>
+          <p class="truncate text-xs text-muted-foreground">${run.veh} · <span class="font-mono">${run.wo}</span></p>
+          <div class="pt-1">${summaryLine(P, run, true)}</div>
+        </button>
+        <div class="border-t p-2"><button data-open="${run.id}" class="${BTN.primary} h-11 w-full">${ic('play')}Continue PM</button></div>
+      </div>
+      <div class="mt-3 flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-muted-foreground">${ic('lock', 's14')}<span class="text-[13px]">Create PM service opens when Truck ${run.n} is finished. One PM at a time.</span></div></section>`;
+  } else {
+    html += `<button data-act="new" class="${BTN.outline} h-11 w-full">${ic('plus')}Create PM service</button>`;
+  }
+  if (waiting.length) {
+    html += `<section><h2 class="flex items-center text-base font-semibold">Waiting for PM${count(waiting.length)}</h2><p class="mb-2 text-[13px] text-muted-foreground">Priority first, then the longest waiting.</p>
+      <ul class="space-y-2">${waiting.map((t, i) => waitCard(t, !run && i === 0)).join('')}</ul></section>`;
+  }
+  if (paused.length) {
+    html += `<section><h2 class="flex items-center text-base font-semibold">Paused by the Manager${count(paused.length)}</h2><p class="mb-2 text-[13px] text-muted-foreground">The Manager resumes these. You can look, not start.</p>
+      <ul class="space-y-2">${paused.map((t) => `<li class="rounded-xl border bg-card"><button data-open="${t.id}" class="flex w-full items-center gap-3 p-3 text-left hover:bg-accent/40 rounded-xl"><div class="min-w-0 flex-1 space-y-1"><div class="flex flex-wrap items-center gap-2"><span class="text-base font-semibold">Truck ${t.n}</span>${chip('warn', t.paused.reason, 'circle-pause')}</div><p class="truncate text-xs text-muted-foreground">${t.svc} · <span class="font-mono">${t.wo}</span> · paused ${t.paused.since}</p><p class="text-[13px] italic">“${t.paused.note}”</p></div><span class="flex items-center gap-1 text-[13px] font-medium text-primary">View${ic('chevron-right', 's14')}</span></button></li>`).join('')}</ul></section>`;
+  }
+  return wrap(html);
+}
+function lastPm(t) { return t.last ? `Last PM: <span class="tnum">${mi(t.last.miles)}</span> · ${t.last.date}` : 'No PM on record'; }
+function waitCard(t, next) {
+  return `<li class="rounded-xl border bg-card ${next ? 'border-primary/50' : ''}">
+    <button data-open="${t.id}" class="flex w-full items-center gap-3 p-3 text-left hover:bg-accent/40 ${next ? 'rounded-t-xl' : 'rounded-xl'}">
+      <div class="min-w-0 flex-1 space-y-0.5">
+        <div class="flex flex-wrap items-center gap-2"><span class="text-base font-semibold">Truck ${t.n}</span>${PRI[t.pri]}${next ? chip('pri', 'Next up') : ''}<span class="ml-auto tnum text-xs text-muted-foreground">waiting ${t.wait} d</span></div>
+        <p class="truncate text-xs text-muted-foreground">${t.svc} · <span class="font-mono">${t.wo}</span> · ${t.veh}</p>
+        <p class="text-xs text-muted-foreground">${lastPm(t)}</p>
+      </div>
+      ${next ? '' : `<span class="flex items-center gap-1 text-[13px] font-medium text-primary">View${ic('chevron-right', 's14')}</span>`}
+    </button>
+    ${next ? `<div class="border-t p-2"><button data-act="start" data-id="${t.id}" class="${BTN.primary} h-11 w-full">${ic('play')}Start PM on Truck ${t.n}</button></div>` : ''}</li>`;
+}
+
+/* ───────── Summary line (what is still missing) ───────── */
+function summaryLine(P, t, compact) {
+  const n = chosen(P).length;
+  const ms = { ok: ['ok', 'circle-check', `Mileage ${mi(P.saved)}`], empty: ['warn', 'gauge', 'Mileage · enter it'], jump: ['warn', 'triangle-alert', 'Mileage · confirm it'], below: ['bad', 'circle-alert', 'Mileage · check it'] }[P.mstate];
+  const tone = { ok: 'text-success', warn: 'text-warning-foreground dark:text-warning', bad: 'text-destructive-text' };
+  const missing = missingChoice(P);
+  const pTone = missing ? 'warn' : n ? 'ok' : 'warn';
+  const pending = Object.keys(P.pending).length;
+  const save = pending ? `<span class="inline-flex items-center gap-1 text-xs font-medium text-warning-foreground dark:text-warning">${ic('smartphone', 's14')}${pending} on this phone · not sent</span>`
+    : UI.saving ? `<span class="inline-flex items-center gap-1 text-xs text-muted-foreground">${ic('loader', 's14')}Saving…</span>`
+    : `<span class="inline-flex items-center gap-1 text-xs text-muted-foreground">${ic('check', 's14')}Saved</span>`;
+  return `<div class="flex flex-wrap items-center gap-x-3 gap-y-1 ${compact ? '' : 'text-[15px]'}" data-testid="pm-summary">
+    <span class="inline-flex items-center gap-1.5 font-medium ${tone[ms[0]]}">${ic(ms[1], 's14')}<span class="tnum">${ms[2]}</span></span>
+    <span class="text-muted-foreground">·</span>
+    <span class="inline-flex items-center gap-1.5 font-medium ${tone[pTone]}">${ic(pTone === 'ok' ? 'circle-check' : 'package', 's14')}<span class="tnum">Parts ${n} of ${CATS.length}</span></span>
+    ${compact ? '' : `<span class="ml-auto">${save}</span>`}</div>`;
+}
+
+/* ───────── PM screen (in progress, waiting, finished) ───────── */
+function subHeader(phone, title, sub, right = '') {
+  return `<div class="flex h-14 shrink-0 items-center gap-2 border-b ${phone ? 'px-2' : 'px-4'}">
+    <button data-act="back" class="grid size-11 place-items-center rounded-md hover:bg-accent" aria-label="Back to My work">${ic('arrow-left')}</button>
+    <div class="min-w-0 flex-1"><p class="text-base font-semibold">${title}</p><p class="truncate text-xs text-muted-foreground">${sub}</p></div>${right}</div>`;
+}
+function pmScreen(phone) {
+  if (UI.doneId) return finishedScreen(phone, S.done.find((d) => d.id === UI.doneId));
+  const t = tr(UI.tid);
+  if (UI.state === 'loading') return subHeader(phone, `Truck ${t.n}`, 'Loading the PM…') + pmSkeleton(phone);
+  if (UI.state === 'error') {
+    return subHeader(phone, `Truck ${t.n}`, `${t.veh} · <span class="font-mono">${t.wo}</span>`) + `<main class="min-h-0 flex-1 overflow-y-auto p-4"><div class="mx-auto flex max-w-[520px] flex-col items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-8 text-center"><span class="text-destructive-text">${ic('circle-alert', 's20')}</span><p class="font-medium">The PM on Truck ${t.n} did not load.</p><p class="text-muted-foreground">The Shop did not answer. It is not something you did. What you entered is still on this phone.</p><div class="mt-2 flex w-full flex-col gap-2 sm:w-auto sm:flex-row"><button data-act="back" class="${BTN.outline} h-11">${ic('arrow-left')}Back to My work</button><button data-act="retry" class="${BTN.primary} h-11">${ic('rotate-cw')}Try again</button></div></div></main>`;
+  }
+  if (t.st !== 'running') return previewScreen(phone, t);
+  const P = S.pm;
+  const svcChip = `<button data-act="svc" class="inline-flex h-10 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-3 text-[13px] font-semibold text-primary hover:bg-primary/15" aria-haspopup="dialog" aria-label="Service type: ${t.svc}. Change">${t.svc}${ic('chevron-down', 's14')}</button>`;
+  const summary = `<div class="rounded-xl border bg-card px-3 py-2.5">${summaryLine(P, t, false)}</div>`;
+  const left = [summary, P.blocker ? blockerCard(P) : '', mileageCard(P, t)];
+  const notes = notesCard(P);
+  const info = truckInfo(t);
+  const content = phone
+    ? `<div class="space-y-3 p-3">${left.join('')}${partsCard(P)}${notes}${info}</div>`
+    : `<div class="mx-auto grid max-w-[1180px] grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-start gap-4 p-5"><div class="space-y-3">${left.join('')}${notes}${info}</div><div>${partsCard(P)}</div></div>`;
+  return `${subHeader(phone, `Truck ${t.n}`, `${t.veh} · <span class="font-mono">${t.wo}</span>`, svcChip)}
+    <main class="min-h-0 flex-1 overflow-y-auto">${content}</main>${finishBar(phone, P)}`;
+}
+
+function mileageCard(P, t) {
+  const msg = {
+    below: `<p id="m-msg" class="mt-2 flex items-start gap-1.5 text-destructive-text" role="alert">${ic('circle-alert', 'mt-0.5')}Can't be lower than the truck (${mi(t.miles)}). Check the odometer.</p>`,
+    empty: `<p id="m-msg" class="mt-2 flex items-start gap-1.5 text-warning-foreground dark:text-warning" role="alert">${ic('gauge', 'mt-0.5')}Enter the mileage. The last saved one (${mi(P.saved)}) stays until then.</p>`,
+    jump: `<div id="m-msg" class="mt-2 space-y-2 rounded-lg border border-warning/40 bg-warning-surface p-3 text-warning-foreground" role="alert"><p class="flex items-start gap-1.5">${ic('triangle-alert', 'mt-0.5')}<span><b class="tnum">${mi(Number(P.input))}</b> is <span class="tnum">${mi(Number(P.input) - t.miles)}</span> above the truck (<span class="tnum">${mi(t.miles)}</span>). Check the odometer.</span></p><div class="grid grid-cols-2 gap-2"><button data-act="fix-miles" class="${BTN.outline} h-11 text-foreground">Fix it</button><button data-act="confirm-jump" class="${BTN.primary} h-11">${ic('check')}It's right</button></div></div>`,
+    ok: '',
+  }[P.mstate];
+  const pend = P.pending.mileage ? chip('warn', 'On this phone', 'smartphone') : '';
+  return section(`<span class="flex-1">Mileage</span>${pend}`, `<div class="space-y-3 p-4">
+    <dl class="grid grid-cols-2 gap-3">
+      <div><dt class="text-xs text-muted-foreground">Truck now</dt><dd class="tnum font-medium">${mi(t.miles)}</dd></div>
+      <div><dt class="text-xs text-muted-foreground">Last PM</dt><dd class="tnum font-medium">${t.last ? `${mi(t.last.miles)} <span class="font-normal text-muted-foreground">· ${t.last.date}</span>` : '<span class="font-normal text-muted-foreground">No PM on record</span>'}</dd></div>
+    </dl>
+    <div><label for="mileage" class="font-medium">Odometer reading</label>
+      <div class="mt-1.5 flex items-center gap-2"><input id="mileage" type="text" inputmode="numeric" autocomplete="off" value="${P.input ? Number(P.input).toLocaleString('en-US') : ''}" ${P.mstate === 'below' ? 'aria-invalid="true"' : ''} aria-describedby="m-msg" class="h-11 w-full rounded-md border ${P.mstate === 'below' ? 'border-destructive-text' : ''} bg-background px-3 text-base tnum outline-none focus:border-ring" placeholder="e.g. 212,345" /><span class="text-muted-foreground">mi</span></div>
+      ${msg}</div></div>`);
+}
+
+function partsCard(P) {
+  const locked = partsLocked(P);
+  const lockText = { jump: 'Confirm the mileage above to choose parts.', empty: 'Enter the mileage above to choose parts.', below: 'Check the mileage above to choose parts.' }[P.mstate];
+  const rows = CATS.map((c) => {
+    const on = !!P.on[c.id];
+    const none = !c.parts.length;
+    const sel = P.parts[c.id] ?? '';
+    const sub = none ? 'No parts listed for this truck' : on ? (sel ? partName(c, sel) : 'Choose which part') : 'Not changed';
+    return `<li class="${on ? 'bg-success/[0.06]' : ''}">
+      <div class="flex min-h-[56px] items-center gap-3 px-4 py-2">
+        <span class="grid size-6 shrink-0 place-items-center rounded-full ${on && sel ? 'bg-success text-white dark:text-background' : 'border'}">${on && sel ? ic('check', 's14') : ''}</span>
+        <div class="min-w-0 flex-1"><p class="font-medium ${none ? 'text-muted-foreground' : ''}">${c.name}${P.pending[c.id] ? ` <span class="ml-1 align-middle">${chip('warn', 'On this phone', 'smartphone')}</span>` : ''}</p><p class="truncate text-xs ${on && !sel ? 'font-medium text-warning-foreground dark:text-warning' : 'text-muted-foreground'}">${sub}</p></div>
+        <button role="switch" aria-checked="${on}" aria-label="${c.name} changed" data-sw="${c.id}" ${locked || none ? 'disabled' : ''} class="relative h-7 w-12 shrink-0 rounded-full transition ${on ? 'bg-success' : 'bg-muted-foreground/30'} ${locked || none ? 'opacity-40 cursor-not-allowed' : ''}"><span class="absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}"></span></button>
+      </div>
+      ${on ? `<div class="px-4 pb-3 pl-[52px]"><label for="part-${c.id}" class="sr-only">Part for ${c.name}</label><select id="part-${c.id}" data-part="${c.id}" ${locked ? 'disabled' : ''} class="h-11 w-full rounded-md border bg-background px-2 text-base outline-none focus:border-ring">${sel ? '' : '<option value="">Choose the part…</option>'}${c.parts.map(([no, nm]) => `<option value="${no}" ${no === sel ? 'selected' : ''}>${no} — ${nm}</option>`).join('')}</select>
+        <p class="mt-1 flex items-center gap-1 text-xs text-muted-foreground">${c.top ? (sel === c.top ? `${ic('sparkles', 's14')}Most used on this model · ${c.use} PMs` : `${ic('info', 's14')}Most used: ${c.top}`) : `${ic('info', 's14')}No history for this model yet. Pick the one you used.`}</p></div>` : ''}
+    </li>`;
+  }).join('');
+  return section(`<span class="flex-1">Parts used${count(chosen(P).length)}</span><span class="text-xs font-normal text-muted-foreground">Turn on what you changed</span>`,
+    `${locked ? `<p class="flex items-center gap-1.5 border-b bg-warning-surface px-4 py-2 text-[13px] text-warning-foreground">${ic('lock', 's14')}${lockText}</p>` : ''}<ul class="divide-y">${rows}</ul>`);
+}
+
+function blockerCard(P) {
+  const b = P.blocker;
+  return `<section class="space-y-2 rounded-xl border border-warning/40 bg-warning-surface p-4 text-warning-foreground" aria-label="Blocker">
+    <p class="flex items-center gap-2 text-base font-semibold">${ic('octagon-pause')}Blocked · ${b.reason}</p>
+    <p class="text-[13px]">Reported by you at ${b.at}. Only the Manager resolves it. You can still enter the mileage and parts.</p>
+    ${b.notes.map((n) => `<p class="rounded-md bg-background/60 px-2.5 py-1.5 text-foreground"><b class="font-medium">${n.by}:</b> ${n.body}</p>`).join('')}
+    <div class="flex gap-2 pt-1"><label for="blk-add" class="sr-only">Add a note to the blocker</label><input id="blk-add" class="h-11 min-w-0 flex-1 rounded-md border bg-background px-3 text-base text-foreground outline-none focus:border-ring" placeholder="Anything new?" /><button data-act="blk-note" class="${BTN.outline} h-11 text-foreground">${ic('send')}Add</button></div></section>`;
+}
+
+function notesCard(P) {
+  const off = UI.offline;
+  return section(`Notes${count(P.notes.length)}`, `<div class="space-y-3 p-4">
+    ${P.notes.length ? `<ul class="space-y-2">${P.notes.map((n) => `<li class="rounded-lg border bg-background px-3 py-2"><p class="text-xs text-muted-foreground">${n.by} · ${n.at}</p><p>${n.body}</p></li>`).join('')}</ul>` : '<p class="text-muted-foreground">No notes yet.</p>'}
+    <div><label for="note-draft" class="sr-only">New note</label><textarea id="note-draft" rows="3" class="w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring" placeholder="Something the Manager or Safety should know">${P.noteDraft}</textarea>
+      <p id="draft-line" class="mt-1 flex items-center gap-1 text-xs text-muted-foreground ${P.noteDraft ? '' : 'hidden'}">${ic('smartphone', 's14')}Draft · kept on this phone until you tap Add Note${off ? ' and the connection is back' : ''}</p></div>
+    <div class="grid grid-cols-2 gap-2"><button data-act="request" class="${BTN.outline} h-11">${ic('clipboard-plus')}Request Work</button><button data-act="add-note" ${off ? 'disabled' : ''} class="${off ? BTN.off : BTN.outline} h-11">${ic('send')}Add Note</button></div>
+  </div>`);
+}
+
+function truckInfo(t) {
+  return `<details class="rounded-xl border bg-card"><summary class="flex h-12 cursor-pointer items-center justify-between px-4 text-base font-semibold">Truck information${ic('chevron-down', 'chev transition')}</summary>
+    <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border-t p-4"><dt class="text-muted-foreground">Vehicle</dt><dd class="text-right font-medium">${t.veh}</dd><dt class="text-muted-foreground">VIN</dt><dd class="text-right font-mono text-[13px]">${t.vin}</dd><dt class="text-muted-foreground">Mileage</dt><dd class="tnum text-right font-medium">${mi(t.miles)}</dd></dl>
+    <div class="border-t p-3"><button data-act="history" class="${BTN.outline} h-11 w-full">${ic('history')}Repair history</button></div></details>`;
+}
+
+function finishBar(phone, P) {
+  const r = finishReason(P);
+  const tone = { warn: 'text-warning-foreground dark:text-warning', bad: 'text-destructive-text' };
+  const line = r ? `<p class="flex items-center gap-1.5 text-[13px] font-medium ${tone[r[2]]}" data-testid="finish-reason">${ic(r[1], 's14')}${r[0]}</p>`
+    : `<p class="flex items-center gap-1.5 text-[13px] text-success" data-testid="finish-reason">${ic('circle-check', 's14')}Ready to finish · ${mi(P.saved)} · ${chosen(P).length} part${chosen(P).length > 1 ? 's' : ''}</p>`;
+  const finish = `<button data-act="ask-finish" ${r ? 'aria-disabled="true"' : ''} class="${r ? BTN.off : BTN.primary} h-11 ${phone ? 'w-full' : 'min-w-[200px]'}">${ic('check-check')}Finish PM</button>`;
+  const blk = P.blocker ? '' : `<button data-act="ask-blocker" class="${BTN.outline} h-11">${ic('octagon-pause')}Report blocker</button>`;
+  return phone
+    ? `<div class="shrink-0 space-y-2 border-t bg-card px-3 pb-3 pt-2 shadow-[0_-4px_12px_rgb(0_0_0/0.06)]">${line}<div class="${blk ? 'grid grid-cols-[auto_1fr]' : 'grid'} gap-2">${blk}${finish}</div></div>`
+    : `<div class="flex shrink-0 items-center gap-3 border-t bg-card px-5 py-3"><div class="flex-1">${line}</div>${blk}${finish}</div>`;
+}
+
+function pmSkeleton(phone) {
+  const card = (h) => `<div class="pulse rounded-xl bg-muted ${h}"></div>`;
+  const mileage = `<div class="space-y-3 rounded-xl border bg-card p-4"><div class="pulse h-5 w-24 rounded bg-muted"></div><div class="grid grid-cols-2 gap-3"><div class="pulse h-9 rounded bg-muted"></div><div class="pulse h-9 rounded bg-muted"></div></div><div class="pulse h-11 rounded-md bg-muted"></div></div>`;
+  const parts = `<div class="space-y-1 rounded-xl border bg-card p-4"><div class="pulse mb-3 h-5 w-28 rounded bg-muted"></div>${[1, 2, 3, 4, 5, 6].map(() => '<div class="flex items-center gap-3 py-2"><div class="pulse size-6 rounded-full bg-muted"></div><div class="pulse h-4 flex-1 rounded bg-muted"></div><div class="pulse h-7 w-12 rounded-full bg-muted"></div></div>').join('')}</div>`;
+  return `<main class="min-h-0 flex-1 overflow-y-auto" role="status" aria-label="Loading the PM">${phone ? `<div class="space-y-3 p-3">${card('h-11')}${mileage}${parts}</div>` : `<div class="mx-auto grid max-w-[1180px] grid-cols-[5fr_6fr] gap-4 p-5"><div class="space-y-3">${card('h-11')}${mileage}</div>${parts}</div>`}<span class="sr-only">Loading the PM</span></main>`;
+}
+
+function previewScreen(phone, t) {
+  const run = running();
+  const paused = t.st === 'paused';
+  let notice = '';
+  if (paused) notice = `<div class="space-y-1 rounded-xl border border-warning/40 bg-warning-surface p-4 text-warning-foreground">${'<p class="flex items-center gap-2 font-semibold">' + ic('circle-pause') + 'Paused by the Manager · ' + t.paused.reason + '</p>'}<p class="text-[13px]">Since ${t.paused.since}. “${t.paused.note}” The Manager resumes it; then it shows in Waiting for PM.</p></div>`;
+  else if (run) notice = `<div class="space-y-2 rounded-xl border border-warning/40 bg-warning-surface p-4 text-warning-foreground" role="status" data-testid="pm-in-progress-notice"><p>You have a PM service in progress on Truck ${run.n} (<span class="font-mono">${run.wo}</span>). Finish it before starting another.</p><button data-open="${run.id}" class="${BTN.primary} h-11 w-full">${ic('play')}Continue PM on Truck ${run.n}</button></div>`;
+  const body = `<div class="${phone ? '' : 'mx-auto max-w-[640px]'} space-y-3 p-4">
+    <div class="flex flex-wrap items-center gap-2">${PRI[t.pri]}${chip('mute', `waiting ${t.wait} d`, 'clock')}${chip('pri', t.svc)}</div>
+    ${notice}
+    ${section('Before you start', `<dl class="grid grid-cols-2 gap-3 p-4"><div><dt class="text-xs text-muted-foreground">Truck now</dt><dd class="tnum font-medium">${mi(t.miles)}</dd></div><div><dt class="text-xs text-muted-foreground">Last PM</dt><dd class="tnum font-medium">${t.last ? `${mi(t.last.miles)} <span class="font-normal text-muted-foreground">· ${t.last.date}</span>` : '<span class="font-normal text-muted-foreground">No PM on record</span>'}</dd></div></dl>`)}
+    ${truckInfo(t)}</div>`;
+  const canStart = !paused && !run;
+  const reason = paused ? 'The Manager paused this Work Order' : run ? `One PM at a time · finish Truck ${run.n} first` : '';
+  const foot = `<div class="shrink-0 space-y-2 border-t bg-card px-3 pb-3 pt-2 ${phone ? '' : 'flex items-center gap-3 space-y-0 px-5 py-3'}">${reason ? `<p class="flex flex-1 items-center gap-1.5 text-[13px] text-muted-foreground">${ic('lock', 's14')}${reason}</p>` : `<p class="flex-1 text-[13px] text-muted-foreground">Your clock starts on Truck ${t.n}.</p>`}<button ${canStart ? `data-act="start" data-id="${t.id}"` : 'aria-disabled="true"'} class="${canStart ? BTN.primary : BTN.off} h-11 ${phone ? 'w-full' : 'min-w-[200px]'}">${ic('play')}Start PM service</button></div>`;
+  return `${subHeader(phone, `Truck ${t.n}`, `${t.veh} · <span class="font-mono">${t.wo}</span>`)}<main class="min-h-0 flex-1 overflow-y-auto">${body}</main>${foot}`;
+}
+
+function finishedScreen(phone, d) {
+  const body = `<div class="${phone ? '' : 'mx-auto max-w-[640px]'} space-y-3 p-4">
+    <p class="flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 px-4 py-3 text-success">${ic('circle-check', 'mt-0.5')}<span>PM finished ${d.date}, ${d.at}. It is read-only now. The Shop Manager closes the Work Order.</span></p>
+    ${section('What was recorded', `<dl class="grid grid-cols-2 gap-3 p-4"><div><dt class="text-xs text-muted-foreground">Mileage at this PM</dt><dd class="tnum font-medium">${mi(d.miles)}</dd></div><div><dt class="text-xs text-muted-foreground">Previous PM</dt><dd class="tnum font-medium">${d.prev}</dd></div></dl>`)}
+    ${section(`Parts used${count(d.parts.length)}`, `<ul class="divide-y">${d.parts.map((p) => { const [c, n] = p.split(': '); return `<li class="flex items-start gap-3 px-4 py-2.5">${ic('check', 'mt-0.5 text-success')}<div><p class="font-medium">${c}</p><p class="text-xs text-muted-foreground">${n}</p></div></li>`; }).join('')}</ul>`)}
+  </div>`;
+  return `${subHeader(phone, `Truck ${d.n}`, `${d.veh} · <span class="font-mono">${d.wo}</span>`, `<span class="mr-1">${chip('ok', `${d.svc} · Finished`)}</span>`)}<main class="min-h-0 flex-1 overflow-y-auto">${body}</main>`;
+}
+
+/* ───────── Create PM service ───────── */
+function createScreen(phone) {
+  const run = running();
+  const q = UI.q.replace(/\D/g, '');
+  const starts = S.fleet.filter((f) => f.n.startsWith(q));
+  const contains = q && !starts.length ? S.fleet.filter((f) => f.n.includes(q)) : [];
+  const list = q ? (starts.length ? starts : contains) : [];
+  const pick = UI.pick ? S.fleet.find((f) => f.n === UI.pick) : null;
+  const outcome = pick ? ({
+    undefined: ['info', `Truck ${pick.n} has no open Work Order. A new one is created with the 4 steps and your PM starts now.`],
+    add: ['info', `Truck ${pick.n} already has Work Order ${pick.wo}. Your PM service will be added to it.`],
+    join: ['info', `Truck ${pick.n} already has Work Order ${pick.wo} with a PM job. You will take and start it.`],
+    mine: ['ok', `You already started the PM on Work Order ${pick.wo}.`],
+  })[pick.kind] : null;
+  const label = !pick ? 'Create PM service' : pick.kind === 'mine' ? `Continue PM on Truck ${pick.n}` : pick.kind === 'add' ? `Add PM to ${pick.wo}` : pick.kind === 'join' ? `Start PM on ${pick.wo}` : 'Create PM service';
+  const blocked = run && !(pick && pick.kind === 'mine');
+  const body = `<div class="${phone ? '' : 'mx-auto max-w-[560px]'} space-y-3 p-4">
+    ${run ? `<div class="space-y-2 rounded-xl border border-warning/40 bg-warning-surface p-4 text-warning-foreground" role="status"><p>You have a PM service in progress on Truck ${run.n} (<span class="font-mono">${run.wo}</span>). Finish it before starting another.</p><button data-open="${run.id}" class="${BTN.primary} h-11 w-full">${ic('play')}Continue PM on Truck ${run.n}</button></div>` : ''}
+    <section class="space-y-2 rounded-xl border bg-card p-4"><label for="truck-q" class="font-medium">Truck</label>
+      <div class="relative">${ic('search', 'absolute left-3 top-3.5 text-muted-foreground')}<input id="truck-q" inputmode="numeric" autocomplete="off" value="${UI.q}" placeholder="Truck number, e.g. 905" class="h-11 w-full rounded-md border bg-background pl-9 pr-3 text-base outline-none focus:border-ring" /></div>
+      ${contains.length ? `<p class="text-xs text-muted-foreground">No truck starts with #${q}. Showing numbers that contain it.</p>` : ''}
+      ${q && !list.length ? '<p class="text-muted-foreground">No trucks found.</p>' : ''}
+      ${list.length ? `<ul class="divide-y rounded-lg border bg-background">${list.map((f) => `<li><button data-pick="${f.n}" class="flex min-h-[48px] w-full items-center gap-2 px-3 py-2 text-left hover:bg-accent ${UI.pick === f.n ? 'bg-primary/10' : ''}"><span class="shrink-0 whitespace-nowrap font-medium">Truck ${f.n}</span><span class="truncate text-xs text-muted-foreground">${f.veh}</span><span class="ml-auto">${f.wo ? chip(f.kind === 'mine' ? 'pri' : 'mute', f.kind === 'mine' ? 'Your PM' : `Open ${f.wo}`) : ''}</span></button></li>`).join('')}</ul>` : ''}
+    </section>
+    ${outcome ? `<p class="flex items-start gap-2 rounded-xl border ${outcome[0] === 'ok' ? 'border-primary/40 bg-primary/10' : 'bg-card'} px-4 py-3">${ic(outcome[0] === 'ok' ? 'play' : 'info', 'mt-0.5 text-primary')}${outcome[1]}</p>` : ''}
+  </div>`;
+  const foot = pick ? `<div class="shrink-0 space-y-2 border-t bg-card px-3 pb-3 pt-2 ${phone ? '' : 'flex items-center gap-3 space-y-0 px-5 py-3'}">${blocked ? `<p class="flex flex-1 items-center gap-1.5 text-[13px] text-muted-foreground">${ic('lock', 's14')}One PM at a time · finish Truck ${run.n} first</p>` : '<span class="flex-1"></span>'}<button ${blocked ? 'aria-disabled="true"' : `data-act="create" `} class="${blocked ? BTN.off : BTN.primary} h-11 ${phone ? 'w-full' : 'min-w-[220px]'}">${ic(pick.kind === 'mine' ? 'play' : 'plus')}${label}</button></div>` : '';
+  return `${subHeader(phone, 'New PM service', 'Your PM joins the truck’s open Work Order.')}<main class="min-h-0 flex-1 overflow-y-auto">${body}</main>${foot}`;
+}
+
+/* ───────── Completed and Trucks tabs ───────── */
+function doneTab() {
+  const groups = [...new Set(S.done.map((d) => d.group))];
+  return `<main class="min-h-0 flex-1 overflow-y-auto"><div class="mx-auto max-w-[720px] pb-8"><div class="px-4 pb-2 pt-5"><h1 class="text-2xl font-semibold tracking-tight">Completed</h1><p class="text-muted-foreground">PM services you finished, newest first.</p></div>
+    ${groups.map((g) => { const l = S.done.filter((d) => d.group === g); return `<p class="px-4 pb-1 pt-3 text-xs font-medium text-muted-foreground">${g} · ${l.length}</p><ul class="mx-4 divide-y rounded-xl border bg-card">${l.map((d) => `<li><button data-done="${d.id}" class="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-accent/40">${ic('check-check', 'text-success')}<div class="min-w-0 flex-1"><p class="font-medium">Truck ${d.n} <span class="ml-1 text-xs font-normal text-muted-foreground">${d.svc} · <span class="font-mono">${d.wo}</span></span></p><p class="tnum text-[13px] text-muted-foreground">${d.date} · ${mi(d.miles)} · ${d.parts.length} part${d.parts.length > 1 ? 's' : ''}</p></div>${ic('chevron-right', 'text-muted-foreground')}</button></li>`).join('')}</ul>`; }).join('')}</div></main>`;
+}
+function trucksTab() {
+  const rows = [...S.trucks.map((t) => [t.n, t.veh, t.last ? `Last PM ${t.last.date} · ${mi(t.last.miles)}` : 'No PM on record']), ...S.done.map((d) => [d.n, d.veh, `Last PM ${d.date} · ${mi(d.miles)}`])].sort((a, b) => a[0].localeCompare(b[0]));
+  return `<main class="min-h-0 flex-1 overflow-y-auto"><div class="mx-auto max-w-[720px] pb-8"><div class="px-4 pb-2 pt-5"><h1 class="text-2xl font-semibold tracking-tight">Trucks</h1><p class="text-muted-foreground">Repair history of any truck. Same screen as the General mechanic's.</p></div>
+    <ul class="mx-4 divide-y rounded-xl border bg-card">${rows.map(([n, v, l]) => `<li class="flex items-center gap-3 px-3 py-3"><div class="min-w-0 flex-1"><p class="font-medium">Truck ${n}</p><p class="truncate text-xs text-muted-foreground">${v} · <span class="tnum">${l}</span></p></div>${ic('chevron-right', 'text-muted-foreground')}</li>`).join('')}</ul></div></main>`;
+}
+
+/* ───────── Dialogs ───────── */
+function dialog(phone) {
+  const shell = (title, desc, body, actions) => `<div data-act="cancel" class="absolute inset-0 z-40 bg-black/50"></div>
+    <div role="dialog" aria-modal="true" aria-label="${title}" class="${phone ? 'sheet-in absolute inset-x-0 bottom-0 max-h-[88%] overflow-y-auto rounded-t-2xl' : 'absolute left-1/2 top-1/2 w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-xl'} z-50 border bg-card p-5 shadow-2xl">
+      ${phone ? '<div class="mx-auto -mt-2 mb-3 h-1 w-10 rounded-full bg-muted-foreground/40"></div>' : ''}
+      <h2 class="text-base font-semibold">${title}</h2>${desc ? `<p class="mt-1 text-muted-foreground">${desc}</p>` : ''}${body}
+      <div class="mt-4 grid grid-cols-2 gap-2 sm:flex sm:justify-end">${actions}</div></div>`;
+  const t = tr(UI.tid); const P = S.pm;
+  if (UI.dialog === 'finish') {
+    const parts = chosen(P).map((k) => `<li class="flex gap-2">${ic('check', 'mt-0.5 text-success')}<span><b class="font-medium">${cat(k).name}</b> — <span class="font-mono text-[13px]">${P.parts[k]}</span></span></li>`).join('');
+    const change = P.saved !== t.miles ? `The truck goes from <span class="tnum">${mi(t.miles)}</span> to <span class="tnum">${mi(P.saved)}</span>.` : `The truck stays at <span class="tnum">${mi(t.miles)}</span>.`;
+    return shell(`Finish ${t.svc} on Truck ${t.n}?`, 'Check it now: after this the PM is read-only.',
+      `<dl class="mt-4 space-y-3 rounded-lg border bg-background p-3"><div><dt class="text-xs text-muted-foreground">Mileage</dt><dd class="tnum font-medium">${mi(P.saved)}</dd><dd class="text-xs text-muted-foreground">${change}</dd></div><div><dt class="text-xs text-muted-foreground">Parts · ${chosen(P).length}</dt><dd><ul class="mt-1 space-y-1">${parts}</ul></dd></div></dl>`,
+      `<button data-act="cancel" class="${BTN.outline} h-11 sm:h-10">Back</button><button data-act="finish" class="${BTN.primary} h-11 sm:h-10">${ic('check-check')}Finish PM</button>`);
+  }
+  if (UI.dialog === 'blocker') {
+    return shell(`Report blocker: ${t.svc} Service`, 'The Manager sees it right away. You cannot finish until they resolve it.',
+      `<fieldset class="mt-4"><legend class="font-medium">What is stopping you?</legend><div class="mt-2 grid gap-1.5">${REASONS.map((r) => `<button data-blk="${r}" aria-pressed="${UI.blk === r}" class="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-left ${UI.blk === r ? 'border-primary bg-primary/10 font-medium text-primary' : 'hover:bg-accent'}"><span class="grid size-4 place-items-center rounded-full border ${UI.blk === r ? 'border-primary' : ''}">${UI.blk === r ? '<span class="size-2 rounded-full bg-primary"></span>' : ''}</span>${r}</button>`).join('')}</div></fieldset>
+       ${UI.blkErr === 'reason' ? '<p class="mt-1 text-destructive-text" role="alert">Choose a reason.</p>' : ''}
+       <label for="blk-note" class="mt-3 block font-medium">What is missing? <span class="font-normal text-muted-foreground">${UI.blk === 'Other' ? '(needed for Other)' : '(optional)'}</span></label>
+       <textarea id="blk-note" rows="2" class="mt-2 w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring" placeholder="E.g. no fuel filter for this model in stock">${UI.blkNote}</textarea>
+       ${UI.blkErr === 'note' ? '<p class="mt-1 text-destructive-text" role="alert">Say what is stopping you.</p>' : ''}`,
+      `<button data-act="cancel" class="${BTN.outline} h-11 sm:h-10">Back</button><button data-act="blocker" class="${BTN.primary} h-11 sm:h-10">${ic('octagon-pause')}Report blocker</button>`);
+  }
+  if (UI.dialog === 'svc') {
+    return shell('Service type', 'Changes this same Job. The mileage and the parts stay.',
+      `<div class="mt-4 grid gap-1.5">${['PM A', 'PM B'].map((s) => `<button data-svc="${s}" class="flex min-h-12 items-center justify-between rounded-lg border px-3 text-left ${t.svc === s ? 'border-primary bg-primary/10 font-medium text-primary' : 'hover:bg-accent'}">${s} Service${t.svc === s ? ic('check') : ''}</button>`).join('')}</div>`,
+      `<button data-act="cancel" class="${BTN.outline} col-span-2 h-11 sm:h-10">Close</button>`);
+  }
+  return '';
+}
+
+/* ───────── Actions ───────── */
+function toast(kind, text, act, actId) { UI.toast = [kind, text, act, actId]; render(); clearTimeout(window.__t); window.__t = setTimeout(() => { UI.toast = null; render(); }, act ? 5000 : 2600); }
+let pointerDown = false; let needsRender = false;
+document.addEventListener('pointerdown', () => { pointerDown = true; });
+document.addEventListener('pointerup', () => { pointerDown = false; setTimeout(() => { if (needsRender) { needsRender = false; render(); } }, 0); });
+function softRender() { if (pointerDown) needsRender = true; else render(); }
+
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if (el.id === 'mileage') {
+    // Validation waits for the mechanic to leave the field: no "too low" from the first digit.
+    const digits = el.value.replace(/\D/g, ''); if (digits !== el.value.replace(/,/g, '')) el.value = digits;
+    S.pm.input = digits; document.getElementById('m-msg')?.remove();
+  }
+  if (el.id === 'note-draft') { S.pm.noteDraft = el.value; document.getElementById('draft-line')?.classList.toggle('hidden', !el.value); }
+  if (el.id === 'blk-note') { UI.blkNote = el.value; }
+  if (el.id === 'truck-q') { UI.q = el.value; UI.pick = null; render(); }
+});
+document.addEventListener('focusout', (e) => {
+  if (e.target.id === 'mileage') { commitMileage(S.pm, tr(S.pm.tid)); softRender(); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.id === 'mileage') e.target.blur();
+  if (e.key === 'Escape' && UI.dialog) { UI.dialog = null; render(); }
+});
+document.addEventListener('change', (e) => {
+  const k = e.target.dataset.part; if (!k) return;
+  S.pm.parts[k] = e.target.value; touch(k); render();
+});
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button, [data-act]'); if (!el) return;
+  const P = S.pm;
+  if (el.dataset.device) { UI.device = el.dataset.device; return render(); }
+  if (el.id === 'theme') { document.documentElement.classList.toggle('dark'); el.textContent = document.documentElement.classList.contains('dark') ? 'Light' : 'Dark'; return render(); }
+  if (el.id === 'net') {
+    UI.offline = !UI.offline;
+    if (!UI.offline && P && Object.keys(P.pending).length) { P.pending = {}; return toast('ok', 'Back online · your changes were sent'); }
+    return render();
+  }
+  if (el.id === 'reset') { S = seed(); UI = fresh(); return render(); }
+  if (el.dataset.preset) { const dev = UI.device; const dark = document.documentElement.classList.contains('dark'); S = seed(); UI = fresh(); UI.device = dev; PRESETS[el.dataset.preset][1](); if (dark) document.documentElement.classList.add('dark'); return render(); }
+  if (el.dataset.tab) { UI.screen = el.dataset.tab; UI.doneId = null; UI.state = 'ok'; return render(); }
+  if (el.dataset.open) { UI.screen = 'pm'; UI.tid = el.dataset.open; UI.doneId = null; UI.dialog = null; return render(); }
+  if (el.dataset.done) { UI.screen = 'pm'; UI.doneId = el.dataset.done; return render(); }
+  if (el.dataset.pick) { UI.pick = el.dataset.pick; return render(); }
+  if (el.dataset.blk) { UI.blk = el.dataset.blk; UI.blkErr = null; return render(); }
+  if (el.dataset.sw) {
+    const k = el.dataset.sw; if (el.disabled) return;
+    if (P.on[k]) { delete P.on[k]; delete P.parts[k]; } else { P.on[k] = true; P.parts[k] = cat(k).top ?? ''; }
+    touch(k); return render();
+  }
+  if (el.dataset.svc) {
+    const t = tr(UI.tid); if (el.dataset.svc === t.svc) { UI.dialog = null; return render(); }
+    UI.prevSvc = t.svc; t.svc = el.dataset.svc; UI.dialog = null; return toast('info', `Changed to ${t.svc} Service`, 'Undo', 'undo-svc');
+  }
+  const t = tr(UI.tid);
+  switch (el.dataset.act) {
+    case 'back': UI.screen = UI.doneId ? 'done' : 'home'; UI.doneId = null; UI.state = 'ok'; UI.dialog = null; return render();
+    case 'new': UI.screen = 'new'; UI.q = ''; UI.pick = null; return render();
+    case 'retry': UI.state = 'ok'; return render();
+    case 'svc': UI.dialog = 'svc'; return render();
+    case 'undo-svc': t.svc = UI.prevSvc; UI.toast = null; return toast('info', `Back to ${t.svc} Service`);
+    case 'cancel': UI.dialog = null; return render();
+    case 'confirm-jump': P.jumpOk = true; P.mstate = 'ok'; P.saved = Number(P.input); touch('mileage'); return render();
+    case 'fix-miles': { const m = document.getElementById('mileage'); m.focus(); m.select(); return; }
+    case 'ask-finish': if (finishReason(P)) { document.querySelector('[data-testid="finish-reason"]')?.animate([{ transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' }, { transform: 'none' }], { duration: 200 }); return; } UI.dialog = 'finish'; return render();
+    case 'finish': {
+      S.done.unshift({ id: `d${t.n}`, n: t.n, wo: t.wo, veh: t.veh, svc: t.svc, group: 'Today', date: 'Oct 7', at: 'now', miles: P.saved, prev: t.last ? `${t.last.wo} · ${mi(t.last.miles)}` : 'No PM before this one', parts: chosen(P).map((k) => `${cat(k).name}: ${partName(cat(k), P.parts[k])}`) });
+      t.st = 'finished'; t.miles = P.saved; S.pm = { ...P, tid: null }; UI.dialog = null; UI.screen = 'home';
+      return toast('ok', `${t.svc} finished on Truck ${t.n}. It is in Completed.`);
+    }
+    case 'ask-blocker': UI.dialog = 'blocker'; UI.blk = null; UI.blkNote = ''; UI.blkErr = null; return render();
+    case 'blocker': {
+      UI.blkNote = document.getElementById('blk-note').value;
+      if (!UI.blk) { UI.blkErr = 'reason'; return render(); }
+      if (UI.blk === 'Other' && !UI.blkNote.trim()) { UI.blkErr = 'note'; return render(); }
+      P.blocker = { reason: UI.blk, at: '10:12 AM', notes: UI.blkNote.trim() ? [{ by: 'You', body: UI.blkNote.trim() }] : [] }; UI.dialog = null;
+      return toast('ok', 'Blocker reported. The Manager sees it now.');
+    }
+    case 'blk-note': { const v = document.getElementById('blk-add').value.trim(); if (!v) return; P.blocker.notes.push({ by: 'You', body: v }); return toast('ok', 'Note added to the blocker'); }
+    case 'add-note': { const v = P.noteDraft.trim(); if (!v) return; P.notes.push({ by: 'Daniel · PM', at: 'now', body: v }); P.noteDraft = ''; return toast('ok', 'Note added'); }
+    case 'request': return toast('info', 'Request Work opens the same sheet as today.');
+    case 'history': return toast('info', 'Repair history opens the Truck page.');
+    case 'start': {
+      const x = tr(el.dataset.id); x.st = 'running'; x.started = 'now';
+      S.pm = { tid: x.id, saved: x.miles, input: '', mstate: 'empty', jumpOk: false, on: {}, parts: {}, pending: {}, notes: [], noteDraft: '', blocker: null };
+      UI.screen = 'pm'; UI.tid = x.id; return toast('ok', `PM started on Truck ${x.n}. Your clock is running.`);
+    }
+    case 'create': {
+      const f = S.fleet.find((x) => x.n === UI.pick);
+      if (f.kind === 'mine') { UI.screen = 'pm'; UI.tid = 't968'; return render(); }
+      let x = S.trucks.find((y) => y.n === f.n);
+      if (!x) { x = { id: `t${f.n}`, n: f.n, wo: f.wo ?? 'WO-017', veh: f.veh, vin: `4V4NC9EH0PN000${f.n}`, miles: 180500, last: null, pri: 'normal', wait: 0, svc: 'PM A', st: 'waiting' }; S.trucks.push(x); }
+      x.st = 'running'; x.started = 'now';
+      S.pm = { tid: x.id, saved: x.miles, input: '', mstate: 'empty', jumpOk: false, on: {}, parts: {}, pending: {}, notes: [], noteDraft: '', blocker: null };
+      UI.screen = 'pm'; UI.tid = x.id;
+      return toast('ok', f.wo ? `PM added to ${x.wo} on Truck ${x.n}` : `${x.wo} created for Truck ${x.n}. Your PM is running.`);
+    }
+  }
+});
+
+/* ───────── Presets ───────── */
+const idle = () => { const t = tr('t968'); t.st = 'finished'; S.done.unshift({ id: 'd968', n: '968', wo: 'WO-016', veh: t.veh, svc: 'PM A', group: 'Today', date: 'Oct 7', at: '10:58 AM', miles: 210000, prev: 'WO-002 · 160,120 mi', parts: ['Oil Filter 1 Unit: 21707132 — Volvo Long Life Oil Filter'] }); };
+const ready = () => { S.pm.on = { oil1: true }; S.pm.parts = { oil1: '21707132' }; };
+const PRESETS = {
+  running: ['PM in progress', () => {}],
+  jump: ['Jump not confirmed', () => { S.pm.input = '300000'; S.pm.mstate = 'jump'; }],
+  ready: ['Ready to finish', ready],
+  offline: ['Offline', () => { ready(); S.pm.on.fuel = true; S.pm.parts.fuel = 'WF10447'; S.pm.pending = { fuel: true }; UI.offline = true; }],
+  blocked: ['Blocked', () => { ready(); S.pm.blocker = { reason: 'Waiting for Parts', at: '9:50 AM', notes: [{ by: 'You', body: 'No desiccant cartridge for this model in stock.' }, { by: 'Cristian · Manager', body: 'Ordered, arrives at 2 PM.' }] }; }],
+  finished: ['Finished', () => { UI.doneId = 'd606'; }],
+  home: ['Home', () => { idle(); UI.screen = 'home'; }],
+  homeRun: ['Home · PM running', () => { ready(); UI.screen = 'home'; }],
+  empty: ['Empty', () => { S.trucks = []; UI.screen = 'home'; }],
+  create: ['Create PM service', () => { idle(); UI.screen = 'new'; UI.q = '57'; }],
+  createRun: ['Create · PM running', () => { UI.screen = 'new'; UI.q = '9'; UI.pick = '910'; }],
+  done: ['Completed', () => { UI.screen = 'done'; }],
+  loading: ['Loading', () => { UI.state = 'loading'; }],
+  error: ['Error', () => { UI.state = 'error'; }],
+};
+addEventListener('resize', () => render());
+render();
+</script>
+</body>
+</html>
