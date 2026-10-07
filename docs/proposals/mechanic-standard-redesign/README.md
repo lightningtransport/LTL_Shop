@@ -218,9 +218,11 @@ Ningún campo existente cambia. Las reglas de la API (D11, D17, D18, D21) siguen
 
 ## 6. Decisiones del dueño
 
+**Decididas el 2026-10-07: todas como la recomendación (D-MG1…D-MG5).** Se construye como dice la columna de la derecha.
+
 Solo lo que cambia cómo trabaja el mecánico; el resto ya está decidido (MG5) o es de pantalla.
 
-| # | Pregunta | Recomendación |
+| # | Pregunta | Decisión |
 |---|---|---|
 | D-MG1 | **¿Pestañas abajo en el teléfono** (My work · Trucks · Completed), como en la propuesta de Safety? Hoy están arriba. | **Sí**, para el Mecánico General, el PM y Safety por igual: quedan al alcance del pulgar y los tres roles se ven igual. En la computadora siguen arriba. |
 | D-MG2 | **¿"Your time" cuenta todo lo que llevo en ese Work Order** (todos los días) **o solo hoy?** | **Todo el Work Order**: contesta "cuánto tardé" (J7), y el cierre de las 5:00 p.m. ya separa los días para el Manager. |
