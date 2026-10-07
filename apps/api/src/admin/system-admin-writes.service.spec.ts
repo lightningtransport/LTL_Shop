@@ -340,7 +340,7 @@ describe('SystemAdminWritesService roster (D22)', () => {
     expect(tx2.workOrderJob.findMany).not.toHaveBeenCalled();
   });
 
-  it('resets the password through Supabase and returns it once; AUTH_ACCOUNT_MISSING without an account', async () => {
+  it('resets the password through Supabase and returns it once; creates the access account when there is none (G10)', async () => {
     const withAccount = { id: MECHANIC_ID, email: 'ana@lightning.local', name: 'Ana', role: 'mechanic', active: true, supabaseAuthId: 'auth-user-1', capabilities: [] };
     const auth = configuredAuth();
     const service = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue(withAccount) } }, auth);
@@ -348,10 +348,21 @@ describe('SystemAdminWritesService roster (D22)', () => {
     expect(isTemporaryPasswordShape(reset.temporaryPassword)).toBe(true);
     expect(auth.resetPassword).toHaveBeenCalledWith('auth-user-1', reset.temporaryPassword);
 
-    const noAccount = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue({ ...withAccount, supabaseAuthId: null }) } }, auth);
-    const missing = await noAccount.resetPassword(MECHANIC_ID).catch((error) => error);
-    expect(missing).toBeInstanceOf(ConflictException);
-    expect((missing as ConflictException).getResponse()).toMatchObject({ code: 'AUTH_ACCOUNT_MISSING' });
+    // G10: no access account yet (created while the environment had no service key) → reset creates and links it.
+    const createAuth = configuredAuth({ createUser: vi.fn().mockResolvedValue({ id: 'auth-new' }) });
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const noAccount = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue({ ...withAccount, supabaseAuthId: null }), updateMany } }, createAuth);
+    const created = await noAccount.resetPassword(MECHANIC_ID);
+    expect(isTemporaryPasswordShape(created.temporaryPassword)).toBe(true);
+    expect(createAuth.createUser).toHaveBeenCalledWith({ email: 'ana@lightning.local', password: created.temporaryPassword, name: 'Ana' });
+    expect(updateMany).toHaveBeenCalledWith({ where: { id: MECHANIC_ID, supabaseAuthId: null }, data: { supabaseAuthId: 'auth-new' } });
+    expect(createAuth.resetPassword).not.toHaveBeenCalled();
+
+    // Someone linked it meanwhile: the new account is removed and nothing is linked twice.
+    const raced = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue({ ...withAccount, supabaseAuthId: null }), updateMany: vi.fn().mockResolvedValue({ count: 0 }) } }, createAuth);
+    const conflict = await raced.resetPassword(MECHANIC_ID).catch((error) => error);
+    expect(conflict).toBeInstanceOf(ConflictException);
+    expect(createAuth.deleteUser).toHaveBeenCalledWith('auth-new');
 
     const unconfigured = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue(withAccount) } });
     await expect(unconfigured.resetPassword(MECHANIC_ID)).rejects.toBeInstanceOf(ServiceUnavailableException);

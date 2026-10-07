@@ -182,17 +182,23 @@ export class SystemAdminWritesService {
     if (!isUuid(id)) throw new BadRequestException('Invalid Mechanic id');
     const current = await this.prisma.user.findUnique({ where: { id }, select: mechanicSelect });
     if (!current || current.role !== 'mechanic') throw new NotFoundException('Mechanic not found');
-    if (!current.supabaseAuthId) {
-      throw new ConflictException({
-        code: 'AUTH_ACCOUNT_MISSING',
-        message: 'This person has no access account yet. It is created on the first real sign-in or by a System Admin.',
-      });
-    }
     if (!this.supabaseAdmin.isConfigured()) {
       throw new ServiceUnavailableException({
         code: 'AUTH_NOT_CONFIGURED',
         message: 'Access accounts are not managed in this environment.',
       });
+    }
+    // G10: a person created while this environment had no service key has no access account, and cannot sign in to
+    // get one. Reset password creates it, links it and returns its temporary password, the same as at creation.
+    if (!current.supabaseAuthId) {
+      const account = await this.createAuthAccount(current.email, current.name);
+      if (!account) throw new ServiceUnavailableException({ code: 'AUTH_NOT_CONFIGURED', message: 'Access accounts are not managed in this environment.' });
+      const linked = await this.prisma.user.updateMany({ where: { id, supabaseAuthId: null }, data: { supabaseAuthId: account.authId } });
+      if (linked.count !== 1) {
+        await this.supabaseAdmin.deleteUser(account.authId).catch(() => undefined);
+        throw new ConflictException({ code: 'AUTH_ACCOUNT_MISSING', message: 'This person changed while the access account was created. Try again.' });
+      }
+      return { temporaryPassword: account.temporaryPassword };
     }
     const temporaryPassword = generateTemporaryPassword();
     try {
