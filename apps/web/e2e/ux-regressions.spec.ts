@@ -585,7 +585,7 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(page.getByText('Working With', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Priority', { exact: true })).toHaveCount(0);
     await expect(page.getByLabel('Observed mileage')).toHaveAttribute('type', 'text');
-    await expect(page.getByRole('button', { name: 'Finish Work' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Finish PM' })).toBeDisabled();
     // LTR-151 (§8.11): nothing was written yet, so the card does not claim "Saved".
     await expect(page.getByText('Saved automatically', { exact: true })).toHaveCount(0);
     await page.getByLabel('Observed mileage').fill('120500');
@@ -593,15 +593,16 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect.poll(() => savedBody).toEqual({ observedMileage: 120500, selections: [] });
     // LTR-189 (W15): the autosave state shows by the title and under the parts.
     await expect(page.getByText('Saved automatically', { exact: true }).first()).toBeVisible();
-    await page.getByLabel('Oil Filter 1 Unit').selectOption('part-oil');
+    await page.getByRole('switch', { name: 'Oil Filter 1 Unit changed' }).click();
+    await page.getByLabel('Oil Filter 1 Unit', { exact: true }).selectOption('part-oil');
     await expect.poll(() => savedBody).toEqual({
       observedMileage: 120500,
       selections: [{ partCategoryId: 'part-cat-oil', partId: 'part-oil' }],
     });
-    await expect(page.getByRole('button', { name: 'Finish Work' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Finish Work' }).click();
-    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Finish Work' })).toBeVisible();
-    await page.getByRole('button', { name: 'Finish Work' }).last().click();
+    await expect(page.getByRole('button', { name: 'Finish PM' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Finish PM' }).click();
+    await expect(page.getByRole('dialog').getByRole('heading', { name: /^Finish PM A on Truck/ })).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: 'Finish PM' }).click();
     await expect.poll(() => savedBody).toEqual({
       observedMileage: 120500,
       selections: [{ partCategoryId: 'part-cat-oil', partId: 'part-oil' }],
@@ -859,7 +860,7 @@ test.describe('My Assigned Work presentation', () => {
     await expect(page.getByText(/Ask your Shop Manager to create a Work Order/i)).toHaveCount(0);
   });
 
-  test('PM paused empty and count talk about services, not Jobs', async ({ page }) => {
+  test('PM home empty: says no trucks wait for PM, with no empty Paused section (Stage PM-3, UX-1-005)', async ({ page }) => {
     const daniel = {
       ...user,
       id: 'daniel-1',
@@ -879,14 +880,12 @@ test.describe('My Assigned Work presentation', () => {
 
     await devLogin(page);
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: 'Active PM services' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Paused PM services' })).toBeVisible();
-    await expect(page.getByText('0 paused PM services')).toBeVisible();
-    await expect(page.getByText('No paused PM services. Paused work will appear here until it is resumed.')).toBeVisible();
+    await expect(page.getByText('No trucks waiting for PM')).toBeVisible();
+    await expect(page.getByRole('link', { name: /Create PM Service/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Paused PM services' })).toHaveCount(0);
     await expect(page.getByText(/paused jobs/i)).toHaveCount(0);
     await switchLanguage(page, 'es');
-    await expect(page.getByRole('heading', { name: 'Servicios de PM pausados' })).toBeVisible();
-    await expect(page.getByText('0 servicios de PM pausados')).toBeVisible();
+    await expect(page.getByText('No hay unidades esperando PM')).toBeVisible();
     await expect(page.getByText(/Jobs pausados/i)).toHaveCount(0);
   });
 });

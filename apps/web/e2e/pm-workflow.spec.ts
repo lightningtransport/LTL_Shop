@@ -134,21 +134,25 @@ test.describe('Daniel PM workflow', () => {
     const mock = await mockPmApi(page, last);
     await login(page);
     await page.goto(`/work-orders/${woId}`);
-    await expect(page.getByLabel('Last completed PM')).toHaveValue(/119,000 mi/);
+    // Stage PM-2 (UX-4-002): what is already known is text with a label, not a field.
+    const lastPm = page.getByText('Last PM', { exact: true }).locator('xpath=following-sibling::dd[1]');
+    await expect(lastPm).toHaveText(/119,000 mi · Dec 1/);
     mock.setLast(null);
     await page.reload();
-    await expect(page.getByLabel('Last completed PM')).toHaveValue(/No prior PM recorded/);
+    await expect(page.getByText('Last PM', { exact: true }).locator('xpath=following-sibling::dd[1]')).toHaveText('No PM on record');
   });
 
   test('shows category empty state and validates truck fitment', async ({ page }) => {
     await mockPmApi(page);
     await login(page);
     await page.goto(`/work-orders/${woId}`);
-    await expect(page.getByText('Parts used', { exact: true })).toHaveCount(0);
+    // Stage PM-2: the parts are switches, locked until the mileage is entered.
     await expect(page.getByText('Enter the observed mileage to record parts used.')).toBeVisible();
+    await expect(page.getByRole('switch', { name: 'Oil Filter 1 Unit changed' })).toBeDisabled();
     await page.getByLabel('Observed mileage').fill('155000');
-    await expect(page.getByLabel('Fuel Filter: no compatible parts for this truck')).toBeVisible();
-    const oil = page.getByLabel('Oil Filter 1 Unit');
+    await expect(page.getByTestId('pm-part-row-fuel-filter').getByText(/compatible/i)).toBeVisible();
+    await page.getByRole('switch', { name: 'Oil Filter 1 Unit changed' }).click();
+    const oil = page.getByLabel('Oil Filter 1 Unit', { exact: true });
     await expect(oil).toBeVisible();
     await oil.selectOption(oilPart);
     await expect(oil).toHaveValue(oilPart);
@@ -229,14 +233,15 @@ test.describe('Daniel PM workflow', () => {
     await page.goto(`/work-orders/${woId}`);
     await page.getByLabel('Observed mileage').fill('200000');
     await expect(page.getByText('Confirm the mileage above to save parts.')).toBeVisible();
-    const oil = page.getByLabel('Oil Filter 1 Unit');
-    await expect(oil).toBeDisabled();
+    const oilSwitch = page.getByRole('switch', { name: 'Oil Filter 1 Unit changed' });
+    await expect(oilSwitch).toBeDisabled();
     await page.waitForTimeout(900);
     expect(posts).toHaveLength(0);
 
     await page.getByRole('button', { name: 'Confirm mileage' }).click();
-    await expect(oil).toBeEnabled();
-    await oil.selectOption(oilPart);
+    await expect(oilSwitch).toBeEnabled();
+    await oilSwitch.click();
+    await page.getByLabel('Oil Filter 1 Unit', { exact: true }).selectOption(oilPart);
     await expect.poll(() => posts.at(-1)).toMatchObject({ observedMileage: 200000, selections: [{ partId: oilPart }] });
   });
 
@@ -252,8 +257,8 @@ test.describe('Daniel PM workflow', () => {
 
     await mileage.fill('');
     await mileage.blur();
-    await expect(page.getByText('Enter the mileage. The last saved mileage stays until then.')).toBeVisible();
-    await expect(page.getByLabel('Oil Filter 1 Unit')).toBeDisabled();
+    await expect(page.getByText('Enter the mileage. The last saved mileage stays until then.').first()).toBeVisible();
+    await expect(page.getByRole('switch', { name: 'Oil Filter 1 Unit changed' })).toBeDisabled();
     await page.waitForTimeout(900);
     expect(posts.some((body) => body.observedMileage === null)).toBe(false);
   });
@@ -293,6 +298,42 @@ test.describe('Daniel PM workflow', () => {
     await expect(page.getByText(/You have no Jobs on this Work Order anymore/)).toBeVisible();
     await page.getByRole('link', { name: 'Back to My work' }).click();
     await expect(page).toHaveURL(/\/mechanic\/pm$/);
+  });
+});
+
+test.describe('PM redesign (Stage PM-4)', () => {
+  test('Completed lists finished PMs by day with date, mileage and parts', async ({ page }) => {
+    await mockPmApi(page);
+    const done = { ...summary('completed'), pmJob: { ...danielPmJob('completed'), completedAt: new Date().toISOString(), observedMileage: 154300, partsCount: 1 } };
+    await page.route(/\/api\/work-orders(\?.*)?$/, (route) => (route.request().method() === 'GET'
+      ? fulfill(route, { created: [], active: [], paused: [], completed: [done] })
+      : route.fallback()));
+    await login(page);
+    await page.goto('/mechanic/pm/completed');
+    const list = page.getByTestId('pm-completed-by-day');
+    await expect(list.getByText('Today')).toBeVisible();
+    await expect(list.getByText(/154,300 mi · 1 part/)).toBeVisible();
+  });
+
+  test('Block C: without a connection the PM screen shows one Offline notice', async ({ page, context }) => {
+    await mockPmApi(page);
+    await login(page);
+    await page.goto(`/work-orders/${woId}`);
+    await expect(page.getByLabel('Observed mileage')).toBeVisible();
+    await context.setOffline(true);
+    await expect(page.getByTestId('offline-strip')).toHaveText(/Offline · your changes are kept on this phone/);
+    await context.setOffline(false);
+    await expect(page.getByTestId('offline-strip')).toHaveCount(0);
+  });
+
+  test('Create PM service names what will happen on a truck with an open Work Order', async ({ page }) => {
+    await mockPmApi(page);
+    await page.route(`**/api/trucks/${truck.id}/open-work-order`, (route) => fulfill(route, { exists: true, pmJoin: { displayId: 'WO-010', status: 'add', assignedMechanicName: null } }));
+    await login(page);
+    await page.goto('/mechanic/pm/new');
+    await page.getByRole('combobox', { name: /Truck/i }).first().fill('905');
+    await page.getByRole('option', { name: /905/i }).first().click();
+    await expect(page.getByRole('button', { name: 'Add PM to WO-010' })).toBeEnabled();
   });
 });
 
@@ -395,16 +436,20 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     await mockPmJobApi(page);
     await login(page);
     await expect(page.getByText('PM A Service · Work Order WO-900')).toBeVisible();
-    await page.getByRole('link', { name: /Start PM service/i }).click();
+    await page.getByRole('link', { name: /Start PM on Truck 905/ }).click();
     await expect(page).toHaveURL(new RegExp(`/work-orders/${jobWoId}\\?view=pm$`));
     await expect(page.getByText('Start the PM service to record the observed mileage and parts.')).toBeVisible();
     await page.getByRole('button', { name: 'Start PM service' }).click();
     await page.getByLabel('Observed mileage').fill('120500');
-    await page.getByLabel('Oil Filter 1 Unit').selectOption(oilPart);
-    const finish = page.getByRole('button', { name: 'Finish Work' });
+    await page.getByRole('switch', { name: 'Oil Filter 1 Unit changed' }).click();
+    await page.getByLabel('Oil Filter 1 Unit', { exact: true }).selectOption(oilPart);
+    const finish = page.getByRole('button', { name: 'Finish PM' });
     await expect(finish).toBeEnabled({ timeout: 10_000 });
+    await expect(page.getByTestId('pm-finish-reason')).toHaveText(/Ready to finish · 120,500 mi · 1 part/);
     await finish.click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Finish Work' }).click();
+    // Stage PM-2 (UX-7-007): the confirmation shows what stays recorded.
+    await expect(page.getByTestId('pm-finish-summary')).toContainText('Oil Filter 1 Unit');
+    await page.getByRole('dialog').getByRole('button', { name: 'Finish PM' }).click();
     await expect(page).toHaveURL(/\/mechanic\/pm$/);
   });
 
@@ -420,7 +465,7 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     await expect(notice).toContainText('You have a PM service in progress on Truck 905 (WO-1001).');
     await expect(page.getByRole('button', { name: /Create PM Service/i })).toBeDisabled();
     // The paused-style card of another PM offers no Start either.
-    await expect(page.getByRole('link', { name: /Start PM service/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Start PM on Truck/ })).toHaveCount(0);
 
     await page.goto('/mechanic/pm/new');
     await expect(page.getByTestId('pm-in-progress-notice').getByRole('link', { name: 'Continue PM on Truck 905' })).toHaveAttribute('href', `/work-orders/${woId}?view=pm`);

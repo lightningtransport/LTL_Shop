@@ -141,6 +141,7 @@ export class WorkOrdersService {
       // LTR-164 (#10): the bucket follows the PM job; the card still shows the real Work Order status.
       return { ...summary, status: status as typeof summary.status, workOrderStatus: row.status };
     });
+    if (pmMode && mapped.length) await this.addPmListDetails(mapped);
     return {
       // Stage MG-1 (MG1): where my clock runs now, and since when — the clock strip on every mechanic screen.
       myClock: clockElsewhere
@@ -1532,6 +1533,39 @@ export class WorkOrdersService {
     return { ...detail, jobs: detail.jobs.map((item) => (item.id === jobId ? { ...item, completionNotes: notes } : item)) };
   }
 
+  /**
+   * Stage PM-1: for the PM workspace cards — the PM's mileage and parts count, and the truck's previous
+   * finished PM. Two queries for the whole list.
+   */
+  private async addPmListDetails(items: Array<{ id: string; truckId: string; pmJob?: Record<string, unknown> | null; lastPm?: unknown }>) {
+    // Unit-test doubles may not model the PM tables; the cards then go without these extras.
+    if (typeof this.prisma.pmService?.findMany !== 'function') return;
+    const services = await this.prisma.pmService.findMany({
+      where: { workOrderId: { in: items.map((item) => item.id) } },
+      select: { workOrderId: true, observedMileage: true, _count: { select: { parts: true } } },
+    });
+    const byWorkOrder = new Map(services.map((service) => [service.workOrderId, service]));
+    const finished = await this.prisma.pmService.findMany({
+      where: {
+        workOrder: { truckId: { in: [...new Set(items.map((item) => item.truckId))] } },
+        OR: [
+          { workOrder: { primaryCategory: { name: 'PM' }, status: 'completed' } },
+          { workOrderJob: { status: 'completed' } },
+        ],
+      },
+      select: { workOrderId: true, observedMileage: true, workOrder: { select: { truckId: true, completedAt: true, createdAt: true } }, workOrderJob: { select: { completedAt: true } } },
+    });
+    for (const item of items) {
+      const own = byWorkOrder.get(item.id);
+      if (item.pmJob) item.pmJob = { ...item.pmJob, observedMileage: own?.observedMileage ?? null, partsCount: own?._count.parts ?? 0 };
+      const previous = finished
+        .filter((service) => service.workOrder.truckId === item.truckId && service.workOrderId !== item.id)
+        .map((service) => ({ observedMileage: service.observedMileage, completedAt: service.workOrderJob?.completedAt ?? service.workOrder.completedAt ?? service.workOrder.createdAt }))
+        .sort((left, right) => right.completedAt.getTime() - left.completedAt.getTime())[0];
+      item.lastPm = previous ? { observedMileage: previous.observedMileage, completedAt: previous.completedAt.toISOString() } : null;
+    }
+  }
+
   async getPmService(user: AuthUser, id: string) {
     const wo = await this.prisma.workOrder.findUnique({
       where: { id },
@@ -1552,7 +1586,7 @@ export class WorkOrdersService {
       ? pmJob.completedAt
       : wo.status === 'completed' ? wo.completedAt : null;
 
-    const [categories, lastCompletedPmCandidates] = await Promise.all([
+    const [categories, lastCompletedPmCandidates, modelParts] = await Promise.all([
       this.prisma.partCategory.findMany({
         where: { active: true },
         orderBy: { sortOrder: 'asc' },
@@ -1575,7 +1609,24 @@ export class WorkOrdersService {
         },
         include: { workOrder: true, workOrderJob: true },
       }),
+      // Stage PM-1 (D-PM1): parts used on finished PMs of trucks with the same make and model.
+      wo.truck.make && wo.truck.model && typeof this.prisma.pmServicePart?.findMany === 'function'
+        ? this.prisma.pmServicePart.findMany({
+            where: {
+              pmService: {
+                workOrderId: { not: wo.id },
+                workOrder: { truck: { make: wo.truck.make, model: wo.truck.model } },
+                OR: [
+                  { workOrder: { primaryCategory: { name: 'PM' }, status: 'completed' } },
+                  { workOrderJob: { status: 'completed' } },
+                ],
+              },
+            },
+            select: { pmServiceId: true, partCategoryId: true, partId: true },
+          })
+        : Promise.resolve([] as Array<{ pmServiceId: string; partCategoryId: string; partId: string }>),
     ]);
+    const pmCountForModel = new Set(modelParts.map((row) => row.pmServiceId)).size;
     // LTR-137 / LTR-146: the previous PM is the latest one finished before this service.
     const previous = lastCompletedPmCandidates
       .map((service) => ({
@@ -1604,14 +1655,17 @@ export class WorkOrdersService {
             observedMileage: previous.service.observedMileage,
           }
         : null,
-      categories: categories.map((category) => ({
-        id: category.id,
-        slug: category.slug,
-        name: category.name,
-        parts: category.parts
+      categories: categories.map((category) => {
+        const parts = category.parts
           .filter((part) => this.partFitsTruck(part.fitments, wo.truck))
-          .map((part) => ({ id: part.id, partNumber: part.partNumber, displayName: part.displayName })),
-      })),
+          .map((part) => ({ id: part.id, partNumber: part.partNumber, displayName: part.displayName }));
+        const counts = new Map<string, number>();
+        for (const row of modelParts) {
+          if (row.partCategoryId === category.id && parts.some((part) => part.id === row.partId)) counts.set(row.partId, (counts.get(row.partId) ?? 0) + 1);
+        }
+        const [mostUsedPartId, mostUsedCount] = [...counts.entries()].sort((left, right) => right[1] - left[1])[0] ?? [null, 0];
+        return { id: category.id, slug: category.slug, name: category.name, parts, mostUsedPartId, mostUsedCount, pmCountForModel };
+      }),
       selections: (wo.pmService?.parts ?? []).map((part) => ({
         partCategoryId: part.partCategoryId,
         partId: part.partId,

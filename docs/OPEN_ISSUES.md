@@ -295,7 +295,7 @@ Revisión de `/qc` con la base demo local, antes de proponer su rediseño (como 
 | ~~Q4~~ | C | **Approve es un toque, sin confirmar**, y Safety no lo puede deshacer (UX-1-002). | **Hecho** (rediseño de Safety, #259, 2026-10-07). |
 | ~~Q5~~ | B | **Un camión tomado no se puede soltar**: si Safety lo toma y se va, queda trabado hasta que el Manager reasigne (UX-1-007). | **Hecho** (rediseño de Safety, #259, 2026-10-07). |
 | ~~Q9~~ | C | **Lo escrito al devolver se pierde** al cerrar la hoja o si vence la sesión (UX-1-006, UX-6-003). | **Hecho** (bloque A, #257, 2026-10-07). |
-| Q10 | C | **Sin conexión salen dos avisos rojos** que dicen que la lista no cargó, encima de la lista con "Take" activo (UX-6-002). | Pendiente: aviso único de sin conexión, común a los tres roles (bloque C, LTR-195). |
+| ~~Q10~~ | C | **Sin conexión salen dos avisos rojos** que dicen que la lista no cargó, encima de la lista con "Take" activo (UX-6-002). | **Hecho** (rediseño del PM y aviso único de sin conexión, rama `claude/pm-redesign`, 2026-10-07). |
 | ~~Q11~~ | E | **Los Jobs y los mecánicos cambian de orden** entre cargas: `addedAt` empata y no hay desempate (UX-1-009). | **Hecho** (bloque A, #257, 2026-10-07). |
 
 Auditoría completa (skills audit-ux 0, 1, 4 y 6): `docs/ux-audit/safety-qc/`. Propuesta: `docs/proposals/qc-screen-redesign/`.
@@ -316,7 +316,7 @@ Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta 
 | ~~MG8~~ | C | **Report Blocker:** la nota solo aparece con "Other", y con "Other" vacío el botón queda gris sin explicar (UX-7-003, UX-7-004). | **Hecho** (bloque A, #257, 2026-10-07). |
 | ~~MG9~~ | C | **Lo escrito al completar o bloquear se pierde** al cerrar el diálogo o si vence la sesión (UX-7-002, UX-6-008). | **Hecho** (bloque A, #257, 2026-10-07). |
 
-## 1l. Pantallas del Mecánico de PM (2026-10-07) — **EN CURSO** (bloque A hecho; PM4 va con el rediseño) · Linear [LTR-192](https://linear.app/ltransl/issue/LTR-192), [LTR-194](https://linear.app/ltransl/issue/LTR-194)
+## 1l. Pantallas del Mecánico de PM (2026-10-07) — **HECHO** (bloque A y rediseño) · Linear [LTR-192](https://linear.app/ltransl/issue/LTR-192), [LTR-194](https://linear.app/ltransl/issue/LTR-194)
 
 Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta de Daniel): `docs/ux-audit/mecanico-pm/`.
 
@@ -325,7 +325,7 @@ Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta 
 | ~~PM1~~ | B | **Sin conexión, la pieza o el millaje que elige se ve pero no se guarda**; el aviso sale al pie de la tarjeta, el guardado automático se detiene después del error (`pm-service-card.tsx:144`) y al recargar se pierde (UX-6-001). | **Hecho** (bloque A, #256, 2026-10-07). |
 | ~~PM2~~ | B | **Con un salto de millaje sin confirmar, las piezas que elige no se guardan y nada lo dice** (`persist` sale sin guardar, `pm-service-card.tsx:138`) (UX-7-004). | **Hecho** (bloque A, #256, 2026-10-07). |
 | ~~PM3~~ | C | **Borrar el millaje guarda el campo vacío** y esconde las piezas (UX-7-003). | **Hecho** (bloque A, #256, 2026-10-07). |
-| PM4 | C | **"Finish Work" queda a casi dos pantallas**, detrás de "Service type" y nueve selects iguales (UX-4-001, UX-7-005). | Pendiente: Finish fijo abajo en el rediseño del PM (bloque B, LTR-194). |
+| ~~PM4~~ | C | **"Finish Work" queda a casi dos pantallas**, detrás de "Service type" y nueve selects iguales (UX-4-001, UX-7-005). | **Hecho** (rediseño del PM y aviso único de sin conexión, rama `claude/pm-redesign`, 2026-10-07). |
 | ~~PM5~~ | C | **La regla "un PM a la vez" se descubre al tocar**: la tarjeta pausada del inicio, Create PM service y "Start PM service" en otro camión la ofrecen como botón principal y responden con error (UX-1-001, UX-1-002, UX-1-003). W14 lo arregló solo en "Ready to Start". | **Hecho** (bloque A, #256, 2026-10-07). |
 | ~~PM6~~ | C | **Las notas no se guardan solas como dice HU-PM1**: se publican con "Add Note" y lo no enviado se pierde al salir (UX-7-001). | **Hecho** (bloque A, #257, 2026-10-07). |
 

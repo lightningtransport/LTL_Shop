@@ -226,7 +226,15 @@ export interface WorkOrderSummaryDto {
     startedAt: string | null;
     completedAt: string | null;
     assignedMechanic: { id: string; name: string } | null;
+    /** Stage PM-1 (PM workspace list only): the PM's mileage and how many parts it has. */
+    observedMileage?: number | null;
+    partsCount?: number;
   } | null;
+  /** Stage PM-1 (PM workspace list only): the truck's previous finished PM ("Last PM: 196,400 mi · May 30"). */
+  lastPm?: { observedMileage: number | null; completedAt: string } | null;
+  /** Stage PM-1: when the Manager paused it and the pause note ("paused yesterday · fuel filters arrive Thursday"). */
+  pausedAt?: string | null;
+  pauseNote?: string | null;
   primaryCategoryId: string;
   primaryCategoryName: string;
   status: WorkOrderStatus;
@@ -827,6 +835,13 @@ export interface PmPartCategoryDto {
   slug: string;
   name: string;
   parts: PmPartDto[];
+  /**
+   * Stage PM-1 (D-PM1): the part used most on finished PMs of trucks with this make and model, how many of
+   * those PMs used it, and how many there are. Null without history.
+   */
+  mostUsedPartId?: string | null;
+  mostUsedCount?: number;
+  pmCountForModel?: number;
 }
 
 export interface PmServiceDto {
