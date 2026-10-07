@@ -360,29 +360,70 @@ type Copy = {
   qc: {
     title: string;
     subtitle: string;
-    pending: (count: number) => string;
-    returned: (count: number) => string;
+    navLabel: string;
+    tabReview: string;
+    tabReturned: string;
+    tabDone: string;
+    toReview: (count: number, mine: number) => string;
     empty: string;
-    noneReturned: string;
+    emptyHint: string;
     readySince: (when: string) => string;
-    doneBy: (names: string) => string;
-    takenByMe: string;
+    leaves: (when: string) => string;
+    yours: string;
     takenBy: (name: string) => string;
+    reviewing: (name: string) => string;
     take: string;
+    takeThisTruck: string;
+    continueReview: string;
     approve: string;
     returnTruck: string;
+    more: string;
+    letGo: string;
+    letGoToast: (truckNumber: string) => string;
+    reviewTitle: (truckNumber: string) => string;
+    reviewLoadError: string;
+    truckSection: string;
+    vehicle: string;
+    mileage: string;
+    vin: string;
+    where: string;
+    notReported: string;
+    whatWasDone: string;
+    pmLine: (mileage: string, parts: number) => string;
+    inspectionSection: string;
+    inspection: Record<'issues_found' | 'no_issues_found' | 'not_recorded', string>;
+    blockersSection: string;
+    resolvedBy: (who: string, when: string) => string;
+    returnedBefore: string;
+    returnedByOn: (who: string, when: string) => string;
+    approveTitle: (truckNumber: string) => string;
+    approveHint: (displayId: string) => string;
+    back: string;
     returnTitle: (truckNumber: string) => string;
     returnHint: string;
+    whichJob: string;
+    optional: string;
+    otherJob: string;
     returnNoteLabel: string;
     returnPlaceholder: string;
     returnNoteRequired: string;
     returnConfirm: string;
-    returnedNote: (note: string, who: string) => string;
+    returnedTitle: string;
+    returnedHint: string;
+    noneReturned: string;
     waitingForManager: string;
+    doneTitle: string;
+    doneHint: string;
+    doneToday: string;
+    doneEarlier: string;
+    approvedLabel: string;
+    returnedLabel: string;
+    noneDone: string;
     approved: (truckNumber: string) => string;
     returnedToast: (truckNumber: string) => string;
     takenToast: (truckNumber: string) => string;
     loadError: string;
+    loadErrorHint: string;
   };
 };
 
@@ -709,30 +750,71 @@ const copy: Record<ShopLocale, Copy> = {
     apiError: API_ERROR_COPY.en,
     qc: {
       title: 'Quality Check',
-      subtitle: 'Trucks ready for your review',
-      pending: (count) => `To review · ${count}`,
-      returned: (count) => `Returned · waiting for the Manager · ${count}`,
-      empty: 'No trucks are waiting for Quality Check.',
-      noneReturned: 'Nothing returned.',
-      readySince: (when) => `ready ${when}`,
-      doneBy: (names) => `Work by ${names}`,
-      takenByMe: 'Taken by me',
+      subtitle: 'Trucks where every other step is done. Most urgent first.',
+      navLabel: 'Safety',
+      tabReview: 'To review',
+      tabReturned: 'Returned',
+      tabDone: 'Done',
+      toReview: (count, mine) => `${count} to review${mine ? ` · ${mine} yours` : ''}`,
+      empty: 'Nothing to review',
+      emptyHint: 'Trucks appear here when every other step is done.',
+      readySince: (when) => `Ready ${when}`,
+      leaves: (when) => `Leaves ${when} · Dispatch`,
+      yours: 'Yours',
       takenBy: (name) => `Taken by ${name}`,
+      reviewing: (name) => `${name} is reviewing this truck.`,
       take: 'Take',
+      takeThisTruck: 'Take this truck',
+      continueReview: 'Continue review',
       approve: 'Approve',
       returnTruck: 'Return',
+      more: 'More',
+      letGo: 'Let go (the other Safety person can take it)',
+      letGoToast: (truckNumber) => `You let go of Truck ${truckNumber}`,
+      reviewTitle: (truckNumber) => `Truck ${truckNumber}`,
+      reviewLoadError: 'This truck could not be loaded.',
+      truckSection: 'Truck',
+      vehicle: 'Vehicle',
+      mileage: 'Mileage',
+      vin: 'VIN',
+      where: 'Where',
+      notReported: 'Not reported',
+      whatWasDone: 'What was done',
+      pmLine: (mileage, parts) => `Mileage ${mileage} · ${parts} ${parts === 1 ? 'part' : 'parts'}`,
+      inspectionSection: 'Arrival inspection',
+      inspection: { issues_found: 'Issues found', no_issues_found: 'No issues found', not_recorded: 'Not recorded' },
+      blockersSection: 'Blockers on this truck',
+      resolvedBy: (who, when) => `Resolved by ${who} · ${when}`,
+      returnedBefore: 'Returned before',
+      returnedByOn: (who, when) => `${who} · ${when}`,
+      approveTitle: (truckNumber) => `Approve Truck ${truckNumber}?`,
+      approveHint: (displayId) => `The Quality Check is done in your name. The Manager can then close ${displayId} and the truck becomes Ready to Go.`,
+      back: 'Back',
       returnTitle: (truckNumber) => `Return Truck ${truckNumber}`,
-      returnHint: 'What did you find? The Manager will see it and add the work.',
-      returnNoteLabel: 'What you found',
-      returnPlaceholder: 'Leak in the rear brake hose',
-      returnNoteRequired: 'Say what you found first.',
+      returnHint: 'Say what you found. The Manager adds the work, and the truck comes back to this list when it is done.',
+      whichJob: 'Which Job?',
+      optional: '(optional)',
+      otherJob: 'Other',
+      returnNoteLabel: 'What did you find?',
+      returnPlaceholder: 'E.g. rear brake hose is leaking',
+      returnNoteRequired: 'Say what you found before returning the truck.',
       returnConfirm: 'Return truck',
-      returnedNote: (note, who) => `“${note}” · ${who}`,
+      returnedTitle: 'Returned',
+      returnedHint: 'Waiting for the Manager to add the work. They come back to To review when it is done.',
+      noneReturned: 'Nothing returned.',
       waitingForManager: 'Waiting for the Manager',
+      doneTitle: 'Done',
+      doneHint: 'What you approved or returned in the last 7 days.',
+      doneToday: 'Today',
+      doneEarlier: 'Last 7 days',
+      approvedLabel: 'Approved',
+      returnedLabel: 'Returned',
+      noneDone: 'Nothing yet. What you approve or return shows here.',
       approved: (truckNumber) => `Truck ${truckNumber} approved`,
       returnedToast: (truckNumber) => `Truck ${truckNumber} returned to the Manager`,
       takenToast: (truckNumber) => `Truck ${truckNumber} is yours`,
-      loadError: 'The Quality Check list could not be loaded.',
+      loadError: 'The Quality Check list did not load.',
+      loadErrorHint: 'Check the connection and try again.',
     },
   },
   es: {
@@ -1056,30 +1138,71 @@ const copy: Record<ShopLocale, Copy> = {
     apiError: API_ERROR_COPY.es,
     qc: {
       title: 'Quality Check',
-      subtitle: 'Unidades listas para revisar',
-      pending: (count) => `Por revisar · ${count}`,
-      returned: (count) => `Devueltos · esperan al Manager · ${count}`,
-      empty: 'No hay unidades esperando Quality Check.',
-      noneReturned: 'Nada devuelto.',
-      readySince: (when) => `listo ${when}`,
-      doneBy: (names) => `Trabajo de ${names}`,
-      takenByMe: 'Lo tomé yo',
+      subtitle: 'Unidades con todo lo demás hecho. Lo más urgente primero.',
+      navLabel: 'Safety',
+      tabReview: 'Por revisar',
+      tabReturned: 'Devueltos',
+      tabDone: 'Hechos',
+      toReview: (count, mine) => `${count} por revisar${mine ? ` · ${mine} tuyos` : ''}`,
+      empty: 'Nada por revisar',
+      emptyHint: 'Las unidades aparecen aquí cuando todo lo demás está hecho.',
+      readySince: (when) => `Lista ${when}`,
+      leaves: (when) => `Sale ${when} · Dispatch`,
+      yours: 'Tuyo',
       takenBy: (name) => `Lo tomó ${name}`,
+      reviewing: (name) => `${name} está revisando esta unidad.`,
       take: 'Tomar',
+      takeThisTruck: 'Tomar esta unidad',
+      continueReview: 'Seguir revisando',
       approve: 'Aprobar',
       returnTruck: 'Devolver',
+      more: 'Más',
+      letGo: 'Soltar (la otra persona de Safety la puede tomar)',
+      letGoToast: (truckNumber) => `Soltaste la unidad ${truckNumber}`,
+      reviewTitle: (truckNumber) => `Unidad ${truckNumber}`,
+      reviewLoadError: 'No se pudo cargar esta unidad.',
+      truckSection: 'Unidad',
+      vehicle: 'Vehículo',
+      mileage: 'Millaje',
+      vin: 'VIN',
+      where: 'Dónde está',
+      notReported: 'Sin reportar',
+      whatWasDone: 'Qué se hizo',
+      pmLine: (mileage, parts) => `Millaje ${mileage} · ${parts} ${parts === 1 ? 'pieza' : 'piezas'}`,
+      inspectionSection: 'Inspección de llegada',
+      inspection: { issues_found: 'Con hallazgos', no_issues_found: 'Sin hallazgos', not_recorded: 'Sin registrar' },
+      blockersSection: 'Bloqueos de esta unidad',
+      resolvedBy: (who, when) => `Lo resolvió ${who} · ${when}`,
+      returnedBefore: 'Devoluciones anteriores',
+      returnedByOn: (who, when) => `${who} · ${when}`,
+      approveTitle: (truckNumber) => `¿Aprobar la unidad ${truckNumber}?`,
+      approveHint: (displayId) => `El Quality Check queda a tu nombre. El Manager ya puede cerrar ${displayId} y la unidad queda Ready to Go.`,
+      back: 'Volver',
       returnTitle: (truckNumber) => `Devolver unidad ${truckNumber}`,
-      returnHint: '¿Qué encontraste? El Manager lo va a ver y agregará el trabajo.',
-      returnNoteLabel: 'Qué encontraste',
-      returnPlaceholder: 'Fuga en la manguera del freno trasero',
-      returnNoteRequired: 'Primero escribe qué encontraste.',
+      returnHint: 'Di qué encontraste. El Manager agrega el trabajo y la unidad vuelve a esta lista cuando esté hecho.',
+      whichJob: '¿Qué Job?',
+      optional: '(opcional)',
+      otherJob: 'Otro',
+      returnNoteLabel: '¿Qué encontraste?',
+      returnPlaceholder: 'Ej.: fuga en la manguera del freno trasero',
+      returnNoteRequired: 'Di qué encontraste antes de devolver la unidad.',
       returnConfirm: 'Devolver unidad',
-      returnedNote: (note, who) => `“${note}” · ${who}`,
+      returnedTitle: 'Devueltos',
+      returnedHint: 'Esperan a que el Manager agregue el trabajo. Vuelven a Por revisar cuando esté hecho.',
+      noneReturned: 'Nada devuelto.',
       waitingForManager: 'Espera al Manager',
+      doneTitle: 'Hechos',
+      doneHint: 'Lo que aprobaste o devolviste en los últimos 7 días.',
+      doneToday: 'Hoy',
+      doneEarlier: 'Últimos 7 días',
+      approvedLabel: 'Aprobada',
+      returnedLabel: 'Devuelta',
+      noneDone: 'Todavía nada. Aquí aparece lo que apruebes o devuelvas.',
       approved: (truckNumber) => `Unidad ${truckNumber} aprobada`,
       returnedToast: (truckNumber) => `Unidad ${truckNumber} devuelta al Manager`,
       takenToast: (truckNumber) => `Unidad ${truckNumber} es tuya`,
-      loadError: 'No se pudo cargar la lista de Quality Check.',
+      loadError: 'No se cargó la lista de Quality Check.',
+      loadErrorHint: 'Revisa la conexión e inténtalo de nuevo.',
     },
   },
 };

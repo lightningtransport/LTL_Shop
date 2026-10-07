@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSWRConfig } from 'swr';
+import {
+  CalendarClock, Check, CheckCheck, CircleAlert, ClipboardCheck, Ellipsis, Hand, HandHelping, History, RotateCw, Undo2,
+} from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -9,32 +13,54 @@ import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
-import { formatVehicleYmm } from '@/lib/format';
-import {
-  relativeTime, useQualityCheckQueue, type QualityCheckItem, type QualityCheckQueue, type QualityCheckReturnedItem,
-} from '@/lib/quality-check-data';
+import { formatMileage, formatShopDateTime, formatVehicleYmm } from '@/lib/format';
+import { formatAdminDateOnly } from '@/lib/admin-format';
 import { draftKeys, useLocalDraft } from '@/lib/local-draft';
-import { useActionToast } from './action-toast';
-import { SessionSignInFallback } from './session-sign-in-fallback';
 import {
-  Badge, Button, Card, CardListSkeleton, EmptyState, HomeTopBar, InlineAlert, Label, LoadFailure, Modal, PageHeader, Textarea,
+  cardMechanics, qualityCheckHistoryKey, qualityCheckReviewKey, relativeTime, useQualityCheckHistory, useQualityCheckQueue,
+  useQualityCheckReview, type QualityCheckItem, type QualityCheckQueue, type QualityCheckReturnedItem, type QualityCheckReview,
+} from '@/lib/quality-check-data';
+import { cn } from '@/lib/utils';
+import { useActionToast } from './action-toast';
+import { MechanicAvatar, MechanicAvatarStack } from './mechanic-avatar';
+import { ResponsiveMenu } from './responsive-menu';
+import { SessionSignInFallback } from './session-sign-in-fallback';
+import { SideSheet } from './side-sheet';
+import {
+  Badge, Button, CardListSkeleton, CountChip, DialogActions, HomeTopBar, InlineAlert, Label, Modal, PageHeader, PriorityBadge,
+  SectionCard, Textarea,
 } from './ui';
 
-/** LTR-185 / D19: Safety takes a truck ready for Quality Check and approves it or returns it with a note. */
+type Tab = 'review' | 'returned' | 'done';
+type Action = 'take' | 'approve' | 'return' | 'release';
+const OTHER = '__other__';
+
+/**
+ * LTR-185 / D19, Safety redesign (docs/proposals/qc-screen-redesign, D-QC1…D-QC7): the trucks to review,
+ * most urgent first; a review of each truck with what was done; Approve with a confirmation; Return with the
+ * Job that failed; Let go; and the Returned and Done tabs.
+ */
 export function QualityCheckPage() {
   const { user, token, sessionLoading } = useAuth();
   const { messages } = useShopLocale();
   const { showToast } = useActionToast();
+  const { mutate: mutateGlobal } = useSWRConfig();
   const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const tab: Tab = search.get('tab') === 'returned' ? 'returned' : search.get('tab') === 'done' ? 'done' : 'review';
   const canPerform = !!user?.capabilities.includes(AppCapability.QUALITY_CHECK_PERFORM);
   const { data, error, mutate } = useQualityCheckQueue(!!token && canPerform);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [busy, setBusy] = useState<Action | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [returning, setReturning] = useState<QualityCheckItem | null>(null);
+  const [confirmApprove, setConfirmApprove] = useState(false);
+  const [returning, setReturning] = useState(false);
+  const [returnJob, setReturnJob] = useState<string | null>(null);
   // Block A (Q9): the return note is a draft per truck, kept on this phone until the truck is returned.
-  const [note, setNote, clearNote] = useLocalDraft(returning ? draftKeys.qcReturn(returning.workOrderId) : null);
-  const [noteError, setNoteError] = useState<string | null>(null);
-  const returnTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [note, setNote, clearNote] = useLocalDraft(returning && openId ? draftKeys.qcReturn(openId) : null);
+  const [noteError, setNoteError] = useState(false);
+  const reviewTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!sessionLoading && !token) replaceAppLocation('/login', router);
@@ -43,10 +69,12 @@ export function QualityCheckPage() {
   if (!sessionLoading && !token) return <SessionSignInFallback />;
 
   const t = messages.qc;
-  const locale = messages.locale;
+  const pending = data?.pending ?? [];
+  const returned = data?.returned ?? [];
+  const openItem = pending.find((item) => item.workOrderId === openId) ?? null;
 
-  async function run(item: QualityCheckItem, action: 'take' | 'approve' | 'return', body?: { notes: string }) {
-    setBusy(`${item.workOrderId}:${action}`);
+  async function run(item: QualityCheckItem, action: Action, body?: Record<string, unknown>) {
+    setBusy(action);
     setActionError(null);
     try {
       const next = await apiFetch<QualityCheckQueue>(`/api/qc/${item.workOrderId}/${action}`, {
@@ -54,131 +82,543 @@ export function QualityCheckPage() {
         body: JSON.stringify(body ?? {}),
       });
       await mutate(next, { revalidate: false });
+      void mutateGlobal(qualityCheckReviewKey(item.workOrderId));
+      if (action === 'approve' || action === 'return') void mutateGlobal(qualityCheckHistoryKey);
       if (action === 'take') showToast('success', t.takenToast(item.truck.truckNumber));
-      if (action === 'approve') showToast('success', t.approved(item.truck.truckNumber));
+      if (action === 'release') showToast('success', t.letGoToast(item.truck.truckNumber));
+      if (action === 'approve') {
+        showToast('success', t.approved(item.truck.truckNumber));
+        setConfirmApprove(false);
+        setOpenId(null);
+      }
       if (action === 'return') {
         showToast('success', t.returnedToast(item.truck.truckNumber));
         clearNote();
-        setReturning(null);
+        setReturning(false);
+        setOpenId(null);
       }
+      return true;
     } catch (caught) {
       setActionError(apiErrorMessage(caught, messages, t.loadError));
       void mutate();
+      return false;
     } finally {
       setBusy(null);
     }
   }
 
-  const pending = data?.pending ?? [];
-  const returned = data?.returned ?? [];
+  function goTab(next: Tab) {
+    router.replace(next === 'review' ? pathname : `${pathname}?tab=${next}`, { scroll: false });
+  }
+
+  const mineCount = pending.filter((item) => item.mine).length;
+  const tabs: Array<{ key: Tab; label: string; count: number | null; Icon: typeof ClipboardCheck }> = [
+    { key: 'review', label: t.tabReview, count: data ? pending.length : null, Icon: ClipboardCheck },
+    { key: 'returned', label: t.tabReturned, count: data ? returned.length : null, Icon: Undo2 },
+    { key: 'done', label: t.tabDone, count: null, Icon: History },
+  ];
 
   return (
     <div>
       <HomeTopBar />
-      <PageHeader className="mb-6" title={t.title} subtitle={t.subtitle} />
-      {error ? <LoadFailure message={t.loadError} onRetry={() => void mutate()} retryLabel={messages.retry} /> : null}
-      {actionError ? <InlineAlert className="mb-3">{actionError}</InlineAlert> : null}
-      {!data && !error ? <CardListSkeleton /> : null}
+      <nav aria-label={t.navLabel} className="mb-4 grid grid-cols-3 gap-1 rounded-xl border bg-card p-1" data-testid="qc-tabs">
+        {tabs.map(({ key, label, count, Icon }) => (
+          <button
+            key={key}
+            type="button"
+            aria-current={tab === key ? 'page' : undefined}
+            onClick={() => goTab(key)}
+            className={cn(
+              'flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-1.5 text-sm font-medium transition',
+              tab === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+            )}
+          >
+            <Icon aria-hidden="true" className="hidden size-4 min-[400px]:block" />
+            <span>{label}</span>
+            {count !== null ? <span className="tnum text-xs opacity-80">{count}</span> : null}
+          </button>
+        ))}
+      </nav>
 
-      {data ? (
-        <section aria-labelledby="qc-pending-title">
-          <h2 id="qc-pending-title" className="mb-2 text-sm text-shop-muted">{t.pending(pending.length)}</h2>
-          {!pending.length ? <EmptyState>{t.empty}</EmptyState> : null}
-          <ul className="space-y-2">
-            {pending.map((item) => {
-              const takenByOther = item.takenBy && !item.mine;
-              return (
-                <li key={item.workOrderId}>
-                  <Card className={item.mine ? 'border-primary p-3' : 'p-3'}>
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="font-display text-lg font-semibold">{messages.truckTitle(item.truck.truckNumber)}</p>
-                      <p className="text-xs text-shop-muted">{item.displayId} · {t.readySince(relativeTime(item.readySince, locale))}</p>
-                    </div>
-                    {formatVehicleYmm(item.truck) ? <p className="text-sm text-shop-muted">{formatVehicleYmm(item.truck)}</p> : null}
-                    <p className="mt-1 text-sm">{item.doneJobs.join(', ')}</p>
-                    {item.mechanics.length ? <p className="text-xs text-shop-muted">{t.doneBy(item.mechanics.join(', '))}</p> : null}
-                    {item.mine ? <Badge className="mt-2">{t.takenByMe}</Badge> : null}
-                    {takenByOther ? <Badge variant="secondary" className="mt-2">{t.takenBy(item.takenBy!.name)}</Badge> : null}
-                    <div className="mt-3 flex gap-2">
-                      {item.mine ? (
-                        <>
-                          <Button className="flex-1" disabled={busy !== null} onClick={() => void run(item, 'approve')}>
-                            {t.approve}
-                          </Button>
-                          <Button
-                            ref={returnTriggerRef}
-                            variant="outline"
-                            className="flex-1"
-                            disabled={busy !== null}
-                            onClick={() => { setReturning(item); setNoteError(null); }}
-                          >
-                            {t.returnTruck}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button className="flex-1" disabled={busy !== null || !!takenByOther} onClick={() => void run(item, 'take')}>
-                          {t.take}
-                        </Button>
-                      )}
-                    </div>
-                  </Card>
-                </li>
-              );
-            })}
-          </ul>
+      {actionError && !openId ? <InlineAlert className="mb-3">{actionError}</InlineAlert> : null}
 
-          <h2 className="mb-2 mt-6 text-sm text-shop-muted">{t.returned(returned.length)}</h2>
-          {!returned.length ? <p className="text-sm text-shop-muted">{t.noneReturned}</p> : null}
-          <ul className="space-y-2">
-            {returned.map((item: QualityCheckReturnedItem) => (
-              <li key={item.workOrderId}>
-                <Card className="p-3">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="font-display text-lg font-semibold">{messages.truckTitle(item.truck.truckNumber)}</p>
-                    <p className="text-xs text-shop-muted">{item.displayId} · {relativeTime(item.returnedAt, locale)}</p>
-                  </div>
-                  <p className="mt-1 text-sm">{t.returnedNote(item.note ?? '', item.returnedBy ?? '')}</p>
-                  <Badge variant="secondary" className="mt-2">{t.waitingForManager}</Badge>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {tab === 'done' ? (
+        <DoneTab enabled={!!token && canPerform} onBack={() => goTab('review')} />
+      ) : (
+        <>
+          <PageHeader
+            className="mb-4"
+            title={tab === 'returned' ? t.returnedTitle : t.title}
+            subtitle={tab === 'returned' ? t.returnedHint : t.subtitle}
+          />
+          {error ? (
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-8 text-center" role="alert">
+              <CircleAlert aria-hidden="true" className="size-5 text-destructive-text" />
+              <p className="font-medium">{t.loadError}</p>
+              <p className="text-sm text-muted-foreground">{t.loadErrorHint}</p>
+              <Button variant="outline" className="mt-2" onClick={() => void mutate()}><RotateCw aria-hidden="true" />{messages.retry}</Button>
+            </div>
+          ) : null}
+          {!data && !error ? <CardListSkeleton /> : null}
+          {data && tab === 'review' ? (
+            pending.length ? (
+              <>
+                <p className="mb-2 text-xs text-muted-foreground" data-testid="qc-count">{t.toReview(pending.length, mineCount)}</p>
+                <ul className="space-y-2" aria-label={t.tabReview}>
+                  {pending.map((item) => (
+                    <QueueCard
+                      key={item.workOrderId}
+                      item={item}
+                      busy={busy !== null}
+                      onOpen={(trigger) => { reviewTriggerRef.current = trigger; setActionError(null); setOpenId(item.workOrderId); }}
+                      onTake={async (trigger) => {
+                        reviewTriggerRef.current = trigger;
+                        if (await run(item, 'take')) setOpenId(item.workOrderId);
+                      }}
+                    />
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-1 rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground" data-testid="qc-empty">
+                <CheckCheck aria-hidden="true" className="size-5 text-success" />
+                <p className="font-medium text-foreground">{t.empty}</p>
+                <p>{t.emptyHint}</p>
+                <Button variant="ghost" className="mt-1" onClick={() => goTab('done')}><History aria-hidden="true" />{t.tabDone}</Button>
+              </div>
+            )
+          ) : null}
+          {data && tab === 'returned' ? <ReturnedTab items={returned} /> : null}
+        </>
+      )}
+
+      <ReviewSheet
+        item={openItem}
+        busy={busy}
+        actionError={actionError}
+        onClose={() => { if (!busy) { setOpenId(null); setActionError(null); } }}
+        onTake={() => openItem && void run(openItem, 'take')}
+        onRelease={() => openItem && void run(openItem, 'release')}
+        onApprove={() => setConfirmApprove(true)}
+        onReturn={() => { setReturnJob(null); setNoteError(false); setReturning(true); }}
+      />
 
       <Modal
-        open={Boolean(returning)}
-        title={returning ? t.returnTitle(returning.truck.truckNumber) : t.returnTruck}
+        open={confirmApprove && !!openItem}
+        title={openItem ? t.approveTitle(openItem.truck.truckNumber) : t.approve}
+        description={openItem ? t.approveHint(openItem.displayId) : undefined}
         closeLabel={messages.closeDialog}
-        onClose={() => { if (!busy) setReturning(null); }}
-        returnFocusRef={returnTriggerRef}
+        onClose={() => { if (!busy) setConfirmApprove(false); }}
       >
-        <p className="mb-3 text-sm text-shop-muted">{t.returnHint}</p>
+        <DialogActions>
+          <Button variant="outline" disabled={busy !== null} onClick={() => setConfirmApprove(false)}>{t.back}</Button>
+          <Button disabled={busy !== null} onClick={() => openItem && void run(openItem, 'approve')} data-testid="qc-confirm-approve">
+            <CheckCheck aria-hidden="true" />{t.approve}
+          </Button>
+        </DialogActions>
+      </Modal>
+
+      <Modal
+        open={returning && !!openItem}
+        title={openItem ? t.returnTitle(openItem.truck.truckNumber) : t.returnTruck}
+        description={t.returnHint}
+        closeLabel={messages.closeDialog}
+        onClose={() => { if (!busy) setReturning(false); }}
+      >
+        {openItem ? (
+          <fieldset className="mb-4">
+            <legend className="mb-2 text-sm font-medium">{t.whichJob} <span className="font-normal text-muted-foreground">{t.optional}</span></legend>
+            <div className="flex flex-wrap gap-1.5">
+              {[...(openItem.doneBy ?? []).map((entry) => ({ key: entry.jobId, label: entry.job })), { key: OTHER, label: t.otherJob }].map((choice) => (
+                <button
+                  key={choice.key}
+                  type="button"
+                  aria-pressed={returnJob === choice.key}
+                  onClick={() => setReturnJob(returnJob === choice.key ? null : choice.key)}
+                  className={cn(
+                    'inline-flex min-h-11 items-center rounded-full border px-3 text-sm [@media(pointer:fine)]:min-h-9',
+                    returnJob === choice.key ? 'border-primary bg-primary/15 text-primary' : 'hover:bg-accent',
+                  )}
+                >
+                  {choice.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
         <Label className="mb-2 block" htmlFor="qc-return-note">{t.returnNoteLabel}</Label>
         <Textarea
           id="qc-return-note"
           value={note}
           placeholder={t.returnPlaceholder}
           disabled={busy !== null}
-          onChange={(event) => { setNote(event.target.value); setNoteError(null); }}
+          aria-invalid={noteError || undefined}
+          aria-describedby={noteError ? 'qc-return-note-error' : undefined}
+          onChange={(event) => { setNote(event.target.value); setNoteError(false); }}
         />
-        {noteError ? <InlineAlert className="mt-2">{noteError}</InlineAlert> : null}
-        <div className="mt-4 flex gap-2">
-          <Button variant="outline" className="flex-1" disabled={busy !== null} onClick={() => setReturning(null)}>
-            {messages.cancelAction}
-          </Button>
+        {noteError ? <p id="qc-return-note-error" className="mt-2 text-sm text-destructive-text" role="alert">{t.returnNoteRequired}</p> : null}
+        {actionError && returning ? <InlineAlert className="mt-2">{actionError}</InlineAlert> : null}
+        <DialogActions className="mt-4">
+          <Button variant="outline" disabled={busy !== null} onClick={() => setReturning(false)}>{t.back}</Button>
           <Button
-            className="flex-1"
             disabled={busy !== null}
             onClick={() => {
-              if (!note.trim()) { setNoteError(t.returnNoteRequired); return; }
-              if (returning) void run(returning, 'return', { notes: note.trim() });
+              if (!note.trim()) { setNoteError(true); return; }
+              if (openItem) void run(openItem, 'return', { notes: note.trim(), ...(returnJob && returnJob !== OTHER ? { jobId: returnJob } : {}) });
             }}
           >
-            {t.returnConfirm}
+            <Undo2 aria-hidden="true" />{t.returnConfirm}
           </Button>
-        </div>
+        </DialogActions>
       </Modal>
     </div>
+  );
+}
+
+function PriorityChip({ priority }: { priority?: string }) {
+  const { messages } = useShopLocale();
+  if (priority !== 'critical' && priority !== 'high') return null;
+  return <PriorityBadge priority={priority}>{messages.priority[priority as keyof typeof messages.priority] ?? priority}</PriorityBadge>;
+}
+
+function leavesLabel(leavesOn: string | null | undefined, locale: 'en' | 'es') {
+  return leavesOn ? formatAdminDateOnly(leavesOn, locale) : null;
+}
+
+function QueueCard({
+  item,
+  busy,
+  onOpen,
+  onTake,
+}: {
+  item: QualityCheckItem;
+  busy: boolean;
+  onOpen: (trigger: HTMLButtonElement) => void;
+  onTake: (trigger: HTMLButtonElement) => void;
+}) {
+  const { messages } = useShopLocale();
+  const t = messages.qc;
+  const locale = messages.locale;
+  const takenByOther = Boolean(item.takenBy && !item.mine);
+  const people = cardMechanics(item);
+  const vehicle = formatVehicleYmm(item.truck);
+  const leaves = leavesLabel(item.leavesOn, locale);
+  const jobs = item.doneBy?.length ? item.doneBy.map((entry) => entry.job) : item.doneJobs;
+  return (
+    <li
+      className={cn('rounded-xl border bg-card', item.mine && 'border-primary ring-1 ring-primary', takenByOther && 'opacity-70')}
+      data-testid={`qc-card-${item.truck.truckNumber}`}
+    >
+      <button
+        type="button"
+        disabled={takenByOther}
+        onClick={(event) => onOpen(event.currentTarget)}
+        aria-label={messages.truckTitle(item.truck.truckNumber)}
+        className={cn('block w-full space-y-1.5 rounded-t-xl p-3 text-left', takenByOther ? 'cursor-default' : 'hover:bg-accent/40')}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-base font-semibold">{messages.truckTitle(item.truck.truckNumber)}</span>
+          <PriorityChip priority={item.priority} />
+          {item.mine ? <Badge variant="default">{t.yours}</Badge> : null}
+          <span className="tnum ml-auto text-xs text-muted-foreground">{t.readySince(relativeTime(item.readySince, locale))}</span>
+        </div>
+        <p className="truncate text-xs text-muted-foreground">
+          {[vehicle, item.displayId, item.location].filter(Boolean).join(' · ')}
+        </p>
+        {leaves ? (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-warning-foreground dark:text-warning">
+            <CalendarClock aria-hidden="true" className="size-3.5" />{t.leaves(leaves)}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-1 pt-0.5">
+          {jobs.map((job) => (
+            <span key={job} className="inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-xs text-muted-foreground">
+              <Check aria-hidden="true" className="size-3.5 text-success" />{job}
+            </span>
+          ))}
+        </div>
+        {people.length ? (
+          <div className="flex items-center gap-2 pt-0.5">
+            <MechanicAvatarStack mechanics={people} max={4} />
+            <span className="truncate text-xs text-muted-foreground">{people.map((person) => person.name).join(', ')}</span>
+          </div>
+        ) : item.mechanics.length ? <p className="text-xs text-muted-foreground">{item.mechanics.join(', ')}</p> : null}
+      </button>
+      <div className="border-t p-2">
+        {item.mine ? (
+          <Button className="w-full" onClick={(event) => onOpen(event.currentTarget)}>
+            <ClipboardCheck aria-hidden="true" />{t.continueReview}
+          </Button>
+        ) : takenByOther ? (
+          <p className="flex min-h-9 items-center gap-2 px-1 text-sm text-muted-foreground">
+            <MechanicAvatar id={item.takenBy!.id} name={item.takenBy!.name} size="sm" />{t.takenBy(item.takenBy!.name)}
+          </p>
+        ) : (
+          <Button
+            className="w-full"
+            disabled={busy}
+            aria-label={`${t.take} · ${messages.truckTitle(item.truck.truckNumber)}`}
+            onClick={(event) => onTake(event.currentTarget)}
+          >
+            <Hand aria-hidden="true" />{t.take}
+          </Button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function ReviewSheet({
+  item,
+  busy,
+  actionError,
+  onClose,
+  onTake,
+  onRelease,
+  onApprove,
+  onReturn,
+}: {
+  item: QualityCheckItem | null;
+  busy: Action | null;
+  actionError: string | null;
+  onClose: () => void;
+  onTake: () => void;
+  onRelease: () => void;
+  onApprove: () => void;
+  onReturn: () => void;
+}) {
+  const { messages } = useShopLocale();
+  const t = messages.qc;
+  const { data, error, mutate } = useQualityCheckReview(item?.workOrderId ?? null);
+  const review: QualityCheckReview | undefined = data && item && data.workOrderId === item.workOrderId ? data : undefined;
+  const takenByOther = Boolean(item?.takenBy && !item.mine);
+  const footer = item ? (
+    item.mine ? (
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" disabled={busy !== null} onClick={onReturn}><Undo2 aria-hidden="true" />{t.returnTruck}</Button>
+        <Button disabled={busy !== null} onClick={onApprove} data-testid="qc-approve"><CheckCheck aria-hidden="true" />{t.approve}</Button>
+      </div>
+    ) : takenByOther ? (
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <MechanicAvatar id={item.takenBy!.id} name={item.takenBy!.name} size="sm" />{t.reviewing(item.takenBy!.name)}
+      </p>
+    ) : (
+      <Button className="w-full" disabled={busy !== null} onClick={onTake}><Hand aria-hidden="true" />{t.takeThisTruck}</Button>
+    )
+  ) : null;
+
+  return (
+    <SideSheet
+      open={Boolean(item)}
+      title={item ? t.reviewTitle(item.truck.truckNumber) : ''}
+      description={item ? (
+        <span className="flex flex-wrap items-center gap-x-2 text-xs">
+          <span className="font-mono">{item.displayId}</span>
+          <span>· {t.readySince(relativeTime(item.readySince, messages.locale))}</span>
+          {item.mine ? (
+            <span className="ml-auto">
+              <ResponsiveMenu
+                label={messages.truckTitle(item.truck.truckNumber)}
+                trigger={<Button variant="ghost" size="sm" className="h-8 px-2" aria-label={t.more}><Ellipsis aria-hidden="true" /></Button>}
+                items={[{ key: 'release', label: t.letGo, icon: HandHelping, onSelect: onRelease, testId: 'qc-let-go' }]}
+                contentTestId="qc-review-menu"
+              />
+            </span>
+          ) : null}
+        </span>
+      ) : undefined}
+      closeLabel={messages.closeDialog}
+      onClose={onClose}
+      footer={footer}
+      testId="qc-review"
+    >
+      <div className="space-y-3 p-4">
+        {actionError ? <InlineAlert>{actionError}</InlineAlert> : null}
+        {item && (item.priority === 'critical' || item.priority === 'high' || item.leavesOn) ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <PriorityChip priority={item.priority} />
+            {item.leavesOn ? (
+              <Badge variant="warning"><CalendarClock aria-hidden="true" className="size-3.5" />{t.leaves(leavesLabel(item.leavesOn, messages.locale) ?? '')}</Badge>
+            ) : null}
+          </div>
+        ) : null}
+        {error ? (
+          <div className="space-y-2" role="alert">
+            <InlineAlert>{apiErrorMessage(error, messages, t.reviewLoadError)}</InlineAlert>
+            <Button variant="outline" onClick={() => void mutate()}><RotateCw aria-hidden="true" />{messages.retry}</Button>
+          </div>
+        ) : !review ? (
+          <CardListSkeleton count={2} />
+        ) : (
+          <ReviewBody review={review} />
+        )}
+      </div>
+    </SideSheet>
+  );
+}
+
+function ReviewBody({ review }: { review: QualityCheckReview }) {
+  const { messages } = useShopLocale();
+  const t = messages.qc;
+  const locale = messages.locale;
+  const when = (iso: string | null) => (iso ? formatShopDateTime(iso, locale) : '—');
+  return (
+    <>
+      <SectionCard title={t.truckSection}>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 p-4 text-sm">
+          <dt className="text-muted-foreground">{t.vehicle}</dt>
+          <dd className="text-right font-medium">{formatVehicleYmm(review.truck) || '—'}</dd>
+          <dt className="text-muted-foreground">{t.mileage}</dt>
+          <dd className="tnum text-right font-medium">{formatMileage(review.truck.mileage)}</dd>
+          <dt className="text-muted-foreground">{t.vin}</dt>
+          <dd className="break-all text-right font-mono text-[13px]">{review.truck.vin ?? '—'}</dd>
+          <dt className="text-muted-foreground">{t.where}</dt>
+          <dd className="text-right font-medium">{review.location ?? <span className="font-normal text-muted-foreground">{t.notReported}</span>}</dd>
+        </dl>
+      </SectionCard>
+
+      <SectionCard title={t.whatWasDone} count={review.jobs.length}>
+        <ul className="divide-y" data-testid="qc-review-jobs">
+          {review.jobs.map((job) => (
+            <li key={job.id} className="flex gap-3 px-4 py-3">
+              {job.mechanic ? <MechanicAvatar id={job.mechanic.id} name={job.mechanic.name} /> : <span className="size-7 shrink-0" />}
+              <div className="min-w-0 flex-1 text-sm">
+                <p className="flex flex-wrap items-baseline justify-between gap-x-2">
+                  <span className="font-medium">{job.name}</span>
+                  <span className="tnum text-xs text-muted-foreground">{when(job.completedAt)}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">{[job.category, job.mechanic?.name].filter(Boolean).join(' · ')}</p>
+                {job.isPm && review.pm ? (
+                  <p className="mt-1 text-muted-foreground">{t.pmLine(formatMileage(review.pm.observedMileage), review.pm.parts.length)}</p>
+                ) : null}
+                {job.isPm && review.pm?.parts.length ? (
+                  <ul className="mt-1 text-xs text-muted-foreground">
+                    {review.pm.parts.map((part) => <li key={part.category}>{part.category}: {part.partNumber ? `${part.partNumber} — ${part.name}` : part.name}</li>)}
+                  </ul>
+                ) : null}
+                {job.note ? <p className="mt-1 italic text-foreground/90">“{job.note}”</p> : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </SectionCard>
+
+      <SectionCard title={t.inspectionSection}>
+        <p className="flex items-center gap-2 px-4 py-3 text-sm">
+          <ClipboardCheck aria-hidden="true" className={cn('size-4', review.inspection.outcome === 'not_recorded' ? 'text-muted-foreground' : 'text-success')} />
+          {t.inspection[review.inspection.outcome]}
+          {review.inspection.recordedAt ? <span className="text-xs text-muted-foreground">· {when(review.inspection.recordedAt)}</span> : null}
+        </p>
+      </SectionCard>
+
+      {review.blockers.length ? (
+        <SectionCard title={t.blockersSection} count={review.blockers.length}>
+          <ul className="divide-y text-sm">
+            {review.blockers.map((blocker) => (
+              <li key={`${blocker.startedAt}-${blocker.job}`} className="px-4 py-3">
+                <p>
+                  {blocker.job ? <b className="font-medium">{blocker.job}</b> : null}
+                  {' · '}{messages.pauseReason[blocker.reason as keyof typeof messages.pauseReason] ?? blocker.reason}
+                  {blocker.reportedBy ? ` · ${blocker.reportedBy}` : ''}
+                </p>
+                {blocker.note ? <p className="italic">“{blocker.note}”</p> : null}
+                <p className="text-xs text-muted-foreground">{t.resolvedBy(blocker.resolvedBy ?? '—', when(blocker.resolvedAt))}{blocker.resolution ? ` · “${blocker.resolution}”` : ''}</p>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      ) : null}
+
+      {review.previousReturns.length ? (
+        <SectionCard title={t.returnedBefore} count={review.previousReturns.length}>
+          <ul className="divide-y text-sm" data-testid="qc-previous-returns">
+            {review.previousReturns.map((entry) => (
+              <li key={entry.returnedAt} className="px-4 py-3">
+                {entry.note ? <p className="italic">“{entry.note}”</p> : null}
+                <p className="text-xs text-muted-foreground">{t.returnedByOn(entry.returnedBy ?? '—', when(entry.returnedAt))}</p>
+                <p className="text-xs text-muted-foreground">{t.resolvedBy(entry.resolvedBy ?? '—', when(entry.resolvedAt))}{entry.resolution ? ` · “${entry.resolution}”` : ''}</p>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      ) : null}
+    </>
+  );
+}
+
+function ReturnedTab({ items }: { items: QualityCheckReturnedItem[] }) {
+  const { messages } = useShopLocale();
+  const t = messages.qc;
+  if (!items.length) return <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{t.noneReturned}</div>;
+  return (
+    <ul className="space-y-2" data-testid="qc-returned">
+      {items.map((item) => (
+        <li key={item.workOrderId} className="space-y-1 rounded-xl border bg-card p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-semibold">{messages.truckTitle(item.truck.truckNumber)}</span>
+            <Badge variant="warning">{t.waitingForManager}</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {[formatVehicleYmm(item.truck), item.displayId, relativeTime(item.returnedAt, messages.locale)].filter(Boolean).join(' · ')}
+          </p>
+          {item.note ? <p className="italic">“{item.note}”</p> : null}
+          {item.returnedBy ? <p className="text-xs text-muted-foreground">{item.returnedBy}</p> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DoneTab({ enabled, onBack }: { enabled: boolean; onBack: () => void }) {
+  const { messages } = useShopLocale();
+  const t = messages.qc;
+  const { data, error, mutate } = useQualityCheckHistory(enabled);
+  const dayOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(iso));
+  const today = dayOf(new Date().toISOString());
+  const items = data?.items ?? [];
+  const groups = [
+    { label: t.doneToday, items: items.filter((item) => dayOf(item.at) === today) },
+    { label: t.doneEarlier, items: items.filter((item) => dayOf(item.at) !== today) },
+  ].filter((group) => group.items.length);
+  return (
+    <section data-testid="qc-done">
+      <PageHeader className="mb-4" title={t.doneTitle} subtitle={t.doneHint} />
+      {error ? (
+        <div className="space-y-2" role="alert">
+          <InlineAlert>{apiErrorMessage(error, messages, t.loadError)}</InlineAlert>
+          <Button variant="outline" onClick={() => void mutate()}><RotateCw aria-hidden="true" />{messages.retry}</Button>
+        </div>
+      ) : null}
+      {!data && !error ? <CardListSkeleton count={2} /> : null}
+      {data && !items.length ? (
+        <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+          <p>{t.noneDone}</p>
+          <Button variant="ghost" className="mt-1" onClick={onBack}><ClipboardCheck aria-hidden="true" />{t.tabReview}</Button>
+        </div>
+      ) : null}
+      {groups.map((group) => (
+        <div key={group.label}>
+          <p className="flex items-center gap-2 pb-1 pt-3 text-xs font-medium text-muted-foreground">{group.label}<CountChip>{group.items.length}</CountChip></p>
+          <ul className="divide-y rounded-xl border bg-card">
+            {group.items.map((item) => (
+              <li key={`${item.workOrderId}-${item.at}`} className="flex items-start gap-3 px-3 py-3 text-sm">
+                {item.outcome === 'approved'
+                  ? <CheckCheck aria-hidden="true" className="mt-0.5 size-4 text-success" />
+                  : <Undo2 aria-hidden="true" className="mt-0.5 size-4 text-warning-foreground dark:text-warning" />}
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">
+                    {messages.truckTitle(item.truck.truckNumber)} <span className="font-mono text-xs text-muted-foreground">{item.displayId}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.outcome === 'approved' ? t.approvedLabel : t.returnedLabel} · {formatShopDateTime(item.at, messages.locale)}
+                  </p>
+                  {item.note ? <p className="mt-0.5 truncate italic text-muted-foreground">“{item.note}”</p> : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
   );
 }

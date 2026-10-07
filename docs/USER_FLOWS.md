@@ -397,10 +397,15 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 **Quién:** las dos personas de Safety, con cuenta propia.
 
 **Flujo**
-1. Entra y cae en **Quality Check**: la lista de camiones donde todo lo demás
-   ya está hecho, con qué se hizo y quién.
-2. **Tomar** un camión.
-3. Revisa. **Aprobar**, o **Devolver** escribiendo qué encontró.
+1. Entra y cae en **Quality Check** (pestañas *To review · Returned · Done*): los
+   camiones donde todo lo demás ya está hecho, **lo más urgente primero** (sale
+   pronto según Dispatch → Critical/High → el que lleva más tiempo listo).
+2. **Tomar** un camión: se abre su **revisión** con qué se hizo (quién, cuándo y
+   la nota de cierre), el PM (millaje y piezas), la inspección, los bloqueos que
+   tuvo y las devoluciones anteriores.
+3. **Aprobar** (pide confirmar), o **Devolver** escribiendo qué encontró y, si
+   quiere, en qué Job. Si no puede seguir, **Let go** lo deja libre para la otra
+   persona.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
@@ -416,6 +421,12 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Un mecánico elige el motivo "Devuelto por Safety" | No se le ofrece y la API lo rechaza | ✅ | QC4 |
 | El Manager asigna el QC a alguien de Safety | Puede; esa persona lo ve como suyo | ✅ | QC5, E9b |
 | Idioma | La pantalla existe en inglés y español | 👁 revisado 2026-09-29 | — |
+| Toca Approve | Pide confirmar antes ("Approve Truck 606?") | ✅ | e2e qc-redesign |
+| Tomó un camión y no puede seguir | **Let go**: el QC queda libre y la otra persona lo puede tomar; queda en el Activity Log | ✅ | QC6 |
+| Quiere saber qué se le hizo | La revisión muestra los Jobs con quién, cuándo y su nota, el PM, la inspección, los bloqueos y las devoluciones anteriores; solo de camiones de su lista | ✅ | QC7 |
+| Devuelve diciendo qué Job falló | La nota empieza con el Job ("Alignment: …") y el Manager la ve así | ✅ | QC8 |
+| "¿Ya revisé el 606?" | Pestaña **Done**: lo que aprobó o devolvió en 7 días, lo más nuevo primero | ✅ | QC9 |
+| Hay un Critical y uno listo hace más tiempo | El Critical va primero | ✅ | QC10 |
 
 ---
 

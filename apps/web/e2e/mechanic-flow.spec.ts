@@ -76,9 +76,11 @@ test.describe('Mechanic P0 critical path', () => {
 
   test('LTR-186 / D20, D21: the home card and the detail say why my clock stopped and Continue reopens it', async ({ page }) => {
     const stopped = { reason: 'switched_truck', elsewhereWorkOrder: { id: '00000000-0000-4000-8000-000000000199', displayId: 'WO-0199', truckNumber: '944' } };
+    let stoppedId: string | null = null;
     await page.route('**/api/work-orders?*', async (route) => {
       const response = await route.fetch();
       const body = await response.json();
+      stoppedId = body.active[0]?.id ?? null;
       body.active = body.active.map((item: Record<string, unknown>, index: number) => (index === 0 ? { ...item, myClockStopped: stopped } : item));
       await route.fulfill({ response, json: body });
     });
@@ -92,8 +94,10 @@ test.describe('Mechanic P0 critical path', () => {
     await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     await expect(page.getByTestId('clock-stopped-tap-continue').first()).toHaveText('Your clock is on Truck 944 · tap Continue');
+    // Block A (MG4): the card that says "tap Continue" offers Continue, not "View Work".
+    await expect(page.getByRole('button', { name: /^Continue truck / }).first()).toBeVisible();
 
-    await page.getByRole('link', { name: /View Work/i }).first().click();
+    await page.goto(`/work-orders/${stoppedId}`);
     await expect(page.getByTestId('clock-stopped')).toHaveText("Yesterday's work is still open · tap Continue");
     await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
   });

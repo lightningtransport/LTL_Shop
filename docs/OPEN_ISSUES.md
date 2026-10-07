@@ -291,9 +291,9 @@ Revisión de `/qc` con la base demo local, antes de proponer su rediseño (como 
 | # | Clase | Problema | Estado |
 |---|---|---|---|
 | Q1 | B | **La lista no cambia al tocar Take, Approve o Return.** La API arma la respuesta leyendo la base fuera de la transacción, antes de guardar el cambio, y devuelve la lista vieja: después de "Take" la tarjeta sigue diciendo "Take" (con el aviso "Truck 606 is yours"); después de "Approve" el camión sigue en la lista. Se corrige al recargar o a los 20 s. Las pruebas reales pedían la lista con un GET aparte y no lo veían. | Arreglo: la respuesta lee dentro de la misma transacción; `test:real` revisa la respuesta de cada botón. |
-| Q2 | C | **Safety no ve qué se le hizo al camión** que va a aprobar: solo nombres de Jobs y de mecánicos (UX-1-001). | Pendiente: vista de revisión de la propuesta. |
-| Q4 | C | **Approve es un toque, sin confirmar**, y Safety no lo puede deshacer (UX-1-002). | Decidido (D-QC1, 2026-10-07): confirmar en una hoja. Se construye con el rediseño. |
-| Q5 | B | **Un camión tomado no se puede soltar**: si Safety lo toma y se va, queda trabado hasta que el Manager reasigne (UX-1-007). | Decidido (D-QC2, 2026-10-07): "Let go". Se construye con el rediseño. |
+| ~~Q2~~ | C | **Safety no ve qué se le hizo al camión** que va a aprobar: solo nombres de Jobs y de mecánicos (UX-1-001). | **Hecho** (rediseño de Safety, rama `claude/qc-redesign`, 2026-10-07). |
+| ~~Q4~~ | C | **Approve es un toque, sin confirmar**, y Safety no lo puede deshacer (UX-1-002). | **Hecho** (rediseño de Safety, rama `claude/qc-redesign`, 2026-10-07). |
+| ~~Q5~~ | B | **Un camión tomado no se puede soltar**: si Safety lo toma y se va, queda trabado hasta que el Manager reasigne (UX-1-007). | **Hecho** (rediseño de Safety, rama `claude/qc-redesign`, 2026-10-07). |
 | ~~Q9~~ | C | **Lo escrito al devolver se pierde** al cerrar la hoja o si vence la sesión (UX-1-006, UX-6-003). | **Hecho** (bloque A, #257, 2026-10-07). |
 | Q10 | C | **Sin conexión salen dos avisos rojos** que dicen que la lista no cargó, encima de la lista con "Take" activo (UX-6-002). | Pendiente: aviso único de sin conexión. |
 | ~~Q11~~ | E | **Los Jobs y los mecánicos cambian de orden** entre cargas: `addedAt` empata y no hay desempate (UX-1-009). | **Hecho** (bloque A, #257, 2026-10-07). |

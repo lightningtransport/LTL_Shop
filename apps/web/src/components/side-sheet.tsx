@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { X } from 'lucide-react';
 import { Button } from './ui';
@@ -29,6 +29,19 @@ export function SideSheet({
   children: ReactNode;
   testId?: string;
 }) {
+  // Stage QC-3: a toast rises above the sheet's fixed footer instead of covering its buttons (UX-1-008).
+  const hasFooter = Boolean(footer);
+  useEffect(() => {
+    if (!open || !hasFooter) return;
+    const root = document.documentElement;
+    const previous = root.style.getPropertyValue('--toast-lift');
+    root.style.setProperty('--toast-lift', '4.5rem');
+    return () => {
+      if (previous) root.style.setProperty('--toast-lift', previous);
+      else root.style.removeProperty('--toast-lift');
+    };
+  }, [open, hasFooter]);
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogPrimitive.Portal>
