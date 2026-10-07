@@ -665,6 +665,8 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
   (API, solo servidor): con las dos, la API crea y reinicia cuentas de
   Supabase Auth desde el roster (D22). Sin ellas, el roster funciona sin
   cuentas de acceso (`temporaryPassword: null`).
+  Si una persona quedó sin cuenta (se creó sin esas variables), **Reset
+  password** se la crea y muestra la contraseña temporal (G10, 2026-10-07).
 - `CRON_SECRET` (API, solo servidor): secreto con el que Vercel Cron llama
   `GET /api/internal/day-close` (respaldo del cierre del día, D20). Vercel lo
   manda solo en el encabezado `Authorization: Bearer …`.
