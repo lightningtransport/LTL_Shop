@@ -121,7 +121,13 @@ export function QualityCheckPage() {
   return (
     <div>
       <HomeTopBar />
-      <nav aria-label={t.navLabel} className="mb-4 grid grid-cols-3 gap-1 rounded-xl border bg-card p-1" data-testid="qc-tabs">
+      {/* D-MG1: on phones the tabs sit at the bottom, like the mechanics'; from `sm` they stay on top. */}
+      <nav
+        aria-label={t.navLabel}
+        data-testid="qc-tabs"
+        data-bottom-tabs=""
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t bg-card pb-[var(--app-safe-bottom)] sm:static sm:mb-4 sm:gap-1 sm:rounded-xl sm:border sm:p-1"
+      >
         {tabs.map(({ key, label, count, Icon }) => (
           <button
             key={key}
@@ -129,13 +135,13 @@ export function QualityCheckPage() {
             aria-current={tab === key ? 'page' : undefined}
             onClick={() => goTab(key)}
             className={cn(
-              'flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-1.5 text-sm font-medium transition',
-              tab === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+              'flex min-h-14 flex-col items-center justify-center gap-0.5 whitespace-nowrap px-1.5 text-xs font-medium transition sm:min-h-11 sm:flex-row sm:gap-1.5 sm:rounded-lg sm:text-sm',
+              tab === key ? 'text-primary sm:bg-primary sm:text-primary-foreground' : 'text-muted-foreground hover:text-foreground sm:hover:bg-accent',
             )}
           >
-            <Icon aria-hidden="true" className="hidden size-4 min-[400px]:block" />
-            <span>{label}</span>
-            {count !== null ? <span className="tnum text-xs opacity-80">{count}</span> : null}
+            <Icon aria-hidden="true" className="size-5 sm:size-4" />
+            <span>{label}{count !== null ? <span className="tnum ml-1 opacity-80 sm:hidden">· {count}</span> : null}</span>
+            {count !== null ? <span className="tnum hidden text-xs opacity-80 sm:inline">{count}</span> : null}
           </button>
         ))}
       </nav>
