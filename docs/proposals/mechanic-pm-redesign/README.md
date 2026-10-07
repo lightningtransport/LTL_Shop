@@ -243,9 +243,11 @@ y no se pide:**
 Ningún campo existente cambia. Las reglas (un PM a la vez, millaje, salto, al menos una pieza, solo
 lectura) siguen en la API como hoy.
 
-## 6. Decisiones pendientes del dueño
+## 6. Decisiones del dueño
 
-| # | Pregunta | Recomendación |
+**Decididas el 2026-10-07: todas como la recomendación (D-PM1…D-PM5).** Se construye como dice la columna de la derecha.
+
+| # | Pregunta | Decisión |
 |---|---|---|
 | D-PM1 | **¿Al activar una categoría se elige sola la pieza más usada para ese modelo?** | **Sí, con el número a la vista** ("Most used on this model · 11 of 12 PMs") y el select para cambiarla. Ahorra abrir un select en cada pieza. Sin historial para el modelo, no se elige nada y hay que escogerla; Finish lo dice. La confirmación de Finish muestra lo elegido antes de que quede fijo. |
 | D-PM2 | **¿Una sola pieza por categoría, como hoy?** | **Sí.** Los dos filtros de aceite ya son categorías distintas ("Oil Filter 1 Unit" y "2 Unit"). Si un día cambian dos piezas distintas de la misma categoría, se ve con Daniel; no hace falta para esta pantalla. |
