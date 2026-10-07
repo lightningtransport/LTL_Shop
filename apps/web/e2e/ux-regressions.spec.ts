@@ -825,7 +825,7 @@ test.describe('My Assigned Work presentation', () => {
     await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Waiting on Manager' })).toBeVisible();
-    await expect(page.getByText('You finished your part on 1 Work Order. The Manager closes it.')).toBeVisible();
+    await expect(page.getByText('You finished your part on 1 Work Order. The Manager closes it when every step is done.')).toBeVisible();
     const waitingCard = page.locator('.card').filter({ hasText: 'WO-READY-1' });
     await expect(waitingCard.getByRole('link', { name: /^View Details truck .*, Work Order WO-READY-1$/ })).toBeVisible();
     const activeCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
