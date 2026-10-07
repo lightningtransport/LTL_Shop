@@ -415,8 +415,9 @@ const copy: Record<ShopLocale, Copy> = {
     additionalDetails: 'Additional details',
     unableToSavePmDetails: 'Unable to save PM service details.',
     waitingOnManager: 'Waiting on Manager',
-    waitingOnManagerHint: (count) => `You finished your part on ${count} ${count === 1 ? 'Work Order' : 'Work Orders'}. The Manager closes ${count === 1 ? 'it' : 'them'}.`,
-    waitingOnManagerBody: 'Jobs are done. Your Shop Manager closes this Work Order. You can still report a blocker if something is stopping the Truck.',
+    // G7: other mechanics may still have steps open (PM, Quality Check), so the Manager closes it only when every step is done.
+    waitingOnManagerHint: (count) => `You finished your part on ${count} ${count === 1 ? 'Work Order' : 'Work Orders'}. The Manager closes ${count === 1 ? 'it' : 'each one'} when every step is done.`,
+    waitingOnManagerBody: 'Your Jobs are done. Your Shop Manager closes this Work Order when every step is done. You can still report a blocker if something is stopping the Truck.',
     assignedToYou: 'Assigned to you',
     assignedTo: (name) => `Assigned to ${name}`,
     completedByYou: 'Completed by you',
@@ -749,9 +750,9 @@ const copy: Record<ShopLocale, Copy> = {
     unableToSavePmDetails: 'No se pudieron guardar los detalles del servicio de PM.',
     waitingOnManager: 'Espera al Manager',
     waitingOnManagerHint: (count) => count === 1
-      ? 'Terminaste tu parte en 1 Work Order. El Manager la cierra.'
-      : `Terminaste tu parte en ${count} Work Orders. El Manager las cierra.`,
-    waitingOnManagerBody: 'Los Jobs están hechos. El Shop Manager cierra este Work Order. Si algo detiene la unidad, aún puedes reportar un bloqueo.',
+      ? 'Terminaste tu parte en 1 Work Order. El Manager la cierra cuando todos los pasos estén hechos.'
+      : `Terminaste tu parte en ${count} Work Orders. El Manager cierra cada una cuando todos los pasos estén hechos.`,
+    waitingOnManagerBody: 'Tus Jobs están hechos. El Shop Manager cierra este Work Order cuando todos los pasos estén hechos. Si algo detiene la unidad, aún puedes reportar un bloqueo.',
     assignedToYou: 'Asignado a ti',
     assignedTo: (name) => `Asignado a ${name}`,
     completedByYou: 'Completado por ti',
