@@ -329,7 +329,7 @@ Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta 
 | ~~PM5~~ | C | **La regla "un PM a la vez" se descubre al tocar**: la tarjeta pausada del inicio, Create PM service y "Start PM service" en otro camión la ofrecen como botón principal y responden con error (UX-1-001, UX-1-002, UX-1-003). W14 lo arregló solo en "Ready to Start". | **Hecho** (bloque A, #256, 2026-10-07). |
 | ~~PM6~~ | C | **Las notas no se guardan solas como dice HU-PM1**: se publican con "Add Note" y lo no enviado se pierde al salir (UX-7-001). | **Hecho** (bloque A, #257, 2026-10-07). |
 
-## 1m. Setup del Admin: Shop workflow, Job Catalog, Mechanics (2026-10-07) — **ABIERTO**
+## 1m. Setup del Admin: Shop workflow, Job Catalog, Mechanics (2026-10-07) — **ABIERTO** · Linear [LTR-196](https://linear.app/ltransl/issue/LTR-196) (etapa 0), [LTR-197](https://linear.app/ltransl/issue/LTR-197) (S1), [LTR-198](https://linear.app/ltransl/issue/LTR-198) (S2), [LTR-199](https://linear.app/ltransl/issue/LTR-199) (S3), [LTR-200](https://linear.app/ltransl/issue/LTR-200) (S4)
 
 Revisión pedida por el dueño el 2026-10-07. Se usaron las skills audit-ux 0, 1, 3, 4, 5, 6, 7 y 9 en la base demo local `ltl_shop_setup_demo`, con la cuenta del Manager. Todo está en `docs/ux-audit/admin-setup/`; el resumen es `09-informe-final.md`.
 
