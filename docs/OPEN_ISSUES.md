@@ -283,6 +283,14 @@ claro/oscuro, iPhone y escritorio, 27 pantallas cada vez) sin scroll lateral ni 
 | G8 | B | **Reloj de 38 h:** MG tiene en WO-004 una sesión del 2026-09-29 9:15 a. m. al 2026-09-30 11:21 p. m. El cierre del día (D20, LTR-186) no estaba en la API de producción hasta el 2026-10-06. | Además, **`CRON_SECRET` no está configurado en la API de producción**: `GET /api/internal/day-close` responde 503 "CRON_SECRET is not configured", así que el respaldo de Vercel Cron no corre. **`CRON_SECRET` hecho 2026-10-07:** el dueño lo agregó en Vercel (ltl-shop-api, Production, Secret) y volvió a publicar; `/api/internal/day-close` sin secreto ahora responde 401. Falta corregir la sesión como la habría cortado D20 (fin el 2026-09-29 a las 5:00 p. m.), desde History › Times con sesión de Manager. |
 | G9 | B | **Mechanics › el detalle de una persona de Safety dice "This mechanic could not be found"**: la lista incluye Safety (LTR-185) pero `GET /admin/mechanics/:id` solo buscaba Standard y PM, así que no se podía abrir ni editar. Visto al crear la primera cuenta de Safety en producción (2026-10-07). Editar y reiniciar la contraseña ya aceptaban Safety. | Arreglo: el detalle usa el mismo filtro que la lista. |
 
+## 1j. Pantalla de Safety (Quality Check) (2026-10-07) — **EN CURSO**
+
+Revisión de `/qc` con la base demo local, antes de proponer su rediseño (como las Etapas 1–8 del Admin).
+
+| # | Clase | Problema | Estado |
+|---|---|---|---|
+| Q1 | B | **La lista no cambia al tocar Take, Approve o Return.** La API arma la respuesta leyendo la base fuera de la transacción, antes de guardar el cambio, y devuelve la lista vieja: después de "Take" la tarjeta sigue diciendo "Take" (con el aviso "Truck 606 is yours"); después de "Approve" el camión sigue en la lista. Se corrige al recargar o a los 20 s. Las pruebas reales pedían la lista con un GET aparte y no lo veían. | Arreglo: la respuesta lee dentro de la misma transacción; `test:real` revisa la respuesta de cada botón. |
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):
