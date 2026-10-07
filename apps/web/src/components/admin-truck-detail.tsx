@@ -176,7 +176,8 @@ function TruckDetailBody({
 
   const chip = truckStatusChip(workPlan, data.operationalStatus);
   // Stage 8 (mockup): "Not Ready · PM" names the step that holds the Truck.
-  const current = steps.find((step) => step.state !== 'done' && step.state !== 'not_applicable');
+  // G3: a missing mandatory step is what holds the Truck, even when an earlier step is still pending.
+  const current = steps.find((step) => step.state === 'missing') ?? steps.find((step) => step.state !== 'done' && step.state !== 'not_applicable');
   const chipLabel = {
     ready_to_go: messages.workPlanReady,
     ready_to_close: messages.readinessReadyToClose,

@@ -596,7 +596,7 @@ export function AdminWorkOrderDetail({
         </SectionCard>
 
         <SectionCard
-          title={messages.recentRepairHistory}
+          title={messages.repairHistorySection}
           action={(
             <div className="w-44 shrink-0">
               <Select aria-label={messages.filterByCategory} className="h-10 pl-2.5 text-base text-muted-foreground sm:h-9 sm:text-sm" value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)}>

@@ -6,6 +6,11 @@
  *   npm run prisma:reset-demo-work-orders --workspace=@ltl-shop/api -- --apply           # writes, production
  *   npm run prisma:reset-demo-work-orders --workspace=@ltl-shop/api -- --local --apply   # writes, apps/api/.env
  *   ... -- --trucks=905,968,922,931,944,957,973,986,991                                   # pick the trucks (in scenario order)
+ *   npm run prisma:demo-local --workspace=@ltl-shop/api                                    # local demo database, every scenario
+ *
+ * `--demo` (used by `prisma:demo-local`): the local `ltl_shop_demo` database (DEMO_DATABASE_URL), more trucks and
+ * the extra scenarios of the mockups (official pause, external shop, helper, cancelled Job and Work Order, missing
+ * steps, work request). It refuses any host other than this machine.
  *
  * Production reads apps/api/.env.production.local (gitignored) and refuses to run while any active user is
  * outside the LTR-160 test roster: once real users are live, their Work Orders are not demo data.
@@ -23,7 +28,10 @@ import { resolve } from 'node:path';
 import { config } from 'dotenv';
 import {
   BlockerReason,
+  JobExternalKind,
+  PauseReason,
   Priority,
+  WorkOrderNoteKind,
   ShopWorkflowStepKey,
   WorkPlanInspectionOutcome,
   WorkPlanJobLane,
@@ -41,16 +49,28 @@ import type { AuthUser } from '../src/auth/auth.guard';
 import { TEST_ROSTER } from '../src/admin/test-roster-plan';
 import { WORK_ORDER_ACTIVITY_WHERE, wipeWorkOrders } from './wipe-work-orders';
 
-const local = process.argv.includes('--local');
+const demo = process.argv.includes('--demo');
+const local = demo || process.argv.includes('--local');
 const apply = process.argv.includes('--apply');
 const trucksArg = process.argv.find((arg) => arg.startsWith('--trucks='))?.slice('--trucks='.length);
 
-const envFile = resolve(__dirname, local ? '../.env' : '../.env.production.local');
-if (!existsSync(envFile)) {
-  console.error(`Missing ${envFile}. Put the ${local ? 'local' : 'production'} DATABASE_URL (and DIRECT_URL) there.`);
-  process.exit(1);
+if (demo) {
+  const url = process.env.DEMO_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ltl_shop_demo';
+  const parsed = new URL(url);
+  if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname) || !/demo/i.test(parsed.pathname)) {
+    console.error(`Refusing --demo on ${parsed.hostname}${parsed.pathname}: only a local database whose name contains "demo".`);
+    process.exit(1);
+  }
+  process.env.DATABASE_URL = url;
+  process.env.DIRECT_URL = url;
+} else {
+  const envFile = resolve(__dirname, local ? '../.env' : '../.env.production.local');
+  if (!existsSync(envFile)) {
+    console.error(`Missing ${envFile}. Put the ${local ? 'local' : 'production'} DATABASE_URL (and DIRECT_URL) there.`);
+    process.exit(1);
+  }
+  config({ path: envFile, override: true });
 }
-config({ path: envFile, override: true });
 
 // The API runs next to the database; this script runs from a laptop, so each interactive transaction
 // needs far more than Prisma's 5 s default for the same round trips.
@@ -212,8 +232,143 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
+/** `--demo` only: the other situations the mockups show. Inserted before the running PM (D2). */
+const DEMO_SCENARIOS: Scenario[] = [
+  {
+    key: 'DEMO-paused',
+    title: 'En pausa oficial: esperando aprobación',
+    check: 'Manager: Dashboard "Blocked or paused" con Resume; la WO dice "Paused · Waiting for Approval".',
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, { priority: Priority.HIGH, notes: 'El cliente debe aprobar el presupuesto.' });
+      await inspect(actors, truck, WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
+      await assignMandatory(actors, id);
+      await workOrders.start(actors.alignment, id);
+      await admin.pauseWorkOrder(actors.manager, id, { reason: PauseReason.WAITING_FOR_APPROVAL, notes: 'Presupuesto enviado al cliente.' });
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-external-part',
+    title: 'Pieza en taller externo',
+    check: 'La fila del Job dice "Part out" con la nota y "Returned"; el Truck lo muestra como externo.',
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, {});
+      await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
+      await addShopJobs(actors, truck, [{ category: 'Electrical & Starting', job: 'Battery', assignee: actors.general }]);
+      await assignMandatory(actors, id);
+      await finishJob(actors.alignment, id, WorkPlanJobLane.ALIGNMENT, 'Alineación dentro de especificación.');
+      await finishJob(actors.detailing, id, WorkPlanJobLane.DETAILING, 'Cabina y exterior limpios.');
+      await admin.sendJobExternal(actors.manager, id, await jobId(id, 'Battery'), { kind: JobExternalKind.PART, note: 'Alternador a Diesel Pro, regresa el viernes.', ...meta(await version(id)) });
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-external-truck',
+    title: 'Camión fuera del taller (taller externo)',
+    check: 'Yard: "Out of shop · Air Bag Replacement"; la WO dice "Truck out".',
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, { priority: Priority.CRITICAL });
+      await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
+      await addShopJobs(actors, truck, [{ category: 'Suspension & Steering', job: 'Air Bag Replacement', assignee: actors.general }]);
+      await assignMandatory(actors, id);
+      await admin.sendJobExternal(actors.manager, id, await jobId(id, 'Air Bag Replacement'), { kind: JobExternalKind.TRUCK, note: 'Body shop en la 5ta, regresa el lunes.', ...meta(await version(id)) });
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-helper',
+    title: 'Job con ayudante',
+    check: 'Bajo Brake Inspection aparece "Brake Inspection · helper" con "Helps …".',
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, {});
+      await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
+      await addShopJobs(actors, truck, [{ category: 'Air & Brake System', job: 'Brake Inspection', assignee: actors.general }]);
+      await assignMandatory(actors, id);
+      await admin.addHelperJob(actors.manager, id, await jobId(id, 'Brake Inspection'), { mechanicId: actors.detailing.id, ...meta(await version(id)) });
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-cancelled-job-request',
+    title: 'Job cancelado y pedido de trabajo abierto',
+    check: 'Lights en "Done and cancelled" con su motivo; Notas con un pedido "Work request · Open" y Mark handled.',
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, {});
+      await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
+      await addShopJobs(actors, truck, [
+        { category: 'Electrical & Starting', job: 'Lights', assignee: actors.general },
+        { category: 'Air & Brake System', job: 'Air Leak', assignee: actors.general },
+      ]);
+      await assignMandatory(actors, id);
+      await admin.cancelJob(actors.manager, await jobId(id, 'Lights'), { reason: 'Las luces funcionan; fue un fusible.', ...meta(await version(id)) });
+      await admin.addNote(actors.manager, id, { body: 'Revisar también la presión de las llantas.' });
+      await workOrders.addNote(actors.general, id, { kind: WorkOrderNoteKind.WORK_REQUEST, body: 'El guardafango izquierdo está roto, ¿lo cambiamos?' });
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-missing-steps',
+    title: 'Le falta un paso obligatorio',
+    check: 'Truck y WO: "This Work Order is missing: Detailing" con "Add missing steps".',
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, {});
+      await inspect(actors, truck, WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
+      // Demo only: a Work Order from before the mandatory steps (the API never removes one).
+      await prisma.workOrderJob.delete({ where: { id: await laneJobId(id, WorkPlanJobLane.DETAILING) } });
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-cancelled',
+    title: 'Work Order cancelado',
+    check: 'La WO dice "Cancelled" con su motivo; el Truck queda sin WO abierta.',
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, {});
+      await admin.cancelWorkOrder(actors.manager, id, { reason: 'Duplicado: el camión ya tenía otra orden.', ...meta(await version(id)) });
+      return id;
+    },
+  },
+];
+
+/** `--demo`: more trucks (a few stay with no Work Order: "No open Work Order"). */
+const DEMO_TRUCKS = [
+  { truckNumber: '601', make: 'Mack', model: 'Anthem', year: 2024, mileage: 367393, vin: '1M1AN4GY0RM000601', location: 'Orient Rd, Tampa, FL 33610' },
+  { truckNumber: '602', make: 'Volvo', model: 'VNL 860', year: 2024, mileage: 212040, vin: '4V4NC9EH0RN000602', location: 'High Desert Rd, Barstow, CA 92347' },
+  { truckNumber: '603', make: 'Freightliner', model: 'Cascadia', year: 2023, mileage: 288610, vin: '3AKJHHDR0PS000603', location: 'Orient Rd, Tampa, FL 33610' },
+  { truckNumber: '604', make: 'Kenworth', model: 'T680', year: 2025, mileage: 98120, vin: '1XKYD49X0SJ000604', location: null },
+  { truckNumber: '605', make: 'Volvo', model: 'VNL 760', year: 2022, mileage: 401200, vin: '4V4NC9EH0NN000605', location: 'I-75 Exit 260, Tampa, FL' },
+  { truckNumber: '606', make: 'Freightliner', model: 'Cascadia', year: 2024, mileage: 154300, vin: '3AKJHHDR0RS000606', location: null },
+  { truckNumber: '607', make: 'Kenworth', model: 'T680', year: 2023, mileage: 176500, vin: '1XKYD49X0PJ000607', location: null },
+  { truckNumber: '608', make: 'Volvo', model: 'VNL 860', year: 2025, mileage: 45200, vin: '4V4NC9EH0SN000608', location: 'Orient Rd, Tampa, FL 33610' },
+  { truckNumber: '609', make: 'Freightliner', model: 'Cascadia', year: 2022, mileage: 333000, vin: '3AKJHHDR0NS000609', location: null },
+  { truckNumber: '610', make: 'Peterbilt', model: '579', year: 2026, mileage: 21000, vin: '1XPBD49X6TD000610', location: null },
+];
+
+async function upsertDemoTrucks() {
+  for (const truck of DEMO_TRUCKS) {
+    const data = {
+      make: truck.make,
+      model: truck.model,
+      year: truck.year,
+      mileage: truck.mileage,
+      vin: truck.vin,
+      company: 'Lightning',
+      owner: 'Demo Fleet LLC',
+      samsaraTruckLocation: truck.location,
+      samsaraLastConnectedDate: truck.location ? new Date() : null,
+    };
+    await prisma.truck.upsert({ where: { truckNumber: truck.truckNumber }, update: data, create: { truckNumber: truck.truckNumber, ...data } });
+  }
+}
+
+
 function meta(expectedVersion: number) {
   return { expectedVersion, idempotencyKey: randomUUID() };
+}
+
+/** With `--demo`, the extra scenarios go before the last one (the running PM, D2). */
+function activeScenarios() {
+  return demo ? [...SCENARIOS.slice(0, -1), ...DEMO_SCENARIOS, SCENARIOS[SCENARIOS.length - 1]] : SCENARIOS;
 }
 
 async function version(workOrderId: string) {
@@ -373,7 +528,7 @@ async function pickTrucks(): Promise<TruckRow[]> {
   const select = { id: true, truckNumber: true, make: true, model: true, mileage: true } as const;
   if (trucksArg) {
     const numbers = trucksArg.split(',').map((value) => value.trim()).filter(Boolean);
-    if (numbers.length !== SCENARIOS.length) throw new Error(`--trucks needs ${SCENARIOS.length} truck numbers, got ${numbers.length}`);
+    if (numbers.length !== activeScenarios().length) throw new Error(`--trucks needs ${activeScenarios().length} truck numbers, got ${numbers.length}`);
     const rows = await prisma.truck.findMany({ where: { truckNumber: { in: numbers } }, select });
     const missing = numbers.filter((number) => !rows.some((row) => row.truckNumber === number));
     if (missing.length) throw new Error(`Trucks not found: ${missing.join(', ')}`);
@@ -386,7 +541,7 @@ async function pickTrucks(): Promise<TruckRow[]> {
   const fits = (truck: TruckRow) => parts.some((part) =>
     (workOrders as unknown as { partFitsTruck: (f: unknown, t: unknown) => boolean }).partFitsTruck(part.fitments, truck));
   const picked: TruckRow[] = [];
-  for (const scenario of SCENARIOS) {
+  for (const scenario of activeScenarios()) {
     const truck = candidates.find((row) => !picked.includes(row) && (!scenario.needsFinishedPm || fits(row)));
     if (!truck) throw new Error(`Not enough trucks with mileage (and a fitting PM part) for scenario ${scenario.key}`);
     picked.push(truck);
@@ -415,6 +570,7 @@ async function main() {
   console.log('\nActors');
   for (const [role, user] of Object.entries(actors)) console.log(`  ${role.padEnd(10)} ${user.name} <${user.email}>`);
 
+  if (demo && apply) await upsertDemoTrucks();
   const trucks = await pickTrucks();
   const [workOrderCount, openCount, assessments, serviceEvents, mileageAdjustments, activityLogs] = await Promise.all([
     prisma.workOrder.count(),
@@ -432,7 +588,7 @@ async function main() {
   console.log(`  Activity Log rows      ${activityLogs}`);
 
   console.log('\nBuild');
-  SCENARIOS.forEach((scenario, index) => {
+  activeScenarios().forEach((scenario, index) => {
     const truck = trucks[index];
     console.log(`  Truck ${truck.truckNumber.padEnd(6)} ${scenario.key.padEnd(20)} ${scenario.title}`);
   });
@@ -446,7 +602,7 @@ async function main() {
   console.log('\nDeleted.');
 
   console.log('\nDemo');
-  for (const [index, scenario] of SCENARIOS.entries()) {
+  for (const [index, scenario] of activeScenarios().entries()) {
     const truck = trucks[index];
     try {
       const id = await scenario.build(truck, actors);

@@ -256,19 +256,20 @@ export function AdminJobTable({
       } else if (isPmJob) {
         action = <PmServiceMenu job={job} messages={messages} disabled={pending} onChange={(catalogJobId) => onPmServiceChange(job.id, catalogJobId)} />;
       } else {
-        // LTR-164 (#2) / D15 / D19: primary only on Quality Check (the Manager's fallback for Safety); quiet elsewhere.
+        // LTR-164 (#2) / D15 / D19: primary only on Quality Check (the Manager's fallback for Safety); outline elsewhere.
+        // G2 (2026-10-06): a borderless "✓ Complete" read as a status ("it is completed"); it is a button with a border
+        // and says "Mark complete", so it never looks like the Job's state.
         action = (
           <Button
             type="button"
             size="sm"
-            variant={isQualityCheck ? 'default' : 'ghost'}
-            className={cn('h-10 lg:h-8', !isQualityCheck && 'text-foreground')}
+            variant={isQualityCheck ? 'default' : 'outline'}
+            className="h-10 lg:h-8"
             disabled={pending}
             aria-label={`${messages.completeJobAction}: ${name}`}
             onClick={() => onComplete(job.id)}
           >
-            {isQualityCheck ? null : <CircleCheck aria-hidden="true" />}
-            {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.jobCompleteShort}
+            {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.completeJobAction}
           </Button>
         );
       }

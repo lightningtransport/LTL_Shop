@@ -284,7 +284,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByTestId('truck-stepper')).toBeVisible();
     const planList = page.getByRole('list', { name: 'Jobs in this Work Order' });
     await expect(planList.getByText('Brake Inspection')).toBeVisible();
-    await expect(planList.getByText('Pending').first()).toBeVisible();
+    await expect(planList.getByText('To do').first()).toBeVisible();
     await expect(page.getByTestId('operational-counts')).toHaveText(/1 job left.*0 mechanics/);
     await expect(page.getByTestId('truck-work-order-chip')).toContainText(/WO-WP1.*Created/);
     // T4: each Job opens its row on the Work Order, which comes back to this Truck.
