@@ -22,7 +22,7 @@ describe('Work Order workspace capabilities', () => {
     const service = new WorkOrdersService({ workOrder: { findMany } } as never, { log: vi.fn() } as never);
 
     await expect(service.listForMechanic(user([AppCapability.MECHANIC_STANDARD]), MechanicMode.STANDARD)).resolves.toEqual({
-      created: [], active: [], paused: [], completed: [],
+      myClock: null, created: [], active: [], paused: [], completed: [],
     });
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ primaryCategory: { name: { not: 'PM' } } }),
@@ -35,7 +35,7 @@ describe('Work Order workspace capabilities', () => {
     const pm = user([AppCapability.MECHANIC_PM]);
 
     await expect(service.listForMechanic(pm, MechanicMode.PM)).resolves.toEqual({
-      created: [], active: [], paused: [], completed: [],
+      myClock: null, created: [], active: [], paused: [], completed: [],
     });
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({

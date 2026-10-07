@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import useSWR from 'swr';
 import type {
+  MechanicClockDto,
   AppCapability,
   CatalogJobDto,
   JobAliasOptionDto,
@@ -16,6 +17,8 @@ import type {
 import { catalogJobsPath, fetchAliasOptions } from './job-catalog';
 
 export type HomeLists = {
+  /** Stage MG-1 (MG1): where my clock runs now; absent on older API responses. */
+  myClock?: MechanicClockDto | null;
   created: WorkOrderSummaryDto[];
   active: WorkOrderSummaryDto[];
   paused: WorkOrderSummaryDto[];

@@ -142,6 +142,10 @@ export class WorkOrdersService {
       return { ...summary, status: status as typeof summary.status, workOrderStatus: row.status };
     });
     return {
+      // Stage MG-1 (MG1): where my clock runs now, and since when — the clock strip on every mechanic screen.
+      myClock: clockElsewhere
+        ? { workOrderId: clockElsewhere.id, displayId: clockElsewhere.displayId, truckNumber: clockElsewhere.truckNumber, since: clockElsewhere.since }
+        : null,
       // LTR-129: "Ready to start" puts Critical first (then High, Normal, Low; oldest first).
       created: mapped.filter((w) => w.status === 'created').sort(byPriorityThenOldest),
       active: mapped.filter((w) => w.status === 'in_progress'),
