@@ -483,7 +483,12 @@ export class WorkOrdersService {
         throw new BadRequestException('Work Order can only be started from created status');
       }
       // LTR-186 / D21: one clock per mechanic — starting here stops it on any other Truck.
-      await this.clock?.closeOtherClocks(tx, user.id, id, now);
+      const movedFromIds = (await this.clock?.closeOtherClocks(tx, user.id, id, now)) ?? [];
+      // Block A (MG2): the reply says which Truck the clock left, so the app can tell the mechanic.
+      const movedFrom = movedFromIds.length
+        ? await tx.workOrder.findUnique({ where: { id: movedFromIds[0] }, select: { id: true, displayId: true, truck: { select: { truckNumber: true } } } })
+        : null;
+      const clockMovedFrom = movedFrom ? { id: movedFrom.id, displayId: movedFrom.displayId, truckNumber: movedFrom.truck.truckNumber } : null;
       await tx.workSession.create({
         data: { workOrderId: id, startedAt: now, userId: user.id },
       });
@@ -502,7 +507,7 @@ export class WorkOrdersService {
           previousValue: { status: 'in_progress', laborRunning: false },
           newValue: { status: 'in_progress', laborRunning: true },
         });
-        return toWorkOrderDetail(restarted, user.id);
+        return { ...toWorkOrderDetail(restarted, user.id), clockMovedFrom };
       }
       const updated = await tx.workOrder.update({
         where: { id },
@@ -522,7 +527,7 @@ export class WorkOrdersService {
         previousValue: { status: 'created' },
         newValue: { status: 'in_progress' },
       });
-      return toWorkOrderDetail(updated, user.id);
+      return { ...toWorkOrderDetail(updated, user.id), clockMovedFrom };
     });
   }
 

@@ -75,8 +75,11 @@ describe('Casos límite', () => {
     const first = await plannedWo('905');
     const second = await plannedWo('922');
     const mechanic = await userId(USERS.alignment);
-    ok('Start en el primero (905)', await start(USERS.alignment, first.workOrderId));
-    ok('Start en el segundo (922)', await start(USERS.alignment, second.workOrderId));
+    const firstStart = ok('Start en el primero (905)', await start(USERS.alignment, first.workOrderId));
+    same('el primer Start no movió ningún reloj', firstStart.clockMovedFrom, null);
+    const secondStart = ok('Start en el segundo (922)', await start(USERS.alignment, second.workOrderId));
+    // Block A (MG2): la respuesta dice de qué camión salió el reloj, para avisarle al mecánico.
+    same('la respuesta dice que el reloj salió del 905', secondStart.clockMovedFrom?.truckNumber, '905');
     const open = await prisma.workSession.findMany({ where: { userId: mechanic, endedAt: null }, select: { workOrderId: true } });
     same('un solo reloj abierto, en el segundo', open.map((session) => session.workOrderId), [second.workOrderId]);
     const onFirst = await prisma.workSession.findFirstOrThrow({ where: { userId: mechanic, workOrderId: first.workOrderId }, select: { endReason: true, endedAt: true } });

@@ -34,6 +34,14 @@ describe('Safety: Quality Check (D19)', () => {
     const item = inQueue(list.pending, ready.workOrderId);
     same('dice qué se hizo', [...item.doneJobs].sort(), ['Alignment', 'Detailing', 'PM A Service']);
     same('y quién', [...item.mechanics].sort(), ['Alejandro 1', 'Anthony', 'Daniel']);
+    // Q11: los Jobs agregados juntos empatan en addedAt; el orden ya no cambia entre una carga y otra.
+    const jobRows = await prisma.workOrderJob.findMany({
+      where: { workOrderId: ready.workOrderId, status: 'completed' },
+      orderBy: [{ addedAt: 'asc' }, { id: 'asc' }],
+      select: { displayName: true },
+    });
+    same('los Jobs salen en un orden fijo', item.doneJobs, jobRows.map((job) => job.displayName));
+    same('y otra carga da el mismo orden', inQueue((await queue()).pending, ready.workOrderId).doneJobs, item.doneJobs);
     same('sin tomar', item.takenBy, null);
     refused('no puede tomar uno que no está listo', await safety.post(`/qc/${working.workOrderId}/take`), 400, 'QC_NOT_READY');
   });

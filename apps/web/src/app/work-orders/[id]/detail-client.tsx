@@ -20,6 +20,7 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
+import { draftKeys, useLocalDraft } from '@/lib/local-draft';
 import { useShopLocale } from '@/lib/locale-context';
 import { clockStoppedLine } from '@/lib/clock-stopped';
 import { formatShopDateTime, pauseLabel, statusLabel } from '@/lib/format';
@@ -76,12 +77,15 @@ export default function WorkOrderDetailPage() {
     id: string;
     name: string;
   } | null>(null);
-  const [finishNotes, setFinishNotes] = useState('');
+  // Block A (MG9): the closing note and the blocker note are drafts per Job, kept until sent.
+  const [finishNotes, setFinishNotes, clearFinishNotes] = useLocalDraft(finishJob ? draftKeys.jobFinish(finishJob.id) : null);
   const [pauseOpen, setPauseOpen] = useState(false);
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
-  const [pauseNotes, setPauseNotes] = useState('');
   // LTR-155 / D17: the Job the mechanic is blocking, and note drafts per blocker.
   const [blockerJob, setBlockerJob] = useState<{ id: string; name: string } | null>(null);
+  const [pauseNotes, setPauseNotes, clearPauseNotes] = useLocalDraft(blockerJob ? draftKeys.blockerNote(blockerJob.id) : null);
+  // Block A (MG8): with "Other", the note is required; the button says so instead of staying grey.
+  const [pauseNotesError, setPauseNotesError] = useState(false);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
@@ -344,16 +348,21 @@ export default function WorkOrderDetailPage() {
             <Button
               className="w-full"
               disabled={busy}
-              onClick={() =>
-                run(
-                  () =>
-                    apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
+              onClick={() => {
+                // Block A (MG2): say when Start moved my clock from another Truck (D21).
+                let movedFrom: WorkOrderDetailDto['clockMovedFrom'] = null;
+                return run(
+                  async () => {
+                    const started = await apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
                       method: 'POST',
-                    }),
+                    });
+                    movedFrom = started.clockMovedFrom ?? null;
+                    return started;
+                  },
                   undefined,
-                  () => showToast('success', messages.workStartedSuccess),
-                )
-              }
+                  () => showToast('success', movedFrom ? messages.clockMovedFromTo(movedFrom.truckNumber, wo.truckNumber) : messages.workStartedSuccess),
+                );
+              }}
             >
               {busy ? messages.startingWork : startedHereBefore ? messages.continueWork : messages.startWork}
             </Button>
@@ -418,7 +427,6 @@ export default function WorkOrderDetailPage() {
                         aria-label={messages.completeJobFor(job.displayName)}
                         onClick={(event) => {
                           finishJobTriggerRef.current = event.currentTarget;
-                          setFinishNotes('');
                           setFinishJob({ id: job.id, name: job.displayName });
                         }}
                       >
@@ -434,7 +442,7 @@ export default function WorkOrderDetailPage() {
                           onClick={(event) => {
                             pauseTriggerRef.current = event.currentTarget;
                             setPauseReason('');
-                            setPauseNotes('');
+                            setPauseNotesError(false);
                             setBlockerJob({ id: job.id, name: job.displayName });
                             setPauseOpen(true);
                           }}
@@ -509,7 +517,6 @@ export default function WorkOrderDetailPage() {
         onClose={() => {
           if (busy) return;
           setFinishJob(null);
-          setFinishNotes('');
         }}
         returnFocusRef={finishJobTriggerRef}
       >
@@ -533,7 +540,6 @@ export default function WorkOrderDetailPage() {
             onClick={() => {
               if (busy) return;
               setFinishJob(null);
-              setFinishNotes('');
             }}
           >
             {messages.cancelAction}
@@ -562,8 +568,8 @@ export default function WorkOrderDetailPage() {
                     new Date().toISOString(),
                   ),
                 () => {
+                  clearFinishNotes();
                   setFinishJob(null);
-                  setFinishNotes('');
                   showToast(
                     'success',
                     notesToSave ? messages.jobFinishedWithNoteSuccess : messages.jobFinishedSuccess,
@@ -608,20 +614,22 @@ export default function WorkOrderDetailPage() {
             ))}
           </Select>
         </div>
-        {pauseReason === PauseReason.OTHER ? (
-          <div className="mb-3">
-            <Label className="mb-2 block" htmlFor="pause-notes">
-              {messages.additionalDetails}
-            </Label>
-            <Textarea
-              id="pause-notes"
-              placeholder={messages.reasonRequiredForOther}
-              value={pauseNotes}
-              onChange={(e) => setPauseNotes(e.target.value)}
-              disabled={busy}
-            />
-          </div>
-        ) : null}
+        {/* Block A (MG8): the note is always there (what part, which tool); required only with "Other". */}
+        <div className="mb-3">
+          <Label className="mb-2 block" htmlFor="pause-notes">
+            {pauseReason === PauseReason.OTHER ? messages.blockerNoteRequiredLabel : messages.blockerNoteOptionalLabel}
+          </Label>
+          <Textarea
+            id="pause-notes"
+            placeholder={pauseReason === PauseReason.OTHER ? messages.reasonRequiredForOther : messages.blockerReportPlaceholder}
+            value={pauseNotes}
+            onChange={(e) => { setPauseNotes(e.target.value); setPauseNotesError(false); }}
+            disabled={busy}
+            aria-invalid={pauseNotesError || undefined}
+            aria-describedby={pauseNotesError ? 'pause-notes-error' : undefined}
+          />
+          {pauseNotesError ? <p id="pause-notes-error" className="mt-2 text-sm text-destructive-text" role="alert">{messages.blockerNoteRequired}</p> : null}
+        </div>
         {/* LTR-169 / LTR-189 (W13): a disabled button says why — above the buttons, where the floating button cannot cover it. */}
         {!pauseReason ? <p className="mb-3 text-sm text-muted-foreground">{messages.blockerReasonRequiredHint}</p> : null}
         <div className="grid grid-cols-2 gap-2">
@@ -636,9 +644,13 @@ export default function WorkOrderDetailPage() {
             {messages.cancelAction}
           </Button>
           <Button
-            disabled={!pauseReason || !blockerJob || busy || (pauseReason === PauseReason.OTHER && !pauseNotes.trim())}
+            disabled={!pauseReason || !blockerJob || busy}
             onClick={() => {
               if (busy || !blockerJob) return;
+              if (pauseReason === PauseReason.OTHER && !pauseNotes.trim()) {
+                setPauseNotesError(true);
+                return;
+              }
               void run(
                 () =>
                   apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/blockers`, {
@@ -646,15 +658,15 @@ export default function WorkOrderDetailPage() {
                     body: JSON.stringify({
                       jobId: blockerJob.id,
                       reason: pauseReason,
-                      notes: pauseNotes || undefined,
+                      notes: pauseNotes.trim() || undefined,
                     }),
                   }),
                 undefined,
                 () => {
+                  clearPauseNotes();
                   setPauseOpen(false);
                   setBlockerJob(null);
                   setPauseReason('');
-                  setPauseNotes('');
                   showToast('success', messages.blockerReportedSuccess);
                 },
               );
