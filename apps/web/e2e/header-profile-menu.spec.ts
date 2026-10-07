@@ -44,7 +44,9 @@ test.describe('LTR-167 header and profile menu', () => {
     expect((await page.getByRole('button', { name: /Open profile for / }).boundingBox())?.y).toBeGreaterThanOrEqual(59);
 
     // Scrolled content passes under the sticky header, never into the status bar strip.
-    await page.addStyleTag({ content: '#main-content { min-height: 3000px; }' });
+    // The sticky header sticks within the page's own container, so that container is made tall too
+    // (the home hides its empty sections since Stage MG-3 and can be shorter than the scroll).
+    await page.addStyleTag({ content: '#main-content, #main-content > div { min-height: 3000px; }' });
     await page.evaluate(() => window.scrollTo(0, 400));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     await expect.poll(async () => (await header.boundingBox())?.y).toBe(0);

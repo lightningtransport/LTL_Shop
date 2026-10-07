@@ -163,6 +163,12 @@ type Copy = {
   addNoteOpen: string;
   noteForManager: string;
   waitingOnManagerShort: string;
+  /** Stage MG-6: Trucks and Completed. */
+  unableToLoadTrucks: string;
+  completedToday: string;
+  completedYesterday: string;
+  completedEarlier: string;
+  noClosingNote: string;
   addANoteLabel: string;
   notesKeptHint: string;
   requestWorkTitle: string;
@@ -585,6 +591,11 @@ const copy: Record<ShopLocale, Copy> = {
     addNoteOpen: 'Add note',
     noteForManager: 'Note for the Manager',
     waitingOnManagerShort: 'waiting on the Manager',
+    unableToLoadTrucks: 'Unable to load trucks.',
+    completedToday: 'Today',
+    completedYesterday: 'Yesterday',
+    completedEarlier: 'Earlier',
+    noClosingNote: 'No closing note',
     addANoteLabel: 'Add a note',
     notesKeptHint: "Kept on this phone until you send it. Notes can't be edited.",
     requestWorkTitle: 'What does the Truck need?',
@@ -1005,6 +1016,11 @@ const copy: Record<ShopLocale, Copy> = {
     addNoteOpen: 'Agregar nota',
     noteForManager: 'Nota para el Manager',
     waitingOnManagerShort: 'espera al Manager',
+    unableToLoadTrucks: 'No se pudieron cargar las unidades.',
+    completedToday: 'Hoy',
+    completedYesterday: 'Ayer',
+    completedEarlier: 'Antes',
+    noClosingNote: 'Sin nota de cierre',
     addANoteLabel: 'Agregar una nota',
     notesKeptHint: 'Queda en este teléfono hasta que la envíes. Las notas no se editan.',
     requestWorkTitle: '¿Qué necesita la unidad?',

@@ -163,7 +163,8 @@ test.describe('Daniel PM workflow', () => {
     await expect(page).toHaveURL(/\/mechanic\/pm\/trucks$/);
     await expect(page.getByRole('heading', { name: 'Find a Truck' })).toBeVisible();
     await page.getByLabel('Truck', { exact: true }).fill('905');
-    const result = page.getByRole('link', { name: /Truck 905/ });
+    // Stage MG-6: the card is not one link; "Repair history ›" is its own row.
+    const result = page.locator('li').filter({ hasText: 'Truck 905' }).getByRole('link', { name: /Repair history/i });
     await expect(result).toHaveAttribute('href', `/trucks/${truck.id}/history?from=%2Fmechanic%2Fpm%2Ftrucks`);
     await nav.getByRole('link', { name: 'Completed' }).click();
     await expect(page).toHaveURL(/\/mechanic\/pm\/completed$/);
@@ -180,7 +181,7 @@ test.describe('Daniel PM workflow', () => {
     await login(page);
     await page.goto('/mechanic/pm/trucks');
     await page.getByLabel('Truck', { exact: true }).fill('905');
-    await expect(page.getByRole('link', { name: /Truck 905/ }).getByTestId('truck-open-work-order')).toHaveText('Open WO-009');
+    await expect(page.locator('li').filter({ hasText: 'Truck 905' }).getByTestId('truck-open-work-order')).toHaveText('Open WO-009');
     await page.goto('/mechanic/pm/new');
     await page.getByRole('combobox', { name: /Truck/i }).first().fill('905');
     await expect(page.getByRole('option', { name: /#905/ }).getByTestId('truck-open-work-order')).toHaveText('Open WO-009');

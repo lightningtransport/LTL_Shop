@@ -23,7 +23,7 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     await expect(page.getByText('Work Order WO-0106 · In Progress')).toBeVisible();
     await expect(page.getByTestId('active-blocker').getByText('Inspect brake chamber · Waiting for Parts')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Mark resolved' })).toHaveCount(0);
-    await expect(page.getByText('Only the Manager resolves a blocker. Add a note if something changes.')).toBeVisible();
+    await expect(page.getByTestId('active-blocker').getByText(/Only the Manager resolves it\./)).toBeVisible();
     // Stage MG-4 (UX-4-006): the note field opens on request.
     await page.getByTestId('active-blocker').getByRole('button', { name: 'Add note', exact: true }).click();
     await page.getByRole('textbox', { name: 'Add note to blocker' }).fill('The part arrived');

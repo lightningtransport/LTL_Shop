@@ -274,3 +274,13 @@ select.field {
   .anim-pop-in { animation: none; }
   .anim-flash { animation: none; }
 }
+
+/* D-MG1: room for the bottom tab bar on phones, so the end of the page and the toasts stay above it. */
+@media (max-width: 639px) {
+  body:has([data-bottom-tabs]) {
+    --toast-lift: 4rem;
+  }
+  body:has([data-bottom-tabs]) main {
+    padding-bottom: calc(4.5rem + var(--app-safe-bottom));
+  }
+}
