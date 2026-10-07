@@ -4,9 +4,9 @@ import { devLogin } from './support/dev-login';
 /**
  * Block A (field-role audits, OPEN_ISSUES §1j/§1k): the General mechanic's clock and blocker fixes,
  * and the drafts that survive closing a sheet. The API is mocked here so each case is exact.
+ * Safety's return-note draft (Q9) is covered in qc-redesign.spec.ts, with the new review sheet.
  */
 const mechanic = { id: '00000000-0000-0000-0000-000000000102', email: 'mechanic@lightning.local', name: 'Alejandro', role: 'mechanic', active: true, capabilities: ['mechanic.standard'] };
-const safety = { id: '00000000-0000-0000-0000-000000000103', email: 'safety-1@lightning.local', name: 'Safety 1', role: 'mechanic', active: true, capabilities: ['quality_check.perform'] };
 const truck = { id: '00000000-0000-0000-0000-000000000201', truckNumber: '922', make: 'Kenworth', model: 'T680', year: 2023, mileage: 150000, company: 'Lightning Transport', owner: 'Lightning Transport' };
 const woId = '00000000-0000-0000-0000-000000000901';
 const jobId = '00000000-0000-0000-0000-000000000912';
@@ -115,27 +115,5 @@ test.describe('Block A · General mechanic', () => {
     await notes.fill('Left rear slack adjuster is worn');
     await page.reload();
     await expect(page.getByPlaceholder('Write a note, or describe additional work the Truck needs')).toHaveValue('Left rear slack adjuster is worn');
-  });
-});
-
-test.describe('Block A · Safety', () => {
-  test('Q9: the return note survives closing the sheet', async ({ page }) => {
-    const item = {
-      workOrderId: woId, displayId: 'WO-900', version: 3, truck: { id: truck.id, truckNumber: truck.truckNumber, make: truck.make, model: truck.model, year: truck.year },
-      doneJobs: ['Brake adjustment'], mechanics: ['Alejandro'], readySince: '2026-10-07T12:30:00.000Z', takenBy: { id: safety.id, name: safety.name }, mine: true,
-    };
-    await page.route('**/api/**', async (route) => {
-      const path = new URL(route.request().url()).pathname;
-      if (path === '/api/auth/me') return fulfill(route, { user: safety });
-      if (path === '/api/qc/queue') return fulfill(route, { pending: [item], returned: [] });
-      return route.continue();
-    });
-    await devLogin(page, safety.email);
-    await expect(page.getByRole('heading', { name: 'Quality Check' })).toBeVisible();
-    await page.getByRole('button', { name: 'Return', exact: true }).click();
-    await page.getByRole('dialog').getByRole('textbox').fill('Rear brake hose leaking');
-    await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: 'Return', exact: true }).click();
-    await expect(page.getByRole('dialog').getByRole('textbox')).toHaveValue('Rear brake hose leaking');
   });
 });

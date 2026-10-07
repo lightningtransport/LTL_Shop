@@ -106,6 +106,10 @@ describe('Safety: Quality Check (D19)', () => {
     ok('el mecánico hace el trabajo', await start(USERS.general, workOrderId));
     ok('completa', await completeJob(USERS.general, workOrderId, namedJob(await adminWo(workOrderId), 'Brake Inspection').id));
     truthy('el camión vuelve a la lista de Safety', inQueue((await queue()).pending, workOrderId));
+    // Q2: la revisión muestra la devolución anterior con lo que hizo el Manager, y el trabajo nuevo.
+    const review = ok('la revisión del camión', await safety2.get(`/qc/${workOrderId}`));
+    same('la devolución anterior, con la respuesta del Manager', (review.previousReturns as Json[]).map((item) => [item.note, item.returnedBy, item.resolution]), [['Fuga en la manguera del freno trasero.', 'Safety 1', 'Trabajo agregado.']]);
+    same('el trabajo nuevo aparece hecho, con quién', (review.jobs as Json[]).find((job) => job.name === 'Brake Inspection')?.mechanic?.id, await userId(USERS.general));
     ok('Safety 2 lo toma esta vez', await safety2.post(`/qc/${workOrderId}/take`));
     ok('y aprueba', await safety2.post(`/qc/${workOrderId}/approve`));
     same('QC por Safety 2', laneJob(await adminWo(workOrderId), 'quality_check').completedBy?.id, await userId(USERS.safety2));
@@ -138,6 +142,71 @@ describe('Safety: Quality Check (D19)', () => {
     truthy('el selector de Jobs no ofrece a Safety', !(pickers.items as Json[]).some((item) => item.email === USERS.safety));
     ok('Mark QC complete (respaldo del Manager)', await manager.post(`/admin/jobs/${qc.id}/complete`, { ...(await meta(workOrderId)), notes: 'Safety avisó por teléfono.' }));
     await sameNextStepEverywhere('listo para cerrar', workOrderId, truck.id, 'close');
+  });
+});
+
+describe('Safety: la pantalla nueva (bloque B, D-QC1…D-QC6)', () => {
+  beforeEach(resetDb);
+
+  it('QC6 | Let go: Safety suelta el camión que tomó y la otra persona lo puede tomar (D-QC2)', async () => {
+    const { workOrderId } = await readyForQc('905');
+    ok('Safety 1 lo toma', await safety.post(`/qc/${workOrderId}/take`));
+    refused('Safety 2 no puede soltar lo que no tomó', await safety2.post(`/qc/${workOrderId}/release`), 400, 'QC_NOT_TAKEN');
+    const released = ok('Safety 1 lo suelta', await safety.post(`/qc/${workOrderId}/release`));
+    same('la respuesta ya lo muestra libre', [inQueue(released.pending, workOrderId)?.takenBy, inQueue(released.pending, workOrderId)?.mine], [null, false]);
+    same('el Job de QC queda sin dueño', laneJob(await adminWo(workOrderId), 'quality_check').assignedMechanic, null);
+    const log = await prisma.activityLog.findFirst({ where: { workOrderId, relevantValue: { path: ['action'], equals: 'quality_check_released' } } });
+    truthy('queda en el Activity Log', log);
+    ok('Safety 2 lo toma', await safety2.post(`/qc/${workOrderId}/take`));
+  });
+
+  it('QC7 | Revisión del camión: qué se hizo, con quién, cuándo y la nota; el PM; solo para camiones de la lista (Q2)', async () => {
+    const { workOrderId } = await readyForQc('905');
+    const working = await plannedWo('922', [{ category: 'Electrical & Starting', job: 'Lights', assignee: USERS.general }]);
+    const review = ok('la revisión', await safety.get(`/qc/${workOrderId}`));
+    same('los Jobs hechos', (review.jobs as Json[]).map((job) => job.name).sort(), ['Alignment', 'Detailing', 'PM A Service']);
+    truthy('cada uno con quién y cuándo', (review.jobs as Json[]).every((job) => job.mechanic?.name && job.completedAt));
+    same('el PM marcado como PM', (review.jobs as Json[]).filter((job) => job.isPm).map((job) => job.name), ['PM A Service']);
+    truthy('el PM con millaje y piezas', review.pm && typeof review.pm.observedMileage === 'number' && review.pm.parts.length > 0, review.pm);
+    truthy('la inspección con su resultado', ['issues_found', 'no_issues_found', 'not_recorded'].includes(review.inspection?.outcome), review.inspection);
+    same('sin bloqueos ni devoluciones', [review.blockers, review.previousReturns], [[], []]);
+    same('trae lo de la lista (sin tomar)', [review.displayId, review.takenBy], [inQueue((await queue()).pending, workOrderId)?.displayId, null]);
+    refused('un camión con trabajo pendiente no se revisa', await safety.get(`/qc/${working.workOrderId}`), 404, 'QC_NOT_LISTED');
+    refused('un mecánico no ve la revisión', await as(USERS.general).get(`/qc/${workOrderId}`), 403);
+  });
+
+  it('QC8 | Devolver diciendo qué Job falló: el Manager lo lee al principio de la nota (D-QC3)', async () => {
+    const { workOrderId } = await readyForQc('905');
+    ok('tomar', await safety.post(`/qc/${workOrderId}/take`));
+    const workOrder = await adminWo(workOrderId);
+    refused('un Job que no está hecho no sirve', await safety.post(`/qc/${workOrderId}/return`, { notes: 'x', jobId: laneJob(workOrder, 'quality_check').id }), 400, 'QC_JOB_NOT_DONE');
+    const reply = ok('devolver por Alignment', await safety.post(`/qc/${workOrderId}/return`, { notes: 'El volante quedó torcido.', jobId: laneJob(workOrder, 'alignment').id }));
+    same('la nota empieza con el Job', inQueue(reply.returned, workOrderId)?.note, 'Alignment: El volante quedó torcido.');
+    same('el Manager ve lo mismo', ((await adminWo(workOrderId)).reportedBlockers as Json[])[0]?.notes, 'Alignment: El volante quedó torcido.');
+  });
+
+  it('QC9 | Done: lo que aprobé y devolví, lo más nuevo primero; cada persona ve lo suyo (D-QC6)', async () => {
+    const first = await readyForQc('905');
+    const second = await readyForQc('922');
+    ok('tomar el 905', await safety.post(`/qc/${first.workOrderId}/take`));
+    ok('aprobarlo', await safety.post(`/qc/${first.workOrderId}/approve`));
+    ok('tomar el 922', await safety.post(`/qc/${second.workOrderId}/take`));
+    ok('devolverlo', await safety.post(`/qc/${second.workOrderId}/return`, { notes: 'Luz trasera fundida.' }));
+    const history = ok('historial de Safety 1', await safety.get('/qc/history?days=7'));
+    same('lo más nuevo primero', (history.items as Json[]).map((item) => [item.truck.truckNumber, item.outcome, item.note]), [['922', 'returned', 'Luz trasera fundida.'], ['905', 'approved', null]]);
+    same('Safety 2 no tiene nada', (ok('historial de Safety 2', await safety2.get('/qc/history')).items as Json[]).length, 0);
+    refused('un mecánico no ve el historial', await as(USERS.general).get('/qc/history'), 403);
+  });
+
+  it('QC10 | Orden por urgencia: Critical y High antes que el que lleva más tiempo listo (D-QC5)', async () => {
+    const older = await readyForQc('905');
+    const urgent = await readyForQc('922');
+    await prisma.workOrder.update({ where: { id: urgent.workOrderId }, data: { priority: 'critical' } });
+    const list = await queue();
+    same('el Critical primero aunque esté listo hace menos', (list.pending as Json[]).map((item) => item.workOrderId), [urgent.workOrderId, older.workOrderId]);
+    same('la tarjeta trae la prioridad', inQueue(list.pending, urgent.workOrderId)?.priority, 'critical');
+    same('y quién hizo cada Job', (inQueue(list.pending, older.workOrderId)?.doneBy as Json[]).map((item) => item.job).sort(), ['Alignment', 'Detailing', 'PM A Service']);
+    same('sin Dispatch en este entorno, sin salida ni ubicación', [inQueue(list.pending, older.workOrderId)?.leavesOn, inQueue(list.pending, older.workOrderId)?.location], [null, null]);
   });
 });
 
