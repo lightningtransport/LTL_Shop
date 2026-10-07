@@ -190,6 +190,13 @@ type Copy = {
   serviceTypeHint: string;
   /** Stage PM-3: the PM mechanic's home. */
   pmWaitingTitle: string;
+  /** Stage PM-4 (UX-7-008): Create PM service in both languages, and a button that names what happens. */
+  addPmTo: (displayId: string) => string;
+  startPmOnWo: (displayId: string) => string;
+  truckStartsWithFallback: (query: string) => string;
+  truckOpenOtherMechanic: (truckNumber: string) => string;
+  pmCompletedLine: (date: string, mileage: string, parts: number) => string;
+  pmCompletedSubtitle: string;
   pmWaitingFor: (age: string) => string;
   nextUp: string;
   startPmOn: (truckNumber: string) => string;
@@ -662,6 +669,12 @@ const copy: Record<ShopLocale, Copy> = {
     undoAction: 'Undo',
     serviceTypeHint: 'Changes this same Job. The mileage and the parts stay.',
     pmWaitingTitle: 'Waiting for PM',
+    addPmTo: (displayId) => `Add PM to ${displayId}`,
+    startPmOnWo: (displayId) => `Start PM on ${displayId}`,
+    truckStartsWithFallback: (query) => `No truck starts with #${query}. Showing numbers that contain it.`,
+    truckOpenOtherMechanic: (truckNumber) => `Truck #${truckNumber} already has an open Work Order assigned to another mechanic.`,
+    pmCompletedLine: (date, mileage, parts) => `${date} · ${mileage} · ${parts} ${parts === 1 ? 'part' : 'parts'}`,
+    pmCompletedSubtitle: 'PM services you finished, newest first.',
     pmWaitingFor: (age) => `waiting ${age}`,
     nextUp: 'Next up',
     startPmOn: (truckNumber) => `Start PM on Truck ${truckNumber}`,
@@ -1130,6 +1143,12 @@ const copy: Record<ShopLocale, Copy> = {
     undoAction: 'Deshacer',
     serviceTypeHint: 'Cambia este mismo Job. El millaje y las piezas se quedan.',
     pmWaitingTitle: 'Esperan PM',
+    addPmTo: (displayId) => `Agregar PM a ${displayId}`,
+    startPmOnWo: (displayId) => `Iniciar PM en ${displayId}`,
+    truckStartsWithFallback: (query) => `Ningún número empieza con #${query}. Se muestran los que lo contienen.`,
+    truckOpenOtherMechanic: (truckNumber) => `La unidad #${truckNumber} ya tiene un Work Order abierto asignado a otro mecánico.`,
+    pmCompletedLine: (date, mileage, parts) => `${date} · ${mileage} · ${parts} ${parts === 1 ? 'pieza' : 'piezas'}`,
+    pmCompletedSubtitle: 'Los servicios PM que terminaste, lo más nuevo primero.',
     pmWaitingFor: (age) => `espera ${age}`,
     nextUp: 'Sigue',
     startPmOn: (truckNumber) => `Iniciar PM en la unidad ${truckNumber}`,

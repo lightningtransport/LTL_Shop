@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MechanicMode } from '@ltl-shop/shared';
+import { MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { replaceAppLocation } from '@/lib/session-restore';
@@ -11,7 +11,8 @@ import { useWorkOrders } from '@/lib/shop-data';
 import { myCompletedJobs } from '@/lib/my-completed-jobs';
 import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
 import { SessionSignInFallback } from './session-sign-in-fallback';
-import { Check } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
+import { formatMileage } from '@/lib/format';
 import { Card, CardListSkeleton, CountChip, EmptyState, HomeTopBar, LoadFailure, PageHeader } from './ui';
 import { intlLocale } from '@/lib/shop-locale';
 
@@ -36,32 +37,12 @@ export function MechanicCompletedPage({ mode }: { mode: MechanicMode }) {
   return (
     <div>
       <HomeTopBar mode={mode} />
-      <PageHeader className="mb-6" title={messages.mechanicCompletedTitle} subtitle={messages.mechanicCompletedSubtitle} />
+      <PageHeader className="mb-6" title={messages.mechanicCompletedTitle} subtitle={isPm ? messages.pmCompletedSubtitle : messages.mechanicCompletedSubtitle} />
       {error ? <LoadFailure message={messages.unableToLoadWorkOrders} onRetry={() => void mutate()} retryLabel={messages.retry} /> : null}
       {!data && !error ? <CardListSkeleton /> : null}
       {data && isEmpty ? <EmptyState>{messages.noCompletedWork}</EmptyState> : null}
       {isPm ? null : <CompletedByDay groups={myGroups} />}
-      <ul className="space-y-2">
-        {(isPm ? completed : []).map((wo) => {
-          const pmJob = isPm && wo.primaryCategoryName !== 'PM' ? wo.pmJob : null;
-          const description = pmJob
-            ? messages.pmJobOnWorkOrder(pmJob.displayName, wo.displayId)
-            : wo.primaryCategoryName === 'PM'
-              ? `${messages.pmServiceLabel} · ${messages.workOrder} ${wo.displayId}`
-              : [`${messages.workOrder} ${wo.displayId}`, jobCategoriesLine(wo.jobs)].filter(Boolean).join(' · ');
-          return (
-            <li key={wo.id}>
-              <Link href={`/work-orders/${wo.id}${pmJob ? '?view=pm' : ''}`} className="block">
-                <Card className="p-3 transition hover:border-primary/50">
-                  <p className="font-display text-lg font-semibold">{messages.truckTitle(wo.truckNumber)}</p>
-                  {vehicleLine(wo.truckVehicle) ? <p className="text-sm text-shop-muted">{vehicleLine(wo.truckVehicle)}</p> : null}
-                  <p className="mt-1 text-sm text-shop-muted">{description}</p>
-                </Card>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {isPm ? <PmCompletedByDay items={completed} /> : null}
     </div>
   );
 }
@@ -104,6 +85,48 @@ function CompletedByDay({ groups }: { groups: CompletedGroups }) {
                     <span className="block text-xs text-muted-foreground">{messages.truckTitle(wo.truckNumber)} · <span className="font-mono">{wo.displayId}</span></span>
                     <span className={note ? 'block truncate italic' : 'block text-xs text-muted-foreground'}>{note ? `“${note}”` : messages.noClosingNote}</span>
                   </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/** Stage PM-4 (UX-1-007): finished PM services by day, each with its date, mileage and parts. */
+function PmCompletedByDay({ items }: { items: WorkOrderSummaryDto[] }) {
+  const { messages } = useShopLocale();
+  const dayOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(iso));
+  const today = dayOf(new Date().toISOString());
+  const yesterday = dayOf(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+  const dateLabel = (iso: string) => new Intl.DateTimeFormat(intlLocale(messages.locale), { timeZone: 'America/New_York', month: 'short', day: 'numeric' }).format(new Date(iso));
+  const rows = items
+    .map((wo) => ({ wo, at: wo.pmJob?.completedAt ?? wo.startedAt ?? wo.createdAt }))
+    .sort((left, right) => right.at.localeCompare(left.at));
+  const groups = [
+    { label: messages.completedToday, rows: rows.filter((row) => dayOf(row.at) === today) },
+    { label: messages.completedYesterday, rows: rows.filter((row) => dayOf(row.at) === yesterday) },
+    { label: messages.completedEarlier, rows: rows.filter((row) => dayOf(row.at) !== today && dayOf(row.at) !== yesterday) },
+  ].filter((group) => group.rows.length);
+  return (
+    <div className="space-y-4" data-testid="pm-completed-by-day">
+      {groups.map((group) => (
+        <section key={group.label}>
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">{group.label}<CountChip>{group.rows.length}</CountChip></h2>
+          <ul className="divide-y rounded-xl border bg-card">
+            {group.rows.map(({ wo, at }) => (
+              <li key={wo.id}>
+                <Link href={`/work-orders/${wo.id}${wo.pmJob ? '?view=pm' : ''}`} className="flex items-center gap-3 px-3 py-3 text-sm hover:bg-accent/40">
+                  <Check aria-hidden="true" className="size-4 shrink-0 text-success" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium">{[messages.truckTitle(wo.truckNumber), wo.pmJob?.displayName?.replace(/ Service$/i, ''), wo.displayId].filter(Boolean).join(' · ')}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {messages.pmCompletedLine(dateLabel(at), wo.pmJob?.observedMileage == null ? messages.mileageNotRecorded : formatMileage(wo.pmJob.observedMileage), wo.pmJob?.partsCount ?? 0)}
+                    </span>
+                  </span>
+                  <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                 </Link>
               </li>
             ))}

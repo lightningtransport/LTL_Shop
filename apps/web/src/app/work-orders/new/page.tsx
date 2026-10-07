@@ -100,9 +100,12 @@ export default function NewWorkOrderPage() {
   const createBlocked = busy || hasOpenWo || openWoCheck !== 'verified' || !pmCategory || otherPmRunning;
   const createActionLabel = openWoCheck === 'checking'
     ? messages.checkingTruck
+    // Stage PM-4: the button says what will happen.
     : pmJoin?.status === 'mine'
-      ? messages.continuePmService
-      : pmJoinable ? messages.joinPmService : messages.createPmService;
+      ? messages.continuePmOn(truck?.truckNumber ?? '')
+      : pmJoin?.status === 'add'
+        ? messages.addPmTo(pmJoin.displayId)
+        : pmJoin?.status === 'join' ? messages.startPmOnWo(pmJoin.displayId) : messages.createPmService;
 
   useEffect(() => {
     setActiveResult(results.length ? 0 : -1);
@@ -339,7 +342,7 @@ export default function NewWorkOrderPage() {
               ))}
               {isFallback ? (
                 <li className="px-4 pt-3 text-xs text-shop-muted" role="status">
-                  No truck starts with #{normalizeTruckSearch(query)}. Showing numbers that contain it.
+                  {messages.truckStartsWithFallback(normalizeTruckSearch(query))}
                 </li>
               ) : null}
               {!results.length ? (
@@ -422,7 +425,7 @@ export default function NewWorkOrderPage() {
 
       {hasOpenWo && !openWo && !pmJoin ? (
         <InlineAlert className="mb-4 border-[var(--warning)] bg-warning-surface text-warning-foreground">
-          Truck #{truck?.truckNumber} already has an open Work Order assigned to another mechanic.
+          {messages.truckOpenOtherMechanic(truck?.truckNumber ?? '')}
         </InlineAlert>
       ) : null}
 

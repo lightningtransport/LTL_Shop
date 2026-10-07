@@ -301,6 +301,31 @@ test.describe('Daniel PM workflow', () => {
   });
 });
 
+test.describe('PM redesign (Stage PM-4)', () => {
+  test('Completed lists finished PMs by day with date, mileage and parts', async ({ page }) => {
+    await mockPmApi(page);
+    const done = { ...summary('completed'), pmJob: { ...danielPmJob('completed'), completedAt: new Date().toISOString(), observedMileage: 154300, partsCount: 1 } };
+    await page.route(/\/api\/work-orders(\?.*)?$/, (route) => (route.request().method() === 'GET'
+      ? fulfill(route, { created: [], active: [], paused: [], completed: [done] })
+      : route.fallback()));
+    await login(page);
+    await page.goto('/mechanic/pm/completed');
+    const list = page.getByTestId('pm-completed-by-day');
+    await expect(list.getByText('Today')).toBeVisible();
+    await expect(list.getByText(/154,300 mi · 1 part/)).toBeVisible();
+  });
+
+  test('Create PM service names what will happen on a truck with an open Work Order', async ({ page }) => {
+    await mockPmApi(page);
+    await page.route(`**/api/trucks/${truck.id}/open-work-order`, (route) => fulfill(route, { exists: true, pmJoin: { displayId: 'WO-010', status: 'add', assignedMechanicName: null } }));
+    await login(page);
+    await page.goto('/mechanic/pm/new');
+    await page.getByRole('combobox', { name: /Truck/i }).first().fill('905');
+    await page.getByRole('option', { name: /905/i }).first().click();
+    await expect(page.getByRole('button', { name: 'Add PM to WO-010' })).toBeEnabled();
+  });
+});
+
 test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
   const jobWoId = '00000000-0000-0000-0000-000000000901';
   const pmJobId = '00000000-0000-0000-0000-000000000911';
