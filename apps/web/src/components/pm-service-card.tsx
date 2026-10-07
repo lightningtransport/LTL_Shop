@@ -8,7 +8,8 @@ import { intlLocale } from '@/lib/shop-locale';
 import { formatMileage } from '@/lib/format';
 import { pmSaveStatus } from '@/lib/pm-save-status';
 import { shopKeys, usePmService } from '@/lib/shop-data';
-import { Button, Card, Input, Label, LoadFailure, Select } from '@/components/ui';
+import { Button, Card, CardListSkeleton, Input, Label, LoadFailure, SectionCard, Select } from '@/components/ui';
+import { CircleAlert, CircleCheck, Sparkles } from 'lucide-react';
 import { useShopLocale } from '@/lib/locale-context';
 
 export type PmDraftState = {
@@ -17,6 +18,11 @@ export type PmDraftState = {
   hasError: boolean;
   observedMileage: string;
   selectedParts: number;
+  /** Stage PM-2: why Finish waits (the Finish bar says it) and what will be recorded (its confirmation). */
+  blockReason?: 'enter' | 'below' | 'confirm' | 'choose' | 'offline' | null;
+  chooseCategory?: string | null;
+  offline?: boolean;
+  parts?: Array<{ category: string; label: string }>;
 };
 
 type Payload = {
@@ -87,6 +93,10 @@ export function PmServiceCard({
   const [jumpConfirmed, setJumpConfirmed] = useState(false);
   // Block A (PM1): the last failure was the connection, so the entry waits on this phone.
   const [offlineError, setOfflineError] = useState(false);
+  // Stage PM-2 (UX-7-002): "can't be lower" shows once the mechanic leaves the field, not from the first digit.
+  const [mileageTouched, setMileageTouched] = useState(false);
+  // Stage PM-2 (D-PM1): a category switched on without history waits for the mechanic to choose the part.
+  const [pendingCategories, setPendingCategories] = useState<string[]>([]);
   const lastSavedKey = useRef('');
   const queuedPayload = useRef<Payload | null>(null);
   const dirtyRef = useRef(false);
@@ -216,14 +226,26 @@ export function PmServiceCard({
   }, [offlineError, saveError]);
 
   useEffect(() => {
+    const partLabel = (categoryId: string, partId: string) => {
+      const category = data?.categories.find((item) => item.id === categoryId);
+      const part = category?.parts.find((item) => item.id === partId);
+      return category && part ? { category: category.name, label: part.partNumber ? `${part.partNumber} — ${part.displayName}` : part.displayName } : null;
+    };
+    const chooseCategory = pendingCategories.length
+      ? data?.categories.find((category) => category.id === pendingCategories[0])?.name ?? null
+      : null;
     onDraftStateChange?.({
       ready: !!data,
       pending: dirty || saving,
-      hasError: !!saveError || mileageBlocked,
+      hasError: !!saveError || mileageBlocked || pendingCategories.length > 0,
       observedMileage: mileage,
       selectedParts: draft.selections.length,
+      blockReason: mileageEmpty ? 'enter' : mileageBelowCurrent ? 'below' : mileageNeedsConfirmation ? 'confirm' : chooseCategory ? 'choose' : offlineError ? 'offline' : null,
+      chooseCategory,
+      offline: offlineError,
+      parts: draft.selections.map((item) => partLabel(item.partCategoryId, item.partId)).filter((item): item is { category: string; label: string } => Boolean(item)),
     });
-  }, [data, dirty, draft.selections.length, mileage, mileageBlocked, onDraftStateChange, saveError, saving]);
+  }, [data, dirty, draft.selections, mileage, mileageBelowCurrent, mileageBlocked, mileageEmpty, mileageNeedsConfirmation, offlineError, onDraftStateChange, pendingCategories, saveError, saving]);
 
   const saveStatus = pmSaveStatus({ saving, dirty, saveError, savedOnce });
 
@@ -238,7 +260,8 @@ export function PmServiceCard({
       </div>
     );
   }
-  if (!data) return <Card className="mb-4 text-sm text-muted-foreground">{messages.loadingPmService}</Card>;
+  // Stage PM-2 (UX-6-005): the form's shape while it loads, and no Finish yet.
+  if (!data) return <div role="status" aria-label={messages.loadingPmService} className="mb-4"><CardListSkeleton count={2} /></div>;
 
   if (data.serviceCompletedAt) {
     // LTR-137 / LTR-139: a completed PM is history — show what was recorded, not editable fields.
@@ -247,142 +270,198 @@ export function PmServiceCard({
 
   const canEdit = data.canEdit;
   const hasValidObservedMileage = /^\d+$/.test(mileage);
-  const hasHistoricalParts = !canEdit && data.selections.length > 0;
-  // Block A (PM3): with the field cleared, the parts saved with the last mileage stay in view.
-  const showParts = (hasValidObservedMileage && !mileageBelowCurrent) || hasHistoricalParts
-    || (mileageEmpty && data.observedMileage !== null);
-  // Block A (PM2, PM3): a part chosen now could not be saved, so it cannot be chosen until the mileage is.
-  const partsLocked = mileageNeedsConfirmation || mileageEmpty;
-  const lastPmValue = !data.lastCompletedPm
-    ? messages.noPriorPm
-    : data.lastCompletedPm.observedMileage === null
-      ? messages.mileageNotRecorded
-      : formatMileage(data.lastCompletedPm.observedMileage);
+  const showBelow = mileageBelowCurrent && mileageTouched;
+  // Block A (PM2, PM3): a part chosen now could not be saved, so the parts wait until the mileage can be.
+  const partsLocked = mileageNeedsConfirmation || mileageEmpty || mileageBelowCurrent || !hasValidObservedMileage;
+  const usable = data.categories.filter((category) => category.parts.length > 0);
+  const chosen = draft.selections.length;
+  const onPhone = saveError && offlineError ? Math.max(1, chosen) : 0;
+  const lastPm = data.lastCompletedPm;
+  const dateOnly = (iso: string) => new Intl.DateTimeFormat(intlLocale(messages.locale), { month: 'short', day: 'numeric' }).format(new Date(iso));
+  const mileageOk = hasValidObservedMileage && !mileageBelowCurrent && !mileageNeedsConfirmation;
+
+  const setPart = (categoryId: string, partId: string) => {
+    const next = { ...selections, [categoryId]: partId };
+    if (!partId) delete next[categoryId];
+    setSelections(next);
+    setPendingCategories((list) => list.filter((id) => id !== categoryId));
+    dirtyRef.current = true;
+    setDirty(true);
+    setSaveError(null);
+    void persist(payloadFor(mileage, next, jumpConfirmed));
+  };
+  const toggleCategory = (category: (typeof usable)[number], on: boolean) => {
+    if (!on) {
+      setPendingCategories((list) => list.filter((id) => id !== category.id));
+      setPart(category.id, '');
+      return;
+    }
+    // D-PM1: the part used most on this model is chosen; without history the mechanic chooses it.
+    const best = category.mostUsedPartId && category.parts.some((part) => part.id === category.mostUsedPartId) ? category.mostUsedPartId : null;
+    if (best) setPart(category.id, best);
+    else setPendingCategories((list) => [...new Set([...list, category.id])]);
+  };
 
   return (
-    <Card className="mb-4 space-y-4" aria-labelledby="pm-service-title">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id="pm-service-title" className="group-title">{messages.pmServiceLabel}</h2>
-        {/* LTR-189 (W15): the autosave state is visible where the mechanic is typing, not only under the last part. */}
-        <span className="text-xs text-muted-foreground">
-          {saveStatus === 'saving' ? messages.saving : saveStatus === 'saved' ? messages.autosaved : null}
+    <div className="mb-4 space-y-4">
+      {/* Stage PM-2: what is missing, at a glance, and whether it is saved. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border bg-card px-4 py-3 text-sm" data-testid="pm-summary">
+        <span className={`flex items-center gap-1.5 font-medium ${mileageOk ? 'text-success' : 'text-warning-foreground dark:text-warning'}`}>
+          {mileageOk ? <CircleCheck aria-hidden="true" className="size-4" /> : <CircleAlert aria-hidden="true" className="size-4" />}
+          {mileageOk ? messages.pmSummaryMileage(formatMileage(Number(mileage)))
+            : mileageNeedsConfirmation ? messages.pmSummaryMileageConfirm
+            : mileageBelowCurrent ? messages.pmSummaryMileageCheck : messages.pmSummaryMileageMissing}
         </span>
-        {saveStatus === 'error' ? <span className="text-xs font-medium text-destructive-text" data-testid="pm-not-saved">{messages.pmNotSaved}</span> : null}
+        <span aria-hidden="true" className="text-muted-foreground">·</span>
+        <span className={`flex items-center gap-1.5 font-medium ${chosen ? 'text-success' : 'text-muted-foreground'}`}>
+          {chosen ? <CircleCheck aria-hidden="true" className="size-4" /> : null}
+          {messages.pmSummaryParts(chosen, usable.length)}
+        </span>
+        <span className="ml-auto text-xs" aria-live="polite">
+          {saveStatus === 'saving' ? <span className="text-muted-foreground">{messages.saving}</span> : null}
+          {saveStatus === 'saved' ? <span className="text-muted-foreground">{messages.autosaved}</span> : null}
+          {saveStatus === 'error' ? <span className="font-medium text-destructive-text" data-testid="pm-not-saved">{onPhone ? messages.pmOnPhone(onPhone) : messages.pmNotSaved}</span> : null}
+        </span>
       </div>
+      {saveError ? (
+        <p className="text-sm text-destructive-text" role="alert">
+          {saveError}{' '}
+          <Button variant="ghost" className="ml-1 px-2 underline" onClick={() => persist(draft)}>{messages.retry}</Button>
+        </p>
+      ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="pm-current-mileage">{messages.currentTruckMileage}</Label>
-          <Input id="pm-current-mileage" className="mt-2" readOnly value={formatMileage(data.currentTruckMileage)} />
-        </div>
-        <div>
-          <Label htmlFor="pm-last-record">{messages.lastCompletedPm}</Label>
-          <Input id="pm-last-record" className="mt-2" readOnly value={lastPmValue} />
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="pm-observed-mileage">{messages.observedMileage}</Label>
-        <div className="mt-2 flex items-center gap-2">
-          <Input
-            id="pm-observed-mileage"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            autoComplete="off"
-            value={displayObservedMileage(mileage)}
-            aria-describedby="pm-observed-mileage-unit"
-            disabled={!canEdit}
-            onChange={(event) => {
-              setMileage(event.target.value.replace(/\D/g, ''));
-              setJumpConfirmed(false);
-              dirtyRef.current = true;
-              setDirty(true);
-              setSaveError(null);
-            }}
-            aria-invalid={mileageBelowCurrent || undefined}
-            onBlur={() => void persist(payloadFor(mileage, selections, jumpConfirmed))}
-          />
-          <span id="pm-observed-mileage-unit" className="text-sm text-muted-foreground">mi</span>
-        </div>
-        {mileageBelowCurrent && mileageCheck?.ok === false ? (
-          <p className="mt-2 text-sm text-destructive-text" role="alert">
-            {messages.mileageBelowCurrent(formatMileage(mileageCheck.currentMileage))}
-          </p>
-        ) : null}
-        {mileageNeedsConfirmation ? (
-          <div className="mt-2 space-y-2 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground" role="alert">
-            <p>{messages.mileageJumpWarning(formatMileage(currentTruckMileage))}</p>
-            <Button
-              onClick={() => {
-                setJumpConfirmed(true);
-                persist(payloadFor(mileage, selections, true));
-              }}
-            >
-              {messages.confirmMileage}
-            </Button>
-          </div>
-        ) : null}
-        {!showParts && !mileageBelowCurrent ? (
-          <p className="mt-2 text-sm text-muted-foreground" id="pm-parts-instruction">
-            {messages.enterMileageHint}
-          </p>
-        ) : null}
-      </div>
-
-      {showParts ? <div className="space-y-3">
-        <p className="group-title">{messages.partsUsed}</p>
-        {partsLocked ? (
-          <p className="text-sm text-warning-foreground" id="pm-parts-locked">
-            {mileageEmpty ? messages.enterMileageToSave : messages.confirmMileageFirst}
-          </p>
-        ) : null}
-        {data.categories.map((category) => (
-          <div key={category.id}>
-            <Label htmlFor={`pm-part-${category.id}`}>{category.name}</Label>
-            {category.parts.length ? (
-              <Select
-                id={`pm-part-${category.id}`}
-                className="mt-2"
-                value={selections[category.id] ?? ''}
-                disabled={!canEdit || partsLocked}
-                aria-describedby={partsLocked ? 'pm-parts-locked' : undefined}
+      <SectionCard title={messages.pmServiceLabel} titleId="pm-service-title">
+        <div className="space-y-3 p-4">
+          {/* UX-4-002: what is already known is text, not fields. */}
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="text-xs text-muted-foreground">{messages.truckNowLabel}</dt>
+              <dd className="font-semibold tnum" data-testid="pm-truck-now">{formatMileage(data.currentTruckMileage)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">{messages.lastPmLabel}</dt>
+              <dd className="font-semibold tnum">
+                {!lastPm ? <span className="font-normal text-muted-foreground">{messages.noPmOnRecord}</span>
+                  : lastPm.observedMileage === null ? messages.mileageNotRecorded
+                  : <>{formatMileage(lastPm.observedMileage)} <span className="font-normal text-muted-foreground">· {dateOnly(lastPm.completedAt)}</span></>}
+              </dd>
+            </div>
+          </dl>
+          <div>
+            <Label htmlFor="pm-observed-mileage">{messages.observedMileage}</Label>
+            <div className="mt-2 flex items-center gap-2">
+              <Input
+                id="pm-observed-mileage"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                value={displayObservedMileage(mileage)}
+                aria-describedby="pm-observed-mileage-unit"
+                disabled={!canEdit}
                 onChange={(event) => {
-                  const nextSelections = { ...selections, [category.id]: event.target.value };
-                  setSelections(nextSelections);
+                  setMileage(event.target.value.replace(/\D/g, ''));
+                  setJumpConfirmed(false);
                   dirtyRef.current = true;
                   setDirty(true);
                   setSaveError(null);
-                  void persist(payloadFor(mileage, nextSelections, jumpConfirmed));
                 }}
-              >
-                <option value="">{messages.noPartUsed}</option>
-                {category.parts.map((part) => (
-                  <option key={part.id} value={part.id}>
-                    {part.partNumber ? `${part.partNumber} — ${part.displayName}` : part.displayName}
-                  </option>
-                ))}
-              </Select>
-            ) : (
-              <Select id={`pm-part-${category.id}`} className="mt-2" value="" disabled aria-label={`${category.name}: ${messages.noCompatibleParts}`}>
-                <option>{messages.noCompatibleParts}</option>
-              </Select>
-            )}
+                aria-invalid={showBelow || undefined}
+                onBlur={() => { setMileageTouched(true); void persist(payloadFor(mileage, selections, jumpConfirmed)); }}
+                onKeyDown={(event) => { if (event.key === 'Enter') setMileageTouched(true); }}
+              />
+              <span id="pm-observed-mileage-unit" className="text-sm text-muted-foreground">mi</span>
+            </div>
+            {showBelow && mileageCheck?.ok === false ? (
+              <p className="mt-2 text-sm text-destructive-text" role="alert">
+                {messages.mileageBelowCurrent(formatMileage(mileageCheck.currentMileage))}
+              </p>
+            ) : null}
+            {mileageEmpty && data.observedMileage !== null ? (
+              <p className="mt-2 text-sm text-muted-foreground" role="status">{messages.enterMileageToSave}</p>
+            ) : null}
+            {mileageNeedsConfirmation ? (
+              <div className="mt-2 space-y-2 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground" role="alert">
+                <p>{messages.mileageJumpWarning(formatMileage(currentTruckMileage))}</p>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      setJumpConfirmed(true);
+                      persist(payloadFor(mileage, selections, true));
+                    }}
+                  >
+                    {messages.confirmMileage}
+                  </Button>
+                  <Button variant="outline" className="bg-card" onClick={() => document.getElementById('pm-observed-mileage')?.focus()}>{messages.jumpFixIt}</Button>
+                </div>
+              </div>
+            ) : null}
           </div>
-        ))}
-      </div> : null}
+        </div>
+      </SectionCard>
 
-      <div className="min-h-5 text-sm" aria-live="polite">
-        {saveStatus === 'saving' ? <span className="text-muted-foreground">{messages.saving}</span> : null}
-        {saveStatus === 'saved' ? <span className="text-muted-foreground">{messages.autosaved}</span> : null}
-        {saveError ? (
-          <span className="text-destructive-text" role="alert">
-            {saveError}{' '}
-          <Button variant="ghost" className="ml-1 px-2 underline" onClick={() => persist(draft)}>{messages.retry}</Button>
-          </span>
+      <SectionCard title={messages.partsUsed} count={chosen} action={<span className="text-xs text-muted-foreground">{messages.partsUsedHint}</span>}>
+        {partsLocked && canEdit ? (
+          <p className="border-b bg-warning-surface px-4 py-2 text-sm text-warning-foreground" id="pm-parts-locked">
+            {mileageNeedsConfirmation ? messages.confirmMileageFirst : mileageEmpty && data.observedMileage !== null ? messages.enterMileageToSave : messages.enterMileageHint}
+          </p>
         ) : null}
-      </div>
-    </Card>
+        <ul className="divide-y">
+          {data.categories.map((category) => {
+            const selected = selections[category.id] ?? '';
+            const pending = pendingCategories.includes(category.id);
+            const on = Boolean(selected) || pending;
+            const noParts = category.parts.length === 0;
+            const disabled = !canEdit || noParts || partsLocked;
+            return (
+              <li key={category.id} className={`space-y-2 px-4 py-3 ${on ? 'bg-success/5' : ''}`} data-testid={`pm-part-row-${category.slug}`}>
+                <div className="flex items-center gap-3">
+                  <span className="min-w-0 flex-1">
+                    <span className={`block text-sm font-medium ${noParts ? 'text-muted-foreground' : ''}`}>{category.name}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {noParts ? messages.noCompatibleParts : on ? (selected ? category.parts.find((part) => part.id === selected)?.displayName : messages.chooseWhichPart) : messages.partNotChanged}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={on}
+                    aria-label={messages.partChangedSwitch(category.name)}
+                    aria-describedby={partsLocked ? 'pm-parts-locked' : undefined}
+                    disabled={disabled}
+                    onClick={() => toggleCategory(category, !on)}
+                    className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-40 ${on ? 'bg-success' : 'bg-muted-foreground/30'}`}
+                  >
+                    <span aria-hidden="true" className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${on ? 'left-[1.375rem]' : 'left-0.5'}`} />
+                  </button>
+                </div>
+                {on && !noParts ? (
+                  <>
+                    <Select
+                      id={`pm-part-${category.id}`}
+                      aria-label={category.name}
+                      value={selected}
+                      disabled={!canEdit || partsLocked}
+                      onChange={(event) => setPart(category.id, event.target.value)}
+                    >
+                      <option value="">{messages.chooseWhichPart}</option>
+                      {category.parts.map((part) => (
+                        <option key={part.id} value={part.id}>
+                          {part.partNumber ? `${part.partNumber} — ${part.displayName}` : part.displayName}
+                        </option>
+                      ))}
+                    </Select>
+                    {category.mostUsedPartId && selected === category.mostUsedPartId && category.pmCountForModel ? (
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Sparkles aria-hidden="true" className="size-3.5" />{messages.mostUsedHint(category.mostUsedCount ?? 0, category.pmCountForModel)}</p>
+                    ) : null}
+                  </>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      </SectionCard>
+    </div>
   );
 }
 

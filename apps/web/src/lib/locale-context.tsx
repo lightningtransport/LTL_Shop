@@ -154,6 +154,40 @@ type Copy = {
   /** Stage MG-2 (MG1, UX-6-007): the clock strip and the single offline notice. */
   clockStripYourClock: string;
   /** Stage MG-3: the General mechanic's home. */
+  /** Stage PM-2: the PM screen (summary, mileage, parts with switches, Finish bar and its confirmation). */
+  pmSummaryMileage: (mileage: string) => string;
+  pmSummaryMileageMissing: string;
+  pmSummaryMileageConfirm: string;
+  pmSummaryMileageCheck: string;
+  pmSummaryParts: (chosen: number, total: number) => string;
+  pmOnPhone: (count: number) => string;
+  truckNowLabel: string;
+  lastPmLabel: string;
+  noPmOnRecord: string;
+  jumpItsRight: string;
+  jumpFixIt: string;
+  partsUsedHint: string;
+  mostUsedHint: (count: number, total: number) => string;
+  chooseWhichPart: string;
+  partNotChanged: string;
+  partChangedSwitch: (name: string) => string;
+  finishAddPart: string;
+  finishChoosePart: (category: string) => string;
+  finishEnterMileage: string;
+  finishCheckMileage: string;
+  finishConfirmMileage: string;
+  finishWaitingSave: string;
+  finishBlocked: string;
+  finishReady: (mileage: string, parts: number) => string;
+  finishPm: string;
+  finishConfirmTitle: (service: string, truckNumber: string) => string;
+  finishConfirmHint: string;
+  truckStays: (mileage: string) => string;
+  truckGoes: (from: string, to: string) => string;
+  pmPartsLabel: string;
+  serviceChanged: (name: string) => string;
+  undoAction: string;
+  serviceTypeHint: string;
   noJobsAssignedYet: string;
   /** Stage MG-4/5: the General mechanic's Truck screen and its sheets. */
   yourJobsDoneCount: (done: number, total: number) => string;
@@ -583,6 +617,39 @@ const copy: Record<ShopLocale, Copy> = {
     workStartedSuccess: 'Work started.',
     clockMovedFromTo: (fromTruck, toTruck) => `Work started. Your clock moved from Truck ${fromTruck} to Truck ${toTruck}.`,
     clockStripYourClock: 'Your clock',
+    pmSummaryMileage: (mileage) => `Mileage ${mileage}`,
+    pmSummaryMileageMissing: 'Mileage · enter it',
+    pmSummaryMileageConfirm: 'Mileage · confirm it',
+    pmSummaryMileageCheck: 'Mileage · check it',
+    pmSummaryParts: (chosen, total) => `Parts ${chosen} of ${total}`,
+    pmOnPhone: (count) => `${count} on this phone · not sent`,
+    truckNowLabel: 'Truck now',
+    lastPmLabel: 'Last PM',
+    noPmOnRecord: 'No PM on record',
+    jumpItsRight: "It's right",
+    jumpFixIt: 'Fix it',
+    partsUsedHint: 'Turn on what you changed',
+    mostUsedHint: (count, total) => `Most used on this model · ${count} of ${total} PMs`,
+    chooseWhichPart: 'Choose which part',
+    partNotChanged: 'Not changed',
+    partChangedSwitch: (name) => `${name} changed`,
+    finishAddPart: 'Add at least one part',
+    finishChoosePart: (category) => `Choose the part for ${category}`,
+    finishEnterMileage: 'Enter the mileage above',
+    finishCheckMileage: 'Check the mileage above',
+    finishConfirmMileage: 'Confirm the mileage above',
+    finishWaitingSave: 'Waiting to save… (offline)',
+    finishBlocked: 'Blocked · waiting for the Manager',
+    finishReady: (mileage, parts) => `Ready to finish · ${mileage} · ${parts} ${parts === 1 ? 'part' : 'parts'}`,
+    finishPm: 'Finish PM',
+    finishConfirmTitle: (service, truckNumber) => `Finish ${service} on Truck ${truckNumber}?`,
+    finishConfirmHint: 'Check it now: after this the PM is read-only.',
+    truckStays: (mileage) => `The truck stays at ${mileage}`,
+    truckGoes: (from, to) => `The truck goes from ${from} to ${to}`,
+    pmPartsLabel: 'Parts',
+    serviceChanged: (name) => `Changed to ${name}`,
+    undoAction: 'Undo',
+    serviceTypeHint: 'Changes this same Job. The mileage and the parts stay.',
     noJobsAssignedYet: 'No Jobs assigned yet',
     yourJobsDoneCount: (done, total) => `${done} of ${total} done`,
     yourTimeLabel: 'Your time',
@@ -1008,6 +1075,39 @@ const copy: Record<ShopLocale, Copy> = {
     workStartedSuccess: 'Trabajo iniciado.',
     clockMovedFromTo: (fromTruck, toTruck) => `Trabajo iniciado. Tu reloj pasó de la unidad ${fromTruck} a la ${toTruck}.`,
     clockStripYourClock: 'Tu reloj',
+    pmSummaryMileage: (mileage) => `Millaje ${mileage}`,
+    pmSummaryMileageMissing: 'Millaje · ingrésalo',
+    pmSummaryMileageConfirm: 'Millaje · confírmalo',
+    pmSummaryMileageCheck: 'Millaje · revísalo',
+    pmSummaryParts: (chosen, total) => `Piezas ${chosen} de ${total}`,
+    pmOnPhone: (count) => `${count} en este teléfono · sin enviar`,
+    truckNowLabel: 'Unidad hoy',
+    lastPmLabel: 'Último PM',
+    noPmOnRecord: 'Sin PM registrado',
+    jumpItsRight: 'Está bien',
+    jumpFixIt: 'Corregir',
+    partsUsedHint: 'Activa lo que cambiaste',
+    mostUsedHint: (count, total) => `La más usada en este modelo · ${count} de ${total} PM`,
+    chooseWhichPart: 'Elige qué pieza',
+    partNotChanged: 'Sin cambio',
+    partChangedSwitch: (name) => `${name} cambiado`,
+    finishAddPart: 'Agrega al menos una pieza',
+    finishChoosePart: (category) => `Elige la pieza de ${category}`,
+    finishEnterMileage: 'Ingresa el millaje arriba',
+    finishCheckMileage: 'Revisa el millaje arriba',
+    finishConfirmMileage: 'Confirma el millaje arriba',
+    finishWaitingSave: 'Esperando para guardar… (sin conexión)',
+    finishBlocked: 'Bloqueado · espera al Manager',
+    finishReady: (mileage, parts) => `Listo para terminar · ${mileage} · ${parts} ${parts === 1 ? 'pieza' : 'piezas'}`,
+    finishPm: 'Terminar PM',
+    finishConfirmTitle: (service, truckNumber) => `¿Terminar ${service} en la unidad ${truckNumber}?`,
+    finishConfirmHint: 'Revísalo ahora: después el PM queda de solo lectura.',
+    truckStays: (mileage) => `La unidad queda en ${mileage}`,
+    truckGoes: (from, to) => `La unidad pasa de ${from} a ${to}`,
+    pmPartsLabel: 'Piezas',
+    serviceChanged: (name) => `Cambiado a ${name}`,
+    undoAction: 'Deshacer',
+    serviceTypeHint: 'Cambia este mismo Job. El millaje y las piezas se quedan.',
     noJobsAssignedYet: 'Todavía no tienes Jobs',
     yourJobsDoneCount: (done, total) => `${done} de ${total} hechos`,
     yourTimeLabel: 'Tu tiempo',
