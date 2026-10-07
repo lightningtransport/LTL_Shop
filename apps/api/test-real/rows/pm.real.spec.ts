@@ -29,6 +29,32 @@ describe('Mecánico PM', () => {
     truthy('terminar el PM no completa el WO', ['created', 'in_progress'].includes(workOrder.status), workOrder.status);
   });
 
+  it('A9c | Pantalla nueva del PM: pieza más usada del modelo, millaje y piezas en la lista, último PM (D-PM1)', async () => {
+    const first = await plannedWo('905');
+    const firstJoin = ok('Create PM service en el 905', await createPmService(first.truck.id));
+    const firstMileage = (first.truck.mileage ?? 0) + 500;
+    ok('guardar millaje y parte', await savePm(firstJoin.id, firstMileage));
+    const saved = ok('leer el PM del 905', await pm.get(`/work-orders/${firstJoin.id}/pm`));
+    const usedCategory = (saved.selections as Json[])[0];
+    ok('Finish', await completeJob(USERS.pm, firstJoin.id, laneJob(await adminWo(firstJoin.id), 'pm').id));
+
+    // Otro camión de la misma marca y modelo: la pieza que usó el 905 queda como la más usada.
+    const row905 = await truck('905');
+    await prisma.truck.update({ where: { truckNumber: '922' }, data: { make: row905.make, model: row905.model } });
+    const second = await plannedWo('922');
+    ok('Create PM service en el 922', await createPmService(second.truck.id));
+    const service = ok('leer el PM del 922', await pm.get(`/work-orders/${second.workOrderId}/pm`));
+    const category = (service.categories as Json[]).find((item) => item.id === usedCategory.partCategoryId);
+    same('la pieza más usada del modelo, en 1 de 1 PM', [category?.mostUsedPartId, category?.mostUsedCount, category?.pmCountForModel], [usedCategory.partId, 1, 1]);
+
+    const list = ok('lista del PM', await pm.get('/work-orders?mode=pm'));
+    const running = (list.active as Json[]).find((item) => item.id === second.workOrderId);
+    same('el PM en curso trae su millaje y sus piezas', [running?.pmJob?.observedMileage, running?.pmJob?.partsCount], [null, 0]);
+    same('el 922 no tiene PM anterior', running?.lastPm, null);
+    const done = (list.completed as Json[]).find((item) => item.id === firstJoin.id);
+    same('el PM terminado dice millaje y piezas', [done?.pmJob?.observedMileage, done?.pmJob?.partsCount], [firstMileage, 1]);
+  });
+
   it('A9b | Arrancar el PM pone el WO en curso y registra el tiempo del mecánico PM [defecto #1]', async () => {
     const { truck: row, workOrderId } = await plannedWo('973');
     ok('Create PM service', await createPmService(row.id));

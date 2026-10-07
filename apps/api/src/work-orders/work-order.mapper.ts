@@ -177,6 +177,9 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
     jobs,
     mechanics,
     currentPauseReason: currentPause?.reason ?? null,
+    // Stage PM-1: since when the Manager paused it, and the pause note.
+    pausedAt: currentPause?.startedAt.toISOString() ?? null,
+    pauseNote: currentPause?.notes ?? null,
     createdAt: wo.createdAt.toISOString(),
     startedAt: wo.startedAt?.toISOString() ?? null,
     ...(viewerId ? { resolvedBlockerAwaitingContinue: resolvedBlockerAwaitingContinue(wo, viewerId) } : {}),
