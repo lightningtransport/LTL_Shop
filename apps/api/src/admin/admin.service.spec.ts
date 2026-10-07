@@ -396,6 +396,17 @@ describe('AdminService', () => {
     await expect(service.mechanicDetail(baseRow.createdById)).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('opens the detail of a Safety person listed on the roster (G9)', async () => {
+    const prisma = createPrisma();
+    prisma.user.findFirst.mockResolvedValue(null);
+    const service = createService(prisma);
+    await expect(service.mechanicDetail(baseRow.createdById)).rejects.toBeInstanceOf(NotFoundException);
+    const where = prisma.user.findFirst.mock.calls[0][0].where;
+    const allowed: string[] = where.capabilities.some.capability.in.map(String);
+    expect(allowed).toHaveLength(3);
+    expect(allowed.some((capability) => /quality/i.test(capability))).toBe(true);
+  });
+
   it('excludes System Admin accounts only when listing assignable mechanics (LTR-151)', async () => {
     const prisma = createPrisma();
     prisma.user.findMany.mockResolvedValue([]);

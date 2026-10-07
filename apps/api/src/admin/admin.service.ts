@@ -537,7 +537,8 @@ export class AdminService {
   async mechanicDetail(id: string): Promise<AdminMechanicDetailDto> {
     if (!isUuid(id)) throw new BadRequestException('Invalid Mechanic id');
     const row = await this.prisma.user.findFirst({
-      where: { id, ...mechanicCapabilityWhere },
+      // G9: the roster lists Safety (LTR-185), so its detail must open them too (not only Standard / PM).
+      where: { id, ...rosterCapabilityWhere },
       include: mechanicDetailInclude,
     });
     if (!row) throw new NotFoundException('Mechanic not found');
