@@ -40,7 +40,9 @@ describe('Safety: Quality Check (D19)', () => {
 
   it('QC2 | Tomar y aprobar: el primero gana; aprobar deja el camión listo para cerrar', async () => {
     const { truck, workOrderId } = await readyForQc('905');
-    ok('Safety 1 toma', await safety.post(`/qc/${workOrderId}/take`));
+    const taken = ok('Safety 1 toma', await safety.post(`/qc/${workOrderId}/take`));
+    // Q1: the reply is the queue after the change (not before), so the screen shows "mine" right away.
+    same('la respuesta ya lo muestra como suyo', inQueue(taken.pending, workOrderId)?.mine, true);
     refused('Safety 2 ya no puede tomarlo', await safety2.post(`/qc/${workOrderId}/take`), 409, 'QC_TAKEN');
     let item = inQueue((await queue(safety2)).pending, workOrderId);
     same('Safety 2 lo ve tomado por Safety 1', item.takenBy?.name, 'Safety 1');
@@ -49,7 +51,8 @@ describe('Safety: Quality Check (D19)', () => {
     refused('Safety 2 no puede aprobar lo que no tomó', await safety2.post(`/qc/${workOrderId}/approve`), 400, 'QC_NOT_TAKEN');
     await sameNextStepEverywhere('esperando QC', workOrderId, truck.id, 'qc');
 
-    ok('Safety 1 aprueba', await safety.post(`/qc/${workOrderId}/approve`));
+    const approved = ok('Safety 1 aprueba', await safety.post(`/qc/${workOrderId}/approve`));
+    same('la respuesta ya no lo tiene por revisar', inQueue(approved.pending, workOrderId), null);
     const workOrder = await adminWo(workOrderId);
     const qc = laneJob(workOrder, 'quality_check');
     same('QC completado', qc.status, 'completed');
@@ -65,7 +68,8 @@ describe('Safety: Quality Check (D19)', () => {
     const { truck, workOrderId } = await readyForQc('905');
     ok('tomar', await safety.post(`/qc/${workOrderId}/take`));
     refused('devolver exige decir qué encontró', await safety.post(`/qc/${workOrderId}/return`, { notes: '   ' }), 400, 'QC_NOTE_REQUIRED');
-    ok('devolver', await safety.post(`/qc/${workOrderId}/return`, { notes: 'Fuga en la manguera del freno trasero.' }));
+    const returnedReply = ok('devolver', await safety.post(`/qc/${workOrderId}/return`, { notes: 'Fuga en la manguera del freno trasero.' }));
+    same('la respuesta ya lo tiene en devueltos', inQueue(returnedReply.returned, workOrderId)?.note, 'Fuga en la manguera del freno trasero.');
 
     const blocker = await activeBlocker(workOrderId);
     same('queda como bloqueo del Job de QC', blocker?.blockerReason, 'quality_check_failed');

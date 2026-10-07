@@ -43,7 +43,10 @@ const queueInclude = {
 
 type QueueRow = Awaited<ReturnType<typeof queueRows>>[number];
 
-function queueRows(prisma: PrismaService) {
+/** Q1: the actions read the queue inside their own transaction, so the reply already shows the change. */
+type QueueClient = Pick<PrismaService, 'workOrder'>;
+
+function queueRows(prisma: QueueClient) {
   return prisma.workOrder.findMany({
     where: { status: { in: [...OPEN_STATUSES] }, primaryCategory: { name: { not: 'PM' } } },
     include: queueInclude,
@@ -88,8 +91,8 @@ export class QualityCheckService {
   ) {}
 
   /** Trucks waiting for Quality Check, and the ones Safety returned that wait for the Manager. */
-  async getQueue(user: AuthUser) {
-    const rows = await queueRows(this.prisma);
+  async getQueue(user: AuthUser, client: QueueClient = this.prisma) {
+    const rows = await queueRows(client);
     const pending: ReturnType<typeof toQueueItem>[] = [];
     const returned: Array<ReturnType<typeof toQueueItem> & { note: string | null; returnedBy: string | null; returnedAt: string }> = [];
     for (const row of rows) {
@@ -121,7 +124,7 @@ export class QualityCheckService {
       if (qcJob.assignedMechanicId && qcJob.assignedMechanicId !== user.id) {
         throw new ConflictException({ code: 'QC_TAKEN', message: `${qcJob.assignedMechanic?.name ?? 'Someone'} already took this truck.` });
       }
-      if (qcJob.assignedMechanicId === user.id) return this.getQueue(user);
+      if (qcJob.assignedMechanicId === user.id) return this.getQueue(user, tx);
       await tx.workOrderJob.update({ where: { id: qcJob.id }, data: { assignedMechanicId: user.id } });
       await tx.workOrder.update({ where: { id: workOrderId }, data: { version: { increment: 1 } } });
       await this.activity.log(tx, {
@@ -133,7 +136,7 @@ export class QualityCheckService {
         newValue: { jobId: qcJob.id, assignedMechanicId: user.id, displayName: qcJob.displayName, actor: 'safety' },
         relevantValue: { action: 'quality_check_taken', displayName: qcJob.displayName },
       });
-      return this.getQueue(user);
+      return this.getQueue(user, tx);
     });
   }
 
@@ -164,7 +167,7 @@ export class QualityCheckService {
         newValue: { status: 'completed', displayName: qcJob.displayName },
         relevantValue: { action: 'quality_check_approved', displayName: qcJob.displayName, actor: 'safety' },
       });
-      return this.getQueue(user);
+      return this.getQueue(user, tx);
     });
   }
 
@@ -205,7 +208,7 @@ export class QualityCheckService {
           notes: parsed.data.notes, laborStopped: false, actor: 'safety',
         },
       });
-      return this.getQueue(user);
+      return this.getQueue(user, tx);
     });
   }
 
