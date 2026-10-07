@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Parts &amp; Costs Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: Object.fromEntries(['background', 'foreground', 'card', 'muted', 'muted-foreground', 'primary', 'primary-foreground', 'accent', 'border', 'ring', 'success', 'warning', 'warning-foreground', 'warning-surface', 'destructive', 'destructive-text', 'sunken'].map((name) => [name, tok(name)])),
+        borderColor: { DEFAULT: 'var(--border)' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      },
+    },
+  };
+</script>
+<style>
+  /* Same tokens as the Truck, Safety and PM mockups and apps/web/src/app/globals.css. */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--sunken); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  svg.lucide.s14 { width: 14px; height: 14px; }
+  svg.lucide.s20 { width: 20px; height: 20px; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  input, select, textarea { background: var(--background); color: var(--foreground); }
+  .field { width: 100%; border: 1px solid var(--border); border-radius: 0.375rem; padding: 0 0.75rem; outline: none; }
+  .field:focus { border-color: var(--ring); box-shadow: 0 0 0 1px var(--ring); }
+  .field.bad { border-color: var(--destructive-text); }
+  .sheet-in { animation: sin .2s ease-out; } @keyframes sin { from { transform: translateY(24px); opacity: 0; } }
+  .side-in { animation: sdi .2s ease-out; } @keyframes sdi { from { transform: translateX(24px); opacity: 0; } }
+  .toast-in { animation: tin .18s ease-out; } @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+  .pulse { animation: pls 1.4s ease-in-out infinite; } @keyframes pls { 50% { opacity: .45; } }
+  .flash { animation: flash 1.6s ease-out; } @keyframes flash { from { background-color: color-mix(in oklch, var(--primary) 18%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .sheet-in, .side-in, .toast-in, .pulse, .flash { animation: none; } }
+</style>
+</head>
+<body class="min-h-screen font-sans text-sm antialiased">
+
+<!-- Demo controls (not part of the app) -->
+<div class="sticky top-0 z-50 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2 text-xs backdrop-blur">
+  <b class="mr-2">Parts &amp; costs · proposal</b>
+  <div class="flex overflow-hidden rounded-md border" role="group" aria-label="Device">
+    <button data-device="phone" class="dev h-8 px-3">Phone</button><button data-device="desktop" class="dev h-8 border-l px-3">Desktop</button>
+  </div>
+  <button id="theme" class="h-8 rounded-md border px-3">Dark</button>
+  <label class="flex h-8 items-center gap-1.5 rounded-md border px-2"><input id="failnext" type="checkbox" class="size-3.5" />Fail next save</label>
+  <span class="ml-2 text-muted-foreground">Demo:</span>
+  <div id="presets" class="flex flex-wrap gap-1"></div>
+  <button id="reset" class="ml-auto h-8 rounded-md border px-3">Reset</button>
+</div>
+
+<div id="stage" class="flex justify-center p-4 sm:p-8"></div>
+
+<script>
+/* ───────── Demo data ───────── */
+const TODAY = '2026-10-07';
+const CATS = [['oil1', 'Oil Filter 1 Unit'], ['oil2', 'Oil Filter 2 Unit'], ['fuel', 'Fuel Filter'], ['paper', 'Paper Fuel Filter'], ['cabin', 'Cabin Air Filter'], ['desic', 'Desiccant Filter'], ['air', 'Engine Air Filter'], ['wiper', 'Wiper Blades'], ['cool', 'Coolant Filter']];
+const MAKES = ['Freightliner', 'Kenworth', 'Mack', 'Peterbilt', 'Volvo'];
+const TRUCKS = [
+  { n: '601', veh: '2024 Mack Anthem' }, { n: '606', veh: '2024 Freightliner Cascadia' }, { n: '612', veh: '2023 Kenworth T680' },
+  { n: '918', veh: '2026 Peterbilt 579' }, { n: '931', veh: '2022 Volvo VNL 760' }, { n: '944', veh: '2024 Freightliner Cascadia' }, { n: '968', veh: '2025 Volvo VNL 860' },
+];
+// Hours recorded per truck and month (work_sessions, D18). Cost needs a rate: "coming later".
+const HOURS = { 601: { '2026-07': 6, '2026-08': 9.25, '2026-09': 21, '2026-10': 14.5 }, 606: { '2026-10': 7.75 }, 918: { '2026-09': 4, '2026-10': 11.5 }, 931: { '2026-07': 3, '2026-09': 5.5 }, 944: { '2026-09': 2 }, 968: { '2026-10': 3.25 }, 612: {} };
+// Jobs sent to an external shop (D24): out now, or sent in the last 90 days (Activity Log).
+const EXT_JOBS = {
+  601: [{ id: 'j1', name: 'Radiator Repair', wo: 'WO-001', kind: 'part', when: 'At the shop now · part sent Oct 4' }],
+  931: [{ id: 'j2', name: 'Exhaust / DPF', wo: 'WO-013', kind: 'truck', when: 'Truck sent Sep 26 · back Sep 30' }],
+};
+const L = (part, qty, cost, truck = '') => ({ part, desc: '', qty, cost, truck });
+const O = (desc, qty, cost, truck = '') => ({ part: null, desc, qty, cost, truck });
+function seed() {
+  return {
+    vendors: [
+      { id: 'v1', name: 'FleetPride', parts: true, repairs: false, phone: '(909) 555-0142', email: 'orders.ontario@fleetpride.example', acct: 'LTL-44120', notes: 'Ontario branch. Net 30.', active: true },
+      { id: 'v2', name: 'TruckPro', parts: true, repairs: false, phone: '(909) 555-0177', email: '', acct: 'TP-88231', notes: '', active: true },
+      { id: 'v3', name: 'Rush Truck Center', parts: true, repairs: true, phone: '(951) 555-0110', email: 'service.fontana@rush.example', acct: 'RTC-1093', notes: 'Fontana. Peterbilt and Mack dealer.', active: true },
+      { id: 'v4', name: 'Diesel Pro (Barstow)', parts: false, repairs: true, phone: '(760) 555-0164', email: '', acct: '', notes: 'Radiators and cooling.', active: true },
+      { id: 'v5', name: 'Premier Truck Glass', parts: false, repairs: true, phone: '(909) 555-0129', email: '', acct: '', notes: '', active: true },
+      { id: 'v6', name: 'Inland Diesel Supply', parts: true, repairs: false, phone: '', email: '', acct: '', notes: 'Closed in 2025.', active: false },
+    ],
+    parts: [
+      { id: 'p1', cat: 'oil1', pn: 'LF3654', name: 'Fleetguard Oil Filter', fits: [], cost: 2410, vendor: 'v1', active: true, used: 41 },
+      { id: 'p2', cat: 'oil1', pn: '21707135', name: 'Mack Oil Filter', fits: ['Mack'], cost: 2630, vendor: 'v1', active: true, used: 12 },
+      { id: 'p3', cat: 'oil1', pn: 'WL10663', name: 'Freightliner Cascadia Oil Filter 1 Unit', fits: ['Freightliner Cascadia'], cost: 2295, vendor: 'v2', active: true, used: 9 },
+      { id: 'p4', cat: 'oil1', pn: 'WIX WL10341', name: 'Peterbilt Oil Filter', fits: ['Peterbilt'], cost: null, vendor: null, active: true, used: 3 },
+      { id: 'p5', cat: 'oil2', pn: '23658092', name: 'Volvo Long Life Oil Filter (2)', fits: ['Volvo'], cost: 3140, vendor: 'v2', active: true, used: 18, openPm: 'Truck 968 · WO-016' },
+      { id: 'p6', cat: 'oil2', pn: 'LFP3236', name: 'Luber-Finer Oil Filter (2)', fits: [], cost: 2990, vendor: 'v2', active: true, used: 7 },
+      { id: 'p7', cat: 'fuel', pn: 'LFF8897', name: 'Fuel Filter 4 Micron MP7 EPA', fits: [], cost: 4180, vendor: 'v1', active: true, used: 22 },
+      { id: 'p8', cat: 'fuel', pn: '24470880', name: 'Mack Fuel Filter', fits: ['Mack'], cost: 4415, vendor: 'v1', active: true, used: 10 },
+      { id: 'p9', cat: 'fuel', pn: 'WF10678', name: 'Freightliner Cascadia Large Fuel Filter', fits: ['Freightliner Cascadia'], cost: 3875, vendor: 'v2', active: true, used: 8 },
+      { id: 'p10', cat: 'fuel', pn: 'WIX WF10447', name: 'Fuel Filter Volvo', fits: ['Volvo'], cost: 4690, vendor: 'v2', active: true, used: 15 },
+      { id: 'p11', cat: 'paper', pn: 'L9765FXL', name: 'Luber-Finer Fuel Filter', fits: ['Peterbilt'], cost: 3895, vendor: 'v1', active: true, used: 6 },
+      { id: 'p12', cat: 'paper', pn: 'FS20313', name: 'Fleetguard Water Separator', fits: [], cost: 3675, vendor: 'v2', active: true, used: 11 },
+      { id: 'p13', cat: 'cabin', pn: '23582260', name: 'Volvo Cabin Air Filter', fits: ['Volvo'], cost: 2785, vendor: 'v2', active: true, used: 14 },
+      { id: 'p14', cat: 'cabin', pn: 'PA30093', name: 'Peterbilt Cabin Air Filter', fits: ['Peterbilt'], cost: 2240, vendor: 'v3', active: true, used: 5 },
+      { id: 'p15', cat: 'cabin', pn: 'CAF24000', name: 'Cabin Air Filter', fits: [], cost: null, vendor: null, active: true, used: 2 },
+      { id: 'p16', cat: 'desic', pn: '23099526', name: 'Desiccant Filter', fits: [], cost: 6150, vendor: 'v3', active: true, used: 9 },
+      { id: 'p17', cat: 'desic', pn: 'P584764', name: 'Peterbilt Donaldson', fits: ['Peterbilt'], cost: 6425, vendor: 'v1', active: true, used: 4 },
+      { id: 'p18', cat: 'air', pn: 'LAF9201', name: 'Air Filter', fits: [], cost: 8950, vendor: 'v1', active: true, used: 13 },
+      { id: 'p19', cat: 'air', pn: '25100042', name: 'Mack Engine Air Filter', fits: ['Mack'], cost: 9240, vendor: 'v1', active: true, used: 8 },
+      { id: 'p20', cat: 'wiper', pn: 'MV31522B', name: 'Wiper Blades', fits: [], cost: 1460, vendor: 'v1', active: true, used: 20 },
+      { id: 'p21', cat: 'cool', pn: 'LFW5141', name: 'Filter Coolant', fits: [], cost: 1890, vendor: 'v1', active: true, used: 16 },
+      { id: 'p22', cat: 'cool', pn: 'DBC4086', name: 'Filter Coolant', fits: [], cost: 2105, vendor: 'v6', active: false, used: 2 },
+    ],
+    purchases: [
+      { id: 'pu1', vendor: 'v1', inv: '88412093', date: '2026-10-06', tax: 4154, freight: 3481, file: 'FleetPride-88412093.pdf', by: 'Cristian', at: 'Oct 6, 4:12 PM', notes: '',
+        lines: [L('p7', 4, 4180, '606'), L('p1', 4, 2410, '606'), L('p18', 2, 8950, '918'), L('p17', 1, 6425, '918'), L('p20', 2, 1460, '918')] },
+      { id: 'pu2', vendor: 'v2', inv: '7731-0042', date: '2026-10-03', tax: 1071, freight: 0, file: 'TruckPro_7731-0042.jpg', by: 'Cristian', at: 'Oct 3, 11:40 AM', notes: '',
+        lines: [L('p5', 2, 3140, '968'), L('p10', 1, 4690, '968'), L('p13', 1, 2785, '968')] },
+      { id: 'pu3', vendor: 'v3', inv: 'RTC-559210', date: '2026-09-29', tax: 8167, freight: 0, file: null, by: 'Cristian', at: 'Sep 29, 2:05 PM', notes: 'For the shop. No truck yet.',
+        lines: [O('Bendix brake pads, axle set', 4, 14200), O('15W-40 engine oil, 55 gal drum', 1, 48600)] },
+      { id: 'pu4', vendor: 'v1', inv: '88409911', date: '2026-09-24', tax: 1260, freight: 0, file: 'FleetPride-88409911.pdf', by: 'Cristian', at: 'Sep 24, 9:30 AM', notes: '',
+        lines: [L('p2', 1, 2630, '601'), L('p8', 1, 4415, '601'), L('p19', 1, 9240, '601')] },
+      { id: 'pu7', vendor: 'v3', inv: 'RTC-557731', date: '2026-09-16', tax: 475, freight: 0, file: 'RTC-557731.pdf', by: 'Crixcrox', at: 'Sep 16, 3:15 PM', notes: '',
+        lines: [L('p14', 1, 2240, '918'), L('p11', 1, 3895, '918')] },
+      { id: 'pu5', vendor: 'v1', inv: '88398120', date: '2026-08-14', tax: 1643, freight: 0, file: 'FleetPride-88398120.pdf', by: 'Cristian', at: 'Aug 14, 10:02 AM', notes: '',
+        lines: [O('Headlight assembly, LH', 1, 21200, '601')] },
+      { id: 'pu6', vendor: 'v2', inv: '7729-8810', date: '2026-07-22', tax: 748, freight: 0, file: 'TruckPro_7729-8810.pdf', by: 'Cristian', at: 'Jul 22, 1:47 PM', notes: '',
+        lines: [L('p6', 2, 2990, '931'), L('p12', 1, 3675, '931')] },
+    ],
+    repairs: [
+      { id: 'r1', truck: '601', vendor: 'v4', inv: 'DP-20417', date: '2026-10-05', desc: 'Radiator recore and pressure test', amount: 184000, job: 'j1', file: 'DieselPro-DP-20417.pdf', by: 'Cristian', at: 'Oct 5, 5:20 PM' },
+      { id: 'r2', truck: '931', vendor: 'v3', inv: 'RTC-S-88120', date: '2026-09-30', desc: 'DPF clean and EGR cooler replacement', amount: 327550, job: 'j2', file: 'RTC-S-88120.pdf', by: 'Cristian', at: 'Sep 30, 4:02 PM' },
+      { id: 'r3', truck: '944', vendor: 'v5', inv: 'PTG-5531', date: '2026-09-12', desc: 'Windshield replacement', amount: 48600, job: null, file: null, by: 'Crixcrox', at: 'Sep 12, 12:30 PM' },
+      { id: 'r4', truck: '601', vendor: 'v3', inv: 'RTC-S-87002', date: '2026-07-30', desc: 'Turbo actuator calibration', amount: 41250, job: null, file: 'RTC-S-87002.pdf', by: 'Cristian', at: 'Jul 30, 3:10 PM' },
+    ],
+  };
+}
+let S = seed();
+let UI = null;
+UI = fresh();
+function fresh() {
+  return { device: UI?.device ?? (innerWidth < 900 ? 'phone' : 'desktop'), route: 'purchases', truck: '601', truckTab: 'costs', period: '3m', panel: null, dialog: null, menu: false, drawer: false, toast: null, state: 'ok', flash: null, focus: null,
+    q: '', fVendor: '', fTruck: '', fPeriod: 'all', pq: '', pMake: '', pInactive: false, rq: '' };
+}
+
+/* ───────── Helpers ───────── */
+const ic = (n, c = '') => `<i data-lucide="${n}" class="${c}"></i>`;
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const money = (c) => (c < 0 ? '−' : '') + '$' + (Math.abs(c) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const centsToInput = (c) => (c == null ? '' : (c / 100).toFixed(2));
+function parseMoney(s) { const t = String(s ?? '').replace(/[$,\s]/g, ''); if (!t) return null; if (!/^\d*(\.\d{0,2})?$/.test(t) || t === '.') return NaN; return Math.round(parseFloat(t) * 100); }
+function parseQty(s) { const t = String(s ?? '').replace(/,/g, '').trim(); if (!t) return null; if (!/^\d*(\.\d{0,2})?$/.test(t) || t === '.') return NaN; return parseFloat(t); }
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fd = (d, year = false) => { const [y, m, day] = d.split('-').map(Number); return `${MON[m - 1]} ${day}${year ? `, ${y}` : ''}`; };
+const vendor = (id) => S.vendors.find((v) => v.id === id);
+const vn = (id) => vendor(id)?.name ?? '—';
+const part = (id) => S.parts.find((p) => p.id === id);
+const catName = (k) => CATS.find((c) => c[0] === k)?.[1];
+const truckOf = (n) => TRUCKS.find((t) => t.n === n);
+const normInv = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const lineCents = (l) => Math.round(l.qty * l.cost);
+const lineText = (l) => (l.part ? `${part(l.part).name} ${part(l.part).pn}` : l.desc) + ` × ${l.qty}`;
+const fitsText = (p) => (p.fits.length ? p.fits.join(', ') : 'All trucks');
+const BTN = {
+  primary: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50',
+  outline: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 font-medium hover:bg-accent disabled:opacity-50',
+  danger: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-destructive px-3 font-medium text-white hover:opacity-90',
+  ghost: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 font-medium text-muted-foreground hover:bg-accent hover:text-foreground',
+};
+const chip = (tone, text, dot = true) => {
+  const t = { warn: 'border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning', ok: 'border-success/40 bg-success/10 text-success', mute: 'border-border bg-muted text-muted-foreground', pri: 'border-primary/40 bg-primary/10 text-primary', bad: 'border-destructive/40 bg-destructive/15 text-destructive-text', vio: 'border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300' }[tone];
+  const d = { warn: 'bg-warning', ok: 'bg-success', mute: 'bg-muted-foreground', pri: 'bg-primary', bad: 'bg-destructive-text', vio: 'bg-violet-500' }[tone];
+  return `<span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium ${t}">${dot ? `<span class="size-1.5 rounded-full ${d}"></span>` : ''}${text}</span>`;
+};
+
+/* Tax and freight are spread over the lines in proportion (D-PC2); the left-over cent goes to the largest line. */
+function allocate(lines, extra) {
+  const cents = lines.map(lineCents);
+  const sub = cents.reduce((a, b) => a + b, 0);
+  const shares = cents.map((c) => (sub ? Math.floor((extra * c) / sub) : 0));
+  const big = cents.indexOf(Math.max(...cents));
+  if (big >= 0) shares[big] += extra - shares.reduce((a, b) => a + b, 0);
+  const out = {};
+  lines.forEach((l, i) => { out[l.truck || ''] = (out[l.truck || ''] ?? 0) + cents[i] + shares[i]; });
+  return out;
+}
+const pTotal = (p) => p.lines.reduce((a, l) => a + lineCents(l), 0) + p.tax + p.freight;
+const pTrucks = (p) => [...new Set(p.lines.map((l) => l.truck).filter(Boolean))];
+const pAlloc = (p) => allocate(p.lines, p.tax + p.freight);
+function lastPaid(partId) {
+  const hits = S.purchases.filter((p) => !p.voided).flatMap((p) => p.lines.filter((l) => l.part === partId).map((l) => ({ cost: l.cost, date: p.date, vendor: p.vendor }))).sort((a, b) => b.date.localeCompare(a.date));
+  return hits[0] ?? null;
+}
+
+/* The ledger (truck_cost_entries): append-only; a void writes a negative reversal. */
+function ledger(n) {
+  const out = [];
+  for (const p of S.purchases) {
+    const a = pAlloc(p)[n]; if (!a) continue;
+    const what = p.lines.filter((l) => l.truck === n).map(lineText).join(' · ');
+    out.push({ date: p.date, kind: 'parts', amt: a, title: `${vn(p.vendor)} · ${p.inv}`, sub: what, open: ['purchase', p.id], voided: !!p.voided });
+    if (p.voided) out.push({ date: p.voided.on, kind: 'parts', amt: -a, title: `${vn(p.vendor)} · ${p.inv}`, sub: `Voided · ${p.voided.reason}`, open: ['purchase', p.id], reversal: true });
+  }
+  for (const r of S.repairs.filter((x) => x.truck === n)) {
+    const j = r.job ? (EXT_JOBS[r.truck] ?? []).find((x) => x.id === r.job) : null;
+    out.push({ date: r.date, kind: 'outside', amt: r.amount, title: `${vn(r.vendor)} · ${r.inv}`, sub: r.desc + (j ? ` · ${j.wo} ${j.name}` : ''), open: ['repair', r.id], voided: !!r.voided });
+    if (r.voided) out.push({ date: r.voided.on, kind: 'outside', amt: -r.amount, title: `${vn(r.vendor)} · ${r.inv}`, sub: `Voided · ${r.voided.reason}`, open: ['repair', r.id], reversal: true });
+  }
+  return out.sort((a, b) => b.date.localeCompare(a.date) || (a.reversal ? -1 : 1));
+}
+const PERIODS = { month: ['This month', '2026-10-01'], '3m': ['Last 3 months', '2026-08-01'], year: ['This year', '2026-01-01'], all: ['All time', '0000'] };
+const inPeriod = (d, k) => d >= PERIODS[k][1];
+const hoursIn = (n, k) => Object.entries(HOURS[n] ?? {}).filter(([m]) => `${m}-31` >= PERIODS[k][1]).reduce((a, [, h]) => a + h, 0);
+function yearTotals(n) { const e = ledger(n).filter((x) => inPeriod(x.date, 'year')); return { parts: e.filter((x) => x.kind === 'parts').reduce((a, x) => a + x.amt, 0), outside: e.filter((x) => x.kind === 'outside').reduce((a, x) => a + x.amt, 0) }; }
+
+/* ───────── Render ───────── */
+const ROUTES = {
+  purchases: ['Purchases', 'receipt'], repairs: ['Outside repairs', 'wrench'], parts: ['Parts', 'package'], vendors: ['Vendors', 'store'], trucks: ['Trucks', 'truck'],
+};
+function render() {
+  document.querySelectorAll('.dev').forEach((b) => b.className = `dev h-8 px-3 ${b.dataset.device === 'desktop' ? 'border-l' : ''} ${UI.device === b.dataset.device ? 'bg-primary text-primary-foreground' : ''}`);
+  const phone = UI.device === 'phone';
+  document.getElementById('stage').innerHTML = `<div class="${phone ? 'w-[390px] h-[800px] rounded-[2rem] border-4' : 'w-full max-w-[1280px] h-[820px] rounded-xl border'} relative flex overflow-hidden bg-background shadow-xl">${app(phone)}</div>`;
+  document.getElementById('presets').innerHTML = Object.entries(PRESETS).map(([k, [l]]) => `<button data-preset="${k}" class="h-8 rounded-md border px-2 hover:bg-accent">${l}</button>`).join('');
+  lucide.createIcons();
+  if (UI.focus) { const el = document.getElementById(UI.focus); if (el) { el.focus(); const v = el.value ?? ''; try { el.setSelectionRange(v.length, v.length); } catch (e) { /* select */ } } UI.focus = null; }
+}
+
+function navItem(key, label, icon, phone, live = true) {
+  const on = UI.route === key || (key === 'trucks' && UI.route === 'truck');
+  return `<button data-nav="${live ? key : ''}" data-soon="${live ? '' : label}" class="flex ${phone ? 'h-11' : 'h-9'} w-full items-center gap-2.5 rounded-md px-2 text-left ${on ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}">${ic(icon)}${label}</button>`;
+}
+function nav(phone) {
+  const grp = (t, items, extra = '') => `<div class="space-y-0.5"><p class="flex items-center gap-2 px-2 pb-1 text-xs text-muted-foreground">${t}${extra}</p>${items.join('')}</div>`;
+  return `<nav class="flex-1 space-y-5 overflow-y-auto p-3" aria-label="Admin">
+    ${grp('Operations', [navItem('', 'Dashboard', 'gauge', phone, false), navItem('', 'Yard Operations', 'warehouse', phone, false), navItem('', 'Work Orders', 'clipboard-list', phone, false), navItem('trucks', 'Trucks', 'truck', phone)])}
+    ${grp('Parts &amp; costs', [navItem('purchases', 'Purchases', 'receipt', phone), navItem('repairs', 'Outside repairs', 'wrench', phone), navItem('parts', 'Parts', 'package', phone), navItem('vendors', 'Vendors', 'store', phone)], `<span class="rounded bg-primary/15 px-1.5 text-[10px] font-semibold uppercase text-primary">New</span>`)}
+    ${grp('Setup', [navItem('', 'Mechanics', 'users', phone, false), navItem('', 'Job Catalog', 'library', phone, false), navItem('', 'Shop workflow', 'workflow', phone, false)])}
+    ${grp('Audit', [navItem('', 'History', 'history', phone, false)])}
+  </nav>`;
+}
+
+function app(phone) {
+  const brand = `<div class="flex h-14 shrink-0 items-center gap-2 border-b px-4"><div class="grid size-7 place-items-center rounded-md bg-success/20 text-success">${ic('zap', 's14')}</div><span class="font-semibold">LTL Shop</span><span class="text-xs text-muted-foreground">Admin</span></div>`;
+  const side = phone ? '' : `<aside class="flex w-56 shrink-0 flex-col border-r bg-background">${brand}${nav(false)}<div class="border-t p-3"><p class="font-medium">Cristian</p><p class="text-xs text-muted-foreground">Shop Manager</p></div></aside>`;
+  const crumbs = UI.route === 'truck'
+    ? `<button data-nav="trucks" class="hover:text-foreground">Trucks</button>${ic('chevron-right', 's14')}<span class="font-medium text-foreground">${UI.truck}</span>`
+    : `${UI.route === 'trucks' ? '' : `<span>Parts &amp; costs</span>${ic('chevron-right', 's14')}`}<span class="font-medium text-foreground">${ROUTES[UI.route][0]}</span>`;
+  const header = `<header class="flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-background px-4">
+      <div class="flex min-w-0 items-center gap-1">${phone ? `<button data-act="drawer" class="-ml-2 grid size-10 place-items-center rounded-md text-muted-foreground hover:bg-accent" aria-label="Menu">${ic('menu')}</button>` : ''}
+      <nav class="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-muted-foreground" aria-label="Breadcrumb">${crumbs}</nav></div>
+      <div class="grid size-8 shrink-0 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary">CR</div></header>`;
+  let body;
+  if (UI.state === 'loading') body = skeleton(phone);
+  else if (UI.state === 'error') body = `<div class="m-4 flex flex-col items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-8 text-center"><span class="text-destructive-text">${ic('circle-alert', 's20')}</span><p class="font-medium">${ROUTES[UI.route]?.[0] ?? 'This page'} did not load.</p><p class="text-muted-foreground">Check the connection and try again. Nothing you saved is lost.</p><button data-act="retry" class="${BTN.outline} mt-2 ${phone ? 'h-11' : 'h-9'}">${ic('rotate-cw')}Retry</button></div>`;
+  else body = { purchases: purchasesView, repairs: repairsView, parts: partsView, vendors: vendorsView, trucks: trucksView, truck: truckView }[UI.route](phone);
+  return `${side}
+    <div class="relative flex min-w-0 flex-1 flex-col">
+      ${header}
+      <main class="min-h-0 flex-1 overflow-y-auto"><div class="${phone ? 'px-4' : 'px-6'} pb-16 pt-5">${body}</div></main>
+      ${UI.panel ? panel(phone) : ''}
+      ${UI.dialog ? dialog(phone) : ''}
+      ${UI.toast ? `<div class="toast-in absolute bottom-4 left-1/2 z-[60] flex w-[min(92%,400px)] -translate-x-1/2 items-center gap-2 rounded-lg border bg-card px-3 py-2.5 shadow-xl" role="status">${ic(UI.toast[0] === 'ok' ? 'circle-check' : UI.toast[0] === 'info' ? 'info' : 'circle-alert', UI.toast[0] === 'ok' ? 'text-success' : UI.toast[0] === 'info' ? 'text-primary' : 'text-destructive-text')}<span class="flex-1">${UI.toast[1]}</span></div>` : ''}
+    </div>
+    ${phone && UI.drawer ? `<div data-act="drawer" class="absolute inset-0 z-40 bg-black/50"></div><aside class="side-in absolute inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-background">${brand}${nav(true)}</aside>` : ''}`;
+}
+
+const pageHead = (title, desc, action, phone) => `<div class="mb-4 flex ${phone ? 'flex-col gap-3' : 'items-start justify-between gap-4'}"><div class="min-w-0"><h1 class="text-2xl font-semibold tracking-tight">${title}</h1><p class="text-muted-foreground">${desc}</p></div>${action ? `<div class="flex shrink-0 gap-2">${action}</div>` : ''}</div>`;
+const empty = (icon, title, text, action = '') => `<div class="flex flex-col items-center gap-1.5 rounded-xl border border-dashed px-4 py-12 text-center text-muted-foreground"><span class="mb-1 grid size-10 place-items-center rounded-full bg-muted">${ic(icon, 's20')}</span><p class="font-medium text-foreground">${title}</p><p class="max-w-sm">${text}</p>${action ? `<div class="mt-2">${action}</div>` : ''}</div>`;
+const sel = (id, opts, val, phone, extra = '') => `<select id="${id}" ${extra} class="field ${phone ? 'h-11 text-base' : 'h-9'}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(val) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+const searchBox = (id, val, ph, phone) => `<div class="relative min-w-0 flex-1"><span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">${ic('search', 's14')}</span><input id="${id}" data-filter="${id}" value="${esc(val)}" placeholder="${ph}" class="field ${phone ? 'h-11 text-base' : 'h-9'} pl-8" /></div>`;
+const truckOpts = (first) => [['', first], ...TRUCKS.map((t) => [t.n, `Truck ${t.n} · ${t.veh}`])];
+
+/* ── Purchases ── */
+function purchasesView(phone) {
+  const h = phone ? 'h-11' : 'h-9';
+  const head = pageHead('Purchases', 'Parts bought from vendors, with the invoice. Assign them to a truck to count them in its costs.', `<button data-act="new-purchase" class="${BTN.primary} ${h} ${phone ? 'w-full' : ''}">${ic('plus')}New purchase</button>`, phone);
+  if (!S.purchases.length) return head + empty('receipt', 'No purchases yet', 'Save a vendor invoice with its parts. It can go to one truck, several, or stay as shop stock.', `<button data-act="new-purchase" class="${BTN.primary} h-9">${ic('plus')}New purchase</button>`);
+  const q = UI.q.trim().toLowerCase();
+  const list = S.purchases.filter((p) => (!UI.fVendor || p.vendor === UI.fVendor) && (!UI.fTruck || (UI.fTruck === 'none' ? pAlloc(p)[''] : pTrucks(p).includes(UI.fTruck))) && inPeriod(p.date, UI.fPeriod)
+    && (!q || [vn(p.vendor), p.inv, ...p.lines.map(lineText)].join(' ').toLowerCase().includes(q))).sort((a, b) => b.date.localeCompare(a.date));
+  const live = list.filter((p) => !p.voided);
+  const total = live.reduce((a, p) => a + pTotal(p), 0);
+  const noTruck = live.reduce((a, p) => a + (pAlloc(p)[''] ?? 0), 0);
+  const filters = `<div class="mb-3 flex ${phone ? 'flex-col' : 'flex-wrap'} gap-2">${searchBox('q', UI.q, 'Invoice #, vendor or part', phone)}
+    <div class="${phone ? 'grid grid-cols-3' : 'flex'} gap-2">${sel('fVendor', [['', 'All vendors'], ...S.vendors.filter((v) => v.parts).map((v) => [v.id, v.name])], UI.fVendor, phone, 'data-filter="fVendor"')}
+    ${sel('fTruck', [['', 'All trucks'], ['none', 'No truck'], ...TRUCKS.map((t) => [t.n, `Truck ${t.n}`])], UI.fTruck, phone, 'data-filter="fTruck"')}
+    ${sel('fPeriod', Object.entries(PERIODS).map(([k, [l]]) => [k, l]), UI.fPeriod, phone, 'data-filter="fPeriod"')}</div></div>`;
+  const sum = `<p class="mb-2 text-xs text-muted-foreground"><span class="tnum">${live.length} purchase${live.length === 1 ? '' : 's'} · <b class="text-foreground">${money(total)}</b>${noTruck ? ` · No truck: ${money(noTruck)}` : ''}</span></p>`;
+  if (!list.length) return head + filters + empty('search-x', 'No purchases match', 'Try another vendor, truck or period.', `<button data-act="clear-filters" class="${BTN.outline} h-9">Clear filters</button>`);
+  const truckCell = (p) => { const t = pTrucks(p); const none = pAlloc(p)['']; return t.length ? `${t.map((n) => `Truck ${n}`).join(', ')}${none ? ' <span class="text-muted-foreground">+ no truck</span>' : ''}` : '<span class="text-muted-foreground">No truck · shop stock</span>'; };
+  const fileCell = (p) => (p.file ? `<span class="text-muted-foreground" title="${esc(p.file)}">${ic('paperclip', 's14')}</span>` : chip('warn', 'No invoice file'));
+  if (phone) return head + filters + sum + `<ul class="space-y-2">${list.map((p) => `<li><button data-open="purchase:${p.id}" class="${UI.flash === p.id ? 'flash' : ''} block w-full space-y-1 rounded-xl border bg-card p-3 text-left hover:bg-accent/40 ${p.voided ? 'opacity-60' : ''}">
+      <div class="flex items-center gap-2"><span class="font-semibold">${vn(p.vendor)}</span><span class="font-mono text-xs text-muted-foreground">${esc(p.inv)}</span><span class="tnum ml-auto font-semibold ${p.voided ? 'line-through' : ''}">${money(pTotal(p))}</span></div>
+      <p class="text-xs text-muted-foreground">${fd(p.date)} · ${p.lines.length} line${p.lines.length === 1 ? '' : 's'} · ${truckCell(p)}</p>
+      <div class="flex flex-wrap gap-1.5">${p.voided ? chip('bad', 'Voided') : ''}${p.file ? '' : chip('warn', 'No invoice file')}</div></button></li>`).join('')}</ul>`;
+  return head + filters + sum + `<div class="overflow-hidden rounded-xl border bg-card"><table class="w-full text-left"><thead class="border-b text-xs text-muted-foreground"><tr><th class="px-4 py-2.5 font-medium">Date</th><th class="px-3 font-medium">Vendor</th><th class="px-3 font-medium">Invoice #</th><th class="px-3 font-medium">Lines</th><th class="px-3 font-medium">Truck</th><th class="px-3 font-medium">File</th><th class="px-4 text-right font-medium">Total</th></tr></thead>
+    <tbody class="divide-y">${list.map((p) => `<tr data-open="purchase:${p.id}" class="${UI.flash === p.id ? 'flash' : ''} cursor-pointer hover:bg-accent/40 ${p.voided ? 'text-muted-foreground' : ''}"><td class="tnum whitespace-nowrap px-4 py-3">${fd(p.date)}</td><td class="px-3 font-medium">${vn(p.vendor)}</td><td class="px-3 font-mono text-[13px]">${esc(p.inv)}</td><td class="tnum px-3">${p.lines.length}</td><td class="px-3">${truckCell(p)}</td><td class="px-3">${fileCell(p)}</td><td class="tnum whitespace-nowrap px-4 text-right font-semibold">${p.voided ? `${chip('bad', 'Voided')} <span class="line-through">${money(pTotal(p))}</span>` : money(pTotal(p))}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ── Outside repairs ── */
+function repairsView(phone) {
+  const h = phone ? 'h-11' : 'h-9';
+  const head = pageHead('Outside repairs', 'Work done by another shop, with its invoice. Always on a truck; link it to the Job you sent out.', `<button data-act="new-repair" class="${BTN.primary} ${h} ${phone ? 'w-full' : ''}">${ic('plus')}New outside repair</button>`, phone);
+  if (!S.repairs.length) return head + empty('wrench', 'No outside repairs yet', 'When a part or a truck comes back from another shop, save its invoice here.', `<button data-act="new-repair" class="${BTN.primary} h-9">${ic('plus')}New outside repair</button>`);
+  const q = UI.rq.trim().toLowerCase();
+  const list = S.repairs.filter((r) => !q || [vn(r.vendor), r.inv, r.desc, r.truck].join(' ').toLowerCase().includes(q)).sort((a, b) => b.date.localeCompare(a.date));
+  const jobOf = (r) => (r.job ? (EXT_JOBS[r.truck] ?? []).find((j) => j.id === r.job) : null);
+  const jobCell = (r) => { const j = jobOf(r); return j ? `<span class="inline-flex items-center gap-1.5">${ic('building-2', 's14 text-primary')}${j.name} · <span class="font-mono text-xs">${j.wo}</span> · ${j.kind}</span>` : '<span class="text-muted-foreground">Not linked</span>'; };
+  const live = list.filter((r) => !r.voided);
+  const top = `<div class="mb-3">${searchBox('rq', UI.rq, 'Truck, vendor, invoice # or description', phone)}</div><p class="mb-2 text-xs text-muted-foreground tnum">${live.length} repair${live.length === 1 ? '' : 's'} · <b class="text-foreground">${money(live.reduce((a, r) => a + r.amount, 0))}</b></p>`;
+  if (!list.length) return head + top + empty('search-x', 'No outside repairs match', 'Try another truck or vendor.');
+  if (phone) return head + top + `<ul class="space-y-2">${list.map((r) => `<li><button data-open="repair:${r.id}" class="${UI.flash === r.id ? 'flash' : ''} block w-full space-y-1 rounded-xl border bg-card p-3 text-left hover:bg-accent/40 ${r.voided ? 'opacity-60' : ''}">
+      <div class="flex items-center gap-2"><span class="font-semibold">Truck ${r.truck}</span><span class="text-muted-foreground">${vn(r.vendor)}</span><span class="tnum ml-auto font-semibold ${r.voided ? 'line-through' : ''}">${money(r.amount)}</span></div>
+      <p>${esc(r.desc)}</p><p class="text-xs text-muted-foreground">${fd(r.date)} · <span class="font-mono">${esc(r.inv)}</span></p><p class="text-xs">${jobCell(r)}</p>${r.voided ? chip('bad', 'Voided') : ''}</button></li>`).join('')}</ul>`;
+  return head + top + `<div class="overflow-hidden rounded-xl border bg-card"><table class="w-full text-left"><thead class="border-b text-xs text-muted-foreground"><tr><th class="px-4 py-2.5 font-medium">Date</th><th class="px-3 font-medium">Truck</th><th class="px-3 font-medium">Vendor</th><th class="px-3 font-medium">What was done</th><th class="px-3 font-medium">Job</th><th class="px-3 font-medium">Invoice #</th><th class="px-4 text-right font-medium">Amount</th></tr></thead>
+    <tbody class="divide-y">${list.map((r) => `<tr data-open="repair:${r.id}" class="${UI.flash === r.id ? 'flash' : ''} cursor-pointer hover:bg-accent/40 ${r.voided ? 'text-muted-foreground' : ''}"><td class="tnum whitespace-nowrap px-4 py-3">${fd(r.date)}</td><td class="px-3 font-medium">${r.truck}</td><td class="px-3">${vn(r.vendor)}</td><td class="px-3">${esc(r.desc)}</td><td class="px-3 text-[13px]">${jobCell(r)}</td><td class="px-3 font-mono text-[13px]">${esc(r.inv)} ${r.file ? '' : chip('warn', 'No file')}</td><td class="tnum whitespace-nowrap px-4 text-right font-semibold">${r.voided ? `${chip('bad', 'Voided')} <span class="line-through">${money(r.amount)}</span>` : money(r.amount)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ── Parts (the PM catalog) ── */
+function partsView(phone) {
+  const h = phone ? 'h-11' : 'h-9';
+  const head = pageHead('Parts', 'The same catalog the PM mechanic picks from. Costs never show to mechanics.', `<button data-act="new-part" class="${BTN.outline} ${h} ${phone ? 'w-full' : ''}">${ic('plus')}Add part</button>`, phone);
+  const firstUse = S.parts.every((p) => p.cost == null);
+  const banner = firstUse ? `<div class="mb-4 flex gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">${ic('info', 's20 text-primary')}<div><p class="font-medium">These are the PM parts from the base list.</p><p class="text-muted-foreground">Add a unit cost or a vendor to start tracking costs. The PM mechanic keeps seeing the same parts.</p></div></div>` : '';
+  const q = UI.pq.trim().toLowerCase();
+  const list = S.parts.filter((p) => (UI.pInactive || p.active) && (!UI.pMake || !p.fits.length || p.fits.some((f) => f.startsWith(UI.pMake))) && (!q || `${p.pn} ${p.name}`.toLowerCase().includes(q)));
+  const filters = `<div class="mb-4 flex ${phone ? 'flex-col' : 'flex-wrap items-center'} gap-2">${searchBox('pq', UI.pq, 'Part number or name', phone)}
+    <div class="flex gap-2">${sel('pMake', [['', 'Fits any truck'], ...MAKES.map((m) => [m, `Fits ${m}`])], UI.pMake, phone, 'data-filter="pMake"')}
+    <label class="flex shrink-0 items-center gap-2 rounded-md border px-3 ${h}"><input type="checkbox" data-filter="pInactive" ${UI.pInactive ? 'checked' : ''} class="size-4" />Show inactive</label></div></div>`;
+  if (!list.length) return head + banner + filters + empty('search-x', 'No parts match', 'Try another number or make.');
+  const costCell = (p) => (p.cost == null ? chip('warn', 'No cost yet') : `<span class="tnum font-medium">${money(p.cost)}</span>`);
+  const lpCell = (p) => { const lp = lastPaid(p.id); return lp ? `<span class="tnum">${money(lp.cost)}</span> <span class="text-xs text-muted-foreground">· ${fd(lp.date)} · ${vn(lp.vendor)}</span>` : '<span class="text-xs text-muted-foreground">Not bought yet</span>'; };
+  const groups = CATS.map(([k, name]) => [name, list.filter((p) => p.cat === k)]).filter(([, l]) => l.length);
+  const body = groups.map(([name, l]) => phone
+    ? `<section class="mb-4"><h2 class="mb-1.5 flex items-center gap-2 font-semibold">${name}<span class="tnum rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground">${l.length}</span></h2><ul class="divide-y rounded-xl border bg-card">${l.map((p) => `<li><button data-open="part:${p.id}" class="${UI.flash === p.id ? 'flash' : ''} block w-full space-y-1 px-3 py-3 text-left hover:bg-accent/40 ${p.active ? '' : 'opacity-60'}"><div class="flex items-center gap-2"><span class="font-mono text-[13px]">${esc(p.pn)}</span><span class="ml-auto">${costCell(p)}</span></div><p class="font-medium">${esc(p.name)}</p><p class="text-xs text-muted-foreground">${fitsText(p)}${p.vendor ? ` · ${vn(p.vendor)}` : ''}${p.active ? '' : ' · Inactive'}</p></button></li>`).join('')}</ul></section>`
+    : `<section class="mb-5"><h2 class="mb-2 flex items-center gap-2 text-base font-semibold">${name}<span class="tnum rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border">${l.length}</span></h2><div class="overflow-hidden rounded-xl border bg-card"><table class="w-full table-fixed text-left"><thead class="border-b text-xs text-muted-foreground"><tr><th class="w-36 px-4 py-2 font-medium">Part #</th><th class="px-3 font-medium">Name</th><th class="w-44 px-3 font-medium">Fits</th><th class="w-28 px-3 font-medium">Unit cost</th><th class="w-64 px-3 font-medium">Last paid</th><th class="w-24 px-3 font-medium">Status</th><th class="w-12"></th></tr></thead>
+      <tbody class="divide-y">${l.map((p) => `<tr class="${UI.flash === p.id ? 'flash' : ''} ${p.active ? '' : 'text-muted-foreground'}"><td class="truncate px-4 py-2.5 font-mono text-[13px]">${esc(p.pn)}</td><td class="truncate px-3 font-medium">${esc(p.name)}${p.openPm ? ` <span title="In the PM in progress on ${p.openPm}" class="ml-1 inline-flex align-middle text-primary">${ic('wrench', 's14')}</span>` : ''}</td><td class="truncate px-3">${fitsText(p)}</td><td class="px-3">${costCell(p)}</td><td class="truncate px-3">${lpCell(p)}</td><td class="px-3">${p.active ? chip('ok', 'Active') : chip('mute', 'Inactive')}</td><td class="pr-2"><button data-open="part:${p.id}" class="grid size-9 place-items-center rounded-md text-muted-foreground hover:bg-accent" aria-label="Edit ${esc(p.pn)}">${ic('pencil')}</button></td></tr>`).join('')}</tbody></table></div></section>`).join('');
+  return head + banner + filters + body + `<p class="text-xs text-muted-foreground">The mockup shows 22 of the 91 parts in <span class="font-mono">pm-parts.csv</span>. Unit costs are made up.</p>`;
+}
+
+/* ── Vendors ── */
+function vendorsView(phone) {
+  const h = phone ? 'h-11' : 'h-9';
+  const head = pageHead('Vendors', 'Where you buy parts and who does outside repairs. Shared by Purchases and Outside repairs.', `<button data-act="new-vendor" class="${BTN.outline} ${h} ${phone ? 'w-full' : ''}">${ic('plus')}Add vendor</button>`, phone);
+  if (!S.vendors.length) return head + empty('store', 'No vendors yet', 'Add one here, or type a new name while you save a purchase.', `<button data-act="new-vendor" class="${BTN.primary} h-9">${ic('plus')}Add vendor</button>`);
+  const stats = (v) => { const ps = S.purchases.filter((p) => p.vendor === v.id && !p.voided); const rs = S.repairs.filter((r) => r.vendor === v.id && !r.voided); const spent = ps.filter((p) => inPeriod(p.date, 'year')).reduce((a, p) => a + pTotal(p), 0) + rs.filter((r) => inPeriod(r.date, 'year')).reduce((a, r) => a + r.amount, 0); return { ps: ps.length, rs: rs.length, spent }; };
+  const does = (v) => [v.parts ? chip('pri', 'Parts', false) : '', v.repairs ? chip('vio', 'Outside repairs', false) : ''].join(' ');
+  const list = [...S.vendors].sort((a, b) => (b.active - a.active) || a.name.localeCompare(b.name));
+  if (phone) return head + `<ul class="space-y-2">${list.map((v) => { const s = stats(v); return `<li><button data-open="vendor:${v.id}" class="${UI.flash === v.id ? 'flash' : ''} block w-full space-y-1.5 rounded-xl border bg-card p-3 text-left hover:bg-accent/40 ${v.active ? '' : 'opacity-60'}"><div class="flex items-center gap-2"><span class="font-semibold">${esc(v.name)}</span>${v.active ? '' : chip('mute', 'Inactive')}<span class="tnum ml-auto font-medium">${money(s.spent)}</span></div><div class="flex flex-wrap gap-1">${does(v)}</div><p class="text-xs text-muted-foreground">${v.phone || 'No phone'} · ${s.ps} purchases · ${s.rs} repairs</p></button></li>`; }).join('')}</ul>`;
+  return head + `<div class="overflow-hidden rounded-xl border bg-card"><table class="w-full text-left"><thead class="border-b text-xs text-muted-foreground"><tr><th class="px-4 py-2.5 font-medium">Name</th><th class="px-3 font-medium">Does</th><th class="px-3 font-medium">Phone</th><th class="px-3 text-right font-medium">Purchases</th><th class="px-3 text-right font-medium">Repairs</th><th class="px-3 text-right font-medium">Spent in 2026</th><th class="px-4 font-medium">Status</th></tr></thead>
+    <tbody class="divide-y">${list.map((v) => { const s = stats(v); return `<tr data-open="vendor:${v.id}" class="${UI.flash === v.id ? 'flash' : ''} cursor-pointer hover:bg-accent/40 ${v.active ? '' : 'text-muted-foreground'}"><td class="px-4 py-3 font-medium">${esc(v.name)}</td><td class="px-3"><div class="flex flex-wrap gap-1">${does(v)}</div></td><td class="tnum px-3">${v.phone || '—'}</td><td class="tnum px-3 text-right">${s.ps}</td><td class="tnum px-3 text-right">${s.rs}</td><td class="tnum px-3 text-right font-medium">${money(s.spent)}</td><td class="px-4">${v.active ? chip('ok', 'Active') : chip('mute', 'Inactive')}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+
+/* ── Trucks list (only to reach a truck) ── */
+function trucksView(phone) {
+  return pageHead('Trucks', 'The real list is unchanged. Here: costs this year, to open a truck’s Costs tab.', '', phone) + `<ul class="divide-y rounded-xl border bg-card">${TRUCKS.map((t) => { const y = yearTotals(t.n); return `<li><button data-truck="${t.n}" class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-accent/40"><span class="grid size-9 place-items-center rounded-md bg-muted">${ic('truck')}</span><div class="min-w-0 flex-1"><p class="font-semibold">Truck ${t.n}</p><p class="truncate text-xs text-muted-foreground">${t.veh}</p></div><div class="text-right"><p class="tnum font-medium">${money(y.parts + y.outside)}</p><p class="text-xs text-muted-foreground">2026</p></div>${ic('chevron-right', 'text-muted-foreground')}</button></li>`; }).join('')}</ul>`;
+}
+
+/* ── Truck → Costs ── */
+function truckView(phone) {
+  const t = truckOf(UI.truck);
+  const h = phone ? 'h-11' : 'h-9';
+  const tabs = `<div class="mb-5 flex gap-1 border-b" role="tablist">${[['overview', 'Overview', 'layout-list'], ['costs', 'Costs', 'circle-dollar-sign']].map(([k, l, i]) => `<button role="tab" aria-selected="${UI.truckTab === k}" data-ttab="${k}" class="-mb-px inline-flex ${h} items-center gap-2 border-b-2 px-3 font-medium ${UI.truckTab === k ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}">${ic(i)}${l}</button>`).join('')}</div>`;
+  const head = `<div class="mb-4"><h1 class="text-2xl font-semibold tracking-tight">Truck ${t.n}</h1><p class="text-muted-foreground">${t.veh}</p></div>`;
+  if (UI.truckTab === 'overview') return head + tabs + `<div class="rounded-xl border border-dashed p-6 text-muted-foreground">${ic('layout-list', 's20 mb-2')}<p class="font-medium text-foreground">Next step, Work Plan, Truck details and Repair history</p><p>As today (Truck proposal, built in PR 244). This proposal only adds the Costs tab.</p></div>`;
+  const all = ledger(t.n);
+  const e = all.filter((x) => inPeriod(x.date, UI.period));
+  const parts = e.filter((x) => x.kind === 'parts').reduce((a, x) => a + x.amt, 0);
+  const outside = e.filter((x) => x.kind === 'outside').reduce((a, x) => a + x.amt, 0);
+  const hours = hoursIn(t.n, UI.period);
+  const seg = `<div class="flex overflow-hidden rounded-md border ${phone ? 'w-full' : ''}" role="group" aria-label="Period">${Object.entries(PERIODS).map(([k, [l]], i) => `<button data-period="${k}" class="${h} ${phone ? 'flex-1 px-1 text-xs' : 'px-3'} ${i ? 'border-l' : ''} ${UI.period === k ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}">${l}</button>`).join('')}</div>`;
+  const actions = `<div class="flex gap-2 ${phone ? 'w-full' : ''}"><button data-act="new-purchase" data-for-truck="${t.n}" class="${BTN.outline} ${h} ${phone ? 'flex-1' : ''}">${ic('receipt')}Add purchase</button><button data-act="new-repair" data-for-truck="${t.n}" class="${BTN.outline} ${h} ${phone ? 'flex-1' : ''}">${ic('wrench')}Add outside repair</button></div>`;
+  const top = `<div class="mb-4 flex ${phone ? 'flex-col' : 'items-center justify-between'} gap-2">${seg}${actions}</div>`;
+  if (!all.length) return head + tabs + top + empty('circle-dollar-sign', `No costs for Truck ${t.n} yet`, 'Purchases and outside repairs assigned to this truck show up here.') + futureCards(phone, hours);
+  const tile = (label, val, sub, tone) => `<div class="rounded-xl border bg-card p-4"><p class="flex items-center gap-2 text-muted-foreground"><span class="size-2 rounded-full ${tone}"></span>${label}</p><p class="tnum mt-1 text-2xl font-semibold tracking-tight">${money(val)}</p><p class="text-xs text-muted-foreground">${sub}</p></div>`;
+  const nP = e.filter((x) => x.kind === 'parts' && !x.reversal).length, nO = e.filter((x) => x.kind === 'outside' && !x.reversal).length;
+  const tiles = `<div class="grid ${phone ? 'grid-cols-2' : 'grid-cols-3'} gap-3">${tile('Parts', parts, `${nP} purchase${nP === 1 ? '' : 's'}`, 'bg-primary')}${tile('Outside repairs', outside, `${nO} invoice${nO === 1 ? '' : 's'}`, 'bg-violet-500')}<div class="${phone ? 'col-span-2' : ''} rounded-xl border border-primary/40 bg-primary/5 p-4"><p class="text-muted-foreground">Total · ${PERIODS[UI.period][0].toLowerCase()}</p><p class="tnum mt-1 text-2xl font-semibold tracking-tight">${money(parts + outside)}</p><p class="text-xs text-muted-foreground">Labor not included yet</p></div></div>`;
+  // Months in the period, oldest first.
+  const months = [...new Set(e.map((x) => x.date.slice(0, 7)))].sort();
+  const per = months.map((m) => ({ m, p: e.filter((x) => x.date.startsWith(m) && x.kind === 'parts').reduce((a, x) => a + x.amt, 0), o: e.filter((x) => x.date.startsWith(m) && x.kind === 'outside').reduce((a, x) => a + x.amt, 0) }));
+  const max = Math.max(1, ...per.map((x) => Math.max(0, x.p) + Math.max(0, x.o)));
+  const bars = `<section class="rounded-xl border bg-card"><div class="flex items-center justify-between border-b px-4 py-2.5"><h3 class="font-semibold">By month</h3><div class="flex gap-3 text-xs text-muted-foreground"><span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-primary"></span>Parts</span><span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-violet-500"></span>Outside</span></div></div>
+    <ul class="space-y-2.5 p-4">${per.length ? per.map((x) => `<li class="grid grid-cols-[3rem_1fr_6.5rem] items-center gap-3"><span class="text-muted-foreground">${MON[Number(x.m.slice(5)) - 1]}</span><div class="flex h-3 overflow-hidden rounded-full bg-muted">${x.p > 0 ? `<span class="bg-primary" style="width:${(x.p / max) * 100}%"></span>` : ''}${x.o > 0 ? `<span class="bg-violet-500" style="width:${(x.o / max) * 100}%"></span>` : ''}</div><span class="tnum text-right font-medium">${money(x.p + x.o)}</span></li>`).join('') : '<li class="text-muted-foreground">Nothing in this period.</li>'}</ul></section>`;
+  const rows = e.length ? `<ul class="divide-y">${e.map((x) => `<li><button data-open="${x.open[0]}:${x.open[1]}" class="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-accent/40 ${x.voided ? 'text-muted-foreground' : ''}"><span class="tnum w-14 shrink-0 text-muted-foreground">${fd(x.date)}</span><div class="min-w-0 flex-1"><p class="flex flex-wrap items-center gap-2"><span class="font-medium ${x.voided ? 'line-through' : ''}">${esc(x.title)}</span>${x.kind === 'parts' ? chip('pri', 'Parts', false) : chip('vio', 'Outside repair', false)}${x.reversal ? chip('bad', 'Voided') : ''}</p><p class="truncate text-xs text-muted-foreground">${esc(x.sub)}</p></div><span class="tnum shrink-0 font-semibold ${x.amt < 0 ? 'text-destructive-text' : ''} ${x.voided ? 'line-through' : ''}">${money(x.amt)}</span></button></li>`).join('')}</ul>` : `<p class="px-4 py-6 text-center text-muted-foreground">Nothing in this period. Try “All time”.</p>`;
+  const entries = `<section class="rounded-xl border bg-card"><div class="flex items-center justify-between border-b px-4 py-2.5"><h3 class="font-semibold">Entries <span class="tnum ml-1 rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border">${e.length}</span></h3><span class="text-xs text-muted-foreground">Newest first</span></div>${rows}</section>`;
+  const pmNote = `<p class="flex gap-2 text-xs text-muted-foreground">${ic('info', 's14 mt-0.5')}<span>Parts used in a PM are not counted by themselves (no stock yet). They count when their purchase is assigned to this truck. <button data-nav="purchases" class="font-medium text-primary hover:underline">Go to Purchases</button></span></p>`;
+  return head + tabs + top + `<div class="space-y-4">${tiles}${futureCards(phone, hours)}<div class="grid gap-4 ${phone ? '' : 'grid-cols-[minmax(0,1fr)_340px] items-start'}">${entries}${bars}</div>${pmNote}</div>`;
+}
+function futureCards(phone, hours) {
+  return `<div class="mt-3 grid ${phone ? '' : 'grid-cols-2'} gap-3">
+    <div class="flex items-start gap-3 rounded-xl border border-dashed p-4 text-muted-foreground" aria-disabled="true"><span class="grid size-9 shrink-0 place-items-center rounded-md bg-muted">${ic('clock')}</span><div class="min-w-0 flex-1"><p class="flex items-center gap-2 font-medium text-foreground">Labor ${chip('mute', 'Coming later', false)}</p><p><span class="tnum font-medium text-foreground">${hours.toLocaleString('en-US')} h</span> recorded in this period. The cost needs an hourly rate.</p></div></div>
+    <div class="flex items-start gap-3 rounded-xl border border-dashed p-4 text-muted-foreground"><span class="grid size-9 shrink-0 place-items-center rounded-md bg-muted">${ic('landmark')}</span><div class="min-w-0 flex-1"><p class="flex items-center gap-2 font-medium text-foreground">Charge to Finance ${chip('mute', 'Coming later', false)}</p><p>An internal invoice per truck and period: draft → sent → accepted.</p><button disabled class="${BTN.outline} mt-2 h-9 cursor-not-allowed" title="Coming later">${ic('file-text')}Create internal invoice</button></div></div></div>`;
+}
+
+function skeleton(phone) {
+  return `<div class="space-y-3"><div class="pulse h-7 w-48 rounded bg-muted"></div><div class="pulse h-4 w-80 max-w-full rounded bg-muted"></div><div class="pulse mt-4 h-10 rounded-md bg-muted"></div>${[1, 2, 3, 4, 5].map(() => `<div class="pulse ${phone ? 'h-24' : 'h-12'} rounded-xl bg-muted"></div>`).join('')}</div>`;
+}
+
+/* ───────── Panels (forms and details) ───────── */
+const label = (forId, text, opt = false) => `<label for="${forId}" class="mb-1.5 block font-medium">${text}${opt ? ' <span class="font-normal text-muted-foreground">(optional)</span>' : ''}</label>`;
+const err = (m) => (m ? `<p class="mt-1 flex items-center gap-1.5 text-destructive-text" role="alert">${ic('circle-alert', 's14')}${m}</p>` : '');
+const inp = (id, val, phone, attrs = '', bad = false) => `<input id="${id}" data-f="${id}" value="${esc(val)}" ${attrs} class="field ${phone ? 'h-11 text-base' : 'h-9'} ${bad ? 'bad' : ''}" />`;
+const moneyInp = (id, val, phone, attrs = '', bad = false) => `<div class="relative"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span><input id="${id}" value="${esc(val)}" inputmode="decimal" autocomplete="off" ${attrs} class="field tnum ${phone ? 'h-11 text-base' : 'h-9'} pl-6 text-right ${bad ? 'bad' : ''}" /></div>`;
+
+function panelShell(phone, title, sub, body, foot, menu = '') {
+  return `${phone ? '' : '<div data-act="close" class="absolute inset-0 z-30 bg-black/30"></div>'}
+    <aside class="${phone ? 'sheet-in absolute inset-0 z-30' : 'side-in absolute inset-y-0 right-0 z-30 w-[600px] max-w-[92%] border-l shadow-2xl'} flex flex-col bg-background" role="dialog" aria-label="${esc(title)}">
+      <div class="flex h-14 shrink-0 items-center gap-2 border-b px-3"><button data-act="close" class="grid size-10 place-items-center rounded-md hover:bg-accent" aria-label="Close">${ic(phone ? 'arrow-left' : 'x')}</button><div class="min-w-0 flex-1"><p class="truncate font-semibold">${title}</p>${sub ? `<p class="truncate text-xs text-muted-foreground">${sub}</p>` : ''}</div>${menu}</div>
+      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">${body}</div>
+      ${foot ? `<div class="shrink-0 border-t bg-card p-3">${foot}</div>` : ''}
+    </aside>`;
+}
+function panel(phone) {
+  const P = UI.panel;
+  return { purchaseForm, purchaseView, repairForm, repairView, partForm, vendorForm }[P.type](phone, P);
+}
+const saveErr = (d) => (d.saveError ? `<div class="flex gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-destructive-text" role="alert">${ic('circle-alert')}<span>${d.saveError}</span></div>` : '');
+const footSave = (phone, d, label2) => `<div class="flex ${phone ? 'flex-col-reverse' : 'justify-end'} gap-2"><button data-act="close" class="${BTN.outline} ${phone ? 'h-11' : 'h-9'}">Cancel</button><button data-act="save" ${d.saving ? 'disabled' : ''} class="${BTN.primary} ${phone ? 'h-11' : 'h-9'}">${d.saving ? `${ic('loader-circle', 'animate-spin')}Saving…` : `${ic('check')}${label2}`}</button></div>`;
+function vendorHint(d) {
+  const t = d.vendorText.trim();
+  return t && !S.vendors.some((v) => v.name.toLowerCase() === t.toLowerCase()) ? `<p class="mt-1 text-xs text-muted-foreground">New vendor “${esc(t)}” will be added.</p>` : '';
+}
+function dupeBox(d) {
+  if (!d.dupe) return '';
+  const x = d.dupe;
+  return `<div class="mt-2 flex gap-2 rounded-lg border border-warning/50 bg-warning-surface p-3 text-warning-foreground dark:text-warning" role="status">${ic('triangle-alert', 'mt-0.5')}<div class="flex-1"><p class="font-medium">${esc(vn(x.vendor))} invoice ${esc(x.inv)} is already saved (${fd(x.date)} · ${money(x.total)}).</p><p class="text-xs opacity-90">${x.kind === 'repair' ? 'It is an outside repair.' : 'It is a purchase.'} Saving it again is not allowed.</p></div><button data-open="${x.kind}:${x.id}" class="${BTN.outline} h-8 shrink-0 text-foreground">Open it</button></div>`;
+}
+function fileBox(d, phone) {
+  if (d.file) return `<div class="flex items-center gap-3 rounded-lg border bg-card p-3">${ic('file-text', 's20 text-primary')}<div class="min-w-0 flex-1"><p class="truncate font-medium">${esc(d.file.name)}</p>${d.file.progress < 100 ? `<div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full bg-primary" style="width:${d.file.progress}%"></div></div><p class="mt-1 text-xs text-muted-foreground">Uploading… ${d.file.progress}%</p>` : `<p class="text-xs text-muted-foreground">${d.file.size} · Uploaded</p>`}</div><button data-act="remove-file" class="grid size-9 place-items-center rounded-md text-muted-foreground hover:bg-accent" aria-label="Remove file">${ic('x')}</button></div>`;
+  return `<button data-act="pick-file" class="flex w-full flex-col items-center gap-1 rounded-lg border border-dashed px-4 ${phone ? 'py-5' : 'py-6'} text-center text-muted-foreground hover:bg-accent/40">${ic('upload', 's20')}<span class="font-medium text-foreground">${phone ? 'Take a photo or choose a file' : 'Drop the invoice here or choose a file'}</span><span class="text-xs">PDF, JPG or PNG · up to 10 MB</span></button>`;
+}
+
+/* New / edit purchase */
+function blankLine(truck = '') { return { part: '', other: false, desc: '', qty: '1', cost: '', truck }; }
+function newPurchaseDraft(truck = '') { return { type: 'purchaseForm', editId: null, vendorText: '', date: TODAY, inv: '', truck, split: false, lines: [blankLine(truck)], tax: '', freight: '', notes: '', file: null, errors: {}, dupe: null, saving: false, dirty: false, fromTruck: truck || null }; }
+function draftLines(d) { return d.lines.map((l) => ({ qty: parseQty(l.qty), cost: parseMoney(l.cost), truck: d.split ? l.truck : d.truck })); }
+function calcDraft(d) {
+  const ls = draftLines(d);
+  const ok = ls.map((l) => (Number.isFinite(l.qty) && Number.isFinite(l.cost) && l.qty != null && l.cost != null ? Math.round(l.qty * l.cost) : null));
+  const sub = ok.reduce((a, c) => a + (c ?? 0), 0);
+  const tax = parseMoney(d.tax) || 0, fr = parseMoney(d.freight) || 0;
+  const usable = ls.map((l, i) => ({ qty: 1, cost: ok[i] ?? 0, truck: l.truck })).filter((l) => l.cost > 0);
+  const alloc = usable.length ? allocate(usable, (Number.isFinite(tax) ? tax : 0) + (Number.isFinite(fr) ? fr : 0)) : {};
+  return { line: ok, sub, total: sub + (Number.isFinite(tax) ? tax : 0) + (Number.isFinite(fr) ? fr : 0), alloc };
+}
+function purchaseForm(phone, d) {
+  const c = calcDraft(d);
+  const h = phone ? 'h-11 text-base' : 'h-9';
+  const partOpts = `<option value="">Choose a part…</option>${CATS.map(([k, name]) => `<optgroup label="${name}">${S.parts.filter((p) => p.cat === k && p.active).map((p) => `<option value="${p.id}">${esc(p.pn)} · ${esc(p.name)}${p.fits.length ? ` (${p.fits.join(', ')})` : ''}</option>`).join('')}</optgroup>`).join('')}<optgroup label="Not in the catalog"><option value="__other">Other (type a description)</option></optgroup>`;
+  const lines = d.lines.map((l, i) => {
+    const e = d.errors[`line${i}`];
+    const partSel = `<select data-line="${i}" data-lf="part" aria-label="Part, line ${i + 1}" class="field ${h} ${e?.part ? 'bad' : ''}">${partOpts.replace(`value="${l.other ? '__other' : l.part}"`, `value="${l.other ? '__other' : l.part}" selected`)}</select>`;
+    return `<li class="space-y-2 ${i ? 'border-t pt-3' : ''}">
+      <div class="${phone ? 'space-y-2' : 'grid grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_6rem_2.25rem] items-start gap-2'}">
+        <div class="min-w-0 space-y-2">${partSel}${l.other ? `<input data-line="${i}" data-lf="desc" value="${esc(l.desc)}" placeholder="What is it? E.g. brake pads, axle set" aria-label="Description, line ${i + 1}" class="field ${h} ${e?.desc ? 'bad' : ''}" />` : ''}${d.split ? `<select data-line="${i}" data-lf="truck" aria-label="Truck, line ${i + 1}" class="field ${h}">${truckOpts('No truck · shop stock').map(([v, t]) => `<option value="${v}" ${v === l.truck ? 'selected' : ''}>${t}</option>`).join('')}</select>` : ''}</div>
+        <div class="${phone ? 'grid grid-cols-[4.5rem_1fr_auto_2.75rem] items-center gap-2' : 'contents'}">
+          <input data-line="${i}" data-lf="qty" value="${esc(l.qty)}" inputmode="decimal" aria-label="Quantity, line ${i + 1}" class="field tnum ${h} text-right ${e?.qty ? 'bad' : ''}" />
+          <div class="relative"><span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">$</span><input data-line="${i}" data-lf="cost" value="${esc(l.cost)}" inputmode="decimal" aria-label="Unit cost, line ${i + 1}" class="field tnum ${h} pl-5 text-right ${e?.cost ? 'bad' : ''}" /></div>
+          <span id="lt${i}" class="tnum ${phone ? '' : 'pt-2'} text-right font-medium">${c.line[i] != null ? money(c.line[i]) : '—'}</span>
+          <button data-act="del-line" data-i="${i}" ${d.lines.length === 1 ? 'disabled' : ''} class="grid ${phone ? 'size-11' : 'size-9'} place-items-center rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30" aria-label="Remove line ${i + 1}">${ic('trash-2')}</button>
+        </div>
+      </div>${e?.msg ? err(e.msg) : ''}</li>`;
+  }).join('');
+  const body = `${saveErr(d)}
+    ${d.fromTruck ? `<p class="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-muted-foreground">${ic('truck', 's14')}From Truck ${d.fromTruck}</p>` : ''}
+    <div class="grid ${phone ? '' : 'grid-cols-2'} gap-3">
+      <div>${label('vendorText', 'Vendor')}<input id="vendorText" data-f="vendorText" list="vendor-list" value="${esc(d.vendorText)}" autocomplete="off" placeholder="Start typing: FleetPride, TruckPro…" class="field ${h} ${d.errors.vendor ? 'bad' : ''}" /><datalist id="vendor-list">${S.vendors.filter((v) => v.active && v.parts).map((v) => `<option value="${esc(v.name)}"></option>`).join('')}</datalist><div id="vhint">${vendorHint(d)}</div>${err(d.errors.vendor)}</div>
+      <div>${label('date', 'Invoice date')}<input id="date" data-f="date" type="date" value="${d.date}" class="field ${h} ${d.errors.date ? 'bad' : ''}" />${err(d.errors.date)}</div>
+    </div>
+    <div>${label('inv', 'Invoice #')}<input id="inv" data-f="inv" value="${esc(d.inv)}" autocomplete="off" placeholder="As printed on the invoice" class="field font-mono ${h} ${d.errors.inv ? 'bad' : ''}" />${err(d.errors.inv)}<div id="dupebox">${dupeBox(d)}</div></div>
+    <div>${label('truck', 'Truck', true)}${d.split ? `<p class="flex h-9 items-center text-muted-foreground">Each line has its truck below.</p>` : `<select id="truck" data-f="truck" class="field ${h}">${truckOpts('No truck · shop stock').map(([v, t]) => `<option value="${v}" ${v === d.truck ? 'selected' : ''}>${t}</option>`).join('')}</select>`}
+      <label class="mt-2 flex items-center gap-2"><input type="checkbox" data-f="split" ${d.split ? 'checked' : ''} class="size-4" />Lines go to different trucks</label>
+      ${!d.split && !d.truck ? `<p class="mt-1 text-xs text-muted-foreground">Without a truck it stays as shop stock and does not count on any truck.</p>` : ''}</div>
+    <section class="rounded-xl border bg-card">
+      <div class="flex items-center justify-between border-b px-3 py-2.5"><h3 class="font-semibold">Lines</h3>${phone ? '' : '<span class="grid grid-cols-[4.5rem_6.5rem_6rem_2.25rem] gap-2 text-right text-xs text-muted-foreground"><span>Qty</span><span>Unit cost</span><span>Total</span><span></span></span>'}</div>
+      <ul class="space-y-3 p-3">${lines}</ul>${err(d.errors.lines)}
+      <div class="border-t p-2"><button data-act="add-line" class="${BTN.ghost} ${phone ? 'h-11' : 'h-9'}">${ic('plus')}Add line</button></div>
+    </section>
+    <div class="grid grid-cols-2 gap-3"><div>${label('tax', 'Tax (USD)', true)}${moneyInp('tax', d.tax, phone, 'data-f="tax"', d.errors.tax)}${err(d.errors.tax)}</div><div>${label('freight', 'Freight &amp; other (USD)', true)}${moneyInp('freight', d.freight, phone, 'data-f="freight"', d.errors.freight)}${err(d.errors.freight)}</div></div>
+    <div class="rounded-xl border border-primary/40 bg-primary/5 p-3"><div class="flex items-baseline justify-between"><span class="font-medium">Total</span><span id="grand" class="tnum text-xl font-semibold">${money(c.total)}</span></div><p id="allocline" class="mt-0.5 text-xs text-muted-foreground">${allocText(c)}</p></div>
+    <div>${label('file', 'Invoice file', true)}${fileBox(d, phone)}</div>
+    <div>${label('notes', 'Notes', true)}<textarea id="notes" data-f="notes" rows="2" class="field py-2 ${phone ? 'text-base' : ''}">${esc(d.notes)}</textarea></div>`;
+  return panelShell(phone, d.editId ? 'Edit purchase' : 'New purchase', 'Parts bought from a vendor', body, footSave(phone, d, 'Save purchase'));
+}
+function allocText(c) {
+  const t = Object.entries(c.alloc).filter(([k]) => k);
+  const none = c.alloc[''] ?? 0;
+  if (!t.length && !none) return 'Subtotal ' + money(c.sub) + '. Tax and freight are split over the trucks in proportion.';
+  return [...t.map(([k, v]) => `Truck ${k}: ${money(v)}`), none ? `No truck: ${money(none)}` : ''].filter(Boolean).join(' · ');
+}
+function updateTotals() {
+  const d = UI.panel; if (!d || d.type !== 'purchaseForm') return;
+  const c = calcDraft(d);
+  c.line.forEach((v, i) => { const el = document.getElementById(`lt${i}`); if (el) el.textContent = v != null ? money(v) : '—'; });
+  const g = document.getElementById('grand'); if (g) g.textContent = money(c.total);
+  const a = document.getElementById('allocline'); if (a) a.textContent = allocText(c);
+}
+function findDupe(vendorId, inv, selfId) {
+  const n = normInv(inv); if (!vendorId || !n) return null;
+  const p = S.purchases.find((x) => x.vendor === vendorId && !x.voided && normInv(x.inv) === n && x.id !== selfId);
+  if (p) return { kind: 'purchase', id: p.id, vendor: p.vendor, inv: p.inv, date: p.date, total: pTotal(p) };
+  const r = S.repairs.find((x) => x.vendor === vendorId && !x.voided && normInv(x.inv) === n && x.id !== selfId);
+  if (r) return { kind: 'repair', id: r.id, vendor: r.vendor, inv: r.inv, date: r.date, total: r.amount };
+  return null;
+}
+function savePurchase(d) {
+  const e = {};
+  const v = S.vendors.find((x) => x.name.toLowerCase() === d.vendorText.trim().toLowerCase());
+  if (!d.vendorText.trim()) e.vendor = 'Choose the vendor or type a new name.';
+  if (!d.date) e.date = 'Enter the invoice date.';
+  if (!d.inv.trim()) e.inv = 'Enter the invoice number as printed.';
+  d.dupe = v ? findDupe(v.id, d.inv, d.editId) : null;
+  if (d.dupe) e.inv = 'This invoice is already saved for this vendor.';
+  d.lines.forEach((l, i) => {
+    const le = {};
+    if (!l.part && !l.other) { le.part = true; le.msg = 'Choose a part or “Other”.'; }
+    if (l.other && !l.desc.trim()) { le.desc = true; le.msg = 'Say what the item is.'; }
+    const q = parseQty(l.qty), c = parseMoney(l.cost);
+    if (!(q > 0)) { le.qty = true; le.msg = le.msg ?? 'Quantity must be more than 0.'; }
+    if (c == null || Number.isNaN(c)) { le.cost = true; le.msg = le.msg ?? 'Enter the unit cost, like 41.80.'; }
+    if (Object.keys(le).length) e[`line${i}`] = le;
+  });
+  if (Number.isNaN(parseMoney(d.tax))) e.tax = 'Use a number like 41.54.';
+  if (Number.isNaN(parseMoney(d.freight))) e.freight = 'Use a number like 34.81.';
+  d.errors = e;
+  return !Object.keys(e).length;
+}
+function commitPurchase(d) {
+  let v = S.vendors.find((x) => x.name.toLowerCase() === d.vendorText.trim().toLowerCase());
+  if (!v) { v = { id: 'v' + Date.now(), name: d.vendorText.trim(), parts: true, repairs: false, phone: '', email: '', acct: '', notes: '', active: true }; S.vendors.push(v); }
+  const rec = { id: d.editId ?? 'pu' + Date.now(), vendor: v.id, inv: d.inv.trim(), date: d.date, tax: parseMoney(d.tax) || 0, freight: parseMoney(d.freight) || 0, file: d.file?.name ?? null, by: 'Cristian', at: 'Today, now', notes: d.notes,
+    lines: d.lines.map((l) => ({ part: l.other ? null : l.part, desc: l.other ? l.desc.trim() : '', qty: parseQty(l.qty), cost: parseMoney(l.cost), truck: d.split ? l.truck : d.truck })) };
+  if (d.editId) S.purchases = S.purchases.map((p) => (p.id === d.editId ? rec : p)); else S.purchases.unshift(rec);
+  const t = pTrucks(rec);
+  return [rec, `Purchase saved · ${money(pTotal(rec))} · ${t.length ? (t.length === 1 ? `Truck ${t[0]}` : `${t.length} trucks`) : 'no truck'}`];
+}
+function purchaseView(phone, P) {
+  const p = S.purchases.find((x) => x.id === P.id); if (!p) return '';
+  const al = pAlloc(p);
+  const body = `${p.voided ? `<div class="flex gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-destructive-text">${ic('ban')}<span>Voided on ${fd(p.voided.on)} by Cristian: “${esc(p.voided.reason)}”. Its costs were taken off the trucks.</span></div>` : ''}
+    <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border bg-card p-4"><dt class="text-muted-foreground">Vendor</dt><dd class="text-right font-medium">${vn(p.vendor)}</dd><dt class="text-muted-foreground">Invoice #</dt><dd class="text-right font-mono">${esc(p.inv)}</dd><dt class="text-muted-foreground">Invoice date</dt><dd class="text-right">${fd(p.date, true)}</dd><dt class="text-muted-foreground">Saved by</dt><dd class="text-right">${p.by} · ${p.at}</dd>${p.notes ? `<dt class="text-muted-foreground">Notes</dt><dd class="text-right">${esc(p.notes)}</dd>` : ''}</dl>
+    <section class="rounded-xl border bg-card"><h3 class="border-b px-4 py-2.5 font-semibold">Lines</h3><ul class="divide-y">${p.lines.map((l) => `<li class="flex gap-3 px-4 py-2.5"><div class="min-w-0 flex-1"><p class="font-medium">${l.part ? esc(part(l.part).name) : esc(l.desc)}</p><p class="text-xs text-muted-foreground">${l.part ? `<span class="font-mono">${esc(part(l.part).pn)}</span> · ${catName(part(l.part).cat)}` : 'Not in the catalog'} · ${l.qty} × ${money(l.cost)}${l.truck ? ` · Truck ${l.truck}` : ' · No truck'}</p></div><span class="tnum font-medium">${money(lineCents(l))}</span></li>`).join('')}</ul>
+      <dl class="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t px-4 py-3"><dt class="text-muted-foreground">Tax</dt><dd class="tnum text-right">${money(p.tax)}</dd><dt class="text-muted-foreground">Freight &amp; other</dt><dd class="tnum text-right">${money(p.freight)}</dd><dt class="font-semibold">Total</dt><dd class="tnum text-right text-base font-semibold">${money(pTotal(p))}</dd></dl></section>
+    <section class="rounded-xl border bg-card"><h3 class="border-b px-4 py-2.5 font-semibold">Counted on</h3><ul class="divide-y">${Object.entries(al).map(([k, v]) => `<li>${k ? `<button data-truck="${k}" class="flex w-full items-center gap-2 px-4 py-2.5 text-left hover:bg-accent/40">${ic('truck', 's14 text-muted-foreground')}Truck ${k}<span class="tnum ml-auto font-medium">${money(v)}</span>${ic('chevron-right', 's14 text-muted-foreground')}</button>` : `<p class="flex items-center gap-2 px-4 py-2.5 text-muted-foreground">${ic('warehouse', 's14')}No truck · shop stock<span class="tnum ml-auto">${money(v)}</span></p>`}</li>`).join('')}</ul><p class="border-t px-4 py-2 text-xs text-muted-foreground">Tax and freight split in proportion to each truck’s lines.</p></section>
+    <section><h3 class="mb-1.5 font-semibold">Invoice file</h3>${p.file ? `<button data-act="open-file" class="flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left hover:bg-accent/40">${ic('file-text', 's20 text-primary')}<span class="flex-1 truncate font-medium">${esc(p.file)}</span>${ic('external-link', 's14 text-muted-foreground')}</button>` : `<div class="flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-warning-foreground dark:text-warning">${ic('triangle-alert')}No invoice file. <button data-act="edit" class="ml-auto font-medium underline">Attach it</button></div>`}</section>`;
+  const menu = p.voided ? '' : `<button data-act="menu" class="grid size-10 place-items-center rounded-md hover:bg-accent" aria-label="More">${ic('ellipsis')}</button>${UI.menu ? `<div class="absolute right-3 top-14 z-40 w-48 rounded-lg border bg-card p-1 shadow-xl"><button data-act="edit" class="flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 hover:bg-accent">${ic('pencil')}Edit</button><button data-act="ask-void" class="flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-destructive-text hover:bg-accent">${ic('ban')}Void…</button></div>` : ''}`;
+  return panelShell(phone, `${vn(p.vendor)} · ${p.inv}`, `Purchase · ${fd(p.date, true)}`, body, '', menu);
+}
+
+/* New / edit outside repair */
+function newRepairDraft(truck = '', job = '', locked = false) { return { type: 'repairForm', editId: null, truck, vendorText: '', date: TODAY, inv: '', desc: '', amount: '', job, locked, file: null, errors: {}, dupe: null, saving: false, dirty: false }; }
+function repairForm(phone, d) {
+  const h = phone ? 'h-11 text-base' : 'h-9';
+  const jobs = d.truck ? (EXT_JOBS[d.truck] ?? []) : [];
+  const lockedJob = d.locked ? jobs.find((j) => j.id === d.job) : null;
+  const vendorsSorted = [...S.vendors.filter((v) => v.active)].sort((a, b) => b.repairs - a.repairs);
+  const jobField = lockedJob
+    ? `<div class="flex items-center gap-3 rounded-lg border border-primary/40 bg-primary/5 p-3">${ic('building-2', 'text-primary')}<div><p class="font-medium">From ${lockedJob.wo} · ${lockedJob.name}</p><p class="text-xs text-muted-foreground">${lockedJob.when} · ${lockedJob.kind === 'part' ? 'the part went out' : 'the truck went out'}</p></div>${ic('lock', 's14 ml-auto text-muted-foreground')}</div>`
+    : !d.truck ? `<p class="text-muted-foreground">Choose the truck first.</p>`
+    : jobs.length ? `<div class="space-y-1.5" role="radiogroup">${[...jobs.map((j) => [j.id, `${j.name} · <span class="font-mono text-xs">${j.wo}</span>`, `${j.when} · ${j.kind === 'part' ? 'part' : 'truck'} sent out`]), ['', 'Not linked to a Job', 'The repair did not start from “Send to external shop”.']].map(([id, t, s]) => `<label class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${d.job === id ? 'border-primary bg-primary/5' : 'hover:bg-accent/40'}"><input type="radio" name="job" data-f="job" value="${id}" ${d.job === id ? 'checked' : ''} class="mt-0.5 size-4" /><span><span class="block font-medium">${t}</span><span class="text-xs text-muted-foreground">${s}</span></span></label>`).join('')}</div>`
+    : `<p class="rounded-lg border border-dashed p-3 text-muted-foreground">No Jobs of Truck ${d.truck} were sent to an external shop in the last 90 days. It is saved without a Job.</p>`;
+  const body = `${saveErr(d)}
+    <div>${label('rtruck', 'Truck')}${d.locked ? `<p class="flex h-9 items-center gap-2 font-medium">${ic('truck', 's14 text-muted-foreground')}Truck ${d.truck} · ${truckOf(d.truck).veh}</p>` : `<select id="rtruck" data-f="truck" class="field ${h} ${d.errors.truck ? 'bad' : ''}">${truckOpts('Choose a truck…').map(([v, t]) => `<option value="${v}" ${v === d.truck ? 'selected' : ''}>${t}</option>`).join('')}</select>`}${err(d.errors.truck)}</div>
+    <div>${label('job', 'Job sent to an external shop', !d.locked)}${jobField}</div>
+    <div class="grid ${phone ? '' : 'grid-cols-2'} gap-3">
+      <div>${label('vendorText', 'Vendor')}<input id="vendorText" data-f="vendorText" list="rvendor-list" value="${esc(d.vendorText)}" autocomplete="off" placeholder="Shop that did the work" class="field ${h} ${d.errors.vendor ? 'bad' : ''}" /><datalist id="rvendor-list">${vendorsSorted.map((v) => `<option value="${esc(v.name)}"></option>`).join('')}</datalist><div id="vhint">${vendorHint(d)}</div>${err(d.errors.vendor)}</div>
+      <div>${label('date', 'Invoice date')}<input id="date" data-f="date" type="date" value="${d.date}" class="field ${h}" /></div>
+    </div>
+    <div>${label('inv', 'Invoice #')}<input id="inv" data-f="inv" value="${esc(d.inv)}" autocomplete="off" class="field font-mono ${h} ${d.errors.inv ? 'bad' : ''}" />${err(d.errors.inv)}<div id="dupebox">${dupeBox(d)}</div></div>
+    <div>${label('desc', 'What was done')}<textarea id="desc" data-f="desc" rows="2" placeholder="E.g. radiator recore and pressure test" class="field py-2 ${phone ? 'text-base' : ''} ${d.errors.desc ? 'bad' : ''}">${esc(d.desc)}</textarea>${err(d.errors.desc)}</div>
+    <div class="${phone ? '' : 'w-1/2'}">${label('amount', 'Amount (USD)')}${moneyInp('amount', d.amount, phone, 'data-f="amount" placeholder="0.00"', d.errors.amount)}<p class="mt-1 text-xs text-muted-foreground">The invoice total, with tax.</p>${err(d.errors.amount)}</div>
+    <div>${label('file', 'Invoice file', true)}${fileBox(d, phone)}</div>`;
+  return panelShell(phone, d.editId ? 'Edit outside repair' : 'New outside repair', 'Work done by another shop', body, footSave(phone, d, 'Save outside repair'));
+}
+function saveRepair(d) {
+  const e = {};
+  const v = S.vendors.find((x) => x.name.toLowerCase() === d.vendorText.trim().toLowerCase());
+  if (!d.truck) e.truck = 'An outside repair always goes on a truck.';
+  if (!d.vendorText.trim()) e.vendor = 'Choose the shop or type a new name.';
+  if (!d.inv.trim()) e.inv = 'Enter the invoice number as printed.';
+  d.dupe = v ? findDupe(v.id, d.inv, d.editId) : null;
+  if (d.dupe) e.inv = 'This invoice is already saved for this vendor.';
+  if (!d.desc.trim()) e.desc = 'Say what was done.';
+  const a = parseMoney(d.amount);
+  if (a == null) e.amount = 'Enter the invoice total.'; else if (Number.isNaN(a)) e.amount = 'Use a number like 1,840.00.'; else if (a <= 0) e.amount = 'The amount must be more than 0.';
+  d.errors = e;
+  return !Object.keys(e).length;
+}
+function commitRepair(d) {
+  let v = S.vendors.find((x) => x.name.toLowerCase() === d.vendorText.trim().toLowerCase());
+  if (!v) { v = { id: 'v' + Date.now(), name: d.vendorText.trim(), parts: false, repairs: true, phone: '', email: '', acct: '', notes: '', active: true }; S.vendors.push(v); }
+  const rec = { id: d.editId ?? 'r' + Date.now(), truck: d.truck, vendor: v.id, inv: d.inv.trim(), date: d.date, desc: d.desc.trim(), amount: parseMoney(d.amount), job: d.job || null, file: d.file?.name ?? null, by: 'Cristian', at: 'Today, now' };
+  if (d.editId) S.repairs = S.repairs.map((r) => (r.id === d.editId ? rec : r)); else S.repairs.unshift(rec);
+  return [rec, `Outside repair saved · ${money(rec.amount)} · Truck ${rec.truck}`];
+}
+function repairView(phone, P) {
+  const r = S.repairs.find((x) => x.id === P.id); if (!r) return '';
+  const j = r.job ? (EXT_JOBS[r.truck] ?? []).find((x) => x.id === r.job) : null;
+  const body = `${r.voided ? `<div class="flex gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-destructive-text">${ic('ban')}<span>Voided on ${fd(r.voided.on)}: “${esc(r.voided.reason)}”. Its cost was taken off Truck ${r.truck}.</span></div>` : ''}
+    <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border bg-card p-4"><dt class="text-muted-foreground">Truck</dt><dd class="text-right"><button data-truck="${r.truck}" class="font-medium text-primary hover:underline">Truck ${r.truck}</button></dd><dt class="text-muted-foreground">Vendor</dt><dd class="text-right font-medium">${vn(r.vendor)}</dd><dt class="text-muted-foreground">Invoice #</dt><dd class="text-right font-mono">${esc(r.inv)}</dd><dt class="text-muted-foreground">Invoice date</dt><dd class="text-right">${fd(r.date, true)}</dd><dt class="text-muted-foreground">What was done</dt><dd class="text-right">${esc(r.desc)}</dd><dt class="text-muted-foreground">Amount</dt><dd class="tnum text-right text-base font-semibold">${money(r.amount)}</dd><dt class="text-muted-foreground">Saved by</dt><dd class="text-right">${r.by} · ${r.at}</dd></dl>
+    <section><h3 class="mb-1.5 font-semibold">Job</h3>${j ? `<button data-act="open-wo" class="flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left hover:bg-accent/40">${ic('building-2', 'text-primary')}<div class="flex-1"><p class="font-medium">${j.name} · <span class="font-mono text-xs">${j.wo}</span></p><p class="text-xs text-muted-foreground">${j.when}</p></div>${ic('external-link', 's14 text-muted-foreground')}</button><p class="mt-1.5 text-xs text-muted-foreground">On the Work Order the Job shows “Invoice ${money(r.amount)} · ${vn(r.vendor)}” (Admin only).</p>` : '<p class="text-muted-foreground">Not linked to a Job.</p>'}</section>
+    <section><h3 class="mb-1.5 font-semibold">Invoice file</h3>${r.file ? `<button data-act="open-file" class="flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left hover:bg-accent/40">${ic('file-text', 's20 text-primary')}<span class="flex-1 truncate font-medium">${esc(r.file)}</span>${ic('external-link', 's14 text-muted-foreground')}</button>` : `<div class="flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-warning-foreground dark:text-warning">${ic('triangle-alert')}No invoice file. <button data-act="edit" class="ml-auto font-medium underline">Attach it</button></div>`}</section>`;
+  const menu = r.voided ? '' : `<button data-act="menu" class="grid size-10 place-items-center rounded-md hover:bg-accent" aria-label="More">${ic('ellipsis')}</button>${UI.menu ? `<div class="absolute right-3 top-14 z-40 w-48 rounded-lg border bg-card p-1 shadow-xl"><button data-act="edit" class="flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 hover:bg-accent">${ic('pencil')}Edit</button><button data-act="ask-void" class="flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-destructive-text hover:bg-accent">${ic('ban')}Void…</button></div>` : ''}`;
+  return panelShell(phone, `Truck ${r.truck} · ${vn(r.vendor)}`, `Outside repair · ${fd(r.date, true)}`, body, '', menu);
+}
+
+/* Part add / edit */
+function partDraft(p) {
+  return p ? { type: 'partForm', editId: p.id, cat: p.cat, pn: p.pn, name: p.name, allFits: !p.fits.length, makes: p.fits.map((f) => f.split(' ')[0]), model: (p.fits.find((f) => f.includes(' ')) ?? '').split(' ').slice(1).join(' '), cost: centsToInput(p.cost), vendor: p.vendor ?? '', active: p.active, errors: {}, block: null, saving: false, dirty: false }
+    : { type: 'partForm', editId: null, cat: 'oil1', pn: '', name: '', allFits: true, makes: [], model: '', cost: '', vendor: '', active: true, errors: {}, block: null, saving: false, dirty: false };
+}
+function partForm(phone, d) {
+  const h = phone ? 'h-11 text-base' : 'h-9';
+  const p = d.editId ? part(d.editId) : null;
+  const lp = p ? lastPaid(p.id) : null;
+  const body = `${saveErr(d)}
+    ${p ? `<div class="flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-muted px-3 py-2 text-muted-foreground"><span>Used in <b class="text-foreground">${p.used} PMs</b>${p.used ? ' · last on Oct 6' : ''}</span>${lp ? `<span>Last paid <b class="tnum text-foreground">${money(lp.cost)}</b> · ${fd(lp.date)} · ${vn(lp.vendor)}</span>` : '<span>Not bought yet</span>'}</div>` : ''}
+    ${p?.openPm ? `<div class="flex gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3">${ic('wrench', 'mt-0.5 text-primary')}<p>In the <b>PM in progress on ${p.openPm}</b>. Its make and Active can change after that PM is finished.</p></div>` : ''}
+    <div>${label('cat', 'PM category')}<select id="cat" data-f="cat" class="field ${h}">${CATS.map(([k, n]) => `<option value="${k}" ${k === d.cat ? 'selected' : ''}>${n}</option>`).join('')}</select><p class="mt-1 text-xs text-muted-foreground">The PM shows it under this switch.</p></div>
+    <div class="grid ${phone ? '' : 'grid-cols-[12rem_1fr]'} gap-3"><div>${label('pn', 'Part number')}${inp('pn', d.pn, phone, 'autocomplete="off"', d.errors.pn)}${err(d.errors.pn)}</div><div>${label('pname', 'Name')}<input id="pname" data-f="name" value="${esc(d.name)}" class="field ${h} ${d.errors.name ? 'bad' : ''}" />${err(d.errors.name)}</div></div>
+    <fieldset><legend class="mb-1.5 font-medium">Fits</legend>
+      <div class="space-y-2"><label class="flex items-center gap-2"><input type="radio" name="fits" data-f="allFits" value="1" ${d.allFits ? 'checked' : ''} class="size-4" />All trucks</label><label class="flex items-center gap-2"><input type="radio" name="fits" data-f="allFits" value="0" ${!d.allFits ? 'checked' : ''} class="size-4" />Only these makes</label></div>
+      ${!d.allFits ? `<div class="mt-2 flex flex-wrap gap-1.5">${MAKES.map((m) => `<button data-make="${m}" aria-pressed="${d.makes.includes(m)}" class="inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 ${d.makes.includes(m) ? 'border-primary bg-primary/15 text-primary' : 'hover:bg-accent'}">${d.makes.includes(m) ? ic('check', 's14') : ''}${m}</button>`).join('')}</div><div class="mt-2">${label('model', 'Model', true)}${inp('model', d.model, phone, 'placeholder="E.g. Cascadia"')}</div>` : ''}
+      ${err(d.errors.fits)}${d.block?.fits ? err(d.block.fits) : ''}</fieldset>
+    <div class="grid grid-cols-2 gap-3"><div>${label('cost', 'Unit cost (USD)', true)}${moneyInp('cost', d.cost, phone, 'data-f="cost" placeholder="No cost yet"', d.errors.cost)}${err(d.errors.cost)}</div><div>${label('pvendor', 'Usual vendor', true)}<select id="pvendor" data-f="vendor" class="field ${h}"><option value="">None</option>${S.vendors.filter((v) => v.parts && (v.active || v.id === d.vendor)).map((v) => `<option value="${v.id}" ${v.id === d.vendor ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select></div></div>
+    <p class="text-xs text-muted-foreground">New purchases fill in the last price paid to that vendor; this cost is the reference when there is none. Mechanics never see it.</p>
+    <label class="flex items-start justify-between gap-3 rounded-lg border p-3"><span><span class="block font-medium">Active</span><span class="text-xs text-muted-foreground">Inactive parts leave the PM picker. Past PMs keep showing them.</span></span><input type="checkbox" data-f="active" ${d.active ? 'checked' : ''} class="mt-1 size-5" /></label>
+    ${d.block?.active ? `<div class="flex gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-destructive-text" role="alert">${ic('circle-alert', 'mt-0.5')}<span>${d.block.active}</span></div>` : ''}`;
+  return panelShell(phone, p ? `Edit ${p.pn}` : 'Add part', p ? catName(p.cat) : 'PM catalog', body, footSave(phone, d, p ? 'Save part' : 'Add part'));
+}
+function savePart(d) {
+  const e = {};
+  if (!d.name.trim()) e.name = 'Enter the name the mechanic will see.';
+  if (d.pn.trim() && S.parts.some((p) => p.id !== d.editId && p.cat === d.cat && p.pn.toLowerCase() === d.pn.trim().toLowerCase())) e.pn = 'This part number is already in this category.';
+  if (!d.allFits && !d.makes.length) e.fits = 'Choose at least one make, or “All trucks”.';
+  const c = parseMoney(d.cost); if (Number.isNaN(c)) e.cost = 'Use a number like 24.10.';
+  d.errors = e;
+  return !Object.keys(e).length;
+}
+function commitPart(d) {
+  const fits = d.allFits ? [] : d.makes.map((m) => (d.model.trim() && d.makes.length === 1 ? `${m} ${d.model.trim()}` : m));
+  const base = d.editId ? part(d.editId) : { id: 'p' + Date.now(), used: 0 };
+  const rec = { ...base, cat: d.cat, pn: d.pn.trim(), name: d.name.trim(), fits, cost: parseMoney(d.cost), vendor: d.vendor || null, active: d.active };
+  if (d.editId) S.parts = S.parts.map((p) => (p.id === d.editId ? rec : p)); else S.parts.push(rec);
+  return [rec, d.editId ? `${rec.pn || rec.name} saved. The PM picker uses it from now on.` : `${rec.name} added to ${catName(rec.cat)}.`];
+}
+
+/* Vendor add / edit */
+function vendorDraft(v) { return v ? { type: 'vendorForm', editId: v.id, ...v, errors: {}, saving: false, dirty: false } : { type: 'vendorForm', editId: null, name: '', parts: true, repairs: false, phone: '', email: '', acct: '', notes: '', active: true, errors: {}, saving: false, dirty: false }; }
+function vendorForm(phone, d) {
+  const h = phone ? 'h-11 text-base' : 'h-9';
+  const toggle = (k, l) => `<button data-vk="${k}" aria-pressed="${d[k]}" class="inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 ${d[k] ? 'border-primary bg-primary/15 text-primary' : 'hover:bg-accent'}">${d[k] ? ic('check', 's14') : ''}${l}</button>`;
+  const body = `${saveErr(d)}
+    <div>${label('vname', 'Name')}<input id="vname" data-f="name" value="${esc(d.name)}" autocomplete="off" class="field ${h} ${d.errors.name ? 'bad' : ''}" />${err(d.errors.name)}</div>
+    <div><p class="mb-1.5 font-medium">Does</p><div class="flex flex-wrap gap-1.5">${toggle('parts', 'Parts')}${toggle('repairs', 'Outside repairs')}</div>${err(d.errors.does)}</div>
+    <div class="grid ${phone ? '' : 'grid-cols-2'} gap-3"><div>${label('vphone', 'Phone', true)}<input id="vphone" data-f="phone" type="tel" value="${esc(d.phone)}" class="field ${h}" /></div><div>${label('vemail', 'Email', true)}<input id="vemail" data-f="email" type="email" value="${esc(d.email)}" class="field ${h}" /></div></div>
+    <div>${label('vacct', 'Our account number', true)}<input id="vacct" data-f="acct" value="${esc(d.acct)}" class="field font-mono ${h}" /></div>
+    <div>${label('vnotes', 'Notes', true)}<textarea id="vnotes" data-f="notes" rows="2" class="field py-2">${esc(d.notes)}</textarea></div>
+    <label class="flex items-start justify-between gap-3 rounded-lg border p-3"><span><span class="block font-medium">Active</span><span class="text-xs text-muted-foreground">Inactive vendors keep their history but leave the suggestions.</span></span><input type="checkbox" data-f="active" ${d.active ? 'checked' : ''} class="mt-1 size-5" /></label>`;
+  return panelShell(phone, d.editId ? `Edit ${d.name || 'vendor'}` : 'Add vendor', 'Shared by Purchases and Outside repairs', body, footSave(phone, d, d.editId ? 'Save vendor' : 'Add vendor'));
+}
+function saveVendor(d) {
+  const e = {};
+  if (!d.name.trim()) e.name = 'Enter the vendor name.';
+  const same = S.vendors.find((v) => v.id !== d.editId && v.name.toLowerCase() === d.name.trim().toLowerCase());
+  if (same) e.name = `“${same.name}” already exists. Open it instead of adding it twice.`;
+  if (!d.parts && !d.repairs) e.does = 'Choose Parts, Outside repairs or both.';
+  d.errors = e;
+  return !Object.keys(e).length;
+}
+function commitVendor(d) {
+  const rec = { id: d.editId ?? 'v' + Date.now(), name: d.name.trim(), parts: d.parts, repairs: d.repairs, phone: d.phone, email: d.email, acct: d.acct, notes: d.notes, active: d.active };
+  if (d.editId) S.vendors = S.vendors.map((v) => (v.id === d.editId ? rec : v)); else S.vendors.push(rec);
+  return [rec, `${rec.name} saved.`];
+}
+
+/* Dialogs */
+function dialog(phone) {
+  const shell = (title, desc, body, actions) => `<div class="absolute inset-0 z-40 bg-black/50"></div>
+    <div role="dialog" aria-modal="true" class="${phone ? 'sheet-in absolute inset-x-0 bottom-0 rounded-t-2xl' : 'absolute left-1/2 top-1/2 w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-xl'} z-50 border bg-card p-5 shadow-2xl">
+      ${phone ? '<div class="mx-auto -mt-2 mb-3 h-1 w-10 rounded-full bg-muted-foreground/40"></div>' : ''}
+      <h2 class="text-base font-semibold">${title}</h2><p class="mt-1 text-muted-foreground">${desc}</p>${body}
+      <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">${actions}</div></div>`;
+  const h = phone ? 'h-11' : 'h-9';
+  if (UI.dialog.kind === 'discard') return shell('Discard this form?', 'What you typed is not saved.', '', `<button data-act="keep" class="${BTN.outline} ${h}">Keep editing</button><button data-act="discard" class="${BTN.danger} ${h}">Discard</button>`);
+  const rec = UI.dialog.rec;
+  return shell(`Void ${vn(rec.vendor)} ${rec.inv}?`, `Nothing is deleted. It stays crossed out, its ${money(rec.amount ?? pTotal(rec))} comes off the truck costs, and the invoice number can be saved again.`,
+    `<label for="void-reason" class="mt-4 block font-medium">Why?</label><input id="void-reason" value="${esc(UI.dialog.reason ?? '')}" placeholder="E.g. entered twice, wrong vendor" class="field mt-1.5 ${phone ? 'h-11 text-base' : 'h-9'} ${UI.dialog.err ? 'bad' : ''}" />${UI.dialog.err ? err('Say why it is voided.') : ''}`,
+    `<button data-act="keep" class="${BTN.outline} ${h}">Back</button><button data-act="void" class="${BTN.primary} ${h}">${ic('ban')}Void</button>`);
+}
+
+/* ───────── Actions ───────── */
+function toast(kind, text) { UI.toast = [kind, text]; render(); clearTimeout(window.__t); window.__t = setTimeout(() => { UI.toast = null; UI.flash = null; render(); }, 3200); }
+function openPanel(type, id) {
+  UI.menu = false;
+  if (type === 'purchase') UI.panel = { type: 'purchaseView', id };
+  else if (type === 'repair') UI.panel = { type: 'repairView', id };
+  else if (type === 'part') UI.panel = partDraft(part(id));
+  else if (type === 'vendor') UI.panel = vendorDraft(vendor(id));
+}
+function closePanel() { if (UI.panel?.dirty) { UI.dialog = { kind: 'discard' }; return render(); } UI.panel = null; UI.menu = false; render(); }
+function editFromView() {
+  const P = UI.panel; UI.menu = false;
+  if (P.type === 'purchaseView') {
+    const p = S.purchases.find((x) => x.id === P.id); const trucks = pTrucks(p); const split = trucks.length > 1 || (trucks.length === 1 && pAlloc(p)['']);
+    UI.panel = { ...newPurchaseDraft(), editId: p.id, vendorText: vn(p.vendor), date: p.date, inv: p.inv, truck: split ? '' : (trucks[0] ?? ''), split: !!split, tax: centsToInput(p.tax || null), freight: centsToInput(p.freight || null), notes: p.notes,
+      file: p.file ? { name: p.file, size: '312 KB', progress: 100 } : null, lines: p.lines.map((l) => ({ part: l.part ?? '', other: !l.part, desc: l.desc, qty: String(l.qty), cost: centsToInput(l.cost), truck: l.truck })) };
+  } else {
+    const r = S.repairs.find((x) => x.id === P.id);
+    UI.panel = { ...newRepairDraft(r.truck, r.job ?? ''), editId: r.id, vendorText: vn(r.vendor), date: r.date, inv: r.inv, desc: r.desc, amount: centsToInput(r.amount), file: r.file ? { name: r.file, size: '1.2 MB', progress: 100 } : null };
+  }
+}
+function prefillCost(d, i) {
+  const l = d.lines[i]; if (!l.part) return;
+  const v = S.vendors.find((x) => x.name.toLowerCase() === d.vendorText.trim().toLowerCase());
+  const fromVendor = v && S.purchases.filter((p) => p.vendor === v.id && !p.voided).sort((a, b) => b.date.localeCompare(a.date)).flatMap((p) => p.lines).find((x) => x.part === l.part);
+  const c = fromVendor?.cost ?? part(l.part).cost;
+  if (c != null) l.cost = centsToInput(c);
+}
+function doSave() {
+  const d = UI.panel;
+  const ok = { purchaseForm: savePurchase, repairForm: saveRepair, partForm: savePart, vendorForm: saveVendor }[d.type](d);
+  d.saveError = null;
+  if (!ok) return render();
+  if (d.file && d.file.progress < 100) { d.saveError = 'Wait for the invoice file to finish uploading.'; return render(); }
+  d.saving = true; render();
+  setTimeout(() => {
+    d.saving = false;
+    const fail = document.getElementById('failnext');
+    if (fail.checked) { fail.checked = false; d.saveError = 'Could not save. Nothing was saved. Check the connection and try again — what you typed is still here.'; return render(); }
+    const [rec, msg] = { purchaseForm: commitPurchase, repairForm: commitRepair, partForm: commitPart, vendorForm: commitVendor }[d.type](d);
+    UI.panel = null; UI.flash = rec.id;
+    toast('ok', msg);
+  }, 700);
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button, tr[data-open], div[data-act]'); if (!el) return;
+  if (el.dataset.device) { UI.device = el.dataset.device; return render(); }
+  if (el.id === 'theme') { document.documentElement.classList.toggle('dark'); el.textContent = document.documentElement.classList.contains('dark') ? 'Light' : 'Dark'; return render(); }
+  if (el.id === 'reset') { S = seed(); UI = fresh(); return render(); }
+  if (el.dataset.preset) { S = seed(); UI = fresh(); PRESETS[el.dataset.preset][1](); return render(); }
+  if (el.dataset.soon) { UI.drawer = false; return toast('info', `${el.dataset.soon} does not change in this proposal.`); }
+  if (el.dataset.nav) { UI.route = el.dataset.nav; UI.panel = null; UI.drawer = false; UI.state = 'ok'; return render(); }
+  if (el.dataset.truck) { UI.route = 'truck'; UI.truck = el.dataset.truck; UI.truckTab = 'costs'; UI.panel = null; return render(); }
+  if (el.dataset.ttab) { UI.truckTab = el.dataset.ttab; return render(); }
+  if (el.dataset.period) { UI.period = el.dataset.period; return render(); }
+  if (el.dataset.open) { const [t, id] = el.dataset.open.split(':'); openPanel(t, id); return render(); }
+  if (el.dataset.make) { const d = UI.panel; const m = el.dataset.make; const p = d.editId && part(d.editId);
+    if (p?.openPm && d.makes.includes(m) && p.openPm.includes('968') && m === 'Volvo') { d.block = { ...(d.block ?? {}), fits: 'Truck 968 (Volvo) has this part in its PM in progress. Remove Volvo after that PM is finished.' }; return render(); }
+    d.makes = d.makes.includes(m) ? d.makes.filter((x) => x !== m) : [...d.makes, m]; d.dirty = true; return render(); }
+  if (el.dataset.vk) { UI.panel[el.dataset.vk] = !UI.panel[el.dataset.vk]; UI.panel.dirty = true; return render(); }
+  const d = UI.panel;
+  switch (el.dataset.act) {
+    case 'drawer': UI.drawer = !UI.drawer; return render();
+    case 'retry': UI.state = 'ok'; return render();
+    case 'clear-filters': UI.q = ''; UI.fVendor = ''; UI.fTruck = ''; UI.fPeriod = 'all'; return render();
+    case 'new-purchase': UI.panel = newPurchaseDraft(el.dataset.forTruck ?? ''); return render();
+    case 'new-repair': UI.panel = newRepairDraft(el.dataset.forTruck ?? ''); return render();
+    case 'new-part': UI.panel = partDraft(null); return render();
+    case 'new-vendor': UI.panel = vendorDraft(null); return render();
+    case 'close': return closePanel();
+    case 'keep': UI.dialog = null; return render();
+    case 'discard': UI.dialog = null; UI.panel = null; return render();
+    case 'menu': UI.menu = !UI.menu; return render();
+    case 'edit': editFromView(); return render();
+    case 'ask-void': { UI.menu = false; const rec = d.type === 'purchaseView' ? S.purchases.find((x) => x.id === d.id) : S.repairs.find((x) => x.id === d.id); UI.dialog = { kind: 'void', rec }; return render(); }
+    case 'void': { const reason = document.getElementById('void-reason').value.trim(); if (!reason) { UI.dialog.err = true; return render(); } UI.dialog.rec.voided = { on: TODAY, reason }; UI.dialog = null; return toast('ok', 'Voided. The truck costs were updated.'); }
+    case 'add-line': d.lines.push(blankLine(d.truck)); d.dirty = true; return render();
+    case 'del-line': d.lines.splice(Number(el.dataset.i), 1); d.dirty = true; return render();
+    case 'pick-file': d.file = { name: d.type === 'repairForm' ? 'DieselPro-invoice.pdf' : 'FleetPride-invoice.pdf', size: '284 KB', progress: 10 }; d.dirty = true; render();
+      [40, 75, 100].forEach((v, i) => setTimeout(() => { if (UI.panel === d && d.file) { d.file.progress = v; render(); } }, 250 * (i + 1))); return;
+    case 'remove-file': d.file = null; return render();
+    case 'open-file': return toast('info', 'Opens the invoice with a 5-minute signed link (Supabase Storage, private bucket).');
+    case 'open-wo': return toast('info', 'Opens the Work Order at that Job.');
+    case 'save': return doSave();
+  }
+});
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if (el.dataset.filter && el.tagName === 'INPUT' && el.type !== 'checkbox') { UI[el.dataset.filter] = el.value; UI.focus = el.id; return render(); }
+  const d = UI.panel; if (!d) return;
+  if (el.dataset.line != null && el.tagName === 'INPUT') { d.lines[Number(el.dataset.line)][el.dataset.lf] = el.value; d.dirty = true; return updateTotals(); }
+  if (el.dataset.f && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && !['checkbox', 'radio'].includes(el.type)) { d[el.dataset.f] = el.value; d.dirty = true; if (['tax', 'freight'].includes(el.dataset.f)) updateTotals(); }
+});
+document.addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['checkbox', 'radio'].includes(el.type))) return;
+  if (el.dataset.filter) { UI[el.dataset.filter] = el.type === 'checkbox' ? el.checked : el.value; return render(); }
+  const d = UI.panel; if (!d) return;
+  if (el.dataset.line != null && el.tagName === 'SELECT') {
+    const l = d.lines[Number(el.dataset.line)];
+    if (el.dataset.lf === 'part') { l.other = el.value === '__other'; l.part = l.other ? '' : el.value; prefillCost(d, Number(el.dataset.line)); } else l[el.dataset.lf] = el.value;
+    d.dirty = true; return render();
+  }
+  if (!el.dataset.f) return;
+  const k = el.dataset.f;
+  if (el.type === 'checkbox') {
+    if (k === 'active' && d.type === 'partForm' && !el.checked && d.editId && part(d.editId).openPm) { d.block = { active: `Used in the PM in progress on ${part(d.editId).openPm}. Make it inactive after that PM is finished.` }; return render(); }
+    d[k] = el.checked; if (k === 'split') d.lines.forEach((l) => { l.truck = d.truck; });
+  } else if (el.type === 'radio') d[k] = k === 'allFits' ? el.value === '1' : el.value;
+  else d[k] = el.value;
+  if (k === 'truck' && d.type === 'purchaseForm') d.lines.forEach((l) => { l.truck = el.value; });
+  if (k === 'truck' && d.type === 'repairForm') d.job = (EXT_JOBS[el.value] ?? [])[0]?.id ?? '';
+  d.dirty = true; render();
+});
+// The duplicate-invoice check runs when the Manager leaves Vendor or Invoice #.
+document.addEventListener('focusout', (e) => {
+  const d = UI.panel; if (!d || !['purchaseForm', 'repairForm'].includes(d.type) || !['inv', 'vendorText'].includes(e.target.id)) return;
+  const v = S.vendors.find((x) => x.name.toLowerCase() === d.vendorText.trim().toLowerCase());
+  d.dupe = v ? findDupe(v.id, d.inv, d.editId) : null;
+  // Update only the two hints, so a click on Save right after typing is not lost to a re-render.
+  const box = document.getElementById('dupebox'); if (box) box.innerHTML = dupeBox(d);
+  const hint = document.getElementById('vhint'); if (hint) hint.innerHTML = vendorHint(d);
+  lucide.createIcons();
+});
+
+const PRESETS = {
+  purchases: ['Purchases', () => {}],
+  first: ['First use', () => { S.vendors = []; S.purchases = []; S.repairs = []; S.parts.forEach((p) => { p.cost = null; p.vendor = null; }); UI.route = 'parts'; }],
+  newp: ['New purchase', () => { UI.panel = newPurchaseDraft(); }],
+  dupe: ['Duplicate invoice', () => { const d = newPurchaseDraft(); Object.assign(d, { vendorText: 'FleetPride', inv: '88412093', dirty: true, lines: [{ part: 'p7', other: false, desc: '', qty: '4', cost: '41.80', truck: '' }] }); d.dupe = findDupe('v1', '88412093'); UI.panel = d; }],
+  stock: ['No truck (stock)', () => { const d = newPurchaseDraft(); Object.assign(d, { vendorText: 'Rush Truck Center', inv: 'RTC-560044', dirty: true, lines: [{ part: '', other: true, desc: 'Bendix brake pads, axle set', qty: '2', cost: '142.00', truck: '' }, { part: 'p16', other: false, desc: '', qty: '3', cost: '61.50', truck: '' }], tax: '25.30' }); UI.panel = d; }],
+  split: ['Split by truck', () => { const d = newPurchaseDraft(); Object.assign(d, { vendorText: 'TruckPro', inv: '7731-0107', split: true, dirty: true, file: { name: 'TruckPro_7731-0107.pdf', size: '198 KB', progress: 100 }, lines: [{ part: 'p9', other: false, desc: '', qty: '1', cost: '38.75', truck: '606' }, { part: 'p3', other: false, desc: '', qty: '1', cost: '22.95', truck: '606' }, { part: 'p14', other: false, desc: '', qty: '1', cost: '22.40', truck: '918' }], tax: '6.51', freight: '12.00' }); UI.panel = d; }],
+  repairs: ['Outside repairs', () => { UI.route = 'repairs'; }],
+  fromjob: ['Repair from Job', () => { S.repairs = S.repairs.filter((r) => r.id !== 'r1'); UI.route = 'repairs'; UI.panel = { ...newRepairDraft('601', 'j1', true), vendorText: 'Diesel Pro (Barstow)' }; }],
+  parts: ['Parts', () => { UI.route = 'parts'; }],
+  inpm: ['Part in a PM', () => { UI.route = 'parts'; UI.panel = partDraft(part('p5')); UI.panel.block = { active: 'Used in the PM in progress on Truck 968 · WO-016. Make it inactive after that PM is finished.' }; }],
+  vendors: ['Vendors', () => { UI.route = 'vendors'; }],
+  costs: ['Truck 601 → Costs', () => { UI.route = 'truck'; UI.truck = '601'; }],
+  nocost: ['Truck without costs', () => { UI.route = 'truck'; UI.truck = '612'; UI.period = 'all'; }],
+  loading: ['Loading', () => { UI.state = 'loading'; }],
+  error: ['Error', () => { UI.state = 'error'; }],
+};
+render();
+</script>
+</body>
+</html>
