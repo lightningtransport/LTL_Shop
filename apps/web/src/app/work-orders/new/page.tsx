@@ -20,7 +20,8 @@ import { replaceAppLocation } from '@/lib/session-restore';
 import { ApiError, apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { TruckInformationFields } from '@/components/truck-information-fields';
-import { useCategories, useTrucks } from '@/lib/shop-data';
+import { useCategories, useTrucks, useWorkOrders } from '@/lib/shop-data';
+import { PmInProgressNotice } from '@/components/pm-in-progress-notice';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
   Button,
@@ -62,6 +63,9 @@ export default function NewWorkOrderPage() {
     ? AppCapability.MECHANIC_PM
     : AppCapability.MECHANIC_STANDARD;
   const isPmMechanic = mechanicMode === MechanicMode.PM;
+  // Block A (PM5): the PM in progress, so the screen says so before the mechanic picks a truck.
+  const { data: pmLists } = useWorkOrders(!!token && isPmMechanic, MechanicMode.PM);
+  const runningPm = pmLists?.active[0] ?? null;
   const [query, setQuery] = useState('');
   const [truck, setTruck] = useState<TruckDto | null>(null);
   const [openWo, setOpenWo] = useState<WorkOrderSummaryDto | null>(null);
@@ -92,7 +96,8 @@ export default function NewWorkOrderPage() {
 
   const hasSearchTerm = query.trim().replace(/^#/, '').length > 0;
   const resultsOpen = searchOpen && hasSearchTerm && !truck;
-  const createBlocked = busy || hasOpenWo || openWoCheck !== 'verified' || !pmCategory;
+  const otherPmRunning = Boolean(runningPm && pmJoin?.status !== 'mine');
+  const createBlocked = busy || hasOpenWo || openWoCheck !== 'verified' || !pmCategory || otherPmRunning;
   const createActionLabel = openWoCheck === 'checking'
     ? messages.checkingTruck
     : pmJoin?.status === 'mine'
@@ -259,6 +264,8 @@ export default function NewWorkOrderPage() {
         subtitle={messages.pmServiceHint}
         backHref={`/mechanic/${mechanicMode}`}
       />
+
+      {runningPm && otherPmRunning ? <PmInProgressNotice running={runningPm} className="mb-4" /> : null}
 
       <section className="card mb-4 space-y-3">
         <Label htmlFor="truck-search">

@@ -7,6 +7,7 @@ import { Check } from 'lucide-react';
 import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
+import { PmInProgressNotice } from '@/components/pm-in-progress-notice';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -152,11 +153,15 @@ export default function HomePage() {
 
       {isPm ? (
         <>
-          {/* LTR-95: one running PM at a time; the API enforces it too. */}
-          {activeWork.length ? (
+          {/* LTR-95: one running PM at a time; the API enforces it too. Block A (PM5): until the list
+              answers, the app does not know, so Create waits; with a PM running it leads back to it. */}
+          {!data ? (
+            <Button className="mb-6 w-full" disabled>{messages.createPmService}</Button>
+          ) : activeWork.length ? (
             <>
               <Button className="mb-2 w-full" disabled>{messages.createPmService}</Button>
-              <p className="mb-6 text-center text-sm text-shop-muted">{messages.pmAlreadyRunning(activeWork[0].displayId)}</p>
+              {/* The running PM's own card is right below, so the notice needs no second Continue button. */}
+              <PmInProgressNotice running={activeWork[0]} className="mb-6" showLink={false} />
             </>
           ) : (
             <>
@@ -258,7 +263,7 @@ export default function HomePage() {
             ) : (
               <div className="space-y-3">
                 {data.paused.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="paused" currentUserId={user.id} pmWorkspace={isPm} />
+                  <WorkOrderCard key={wo.id} wo={wo} mode="paused" currentUserId={user.id} pmWorkspace={isPm} startBlocked={isPm && activeWork.length > 0} />
                 ))}
               </div>
             )}

@@ -50,7 +50,10 @@ type Copy = {
   locationUpdatedOn: string;
   repairHistory: string;
   openWorkOrder: string;
-  noAccessToPmWorkOrder: string;
+  /** Block A (A12, MG6): a Work Order that does not load. */
+  noJobsHereAnymore: string;
+  workOrderGone: string;
+  backToMyWork: string;
   chooseAnotherWorkOrder: string;
   workOrderOpen: (truckNumber: string) => string;
   workOrderSummary: (displayId: string, status: string, completed: number, total: number) => string;
@@ -221,6 +224,15 @@ type Copy = {
   continuePmService: string;
   pmStartedAt: (time: string) => string;
   pmAlreadyRunning: (displayId: string) => string;
+  /** Block A (PM5): where the PM in progress is, with a way back to it. */
+  pmInProgressOn: (truckNumber: string, displayId: string) => string;
+  continuePmOn: (truckNumber: string) => string;
+  /** Block A (PM2, PM3): why the parts are not saved yet. */
+  confirmMileageFirst: string;
+  enterMileageToSave: string;
+  /** Block A (PM1): the draft stays on the phone until the Shop has it. */
+  pmNotSaved: string;
+  pmKeptOnPhone: string;
   pmServiceTypeLabel: string;
   pmJoinAdd: (displayId: string) => string;
   pmJoinJoin: (displayId: string) => string;
@@ -256,7 +268,6 @@ type Copy = {
   pmServiceLabel: string;
   noPendingJobs: string;
   noCompletedJobs: string;
-  chooseAnotherOrHome: string;
   cancelAction: string;
   multiSelectDone: string;
   backToShopAdmin: string;
@@ -387,7 +398,9 @@ const copy: Record<ShopLocale, Copy> = {
     truckInformation: 'Truck Information', selectTruck: 'Select a truck to show its details.',
     vin: 'VIN', lastReportedLocation: 'Last reported location', locationUpdatedOn: 'Last reported on',
     repairHistory: 'View truck repair history', openWorkOrder: 'View open Work Order',
-    noAccessToPmWorkOrder: 'You do not have access to this PM Work Order.',
+    noJobsHereAnymore: 'You have no Jobs on this Work Order anymore. The Manager may have reassigned or cancelled them.',
+    workOrderGone: 'This Work Order no longer exists.',
+    backToMyWork: 'Back to My work',
     chooseAnotherWorkOrder: 'Choose another Work Order',
     workOrderOpen: (truckNumber) => `Truck #${truckNumber} already has an open Work Order.`,
     workOrderSummary: (displayId, status, completed, total) => `${displayId} · ${status} · ${completed} of ${total} jobs completed`,
@@ -553,6 +566,12 @@ const copy: Record<ShopLocale, Copy> = {
     continuePmService: 'Continue PM service',
     pmStartedAt: (time) => `Started ${time}`,
     pmAlreadyRunning: (displayId) => `Finish ${displayId} before starting another PM service.`,
+    pmInProgressOn: (truckNumber, displayId) => `You have a PM service in progress on Truck ${truckNumber} (${displayId}). Finish it before starting another.`,
+    continuePmOn: (truckNumber) => `Continue PM on Truck ${truckNumber}`,
+    confirmMileageFirst: 'Confirm the mileage above to save parts.',
+    enterMileageToSave: 'Enter the mileage. The last saved mileage stays until then.',
+    pmNotSaved: 'Not saved',
+    pmKeptOnPhone: 'Not sent yet. What you entered stays on this phone and is sent when the connection is back.',
     pmServiceTypeLabel: 'Service type',
     pmJoinAdd: (displayId) => `This truck already has Work Order ${displayId}. Your PM service will be added to it.`,
     pmJoinJoin: (displayId) => `This truck already has Work Order ${displayId} with a PM job. You will take and start it.`,
@@ -588,7 +607,6 @@ const copy: Record<ShopLocale, Copy> = {
     pmServiceLabel: 'PM Service',
     noPendingJobs: 'No pending jobs',
     noCompletedJobs: 'No completed jobs',
-    chooseAnotherOrHome: 'Choose another Work Order or return to Home.',
     cancelAction: 'Cancel',
     multiSelectDone: 'Done',
     backToShopAdmin: 'Back to Shop Admin',
@@ -722,7 +740,9 @@ const copy: Record<ShopLocale, Copy> = {
     truckInformation: 'Información de la unidad', selectTruck: 'Selecciona una unidad para ver sus detalles.',
     vin: 'VIN', lastReportedLocation: 'Ubicación reportada', locationUpdatedOn: 'Reportada el',
     repairHistory: 'Ver historial de reparaciones de la unidad', openWorkOrder: 'Ver Work Order abierto',
-    noAccessToPmWorkOrder: 'No tienes acceso a este Work Order de PM.',
+    noJobsHereAnymore: 'Ya no tienes Jobs en este Work Order. El Manager puede haberlos reasignado o cancelado.',
+    workOrderGone: 'Este Work Order ya no existe.',
+    backToMyWork: 'Volver a Mi trabajo',
     chooseAnotherWorkOrder: 'Elegir otro Work Order',
     workOrderOpen: (truckNumber) => `La unidad #${truckNumber} ya tiene un Work Order abierto.`,
     workOrderSummary: (displayId, status, completed, total) => `${displayId} · ${status} · ${completed} de ${total} Jobs completados`,
@@ -889,6 +909,12 @@ const copy: Record<ShopLocale, Copy> = {
     continuePmService: 'Continuar servicio PM',
     pmStartedAt: (time) => `Iniciado ${time}`,
     pmAlreadyRunning: (displayId) => `Termina ${displayId} antes de iniciar otro servicio PM.`,
+    pmInProgressOn: (truckNumber, displayId) => `Tienes un servicio PM en curso en la unidad ${truckNumber} (${displayId}). Termínalo antes de iniciar otro.`,
+    continuePmOn: (truckNumber) => `Continuar el PM en la unidad ${truckNumber}`,
+    confirmMileageFirst: 'Confirma el millaje de arriba para guardar las piezas.',
+    enterMileageToSave: 'Ingresa el millaje. Hasta entonces queda el último millaje guardado.',
+    pmNotSaved: 'Sin guardar',
+    pmKeptOnPhone: 'Aún no se envió. Lo que anotaste queda en este teléfono y se envía cuando vuelva la conexión.',
     pmServiceTypeLabel: 'Tipo de servicio',
     pmJoinAdd: (displayId) => `Esta unidad ya tiene el Work Order ${displayId}. Tu servicio PM se agregará ahí.`,
     pmJoinJoin: (displayId) => `Esta unidad ya tiene el Work Order ${displayId} con un job PM. Lo tomarás e iniciarás.`,
@@ -924,7 +950,6 @@ const copy: Record<ShopLocale, Copy> = {
     pmServiceLabel: 'Servicio de PM',
     noPendingJobs: 'No hay Jobs pendientes',
     noCompletedJobs: 'No hay Jobs completados',
-    chooseAnotherOrHome: 'Elige otro Work Order o vuelve a Inicio.',
     cancelAction: 'Cancelar',
     multiSelectDone: 'Listo',
     backToShopAdmin: 'Volver a Shop Admin',

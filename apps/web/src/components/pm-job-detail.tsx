@@ -10,9 +10,10 @@ import { apiErrorMessage } from '@/lib/api-error-message';
 import { formatMileage, pauseLabel } from '@/lib/format';
 import { useShopLocale } from '@/lib/locale-context';
 import { clockStoppedLine } from '@/lib/clock-stopped';
-import { shopKeys, useCatalogJobs } from '@/lib/shop-data';
+import { shopKeys, useCatalogJobs, useWorkOrders } from '@/lib/shop-data';
 import { vehicleLine } from '@/lib/work-order-identity';
 import { useActionToast } from './action-toast';
+import { PmInProgressNotice } from './pm-in-progress-notice';
 import { PmServiceCard, type PmDraftState } from './pm-service-card';
 import { TruckInformationFields } from './truck-information-fields';
 import { WorkOrderNotesThread } from './work-order-notes-thread';
@@ -49,6 +50,9 @@ export function PmJobDetail({
   const pmJobRow = wo.jobs.find((job) => job.id === pmJob?.id);
   const { data: pmServices } = useCatalogJobs(pmJobRow?.category.id ?? '', Boolean(pmJobRow) && pmJob?.status === 'to_do');
   const pmServiceOptions = (pmServices ?? []).filter((item) => /^PM [A-Z] Service$/i.test(item.displayName) || item.id === pmJobRow?.catalogJobId);
+  // Block A (PM5): one running PM at a time — another truck's PM in progress is shown before Start, not after.
+  const { data: pmLists } = useWorkOrders(Boolean(pmJob) && !pmJob?.startedAt, MechanicMode.PM);
+  const otherRunningPm = pmLists?.active.find((item) => item.id !== wo.id) ?? null;
   if (!pmJob) return null;
 
   const started = Boolean(pmJob.startedAt);
@@ -133,9 +137,11 @@ export function PmJobDetail({
       ) : (
         <section className="card mb-4 space-y-3">
           <p className="text-sm text-muted-foreground">{messages.pmJobNotStartedHint}</p>
+          {otherRunningPm ? <PmInProgressNotice running={otherRunningPm} /> : null}
           <Button
             className="w-full"
-            disabled={busy}
+            variant={otherRunningPm ? 'secondary' : undefined}
+            disabled={busy || Boolean(otherRunningPm)}
             onClick={() => void run(
               () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/jobs/${pmJob.id}/pm/start`, { method: 'POST' }),
               () => showToast('success', messages.pmServiceStartedSuccess),
