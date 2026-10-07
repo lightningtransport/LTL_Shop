@@ -211,6 +211,88 @@ test.describe('Daniel PM workflow', () => {
     await expect(page.getByRole('alert').filter({ hasText: /Unable to load PM service details/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Try again|Retry/i })).toBeVisible();
   });
+
+  /** Collects the bodies the PM card POSTs, so a test can say what reached the Shop. */
+  function pmPosts(page: Page) {
+    const bodies: { observedMileage: number | null; selections: unknown[] }[] = [];
+    page.on('request', (request) => {
+      if (request.method() === 'POST' && new URL(request.url()).pathname === `/api/work-orders/${woId}/pm`) bodies.push(request.postDataJSON());
+    });
+    return bodies;
+  }
+
+  test('Block A (PM2): with a mileage jump not confirmed, parts wait for the confirmation', async ({ page }) => {
+    await mockPmApi(page);
+    const posts = pmPosts(page);
+    await login(page);
+    await page.goto(`/work-orders/${woId}`);
+    await page.getByLabel('Observed mileage').fill('200000');
+    await expect(page.getByText('Confirm the mileage above to save parts.')).toBeVisible();
+    const oil = page.getByLabel('Oil Filter 1 Unit');
+    await expect(oil).toBeDisabled();
+    await page.waitForTimeout(900);
+    expect(posts).toHaveLength(0);
+
+    await page.getByRole('button', { name: 'Confirm mileage' }).click();
+    await expect(oil).toBeEnabled();
+    await oil.selectOption(oilPart);
+    await expect.poll(() => posts.at(-1)).toMatchObject({ observedMileage: 200000, selections: [{ partId: oilPart }] });
+  });
+
+  test('Block A (PM3): clearing the mileage never saves it empty', async ({ page }) => {
+    await mockPmApi(page);
+    const posts = pmPosts(page);
+    await login(page);
+    await page.goto(`/work-orders/${woId}`);
+    const mileage = page.getByLabel('Observed mileage');
+    await mileage.fill('155000');
+    await expect.poll(() => posts.at(-1)?.observedMileage).toBe(155000);
+    await expect(page.getByText('Saved automatically').first()).toBeVisible();
+
+    await mileage.fill('');
+    await mileage.blur();
+    await expect(page.getByText('Enter the mileage. The last saved mileage stays until then.')).toBeVisible();
+    await expect(page.getByLabel('Oil Filter 1 Unit')).toBeDisabled();
+    await page.waitForTimeout(900);
+    expect(posts.some((body) => body.observedMileage === null)).toBe(false);
+  });
+
+  test('Block A (PM1): without a connection the entry stays on the phone and is sent when it is back', async ({ page }) => {
+    await mockPmApi(page);
+    await page.route(`**/api/work-orders/${woId}/pm`, (route) => (route.request().method() === 'POST' ? route.abort('internetdisconnected') : route.fallback()));
+    await login(page);
+    await page.goto(`/work-orders/${woId}`);
+    await page.getByLabel('Observed mileage').fill('155000');
+    await expect(page.getByTestId('pm-not-saved')).toBeVisible();
+    await expect(page.getByText(/stays on this phone and is sent when the connection is back/)).toBeVisible();
+
+    // Leaving and coming back keeps what was entered.
+    await page.reload();
+    await expect(page.getByLabel('Observed mileage')).toHaveValue('155,000');
+
+    await page.unroute(`**/api/work-orders/${woId}/pm`);
+    const posts = pmPosts(page);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect.poll(() => posts.at(-1)?.observedMileage).toBe(155000);
+    await expect(page.getByTestId('pm-not-saved')).toHaveCount(0);
+    await expect.poll(() => page.evaluate((id) => window.localStorage.getItem(`ltl-pm-draft:${id}`), woId)).toBeNull();
+  });
+
+  test('Block A (A12): a Work Order that is gone or no longer mine keeps a way back to My work', async ({ page }) => {
+    await mockPmApi(page);
+    let status = 404;
+    await page.route(`**/api/work-orders/${woId}`, (route) => fulfill(route, { statusCode: status, message: 'nope' }, status));
+    await login(page);
+    await page.goto(`/work-orders/${woId}`);
+    await expect(page.getByText('This Work Order no longer exists.')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to My work' })).toHaveAttribute('href', '/mechanic/pm');
+
+    status = 403;
+    await page.reload();
+    await expect(page.getByText(/You have no Jobs on this Work Order anymore/)).toBeVisible();
+    await page.getByRole('link', { name: 'Back to My work' }).click();
+    await expect(page).toHaveURL(/\/mechanic\/pm$/);
+  });
 });
 
 test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
@@ -322,5 +404,27 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     await finish.click();
     await page.getByRole('dialog').getByRole('button', { name: 'Finish Work' }).click();
     await expect(page).toHaveURL(/\/mechanic\/pm$/);
+  });
+
+  test('Block A (PM5): with a PM running, Create and another PM lead back to it instead of offering Start', async ({ page }) => {
+    await mockPmJobApi(page);
+    // Daniel's PM on Truck 905 (WO-1001) is running; WO-900 waits with its PM not started.
+    await page.route(/\/api\/work-orders(\?.*)?$/, (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      return fulfill(route, { created: [{ ...summary(), id: jobWoId, displayId: 'WO-900', status: 'created', pmJob: { ...danielPmJob(), id: pmJobId, startedAt: null } }], active: [summary()], paused: [], completed: [] });
+    });
+    await login(page);
+    const notice = page.getByTestId('pm-in-progress-notice');
+    await expect(notice).toContainText('You have a PM service in progress on Truck 905 (WO-1001).');
+    await expect(page.getByRole('button', { name: /Create PM Service/i })).toBeDisabled();
+    // The paused-style card of another PM offers no Start either.
+    await expect(page.getByRole('link', { name: /Start PM service/i })).toHaveCount(0);
+
+    await page.goto('/mechanic/pm/new');
+    await expect(page.getByTestId('pm-in-progress-notice').getByRole('link', { name: 'Continue PM on Truck 905' })).toHaveAttribute('href', `/work-orders/${woId}?view=pm`);
+
+    await page.goto(`/work-orders/${jobWoId}?view=pm`);
+    await expect(page.getByTestId('pm-in-progress-notice')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start PM service' })).toBeDisabled();
   });
 });

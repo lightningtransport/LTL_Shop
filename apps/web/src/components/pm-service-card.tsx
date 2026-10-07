@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { checkPmObservedMileage, type PmServiceDto } from '@ltl-shop/shared';
-import { apiFetch } from '@/lib/api';
+import { ApiError, apiFetch } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import { intlLocale } from '@/lib/shop-locale';
 import { formatMileage } from '@/lib/format';
 import { pmSaveStatus } from '@/lib/pm-save-status';
@@ -34,6 +35,34 @@ function payloadFor(mileage: string, selections: Record<string, string>, confirm
   };
 }
 
+/** Block A (PM1): what the mechanic entered stays on this phone until the Shop has saved it. */
+type StoredDraft = { mileage: string; selections: Record<string, string>; jumpConfirmed: boolean };
+
+function draftKey(workOrderId: string) {
+  return `ltl-pm-draft:${workOrderId}`;
+}
+
+function readStoredDraft(workOrderId: string): StoredDraft | null {
+  try {
+    const raw = window.localStorage.getItem(draftKey(workOrderId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredDraft>;
+    if (typeof parsed.mileage !== 'string' || typeof parsed.selections !== 'object' || !parsed.selections) return null;
+    return { mileage: parsed.mileage, selections: parsed.selections, jumpConfirmed: Boolean(parsed.jumpConfirmed) };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredDraft(workOrderId: string, draft: StoredDraft | null) {
+  try {
+    if (draft) window.localStorage.setItem(draftKey(workOrderId), JSON.stringify(draft));
+    else window.localStorage.removeItem(draftKey(workOrderId));
+  } catch {
+    // Storage can be unavailable (private mode); the draft then lives only in this screen.
+  }
+}
+
 function displayObservedMileage(mileage: string) {
   return mileage ? Number(mileage).toLocaleString('en-US') : '';
 }
@@ -56,6 +85,8 @@ export function PmServiceCard({
   const [savedOnce, setSavedOnce] = useState(false);
   // LTR-135: a jump above the threshold is saved only after explicit confirmation.
   const [jumpConfirmed, setJumpConfirmed] = useState(false);
+  // Block A (PM1): the last failure was the connection, so the entry waits on this phone.
+  const [offlineError, setOfflineError] = useState(false);
   const lastSavedKey = useRef('');
   const queuedPayload = useRef<Payload | null>(null);
   const dirtyRef = useRef(false);
@@ -78,6 +109,19 @@ export function PmServiceCard({
       dirtyRef.current = false;
       setDirty(false);
       setSaveError(null);
+      // Block A (PM1): an entry that never reached the Shop comes back on this phone, and is sent again.
+      if (!hydrated) {
+        const stored = data.canEdit && !data.serviceCompletedAt ? readStoredDraft(workOrderId) : null;
+        if (stored && JSON.stringify(payloadFor(stored.mileage, stored.selections)) !== JSON.stringify(payloadFor(nextMileage, nextSelections))) {
+          setMileage(stored.mileage);
+          setSelections(stored.selections);
+          setJumpConfirmed(stored.jumpConfirmed);
+          dirtyRef.current = true;
+          setDirty(true);
+        } else {
+          writeStoredDraft(workOrderId, null);
+        }
+      }
       setHydrated(true);
     }
   }, [data]);
@@ -94,7 +138,9 @@ export function PmServiceCard({
   const mileageBelowCurrent = !!data?.canEdit && mileageCheck?.ok === false;
   const mileageNeedsConfirmation = !!data?.canEdit && mileageCheck?.ok === true
     && mileageCheck.needsConfirmation && !jumpConfirmed;
-  const mileageBlocked = mileageBelowCurrent || mileageNeedsConfirmation;
+  // Block A (PM3): clearing the field never saves an empty mileage; the last saved one stays.
+  const mileageEmpty = !!data?.canEdit && hydrated && mileage === '';
+  const mileageBlocked = mileageBelowCurrent || mileageNeedsConfirmation || mileageEmpty;
 
   const flushSaveQueue = useCallback(async () => {
     if (!data?.canEdit || savingRef.current) return;
@@ -122,18 +168,23 @@ export function PmServiceCard({
       dirtyRef.current = false;
       setDirty(false);
       setSaveError(null);
+      setOfflineError(false);
+      writeStoredDraft(workOrderId, null);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : messages.unableToSavePmDetails);
+      // Block A (A5): the API's English sentence is not shown as is; Spanish gets its own copy.
+      const offline = err instanceof ApiError && (err.kind === 'network' || err.kind === 'timeout');
+      setOfflineError(offline);
+      setSaveError(offline ? messages.pmKeptOnPhone : apiErrorMessage(err, messages, messages.unableToSavePmDetails));
       dirtyRef.current = true;
       setDirty(true);
     } finally {
       savingRef.current = false;
       setSaving(false);
     }
-  }, [data?.canEdit, messages.unableToSavePmDetails, mutate, workOrderId]);
+  }, [data?.canEdit, messages, mutate, workOrderId]);
 
   const persist = useCallback((payload: Payload) => {
-    if (!data?.canEdit) return;
+    if (!data?.canEdit || payload.observedMileage === null) return;
     const check = checkPmObservedMileage(payload.observedMileage, data.currentTruckMileage);
     if (!check.ok || (check.needsConfirmation && !payload.confirmLargeMileageJump)) return;
     queuedPayload.current = payload;
@@ -145,6 +196,24 @@ export function PmServiceCard({
     const timer = window.setTimeout(() => persist(draft), 600);
     return () => window.clearTimeout(timer);
   }, [data?.canEdit, dirty, draft, hydrated, mileageBlocked, persist, saveError]);
+
+  // Block A (PM1): keep the unsent entry on this phone, and send it again when the connection is back.
+  useEffect(() => {
+    if (!hydrated || !data?.canEdit || !dirty) return;
+    writeStoredDraft(workOrderId, { mileage, selections, jumpConfirmed });
+  }, [data?.canEdit, dirty, hydrated, jumpConfirmed, mileage, selections, workOrderId]);
+
+  useEffect(() => {
+    if (!saveError) return;
+    const retry = () => setSaveError(null);
+    window.addEventListener('online', retry);
+    // A dropped connection that never fires "offline" still gets another try.
+    const timer = offlineError ? window.setInterval(retry, 15_000) : undefined;
+    return () => {
+      window.removeEventListener('online', retry);
+      if (timer) window.clearInterval(timer);
+    };
+  }, [offlineError, saveError]);
 
   useEffect(() => {
     onDraftStateChange?.({
@@ -179,7 +248,11 @@ export function PmServiceCard({
   const canEdit = data.canEdit;
   const hasValidObservedMileage = /^\d+$/.test(mileage);
   const hasHistoricalParts = !canEdit && data.selections.length > 0;
-  const showParts = (hasValidObservedMileage && !mileageBelowCurrent) || hasHistoricalParts;
+  // Block A (PM3): with the field cleared, the parts saved with the last mileage stay in view.
+  const showParts = (hasValidObservedMileage && !mileageBelowCurrent) || hasHistoricalParts
+    || (mileageEmpty && data.observedMileage !== null);
+  // Block A (PM2, PM3): a part chosen now could not be saved, so it cannot be chosen until the mileage is.
+  const partsLocked = mileageNeedsConfirmation || mileageEmpty;
   const lastPmValue = !data.lastCompletedPm
     ? messages.noPriorPm
     : data.lastCompletedPm.observedMileage === null
@@ -194,6 +267,7 @@ export function PmServiceCard({
         <span className="text-xs text-muted-foreground">
           {saveStatus === 'saving' ? messages.saving : saveStatus === 'saved' ? messages.autosaved : null}
         </span>
+        {saveStatus === 'error' ? <span className="text-xs font-medium text-destructive-text" data-testid="pm-not-saved">{messages.pmNotSaved}</span> : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -240,7 +314,6 @@ export function PmServiceCard({
           <div className="mt-2 space-y-2 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground" role="alert">
             <p>{messages.mileageJumpWarning(formatMileage(currentTruckMileage))}</p>
             <Button
-              variant="secondary"
               onClick={() => {
                 setJumpConfirmed(true);
                 persist(payloadFor(mileage, selections, true));
@@ -259,6 +332,11 @@ export function PmServiceCard({
 
       {showParts ? <div className="space-y-3">
         <p className="group-title">{messages.partsUsed}</p>
+        {partsLocked ? (
+          <p className="text-sm text-warning-foreground" id="pm-parts-locked">
+            {mileageEmpty ? messages.enterMileageToSave : messages.confirmMileageFirst}
+          </p>
+        ) : null}
         {data.categories.map((category) => (
           <div key={category.id}>
             <Label htmlFor={`pm-part-${category.id}`}>{category.name}</Label>
@@ -267,7 +345,8 @@ export function PmServiceCard({
                 id={`pm-part-${category.id}`}
                 className="mt-2"
                 value={selections[category.id] ?? ''}
-                disabled={!canEdit}
+                disabled={!canEdit || partsLocked}
+                aria-describedby={partsLocked ? 'pm-parts-locked' : undefined}
                 onChange={(event) => {
                   const nextSelections = { ...selections, [category.id]: event.target.value };
                   setSelections(nextSelections);

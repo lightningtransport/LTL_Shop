@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
@@ -143,24 +143,41 @@ export default function WorkOrderDetailPage() {
   }
 
   if (sessionLoading || !token || !wo) {
-    if (error) return <p className="text-shop-muted" role="alert">{error}</p>;
-    if (loadError instanceof ApiError && loadError.status === 403) {
-      return (
+    // Block A (A12, MG6): a Work Order that does not load keeps the tabs and a way back to My work,
+    // and says what happened: gone, no Jobs of mine anymore, or a failure to retry.
+    const pmOnly = Boolean(user && user.capabilities.includes(AppCapability.MECHANIC_PM) && !user.capabilities.includes(AppCapability.MECHANIC_STANDARD));
+    const myWorkHref = pmOnly ? '/mechanic/pm' : '/mechanic/standard';
+    const backToMyWork = (
+      <Button asChild variant="secondary" className="w-full">
+        <Link href={myWorkHref}>{messages.backToMyWork}</Link>
+      </Button>
+    );
+    const status = loadError instanceof ApiError ? loadError.status : null;
+    let body: ReactNode = null;
+    if (error) body = <p className="text-shop-muted" role="alert">{error}</p>;
+    else if (status === 403 || status === 404) {
+      body = (
+        <div className="space-y-3" data-testid="work-order-unavailable">
+          <InlineAlert>{status === 404 ? messages.workOrderGone : messages.noJobsHereAnymore}</InlineAlert>
+          {backToMyWork}
+        </div>
+      );
+    } else if (loadError instanceof Error) {
+      body = (
         <div className="space-y-3">
-          <InlineAlert>{messages.noAccessToPmWorkOrder}</InlineAlert>
-          <p className="text-sm text-muted-foreground">
-            {messages.chooseAnotherOrHome}
-          </p>
-          <Button asChild variant="secondary" className="w-full">
-            <Link href="/">{messages.backToHome}</Link>
-          </Button>
+          <LoadFailure message={apiErrorMessage(loadError, messages, messages.loadError)} onRetry={() => void mutateWorkOrder()} retryLabel={messages.retryWorkOrder} />
+          {backToMyWork}
         </div>
       );
     }
-    if (loadError instanceof Error) {
-      return <LoadFailure message={apiErrorMessage(loadError, messages, messages.loadError)} onRetry={() => void mutateWorkOrder()} retryLabel={messages.retryWorkOrder} />;
-    }
-    return <PageSkeleton label={messages.loadingWorkOrder} />;
+    if (!body) return <PageSkeleton label={messages.loadingWorkOrder} />;
+    return (
+      <div>
+        <WorkspaceNav mode={pmOnly ? MechanicMode.PM : MechanicMode.STANDARD} />
+        <PageHeader className="mb-6" title={messages.workOrder} backHref={myWorkHref} />
+        {body}
+      </div>
+    );
   }
 
   // LTR-146: the assigned PM mechanic sees only the PM job of a truck Work Order.

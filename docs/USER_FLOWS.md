@@ -370,7 +370,10 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Millaje menor que el del camión | No deja | ✅ | E11 |
 | Millaje con un salto de más de 50 000 | Pide confirmar | ✅ | E11 |
 | Finish sin millaje o sin partes | No deja | ✅ | E11 |
-| Ya tiene un PM en curso en otro camión | No deja empezar otro hasta terminar | ✅ | A11 |
+| Ya tiene un PM en curso en otro camión | No deja empezar otro hasta terminar. La pantalla lo dice **antes** de tocar (inicio, Create PM service y el otro camión) y lleva al PM en curso | ✅ | A11 · e2e bloque A |
+| Millaje con salto sin confirmar | Las piezas esperan: no se pueden elegir hasta confirmar el millaje (antes se veían elegidas sin guardarse) | ✅ | e2e bloque A |
+| Borra el millaje para reescribirlo | No se guarda vacío; queda el último millaje guardado | ✅ | e2e bloque A |
+| Se corta la conexión mientras anota | Dice "Not saved"; lo anotado queda en el teléfono (también si sale y vuelve) y se envía solo cuando vuelve la conexión | ✅ | e2e bloque A |
 | Cambia de PM A a PM B | Cambia el mismo Job; nunca quedan dos PM | ✅ | A11 |
 | Algo lo detiene | Bloquea su PM; no puede terminarlo hasta que el Manager resuelva | ✅ | A11 |
 | Quiere cambiar algo de un PM terminado | Solo lectura | ✅ | E11 |
