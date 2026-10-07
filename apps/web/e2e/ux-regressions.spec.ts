@@ -860,7 +860,7 @@ test.describe('My Assigned Work presentation', () => {
     await expect(page.getByText(/Ask your Shop Manager to create a Work Order/i)).toHaveCount(0);
   });
 
-  test('PM paused empty and count talk about services, not Jobs', async ({ page }) => {
+  test('PM home empty: says no trucks wait for PM, with no empty Paused section (Stage PM-3, UX-1-005)', async ({ page }) => {
     const daniel = {
       ...user,
       id: 'daniel-1',
@@ -880,14 +880,12 @@ test.describe('My Assigned Work presentation', () => {
 
     await devLogin(page);
     await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('heading', { name: 'Active PM services' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Paused PM services' })).toBeVisible();
-    await expect(page.getByText('0 paused PM services')).toBeVisible();
-    await expect(page.getByText('No paused PM services. Paused work will appear here until it is resumed.')).toBeVisible();
+    await expect(page.getByText('No trucks waiting for PM')).toBeVisible();
+    await expect(page.getByRole('link', { name: /Create PM Service/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Paused PM services' })).toHaveCount(0);
     await expect(page.getByText(/paused jobs/i)).toHaveCount(0);
     await switchLanguage(page, 'es');
-    await expect(page.getByRole('heading', { name: 'Servicios de PM pausados' })).toBeVisible();
-    await expect(page.getByText('0 servicios de PM pausados')).toBeVisible();
+    await expect(page.getByText('No hay unidades esperando PM')).toBeVisible();
     await expect(page.getByText(/Jobs pausados/i)).toHaveCount(0);
   });
 });

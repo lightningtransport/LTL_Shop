@@ -188,6 +188,17 @@ type Copy = {
   serviceChanged: (name: string) => string;
   undoAction: string;
   serviceTypeHint: string;
+  /** Stage PM-3: the PM mechanic's home. */
+  pmWaitingTitle: string;
+  pmWaitingFor: (age: string) => string;
+  nextUp: string;
+  startPmOn: (truckNumber: string) => string;
+  lastPmLine: (mileage: string, date: string) => string;
+  pmCreateAfter: (truckNumber: string) => string;
+  pmStartedLine: (service: string, time: string) => string;
+  pmEmptyTitle: string;
+  pmEmptyHint: string;
+  pmPausedSince: (reason: string, when: string) => string;
   noJobsAssignedYet: string;
   /** Stage MG-4/5: the General mechanic's Truck screen and its sheets. */
   yourJobsDoneCount: (done: number, total: number) => string;
@@ -650,6 +661,16 @@ const copy: Record<ShopLocale, Copy> = {
     serviceChanged: (name) => `Changed to ${name}`,
     undoAction: 'Undo',
     serviceTypeHint: 'Changes this same Job. The mileage and the parts stay.',
+    pmWaitingTitle: 'Waiting for PM',
+    pmWaitingFor: (age) => `waiting ${age}`,
+    nextUp: 'Next up',
+    startPmOn: (truckNumber) => `Start PM on Truck ${truckNumber}`,
+    lastPmLine: (mileage, date) => `Last PM: ${mileage} · ${date}`,
+    pmCreateAfter: (truckNumber) => `Create PM service opens when Truck ${truckNumber} is finished. One PM at a time.`,
+    pmStartedLine: (service, time) => `${service} · Started ${time}`,
+    pmEmptyTitle: 'No trucks waiting for PM',
+    pmEmptyHint: 'When the Manager plans a PM, the truck shows up here.',
+    pmPausedSince: (reason, when) => `${reason} · paused ${when}`,
     noJobsAssignedYet: 'No Jobs assigned yet',
     yourJobsDoneCount: (done, total) => `${done} of ${total} done`,
     yourTimeLabel: 'Your time',
@@ -1108,6 +1129,16 @@ const copy: Record<ShopLocale, Copy> = {
     serviceChanged: (name) => `Cambiado a ${name}`,
     undoAction: 'Deshacer',
     serviceTypeHint: 'Cambia este mismo Job. El millaje y las piezas se quedan.',
+    pmWaitingTitle: 'Esperan PM',
+    pmWaitingFor: (age) => `espera ${age}`,
+    nextUp: 'Sigue',
+    startPmOn: (truckNumber) => `Iniciar PM en la unidad ${truckNumber}`,
+    lastPmLine: (mileage, date) => `Último PM: ${mileage} · ${date}`,
+    pmCreateAfter: (truckNumber) => `Crear servicio PM se abre cuando termines la unidad ${truckNumber}. Un PM a la vez.`,
+    pmStartedLine: (service, time) => `${service} · Iniciado ${time}`,
+    pmEmptyTitle: 'No hay unidades esperando PM',
+    pmEmptyHint: 'Cuando el Manager planee un PM, la unidad aparece aquí.',
+    pmPausedSince: (reason, when) => `${reason} · pausado ${when}`,
     noJobsAssignedYet: 'Todavía no tienes Jobs',
     yourJobsDoneCount: (done, total) => `${done} de ${total} hechos`,
     yourTimeLabel: 'Tu tiempo',

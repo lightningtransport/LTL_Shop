@@ -400,7 +400,7 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     await mockPmJobApi(page);
     await login(page);
     await expect(page.getByText('PM A Service · Work Order WO-900')).toBeVisible();
-    await page.getByRole('link', { name: /Start PM service/i }).click();
+    await page.getByRole('link', { name: /Start PM on Truck 905/ }).click();
     await expect(page).toHaveURL(new RegExp(`/work-orders/${jobWoId}\\?view=pm$`));
     await expect(page.getByText('Start the PM service to record the observed mileage and parts.')).toBeVisible();
     await page.getByRole('button', { name: 'Start PM service' }).click();
@@ -429,7 +429,7 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     await expect(notice).toContainText('You have a PM service in progress on Truck 905 (WO-1001).');
     await expect(page.getByRole('button', { name: /Create PM Service/i })).toBeDisabled();
     // The paused-style card of another PM offers no Start either.
-    await expect(page.getByRole('link', { name: /Start PM service/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Start PM on Truck/ })).toHaveCount(0);
 
     await page.goto('/mechanic/pm/new');
     await expect(page.getByTestId('pm-in-progress-notice').getByRole('link', { name: 'Continue PM on Truck 905' })).toHaveAttribute('href', `/work-orders/${woId}?view=pm`);

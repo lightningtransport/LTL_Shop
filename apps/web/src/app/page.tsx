@@ -10,6 +10,7 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { PmInProgressNotice } from '@/components/pm-in-progress-notice';
 import { useActionToast } from '@/components/action-toast';
 import { StandardHome } from '@/components/mechanic-home';
+import { PmHome } from '@/components/pm-home';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -153,30 +154,6 @@ export default function HomePage() {
         subtitle={isPm ? messages.pmHomeSubtitle : messages.standardHomeSubtitle}
       />
 
-      {isPm ? (
-        <>
-          {/* LTR-95: one running PM at a time; the API enforces it too. Block A (PM5): until the list
-              answers, the app does not know, so Create waits; with a PM running it leads back to it. */}
-          {!data ? (
-            <Button className="mb-6 w-full" disabled>{messages.createPmService}</Button>
-          ) : activeWork.length ? (
-            <>
-              <Button className="mb-2 w-full" disabled>{messages.createPmService}</Button>
-              {/* The running PM's own card is right below, so the notice needs no second Continue button. */}
-              <PmInProgressNotice running={activeWork[0]} className="mb-6" showLink={false} />
-            </>
-          ) : (
-            <>
-              <Button asChild className="mb-6 w-full">
-                <Link href={`/mechanic/${mode}/new`}>{messages.createPmService}</Link>
-              </Button>
-              <p className="-mt-4 mb-6 text-center text-sm text-shop-muted">
-                {messages.pmServicesStartImmediately}
-              </p>
-            </>
-          )}
-        </>
-      ) : null}
 
       {error ? (
         <div className="mb-4">
@@ -198,90 +175,8 @@ export default function HomePage() {
       {/* Stage MG-3: the General mechanic's home (docs/proposals/mechanic-standard-redesign). */}
       {data && !isPm ? <StandardHome data={data} userId={user.id} StartAction={StartWorkAction} /> : null}
 
-      {data && isPm ? (
-        <>
-          {/* LTR-134: one unit (the Work Order) per section; what I am working on comes first. */}
-          <section className="mb-6">
-              <h2 className="section-title mb-2">{isPm ? messages.pmActiveTitle : messages.activeJobsTitle}</h2>
-            <p className="mb-3 text-sm text-shop-muted">
-              {isPm ? messages.activePmServices(activeWork.length) : messages.activeJobs(activeWork.length)}
-            </p>
-            {!activeWork.length ? (
-              <EmptyState>
-                {isPm ? (
-                  messages.noActivePmServices
-                ) : (
-                  <>
-                    <p>{messages.noActiveJobs}</p>
-                    {!data.created.length && !waitingOnManager.length ? (
-                      <p className="mt-2 text-sm">{messages.askManagerToCreate}</p>
-                    ) : null}
-                  </>
-                )}
-              </EmptyState>
-            ) : (
-              <div className="space-y-3">
-                {activeWork.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="active" currentUserId={user.id} pmWorkspace={isPm} />
-                ))}
-              </div>
-            )}
-          </section>
-
-          {data.created.length ? (
-            <section className="mb-6">
-              <h2 className="section-title mb-2">{messages.readyToStart}</h2>
-              <p className="mb-3 text-sm text-shop-muted">
-                {messages.ordersReadyToStart(data.created.length)}
-              </p>
-              <div className="space-y-3">
-                {data.created.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="created" currentUserId={user.id} pmWorkspace={isPm} startBlocked={isPm && activeWork.length > 0} />
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          {waitingOnManager.length ? (
-            <section className="mb-6">
-              <h2 className="section-title mb-2">{messages.waitingOnManager}</h2>
-              <p className="mb-3 text-sm text-shop-muted">
-                {messages.waitingOnManagerHint(waitingOnManager.length)}
-              </p>
-              <div className="space-y-3">
-                {waitingOnManager.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="waiting_on_manager" currentUserId={user.id} pmWorkspace={isPm} />
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          <section>
-            <h2 className="section-title mb-2">{isPm ? messages.pmPausedTitle : messages.pausedJobsTitle}</h2>
-            <p className="mb-3 text-sm text-shop-muted">
-              {isPm ? messages.pausedPmServices(data.paused.length) : messages.pausedJobs(data.paused.length)}
-            </p>
-            {!data.paused.length ? (
-              <EmptyState>
-                {isPm ? messages.noPausedPmServices : messages.noPausedJobs}
-              </EmptyState>
-            ) : (
-              <div className="space-y-3">
-                {data.paused.map((wo) => (
-                  <WorkOrderCard key={wo.id} wo={wo} mode="paused" currentUserId={user.id} pmWorkspace={isPm} startBlocked={isPm && activeWork.length > 0} />
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* LTR-133: completed work has its own screen (also in the tab bar). */}
-          {data.completed.length ? (
-            <Link href={`/mechanic/${isPm ? 'pm' : 'standard'}/completed`} className={cn(buttonVariants({ variant: 'secondary' }), 'mt-6 w-full')}>
-              {messages.viewCompletedWork(data.completed.length)}
-            </Link>
-          ) : null}
-        </>
-      ) : null}
+      {/* Stage PM-3: the PM mechanic's home (docs/proposals/mechanic-pm-redesign). */}
+      {isPm && !error ? <PmHome data={data} loading={false} /> : null}
     </div>
   );
 }
