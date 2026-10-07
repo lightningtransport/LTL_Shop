@@ -438,7 +438,7 @@ describe('AdminService', () => {
       role: 'mechanic',
       active: true,
       capabilities: [{ capability: 'MECHANIC_PM' }, { capability: 'MECHANIC_STANDARD' }],
-      mechanicAssignments: [],
+      assignedJobs: [],
     }]);
     const service = createService(prisma);
     await expect(service.listMechanics({})).resolves.toEqual({

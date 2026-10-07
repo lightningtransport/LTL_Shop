@@ -11,9 +11,9 @@ import {
   type AdminMechanicSummaryDto,
 } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
-import { AdminWriteTip } from './admin-write-tip';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, InlineAlert, Input, Label, Modal } from './ui';
 import { createAdminMechanic, resetAdminMechanicPassword, updateAdminMechanic } from '@/lib/admin-data';
+import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminWriteFailureMessage, isRosterEmail, mechanicOpenWorkFromError } from '@/lib/system-admin';
 
@@ -173,7 +173,13 @@ export function CreateMechanicDialog({
   }
 
   return (
-    <Modal open={open} title={messages.createMechanicTitle} onClose={close} closeLabel={messages.closeDialog}>
+    <Modal
+      open={open}
+      title={messages.createMechanicTitle}
+      onClose={close}
+      closeLabel={messages.closeDialog}
+      dismissible={!result && !name.trim() && !email.trim()}
+    >
       {result ? (
         <div className="space-y-4">
           <p className="text-sm"><span className="font-semibold">{result.name}</span> · {result.email}</p>
@@ -184,7 +190,6 @@ export function CreateMechanicDialog({
         </div>
       ) : (
         <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
-          <AdminWriteTip>{messages.mechanicRosterTip}</AdminWriteTip>
           <div className="space-y-1.5">
             <Label htmlFor="create-mechanic-name">{messages.mechanicName}</Label>
             <Input id="create-mechanic-name" value={name} onChange={(event) => setName(event.target.value)} disabled={busy} autoComplete="off" />
@@ -220,7 +225,6 @@ export function ActivateMechanicDialog({
     <Modal open={Boolean(mechanic)} title={messages.activateMechanicTitle} onClose={onClose} closeLabel={messages.closeDialog}>
       {mechanic ? (
         <>
-        <AdminWriteTip>{messages.mechanicRosterTip}</AdminWriteTip>
         <CapabilityForm
           key={mechanic.id}
           idPrefix={`activate-${mechanic.id}`}
@@ -261,6 +265,7 @@ export function MechanicCapabilityEditor({
           initialName={mechanic.name}
           initialCapability={currentMode(mechanic.capabilities)}
           submitLabel={mechanic.active ? messages.saveMechanic : messages.activateMechanic}
+          typeChangeWarning={typeChangeWarning(mechanic, messages)}
           onSuccess={() => {
             showToast('success', savedMessage);
             onSaved();
@@ -325,6 +330,11 @@ export function MechanicAccessCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openWork, setOpenWork] = useState<Pick<AdminMechanicOpenWorkDto, 'pendingJobs' | 'runningSession'> | null>(null);
+  // ME2: what blocks deactivating is known when the dialog opens, not after confirming.
+  const knownOpenWork = mechanic.pendingJobs.length || mechanic.runningSession
+    ? { pendingJobs: mechanic.pendingJobs, runningSession: mechanic.runningSession }
+    : null;
+  const blockingWork = openWork ?? knownOpenWork;
   const [resetPassword, setResetPassword] = useState<string | null>(null);
   if (mechanic.role !== UserRole.MECHANIC) return null;
 
@@ -407,11 +417,19 @@ export function MechanicAccessCard({
         <div className="space-y-4">
           <p className="text-sm"><span className="font-semibold">{mechanic.name}</span> · {mechanic.email}</p>
           <p className="text-sm text-muted-foreground">{messages.deactivateMechanicConfirm}</p>
-          {openWork ? <MechanicOpenWorkAlert openWork={openWork} messages={messages} /> : null}
+          {blockingWork ? <MechanicOpenWorkAlert openWork={blockingWork} messages={messages} /> : null}
+          {mechanic.defaultOwnerOfSteps.length ? (
+            <p className="text-sm text-warning-foreground">
+              {fillPlaceholders(messages.mechanicOwnsStepsWarning, {
+                name: mechanic.name,
+                steps: mechanic.defaultOwnerOfSteps.map((step) => step.jobDisplayName).join(', '),
+              })}
+            </p>
+          ) : null}
           {error ? <InlineAlert>{error}</InlineAlert> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={closeDeactivate} disabled={busy}>{messages.cancel}</Button>
-            <Button type="button" variant="destructive" onClick={() => void deactivate()} disabled={busy || Boolean(openWork)}>{messages.deactivateMechanic}</Button>
+            <Button type="button" variant="destructive" onClick={() => void deactivate()} disabled={busy || Boolean(blockingWork)}>{messages.deactivateMechanic}</Button>
           </div>
         </div>
       </Modal>
@@ -441,12 +459,28 @@ export function MechanicAccessCard({
   );
 }
 
+/** SW3: what changing this person's type leaves behind — steps they own by default and Jobs still in their name. */
+function typeChangeWarning(mechanic: AdminMechanicDetailDto, messages: AdminMessages): string[] {
+  const lines: string[] = [];
+  if (mechanic.defaultOwnerOfSteps.length) {
+    lines.push(fillPlaceholders(messages.mechanicOwnsStepsWarning, {
+      name: mechanic.name,
+      steps: mechanic.defaultOwnerOfSteps.map((step) => step.jobDisplayName).join(', '),
+    }));
+  }
+  if (mechanic.pendingJobs.length) {
+    lines.push(fillPlaceholders(messages.mechanicTypeJobsWarning, { name: mechanic.name, count: String(mechanic.pendingJobs.length) }));
+  }
+  return lines;
+}
+
 function CapabilityForm({
   idPrefix,
   messages,
   initialName,
   initialCapability,
   submitLabel,
+  typeChangeWarning = [],
   onCancel,
   onSuccess,
   onSubmit,
@@ -456,6 +490,8 @@ function CapabilityForm({
   initialName?: string;
   initialCapability: MechanicMode;
   submitLabel: string;
+  /** SW3: shown when the type changes; the first Save only shows it, the second one saves. */
+  typeChangeWarning?: string[];
   onCancel?: () => void;
   onSuccess: () => void;
   onSubmit: (mode: MechanicMode, name?: string) => Promise<unknown>;
@@ -464,11 +500,17 @@ function CapabilityForm({
   const [capability, setCapability] = useState(initialCapability);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [warned, setWarned] = useState(false);
+  const warnings = capability !== initialCapability ? typeChangeWarning : [];
 
   async function onSubmitForm(event: React.FormEvent) {
     event.preventDefault();
     if (initialName !== undefined && !name.trim()) {
       setError(messages.mechanicNameRequired);
+      return;
+    }
+    if (warnings.length && !warned) {
+      setWarned(true);
       return;
     }
     setBusy(true);
@@ -491,11 +533,25 @@ function CapabilityForm({
           <Input id={`${idPrefix}-name`} value={name} onChange={(event) => setName(event.target.value)} disabled={busy} autoComplete="off" />
         </div>
       )}
-      <MechanicCapabilityFields idPrefix={idPrefix} value={capability} messages={messages} disabled={busy} onChange={setCapability} />
+      <MechanicCapabilityFields
+        idPrefix={idPrefix}
+        value={capability}
+        messages={messages}
+        disabled={busy}
+        onChange={(next) => {
+          setCapability(next);
+          setWarned(false);
+        }}
+      />
+      {warnings.length ? (
+        <div role="status" className="space-y-1 rounded-xl border border-warning/40 bg-warning-surface px-3 py-2 text-sm text-warning-foreground" data-testid="mechanic-type-warning">
+          {warnings.map((line) => <p key={line}>{line}</p>)}
+        </div>
+      ) : null}
       {error ? <InlineAlert>{error}</InlineAlert> : null}
       <div className="flex justify-end gap-2">
         {onCancel ? <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>{messages.cancel}</Button> : null}
-        <Button type="submit" disabled={busy}>{submitLabel}</Button>
+        <Button type="submit" disabled={busy}>{warnings.length && warned ? messages.mechanicTypeChangeConfirm : submitLabel}</Button>
       </div>
     </form>
   );

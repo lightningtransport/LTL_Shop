@@ -9,6 +9,7 @@ import { apiErrorMessage } from '@/lib/api-error-message';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
+import { useUnsavedChangesGuard } from '@/lib/use-unsaved-changes-guard';
 
 /**
  * LTR-157 / D15, D16: Admin → Setup → Shop workflow. Step → catalog Job →
@@ -33,21 +34,24 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
     () => (mechanicPages?.flatMap((page) => page.items) ?? []).filter((mechanic) => mechanic.active),
     [mechanicPages],
   );
-  const dirty = Boolean(data?.some((step) => (drafts[step.stepKey] ?? '') !== (step.defaultMechanic?.id ?? '')));
+  const changed = (step: ShopWorkflowStepDto) => (drafts[step.stepKey] ?? '') !== (step.defaultMechanic?.id ?? '');
+  const dirty = Boolean(data?.some(changed));
+  useUnsavedChangesGuard(dirty, messages.unsavedChangesConfirm);
 
   async function save() {
     if (!data || saving) return;
     setSaving(true);
     setSaveError(null);
     try {
-      const next = await updateAdminWorkflowSteps(data.filter((step) => step.allowsDefaultMechanic).map((step) => ({
+      // SW1: only the steps that changed, so an owner who left another step does not block this save.
+      const next = await updateAdminWorkflowSteps(data.filter((step) => step.allowsDefaultMechanic && changed(step)).map((step) => ({
         stepKey: step.stepKey,
         defaultMechanicId: drafts[step.stepKey] || null,
       })));
       await mutate(next, { revalidate: false });
       showToast('success', messages.shopWorkflowSaved);
-    } catch {
-      setSaveError(messages.shopWorkflowSaveFailed);
+    } catch (failure) {
+      setSaveError(apiErrorMessage(failure, messages, messages.shopWorkflowSaveFailed));
     } finally {
       setSaving(false);
     }
@@ -70,7 +74,6 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
       />
       {/* LTR-164 (#1): read-only only once the session says so, not while it loads. */}
       {user && !canWrite ? <p className="text-sm text-muted-foreground">{messages.shopWorkflowReadOnly}</p> : null}
-      {saveError ? <InlineAlert>{saveError}</InlineAlert> : null}
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.shopWorkflow} header={false} /> : null}
       {data && data.length === 0 ? <EmptyState>{messages.shopWorkflowEmpty}</EmptyState> : null}
@@ -82,11 +85,20 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
                 <li key={step.stepKey} className="grid gap-2 p-4 sm:grid-cols-[2rem_minmax(0,1fr)_minmax(0,16rem)] sm:items-center">
                   <span className="text-sm font-semibold text-muted-foreground">{index + 1}</span>
                   <div className="min-w-0">
-                    <p className="font-medium">{step.catalogJob.displayName}</p>
+                    <p className="font-medium">
+                      {step.catalogJob.displayName}
+                      {changed(step) ? <span className="ml-2 text-xs font-normal text-primary">{messages.shopWorkflowChanged}</span> : null}
+                    </p>
                     <p className="text-xs text-muted-foreground">{step.catalogJob.categoryName}</p>
-                    {step.defaultMechanic && !step.defaultMechanic.active ? (
+                    {!step.catalogJob.active ? (
+                      <p className="mt-1 text-xs text-warning-foreground">{messages.shopWorkflowStepInactive}</p>
+                    ) : null}
+                    {step.defaultMechanic && !changed(step) && !step.defaultMechanic.eligible ? (
                       <p className="mt-1 text-xs text-warning-foreground">
-                        {fillPlaceholders(messages.shopWorkflowInactiveOwner, { name: step.defaultMechanic.name })}
+                        {fillPlaceholders(
+                          step.defaultMechanic.active ? messages.shopWorkflowIneligibleOwner : messages.shopWorkflowInactiveOwner,
+                          { name: step.defaultMechanic.name },
+                        )}
                       </p>
                     ) : null}
                   </div>
@@ -111,8 +123,12 @@ export function AdminShopWorkflow({ messages }: { locale: AdminLocale; messages:
           </CardContent>
         </Card>
       ) : null}
+      {saveError ? <InlineAlert>{saveError}</InlineAlert> : null}
       {data?.length && canWrite ? (
-        <Button type="button" className="w-full sm:w-auto" disabled={!dirty || saving} onClick={() => void save()}>{messages.shopWorkflowSave}</Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button type="button" className="w-full sm:w-auto" disabled={!dirty || saving} onClick={() => void save()}>{messages.shopWorkflowSave}</Button>
+          {dirty ? <p className="text-sm text-muted-foreground" role="status">{messages.shopWorkflowUnsaved}</p> : null}
+        </div>
       ) : null}
       <ShopHoursCard messages={messages} canWrite={canWrite} />
     </div>
@@ -142,6 +158,7 @@ function ShopHoursCard({ messages, canWrite }: { messages: AdminMessages; canWri
   const minutes = cutoffToMinutes(cutoff);
   const valid = minutes !== null && minutes >= MIN_DAY_CLOSE_MINUTES && workdays.length > 0;
   const dirty = Boolean(data && (cutoff !== data.cutoff || [...workdays].sort().join(',') !== [...data.workdays].sort().join(',')));
+  useUnsavedChangesGuard(dirty, messages.unsavedChangesConfirm);
 
   async function save() {
     if (!valid || saving) return;

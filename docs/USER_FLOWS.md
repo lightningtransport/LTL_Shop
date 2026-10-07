@@ -239,9 +239,9 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Pone dueño a Quality Check | No deja | ✅ | A25 |
 | Pone un mecánico normal como dueño de PM, o un usuario inactivo | No deja | ✅ | A25 |
 | Un Work Order viejo no tiene todos los pasos | El siguiente paso ofrece "Add missing steps" y los agrega con sus dueños | ✅ | A18 |
-| El dueño de un paso cambia de tipo o se desactiva, y después cambia otro paso | No se puede guardar nada; dice "Refresh and try again" | ❌ SW1 | — |
-| El Job o la categoría de un paso se desactivan | El paso deja de crearse en las WOs nuevas sin aviso | ❌ SW2 | — |
-| Sale de la pantalla con cambios sin guardar | Se pierden sin aviso | ❌ SW4 | — |
+| El dueño de un paso cambia de tipo o se desactiva, y después cambia otro paso | Guarda; el dueño que ya no puede hacer el paso se ve marcado y los WOs nuevos dejan ese paso sin asignar | ✅ | A37 |
+| Intenta desactivar el Job de un paso | No deja; dice que primero cambie el paso. Si ya estaba inactivo, Shop workflow lo marca como "no se agrega a los WOs nuevos" | ✅ | A38 |
+| Sale de la pantalla con cambios sin guardar | Pregunta antes de salir; la fila cambiada se marca | 👁 revisar en pantalla | — |
 | Pone **varias personas** en Detailing (D28) | El Job nace en la cola del equipo; todos lo ven y el primero que lo toma queda como dueño | 🔲 S1 | — |
 | Hay una sola persona en el equipo | El Job nace asignado a ella, como hoy | 🔲 S1 | — |
 | Uno del equipo toma el Job | Desaparece de la cola de los demás; lo puede soltar y vuelve a la cola | 🔲 S1 | — |
@@ -278,9 +278,9 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 | La persona pierde la contraseña temporal | El Manager la **reinicia** desde el detalle: otra contraseña temporal y cambio obligatorio (en local: "sin cuenta de acceso") | ✅ | A31 |
 | Un mecánico intenta crear personal | No puede | ✅ | A26 |
 | Falla la creación de la cuenta de acceso | No se crea nada; la app avisa y se reintenta | ✅ (unitaria: la API borra la cuenta si falla la fila) | A29 |
-| Mira cuánto trabajo abierto tiene una persona | La cifra cuenta el equipo del WO, no sus Jobs: un PM con 9 Jobs ve 0 | ❌ ME1 | — |
-| Toca Deactivate con trabajo abierto | El bloqueo aparece recién después de confirmar | ❌ ME2 | — |
-| Cambia el tipo de alguien que es dueño de un paso o tiene Jobs | No avisa | ❌ SW3 | — |
+| Mira cuánto trabajo abierto tiene una persona | Cuenta los WOs donde tiene Jobs por hacer, también para PM y Safety | ✅ | A39 |
+| Toca Deactivate con trabajo abierto | El diálogo muestra desde el principio qué Jobs reasignar, y Deactivate queda apagado | ✅ | A40 |
+| Cambia el tipo de alguien que es dueño de un paso o tiene Jobs | Avisa de qué pasos es dueña y cuántos Jobs le quedan; hay que tocar "Change type anyway" | ✅ | A40 |
 | **Quita del Shop** a alguien sin trabajo abierto (D31) | Deja de entrar y de aparecer en listas y equipos; su nombre sigue en el historial | 🔲 S3 | — |
 | Quita a alguien con trabajo abierto | La app lo dice **antes** de confirmar y ofrece reasignar o mandar sus Jobs a la cola del equipo | 🔲 S3 | — |
 | Borra a alguien creado por error, que nunca hizo nada | Se borra de verdad | 🔲 S3 | — |

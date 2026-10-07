@@ -17,7 +17,7 @@ function actor(overrides: Partial<AuthUser> = {}): AuthUser {
 function row(stepKey: string, displayName: string, categoryName: string, sortOrder: number) {
   return {
     stepKey, sortOrder, active: true, updatedAt: new Date('2026-09-28T12:00:00Z'),
-    catalogJob: { id: `cj-${stepKey}`, displayName, category: { name: categoryName } },
+    catalogJob: { id: `cj-${stepKey}`, displayName, status: 'active', category: { name: categoryName, status: 'active' } },
     defaultMechanic: null, updatedBy: null,
   };
 }
@@ -57,7 +57,7 @@ describe('ShopWorkflowService (LTR-157 / D15, D16)', () => {
       ['detailing', true, AppCapability.MECHANIC_STANDARD],
       ['quality_check', false, null],
     ]);
-    expect(steps[0].catalogJob).toEqual({ id: 'cj-pm', displayName: 'PM A Service', categoryName: 'PM' });
+    expect(steps[0].catalogJob).toEqual({ id: 'cj-pm', displayName: 'PM A Service', categoryName: 'PM', active: true });
   });
 
   it('saves default owners who have the right capability', async () => {

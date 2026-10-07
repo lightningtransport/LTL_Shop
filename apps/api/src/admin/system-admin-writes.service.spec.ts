@@ -492,6 +492,7 @@ describe('SystemAdminWritesService catalog', () => {
           aliases: [{ aliasText: 'Brake inspect' }],
         }),
       },
+      jobCategory: { findUnique: vi.fn().mockResolvedValue({ status: 'active' }) },
       jobAlias: {
         findUnique: vi.fn(async ({ where }: { where: { aliasNorm: string } }) => {
           if (where.aliasNorm === 'brakeinspect') return null;

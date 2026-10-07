@@ -24,7 +24,7 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
 
   await page.goto('/admin/catalog');
   await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
-  await expect(page.getByText('Read-only Categories, Jobs, and aliases')).toHaveCount(0);
+  await expect(page.getByText('Only a Shop Manager or the System Admin can change them')).toHaveCount(0);
   await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
   // Categories do not change (D25).
@@ -138,7 +138,7 @@ test('system admin with only admin.access sees catalog and roster writes', async
 
   await page.goto('/admin/catalog');
   await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
-  await expect(page.getByText('Read-only Categories, Jobs, and aliases')).toHaveCount(0);
+  await expect(page.getByText('Only a Shop Manager or the System Admin can change them')).toHaveCount(0);
   await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);

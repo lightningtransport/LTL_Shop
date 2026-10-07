@@ -17,7 +17,9 @@ export type ApiErrorCode =
   | 'BLOCKER_NOT_YOURS'
   | 'BLOCKER_REASON_NOT_ALLOWED'
   | 'CATALOG_ALIAS_EXISTS'
+  | 'CATALOG_CATEGORY_INACTIVE'
   | 'CATALOG_JOB_EXISTS'
+  | 'CATALOG_JOB_IN_WORKFLOW'
   | 'DUPLICATE_STEP'
   | 'EXTERNAL_ALREADY'
   | 'EXTERNAL_NOT_ALLOWED_HERE'
@@ -81,7 +83,9 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     BLOCKER_NOT_YOURS: 'Only the mechanic who reported this blocker can add to it.',
     BLOCKER_REASON_NOT_ALLOWED: 'That blocker reason is not available here.',
     CATALOG_ALIAS_EXISTS: 'That alias is already used by another catalog Job.',
+    CATALOG_CATEGORY_INACTIVE: 'This Job\'s Category is inactive, so the Job cannot be activated.',
     CATALOG_JOB_EXISTS: 'That Job name is already in the Job Catalog.',
+    CATALOG_JOB_IN_WORKFLOW: 'This Job is a Shop workflow step. Change the step in Shop workflow before deactivating it.',
     DUPLICATE_STEP: 'This Work Order already has that step.',
     EXTERNAL_ALREADY: 'This Job is already at an external shop.',
     EXTERNAL_NOT_ALLOWED_HERE: 'The Quality Check cannot go to an external shop.',
@@ -142,7 +146,9 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     BLOCKER_NOT_YOURS: 'Solo el mecánico que reportó este bloqueo puede agregarle notas.',
     BLOCKER_REASON_NOT_ALLOWED: 'Ese motivo de bloqueo no está disponible aquí.',
     CATALOG_ALIAS_EXISTS: 'Ese alias ya lo usa otro Job del catálogo.',
+    CATALOG_CATEGORY_INACTIVE: 'La categoría de este Job está inactiva, así que el Job no se puede activar.',
     CATALOG_JOB_EXISTS: 'Ese nombre de Job ya está en el Job Catalog.',
+    CATALOG_JOB_IN_WORKFLOW: 'Este Job es un paso del Shop workflow. Cambia el paso en Shop workflow antes de desactivarlo.',
     DUPLICATE_STEP: 'Este Work Order ya tiene ese paso.',
     EXTERNAL_ALREADY: 'Este Job ya está en un taller externo.',
     EXTERNAL_NOT_ALLOWED_HERE: 'El Quality Check no puede ir a un taller externo.',

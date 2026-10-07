@@ -128,8 +128,10 @@ function workflowStepDto(step) {
     stepKey: step.stepKey,
     sortOrder: step.sortOrder,
     active: true,
-    catalogJob: { id: step.catalogJob.id, displayName: step.catalogJob.displayName, categoryName: step.catalogJob.categoryName },
-    defaultMechanic: owner ? { id: owner.id, name: owner.name, active: owner.active } : null,
+    catalogJob: { id: step.catalogJob.id, displayName: step.catalogJob.displayName, categoryName: step.catalogJob.categoryName, active: step.catalogJob.active !== false },
+    defaultMechanic: owner
+      ? { id: owner.id, name: owner.name, active: owner.active, eligible: owner.active && owner.capabilities.includes(step.requiredCapability) }
+      : null,
     allowsDefaultMechanic: step.requiredCapability !== null,
     requiredCapability: step.requiredCapability,
     updatedAt: '2026-09-28T12:00:00.000Z',
@@ -216,7 +218,10 @@ function rosterSummary(candidate) {
 }
 
 function rosterDetail(candidate) {
-  return { ...rosterSummary(candidate), completedJobCount: 0, recentClosedWorkOrders: [] };
+  const defaultOwnerOfSteps = workflowSteps
+    .filter((step) => step.defaultMechanicId === candidate.id)
+    .map((step) => ({ stepKey: step.stepKey, jobDisplayName: step.catalogJob.displayName }));
+  return { ...rosterSummary(candidate), completedJobCount: 0, recentClosedWorkOrders: [], pendingJobs: [], runningSession: false, defaultOwnerOfSteps };
 }
 
 const ROSTER_CAPABILITIES = ['mechanic.standard', 'mechanic.pm', 'quality_check.perform'];
@@ -904,6 +909,8 @@ createServer(async (request, response) => {
         return;
       }
       const owner = change.defaultMechanicId ? userById(change.defaultMechanicId) : null;
+      // SW1: an unchanged owner is not re-checked.
+      if (change.defaultMechanicId && change.defaultMechanicId === step.defaultMechanicId) continue;
       if (change.defaultMechanicId && (!owner?.active || !owner.capabilities.includes(step.requiredCapability))) {
         json(response, 400, { code: 'OWNER_NOT_ELIGIBLE', message: 'Owner not eligible' });
         return;

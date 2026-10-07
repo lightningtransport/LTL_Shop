@@ -313,6 +313,28 @@ export class SystemAdminWritesService {
       });
       if (!current) throw new NotFoundException('Catalog job not found');
 
+      // SW2: a mandatory step whose Job goes inactive silently stops being added to new Work Orders.
+      if (input.status === 'inactive' && current.status === 'active') {
+        const step = await tx.shopWorkflowStep.findFirst({ where: { catalogJobId: id, active: true }, select: { stepKey: true } });
+        if (step) {
+          throw new ConflictException({
+            code: 'CATALOG_JOB_IN_WORKFLOW',
+            message: 'This Job is a Shop workflow step. Change the step before deactivating it.',
+            stepKey: step.stepKey,
+          });
+        }
+      }
+      // JC3: a Job in an inactive category cannot be picked anywhere, so activating it would change nothing.
+      if (input.status === 'active' && current.status !== 'active') {
+        const category = await tx.jobCategory.findUnique({ where: { id: current.categoryId }, select: { status: true } });
+        if (category?.status !== 'active') {
+          throw new BadRequestException({
+            code: 'CATALOG_CATEGORY_INACTIVE',
+            message: 'This Job\'s Category is inactive, so the Job cannot be activated.',
+          });
+        }
+      }
+
       const displayName = input.displayName ?? current.displayName;
       if (input.displayName && input.displayName !== current.displayName) {
         if (input.displayName.toLowerCase() !== current.displayName.toLowerCase()) {

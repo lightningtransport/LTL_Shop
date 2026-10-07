@@ -373,7 +373,13 @@ export interface AdminMechanicSummaryDto {
 
 export interface AdminMechanicDetailDto extends AdminMechanicSummaryDto {
   completedJobCount: number;
+  /** Closed Work Orders where this person completed a Job, newest first (up to 10). */
   recentClosedWorkOrders: AdminMechanicAssignmentDto[];
+  /** D22: Jobs still to do that block deactivating, shown before the Manager confirms (ME2). */
+  pendingJobs: AdminMechanicPendingJobDto[];
+  runningSession: boolean;
+  /** Shop workflow steps this person is the default owner of (SW3). */
+  defaultOwnerOfSteps: Array<{ stepKey: string; jobDisplayName: string }>;
 }
 
 export interface AdminMutationMeta {
@@ -892,8 +898,10 @@ export interface ShopWorkflowStepDto {
   stepKey: string;
   sortOrder: number;
   active: boolean;
-  catalogJob: { id: string; displayName: string; categoryName: string };
-  defaultMechanic: { id: string; name: string; active: boolean } | null;
+  /** `active` is false when the Job or its category is inactive: new Work Orders skip the step (SW2). */
+  catalogJob: { id: string; displayName: string; categoryName: string; active: boolean };
+  /** `eligible` is false when the owner is inactive or lost the step's capability (SW1). */
+  defaultMechanic: { id: string; name: string; active: boolean; eligible: boolean } | null;
   /** D15: Quality Check has no default owner; the Manager completes it from the Truck. */
   allowsDefaultMechanic: boolean;
   /** Capability a default owner needs: `mechanic.pm` for PM, `mechanic.standard` otherwise. */
