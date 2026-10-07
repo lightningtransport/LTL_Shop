@@ -292,8 +292,8 @@ Revisión de `/qc` con la base demo local, antes de proponer su rediseño (como 
 |---|---|---|---|
 | Q1 | B | **La lista no cambia al tocar Take, Approve o Return.** La API arma la respuesta leyendo la base fuera de la transacción, antes de guardar el cambio, y devuelve la lista vieja: después de "Take" la tarjeta sigue diciendo "Take" (con el aviso "Truck 606 is yours"); después de "Approve" el camión sigue en la lista. Se corrige al recargar o a los 20 s. Las pruebas reales pedían la lista con un GET aparte y no lo veían. | Arreglo: la respuesta lee dentro de la misma transacción; `test:real` revisa la respuesta de cada botón. |
 | Q2 | C | **Safety no ve qué se le hizo al camión** que va a aprobar: solo nombres de Jobs y de mecánicos (UX-1-001). | Pendiente: vista de revisión de la propuesta. |
-| Q4 | C | **Approve es un toque, sin confirmar**, y Safety no lo puede deshacer (UX-1-002). | Pendiente: D-QC1. |
-| Q5 | B | **Un camión tomado no se puede soltar**: si Safety lo toma y se va, queda trabado hasta que el Manager reasigne (UX-1-007). | Pendiente: D-QC2. |
+| Q4 | C | **Approve es un toque, sin confirmar**, y Safety no lo puede deshacer (UX-1-002). | Decidido (D-QC1, 2026-10-07): confirmar en una hoja. Se construye con el rediseño. |
+| Q5 | B | **Un camión tomado no se puede soltar**: si Safety lo toma y se va, queda trabado hasta que el Manager reasigne (UX-1-007). | Decidido (D-QC2, 2026-10-07): "Let go". Se construye con el rediseño. |
 | Q9 | C | **Lo escrito al devolver se pierde** al cerrar la hoja o si vence la sesión (UX-1-006, UX-6-003). | Pendiente: borrador por camión. |
 | Q10 | C | **Sin conexión salen dos avisos rojos** que dicen que la lista no cargó, encima de la lista con "Take" activo (UX-6-002). | Pendiente: aviso único de sin conexión. |
 | Q11 | E | **Los Jobs y los mecánicos cambian de orden** entre cargas: `addedAt` empata y no hay desempate (UX-1-009). | Pendiente. |
@@ -310,7 +310,7 @@ Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta 
 | MG2 | C | **Start Work desde la lista cierra el reloj de otro camión sin decirlo** (UX-1-002). | Pendiente |
 | MG3 | B | **"Your clock moved to another Truck · tap Continue" cuando el reloj no corre en ninguno**: después de completar el último Job en el camión al que se cambió, el otro camión sigue con el aviso (`clock-stopped.ts:17-19` usa el texto genérico si `elsewhereWorkOrder` es `null`) (UX-1-003). | Pendiente |
 | MG4 | C | **El aviso dice "tap Continue" y el botón de la tarjeta dice "View Work"** (UX-1-004). | Pendiente |
-| MG5 | C | **"Labor time · running" suma el tiempo de todos los mecánicos** (UX-1-007). | Pendiente |
+| MG5 | C | **"Labor time · running" suma el tiempo de todos los mecánicos** (UX-1-007). | Decidido (2026-10-07): el mecánico ve solo su tiempo; el total queda para el Manager. Va con el rediseño (bloque B). |
 | MG6 | C | **Un Work Order sin Jobs propios dice "You do not have access to this PM Work Order."** (UX-6-005). | Pendiente |
 | MG7 | C | **Errores en inglés con la app en español** al hacer Start desde la lista y en Notas (UX-6-006). | Pendiente |
 | MG8 | C | **Report Blocker:** la nota solo aparece con "Other", y con "Other" vacío el botón queda gris sin explicar (UX-7-003, UX-7-004). | Pendiente |
@@ -327,7 +327,7 @@ Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta 
 | PM3 | C | **Borrar el millaje guarda el campo vacío** y esconde las piezas (UX-7-003). | Pendiente |
 | PM4 | C | **"Finish Work" queda a casi dos pantallas**, detrás de "Service type" y nueve selects iguales (UX-4-001, UX-7-005). | Pendiente |
 | PM5 | C | **La regla "un PM a la vez" se descubre al tocar**: la tarjeta pausada del inicio, Create PM service y "Start PM service" en otro camión la ofrecen como botón principal y responden con error (UX-1-001, UX-1-002, UX-1-003). W14 lo arregló solo en "Ready to Start". | Pendiente |
-| PM6 | C | **Las notas no se guardan solas como dice HU-PM1**: se publican con "Add Note" y lo no enviado se pierde al salir (UX-7-001). Falta decidir si se corrige el documento o la pantalla. | Pendiente: decisión del dueño |
+| PM6 | C | **Las notas no se guardan solas como dice HU-PM1**: se publican con "Add Note" y lo no enviado se pierde al salir (UX-7-001). | Decidido (2026-10-07): el borrador se guarda solo en el teléfono y la nota se publica con el botón; se corrige HU-PM1. Va con el bloque A. |
 
 ## 2. Pruebas
 

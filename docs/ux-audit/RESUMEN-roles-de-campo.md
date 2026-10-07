@@ -1,6 +1,6 @@
 # Resumen: auditoría de las pantallas de Safety, Mecánico General y Mecánico de PM
 
-**Fecha:** 2026-10-07 · **Para:** el dueño · **Estado:** para leer y decidir. No se cambió código.
+**Fecha:** 2026-10-07 · **Para:** el dueño · **Estado:** decidido el 2026-10-07: todo como la recomendación. Se empieza por el bloque A.
 
 ## Cómo se hizo
 - **Método:** se usaron las skills `audit-ux` del equipo, igual que en el Admin:
@@ -157,7 +157,7 @@ Esto cambia cómo se ve la pantalla. Primero se hace la maqueta, tú la apruebas
 
 ---
 
-## 5. Lo que necesito que decidas
+## 5. Decisiones (2026-10-07: todas como la recomendación)
 1. **D-QC1 a D-QC7** (pantalla de Safety). Mi recomendación está en el README de la propuesta.
 2. **Notas del PM (PM6):** ¿se guardan solas, como dice HU-PM1, o se queda el botón "Add Note" y se corrige el documento? Recomiendo **guardar el borrador solo y publicar con el botón**: así no se pierde nada y la nota no sale a medias.
 3. **Tiempo del mecánico (MG5):** ¿el mecánico ve solo **su** tiempo y el total queda para el Manager? Recomiendo que sí.

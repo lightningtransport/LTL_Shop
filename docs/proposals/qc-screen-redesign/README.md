@@ -1,7 +1,7 @@
 # Propuesta: rediseño de la pantalla de Safety (Quality Check)
 
 **Clasificación:** PROPUESTA — no es el estado actual de la app.
-**Fecha:** 2026-10-07 · **Rama:** `claude/qc-screen-proposal` · **Sin construir todavía.**
+**Fecha:** 2026-10-07 · **Rama:** `claude/qc-screen-proposal` · **Aprobada (2026-10-07); sin construir todavía.**
 **Pantalla:** `/qc` → `apps/web/src/components/quality-check-page.tsx`
 **Reglas que no cambian:** D19 (el QC lo hace Safety; toma, aprueba o devuelve con nota) y
 [HU-QC1](../../USER_FLOWS.md) (quién ve qué y qué se rechaza). Hallazgos en
@@ -103,9 +103,11 @@ hizo?*
 
 Ningún campo existente cambia. Safety sigue sin poder hacer nada fuera de `/qc` (QC4).
 
-## 6. Decisiones pendientes (las responde el dueño)
+## 6. Decisiones del dueño
 
-| # | Pregunta | Recomendación |
+**Decididas el 2026-10-07: todas como la recomendación.** Las siete se construyen como dice la columna de la derecha.
+
+| # | Pregunta | Decisión |
 |---|---|---|
 | D-QC1 | **¿Aprobar pide confirmar?** | **Sí, una hoja corta** (como D27 para cerrar). Aprobar deja el camión listo para cerrar y Safety no lo puede deshacer. |
 | D-QC2 | **¿Safety puede soltar un camión tomado ("Let go")?** | **Sí.** Si no, el camión queda trabado hasta que el Manager lo reasigne. |
