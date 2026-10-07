@@ -67,7 +67,8 @@ test.describe('Mechanic P0 critical path', () => {
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     expect(workOrderReads).toBe(1);
 
-    await page.getByRole('button', { name: /Start Work/i }).or(page.getByRole('link', { name: /View Work/i })).first().click();
+    // Stage MG-3: open a Truck through its View link (the card's buttons start the clock).
+    await page.getByRole('link', { name: /^View (Work )?truck/ }).first().click();
     await expect(page.getByRole('heading', { name: /^Truck / })).toBeVisible();
     await page.getByRole('link', { name: /Back/i }).click();
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();

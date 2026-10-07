@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { PmInProgressNotice } from '@/components/pm-in-progress-notice';
 import { useActionToast } from '@/components/action-toast';
+import { StandardHome } from '@/components/mechanic-home';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -194,7 +195,10 @@ export default function HomePage() {
         </div>
       ) : null}
 
-      {data ? (
+      {/* Stage MG-3: the General mechanic's home (docs/proposals/mechanic-standard-redesign). */}
+      {data && !isPm ? <StandardHome data={data} userId={user.id} StartAction={StartWorkAction} /> : null}
+
+      {data && isPm ? (
         <>
           {/* LTR-134: one unit (the Work Order) per section; what I am working on comes first. */}
           <section className="mb-6">
@@ -411,11 +415,14 @@ function StartWorkAction({
   wo,
   className,
   label,
+  variant = 'default',
 }: {
   wo: WorkOrderSummaryDto;
   className?: string;
   /** Block A (MG4): "Continue" where my clock stopped; "Start Work" otherwise. */
   label?: string;
+  /** Stage MG-3 (UX-4-001): only the next work is the primary button. */
+  variant?: 'default' | 'outline';
 }) {
   const { messages } = useShopLocale();
   const { showToast } = useActionToast();
@@ -446,6 +453,7 @@ function StartWorkAction({
       {error ? <InlineAlert className="mb-2">{error}</InlineAlert> : null}
       <Button
         className="w-full"
+        variant={variant}
         disabled={busy}
         aria-label={messages.workOrderAction(label ?? messages.startWork, wo.displayId, wo.truckNumber)}
         onClick={() => void startLabor()}

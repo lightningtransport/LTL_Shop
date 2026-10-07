@@ -151,6 +151,22 @@ type Copy = {
   workStartedSuccess: string;
   /** Block A (MG2): Start on this Truck closed my clock on another one (D21). */
   clockMovedFromTo: (fromTruck: string, toTruck: string) => string;
+  /** Stage MG-2 (MG1, UX-6-007): the clock strip and the single offline notice. */
+  clockStripYourClock: string;
+  /** Stage MG-3: the General mechanic's home. */
+  noJobsAssignedYet: string;
+  noJobsAssignedHint: string;
+  mostUrgentFirst: string;
+  blockedSectionTitle: string;
+  blockedSectionHint: string;
+  blockedSince: (when: string) => string;
+  yourPartDone: (jobs: string) => string;
+  clockRunning: string;
+  viewShort: string;
+  clockStripSince: (time: string) => string;
+  clockStripOpen: string;
+  clockStripStopped: string;
+  offlineNotSent: string;
   reportBlocker: string;
   activeBlockers: string;
   blockerWaitsForManager: string;
@@ -542,6 +558,20 @@ const copy: Record<ShopLocale, Copy> = {
     startingWork: 'Starting…',
     workStartedSuccess: 'Work started.',
     clockMovedFromTo: (fromTruck, toTruck) => `Work started. Your clock moved from Truck ${fromTruck} to Truck ${toTruck}.`,
+    clockStripYourClock: 'Your clock',
+    noJobsAssignedYet: 'No Jobs assigned yet',
+    noJobsAssignedHint: 'When the Manager gives you a Job, it shows up here.',
+    mostUrgentFirst: 'Most urgent first.',
+    blockedSectionTitle: 'Blocked · waiting on the Manager',
+    blockedSectionHint: 'Only the Manager resolves a blocker. Open the Truck to add a note.',
+    blockedSince: (when) => `Since ${when}`,
+    yourPartDone: (jobs) => `Your part is done · ${jobs}`,
+    clockRunning: 'Clock running',
+    viewShort: 'View',
+    clockStripSince: (time) => `since ${time}`,
+    clockStripOpen: 'Open',
+    clockStripStopped: 'Your clock is stopped · tap Continue on a Truck',
+    offlineNotSent: 'Offline · your changes are not sent',
     reportBlocker: 'Report Blocker',
     activeBlockers: 'Active blockers',
     blockerWaitsForManager: 'Only the Manager resolves a blocker. Add a note if something changes.',
@@ -931,6 +961,20 @@ const copy: Record<ShopLocale, Copy> = {
     startingWork: 'Iniciando…',
     workStartedSuccess: 'Trabajo iniciado.',
     clockMovedFromTo: (fromTruck, toTruck) => `Trabajo iniciado. Tu reloj pasó de la unidad ${fromTruck} a la ${toTruck}.`,
+    clockStripYourClock: 'Tu reloj',
+    noJobsAssignedYet: 'Todavía no tienes Jobs',
+    noJobsAssignedHint: 'Cuando el Manager te asigne un Job, aparece aquí.',
+    mostUrgentFirst: 'Lo más urgente primero.',
+    blockedSectionTitle: 'Bloqueado · espera al Manager',
+    blockedSectionHint: 'Solo el Manager resuelve un bloqueo. Abre la unidad para agregar una nota.',
+    blockedSince: (when) => `Desde ${when}`,
+    yourPartDone: (jobs) => `Terminaste tu parte · ${jobs}`,
+    clockRunning: 'Reloj corriendo',
+    viewShort: 'Ver',
+    clockStripSince: (time) => `desde ${time}`,
+    clockStripOpen: 'Abrir',
+    clockStripStopped: 'Tu reloj está detenido · toca Continuar en una unidad',
+    offlineNotSent: 'Sin conexión · no se envía nada',
     reportBlocker: 'Reportar bloqueo',
     activeBlockers: 'Bloqueos activos',
     blockerWaitsForManager: 'Solo el Manager resuelve el bloqueo. Agrega una nota si algo cambia.',

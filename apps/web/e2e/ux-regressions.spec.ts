@@ -438,19 +438,15 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
 
   test('Mechanic status chips and location copy follow the locale catalog', async ({ page }) => {
     await login(page);
-    const createdCard = page.locator('.card').filter({ hasText: 'WO-1001' });
-    await expect(createdCard.getByText('Created')).toBeVisible();
-    const activeCard = page.locator('.card').filter({ hasText: 'WO-ACTIVE-1' });
-    await expect(activeCard.getByText('In Progress')).toBeVisible();
-    const pausedCard = page.locator('.card').filter({ hasText: 'WO-PAUSED-1' });
+    // Stage MG-3: the card no longer repeats the Work Order status (its section says it); the pause reason is
+    // the card's notice line.
+    const homeCard = (displayId: string) => page.locator('[data-testid^="home-card-"]').filter({ hasText: displayId });
+    const createdCard = homeCard('WO-1001');
+    const pausedCard = homeCard('WO-PAUSED-1');
     await expect(pausedCard.getByText('Waiting for Parts')).toBeVisible();
 
     await switchLanguage(page, 'es');
     await expect(page.getByRole('heading', { name: 'Mi trabajo asignado' })).toBeVisible();
-    await expect(createdCard.getByText('Creado')).toBeVisible();
-    await expect(createdCard.getByText('Created')).toHaveCount(0);
-    await expect(activeCard.getByText('En progreso')).toBeVisible();
-    await expect(activeCard.getByText('In Progress')).toHaveCount(0);
     await expect(pausedCard.getByText('En espera de piezas')).toBeVisible();
     await expect(pausedCard.getByText('Waiting for Parts')).toHaveCount(0);
     await expect(createdCard.getByRole('button', { name: 'Iniciar trabajo unidad 905, Work Order WO-1001' })).toBeVisible();
@@ -767,9 +763,8 @@ test.describe('My Assigned Work presentation', () => {
 
     await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
-    const assignedCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
-    // LTR-154 / D11: the card lists only my Jobs, counts them and marks the next one.
-    await expect(assignedCard.getByText('1 Job for you', { exact: false })).toBeVisible();
+    const assignedCard = page.locator('[data-testid^="home-card-"]').filter({ hasText: 'WO-ASSIGN-1' });
+    // LTR-154 / D11: the card lists only my Jobs and marks the next one.
     await expect(assignedCard.getByText('Replace pads')).toBeVisible();
     await expect(assignedCard.getByText('Assigned to you')).toBeVisible();
     await expect(assignedCard.getByText('Next', { exact: true })).toBeVisible();
@@ -778,7 +773,7 @@ test.describe('My Assigned Work presentation', () => {
     await expect(assignedCard.getByText(/Work Order team/)).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
-    await assignedCard.getByRole('link', { name: /View Work/i }).click();
+    await assignedCard.getByRole('link', { name: /^View truck/ }).click();
     await expect(page.getByRole('heading', { name: 'Truck 905' })).toBeVisible();
     await expect(page.getByText('Work Order team', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Your Jobs', { exact: true })).toBeVisible();
@@ -826,12 +821,12 @@ test.describe('My Assigned Work presentation', () => {
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Waiting on Manager' })).toBeVisible();
     await expect(page.getByText('You finished your part on 1 Work Order. The Manager closes it when every step is done.')).toBeVisible();
-    const waitingCard = page.locator('.card').filter({ hasText: 'WO-READY-1' });
-    await expect(waitingCard.getByRole('link', { name: /^View Details truck .*, Work Order WO-READY-1$/ })).toBeVisible();
-    const activeCard = page.locator('.card').filter({ hasText: 'WO-ASSIGN-1' });
+    // Stage MG-3: a Truck where my part is done is one row in "Waiting on Manager", not an In Progress card.
+    await expect(page.getByTestId('home-waiting').getByRole('link').filter({ hasText: 'WO-READY-1' })).toBeVisible();
+    const activeCard = page.locator('[data-testid^="home-card-"]').filter({ hasText: 'WO-ASSIGN-1' });
     await expect(page.getByRole('heading', { name: 'In Progress' })).toBeVisible();
-    await expect(page.getByText('1 Work Order in progress')).toBeVisible();
-    await expect(activeCard.getByRole('link', { name: /^View Work truck .*, Work Order WO-ASSIGN-1$/ })).toBeVisible();
+    await expect(page.getByTestId('home-in-progress').locator('[data-testid^="home-card-"]')).toHaveCount(1);
+    await expect(activeCard.getByRole('link', { name: /^View truck .*, Work Order WO-ASSIGN-1$/ })).toBeVisible();
   });
 
   test('Active Jobs empty does not ask Standard to create when work is ready or waiting on Manager', async ({ page }) => {
