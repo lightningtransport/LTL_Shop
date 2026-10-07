@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, CircleAlert, MessageSquarePlus, Play } from 'lucide-react';
 import { useSWRConfig } from 'swr';
 import {
   AppCapability,
@@ -25,13 +25,19 @@ import { useShopLocale } from '@/lib/locale-context';
 import { clockStoppedLine } from '@/lib/clock-stopped';
 import { formatShopDateTime, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
+import { MechanicClockStrip } from '@/components/mechanic-clock-strip';
+import { MechanicAvatar, MechanicAvatarStack } from '@/components/mechanic-avatar';
+import { intlLocale } from '@/lib/shop-locale';
 import { jobDisplayName } from '@/lib/job-display-name';
 import { isStandardWorkWaitingOnManager, jobAssignmentLabel, jobPersonLabel, splitMyJobs } from '@/lib/job-assignment';
 import { useWorkOrder } from '@/lib/shop-data';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import {
+  Badge,
   Button,
   Card,
+  CountChip,
+  SectionCard,
   EmptyState,
   InlineAlert,
   Label,
@@ -58,7 +64,7 @@ function formatLaborDuration(milliseconds: number) {
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
   const { messages } = useShopLocale();
-  const { showToast } = useActionToast();
+  const { showToast, dismissToast } = useActionToast();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
@@ -87,6 +93,17 @@ export default function WorkOrderDetailPage() {
   // Block A (MG8): with "Other", the note is required; the button says so instead of staying grey.
   const [pauseNotesError, setPauseNotesError] = useState(false);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  // Stage MG-4 (UX-4-006): a blocker's note field opens when asked for.
+  const [openBlockerNote, setOpenBlockerNote] = useState<string | null>(null);
+  // Stage MG-4 (D-MG5): "Other work" starts folded; the phone remembers if the mechanic opens it.
+  const [otherOpen, setOtherOpen] = useState(false);
+  useEffect(() => {
+    try { setOtherOpen(window.localStorage.getItem('ltl-other-work-open') === '1'); } catch { /* storage unavailable */ }
+  }, []);
+  const toggleOtherWork = () => setOtherOpen((open) => {
+    try { window.localStorage.setItem('ltl-other-work-open', open ? '0' : '1'); } catch { /* storage unavailable */ }
+    return !open;
+  });
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
   // LTR-131: live labor clock (API total at fetch time + elapsed while running).
@@ -198,13 +215,11 @@ export default function WorkOrderDetailPage() {
     );
   }
 
-  const done = wo.jobs.filter((j) => j.status === 'completed');
   // LTR-154 / D11: the mechanic completes only their own Jobs; the rest of the truck's work is read-only.
   const { mine, others, partDone } = splitMyJobs(wo, user?.id ?? '');
   const myTodo = mine.filter((job) => job.status === 'to_do');
   // LTR-155 / D17: a blocked Job waits for the Manager; only the others are workable.
   const myWorkable = myTodo.filter((job) => !job.activeBlocker);
-  const otherTodo = others.filter((job) => job.status === 'to_do');
   const waitingOnManager = isStandardWorkWaitingOnManager(wo);
   // LTR-154 / D18: labor is per mechanic. `laborRunning` is the viewer's own session;
   // it stops when they finish their part and "Continue" reopens it for a new Job.
@@ -216,95 +231,144 @@ export default function WorkOrderDetailPage() {
   const finishedMyPart = partDone && (wo.status === 'in_progress' || wo.status === 'created');
   const laborMs = liveLaborMs(wo.totalActiveLaborMs, wo.laborRunning, fetchedAt, now);
 
+  // Stage MG-4 (MG5, D-MG2): my own time on this Work Order; it runs live while my clock is here.
+  const myLaborMs = liveLaborMs(wo.myActiveLaborMs ?? wo.totalActiveLaborMs, wo.laborRunning, fetchedAt, now);
+  const myOpen = mine.filter((job) => job.status !== 'cancelled');
+  const myDone = myOpen.filter((job) => job.status === 'completed').length;
+  const nextJobId = myWorkable[0]?.id ?? null;
+  const stoppedLine = !wo.resolvedBlocker && needsStart ? clockStoppedLine(wo.myClockStopped, messages) : null;
+  const othersOpen = others.filter((job) => job.status !== 'cancelled');
+  const blockerSince = (iso: string) => new Intl.DateTimeFormat(intlLocale(messages.locale), { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+  const startOrContinue = () => {
+    // Block A (MG2): say when Start moved my clock from another Truck (D21).
+    let movedFrom: WorkOrderDetailDto['clockMovedFrom'] = null;
+    return run(
+      async () => {
+        const started = await apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
+          method: 'POST',
+        });
+        movedFrom = started.clockMovedFrom ?? null;
+        return started;
+      },
+      undefined,
+      () => showToast('success', movedFrom ? messages.clockMovedFromTo(movedFrom.truckNumber, wo.truckNumber) : messages.workStartedSuccess),
+    );
+  };
+
   return (
     <div>
       <WorkspaceNav mode={MechanicMode.STANDARD} />
+      <MechanicClockStrip />
       <PageHeader
-        className="mb-6"
+        className="mb-4"
         title={messages.truckTitle(wo.truckNumber)}
         subtitle={[vehicleLine(wo.truck), `${messages.workOrder} ${wo.displayId}`, messages.status[wo.status] ?? statusLabel(wo.status, messages.status)].filter(Boolean).join(' · ')}
         backHref="/mechanic/standard"
       />
 
-      <div className="card mb-4 space-y-2">
-        {/* LTR-168: a long category wraps under the badge instead of around it. */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge>
-          <span className="min-w-0 text-sm text-shop-muted">
-            {[jobCategoriesLine(wo.jobs), messages.jobsDone(wo.jobsCompleted, wo.jobsTotal)].filter(Boolean).join(' · ')}
-          </span>
-        </div>
-        {/* LTR-131: the mechanic sees how long labor has run on this Work Order. */}
-        {wo.status !== 'created' ? (
-          <p className="text-sm text-shop-muted" aria-live="off">
-            {messages.laborTime(formatLaborDuration(laborMs))}
-            {wo.laborRunning ? ` · ${messages.laborRunningLabel}` : ''}
-          </p>
-        ) : null}
-        {wo.currentPauseReason ? (
-          <p className="text-sm font-medium text-warning-foreground">
-            {pauseLabel(wo.currentPauseReason, messages.pauseReason)}
-          </p>
-        ) : null}
-      </div>
-
-      {finishedMyPart ? (
-        <div className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status">
-          <p className="font-medium">{messages.finishedYourPart(wo.truckNumber)}</p>
-          <p>{waitingOnManager ? messages.waitingOnManagerBody : messages.finishedYourPartHint}</p>
-        </div>
-      ) : waitingOnManager ? (
-        <p className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status">
-          {messages.waitingOnManagerBody}
-        </p>
-      ) : null}
-
-      {!wo.resolvedBlocker && needsStart && clockStoppedLine(wo.myClockStopped, messages) ? (
-        // LTR-186 / D20, D21: the day close or a Truck switch stopped my clock here; Continue below.
-        <p className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm font-medium" role="status" data-testid="clock-stopped">
-          {clockStoppedLine(wo.myClockStopped, messages)}
-        </p>
-      ) : null}
-
-      {wo.resolvedBlocker ? (
-        // LTR-164 (#9): who resolved my blocker and the Manager's note, until I tap Continue.
-        <div className="mb-4 rounded-xl border border-shop-accent/40 bg-shop-accent/10 px-3 py-2 text-sm" role="status" data-testid="resolved-blocker">
-          <p className="font-medium">
-            {messages.resolvedBlockerTitle(wo.resolvedBlocker.job?.displayName ?? '', wo.resolvedBlocker.resolvedBy?.name ?? '')}
-          </p>
-          {wo.resolvedBlocker.resolutionNote ? <p>{messages.managerNote(wo.resolvedBlocker.resolutionNote)}</p> : null}
-          <p>{messages.resolvedBlockerHint}</p>
-        </div>
-      ) : null}
-
-      {error && !finishJob && !pauseOpen ? (
-        <InlineAlert className="mb-3">{error}</InlineAlert>
-      ) : null}
-
-      {(wo.activeBlockers ?? []).length ? (
-        // LTR-155 / D17: the mechanic sees each blocked Job and adds notes; only the Manager resolves.
-        <section className="mb-4 space-y-2" aria-labelledby="active-blockers-title">
-          <p id="active-blockers-title" className="group-title">{messages.activeBlockers}</p>
-          <p className="text-sm text-muted-foreground">{messages.blockerWaitsForManager}</p>
-          <ul className="space-y-2">
-            {(wo.activeBlockers ?? []).map((blocker) => (
-              <li key={blocker.id} className="space-y-2 rounded-xl bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
-                <p className="font-medium">
-                  {[blocker.job?.displayName, messages.blockedWithReason(pauseLabel(blocker.blockerReason ?? blocker.reason, messages.pauseReason) ?? '')].filter(Boolean).join(' · ')}
+      {/* One column: the mechanic screens keep the phone width on a computer too (UX-4-008: the mechanic works on the phone). */}
+      <div>
+        <div>
+          {/* Stage MG-4 (UX-4-007, MG5): what matters to me here — my Jobs and my time. */}
+          <section
+            className={`mb-4 rounded-xl border bg-card p-4 ${wo.laborRunning ? 'border-primary ring-1 ring-primary' : ''}`}
+            data-testid="my-summary"
+            aria-live="off"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">{messages.myJobs}</p>
+                <p className="text-lg font-semibold tnum">{messages.yourJobsDoneCount(myDone, myOpen.length)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">{messages.yourTimeLabel}</p>
+                <p className="flex items-center justify-end gap-2 text-lg font-semibold tnum">
+                  {formatLaborDuration(myLaborMs)}
+                  <Badge variant={wo.laborRunning ? 'success' : 'secondary'}>
+                    <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+                    {wo.laborRunning ? messages.laborRunningLabel : messages.laborStoppedLabel}
+                  </Badge>
                 </p>
-                {blocker.notes ? <p>{blocker.notes}</p> : null}
-                {(blocker.blockerNotes ?? []).length ? (
-                  <ul className="space-y-1">
-                    {(blocker.blockerNotes ?? []).map((note) => (
-                      <li key={note.id}>
-                        <span className="text-xs">{note.author.name} · {formatShopDateTime(note.createdAt, messages.locale)}</span>
-                        <p>{note.body}</p>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
+              </div>
+            </div>
+            {wo.priority === 'high' || wo.priority === 'critical' ? (
+              <div className="mt-2"><PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge></div>
+            ) : null}
+            {wo.currentPauseReason ? (
+              <p className="mt-2 text-sm font-medium text-warning-foreground">
+                {pauseLabel(wo.currentPauseReason, messages.pauseReason)}
+              </p>
+            ) : null}
+            {stoppedLine ? (
+              // LTR-186 / D20, D21: the day close or a Truck switch stopped my clock here; Continue below.
+              <p className="mt-3 rounded-md bg-muted px-2.5 py-1.5 text-sm font-medium" role="status" data-testid="clock-stopped">
+                {stoppedLine}
+              </p>
+            ) : null}
+            {needsStart ? (
+              <Button className="mt-3 w-full" disabled={busy} onClick={() => void startOrContinue()}>
+                <Play aria-hidden="true" />
+                {busy ? messages.startingWork : startedHereBefore ? messages.continueWork : messages.startWork}
+              </Button>
+            ) : null}
+            {wo.status === 'waiting_paused' ? (
+              <p className="mt-2 text-sm text-muted-foreground">{messages.pausedAskManager}</p>
+            ) : null}
+          </section>
+
+          {finishedMyPart ? (
+            <div className="mb-4 rounded-xl border border-success/40 bg-success/10 px-3 py-2 text-sm" role="status">
+              <p className="font-medium">{messages.finishedYourPart(wo.truckNumber)}</p>
+              <p>{waitingOnManager ? messages.waitingOnManagerBody : messages.finishedYourPartHint}</p>
+            </div>
+          ) : waitingOnManager ? (
+            <p className="mb-4 rounded-xl border border-success/40 bg-success/10 px-3 py-2 text-sm" role="status">
+              {messages.waitingOnManagerBody}
+            </p>
+          ) : null}
+
+          {wo.resolvedBlocker ? (
+            // LTR-164 (#9): who resolved my blocker and the Manager's note, until I tap Continue.
+            <div className="mb-4 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm" role="status" data-testid="resolved-blocker">
+              <p className="font-medium">
+                {messages.resolvedBlockerTitle(wo.resolvedBlocker.job?.displayName ?? '', wo.resolvedBlocker.resolvedBy?.name ?? '')}
+              </p>
+              {wo.resolvedBlocker.resolutionNote ? <p>{messages.managerNote(wo.resolvedBlocker.resolutionNote)}</p> : null}
+              <p>{messages.resolvedBlockerHint}</p>
+            </div>
+          ) : null}
+
+          {error && !finishJob && !pauseOpen ? (
+            <InlineAlert className="mb-3">{error}</InlineAlert>
+          ) : null}
+
+          {(wo.activeBlockers ?? []).map((blocker) => (
+            // Stage MG-4 (UX-4-006, UX-1-009): the blocker is a compact notice; the note field opens on request.
+            <section
+              key={blocker.id}
+              className="mb-4 space-y-2 rounded-xl border border-warning/50 bg-warning-surface px-4 py-3 text-sm text-warning-foreground"
+              aria-label={messages.activeBlockers}
+              data-testid="active-blocker"
+            >
+              <p className="flex items-start gap-2 font-semibold">
+                <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                {[blocker.job?.displayName, pauseLabel(blocker.blockerReason ?? blocker.reason, messages.pauseReason)].filter(Boolean).join(' · ')}
+              </p>
+              <p className="text-xs">{messages.blockerSinceBy(blockerSince(blocker.startedAt), blocker.reportedBy?.name ?? '—')}</p>
+              {blocker.notes ? <p className="text-foreground">{blocker.notes}</p> : null}
+              {(blocker.blockerNotes ?? []).length ? (
+                <ul className="space-y-1">
+                  {(blocker.blockerNotes ?? []).map((note) => (
+                    <li key={note.id}>
+                      <span className="text-xs">{note.author.name} · {formatShopDateTime(note.createdAt, messages.locale)}</span>
+                      <p className="text-foreground">{note.body}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {openBlockerNote === blocker.id ? (
                 <form
-                  className="flex flex-col gap-2 sm:flex-row"
+                  className="space-y-2"
                   onSubmit={(event) => {
                     event.preventDefault();
                     const body = (noteDrafts[blocker.id] ?? '').trim();
@@ -317,12 +381,15 @@ export default function WorkOrderDetailPage() {
                       undefined,
                       () => {
                         setNoteDrafts((prev) => ({ ...prev, [blocker.id]: '' }));
+                        setOpenBlockerNote(null);
                         showToast('success', messages.blockerNoteAdded);
                       },
                     );
                   }}
                 >
+                  <Label htmlFor={`blocker-note-${blocker.id}`} className="text-foreground">{messages.noteForManager}</Label>
                   <Textarea
+                    id={`blocker-note-${blocker.id}`}
                     aria-label={messages.addBlockerNote}
                     placeholder={messages.blockerNotePlaceholder}
                     value={noteDrafts[blocker.id] ?? ''}
@@ -330,198 +397,155 @@ export default function WorkOrderDetailPage() {
                     disabled={busy}
                     rows={2}
                   />
-                  <Button type="submit" variant="secondary" disabled={busy || !(noteDrafts[blocker.id] ?? '').trim()}>
-                    {messages.addBlockerNote}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setOpenBlockerNote(null)}>{messages.cancelAction}</Button>
+                    <Button type="submit" variant="outline" className="flex-1" disabled={busy || !(noteDrafts[blocker.id] ?? '').trim()}>
+                      {messages.addBlockerNote}
+                    </Button>
+                  </div>
                 </form>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+              ) : (
+                <Button type="button" variant="outline" className="bg-card" onClick={() => setOpenBlockerNote(blocker.id)}>
+                  <MessageSquarePlus aria-hidden="true" />{messages.addNoteOpen}
+                </Button>
+              )}
+            </section>
+          ))}
 
-      {/* LTR-164 (#5): the section only shows when it has something (Start / Continue or the pause note). */}
-      {needsStart || wo.status === 'waiting_paused' ? (
-        <section className="mb-4 space-y-2">
-          <p className="group-title">{messages.workOptions}</p>
-          {needsStart ? (
-            <Button
-              className="w-full"
-              disabled={busy}
-              onClick={() => {
-                // Block A (MG2): say when Start moved my clock from another Truck (D21).
-                let movedFrom: WorkOrderDetailDto['clockMovedFrom'] = null;
-                return run(
-                  async () => {
-                    const started = await apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, {
-                      method: 'POST',
-                    });
-                    movedFrom = started.clockMovedFrom ?? null;
-                    return started;
-                  },
-                  undefined,
-                  () => showToast('success', movedFrom ? messages.clockMovedFromTo(movedFrom.truckNumber, wo.truckNumber) : messages.workStartedSuccess),
-                );
-              }}
-            >
-              {busy ? messages.startingWork : startedHereBefore ? messages.continueWork : messages.startWork}
-            </Button>
-          ) : null}
-          {wo.status === 'waiting_paused' ? (
-            <p className="text-sm text-muted-foreground">{messages.pausedAskManager}</p>
-          ) : null}
-        </section>
-      ) : null}
-
-      <section className="card mb-4">
-        <Button
-          variant="ghost"
-          className="w-full justify-between px-0"
-          onClick={() => setTruckOpen((v) => !v)}
-          aria-expanded={truckOpen}
-          aria-controls="truck-information-panel"
-        >
-          <span className="group-title">{messages.truckInformation}</span>
-          <ChevronDown
-            className={`h-5 w-5 transition-transform ${truckOpen ? 'rotate-180' : ''}`}
-            aria-hidden="true"
-          />
-        </Button>
-        {truckOpen ? (
-          <div id="truck-information-panel" className="mt-3 space-y-3">
-            <TruckInformationFields truck={wo.truck} locale={messages.locale} />
-            <Button asChild variant="secondary" className="w-full">
-              <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
-                {messages.repairHistory}
-              </Link>
-            </Button>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="mb-4">
-        <p className="group-title mb-2">{messages.myJobs}</p>
-        {/* LTR-131: say why Jobs are disabled before Start Work. */}
-        {needsStart ? (
-          <p className="mb-2 text-sm text-muted-foreground">{startedHereBefore ? messages.continueToCompleteJobs : messages.startWorkToCompleteJobs}</p>
-        ) : myWorkable.length > 0 && wo.status === 'in_progress' ? (
-          <p className="mb-2 text-sm text-muted-foreground">{messages.tapJobToComplete}</p>
-        ) : null}
-        {myTodo.length === 0 ? (
-          <EmptyState>{mine.length > 0 ? messages.noPendingJobs : messages.noMyJobs}</EmptyState>
-        ) : (
-          <ul className="mb-3 space-y-2">
-            {myTodo.map((job) => (
-              <li key={job.id} className="space-y-1">
-                {job.activeBlocker ? (
-                  <JobTodoCard job={job} currentUserId={user?.id ?? ''} />
-                ) : (
-                  <>
-                    {/* LTR-189 (W12): the Job is a card; "Complete job" is a visible primary button beside "Report Blocker". */}
-                    <JobTodoCard job={job} currentUserId={user?.id ?? ''} />
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        className="flex-1"
-                        disabled={busy || wo.status !== 'in_progress' || laborStopped}
-                        aria-label={messages.completeJobFor(job.displayName)}
-                        onClick={(event) => {
-                          finishJobTriggerRef.current = event.currentTarget;
-                          setFinishJob({ id: job.id, name: job.displayName });
-                        }}
-                      >
-                        {messages.jobFinishConfirm}
-                      </Button>
-                      {wo.status === 'in_progress' || wo.status === 'created' ? (
+          <SectionCard className="mb-4" title={messages.myJobs} count={myOpen.length} data-testid="your-jobs">
+            {needsStart ? (
+              <p className="border-b px-4 py-2 text-sm text-muted-foreground">{startedHereBefore ? messages.continueToCompleteJobs : messages.startWorkToCompleteJobs}</p>
+            ) : myWorkable.length > 0 && wo.status === 'in_progress' ? (
+              <p className="border-b px-4 py-2 text-sm text-muted-foreground">{messages.tapJobToComplete}</p>
+            ) : null}
+            {myOpen.length === 0 ? (
+              <p className="px-4 py-3 text-sm text-muted-foreground">{messages.noMyJobs}</p>
+            ) : (
+              <ul className="divide-y">
+                {myOpen.map((job) => (
+                  <li key={job.id} className="space-y-3 px-4 py-3">
+                    <MyJobRow job={job} next={job.id === nextJobId} currentUserId={user?.id ?? ''} />
+                    {job.status === 'to_do' && !job.activeBlocker ? (
+                      <div className="flex gap-2">
                         <Button
                           type="button"
-                          variant="outline"
                           className="flex-1"
-                          disabled={busy}
-                          aria-label={messages.reportBlockerFor(job.displayName)}
+                          variant={job.id === nextJobId ? 'default' : 'outline'}
+                          disabled={busy || wo.status !== 'in_progress' || laborStopped}
+                          aria-label={messages.completeJobFor(job.displayName)}
                           onClick={(event) => {
-                            pauseTriggerRef.current = event.currentTarget;
-                            setPauseReason('');
-                            setPauseNotesError(false);
-                            setBlockerJob({ id: job.id, name: job.displayName });
-                            setPauseOpen(true);
+                            finishJobTriggerRef.current = event.currentTarget;
+                            dismissToast();
+                            setError(null);
+                            setFinishJob({ id: job.id, name: job.displayName });
                           }}
                         >
-                          {messages.reportBlocker}
+                          <Check aria-hidden="true" />{messages.jobFinishConfirm}
                         </Button>
-                      ) : null}
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        {otherTodo.length ? (
-          <>
-            <p className="group-title mb-1">{messages.otherWorkOnThisTruck}</p>
-            <p className="mb-2 text-xs text-muted-foreground">{messages.otherWorkReadOnly}</p>
-            <ul className="mb-3 space-y-2">
-              {otherTodo.map((job) => (
-                <li key={job.id}>
-                  <JobTodoCard job={job} currentUserId={user?.id ?? ''} />
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-        {wo.status !== 'completed' && wo.status !== 'cancelled' ? (
-          <p className="text-sm text-muted-foreground">{messages.additionalWorkHint}</p>
-        ) : null}
-      </section>
+                        {wo.status === 'in_progress' || wo.status === 'created' ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="flex-1"
+                            disabled={busy}
+                            aria-label={messages.reportBlockerFor(job.displayName)}
+                            onClick={(event) => {
+                              pauseTriggerRef.current = event.currentTarget;
+                              dismissToast();
+                              setError(null);
+                              setPauseReason('');
+                              setPauseNotesError(false);
+                              setBlockerJob({ id: job.id, name: job.displayName });
+                              setPauseOpen(true);
+                            }}
+                          >
+                            <CircleAlert aria-hidden="true" />{messages.reportBlocker}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
 
-      <section className="mb-4">
-        <p className="group-title mb-2">{messages.jobStatus.completed}</p>
-        {done.length === 0 ? (
-          <EmptyState>{messages.noCompletedJobs}</EmptyState>
-        ) : (
-          <ul className="space-y-2">
-            {done.map((job) => (
-              <li
-                key={job.id}
-                className="card flex items-start gap-3 text-shop-success"
+          {othersOpen.length ? (
+            // Stage MG-4 (UX-4-005, D-MG5): other mechanics' work, folded, with the count and their avatars.
+            <section className="mb-4 overflow-hidden rounded-xl border bg-card" data-testid="other-work">
+              <button
+                type="button"
+                className="flex min-h-12 w-full items-center gap-2 px-4 py-2 text-left"
+                aria-expanded={otherOpen}
+                aria-controls="other-work-panel"
+                onClick={() => toggleOtherWork()}
               >
-                <span className="mt-0.5">✓</span>
-                <span className="min-w-0">
-                  <span className="block">{jobDisplayName(job, messages.helperJobSuffix)}</span>
-                  <span className="block text-xs text-muted-foreground">{job.category.name}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {jobPersonLabel(job, user?.id ?? '', messages)}
-                  </span>
-                  {job.completionNotes ? (
-                    <span className="mt-1 block text-sm text-foreground">{job.completionNotes}</span>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                <span className="text-base font-semibold">{messages.otherWorkOnThisTruck}</span>
+                <CountChip>{othersOpen.length}</CountChip>
+                <span className="ml-auto"><MechanicAvatarStack mechanics={uniqueMechanics(othersOpen)} max={4} /></span>
+                <ChevronDown aria-hidden="true" className={`size-5 shrink-0 transition-transform ${otherOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {otherOpen ? (
+                <div id="other-work-panel" className="border-t">
+                  <ul className="divide-y">
+                    {othersOpen.map((job) => <OtherJobRow key={job.id} job={job} currentUserId={user?.id ?? ''} />)}
+                  </ul>
+                  <p className="border-t px-4 py-2 text-xs text-muted-foreground">{messages.otherWorkReadOnly}</p>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+          {wo.status !== 'completed' && wo.status !== 'cancelled' ? (
+            <p className="mb-4 text-sm text-muted-foreground">{messages.additionalWorkHint}</p>
+          ) : null}
+        </div>
 
-      <WorkOrderNotesThread
-        wo={wo}
-        onUpdated={async (updated) => {
-          await mutateWorkOrder(updated, { revalidate: false });
-        }}
-      />
+        <div>
+          <WorkOrderNotesThread
+            wo={wo}
+            onUpdated={async (updated) => {
+              await mutateWorkOrder(updated, { revalidate: false });
+            }}
+          />
+
+          <section className="mb-4 overflow-hidden rounded-xl border bg-card">
+            <button
+              type="button"
+              className="flex min-h-12 w-full items-center justify-between px-4 py-2 text-left"
+              onClick={() => setTruckOpen((v) => !v)}
+              aria-expanded={truckOpen}
+              aria-controls="truck-information-panel"
+            >
+              <span className="text-base font-semibold">{messages.truckInformation}</span>
+              <ChevronDown className={`size-5 transition-transform ${truckOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+            </button>
+            {truckOpen ? (
+              <div id="truck-information-panel" className="space-y-3 border-t p-4">
+                <TruckInformationFields truck={wo.truck} locale={messages.locale} />
+                <Button asChild variant="secondary" className="w-full">
+                  <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
+                    {messages.repairHistory}
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
+          </section>
+        </div>
+      </div>
 
       <Modal
         open={!!finishJob}
-        title={messages.jobFinishTitle}
+        title={finishJob ? messages.completeJobTitle(finishJob.name) : messages.jobFinishTitle}
+        description={finishJob ? (myWorkable.length === 1 && myWorkable[0].id === finishJob.id ? messages.completeLastHint : messages.completeKeepsRunning) : undefined}
         closeLabel={messages.closeDialog}
         onClose={() => {
           if (busy) return;
           setFinishJob(null);
+          setError(null);
         }}
         returnFocusRef={finishJobTriggerRef}
       >
         {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
-        <p className="mb-4 text-lg">{finishJob?.name}</p>
         <Label className="mb-2 block" htmlFor="finish-job-notes">
           {messages.jobFinishNotes}
         </Label>
@@ -586,34 +610,44 @@ export default function WorkOrderDetailPage() {
       <Modal
         open={pauseOpen && Boolean(blockerJob)}
         title={blockerJob ? messages.reportBlockerFor(blockerJob.name) : messages.reportBlocker}
+        description={messages.blockerSheetHint}
         closeLabel={messages.closeDialog}
         onClose={() => {
           if (busy) return;
           setPauseOpen(false);
           setBlockerJob(null);
+          setError(null);
         }}
         returnFocusRef={pauseTriggerRef}
       >
         {error ? <InlineAlert className="mb-3">{error}</InlineAlert> : null}
-        <Label className="mb-2 block" htmlFor="pause-reason">
-          {messages.blockerReason}
-        </Label>
-        <div className="mb-3">
-          <Select
-            id="pause-reason"
-            value={pauseReason}
-            onChange={(e) => setPauseReason(e.target.value as PauseReason)}
-            disabled={busy}
-          >
-            <option value="">{messages.selectOption}</option>
-            {/* LTR-155 / D12: mechanic reasons only (no Break, End of Shift, other Work Order, Truck Unavailable). */}
-            {MECHANIC_BLOCKER_REASONS.map((r) => (
-              <option key={r} value={r}>
-                {messages.pauseReason[r as unknown as PauseReason]}
-              </option>
-            ))}
-          </Select>
-        </div>
+        {/* Stage MG-5 (UX-7-005): the reasons are big options, all visible; "Waiting for Parts" first, "Other" last. */}
+        <fieldset className="mb-3">
+          <legend className="mb-2 text-sm font-medium">{messages.blockerReason}</legend>
+          <div className="space-y-1.5" role="radiogroup" aria-label={messages.blockerReason}>
+            {MECHANIC_BLOCKER_REASONS.map((r) => {
+              const reason = r as unknown as PauseReason;
+              const checked = pauseReason === reason;
+              return (
+                <label
+                  key={r}
+                  className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm ${checked ? 'border-primary bg-primary/10 font-medium' : 'hover:bg-accent'}`}
+                >
+                  <input
+                    type="radio"
+                    name="pause-reason"
+                    value={r}
+                    checked={checked}
+                    disabled={busy}
+                    onChange={() => { setPauseReason(reason); setPauseNotesError(false); }}
+                    className="size-4 accent-primary"
+                  />
+                  {messages.pauseReason[reason]}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
         {/* Block A (MG8): the note is always there (what part, which tool); required only with "Other". */}
         <div className="mb-3">
           <Label className="mb-2 block" htmlFor="pause-notes">
@@ -680,28 +714,63 @@ export default function WorkOrderDetailPage() {
   );
 }
 
-/** A Job row (LTR-189 W12: never a button; my Jobs get their own action row, other work is read-only). */
-function JobTodoCard({ job, currentUserId }: { job: WorkOrderJobDto; currentUserId: string }) {
+/** Stage MG-4: one of my Jobs — its state, "Next", the category only when it adds something, and a block. */
+function MyJobRow({ job, next, currentUserId }: { job: WorkOrderJobDto; next: boolean; currentUserId: string }) {
   const { messages } = useShopLocale();
-  const content = (
-    <>
-      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-shop-border text-xs">
-        ○
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block break-words">{jobDisplayName(job, messages.helperJobSuffix)}</span>
-        <span className="block text-xs text-muted-foreground">{job.category.name}</span>
-        <span className="block text-xs text-muted-foreground">
-          {/* LTR-188 / D24: a Job at an external shop has no owner here; it only says where it is. */}
-          {job.external ? messages.jobAtExternalShop : [
-            jobAssignmentLabel(job.assignedMechanic, currentUserId, messages),
-            job.activeBlocker
-              ? messages.blockedWithReason(pauseLabel(job.activeBlocker.reason, messages.pauseReason) ?? '')
-              : job.workStatus === 'in_progress' ? messages.jobStatusInProgress : job.workStatus === 'pending' ? messages.jobStatusPending : null,
-          ].filter(Boolean).join(' · ')}
-        </span>
-      </span>
-    </>
+  const done = job.status === 'completed';
+  const blocked = job.status === 'to_do' && job.activeBlocker;
+  const name = jobDisplayName(job, messages.helperJobSuffix);
+  const detail = [job.category.name !== job.displayName ? job.category.name : null, job.helperOfJobId ? jobPersonLabel(job, currentUserId, messages) : null].filter(Boolean).join(' · ');
+  return (
+    <div className="flex items-start gap-3" data-testid="my-job" aria-current={next ? 'step' : undefined}>
+      {done ? (
+        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-success/15 text-success"><Check aria-hidden="true" className="size-4" /></span>
+      ) : blocked ? (
+        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-warning/20 text-warning-foreground dark:text-warning"><CircleAlert aria-hidden="true" className="size-4" /></span>
+      ) : (
+        <span aria-hidden="true" className={`size-6 shrink-0 rounded-full border-2 ${next ? 'border-primary' : 'border-muted-foreground/50'}`} />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className={`break-words text-base ${done ? 'text-muted-foreground line-through' : 'font-medium'}`}>
+          {name}
+          {next ? <span className="ml-2 text-xs font-semibold text-primary">{messages.nextJob}</span> : null}
+        </p>
+        {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
+        {job.external ? <p className="text-xs text-muted-foreground">{messages.jobAtExternalShop}</p> : null}
+        {blocked ? (
+          <p className="text-xs font-medium text-warning-foreground dark:text-warning">
+            {messages.blockedWithReason(pauseLabel(job.activeBlocker!.reason, messages.pauseReason) ?? '')} · {messages.waitingOnManagerShort}
+          </p>
+        ) : null}
+      </div>
+    </div>
   );
-  return <div className="card flex items-start gap-3 text-left" data-testid="job-read-only" data-external={job.external ? job.external.kind : undefined}>{content}</div>;
+}
+
+/** Stage MG-4 (UX-4-005): someone else's Job, one line — read-only (LTR-189 W12). */
+function OtherJobRow({ job, currentUserId }: { job: WorkOrderJobDto; currentUserId: string }) {
+  const { messages } = useShopLocale();
+  const status = job.status === 'completed'
+    ? { label: messages.jobStatus.completed, tone: 'success' as const }
+    : job.activeBlocker
+      ? { label: messages.blockedWithReason(pauseLabel(job.activeBlocker.reason, messages.pauseReason) ?? ''), tone: 'warning' as const }
+      : job.workStatus === 'in_progress'
+        ? { label: messages.jobStatusInProgress, tone: 'default' as const }
+        : { label: messages.jobStatusPending, tone: 'secondary' as const };
+  return (
+    <li className="flex items-center gap-3 px-4 py-2.5 text-sm" data-testid="job-read-only" data-external={job.external ? job.external.kind : undefined}>
+      {job.assignedMechanic ? <MechanicAvatar id={job.assignedMechanic.id} name={job.assignedMechanic.name} size="sm" /> : <span className="size-6 shrink-0" />}
+      <span className="min-w-0 flex-1 truncate">
+        {jobDisplayName(job, messages.helperJobSuffix)}
+        <span className="text-xs text-muted-foreground"> · {job.external ? messages.jobAtExternalShop : jobAssignmentLabel(job.assignedMechanic, currentUserId, messages)}</span>
+      </span>
+      <Badge variant={status.tone}><span aria-hidden="true" className="size-1.5 rounded-full bg-current" />{status.label}</Badge>
+    </li>
+  );
+}
+
+function uniqueMechanics(jobs: WorkOrderJobDto[]) {
+  const seen = new Map<string, { id: string; name: string }>();
+  for (const job of jobs) if (job.assignedMechanic && !seen.has(job.assignedMechanic.id)) seen.set(job.assignedMechanic.id, job.assignedMechanic);
+  return [...seen.values()];
 }

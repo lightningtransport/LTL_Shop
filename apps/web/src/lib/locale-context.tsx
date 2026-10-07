@@ -155,6 +155,24 @@ type Copy = {
   clockStripYourClock: string;
   /** Stage MG-3: the General mechanic's home. */
   noJobsAssignedYet: string;
+  /** Stage MG-4/5: the General mechanic's Truck screen and its sheets. */
+  yourJobsDoneCount: (done: number, total: number) => string;
+  yourTimeLabel: string;
+  laborStoppedLabel: string;
+  blockerSinceBy: (since: string, who: string) => string;
+  addNoteOpen: string;
+  noteForManager: string;
+  waitingOnManagerShort: string;
+  addANoteLabel: string;
+  notesKeptHint: string;
+  requestWorkTitle: string;
+  requestWorkSheetHint: string;
+  requestWorkSend: string;
+  requestWorkRequired: string;
+  completeJobTitle: (name: string) => string;
+  completeLastHint: string;
+  completeKeepsRunning: string;
+  blockerSheetHint: string;
   noJobsAssignedHint: string;
   mostUrgentFirst: string;
   blockedSectionTitle: string;
@@ -560,6 +578,23 @@ const copy: Record<ShopLocale, Copy> = {
     clockMovedFromTo: (fromTruck, toTruck) => `Work started. Your clock moved from Truck ${fromTruck} to Truck ${toTruck}.`,
     clockStripYourClock: 'Your clock',
     noJobsAssignedYet: 'No Jobs assigned yet',
+    yourJobsDoneCount: (done, total) => `${done} of ${total} done`,
+    yourTimeLabel: 'Your time',
+    laborStoppedLabel: 'stopped',
+    blockerSinceBy: (since, who) => `Since ${since} · reported by ${who}. Only the Manager resolves it.`,
+    addNoteOpen: 'Add note',
+    noteForManager: 'Note for the Manager',
+    waitingOnManagerShort: 'waiting on the Manager',
+    addANoteLabel: 'Add a note',
+    notesKeptHint: "Kept on this phone until you send it. Notes can't be edited.",
+    requestWorkTitle: 'What does the Truck need?',
+    requestWorkSheetHint: "It goes to the Manager's Dashboard. The Manager decides whether to add a Job and who does it.",
+    requestWorkSend: 'Send to Manager',
+    requestWorkRequired: 'Say what the Truck needs.',
+    completeJobTitle: (name) => `Complete ${name}?`,
+    completeLastHint: 'This is your last Job here: your clock stops.',
+    completeKeepsRunning: 'Your clock keeps running.',
+    blockerSheetHint: "The Manager is told and resolves it. You can't complete this Job until then.",
     noJobsAssignedHint: 'When the Manager gives you a Job, it shows up here.',
     mostUrgentFirst: 'Most urgent first.',
     blockedSectionTitle: 'Blocked · waiting on the Manager',
@@ -581,7 +616,7 @@ const copy: Record<ShopLocale, Copy> = {
     blockedWithReason: (reason) => `Blocked · ${reason}`,
     reportBlockerFor: (jobName) => `Report blocker: ${jobName}`,
     noteThreadEmpty: 'No notes yet.',
-    notePlaceholder: 'Write a note, or describe additional work the Truck needs',
+    notePlaceholder: 'Write a note: something the shop should know',
     addNote: 'Add Note',
     requestWork: 'Request Work',
     noteAddedSuccess: 'Note added.',
@@ -963,6 +998,23 @@ const copy: Record<ShopLocale, Copy> = {
     clockMovedFromTo: (fromTruck, toTruck) => `Trabajo iniciado. Tu reloj pasó de la unidad ${fromTruck} a la ${toTruck}.`,
     clockStripYourClock: 'Tu reloj',
     noJobsAssignedYet: 'Todavía no tienes Jobs',
+    yourJobsDoneCount: (done, total) => `${done} de ${total} hechos`,
+    yourTimeLabel: 'Tu tiempo',
+    laborStoppedLabel: 'detenido',
+    blockerSinceBy: (since, who) => `Desde ${since} · lo reportó ${who}. Solo el Manager lo resuelve.`,
+    addNoteOpen: 'Agregar nota',
+    noteForManager: 'Nota para el Manager',
+    waitingOnManagerShort: 'espera al Manager',
+    addANoteLabel: 'Agregar una nota',
+    notesKeptHint: 'Queda en este teléfono hasta que la envíes. Las notas no se editan.',
+    requestWorkTitle: '¿Qué necesita la unidad?',
+    requestWorkSheetHint: 'Llega al Dashboard del Manager. El Manager decide si agrega un Job y quién lo hace.',
+    requestWorkSend: 'Enviar al Manager',
+    requestWorkRequired: 'Di qué necesita la unidad.',
+    completeJobTitle: (name) => `¿Completar ${name}?`,
+    completeLastHint: 'Es tu último Job aquí: tu reloj se detiene.',
+    completeKeepsRunning: 'Tu reloj sigue corriendo.',
+    blockerSheetHint: 'Se le avisa al Manager y él lo resuelve. No puedes completar este Job hasta entonces.',
     noJobsAssignedHint: 'Cuando el Manager te asigne un Job, aparece aquí.',
     mostUrgentFirst: 'Lo más urgente primero.',
     blockedSectionTitle: 'Bloqueado · espera al Manager',
@@ -984,7 +1036,7 @@ const copy: Record<ShopLocale, Copy> = {
     blockedWithReason: (reason) => `Bloqueado · ${reason}`,
     reportBlockerFor: (jobName) => `Reportar bloqueo: ${jobName}`,
     noteThreadEmpty: 'Aún no hay notas.',
-    notePlaceholder: 'Escribe una nota o describe el trabajo adicional que necesita la unidad',
+    notePlaceholder: 'Escribe una nota: algo que el taller deba saber',
     addNote: 'Agregar nota',
     requestWork: 'Pedir trabajo',
     noteAddedSuccess: 'Nota agregada.',

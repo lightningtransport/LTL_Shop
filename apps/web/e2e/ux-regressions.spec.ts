@@ -783,12 +783,15 @@ test.describe('My Assigned Work presentation', () => {
     // Unassigned and other mechanics' Jobs are visible but not completable.
     await expect(page.getByRole('button', { name: /Bleed brakes/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /ABS sensor/ })).toHaveCount(0);
-    await expect(page.getByTestId('job-read-only')).toHaveCount(3);
+    // Stage MG-4 (D-MG5): other mechanics' work is folded; opened, it lists their two Jobs, read-only.
+    await page.getByTestId('other-work').getByRole('button', { name: /Other work on this Truck/ }).click();
+    await expect(page.getByTestId('job-read-only')).toHaveCount(2);
+    await expect(page.getByTestId('my-job')).toHaveCount(1);
     await expect(page.getByText('Create new Work Order')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
     await page.getByRole('button', { name: 'Complete job: Replace pads' }).click();
-    const finishDialog = page.getByRole('dialog', { name: /Complete job|Completar Job/i });
+    const finishDialog = page.getByRole('dialog', { name: /Complete Replace pads\?|Completar Replace pads/i });
     await expect(finishDialog).toBeVisible();
     await expect(finishDialog.getByRole('button', { name: 'Close Complete job' })).toHaveCount(0);
     await expect(finishDialog.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
