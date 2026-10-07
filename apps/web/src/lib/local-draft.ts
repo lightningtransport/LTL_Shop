@@ -49,5 +49,6 @@ export const draftKeys = {
   jobFinish: (jobId: string) => `ltl-draft:job-finish:${jobId}`,
   blockerNote: (jobId: string) => `ltl-draft:blocker-note:${jobId}`,
   workOrderNote: (workOrderId: string) => `ltl-draft:work-order-note:${workOrderId}`,
+  workRequest: (workOrderId: string) => `ltl-draft:work-request:${workOrderId}`,
   qcReturn: (workOrderId: string) => `ltl-draft:qc-return:${workOrderId}`,
 };

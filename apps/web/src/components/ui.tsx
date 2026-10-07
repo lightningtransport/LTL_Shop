@@ -1,6 +1,7 @@
 'use client';
 
 import { MechanicTabs } from './mechanic-tabs';
+import { MechanicClockStrip } from './mechanic-clock-strip';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -670,6 +671,8 @@ export function HomeTopBar({ mode }: { mode?: MechanicMode }) {
       </header>
       {mode ? <WorkspaceNav mode={mode} /> : null}
       {mode ? <MechanicTabs mode={mode} /> : null}
+      {/* Stage MG-2 (MG1): where my clock runs, on every General mechanic screen. */}
+      {mode === MechanicMode.STANDARD ? <MechanicClockStrip /> : null}
     </>
   );
 }

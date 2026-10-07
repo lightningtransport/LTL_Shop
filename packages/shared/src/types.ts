@@ -233,7 +233,9 @@ export interface WorkOrderSummaryDto {
   priority: Priority;
   jobsCompleted: number;
   jobsTotal: number;
-  jobs: Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic' | 'completedBy' | 'workStatus' | 'activeBlocker' | 'helperOfJobId' | 'external'>[];
+  /** Stage MG-1: `completedAt` and `completionNotes` feed Completed; older API responses omit them. */
+  jobs: (Pick<WorkOrderJobDto, 'id' | 'categoryId' | 'category' | 'displayName' | 'status' | 'assignedMechanic' | 'completedBy' | 'workStatus' | 'activeBlocker' | 'helperOfJobId' | 'external'>
+    & Partial<Pick<WorkOrderJobDto, 'completedAt' | 'completionNotes'>>)[];
   mechanics: Pick<MechanicAssignmentDto, 'mechanicId' | 'mechanicName'>[];
   currentPauseReason: PauseReason | null;
   createdAt: string;
@@ -253,7 +255,7 @@ export interface WorkOrderSummaryDto {
 export interface MyClockStoppedDto {
   reason: `${WorkSessionEndReason}`;
   /** switched_truck only: the Work Order where my clock is running now (absent when it is not running anywhere). */
-  elsewhereWorkOrder?: { id: string; displayId: string; truckNumber: string } | null;
+  elsewhereWorkOrder?: { id: string; displayId: string; truckNumber: string; since?: string } | null;
 }
 
 /** LTR-186 / D20: Admin → Setup → Shop workflow → Shop hours. */
@@ -267,7 +269,17 @@ export interface ShopHoursDto {
   updatedBy: { id: string; name: string } | null;
 }
 
+/** Stage MG-1 (MG1): where the mechanic's clock runs now, and since when. */
+export interface MechanicClockDto {
+  workOrderId: string;
+  displayId: string;
+  truckNumber: string;
+  since: string;
+}
+
 export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
+  /** Stage MG-1 (MG5): the viewer's own active time on this Work Order, every day (D-MG2). Mechanic endpoints only. */
+  myActiveLaborMs?: number;
   /** Block A (MG2), Start only: the Truck my clock left when I started here (D21), or null. */
   clockMovedFrom?: { id: string; displayId: string; truckNumber: string } | null;
   notes: string | null;

@@ -114,11 +114,11 @@ test.describe('Daniel PM workflow', () => {
     await login(page);
     await page.goto(`/work-orders/${woId}`);
     // LTR-126: a note is its own entry with author and time; the box clears after adding.
-    const notes = page.getByPlaceholder('Write a note, or describe additional work the Truck needs');
+    const notes = page.getByPlaceholder('Write a note: something the shop should know');
     await notes.fill('Filter housing inspected');
     await page.getByRole('button', { name: 'Add Note' }).click();
     await expect(page.getByText('Filter housing inspected')).toBeVisible();
-    await expect(page.getByText(/Daniel · /)).toBeVisible();
+    await expect(page.locator('li').filter({ hasText: 'Filter housing inspected' }).getByText('Daniel', { exact: true })).toBeVisible();
     await expect(notes).toHaveValue('');
 
     const observedMileage = page.getByLabel('Observed mileage');
@@ -163,7 +163,8 @@ test.describe('Daniel PM workflow', () => {
     await expect(page).toHaveURL(/\/mechanic\/pm\/trucks$/);
     await expect(page.getByRole('heading', { name: 'Find a Truck' })).toBeVisible();
     await page.getByLabel('Truck', { exact: true }).fill('905');
-    const result = page.getByRole('link', { name: /Truck 905/ });
+    // Stage MG-6: the card is not one link; "Repair history ›" is its own row.
+    const result = page.locator('li').filter({ hasText: 'Truck 905' }).getByRole('link', { name: /Repair history/i });
     await expect(result).toHaveAttribute('href', `/trucks/${truck.id}/history?from=%2Fmechanic%2Fpm%2Ftrucks`);
     await nav.getByRole('link', { name: 'Completed' }).click();
     await expect(page).toHaveURL(/\/mechanic\/pm\/completed$/);
@@ -180,7 +181,7 @@ test.describe('Daniel PM workflow', () => {
     await login(page);
     await page.goto('/mechanic/pm/trucks');
     await page.getByLabel('Truck', { exact: true }).fill('905');
-    await expect(page.getByRole('link', { name: /Truck 905/ }).getByTestId('truck-open-work-order')).toHaveText('Open WO-009');
+    await expect(page.locator('li').filter({ hasText: 'Truck 905' }).getByTestId('truck-open-work-order')).toHaveText('Open WO-009');
     await page.goto('/mechanic/pm/new');
     await page.getByRole('combobox', { name: /Truck/i }).first().fill('905');
     await expect(page.getByRole('option', { name: /#905/ }).getByTestId('truck-open-work-order')).toHaveText('Open WO-009');
@@ -385,6 +386,7 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     await page.goto(`/work-orders/${jobWoId}`);
     await expect(page.getByRole('button', { name: 'Complete job: Brake adjustment' })).toBeEnabled();
     // LTR-189 (W12): my own Job is a read-only card too; the PM job is the one without a Complete button.
+    await page.getByTestId('other-work').getByRole('button', { name: /Other work on this Truck/ }).click();
     await expect(page.getByTestId('job-read-only').filter({ hasText: 'PM A Service' })).toHaveCount(1);
     await expect(page.getByRole('button', { name: /PM A Service/ })).toHaveCount(0);
   });

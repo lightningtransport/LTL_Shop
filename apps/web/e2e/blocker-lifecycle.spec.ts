@@ -16,14 +16,16 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     await page.getByRole('button', { name: 'Report blocker: Inspect brake chamber' }).click();
     const dialog = page.getByRole('dialog', { name: /Report blocker: Inspect brake chamber/i });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByLabel('Blocker reason').locator('option', { hasText: 'Break' })).toHaveCount(0);
-    await dialog.getByLabel('Blocker reason').selectOption('waiting_for_parts');
+    await expect(dialog.getByRole('radio', { name: 'Break' })).toHaveCount(0);
+    await dialog.getByRole('radio', { name: 'Waiting for Parts' }).check();
     await dialog.getByRole('button', { name: 'Report Blocker', exact: true }).click();
 
     await expect(page.getByText('Work Order WO-0106 · In Progress')).toBeVisible();
-    await expect(page.getByText('Inspect brake chamber · Blocked · Waiting for Parts')).toBeVisible();
+    await expect(page.getByTestId('active-blocker').getByText('Inspect brake chamber · Waiting for Parts')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Mark resolved' })).toHaveCount(0);
-    await expect(page.getByText('Only the Manager resolves a blocker. Add a note if something changes.')).toBeVisible();
+    await expect(page.getByTestId('active-blocker').getByText(/Only the Manager resolves it\./)).toBeVisible();
+    // Stage MG-4 (UX-4-006): the note field opens on request.
+    await page.getByTestId('active-blocker').getByRole('button', { name: 'Add note', exact: true }).click();
     await page.getByRole('textbox', { name: 'Add note to blocker' }).fill('The part arrived');
     await page.getByRole('button', { name: 'Add note to blocker' }).click();
     await expect(page.getByText('The part arrived').first()).toBeVisible();

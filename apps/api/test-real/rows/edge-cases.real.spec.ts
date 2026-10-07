@@ -93,12 +93,25 @@ describe('Casos límite', () => {
     const list = ok('su inicio', await as(USERS.alignment).get('/work-orders?mode=standard'));
     same('la tarjeta del 905 dice lo mismo', list.active.find((item: Json) => item.id === first.workOrderId)?.myClockStopped?.elsewhereWorkOrder?.truckNumber, '922');
     same('la del 922 no tiene aviso (su reloj corre ahí)', list.active.find((item: Json) => item.id === second.workOrderId)?.myClockStopped, null);
+    // Stage MG-1 (MG1): la lista dice dónde corre mi reloj y desde cuándo, para la franja del reloj.
+    same('la lista dice que mi reloj corre en el 922', [list.myClock?.truckNumber, list.myClock?.workOrderId], ['922', second.workOrderId]);
+    truthy('con la hora en que empezó', list.myClock?.since && !Number.isNaN(Date.parse(list.myClock.since)), list.myClock);
+    // Stage MG-1 (MG5): "Your time" es solo el mío; el total del camión sigue para el Manager.
+    const mine = (await mechanicWo(USERS.alignment, first.workOrderId)).myActiveLaborMs;
+    truthy('mi tiempo en el 905 es un número y no pasa del total', typeof mine === 'number' && mine <= (await adminWo(first.workOrderId)).totalActiveLaborMs, mine);
 
     ok('toca Continue en el primero', await start(USERS.alignment, first.workOrderId));
     const after = await prisma.workSession.findMany({ where: { userId: mechanic, endedAt: null }, select: { workOrderId: true } });
     same('el reloj pasa al primero; sigue habiendo uno solo', after.map((session) => session.workOrderId), [first.workOrderId]);
     same('el del 922 se cerró como "cambio de camión"', (await mechanicWo(USERS.alignment, second.workOrderId)).myClockStopped?.elsewhereWorkOrder?.truckNumber, '905');
     same('los dos WO siguen en curso', [(await adminWo(first.workOrderId)).status, (await adminWo(second.workOrderId)).status], ['in_progress', 'in_progress']);
+
+    // Stage MG-1 (UX-1-011): al completar, la lista trae cuándo y con qué nota, para la pestaña Completed.
+    ok('completa su Job en el 905', await completeJob(USERS.alignment, first.workOrderId, laneJob(await adminWo(first.workOrderId), 'alignment').id));
+    const afterList = ok('su inicio', await as(USERS.alignment).get('/work-orders?mode=standard'));
+    const done = [...afterList.active, ...afterList.completed].flatMap((item: Json) => item.jobs as Json[]).find((job: Json) => job.status === 'completed' && job.assignedMechanic?.id === mechanic);
+    same('el Job dice su nota de cierre', done?.completionNotes, 'Hecho.');
+    truthy('y cuándo se cerró', done?.completedAt && !Number.isNaN(Date.parse(done.completedAt)), done);
   });
 
   it('E8 | Quitar o cambiar el dueño de un Job en curso detiene el tiempo de ese mecánico', async () => {

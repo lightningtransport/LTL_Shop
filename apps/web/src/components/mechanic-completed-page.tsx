@@ -9,11 +9,11 @@ import { useShopLocale } from '@/lib/locale-context';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { useWorkOrders } from '@/lib/shop-data';
 import { myCompletedJobs } from '@/lib/my-completed-jobs';
-import { statusLabel } from '@/lib/format';
 import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
 import { SessionSignInFallback } from './session-sign-in-fallback';
 import { Check } from 'lucide-react';
-import { Card, CardListSkeleton, EmptyState, HomeTopBar, LoadFailure, PageHeader } from './ui';
+import { Card, CardListSkeleton, CountChip, EmptyState, HomeTopBar, LoadFailure, PageHeader } from './ui';
+import { intlLocale } from '@/lib/shop-locale';
 
 /** LTR-133: completed work has its own screen in both mechanic workspaces. */
 export function MechanicCompletedPage({ mode }: { mode: MechanicMode }) {
@@ -40,30 +40,7 @@ export function MechanicCompletedPage({ mode }: { mode: MechanicMode }) {
       {error ? <LoadFailure message={messages.unableToLoadWorkOrders} onRetry={() => void mutate()} retryLabel={messages.retry} /> : null}
       {!data && !error ? <CardListSkeleton /> : null}
       {data && isEmpty ? <EmptyState>{messages.noCompletedWork}</EmptyState> : null}
-      {isPm ? null : (
-        <ul className="space-y-2">
-          {myGroups.map(({ wo, jobs }) => (
-            <li key={wo.id}>
-              <Link href={`/work-orders/${wo.id}`} className="block">
-                <Card className="p-3 transition hover:border-primary/50">
-                  <p className="font-display text-lg font-semibold">{messages.truckTitle(wo.truckNumber)}</p>
-                  {vehicleLine(wo.truckVehicle) ? <p className="text-sm text-shop-muted">{vehicleLine(wo.truckVehicle)}</p> : null}
-                  <p className="mt-1 text-sm text-shop-muted">{messages.workOrder} {wo.displayId} · {messages.status[wo.status] ?? statusLabel(wo.status, messages.status)}</p>
-                  <ul className="mt-2 space-y-1">
-                    {jobs.map((job) => (
-                      <li key={job.id} className="flex items-center gap-2 text-sm">
-                        <Check aria-hidden="true" className="size-4 shrink-0 text-success" />
-                        <span>{job.displayName}</span>
-                        <span className="text-shop-muted">· {job.category.name}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      {isPm ? null : <CompletedByDay groups={myGroups} />}
       <ul className="space-y-2">
         {(isPm ? completed : []).map((wo) => {
           const pmJob = isPm && wo.primaryCategoryName !== 'PM' ? wo.pmJob : null;
@@ -85,6 +62,54 @@ export function MechanicCompletedPage({ mode }: { mode: MechanicMode }) {
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+type CompletedGroups = ReturnType<typeof myCompletedJobs>;
+
+/**
+ * Stage MG-6 (UX-1-011): my completed Jobs by day (Today, Yesterday, Earlier), each with the time it was
+ * closed and its closing note, so "when did I finish this and what did I write" has an answer.
+ */
+function CompletedByDay({ groups }: { groups: CompletedGroups }) {
+  const { messages } = useShopLocale();
+  const dayOf = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(iso));
+  const today = dayOf(new Date().toISOString());
+  const yesterday = dayOf(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+  const time = (iso: string) => new Intl.DateTimeFormat(intlLocale(messages.locale), { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+  const rows = groups
+    .flatMap(({ wo, jobs }) => jobs.map((job) => ({ wo, job, at: (job as { completedAt?: string | null }).completedAt ?? null, note: (job as { completionNotes?: string | null }).completionNotes ?? null })))
+    .sort((left, right) => (right.at ?? '').localeCompare(left.at ?? ''));
+  const sections = [
+    { label: messages.completedToday, rows: rows.filter((row) => row.at && dayOf(row.at) === today) },
+    { label: messages.completedYesterday, rows: rows.filter((row) => row.at && dayOf(row.at) === yesterday) },
+    { label: messages.completedEarlier, rows: rows.filter((row) => !row.at || (dayOf(row.at) !== today && dayOf(row.at) !== yesterday)) },
+  ].filter((section) => section.rows.length);
+  return (
+    <div className="space-y-4" data-testid="completed-by-day">
+      {sections.map((section) => (
+        <section key={section.label}>
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">{section.label}<CountChip>{section.rows.length}</CountChip></h2>
+          <ul className="divide-y rounded-xl border bg-card">
+            {section.rows.map(({ wo, job, at, note }) => (
+              <li key={job.id}>
+                <Link href={`/work-orders/${wo.id}`} className="flex items-start gap-3 px-3 py-3 text-sm hover:bg-accent/40" data-testid="completed-job">
+                  <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="font-medium">{job.displayName}</span>
+                      {at ? <span className="tnum shrink-0 text-xs text-muted-foreground">{time(at)}</span> : null}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">{messages.truckTitle(wo.truckNumber)} · <span className="font-mono">{wo.displayId}</span></span>
+                    <span className={note ? 'block truncate italic' : 'block text-xs text-muted-foreground'}>{note ? `“${note}”` : messages.noClosingNote}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }

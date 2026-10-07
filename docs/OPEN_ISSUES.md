@@ -300,17 +300,17 @@ Revisión de `/qc` con la base demo local, antes de proponer su rediseño (como 
 
 Auditoría completa (skills audit-ux 0, 1, 4 y 6): `docs/ux-audit/safety-qc/`. Propuesta: `docs/proposals/qc-screen-redesign/`.
 
-## 1k. Pantallas del Mecánico General (2026-10-07) — **EN CURSO** (bloque A hecho; MG1 y MG5 van con el rediseño) · Linear [LTR-192](https://linear.app/ltransl/issue/LTR-192), [LTR-194](https://linear.app/ltransl/issue/LTR-194)
+## 1k. Pantallas del Mecánico General (2026-10-07) — **HECHO** (bloque A y rediseño, #261) · Linear [LTR-192](https://linear.app/ltransl/issue/LTR-192), [LTR-194](https://linear.app/ltransl/issue/LTR-194)
 
 Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta de Anthony): `docs/ux-audit/mecanico-general/`. Aquí van los B y C; los E y el detalle están en la auditoría.
 
 | # | Clase | Problema | Estado |
 |---|---|---|---|
-| MG1 | C | **El inicio no dice en qué camión corre el reloj**; solo avisa cuando se detuvo. El mecánico puede creer que su tiempo se registra cuando no (UX-1-001). | En curso: franja del reloj del rediseño del mecánico General (bloque B, LTR-194). |
+| ~~MG1~~ | C | **El inicio no dice en qué camión corre el reloj**; solo avisa cuando se detuvo. El mecánico puede creer que su tiempo se registra cuando no (UX-1-001). | **Hecho** (rediseño del Mecánico General, #261, 2026-10-07). |
 | ~~MG2~~ | C | **Start Work desde la lista cierra el reloj de otro camión sin decirlo** (UX-1-002). | **Hecho** (bloque A, #257, 2026-10-07). |
 | ~~MG3~~ | B | **"Your clock moved to another Truck · tap Continue" cuando el reloj no corre en ninguno**: después de completar el último Job en el camión al que se cambió, el otro camión sigue con el aviso (`clock-stopped.ts:17-19` usa el texto genérico si `elsewhereWorkOrder` es `null`) (UX-1-003). | **Hecho** (bloque A, #257, 2026-10-07). |
 | ~~MG4~~ | C | **El aviso dice "tap Continue" y el botón de la tarjeta dice "View Work"** (UX-1-004). | **Hecho** (bloque A, #257, 2026-10-07). |
-| MG5 | C | **"Labor time · running" suma el tiempo de todos los mecánicos** (UX-1-007). | Decidido (2026-10-07): el mecánico ve solo su tiempo; el total queda para el Manager. Va con el rediseño (bloque B). |
+| ~~MG5~~ | C | **"Labor time · running" suma el tiempo de todos los mecánicos** (UX-1-007). | **Hecho** (rediseño del Mecánico General, #261, 2026-10-07). |
 | ~~MG6~~ | C | **Un Work Order sin Jobs propios dice "You do not have access to this PM Work Order."** (UX-6-005). | **Hecho** (bloque A, #256, 2026-10-07). |
 | ~~MG7~~ | C | **Errores en inglés con la app en español** al hacer Start desde la lista y en Notas (UX-6-006). | **Hecho** (bloque A, #257, 2026-10-07). |
 | ~~MG8~~ | C | **Report Blocker:** la nota solo aparece con "Other", y con "Other" vacío el botón queda gris sin explicar (UX-7-003, UX-7-004). | **Hecho** (bloque A, #257, 2026-10-07). |

@@ -277,13 +277,22 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 ### HU-ME1 · Ver lo que me toca (J6)
 
 **Flujo**
-1. Entra. La pantalla de inicio es **My Assigned Work**.
-2. Abre un Work Order: arriba **Your Jobs**, abajo **Other work on this
-   truck** (solo lectura).
+1. Entra. La pantalla de inicio es **My Assigned Work** (pestañas abajo en el
+   teléfono: My work · Trucks · Completed). Arriba, la **franja del reloj** dice
+   en qué camión corre ("Your clock · Truck 922 · since 10:45 AM") o que está
+   detenido. Hay un solo botón principal: el camión del reloj o el siguiente
+   trabajo. Lo bloqueado va aparte ("Blocked · waiting on the Manager") y lo
+   que ya terminé, en "Waiting on Manager".
+2. Abre un Work Order: arriba el resumen (**Your Jobs N of M done · Your time**,
+   solo su tiempo), el bloqueo si hay, **Your Jobs**, y **Other work on this
+   Truck** plegado (solo lectura).
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
 | Tiene Jobs en un camión | Ve ese Work Order, con solo sus Jobs como suyos | ✅ | A5 |
+| Quiere saber dónde corre su reloj | La franja del reloj lo dice en todas sus pantallas, y la tarjeta de ese camión dice "Clock running" | ✅ | E7 · e2e |
+| Quiere saber cuánto lleva en un camión | "Your time" suma solo sus tramos en ese Work Order, todos los días (D-MG2); el total queda para el Manager | ✅ | E7 |
+| Busca cuándo terminó un Job y qué nota dejó | Completed lo agrupa por día (hoy, ayer, antes) con la hora y la nota de cierre | ✅ | E7 · e2e |
 | No tiene Jobs en un camión | No lo ve en su lista ni puede abrirlo | ✅ | A5 |
 | Le cancelan su único Job | Deja de ver ese Work Order | ✅ | A16 |
 | Intenta crear un Work Order, agregar Jobs, pausar o cerrar | No puede | ✅ | A26 |

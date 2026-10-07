@@ -63,10 +63,11 @@ export class LaborClockService {
     const session = await db.workSession.findFirst({
       where: { userId, endedAt: null },
       orderBy: { startedAt: 'desc' },
-      select: { workOrder: { select: { id: true, displayId: true, truck: { select: { truckNumber: true } } } } },
+      select: { startedAt: true, workOrder: { select: { id: true, displayId: true, truck: { select: { truckNumber: true } } } } },
     });
+    // Stage MG-1: `since` is when this clock started, for the mechanic's clock strip (MG1).
     return session
-      ? { id: session.workOrder.id, displayId: session.workOrder.displayId, truckNumber: session.workOrder.truck.truckNumber }
+      ? { id: session.workOrder.id, displayId: session.workOrder.displayId, truckNumber: session.workOrder.truck.truckNumber, since: session.startedAt.toISOString() }
       : null;
   }
 

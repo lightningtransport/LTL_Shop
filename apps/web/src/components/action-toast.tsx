@@ -16,6 +16,8 @@ type ActionToast = {
 
 type ActionToastContextValue = {
   showToast: (kind: ActionToastKind, message: string) => void;
+  /** Stage MG-5 (UX-1-008): a sheet that opens closes the toast so it never covers the sheet's buttons. */
+  dismissToast: () => void;
 };
 
 const ActionToastContext = createContext<ActionToastContextValue | null>(null);
@@ -59,7 +61,7 @@ export function ActionToastProvider({ children }: { children: React.ReactNode })
   useEffect(() => () => clearTimer(), [clearTimer]);
 
   return (
-    <ActionToastContext.Provider value={{ showToast }}>
+    <ActionToastContext.Provider value={{ showToast, dismissToast: dismiss }}>
       {children}
       {toast ? (
         // Stage 8 (F4, mockups): a neutral card with a colored icon, bottom-right from `sm`; it rises above a

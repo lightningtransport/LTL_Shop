@@ -21,7 +21,12 @@ export function MechanicTabs({ mode }: { mode: MechanicMode }) {
     { href: `${base}/completed`, label: messages.navCompleted, Icon: ClipboardCheck },
   ];
   return (
-    <nav aria-label={messages.mechanicNavLabel} className="mb-4 grid grid-cols-3 gap-1 rounded-xl border bg-card p-1">
+    // D-MG1: on phones the tabs sit at the bottom, within the thumb's reach; from `sm` they stay on top.
+    <nav
+      aria-label={messages.mechanicNavLabel}
+      data-bottom-tabs=""
+      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t bg-card pb-[var(--app-safe-bottom)] sm:static sm:mb-4 sm:gap-1 sm:rounded-xl sm:border sm:p-1"
+    >
       {tabs.map(({ href, label, Icon }) => {
         const active = pathname === href;
         return (
@@ -30,11 +35,13 @@ export function MechanicTabs({ mode }: { mode: MechanicMode }) {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-medium transition',
-              active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+              'flex min-h-14 flex-col items-center justify-center gap-0.5 px-2 text-xs font-medium transition sm:min-h-11 sm:flex-row sm:gap-1.5 sm:rounded-lg sm:text-sm',
+              active
+                ? 'text-primary sm:bg-primary sm:text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground sm:hover:bg-accent',
             )}
           >
-            <Icon aria-hidden="true" className="size-4" />
+            <Icon aria-hidden="true" className="size-5 sm:size-4" />
             {label}
           </Link>
         );

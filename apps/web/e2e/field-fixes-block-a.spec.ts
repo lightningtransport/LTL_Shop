@@ -81,12 +81,12 @@ test.describe('Block A · General mechanic', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByLabel('What is missing? (optional)')).toBeVisible();
 
-    await dialog.getByLabel('Blocker reason').selectOption('other');
+    await dialog.getByRole('radio', { name: 'Other' }).check();
     await dialog.getByRole('button', { name: 'Report Blocker', exact: true }).click();
     await expect(dialog.getByText('Say what is stopping you.')).toBeVisible();
     expect(sent.blockers).toHaveLength(0);
 
-    await dialog.getByLabel('Blocker reason').selectOption('waiting_for_parts');
+    await dialog.getByRole('radio', { name: 'Waiting for Parts' }).check();
     await dialog.getByLabel('What is missing? (optional)').fill('Brake chamber 30/30');
     await dialog.getByRole('button', { name: 'Report Blocker', exact: true }).click();
     await expect.poll(() => sent.blockers.at(-1)).toMatchObject({ jobId, reason: 'waiting_for_parts', notes: 'Brake chamber 30/30' });
@@ -111,9 +111,9 @@ test.describe('Block A · General mechanic', () => {
     await mockMechanicApi(page, summary());
     await loginMechanic(page);
     await page.goto(`/work-orders/${woId}`);
-    const notes = page.getByPlaceholder('Write a note, or describe additional work the Truck needs');
+    const notes = page.getByPlaceholder('Write a note: something the shop should know');
     await notes.fill('Left rear slack adjuster is worn');
     await page.reload();
-    await expect(page.getByPlaceholder('Write a note, or describe additional work the Truck needs')).toHaveValue('Left rear slack adjuster is worn');
+    await expect(page.getByPlaceholder('Write a note: something the shop should know')).toHaveValue('Left rear slack adjuster is worn');
   });
 });

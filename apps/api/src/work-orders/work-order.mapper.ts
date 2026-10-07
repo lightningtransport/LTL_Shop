@@ -152,6 +152,9 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
       completedBy: j.completedBy ?? null,
       helperOfJobId: j.helperOfJobId ?? null,
       external: jobExternal(j),
+      // Stage MG-1 (UX-1-011): Completed shows when each Job was closed and its closing note.
+      completedAt: j.completedAt?.toISOString() ?? null,
+      completionNotes: completionNotesForJob(wo.activityLogs, j.id),
     };
   });
   const currentPause = currentOfficialPause(wo.pauseEvents);
@@ -326,6 +329,8 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
     ...(viewerId ? { myClockStopped: myClockStopped(wo, viewerId, options.clockElsewhere) } : {}),
     // LTR-164 (#6): "Start Work" until I have worked here once, then "Continue".
     ...(viewerId ? { myLaborStarted: sessions.some((session) => !session.userId || session.userId === viewerId) } : {}),
+    // Stage MG-1 (MG5): the viewer's own time here, every day of this Work Order (D-MG2). The total stays for the Manager.
+    ...(viewerId ? { myActiveLaborMs: myLaborMs(sessions, viewerId) } : {}),
     noteEntries: (wo.noteEntries ?? []).map(toWorkOrderNoteDto),
   };
 }
@@ -376,6 +381,12 @@ export const workOrderNoteInclude = {
   },
   orderBy: { createdAt: 'asc' as const },
 };
+
+function myLaborMs(sessions: NonNullable<WorkOrderWithRelations['sessions']>, viewerId: string, now = new Date()) {
+  return sessions
+    .filter((session) => session.userId === viewerId)
+    .reduce((total, session) => total + Math.max(0, (session.endedAt ?? now).getTime() - session.startedAt.getTime()), 0);
+}
 
 function completionNotesForJob(logs: JobCompletionLog[] | undefined, jobId: string): string | null {
   const matches = (logs ?? []).filter((event) => (
