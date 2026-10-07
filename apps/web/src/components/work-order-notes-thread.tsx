@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { WorkOrderNoteKind, type WorkOrderDetailDto, type WorkOrderNoteDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api-error-message';
+import { draftKeys, useLocalDraft } from '@/lib/local-draft';
 import { formatShopDateTime } from '@/lib/format';
 import { useShopLocale } from '@/lib/locale-context';
 import { useActionToast } from '@/components/action-toast';
@@ -22,7 +24,8 @@ export function WorkOrderNotesThread({
 }) {
   const { messages } = useShopLocale();
   const { showToast } = useActionToast();
-  const [draft, setDraft] = useState('');
+  // Block A (PM6, MG9): an unsent note stays on this phone until it is posted; it is published with the button.
+  const [draft, setDraft, clearDraft] = useLocalDraft(draftKeys.workOrderNote(wo.id));
   const [pending, setPending] = useState<WorkOrderNoteKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const closed = wo.status === 'completed' || wo.status === 'cancelled';
@@ -39,14 +42,15 @@ export function WorkOrderNotesThread({
         method: 'POST',
         body: JSON.stringify({ kind, body }),
       });
-      setDraft('');
+      clearDraft();
       await onUpdated(updated);
       showToast(
         'success',
         kind === WorkOrderNoteKind.WORK_REQUEST ? messages.workRequestSentSuccess : messages.noteAddedSuccess,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : messages.unableToSaveNotes);
+      // Block A (MG7): the API's English text never reaches a Spanish screen.
+      setError(apiErrorMessage(err, messages, messages.unableToSaveNotes));
     } finally {
       setPending(null);
     }

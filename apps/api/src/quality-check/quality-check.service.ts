@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ActivityEventType, BlockerReason, PauseReason, WorkPlanJobLane } from '@ltl-shop/shared';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import type { AuthUser } from '../auth/auth.guard';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,6 +25,9 @@ export const returnQualityCheckSchema = z.object({
 
 const OPEN_STATUSES = ['created', 'in_progress'] as const;
 
+// Q11: Jobs added together share `addedAt`; the id breaks the tie so the card keeps its order.
+const jobOrder: Prisma.WorkOrderJobOrderByWithRelationInput[] = [{ addedAt: 'asc' }, { id: 'asc' }];
+
 const queueInclude = {
   truck: { select: { id: true, truckNumber: true, make: true, model: true, year: true } },
   primaryCategory: { select: { name: true } },
@@ -32,7 +36,7 @@ const queueInclude = {
       category: { select: { name: true } },
       assignedMechanic: { select: { id: true, name: true } },
     },
-    orderBy: { addedAt: 'asc' as const },
+    orderBy: jobOrder,
   },
   pauseEvents: {
     where: { isOfficialPause: false, resolvedAt: null },

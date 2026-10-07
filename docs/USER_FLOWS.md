@@ -307,6 +307,9 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 | Hace Start donde no tiene Jobs, o cuando ya terminó los suyos | No deja | ✅ | E5 |
 | Tiene trabajo en dos camiones a la vez | Puede pasar de uno a otro sin que nadie lo reasigne; al hacer Start/Continue en el segundo **se cierra su reloj en el primero** ("cambio de camión", D21). Al volver al primero toca Continue | ✅ | E7 |
 | Vuelve al primer camión | Ve "Tu reloj está en el 944 · toca Continue"; al tocarlo se cierra el del 944 | ✅ | E7 |
+| Hace Start en un camión mientras su reloj corre en otro | El aviso dice "Tu reloj pasó de la unidad 604 a la 922" (la respuesta de Start trae `clockMovedFrom`) | ✅ | E7 · e2e bloque A |
+| Su reloj no corre en ninguno (terminó su último Job en el otro) | La tarjeta dice "Tu reloj está detenido · toca Continuar", ya no "pasó a otra unidad"; el botón de la tarjeta es **Continue** | ✅ | e2e bloque A |
+| Cierra la hoja de "Complete job" con una nota escrita, o se le vence la sesión | La nota queda en el teléfono hasta completar el Job | ✅ | e2e bloque A |
 | Almuerzo o descanso | No detiene su tiempo; al taller no le importa | ✅ | — |
 | Falta o se va a mitad de turno | Sus Jobs esperan a que vuelva; el Manager puede reasignar uno si urge | ✅ | A4, E8 |
 | El Work Order está pausado, cerrado o cancelado | No puede trabajar en él | ✅ | A8, E15 |
@@ -329,13 +332,15 @@ conductor, otro.
 | Reporta un segundo bloqueo en el mismo Job | No deja: uno a la vez | ✅ | A7 |
 | Elige "descanso", "fin de turno", "otro camión" o "camión no disponible" | No son bloqueos; no deja | ✅ | E10 |
 | Bloquea el Job de otro, o uno ya terminado | No deja | ✅ | E10 |
+| Quiere decir qué pieza falta | Puede escribirlo con cualquier motivo ("What is missing? (optional)"); con "Other" la nota es obligatoria y, si falta, se lo dice junto al campo | ✅ | e2e bloque A |
 | Intenta resolver él mismo | No puede: solo el Manager | ✅ | A7 |
 | Después de resuelto intenta completar sin tocar Continue | No deja: primero Continue | ✅ | A19 |
 
 ### HU-ME4 · Dejar notas y pedir trabajo (J7)
 
 **Flujo:** en el Work Order, escribe una **nota** o un **Request Work**
-(trabajo extra que encontró).
+(trabajo extra que encontró). Lo que escribe y no envía queda en el teléfono
+hasta que lo publica con el botón (decisión del 2026-10-07, también para el PM).
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
@@ -355,7 +360,8 @@ conductor, otro.
 1. Inicio → **Create PM service** → elige el Truck.
 2. Anota el **millaje observado**.
 3. Elige las **partes** usadas (solo aparecen las que sirven para ese
-   camión). Las notas se guardan solas.
+   camión). El millaje y las partes se guardan solos; las notas se
+   publican con **Add Note** y, mientras tanto, quedan en el teléfono.
 4. **Finish**.
 
 **Resultado:** el PM queda completado, el odómetro del camión se actualiza y
@@ -402,6 +408,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Los dos toman el mismo camión | Gana el primero; el otro lo ve como tomado | ✅ | QC2 |
 | Aprueba | El QC queda a su nombre; el Manager ve "listo para cerrar". Safety no registra tiempo | ✅ | QC2 |
 | Devuelve sin decir qué encontró | No deja | ✅ | QC3 |
+| Cierra la hoja de devolver con la nota escrita | La nota queda en el teléfono, por camión, hasta devolverlo | ✅ | e2e bloque A |
 | Devuelve con nota | Pasa a "Devueltos"; el Manager lo ve como bloqueo "Devuelto por Safety" con la nota; nadie lo puede tomar hasta que el Manager resuelva | ✅ | QC3 |
 | El Manager agrega el trabajo y los mecánicos lo terminan | El camión vuelve a la lista, para cualquiera de los dos | ✅ | QC3 |
 | Intenta cerrar, asignar, inspeccionar o entrar a Admin | No puede | ✅ | QC4 |

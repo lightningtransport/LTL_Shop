@@ -78,6 +78,11 @@ type Copy = {
   pauseReasonLabel: string;
   selectOption: string;
   reasonRequiredForOther: string;
+  /** Block A (MG8): the blocker note is always offered; required only with "Other". */
+  blockerNoteOptionalLabel: string;
+  blockerNoteRequiredLabel: string;
+  blockerReportPlaceholder: string;
+  blockerNoteRequired: string;
   additionalDetails: string;
   unableToSavePmDetails: string;
   waitingOnManager: string;
@@ -144,6 +149,8 @@ type Copy = {
   startWork: string;
   startingWork: string;
   workStartedSuccess: string;
+  /** Block A (MG2): Start on this Truck closed my clock on another one (D21). */
+  clockMovedFromTo: (fromTruck: string, toTruck: string) => string;
   reportBlocker: string;
   activeBlockers: string;
   blockerWaitsForManager: string;
@@ -425,6 +432,10 @@ const copy: Record<ShopLocale, Copy> = {
     pauseReasonLabel: 'Pause reason',
     selectOption: 'Select an option',
     reasonRequiredForOther: 'Reason required for Other',
+    blockerNoteOptionalLabel: 'What is missing? (optional)',
+    blockerNoteRequiredLabel: 'What is stopping you?',
+    blockerReportPlaceholder: 'E.g. the part number or the tool you need',
+    blockerNoteRequired: 'Say what is stopping you.',
     additionalDetails: 'Additional details',
     unableToSavePmDetails: 'Unable to save PM service details.',
     waitingOnManager: 'Waiting on Manager',
@@ -457,7 +468,8 @@ const copy: Record<ShopLocale, Copy> = {
     resolvedBlockerHint: 'Tap Continue to keep working.',
     dayCloseTapContinue: 'Yesterday\'s work is still open · tap Continue',
     clockOnTruckTapContinue: (truckNumber) => `Your clock is on Truck ${truckNumber} · tap Continue`,
-    clockSwitchedTapContinue: 'Your clock moved to another Truck · tap Continue',
+    // Block A (MG3): with no clock open anywhere, "moved to another Truck" was not true.
+    clockSwitchedTapContinue: 'Your clock is stopped · tap Continue',
     otherWorkReadOnly: 'Other mechanics do this work. You can see it, not change it.',
     helperJobSuffix: ' · helper',
     jobAtExternalShop: 'At external shop',
@@ -488,6 +500,7 @@ const copy: Record<ShopLocale, Copy> = {
     startWork: 'Start Work',
     startingWork: 'Starting…',
     workStartedSuccess: 'Work started.',
+    clockMovedFromTo: (fromTruck, toTruck) => `Work started. Your clock moved from Truck ${fromTruck} to Truck ${toTruck}.`,
     reportBlocker: 'Report Blocker',
     activeBlockers: 'Active blockers',
     blockerWaitsForManager: 'Only the Manager resolves a blocker. Add a note if something changes.',
@@ -767,6 +780,10 @@ const copy: Record<ShopLocale, Copy> = {
     pauseReasonLabel: 'Motivo de pausa',
     selectOption: 'Selecciona una opción',
     reasonRequiredForOther: 'Motivo obligatorio para Otro',
+    blockerNoteOptionalLabel: '¿Qué falta? (opcional)',
+    blockerNoteRequiredLabel: '¿Qué te detiene?',
+    blockerReportPlaceholder: 'Ej.: el número de pieza o la herramienta que necesitas',
+    blockerNoteRequired: 'Di qué te detiene.',
     additionalDetails: 'Detalles adicionales',
     unableToSavePmDetails: 'No se pudieron guardar los detalles del servicio de PM.',
     waitingOnManager: 'Espera al Manager',
@@ -800,7 +817,7 @@ const copy: Record<ShopLocale, Copy> = {
     resolvedBlockerHint: 'Toca Continuar para seguir trabajando.',
     dayCloseTapContinue: 'Ayer quedó en curso · toca Continuar',
     clockOnTruckTapContinue: (truckNumber) => `Tu reloj está en la unidad ${truckNumber} · toca Continuar`,
-    clockSwitchedTapContinue: 'Tu reloj pasó a otra unidad · toca Continuar',
+    clockSwitchedTapContinue: 'Tu reloj está detenido · toca Continuar',
     otherWorkReadOnly: 'Este trabajo lo hacen otros mecánicos. Puedes verlo, no cambiarlo.',
     helperJobSuffix: ' · ayudante',
     jobAtExternalShop: 'En taller externo',
@@ -831,6 +848,7 @@ const copy: Record<ShopLocale, Copy> = {
     startWork: 'Iniciar trabajo',
     startingWork: 'Iniciando…',
     workStartedSuccess: 'Trabajo iniciado.',
+    clockMovedFromTo: (fromTruck, toTruck) => `Trabajo iniciado. Tu reloj pasó de la unidad ${fromTruck} a la ${toTruck}.`,
     reportBlocker: 'Reportar bloqueo',
     activeBlockers: 'Bloqueos activos',
     blockerWaitsForManager: 'Solo el Manager resuelve el bloqueo. Agrega una nota si algo cambia.',

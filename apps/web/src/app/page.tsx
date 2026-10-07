@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Check } from 'lucide-react';
-import { AppCapability, MechanicMode, type WorkOrderSummaryDto } from '@ltl-shop/shared';
+import { AppCapability, MechanicMode, type WorkOrderDetailDto, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { PmInProgressNotice } from '@/components/pm-in-progress-notice';
+import { useActionToast } from '@/components/action-toast';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -395,6 +396,9 @@ function WorkOrderCard({
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewDetails} wo={wo} className="w-full" />
         ) : mode === 'created' ? (
           <StartWorkAction wo={wo} className="flex-1" />
+        ) : nextJobId && clockStoppedLine(wo.myClockStopped, messages) ? (
+          // Block A (MG4): the line says "tap Continue", so the button is Continue, not "View Work".
+          <StartWorkAction wo={wo} className="flex-1" label={messages.continueWork} />
         ) : (
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewWork} wo={wo} className="w-full" />
         )}
@@ -406,11 +410,15 @@ function WorkOrderCard({
 function StartWorkAction({
   wo,
   className,
+  label,
 }: {
   wo: WorkOrderSummaryDto;
   className?: string;
+  /** Block A (MG4): "Continue" where my clock stopped; "Start Work" otherwise. */
+  label?: string;
 }) {
   const { messages } = useShopLocale();
+  const { showToast } = useActionToast();
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const [busy, setBusy] = useState(false);
@@ -421,11 +429,14 @@ function StartWorkAction({
     setBusy(true);
     setError(null);
     try {
-      await apiFetch(`/api/work-orders/${wo.id}/start`, { method: 'POST' });
+      const started = await apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/start`, { method: 'POST' });
       await mutate(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
+      // Block A (MG2): Start closed my clock on another Truck (D21); say so instead of doing it silently.
+      if (started?.clockMovedFrom) showToast('success', messages.clockMovedFromTo(started.clockMovedFrom.truckNumber, wo.truckNumber));
       router.push(`/work-orders/${wo.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : messages.loadError);
+      // Block A (MG7): the API's English text never reaches a Spanish screen.
+      setError(apiErrorMessage(err, messages, messages.actionFailed));
       setBusy(false);
     }
   }
@@ -436,10 +447,10 @@ function StartWorkAction({
       <Button
         className="w-full"
         disabled={busy}
-        aria-label={messages.workOrderAction(messages.startWork, wo.displayId, wo.truckNumber)}
+        aria-label={messages.workOrderAction(label ?? messages.startWork, wo.displayId, wo.truckNumber)}
         onClick={() => void startLabor()}
       >
-        {busy ? messages.startingWork : messages.startWork}
+        {busy ? messages.startingWork : label ?? messages.startWork}
       </Button>
     </div>
   );

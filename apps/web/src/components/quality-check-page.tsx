@@ -13,6 +13,7 @@ import { formatVehicleYmm } from '@/lib/format';
 import {
   relativeTime, useQualityCheckQueue, type QualityCheckItem, type QualityCheckQueue, type QualityCheckReturnedItem,
 } from '@/lib/quality-check-data';
+import { draftKeys, useLocalDraft } from '@/lib/local-draft';
 import { useActionToast } from './action-toast';
 import { SessionSignInFallback } from './session-sign-in-fallback';
 import {
@@ -30,7 +31,8 @@ export function QualityCheckPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [returning, setReturning] = useState<QualityCheckItem | null>(null);
-  const [note, setNote] = useState('');
+  // Block A (Q9): the return note is a draft per truck, kept on this phone until the truck is returned.
+  const [note, setNote, clearNote] = useLocalDraft(returning ? draftKeys.qcReturn(returning.workOrderId) : null);
   const [noteError, setNoteError] = useState<string | null>(null);
   const returnTriggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -56,8 +58,8 @@ export function QualityCheckPage() {
       if (action === 'approve') showToast('success', t.approved(item.truck.truckNumber));
       if (action === 'return') {
         showToast('success', t.returnedToast(item.truck.truckNumber));
+        clearNote();
         setReturning(null);
-        setNote('');
       }
     } catch (caught) {
       setActionError(apiErrorMessage(caught, messages, t.loadError));
@@ -108,7 +110,7 @@ export function QualityCheckPage() {
                             variant="outline"
                             className="flex-1"
                             disabled={busy !== null}
-                            onClick={() => { setReturning(item); setNote(''); setNoteError(null); }}
+                            onClick={() => { setReturning(item); setNoteError(null); }}
                           >
                             {t.returnTruck}
                           </Button>

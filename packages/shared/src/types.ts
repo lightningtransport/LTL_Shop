@@ -268,6 +268,8 @@ export interface ShopHoursDto {
 }
 
 export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
+  /** Block A (MG2), Start only: the Truck my clock left when I started here (D21), or null. */
+  clockMovedFrom?: { id: string; displayId: string; truckNumber: string } | null;
   notes: string | null;
   createdById: string;
   completedAt: string | null;
