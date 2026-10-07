@@ -5,7 +5,8 @@
 **Pantalla:** `/qc` → `apps/web/src/components/quality-check-page.tsx`
 **Reglas que no cambian:** D19 (el QC lo hace Safety; toma, aprueba o devuelve con nota) y
 [HU-QC1](../../USER_FLOWS.md) (quién ve qué y qué se rechaza). Hallazgos en
-[`OPEN_ISSUES.md` §1j](../../OPEN_ISSUES.md).
+[`OPEN_ISSUES.md` §1j](../../OPEN_ISSUES.md) y en la auditoría
+[`docs/ux-audit/safety-qc/`](../../ux-audit/safety-qc/00-contexto.md) (skills audit-ux 0, 1, 4 y 6).
 
 ## 1. Cómo verla
 
@@ -40,6 +41,9 @@ hizo?*
 | Q5 | **Un camión tomado no se puede soltar.** Si Safety 1 lo toma y se va, Safety 2 no puede hasta que el Manager lo reasigne. | El camión queda trabado. |
 | Q6 | **Devolver pide solo texto libre.** No se puede decir qué Job falló. | El Manager tiene que adivinar dónde agregar el trabajo. |
 | Q7 | **No hay historial propio** (qué aprobé o devolví hoy) ni búsqueda de camiones, a diferencia de los mecánicos (My work · Trucks · Completed). | Safety no puede responder "¿ya revisé el 606?". |
+| Q9 | **Lo escrito al devolver se pierde** si se cierra la hoja (Esc o toque fuera) o si la sesión vence (UX-1-006, UX-6-003). | Safety vuelve a escribir el defecto, de pie en el patio. |
+| Q10 | **Sin conexión salen dos avisos rojos** ("la lista no cargó" y "no se pudo llegar al Shop") encima de la lista, que sigue con "Take" activo (UX-6-002). | Safety no sabe si su acción se hizo. |
+| Q11 | **Los Jobs y los mecánicos cambian de orden** entre una carga y otra (UX-1-009). | La tarjeta parece otra al volver a mirarla. |
 | Q8 | **El estilo es el de antes de la Etapa 8**: tarjetas sin jerarquía, el camión tomado se marca solo con un borde, los botones no tienen icono. | No se parece al resto de la app. |
 
 ## 4. Qué cambia (la maqueta)
@@ -78,7 +82,9 @@ hizo?*
    - Cargando, con esqueletos.
    - Error, con "Retry".
    - "Lo tomó otra persona mientras mirabas": aviso y la lista se actualiza.
-   - Sin conexión.
+   - Sin conexión: una sola franja "Offline · showing the list from 10:42", con las acciones desactivadas
+     (Q10).
+   - El borrador de la nota de devolución se guarda por camión hasta que se devuelve (Q9).
 7. **Estilo de la Etapa 8**:
    - Las mismas primitivas: tarjetas, chips con punto, botones con icono y hojas inferiores.
    - Avatares de color por mecánico.
