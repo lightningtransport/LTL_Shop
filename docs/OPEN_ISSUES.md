@@ -294,40 +294,40 @@ Revisión de `/qc` con la base demo local, antes de proponer su rediseño (como 
 | Q2 | C | **Safety no ve qué se le hizo al camión** que va a aprobar: solo nombres de Jobs y de mecánicos (UX-1-001). | Pendiente: vista de revisión de la propuesta. |
 | Q4 | C | **Approve es un toque, sin confirmar**, y Safety no lo puede deshacer (UX-1-002). | Decidido (D-QC1, 2026-10-07): confirmar en una hoja. Se construye con el rediseño. |
 | Q5 | B | **Un camión tomado no se puede soltar**: si Safety lo toma y se va, queda trabado hasta que el Manager reasigne (UX-1-007). | Decidido (D-QC2, 2026-10-07): "Let go". Se construye con el rediseño. |
-| Q9 | C | **Lo escrito al devolver se pierde** al cerrar la hoja o si vence la sesión (UX-1-006, UX-6-003). | Pendiente: borrador por camión. |
+| ~~Q9~~ | C | **Lo escrito al devolver se pierde** al cerrar la hoja o si vence la sesión (UX-1-006, UX-6-003). | **Hecho** (bloque A, #257, 2026-10-07). |
 | Q10 | C | **Sin conexión salen dos avisos rojos** que dicen que la lista no cargó, encima de la lista con "Take" activo (UX-6-002). | Pendiente: aviso único de sin conexión. |
-| Q11 | E | **Los Jobs y los mecánicos cambian de orden** entre cargas: `addedAt` empata y no hay desempate (UX-1-009). | Pendiente. |
+| ~~Q11~~ | E | **Los Jobs y los mecánicos cambian de orden** entre cargas: `addedAt` empata y no hay desempate (UX-1-009). | **Hecho** (bloque A, #257, 2026-10-07). |
 
 Auditoría completa (skills audit-ux 0, 1, 4 y 6): `docs/ux-audit/safety-qc/`. Propuesta: `docs/proposals/qc-screen-redesign/`.
 
-## 1k. Pantallas del Mecánico General (2026-10-07) — **ANOTADO**
+## 1k. Pantallas del Mecánico General (2026-10-07) — **EN CURSO** (bloque A hecho; MG1 y MG5 van con el rediseño)
 
 Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta de Anthony): `docs/ux-audit/mecanico-general/`. Aquí van los B y C; los E y el detalle están en la auditoría.
 
 | # | Clase | Problema | Estado |
 |---|---|---|---|
 | MG1 | C | **El inicio no dice en qué camión corre el reloj**; solo avisa cuando se detuvo. El mecánico puede creer que su tiempo se registra cuando no (UX-1-001). | Pendiente |
-| MG2 | C | **Start Work desde la lista cierra el reloj de otro camión sin decirlo** (UX-1-002). | Pendiente |
-| MG3 | B | **"Your clock moved to another Truck · tap Continue" cuando el reloj no corre en ninguno**: después de completar el último Job en el camión al que se cambió, el otro camión sigue con el aviso (`clock-stopped.ts:17-19` usa el texto genérico si `elsewhereWorkOrder` es `null`) (UX-1-003). | Pendiente |
-| MG4 | C | **El aviso dice "tap Continue" y el botón de la tarjeta dice "View Work"** (UX-1-004). | Pendiente |
+| ~~MG2~~ | C | **Start Work desde la lista cierra el reloj de otro camión sin decirlo** (UX-1-002). | **Hecho** (bloque A, #257, 2026-10-07). |
+| ~~MG3~~ | B | **"Your clock moved to another Truck · tap Continue" cuando el reloj no corre en ninguno**: después de completar el último Job en el camión al que se cambió, el otro camión sigue con el aviso (`clock-stopped.ts:17-19` usa el texto genérico si `elsewhereWorkOrder` es `null`) (UX-1-003). | **Hecho** (bloque A, #257, 2026-10-07). |
+| ~~MG4~~ | C | **El aviso dice "tap Continue" y el botón de la tarjeta dice "View Work"** (UX-1-004). | **Hecho** (bloque A, #257, 2026-10-07). |
 | MG5 | C | **"Labor time · running" suma el tiempo de todos los mecánicos** (UX-1-007). | Decidido (2026-10-07): el mecánico ve solo su tiempo; el total queda para el Manager. Va con el rediseño (bloque B). |
-| MG6 | C | **Un Work Order sin Jobs propios dice "You do not have access to this PM Work Order."** (UX-6-005). | Pendiente |
-| MG7 | C | **Errores en inglés con la app en español** al hacer Start desde la lista y en Notas (UX-6-006). | Pendiente |
-| MG8 | C | **Report Blocker:** la nota solo aparece con "Other", y con "Other" vacío el botón queda gris sin explicar (UX-7-003, UX-7-004). | Pendiente |
-| MG9 | C | **Lo escrito al completar o bloquear se pierde** al cerrar el diálogo o si vence la sesión (UX-7-002, UX-6-008). | Pendiente |
+| ~~MG6~~ | C | **Un Work Order sin Jobs propios dice "You do not have access to this PM Work Order."** (UX-6-005). | **Hecho** (bloque A, #256, 2026-10-07). |
+| ~~MG7~~ | C | **Errores en inglés con la app en español** al hacer Start desde la lista y en Notas (UX-6-006). | **Hecho** (bloque A, #257, 2026-10-07). |
+| ~~MG8~~ | C | **Report Blocker:** la nota solo aparece con "Other", y con "Other" vacío el botón queda gris sin explicar (UX-7-003, UX-7-004). | **Hecho** (bloque A, #257, 2026-10-07). |
+| ~~MG9~~ | C | **Lo escrito al completar o bloquear se pierde** al cerrar el diálogo o si vence la sesión (UX-7-002, UX-6-008). | **Hecho** (bloque A, #257, 2026-10-07). |
 
-## 1l. Pantallas del Mecánico de PM (2026-10-07) — **ANOTADO**
+## 1l. Pantallas del Mecánico de PM (2026-10-07) — **EN CURSO** (bloque A hecho; PM4 va con el rediseño)
 
 Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta de Daniel): `docs/ux-audit/mecanico-pm/`.
 
 | # | Clase | Problema | Estado |
 |---|---|---|---|
-| PM1 | B | **Sin conexión, la pieza o el millaje que elige se ve pero no se guarda**; el aviso sale al pie de la tarjeta, el guardado automático se detiene después del error (`pm-service-card.tsx:144`) y al recargar se pierde (UX-6-001). | Pendiente |
-| PM2 | B | **Con un salto de millaje sin confirmar, las piezas que elige no se guardan y nada lo dice** (`persist` sale sin guardar, `pm-service-card.tsx:138`) (UX-7-004). | Pendiente |
-| PM3 | C | **Borrar el millaje guarda el campo vacío** y esconde las piezas (UX-7-003). | Pendiente |
+| ~~PM1~~ | B | **Sin conexión, la pieza o el millaje que elige se ve pero no se guarda**; el aviso sale al pie de la tarjeta, el guardado automático se detiene después del error (`pm-service-card.tsx:144`) y al recargar se pierde (UX-6-001). | **Hecho** (bloque A, #256, 2026-10-07). |
+| ~~PM2~~ | B | **Con un salto de millaje sin confirmar, las piezas que elige no se guardan y nada lo dice** (`persist` sale sin guardar, `pm-service-card.tsx:138`) (UX-7-004). | **Hecho** (bloque A, #256, 2026-10-07). |
+| ~~PM3~~ | C | **Borrar el millaje guarda el campo vacío** y esconde las piezas (UX-7-003). | **Hecho** (bloque A, #256, 2026-10-07). |
 | PM4 | C | **"Finish Work" queda a casi dos pantallas**, detrás de "Service type" y nueve selects iguales (UX-4-001, UX-7-005). | Pendiente |
-| PM5 | C | **La regla "un PM a la vez" se descubre al tocar**: la tarjeta pausada del inicio, Create PM service y "Start PM service" en otro camión la ofrecen como botón principal y responden con error (UX-1-001, UX-1-002, UX-1-003). W14 lo arregló solo en "Ready to Start". | Pendiente |
-| PM6 | C | **Las notas no se guardan solas como dice HU-PM1**: se publican con "Add Note" y lo no enviado se pierde al salir (UX-7-001). | Decidido (2026-10-07): el borrador se guarda solo en el teléfono y la nota se publica con el botón; se corrige HU-PM1. Va con el bloque A. |
+| ~~PM5~~ | C | **La regla "un PM a la vez" se descubre al tocar**: la tarjeta pausada del inicio, Create PM service y "Start PM service" en otro camión la ofrecen como botón principal y responden con error (UX-1-001, UX-1-002, UX-1-003). W14 lo arregló solo en "Ready to Start". | **Hecho** (bloque A, #256, 2026-10-07). |
+| ~~PM6~~ | C | **Las notas no se guardan solas como dice HU-PM1**: se publican con "Add Note" y lo no enviado se pierde al salir (UX-7-001). | **Hecho** (bloque A, #257, 2026-10-07). |
 
 ## 2. Pruebas
 

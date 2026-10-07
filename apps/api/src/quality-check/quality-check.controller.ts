@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AppCapability } from '@ltl-shop/shared';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
@@ -16,6 +16,24 @@ export class QualityCheckController {
   @Get('queue')
   queue(@Req() req: Request) {
     return this.qualityCheck.getQueue(req.user!);
+  }
+
+  /** D-QC6: what I approved or returned lately. Declared before `:workOrderId` so it is not read as an id. */
+  @Get('history')
+  history(@Req() req: Request, @Query('days') days?: string) {
+    return this.qualityCheck.history(req.user!, days);
+  }
+
+  /** Q2: the review of one truck in the Safety list. */
+  @Get(':workOrderId')
+  review(@Req() req: Request, @Param('workOrderId') workOrderId: string) {
+    return this.qualityCheck.review(req.user!, workOrderId);
+  }
+
+  /** D-QC2: let go of a truck I took. */
+  @Post(':workOrderId/release')
+  release(@Req() req: Request, @Param('workOrderId') workOrderId: string) {
+    return this.qualityCheck.release(req.user!, workOrderId);
   }
 
   @Post(':workOrderId/take')
