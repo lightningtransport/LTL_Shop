@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Safety QC Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: Object.fromEntries(['background', 'foreground', 'card', 'muted', 'muted-foreground', 'primary', 'primary-foreground', 'accent', 'border', 'ring', 'success', 'warning', 'warning-foreground', 'warning-surface', 'destructive', 'destructive-text', 'sunken'].map((name) => [name, tok(name)])),
+        borderColor: { DEFAULT: 'var(--border)' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      },
+    },
+  };
+</script>
+<style>
+  /* Same tokens as the Admin mockups and apps/web/src/app/globals.css. */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--sunken); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  svg.lucide.s14 { width: 14px; height: 14px; }
+  svg.lucide.s20 { width: 20px; height: 20px; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sheet-in { animation: sin .2s ease-out; } @keyframes sin { from { transform: translateY(24px); opacity: 0; } }
+  .side-in { animation: sdi .2s ease-out; } @keyframes sdi { from { transform: translateX(24px); opacity: 0; } }
+  .toast-in { animation: tin .18s ease-out; } @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+  .pulse { animation: pls 1.4s ease-in-out infinite; } @keyframes pls { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .sheet-in, .side-in, .toast-in, .pulse { animation: none; } }
+</style>
+</head>
+<body class="min-h-screen font-sans text-sm antialiased">
+
+<!-- Demo controls (not part of the app) -->
+<div class="sticky top-0 z-50 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2 text-xs backdrop-blur">
+  <b class="mr-2">Safety QC · proposal</b>
+  <div class="flex overflow-hidden rounded-md border" role="group" aria-label="Device">
+    <button data-device="phone" class="dev h-8 px-3">Phone</button><button data-device="desktop" class="dev h-8 border-l px-3">Desktop</button>
+  </div>
+  <button id="theme" class="h-8 rounded-md border px-3">Dark</button>
+  <span class="ml-2 text-muted-foreground">Demo:</span>
+  <div id="presets" class="flex flex-wrap gap-1"></div>
+  <button id="reset" class="ml-auto h-8 rounded-md border px-3">Reset</button>
+</div>
+
+<div id="stage" class="flex justify-center p-4 sm:p-8"></div>
+
+<script>
+/* ───────── Demo data ───────── */
+const MECH = {
+  mg: { name: 'MG', full: 'Manuel García', tone: 'emerald' }, ma: { name: 'MA', full: 'Miguel Ángel', tone: 'sky' },
+  md: { name: 'MD', full: 'Mario Díaz', tone: 'violet' }, mp: { name: 'MPM', full: 'Marco PM', tone: 'amber' },
+  s1: { name: 'S1', full: 'Safety 1', tone: 'cyan' }, s2: { name: 'S2', full: 'Safety 2', tone: 'rose' },
+};
+const TONE = {
+  sky: 'bg-sky-500/20 text-sky-700 dark:text-sky-300', violet: 'bg-violet-500/20 text-violet-700 dark:text-violet-300',
+  emerald: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300', rose: 'bg-rose-500/20 text-rose-700 dark:text-rose-300',
+  cyan: 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300', amber: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+};
+function seed() {
+  return {
+    trucks: [
+      { id: 'wo6', n: '606', wo: 'WO-006', veh: '2024 Freightliner Cascadia', vin: '3AKJHHDR0RS000606', miles: '154,300', loc: '301 Yard · row C', pri: 'normal', ready: 'Ready 18 h', leaves: null, takenBy: null,
+        jobs: [
+          { name: 'PM A Service', cat: 'PM', by: 'mp', at: 'Oct 6, 4:10 PM', note: null, pm: 'Mileage 154,300 mi · 3 parts (oil filter, fuel filter, air filter)' },
+          { name: 'Alignment', cat: 'Suspension & Steering', by: 'ma', at: 'Oct 6, 3:42 PM', note: 'Alineación dentro de especificación.' },
+          { name: 'Detailing', cat: 'Detailing', by: 'md', at: 'Oct 6, 5:02 PM', note: 'Cabina y exterior limpios.' },
+        ],
+        inspection: 'No issues found · Oct 6, 8:15 AM', blockers: [], returns: [] },
+      { id: 'wo10', n: '918', wo: 'WO-010', veh: '2026 Peterbilt 579', vin: '1XPBD49X6TD785091', miles: '296,710', loc: 'Outside · gate 2', pri: 'high', ready: 'Ready 2 h', leaves: 'Leaves today 3:00 PM', takenBy: null,
+        jobs: [
+          { name: 'Air Dryer', cat: 'Air & Brake System', by: 'mg', at: 'Oct 7, 9:40 AM', note: 'Cartucho nuevo instalado.' },
+          { name: 'Air Leak', cat: 'Air & Brake System', by: 'mg', at: 'Oct 6, 11:21 PM', note: null },
+          { name: 'PM A Service', cat: 'PM', by: 'mp', at: 'Oct 7, 8:05 AM', note: null, pm: 'Mileage 296,710 mi · 2 parts' },
+          { name: 'Alignment', cat: 'Suspension & Steering', by: 'ma', at: 'Oct 7, 10:12 AM', note: null },
+          { name: 'Detailing', cat: 'Detailing', by: 'md', at: 'Oct 7, 11:03 AM', note: null },
+        ],
+        inspection: 'Issues found · Oct 5, 9:12 AM',
+        blockers: [{ job: 'Air Dryer', reason: 'Waiting for Parts', by: 'mg', resolved: 'Resolved by Cristian · Oct 7, 9:20 AM · "Listo"' }],
+        returns: [] },
+      { id: 'wo5', n: '602', wo: 'WO-005', veh: '2024 Volvo VNL 860', vin: '4V4NC9EH0RN000602', miles: '212,040', loc: null, pri: 'critical', ready: 'Ready 40 min', leaves: null, takenBy: 's2',
+        jobs: [
+          { name: 'Battery', cat: 'Electrical & Starting', by: 'mg', at: 'Oct 7, 10:40 AM', note: 'Batería nueva.' },
+          { name: 'PM A Service', cat: 'PM', by: 'mp', at: 'Oct 7, 9:00 AM', note: null, pm: 'Mileage 212,040 mi · 3 parts' },
+        ],
+        inspection: 'Issues found · Oct 7, 7:50 AM', blockers: [], returns: [{ at: 'Oct 5, 4:30 PM', by: 's1', note: 'Luz trasera izquierda no enciende.', job: 'Other' }] },
+    ],
+    returned: [{ n: '931', wo: 'WO-013', veh: '2022 Volvo VNL 760', note: 'Fuga en la manguera del freno trasero.', job: 'Air Leak', by: 's1', at: 'Today 10:05 AM' }],
+    done: [
+      { n: '607', wo: 'WO-009', kind: 'approved', at: 'Today 9:10 AM' },
+      { n: '931', wo: 'WO-013', kind: 'returned', at: 'Today 10:05 AM' },
+      { n: '605', wo: 'WO-007', kind: 'approved', at: 'Yesterday 4:40 PM' },
+    ],
+  };
+}
+let S = seed();
+let UI = null;
+UI = fresh();
+function fresh() { return { device: UI?.device ?? (innerWidth < 900 ? 'phone' : 'desktop'), tab: 'review', open: null, dialog: null, retJob: null, note: '', noteErr: false, toast: null, state: 'ok' }; }
+
+const ic = (n, c = '') => `<i data-lucide="${n}" class="${c}"></i>`;
+const av = (m, s = 'size-6') => `<span title="${MECH[m].full}" class="grid ${s} shrink-0 place-items-center rounded-full text-[11px] font-semibold ${TONE[MECH[m].tone]}">${MECH[m].name}</span>`;
+const BTN = {
+  primary: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 font-medium text-primary-foreground hover:opacity-90',
+  outline: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 font-medium hover:bg-accent',
+  ghost: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 font-medium text-muted-foreground hover:bg-accent hover:text-foreground',
+};
+const PRI = { critical: '<span class="inline-flex items-center gap-1.5 rounded-md border border-destructive/50 bg-destructive/20 px-2 py-0.5 text-xs font-medium text-destructive-text"><span class="size-1.5 rounded-full bg-destructive-text"></span>Critical</span>', high: '<span class="inline-flex items-center gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning-foreground dark:text-warning"><span class="size-1.5 rounded-full bg-warning"></span>High</span>', normal: '' };
+const rank = (t) => (t.leaves ? 0 : 10) + ({ critical: 0, high: 1, normal: 2 })[t.pri];
+const tr = (id) => S.trucks.find((t) => t.id === id);
+
+/* ───────── Render ───────── */
+function render() {
+  document.querySelectorAll('.dev').forEach((b) => b.className = `dev h-8 px-3 ${b.dataset.device === 'desktop' ? 'border-l' : ''} ${UI.device === b.dataset.device ? 'bg-primary text-primary-foreground' : ''}`);
+  const phone = UI.device === 'phone';
+  document.getElementById('stage').innerHTML = `<div class="${phone ? 'w-[390px] h-[780px] rounded-[2rem] border-4' : 'w-full max-w-[1200px] h-[760px] rounded-xl border'} relative flex flex-col overflow-hidden bg-background shadow-xl">${app(phone)}</div>`;
+  document.getElementById('presets').innerHTML = Object.entries(PRESETS).map(([k, [l]]) => `<button data-preset="${k}" class="h-8 rounded-md border px-2 hover:bg-accent">${l}</button>`).join('');
+  lucide.createIcons();
+}
+
+function app(phone) {
+  const mineCount = S.trucks.filter((t) => t.takenBy === 's1').length;
+  const tabs = [['review', 'To review', S.trucks.length, 'clipboard-check'], ['returned', 'Returned', S.returned.length, 'undo-2'], ['done', 'Done', null, 'history']];
+  const header = `<header class="flex h-14 shrink-0 items-center justify-between border-b px-4">
+      <div class="flex items-center gap-2"><span class="grid size-7 place-items-center rounded-md bg-primary/15 text-primary">${ic('zap', 's14')}</span><b>LTL Shop</b><span class="text-xs text-muted-foreground">Safety</span></div>
+      ${!phone ? `<nav class="flex gap-1">${tabs.map(([k, l, n, i]) => `<button data-tab="${k}" class="${UI.tab === k ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'} inline-flex h-9 items-center gap-2 rounded-md px-3 font-medium">${ic(i)}${l}${n !== null ? `<span class="tnum text-xs">${n}</span>` : ''}</button>`).join('')}</nav>` : ''}
+      ${av('s1', 'size-9')}</header>`;
+  const bottom = phone ? `<nav class="grid shrink-0 grid-cols-3 border-t bg-card" aria-label="Safety">${tabs.map(([k, l, n, i]) => `<button data-tab="${k}" class="flex h-14 flex-col items-center justify-center gap-0.5 text-xs ${UI.tab === k ? 'text-primary' : 'text-muted-foreground'}">${ic(i, 's20')}<span>${l}${n !== null ? ` · ${n}` : ''}</span></button>`).join('')}</nav>` : '';
+  let body = '';
+  if (UI.state === 'loading') body = skeleton();
+  else if (UI.state === 'error') body = `<div class="m-4 flex flex-col items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-8 text-center"><span class="text-destructive-text">${ic('circle-alert', 's20')}</span><p class="font-medium">The Quality Check list did not load.</p><p class="text-muted-foreground">Check the connection and try again.</p><button data-act="retry" class="${BTN.outline} mt-2 h-11 sm:h-9">${ic('rotate-cw')}Retry</button></div>`;
+  else if (UI.tab === 'review') body = reviewList(phone, mineCount);
+  else if (UI.tab === 'returned') body = returnedList();
+  else body = doneList();
+  const panel = UI.open && !phone ? reviewPanel(false) : '';
+  return `${header}
+    <div class="flex min-h-0 flex-1">
+      <main class="min-h-0 flex-1 overflow-y-auto">${body}</main>
+      ${panel}
+    </div>
+    ${bottom}
+    ${UI.open && phone ? reviewPanel(true) : ''}
+    ${UI.dialog ? dialog(phone) : ''}
+    ${UI.toast ? `<div class="toast-in absolute bottom-20 left-1/2 z-40 flex w-[min(92%,360px)] -translate-x-1/2 items-center gap-2 rounded-lg border bg-card px-3 py-2.5 shadow-xl" role="status">${ic(UI.toast[0] === 'ok' ? 'circle-check' : 'circle-alert', UI.toast[0] === 'ok' ? 'text-success' : 'text-destructive-text')}<span class="flex-1">${UI.toast[1]}</span></div>` : ''}`;
+}
+
+function reviewList(phone, mineCount) {
+  const list = [...S.trucks].sort((a, b) => rank(a) - rank(b));
+  const head = `<div class="px-4 pb-2 pt-5"><h1 class="text-2xl font-semibold tracking-tight">Quality Check</h1><p class="text-muted-foreground">Trucks where every other step is done. Most urgent first.</p></div>`;
+  if (!list.length) return head + `<div class="mx-4 mt-4 flex flex-col items-center gap-1 rounded-xl border border-dashed px-4 py-10 text-center text-muted-foreground">${ic('circle-check', 's20 text-success')}<p class="font-medium text-foreground">Nothing to review</p><p>Trucks appear here when every other step is done.</p></div>`;
+  return head + `<p class="px-4 pb-2 text-xs text-muted-foreground">${list.length} to review${mineCount ? ` · ${mineCount} yours` : ''}</p>
+    <ul class="space-y-2 px-4 pb-6">${list.map(card).join('')}</ul>`;
+}
+
+function card(t) {
+  const mine = t.takenBy === 's1';
+  const other = t.takenBy && !mine;
+  const action = mine
+    ? `<button data-open="${t.id}" class="${BTN.primary} h-11 w-full sm:h-9">${ic('clipboard-check')}Continue review</button>`
+    : other
+      ? `<p class="flex items-center gap-2 text-muted-foreground">${av(t.takenBy)}Taken by ${MECH[t.takenBy].full}</p>`
+      : `<button data-act="take" data-id="${t.id}" class="${BTN.primary} h-11 w-full sm:h-9">${ic('hand')}Take</button>`;
+  const people = [...new Set(t.jobs.map((j) => j.by))];
+  return `<li class="rounded-xl border bg-card ${mine ? 'border-primary ring-1 ring-primary' : ''} ${other ? 'opacity-70' : ''}">
+    <button ${other ? 'disabled' : `data-open="${t.id}"`} class="block w-full space-y-1.5 p-3 text-left ${other ? 'cursor-default' : 'hover:bg-accent/40'} rounded-t-xl">
+      <div class="flex flex-wrap items-center gap-2"><span class="text-base font-semibold">Truck ${t.n}</span>${PRI[t.pri]}${mine ? '<span class="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"><span class="size-1.5 rounded-full bg-primary"></span>Yours</span>' : ''}<span class="ml-auto tnum text-xs text-muted-foreground">${t.ready}</span></div>
+      <p class="truncate text-xs text-muted-foreground">${t.veh} · <span class="font-mono">${t.wo}</span>${t.loc ? ` · ${t.loc}` : ''}</p>
+      ${t.leaves ? `<p class="flex items-center gap-1.5 text-xs font-medium text-warning-foreground dark:text-warning">${ic('calendar-clock', 's14')}${t.leaves} · Dispatch</p>` : ''}
+      <div class="flex flex-wrap gap-1 pt-0.5">${t.jobs.map((j) => `<span class="inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-xs text-muted-foreground">${ic('check', 's14 text-success')}${j.name}</span>`).join('')}</div>
+      <div class="flex items-center gap-2 pt-0.5"><span class="flex gap-0.5">${people.map((p) => `<span class="rounded-full ring-2 ring-card">${av(p)}</span>`).join('')}</span><span class="text-xs text-muted-foreground">${people.map((p) => MECH[p].name).join(', ')}</span></div>
+    </button>
+    <div class="border-t p-2">${action}</div></li>`;
+}
+
+function reviewPanel(phone) {
+  const t = tr(UI.open); if (!t) return '';
+  const mine = t.takenBy === 's1';
+  const wrap = phone ? 'sheet-in absolute inset-0 z-30 flex flex-col bg-background' : 'side-in flex w-[440px] shrink-0 flex-col border-l bg-background';
+  const section = (title, content) => `<section class="rounded-xl border bg-card"><h3 class="border-b px-4 py-2.5 text-base font-semibold">${title}</h3>${content}</section>`;
+  return `<aside class="${wrap}" aria-label="Review Truck ${t.n}">
+    <div class="flex h-14 shrink-0 items-center gap-2 border-b px-3">
+      <button data-act="close" class="grid size-10 place-items-center rounded-md hover:bg-accent" aria-label="Back">${ic(phone ? 'arrow-left' : 'x')}</button>
+      <div class="min-w-0 flex-1"><p class="font-semibold">Truck ${t.n}</p><p class="truncate text-xs text-muted-foreground"><span class="font-mono">${t.wo}</span> · ${t.ready}</p></div>
+      ${mine ? `<button data-act="menu" class="grid size-10 place-items-center rounded-md hover:bg-accent" aria-label="More">${ic('ellipsis')}</button>` : ''}
+    </div>
+    ${UI.menu ? `<div class="absolute right-3 top-14 z-40 w-56 rounded-lg border bg-card p-1 shadow-xl"><p class="px-2.5 pb-1 pt-1.5 text-xs text-muted-foreground">Truck ${t.n}</p><button data-act="release" class="flex h-11 w-full items-center gap-2.5 rounded-md px-2.5 text-left hover:bg-accent sm:h-9">${ic('hand-helping', 'opacity-80')}Let go (Safety 2 can take it)</button></div>` : ''}
+    <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+      ${t.leaves || t.pri !== 'normal' ? `<div class="flex flex-wrap items-center gap-2">${PRI[t.pri]}${t.leaves ? `<span class="inline-flex items-center gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning-foreground dark:text-warning">${ic('calendar-clock', 's14')}${t.leaves}</span>` : ''}</div>` : ''}
+      ${section('Truck', `<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 p-4"><dt class="text-muted-foreground">Vehicle</dt><dd class="text-right font-medium">${t.veh}</dd><dt class="text-muted-foreground">Mileage</dt><dd class="tnum text-right font-medium">${t.miles} mi</dd><dt class="text-muted-foreground">VIN</dt><dd class="text-right font-mono text-[13px]">${t.vin}</dd><dt class="text-muted-foreground">Where</dt><dd class="text-right font-medium">${t.loc ?? '<span class="text-muted-foreground">Not reported</span>'}</dd></dl>`)}
+      ${section(`What was done <span class="tnum ml-1 rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border">${t.jobs.length}</span>`, `<ul class="divide-y">${t.jobs.map((j) => `<li class="flex gap-3 px-4 py-3">${av(j.by, 'size-7')}<div class="min-w-0 flex-1"><p class="flex flex-wrap items-baseline justify-between gap-x-2"><span class="font-medium">${j.name}</span><span class="tnum text-xs text-muted-foreground">${j.at}</span></p><p class="text-xs text-muted-foreground">${j.cat} · ${MECH[j.by].full}</p>${j.pm ? `<p class="mt-1 text-muted-foreground">${j.pm}</p>` : ''}${j.note ? `<p class="mt-1 italic text-foreground/90">“${j.note}”</p>` : ''}</div></li>`).join('')}</ul>`)}
+      ${section('Arrival inspection', `<p class="flex items-center gap-2 px-4 py-3">${ic('clipboard-check', 'text-success')}${t.inspection}</p>`)}
+      ${t.blockers.length ? section('Blockers on this truck', `<ul class="divide-y">${t.blockers.map((b) => `<li class="px-4 py-3"><p><b class="font-medium">${b.job}</b> · ${b.reason} · ${MECH[b.by].full}</p><p class="text-xs text-muted-foreground">${b.resolved}</p></li>`).join('')}</ul>`) : ''}
+      ${t.returns.length ? section('Returned before', `<ul class="divide-y">${t.returns.map((r) => `<li class="px-4 py-3"><p class="italic">“${r.note}”</p><p class="text-xs text-muted-foreground">${MECH[r.by].full} · ${r.at} · ${r.job}</p></li>`).join('')}</ul>`) : ''}
+    </div>
+    <div class="shrink-0 border-t bg-card p-3">
+      ${mine
+        ? `<div class="grid grid-cols-2 gap-2"><button data-act="ask-return" class="${BTN.outline} h-11">${ic('undo-2')}Return</button><button data-act="ask-approve" class="${BTN.primary} h-11">${ic('check-check')}Approve</button></div>`
+        : t.takenBy
+          ? `<p class="flex items-center gap-2 text-muted-foreground">${av(t.takenBy)}${MECH[t.takenBy].full} is reviewing this truck.</p>`
+          : `<button data-act="take" data-id="${t.id}" class="${BTN.primary} h-11 w-full">${ic('hand')}Take this truck</button>`}
+    </div>
+  </aside>`;
+}
+
+function dialog(phone) {
+  const t = tr(UI.open);
+  const shell = (title, desc, body, actions) => `<div class="absolute inset-0 z-40 bg-black/50"></div>
+    <div role="dialog" aria-modal="true" class="${phone ? 'sheet-in absolute inset-x-0 bottom-0 rounded-t-2xl' : 'absolute left-1/2 top-1/2 w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-xl'} z-50 border bg-card p-5 shadow-2xl">
+      ${phone ? '<div class="mx-auto -mt-2 mb-3 h-1 w-10 rounded-full bg-muted-foreground/40"></div>' : ''}
+      <h2 class="text-base font-semibold">${title}</h2><p class="mt-1 text-muted-foreground">${desc}</p>${body}
+      <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">${actions}</div></div>`;
+  if (UI.dialog === 'approve') return shell(`Approve Truck ${t.n}?`, `The Quality Check is done in your name. The Manager can then close ${t.wo} and the truck becomes Ready to Go.`, '',
+    `<button data-act="cancel" class="${BTN.outline} h-11 sm:h-9">Back</button><button data-act="approve" class="${BTN.primary} h-11 sm:h-9">${ic('check-check')}Approve</button>`);
+  return shell(`Return Truck ${t.n}`, 'Say what you found. The Manager adds the work, and the truck comes back to this list when it is done.',
+    `<p class="mt-4 font-medium">Which Job? <span class="font-normal text-muted-foreground">(optional)</span></p>
+     <div class="mt-2 flex flex-wrap gap-1.5">${[...t.jobs.map((j) => j.name), 'Other'].map((n) => `<button data-retjob="${n}" aria-pressed="${UI.retJob === n}" class="inline-flex min-h-10 items-center rounded-full border px-3 sm:min-h-9 ${UI.retJob === n ? 'border-primary bg-primary/15 text-primary' : 'hover:bg-accent'}">${n}</button>`).join('')}</div>
+     <label for="ret-note" class="mt-4 block font-medium">What did you find?</label>
+     <textarea id="ret-note" rows="3" class="mt-2 w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring" placeholder="E.g. rear brake hose is leaking">${UI.note}</textarea>
+     ${UI.noteErr ? `<p class="mt-1 text-destructive-text" role="alert">Say what you found before returning the truck.</p>` : ''}`,
+    `<button data-act="cancel" class="${BTN.outline} h-11 sm:h-9">Back</button><button data-act="return" class="${BTN.primary} h-11 sm:h-9">${ic('undo-2')}Return truck</button>`);
+}
+
+function returnedList() {
+  return `<div class="px-4 pb-2 pt-5"><h1 class="text-2xl font-semibold tracking-tight">Returned</h1><p class="text-muted-foreground">Waiting for the Manager to add the work. They come back to To review when it is done.</p></div>
+    ${S.returned.length ? `<ul class="space-y-2 px-4 pb-6">${S.returned.map((r) => `<li class="space-y-1 rounded-xl border bg-card p-3"><div class="flex items-center gap-2"><span class="text-base font-semibold">Truck ${r.n}</span><span class="inline-flex items-center gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning-foreground dark:text-warning"><span class="size-1.5 rounded-full bg-warning"></span>Waiting for the Manager</span></div><p class="text-xs text-muted-foreground">${r.veh} · <span class="font-mono">${r.wo}</span> · ${r.at}</p><p class="italic">“${r.note}”</p><p class="text-xs text-muted-foreground">${r.job ? `${r.job} · ` : ''}${MECH[r.by].full}</p></li>`).join('')}</ul>`
+      : `<div class="mx-4 mt-4 rounded-xl border border-dashed px-4 py-10 text-center text-muted-foreground">Nothing returned.</div>`}`;
+}
+
+function doneList() {
+  const groups = { Today: S.done.filter((d) => d.at.startsWith('Today')), 'Last 7 days': S.done.filter((d) => !d.at.startsWith('Today')) };
+  return `<div class="px-4 pb-2 pt-5"><h1 class="text-2xl font-semibold tracking-tight">Done</h1><p class="text-muted-foreground">What you approved or returned.</p></div>
+    ${Object.entries(groups).filter(([, l]) => l.length).map(([g, l]) => `<p class="px-4 pb-1 pt-3 text-xs font-medium text-muted-foreground">${g}</p><ul class="mx-4 divide-y rounded-xl border bg-card">${l.map((d) => `<li class="flex items-center gap-3 px-3 py-3">${ic(d.kind === 'approved' ? 'check-check' : 'undo-2', d.kind === 'approved' ? 'text-success' : 'text-warning-foreground dark:text-warning')}<div class="min-w-0 flex-1"><p class="font-medium">Truck ${d.n} <span class="font-mono text-xs text-muted-foreground">${d.wo}</span></p><p class="text-xs text-muted-foreground">${d.kind === 'approved' ? 'Approved' : 'Returned'} · ${d.at.replace(/^Today /, '')}</p></div></li>`).join('')}</ul>`).join('')}`;
+}
+
+function skeleton() {
+  return `<div class="space-y-2 px-4 pt-5"><div class="pulse h-7 w-48 rounded bg-muted"></div><div class="pulse h-4 w-72 rounded bg-muted"></div>${[1, 2, 3].map(() => '<div class="pulse mt-3 h-36 rounded-xl bg-muted"></div>').join('')}</div>`;
+}
+
+/* ───────── Actions ───────── */
+function toast(kind, text) { UI.toast = [kind, text]; render(); clearTimeout(window.__t); window.__t = setTimeout(() => { UI.toast = null; render(); }, 2600); }
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button'); if (!el) return;
+  if (el.dataset.device) { UI.device = el.dataset.device; return render(); }
+  if (el.id === 'theme') { document.documentElement.classList.toggle('dark'); el.textContent = document.documentElement.classList.contains('dark') ? 'Light' : 'Dark'; return render(); }
+  if (el.id === 'reset') { S = seed(); UI = fresh(); return render(); }
+  if (el.dataset.preset) { S = seed(); UI = fresh(); PRESETS[el.dataset.preset][1](); return render(); }
+  if (el.dataset.tab) { UI.tab = el.dataset.tab; UI.open = null; return render(); }
+  if (el.dataset.open) { UI.open = el.dataset.open; UI.menu = false; return render(); }
+  if (el.dataset.retjob) { UI.note = document.getElementById('ret-note')?.value ?? UI.note; UI.retJob = UI.retJob === el.dataset.retjob ? null : el.dataset.retjob; return render(); }
+  const t = tr(UI.open);
+  switch (el.dataset.act) {
+    case 'take': { const x = tr(el.dataset.id); x.takenBy = 's1'; UI.open = x.id; return toast('ok', `Truck ${x.n} is yours`); }
+    case 'close': UI.open = null; UI.menu = false; return render();
+    case 'menu': UI.menu = !UI.menu; return render();
+    case 'release': t.takenBy = null; UI.menu = false; UI.open = null; return toast('ok', `Truck ${t.n} is free for Safety 2`);
+    case 'ask-approve': UI.dialog = 'approve'; return render();
+    case 'ask-return': UI.dialog = 'return'; UI.note = ''; UI.retJob = null; UI.noteErr = false; return render();
+    case 'cancel': UI.dialog = null; return render();
+    case 'approve': S.trucks = S.trucks.filter((x) => x !== t); S.done.unshift({ n: t.n, wo: t.wo, kind: 'approved', at: 'Today now' }); UI.dialog = null; UI.open = null; return toast('ok', `Truck ${t.n} approved. The Manager can close ${t.wo}.`);
+    case 'return': {
+      const note = document.getElementById('ret-note').value.trim();
+      if (!note) { UI.noteErr = true; UI.note = ''; return render(); }
+      S.trucks = S.trucks.filter((x) => x !== t); S.returned.unshift({ n: t.n, wo: t.wo, veh: t.veh, note, job: UI.retJob, by: 's1', at: 'Today now' });
+      S.done.unshift({ n: t.n, wo: t.wo, kind: 'returned', at: 'Today now' }); UI.dialog = null; UI.open = null; return toast('ok', `Truck ${t.n} returned to the Manager`);
+    }
+    case 'retry': UI.state = 'ok'; return render();
+  }
+});
+
+const PRESETS = {
+  normal: ['Normal list', () => {}],
+  mine: ['Truck is mine', () => { tr('wo6').takenBy = 's1'; UI.open = 'wo6'; }],
+  other: ['Taken by Safety 2', () => {}],
+  soon: ['Leaves soon first', () => {}],
+  empty: ['Empty', () => { S.trucks = []; }],
+  returned: ['Returned tab', () => { UI.tab = 'returned'; }],
+  done: ['Done tab', () => { UI.tab = 'done'; }],
+  loading: ['Loading', () => { UI.state = 'loading'; }],
+  error: ['Error', () => { UI.state = 'error'; }],
+};
+render();
+</script>
+</body>
+</html>
