@@ -624,7 +624,8 @@ const copy: Record<ShopLocale, Copy> = {
     homeControls: 'Home controls',
     forbiddenTitle: 'Shop Admin access denied',
     forbiddenBody: 'Your account does not have permission to open the administrative workspace.',
-    forbiddenBack: 'Return to mechanic Home',
+    // "/" sends each person to their own home (mechanic, PM or Safety's /qc), so the link does not name one.
+    forbiddenBack: 'Return to your Home',
     signInFailed: 'Sign in failed.',
     accountNotConfigured: 'Your account is not configured for the Shop application.',
     resetEmailFailed: 'Unable to send a reset email.',
@@ -959,7 +960,7 @@ const copy: Record<ShopLocale, Copy> = {
     homeControls: 'Controles de Inicio',
     forbiddenTitle: 'Acceso a Shop Admin denegado',
     forbiddenBody: 'Tu cuenta no tiene permiso para abrir el espacio administrativo.',
-    forbiddenBack: 'Volver al Inicio de mecánicos',
+    forbiddenBack: 'Volver a tu inicio',
     signInFailed: 'No se pudo iniciar sesión.',
     accountNotConfigured: 'Tu cuenta no está configurada para la aplicación del Shop.',
     resetEmailFailed: 'No se pudo enviar el correo de restablecimiento.',
