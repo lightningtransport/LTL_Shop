@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>General Mechanic Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: Object.fromEntries(['background', 'foreground', 'card', 'muted', 'muted-foreground', 'primary', 'primary-foreground', 'accent', 'border', 'ring', 'success', 'warning', 'warning-foreground', 'warning-surface', 'destructive', 'destructive-text', 'sunken'].map((name) => [name, tok(name)])),
+        borderColor: { DEFAULT: 'var(--border)' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      },
+    },
+  };
+</script>
+<style>
+  /* Same tokens as the Safety and Admin mockups and apps/web/src/app/globals.css. */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--sunken); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  svg.lucide.s14 { width: 14px; height: 14px; }
+  svg.lucide.s20 { width: 20px; height: 20px; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  button:disabled { cursor: not-allowed; opacity: .5; }
+  .sheet-in { animation: sin .2s ease-out; } @keyframes sin { from { transform: translateY(24px); opacity: 0; } }
+  .toast-in { animation: tin .18s ease-out; } @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+  .pulse { animation: pls 1.4s ease-in-out infinite; } @keyframes pls { 50% { opacity: .45; } }
+  .live { animation: live 2s ease-in-out infinite; } @keyframes live { 50% { box-shadow: 0 0 0 4px color-mix(in oklch, var(--success) 25%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .sheet-in, .toast-in, .pulse, .live { animation: none; } }
+</style>
+</head>
+<body class="min-h-screen font-sans text-sm antialiased">
+
+<!-- Demo controls (not part of the app) -->
+<div class="sticky top-0 z-50 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2 text-xs backdrop-blur">
+  <b class="mr-2">General mechanic · proposal</b>
+  <div class="flex overflow-hidden rounded-md border" role="group" aria-label="Device">
+    <button data-device="phone" class="dev h-8 px-3">Phone</button><button data-device="desktop" class="dev h-8 border-l px-3">Desktop</button>
+  </div>
+  <button id="theme" class="h-8 rounded-md border px-3">Dark</button>
+  <span class="ml-2 text-muted-foreground">Demo:</span>
+  <div id="presets" class="flex flex-wrap gap-1"></div>
+  <button id="reset" class="ml-auto h-8 rounded-md border px-3">Reset</button>
+</div>
+
+<div id="stage" class="flex justify-center sm:p-8"></div>
+
+<script>
+/* ───────── Demo data ───────── */
+const ME = 'an';
+const MECH = {
+  an: { name: 'AN', full: 'Anthony', tone: 'emerald' }, a2: { name: 'A2', full: 'Alejandro 2', tone: 'violet' },
+  md: { name: 'MD', full: 'Mario Díaz', tone: 'rose' }, mp: { name: 'MP', full: 'Marco PM', tone: 'amber' },
+  ma: { name: 'MA', full: 'Miguel Ángel', tone: 'sky' }, cr: { name: 'CR', full: 'Cristian', tone: 'cyan' },
+  qc: { name: 'S', full: 'Safety', tone: 'slate' },
+};
+const TONE = {
+  sky: 'bg-sky-500/20 text-sky-700 dark:text-sky-300', violet: 'bg-violet-500/20 text-violet-700 dark:text-violet-300',
+  emerald: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300', rose: 'bg-rose-500/20 text-rose-700 dark:text-rose-300',
+  cyan: 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300', amber: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+  slate: 'bg-slate-500/20 text-slate-700 dark:text-slate-300',
+};
+const REASONS = ['Waiting for Parts', 'Waiting for Approval', 'Waiting for Vendor', 'Waiting for Equipment / Tool', 'Waiting for Bay', 'Waiting for Driver', 'Other'];
+
+function seed() {
+  return {
+    clock: { wo: 'wo12', since: '10:45 AM' },
+    offline: false,
+    wos: [
+      { id: 'wo12', n: '922', wo: 'WO-012', veh: '2024 Kenworth T680', vin: '1XKYD49X0RJ000922', miles: '188,420', pri: 'normal', status: 'in_progress', myMin: 72, lastEnd: null, resolved: null,
+        jobs: [
+          { id: 'j1', name: 'Brake Inspection', cat: 'Air & Brake System', by: 'an', st: 'todo', helper: 'a2' },
+          { id: 'j2', name: 'Air Dryer', cat: 'Air & Brake System', by: 'an', st: 'todo' },
+          { id: 'j3', name: 'Brake Inspection', cat: 'Air & Brake System', by: 'a2', st: 'progress' },
+          { id: 'j4', name: 'PM A Service', cat: 'PM', by: 'mp', st: 'done', at: '9:05 AM' },
+          { id: 'j5', name: 'Detailing', cat: 'Detailing', by: 'md', st: 'todo' },
+          { id: 'j5b', name: 'Quality Check', cat: 'Quality Check', by: 'qc', st: 'todo' },
+        ],
+        notes: [
+          { by: 'cr', at: 'Oct 7, 8:30 AM', body: 'Driver says air pressure drops overnight.', kind: 'note' },
+          { by: 'a2', at: 'Oct 7, 10:20 AM', body: 'Left brake chambers look fine.', kind: 'note' },
+        ] },
+      { id: 'wo4', n: '604', wo: 'WO-004', veh: '2023 Freightliner Cascadia', vin: '3AKJHHDR5PS000604', miles: '241,900', pri: 'high', status: 'in_progress', myMin: 154, lastEnd: 'switched', resolved: null,
+        jobs: [
+          { id: 'j6', name: 'Air Leak', cat: 'Air & Brake System', by: 'an', st: 'todo' },
+          { id: 'j7', name: 'Alignment', cat: 'Suspension & Steering', by: 'ma', st: 'done', at: 'Oct 6, 3:42 PM' },
+          { id: 'j8', name: 'Detailing', cat: 'Detailing', by: 'md', st: 'todo' },
+          { id: 'j9', name: 'PM A Service', cat: 'PM', by: 'mp', st: 'done', at: 'Oct 6, 1:10 PM' },
+        ],
+        notes: [{ by: 'an', at: 'Oct 7, 9:58 AM', body: 'Rear mud flap bracket is cracked, needs replacement.', kind: 'request', handled: false }] },
+      { id: 'wo5', n: '605', wo: 'WO-005', veh: '2024 Volvo VNL 860', vin: '4V4NC9EH0RN000605', miles: '212,040', pri: 'critical', status: 'in_progress', myMin: 48, lastEnd: 'blocked', resolved: null,
+        jobs: [
+          { id: 'j10', name: 'Air Bag Replacement', cat: 'Suspension & Steering', by: 'an', st: 'todo',
+            blocker: { reason: 'Waiting for Parts', since: 'Oct 6, 2:10 PM', ago: '1 day', by: 'an', first: 'Rear air bag, driver side, is missing.', notes: [{ by: 'an', at: 'Oct 7, 10:42 AM', body: 'Parts store says Thursday.' }] } },
+          { id: 'j11', name: 'Battery', cat: 'Electrical & Starting', by: 'an', st: 'done', at: 'Oct 6, 11:30 AM', day: 'Yesterday', note: 'New battery, terminals cleaned.' },
+          { id: 'j12', name: 'PM A Service', cat: 'PM', by: 'mp', st: 'todo' },
+          { id: 'j13', name: 'Detailing', cat: 'Detailing', by: 'md', st: 'todo' },
+        ],
+        notes: [] },
+      { id: 'wo13', n: '931', wo: 'WO-013', veh: '2022 Volvo VNL 760', vin: '4V4NC9EH5NN000931', miles: '305,112', pri: 'high', status: 'created', myMin: 0, lastEnd: null, resolved: null,
+        jobs: [
+          { id: 'j15', name: 'Starter', cat: 'Electrical & Starting', by: 'an', st: 'todo' },
+          { id: 'j16', name: 'Battery', cat: 'Electrical & Starting', by: 'an', st: 'todo' },
+          { id: 'j17', name: 'PM A Service', cat: 'PM', by: 'mp', st: 'todo' },
+        ],
+        notes: [] },
+      { id: 'wo14', n: '610', wo: 'WO-014', veh: '2021 International LT', vin: '3HSDZAPR1MN000610', miles: '402,330', pri: 'normal', status: 'created', myMin: 0, lastEnd: null, resolved: null,
+        jobs: [
+          { id: 'j18', name: 'Headlight', cat: 'Lights', by: 'an', st: 'todo' },
+          { id: 'j19', name: 'Detailing', cat: 'Detailing', by: 'md', st: 'todo' },
+        ],
+        notes: [] },
+      { id: 'wo7', n: '607', wo: 'WO-007', veh: '2023 Peterbilt 579', vin: '1XPBD49X3PD000607', miles: '176,050', pri: 'normal', status: 'in_progress', myMin: 95, lastEnd: 'done', resolved: null,
+        jobs: [
+          { id: 'j20', name: 'Alignment', cat: 'Suspension & Steering', by: 'an', st: 'done', at: '9:10 AM', day: 'Today', note: 'Toe adjusted to spec, test drive OK.' },
+          { id: 'j21', name: 'Air Dryer', cat: 'Air & Brake System', by: 'ma', st: 'progress' },
+        ],
+        notes: [] },
+    ],
+    history: [
+      { n: '918', wo: 'WO-010', job: 'Air Leak', at: 'Oct 6, 11:21 PM', day: 'Yesterday', note: null },
+      { n: '602', wo: 'WO-002', job: 'Lights', at: 'Oct 2, 3:15 PM', day: 'Earlier', note: 'Replaced both rear marker lights and the left tail light; checked the trailer plug.' },
+    ],
+    trucks: [
+      { n: '601', veh: '2022 Freightliner Cascadia', open: null }, { n: '602', veh: '2024 Volvo VNL 860', open: null },
+      { n: '603', veh: '2023 Kenworth T680', open: { wo: 'WO-003', id: null } }, { n: '604', veh: '2023 Freightliner Cascadia', open: { wo: 'WO-004', id: 'wo4' } },
+      { n: '605', veh: '2024 Volvo VNL 860', open: { wo: 'WO-005', id: 'wo5' } }, { n: '607', veh: '2023 Peterbilt 579', open: { wo: 'WO-007', id: 'wo7' } },
+      { n: '610', veh: '2021 International LT', open: { wo: 'WO-014', id: 'wo14' } }, { n: '918', veh: '2026 Peterbilt 579', open: { wo: 'WO-010', id: null } },
+      { n: '922', veh: '2024 Kenworth T680', open: { wo: 'WO-012', id: 'wo12' } }, { n: '931', veh: '2022 Volvo VNL 760', open: { wo: 'WO-013', id: 'wo13' } },
+      { n: '968', veh: '2025 Mack Anthem', open: null },
+    ],
+  };
+}
+let S = seed();
+let UI = null;
+UI = fresh();
+function fresh() { return { device: UI?.device ?? (innerWidth < 900 ? 'phone' : 'desktop'), view: 'home', wo: null, sheet: null, reason: null, err: null, drafts: {}, bnoteOpen: null, othersOpen: false, truckOpen: false, q: '', toast: null, state: 'ok' }; }
+
+/* ───────── Helpers ───────── */
+const ic = (n, c = '') => `<i data-lucide="${n}" class="${c}"></i>`;
+const av = (m, s = 'size-6') => `<span title="${MECH[m].full}" class="grid ${s} shrink-0 place-items-center rounded-full text-[11px] font-semibold ${TONE[MECH[m].tone]}">${MECH[m].name}</span>`;
+const BTN = {
+  primary: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 font-medium text-primary-foreground hover:opacity-90',
+  outline: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 font-medium hover:bg-accent',
+  ghost: 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 font-medium text-muted-foreground hover:bg-accent hover:text-foreground',
+};
+const PILL = {
+  success: ['border-success/40 bg-success/10 text-success', 'bg-success'],
+  warning: ['border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning', 'bg-warning'],
+  primary: ['border-primary/40 bg-primary/10 text-primary', 'bg-primary'],
+  muted: ['border-border bg-muted text-muted-foreground', 'bg-muted-foreground/60'],
+  danger: ['border-destructive/50 bg-destructive/20 text-destructive-text', 'bg-destructive-text'],
+};
+const pill = (tone, text, extra = '') => `<span class="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${PILL[tone][0]}"><span class="size-1.5 rounded-full ${PILL[tone][1]} ${extra}"></span>${text}</span>`;
+const PRI = { critical: pill('danger', 'Critical'), high: pill('warning', 'High'), normal: '' }; // Normal and Low are not shown (UX-4-004)
+const count = (n) => `<span class="tnum ml-1.5 rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border">${n}</span>`;
+const fmt = (min) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}m` : `${min}m`);
+const W = (id) => S.wos.find((w) => w.id === id);
+const mine = (w) => w.jobs.filter((j) => j.by === ME);
+const workable = (w) => mine(w).filter((j) => j.st !== 'done' && !j.blocker);
+const others = (w) => w.jobs.filter((j) => j.by !== ME);
+const jobName = (j) => (j.helper ? `${j.name} · helper` : j.name);
+const rankPri = (w) => ({ critical: 0, high: 1, normal: 2 })[w.pri];
+const OFF = () => (S.offline ? 'disabled title="Offline: not sent"' : '');
+function bucket(w) {
+  if (w.status === 'paused') return 'paused';
+  if (!mine(w).length) return 'none';
+  if (mine(w).every((j) => j.st === 'done')) return 'done';
+  if (w.status === 'created') return 'created';
+  if (!workable(w).length) return 'blocked';
+  return 'active';
+}
+function lists() {
+  const by = (b) => S.wos.filter((w) => bucket(w) === b);
+  const active = by('active').sort((a, b) => (S.clock?.wo === b.id) - (S.clock?.wo === a.id) || !!b.resolved - !!a.resolved || (b.lastEnd === 'day_close') - (a.lastEnd === 'day_close') || rankPri(a) - rankPri(b));
+  const created = by('created').sort((a, b) => rankPri(a) - rankPri(b));
+  return { active, created, blocked: by('blocked'), done: by('done'), paused: by('paused') };
+}
+function nextId() {
+  if (S.clock) return S.clock.wo;
+  const L = lists();
+  return L.active[0]?.id ?? L.created[0]?.id ?? null;
+}
+function stopLine(w) {
+  // What the card / detail says when my clock is not running here and I have work here (MG3/MG4 built in block A).
+  if (S.clock?.wo === w.id || w.status !== 'in_progress' || !workable(w).length) return null;
+  if (w.resolved) return { tone: 'success', icon: 'circle-check', text: 'Resolved · tap Continue' };
+  if (w.lastEnd === 'day_close') return { tone: 'primary', icon: 'moon', text: "Yesterday's work is still open · tap Continue" };
+  if (S.clock) return { tone: 'muted', icon: 'clock', text: `Your clock is on Truck ${W(S.clock.wo).n} · Continue moves it here` };
+  if (w.lastEnd === 'switched') return { tone: 'primary', icon: 'circle-pause', text: 'Your clock is stopped · tap Continue' };
+  return null; // stopped because I finished or blocked my last Job here: the API sends no line (myClockStopped null)
+}
+const BAND = { success: 'bg-success/10 text-success', primary: 'bg-primary/10 text-primary', muted: 'bg-muted text-muted-foreground', warning: 'bg-warning-surface text-warning-foreground' };
+
+/* ───────── Render ───────── */
+function render() {
+  document.querySelectorAll('.dev').forEach((b) => b.className = `dev h-8 px-3 ${b.dataset.device === 'desktop' ? 'border-l' : ''} ${UI.device === b.dataset.device ? 'bg-primary text-primary-foreground' : ''}`);
+  const phone = UI.device === 'phone';
+  document.getElementById('stage').innerHTML = `<div class="${phone ? 'w-full max-w-[390px] h-[780px] sm:rounded-[2rem] sm:border-4' : 'w-full max-w-[1200px] h-[780px] sm:rounded-xl sm:border'} relative flex flex-col overflow-hidden bg-background shadow-xl">${app(phone)}</div>`;
+  document.getElementById('presets').innerHTML = Object.entries(PRESETS).map(([k, [l]]) => `<button data-preset="${k}" class="h-8 rounded-md border px-2 hover:bg-accent">${l}</button>`).join('');
+  lucide.createIcons();
+}
+
+function app(phone) {
+  const tabs = [['home', 'My work', 'wrench'], ['trucks', 'Trucks', 'history'], ['completed', 'Completed', 'clipboard-check']];
+  const activeTab = UI.view === 'detail' ? 'home' : UI.view;
+  const header = `<header class="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
+      <div class="flex items-center gap-2"><span class="grid size-7 place-items-center rounded-md bg-primary/15 text-primary">${ic('zap', 's14')}</span><b>LTL Shop</b><span class="text-xs text-muted-foreground">Mechanic</span></div>
+      ${!phone ? `<nav class="flex gap-1" aria-label="Mechanic">${tabs.map(([k, l, i]) => `<button data-view="${k}" aria-current="${activeTab === k ? 'page' : 'false'}" class="${activeTab === k ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'} inline-flex h-9 items-center gap-2 rounded-md px-3 font-medium">${ic(i)}${l}</button>`).join('')}</nav>` : ''}
+      ${av(ME, 'size-9')}</header>`;
+  const bottom = phone ? `<nav class="grid shrink-0 grid-cols-3 border-t bg-card" aria-label="Mechanic">${tabs.map(([k, l, i]) => `<button data-view="${k}" aria-current="${activeTab === k ? 'page' : 'false'}" class="flex h-14 flex-col items-center justify-center gap-0.5 text-xs ${activeTab === k ? 'font-medium text-primary' : 'text-muted-foreground'}">${ic(i, 's20')}<span>${l}</span></button>`).join('')}</nav>` : '';
+  let body = '';
+  if (UI.state === 'loading') body = skeleton(phone);
+  else if (UI.state === 'error') body = `<div class="mx-auto max-w-3xl px-4 pt-5"><h1 class="text-2xl font-semibold tracking-tight">My Assigned Work</h1><div class="mt-4 flex flex-col items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-8 text-center" role="alert"><span class="text-destructive-text">${ic('circle-alert', 's20')}</span><p class="font-medium">Your work did not load.</p><p class="text-muted-foreground">Check the connection and try again.</p><button data-act="retry" class="${BTN.outline} ${phone ? 'h-11' : 'h-9'} mt-2">${ic('rotate-cw')}Try again</button></div></div>`;
+  else if (UI.view === 'home') body = home(phone);
+  else if (UI.view === 'detail') body = detail(phone);
+  else if (UI.view === 'trucks') body = trucks(phone);
+  else body = completed(phone);
+  return `${header}
+    ${UI.state === 'ok' ? strip(phone) : UI.state === 'loading' ? '<div class="h-11 shrink-0 border-b px-4 py-3"><div class="pulse h-4 w-56 rounded bg-muted"></div></div>' : ''}
+    <main class="min-h-0 flex-1 overflow-y-auto">${body}</main>
+    ${bottom}
+    ${UI.sheet ? sheet(phone) : ''}
+    ${UI.toast ? `<div class="toast-in absolute ${phone ? 'bottom-[4.5rem]' : 'bottom-6'} left-1/2 z-40 flex w-[min(92%,380px)] -translate-x-1/2 items-start gap-2 rounded-lg border bg-card px-3 py-2.5 shadow-xl" role="status">${ic(UI.toast[0] === 'ok' ? 'circle-check' : 'wifi-off', UI.toast[0] === 'ok' ? 'mt-0.5 text-success' : 'mt-0.5 text-warning-foreground dark:text-warning')}<span class="flex-1">${UI.toast[1]}</span></div>` : ''}`;
+}
+
+/* The clock strip: always under the header (MG1). Offline replaces it with one strip (UX-6-007). */
+function strip(phone) {
+  const pad = 'flex min-h-11 shrink-0 items-center gap-2 border-b px-4 py-2';
+  if (S.offline) return `<div class="${pad} bg-warning-surface text-warning-foreground" role="status">${ic('wifi-off')}<p class="flex-1"><b class="font-semibold">Offline</b> · your changes are not sent</p><span class="tnum text-xs opacity-80">as of 10:52 AM</span></div>`;
+  if (S.clock) {
+    const w = W(S.clock.wo);
+    const here = UI.view === 'detail' && UI.wo === w.id;
+    return `<button ${here ? 'disabled style="opacity:1;cursor:default"' : `data-open="${w.id}"`} class="${pad} w-full bg-success/10 text-left" aria-label="Your clock is running on Truck ${w.n}">
+      <span class="live size-2.5 shrink-0 rounded-full bg-success"></span>
+      <p class="min-w-0 flex-1 truncate"><b class="font-semibold">Your clock</b> · Truck ${w.n} · since <span class="tnum">${S.clock.since}</span></p>
+      ${here ? '' : `<span class="inline-flex items-center text-xs font-medium text-success">Open${ic('chevron-right', 's14')}</span>`}</button>`;
+  }
+  const hasWork = S.wos.some((w) => ['active', 'created'].includes(bucket(w)));
+  const dayClose = S.wos.find((w) => w.lastEnd === 'day_close' && workable(w).length);
+  return `<div class="${pad} bg-muted" role="status">${ic(dayClose ? 'moon' : 'circle-pause', 'text-muted-foreground')}<p class="min-w-0 flex-1">${dayClose ? '<b class="font-semibold">Your clock stopped at 5:00 PM yesterday</b>' : '<b class="font-semibold">Your clock is stopped</b>'}${hasWork ? `<span class="text-muted-foreground"> · tap Continue on ${dayClose ? `Truck ${dayClose.n}` : 'a Truck'}</span>` : ''}</p></div>`;
+}
+
+/* ───────── My work ───────── */
+function home(phone) {
+  const L = lists();
+  const head = `<div class="px-4 pb-1 pt-5"><h1 class="text-2xl font-semibold tracking-tight">My Assigned Work</h1><p class="text-muted-foreground">Jobs the Manager gave you, grouped by Truck.</p></div>`;
+  const total = L.active.length + L.created.length + L.blocked.length + L.done.length + L.paused.length;
+  if (!total) return `<div class="mx-auto max-w-3xl">${head}<div class="mx-4 mt-4 flex flex-col items-center gap-1 rounded-xl border border-dashed px-4 py-10 text-center text-muted-foreground">${ic('wrench', 's20')}<p class="font-medium text-foreground">No Jobs assigned yet</p><p>When the Manager gives you a Job, it shows up here.</p></div></div>`;
+  const nid = nextId();
+  const sec = (title, n, hint, inner, dot = '') => `<section class="px-4 pt-5"><h2 class="flex items-center text-base font-semibold">${dot}${title}${count(n)}</h2>${hint ? `<p class="mt-0.5 text-muted-foreground">${hint}</p>` : ''}<div class="mt-2 space-y-2">${inner}</div></section>`;
+  return `<div class="mx-auto max-w-3xl pb-6">${head}
+    ${L.active.length ? sec('In progress', L.active.length, '', L.active.map((w) => card(w, nid, phone)).join('')) : ''}
+    ${L.created.length ? sec('Ready to Start', L.created.length, 'Most urgent first.', L.created.map((w) => card(w, nid, phone)).join('')) : ''}
+    ${L.blocked.length ? sec('Blocked · waiting on the Manager', L.blocked.length, 'Only the Manager resolves a blocker. You can add a note.', L.blocked.map((w) => blockedCard(w, phone)).join(''), '<span class="mr-2 size-2 rounded-full bg-warning"></span>') : ''}
+    ${L.done.length ? sec('Waiting on the Manager', L.done.length, 'Your part is done. The Manager closes the Work Order.', `<ul class="divide-y rounded-xl border bg-card">${L.done.map((w) => row(w, `${ic('check-check', 's14 text-success')}Your part is done · ${mine(w).map((j) => j.name).join(', ')}`)).join('')}</ul>`) : ''}
+    ${L.paused.length ? sec('Paused by the Manager', L.paused.length, 'Nothing to do here until the Manager resumes it.', `<ul class="divide-y rounded-xl border bg-card">${L.paused.map((w) => row(w, `${ic('pause', 's14')}Paused · ${w.pausedReason}`)).join('')}</ul>`) : ''}
+  </div>`;
+}
+
+function row(w, line) {
+  return `<li><button data-open="${w.id}" class="flex min-h-14 w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/40">
+    <div class="min-w-0 flex-1"><p class="font-semibold">Truck ${w.n} <span class="font-mono text-xs font-normal text-muted-foreground">${w.wo}</span></p><p class="flex items-center gap-1.5 truncate text-xs text-muted-foreground">${line}</p></div>${ic('chevron-right', 'text-muted-foreground')}</button></li>`;
+}
+
+function card(w, nid, phone) {
+  const here = S.clock?.wo === w.id;
+  const isNext = nid === w.id;
+  const line = stopLine(w);
+  const my = mine(w);
+  const firstWork = workable(w)[0]?.id;
+  const h = phone ? 'h-11' : 'h-9';
+  let action;
+  if (here) action = `<button data-open="${w.id}" class="${BTN.primary} ${h} w-full">${ic('wrench')}View work</button>`;
+  else if (w.status === 'created') action = `<button data-act="start" data-id="${w.id}" ${OFF()} class="${isNext ? BTN.primary : BTN.outline} ${h} w-full">${ic('play')}Start Work</button>`;
+  else action = `<div class="grid grid-cols-[1fr_auto] gap-2"><button data-act="start" data-id="${w.id}" ${OFF()} class="${isNext ? BTN.primary : BTN.outline} ${h}">${ic('play')}Continue</button><button data-open="${w.id}" class="${BTN.ghost} ${h}" aria-label="View Truck ${w.n}">View</button></div>`;
+  return `<article class="rounded-xl border bg-card ${here ? 'border-primary ring-1 ring-primary' : ''}">
+    <button data-open="${w.id}" class="block w-full space-y-1.5 rounded-t-xl p-3 text-left hover:bg-accent/40">
+      <div class="flex flex-wrap items-center gap-2"><span class="text-base font-semibold">Truck ${w.n}</span>${PRI[w.pri]}${here ? `<span class="ml-auto">${pill('success', 'Clock running', 'live')}</span>` : ''}</div>
+      <p class="truncate text-xs text-muted-foreground">${w.veh} · <span class="font-mono">${w.wo}</span></p>
+      ${line ? `<p class="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium ${BAND[line.tone]}">${ic(line.icon, 's14')}${line.text}</p>` : ''}
+      <ul class="space-y-1 pt-0.5">${my.map((j) => `<li class="flex items-center gap-2">${j.st === 'done' ? ic('check', 's14 text-success') : j.blocker ? '<span class="mx-[3px] size-2 shrink-0 rounded-full bg-warning"></span>' : '<span class="mx-[3px] size-2 shrink-0 rounded-full bg-muted-foreground/50"></span>'}<span class="${j.st === 'done' ? 'text-muted-foreground line-through' : ''}">${jobName(j)}</span>${j.id === firstWork ? '<span class="text-xs font-semibold text-primary">Next</span>' : ''}${j.blocker ? `<span class="text-xs font-medium text-warning-foreground dark:text-warning">Blocked · ${j.blocker.reason}</span>` : ''}</li>`).join('')}</ul>
+    </button>
+    <div class="border-t p-2">${action}</div></article>`;
+}
+
+function blockedCard(w, phone) {
+  const j = mine(w).find((x) => x.blocker);
+  return `<article class="rounded-xl border border-warning/50 bg-warning-surface">
+    <button data-open="${w.id}" class="block w-full space-y-1 p-3 text-left">
+      <div class="flex flex-wrap items-center gap-2"><span class="text-base font-semibold">Truck ${w.n}</span>${PRI[w.pri]}<span class="ml-auto">${ic('chevron-right', 'text-warning-foreground')}</span></div>
+      <p class="truncate text-xs text-muted-foreground">${w.veh} · <span class="font-mono">${w.wo}</span></p>
+      <p class="flex items-center gap-2 pt-1 font-medium text-warning-foreground">${ic('octagon-alert', 's14')}${jobName(j)} · ${j.blocker.reason}</p>
+      <p class="text-xs text-warning-foreground/80">Since <span class="tnum">${j.blocker.since}</span> · ${j.blocker.ago}${j.blocker.notes.length ? ` · ${j.blocker.notes.length + 1} notes` : ''}</p>
+    </button></article>`;
+}
+
+/* ───────── Truck (Work Order detail) ───────── */
+function detail(phone) {
+  const h = phone ? 'h-11' : 'h-9';
+  if (UI.wo === 'gone') return `<div class="mx-auto max-w-3xl px-4 pt-3">
+    <button data-view="home" class="${BTN.ghost} ${h} -ml-3">${ic('arrow-left')}My work</button>
+    <h1 class="mt-1 text-2xl font-semibold tracking-tight">Work Order</h1>
+    <div class="mt-4 space-y-3"><p class="flex items-start gap-2 rounded-xl border border-warning/50 bg-warning-surface px-3 py-3 text-warning-foreground" role="alert">${ic('info', 'mt-0.5')}You have no Jobs on Truck 603 anymore. The Manager may have reassigned or cancelled them.</p>
+    <button data-view="home" class="${BTN.outline} ${h} w-full">${ic('arrow-left')}Back to My work</button></div></div>`;
+  const w = W(UI.wo); if (!w) return '';
+  const here = S.clock?.wo === w.id;
+  const my = mine(w); const doneN = my.filter((j) => j.st === 'done').length;
+  const work = workable(w); const firstWork = work[0]?.id;
+  const line = stopLine(w);
+  const partDone = bucket(w) === 'done';
+  const needsStart = !here && work.length && ['created', 'in_progress'].includes(w.status);
+  const blocked = my.filter((j) => j.blocker && j.st !== 'done');
+  const section = (title, content, extra = '') => `<section class="rounded-xl border bg-card"><div class="flex min-h-12 items-center justify-between gap-2 border-b px-4 py-2"><h2 class="text-base font-semibold">${title}</h2>${extra}</div>${content}</section>`;
+
+  const summary = `<section class="rounded-xl border bg-card p-4 ${here ? 'border-primary ring-1 ring-primary' : ''}">
+      <dl class="grid grid-cols-2 gap-3">
+        <div><dt class="text-xs text-muted-foreground">Your Jobs</dt><dd class="tnum text-lg font-semibold">${doneN} of ${my.length} done</dd></div>
+        <div><dt class="text-xs text-muted-foreground">Your time</dt><dd class="flex flex-wrap items-center gap-x-2 text-lg font-semibold"><span class="tnum">${fmt(w.myMin)}</span>${w.status === 'created' && !w.myMin ? '' : here ? pill('success', 'running', 'live') : pill('muted', 'stopped')}</dd></div>
+      </dl>
+      ${w.resolved ? `<div class="mt-3 rounded-lg bg-success/10 px-3 py-2 text-success"><p class="flex items-center gap-2 font-medium">${ic('circle-check')}${w.resolved.job} resolved by ${MECH[w.resolved.by].full}</p><p class="mt-0.5 text-foreground/90">“${w.resolved.note}”</p></div>` : ''}
+      ${needsStart ? `<div class="mt-3 space-y-2 border-t pt-3">${line && !w.resolved ? `<p class="flex items-center gap-2 text-sm font-medium ${line.tone === 'muted' ? 'text-muted-foreground' : 'text-primary'}">${ic(line.icon, 's14')}${line.text.replace(' · tap Continue', '')}</p>` : ''}
+        <button data-act="start" data-id="${w.id}" ${OFF()} class="${BTN.primary} ${h} w-full">${ic('play')}${w.status === 'created' ? 'Start Work' : 'Continue'}</button></div>` : ''}
+      ${partDone ? `<div class="mt-3 rounded-lg bg-primary/10 px-3 py-2"><p class="font-medium">You finished your part on Truck ${w.n}.</p><p class="text-muted-foreground">Your time stopped. If the Manager gives you another Job here, tap Continue.</p></div>` : ''}
+      ${w.status === 'paused' ? `<p class="mt-3 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-muted-foreground">${ic('pause', 's14')}Paused by the Manager · ${w.pausedReason}. Ask the Manager to resume it.</p>` : ''}
+    </section>`;
+
+  const blockerNotices = blocked.map((j) => {
+    const b = j.blocker; const open = UI.bnoteOpen === j.id;
+    return `<section class="rounded-xl border border-warning/50 bg-warning-surface p-3 text-warning-foreground" aria-label="Blocker on ${jobName(j)}">
+      <p class="flex items-start gap-2 font-semibold">${ic('octagon-alert', 'mt-0.5')}<span>${jobName(j)} · ${b.reason}</span></p>
+      <p class="ml-6 text-xs opacity-90">Since <span class="tnum">${b.since}</span> · ${b.ago} · reported by ${b.by === ME ? 'you' : MECH[b.by].full}. Only the Manager resolves it.</p>
+      <ul class="ml-6 mt-2 space-y-1.5">${[{ by: b.by, at: b.since, body: b.first }, ...b.notes].map((n) => `<li><p class="text-xs opacity-80">${MECH[n.by].full} · ${n.at}</p><p>${n.body}</p></li>`).join('')}</ul>
+      ${open ? `<div class="ml-6 mt-3 space-y-2"><label for="bnote" class="block font-medium">Note for the Manager</label>
+          <textarea id="bnote" data-draft="bnote:${j.id}" rows="2" class="w-full rounded-md border bg-background px-3 py-2 text-base text-foreground outline-none focus:border-ring" placeholder="E.g. the part arrived">${UI.drafts['bnote:' + j.id] ?? ''}</textarea>
+          ${UI.err === 'bnote' ? '<p class="text-destructive-text" role="alert">Write the note first.</p>' : ''}
+          <div class="flex gap-2"><button data-act="bnote-cancel" class="${BTN.outline} ${h} flex-1">Cancel</button><button data-act="bnote-send" data-job="${j.id}" ${OFF()} class="${BTN.primary} ${h} flex-1">${ic('send')}Add note</button></div></div>`
+        : `<button data-act="bnote-open" data-job="${j.id}" class="${BTN.outline} ${h} ml-6 mt-3 border-warning/50 bg-transparent text-warning-foreground hover:bg-warning/10">${ic('message-square-plus')}Add note</button>`}
+    </section>`;
+  }).join('');
+
+  const myList = `<ul class="divide-y">${my.map((j) => {
+    const isFirst = j.id === firstWork;
+    const status = j.st === 'done' ? `<span class="grid size-6 shrink-0 place-items-center rounded-full bg-success/15 text-success">${ic('check', 's14')}</span>` : j.blocker ? `<span class="grid size-6 shrink-0 place-items-center rounded-full bg-warning/20 text-warning-foreground dark:text-warning">${ic('octagon-alert', 's14')}</span>` : `<span class="grid size-6 shrink-0 place-items-center rounded-full border-2 ${isFirst ? 'border-primary' : 'border-muted-foreground/40'}"></span>`;
+    const sub = [j.cat !== j.name ? j.cat : null, j.helper ? `Helping ${MECH[j.helper].full}` : null].filter(Boolean).join(' · ');
+    const actions = j.st !== 'done' && !j.blocker && w.status !== 'paused'
+      ? `<div class="mt-3 grid grid-cols-2 gap-2"><button data-act="ask-complete" data-job="${j.id}" ${here && !S.offline ? '' : 'disabled'} class="${isFirst ? BTN.primary : BTN.outline} ${h}">${ic('check')}Complete job</button><button data-act="ask-blocker" data-job="${j.id}" ${OFF()} class="${BTN.outline} ${h}">${ic('octagon-alert')}Report blocker</button></div>` : '';
+    return `<li class="px-4 py-3"><div class="flex items-start gap-3">${status}<div class="min-w-0 flex-1">
+      <p class="flex flex-wrap items-center gap-x-2 text-base font-medium"><span class="${j.st === 'done' ? 'text-muted-foreground' : ''}">${jobName(j)}</span>${isFirst ? '<span class="text-xs font-semibold text-primary">Next</span>' : ''}</p>
+      ${sub ? `<p class="text-xs text-muted-foreground">${sub}</p>` : ''}
+      ${j.st === 'done' ? `<p class="text-xs text-muted-foreground">Done · <span class="tnum">${j.at}</span></p>` : ''}
+      ${j.blocker ? `<p class="text-xs font-medium text-warning-foreground dark:text-warning">Blocked · ${j.blocker.reason} · waiting on the Manager</p>` : ''}
+      </div></div>${actions}</li>`;
+  }).join('')}</ul>${work.length && !here && w.status !== 'paused' ? `<p class="border-t px-4 py-2.5 text-muted-foreground">${w.status === 'created' ? 'Tap Start Work to complete Jobs.' : 'Tap Continue to complete Jobs.'}</p>` : ''}`;
+
+  const oth = others(w);
+  const ST = { todo: ['muted', 'To do'], progress: ['primary', 'In progress'], done: ['success', 'Done'] };
+  const othersSec = oth.length ? `<section class="rounded-xl border bg-card">
+      <button data-act="toggle-others" aria-expanded="${UI.othersOpen}" class="flex min-h-12 w-full items-center gap-2 px-4 py-2 text-left">
+        <h2 class="text-base font-semibold">Other work${phone ? '' : ' on this Truck'}</h2>${count(oth.length)}
+        <span class="ml-auto flex gap-0.5">${[...new Set(oth.map((j) => j.by))].map((m) => `<span class="rounded-full ring-2 ring-card">${av(m, 'size-6')}</span>`).join('')}</span>
+        ${ic('chevron-down', `text-muted-foreground transition-transform ${UI.othersOpen ? 'rotate-180' : ''}`)}</button>
+      ${UI.othersOpen ? `<ul class="divide-y border-t">${oth.map((j) => `<li class="flex min-h-11 items-center gap-2.5 px-4 py-2">${av(j.by)}<span class="min-w-0 flex-1 truncate">${j.name}<span class="text-xs text-muted-foreground"> · ${MECH[j.by].full}</span></span>${pill(...ST[j.st])}</li>`).join('')}</ul>
+        <p class="border-t px-4 py-2 text-xs text-muted-foreground">Other mechanics do this work. You can see it, not change it.</p>` : ''}
+    </section>` : '';
+
+  const notesSec = section('Notes', `
+      ${w.notes.length ? `<ul class="divide-y">${w.notes.map((n) => `<li class="flex gap-3 px-4 py-3">${av(n.by, 'size-7')}<div class="min-w-0 flex-1"><p class="flex flex-wrap items-baseline gap-x-2"><span class="font-medium">${MECH[n.by].full}</span><span class="tnum text-xs text-muted-foreground">${n.at}</span></p>
+          ${n.kind === 'request' ? `<p class="my-1">${pill(n.handled ? 'success' : 'warning', n.handled ? 'Work request · handled' : 'Work request · waiting for the Manager')}</p>` : ''}<p>${n.body}</p></div></li>`).join('')}</ul>` : '<p class="px-4 py-3 text-muted-foreground">No notes yet.</p>'}
+      <div class="space-y-2 border-t px-4 py-3"><label for="note" class="block font-medium">Add a note</label>
+        <textarea id="note" data-draft="note:${w.id}" rows="2" class="w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring" placeholder="Something the shop should know">${UI.drafts['note:' + w.id] ?? ''}</textarea>
+        ${UI.err === 'note' ? '<p class="text-destructive-text" role="alert">Write the note first.</p>' : ''}
+        <div class="flex items-center gap-2"><p class="flex-1 text-xs text-muted-foreground">Kept on this phone until you send it. Notes can't be edited.</p><button data-act="note" ${OFF()} class="${BTN.outline} ${h}">${ic('send')}Add note</button></div></div>`,
+    `<button data-act="ask-request" ${OFF()} class="${BTN.outline} ${phone ? 'h-11' : 'h-8'}">${ic('wrench')}Request work</button>`);
+
+  const truckSec = `<section class="rounded-xl border bg-card"><button data-act="toggle-truck" aria-expanded="${UI.truckOpen}" class="flex min-h-12 w-full items-center gap-2 px-4 py-2 text-left"><h2 class="flex-1 text-base font-semibold">Truck information</h2>${ic('chevron-down', `text-muted-foreground transition-transform ${UI.truckOpen ? 'rotate-180' : ''}`)}</button>
+      ${UI.truckOpen ? `<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border-t px-4 py-3"><dt class="text-muted-foreground">Vehicle</dt><dd class="text-right font-medium">${w.veh}</dd><dt class="text-muted-foreground">Mileage</dt><dd class="tnum text-right font-medium">${w.miles} mi</dd><dt class="text-muted-foreground">VIN</dt><dd class="text-right font-mono text-[13px]">${w.vin}</dd></dl><div class="border-t p-2"><button data-act="history" class="${BTN.ghost} ${h} w-full">${ic('history')}Repair history</button></div>` : ''}</section>`;
+
+  const top = `<div class="px-4 pt-3">
+      <button data-view="home" class="${BTN.ghost} ${h} -ml-3">${ic('arrow-left')}My work</button>
+      <div class="mt-1 flex flex-wrap items-center gap-2"><h1 class="text-2xl font-semibold tracking-tight">Truck ${w.n}</h1>${PRI[w.pri]}</div>
+      <p class="text-muted-foreground">${w.veh} · <span class="font-mono">${w.wo}</span></p></div>`;
+  const left = `${summary}${blockerNotices}${section(`Your Jobs${count(my.length)}`, myList)}${othersSec}`;
+  const right = `${notesSec}${truckSec}`;
+  return phone
+    ? `${top}<div class="space-y-3 px-4 pb-6 pt-3">${left}${right}</div>`
+    : `<div class="mx-auto max-w-[1100px]">${top}<div class="grid grid-cols-[minmax(0,1fr)_380px] items-start gap-4 px-4 pb-6 pt-3"><div class="space-y-3">${left}</div><div class="space-y-3">${right}</div></div></div>`;
+}
+
+/* ───────── Sheets ───────── */
+function sheet(phone) {
+  const h = phone ? 'h-11' : 'h-9';
+  const w = W(UI.wo);
+  const j = UI.sheet.job ? w.jobs.find((x) => x.id === UI.sheet.job) : null;
+  const lastWork = j && workable(w).length === 1 && workable(w)[0].id === j.id;
+  const shell = (title, desc, body, actions) => `<div data-act="cancel" class="absolute inset-0 z-40 bg-black/50"></div>
+    <div role="dialog" aria-modal="true" aria-label="${title}" class="${phone ? 'sheet-in absolute inset-x-0 bottom-0 max-h-[92%] overflow-y-auto rounded-t-2xl' : 'absolute left-1/2 top-1/2 max-h-[90%] w-[500px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl'} z-50 border bg-card p-5 shadow-2xl">
+      ${phone ? '<div class="mx-auto -mt-2 mb-3 h-1 w-10 rounded-full bg-muted-foreground/40"></div>' : ''}
+      <h2 class="text-base font-semibold">${title}</h2><p class="mt-1 text-muted-foreground">${desc}</p>${body}
+      ${S.offline ? `<p class="mt-3 flex items-center gap-2 text-warning-foreground dark:text-warning">${ic('wifi-off', 's14')}Offline. Your text stays on this phone; send it when you are back online.</p>` : ''}
+      <div class="mt-4 grid grid-cols-2 gap-2 ${phone ? '' : 'sm:flex sm:justify-end'}">${actions}</div></div>`;
+  const draft = (key) => UI.drafts[key] ?? '';
+  const kept = (key) => (UI.drafts[key] ? `<p class="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">${ic('save', 's14')}Draft kept on this phone</p>` : '<p class="mt-1 text-xs text-muted-foreground">Kept on this phone until you send it.</p>');
+  if (UI.sheet.kind === 'complete') return shell(`Complete ${jobName(j)}?`, `Truck ${w.n} · ${w.wo}. ${lastWork ? 'This is your last Job here: your clock stops.' : 'Your clock keeps running.'}`,
+    `<label for="sheet-note" class="mt-4 block font-medium">Closing note <span class="font-normal text-muted-foreground">(optional)</span></label>
+     <textarea id="sheet-note" data-draft="complete:${j.id}" rows="3" class="mt-2 w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring" placeholder="What you did, for the Manager and Safety">${draft('complete:' + j.id)}</textarea>${kept('complete:' + j.id)}`,
+    `<button data-act="cancel" class="${BTN.outline} ${h}">Back</button><button data-act="complete" ${OFF()} class="${BTN.primary} ${h}">${ic('check')}Complete job</button>`);
+  if (UI.sheet.kind === 'blocker') {
+    const other = UI.reason === 'Other';
+    return shell(`Report blocker · ${jobName(j)}`, `The Manager is told and resolves it. You can't complete this Job until then.${lastWork ? ' Your clock stops: it is your last Job you can work on here.' : ''}`,
+      `<fieldset class="mt-4"><legend class="font-medium">What is stopping you?</legend>
+        <div class="mt-2 grid gap-1.5 ${phone ? '' : 'grid-cols-2'}">${REASONS.map((r) => `<label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 ${UI.reason === r ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-accent'} ${r === 'Other' && !phone ? 'col-span-2' : ''}"><input type="radio" name="reason" value="${r}" ${UI.reason === r ? 'checked' : ''} class="size-5 accent-[var(--primary)]" /><span class="${UI.reason === r ? 'font-medium' : ''}">${r}</span></label>`).join('')}</div>
+        ${UI.err === 'reason' ? '<p class="mt-1 text-destructive-text" role="alert">Choose what is stopping you.</p>' : ''}</fieldset>
+       <label for="sheet-note" class="mt-4 block font-medium">${other ? 'What is stopping you?' : 'What is missing? <span class="font-normal text-muted-foreground">(optional)</span>'}</label>
+       <textarea id="sheet-note" data-draft="blocker:${j.id}" rows="2" class="mt-2 w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring ${UI.err === 'other' ? 'border-destructive-text' : ''}" placeholder="E.g. the part number or the tool you need">${draft('blocker:' + j.id)}</textarea>
+       ${UI.err === 'other' ? '<p class="mt-1 text-destructive-text" role="alert">Say what is stopping you.</p>' : kept('blocker:' + j.id)}`,
+      `<button data-act="cancel" class="${BTN.outline} ${h}">Back</button><button data-act="blocker" ${OFF()} class="${BTN.primary} ${h}">${ic('octagon-alert')}Report blocker</button>`);
+  }
+  return shell(`Request work · Truck ${w.n}`, 'Tell the Manager what else this Truck needs. It goes to the Manager\'s Dashboard, and the Manager decides whether to add a Job. It is not a note.',
+    `<label for="sheet-note" class="mt-4 block font-medium">What does the Truck need?</label>
+     <textarea id="sheet-note" data-draft="request:${w.id}" rows="3" class="mt-2 w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus:border-ring ${UI.err === 'request' ? 'border-destructive-text' : ''}" placeholder="E.g. rear mud flap bracket is cracked">${draft('request:' + w.id)}</textarea>
+     ${UI.err === 'request' ? '<p class="mt-1 text-destructive-text" role="alert">Say what the Truck needs.</p>' : kept('request:' + w.id)}`,
+    `<button data-act="cancel" class="${BTN.outline} ${h}">Back</button><button data-act="request" ${OFF()} class="${BTN.primary} ${h}">${ic('send')}Send to Manager</button>`);
+}
+
+/* ───────── Trucks ───────── */
+function truckResults(phone) {
+  const q = UI.q.trim();
+  const list = S.trucks.filter((t) => !q || t.n.includes(q)).sort((a, b) => (q && b.n.startsWith(q)) - (q && a.n.startsWith(q)));
+  if (!list.length) return `<div class="rounded-xl border border-dashed px-4 py-8 text-center text-muted-foreground">No trucks found.</div>`;
+  return `<ul class="space-y-2">${list.slice(0, 20).map((t) => {
+    const w = t.open?.id ? W(t.open.id) : null;
+    return `<li class="rounded-xl border bg-card">
+      <div class="flex items-center justify-between gap-2 px-3 pt-3"><span class="text-base font-semibold">Truck ${t.n}</span>
+        ${w ? `<button data-open="${w.id}" class="-mr-1 inline-flex min-h-11 items-center gap-1 rounded-md px-2 font-medium text-primary hover:bg-accent">Open <span class="font-mono">${t.open.wo}</span>${ic('chevron-right', 's14')}</button>` : t.open ? pill('muted', `Open ${t.open.wo}`) : ''}</div>
+      <p class="px-3 text-xs text-muted-foreground">${t.veh}${w ? ' · you have Jobs here' : ''}</p>
+      <div class="mt-1 border-t px-1 py-1"><button data-act="history" class="${BTN.ghost} ${phone ? 'h-11' : 'h-9'} w-full justify-between">Repair history${ic('chevron-right', 's14')}</button></div></li>`;
+  }).join('')}</ul>`;
+}
+function trucks(phone) {
+  return `<div class="mx-auto max-w-3xl px-4 pb-6 pt-5"><h1 class="text-2xl font-semibold tracking-tight">Find a Truck</h1><p class="text-muted-foreground">Search by Truck number to see its repair history.</p>
+    <label for="q" class="mt-4 block font-medium">Truck number</label>
+    <div class="relative mt-2"><span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">${ic('search')}</span>
+    <input id="q" type="search" inputmode="numeric" autocomplete="off" value="${UI.q}" placeholder="e.g. 905" class="h-11 w-full rounded-md border bg-background pl-9 pr-3 text-base outline-none focus:border-ring" /></div>
+    <div id="truck-results" class="mt-4">${truckResults(phone)}</div></div>`;
+}
+
+/* ───────── Completed ───────── */
+function completed(phone) {
+  const rows = [];
+  S.wos.forEach((w) => mine(w).filter((j) => j.st === 'done').forEach((j) => rows.push({ n: w.n, wo: w.wo, id: w.id, job: jobName(j), at: j.at, day: j.day ?? 'Earlier', note: j.note })));
+  S.history.forEach((x) => rows.push({ ...x, id: null }));
+  if (!rows.length) return `<div class="mx-auto max-w-3xl px-4 pt-5"><h1 class="text-2xl font-semibold tracking-tight">Completed</h1><div class="mt-4 rounded-xl border border-dashed px-4 py-10 text-center text-muted-foreground">Jobs you complete show up here.</div></div>`;
+  const groups = ['Today', 'Yesterday', 'Earlier'].map((g) => [g, rows.filter((r) => r.day === g)]).filter(([, l]) => l.length);
+  return `<div class="mx-auto max-w-3xl pb-6"><div class="px-4 pb-1 pt-5"><h1 class="text-2xl font-semibold tracking-tight">Completed</h1><p class="text-muted-foreground">Jobs you completed. The Work Order may still be open.</p></div>
+    ${groups.map(([g, l]) => `<p class="px-4 pb-1 pt-4 text-xs font-medium text-muted-foreground">${g}</p><ul class="mx-4 divide-y rounded-xl border bg-card">${l.map((r) => `<li>
+      <button ${r.id ? `data-open="${r.id}"` : 'data-act="history"'} class="flex w-full items-start gap-3 px-3 py-3 text-left hover:bg-accent/40">${ic('check', 'mt-0.5 text-success')}
+      <div class="min-w-0 flex-1"><p class="flex items-baseline justify-between gap-2"><span class="font-medium">${r.job}</span><span class="tnum shrink-0 text-xs text-muted-foreground">${r.at}</span></p>
+      <p class="text-xs text-muted-foreground">Truck ${r.n} · <span class="font-mono">${r.wo}</span></p>
+      ${r.note ? `<p class="mt-0.5 truncate italic text-foreground/90">“${r.note}”</p>` : '<p class="mt-0.5 text-xs text-muted-foreground">No closing note</p>'}</div></button></li>`).join('')}</ul>`).join('')}</div>`;
+}
+
+function skeleton() {
+  return `<div class="mx-auto max-w-3xl space-y-2 px-4 pt-5" role="status" aria-label="Loading your work"><div class="pulse h-7 w-56 rounded bg-muted"></div><div class="pulse h-4 w-72 rounded bg-muted"></div>${[1, 2, 3].map(() => '<div class="pulse mt-3 h-36 rounded-xl bg-muted"></div>').join('')}</div>`;
+}
+
+/* ───────── Actions ───────── */
+function toast(kind, text) { UI.toast = [kind, text]; render(); clearTimeout(window.__t); window.__t = setTimeout(() => { UI.toast = null; render(); }, 3200); }
+function openSheet(kind, job) { UI.sheet = { kind, job }; UI.err = null; UI.toast = null; if (kind === 'blocker') UI.reason = null; render(); document.getElementById('sheet-note')?.focus({ preventScroll: true }); }
+function startOn(w) {
+  const prev = S.clock?.wo && S.clock.wo !== w.id ? W(S.clock.wo) : null;
+  if (prev) prev.lastEnd = 'switched';
+  S.clock = { wo: w.id, since: '11:58 AM' };
+  w.status = 'in_progress'; w.lastEnd = null; w.resolved = null;
+  UI.view = 'detail'; UI.wo = w.id; UI.othersOpen = false; UI.truckOpen = false;
+  toast('ok', prev ? `Work started. Your clock moved from Truck ${prev.n} to Truck ${w.n}.` : 'Work started.');
+}
+function stopIfLast(w, why) {
+  if (S.clock?.wo === w.id && !workable(w).length) { S.clock = null; w.lastEnd = why; return true; }
+  return false;
+}
+
+document.addEventListener('input', (e) => {
+  if (e.target.dataset.draft) UI.drafts[e.target.dataset.draft] = e.target.value;
+  if (e.target.id === 'q') { UI.q = e.target.value; document.getElementById('truck-results').innerHTML = truckResults(UI.device === 'phone'); lucide.createIcons(); }
+});
+document.addEventListener('change', (e) => {
+  if (e.target.name === 'reason') { UI.reason = e.target.value; if (UI.err === 'reason') UI.err = null; render(); document.querySelector(`input[name="reason"][value="${CSS.escape(UI.reason)}"]`)?.focus({ preventScroll: true }); }
+});
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button, [data-act="cancel"]'); if (!el) return;
+  if (el.dataset.device) { UI.device = el.dataset.device; return render(); }
+  if (el.id === 'theme') { document.documentElement.classList.toggle('dark'); el.textContent = document.documentElement.classList.contains('dark') ? 'Light' : 'Dark'; return render(); }
+  if (el.id === 'reset') { S = seed(); UI = fresh(); return render(); }
+  if (el.dataset.preset) { S = seed(); UI = fresh(); PRESETS[el.dataset.preset][1](); return render(); }
+  if (el.dataset.view) { UI.view = el.dataset.view; UI.wo = null; UI.sheet = null; return render(); }
+  if (el.dataset.open) { UI.view = 'detail'; UI.wo = el.dataset.open; UI.othersOpen = false; UI.truckOpen = false; UI.bnoteOpen = null; UI.err = null; document.querySelector('main')?.scrollTo(0, 0); return render(); }
+  const w = W(UI.wo);
+  const note = () => (document.getElementById('sheet-note')?.value ?? '').trim();
+  switch (el.dataset.act) {
+    case 'retry': UI.state = 'ok'; return render();
+    case 'start': if (S.offline) return; return startOn(W(el.dataset.id));
+    case 'toggle-others': UI.othersOpen = !UI.othersOpen; return render();
+    case 'toggle-truck': UI.truckOpen = !UI.truckOpen; return render();
+    case 'history': return toast('ok', 'Opens the Truck\'s repair history (not part of this mockup).');
+    case 'ask-complete': return openSheet('complete', el.dataset.job);
+    case 'ask-blocker': return openSheet('blocker', el.dataset.job);
+    case 'ask-request': return openSheet('request', null);
+    case 'cancel': UI.sheet = null; UI.err = null; return render(); // drafts are kept (MG9, built in block A)
+    case 'complete': {
+      const j = w.jobs.find((x) => x.id === UI.sheet.job);
+      j.st = 'done'; j.at = '11:58 AM'; j.day = 'Today'; j.note = note() || null;
+      delete UI.drafts['complete:' + j.id]; UI.sheet = null;
+      return toast('ok', stopIfLast(w, 'done') ? `You finished your part on Truck ${w.n}. Your time stopped.` : `${jobName(j)} marked complete.`);
+    }
+    case 'blocker': {
+      const j = w.jobs.find((x) => x.id === UI.sheet.job);
+      if (!UI.reason) { UI.err = 'reason'; return render(); }
+      if (UI.reason === 'Other' && !note()) { UI.err = 'other'; return render(); }
+      j.blocker = { reason: UI.reason, since: 'Oct 7, 11:58 AM', ago: 'just now', by: ME, first: note() || 'No note.', notes: [] };
+      delete UI.drafts['blocker:' + j.id]; UI.sheet = null;
+      return toast('ok', stopIfLast(w, 'blocked') ? 'Blocker reported. The Manager will resolve it. Your clock stopped.' : 'Blocker reported. The Manager will resolve it.');
+    }
+    case 'request': {
+      if (!note()) { UI.err = 'request'; return render(); }
+      w.notes.push({ by: ME, at: 'Oct 7, 11:58 AM', body: note(), kind: 'request', handled: false });
+      delete UI.drafts['request:' + w.id]; UI.sheet = null;
+      return toast('ok', 'Work request sent to your Manager.');
+    }
+    case 'note': {
+      const v = (document.getElementById('note')?.value ?? '').trim();
+      if (!v) { UI.err = 'note'; return render(); }
+      w.notes.push({ by: ME, at: 'Oct 7, 11:58 AM', body: v, kind: 'note' }); delete UI.drafts['note:' + w.id]; UI.err = null;
+      return toast('ok', 'Note added.');
+    }
+    case 'bnote-open': UI.bnoteOpen = el.dataset.job; UI.err = null; render(); return document.getElementById('bnote')?.focus({ preventScroll: true });
+    case 'bnote-cancel': UI.bnoteOpen = null; UI.err = null; return render();
+    case 'bnote-send': {
+      const j = w.jobs.find((x) => x.id === el.dataset.job);
+      const v = (document.getElementById('bnote')?.value ?? '').trim();
+      if (!v) { UI.err = 'bnote'; return render(); }
+      j.blocker.notes.push({ by: ME, at: 'Oct 7, 11:58 AM', body: v }); delete UI.drafts['bnote:' + j.id]; UI.bnoteOpen = null; UI.err = null;
+      return toast('ok', 'Note added to the blocker.');
+    }
+  }
+});
+
+const PRESETS = {
+  normal: ['Normal', () => {}],
+  elsewhere: ['Clock on another Truck', () => { UI.view = 'detail'; UI.wo = 'wo4'; }],
+  stopped: ['Clock stopped', () => { S.clock = null; }],
+  blocked: ['With a blocker', () => { UI.view = 'detail'; UI.wo = 'wo5'; }],
+  blockerSheet: ['Report blocker', () => { UI.view = 'detail'; UI.wo = 'wo12'; UI.sheet = { kind: 'blocker', job: 'j2' }; UI.reason = 'Waiting for Parts'; }],
+  partDone: ['My part done', () => { mine(W('wo12')).forEach((j) => { j.st = 'done'; j.at = '11:40 AM'; j.day = 'Today'; }); S.clock = null; W('wo12').lastEnd = 'done'; UI.view = 'detail'; UI.wo = 'wo12'; }],
+  resolved: ['Blocker resolved', () => { S.clock = null; const w = W('wo5'); w.jobs[0].blocker = null; w.resolved = { job: 'Air Bag Replacement', by: 'cr', note: 'The air bag arrived, it is on your bench.' }; }],
+  dayClose: ['Day closed', () => { S.clock = null; W('wo12').lastEnd = 'day_close'; }],
+  paused: ['Paused by Manager', () => { S.wos.push({ id: 'wo9', n: '609', wo: 'WO-009', veh: '2022 Freightliner Cascadia', vin: '3AKJHHDR1NS000609', miles: '288,004', pri: 'normal', status: 'paused', pausedReason: 'Waiting for Vendor', myMin: 30, lastEnd: null, resolved: null, jobs: [{ id: 'j30', name: 'Turbo Hose', cat: 'Engine', by: 'an', st: 'todo' }], notes: [] }); }],
+  trucks: ['Trucks', () => { UI.view = 'trucks'; UI.q = '60'; }],
+  completed: ['Completed', () => { UI.view = 'completed'; }],
+  empty: ['Empty', () => { S.wos = []; S.clock = null; }],
+  loading: ['Loading', () => { UI.state = 'loading'; }],
+  error: ['Error', () => { UI.state = 'error'; }],
+  offline: ['Offline', () => { S.offline = true; }],
+  gone: ['Work Order gone', () => { UI.view = 'detail'; UI.wo = 'gone'; }],
+};
+render();
+</script>
+</body>
+</html>
