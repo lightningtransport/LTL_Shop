@@ -476,6 +476,8 @@ test.describe('Shop Admin Phase 2A', () => {
     const response = await page.goto('/admin');
     expect(response?.status()).toBe(403);
     await expect(page.getByRole('heading', { name: 'Shop Admin access denied' })).toBeVisible();
+    // The way back names no role: "/" sends each person to their own home (Safety goes to /qc).
+    await expect(page.getByRole('link', { name: 'Return to your Home' })).toHaveAttribute('href', '/');
     const mechanics = await page.goto('/admin/mechanics');
     expect(mechanics?.status()).toBe(403);
     const history = await page.goto('/admin/history');
