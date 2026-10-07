@@ -10,7 +10,7 @@ Demo local `ltl_shop_setup_demo`, como Manager, a 1440×900 y 375×812. Todas so
   - Alignment y Detailing: los mismos 6 Standard (Alejandro 1 y 2, Anthony, Cristian, Elliot, John).
   - No hay ninguna pista de quién está ocupado, de la carga de trabajo ni de si la persona está activa.
 - **Guardar:**
-  - El botón Save se ve igual, gris y apagado, antes y después de cambiar un dueño (`00-shop-workflow-cambio-sin-guardar.jpg`).
+  - ~~El botón Save se ve igual, gris y apagado, antes y después de cambiar un dueño.~~ **Corregido:** Save pasa a azul con un cambio. La captura `00-shop-workflow-cambio-sin-guardar.jpg` se tomó durante la transición de color (ver el punto 5 de la reproducción).
   - Al guardar aparece el aviso "Shop workflow saved." abajo a la derecha (`00-shop-workflow-guardado.jpg`).
   - Shop hours tiene su propio "Save shop hours": dos botones de guardar en la misma página.
 - **Teléfono:** se lee bien, todo en una columna (`00-shop-workflow-movil.jpg`).
@@ -76,4 +76,4 @@ Demo local `ltl_shop_setup_demo`, como Manager, a 1440×900 y 375×812. Todas so
 4. Resultado: el mensaje "Could not save the shop workflow. Refresh and try again."
    - Refrescar no lo arregla.
    - Desde ese momento no se puede guardar ningún paso hasta quitar a Anthony de Alignment a mano, y la pantalla no lo dice.
-5. Botón Save, revisado en el DOM: con cambios está habilitado (`disabled=false`, opacidad 1), pero el fondo es el mismo gris oscuro neutro que cuando está deshabilitado. A simple vista no se distingue.
+5. **Botón Save, revisado en el DOM.** Con cambios está habilitado y es azul (`oklch(0.75 0.14 233)`, `bg-primary`). Las lecturas "grises" anteriores se tomaron con el panel del navegador oculto (`document.hidden = true`): así la transición de color no avanza, y al quitar la transición se ve el azul. No es un defecto.

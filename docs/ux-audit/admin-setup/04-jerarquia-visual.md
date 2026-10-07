@@ -43,14 +43,13 @@ lo decidido:
 
 ### Shop workflow
 
-### UX-4-001 · El único botón de la pantalla parece apagado y no avisa de cambios sin guardar
+### UX-4-001 · Nada en la pantalla avisa que hay cambios sin guardar
 - **Dónde:** Shop workflow (`/admin/setup/workflow`) · `apps/web/src/components/admin-shop-workflow.tsx:115` · `apps/web/src/components/ui.tsx:29`
 - **Evidencia:**
-  - (observado) Save se ve gris y apagado antes de cambiar un dueño (`00-shop-workflow-desktop.jpg`) y sigue igual después de elegir "Anthony" en Alignment (`00-shop-workflow-cambio-sin-guardar.jpg`).
-  - (inferido del código) Sin cambios el botón está `disabled={!dirty || saving}` y toma el aspecto único de deshabilitado (`disabled:bg-muted disabled:text-muted-foreground`). Con un cambio debería pasar a `bg-primary`. Que la captura lo muestre gris después del cambio queda por confirmar en la skill 7: puede ser un fallo real o un efecto de cómo se cambió el select en la prueba.
+  - **Corrección (2026-10-07, observado en el DOM):** Save **sí** pasa a azul (`bg-primary`) cuando hay un cambio. La lectura "gris" de la primera versión fue un error de medición: con el panel del navegador oculto, la transición de color no avanzaba. La captura `00-shop-workflow-cambio-sin-guardar.jpg` se tomó en ese instante.
   - Aunque se ponga azul, el botón queda solo, debajo de la tarjeta y separado de ella. La fila cambiada no se marca y no aparece ningún texto del tipo "cambios sin guardar".
 - **Criterio:** Acción principal (CTA) · Color y énfasis (estados distinguibles) · Nielsen H1
-- **Severidad:** 3 · Frecuencia baja (pantalla ocasional), impacto alto: el Manager puede irse creyendo que guardó, y el error aparece días después como un Job sin dueño. Persistente.
+- **Severidad:** 2 · Corregida desde 3: el botón sí cambia de color. Lo que queda es que ni la fila cambiada ni la página avisan que falta guardar (ver UX-6-016 para salir sin guardar).
 - **Recomendación:**
   - Pie de la tarjeta de pasos que aparece solo con cambios: "1 change not saved · Discard · **Save**". Save en `variant="default"`, a la derecha.
   - Marcar la fila cambiada, por ejemplo con un punto o un chip "Changed".

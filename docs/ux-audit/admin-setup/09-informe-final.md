@@ -28,8 +28,8 @@ Con eso, Setup deja de romper cosas sin decirlo. El resto llega con lo que ya de
 | Severidad | Hallazgos |
 |-----------|-----------|
 | 4 · Catastrófico | 1 |
-| 3 · Mayor | 33 |
-| 2 · Menor | 64 |
+| 3 · Mayor | 32 |
+| 2 · Menor | 65 |
 | 1 · Cosmético | 17 |
 | **Total** | 115 |
 
@@ -41,7 +41,7 @@ De esos 115, 31 están marcados **"cambia por decisión"**: no son defectos del 
 |---|---|---|
 | 1 · Usabilidad | 20 | 6 |
 | 3 · Contenido | 20 | 3 |
-| 4 · Jerarquía visual | 11 | 2 |
+| 4 · Jerarquía visual | 11 | 1 |
 | 5 · Navegación | 15 | 3 |
 | 6 · Estados | 24 | 11 |
 | 7 · Formularios | 25 | 9 |
@@ -84,7 +84,6 @@ De esos 115, 31 están marcados **"cambia por decisión"**: no son defectos del 
 
 ### P3 · Setup no dice qué falta guardar ni por qué falló
 - **Qué pasa:**
-  - Save se ve gris aun con cambios.
   - Hay dos botones de guardar en la misma página.
   - Salir de la página descarta los cambios sin aviso.
   - Un fallo dice "Refresh and try again".
@@ -163,17 +162,17 @@ De esos 115, 31 están marcados **"cambia por decisión"**: no son defectos del 
 | 5 | [UX-1-009](01-usabilidad.md) | Renombrar un Job que es paso lo saca de su carril sin avisar | 3 | S | 2 | Rompe Yard; pasa a ser más probable cuando el Manager gane control del catálogo |
 | 6 | [UX-1-010](01-usabilidad.md) | La recarga del catálogo en cada publicación deshace los cambios del Manager | 3 | M | 2 | Pérdida de datos silenciosa en cada release; bloquea S2 |
 | 7 | [UX-6-016](06-estados.md) | Salir de Shop workflow con cambios los pierde sin aviso | 3 | S | 1 | Barato, y es parte del patrón P3 (= [UX-7-004](07-formularios.md), [UX-5-013](05-navegacion-ia.md)) |
-| 8 | [UX-4-001](04-jerarquia-visual.md) | El botón Save se ve apagado aun con cambios | 3 | S | 1 | Confirmado en el DOM: está habilitado pero con el estilo neutro |
+| 8 | [UX-7-011](07-formularios.md) | El conflicto de nombre o de alias aparece recién al enviar y no ofrece qué hacer | 3 | M | 2 | Pasó de largo en la primera versión. Entra en lugar de UX-4-001, que bajó a sev 2 al corregirse la medición del botón Save |
 | 9 | [UX-6-013](06-estados.md) | Desactivar muestra el bloqueo recién después de confirmar | 3 | M | 3 | La salida de una persona es frecuente y hoy es de prueba y error (= [UX-1-015](01-usabilidad.md), [UX-7-018](07-formularios.md)) |
 | 10 | [UX-5-014](05-navegacion-ia.md) | El buscador del catálogo no encuentra Jobs ni aliases | 3 | M | 2 | Hasta 17 categorías abiertas para encontrar un Job, y riesgo de duplicados |
 
-**Por qué quedaron fuera** [UX-7-011](07-formularios.md) (conflicto de nombre sin salida) y [UX-6-003](06-estados.md) (listas vacías al cargar): son de severidad 3 pero tocan a menos usuarios y no rompen datos.
+**Por qué quedó fuera** [UX-6-003](06-estados.md) (listas vacías al cargar): son de severidad 3 pero tocan a menos usuarios y no rompen datos.
 
 ## Quick wins
 Esfuerzo S y severidad ≥ 2, agrupados.
 - **Guardado de Shop workflow:**
   - UX-6-005 / UX-7-005: enviar solo lo que cambió y mostrar el error real.
-  - UX-4-001: Save como botón primario cuando hay cambios.
+  - UX-4-001: marcar la fila cambiada y avisar "cambios sin guardar" (el botón ya se pone azul).
   - UX-6-016 / UX-7-004 / UX-1-001: avisar al salir con cambios.
   - UX-1-008 / UX-3-007 / UX-4-002 / UX-7-007: dos botones de guardar con nombre propio.
   - UX-6-004 / UX-1-002: mensaje de error junto al botón.
@@ -209,8 +208,8 @@ Esfuerzo S y severidad ≥ 2, agrupados.
 |              | Esfuerzo S | Esfuerzo M | Esfuerzo L |
 |--------------|-----------|-----------|-----------|
 | Sev 4        | UX-6-005 | — | — |
-| Sev 3        | UX-1-003, UX-1-004, UX-1-009, UX-3-008, UX-3-010, UX-3-013, UX-4-001, UX-6-003, UX-6-004, UX-6-007, UX-6-008, UX-6-009, UX-6-010, UX-6-016, UX-7-004, UX-7-005, UX-7-014 | UX-1-010, UX-1-014, UX-1-015, UX-4-009, UX-5-001, UX-5-002, UX-5-014, UX-6-011, UX-6-013, UX-7-003, UX-7-011, UX-7-017, UX-7-018, UX-7-020 (dec), UX-7-022 (dec) | UX-6-019 (dec) |
-| Sev 2        | 47 hallazgos (ver los archivos fuente) | 13 hallazgos | UX-1-020, UX-5-004, UX-6-024, UX-7-024 (todos dec: partes y costos) |
+| Sev 3        | UX-1-003, UX-1-004, UX-1-009, UX-3-008, UX-3-010, UX-3-013, UX-6-003, UX-6-004, UX-6-007, UX-6-008, UX-6-009, UX-6-010, UX-6-016, UX-7-004, UX-7-005, UX-7-014 | UX-1-010, UX-1-014, UX-1-015, UX-4-009, UX-5-001, UX-5-002, UX-5-014, UX-6-011, UX-6-013, UX-7-003, UX-7-011, UX-7-017, UX-7-018, UX-7-020 (dec), UX-7-022 (dec) | UX-6-019 (dec) |
+| Sev 2        | 48 hallazgos (ver los archivos fuente) | 13 hallazgos | UX-1-020, UX-5-004, UX-6-024, UX-7-024 (todos dec: partes y costos) |
 
 ## Plan sugerido
 - **Ahora (1–2 semanas, antes de S1):** un PR de arreglos sin rediseño.
@@ -257,7 +256,7 @@ Esfuerzo S y severidad ≥ 2, agrupados.
 ## Hallazgos completos por dimensión
 - [01-usabilidad.md](01-usabilidad.md): 20 hallazgos (6 de sev 3).
 - [03-contenido.md](03-contenido.md): 20 hallazgos (3 de sev 3). Trae un glosario de 20 términos.
-- [04-jerarquia-visual.md](04-jerarquia-visual.md): 11 hallazgos (2 de sev 3). Trae la prueba de los 5 segundos.
+- [04-jerarquia-visual.md](04-jerarquia-visual.md): 11 hallazgos (1 de sev 3; UX-4-001 corregido a sev 2). Trae la prueba de los 5 segundos.
 - [05-navegacion-ia.md](05-navegacion-ia.md): 15 hallazgos (3 de sev 3). Trae el mapa actual y la estructura de navegación propuesta.
 - [06-estados.md](06-estados.md): 24 hallazgos (1 de sev 4 y 10 de sev 3). Trae la matriz pantalla × estado.
 - [07-formularios.md](07-formularios.md): 25 hallazgos (9 de sev 3).
