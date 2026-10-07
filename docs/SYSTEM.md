@@ -570,6 +570,15 @@ Shop Admin, Yard, Work Orders).
 ### Todos
 `/login`, `/reset-password`, `/access-denied`.
 
+**Loader de entrada** (pedido del dueño, 2026-10-06): antes de la pantalla de
+inicio de sesión se ve el logo animado de Lightning (`public/lightning-loader.svg`)
+sobre el azul de la marca (`#0f1a33`), a pantalla completa. Pasa el ciclo completo
+(3,4 s, contado desde que carga el logo: rayo, letras, brillo y su desvanecido);
+luego el fondo se desvanece y queda el formulario. Una vez por sesión del navegador (no
+se repite al cerrar sesión), corto con "reducir movimiento", y nunca en las
+pruebas automáticas; `?loader=1` lo fuerza y `?loader=0` lo salta
+(`components/login-loader.tsx`, `lib/login-loader.ts`).
+
 **Encabezado (todos los roles):** logo y un botón redondo con las iniciales.
 Ese menú de perfil tiene idioma (English / Español), tema (Light / Dark /
 Auto, que sigue al sistema), cambio de contraseña y, al final, Sign out. Si

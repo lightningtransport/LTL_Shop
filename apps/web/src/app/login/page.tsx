@@ -18,6 +18,7 @@ import { useShopLocale } from '@/lib/locale-context';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { DEV_LOGIN_ENABLED } from '@/lib/dev-login';
+import { LoginLoader } from '@/components/login-loader';
 
 export default function LoginPage() {
   const { login, loginDev, requestPasswordReset, logout, passwordRecovery, user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
@@ -56,7 +57,7 @@ export default function LoginPage() {
     token && !sessionError && (sessionLoading || profileLoading || !user),
   );
   if (restoringSession) {
-    return <PageSkeleton label={messages.restoringSession} />;
+    return <><LoginLoader label={messages.appLoading} /><PageSkeleton label={messages.restoringSession} /></>;
   }
 
   async function onSubmit(e: FormEvent) {
@@ -103,6 +104,7 @@ export default function LoginPage() {
 
   return (
     <div>
+      <LoginLoader label={messages.appLoading} />
       <AuthBrandHeader
         title={messages.signIn}
         subtitle={messages.signInHint}
