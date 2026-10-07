@@ -275,6 +275,9 @@ claro/oscuro, iPhone y escritorio, 27 pantallas cada vez) sin scroll lateral ni 
 |---|---|---|---|
 | G1 | B | **La API de producción no se publicaba desde el 2026-09-30.** 15 despliegues seguidos fallaron porque 4 migraciones de `main` no estaban aplicadas (`safety_quality_check_ltr185`, `drop_pm_authorized_ltr180`, `day_close_ltr186`, `helper_external_jobs_ltr188`) y el build no publica con migraciones pendientes. Producción mezclaba la web nueva con la API del ~30 de septiembre. | Migraciones aplicadas con `release-safety.yml` (run 37526676075, verde). Falta publicar la API de nuevo y revisar las pantallas en producción. |
 | G2 | E | **"✓ Complete" en la fila de un Job pendiente parece un estado**, no un botón (botón sin borde con un check). El dueño leyó que Detailing de WO-004 estaba completado, pero el Job está "To do" y el selector de mecánico está bien habilitado. | Arreglo: botón con borde y "Mark complete". |
+| G3 | E | **Truck con un paso obligatorio faltante:** el chip dice "Not Ready · PM" (el primer paso sin hacer) mientras el aviso dice que falta Detailing. Visto con los datos demo (Truck 944). | Arreglo: el chip nombra primero el paso que falta. |
+| G4 | E | **Mismo Job, dos palabras:** el Work Plan del Truck dice "Pending" y el Work Order "To do". | Arreglo: "To do" en los dos. |
+| G5 | E | **Work Order › Repair history:** el título es "Recent repair history" y se parte en dos líneas junto al filtro; la maqueta y el Truck dicen "Repair history". | Arreglo: "Repair history". |
 
 ## 2. Pruebas
 

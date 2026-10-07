@@ -22,7 +22,7 @@ import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatShortDateTime } from '@/lib/work-order-view';
 import { useCategories } from '@/lib/shop-data';
-import { workPlanJobUiStatusLabel, type WorkPlanJobDraft } from '@/lib/work-plan';
+import { type WorkPlanJobDraft } from '@/lib/work-plan';
 import { jobDisplayName } from '@/lib/job-display-name';
 import type { TruckStep, TruckStepKey } from '@/lib/truck-stepper';
 import { WorkPlanAddWork } from './work-plan-add-work';
@@ -250,7 +250,7 @@ export function AdminTruckWorkPlan({
           ) : job.uiStatus === 'blocked' ? (
             <span className="inline-flex items-center gap-1.5 text-warning-foreground dark:text-warning"><OctagonPause aria-hidden="true" className="size-3.5" />{messages.blockedShort}</span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 text-muted-foreground"><span aria-hidden="true" className="size-2 rounded-full border-[1.5px] border-muted-foreground" />{workPlanJobUiStatusLabel(job.uiStatus, messages)}</span>
+            <span className="inline-flex items-center gap-1.5 text-muted-foreground"><span aria-hidden="true" className="size-2 rounded-full border-[1.5px] border-muted-foreground" />{messages.jobToDo}</span>
           );
           const sub = parent
             ? parent.assignedMechanic ? fillPlaceholders(messages.jobHelps, { name: parent.assignedMechanic.name }) : messages.jobHelpsMain
