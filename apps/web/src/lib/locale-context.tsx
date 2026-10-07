@@ -198,6 +198,8 @@ type Copy = {
   saved: string;
   autosaved: string;
   restoringSession: string;
+  /** The animated loader shown before the sign-in screen. */
+  appLoading: string;
   loadingWorkOrders: string;
   loadingWorkOrder: string;
   retryWorkOrder: string;
@@ -528,6 +530,7 @@ const copy: Record<ShopLocale, Copy> = {
     saved: 'Saved',
     autosaved: 'Saved automatically',
     restoringSession: 'Restoring session',
+    appLoading: 'Loading Lightning Shop…',
     loadingWorkOrders: 'Loading work orders',
     loadingWorkOrder: 'Loading work order',
     retryWorkOrder: 'Retry work order',
@@ -862,6 +865,7 @@ const copy: Record<ShopLocale, Copy> = {
     saved: 'Guardado',
     autosaved: 'Guardado automáticamente',
     restoringSession: 'Restaurando sesión',
+    appLoading: 'Cargando Lightning Shop…',
     loadingWorkOrders: 'Cargando Work Orders',
     loadingWorkOrder: 'Cargando Work Order',
     retryWorkOrder: 'Reintentar Work Order',
