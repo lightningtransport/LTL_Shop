@@ -300,13 +300,13 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
   return (
     <li className={cn('grid gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center', flagged && 'shadow-[inset_3px_0_0_var(--warning)]')} data-testid="dashboard-queue-row" data-kind={step?.kind}>
       <div className="min-w-0 space-y-0.5">
-        <p className="flex flex-wrap items-baseline gap-x-2">
+        <div className="flex flex-wrap items-baseline gap-x-2">
           <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin')}>{fillPlaceholders(messages.woTitle, { truck: item.truck.truckNumber })}</Link>
           <span className="text-xs text-muted-foreground">
             {vehicle ? `${vehicle} · ` : ''}<Link className="tap-inline font-mono hover:text-foreground hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>
           </span>
           {item.priority === 'high' || item.priority === 'critical' ? <PriorityBadge priority={item.priority}>{adminPriorityLabel(item.priority, messages)}</PriorityBadge> : null}
-        </p>
+        </div>
         <div data-testid={blocker ? 'admin-blocker' : undefined}>
           <p data-testid="work-order-next-step" data-kind={step?.kind}>{title}</p>
           {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}

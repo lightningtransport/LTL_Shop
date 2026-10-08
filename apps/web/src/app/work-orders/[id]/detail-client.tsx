@@ -282,13 +282,13 @@ export default function WorkOrderDetailPage() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">{messages.yourTimeLabel}</p>
-                <p className="flex items-center justify-end gap-2 text-lg font-semibold tnum">
+                <div className="flex items-center justify-end gap-2 text-lg font-semibold tnum">
                   {formatLaborDuration(myLaborMs)}
                   <Badge variant={wo.laborRunning ? 'success' : 'secondary'}>
                     <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
                     {wo.laborRunning ? messages.laborRunningLabel : messages.laborStoppedLabel}
                   </Badge>
-                </p>
+                </div>
               </div>
             </div>
             {wo.priority === 'high' || wo.priority === 'critical' ? (
