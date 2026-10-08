@@ -242,11 +242,11 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | El dueño de un paso cambia de tipo o se desactiva, y después cambia otro paso | Guarda; el dueño que ya no puede hacer el paso se ve marcado y los WOs nuevos dejan ese paso sin asignar | ✅ | A37 |
 | Intenta desactivar el Job de un paso | No deja; dice que primero cambie el paso. Si ya estaba inactivo, Shop workflow lo marca como "no se agrega a los WOs nuevos" | ✅ | A38 |
 | Sale de la pantalla con cambios sin guardar | Pregunta antes de salir; la fila cambiada se marca | 👁 revisar en pantalla | — |
-| Pone **varias personas** en Detailing (D28) | El Job nace en la cola del equipo; todos lo ven y el primero que lo toma queda como dueño | 🔲 S1 | — |
-| Hay una sola persona en el equipo | El Job nace asignado a ella, como hoy | 🔲 S1 | — |
-| Uno del equipo toma el Job | Desaparece de la cola de los demás; lo puede soltar y vuelve a la cola | 🔲 S1 | — |
-| El equipo de un paso queda vacío | El Job nace sin dueño y Shop workflow lo marca | 🔲 S1 | — |
-| El paso de PM | Se llama "PM"; el mecánico sigue eligiendo PM A o PM B | 🔲 S1 | — |
+| Pone **varias personas** en Detailing (D28) | El Job nace en la cola del equipo; todos lo ven en su inicio ("Team queue") y el primero que lo toma queda como dueño | ✅ | A41 |
+| Hay una sola persona en el equipo | El Job nace asignado a ella, como hoy | ✅ | A42 |
+| Uno del equipo toma el Job | Desaparece de la cola de los demás; lo puede soltar ("Let go") y vuelve a la cola, salvo con su reloj corriendo en ese camión | ✅ | A41 |
+| El equipo de un paso queda vacío | El Job nace sin dueño, el Dashboard lo marca para asignar y Shop workflow lo avisa; guardar no se bloquea (D-SET1) | ✅ | A43 |
+| El paso de PM | Se llama "PM"; el equipo es solo de mecánicos de PM; nace con PM A y el mecánico sigue eligiendo PM A o PM B | ✅ | A44 |
 
 ---
 
@@ -447,9 +447,10 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | El Manager agrega el trabajo y los mecánicos lo terminan | El camión vuelve a la lista, para cualquiera de los dos | ✅ | QC3 |
 | Intenta cerrar, asignar, inspeccionar o entrar a Admin | No puede | ✅ | QC4 |
 | Un mecánico intenta usar la lista de Safety | No puede | ✅ | QC4 |
+| Una persona de Safety no está en el equipo de Quality Check (D-SET7) | No ve camiones y la pantalla le dice que pida que la agreguen | ✅ | QC11 |
 | Un mecánico elige el motivo "Devuelto por Safety" | No se le ofrece y la API lo rechaza | ✅ | QC4 |
 | El Manager asigna el QC a alguien de Safety | Puede; esa persona lo ve como suyo | ✅ | QC5, E9b |
-| No hay nadie de Safety y el Manager entra a la lista de Safety (D29) | Hoy lo manda al Dashboard sin decir nada. Con D29 entra, toma, aprueba o devuelve, y queda a su nombre | 🔲 S1 | — |
+| No hay nadie de Safety y el Manager entra a la lista de Safety (D29) | Entra con una franja "respaldo de Safety"; toma, aprueba o devuelve, y queda a su nombre como respaldo. Llega desde Shop workflow, el Dashboard y el Truck (D-SET6) | ✅ | QC11 |
 | Idioma | La pantalla existe en inglés y español | 👁 revisado 2026-09-29 | — |
 | Toca Approve | Pide confirmar antes ("Approve Truck 606?") | ✅ | e2e qc-redesign |
 | Tomó un camión y no puede seguir | **Let go**: el QC queda libre y la otra persona lo puede tomar; queda en el Activity Log | ✅ | QC6 |

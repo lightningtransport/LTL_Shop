@@ -38,7 +38,7 @@ su pantalla inicial y separa al System Admin.
 
 | Persona | Rol | Capabilities | Qué hace |
 |---|---|---|---|
-| **Shop Manager** | `manager` | `admin.access`, `work_orders.manage`, `yard.operations.manage` | Crea y planea WOs, inspecciona, asigna, pausa, resuelve bloqueos, hace QC, cierra, Return to Service. **Da de alta al personal** (Standard, PM, Safety), lo desactiva/reactiva y reinicia contraseñas (D22). **Mantiene el catálogo de Jobs**: agrega, renombra y activa Jobs de catálogo; las categorías no cambian (D25). |
+| **Shop Manager** | `manager` | `admin.access`, `work_orders.manage`, `yard.operations.manage` | Crea y planea WOs, inspecciona, asigna, pausa, resuelve bloqueos, hace QC como respaldo de Safety en `/qc` (D29), arma los equipos de cada paso (D28), cierra, Return to Service. **Da de alta al personal** (Standard, PM, Safety), lo desactiva/reactiva y reinicia contraseñas (D22). **Mantiene el catálogo de Jobs**: agrega, renombra y activa Jobs de catálogo; las categorías no cambian (D25). |
 | **System Admin** | `admin` | `admin.access` (+ las demás que necesite) | Lo mismo que el Manager (el roster y el catálogo de Jobs los abre por rol, aunque solo tenga `admin.access`). |
 | **Mecánico Standard** | `mechanic` | `mechanic.standard` | Ejecuta sus Jobs asignados. |
 | **Mecánico PM** | `mechanic` | `mechanic.pm` | Hace el PM de los camiones. |
@@ -278,9 +278,30 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - El Manager marca un `work_request` como atendido. No se aceptan notas en
   WOs cerrados.
 
-### Shop workflow (`shop_workflow_steps`)
+### Shop workflow (`shop_workflow_steps`, `shop_workflow_step_members`)
 - Un renglón por paso obligatorio (`pm`, `alignment`, `detailing`,
-  `quality_check`) → Job de catálogo, responsable por defecto, orden, activo.
+  `quality_check`) → Job de catálogo, orden, activo, y su **equipo**
+  (`shop_workflow_step_members`, LTR-197 / D28). `default_mechanic_id` queda
+  como espejo de un equipo de uno, para versiones viejas; ya no se lee.
+- **Quién puede estar en el equipo:** PM → `mechanic.pm`; Alignment y
+  Detailing → `mechanic.standard`; Quality Check → `quality_check.perform`
+  (D-SET7). Nunca una fila con rol `admin`. Alguien que se desactiva queda en
+  el equipo marcado y no recibe Jobs; cambiar de tipo lo saca de los equipos
+  que ya no puede hacer (D-SET2).
+- **Un WO nuevo:** si el equipo tiene una persona que puede, el Job nace suyo.
+  Con dos o más (y siempre en Quality Check), nace sin dueño en la **cola del
+  equipo** (`work_order_jobs.workflow_step_key`); un Job en la cola no cuenta
+  como "sin asignar" en el siguiente paso ni en el Dashboard. Sin nadie, nace
+  sin dueño y el Manager lo asigna.
+- **La cola:** `GET /api/team-queue` lista los Jobs de los pasos del mecánico;
+  `POST /api/team-queue/:jobId/take` (gana el primero, `JOB_ALREADY_TAKEN`) y
+  `/release` (no con su reloj corriendo en ese camión,
+  `JOB_RELEASE_CLOCK_RUNNING`). Los dos quedan en el Activity Log
+  (`job_taken_from_team_queue`, `job_released_to_team_queue`).
+- **Quality Check:** Safety ve la cola solo si está en el equipo de QC
+  (`onTeam: false` si no). El Shop Manager y el System Admin usan `/qc` como
+  respaldo (D29); lo que aprueban o devuelven queda con
+  `actor: 'manager_backup'`.
 - Se edita en Admin → Setup → Shop workflow. Solo aplica a WOs nuevos.
 - Guardar manda solo los pasos cambiados, y la API no vuelve a revisar un
   dueño que no cambia (SW1). Un dueño que ya no puede hacer el paso
@@ -470,7 +491,8 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | `/admin/history` | WOs completados y cancelados. |
 | `/admin/mechanics`, `/admin/mechanics/[id]` | Roster. Manager y System Admin: Agregar persona (con contraseña temporal), nombre y tipo, Desactivar / Reactivar, Reiniciar contraseña (D22). |
 | `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs. Manager y System Admin: Agregar Job a una categoría activa, Renombrar y Activar (D25); un nombre repetido en la categoría no se acepta. Las categorías son de solo lectura. |
-| `/admin/setup/workflow` | Shop workflow: responsable por defecto de cada paso (Save debajo de la lista) y **Shop hours** (hora del cierre del día y días hábiles, con su propio Save; D20). |
+| `/admin/setup/workflow` | Shop workflow: el **equipo** de cada paso (chips, "Add", qué pasa con un WO nuevo, nota de QC como respaldo del Manager; D28, D29). |
+| `/admin/setup/workflow/hours` | **Shop hours**: hora del cierre del día y días hábiles, con su propio Save (D20, D-SET5). |
 
 **Detalle del Truck** (`/admin/trucks/[id]`), de arriba abajo (LTR-174, Etapa 4;
 igual a la maqueta desde la Etapa 8, 2026-10-06; en computadora la columna
