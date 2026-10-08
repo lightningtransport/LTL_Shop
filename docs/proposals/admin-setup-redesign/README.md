@@ -342,7 +342,7 @@ Ningún campo existente cambia ni se borra. Las rutas de la web pasan a `/admin/
 | D30 | El Manager maneja categorías, Jobs y aliases. Borrar solo lo nunca usado; Jobs del sistema protegidos con clave fija; la recarga no pisa al Manager. | §4.3 y §4.4 |
 | D31 | "Quitar del Shop" conserva el historial; el bloqueo se dice antes de confirmar; borrado real solo sin historial. | §4.6 |
 
-**Pequeñas, abiertas.** La propuesta las dibuja como la recomendación:
+**Pequeñas — aceptadas por el dueño el 2026-10-08 tal como se recomiendan** (registradas en `DECISIONS.md`, D28–D31):
 
 | # | Pregunta | Recomendación |
 |---|---|---|

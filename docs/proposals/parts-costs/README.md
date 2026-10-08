@@ -291,7 +291,7 @@ Valores nuevos en `ActivityEventType` (agregar valores a un enum es aditivo):
 `workOrderId`, así salen también en la historia de ese Work Order. History (Audit) los muestra con el filtro
 "Parts & costs".
 
-## 6. Decisiones abiertas (el dueño elige)
+## 6. Decisiones (aceptadas por el dueño el 2026-10-08 tal como se recomiendan; registradas en `DECISIONS.md`, D32)
 
 | # | Pregunta | Recomendación |
 |---|---|---|

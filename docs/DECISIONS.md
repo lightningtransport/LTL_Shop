@@ -44,6 +44,32 @@ no se borra.
 | **D17** | **Ciclo del bloqueo:** siempre es de un Job; el mecánico lo reporta y puede agregar notas; **solo el Manager resuelve**; el Job vuelve a Pending. "Truck Unavailable", Break, End of Shift y Working on Another WO no son motivos de bloqueo (lo de todo el camión es pausa oficial). | 2026-09-27 | LTR-155 |
 | **D18** | **Tiempo por mecánico.** Cada sesión tiene `user_id`; el tiempo del WO es la suma. El tiempo de un mecánico se detiene al terminar o bloquear su último Job disponible y vuelve a correr solo cuando toca Continue/Start. | 2026-09-27 | LTR-153, LTR-154 |
 
+### Detalle de D28–D32 (el dueño aceptó las recomendaciones, 2026-10-08)
+
+Las preguntas chicas de las propuestas `docs/proposals/admin-setup-redesign/` (D-SET) y `docs/proposals/parts-costs/` (D-PC) quedan decididas como se recomendaron. La explicación completa está en la §6 de cada propuesta.
+
+| # | Decisión | Va con |
+|---|---|---|
+| D-SET1 | Un equipo vacío no bloquea guardar: la fila avisa y el Job nace sin dueño. | D28 · S1 |
+| D-SET2 | Cambiar de tipo y "Quitar del Shop" sacan a la persona de los equipos; desactivar la deja marcada (no recibe Jobs nuevos). | D28, D31 · S1/S3 |
+| D-SET3 | Cambiar de tipo con Jobs pendientes del tipo anterior se bloquea, como desactivar: primero se mueven. | D31 · S3 |
+| D-SET4 | Renombrar un Job guarda el nombre viejo como alias (casilla marcada por defecto). | D30 · S2 |
+| D-SET5 | Shop hours es una pestaña de Shop workflow con su URL (`/admin/setup/workflow/hours`). | S1 |
+| D-SET6 | El Manager llega a `/qc` desde la fila Quality Check de Shop workflow, "Waiting for Safety" del Dashboard y el Truck; sin entrada en el menú. | D29 · S1 |
+| D-SET7 | El equipo de Quality Check limita quién de Safety ve la cola; la migración pone a todo Safety activo. | D28 · S1 |
+| D-SET8 | El Job de cada paso es su Job del sistema; no se elige otro. | D30 · S1/S2 |
+| D-SET9 | Desactivar una categoría pide un motivo opcional de una línea. | D30 · S2 |
+| D-PC1 | Solo USD; cada monto guarda `currency`. | D32 · S4 |
+| D-PC2 | Impuestos y flete cuentan en el costo del camión, repartidos según las líneas. | D32 · S4 |
+| D-PC3 | El catálogo de partes es solo el del PM en la etapa 1; lo demás entra como línea "Other". | D32 · S4 |
+| D-PC4 | El costo de las partes del PM no se carga solo al camión (sin stock). | D32 · S4 |
+| D-PC5 | Una compra sin camión no cuenta en ningún camión. | D32 · S4 |
+| D-PC6 | El costo de referencia de la parte se pone a mano; se muestra "último pagado" al lado. | D32 · S4 |
+| D-PC7 | Los costos los ven solo el Manager y el System Admin. | D32 · S4 |
+| D-PC8 | Una factura repetida (mismo proveedor y número) se bloquea, con enlace a la existente. | D32 · S4 |
+| D-PC9 | El camión se guarda por línea y se elige por factura en la pantalla, con opción de repartir. | D32 · S4 |
+| D-PC10 | La factura adjunta es opcional; la fila sin archivo se marca. | D32 · S4 |
+
 ### Decisiones "por defecto" (se adoptaron sin pregunta explícita)
 
 Vigentes, pero conviene confirmarlas. Si alguna no es la intención, se
