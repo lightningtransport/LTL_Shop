@@ -150,9 +150,9 @@ const mechanicListInclude = {
 
 const mechanicDetailInclude = {
   ...mechanicListInclude,
-  defaultForWorkflowSteps: {
-    select: { stepKey: true, catalogJob: { select: { displayName: true } } },
-    orderBy: { sortOrder: 'asc' as const },
+  // LTR-197 / D28: the steps whose team this person is on.
+  workflowStepMemberships: {
+    select: { step: { select: { stepKey: true, sortOrder: true, catalogJob: { select: { displayName: true } } } } },
   },
 };
 
@@ -164,7 +164,7 @@ const summaryInclude = {
     select: {
       id: true, status: true, assignedMechanicId: true, displayName: true, addedAt: true,
       // LTR-188 / D23, D24: helper Jobs and Jobs at an external shop feed the Next step.
-      helperOfJobId: true, externalSince: true, externalKind: true, externalNote: true,
+      helperOfJobId: true, externalSince: true, externalKind: true, externalNote: true, workflowStepKey: true,
       category: { select: { name: true } },
       assignedMechanic: { select: { id: true, name: true } },
     },
@@ -461,7 +461,7 @@ export class AdminService {
             jobs: {
               select: {
                 id: true, status: true, displayName: true, assignedMechanicId: true,
-                externalSince: true, externalKind: true, externalNote: true,
+                externalSince: true, externalKind: true, externalNote: true, workflowStepKey: true,
                 category: { select: { id: true, name: true } },
               },
               orderBy: { addedAt: 'asc' },
@@ -568,7 +568,10 @@ export class AdminService {
         jobDisplayName: job.displayName,
       })),
       runningSession: Boolean(runningSession),
-      defaultOwnerOfSteps: row.defaultForWorkflowSteps.map((step) => ({ stepKey: step.stepKey, jobDisplayName: step.catalogJob.displayName })),
+      defaultOwnerOfSteps: row.workflowStepMemberships
+        .map((membership) => membership.step)
+        .sort((left, right) => left.sortOrder - right.sortOrder)
+        .map((step) => ({ stepKey: step.stepKey, jobDisplayName: step.catalogJob.displayName })),
     };
   }
 
@@ -2397,11 +2400,13 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
 // LTR-164 / D15: Quality Check never has an owner, so it is not an unassigned Job.
 // LTR-188 / D24: neither is a Job at an external shop (no owner on purpose).
 export function countUnassignedJobs(
-  jobs: Array<{ status: string; assignedMechanicId?: string | null; displayName?: string; category?: { name: string }; externalSince?: Date | null }>,
+  jobs: Array<{ status: string; assignedMechanicId?: string | null; displayName?: string; category?: { name: string }; externalSince?: Date | null; workflowStepKey?: string | null }>,
 ): number {
+  // LTR-197 / D28: a Job waiting in its team queue is not unassigned either.
   return jobs.filter((job) => job.status === 'to_do'
     && !job.assignedMechanicId
     && !job.externalSince
+    && !job.workflowStepKey
     && classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '') !== WorkPlanJobLane.QUALITY_CHECK).length;
 }
 
@@ -2448,6 +2453,8 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     startedAt: job.startedAt?.toISOString() ?? null,
     helperOfJobId: job.helperOfJobId ?? null,
     external: toJobExternalDto(job),
+    // LTR-197 / D28: an unowned Job born in a team queue reads "In team queue", not "Unassigned".
+    workflowStepKey: job.workflowStepKey ?? null,
   }));
   return {
     ...summary,

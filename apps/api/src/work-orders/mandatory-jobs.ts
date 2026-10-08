@@ -31,12 +31,41 @@ export function workflowStepOwnerCapability(stepKey: string): AppCapability | nu
   return WORKFLOW_STEP_OWNER_CAPABILITY[stepKey as ShopWorkflowStepKey] ?? null;
 }
 
+/**
+ * LTR-197 / D28: who can be on a step's team. Quality Check's team is Safety (D-SET7); its Job always waits in
+ * the queue, because Safety takes a truck only when everything else is done (D19).
+ */
+export function workflowStepMemberCapability(stepKey: string): AppCapability | null {
+  if (stepKey === ShopWorkflowStepKey.QUALITY_CHECK) return AppCapability.QUALITY_CHECK_PERFORM;
+  return workflowStepOwnerCapability(stepKey);
+}
+
+type TeamMember = { id: string; active: boolean; role?: string; capabilities: { capability: string }[] };
+
+/** A member who left (inactive) or changed type stays on the team, marked, and gets no new Jobs (D-SET2). */
+export function eligibleTeamMember(stepKey: string, member: TeamMember): boolean {
+  const capability = workflowStepMemberCapability(stepKey);
+  // A System Admin row can hold mechanic capabilities; like the Job pickers, teams are for the shop's people.
+  if (!capability || !member.active || member.role === 'admin') return false;
+  return member.capabilities.some((item) => item.capability === capability || item.capability === capabilityDbValue(capability));
+}
+
+/** D28: one eligible member → their Job; two or more → the team queue; none → unassigned (the Dashboard flags it). */
+export function teamAssignment(stepKey: string, members: TeamMember[]): { mode: 'direct' | 'queue' | 'none'; ownerId: string | null } {
+  const eligible = members.filter((member) => eligibleTeamMember(stepKey, member));
+  if (!eligible.length) return { mode: 'none', ownerId: null };
+  if (stepKey === ShopWorkflowStepKey.QUALITY_CHECK || eligible.length > 1) return { mode: 'queue', ownerId: null };
+  return { mode: 'direct', ownerId: eligible[0].id };
+}
+
 export type MandatoryJob = {
   catalogJobId: string;
   categoryId: string;
   displayName: string;
-  /** LTR-157 / D15: the step's default owner when still active and capable; otherwise unassigned. */
+  /** LTR-197 / D28: the only eligible team member; null for a queue or an empty team. */
   assignedMechanicId: string | null;
+  /** Set only when the Job is born in a team queue (two or more eligible members, or Quality Check). */
+  workflowStepKey: string | null;
 };
 
 type CatalogClient = Pick<PrismaClient | Prisma.TransactionClient, 'catalogJob' | 'shopWorkflowStep'>;
@@ -72,18 +101,23 @@ export async function resolveMandatoryJobs(
     select: {
       stepKey: true,
       catalogJob: { select: { id: true, categoryId: true, displayName: true, category: { select: { name: true } } } },
-      defaultMechanic: { select: { id: true, active: true, capabilities: { select: { capability: true } } } },
+      members: { select: { user: { select: { id: true, active: true, role: true, capabilities: { select: { capability: true } } } } } },
     },
   });
   if (steps.length) {
     return steps
       .filter((step) => !coveredLanes.has(classifyWorkPlanLane(step.catalogJob.category.name, step.catalogJob.displayName)))
-      .map((step) => ({
-        catalogJobId: step.catalogJob.id,
-        categoryId: step.catalogJob.categoryId,
-        displayName: step.catalogJob.displayName,
-        assignedMechanicId: usableDefaultOwner(step.stepKey, step.defaultMechanic),
-      }));
+      .map((step) => {
+        const team = teamAssignment(step.stepKey, step.members.map((member) => member.user));
+        return {
+          catalogJobId: step.catalogJob.id,
+          categoryId: step.catalogJob.categoryId,
+          displayName: step.catalogJob.displayName,
+          assignedMechanicId: team.ownerId,
+          // Only a queued Job carries its step: that is what keeps it out of "Nobody is assigned".
+          workflowStepKey: team.mode === 'queue' ? step.stepKey : null,
+        };
+      });
   }
   // No configured steps (fresh database before the seed): fall back to the catalog names, unassigned.
   const missing = MANDATORY_WORK_PLAN_JOBS.filter((item) => !coveredLanes.has(item.lane));
@@ -94,7 +128,7 @@ export async function resolveMandatoryJobs(
       select: { id: true, categoryId: true, displayName: true },
     });
     // A missing catalog row must not block the Work Order; the Work Plan shows the step as pending.
-    if (catalogJob) resolved.push({ catalogJobId: catalogJob.id, categoryId: catalogJob.categoryId, displayName: catalogJob.displayName, assignedMechanicId: null });
+    if (catalogJob) resolved.push({ catalogJobId: catalogJob.id, categoryId: catalogJob.categoryId, displayName: catalogJob.displayName, assignedMechanicId: null, workflowStepKey: null });
   }
   return resolved;
 }

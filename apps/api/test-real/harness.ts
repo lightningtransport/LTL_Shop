@@ -98,8 +98,8 @@ export async function truck(truckNumber: string) {
 }
 
 /**
- * Empty shop: no Work Orders, every seeded user active, and the Shop workflow with its default owners
- * (PM → Daniel, Alignment → Alejandro 1, Detailing → Anthony; Quality Check never has one, D15).
+ * Empty shop: no Work Orders, every seeded user active, and the Shop workflow teams of one
+ * (PM → Daniel, Alignment → Alejandro 1, Detailing → Anthony; Quality Check → Safety 1 and 2, D28).
  */
 export async function resetDb() {
   await prisma.$transaction((tx) => wipeWorkOrders(tx), { timeout: 60_000 });
@@ -110,8 +110,15 @@ export async function resetDb() {
     detailing: await userId(USERS.detailing),
     quality_check: null,
   };
+  // LTR-197 / D28: each step's team is its default owner; Quality Check's team is the two Safety people (D-SET7).
+  const safety = [await userId(USERS.safety), await userId(USERS.safety2)];
   for (const [stepKey, defaultMechanicId] of Object.entries(owners)) {
     await prisma.shopWorkflowStep.updateMany({ where: { stepKey }, data: { defaultMechanicId, active: true } });
+    const step = await prisma.shopWorkflowStep.findUnique({ where: { stepKey }, select: { id: true } });
+    if (!step) continue;
+    await prisma.shopWorkflowStepMember.deleteMany({ where: { stepId: step.id } });
+    const members = stepKey === 'quality_check' ? safety : defaultMechanicId ? [defaultMechanicId] : [];
+    await prisma.shopWorkflowStepMember.createMany({ data: members.map((memberId) => ({ stepId: step.id, userId: memberId })) });
   }
   // LTR-186 / D20: shop hours back to 5:00 p.m., Monday–Friday.
   await prisma.shopSettings.upsert({

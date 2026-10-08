@@ -46,6 +46,8 @@ export type TruckNextStepInput = {
     assignedMechanic?: { id: string; name: string } | null;
     /** LTR-188 / D24: set while the Job is at an external shop (it is not unassigned, and not work here). */
     external?: { kind: JobExternalKind | `${JobExternalKind}` } | null;
+    /** LTR-197 / D28: set while the Job waits in its step's team queue (it is not unassigned). */
+    teamQueueStepKey?: string | null;
   }>;
   activeBlocker?: {
     id: string;
@@ -110,7 +112,8 @@ export function deriveTruckNextStep(input: TruckNextStepInput): TruckNextStepDto
     .sort((left, right) => FLOW_ORDER.indexOf(left.lane) - FLOW_ORDER.indexOf(right.lane));
   // D15: Quality Check has no owner; every other pending Job needs one.
   // LTR-188 / D24: a Job at an external shop has no owner on purpose — it is not "unassigned".
-  const unassigned = pending.find((job) => job.lane !== WorkPlanJobLane.QUALITY_CHECK && !job.external && !job.assignedMechanic);
+  // LTR-197 / D28: neither is a Job waiting in its team queue.
+  const unassigned = pending.find((job) => job.lane !== WorkPlanJobLane.QUALITY_CHECK && !job.external && !job.teamQueueStepKey && !job.assignedMechanic);
   if (unassigned) return { kind: 'assign', workOrderId: wo.id, jobId: unassigned.id, jobName: unassigned.displayName };
 
   // LTR-188 / D24: the only work left (besides Quality Check) is at an external shop → wait for it.

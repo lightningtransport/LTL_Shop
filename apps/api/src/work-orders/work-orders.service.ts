@@ -384,8 +384,9 @@ export class WorkOrdersService {
                 isCustom: false,
                 reviewStatus: null,
                 addedById: user.id,
-                // LTR-157 / D15: the step's default owner (null when inactive or QC).
+                // LTR-197 / D28: the only eligible team member; otherwise the step's team queue.
                 assignedMechanicId: job.assignedMechanicId ?? undefined,
+                workflowStepKey: job.workflowStepKey ?? undefined,
                 status: 'to_do' as const,
               }))),
             },
@@ -996,6 +997,7 @@ export class WorkOrdersService {
             isCustom: false,
             addedById: user.id,
             assignedMechanicId: job.assignedMechanicId,
+            workflowStepKey: job.workflowStepKey,
             status: 'to_do',
           },
         });
