@@ -15,8 +15,8 @@ const stepSelect = {
   sortOrder: true,
   active: true,
   updatedAt: true,
-  catalogJob: { select: { id: true, displayName: true, category: { select: { name: true } } } },
-  defaultMechanic: { select: { id: true, name: true, active: true } },
+  catalogJob: { select: { id: true, displayName: true, status: true, category: { select: { name: true, status: true } } } },
+  defaultMechanic: { select: { id: true, name: true, active: true, capabilities: { select: { capability: true } } } },
   updatedBy: { select: { id: true, name: true } },
 } as const;
 
@@ -37,8 +37,22 @@ export class ShopWorkflowService {
         stepKey: row.stepKey,
         sortOrder: row.sortOrder,
         active: row.active,
-        catalogJob: { id: row.catalogJob.id, displayName: row.catalogJob.displayName, categoryName: row.catalogJob.category.name },
-        defaultMechanic: row.defaultMechanic,
+        catalogJob: {
+          id: row.catalogJob.id,
+          displayName: row.catalogJob.displayName,
+          categoryName: row.catalogJob.category.name,
+          // SW2: an inactive Job or category means new Work Orders skip this step (`resolveMandatoryJobs`).
+          active: row.catalogJob.status === 'active' && row.catalogJob.category.status === 'active',
+        },
+        defaultMechanic: row.defaultMechanic
+          ? {
+              id: row.defaultMechanic.id,
+              name: row.defaultMechanic.name,
+              active: row.defaultMechanic.active,
+              // SW1: an owner who left or changed type stays visible, marked, instead of blocking every save.
+              eligible: usableDefaultOwner(row.stepKey, row.defaultMechanic) !== null,
+            }
+          : null,
         allowsDefaultMechanic: capability !== null,
         requiredCapability: capability,
         updatedAt: row.updatedAt.toISOString(),
@@ -58,8 +72,9 @@ export class ShopWorkflowService {
     if (new Set(steps.map((step) => step.stepKey)).size !== steps.length) {
       throw new BadRequestException({ code: 'DUPLICATE_STEP', message: 'Each step can be listed once.' });
     }
-    const existing = new Set(
-      (await this.prisma.shopWorkflowStep.findMany({ select: { stepKey: true } })).map((row) => row.stepKey),
+    const current = new Map(
+      (await this.prisma.shopWorkflowStep.findMany({ select: { stepKey: true, defaultMechanicId: true } }))
+        .map((row) => [row.stepKey, row.defaultMechanicId]),
     );
     const ownerIds = steps.map((step) => step.defaultMechanicId).filter((id): id is string => Boolean(id));
     const owners = new Map(
@@ -69,10 +84,12 @@ export class ShopWorkflowService {
       })).map((owner) => [owner.id, owner]),
     );
     for (const step of steps) {
-      if (!existing.has(step.stepKey)) {
+      if (!current.has(step.stepKey)) {
         throw new BadRequestException({ code: 'UNKNOWN_STEP', message: `Step ${step.stepKey} is not configured.` });
       }
       if (!step.defaultMechanicId) continue;
+      // SW1: an owner who is not changing is not re-checked, so one owner who left does not block other steps.
+      if (current.get(step.stepKey) === step.defaultMechanicId) continue;
       const capability = workflowStepOwnerCapability(step.stepKey);
       if (!capability) {
         // D15: Quality Check has no owner; the Manager completes it from the Truck.

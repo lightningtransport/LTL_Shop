@@ -85,6 +85,14 @@ app (**Personal**, abajo).
   `pendingJobs` (WO, camión, Job) y `runningSession`. Desactivada, no entra
   (403 al iniciar sesión) ni aparece para asignar; su historial se conserva.
   **Reactivar** no tiene regla.
+- **Trabajo abierto (ME1):** en la lista y en el detalle se cuenta por los Jobs
+  `to_do` de la persona en WOs abiertos (la misma regla que bloquea
+  desactivar), no por `mechanic_assignments`. Así el PM y Safety también
+  cuentan. El detalle trae además `pendingJobs`, `runningSession` y
+  `defaultOwnerOfSteps`. Con eso, el diálogo de desactivar muestra el bloqueo
+  antes de confirmar (ME2), y cambiar el tipo avisa de qué pasos es dueña y
+  cuántos Jobs le quedan; el primer Save solo muestra el aviso (SW3). "Work
+  Orders cerrados recientes" son los WOs cerrados donde completó un Job (ME4).
 - Quién puede: Manager (`admin.access` + `work_orders.manage`) y System
   Admin (por rol). Mecánicos y Safety: 403.
 
@@ -274,6 +282,15 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - Un renglón por paso obligatorio (`pm`, `alignment`, `detailing`,
   `quality_check`) → Job de catálogo, responsable por defecto, orden, activo.
 - Se edita en Admin → Setup → Shop workflow. Solo aplica a WOs nuevos.
+- Guardar manda solo los pasos cambiados, y la API no vuelve a revisar un
+  dueño que no cambia (SW1). Un dueño que ya no puede hacer el paso
+  (inactivo o de otro tipo) sigue a la vista, marcado (`defaultMechanic.eligible`),
+  y los WOs nuevos dejan ese paso sin asignar. Un paso cuyo Job o categoría
+  está inactivo se marca (`catalogJob.active = false`), porque los WOs nuevos
+  lo saltan (SW2). El Job de un paso activo no se puede desactivar
+  (`CATALOG_JOB_IN_WORKFLOW`, 409), y un Job de una categoría inactiva no se
+  puede activar (`CATALOG_CATEGORY_INACTIVE`, 400). Salir con cambios sin
+  guardar pide confirmar (SW4).
 
 ### Activity Log (`activity_logs`)
 - Historial de auditoría de todo cambio, solo se agrega. Se muestra en el

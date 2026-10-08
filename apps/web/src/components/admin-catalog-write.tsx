@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { CatalogStatus, type AdminCatalogCategorySummaryDto, type AdminCatalogJobDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
-import { AdminWriteTip } from './admin-write-tip';
 import { Button, InlineAlert, Input, Label, Modal, Select } from './ui';
 import { createAdminCatalogJob, updateAdminCatalogJob } from '@/lib/admin-data';
 import type { AdminMessages } from '@/lib/admin-messages';
@@ -160,7 +159,6 @@ function AddJobDialog({
   return (
     <Modal open={open} title={messages.catalogAddJob} onClose={onClose} closeLabel={messages.closeDialog}>
       <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
-        <AdminWriteTip>{messages.catalogAddJobTip}</AdminWriteTip>
         {categoryId ? null : (
           <div className="space-y-1.5">
             <Label htmlFor="catalog-job-category">{messages.catalogSelectCategory}</Label>
@@ -237,7 +235,6 @@ function RenameJobDialog({
   return (
     <Modal open={open} title={messages.catalogRenameJob} onClose={onClose} closeLabel={messages.closeDialog}>
       <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
-        <AdminWriteTip>{messages.catalogAddJobTip}</AdminWriteTip>
         <div className="space-y-1.5">
           <Label htmlFor={`catalog-rename-${job.id}`}>{messages.catalogJobName}</Label>
           <Input

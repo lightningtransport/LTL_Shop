@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { AdminNavLink } from './admin-nav-link';
 import { useMemo, useState } from 'react';
 import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
@@ -59,7 +59,7 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
               primary: true,
               cell: (item) => (
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link className="tap-inline font-semibold text-primary hover:underline" href={`/admin/catalog/categories/${item.id}`}>{item.name}</Link>
+                  <AdminNavLink className="tap-inline font-semibold text-primary hover:underline" href={`/admin/catalog/categories/${item.id}`}>{item.name}</AdminNavLink>
                   {item.status === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}
                 </div>
               ),

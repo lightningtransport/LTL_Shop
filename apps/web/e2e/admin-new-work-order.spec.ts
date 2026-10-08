@@ -45,7 +45,7 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
 
     await page.getByLabel('Default owner for PM A Service').selectOption({ label: 'Daniel PM' });
     await page.getByLabel('Default owner for Detailing').selectOption({ label: 'Anthony' });
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.getByRole('button', { name: 'Save steps', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Shop workflow saved.' }).first()).toBeVisible();
 
     await page.goto('/admin/work-orders/new');

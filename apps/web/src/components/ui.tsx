@@ -1145,6 +1145,7 @@ export function Modal({
   returnFocusRef,
   closeLabel,
   description,
+  dismissible = true,
 }: {
   open: boolean;
   title: string;
@@ -1154,6 +1155,8 @@ export function Modal({
   closeLabel?: string;
   /** Stage 8 (mockups): one line under the title, in the dialog's header. */
   description?: React.ReactNode;
+  /** ME3: false while closing would lose something (typed fields, a password shown once): Esc and a click outside do nothing; X and the dialog's buttons still close. */
+  dismissible?: boolean;
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const capturedFocusRef = React.useRef<HTMLElement | null>(null);
@@ -1171,6 +1174,8 @@ export function Modal({
       <DialogContent
         ref={contentRef}
         {...(description ? {} : { 'aria-describedby': undefined })}
+        onEscapeKeyDown={(event) => { if (!dismissible) event.preventDefault(); }}
+        onInteractOutside={(event) => { if (!dismissible) event.preventDefault(); }}
         onOpenAutoFocus={(event) => {
           const initialControl = contentRef.current?.querySelector<HTMLElement>(
             'input:not([disabled]), select:not([disabled]), textarea:not([disabled])',

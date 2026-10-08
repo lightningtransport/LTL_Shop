@@ -39,7 +39,6 @@ export function AdminMechanicDetail({ id, messages }: { id: string; locale: Admi
         <CardContent className="space-y-2 text-sm">
           <p>{messages.openAssignments}: {data.openWorkOrderCount}</p>
           <p>{messages.completedJobsCount}: {data.completedJobCount}</p>
-          <p className="text-muted-foreground">{messages.jobLaborUnavailable}</p>
         </CardContent>
       </Card>
       <Card>

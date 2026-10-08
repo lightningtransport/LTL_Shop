@@ -135,21 +135,24 @@ const mechanicAssignmentInclude = {
   },
 } as const;
 
+/**
+ * ME1: a person's open work is the Jobs they own that are still to do on open Work Orders — the same rule
+ * that blocks deactivating them (D22) — not `mechanic_assignments`, which PM and Safety never join.
+ */
 const mechanicListInclude = {
   capabilities: { select: { capability: true } },
-  mechanicAssignments: {
-    where: { removedAt: null, workOrder: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } } },
-    include: mechanicAssignmentInclude,
+  assignedJobs: {
+    where: { status: 'to_do' as const, workOrder: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } } },
+    select: { displayName: true, ...mechanicAssignmentInclude },
     orderBy: { addedAt: 'asc' as const },
   },
 };
 
 const mechanicDetailInclude = {
-  capabilities: { select: { capability: true } },
-  mechanicAssignments: {
-    where: { removedAt: null },
-    include: mechanicAssignmentInclude,
-    orderBy: { addedAt: 'desc' as const },
+  ...mechanicListInclude,
+  defaultForWorkflowSteps: {
+    select: { stepKey: true, catalogJob: { select: { displayName: true } } },
+    orderBy: { sortOrder: 'asc' as const },
   },
 };
 
@@ -542,16 +545,30 @@ export class AdminService {
       include: mechanicDetailInclude,
     });
     if (!row) throw new NotFoundException('Mechanic not found');
-    const completedJobCount = await this.prisma.workOrderJob.count({
-      where: { completedById: id, status: 'completed' },
-    });
+    const [completedJobCount, closedWorkOrders, runningSession] = await Promise.all([
+      this.prisma.workOrderJob.count({ where: { completedById: id, status: 'completed' } }),
+      // ME4: the closed Work Orders where this person completed a Job, so the list agrees with "Completed Jobs".
+      this.prisma.workOrder.findMany({
+        where: { status: { in: ['completed', 'cancelled'] }, jobs: { some: { completedById: id, status: 'completed' } } },
+        select: mechanicAssignmentInclude.workOrder.select,
+        orderBy: [{ completedAt: 'desc' }, { id: 'desc' }],
+        take: 10,
+      }),
+      this.prisma.workSession.findFirst({ where: { userId: id, endedAt: null }, select: { id: true } }),
+    ]);
     return {
       ...toMechanicSummary(row),
       completedJobCount,
-      recentClosedWorkOrders: row.mechanicAssignments
-        .filter((assignment) => assignment.workOrder.status === 'completed' || assignment.workOrder.status === 'cancelled')
-        .slice(0, 10)
-        .map(toMechanicAssignment),
+      recentClosedWorkOrders: closedWorkOrders.map((workOrder) => toMechanicAssignment({ workOrder })),
+      // ME2 / SW3: what blocks deactivating and what a type change affects, known before the Manager confirms.
+      pendingJobs: row.assignedJobs.map((job) => ({
+        workOrderId: job.workOrder.id,
+        workOrderDisplayId: job.workOrder.displayId,
+        truckNumber: job.workOrder.truck.truckNumber,
+        jobDisplayName: job.displayName,
+      })),
+      runningSession: Boolean(runningSession),
+      defaultOwnerOfSteps: row.defaultForWorkflowSteps.map((step) => ({ stepKey: step.stepKey, jobDisplayName: step.catalogJob.displayName })),
     };
   }
 
@@ -2507,11 +2524,14 @@ function toMechanicSummary(row: {
   role: import('@prisma/client').UserRole;
   active: boolean;
   capabilities: { capability: AppCapability }[];
-  mechanicAssignments: Parameters<typeof toMechanicAssignment>[0][];
+  assignedJobs: Parameters<typeof toMechanicAssignment>[0][];
 }): import('@ltl-shop/shared').AdminMechanicSummaryDto {
-  const currentAssignments = row.mechanicAssignments
-    .filter((assignment) => (OPEN_WORK_ORDER_STATUSES as string[]).includes(assignment.workOrder.status))
-    .map(toMechanicAssignment);
+  // One row per open Work Order where the person still has a Job to do (ME1).
+  const byWorkOrder = new Map<string, Parameters<typeof toMechanicAssignment>[0]>();
+  for (const job of row.assignedJobs) {
+    if (!byWorkOrder.has(job.workOrder.id)) byWorkOrder.set(job.workOrder.id, job);
+  }
+  const currentAssignments = [...byWorkOrder.values()].map(toMechanicAssignment);
   return {
     id: row.id,
     name: row.name,
