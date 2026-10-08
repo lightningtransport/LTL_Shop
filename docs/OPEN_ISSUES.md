@@ -329,6 +329,44 @@ Auditoría con las skills audit-ux 0, 1, 4, 6 y 7 en la base demo local (cuenta 
 | ~~PM5~~ | C | **La regla "un PM a la vez" se descubre al tocar**: la tarjeta pausada del inicio, Create PM service y "Start PM service" en otro camión la ofrecen como botón principal y responden con error (UX-1-001, UX-1-002, UX-1-003). W14 lo arregló solo en "Ready to Start". | **Hecho** (bloque A, #256, 2026-10-07). |
 | ~~PM6~~ | C | **Las notas no se guardan solas como dice HU-PM1**: se publican con "Add Note" y lo no enviado se pierde al salir (UX-7-001). | **Hecho** (bloque A, #257, 2026-10-07). |
 
+## 1m. Setup del Admin: Shop workflow, Job Catalog, Mechanics (2026-10-07) — **ABIERTO** · Linear [LTR-196](https://linear.app/ltransl/issue/LTR-196) (etapa 0), [LTR-197](https://linear.app/ltransl/issue/LTR-197) (S1), [LTR-198](https://linear.app/ltransl/issue/LTR-198) (S2), [LTR-199](https://linear.app/ltransl/issue/LTR-199) (S3), [LTR-200](https://linear.app/ltransl/issue/LTR-200) (S4)
+
+Revisión pedida por el dueño el 2026-10-07. Se usaron las skills audit-ux 0, 1, 3, 4, 5, 6, 7 y 9 en la base demo local `ltl_shop_setup_demo`, con la cuenta del Manager. Todo está en `docs/ux-audit/admin-setup/`; el resumen es `09-informe-final.md`.
+
+Aquí van los defectos de lo que ya está construido. Lo que cambia por las decisiones del dueño (D28–D32) va en la segunda tabla, como bloques S1–S4.
+
+| # | Clase | Problema | Estado |
+|---|---|---|---|
+| SW1 | B | **Shop workflow deja de guardar sin decir por qué.** Pasa cuando el dueño de un paso deja de poder hacerlo (cambió de tipo o se desactivó). `save()` manda todos los pasos y la API rechaza el lote con `OWNER_NOT_ELIGIBLE`. La pantalla dice "Refresh and try again", y refrescar no lo arregla (`admin-shop-workflow.tsx:43-50`, `shop-workflow.service.ts:81-87`). Reproducido en la demo (UX-6-005, UX-7-005). | Abierto |
+| SW2 | B | **Un paso obligatorio deja de crearse en silencio** si su Job o su categoría se desactivan (`mandatory-jobs.ts:70`). Shop workflow lo sigue mostrando como configurado (UX-6-008, UX-1-004). | Abierto |
+| SW3 | C | **Cambiar el tipo de una persona, o desactivarla, no avisa que es dueña de un paso.** Las WOs nuevas nacen con ese paso sin dueño, y la persona se queda con sus Jobs abiertos de otro tipo (`system-admin-writes.service.ts:145-162`) (UX-7-017, UX-1-003, UX-6-009). | Abierto |
+| SW4 | C | **Los cambios sin guardar se pierden al salir, sin aviso.** Nada marca la fila cambiada, y hay dos botones "Save" en la página sin decir qué guarda cada uno (UX-6-016, UX-7-004, UX-1-008, UX-4-001). | Abierto |
+| SW5 | C | **Renombrar un Job que es paso lo saca de su carril en Yard.** Alignment, Detailing y QC se reconocen por nombre (`yard-work-plan-derivation.ts:78-120`). El diálogo de renombrar no avisa nada (UX-1-009). | Abierto (se resuelve con S2: `system_key`) |
+| JC1 | B | **Cada publicación nueva deshace cambios del Manager en el catálogo.** `applyJobCatalog` corre en cada Release: re-crea con su nombre viejo los Jobs renombrados, reactiva los desactivados y les quita los aliases a quien los tenga (`apps/api/prisma/job-catalog.ts:332-427`) (UX-1-010). | Abierto (inferido del código; la prueba va con S2) |
+| JC2 | C | **El buscador del catálogo solo encuentra categorías**, no Jobs ni aliases (`admin-catalog-list.tsx:21`). Para encontrar un Job hay que abrir hasta 17 categorías, y se terminan creando duplicados (UX-5-014). | Abierto |
+| JC3 | C | **Una categoría inactiva no explica por qué** (Alignment y Air System quedaron así al fusionarse en LTR-24). En sus Jobs, "Activate" dice que funcionó aunque no tiene efecto real (UX-6-010). | Abierto (S2 agrega activar y desactivar categorías) |
+| JC4 | C | **El primer clic en una categoría no abre el detalle.** La lista usa el `Link` común y no `AdminNavLink` (UX-1-013, UX-5-008). | Abierto |
+| JC5 | E | **Aliases casi duplicados** ("lineas" y "líneas de combustible"): el normalizador borra las letras con tilde en vez de quitarles la tilde (`job-catalog.service.ts:4-5`) (UX-3-017). | Abierto |
+| JC6 | E | **Textos viejos o repetidos.** "Read-only…" en un catálogo editable. "Manager or System Admin…" aparece en 8 lugares, también dentro de Rename. Usa jerga como "The Job id stays the same" (UX-3-001, UX-3-002, UX-3-015). | Abierto |
+| ME1 | C | **"Open Work Orders" no es el trabajo real.** Cuenta `mechanic_assignments`, no los Jobs de la persona. En la demo, Daniel (PM) muestra 0 con 9 Jobs pendientes, y Alejandro 1 muestra 10 cuando tiene 7 (`admin.service.ts:2504-2525`) (UX-1-014, UX-3-010, UX-6-011). | Abierto |
+| ME2 | C | **Desactivar avisa del bloqueo recién después de confirmar**, y desde ahí no se puede reasignar (UX-6-013, UX-3-013, UX-7-018). | Abierto |
+| ME3 | C | **Esc o un clic fuera cierra "Add person" y se pierde lo escrito**, incluida la contraseña temporal que se ve una sola vez (`ui.tsx:1170`) (UX-7-002). | Abierto |
+| ME4 | E | **El detalle se contradice.** Dice "Completed Jobs: 3" y al lado "No closed Work Orders". Además, "Job labor time is not available" es un texto fijo (UX-6-012, UX-3-011, UX-3-012). | Abierto |
+| ME5 | E | **La sección se llama "Mechanics" y lista Safety y admins.** "Capabilities" mezcla el tipo de la persona con permisos (UX-3-008, UX-3-009, UX-5-003). | Abierto (S3: "People / Personas") |
+
+**Cambia por decisión del dueño** (D28–D32, 2026-10-07). No son defectos: es trabajo nuevo, con propuesta y maqueta antes de construir.
+
+| Bloque | Qué | Decisión | Hallazgos que lo piden |
+|---|---|---|---|
+| S1 | Equipo y cola por paso; el Manager hace QC como respaldo desde `/qc` (hoy lo redirige sin mensaje); el paso se llama "PM" | D28, D29 | UX-7-020, UX-6-019, UX-5-009, UX-1-005, UX-1-006, UX-1-007 |
+| S2 | El Manager maneja categorías, Jobs y aliases; borrar solo lo que nunca se usó; Jobs del sistema protegidos con `system_key`; la recarga no pisa al Manager | D30 | UX-7-022, UX-6-021, UX-4-004, UX-4-007, UX-1-011, UX-5-002 |
+| S3 | "Remove" a una persona conservando su historial; detalle con cabecera de estado y los pasos de los que es dueña | D31 | UX-7-023, UX-6-023, UX-4-009, UX-5-011, UX-1-016 |
+| S4 | Partes y costos etapa 1 (catálogo de partes, compras, reparaciones externas, costo por camión); el cobro a Finanzas queda diseñado | D32 | UX-1-020, UX-5-004, UX-6-024, UX-7-024 |
+
+Orden acordado:
+1. **Arreglos sin rediseño:** SW1–SW4, JC4–JC6 y ME1–ME5. Un PR, como el "bloque A" de los roles de campo.
+2. **Bloques S1 → S2 → S3 → S4**, un PR cada uno. JC1, JC2, JC3 y SW5 se cierran en S2.
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):
@@ -427,8 +465,11 @@ usuarios reales sin un defecto B.
 - Presencia física en el patio (Samsara), McLeod, Dispatch, Schedule_Teams.
 - Off Duty (decidido: se lanza sin eso), sincronizar con Ninox (P4).
 - Trailers como activos: el taller los necesita; falta decidir cuándo (P11).
-- Pantallas para escribir categorías y permisos. Alta de mecánicos **sí**
-  entra (LTR-187, D22) y los Jobs del catálogo también (D25); camiones después.
+- Pantalla de permisos. Alta de mecánicos **sí** entra (LTR-187, D22), y
+  también los Jobs del catálogo (D25). Las **categorías y los aliases** entran
+  desde D30 (2026-10-07). Camiones, después.
+- Inventario de partes (stock, entradas y salidas) y la factura interna a
+  Finanzas: diseñados en D32 pero **no se construyen** en la etapa 1.
 - Rendimiento por Job, tiempos por Job, espera por motivo.
 - Espacios de trabajo de Detailing, Body Shop, Trailer e Inspector.
 - Notificaciones push (decidido: solo dentro de la app).

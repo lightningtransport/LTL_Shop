@@ -47,6 +47,7 @@ respuestas confirman lo construido y 7 muestran huecos (sección 7).
 | J10 | Admin | hubo un error de tiempo o de estado | corregirlo dejando rastro | que el historial siga siendo confiable |
 | J11 | Safety (QC) | un camión terminó su trabajo | revisarlo y aprobarlo, o devolverlo con lo que encontré | que ningún camión salga sin el visto bueno de Safety |
 | J12 | Manager | entra un camión o un mecánico nuevo | darlo de alta yo mismo en la app | no depender de nadie para empezar a trabajar |
+| J13 | Manager | compro partes o pago una reparación afuera | cargarla con su factura y asignarla al camión | saber cuánto cuesta cada camión y, después, cobrarle a Finanzas lo que hace el taller |
 
 **Quién usa qué:** los mecánicos, en el teléfono. El Manager, en el teléfono
 (caminando por el taller) y en la computadora. Idioma: mezclado, así que
@@ -238,6 +239,14 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Pone dueño a Quality Check | No deja | ✅ | A25 |
 | Pone un mecánico normal como dueño de PM, o un usuario inactivo | No deja | ✅ | A25 |
 | Un Work Order viejo no tiene todos los pasos | El siguiente paso ofrece "Add missing steps" y los agrega con sus dueños | ✅ | A18 |
+| El dueño de un paso cambia de tipo o se desactiva, y después cambia otro paso | No se puede guardar nada; dice "Refresh and try again" | ❌ SW1 | — |
+| El Job o la categoría de un paso se desactivan | El paso deja de crearse en las WOs nuevas sin aviso | ❌ SW2 | — |
+| Sale de la pantalla con cambios sin guardar | Se pierden sin aviso | ❌ SW4 | — |
+| Pone **varias personas** en Detailing (D28) | El Job nace en la cola del equipo; todos lo ven y el primero que lo toma queda como dueño | 🔲 S1 | — |
+| Hay una sola persona en el equipo | El Job nace asignado a ella, como hoy | 🔲 S1 | — |
+| Uno del equipo toma el Job | Desaparece de la cola de los demás; lo puede soltar y vuelve a la cola | 🔲 S1 | — |
+| El equipo de un paso queda vacío | El Job nace sin dueño y Shop workflow lo marca | 🔲 S1 | — |
+| El paso de PM | Se llama "PM"; el mecánico sigue eligiendo PM A o PM B | 🔲 S1 | — |
 
 ---
 
@@ -269,6 +278,12 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 | La persona pierde la contraseña temporal | El Manager la **reinicia** desde el detalle: otra contraseña temporal y cambio obligatorio (en local: "sin cuenta de acceso") | ✅ | A31 |
 | Un mecánico intenta crear personal | No puede | ✅ | A26 |
 | Falla la creación de la cuenta de acceso | No se crea nada; la app avisa y se reintenta | ✅ (unitaria: la API borra la cuenta si falla la fila) | A29 |
+| Mira cuánto trabajo abierto tiene una persona | La cifra cuenta el equipo del WO, no sus Jobs: un PM con 9 Jobs ve 0 | ❌ ME1 | — |
+| Toca Deactivate con trabajo abierto | El bloqueo aparece recién después de confirmar | ❌ ME2 | — |
+| Cambia el tipo de alguien que es dueño de un paso o tiene Jobs | No avisa | ❌ SW3 | — |
+| **Quita del Shop** a alguien sin trabajo abierto (D31) | Deja de entrar y de aparecer en listas y equipos; su nombre sigue en el historial | 🔲 S3 | — |
+| Quita a alguien con trabajo abierto | La app lo dice **antes** de confirmar y ofrece reasignar o mandar sus Jobs a la cola del equipo | 🔲 S3 | — |
+| Borra a alguien creado por error, que nunca hizo nada | Se borra de verdad | 🔲 S3 | — |
 
 ---
 
@@ -431,9 +446,10 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Devuelve con nota | Pasa a "Devueltos"; el Manager lo ve como bloqueo "Devuelto por Safety" con la nota; nadie lo puede tomar hasta que el Manager resuelva | ✅ | QC3 |
 | El Manager agrega el trabajo y los mecánicos lo terminan | El camión vuelve a la lista, para cualquiera de los dos | ✅ | QC3 |
 | Intenta cerrar, asignar, inspeccionar o entrar a Admin | No puede | ✅ | QC4 |
-| Un mecánico o el Manager intenta usar la lista de Safety | No pueden | ✅ | QC4 |
+| Un mecánico intenta usar la lista de Safety | No puede | ✅ | QC4 |
 | Un mecánico elige el motivo "Devuelto por Safety" | No se le ofrece y la API lo rechaza | ✅ | QC4 |
 | El Manager asigna el QC a alguien de Safety | Puede; esa persona lo ve como suyo | ✅ | QC5, E9b |
+| No hay nadie de Safety y el Manager entra a la lista de Safety (D29) | Hoy lo manda al Dashboard sin decir nada. Con D29 entra, toma, aprueba o devuelve, y queda a su nombre | 🔲 S1 | — |
 | Idioma | La pantalla existe en inglés y español | 👁 revisado 2026-09-29 | — |
 | Toca Approve | Pide confirmar antes ("Approve Truck 606?") | ✅ | e2e qc-redesign |
 | Tomó un camión y no puede seguir | **Let go**: el QC queda libre y la otra persona lo puede tomar; queda en el Activity Log | ✅ | QC6 |
@@ -466,6 +482,14 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Un mecánico o Safety intenta escribir el catálogo | No puede | ✅ | A26 |
 | Alta y baja de personal | El Manager y el System Admin (D22, HU-M9) | ✅ | A29–A31 |
 | Usuario inactivo, desconocido o sin sesión | No entra | ✅ | E4 |
+| Busca un Job o un alias por nombre | El buscador solo encuentra categorías | ❌ JC2 | — |
+| Se publica una versión nueva | La carga del catálogo base deshace lo que cambió el Manager | ❌ JC1 | — |
+| Activa o desactiva una **categoría** (D30) | Puede; una inactiva dice por qué y no recibe Jobs nuevos | 🔲 S2 | — |
+| Agrega o quita un **alias** | Puede; no deja repetir un alias de otro Job y dice de cuál es | 🔲 S2 | — |
+| Borra un Job que nunca se usó | Se borra | 🔲 S2 | — |
+| Borra un Job que ya está en Work Orders | No se borra; se desactiva y la pantalla dice por qué | 🔲 S2 | — |
+| Desactiva o borra PM, Alignment, Detailing o Quality Check | No deja (Jobs del sistema); renombrarlos no rompe Yard ni los pasos | 🔲 S2 | — |
+| Desactiva un Job que usa un paso obligatorio | No deja hasta cambiar el paso | 🔲 S2 | — |
 
 ---
 
@@ -505,6 +529,23 @@ Ver la fila E7 en HU-ME2.
 ### HU-M9 · Dar de alta al personal (J12) — decidido (D22)
 
 Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
+
+### HU-M12 · Saber cuánto cuesta cada camión (J13) — 🔲 decidido (D32), bloque S4
+
+**Quién:** el Manager. Más adelante, Finanzas.
+
+**Flujo (etapa 1)**
+1. **Parts & costs → Parts:** mantiene el catálogo de partes (el mismo del PM), con costo unitario y proveedor.
+2. **Purchases:** carga una compra con proveedor, fecha, número de factura, líneas de parte × cantidad × costo y la factura adjunta. Si la compra es para un camión, la asocia a ese camión.
+3. **Outside repairs:** carga una reparación hecha fuera del taller con camión, proveedor, fecha, descripción, costo y factura. Si salió desde "Enviar a taller externo" (D24), la asocia a ese Job.
+4. **Truck → Costs:** ve el historial de costos del camión, con totales por tipo y por período.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| El PM usa una parte | La elige del mismo catálogo; el PM sigue igual que hoy | 🔲 S4 | — |
+| Carga dos veces la misma factura | La app avisa que ese número de factura de ese proveedor ya existe | 🔲 S4 | — |
+| Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock) | 🔲 S4 | — |
+| Quiere cobrarle a Finanzas | No en la etapa 1: diseñado (mano de obra × horas y factura interna por período), no construido | 🔲 después | — |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 

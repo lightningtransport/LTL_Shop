@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin Setup Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* Same tokens as the other proposals (qc-screen-redesign, truck-detail-redesign) and apps/web/src/app/globals.css.
+     Self-contained on purpose: no Tailwind or icon CDN, only Google Fonts. */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  * { box-sizing: border-box; border-color: var(--border); }
+  html, body { margin: 0; }
+  body { background: var(--sunken); color: var(--foreground); font: 14px/1.45 Inter, system-ui, sans-serif; letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; }
+  button, input, select { font: inherit; color: inherit; letter-spacing: inherit; }
+  button { cursor: pointer; background: none; border: 0; padding: 0; }
+  button:disabled { cursor: not-allowed; }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  svg.i { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  svg.i.s14 { width: 14px; height: 14px; } svg.i.s20 { width: 20px; height: 20px; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: .92em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted-foreground); }
+  .small { font-size: 12px; } .b { font-weight: 600; } .m { font-weight: 500; }
+  .row { display: flex; align-items: center; gap: 8px; } .wrap { flex-wrap: wrap; } .grow { flex: 1; min-width: 0; }
+  .col { display: flex; flex-direction: column; gap: 4px; }
+  .between { justify-content: space-between; } .end { justify-content: flex-end; }
+  .gap4 { gap: 4px; } .gap12 { gap: 12px; } .gap16 { gap: 16px; }
+  .mt4 { margin-top: 4px; } .mt8 { margin-top: 8px; } .mt12 { margin-top: 12px; } .mt16 { margin-top: 16px; } .mt24 { margin-top: 24px; }
+  .trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .warn-t { color: var(--warning-foreground); } .dark .warn-t { color: var(--warning); }
+  .ok-t { color: var(--success); } .bad-t { color: var(--destructive-text); } .pri-t { color: var(--primary); }
+  .link { color: var(--primary); } .link:hover { text-decoration: underline; }
+
+  /* Demo bar (not part of the app) */
+  .demo { position: sticky; top: 0; z-index: 90; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--background) 95%, transparent); backdrop-filter: blur(6px); font-size: 12px; }
+  .demo .seg button, .demo > button, .demo .presets button { height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); }
+  .demo .seg { display: inline-flex; } .demo .seg button { border-radius: 0; } .demo .seg button:first-child { border-radius: 6px 0 0 6px; } .demo .seg button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+  .demo .on { background: var(--primary) !important; color: var(--primary-foreground); border-color: var(--primary) !important; }
+  .demo .presets { display: flex; flex-wrap: wrap; gap: 4px; }
+  .demo .grp { color: var(--muted-foreground); margin: 0 2px 0 8px; }
+
+  #stage { display: flex; justify-content: center; padding: 24px 16px; }
+  .frame { position: relative; display: flex; overflow: hidden; background: var(--background); border: 1px solid var(--border); box-shadow: 0 20px 50px -20px rgba(0,0,0,.25); }
+  .frame.desk { width: 100%; max-width: 1280px; height: 800px; border-radius: 12px; }
+  .frame.phone { width: 390px; height: 800px; border-radius: 32px; border-width: 4px; flex-direction: column; }
+
+  /* Admin shell */
+  .side { width: 232px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--background); }
+  .brand { height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--border); }
+  .logo { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; background: color-mix(in oklch, var(--success) 20%, transparent); color: var(--success); }
+  .nav { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
+  .nav p { margin: 0 0 4px; padding: 0 8px; font-size: 12px; color: var(--muted-foreground); }
+  .nav a { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px; border-radius: 6px; color: var(--muted-foreground); cursor: pointer; }
+  .nav a:hover { background: var(--accent); color: var(--foreground); }
+  .nav a.cur { background: var(--accent); color: var(--foreground); font-weight: 500; }
+  .nav .new { margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: color-mix(in oklch, var(--primary) 15%, transparent); color: var(--primary); }
+  .who { border-top: 1px solid var(--border); padding: 12px 16px; }
+  .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .top { height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 20px; border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--background) 92%, transparent); }
+  .phone .top { padding: 0 12px; }
+  .crumb { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted-foreground); white-space: nowrap; }
+  .crumb a { cursor: pointer; } .crumb a:hover { color: var(--foreground); } .crumb b { color: var(--foreground); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+  .me { margin-left: auto; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: color-mix(in oklch, var(--primary) 15%, transparent); color: var(--primary); font-size: 12px; font-weight: 600; }
+  .main { flex: 1; min-height: 0; overflow-y: auto; position: relative; }
+  .page { max-width: 1040px; margin: 0 auto; padding: 24px 24px 96px; }
+  .phone .page { padding: 16px 16px 112px; }
+  h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+  .phone h1 { font-size: 22px; }
+  h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  .sub { margin: 4px 0 0; color: var(--muted-foreground); }
+
+  /* Primitives */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 6px; font-weight: 500; white-space: nowrap; }
+  .phone .btn { height: 44px; }
+  .btn.sm { height: 30px; padding: 0 10px; font-size: 13px; } .phone .btn.sm { height: 36px; }
+  .btn.icon { width: 36px; padding: 0; } .phone .btn.icon { width: 44px; }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); } .btn.primary:hover { opacity: .92; }
+  .btn.outline { border: 1px solid var(--border); background: var(--background); } .btn.outline:hover { background: var(--accent); }
+  .btn.ghost { color: var(--muted-foreground); } .btn.ghost:hover { background: var(--accent); color: var(--foreground); }
+  .btn.danger { background: var(--destructive); color: #fff; }
+  .btn.danger-o { border: 1px solid color-mix(in oklch, var(--destructive) 50%, transparent); color: var(--destructive-text); background: var(--background); }
+  .btn:disabled { opacity: .45; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .chip .dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+  .chip.ok { color: var(--success); border-color: color-mix(in oklch, var(--success) 40%, transparent); background: color-mix(in oklch, var(--success) 10%, transparent); }
+  .chip.warn { color: var(--warning-foreground); border-color: color-mix(in oklch, var(--warning) 50%, transparent); background: color-mix(in oklch, var(--warning) 14%, transparent); }
+  .dark .chip.warn { color: var(--warning); }
+  .chip.bad { color: var(--destructive-text); border-color: color-mix(in oklch, var(--destructive) 45%, transparent); background: color-mix(in oklch, var(--destructive) 12%, transparent); }
+  .chip.pri { color: var(--primary); border-color: color-mix(in oklch, var(--primary) 40%, transparent); background: color-mix(in oklch, var(--primary) 10%, transparent); }
+  .chip.off { color: var(--muted-foreground); background: var(--muted); }
+  .count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 6px; background: var(--muted); box-shadow: inset 0 0 0 1px var(--border); font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+  .av { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+  .av.lg { width: 48px; height: 48px; font-size: 16px; }
+  .t-sky { background: color-mix(in oklch, oklch(0.68 0.15 237) 22%, transparent); color: oklch(0.5 0.15 237); }
+  .t-violet { background: color-mix(in oklch, oklch(0.6 0.2 293) 22%, transparent); color: oklch(0.5 0.2 293); }
+  .t-emerald { background: color-mix(in oklch, oklch(0.7 0.15 162) 22%, transparent); color: oklch(0.5 0.13 162); }
+  .t-rose { background: color-mix(in oklch, oklch(0.65 0.2 16) 22%, transparent); color: oklch(0.52 0.2 16); }
+  .t-cyan { background: color-mix(in oklch, oklch(0.72 0.13 215) 22%, transparent); color: oklch(0.5 0.11 215); }
+  .t-amber { background: color-mix(in oklch, oklch(0.77 0.16 70) 25%, transparent); color: oklch(0.5 0.13 60); }
+  .t-slate { background: color-mix(in oklch, oklch(0.55 0.04 257) 22%, transparent); color: oklch(0.45 0.04 257); }
+  .t-lime { background: color-mix(in oklch, oklch(0.77 0.2 131) 22%, transparent); color: oklch(0.5 0.15 131); }
+  .dark [class*="t-"].av { filter: brightness(1.5); }
+  .card { border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+  .card-h { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .card-b { padding: 16px; }
+  .divide > * + * { border-top: 1px solid var(--border); }
+  .alert { display: flex; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid; font-size: 13px; }
+  .alert svg { margin-top: 2px; }
+  .alert.warn { border-color: color-mix(in oklch, var(--warning) 50%, transparent); background: var(--warning-surface); color: var(--warning-foreground); }
+  .dark .alert.warn { color: var(--warning-foreground); }
+  .alert.bad { border-color: color-mix(in oklch, var(--destructive) 45%, transparent); background: color-mix(in oklch, var(--destructive) 10%, transparent); color: var(--destructive-text); }
+  .alert.info { border-color: color-mix(in oklch, var(--primary) 35%, transparent); background: color-mix(in oklch, var(--primary) 8%, transparent); }
+  .alert .grow > p { margin: 0; }
+  .input { height: 36px; width: 100%; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); outline: none; }
+  .phone .input { height: 44px; font-size: 16px; }
+  .input:focus { border-color: var(--ring); }
+  .input.err { border-color: var(--destructive); }
+  .search { position: relative; } .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); } .search .input { padding-left: 32px; }
+  .segc { display: inline-flex; padding: 3px; border-radius: 8px; background: var(--muted); gap: 2px; }
+  .segc button { height: 28px; padding: 0 10px; border-radius: 6px; color: var(--muted-foreground); font-weight: 500; font-size: 13px; }
+  .phone .segc button { height: 36px; }
+  .segc button.on { background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-top: 16px; }
+  .tabs button { height: 40px; padding: 0 12px; color: var(--muted-foreground); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs button.on { color: var(--foreground); border-color: var(--primary); }
+
+  table.t { width: 100%; border-collapse: collapse; }
+  .t th { text-align: left; font-size: 12px; font-weight: 500; color: var(--muted-foreground); padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--card); }
+  .t td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .t tr:last-child td { border-bottom: 0; }
+  .t tr.click:hover td { background: color-mix(in oklch, var(--accent) 45%, transparent); cursor: pointer; }
+  .t tr.flash td, .mcard.flash { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: color-mix(in oklch, var(--primary) 18%, transparent); } }
+  .t .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tablewrap { border: 1px solid var(--border); border-radius: 12px; overflow: visible; background: var(--background); }
+  .tablewrap .t tr:first-child th:first-child { border-top-left-radius: 12px; } .tablewrap .t tr:first-child th:last-child { border-top-right-radius: 12px; }
+
+  /* Popover menu */
+  .rel { position: relative; }
+  .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; width: 260px; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: 0 12px 30px -8px rgba(0,0,0,.3); text-align: left; }
+  .menu .mi { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 8px 10px; border-radius: 6px; text-align: left; font-weight: 400; }
+  .menu .mi:hover:not(:disabled) { background: var(--accent); }
+  .menu .mi:disabled { opacity: 1; color: var(--muted-foreground); }
+  .menu .mi small { display: block; font-size: 12px; color: var(--muted-foreground); margin-top: 1px; }
+  .menu .mi.bad { color: var(--destructive-text); }
+  .menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+
+  /* Overlay layer inside the frame */
+  .ov { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.5); }
+  .dlg { position: absolute; z-index: 61; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, 92%); max-height: 88%; overflow-y: auto; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 24px 60px -12px rgba(0,0,0,.45); animation: pop .14s ease-out; }
+  .phone .dlg { left: 0; right: 0; top: auto; bottom: 0; transform: none; width: auto; max-height: 90%; border-radius: 20px 20px 0 0; animation: sheet .2s ease-out; }
+  .grab { display: none; } .phone .grab { display: block; width: 40px; height: 4px; border-radius: 999px; background: color-mix(in oklch, var(--muted-foreground) 40%, transparent); margin: -6px auto 12px; }
+  .dlg .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .phone .dlg .acts { flex-direction: column-reverse; } .phone .dlg .acts .btn { width: 100%; }
+  @keyframes pop { from { opacity: 0; } } @keyframes sheet { from { transform: translateY(24px); opacity: 0; } }
+  .toast { position: absolute; z-index: 70; left: 50%; bottom: 84px; transform: translateX(-50%); width: min(92%, 420px); display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: 0 12px 30px -8px rgba(0,0,0,.35); animation: pop .18s ease-out; }
+  .savebar { position: sticky; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 10px; padding: 12px 24px; border-top: 1px solid var(--border); background: var(--card); box-shadow: 0 -8px 24px -12px rgba(0,0,0,.2); animation: sheet .18s ease-out; }
+  .phone .savebar { flex-wrap: wrap; padding: 12px 16px; }
+  .phone .savebar .acts { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sbdot { width: 8px; height: 8px; border-radius: 999px; background: var(--warning); flex-shrink: 0; }
+
+  /* Shop workflow steps */
+  .step { display: grid; grid-template-columns: 32px minmax(0, 250px) minmax(0, 1fr); gap: 16px; padding: 16px; }
+  .phone .step { grid-template-columns: 28px minmax(0, 1fr); gap: 10px 12px; }
+  .phone .step .team { grid-column: 1 / -1; }
+  .stepn { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: var(--muted); font-weight: 600; color: var(--muted-foreground); font-size: 13px; }
+  .pchip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 4px 0 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--background); font-weight: 500; }
+  .pchip .x { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; color: var(--muted-foreground); }
+  .pchip .x:hover { background: var(--accent); color: var(--foreground); }
+  .pchip.bad { border-style: dashed; border-color: color-mix(in oklch, var(--warning) 70%, transparent); background: var(--warning-surface); }
+  .pchip.bad .nm { text-decoration: line-through; text-decoration-color: color-mix(in oklch, var(--warning-foreground) 60%, transparent); }
+  .pchip.added { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .phone .pchip { height: 36px; }
+  .addp { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 999px; border: 1px dashed var(--border); color: var(--muted-foreground); font-weight: 500; }
+  .addp:hover { color: var(--foreground); border-color: var(--muted-foreground); }
+  .phone .addp { height: 36px; }
+  .hint { display: flex; gap: 6px; align-items: flex-start; margin: 8px 0 0; font-size: 13px; color: var(--muted-foreground); }
+  .hint svg { margin-top: 2px; }
+  .optrow { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border-radius: 8px; text-align: left; }
+  .optrow:hover { background: var(--accent); }
+  .box { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--muted-foreground); display: grid; place-items: center; flex-shrink: 0; }
+  .box.on { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+
+  /* Catalog */
+  .achip { display: inline-flex; align-items: center; gap: 2px; height: 26px; padding: 0 2px 0 8px; border-radius: 999px; background: var(--muted); font-size: 12px; }
+  .achip button { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; color: var(--muted-foreground); }
+  .achip button:hover { background: var(--accent); color: var(--foreground); }
+  .phone .achip { height: 32px; } .phone .achip button { width: 28px; height: 28px; }
+  .aadd { height: 26px; padding: 0 8px; border-radius: 999px; border: 1px dashed var(--border); font-size: 12px; color: var(--muted-foreground); display: inline-flex; align-items: center; gap: 4px; }
+  .phone .aadd { height: 32px; }
+  .ainput { height: 28px; width: 160px; padding: 0 8px; border: 1px solid var(--ring); border-radius: 999px; background: var(--background); font-size: 12px; outline: none; }
+  .ainput.err { border-color: var(--destructive); }
+  .phone .ainput { height: 36px; font-size: 16px; width: 100%; }
+  .hit { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; }
+  .hit:hover { background: color-mix(in oklch, var(--accent) 45%, transparent); }
+  mark { background: color-mix(in oklch, var(--warning) 35%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; }
+  .mcard { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .mcard.click { cursor: pointer; } .mcard.click:hover { background: color-mix(in oklch, var(--accent) 45%, transparent); }
+
+  /* People */
+  .phead { display: flex; gap: 16px; align-items: flex-start; }
+  .phone .phead { flex-wrap: wrap; }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+  .phone .grid2 { grid-template-columns: 1fr; }
+  .acc { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; }
+  .acc p { margin: 0; }
+  .jobrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; }
+  .phone .jobrow { flex-wrap: wrap; }
+  .phone .jobrow .acts { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .jobrow .acts { display: flex; gap: 6px; }
+
+  /* Phone menu sheet */
+  .navsheet { position: absolute; inset: 0 25% 0 0; z-index: 61; background: var(--background); border-right: 1px solid var(--border); display: flex; flex-direction: column; animation: slide .18s ease-out; }
+  @keyframes slide { from { transform: translateX(-24px); opacity: 0; } }
+
+  /* QC (Manager backup) */
+  .qcard { border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+  .qcard.mine { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .qcard.other { opacity: .7; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="demo">
+  <b style="margin-right:8px">Admin Setup · proposal</b>
+  <div class="seg" role="group" aria-label="Device"><button data-dev="phone">Phone</button><button data-dev="desk">Desktop</button></div>
+  <button id="theme">Dark</button>
+  <span class="grp">Demo:</span>
+  <div class="presets" id="presets"></div>
+  <button id="reset" style="margin-left:auto">Reset</button>
+</div>
+<div id="stage"></div>
+
+<script>
+/* ───────────────────────── Icons (lucide shapes, inline) ───────────────────────── */
+const ICON = {
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>', chevR: '<path d="m9 18 6-6-6-6"/>', chevD: '<path d="m6 9 6 6 6-6"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>', plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>', check: '<path d="M20 6 9 17l-5-5"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  workflow: '<rect x="3" y="3" width="8" height="8" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
+  library: '<path d="m16 6 4 14M12 6v14M8 8v12M4 4v16"/>', gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+  warehouse: '<path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"/><path d="M6 18h12M6 14h12"/>',
+  clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+  clipCheck: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+  truck: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2M15 18H9M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  trash: '<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  power: '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>', key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>', back: '<path d="m12 19-7-7 7-7M19 12H5"/>',
+  ext: '<path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  pencil: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+  zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>', arrowR: '<path d="M5 12h14M12 5l7 7-7 7"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+};
+const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICON[n] || ''}</svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const clone = (o) => JSON.parse(JSON.stringify(o));
+
+/* ───────────────────────── Demo data ───────────────────────── */
+const STEPS = [
+  { key: 'pm', name: 'PM', job: 'PM A Service', cat: 'PM', catId: 'pm', type: 'PM', typeLabel: 'PM mechanics' },
+  { key: 'alignment', name: 'Alignment', job: 'Alignment', cat: 'Suspension & Steering', catId: 'susp', type: 'Standard', typeLabel: 'Standard mechanics' },
+  { key: 'detailing', name: 'Detailing', job: 'Detailing', cat: 'Detailing', catId: 'det', type: 'Standard', typeLabel: 'Standard mechanics' },
+  { key: 'qc', name: 'Quality Check', job: 'Quality Check', cat: 'Quality Check', catId: 'qc', type: 'Safety', typeLabel: 'Safety' },
+];
+const TRUCKS = ['601', '602', '603', '605', '606', '607', '609', '612', '918', '931', '944', '968'];
+let jid = 1;
+const J = (wo, truck, name, step = null) => ({ id: `j${jid++}`, wo, truck, name, step });
+function seedPeople() {
+  jid = 1;
+  return {
+    daniel: { name: 'Daniel', email: 'daniel@ltlshop.com', ini: 'DA', tone: 'amber', type: 'PM', status: 'active', done: 31, last: 'Today 9:40 AM',
+      jobs: [['WO-003', '603'], ['WO-005', '605'], ['WO-007', '607'], ['WO-009', '609'], ['WO-012', '612'], ['WO-013', '931'], ['WO-014', '944'], ['WO-016', '968'], ['WO-018', '601']].map(([w, t]) => J(w, t, 'PM A Service', 'pm')) },
+    a1: { name: 'Alejandro 1', email: 'alejandro1@ltlshop.com', ini: 'A1', tone: 'sky', type: 'Standard', status: 'active', done: 58, last: 'Today 10:12 AM',
+      jobs: [J('WO-010', '918', 'Alignment', 'alignment'), J('WO-006', '606', 'Alignment', 'alignment'), J('WO-011', '609', 'Kingpin'), J('WO-013', '931', 'Air Leak'), J('WO-015', '602', 'Shock Absorbers'), J('WO-016', '968', 'Alignment', 'alignment'), J('WO-018', '601', 'Lights')] },
+    a2: { name: 'Alejandro 2', email: 'alejandro2@ltlshop.com', ini: 'A2', tone: 'violet', type: 'Standard', status: 'active', done: 49, last: 'Today 11:03 AM',
+      jobs: [J('WO-003', '603', 'Detailing', 'detailing'), J('WO-005', '605', 'Detailing', 'detailing'), J('WO-007', '607', 'Brake Inspection'), J('WO-009', '609', 'Coolant Leak'), J('WO-012', '612', 'Detailing', 'detailing'), J('WO-014', '944', 'Turbo Inspection'), J('WO-017', '602', 'Batteries'), J('WO-018', '601', 'Fuel Lines')] },
+    anthony: { name: 'Anthony', email: 'anthony@ltlshop.com', ini: 'AN', tone: 'emerald', type: 'Standard', status: 'active', done: 41, last: 'Today 8:55 AM',
+      jobs: [J('WO-006', '606', 'Detailing', 'detailing'), J('WO-010', '918', 'Detailing', 'detailing'), J('WO-013', '931', 'Air Leak'), J('WO-014', '944', 'Lights')] },
+    john: { name: 'John', email: 'john@ltlshop.com', ini: 'JO', tone: 'rose', type: 'Standard', status: 'active', done: 22, last: 'Yesterday 4:30 PM',
+      jobs: [J('WO-016', '968', 'Detailing', 'detailing'), J('WO-011', '609', 'Wheel Seal')] },
+    elliot: { name: 'Elliot', email: 'elliot@ltlshop.com', ini: 'EL', tone: 'cyan', type: 'Standard', status: 'active', done: 36, last: 'Today 7:58 AM',
+      jobs: [J('WO-005', '605', 'Radiator Repair'), J('WO-007', '607', 'Air Dryer'), J('WO-012', '612', 'Starter'), J('WO-015', '602', 'Tire Replacement'), J('WO-017', '602', 'Oil Leak')] },
+    s1: { name: 'Safety 1', email: 'safety1@ltlshop.com', ini: 'S1', tone: 'lime', type: 'Safety', status: 'active', done: 64, last: 'Today 10:05 AM', jobs: [J('WO-010', '918', 'Quality Check', 'qc')] },
+    s2: { name: 'Safety 2', email: 'safety2@ltlshop.com', ini: 'S2', tone: 'rose', type: 'Safety', status: 'active', done: 57, last: 'Today 9:10 AM', jobs: [] },
+    s3: { name: 'Safety 3', email: 'safety3@ltlshop.com', ini: 'S3', tone: 'slate', type: 'Safety', status: 'active', done: 0, last: 'Never signed in', jobs: [] },
+    mario: { name: 'Mario Díaz', email: 'mario@ltlshop.com', ini: 'MD', tone: 'violet', type: 'Standard', status: 'inactive', done: 18, last: 'Sep 12', jobs: [] },
+    luis: { name: 'Luis Ramos', email: 'luis@ltlshop.com', ini: 'LR', tone: 'slate', type: 'Standard', status: 'removed', done: 9, last: 'Aug 30', jobs: [] },
+    cristian: { name: 'Cristian Perez', email: 'cristian@ltlshop.com', ini: 'CP', tone: 'sky', type: 'Shop Manager', status: 'active', done: 4, last: 'Now', jobs: [] },
+  };
+}
+const A = (...a) => a;
+function seedCatalog() {
+  const j = (name, wo, aliases = [], extra = {}) => ({ id: `c${Math.random().toString(36).slice(2, 8)}`, name, wo, aliases, status: 'active', ...extra });
+  return [
+    { id: 'air', name: 'Air & Brake System', status: 'active', jobs: [j('Air Leak', 61, A('fuga de aire')), j('Air Dryer', 28, A('secador de aire')), j('Brake Inspection', 44, A('frenos')), j('Replace Brake Chamber', 19), j('Slack Adjuster', 11, A('ajustador'))] },
+    { id: 'cool', name: 'Cooling System', status: 'active', jobs: [j('Radiator Repair', 14, A('radiador')), j('Coolant Leak', 22, A('fuga de refrigerante'))] },
+    { id: 'det', name: 'Detailing', status: 'active', system: true, jobs: [j('Detailing', 212, A('lavado', 'limpieza'), { system: 'detailing' }), j('Interior Cleaning', 9, A('limpieza interior'))] },
+    { id: 'elec', name: 'Electrical & Starting', status: 'active', jobs: [j('Lights', 37, A('luces')), j('Batteries', 25, A('batería', 'baterias nuevas')), j('Starter', 8, A('marcha'))] },
+    { id: 'eng', name: 'Engine & Emissions', status: 'active', jobs: [j('DPF Cleaning', 17, A('dpf')), j('Turbo Inspection', 6), j('Oil Leak', 21, A('fuga de aceite'))] },
+    { id: 'fuel', name: 'Fuel System', status: 'active', jobs: [j('Fuel Lines', 13, A('líneas de combustible', 'mangueras de diesel')), j('Fuel Filter', 30, A('filtro de diesel')), j('Fuel Tank Strap', 0)] },
+    { id: 'pm', name: 'PM', status: 'active', system: true, jobs: [j('PM A Service', 198, A('pm a', 'servicio a'), { system: 'pm' }), j('PM B Service', 14, A('pm b', 'servicio b'), { system: 'pm' })] },
+    { id: 'qc', name: 'Quality Check', status: 'active', system: true, jobs: [j('Quality Check', 205, A('qc', 'control de calidad'), { system: 'qc' })] },
+    { id: 'susp', name: 'Suspension & Steering', status: 'active', jobs: [
+      j('Alignment', 34, A('alineación', 'alignment check'), { system: 'alignment' }),
+      j('Kingpin', 12, A('king pin', 'pivote')),
+      j('Shock Absorbers', 5, A('amortiguadores')),
+      j('Leaf Spring', 2, A('muelle'), { status: 'inactive' }),
+      j('Steering Box Seal', 0, []),
+    ] },
+    { id: 'tires', name: 'Tires & Wheels', status: 'active', jobs: [j('Tire Replacement', 52, A('llantas', 'cambio de llanta')), j('Wheel Seal', 7, A('retén'))] },
+    { id: 'other', name: 'Other', status: 'active', jobs: [] },
+    { id: 'xalign', name: 'Alignment', status: 'inactive', reason: 'Merged into Suspension & Steering (LTR-24)', jobs: [j('Alignment (old)', 41, [], { status: 'inactive' })] },
+    { id: 'xair', name: 'Air System', status: 'inactive', reason: 'Merged into Air & Brake System (LTR-24)', jobs: [j('Air Leak (old)', 23, [], { status: 'inactive' })] },
+  ];
+}
+function seedTeams() { return { pm: ['daniel'], alignment: ['a1'], detailing: ['anthony', 'john', 'a2'], qc: ['s1', 's2', 's3'] }; }
+function seedQc() {
+  return [
+    { id: 'q918', n: '918', wo: 'WO-010', veh: '2026 Peterbilt 579', pri: 'High', leaves: 'Leaves today 3:00 PM', ready: 'Ready 2 h', jobs: ['Air Dryer', 'PM A Service', 'Alignment', 'Detailing'], taken: null },
+    { id: 'q606', n: '606', wo: 'WO-006', veh: '2024 Freightliner Cascadia', pri: null, leaves: null, ready: 'Ready 18 h', jobs: ['PM A Service', 'Alignment', 'Detailing'], taken: null },
+    { id: 'q602', n: '602', wo: 'WO-015', veh: '2024 Volvo VNL 860', pri: 'Critical', leaves: null, ready: 'Ready 40 min', jobs: ['Batteries', 'PM A Service'], taken: 's2' },
+  ];
+}
+
+let S, UI, UNDO = null;
+function seed() {
+  const teams = seedTeams();
+  S = { people: seedPeople(), cats: seedCatalog(), teams, saved: clone(teams), jobOff: {}, hours: { cutoff: '18:00', days: [1, 2, 3, 4, 5, 6] }, hoursSaved: { cutoff: '18:00', days: [1, 2, 3, 4, 5, 6] }, qc: seedQc() };
+}
+function fresh(keep) {
+  return { device: keep?.device ?? (innerWidth < 900 ? 'phone' : 'desk'), screen: 'workflow', tab: 'steps', q: '', catFilter: 'all', pplQ: '', pplFilter: 'active',
+    catId: 'susp', personId: 'anthony', dialog: null, menu: null, toast: null, nav: false, alias: null, focus: null, flash: null };
+}
+seed(); UI = fresh();
+
+/* ───────────────────────── Helpers ───────────────────────── */
+const P = (id) => S.people[id];
+const av = (id, cls = '') => { const p = P(id); return `<span class="av ${cls} t-${p.tone}" title="${esc(p.name)}">${p.ini}</span>`; };
+const stepOf = (k) => STEPS.find((s) => s.key === k);
+const eligible = (id, step) => { const p = P(id); return p.status === 'active' && p.type === step.type; };
+const whyNot = (id, step) => { const p = P(id); if (p.status !== 'active') return p.status === 'removed' ? 'removed from the Shop' : 'inactive'; return `now ${p.type}`; };
+const teamsOf = (id) => STEPS.filter((s) => S.saved[s.key].includes(id));
+const catById = (id) => S.cats.find((c) => c.id === id);
+const allJobs = () => S.cats.flatMap((c) => c.jobs.map((j) => ({ ...j, cat: c })));
+const usedOn = (c) => c.jobs.reduce((n, j) => n + j.wo, 0);
+const fmt = (n) => n.toLocaleString('en-US');
+const typeChip = (t) => `<span class="chip ${t === 'PM' ? 'warn' : t === 'Safety' ? 'pri' : t === 'Shop Manager' ? '' : 'off'}">${t}</span>`;
+const statusChip = (s) => s === 'active' ? '<span class="chip ok"><span class="dot"></span>Active</span>' : s === 'inactive' ? '<span class="chip off"><span class="dot"></span>Inactive</span>' : '<span class="chip off"><span class="dot"></span>Removed</span>';
+const sysChip = (label = 'System Job') => `<span class="chip" title="Used by a Shop workflow step. Can be renamed; can't be deactivated or deleted.">${ic('lock', 's14')}${label}</span>`;
+function teamChanges() {
+  return STEPS.map((s) => {
+    const now = S.teams[s.key], was = S.saved[s.key];
+    const add = now.filter((x) => !was.includes(x)), rm = was.filter((x) => !now.includes(x));
+    return add.length || rm.length ? { step: s, add, rm } : null;
+  }).filter(Boolean);
+}
+const hoursDirty = () => JSON.stringify(S.hours) !== JSON.stringify(S.hoursSaved);
+function toast(kind, text, undo) { UI.toast = { kind, text, undo: !!undo }; UNDO = undo || null; clearTimeout(toast.t); toast.t = setTimeout(() => { UI.toast = null; render(); }, 5000); }
+function snapshot() { const snap = clone(S); return () => { S = snap; }; }
+
+/* ───────────────────────── Shell ───────────────────────── */
+function render() {
+  document.querySelectorAll('[data-dev]').forEach((b) => b.classList.toggle('on', b.dataset.dev === UI.device));
+  document.getElementById('theme').textContent = document.documentElement.classList.contains('dark') ? 'Light' : 'Dark';
+  const phone = UI.device === 'phone';
+  const main = document.querySelector('.main'); const scroll = main ? main.scrollTop : 0;
+  let html;
+  if (UI.screen === 'qc') html = qcScreen(phone);
+  else html = `${phone ? '' : sidebar()}<div class="body">${topbar(phone)}<div class="main" id="main">${screen(phone)}</div></div>${phone && UI.nav ? `<div class="ov" data-act="nav-close"></div><div class="navsheet">${sideInner()}</div>` : ''}`;
+  document.getElementById('stage').innerHTML = `<div class="frame ${phone ? 'phone' : 'desk'}">${html}${UI.dialog ? dialog(phone) : ''}${toastHtml()}</div>`;
+  const m2 = document.querySelector('.main'); if (m2 && UI.keepScroll) m2.scrollTop = scroll; UI.keepScroll = true;
+  if (UI.focus) { const el = document.getElementById(UI.focus); if (el) { el.focus(); const v = el.value; el.value = ''; el.value = v; } }
+}
+function sideInner() {
+  const item = (scr, icon, label, extra = '') => `<a class="${UI.screen === scr || (scr === 'catalog' && UI.screen === 'category') || (scr === 'people' && UI.screen === 'person') ? 'cur' : ''}" data-act="go" data-to="${scr}">${ic(icon)}${label}${extra}</a>`;
+  const dead = (icon, label) => `<a data-act="dead">${ic(icon)}${label}</a>`;
+  return `<div class="brand"><span class="logo">${ic('zap', 's14')}</span><b>LTL Shop</b><span class="muted small">Admin</span></div>
+    <nav class="nav">
+      <div><p>Operations</p>${dead('gauge', 'Dashboard')}${dead('warehouse', 'Yard Operations')}${dead('clipboard', 'Work Orders')}${dead('truck', 'Trucks')}</div>
+      <div><p>Setup</p>${item('workflow', 'workflow', 'Shop workflow')}${item('catalog', 'library', 'Job Catalog')}${item('people', 'users', 'People', '<span class="new">renamed</span>')}</div>
+      <div><p>Audit</p>${dead('history', 'History')}</div>
+    </nav>
+    <div class="who"><p class="m" style="margin:0">Cristian Perez</p><p class="small muted" style="margin:0">Shop Manager</p></div>`;
+}
+const sidebar = () => `<aside class="side">${sideInner()}</aside>`;
+function topbar(phone) {
+  const c = [];
+  if (UI.screen === 'workflow') c.push('<b>Shop workflow</b>');
+  if (UI.screen === 'catalog') c.push('<b>Job Catalog</b>');
+  if (UI.screen === 'category') c.push('<a data-act="go" data-to="catalog">Job Catalog</a>', ic('chevR', 's14'), `<b>${esc(catById(UI.catId).name)}</b>`);
+  if (UI.screen === 'people') c.push('<b>People</b>');
+  if (UI.screen === 'person') c.push('<a data-act="go" data-to="people">People</a>', ic('chevR', 's14'), `<b>${esc(P(UI.personId).name)}</b>`);
+  return `<header class="top">${phone ? `<button class="btn ghost icon" data-act="nav-open" aria-label="Menu">${ic('menu')}</button>` : ''}<nav class="crumb" aria-label="Breadcrumb">${c.join('')}</nav><span class="me">CP</span></header>`;
+}
+function screen(phone) {
+  if (UI.screen === 'workflow') return workflow(phone);
+  if (UI.screen === 'catalog') return catalog(phone);
+  if (UI.screen === 'category') return category(phone);
+  if (UI.screen === 'people') return people(phone);
+  if (UI.screen === 'person') return person(phone);
+  return '';
+}
+function toastHtml() {
+  if (!UI.toast) return '';
+  const t = UI.toast;
+  return `<div class="toast" role="status">${ic(t.kind === 'ok' ? 'check' : t.kind === 'warn' ? 'alert' : 'info', t.kind === 'ok' ? 'ok-t' : t.kind === 'warn' ? 'warn-t' : 'pri-t')}<span class="grow">${t.text}</span>${t.undo ? '<button class="btn ghost sm" data-act="undo">Undo</button>' : ''}<button class="btn ghost icon sm" data-act="toast-x" aria-label="Close">${ic('x', 's14')}</button></div>`;
+}
+
+/* ───────────────────────── Shop workflow ───────────────────────── */
+function workflow(phone) {
+  const changes = teamChanges();
+  const head = `<div class="page" style="padding-bottom:${changes.length || hoursDirty() ? 24 : 96}px">
+    <h1>Shop workflow</h1>
+    <p class="sub">The steps every truck Work Order starts with, and the team that does each one. Changes apply to new Work Orders; open ones keep their owners.</p>
+    <div class="tabs" role="tablist"><button role="tab" class="${UI.tab === 'steps' ? 'on' : ''}" data-act="tab" data-tab="steps">Steps</button><button role="tab" class="${UI.tab === 'hours' ? 'on' : ''}" data-act="tab" data-tab="hours">Shop hours</button></div>`;
+  if (UI.tab === 'hours') return head + hours(phone) + '</div>' + (hoursDirty() ? `<div class="savebar"><span class="sbdot"></span><span class="grow"><b>Unsaved changes</b> · Shop hours</span><div class="acts row"><button class="btn outline" data-act="hours-discard">Discard</button><button class="btn primary" data-act="hours-save">${ic('check')}Save shop hours</button></div></div>` : '');
+  const rows = STEPS.map((s, i) => stepRow(s, i, phone)).join('');
+  const bar = changes.length ? `<div class="savebar" role="region" aria-label="Unsaved changes">
+      <span class="sbdot"></span>
+      <span class="grow"><b>${changes.length} unsaved change${changes.length > 1 ? 's' : ''}</b><span class="muted"> · ${changes.map((c) => `${c.step.name} team (${[...c.add.map((x) => '+' + P(x).name), ...c.rm.map((x) => '−' + P(x).name)].join(', ')})`).join(' · ')}</span></span>
+      <div class="acts row"><button class="btn outline" data-act="wf-discard">Discard</button><button class="btn primary" data-act="wf-save">${ic('check')}Save changes</button></div></div>` : '';
+  return head + `<div class="card mt16"><div class="divide">${rows}</div></div>
+    <p class="hint mt12">${ic('info', 's14')}A team with one person: new Jobs are assigned to that person. Two or more: new Jobs wait in the <b>team queue</b> and the first one to <b>take</b> it owns it. The Shop Manager can assign any Job directly.</p>
+    </div>${bar}`;
+}
+function stepRow(s, i, phone) {
+  const team = S.teams[s.key], was = S.saved[s.key];
+  const ok = team.filter((id) => eligible(id, s));
+  const bad = team.filter((id) => !eligible(id, s));
+  const cat = catById(s.catId);
+  const jobOff = S.jobOff[s.key];
+  const chips = team.map((id) => {
+    const isBad = !eligible(id, s);
+    return `<span class="pchip ${isBad ? 'bad' : ''} ${!was.includes(id) ? 'added' : ''}" title="${isBad ? esc(`${P(id).name} can't do ${s.name} (${whyNot(id, s)})`) : `${P(id).jobs.length} pending Jobs`}">${av(id)}<span class="nm">${esc(P(id).name)}</span>${isBad ? `<span class="chip warn" style="height:18px;padding:0 5px">${ic('alert', 's14')}${whyNot(id, s)}</span>` : ''}<button class="x" data-act="team-rm" data-step="${s.key}" data-id="${id}" aria-label="Remove ${esc(P(id).name)} from ${s.name}">${ic('x', 's14')}</button></span>`;
+  }).join('');
+  let hint;
+  if (!ok.length) hint = `<div class="alert warn mt8">${ic('alert')}<div class="grow"><p><b>No one can take ${s.name}.</b> New Work Orders get ${s.name} without an owner; it shows on the Dashboard for you to assign. You can still save.</p></div></div>`;
+  else if (ok.length === 1) hint = `<p class="hint">${ic('arrowR', 's14')}New ${s.name} Jobs are assigned to <b>&nbsp;${esc(P(ok[0]).name)}</b>.</p>`;
+  else hint = `<p class="hint">${ic('inbox', 's14')}New ${s.name} Jobs wait in the team queue. The first of the ${ok.length} to take one owns it.</p>`;
+  const badNote = bad.length && ok.length ? `<p class="hint warn-t">${ic('alert', 's14')}${bad.map((id) => `${esc(P(id).name)} can't do ${s.name} anymore (${whyNot(id, s)})`).join('; ')}. They get no new Jobs. Remove them when you can; saving still works.</p>`
+    : bad.length ? `<p class="hint warn-t">${ic('alert', 's14')}${bad.map((id) => `${esc(P(id).name)} can't do ${s.name} anymore (${whyNot(id, s)})`).join('; ')}.</p>` : '';
+  const extra = s.key === 'pm' ? `<p class="hint">${ic('info', 's14')}Default scope: <b>&nbsp;PM A</b>&nbsp;· the PM mechanic picks A or B on the truck.</p>`
+    : s.key === 'qc' ? `<div class="alert info mt8">${ic('shield', 'pri-t')}<div class="grow"><p><b>The Shop Manager can do QC as backup.</b> If no one from Safety can, open Quality Check and take, approve or return the truck. It's recorded in your name.</p><p class="mt4"><a class="link" data-act="go" data-to="qc">Open Quality Check ${ic('ext', 's14')}</a></p></div></div>` : '';
+  const jobWarn = jobOff ? `<div class="alert warn mt8">${ic('alert')}<div class="grow"><p><b>The ${s.job} Job is inactive</b> in the Job Catalog, so new Work Orders don't get the ${s.name} step.</p><p class="mt4 row wrap gap12"><button class="btn sm outline" data-act="job-on" data-step="${s.key}">Activate ${s.job}</button><a class="link" data-act="open-cat" data-cat="${s.catId}">Open in Job Catalog</a></p></div></div>` : '';
+  return `<div class="step">
+    <span class="stepn">${i + 1}</span>
+    <div style="min-width:0">
+      <div class="row wrap"><h2>${s.name}</h2>${jobOff ? '<span class="chip warn"><span class="dot"></span>Not created</span>' : ''}</div>
+      <p class="small muted" style="margin:4px 0 0">Catalog Job: <a class="link" data-act="open-cat" data-cat="${s.catId}">${s.job} · ${esc(cat.name)}</a> ${ic('lock', 's14')}</p>
+      <p class="small muted" style="margin:2px 0 0">Changed by Cristian · Oct 6</p>
+      ${jobWarn}
+    </div>
+    <div class="team">
+      <p class="small muted" style="margin:0 0 6px">Team · ${s.typeLabel}</p>
+      <div class="row wrap">${chips}<button class="addp" data-act="pick" data-step="${s.key}">${ic('plus', 's14')}Add</button></div>
+      ${hint}${badNote}${extra}
+    </div>
+  </div>`;
+}
+function hours(phone) {
+  const D = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  return `<div class="card mt16"><div class="card-b">
+    <p class="muted" style="margin:0 0 12px">At the day close the app stops every clock still running; mechanics tap Continue the next workday.</p>
+    <label class="col" style="max-width:220px"><span class="m">Day close</span><input class="input" id="cutoff" type="time" value="${S.hours.cutoff}" data-in="cutoff"></label>
+    <p class="m mt16" style="margin-bottom:6px">Workdays</p>
+    <div class="row wrap">${D.map((d, i) => `<button class="btn sm ${S.hours.days.includes(i + 1) ? 'primary' : 'outline'}" data-act="day" data-day="${i + 1}" aria-pressed="${S.hours.days.includes(i + 1)}">${d}</button>`).join('')}</div>
+    <p class="small muted mt12">On days off no clock is stopped because none should be running.</p>
+  </div></div>`;
+}
+
+/* ───────────────────────── Job Catalog ───────────────────────── */
+function catalog(phone) {
+  const q = norm(UI.q);
+  let cats = S.cats.filter((c) => UI.catFilter === 'all' || c.status === UI.catFilter);
+  const hits = q ? allJobs().flatMap((j) => {
+    const out = [];
+    if (norm(j.name).includes(q)) out.push({ j, via: null });
+    else { const a = j.aliases.find((x) => norm(x).includes(q)); if (a) out.push({ j, via: a }); }
+    return out;
+  }) : [];
+  if (q) cats = cats.filter((c) => norm(c.name).includes(q) || hits.some((h) => h.j.cat.id === c.id));
+  const mark = (txt) => { if (!q) return esc(txt); const n = norm(txt); const k = n.indexOf(q); if (k < 0) return esc(txt); return esc(txt.slice(0, k)) + '<mark>' + esc(txt.slice(k, k + q.length)) + '</mark>' + esc(txt.slice(k + q.length)); };
+  const hitList = q ? `<div class="card mt16"><div class="card-h"><b>Jobs and aliases</b><span class="count">${hits.length}</span></div>${hits.length ? `<div class="divide">${hits.map(({ j, via }) => `<div class="hit" data-act="open-job" data-cat="${j.cat.id}" data-job="${j.id}"><div class="grow"><p class="m" style="margin:0">${mark(j.name)} ${j.system ? sysChip() : ''} ${j.status === 'inactive' ? '<span class="chip off">Inactive</span>' : ''}</p><p class="small muted" style="margin:2px 0 0">${esc(j.cat.name)}${via ? ` · alias “${mark(via)}”` : ''}</p></div>${ic('chevR', 'muted')}</div>`).join('')}</div>` : `<p class="card-b muted" style="margin:0">No Job or alias matches “${esc(UI.q)}”. <a class="link" data-act="dead">Add “${esc(UI.q)}” as a Job</a></p>`}</div>` : '';
+  const rowMenu = (c) => UI.menu === `cat:${c.id}` ? catMenu(c) : '';
+  const usedTxt = (c) => usedOn(c) ? `${fmt(usedOn(c))} Work Orders` : '<span class="muted">Never used</span>';
+  const jobsTxt = (c) => { const off = c.jobs.filter((j) => j.status === 'inactive').length; return `${c.jobs.length - off}${off ? `<span class="muted"> · ${off} inactive</span>` : ''}`; };
+  const table = phone
+    ? `<div class="card mt16"><div class="divide">${cats.map((c) => `<div class="mcard click" data-act="open-cat" data-cat="${c.id}"><div class="row"><b class="grow trunc">${mark(c.name)}</b>${c.system ? sysChip('System') : ''}${statusChip(c.status)}</div>${c.reason ? `<p class="small muted" style="margin:0">${esc(c.reason)}</p>` : ''}<p class="small muted" style="margin:0">${jobsTxt(c)} Jobs · ${usedTxt(c)}</p>${c.status === 'inactive' ? `<div><button class="btn sm outline" data-act="cat-on" data-cat="${c.id}">${ic('power', 's14')}Activate</button></div>` : ''}</div>`).join('')}</div></div>`
+    : `<div class="tablewrap mt16"><table class="t"><thead><tr><th>Category</th><th>Status</th><th class="num">Jobs</th><th class="num">Used on</th><th style="width:150px"></th></tr></thead><tbody>
+      ${cats.map((c) => `<tr class="click" data-act="open-cat" data-cat="${c.id}"><td><div class="row"><span class="m">${mark(c.name)}</span>${c.system ? sysChip('System') : ''}</div>${c.reason ? `<p class="small muted" style="margin:2px 0 0">${esc(c.reason)}</p>` : ''}</td><td>${statusChip(c.status)}</td><td class="num">${jobsTxt(c)}</td><td class="num">${usedTxt(c)}</td>
+      <td><div class="row end">${c.status === 'inactive' ? `<button class="btn sm outline" data-act="cat-on" data-cat="${c.id}">${ic('power', 's14')}Activate</button>` : ''}<span class="rel"><button class="btn ghost icon sm" data-act="menu" data-menu="cat:${c.id}" aria-label="Actions for ${esc(c.name)}">${ic('more')}</button>${rowMenu(c)}</span></div></td></tr>`).join('')}
+      </tbody></table>${!cats.length ? `<p class="card-b muted" style="margin:0">No category matches.</p>` : ''}</div>`;
+  return `<div class="page">
+    <div class="row wrap between gap12"><div><h1>Job Catalog</h1><p class="sub">Categories, Jobs and aliases the Shop uses. One name per kind of work.</p></div>
+      <div class="row"><button class="btn outline" data-act="dead">${ic('plus')}Add category</button><button class="btn primary" data-act="dead">${ic('plus')}Add Job</button></div></div>
+    <div class="row wrap gap12 mt16"><div class="search grow" style="min-width:220px">${ic('search')}<input class="input" id="q" placeholder="Search categories, Jobs or aliases" value="${esc(UI.q)}" data-in="q"></div>
+      <div class="segc">${[['all', 'All'], ['active', 'Active'], ['inactive', 'Inactive']].map(([k, l]) => `<button class="${UI.catFilter === k ? 'on' : ''}" data-act="catf" data-f="${k}">${l}</button>`).join('')}</div></div>
+    ${hitList}
+    ${q ? `<p class="m mt24" style="margin-bottom:0">Categories</p>` : ''}
+    ${table}
+  </div>`;
+}
+function catMenu(c) {
+  const sys = c.system || c.jobs.some((j) => j.system);
+  const used = usedOn(c);
+  return `<div class="menu" role="menu">
+    <button class="mi" data-act="dead">${ic('pencil', 's14')}<span>Rename</span></button>
+    ${c.status === 'active'
+      ? `<button class="mi" ${sys ? 'disabled' : `data-act="cat-off" data-cat="${c.id}"`}>${ic('power', 's14')}<span>Deactivate${sys ? `<small>Has a System Job (${esc(c.jobs.find((j) => j.system).name)}). It can be renamed, not deactivated.</small>` : '<small>Its Jobs stop showing when adding work.</small>'}</span></button>`
+      : `<button class="mi" data-act="cat-on" data-cat="${c.id}">${ic('power', 's14')}<span>Activate</span></button>`}
+    <hr><button class="mi bad" ${used ? 'disabled' : `data-act="dead"`}>${ic('trash', 's14')}<span>Delete${used ? `<small>Used on ${fmt(used)} Work Orders. Deactivate it instead.</small>` : '<small>Never used.</small>'}</span></button>
+  </div>`;
+}
+function category(phone) {
+  const c = catById(UI.catId);
+  const off = c.jobs.filter((j) => j.status === 'inactive').length;
+  const sysJob = c.jobs.find((j) => j.system);
+  const stepFor = (j) => j.system && j.system !== 'pm' ? stepOf(j.system) : j.system === 'pm' && j.name === 'PM A Service' ? stepOf('pm') : null;
+  const usedBy = (j) => {
+    const st = stepFor(j);
+    const parts = [];
+    if (st) parts.push(`<a class="link" data-act="go" data-to="workflow">Shop workflow step ${st.name}</a>`);
+    parts.push(j.wo ? `${fmt(j.wo)} Work Orders` : '<span class="muted">Not used yet</span>');
+    return parts.join(' · ');
+  };
+  const aliasCell = (j) => {
+    const editing = UI.alias && UI.alias.job === j.id;
+    return `<div class="row wrap gap4">${j.aliases.map((a, k) => `<span class="achip">${esc(a)}<button data-act="alias-rm" data-job="${j.id}" data-k="${k}" aria-label="Remove alias ${esc(a)}">${ic('x', 's14')}</button></span>`).join('')}
+      ${editing ? `<input class="ainput ${UI.alias.err ? 'err' : ''}" id="alias-in" placeholder="New alias, Enter to add" value="${esc(UI.alias.text)}" data-in="alias" aria-invalid="${!!UI.alias.err}">` : `<button class="aadd" data-act="alias-add" data-job="${j.id}">${ic('plus', 's14')}Alias</button>`}</div>
+      ${editing && UI.alias.err ? `<p class="small bad-t" role="alert" style="margin:4px 0 0">${UI.alias.err}</p>` : ''}`;
+  };
+  const menu = (j) => UI.menu === `job:${j.id}` ? `<div class="menu" role="menu">
+      <button class="mi" data-act="rename" data-job="${j.id}">${ic('pencil', 's14')}<span>Rename${j.system ? '<small>The step and Yard keep working: the app knows it by a fixed key.</small>' : ''}</span></button>
+      ${j.status === 'active'
+        ? `<button class="mi" ${j.system ? 'disabled' : `data-act="job-off" data-job="${j.id}"`}>${ic('power', 's14')}<span>Deactivate${j.system ? `<small>System Job${stepFor(j) ? ` · used by the ${stepFor(j).name} step` : ''}. Can't be deactivated.</small>` : '<small>Stays on its Work Orders; stops showing for new work.</small>'}</span></button>`
+        : `<button class="mi" data-act="job-on2" data-job="${j.id}">${ic('power', 's14')}<span>Activate</span></button>`}
+      <hr><button class="mi bad" ${j.system ? 'disabled' : `data-act="job-del" data-job="${j.id}"`}>${ic('trash', 's14')}<span>Delete${j.system ? '<small>System Jobs are never deleted.</small>' : j.wo ? `<small>Used on ${j.wo} Work Orders: you'll be offered Deactivate.</small>` : '<small>Never used.</small>'}</span></button></div>` : '';
+  const jStatus = (j) => j.status === 'active' ? '<span class="chip ok"><span class="dot"></span>Active</span>' : '<span class="chip off"><span class="dot"></span>Inactive</span>';
+  const body = phone
+    ? `<div class="card mt16"><div class="card-h"><b>Jobs</b><span class="count">${c.jobs.length}</span></div><div class="divide">${c.jobs.map((j) => `<div class="mcard ${UI.flash === j.id ? 'flash' : ''}"><div class="row"><b class="grow">${esc(j.name)}</b>${j.system ? sysChip() : ''}${jStatus(j)}<span class="rel"><button class="btn ghost icon sm" data-act="menu" data-menu="job:${j.id}" aria-label="Actions">${ic('more')}</button>${menu(j)}</span></div><p class="small muted" style="margin:0">Used by: ${usedBy(j)}</p>${aliasCell(j)}</div>`).join('')}</div></div>`
+    : `<div class="tablewrap mt16"><table class="t"><thead><tr><th style="width:26%">Job</th><th>Status</th><th style="width:34%">Aliases</th><th>Used by</th><th style="width:48px"></th></tr></thead><tbody>
+      ${c.jobs.map((j) => `<tr class="${UI.flash === j.id ? 'flash' : ''}"><td><div class="row wrap gap4"><span class="m">${esc(j.name)}</span>${j.system ? sysChip() : ''}</div></td><td>${jStatus(j)}</td><td>${aliasCell(j)}</td><td class="small">${usedBy(j)}</td>
+        <td><span class="rel"><button class="btn ghost icon sm" data-act="menu" data-menu="job:${j.id}" aria-label="Actions for ${esc(j.name)}">${ic('more')}</button>${menu(j)}</span></td></tr>`).join('')}
+      </tbody></table>${!c.jobs.length ? '<p class="card-b muted" style="margin:0">No Jobs yet. Add the first one.</p>' : ''}</div>`;
+  return `<div class="page">
+    <div class="row wrap between gap12"><div class="grow">
+      <div class="row wrap"><h1>${esc(c.name)}</h1>${statusChip(c.status)}${c.system ? sysChip('System') : ''}</div>
+      <p class="sub tnum">${c.jobs.length - off} Jobs${off ? ` · ${off} inactive` : ''} · used on ${fmt(usedOn(c))} Work Orders</p>
+      ${c.reason ? `<div class="alert warn mt8">${ic('info')}<div class="grow"><p><b>Inactive:</b> ${esc(c.reason)}. Its Jobs don't show when adding work.</p></div></div>` : ''}
+    </div>
+    <div class="row"><button class="btn primary" data-act="dead" ${c.status !== 'active' ? 'disabled' : ''}>${ic('plus')}Add Job</button>
+      <span class="rel"><button class="btn outline icon" data-act="menu" data-menu="cat:${c.id}" aria-label="Category actions">${ic('more')}</button>${UI.menu === `cat:${c.id}` ? catMenu(c) : ''}</span></div></div>
+    ${sysJob ? `<p class="hint mt12">${ic('lock', 's14')}${esc(sysJob.name)} is a System Job: a Shop workflow step and Yard use it. You can rename it and edit its aliases; it can't be deactivated or deleted.</p>` : ''}
+    ${body}
+    <p class="hint mt12">${ic('info', 's14')}Aliases ignore accents and capitals: “alineacion” and “alineación” are the same alias.</p>
+  </div>`;
+}
+
+/* ───────────────────────── People ───────────────────────── */
+function people(phone) {
+  const q = norm(UI.pplQ);
+  const ids = Object.keys(S.people).filter((id) => {
+    const p = P(id);
+    if (UI.pplFilter !== 'all' && p.status !== UI.pplFilter) return false;
+    if (UI.pplFilter === 'all' && p.status === 'removed') return false;
+    return !q || norm(p.name).includes(q) || norm(p.email).includes(q);
+  });
+  const teamTxt = (id) => { const t = teamsOf(id); return t.length ? t.map((s) => `<span class="chip off">${s.name}</span>`).join(' ') : '<span class="muted">—</span>'; };
+  const pend = (id) => { const p = P(id); if (p.type === 'Safety') return p.jobs.length ? `${p.jobs.length} <span class="muted small">QC</span>` : '0'; return String(p.jobs.length); };
+  const counts = { active: 0, inactive: 0, removed: 0 }; Object.values(S.people).forEach((p) => counts[p.status]++);
+  const list = phone
+    ? `<div class="card mt16"><div class="divide">${ids.map((id) => `<div class="mcard click" data-act="open-person" data-id="${id}"><div class="row">${av(id)}<b class="grow trunc">${esc(P(id).name)}</b>${typeChip(P(id).type)}</div><p class="small muted tnum" style="margin:0">${P(id).status !== 'active' ? (P(id).status === 'removed' ? 'Removed · ' : 'Inactive · ') : ''}${P(id).jobs.length} pending Jobs${teamsOf(id).length ? ' · ' + teamsOf(id).map((s) => s.name).join(', ') : ''}</p></div>`).join('')}</div></div>`
+    : `<div class="tablewrap mt16"><table class="t"><thead><tr><th>Person</th><th>Type</th><th>Status</th><th>Teams</th><th class="num">Pending Jobs</th><th style="width:32px"></th></tr></thead><tbody>
+      ${ids.map((id) => `<tr class="click" data-act="open-person" data-id="${id}"><td><div class="row">${av(id)}<div class="col" style="gap:0"><span class="m">${esc(P(id).name)}</span><span class="small muted">${esc(P(id).email)}</span></div></div></td><td>${typeChip(P(id).type)}</td><td>${statusChip(P(id).status)}</td><td>${teamTxt(id)}</td><td class="num">${pend(id)}</td><td>${ic('chevR', 'muted')}</td></tr>`).join('')}
+      </tbody></table>${!ids.length ? '<p class="card-b muted" style="margin:0">No one matches.</p>' : ''}</div>`;
+  return `<div class="page">
+    <div class="row wrap between gap12"><div><h1>People</h1><p class="sub">Everyone who works in the Shop, their teams and their pending Jobs.</p></div>
+      <button class="btn primary" data-act="dead">${ic('userPlus')}Add person</button></div>
+    <div class="row wrap gap12 mt16"><div class="search grow" style="min-width:220px">${ic('search')}<input class="input" id="pq" placeholder="Search by name or email" value="${esc(UI.pplQ)}" data-in="pplq"></div>
+      <div class="segc">${[['active', `Active ${counts.active}`], ['inactive', `Inactive ${counts.inactive}`], ['removed', `Removed ${counts.removed}`], ['all', 'All']].map(([k, l]) => `<button class="${UI.pplFilter === k ? 'on' : ''}" data-act="pplf" data-f="${k}">${l}</button>`).join('')}</div></div>
+    ${list}
+    <p class="hint mt12">${ic('info', 's14')}Pending Jobs counts each Job the person owns on an open Work Order (not the Work Order team).</p>
+  </div>`;
+}
+function jobActions(pid, j, compact) {
+  const s = j.step ? stepOf(j.step) : null;
+  const mates = s ? S.saved[s.key].filter((x) => x !== pid && eligible(x, s)) : [];
+  const q = s && s.key !== 'qc' ? (mates.length ? `<button class="btn sm outline" data-act="to-queue" data-pid="${pid}" data-job="${j.id}">${ic('inbox', 's14')}Send to ${s.name} queue</button>` : `<button class="btn sm outline" disabled title="No one else in the ${s.name} team">${ic('inbox', 's14')}No ${s.name} queue</button>`) : s && s.key === 'qc' ? `<button class="btn sm outline" data-act="to-queue" data-pid="${pid}" data-job="${j.id}">${ic('inbox', 's14')}Let go to Safety</button>` : '';
+  return `<div class="acts">${q}<button class="btn sm outline" data-act="reassign" data-pid="${pid}" data-job="${j.id}">${ic('users', 's14')}Reassign</button></div>`;
+}
+function person(phone) {
+  const id = UI.personId, p = P(id);
+  const teams = teamsOf(id);
+  const banner = p.status === 'inactive' ? `<div class="alert warn mt16">${ic('power')}<div class="grow"><p><b>Inactive.</b> ${esc(p.name)} can't sign in and gets no new Jobs. <button class="link" data-act="activate">Activate</button></p></div></div>`
+    : p.status === 'removed' ? `<div class="alert info mt16">${ic('info')}<div class="grow"><p><b>Removed from the Shop on Sep 2.</b> Not in any list or team. Their name stays on ${p.done} past Jobs, notes and time.</p></div></div>` : '';
+  const head = `<div class="phead">${av(id, 'lg')}<div class="grow">
+      <div class="row wrap"><h1>${esc(p.name)}</h1>${statusChip(p.status)}${typeChip(p.type)}</div>
+      <p class="sub tnum">${p.jobs.length} Jobs pending · ${p.done} completed · last active ${p.last}</p>
+      <p class="small muted" style="margin:2px 0 0">${esc(p.email)}</p></div>
+      ${p.status !== 'removed' ? `<button class="btn outline" data-act="edit">${ic('pencil')}Edit</button>` : ''}</div>${banner}`;
+  const teamsCard = `<section class="card"><div class="card-h"><b>Teams</b><span class="count">${teams.length}</span></div>${teams.length ? `<div class="divide">${teams.map((s) => { const n = S.saved[s.key].length; return `<div class="jobrow"><span class="grow"><b>${s.name}</b><span class="muted small"> · ${n === 1 ? 'only person: new Jobs come straight to them' : `${n} people share the queue`}</span></span><a class="link small" data-act="go" data-to="workflow">Shop workflow</a></div>`; }).join('')}</div>` : `<p class="card-b muted" style="margin:0">Not on any step team. They get Jobs when the Manager assigns them.</p>`}</section>`;
+  const jobsCard = `<section class="card"><div class="card-h"><b>Pending Jobs</b><span class="count">${p.jobs.length}</span></div>${p.jobs.length ? `<div class="divide">${p.jobs.map((j) => `<div class="jobrow"><div class="grow"><p class="m" style="margin:0">Truck ${j.truck} · ${esc(j.name)}</p><p class="small muted" style="margin:0"><span class="mono">${j.wo}</span>${j.step ? ` · ${stepOf(j.step).name} step` : ''}</p></div>${p.status === 'removed' ? '' : jobActions(id, j)}</div>`).join('')}</div>` : '<p class="card-b muted" style="margin:0">Nothing pending.</p>'}</section>`;
+  const access = p.status === 'removed' ? '' : `<section class="card"><div class="card-h"><b>Access</b></div><div class="divide">
+      <div class="acc">${ic('key', 'muted')}<div class="grow"><p class="m">Reset password</p><p class="small muted">Gives a new temporary password. They change it when they sign in.</p></div><button class="btn sm outline" data-act="dead">Reset</button></div>
+      <div class="acc">${ic('power', 'muted')}<div class="grow"><p class="m">${p.status === 'active' ? 'Deactivate' : 'Activate'}</p><p class="small muted">${p.status === 'active' ? "Can't sign in or get new Jobs. You can turn it back on." : 'Can sign in again with the same password.'}</p></div><button class="btn sm outline" data-act="${p.status === 'active' ? 'ask-deactivate' : 'activate'}">${p.status === 'active' ? 'Deactivate' : 'Activate'}</button></div>
+      <div class="acc">${ic('logout', 'bad-t')}<div class="grow"><p class="m bad-t">Remove from Shop</p><p class="small muted">Leaves every list and team for good. Their name stays on past Work Orders, notes and time.</p></div><button class="btn sm danger-o" data-act="ask-remove">Remove</button></div>
+    </div></section>`;
+  return `<div class="page">${head}
+    <div class="grid2 mt24"><div class="col gap16">${jobsCard}<section class="card"><div class="card-h"><b>Recently completed</b></div><div class="divide">${['Truck 607 · Detailing · Oct 6', 'Truck 605 · Lights · Oct 6', 'Truck 931 · Detailing · Oct 5'].map((t) => `<p class="jobrow" style="margin:0">${ic('check', 's14 ok-t')}<span class="grow">${t}</span></p>`).join('')}</div></section></div>
+      <div class="col gap16">${teamsCard}${access}</div></div>
+  </div>`;
+}
+
+/* Blocker block shown INSIDE the Deactivate / Remove dialog, before confirming */
+function blocker(id, verb) {
+  const p = P(id);
+  if (!p.jobs.length) return `<div class="alert info mt12">${ic('check', 'ok-t')}<div class="grow"><p>No pending Jobs and no clock running. Ready to ${verb.toLowerCase()}.</p></div></div>`;
+  const teamJobs = p.jobs.filter((j) => j.step && S.saved[j.step].some((x) => x !== id && eligible(x, stepOf(j.step))));
+  return `<div class="alert warn mt12">${ic('alert')}<div class="grow"><p><b>Move ${p.jobs.length} pending Job${p.jobs.length > 1 ? 's' : ''} first.</b> ${esc(p.name)} can't be ${verb === 'Remove' ? 'removed' : 'deactivated'} while they own open work.</p>
+      ${teamJobs.length ? `<p class="mt8"><button class="btn sm outline" data-act="all-to-queue" data-pid="${id}">${ic('inbox', 's14')}Send ${teamJobs.length} step Job${teamJobs.length > 1 ? 's' : ''} to their team queue</button></p>` : ''}</div></div>
+    <div class="card mt8"><div class="divide">${p.jobs.map((j) => `<div class="jobrow"><div class="grow"><p class="m" style="margin:0">Truck ${j.truck} · ${esc(j.name)}</p><p class="small muted" style="margin:0"><span class="mono">${j.wo}</span></p></div>${jobActions(id, j)}</div>`).join('')}</div></div>`;
+}
+
+/* ───────────────────────── Manager on /qc (D29) ───────────────────────── */
+function qcScreen(phone) {
+  const card = (t) => {
+    const mine = t.taken === 'cristian', other = t.taken && !mine;
+    return `<li class="qcard ${mine ? 'mine' : ''} ${other ? 'other' : ''}" style="list-style:none">
+      <div class="mcard"><div class="row wrap"><b style="font-size:16px">Truck ${t.n}</b>${t.pri ? `<span class="chip ${t.pri === 'Critical' ? 'bad' : 'warn'}"><span class="dot"></span>${t.pri}</span>` : ''}${mine ? '<span class="chip pri">Yours</span>' : ''}<span class="muted small" style="margin-left:auto">${t.ready}</span></div>
+      <p class="small muted" style="margin:0">${t.veh} · <span class="mono">${t.wo}</span></p>
+      ${t.leaves ? `<p class="small warn-t m" style="margin:0" >${ic('calendar', 's14')} ${t.leaves} · Dispatch</p>` : ''}
+      <div class="row wrap gap4">${t.jobs.map((j) => `<span class="chip off">${ic('check', 's14 ok-t')}${j}</span>`).join('')}</div></div>
+      <div style="border-top:1px solid var(--border);padding:8px">${mine ? `<div class="row"><button class="btn outline grow" data-act="dead">${ic('undo')}Return</button><button class="btn primary grow" data-act="qc-approve" data-id="${t.id}">${ic('check')}Approve</button></div>`
+        : other ? `<p class="row muted" style="margin:0;padding:4px">${av(t.taken)}Taken by ${P(t.taken).name}</p>` : `<button class="btn primary" style="width:100%" data-act="qc-take" data-id="${t.id}">${ic('clipCheck')}Take</button>`}</div></li>`;
+  };
+  return `<div class="body"><header class="top"><span class="logo">${ic('zap', 's14')}</span><b>LTL Shop</b><span class="muted small">Quality Check</span><button class="btn ghost sm" style="margin-left:auto" data-act="go" data-to="workflow">${ic('back', 's14')}${phone ? 'Admin' : 'Back to Admin'}</button><span class="me" style="margin-left:4px">CP</span></header>
+    <div class="main"><div class="page" style="max-width:720px">
+      <div class="alert info">${ic('shield', 'pri-t')}<div class="grow"><p><b>You're doing Quality Check as backup for Safety.</b> Take, approve or return a truck like Safety does. Each one is recorded in your name (Cristian Perez · Shop Manager).</p></div></div>
+      <h1 class="mt16">Quality Check</h1><p class="sub">Trucks where every other step is done. Most urgent first.</p>
+      <p class="small muted mt12">${S.qc.length} to review · Safety 1 and Safety 3 are not signed in today</p>
+      <ul style="padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:8px">${S.qc.map(card).join('')}</ul>
+    </div></div></div>`;
+}
+
+/* ───────────────────────── Dialogs ───────────────────────── */
+function dialog(phone) {
+  const d = UI.dialog;
+  const shell = (title, desc, body, acts) => `<div class="ov" data-act="close"></div><div class="dlg" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grab"></div><h2>${title}</h2>${desc ? `<p class="muted" style="margin:6px 0 0">${desc}</p>` : ''}${body}<div class="acts">${acts}</div></div>`;
+  const cancel = (l = 'Cancel') => `<button class="btn outline" data-act="close">${l}</button>`;
+  if (d.kind === 'pick') {
+    const s = stepOf(d.step);
+    const pool = Object.keys(S.people).filter((id) => P(id).status === 'active' && P(id).type === s.type);
+    return shell(`${s.name} team`, `Who can take ${s.name}. Only ${s.typeLabel} are listed.`,
+      `<div class="mt12">${pool.map((id) => { const on = S.teams[s.key].includes(id); return `<button class="optrow" data-act="team-toggle" data-step="${s.key}" data-id="${id}" aria-pressed="${on}"><span class="box ${on ? 'on' : ''}">${on ? ic('check', 's14') : ''}</span>${av(id)}<span class="grow m">${esc(P(id).name)}</span><span class="small muted tnum">${P(id).jobs.length} pending</span></button>`; }).join('')}</div>
+      <p class="hint">${ic('info', 's14')}${S.teams[s.key].filter((x) => eligible(x, s)).length > 1 ? 'Two or more: new Jobs wait in the team queue.' : 'One person: new Jobs are assigned to them.'}</p>`,
+      `<button class="btn primary" data-act="close">Done</button>`);
+  }
+  if (d.kind === 'leave') {
+    const ch = teamChanges();
+    return shell('Leave without saving?', `Your changes to ${ch.map((c) => `the ${c.step.name} team`).join(' and ')} will be lost.`, '',
+      `${cancel('Stay')}<button class="btn danger" data-act="leave" data-to="${d.to}">Leave without saving</button>`);
+  }
+  if (d.kind === 'job-del') {
+    const j = allJobs().find((x) => x.id === d.job);
+    if (j.wo) return shell(`${esc(j.name)} can't be deleted`, `It's on ${j.wo} Work Orders. Deactivate it instead: it stays on those Work Orders and their history, and stops showing when adding work.`, '',
+      `${cancel()}<button class="btn primary" data-act="job-off" data-job="${j.id}">${ic('power')}Deactivate ${esc(j.name)}</button>`);
+    return shell(`Delete ${esc(j.name)}?`, `It was never used on a Work Order. It and its aliases are deleted. This can't be undone.`, '',
+      `${cancel()}<button class="btn danger" data-act="job-del-ok" data-job="${j.id}">${ic('trash')}Delete</button>`);
+  }
+  if (d.kind === 'rename') {
+    const j = allJobs().find((x) => x.id === d.job);
+    return shell(`Rename ${esc(j.name)}`, 'The new name shows on every Work Order that uses this Job. Its history stays.',
+      `<label class="col mt12"><span class="m">Name</span><input class="input" id="rn" value="${esc(d.text)}" data-in="rename"></label>
+       <button class="optrow mt8" data-act="keep-alias" aria-pressed="${d.keep}" style="padding:6px 0"><span class="box ${d.keep ? 'on' : ''}">${d.keep ? ic('check', 's14') : ''}</span><span>Keep “${esc(j.name)}” as an alias, so searches still find it</span></button>
+       ${j.system ? `<p class="hint">${ic('lock', 's14')}System Job: the ${stepOf(j.system).name} step and Yard keep working after a rename.</p>` : ''}`,
+      `${cancel()}<button class="btn primary" data-act="rename-ok" ${norm(d.text) === norm(j.name) || !d.text.trim() ? 'disabled title="Type a new name"' : ''}>Rename</button>`);
+  }
+  if (d.kind === 'reassign') {
+    const p = P(d.pid), j = p.jobs.find((x) => x.id === d.job);
+    const s = j.step ? stepOf(j.step) : null;
+    const type = s ? s.type : p.type;
+    const pool = Object.keys(S.people).filter((id) => id !== d.pid && P(id).status === 'active' && P(id).type === type);
+    return shell(`Reassign ${esc(j.name)} · Truck ${j.truck}`, `Choose who owns it now. Only ${s ? s.typeLabel : type + ' mechanics'} are listed.`,
+      `<div class="mt12">${pool.map((id) => `<button class="optrow" data-act="reassign-ok" data-pid="${d.pid}" data-job="${j.id}" data-to="${id}">${av(id)}<span class="grow m">${esc(P(id).name)}</span><span class="small muted tnum">${P(id).jobs.length} pending</span>${ic('chevR', 'muted')}</button>`).join('') || '<p class="muted">No one else can take it.</p>'}</div>`,
+      cancel());
+  }
+  if (d.kind === 'deactivate' || d.kind === 'remove') {
+    const p = P(d.pid), rm = d.kind === 'remove';
+    const teams = teamsOf(d.pid);
+    const teamInfo = teams.length ? `<p class="hint">${ic('users', 's14')}${rm ? 'Leaves' : 'Gets no new Jobs from'} ${teams.map((s) => { const left = S.saved[s.key].filter((x) => x !== d.pid && eligible(x, s)).length; return `the ${s.name} team${left ? ` (${left} stay)` : ' — <b class="warn-t">no one left; new Work Orders get it without an owner</b>'}`; }).join(', ')}.</p>` : '';
+    const blocked = p.jobs.length > 0;
+    return shell(rm ? `Remove ${esc(p.name)} from the Shop?` : `Deactivate ${esc(p.name)}?`,
+      rm ? `${esc(p.name)} stops signing in and leaves every list and team. Their name stays on past Work Orders, notes and time.` : `${esc(p.name)} can't sign in or get new Jobs. Their history stays. You can turn it back on.`,
+      blocker(d.pid, rm ? 'Remove' : 'Deactivate') + teamInfo + (rm ? `<p class="hint">${ic('info', 's14')}Created by mistake and never did anything? Then the app offers Delete instead.</p>` : ''),
+      `${cancel()}<button class="btn ${rm ? 'danger' : 'primary'}" data-act="${rm ? 'remove-ok' : 'deactivate-ok'}" ${blocked ? `disabled title="Move the pending Jobs first"` : ''}>${rm ? ic('logout') + 'Remove from Shop' : ic('power') + 'Deactivate'}</button>`);
+  }
+  if (d.kind === 'edit') {
+    const p = P(d.pid);
+    const changed = d.type !== p.type;
+    const teams = teamsOf(d.pid).filter((s) => s.type !== d.type);
+    const oldJobs = p.jobs.length;
+    const warn = changed ? `${teams.length ? `<div class="alert warn mt12">${ic('users')}<div class="grow"><p>${esc(p.name)} leaves ${teams.map((s) => `the <b>${s.name}</b> team`).join(' and ')}: ${d.type} people can't do ${teams.map((s) => s.name).join(' or ')}.</p></div></div>` : ''}
+      ${oldJobs ? `<div class="alert bad mt8">${ic('alert')}<div class="grow"><p><b>Move ${oldJobs} pending Job${oldJobs > 1 ? 's' : ''} first.</b> They're ${p.type} work. <button class="link" data-act="close-go-jobs">See the Jobs</button></p></div></div>` : ''}` : '';
+    return shell(`Edit ${esc(p.name)}`, '', `<label class="col mt12"><span class="m">Name</span><input class="input" value="${esc(p.name)}"></label>
+      <p class="m mt12" style="margin-bottom:6px">Type</p><div class="segc">${['Standard', 'PM', 'Safety'].map((t) => `<button class="${d.type === t ? 'on' : ''}" data-act="edit-type" data-t="${t}">${t}</button>`).join('')}</div>
+      <p class="small muted mt4">Standard: shop work, Alignment, Detailing. PM: the PM step. Safety: Quality Check.</p>${warn}`,
+      `${cancel()}<button class="btn primary" data-act="edit-ok" ${changed && oldJobs ? 'disabled' : ''}>Save</button>`);
+  }
+  if (d.kind === 'qc-approve') {
+    const t = S.qc.find((x) => x.id === d.id);
+    return shell(`Approve Truck ${t.n}?`, `Recorded as approved by Cristian Perez (Shop Manager, backup for Safety). You can then close ${t.wo}.`, '',
+      `${cancel('Back')}<button class="btn primary" data-act="qc-approve-ok" data-id="${t.id}">${ic('check')}Approve</button>`);
+  }
+  return '';
+}
+
+/* ───────────────────────── Actions ───────────────────────── */
+const PRESETS = {
+  'wf': ['Shop workflow · teams', () => {}],
+  'wf-inelig': ['Owner no longer eligible', () => { P('a1').type = 'PM'; }],
+  'wf-empty': ['Empty team', () => { S.teams.alignment = []; S.saved.alignment = []; }],
+  'wf-job': ['Step Job inactive', () => { S.jobOff.detailing = true; }],
+  'wf-unsaved': ['Unsaved changes', () => { S.teams.detailing = ['anthony', 'a2', 'elliot']; }],
+  'hours': ['Shop hours tab', () => { UI.tab = 'hours'; }],
+  'cat': ['Job Catalog', () => { UI.screen = 'catalog'; }],
+  'cat-search': ['Search “lineas”', () => { UI.screen = 'catalog'; UI.q = 'lineas'; }],
+  'catd': ['Category detail', () => { UI.screen = 'category'; UI.catId = 'susp'; }],
+  'catd-del': ['Delete vs deactivate', () => { UI.screen = 'category'; UI.catId = 'susp'; UI.dialog = { kind: 'job-del', job: catById('susp').jobs[1].id }; }],
+  'catd-alias': ['Alias conflict', () => { UI.screen = 'category'; UI.catId = 'susp'; const j = catById('susp').jobs[1]; UI.alias = { job: j.id, text: 'alineacion', err: aliasError('alineacion', j.id) }; UI.focus = 'alias-in'; }],
+  'ppl': ['People', () => { UI.screen = 'people'; }],
+  'person': ['Person detail', () => { UI.screen = 'person'; UI.personId = 'anthony'; }],
+  'remove': ['Remove · blocked', () => { UI.screen = 'person'; UI.personId = 'anthony'; UI.dialog = { kind: 'remove', pid: 'anthony' }; }],
+  'type': ['Change type warning', () => { UI.screen = 'person'; UI.personId = 'anthony'; UI.dialog = { kind: 'edit', pid: 'anthony', type: 'PM' }; }],
+  'qc': ['Manager on /qc', () => { UI.screen = 'qc'; }],
+};
+function aliasError(text, jobId) {
+  const n = norm(text);
+  if (!n) return 'Type an alias.';
+  for (const j of allJobs()) {
+    if (norm(j.name) === n) return `“${esc(text)}” is already the name of <b>${esc(j.name)}</b> · ${esc(j.cat.name)}.`;
+    const a = j.aliases.find((x) => norm(x) === n);
+    if (a) return j.id === jobId ? `${esc(j.name)} already has “${esc(a)}”.` : `“${esc(text)}” is already an alias of <b>${esc(j.name)}</b> · ${esc(j.cat.name)} (as “${esc(a)}”). <a class="link" data-act="open-job" data-cat="${j.cat.id}" data-job="${j.id}">Open ${esc(j.name)}</a>`;
+  }
+  return null;
+}
+function findJob(id) { for (const c of S.cats) { const j = c.jobs.find((x) => x.id === id); if (j) return { c, j }; } return {}; }
+function go(to) {
+  if (UI.screen === 'workflow' && teamChanges().length && to !== 'workflow') { UI.dialog = { kind: 'leave', to }; return; }
+  UI.screen = to; UI.menu = null; UI.nav = false; UI.keepScroll = false; UI.alias = null;
+}
+function moveJob(pid, jobId, toId) {
+  const p = P(pid); const k = p.jobs.findIndex((x) => x.id === jobId); const [j] = p.jobs.splice(k, 1);
+  if (toId) P(toId).jobs.push(j);
+  return j;
+}
+
+document.addEventListener('click', (e) => {
+  const dev = e.target.closest('[data-dev]'); if (dev) { UI.device = dev.dataset.dev; render(); return; }
+  const pre = e.target.closest('[data-preset]');
+  if (pre) { seed(); UI = fresh(UI); PRESETS[pre.dataset.preset][1](); UI.keepScroll = false; render(); return; }
+  const el = e.target.closest('[data-act]');
+  if (!el) { if (UI.menu && !e.target.closest('.menu')) { UI.menu = null; render(); } return; }
+  const a = el.dataset.act, d = el.dataset;
+  if (a !== 'menu' && !e.target.closest('.menu')) UI.menu = null;
+  switch (a) {
+    case 'go': go(d.to); break;
+    case 'leave': S.teams = clone(S.saved); UI.dialog = null; go(d.to); break;
+    case 'dead': toast('info', 'Not part of this proposal.'); break;
+    case 'nav-open': UI.nav = true; break;
+    case 'nav-close': UI.nav = false; break;
+    case 'tab': UI.tab = d.tab; break;
+    case 'close': UI.dialog = null; break;
+    case 'toast-x': UI.toast = null; break;
+    case 'undo': if (UNDO) { UNDO(); UNDO = null; } UI.toast = null; break;
+    case 'menu': UI.menu = UI.menu === d.menu ? null : d.menu; e.stopPropagation(); break;
+    // Shop workflow
+    case 'pick': UI.dialog = { kind: 'pick', step: d.step }; break;
+    case 'team-toggle': { const t = S.teams[d.step]; S.teams[d.step] = t.includes(d.id) ? t.filter((x) => x !== d.id) : [...t, d.id]; break; }
+    case 'team-rm': S.teams[d.step] = S.teams[d.step].filter((x) => x !== d.id); break;
+    case 'wf-discard': S.teams = clone(S.saved); break;
+    case 'wf-save': S.saved = clone(S.teams); toast('ok', 'Shop workflow saved. New Work Orders use these teams.'); break;
+    case 'job-on': delete S.jobOff[d.step]; toast('ok', 'Detailing is active again. New Work Orders get the Detailing step.'); break;
+    case 'day': { const n = +d.day; S.hours.days = S.hours.days.includes(n) ? S.hours.days.filter((x) => x !== n) : [...S.hours.days, n].sort(); break; }
+    case 'hours-discard': S.hours = clone(S.hoursSaved); break;
+    case 'hours-save': S.hoursSaved = clone(S.hours); toast('ok', 'Shop hours saved.'); break;
+    // Catalog
+    case 'catf': UI.catFilter = d.f; break;
+    case 'open-cat': if (e.target.closest('button[data-act="menu"],button[data-act="cat-on"],.menu')) break; UI.catId = d.cat; go('category'); break;
+    case 'open-job': UI.catId = d.cat; UI.flash = d.job; go('category'); break;
+    case 'cat-on': { const c = catById(d.cat); const undo = snapshot(); c.status = 'active'; delete c.reason; toast('ok', `${esc(c.name)} is active. Its Jobs show when adding work.`, undo); e.stopPropagation(); break; }
+    case 'cat-off': { const c = catById(d.cat); const undo = snapshot(); c.status = 'inactive'; c.reason = 'Deactivated by Cristian · Oct 7'; toast('ok', `${esc(c.name)} deactivated.`, undo); break; }
+    case 'alias-add': UI.alias = { job: d.job, text: '', err: null }; UI.focus = 'alias-in'; break;
+    case 'alias-rm': { const { j } = findJob(d.job); const undo = snapshot(); const [gone] = j.aliases.splice(+d.k, 1); toast('ok', `Alias “${esc(gone)}” removed from ${esc(j.name)}.`, undo); break; }
+    case 'job-del': UI.dialog = { kind: 'job-del', job: d.job }; break;
+    case 'job-off': { const { j } = findJob(d.job); const undo = snapshot(); j.status = 'inactive'; UI.dialog = null; toast('ok', `${esc(j.name)} deactivated. It stays on its ${j.wo} Work Orders.`, undo); break; }
+    case 'job-on2': { const { j } = findJob(d.job); j.status = 'active'; toast('ok', `${esc(j.name)} is active.`); break; }
+    case 'job-del-ok': { const { c, j } = findJob(d.job); c.jobs = c.jobs.filter((x) => x.id !== j.id); UI.dialog = null; toast('ok', `${esc(j.name)} deleted.`); break; }
+    case 'rename': { const { j } = findJob(d.job); UI.dialog = { kind: 'rename', job: d.job, text: j.name, keep: true }; UI.focus = 'rn'; break; }
+    case 'keep-alias': UI.dialog.keep = !UI.dialog.keep; break;
+    case 'rename-ok': { const { j } = findJob(UI.dialog.job); const old = j.name; j.name = UI.dialog.text.trim(); if (UI.dialog.keep) j.aliases.push(old); UI.dialog = null; UI.flash = j.id; toast('ok', `Renamed to ${esc(j.name)}${UI.flash && j.aliases.includes(old) ? `. “${esc(old)}” is now an alias` : ''}.`); break; }
+    // People
+    case 'pplf': UI.pplFilter = d.f; break;
+    case 'open-person': UI.personId = d.id; go('person'); break;
+    case 'ask-remove': UI.dialog = { kind: 'remove', pid: UI.personId }; break;
+    case 'ask-deactivate': UI.dialog = { kind: 'deactivate', pid: UI.personId }; break;
+    case 'activate': P(UI.personId).status = 'active'; toast('ok', `${esc(P(UI.personId).name)} can sign in again.`); break;
+    case 'to-queue': { const undo = snapshot(); const j = moveJob(d.pid, d.job, null); toast('ok', `${esc(j.name)} on Truck ${j.truck} is in the ${stepOf(j.step).name} queue.`, undo); break; }
+    case 'all-to-queue': { const undo = snapshot(); const p = P(d.pid); const n = p.jobs.filter((j) => j.step && S.saved[j.step].some((x) => x !== d.pid && eligible(x, stepOf(j.step)))); n.forEach((j) => moveJob(d.pid, j.id, null)); toast('ok', `${n.length} Jobs sent to their team queue.`, undo); break; }
+    case 'reassign': UI.back = UI.dialog; UI.dialog = { kind: 'reassign', pid: d.pid, job: d.job }; break;
+    case 'reassign-ok': { const undo = snapshot(); const j = moveJob(d.pid, d.job, d.to); UI.dialog = UI.back || null; UI.back = null; toast('ok', `${esc(j.name)} on Truck ${j.truck} is now ${esc(P(d.to).name)}'s.`, undo); break; }
+    case 'remove-ok': { const p = P(UI.dialog.pid); p.status = 'removed'; STEPS.forEach((s) => { S.teams[s.key] = S.teams[s.key].filter((x) => x !== UI.dialog.pid); S.saved[s.key] = S.saved[s.key].filter((x) => x !== UI.dialog.pid); }); UI.dialog = null; UI.screen = 'people'; toast('ok', `${esc(p.name)} was removed from the Shop. Their history stays.`); break; }
+    case 'deactivate-ok': { const p = P(UI.dialog.pid); p.status = 'inactive'; UI.dialog = null; toast('ok', `${esc(p.name)} is inactive.`); break; }
+    case 'edit': UI.dialog = { kind: 'edit', pid: UI.personId, type: P(UI.personId).type }; break;
+    case 'edit-type': UI.dialog.type = d.t; break;
+    case 'edit-ok': { const p = P(UI.dialog.pid); if (UI.dialog.type !== p.type) { p.type = UI.dialog.type; STEPS.forEach((s) => { if (s.type !== p.type) { S.teams[s.key] = S.teams[s.key].filter((x) => x !== UI.dialog.pid); S.saved[s.key] = S.saved[s.key].filter((x) => x !== UI.dialog.pid); } }); } UI.dialog = null; toast('ok', 'Saved.'); break; }
+    case 'close-go-jobs': UI.dialog = null; break;
+    // QC
+    case 'qc-take': S.qc.find((t) => t.id === d.id).taken = 'cristian'; toast('ok', `Truck ${S.qc.find((t) => t.id === d.id).n} is yours to review.`); break;
+    case 'qc-approve': UI.dialog = { kind: 'qc-approve', id: d.id }; break;
+    case 'qc-approve-ok': { const t = S.qc.find((x) => x.id === d.id); S.qc = S.qc.filter((x) => x !== t); UI.dialog = null; toast('ok', `Truck ${t.n} approved by Cristian Perez (backup for Safety).`); break; }
+  }
+  render();
+});
+document.addEventListener('input', (e) => {
+  const k = e.target.dataset.in; if (!k) return;
+  if (k === 'q') { UI.q = e.target.value; UI.focus = 'q'; }
+  if (k === 'pplq') { UI.pplQ = e.target.value; UI.focus = 'pq'; }
+  if (k === 'cutoff') { S.hours.cutoff = e.target.value; UI.focus = 'cutoff'; }
+  if (k === 'alias') { UI.alias.text = e.target.value; UI.alias.err = null; UI.focus = 'alias-in'; }
+  if (k === 'rename') { UI.dialog.text = e.target.value; UI.focus = 'rn'; }
+  render();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.target.id === 'alias-in') {
+    if (e.key === 'Enter') { const err = aliasError(UI.alias.text, UI.alias.job); if (err) UI.alias.err = err; else { findJob(UI.alias.job).j.aliases.push(UI.alias.text.trim()); toast('ok', `Alias “${esc(UI.alias.text.trim())}” added.`); UI.alias = null; UI.focus = null; } render(); }
+    if (e.key === 'Escape') { UI.alias = null; UI.focus = null; render(); }
+  } else if (e.key === 'Escape' && UI.dialog) { UI.dialog = null; render(); }
+});
+document.addEventListener('focusout', (e) => {
+  // Validate the alias on blur (UX-7-022), but don't lose what was typed.
+  if (e.target.id === 'alias-in' && UI.alias && UI.alias.text.trim()) { const err = aliasError(UI.alias.text, UI.alias.job); if (err && !UI.alias.err) { UI.alias.err = err; UI.focus = null; setTimeout(render); } }
+  if (['q', 'pq', 'alias-in', 'rn'].includes(e.target.id)) setTimeout(() => { if (document.activeElement?.id !== e.target.id) UI.focus = null; });
+});
+document.getElementById('theme').onclick = () => { document.documentElement.classList.toggle('dark'); render(); };
+document.getElementById('reset').onclick = () => { seed(); UI = fresh(UI); render(); };
+document.getElementById('presets').innerHTML = Object.entries(PRESETS).map(([k, [l]]) => `<button data-preset="${k}">${l}</button>`).join('');
+render();
+</script>
+</body>
+</html>
