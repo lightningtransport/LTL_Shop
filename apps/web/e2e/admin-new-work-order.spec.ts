@@ -35,16 +35,25 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
     }
   });
 
-  test('default owners from Setup → Shop workflow land on the new Work Order; QC has none', async ({ page }) => {
+  test('LTR-197 / D28: step teams from Setup → Shop workflow; a team of one owns the new Job; QC waits for Safety', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin/);
     await page.goto('/admin/setup/workflow');
     await expect(page.getByRole('heading', { name: 'Shop workflow' })).toBeVisible();
-    await expect(page.getByText('Safety (Quality Check) takes it from the queue')).toBeVisible();
-    await expect(page.getByLabel('Default owner for Quality Check')).toHaveCount(0);
+    await expect(page.getByTestId('workflow-step-quality_check')).toContainText('The Shop Manager can do QC as backup.');
+    await expect(page.getByTestId('workflow-step-quality_check').getByRole('link', { name: 'Open Quality Check' })).toHaveAttribute('href', '/qc');
 
-    await page.getByLabel('Default owner for PM A Service').selectOption({ label: 'Daniel PM' });
-    await page.getByLabel('Default owner for Detailing').selectOption({ label: 'Anthony' });
+    for (const [stepKey, step, person] of [['pm', 'PM', 'Daniel PM'], ['detailing', 'Detailing', 'Anthony']] as const) {
+      const row = page.getByTestId(`workflow-step-${stepKey}`);
+      for (const member of await row.getByRole('button', { name: /^Remove / }).all()) await member.click();
+      await row.getByRole('button', { name: 'Add' }).click();
+      const dialog = page.getByRole('dialog', { name: `Add to ${step}` });
+      await dialog.getByRole('checkbox').first().waitFor();
+      await dialog.locator('label', { hasText: person }).getByRole('checkbox').check();
+      await dialog.getByRole('button', { name: 'Add to team' }).click();
+      await expect(row).toContainText(`New ${step} Jobs are assigned to ${person}.`);
+    }
+    await expect(page.getByText('Unsaved changes')).toBeVisible();
     await page.getByRole('button', { name: 'Save steps', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Shop workflow saved.' }).first()).toBeVisible();
 
@@ -60,7 +69,10 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
   test('LTR-186 / D20: the Manager sets the shop hours (day close and workdays) in Setup', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin/);
+    // D-SET5: Shop hours is a tab of Shop workflow with its own URL.
     await page.goto('/admin/setup/workflow');
+    await page.getByRole('link', { name: 'Shop hours' }).click();
+    await expect(page).toHaveURL(/\/admin\/setup\/workflow\/hours$/);
     const hours = page.getByTestId('shop-hours');
     await expect(hours.getByRole('heading', { name: 'Shop hours' })).toBeVisible();
     const cutoff = hours.getByLabel('Day close (Eastern time)');

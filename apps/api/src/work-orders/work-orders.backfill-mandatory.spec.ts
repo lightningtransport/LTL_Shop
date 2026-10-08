@@ -25,10 +25,10 @@ function setup(jobs = [job('j-brakes', 'Brakes', 'Brake adjustment'), job('j-det
     primaryCategory: { id: 'cat-Brakes', name: 'Brakes' }, jobs, pauseEvents: [], sessions: [], mechanics: [],
   };
   const steps = [
-    { stepKey: 'pm', catalogJob: { id: 'cj-pm', categoryId: 'cat-PM', displayName: 'PM A Service', category: { name: 'PM' } }, defaultMechanic: { id: 'daniel', active: true, capabilities: [{ capability: 'MECHANIC_PM' }] } },
-    { stepKey: 'alignment', catalogJob: { id: 'cj-al', categoryId: 'cat-Susp', displayName: 'Alignment', category: { name: 'Suspension & Steering' } }, defaultMechanic: { id: 'anthony', active: true, capabilities: [{ capability: 'MECHANIC_STANDARD' }] } },
-    { stepKey: 'detailing', catalogJob: { id: 'cj-de', categoryId: 'cat-Detailing', displayName: 'Detailing', category: { name: 'Detailing' } }, defaultMechanic: null },
-    { stepKey: 'quality_check', catalogJob: { id: 'cj-qc', categoryId: 'cat-QC', displayName: 'Quality Check', category: { name: 'Quality Check' } }, defaultMechanic: null },
+    { stepKey: 'pm', catalogJob: { id: 'cj-pm', categoryId: 'cat-PM', displayName: 'PM A Service', category: { name: 'PM' } }, members: [{ user: { id: 'daniel', active: true, capabilities: [{ capability: 'MECHANIC_PM' }] } }] },
+    { stepKey: 'alignment', catalogJob: { id: 'cj-al', categoryId: 'cat-Susp', displayName: 'Alignment', category: { name: 'Suspension & Steering' } }, members: [{ user: { id: 'anthony', active: true, capabilities: [{ capability: 'MECHANIC_STANDARD' }] } }] },
+    { stepKey: 'detailing', catalogJob: { id: 'cj-de', categoryId: 'cat-Detailing', displayName: 'Detailing', category: { name: 'Detailing' } }, members: [] },
+    { stepKey: 'quality_check', catalogJob: { id: 'cj-qc', categoryId: 'cat-QC', displayName: 'Quality Check', category: { name: 'Quality Check' } }, members: [] },
   ];
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue([]),
