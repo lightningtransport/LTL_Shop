@@ -314,6 +314,13 @@ type Copy = {
   pmHomeSubtitle: string;
   standardHomeSubtitle: string;
   readyToStart: string;
+  teamQueueTitle: string;
+  teamQueueHint: (count: number) => string;
+  teamQueueTake: string;
+  teamQueueTaken: (job: string, truck: string) => string;
+  teamQueueRelease: string;
+  teamQueueReleaseHint: string;
+  teamQueueReleased: (job: string) => string;
   ordersReadyToStart: (count: number) => string;
   noActivePmServices: string;
   pmServicesStartImmediately: string;
@@ -453,6 +460,10 @@ type Copy = {
   qc: {
     title: string;
     subtitle: string;
+    backupTitle: string;
+    backupBody: (name: string) => string;
+    backToAdmin: string;
+    notOnTeam: string;
     navLabel: string;
     tabReview: string;
     tabReturned: string;
@@ -789,6 +800,13 @@ const copy: Record<ShopLocale, Copy> = {
     pmHomeSubtitle: 'PM services assigned to you.',
     standardHomeSubtitle: 'Work Orders and Jobs the Manager assigned to you.',
     readyToStart: 'Ready to Start',
+    teamQueueTitle: 'Team queue',
+    teamQueueHint: (count) => `Shared with your team of ${count}. The first one to take a Job owns it.`,
+    teamQueueTake: 'Take',
+    teamQueueTaken: (job, truck) => `${job} on Truck ${truck} is yours.`,
+    teamQueueRelease: 'Let go',
+    teamQueueReleaseHint: 'Back to the team queue, for someone else to take.',
+    teamQueueReleased: (job) => `${job} is back in the team queue.`,
     ordersReadyToStart: (count) => `${count} ${count === 1 ? 'order' : 'orders'} ready to Start Work`,
     noActivePmServices: 'No active PM services assigned to you.',
     pmServicesStartImmediately: 'PM services start immediately after creation.',
@@ -930,6 +948,10 @@ const copy: Record<ShopLocale, Copy> = {
     qc: {
       title: 'Quality Check',
       subtitle: 'Trucks where every other step is done. Most urgent first.',
+      backupTitle: "You're doing Quality Check as backup for Safety.",
+      backupBody: (name) => `Take, approve or return a truck like Safety does. Each one is recorded in your name (${name}).`,
+      backToAdmin: 'Back to Admin',
+      notOnTeam: 'You are not on the Quality Check team, so no trucks show here. Ask the Shop Manager to add you in Shop workflow.',
       navLabel: 'Safety',
       tabReview: 'To review',
       tabReturned: 'Returned',
@@ -1264,6 +1286,13 @@ const copy: Record<ShopLocale, Copy> = {
     pmHomeSubtitle: 'Servicios de PM asignados a ti.',
     standardHomeSubtitle: 'Work Orders y Jobs que te asignó el Manager.',
     readyToStart: 'Listos para iniciar',
+    teamQueueTitle: 'Cola del equipo',
+    teamQueueHint: (count) => `Compartida con tu equipo de ${count}. El primero que toma un Job queda como responsable.`,
+    teamQueueTake: 'Tomar',
+    teamQueueTaken: (job, truck) => `${job} de la unidad ${truck} es tuyo.`,
+    teamQueueRelease: 'Soltar',
+    teamQueueReleaseHint: 'Vuelve a la cola del equipo, para que lo tome otra persona.',
+    teamQueueReleased: (job) => `${job} volvió a la cola del equipo.`,
     ordersReadyToStart: (count) => `${count} ${count === 1 ? 'orden lista' : 'órdenes listas'} para Iniciar trabajo`,
     noActivePmServices: 'No hay servicios de PM activos asignados a ti.',
     pmServicesStartImmediately: 'Los servicios de PM comienzan inmediatamente después de crearse.',
@@ -1404,6 +1433,10 @@ const copy: Record<ShopLocale, Copy> = {
     qc: {
       title: 'Quality Check',
       subtitle: 'Unidades con todo lo demás hecho. Lo más urgente primero.',
+      backupTitle: 'Estás haciendo el Quality Check como respaldo de Safety.',
+      backupBody: (name) => `Toma, aprueba o devuelve una unidad como lo hace Safety. Cada una queda registrada a tu nombre (${name}).`,
+      backToAdmin: 'Volver al Admin',
+      notOnTeam: 'No estás en el equipo de Quality Check, así que no aparecen unidades. Pide al Shop Manager que te agregue en el flujo del taller.',
       navLabel: 'Safety',
       tabReview: 'Por revisar',
       tabReturned: 'Devueltos',

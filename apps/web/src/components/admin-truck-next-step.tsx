@@ -209,6 +209,8 @@ export function AdminTruckNextStep({
         title: messages.calloutQcTitle,
         sub: messages.calloutQcSub,
         actions: act(messages.truckNextStepQcAction, null, () => void run(messages.workPlanJobCompleted, () => completeAdminJob(step.jobId!, { expectedVersion: version })), 'outline'),
+        // D-SET6: the Manager reaches Quality Check as backup from here (D29).
+        extra: <Link className="tap-inline text-sm font-medium text-primary hover:underline" href="/qc">{messages.shopWorkflowQcBackupLink}</Link>,
       });
     case 'close':
       // Owner decision (2026-10-05): closing confirms — it makes the Truck Ready to Go.

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, type Ref } from 'react';
 import {
   Building2,
@@ -195,7 +196,9 @@ export function WorkOrderNextStep({
     }
   }
   if (step?.kind === 'qc') {
-    return box({ tone: 'primary', icon: ShieldCheck, eyebrow: messages.calloutQc, title: messages.calloutQcTitle, sub: messages.calloutQcSub, actions: action, extra: noPermission, kind: step.kind });
+    // D-SET6: the Manager reaches Quality Check as backup from here (D29).
+    const qcLink = <Link className="tap-inline text-sm font-medium text-primary hover:underline" href="/qc">{messages.shopWorkflowQcBackupLink}</Link>;
+    return box({ tone: 'primary', icon: ShieldCheck, eyebrow: messages.calloutQc, title: messages.calloutQcTitle, sub: messages.calloutQcSub, actions: action, extra: <>{noPermission}{qcLink}</>, kind: step.kind });
   }
   if (readyToClose) {
     return box({ tone: 'primary', icon: Flag, eyebrow: messages.calloutNextStep, title: messages.calloutAllDoneTitle, sub: messages.readyToCloseHint, actions: primary(messages.completeWorkOrderConfirm, CheckCheck, onConfirmCompletion), kind: 'close' });

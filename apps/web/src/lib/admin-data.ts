@@ -173,6 +173,24 @@ export function useAdminAssignableMechanics() {
   return swr;
 }
 
+/** LTR-197 / D28: every active person on the roster (Standard, PM and Safety), to build a step's team. */
+export function useAdminRoster() {
+  const { token } = useAuth();
+  const swr = withAdminReadPending(
+    token,
+    useSWRInfinite<AdminPage<AdminMechanicSummaryDto>>(
+      (pageIndex, previous) => adminMechanicsPageKey(token, '', 100, pageIndex, previous),
+      adminReadFetcher,
+      adminInfiniteOptions,
+    ),
+  );
+  const { data, size, setSize } = swr;
+  useEffect(() => {
+    if (hasUnloadedAdminPage(data, size)) void setSize(size + 1);
+  }, [data, size, setSize]);
+  return swr;
+}
+
 export function useAdminMechanic(id: string) {
   const { token } = useAuth();
   return withAdminReadPending(
@@ -687,7 +705,8 @@ export function updateAdminShopHours(input: { cutoff: string; workdays: number[]
   });
 }
 
-export function updateAdminWorkflowSteps(steps: Array<{ stepKey: string; defaultMechanicId: string | null }>) {
+/** LTR-197 / D28: each step's team. */
+export function updateAdminWorkflowSteps(steps: Array<{ stepKey: string; memberIds: string[] }>) {
   return apiFetch<ShopWorkflowStepDto[]>('/api/admin/setup/workflow-steps', {
     method: 'PUT',
     body: JSON.stringify({ steps }),

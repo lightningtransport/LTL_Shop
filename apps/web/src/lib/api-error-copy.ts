@@ -20,6 +20,10 @@ export type ApiErrorCode =
   | 'CATALOG_CATEGORY_INACTIVE'
   | 'CATALOG_JOB_EXISTS'
   | 'CATALOG_JOB_IN_WORKFLOW'
+  | 'JOB_ALREADY_TAKEN'
+  | 'JOB_NOT_IN_TEAM_QUEUE'
+  | 'JOB_RELEASE_CLOCK_RUNNING'
+  | 'NOT_ON_STEP_TEAM'
   | 'DUPLICATE_STEP'
   | 'EXTERNAL_ALREADY'
   | 'EXTERNAL_NOT_ALLOWED_HERE'
@@ -86,6 +90,10 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     CATALOG_CATEGORY_INACTIVE: 'This Job\'s Category is inactive, so the Job cannot be activated.',
     CATALOG_JOB_EXISTS: 'That Job name is already in the Job Catalog.',
     CATALOG_JOB_IN_WORKFLOW: 'This Job is a Shop workflow step. Change the step in Shop workflow before deactivating it.',
+    JOB_ALREADY_TAKEN: 'Someone on your team already took this Job.',
+    JOB_NOT_IN_TEAM_QUEUE: 'This Job is no longer waiting in your team queue.',
+    JOB_RELEASE_CLOCK_RUNNING: 'Your time is running on this truck. Finish or report a blocker, or ask the Shop Manager to reassign it.',
+    NOT_ON_STEP_TEAM: 'Only someone on this step\'s team can take it.',
     DUPLICATE_STEP: 'This Work Order already has that step.',
     EXTERNAL_ALREADY: 'This Job is already at an external shop.',
     EXTERNAL_NOT_ALLOWED_HERE: 'The Quality Check cannot go to an external shop.',
@@ -149,6 +157,10 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     CATALOG_CATEGORY_INACTIVE: 'La categoría de este Job está inactiva, así que el Job no se puede activar.',
     CATALOG_JOB_EXISTS: 'Ese nombre de Job ya está en el Job Catalog.',
     CATALOG_JOB_IN_WORKFLOW: 'Este Job es un paso del Shop workflow. Cambia el paso en Shop workflow antes de desactivarlo.',
+    JOB_ALREADY_TAKEN: 'Alguien de tu equipo ya tomó este Job.',
+    JOB_NOT_IN_TEAM_QUEUE: 'Este Job ya no está en la cola de tu equipo.',
+    JOB_RELEASE_CLOCK_RUNNING: 'Tu tiempo está corriendo en este camión. Termina o reporta un bloqueo, o pide al Shop Manager que lo reasigne.',
+    NOT_ON_STEP_TEAM: 'Solo alguien del equipo de este paso puede tomarlo.',
     DUPLICATE_STEP: 'Este Work Order ya tiene ese paso.',
     EXTERNAL_ALREADY: 'Este Job ya está en un taller externo.',
     EXTERNAL_NOT_ALLOWED_HERE: 'El Quality Check no puede ir a un taller externo.',
