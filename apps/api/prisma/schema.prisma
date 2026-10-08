@@ -171,6 +171,8 @@ model User {
   truckServiceStatusEvents       TruckServiceStatusEvent[]
   defaultForWorkflowSteps        ShopWorkflowStep[]         @relation("ShopWorkflowStepDefaultMechanic")
   updatedWorkflowSteps           ShopWorkflowStep[]         @relation("ShopWorkflowStepUpdatedBy")
+  workflowStepMemberships        ShopWorkflowStepMember[]   @relation("ShopWorkflowStepMemberUser")
+  addedWorkflowStepMembers       ShopWorkflowStepMember[]   @relation("ShopWorkflowStepMemberAddedBy")
   updatedShopSettings            ShopSettings[]             @relation("ShopSettingsUpdatedBy")
 
   @@map("users")
@@ -368,11 +370,28 @@ model ShopWorkflowStep {
   updatedById       String?  @map("updated_by_id") @db.Uuid
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
 
-  catalogJob      CatalogJob @relation(fields: [catalogJobId], references: [id])
-  defaultMechanic User?      @relation("ShopWorkflowStepDefaultMechanic", fields: [defaultMechanicId], references: [id], onDelete: SetNull)
-  updatedBy       User?      @relation("ShopWorkflowStepUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  catalogJob      CatalogJob               @relation(fields: [catalogJobId], references: [id])
+  defaultMechanic User?                    @relation("ShopWorkflowStepDefaultMechanic", fields: [defaultMechanicId], references: [id], onDelete: SetNull)
+  updatedBy       User?                    @relation("ShopWorkflowStepUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  // LTR-197 / D28: the step's team. One member → new Jobs are theirs; two or more → the team queue.
+  members         ShopWorkflowStepMember[]
 
   @@map("shop_workflow_steps")
+}
+
+model ShopWorkflowStepMember {
+  stepId    String   @map("step_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  addedById String?  @map("added_by_id") @db.Uuid
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  step    ShopWorkflowStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  user    User             @relation("ShopWorkflowStepMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  addedBy User?            @relation("ShopWorkflowStepMemberAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@id([stepId, userId])
+  @@index([userId])
+  @@map("shop_workflow_step_members")
 }
 
 model JobAlias {
@@ -577,6 +596,8 @@ model WorkOrderJob {
   externalKind       JobExternalKind? @map("external_kind")
   externalNote       String?          @map("external_note")
   externalById       String?          @map("external_by_id") @db.Uuid
+  // LTR-197 / D28: the Shop workflow step a mandatory Job belongs to; with no owner it sits in that step's team queue.
+  workflowStepKey    String?          @map("workflow_step_key")
 
   workOrder        WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   catalogJob       CatalogJob?    @relation(fields: [catalogJobId], references: [id])
@@ -593,6 +614,7 @@ model WorkOrderJob {
   @@index([workOrderId, status])
   @@index([assignedMechanicId])
   @@index([helperOfJobId])
+  @@index([workflowStepKey])
   @@map("work_order_jobs")
 }
 
