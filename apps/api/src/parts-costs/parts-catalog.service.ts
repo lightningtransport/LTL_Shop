@@ -45,7 +45,7 @@ export class PartsCatalogService {
 
   async catalog(raw: unknown): Promise<AdminPartsCatalogDto> {
     const query = parse(adminPartsQuerySchema, raw);
-    const [categories, usage, openPms, makes] = await Promise.all([
+    const [categories, usage, openPms, makes, lastPaid] = await Promise.all([
       this.prisma.partCategory.findMany({
         where: { active: true },
         orderBy: { sortOrder: 'asc' },
@@ -63,7 +63,16 @@ export class PartsCatalogService {
         GROUP BY psp.part_id`,
       this.openPms(),
       this.prisma.truck.findMany({ where: { make: { not: null } }, distinct: ['make'], select: { make: true }, orderBy: { make: 'asc' } }),
+      // PC-2: the last line of each part on a purchase not voided.
+      this.prisma.$queryRaw<Array<{ part_id: string; unit_cost_cents: number; invoice_date: Date; vendor_name: string }>>`
+        SELECT DISTINCT ON (l.part_id) l.part_id, l.unit_cost_cents, p.invoice_date, v.name AS vendor_name
+        FROM part_purchase_lines l
+        JOIN part_purchases p ON p.id = l.purchase_id AND p.voided_at IS NULL
+        JOIN vendors v ON v.id = p.vendor_id
+        WHERE l.part_id IS NOT NULL
+        ORDER BY l.part_id, p.invoice_date DESC, p.created_at DESC`,
     ]);
+    const lastPaidByPart = new Map(lastPaid.map((row) => [row.part_id, row]));
     const usageByPart = new Map(usage.map((row) => [row.part_id, row]));
     const needle = normalizeCatalogText(query.q ?? '');
     const make = query.make ? { make: query.make, model: null } : null;
@@ -90,6 +99,13 @@ export class PartsCatalogService {
             usedInPmCount: Number(used?.uses ?? 0),
             lastUsedAt: used?.last_used_at ? used.last_used_at.toISOString() : null,
             openPms: (openPms.get(part.id) ?? []).map(({ make: _make, model: _model, ...pm }) => pm),
+            lastPaid: lastPaidByPart.has(part.id)
+              ? {
+                  unitCostCents: lastPaidByPart.get(part.id)!.unit_cost_cents,
+                  invoiceDate: lastPaidByPart.get(part.id)!.invoice_date.toISOString().slice(0, 10),
+                  vendorName: lastPaidByPart.get(part.id)!.vendor_name,
+                }
+              : null,
           };
         }),
     }));
