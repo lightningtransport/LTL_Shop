@@ -4,8 +4,10 @@ import { AdminNavLink } from './admin-nav-link';
 import { useMemo, useState } from 'react';
 import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
+import { AddCategoryButton, CatalogSearchResults, CategoryMenu, CategoryStatusNote } from './admin-catalog-manage';
+import { fillPlaceholders } from '@/lib/admin-next-step';
 import { AdminWriteTip } from './admin-write-tip';
-import { DataTable, PageHeader, Badge, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { DataTable, PageHeader, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -14,6 +16,7 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
   const canWrite = useCanShowManagerWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategories();
   const [search, setSearch] = useState('');
+  // LTR-198 / JC2: the box filters Categories by name and, below, finds Jobs and aliases across every Category.
   const items = useMemo(() => {
     const query = search.trim().toLowerCase();
     const categories = data ?? [];
@@ -30,7 +33,7 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
       <PageHeader
         title={messages.catalogTitle}
         subtitle={canWrite ? messages.catalogWriteDescription : messages.catalogDescription}
-        actions={canWrite ? addJobButton() : null}
+        actions={canWrite ? <div className="flex flex-wrap gap-2"><AddCategoryButton messages={messages} onAdded={() => void mutate()} />{addJobButton()}</div> : null}
       />
       {canWrite ? <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip> : null}
       <Card className="p-3">
@@ -38,9 +41,10 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchCatalog} aria-label={messages.searchCatalog} />
         </CardContent>
       </Card>
+      <CatalogSearchResults query={search} messages={messages} />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.catalogTitle} header={false} /> : null}
-      {!isLoading && !error && items.length === 0 ? (
+      {!isLoading && !error && items.length === 0 && !search.trim() ? (
         <EmptyState>
           <p>{search.trim() ? messages.catalogNoMatches : messages.catalogNoCategories}</p>
           {canWrite ? <div className="mt-4 flex justify-center">{addJobButton()}</div> : null}
@@ -60,13 +64,26 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
               cell: (item) => (
                 <div className="flex flex-wrap items-center gap-2">
                   <AdminNavLink className="tap-inline font-semibold text-primary hover:underline" href={`/admin/catalog/categories/${item.id}`}>{item.name}</AdminNavLink>
-                  {item.status === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}
+                  <CategoryStatusNote category={item} messages={messages} />
                 </div>
               ),
             },
-            { key: 'jobs', header: messages.catalogJobsColumn, cell: (item) => <span>{item.activeJobCount}</span> },
-            { key: 'inactive', header: messages.catalogInactiveJobs, cell: (item) => <span className="text-muted-foreground">{item.inactiveJobCount}</span> },
-            { key: 'aliases', header: messages.catalogAliasesColumn, cell: (item) => <span className="text-muted-foreground">{item.aliasCount}</span> },
+            {
+              key: 'jobs',
+              header: messages.catalogJobsColumn,
+              cell: (item) => (
+                <span className={item.status === CatalogStatus.INACTIVE ? 'text-muted-foreground' : undefined}>
+                  {item.inactiveJobCount
+                    ? fillPlaceholders(messages.catalogJobsCount, { active: String(item.activeJobCount), inactive: String(item.inactiveJobCount) })
+                    : item.activeJobCount}
+                </span>
+              ),
+            },
+            ...(canWrite ? [{
+              key: 'actions',
+              header: "",
+              cell: (item: (typeof items)[number]) => <div className="flex justify-end"><CategoryMenu category={item} messages={messages} onChanged={() => void mutate()} onDeleted={() => void mutate()} /></div>,
+            }] : []),
           ]}
         />
       ) : null}

@@ -1,4 +1,4 @@
-import type { CatalogJobDto, JobAliasOptionDto } from '@ltl-shop/shared';
+import { normalizeCatalogText, type CatalogJobDto, type JobAliasOptionDto } from '@ltl-shop/shared';
 import { apiFetch } from './api';
 
 export function catalogJobsPath(categoryId: string) {
@@ -6,13 +6,14 @@ export function catalogJobsPath(categoryId: string) {
   return `/api/catalog/jobs?${params}`;
 }
 
+/** LTR-198 / JC5: accents and capitals do not count ("lineas" finds "Líneas de combustible"). */
 export function matchesCatalogText(value: string, query: string) {
-  const needle = query.trim().toLowerCase();
+  const fold = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const needle = fold(query.trim());
   if (!needle) return true;
-  const needleNorm = needle.replace(/[^a-z0-9]/g, '');
-  const text = value.toLowerCase();
-  const textNorm = text.replace(/[^a-z0-9]/g, '');
-  return text.includes(needle) || (Boolean(needleNorm) && textNorm.includes(needleNorm));
+  const needleNorm = normalizeCatalogText(needle);
+  const text = fold(value);
+  return text.includes(needle) || (Boolean(needleNorm) && normalizeCatalogText(text).includes(needleNorm));
 }
 
 /** Client-side filter of a category's already-loaded catalog jobs. Does not call the API. */

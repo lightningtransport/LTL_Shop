@@ -7,6 +7,14 @@ import type { ShopLocale } from './shop-locale';
  * Keys with a shared audience avoid the Truck/unidad noun; the QC keys are Safety copy (unidad).
  */
 export type ApiErrorCode =
+  | 'ALIAS_EMPTY'
+  | 'ALIAS_IS_JOB_NAME'
+  | 'CATALOG_CATEGORY_EXISTS'
+  | 'CATALOG_CATEGORY_IN_USE'
+  | 'CATALOG_JOB_IN_USE'
+  | 'CATEGORY_HAS_SYSTEM_JOB'
+  | 'SYSTEM_CATEGORY_LOCKED'
+  | 'SYSTEM_JOB_LOCKED'
   | 'ACTIVE_READINESS_ASSESSMENT_EXISTS'
   | 'AUTH_ACCOUNT_CREATE_FAILED'
   | 'AUTH_ACCOUNT_MISSING'
@@ -76,6 +84,14 @@ export type ApiErrorCopy = Record<ApiErrorCode | 'network' | 'timeout', string>;
 export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
+    ALIAS_EMPTY: 'An alias needs a letter or a number.',
+    ALIAS_IS_JOB_NAME: "The Job's own name is always an alias. Rename the Job instead.",
+    CATALOG_CATEGORY_EXISTS: 'A Category with this name already exists.',
+    CATALOG_CATEGORY_IN_USE: 'Only an empty Category that was never used can be deleted. Deactivate it instead.',
+    CATALOG_JOB_IN_USE: 'Work Orders already use this Job, so it cannot be deleted. Deactivate it instead.',
+    CATEGORY_HAS_SYSTEM_JOB: 'This Category holds a Shop workflow Job, so it stays active.',
+    SYSTEM_CATEGORY_LOCKED: 'This Category belongs to the Shop workflow and cannot be renamed, deactivated or deleted.',
+    SYSTEM_JOB_LOCKED: 'This Job is part of the Shop workflow; it cannot be deactivated or deleted.',
     timeout: 'The request took too long. Please try again.',
     ACTIVE_READINESS_ASSESSMENT_EXISTS: 'This Truck already has an active readiness assessment.',
     AUTH_ACCOUNT_CREATE_FAILED: 'The access account could not be created. Nothing was saved; try again.',
@@ -143,6 +159,14 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   },
   es: {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
+    ALIAS_EMPTY: 'Un alias necesita una letra o un número.',
+    ALIAS_IS_JOB_NAME: 'El nombre del Job siempre es un alias. Renombra el Job en su lugar.',
+    CATALOG_CATEGORY_EXISTS: 'Ya existe una categoría con ese nombre.',
+    CATALOG_CATEGORY_IN_USE: 'Solo se borra una categoría vacía que nunca se usó. Desactívala en su lugar.',
+    CATALOG_JOB_IN_USE: 'Hay Work Orders que ya usan este Job, así que no se puede borrar. Desactívalo en su lugar.',
+    CATEGORY_HAS_SYSTEM_JOB: 'Esta categoría tiene un Job del flujo del taller, así que sigue activa.',
+    SYSTEM_CATEGORY_LOCKED: 'Esta categoría es del flujo del taller y no se puede renombrar, desactivar ni borrar.',
+    SYSTEM_JOB_LOCKED: 'Este Job es parte del flujo del taller; no se puede desactivar ni borrar.',
     timeout: 'La solicitud tardó demasiado. Inténtalo de nuevo.',
     ACTIVE_READINESS_ASSESSMENT_EXISTS: 'Este Truck ya tiene una evaluación de preparación activa.',
     AUTH_ACCOUNT_CREATE_FAILED: 'No se pudo crear la cuenta de acceso. No se guardó nada; inténtalo de nuevo.',
