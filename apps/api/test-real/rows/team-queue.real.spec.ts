@@ -1,6 +1,6 @@
 import { beforeEach, describe, it } from 'vitest';
 import {
-  USERS, Json, adminWo, as, assign, createWo, doLane, doPm, laneJob, manager, ok, plannedWo, prisma, refused, resetDb, same,
+  USERS, Json, adminWo, as, assign, unassign, createWo, doLane, doPm, laneJob, manager, ok, plannedWo, prisma, refused, resetDb, same,
   sameNextStepEverywhere, start, truthy, userId,
 } from '../harness';
 
@@ -74,6 +74,9 @@ describe('Manager: equipos por paso y cola (D28, D29)', () => {
     // D-SET2: changing type takes the person off the teams they can no longer be on.
     await detailingTeam([USERS.spare]);
     const spare = await userId(USERS.spare);
+    // LTR-199 / D-SET3: not while John still has that Job; once it moves, the type can change.
+    refused('con un Job pendiente no cambia de tipo', await manager.patch(`/admin/mechanics/${spare}`, { mode: 'pm' }), 409, 'MECHANIC_HAS_OPEN_WORK');
+    ok('el Manager le quita el Job', await unassign(workOrderId, job.id));
     ok('John pasa a PM', await manager.patch(`/admin/mechanics/${spare}`, { mode: 'pm' }));
     try {
       same('John sale del equipo de Detailing', (await steps()).find((step) => step.stepKey === 'detailing')?.members.length, 0);

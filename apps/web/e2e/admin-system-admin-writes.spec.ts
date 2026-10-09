@@ -11,7 +11,7 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
   await loginToAdmin(page, 'manager@lightning.local');
 
   await page.goto('/admin/mechanics');
-  await expect(page.getByRole('heading', { name: 'Mechanics' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
   await expect(page.getByText('Add Standard, PM or Safety people. The app creates their access account with a temporary password.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add person' })).toBeVisible();
   await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
@@ -221,11 +221,12 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await expect(page.getByRole('row', { name: /Luz Mechanic/ })).toContainText('PM');
   await expect(page.getByRole('row', { name: /Luz Mechanic/ })).not.toContainText('mechanic.pm');
 
-  // LTR-160: inactive mechanics are hidden until "Show inactive" is applied.
+  // LTR-160: inactive people are hidden until the filter asks for them.
   await expect(page.getByRole('row', { name: /Retired Mechanic/ })).toHaveCount(0);
   await page.getByRole('search').getByRole('button', { name: /^Filters( [0-9]+)?$/ }).click();
   const filtersSheet = page.getByRole('dialog', { name: 'Filters' });
-  await filtersSheet.getByLabel('Show inactive').check();
+  // LTR-199: one filter for Active, Active and inactive, and Removed from the Shop.
+  await filtersSheet.getByLabel('Show').selectOption('all');
   await filtersSheet.getByRole('button', { name: 'Apply filters' }).click();
   await expect(page).toHaveURL(/includeInactive=true/);
   await page.getByRole('row', { name: /Retired Mechanic/ }).getByRole('button', { name: 'Activate' }).click();

@@ -177,6 +177,9 @@ describe('SystemAdminWritesService roster', () => {
         findUnique: vi.fn().mockResolvedValueOnce(current).mockResolvedValueOnce(updated),
         update: vi.fn(),
       },
+      // LTR-199 / D-SET3: a type change checks open work first.
+      workOrderJob: { findMany: vi.fn().mockResolvedValue([]) },
+      workSession: { findFirst: vi.fn().mockResolvedValue(null) },
       shopWorkflowStepMember: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn() },
       userCapability: {
         deleteMany: vi.fn(),
