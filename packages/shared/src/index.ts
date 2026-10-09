@@ -1,4 +1,5 @@
 export * from './attention';
+export * from './catalog';
 export * from './pm';
 export * from './quality-check';
 export * from './enums';

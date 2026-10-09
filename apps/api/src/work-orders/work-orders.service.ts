@@ -274,9 +274,20 @@ export class WorkOrdersService {
         select: { id: true, name: true },
       })).map((item) => [item.id, item.name]),
     );
+    // LTR-198 / SW5: a picked System Job (e.g. a renamed Alignment) covers its step by key, not by name.
+    const pickedCatalogIds = input.jobs.map((job) => job.catalogJobId).filter((id): id is string => Boolean(id));
+    const systemKeys = new Map(
+      (pickedCatalogIds.length
+        ? await this.prisma.catalogJob.findMany({ where: { id: { in: pickedCatalogIds } }, select: { id: true, systemKey: true } })
+        : []).map((item) => [item.id, item.systemKey]),
+    );
     const mandatoryJobs: MandatoryJob[] = await resolveMandatoryJobs(
       this.prisma,
-      input.jobs.map((job) => ({ categoryName: categoryNames.get(job.categoryId) ?? '', displayName: job.displayName })),
+      input.jobs.map((job) => ({
+        categoryName: categoryNames.get(job.categoryId) ?? '',
+        displayName: job.displayName,
+        systemKey: job.catalogJobId ? systemKeys.get(job.catalogJobId) ?? null : null,
+      })),
     );
 
     const preflightOpen = await this.prisma.workOrder.findFirst({
@@ -984,7 +995,7 @@ export class WorkOrdersService {
       }
       const missing = await resolveMandatoryJobs(
         tx,
-        wo.jobs.map((job) => ({ categoryName: job.category.name, displayName: job.displayName })),
+        wo.jobs.map((job) => ({ categoryName: job.category.name, displayName: job.displayName, systemKey: job.systemKey })),
       );
       if (!missing.length) return toWorkOrderDetail(wo, user.id);
       for (const job of missing) {

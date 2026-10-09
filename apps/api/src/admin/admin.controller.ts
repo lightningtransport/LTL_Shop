@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -24,6 +25,7 @@ import { YardWorkPlanService } from './yard-work-plan.service';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { SystemAdminWritesService } from './system-admin-writes.service';
 import { ShopWorkflowService } from './shop-workflow.service';
+import { CatalogAdminService } from './catalog-admin.service';
 import { LaborClockService } from '../work-orders/labor-clock.service';
 
 @Controller('admin')
@@ -38,6 +40,7 @@ export class AdminController {
     private readonly dataBoundary: YardDataBoundaryService,
     private readonly systemAdminWrites: SystemAdminWritesService,
     private readonly shopWorkflow: ShopWorkflowService,
+    private readonly catalogAdmin: CatalogAdminService,
     private readonly clock: LaborClockService,
   ) {}
 
@@ -297,6 +300,48 @@ export class AdminController {
   @UseGuards(ManagerWritesGuard)
   updateCatalogJob(@Param('id') id: string, @Body() body: unknown) {
     return this.systemAdminWrites.updateCatalogJob(id, body);
+  }
+
+  // LTR-198 / D30: Categories, deleting Jobs, aliases and the search across Jobs and aliases.
+  @Get('catalog/search')
+  searchCatalog(@Query('q') q?: string) {
+    return this.catalogAdmin.search(q);
+  }
+
+  @Post('catalog/categories')
+  @UseGuards(ManagerWritesGuard)
+  createCatalogCategory(@Body() body: unknown) {
+    return this.catalogAdmin.createCategory(body);
+  }
+
+  @Patch('catalog/categories/:id')
+  @UseGuards(ManagerWritesGuard)
+  updateCatalogCategory(@Param('id') id: string, @Body() body: unknown) {
+    return this.catalogAdmin.updateCategory(id, body);
+  }
+
+  @Delete('catalog/categories/:id')
+  @UseGuards(ManagerWritesGuard)
+  deleteCatalogCategory(@Param('id') id: string) {
+    return this.catalogAdmin.deleteCategory(id);
+  }
+
+  @Delete('catalog/jobs/:id')
+  @UseGuards(ManagerWritesGuard)
+  deleteCatalogJob(@Param('id') id: string) {
+    return this.catalogAdmin.deleteJob(id);
+  }
+
+  @Post('catalog/jobs/:id/aliases')
+  @UseGuards(ManagerWritesGuard)
+  addCatalogAlias(@Param('id') id: string, @Body() body: unknown) {
+    return this.catalogAdmin.addAlias(id, body);
+  }
+
+  @Delete('catalog/jobs/:id/aliases/:aliasId')
+  @UseGuards(ManagerWritesGuard)
+  removeCatalogAlias(@Param('id') id: string, @Param('aliasId') aliasId: string) {
+    return this.catalogAdmin.removeAlias(id, aliasId);
   }
 
   @Get('trucks')

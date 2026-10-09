@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { normalizeCatalogText } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
+/** LTR-198 / JC5: accents do not count ("líneas" = "lineas"). */
 function normalizeAlias(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return normalizeCatalogText(text);
 }
 
 @Injectable()

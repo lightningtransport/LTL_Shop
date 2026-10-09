@@ -321,6 +321,10 @@ export class SystemAdminWritesService {
       });
       if (!current) throw new NotFoundException('Catalog job not found');
 
+      // LTR-198 / D30: a System Job (PM A/B, Alignment, Detailing, Quality Check) is never deactivated.
+      if (input.status === 'inactive' && current.status === 'active' && current.systemKey) {
+        throw new ConflictException({ code: 'SYSTEM_JOB_LOCKED', message: 'This Job is part of the Shop workflow; it cannot be deactivated or deleted.' });
+      }
       // SW2: a mandatory step whose Job goes inactive silently stops being added to new Work Orders.
       if (input.status === 'inactive' && current.status === 'active') {
         const step = await tx.shopWorkflowStep.findFirst({ where: { catalogJobId: id, active: true }, select: { stepKey: true } });
@@ -348,7 +352,12 @@ export class SystemAdminWritesService {
         if (input.displayName.toLowerCase() !== current.displayName.toLowerCase()) {
           await this.assertDisplayNameAvailable(tx, current.categoryId, input.displayName, id);
         }
-        await this.syncDisplayNameAlias(tx, id, current.displayName, input.displayName);
+        if (input.keepOldNameAsAlias === false) {
+          await this.syncDisplayNameAlias(tx, id, current.displayName, input.displayName);
+        } else {
+          // LTR-198 / D-SET4: the old name stays an alias, so searches and mechanics still find the Job.
+          await this.addDisplayNameAlias(tx, id, input.displayName);
+        }
       }
 
       const updated = await tx.catalogJob.update({
@@ -395,6 +404,15 @@ export class SystemAdminWritesService {
       code: 'CATALOG_ALIAS_EXISTS',
       message: 'That job name is already used by another catalog job.',
       jobId: taken.catalogJobId,
+    });
+  }
+
+  private async addDisplayNameAlias(tx: Prisma.TransactionClient, jobId: string, nextDisplayName: string) {
+    const nextNorm = requireAliasNorm(nextDisplayName);
+    await this.assertAliasAvailable(tx, nextNorm, jobId);
+    await tx.jobAlias.createMany({
+      data: [{ catalogJobId: jobId, aliasText: nextDisplayName, aliasNorm: nextNorm }],
+      skipDuplicates: true,
     });
   }
 

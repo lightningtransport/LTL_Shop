@@ -1,3 +1,4 @@
+import { CatalogCategorySystemKey, CatalogSystemKey, normalizeCatalogText } from '@ltl-shop/shared';
 import type { Prisma, PrismaClient } from '@prisma/client';
 
 /**
@@ -41,7 +42,7 @@ export type CatalogCategoryDefinition = {
 };
 
 export function normalizeCatalogAlias(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return normalizeCatalogText(text);
 }
 
 export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
@@ -305,18 +306,53 @@ export function flattenCatalogAliasNorms() {
 
 type JobCatalogClient = PrismaClient | Prisma.TransactionClient;
 
+/** LTR-198 / D30: the System Jobs and Categories of the seed (found by key afterwards, never by name). */
+const SYSTEM_JOB_KEYS: Record<string, string> = {
+  'PM/PM A Service': CatalogSystemKey.PM_A,
+  'PM/PM B Service': CatalogSystemKey.PM_B,
+  'Suspension & Steering/Alignment': CatalogSystemKey.ALIGNMENT,
+  [`${DETAILING_CATEGORY_NAME}/${DETAILING_JOB_DISPLAY_NAME}`]: CatalogSystemKey.DETAILING,
+  [`${QUALITY_CHECK_CATEGORY_NAME}/${QUALITY_CHECK_JOB_DISPLAY_NAME}`]: CatalogSystemKey.QUALITY_CHECK,
+};
+const SYSTEM_CATEGORY_KEYS: Record<string, string> = {
+  [PM_CATEGORY_NAME]: CatalogCategorySystemKey.PM,
+  [DETAILING_CATEGORY_NAME]: CatalogCategorySystemKey.DETAILING,
+  [QUALITY_CHECK_CATEGORY_NAME]: CatalogCategorySystemKey.QUALITY_CHECK,
+};
+
+function slug(text: string) {
+  return normalizeCatalogText(text) || text.trim().toLowerCase();
+}
+
+export function categorySeedKey(name: string) {
+  return `category:${slug(name)}`;
+}
+
+export function jobSeedKey(categoryName: string, displayName: string) {
+  return `job:${slug(categoryName)}/${slug(displayName)}`;
+}
+
+/**
+ * The seed catalog, applied on every release (`npm run prisma:apply-catalog`) and by the local seed.
+ *
+ * LTR-198 / JC1, D30: it only **adds what is missing**. A row it created (or claimed once by its seed name) carries a
+ * `seed_key` and is found by it afterwards — so a Job or Category the Shop Manager renamed, deactivated or re-aliased
+ * is never renamed back, reactivated or re-aliased, and never duplicated. An alias is created only when no Job uses
+ * that text yet.
+ */
 export async function applyJobCatalog(
   prisma: JobCatalogClient,
   options: { createdById?: string } = {},
 ) {
-  const categoryIds = await upsertCatalogCategories(prisma);
+  const categoryIds = await ensureCatalogCategories(prisma);
 
+  // Old data only: Jobs that lived in another Category before LTR-24 move to theirs, the first time they are claimed.
   for (const relocation of JOB_RELOCATIONS) {
     const destinationId = categoryIds[relocation.toCategory];
     if (!destinationId) continue;
     await prisma.catalogJob.updateMany({
-      where: { displayName: relocation.displayName, categoryId: { not: destinationId } },
-      data: { categoryId: destinationId, status: 'active' },
+      where: { displayName: relocation.displayName, categoryId: { not: destinationId }, seedKey: null },
+      data: { categoryId: destinationId },
     });
   }
 
@@ -324,18 +360,20 @@ export async function applyJobCatalog(
   for (const category of JOB_CATALOG_CATEGORIES) {
     const categoryId = categoryIds[category.name];
     for (const item of category.jobs) {
-      const job = await upsertCatalogJob(prisma, {
+      const job = await ensureCatalogJob(prisma, {
         categoryId,
+        categoryName: category.name,
         item,
         createdById: options.createdById,
       });
       jobCount += 1;
       for (const alias of listCatalogJobAliasTexts(item)) {
         const aliasNorm = normalizeCatalogAlias(alias);
-        await prisma.jobAlias.upsert({
-          where: { aliasNorm },
-          update: { aliasText: alias, catalogJobId: job.id },
-          create: { catalogJobId: job.id, aliasText: alias, aliasNorm },
+        if (!aliasNorm) continue;
+        // Never take an alias away from a Job that already has it (the Manager may have moved it).
+        await prisma.jobAlias.createMany({
+          data: [{ catalogJobId: job.id, aliasText: alias, aliasNorm }],
+          skipDuplicates: true,
         });
       }
     }
@@ -348,45 +386,63 @@ export async function applyJobCatalog(
   };
 }
 
-async function upsertCatalogCategories(prisma: JobCatalogClient) {
+async function claimKeys<T extends { id: string; seedKey: string | null; systemKey: string | null }>(
+  current: T,
+  seedKey: string,
+  systemKey: string | undefined,
+  owner: (key: string) => Promise<{ id: string } | null>,
+  update: (data: { seedKey?: string; systemKey?: string }) => Promise<T>,
+): Promise<T> {
+  const data: { seedKey?: string; systemKey?: string } = {};
+  if (!current.seedKey) data.seedKey = seedKey;
+  if (systemKey && !current.systemKey) {
+    const taken = await owner(systemKey);
+    if (!taken) data.systemKey = systemKey;
+  }
+  return Object.keys(data).length ? update(data) : current;
+}
+
+async function ensureCatalogCategories(prisma: JobCatalogClient) {
   const categoryIds: Record<string, string> = {};
 
   for (const category of JOB_CATALOG_CATEGORIES) {
+    const seedKey = categorySeedKey(category.name);
+    const systemKey = SYSTEM_CATEGORY_KEYS[category.name];
+    const claimed = await prisma.jobCategory.findUnique({ where: { seedKey } });
+    if (claimed) {
+      categoryIds[category.name] = claimed.id;
+      continue;
+    }
+
+    // First time: claim the row with this seed name (or an older name it replaced), as LTR-24 merged them.
     const names = [category.name, ...category.legacyNames];
     const matches = await prisma.jobCategory.findMany({
-      where: { name: { in: names } },
+      where: { name: { in: names }, seedKey: null },
       orderBy: { createdAt: 'asc' },
     });
-    const winner =
-      matches.find((row) => row.name === category.name) ?? matches[0] ?? null;
-
+    const winner = matches.find((row) => row.name === category.name) ?? matches[0] ?? null;
     const row = winner
-      ? await prisma.jobCategory.update({
-          where: { id: winner.id },
-          data: { name: category.name, sortOrder: category.sortOrder, status: 'active' },
-        })
+      ? await claimKeys(
+        winner,
+        seedKey,
+        systemKey,
+        (key) => prisma.jobCategory.findUnique({ where: { systemKey: key }, select: { id: true } }),
+        (data) => prisma.jobCategory.update({ where: { id: winner.id }, data }),
+      )
       : await prisma.jobCategory.create({
-          data: { name: category.name, sortOrder: category.sortOrder, status: 'active' },
-        });
+        data: { name: category.name, sortOrder: category.sortOrder, status: 'active', seedKey, systemKey: systemKey ?? null },
+      });
 
-    const losers = matches.filter((match) => match.id !== row.id);
+    // An older Category still active is merged into this one (its Work Orders and Jobs move; it stays, inactive).
+    const losers = matches.filter((match) => match.id !== row.id && match.status === 'active');
     if (losers.length) {
       const loserIds = losers.map((loser) => loser.id);
-      await prisma.workOrder.updateMany({
-        where: { primaryCategoryId: { in: loserIds } },
-        data: { primaryCategoryId: row.id },
-      });
-      await prisma.workOrderJob.updateMany({
-        where: { categoryId: { in: loserIds } },
-        data: { categoryId: row.id },
-      });
-      await prisma.catalogJob.updateMany({
-        where: { categoryId: { in: loserIds } },
-        data: { categoryId: row.id },
-      });
+      await prisma.workOrder.updateMany({ where: { primaryCategoryId: { in: loserIds } }, data: { primaryCategoryId: row.id } });
+      await prisma.workOrderJob.updateMany({ where: { categoryId: { in: loserIds } }, data: { categoryId: row.id } });
+      await prisma.catalogJob.updateMany({ where: { categoryId: { in: loserIds } }, data: { categoryId: row.id } });
       await prisma.jobCategory.updateMany({
         where: { id: { in: loserIds } },
-        data: { status: 'inactive' },
+        data: { status: 'inactive', inactiveReason: `Merged into ${row.name}` },
       });
     }
 
@@ -396,24 +452,38 @@ async function upsertCatalogCategories(prisma: JobCatalogClient) {
   return categoryIds;
 }
 
-async function upsertCatalogJob(
+async function ensureCatalogJob(
   prisma: JobCatalogClient,
-  input: { categoryId: string; item: CatalogJobDefinition; createdById?: string },
+  input: { categoryId: string; categoryName: string; item: CatalogJobDefinition; createdById?: string },
 ) {
+  const seedKey = jobSeedKey(input.categoryName, input.item.displayName);
+  const systemKey = SYSTEM_JOB_KEYS[`${input.categoryName}/${input.item.displayName}`];
+  const claimed = await prisma.catalogJob.findUnique({ where: { seedKey } });
+  if (claimed) return claimed;
+
+  // First time: claim the Job with this seed name (or an older one) in its Category; nothing else about it changes.
   const names = [input.item.displayName, ...(input.item.legacyNames ?? [])];
   const existing = await prisma.catalogJob.findFirst({
-    where: {
-      categoryId: input.categoryId,
-      displayName: { in: names },
-    },
+    where: { categoryId: input.categoryId, displayName: { in: names }, seedKey: null },
     orderBy: { createdAt: 'asc' },
-  });
-
-  if (existing) {
-    return prisma.catalogJob.update({
-      where: { id: existing.id },
-      data: { displayName: input.item.displayName, status: 'active' },
+  })
+    // Renamed by the Manager before this release: its seed aliases (other than the old name) are still on it.
+    ?? await prisma.catalogJob.findFirst({
+      where: {
+        categoryId: input.categoryId,
+        seedKey: null,
+        aliases: { some: { aliasNorm: { in: input.item.aliases.map(normalizeCatalogAlias).filter(Boolean) } } },
+      },
+      orderBy: { createdAt: 'asc' },
     });
+  if (existing) {
+    return claimKeys(
+      existing,
+      seedKey,
+      systemKey,
+      (key) => prisma.catalogJob.findUnique({ where: { systemKey: key }, select: { id: true } }),
+      (data) => prisma.catalogJob.update({ where: { id: existing.id }, data }),
+    );
   }
 
   return prisma.catalogJob.create({
@@ -422,6 +492,8 @@ async function upsertCatalogJob(
       categoryId: input.categoryId,
       status: 'active',
       createdById: input.createdById,
+      seedKey,
+      systemKey: systemKey ?? null,
     },
   });
 }
