@@ -360,6 +360,22 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - **Libro de costos**: una fila `outside_repair` en el camión, con su Work Order;
   corregir y anular escriben reversas como en las compras.
 
+### Costos del camión (Truck → Costs; LTR-200 / D32, PC-4)
+- El detalle del camión tiene pestañas **Overview · Costs** (`?tab=costs`), solo
+  para el Manager y el System Admin (D-PC7). La API es
+  `GET /admin/parts-costs/trucks/:id/costs?from=&to=` (mismo guard).
+- **Solo lee el libro** (`truck_cost_entries`): totales de partes, de
+  reparaciones externas y total en el período (por fecha de factura), una barra
+  por mes, y cada movimiento con su WO y el enlace a su compra o reparación. Las
+  reversas salen en negativo, marcadas **Voided** (anulada) o **Corrected**
+  (corregida), y bajan los totales.
+- Período: este mes, últimos 3 meses (por defecto), este año, todo.
+- **Mano de obra · coming later**: solo las horas de las sesiones **cerradas** de
+  los WO del camión que empezaron en el período (D18, D21), sin monto. **Charge to
+  Finance · coming later**: lugar reservado (§8 de la propuesta).
+- "Add purchase" y "Add outside repair" abren el formulario con el camión elegido.
+- Terminar un PM no escribe nada en el libro (D-PC4).
+
 ### Notas (`work_order_notes`)
 - Solo se agregan, nunca se editan (D8). Tipos: `note` y `work_request`
   ("Pedir trabajo": el mecánico avisa de trabajo extra).
