@@ -6,6 +6,7 @@ import { InvoiceFiles } from './invoice-files';
 import { PartsCostsController } from './parts-costs.controller';
 import { OutsideRepairsService } from './outside-repairs.service';
 import { PurchasesService } from './purchases.service';
+import { InternalInvoicesService } from './internal-invoices.service';
 import { LaborRatesService } from './labor-rates.service';
 import { TruckCostsService } from './truck-costs.service';
 
@@ -13,6 +14,6 @@ import { TruckCostsService } from './truck-costs.service';
 @Module({
   imports: [AuthModule, ActivityLogModule],
   controllers: [PartsCostsController],
-  providers: [PartsCatalogService, PurchasesService, OutsideRepairsService, TruckCostsService, LaborRatesService, { provide: InvoiceFiles, useFactory: () => new InvoiceFiles() }],
+  providers: [PartsCatalogService, PurchasesService, OutsideRepairsService, TruckCostsService, LaborRatesService, InternalInvoicesService, { provide: InvoiceFiles, useFactory: () => new InvoiceFiles() }],
 })
 export class PartsCostsModule {}

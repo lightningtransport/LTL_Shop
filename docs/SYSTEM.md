@@ -394,6 +394,27 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   solo las horas y "Set a labor rate". Las barras por mes suman partes, reparaciones
   y mano de obra.
 
+### Factura interna a Finanzas (`internal_invoices`, `internal_invoice_lines`; LTR-201 / D34, LB-2)
+- **Parts & costs → Internal invoices** (`/admin/parts/internal-invoices`): una por
+  **camión y mes**. Finanzas no entra a la app.
+- **Borrador:** trae las filas del libro del camión con fecha **hasta el fin del mes**
+  que ninguna otra factura (no anulada) cobra: partes al costo, reparaciones externas y
+  mano de obra. Así, una corrección hecha después de enviar una factura cae en la
+  siguiente. Una fila y su reversa, ambas sin cobrar, se cancelan y no entran. Un solo
+  borrador por camión y mes (`INTERNAL_INVOICE_DRAFT_EXISTS`); sin nada pendiente,
+  `NOTHING_TO_CHARGE`.
+- En el borrador se puede **sacar** una línea (queda sin cobrar para una factura
+  posterior; "Bring them in" no la vuelve a traer) y **volver a ponerla**; "Bring them
+  in" agrega lo nuevo.
+- **Send:** recibe el número `SHOP-AAAA-NNNN` (consecutivo por año, con candado) y se
+  congela (`INVOICE_NOT_DRAFT` para cualquier cambio). **Download PDF** abre el diálogo
+  de impresión con una página propia (bloque `#invoice-print`, negro sobre blanco):
+  "Guardar como PDF" y se manda a Finanzas.
+- **Mark accepted** cuando Finanzas la acepta. **Void** (con motivo) libera sus líneas
+  para otra factura; el número no se reusa. Un borrador se borra, no se anula.
+- Cada fila del libro está en una sola factura no anulada: `active` en la línea más un
+  índice único parcial.
+
 ### Notas (`work_order_notes`)
 - Solo se agregan, nunca se editan (D8). Tipos: `note` y `work_request`
   ("Pedir trabajo": el mecánico avisa de trabajo extra).

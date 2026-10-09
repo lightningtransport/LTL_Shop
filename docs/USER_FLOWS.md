@@ -568,7 +568,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Un mecánico o Safety intenta ver los costos de un camión; un PM se termina | No puede (403); terminar un PM no escribe nada en el costo del camión (D-PC4) | ✅ | A68 |
 | Quiere cobrarle a Finanzas | No en la etapa 1: diseñado (mano de obra × horas y factura interna por período), no construido | 🔲 después | — |
 
-### HU-M13 · Cobrarle a Finanzas lo que hizo el taller (J14) — 🟡 LB-1 construido (tarifa y mano de obra); LB-2 (factura interna) por construir (D34)
+### HU-M13 · Cobrarle a Finanzas lo que hizo el taller (J14) — ✅ construido (D34: LB-1 tarifa y mano de obra, LB-2 factura interna)
 
 **Quién:** el Manager. Finanzas recibe un PDF, no entra a la app.
 
@@ -585,11 +585,11 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Cambia la tarifa desde una fecha | Lo calculado antes de esa fecha no cambia; los WO completados con sesiones desde esa fecha se recalculan con reversas | ✅ | A70 |
 | Se reabre o se cancela un WO completado, o se corrige un tiempo | La mano de obra se corrige con reversas; nada de lo escrito cambia | ✅ | A70 |
 | No hay tarifa todavía | La mano de obra no tiene monto; Costs muestra las horas y "Set a labor rate" | ✅ | A71 |
-| Arma la factura de un camión y un mes | Trae los movimientos no cobrados del período, con subtotales por tipo; cada movimiento se cobra una sola vez | 🔲 LB-2 | A72 |
-| Saca una línea antes de enviar | Queda sin cobrar y aparece en la próxima factura de ese camión | 🔲 LB-2 | A73 |
-| Envía la factura | Queda congelada con su número, se descarga en PDF; una corrección posterior va a la del mes siguiente | 🔲 LB-2 | A74 |
-| Anula una factura enviada | Sus movimientos quedan libres para otra factura; el número no se reusa | 🔲 LB-2 | A75 |
-| Un mecánico o Safety intenta ver la tarifa o las facturas | No puede (403) | 🔲 LB-2 | A75 |
+| Arma la factura de un camión y un mes | Trae los movimientos no cobrados del período, con subtotales por tipo; cada movimiento se cobra una sola vez | ✅ | A72 |
+| Saca una línea antes de enviar | Queda sin cobrar y aparece en la próxima factura de ese camión | ✅ | A73 |
+| Envía la factura | Queda congelada con su número, se descarga en PDF; una corrección posterior va a la del mes siguiente | ✅ | A74 |
+| Anula una factura enviada | Sus movimientos quedan libres para otra factura; el número no se reusa | ✅ | A75 |
+| Un mecánico o Safety intenta ver la tarifa o las facturas | No puede (403) | ✅ | A75 |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 

@@ -1,6 +1,6 @@
 # Propuesta: Partes y costos por camión (etapa 1)
 
-**Clasificación:** CONSTRUIDA (etapa 1, PC-1 a PC-4, 2026-10-09). El estado actual está en `docs/SYSTEM.md`; §8 (mano de obra y factura interna) sigue siendo propuesta.
+**Clasificación:** CONSTRUIDA (etapa 1, PC-1 a PC-4; §8 mano de obra y factura interna, LB-1 y LB-2; 2026-10-09). El estado actual está en `docs/SYSTEM.md`; solo el stock (§8.3) sigue siendo idea.
 **Fecha:** 2026-10-07 · **Rama:** `claude/shop-workflow-revision-9afabe` · **Esperando la aprobación del dueño.**
 **Pantallas (nuevas):**
 - Parts & costs → **Purchases** (`/admin/parts/purchases`), **Outside repairs** (`/admin/parts/outside-repairs`),
@@ -392,7 +392,7 @@ Las barras por mes son simples (sin librería de gráficos); las reversas se mar
 Nada de esto entra en la etapa 1. Se describe para comprobar que el modelo de §5 lo soporta **solo agregando
 tablas y valores**.
 
-**Decidido el 2026-10-09 ([D34](../../DECISIONS.md)), se construye en LB-1 y LB-2.** Cambios respecto de lo que sigue:
+**Decidido el 2026-10-09 ([D34](../../DECISIONS.md)) y construido (LB-1 y LB-2, LTR-201); el estado actual está en `docs/SYSTEM.md`.** Cambios respecto de lo que sigue:
 - **Una sola tarifa del taller** (sin tarifas por mecánico). `labor_rates` queda con `user_id` vacío.
 - **Partes al costo**, sin recargo.
 - **Factura por camión y mes.**

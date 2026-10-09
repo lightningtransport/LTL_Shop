@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 108 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
+PASA 112 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 
 | # | Flujo | API real |
 |---|---|---|
@@ -44,7 +44,7 @@ PASA 108 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A28 | NO APLICA: WO de PM legacy (pausa, reanudar, terminar): ya no se pueden crear y no queda ninguno abierto | NO APLICA |
 | A29 | Crear Standard, PM y Safety: entran al roster con su tipo; correo repetido y mecánico no pueden; Safety solo es dueño del QC | PASA |
 | A30 | Desactivar: no deja con Jobs pendientes o tiempo corriendo (dice qué reasignar); sin trabajo abierto deja de entrar y de aparecer; reactivar | PASA |
-| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); LB-1 no toca reiniciar contraseña |
+| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); LB-2 no toca reiniciar contraseña |
 | A32 | Cierre del día: el reloj se cierra a las 5:00 p.m. (no a la hora en que alguien mira), el viernes no corre el fin de semana, fuera de horario a las 11:59 p.m., y al día siguiente "toca Continue" | PASA |
 | A33 | Horario del taller en Setup: el Manager (o el System Admin) cambia la hora y los días; aplica desde ese momento; los demás roles no pueden; datos inválidos no | PASA |
 | A34 | Ayudante: Job aparte "· ayudante" con su dueño; su reloj corre a su nombre en ese WO; no deja al mismo dueño, a quien no hace Standard, ni en PM / QC / otro ayudante; el bloqueo del principal no lo bloquea; cancelar el principal no lo cancela; solo el Manager | PASA |
@@ -85,6 +85,10 @@ PASA 108 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A69 | Al completar un WO, su mano de obra (horas × tarifa) entra al costo del camión con su WO | PASA |
 | A70 | Una tarifa nueva recalcula con reversas; reabrir el WO la saca y volver a cerrarlo la pone | PASA |
 | A71 | Sin tarifa no hay monto (solo horas); mecánicos y Safety no ven ni cambian la tarifa | PASA |
+| A72 | El borrador trae lo no cobrado del camión hasta fin de mes, con subtotales; cada movimiento se cobra una vez | PASA |
+| A73 | Una línea que se saca queda sin cobrar: no vuelve al traer lo nuevo y entra en la factura siguiente | PASA |
+| A74 | Enviada: número SHOP, congelada; una corrección posterior cae en la siguiente; Finanzas la acepta | PASA |
+| A75 | Anular una enviada libera sus movimientos; el número no se reusa; mecánicos y Safety no entran | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |
