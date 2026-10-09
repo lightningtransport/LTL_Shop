@@ -11,6 +11,7 @@ import {
   WorkPlanReadiness,
   isPmCategory,
   isQualityCheckJob,
+  laneForSystemKey,
   jobWorkStatus,
   type JobExternalDto,
   type JobExternalKind,
@@ -38,6 +39,8 @@ export type WorkPlanDerivationJob = {
   externalNote?: string | null;
   /** LTR-197 / D28: the step whose team queue the Job waits in (only for a Job born in a queue). */
   workflowStepKey?: string | null;
+  /** LTR-198 / SW5: the System Job's key; the lane follows it, not the name. */
+  systemKey?: string | null;
 };
 
 /** LTR-188 / D24: the Job's external-shop state as the DTOs carry it (null when it is in the shop). */
@@ -96,10 +99,17 @@ export function isDetailingWorkPlanJob(categoryName: string, displayName: string
   );
 }
 
+/**
+ * The Work Plan lane of a Job. LTR-198 / SW5: a Job made from a System Job carries its key (`systemKey`) and is
+ * placed by it, so renaming the catalog Job does not move it. Without a key the name rules below still apply.
+ */
 export function classifyWorkPlanLane(
   categoryName: string,
   displayName: string,
+  systemKey?: string | null,
 ): WorkPlanJobLane {
+  const bySystemKey = laneForSystemKey(systemKey);
+  if (bySystemKey) return bySystemKey;
   const category = normalize(categoryName);
   const name = normalize(displayName);
   if (isDetailingWorkPlanJob(categoryName, displayName)) {
@@ -170,7 +180,7 @@ export function toWorkPlanJobDto(
     status: job.status as JobStatus,
     // LTR-188 / D24: a Job at an external shop reads "At external shop", not Pending.
     uiStatus: external ? WorkPlanJobUiStatus.EXTERNAL : uiStatus,
-    lane: classifyWorkPlanLane(job.category.name, job.displayName),
+    lane: classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey),
     ...(job.assignedMechanic !== undefined ? { assignedMechanic: job.assignedMechanic } : {}),
     helperOfJobId: job.helperOfJobId ?? null,
     external,

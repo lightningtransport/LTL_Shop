@@ -38,7 +38,7 @@ su pantalla inicial y separa al System Admin.
 
 | Persona | Rol | Capabilities | Qué hace |
 |---|---|---|---|
-| **Shop Manager** | `manager` | `admin.access`, `work_orders.manage`, `yard.operations.manage` | Crea y planea WOs, inspecciona, asigna, pausa, resuelve bloqueos, hace QC como respaldo de Safety en `/qc` (D29), arma los equipos de cada paso (D28), cierra, Return to Service. **Da de alta al personal** (Standard, PM, Safety), lo desactiva/reactiva y reinicia contraseñas (D22). **Mantiene el catálogo de Jobs**: agrega, renombra y activa Jobs de catálogo; las categorías no cambian (D25). |
+| **Shop Manager** | `manager` | `admin.access`, `work_orders.manage`, `yard.operations.manage` | Crea y planea WOs, inspecciona, asigna, pausa, resuelve bloqueos, hace QC como respaldo de Safety en `/qc` (D29), arma los equipos de cada paso (D28), cierra, Return to Service. **Da de alta al personal** (Standard, PM, Safety), lo desactiva/reactiva y reinicia contraseñas (D22). **Mantiene el catálogo de Jobs** (D25, D30): categorías, Jobs y aliases; los Jobs y categorías del flujo del taller están protegidos. |
 | **System Admin** | `admin` | `admin.access` (+ las demás que necesite) | Lo mismo que el Manager (el roster y el catálogo de Jobs los abre por rol, aunque solo tenga `admin.access`). |
 | **Mecánico Standard** | `mechanic` | `mechanic.standard` | Ejecuta sus Jobs asignados. |
 | **Mecánico PM** | `mechanic` | `mechanic.pm` | Hace el PM de los camiones. |
@@ -47,7 +47,7 @@ su pantalla inicial y separa al System Admin.
 | Capability | Da acceso a |
 |---|---|
 | `admin.access` | Entrar a `/admin`. Reabrir WO, corregir tiempos, reabrir Job cancelado, Return to Service. **El Manager también la tiene**, así que puede hacer todo esto. |
-| `work_orders.manage` | Crear WO, agregar/cancelar Jobs, asignar, prioridad, notas, pausar/reanudar, completar/cancelar WO, resolver bloqueos, editar Shop workflow. Con `admin.access`, también el **roster** (`POST/PATCH /api/admin/mechanics`, reset-password; D22) y los **Jobs de catálogo** (`POST/PATCH /api/admin/catalog/jobs`; D25). Mecánicos y Safety reciben 403. |
+| `work_orders.manage` | Crear WO, agregar/cancelar Jobs, asignar, prioridad, notas, pausar/reanudar, completar/cancelar WO, resolver bloqueos, editar Shop workflow. Con `admin.access`, también el **roster** (`POST/PATCH /api/admin/mechanics`, reset-password; D22) y el **catálogo** (`/api/admin/catalog/jobs`, `/categories`, `/jobs/:id/aliases`, `GET /search`; D25, D30). Mecánicos y Safety reciben 403. |
 | `yard.operations.manage` | Registrar la inspección del Truck. |
 | `mechanic.standard` | Pantallas y acciones del mecánico Standard. |
 | `mechanic.pm` | Pantallas y acciones del mecánico PM. |
@@ -153,6 +153,13 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - Los Jobs de catálogo no se repiten; los Custom Jobs no repiten nombre
   (normalizado). Los Custom Jobs quedan con `review_status = pending_review`
   (la bandeja para revisarlos va después, LTR-57).
+- **Catálogo con protecciones (D30, LTR-198):**
+  - Los Jobs del sistema (`catalog_jobs.system_key`: `pm_a`, `pm_b`, `alignment`, `detailing`, `quality_check`) no se desactivan ni se borran (`SYSTEM_JOB_LOCKED`); se pueden renombrar. Cada Job de un WO hecho de ellos copia la clave (`work_order_jobs.system_key`, trigger `work_order_jobs_copy_system_key`), y `classifyWorkPlanLane` la lee antes que el nombre.
+  - Las categorías del sistema (PM, Detailing, Quality Check; `job_categories.system_key`) no se renombran, desactivan ni borran (`SYSTEM_CATEGORY_LOCKED`): la app lee "PM" por nombre en muchos lugares. Una categoría con un Job del sistema (Suspension & Steering) no se desactiva (`CATEGORY_HAS_SYSTEM_JOB`).
+  - Borrar: un Job solo si ningún WO lo usó (`CATALOG_JOB_IN_USE` con `workOrderCount`); una categoría solo vacía y nunca usada (`CATALOG_CATEGORY_IN_USE`). Si no, se desactiva.
+  - Aliases: `alias_norm = normalizeCatalogText(texto)` (sin tildes ni mayúsculas). Un alias repetido responde `CATALOG_ALIAS_EXISTS` con el Job y la categoría que ya lo tienen. El nombre del Job siempre es alias. Renombrar conserva el nombre viejo como alias salvo `keepOldNameAsAlias: false` (D-SET4).
+  - Una categoría inactiva guarda su motivo (`inactive_reason`, D-SET9).
+  - `applyJobCatalog` (cada publicación) solo crea lo que falta; reconoce lo que ya creó por `seed_key` y nunca renombra, reactiva ni reasigna aliases.
 - **"Agregar también al catálogo"** (D25): al agregar un Job personalizado en
   el Work Plan, el Manager puede marcarlo (apagado por defecto). El Job entra
   primero al catálogo de esa categoría y al WO como **Job de catálogo**

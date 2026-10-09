@@ -5,6 +5,7 @@ import { CatalogStatus, type AdminCatalogCategorySummaryDto, type AdminCatalogJo
 import { useActionToast } from './action-toast';
 import { Button, InlineAlert, Input, Label, Modal, Select } from './ui';
 import { createAdminCatalogJob, updateAdminCatalogJob } from '@/lib/admin-data';
+import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
 
@@ -51,62 +52,6 @@ export function AdminCatalogWriteActions({
         }}
       />
     </>
-  );
-}
-
-export function AdminCatalogJobActions({
-  job,
-  messages,
-  onChanged,
-}: {
-  job: AdminCatalogJobDto;
-  messages: AdminMessages;
-  onChanged: () => void;
-}) {
-  const { showToast } = useActionToast();
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function activate() {
-    setBusy(true);
-    setError(null);
-    try {
-      await updateAdminCatalogJob(job.id, { status: CatalogStatus.ACTIVE });
-      showToast('success', messages.catalogJobActivated);
-      onChanged();
-    } catch (failure) {
-      setError(adminWriteFailureMessage(failure, catalogCopy(messages)));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="mt-2 space-y-2">
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="outline" onClick={() => setRenameOpen(true)}>
-          {messages.catalogRenameJob}
-        </Button>
-        {job.status === CatalogStatus.INACTIVE ? (
-          <Button type="button" size="sm" onClick={() => void activate()} disabled={busy}>
-            {messages.catalogActivateJob}
-          </Button>
-        ) : null}
-      </div>
-      {error ? <InlineAlert>{error}</InlineAlert> : null}
-      <RenameJobDialog
-        open={renameOpen}
-        job={job}
-        messages={messages}
-        onClose={() => setRenameOpen(false)}
-        onRenamed={() => {
-          setRenameOpen(false);
-          showToast('success', messages.catalogJobRenamed);
-          onChanged();
-        }}
-      />
-    </div>
   );
 }
 
@@ -190,7 +135,8 @@ function AddJobDialog({
   );
 }
 
-function RenameJobDialog({
+/** LTR-198 / D-SET4: rename; the old name stays an alias unless the Manager unticks it. */
+export function RenameJobDialog({
   open,
   job,
   messages,
@@ -204,12 +150,14 @@ function RenameJobDialog({
   onRenamed: () => void;
 }) {
   const [displayName, setDisplayName] = useState(job.displayName);
+  const [keepOldName, setKeepOldName] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setDisplayName(job.displayName);
+    setKeepOldName(true);
     setError(null);
   }, [open, job.displayName]);
 
@@ -223,7 +171,7 @@ function RenameJobDialog({
     setBusy(true);
     setError(null);
     try {
-      await updateAdminCatalogJob(job.id, { displayName: name });
+      await updateAdminCatalogJob(job.id, { displayName: name, keepOldNameAsAlias: keepOldName });
       onRenamed();
     } catch (failure) {
       setError(adminWriteFailureMessage(failure, catalogCopy(messages)));
@@ -245,6 +193,10 @@ function RenameJobDialog({
             autoComplete="off"
           />
         </div>
+        <label className="flex min-h-11 items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1" checked={keepOldName} disabled={busy} onChange={(event) => setKeepOldName(event.target.checked)} />
+          <span>{fillPlaceholders(messages.catalogKeepOldName, { name: job.displayName })}</span>
+        </label>
         {error ? <InlineAlert>{error}</InlineAlert> : null}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>

@@ -24,6 +24,7 @@ import type {
   UserDto,
   AdminCatalogCategoryDetailDto,
   AdminCatalogCategorySummaryDto,
+  AdminCatalogSearchHitDto,
   YardDataBoundaryDto,
   YardOperationsPageDto,
   TruckWorkPlanDto,
@@ -600,15 +601,53 @@ export function createAdminCatalogJob(input: { categoryId: string; displayName: 
   });
 }
 
+/** LTR-198 / D30: Categories, deleting Jobs, aliases and the search across Jobs and aliases. */
+export function createAdminCatalogCategory(name: string) {
+  return apiFetch<AdminCatalogCategorySummaryDto>('/api/admin/catalog/categories', { method: 'POST', body: JSON.stringify({ name: name.trim() }) });
+}
+
+export function updateAdminCatalogCategory(id: string, input: { name?: string; status?: CatalogStatus; inactiveReason?: string | null }) {
+  return apiFetch<AdminCatalogCategorySummaryDto>(`/api/admin/catalog/categories/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function deleteAdminCatalogCategory(id: string) {
+  return apiFetch<{ deleted: true }>(`/api/admin/catalog/categories/${id}`, { method: 'DELETE' });
+}
+
+export function deleteAdminCatalogJob(id: string) {
+  return apiFetch<{ deleted: true }>(`${ADMIN_CATALOG_JOBS_PATH}/${id}`, { method: 'DELETE' });
+}
+
+export function addAdminCatalogAlias(jobId: string, text: string) {
+  return apiFetch<{ id: string; text: string }>(`${ADMIN_CATALOG_JOBS_PATH}/${jobId}/aliases`, { method: 'POST', body: JSON.stringify({ text: text.trim() }) });
+}
+
+export function removeAdminCatalogAlias(jobId: string, aliasId: string) {
+  return apiFetch<{ deleted: true }>(`${ADMIN_CATALOG_JOBS_PATH}/${jobId}/aliases/${aliasId}`, { method: 'DELETE' });
+}
+
+export function useAdminCatalogSearch(query: string) {
+  const { token } = useAuth();
+  const q = query.trim();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminCatalogSearchHitDto[]>(token && q.length >= 2 ? `/api/admin/catalog/search?q=${encodeURIComponent(q)}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      keepPreviousData: true,
+    }),
+  );
+}
+
 export function updateAdminCatalogJob(
   jobId: string,
-  input: { displayName?: string; status?: CatalogStatus },
+  input: { displayName?: string; status?: CatalogStatus; keepOldNameAsAlias?: boolean },
 ) {
   return apiFetch<AdminCatalogJobWriteDto>(`${ADMIN_CATALOG_JOBS_PATH}/${jobId}`, {
     method: 'PATCH',
     body: JSON.stringify({
       ...(input.displayName === undefined ? {} : { displayName: input.displayName.trim() }),
       ...(input.status === undefined ? {} : { status: input.status }),
+      ...(input.keepOldNameAsAlias === undefined ? {} : { keepOldNameAsAlias: input.keepOldNameAsAlias }),
     }),
   });
 }

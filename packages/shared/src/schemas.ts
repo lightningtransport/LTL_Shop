@@ -45,8 +45,29 @@ export const adminCreateCatalogJobSchema = z.object({
 export const adminUpdateCatalogJobSchema = z.object({
   displayName: z.string().trim().min(1).max(200).optional(),
   status: z.nativeEnum(CatalogStatus).optional(),
+  /** LTR-198 / D-SET4: on rename, keep the old name as an alias (default) so searches still find the Job. */
+  keepOldNameAsAlias: z.boolean().optional(),
 }).refine((value) => value.displayName !== undefined || value.status !== undefined, {
   message: 'Provide a display name or status',
+});
+
+/** LTR-198 / D30: the Manager creates a Category. */
+export const adminCreateCatalogCategorySchema = z.object({
+  name: z.string().trim().min(1).max(120),
+});
+
+/** LTR-198 / D30, D-SET9: rename, activate or deactivate a Category (with an optional one-line reason). */
+export const adminUpdateCatalogCategorySchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  status: z.nativeEnum(CatalogStatus).optional(),
+  inactiveReason: z.string().trim().max(200).nullable().optional(),
+}).refine((value) => value.name !== undefined || value.status !== undefined || value.inactiveReason !== undefined, {
+  message: 'Provide a name, a status or a reason',
+});
+
+/** LTR-198 / D30: add an alias to a catalog Job. */
+export const adminCreateCatalogAliasSchema = z.object({
+  text: z.string().trim().min(1).max(200),
 });
 
 export const adminListQuerySchema = z.object({

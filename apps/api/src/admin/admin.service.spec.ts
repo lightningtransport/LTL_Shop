@@ -492,6 +492,9 @@ describe('AdminService', () => {
       activeJobCount: 1,
       inactiveJobCount: 1,
       aliasCount: 3,
+      systemKey: null,
+      inactiveReason: null,
+      holdsSystemJob: false,
     }]);
   });
 
@@ -506,7 +509,10 @@ describe('AdminService', () => {
         id: '00000000-0000-4000-8000-000000000801',
         displayName: 'Inspect brake chamber',
         status: 'active',
-        aliases: [{ aliasText: 'Brake chamber' }],
+        systemKey: null,
+        aliases: [{ id: '00000000-0000-4000-8000-000000000901', aliasText: 'Brake chamber' }],
+        workflowSteps: [],
+        _count: { workOrderJobs: 3 },
       }],
     });
     const service = createService(prisma);

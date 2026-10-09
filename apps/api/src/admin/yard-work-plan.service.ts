@@ -66,6 +66,7 @@ type OpenWorkOrderRow = {
     externalKind: string | null;
     externalNote: string | null;
     workflowStepKey?: string | null;
+    systemKey?: string | null;
   }>;
   sessions: Array<{ endedAt: Date | null; userId: string | null }>;
   pauseEvents: Array<{ jobId: string | null }>;
@@ -127,6 +128,7 @@ export class YardWorkPlanService {
             externalKind: job.externalKind,
             externalNote: job.externalNote,
             workflowStepKey: job.workflowStepKey,
+            systemKey: job.systemKey,
           })),
       sessions: workOrder?.sessions ?? [],
       inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null,

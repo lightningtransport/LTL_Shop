@@ -75,7 +75,7 @@ function queueRows(prisma: QueueClient) {
 }
 
 function qcJobOf(row: QueueRow) {
-  return row.jobs.find((job) => job.status !== 'cancelled' && classifyWorkPlanLane(job.category.name, job.displayName) === WorkPlanJobLane.QUALITY_CHECK) ?? null;
+  return row.jobs.find((job) => job.status !== 'cancelled' && classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey) === WorkPlanJobLane.QUALITY_CHECK) ?? null;
 }
 
 /** Every Job other than the Quality Check is completed or cancelled. */
@@ -381,8 +381,8 @@ export class QualityCheckService {
       const notes = (log?.newValue as { notes?: unknown } | null)?.notes;
       return typeof notes === 'string' && notes.trim() ? notes : null;
     };
-    const qcJobId = row.jobs.find((job) => job.status !== 'cancelled' && classifyWorkPlanLane(job.category.name, job.displayName) === WorkPlanJobLane.QUALITY_CHECK)?.id ?? null;
-    const lanes = row.jobs.map((job) => classifyWorkPlanLane(job.category.name, job.displayName));
+    const qcJobId = row.jobs.find((job) => job.status !== 'cancelled' && classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey) === WorkPlanJobLane.QUALITY_CHECK)?.id ?? null;
+    const lanes = row.jobs.map((job) => classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey));
     const inspectionRequirement = row.readinessAssessment?.requirements.find((requirement) => requirement.type === ReadinessRequirementType.INSPECTION) ?? null;
     const hasShopWork = row.jobs.some((job, index) => lanes[index] === WorkPlanJobLane.SHOP_WORK && job.status !== 'cancelled');
     const inspectionOutcome = hasShopWork

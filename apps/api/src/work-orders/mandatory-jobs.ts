@@ -92,21 +92,21 @@ function capabilityDbValue(capability: AppCapability) {
 /** Mandatory jobs whose lane is not already covered by the Jobs the Manager picked. */
 export async function resolveMandatoryJobs(
   client: CatalogClient,
-  existing: Array<{ categoryName: string; displayName: string }>,
+  existing: Array<{ categoryName: string; displayName: string; systemKey?: string | null }>,
 ): Promise<MandatoryJob[]> {
-  const coveredLanes = new Set(existing.map((job) => classifyWorkPlanLane(job.categoryName, job.displayName)));
+  const coveredLanes = new Set(existing.map((job) => classifyWorkPlanLane(job.categoryName, job.displayName, job.systemKey)));
   const steps = await client.shopWorkflowStep.findMany({
     where: { active: true, catalogJob: { status: 'active', category: { status: 'active' } } },
     orderBy: { sortOrder: 'asc' },
     select: {
       stepKey: true,
-      catalogJob: { select: { id: true, categoryId: true, displayName: true, category: { select: { name: true } } } },
+      catalogJob: { select: { id: true, categoryId: true, displayName: true, systemKey: true, category: { select: { name: true } } } },
       members: { select: { user: { select: { id: true, active: true, role: true, capabilities: { select: { capability: true } } } } } },
     },
   });
   if (steps.length) {
     return steps
-      .filter((step) => !coveredLanes.has(classifyWorkPlanLane(step.catalogJob.category.name, step.catalogJob.displayName)))
+      .filter((step) => !coveredLanes.has(classifyWorkPlanLane(step.catalogJob.category.name, step.catalogJob.displayName, step.catalogJob.systemKey)))
       .map((step) => {
         const team = teamAssignment(step.stepKey, step.members.map((member) => member.user));
         return {

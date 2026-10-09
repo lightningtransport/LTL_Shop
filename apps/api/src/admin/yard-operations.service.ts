@@ -978,6 +978,7 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
           externalKind: job.externalKind,
           externalNote: job.externalNote,
           workflowStepKey: job.workflowStepKey,
+          systemKey: job.systemKey,
         })),
     inspectionRequirementOutcome: (inspectionRequirement?.outcome as ReadinessRequirementOutcome | undefined) ?? null,
   };

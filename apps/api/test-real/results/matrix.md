@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 81 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
+PASA 85 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 
 | # | Flujo | API real |
 |---|---|---|
@@ -44,7 +44,7 @@ PASA 81 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A28 | NO APLICA: WO de PM legacy (pausa, reanudar, terminar): ya no se pueden crear y no queda ninguno abierto | NO APLICA |
 | A29 | Crear Standard, PM y Safety: entran al roster con su tipo; correo repetido y mecánico no pueden; Safety solo es dueño del QC | PASA |
 | A30 | Desactivar: no deja con Jobs pendientes o tiempo corriendo (dice qué reasignar); sin trabajo abierto deja de entrar y de aparecer; reactivar | PASA |
-| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); S1 no toca ese flujo |
+| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); S2 no toca ese flujo |
 | A32 | Cierre del día: el reloj se cierra a las 5:00 p.m. (no a la hora en que alguien mira), el viernes no corre el fin de semana, fuera de horario a las 11:59 p.m., y al día siguiente "toca Continue" | PASA |
 | A33 | Horario del taller en Setup: el Manager (o el System Admin) cambia la hora y los días; aplica desde ese momento; los demás roles no pueden; datos inválidos no | PASA |
 | A34 | Ayudante: Job aparte "· ayudante" con su dueño; su reloj corre a su nombre en ese WO; no deja al mismo dueño, a quien no hace Standard, ni en PM / QC / otro ayudante; el bloqueo del principal no lo bloquea; cancelar el principal no lo cancela; solo el Manager | PASA |
@@ -58,6 +58,10 @@ PASA 81 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A42 | Equipo de 1: el Job nace asignado a esa persona, como antes | PASA |
 | A43 | Equipo vacío o con alguien que ya no puede: el Job nace sin dueño y el Manager lo ve para asignar; guardar no se bloquea | PASA |
 | A44 | El paso de PM: equipo de mecánicos de PM; nace con PM A y el mecánico sigue eligiendo A o B | PASA |
+| A45 | Categorías: crear, renombrar, desactivar con motivo, activar y borrar solo vacía; las del flujo del taller no cambian | PASA |
+| A46 | Jobs: borrar solo si nunca se usó; si se usó, desactivar; los del sistema no; renombrar Alignment no lo saca de su carril y el nombre viejo queda como alias | PASA |
+| A47 | Aliases: agregar y quitar; el choque dice de qué Job es; las tildes no cuentan; la búsqueda encuentra Jobs y aliases de todas las categorías | PASA |
+| A48 | La carga del catálogo de cada publicación no deshace lo que cambió el Manager ni duplica nada | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

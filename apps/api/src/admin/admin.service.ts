@@ -164,7 +164,7 @@ const summaryInclude = {
     select: {
       id: true, status: true, assignedMechanicId: true, displayName: true, addedAt: true,
       // LTR-188 / D23, D24: helper Jobs and Jobs at an external shop feed the Next step.
-      helperOfJobId: true, externalSince: true, externalKind: true, externalNote: true, workflowStepKey: true,
+      helperOfJobId: true, externalSince: true, externalKind: true, externalNote: true, workflowStepKey: true, systemKey: true,
       category: { select: { name: true } },
       assignedMechanic: { select: { id: true, name: true } },
     },
@@ -461,7 +461,7 @@ export class AdminService {
             jobs: {
               select: {
                 id: true, status: true, displayName: true, assignedMechanicId: true,
-                externalSince: true, externalKind: true, externalNote: true, workflowStepKey: true,
+                externalSince: true, externalKind: true, externalNote: true, workflowStepKey: true, systemKey: true,
                 category: { select: { id: true, name: true } },
               },
               orderBy: { addedAt: 'asc' },
@@ -499,6 +499,7 @@ export class AdminService {
         catalogJobs: {
           select: {
             status: true,
+            systemKey: true,
             _count: { select: { aliases: true } },
           },
         },
@@ -513,7 +514,11 @@ export class AdminService {
       where: { id },
       include: {
         catalogJobs: {
-          include: { aliases: { select: { aliasText: true }, orderBy: { aliasText: 'asc' } } },
+          include: {
+            aliases: { select: { id: true, aliasText: true }, orderBy: { aliasText: 'asc' } },
+            workflowSteps: { select: { stepKey: true } },
+            _count: { select: { workOrderJobs: true } },
+          },
           orderBy: [{ status: 'asc' }, { displayName: 'asc' }],
         },
       },
@@ -523,6 +528,7 @@ export class AdminService {
       ...row,
       catalogJobs: row.catalogJobs.map((job) => ({
         status: job.status,
+        systemKey: job.systemKey,
         _count: { aliases: job.aliases.length },
       })),
     });
@@ -533,6 +539,11 @@ export class AdminService {
         displayName: job.displayName,
         status: job.status as CatalogStatus,
         aliases: job.aliases.map((alias) => alias.aliasText),
+        // LTR-198 / D30: the lock, "Used by" and the alias chips.
+        systemKey: job.systemKey,
+        aliasItems: job.aliases.map((alias) => ({ id: alias.id, text: alias.aliasText })),
+        workOrderCount: job._count.workOrderJobs,
+        usedByStep: job.workflowSteps[0]?.stepKey ?? null,
       })),
     };
   }
@@ -756,7 +767,7 @@ export class AdminService {
     // LTR-146: the PM job goes to a PM mechanic, who does not join the Standard team.
     const isPmJob = isPmCategory(job.category.name);
     // LTR-185 / D19: the Quality Check belongs to Safety, who is not on the team either.
-    const isQcJob = classifyWorkPlanLane(job.category.name, job.displayName) === WorkPlanJobLane.QUALITY_CHECK;
+    const isQcJob = classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey) === WorkPlanJobLane.QUALITY_CHECK;
     if (isPmJob && (job.status !== JobStatus.to_do || job.startedAt)) {
       throw new BadRequestException('A started or finished PM job cannot be reassigned');
     }
@@ -1830,7 +1841,7 @@ export class AdminService {
       if (job.status !== JobStatus.to_do || job.externalSince) {
         throw new BadRequestException({ code: 'HELPER_JOB_NOT_OPEN', message: 'A helper can only be added to a pending Job of an open Work Order.' });
       }
-      const lane = classifyWorkPlanLane(job.category.name, job.displayName);
+      const lane = classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey);
       if (lane === WorkPlanJobLane.PM || lane === WorkPlanJobLane.QUALITY_CHECK || job.helperOfJobId) {
         throw new BadRequestException({ code: 'HELPER_NOT_ALLOWED_HERE', message: 'This Job cannot have a helper.' });
       }
@@ -1905,7 +1916,7 @@ export class AdminService {
         throw new BadRequestException('Job is not in To Do status');
       }
       // D19: the Quality Check is Safety's step at the end; it never goes out.
-      if (classifyWorkPlanLane(job.category.name, job.displayName) === WorkPlanJobLane.QUALITY_CHECK) {
+      if (classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey) === WorkPlanJobLane.QUALITY_CHECK) {
         throw new BadRequestException({ code: 'EXTERNAL_NOT_ALLOWED_HERE', message: 'The Quality Check cannot go to an external shop.' });
       }
       if (job.externalSince) {
@@ -2400,22 +2411,22 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
 // LTR-164 / D15: Quality Check never has an owner, so it is not an unassigned Job.
 // LTR-188 / D24: neither is a Job at an external shop (no owner on purpose).
 export function countUnassignedJobs(
-  jobs: Array<{ status: string; assignedMechanicId?: string | null; displayName?: string; category?: { name: string }; externalSince?: Date | null; workflowStepKey?: string | null }>,
+  jobs: Array<{ status: string; assignedMechanicId?: string | null; displayName?: string; category?: { name: string }; externalSince?: Date | null; workflowStepKey?: string | null; systemKey?: string | null }>,
 ): number {
   // LTR-197 / D28: a Job waiting in its team queue is not unassigned either.
   return jobs.filter((job) => job.status === 'to_do'
     && !job.assignedMechanicId
     && !job.externalSince
     && !job.workflowStepKey
-    && classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '') !== WorkPlanJobLane.QUALITY_CHECK).length;
+    && classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '', job.systemKey) !== WorkPlanJobLane.QUALITY_CHECK).length;
 }
 
 // LTR-157: flow order for "Next: <Job>" on lists and cards.
 const LANE_FLOW_ORDER = ['inspection', 'shop_work', 'pm', 'alignment', 'detailing', 'quality_check'];
 
-function nextJobInFlow(jobs: Array<{ status: string; displayName?: string; category?: { name: string }; externalSince?: Date | null }>): string | null {
+function nextJobInFlow(jobs: Array<{ status: string; displayName?: string; category?: { name: string }; externalSince?: Date | null; systemKey?: string | null }>): string | null {
   const pending = jobs
-    .map((job, index) => ({ job, index, rank: LANE_FLOW_ORDER.indexOf(classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '')) }))
+    .map((job, index) => ({ job, index, rank: LANE_FLOW_ORDER.indexOf(classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '', job.systemKey)) }))
     // LTR-188 / D24: a Job at an external shop is not the next thing done here.
     .filter(({ job }) => job.status === 'to_do' && !job.externalSince)
     .sort((left, right) => left.rank - right.rank || left.index - right.index);
@@ -2617,7 +2628,9 @@ function toCatalogCategorySummary(row: {
   name: string;
   status: string;
   sortOrder: number;
-  catalogJobs: { status: string; _count: { aliases: number } }[];
+  systemKey?: string | null;
+  inactiveReason?: string | null;
+  catalogJobs: { status: string; systemKey?: string | null; _count: { aliases: number } }[];
 }): AdminCatalogCategorySummaryDto {
   return {
     id: row.id,
@@ -2627,6 +2640,10 @@ function toCatalogCategorySummary(row: {
     activeJobCount: row.catalogJobs.filter((job) => job.status === 'active').length,
     inactiveJobCount: row.catalogJobs.filter((job) => job.status === 'inactive').length,
     aliasCount: row.catalogJobs.reduce((total, job) => total + job._count.aliases, 0),
+    // LTR-198 / D30, D-SET9.
+    systemKey: row.systemKey ?? null,
+    inactiveReason: row.inactiveReason ?? null,
+    holdsSystemJob: row.catalogJobs.some((job) => Boolean(job.systemKey)),
   };
 }
 

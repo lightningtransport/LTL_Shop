@@ -881,6 +881,12 @@ export interface AdminCatalogCategorySummaryDto {
   activeJobCount: number;
   inactiveJobCount: number;
   aliasCount: number;
+  /** LTR-198 / D30: PM, Detailing or Quality Check — locked (no rename, deactivate or delete). */
+  systemKey?: string | null;
+  /** D-SET9: why it is inactive. */
+  inactiveReason?: string | null;
+  /** True when it holds a System Job, so it cannot be deactivated or deleted (e.g. Suspension & Steering). */
+  holdsSystemJob?: boolean;
 }
 
 export interface AdminCatalogJobDto {
@@ -888,6 +894,26 @@ export interface AdminCatalogJobDto {
   displayName: string;
   status: CatalogStatus;
   aliases: string[];
+  /** LTR-198 / D30: pm_a, pm_b, alignment, detailing, quality_check — cannot be deactivated or deleted. */
+  systemKey?: string | null;
+  /** Aliases with their ids, to remove one. The alias equal to the Job's name cannot be removed. */
+  aliasItems?: Array<{ id: string; text: string }>;
+  /** Work Order Jobs made from it (any status). Zero means it can be deleted. */
+  workOrderCount?: number;
+  /** The Shop workflow step it is the Job of, if any. */
+  usedByStep?: string | null;
+}
+
+/** LTR-198 / JC2: one hit of the catalog search (Jobs and aliases, accents and capitals ignored). */
+export interface AdminCatalogSearchHitDto {
+  jobId: string;
+  displayName: string;
+  status: CatalogStatus;
+  categoryId: string;
+  categoryName: string;
+  categoryStatus: CatalogStatus;
+  /** The alias that matched, when it was not the name. */
+  matchedAlias: string | null;
 }
 
 /** LTR-77 write response. Same job id after rename or activate. */
