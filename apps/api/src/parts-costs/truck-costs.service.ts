@@ -9,8 +9,9 @@ const asDate = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 /**
  * LTR-200 / D32 (PC-4): Truck → Costs only reads the ledger (`truck_cost_entries`): totals by kind and by month in
- * the period (by invoice date), and every row, reversals included, so a void or an edit lowers the totals. Labor is
- * hours only: closed sessions of the truck's Work Orders that started in the period (D18, D21); there is no rate yet.
+ * the period (by invoice date), and every row, reversals included, so a void or an edit lowers the totals. Labor hours
+ * are the closed sessions of the truck's Work Orders that started in the period (D18, D21); the labor amount is the
+ * ledger's `labor` rows (D34, written when a Work Order is completed).
  */
 @Injectable()
 export class TruckCostsService {
@@ -42,23 +43,27 @@ export class TruckCostsService {
     ]);
 
     const voided = await this.voidedSources(rows);
-    const months = new Map<string, { partsCents: number; outsideCents: number }>();
+    const months = new Map<string, { partsCents: number; outsideCents: number; laborCents: number }>();
     let partsCents = 0;
     let outsideCents = 0;
+    let laborCents = 0;
     for (const row of rows) {
       const month = dateOnly(row.occurredOn).slice(0, 7);
-      const bucket = months.get(month) ?? { partsCents: 0, outsideCents: 0 };
+      const bucket = months.get(month) ?? { partsCents: 0, outsideCents: 0, laborCents: 0 };
       if (row.kind === 'part_purchase') { partsCents += row.amountCents; bucket.partsCents += row.amountCents; }
       if (row.kind === 'outside_repair') { outsideCents += row.amountCents; bucket.outsideCents += row.amountCents; }
+      // LTR-201 / D34: labor of completed Work Orders (hours × the shop rate).
+      if (row.kind === 'labor') { laborCents += row.amountCents; bucket.laborCents += row.amountCents; }
       months.set(month, bucket);
     }
+    const laborRateSet = (await this.prisma.laborRate.count()) > 0;
     const minutes = sessions.reduce((sum, session) => sum + Math.max(0, session.endedAt!.getTime() - session.startedAt.getTime()) / 60_000, 0);
 
     return {
       truck,
       from: from ?? null,
       to: to ?? null,
-      totals: { partsCents, outsideCents, totalCents: partsCents + outsideCents },
+      totals: { partsCents, outsideCents, laborCents, totalCents: partsCents + outsideCents + laborCents },
       months: [...months.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([month, value]) => ({ month, ...value })),
       entries: rows.map((row): AdminTruckCostEntryDto => ({
         id: row.id,
@@ -72,6 +77,7 @@ export class TruckCostsService {
         reversal: row.reversesEntryId ? (voided.has(row.sourceId) ? 'voided' : 'corrected') : null,
       })),
       laborHours: Math.round((minutes / 60) * 100) / 100,
+      laborRateSet,
     };
   }
 

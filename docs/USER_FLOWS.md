@@ -48,6 +48,7 @@ respuestas confirman lo construido y 7 muestran huecos (sección 7).
 | J11 | Safety (QC) | un camión terminó su trabajo | revisarlo y aprobarlo, o devolverlo con lo que encontré | que ningún camión salga sin el visto bueno de Safety |
 | J12 | Manager | entra un camión o un mecánico nuevo | darlo de alta yo mismo en la app | no depender de nadie para empezar a trabajar |
 | J13 | Manager | compro partes o pago una reparación afuera | cargarla con su factura y asignarla al camión | saber cuánto cuesta cada camión y, después, cobrarle a Finanzas lo que hace el taller |
+| J14 | Manager | cierro el mes | mandarle a Finanzas lo que el taller hizo por cada camión (partes, talleres externos y mano de obra) | que el taller cobre su trabajo sin armar la cuenta a mano |
 
 **Quién usa qué:** los mecánicos, en el teléfono. El Manager, en el teléfono
 (caminando por el taller) y en la computadora. Idioma: mezclado, así que
@@ -563,9 +564,32 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Carga como reparación una factura que ya cargó como compra (mismo proveedor y número) | La app avisa y no deja guardar: dice cuál es (D-PC8) | ✅ | A65 |
 | Corrige o anula una reparación externa | Igual que una compra: reversas en el costo del camión, nada se borra; anular pide motivo | ✅ | A65 |
 | Abre Truck → Costs y elige un período (este mes, 3 meses, este año, todo) (PC-4) | Ve el total de partes, de reparaciones externas y el total; las barras por mes; y cada movimiento (compra o reparación) con su WO, que abre su compra o reparación. Lo anulado o corregido sale como reversa en negativo y baja el total | ✅ | A66 |
-| Quiere ver la mano de obra del camión | Por ahora solo las horas registradas en el período (sesiones cerradas, D18, D21), sin monto: la tarifa queda para después | ✅ | A67 |
+| Quiere ver la mano de obra del camión | Las horas registradas en el período (sesiones cerradas, D18, D21) y, con la tarifa del taller (D34), su monto | ✅ | A67, A69 |
 | Un mecánico o Safety intenta ver los costos de un camión; un PM se termina | No puede (403); terminar un PM no escribe nada en el costo del camión (D-PC4) | ✅ | A68 |
 | Quiere cobrarle a Finanzas | No en la etapa 1: diseñado (mano de obra × horas y factura interna por período), no construido | 🔲 después | — |
+
+### HU-M13 · Cobrarle a Finanzas lo que hizo el taller (J14) — 🟡 LB-1 construido (tarifa y mano de obra); LB-2 (factura interna) por construir (D34)
+
+**Quién:** el Manager. Finanzas recibe un PDF, no entra a la app.
+
+**Flujo**
+1. **Parts & costs → Labor rate:** pone la tarifa por hora del taller y desde qué fecha vale.
+2. Al completar un Work Order, su mano de obra (horas × tarifa) entra al costo del camión. Truck → Costs la muestra.
+3. **Parts & costs → Internal invoices → New invoice:** elige camión y mes. La app trae lo que todavía no se cobró de ese camión en ese mes (compras, reparaciones externas, mano de obra), al costo.
+4. Revisa las líneas; puede sacar alguna (queda para la próxima). **Send**: la factura se congela con su número `SHOP-2026-0001` y se descarga en PDF para mandarla a Finanzas.
+5. Cuando Finanzas la acepta, el Manager la marca **Accepted**. Si hay un error, la anula y arma otra.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| Se completa un Work Order con 6 h registradas y la tarifa es $95/h | El camión suma $570.00 de mano de obra, con su WO, en Truck → Costs | ✅ | A69 |
+| Cambia la tarifa desde una fecha | Lo calculado antes de esa fecha no cambia; los WO completados con sesiones desde esa fecha se recalculan con reversas | ✅ | A70 |
+| Se reabre o se cancela un WO completado, o se corrige un tiempo | La mano de obra se corrige con reversas; nada de lo escrito cambia | ✅ | A70 |
+| No hay tarifa todavía | La mano de obra no tiene monto; Costs muestra las horas y "Set a labor rate" | ✅ | A71 |
+| Arma la factura de un camión y un mes | Trae los movimientos no cobrados del período, con subtotales por tipo; cada movimiento se cobra una sola vez | 🔲 LB-2 | A72 |
+| Saca una línea antes de enviar | Queda sin cobrar y aparece en la próxima factura de ese camión | 🔲 LB-2 | A73 |
+| Envía la factura | Queda congelada con su número, se descarga en PDF; una corrección posterior va a la del mes siguiente | 🔲 LB-2 | A74 |
+| Anula una factura enviada | Sus movimientos quedan libres para otra factura; el número no se reusa | 🔲 LB-2 | A75 |
+| Un mecánico o Safety intenta ver la tarifa o las facturas | No puede (403) | 🔲 LB-2 | A75 |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 

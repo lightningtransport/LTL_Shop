@@ -112,6 +112,8 @@ enum ActivityEventType {
   part_purchase_voided
   outside_repair_saved
   outside_repair_voided
+  // LTR-201 / D34.
+  labor_rate_saved
 }
 
 enum ReadinessAssessmentStatus {
@@ -190,6 +192,7 @@ model User {
   createdPartPurchases           PartPurchase[]             @relation("PartPurchaseCreatedBy")
   voidedPartPurchases            PartPurchase[]             @relation("PartPurchaseVoidedBy")
   createdOutsideRepairs          OutsideRepair[]            @relation("OutsideRepairCreatedBy")
+  createdLaborRates              LaborRate[]                @relation("LaborRateCreatedBy")
   voidedOutsideRepairs           OutsideRepair[]            @relation("OutsideRepairVoidedBy")
   uploadedAttachments            Attachment[]               @relation("AttachmentUploadedBy")
   createdTruckCostEntries        TruckCostEntry[]           @relation("TruckCostEntryCreatedBy")
@@ -604,6 +607,22 @@ model PartPurchase {
   @@index([invoiceDate])
   @@index([vendorId, invoiceNorm])
   @@map("part_purchases")
+}
+
+/// LTR-201 / D34 (LB-1): the shop's labor rate per hour, from a date. A new rate starts a new row; a rate already
+/// used is never edited. Labor = hours of closed sessions × the rate in effect the day each session started.
+model LaborRate {
+  id               String   @id @default(uuid()) @db.Uuid
+  rateCentsPerHour Int      @map("rate_cents_per_hour")
+  currency         String   @default("USD") @db.Char(3)
+  effectiveFrom    DateTime @unique @map("effective_from") @db.Date
+  notes            String?
+  createdById      String?  @map("created_by_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  createdBy User? @relation("LaborRateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("labor_rates")
 }
 
 /// LTR-200 / D32 (PC-3): an invoice from an outside shop for one truck, optionally tied to the Job sent out (D24).

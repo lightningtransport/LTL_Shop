@@ -7,6 +7,7 @@ import type { ShopLocale } from './shop-locale';
  * Keys with a shared audience avoid the Truck/unidad noun; the QC keys are Safety copy (unidad).
  */
 export type ApiErrorCode =
+  | 'LABOR_RATE_DATE_TAKEN'
   | 'DUPLICATE_INVOICE'
   | 'REPAIR_VOIDED'
   | 'JOB_NOT_ON_TRUCK'
@@ -104,6 +105,7 @@ export type ApiErrorCopy = Record<ApiErrorCode | 'network' | 'timeout', string>;
 export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
+    LABOR_RATE_DATE_TAKEN: 'There is already a rate from that date. Pick another date.',
     DUPLICATE_INVOICE: 'That invoice from this vendor is already saved.',
     REPAIR_VOIDED: 'This outside repair is voided. Load it again instead.',
     JOB_NOT_ON_TRUCK: 'That Job is not on this truck.',
@@ -199,6 +201,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   },
   es: {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
+    LABOR_RATE_DATE_TAKEN: 'Ya hay una tarifa desde esa fecha. Elige otra fecha.',
     DUPLICATE_INVOICE: 'Esa factura de este proveedor ya está cargada.',
     REPAIR_VOIDED: 'Esta reparación externa está anulada. Cárgala de nuevo.',
     JOB_NOT_ON_TRUCK: 'Ese Job no es de este camión.',

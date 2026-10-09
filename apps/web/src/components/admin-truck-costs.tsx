@@ -27,6 +27,7 @@ export function periodRange(period: Period, today = new Date()): { from?: string
 function sourceHref(entry: AdminTruckCostEntryDto) {
   if (entry.sourceType === 'part_purchase') return `/admin/parts/purchases/${entry.sourceId}`;
   if (entry.sourceType === 'outside_repair') return `/admin/parts/outside-repairs/${entry.sourceId}`;
+  if (entry.sourceType === 'work_order_labor') return `/admin/work-orders/${entry.sourceId}`;
   return null;
 }
 
@@ -40,7 +41,7 @@ export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { tr
   const query = useMemo(() => new URLSearchParams(Object.entries(periodRange(period)) as Array<[string, string]>).toString(), [period]);
   const { data, error, isLoading, mutate } = useAdminTruckCosts(truckId, query, true);
   const periods: Array<[Period, string]> = [['month', messages.pcPeriodMonth], ['3months', messages.pcPeriod3Months], ['year', messages.pcPeriodYear], ['all', messages.pcPeriodAll]];
-  const maxMonth = Math.max(1, ...(data?.months ?? []).map((month) => Math.max(0, month.partsCents) + Math.max(0, month.outsideCents)));
+  const maxMonth = Math.max(1, ...(data?.months ?? []).map((month) => Math.max(0, month.partsCents) + Math.max(0, month.outsideCents) + Math.max(0, month.laborCents)));
   const monthLabel = (month: string) => new Intl.DateTimeFormat(locale === 'es' ? 'es-US' : 'en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }).format(new Date(`${month}-01T00:00:00Z`));
 
   return (
@@ -87,9 +88,12 @@ export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { tr
               <p className="text-xs text-muted-foreground">{messages.pcCostsTotal}</p>
               <p className="mt-1 text-lg font-semibold tabular-nums" data-testid="truck-costs-total">{formatCents(data.totals.totalCents, locale)}</p>
             </div>
-            <div className="rounded-xl border border-dashed px-4 py-3 text-muted-foreground" aria-disabled="true">
-              <p className="flex items-center gap-1.5 text-xs"><Clock aria-hidden="true" className="size-3.5" />{messages.pcCostsLabor}</p>
-              <p className="mt-1 text-sm" data-testid="truck-costs-labor">{fillPlaceholders(messages.pcCostsLaborHours, { hours: data.laborHours.toLocaleString(locale === 'es' ? 'es-US' : 'en-US', { maximumFractionDigits: 2 }) })}</p>
+            {/* LTR-201 / D34: labor of completed Work Orders (hours × the shop rate); hours alone until a rate is set. */}
+            <div className="rounded-xl border bg-card px-4 py-3" data-testid="truck-costs-labor-tile">
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Clock aria-hidden="true" className="size-3.5" />{messages.pcCostsLaborTitle}</p>
+              {data.laborRateSet ? <p className="mt-1 text-lg font-semibold tabular-nums">{formatCents(data.totals.laborCents, locale)}</p> : null}
+              <p className="mt-0.5 text-xs text-muted-foreground" data-testid="truck-costs-labor">{fillPlaceholders(messages.pcCostsLaborHours, { hours: data.laborHours.toLocaleString(locale === 'es' ? 'es-US' : 'en-US', { maximumFractionDigits: 2 }) })}</p>
+              {!data.laborRateSet ? <AdminNavLink className="tap-inline text-xs text-primary underline" href="/admin/parts/labor-rate">{messages.pcCostsSetRate}</AdminNavLink> : null}
             </div>
             <div className="rounded-xl border border-dashed px-4 py-3 text-muted-foreground" aria-disabled="true">
               <p className="text-xs">{messages.pcCostsFinance}</p>
@@ -106,6 +110,7 @@ export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { tr
                   <p className="flex gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-primary" />{messages.pcCostsParts}</span>
                     <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-primary/40" />{messages.pcCostsOutside}</span>
+                    <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-success/70" />{messages.pcCostsLaborTitle}</span>
                   </p>
                   {data.months.map((month) => (
                     <div key={month.month} className="grid grid-cols-[4rem_1fr_6rem] items-center gap-3 text-sm">
@@ -113,8 +118,9 @@ export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { tr
                       <span className="flex h-3 overflow-hidden rounded-sm bg-muted" aria-hidden="true">
                         <span className="bg-primary" style={{ width: `${(Math.max(0, month.partsCents) / maxMonth) * 100}%` }} />
                         <span className="bg-primary/40" style={{ width: `${(Math.max(0, month.outsideCents) / maxMonth) * 100}%` }} />
+                        <span className="bg-success/70" style={{ width: `${(Math.max(0, month.laborCents) / maxMonth) * 100}%` }} />
                       </span>
-                      <span className="text-right tabular-nums">{formatCents(month.partsCents + month.outsideCents, locale)}</span>
+                      <span className="text-right tabular-nums">{formatCents(month.partsCents + month.outsideCents + month.laborCents, locale)}</span>
                     </div>
                   ))}
                 </div>
@@ -127,7 +133,7 @@ export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { tr
                     return (
                       <li key={entry.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
                         <span className="w-24 shrink-0 text-muted-foreground">{formatInvoiceDate(entry.occurredOn, locale)}</span>
-                        <Badge variant="outline">{entry.kind === 'outside_repair' ? messages.pcCostsKindOutside : messages.pcCostsKindPart}</Badge>
+                        <Badge variant="outline">{entry.kind === 'outside_repair' ? messages.pcCostsKindOutside : entry.kind === 'labor' ? messages.pcCostsKindLabor : messages.pcCostsKindPart}</Badge>
                         {entry.reversal ? <Badge variant="secondary">{entry.reversal === 'voided' ? messages.pcCostsVoided : messages.pcCostsCorrected}</Badge> : null}
                         <span className="min-w-0 flex-1">
                           {href ? <AdminNavLink className="tap-inline hover:underline" href={href}>{entry.description}</AdminNavLink> : entry.description}

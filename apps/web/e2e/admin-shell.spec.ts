@@ -172,15 +172,15 @@ test.describe('Shop Admin Phase 2A', () => {
     const mobileNav = dialog.getByRole('navigation', { name: 'Shop Admin mobile navigation' });
     await expect(mobileNav).toBeVisible();
     await expect(mobileNav).not.toHaveClass(/grid-cols-2/);
-    for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'Purchases', 'Outside repairs', 'Parts', 'Vendors', 'People', 'Job Catalog', 'Shop workflow', 'History']) {
+    for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'Purchases', 'Outside repairs', 'Parts', 'Vendors', 'Labor rate', 'People', 'Job Catalog', 'Shop workflow', 'History']) {
       await expect(mobileNav.getByRole('link', { name, exact: true })).toBeVisible();
     }
     // LTR-122: grouped by job — operation, setup, audit.
     for (const group of ['Operations', 'Setup', 'Audit']) {
       await expect(mobileNav.getByText(group, { exact: true })).toBeVisible();
     }
-    // LTR-200 / D-PC7: the Manager also has Parts & costs (Purchases, Outside repairs, Parts, Vendors).
-    await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Purchases', 'Outside repairs', 'Parts', 'Vendors', 'People', 'Job Catalog', 'Shop workflow', 'History']);
+    // LTR-200 / D-PC7: the Manager also has Parts & costs (Purchases, Outside repairs, Parts, Vendors, Labor rate).
+    await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Purchases', 'Outside repairs', 'Parts', 'Vendors', 'Labor rate', 'People', 'Job Catalog', 'Shop workflow', 'History']);
 
     await page.getByRole('button', { name: 'Close Shop Admin navigation' }).click();
     await switchLanguage(page, 'es');

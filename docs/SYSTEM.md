@@ -376,6 +376,24 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - "Add purchase" y "Add outside repair" abren el formulario con el camión elegido.
 - Terminar un PM no escribe nada en el libro (D-PC4).
 
+### Mano de obra (`labor_rates`; LTR-201 / D34, LB-1)
+- **Parts & costs → Labor rate** (`/admin/parts/labor-rate`): **una tarifa por hora
+  para todo el taller**, desde una fecha (una por fecha: `LABOR_RATE_DATE_TAKEN`).
+  Nunca se edita una tarifa: se agrega otra. Solo Manager y System Admin.
+- **Mano de obra de un Work Order** = minutos de sus sesiones **cerradas** × la tarifa
+  vigente el día en que empezó cada sesión (`laborAmount`, `packages/shared`). Las
+  sesiones de antes de la primera tarifa cuentan horas pero no monto. Solo los WO
+  **completados**; un WO cancelado no cobra mano de obra.
+- **Se escribe en el libro del camión** (`truck_cost_entries`, `kind = labor`,
+  `source_type = work_order_labor`, con su WO y la fecha de cierre) con
+  `syncWorkOrderLabor` (`apps/api/src/parts-costs/labor-ledger.ts`), que corre al
+  completar, reabrir, cancelar y corregir tiempos de un WO, y al poner una tarifa
+  (recalcula los WO completados con trabajo desde esa fecha). Compara lo que hay con
+  lo que debería haber y, si cambió, escribe reversas y la fila nueva.
+- **Truck → Costs**: la tarjeta **Labor** muestra el monto y las horas; sin tarifa,
+  solo las horas y "Set a labor rate". Las barras por mes suman partes, reparaciones
+  y mano de obra.
+
 ### Notas (`work_order_notes`)
 - Solo se agregan, nunca se editan (D8). Tipos: `note` y `work_request`
   ("Pedir trabajo": el mecánico avisa de trabajo extra).

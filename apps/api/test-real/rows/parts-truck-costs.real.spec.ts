@@ -67,7 +67,7 @@ describe('Manager: costos del camión (D32, PC-4)', () => {
     truthy('todo el tiempo incluye octubre', (ok('todo', await costs(t957.id)).months as Json[]).some((item: Json) => item.month === '2026-10'));
   });
 
-  it('A67 | La mano de obra son las horas de las sesiones cerradas del camión en el período, sin monto', async () => {
+  it('A67 | Las horas de mano de obra son las de las sesiones cerradas del camión en el período (el monto llega con la tarifa, A69)', async () => {
     const t931 = await truck('931');
     const { workOrderId } = await plannedWo('931');
     const today = new Date();
@@ -80,7 +80,6 @@ describe('Manager: costos del camión (D32, PC-4)', () => {
     const expected = Math.round((closed.reduce((sum, item) => sum + (item.endedAt!.getTime() - item.startedAt.getTime()), 0) / 3_600_000) * 100) / 100;
     same('horas de las sesiones cerradas (la abierta no cuenta)', view.laborHours, expected);
     truthy('incluye la hora y media cargada', view.laborHours >= 1.5);
-    truthy('no hay monto de mano de obra', !(view.entries as Json[]).some((item) => item.kind === 'labor'));
   });
 
   it('A68 | Mecánicos y Safety no ven los costos del camión; terminar un PM no escribe en el libro (D-PC4)', async () => {

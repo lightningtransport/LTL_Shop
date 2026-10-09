@@ -166,6 +166,25 @@ test('manager loads an outside shop invoice from the Job: truck and Job come pic
   await expect(page.getByTestId('outside-job')).toHaveText('Radiator Repair · WO-001 · part');
 });
 
+// LB-1 (LTR-201 / D34): the shop's labor rate.
+test('manager sets the shop labor rate from a date; the same date twice is refused', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/labor-rate');
+  await expect(page.getByRole('heading', { name: 'Labor rate', exact: true })).toBeVisible();
+  await expect(page.getByTestId('labor-rate-current')).toContainText('No labor rate yet.');
+  await page.getByRole('button', { name: 'Save rate' }).click();
+  await expect(page.getByText('Enter the rate per hour.')).toBeVisible();
+  await page.getByLabel('Rate per hour (USD)').fill('95');
+  await page.getByLabel('From').fill('2026-09-01');
+  await page.getByRole('button', { name: 'Save rate' }).click();
+  await expect(page.getByText('Rate saved · 3 Work Orders recalculated')).toBeVisible();
+  await expect(page.getByTestId('labor-rate-current')).toContainText('$95.00 per hour, since Sep 1, 2026');
+  await page.getByLabel('Rate per hour (USD)').fill('100');
+  await page.getByLabel('From').fill('2026-09-01');
+  await page.getByRole('button', { name: 'Save rate' }).click();
+  await expect(page.getByText('There is already a rate from that date. Pick another date.')).toBeVisible();
+});
+
 // UX-7-026 / PC1: Save with something missing says what, and goes to it.
 test('saving a purchase with missing fields lists them and goes to the first one', async ({ page }) => {
   await loginToAdmin(page, 'manager@lightning.local');

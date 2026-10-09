@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Building2, ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Receipt, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
+import { Building2, ChevronLeft, Clock, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Receipt, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { AdminNavLink } from './admin-nav-link';
@@ -32,6 +32,7 @@ const navigationGroups = [
       { message: 'pcOutsideRepairs', icon: Building2, href: '/admin/parts/outside-repairs' },
       { message: 'pcParts', icon: Package, href: '/admin/parts/catalog' },
       { message: 'pcVendors', icon: Store, href: '/admin/parts/vendors' },
+      { message: 'pcLaborRate', icon: Clock, href: '/admin/parts/labor-rate' },
     ],
   },
   {
