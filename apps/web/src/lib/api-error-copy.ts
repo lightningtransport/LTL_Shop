@@ -8,6 +8,9 @@ import type { ShopLocale } from './shop-locale';
  */
 export type ApiErrorCode =
   | 'DUPLICATE_INVOICE'
+  | 'REPAIR_VOIDED'
+  | 'JOB_NOT_ON_TRUCK'
+  | 'JOB_NEVER_EXTERNAL'
   | 'TOTAL_MISMATCH'
   | 'PURCHASE_VOIDED'
   | 'IDEMPOTENCY_KEY_REQUIRED'
@@ -102,6 +105,9 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
     DUPLICATE_INVOICE: 'That invoice from this vendor is already saved.',
+    REPAIR_VOIDED: 'This outside repair is voided. Load it again instead.',
+    JOB_NOT_ON_TRUCK: 'That Job is not on this truck.',
+    JOB_NEVER_EXTERNAL: 'That Job was never sent to an external shop.',
     TOTAL_MISMATCH: 'The total changed. Check the lines, tax and freight, and save again.',
     PURCHASE_VOIDED: 'This purchase is voided. Load it again instead.',
     IDEMPOTENCY_KEY_REQUIRED: 'Could not save. Close the form and try again.',
@@ -194,6 +200,9 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   es: {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
     DUPLICATE_INVOICE: 'Esa factura de este proveedor ya está cargada.',
+    REPAIR_VOIDED: 'Esta reparación externa está anulada. Cárgala de nuevo.',
+    JOB_NOT_ON_TRUCK: 'Ese Job no es de este camión.',
+    JOB_NEVER_EXTERNAL: 'Ese Job nunca salió a un taller externo.',
     TOTAL_MISMATCH: 'El total cambió. Revisa las líneas, el impuesto y el flete, y guarda otra vez.',
     PURCHASE_VOIDED: 'Esta compra está anulada. Cárgala de nuevo.',
     IDEMPOTENCY_KEY_REQUIRED: 'No se pudo guardar. Cierra el formulario e inténtalo de nuevo.',

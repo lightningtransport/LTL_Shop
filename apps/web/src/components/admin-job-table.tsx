@@ -13,6 +13,7 @@ import {
   OctagonPause,
   Package,
   PackageCheck,
+  Receipt,
   RotateCcw,
   ShieldCheck,
   Truck,
@@ -20,7 +21,8 @@ import {
   Users,
   XCircle,
 } from 'lucide-react';
-import { isPmCategory, isQualityCheckJob, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { formatCents, isPmCategory, isQualityCheckJob, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { intlLocale } from '@/lib/shop-locale';
 import { formatAdminDate } from '@/lib/admin-format';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -29,6 +31,7 @@ import { jobDisplayName } from '@/lib/job-display-name';
 import { useCatalogJobs } from '@/lib/shop-data';
 import { formatTime } from '@/lib/work-order-view';
 import { cn } from '@/lib/utils';
+import { AdminNavLink } from './admin-nav-link';
 import { MechanicAvatar } from './mechanic-avatar';
 import { MechanicPicker } from './mechanic-picker';
 import { ResponsiveMenu, type MenuItem } from './responsive-menu';
@@ -123,6 +126,8 @@ export function AdminJobTable({
   const dialogJob = dialog ? data.jobs.find((job) => job.id === dialog.jobId) : undefined;
   const pending = Boolean(pendingAction);
   const number = new Intl.NumberFormat(intlLocale(locale));
+  // LTR-200 / D-PC7: outside shop invoices are money — the Shop Manager and the System Admin only.
+  const canSeeCosts = useCanShowManagerWrites();
   const { open, closed } = useMemo(() => orderJobs(data.jobs, blockedJobIds), [data.jobs, blockedJobIds]);
 
   if (!data.jobs.length) return <p className="px-4 py-6 text-center text-muted-foreground">{messages.jobsEmpty}</p>;
@@ -174,6 +179,10 @@ export function AdminJobTable({
     const items: MenuItem[] = [];
     if (canHelp) items.push({ key: 'helper', label: messages.addHelperAction, icon: Users, testId: 'admin-wo-job-add-helper', onSelect: () => setDialog({ kind: 'helper', jobId: job.id }) });
     if (canSendOut) items.push({ key: 'external', label: messages.sendExternalAction, icon: Building2, testId: 'admin-wo-job-send-external', onSelect: () => setDialog({ kind: 'external', jobId: job.id }) });
+    // LTR-200 / PC-3: the outside shop's invoice for this Job, with the truck and the Job already picked.
+    if (canSeeCosts && (isExternal || job.outsideInvoices?.length)) {
+      items.push({ key: 'outside-invoice', label: messages.pcAddOutsideInvoice, icon: Receipt, testId: 'admin-wo-job-outside-invoice', href: `/admin/parts/outside-repairs?new=1&truckId=${data.truck.id}&jobId=${job.id}` });
+    }
     if (canEdit) items.push({ key: 'cancel', label: messages.cancelJobAction, icon: XCircle, destructive: true, separatorBefore: items.length > 0, onSelect: () => onJobDialog('cancel', job.id) });
 
     let mechanic;
@@ -297,6 +306,16 @@ export function AdminJobTable({
               {job.helperOfJobId ? <span className="font-normal text-muted-foreground">{messages.helperJobSuffix}</span> : null}
             </p>
             <p className="text-xs text-muted-foreground">{sub}</p>
+            {canSeeCosts && job.outsideInvoices?.length ? (
+              <p className="mt-0.5 flex flex-wrap gap-1" data-testid="admin-wo-job-outside-invoices">
+                {job.outsideInvoices.map((invoice) => (
+                  <AdminNavLink key={invoice.id} href={`/admin/parts/outside-repairs/${invoice.id}`} className="tap-inline inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground">
+                    <Receipt aria-hidden="true" className="size-3" />
+                    {fillPlaceholders(messages.pcJobInvoiceChip, { amount: formatCents(invoice.amountCents, locale), vendor: invoice.vendorName })}
+                  </AdminNavLink>
+                ))}
+              </p>
+            ) : null}
             {job.customDescription ? <p className="mt-1 text-muted-foreground">{job.customDescription}</p> : null}
             {isPmJob && job.startedAt ? (
               <p className="mt-0.5 text-xs text-muted-foreground">

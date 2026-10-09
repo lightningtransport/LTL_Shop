@@ -247,7 +247,7 @@ export class OutsideRepairsService {
         orderBy: { createdAt: 'desc' },
         select: { relevantValue: true },
       });
-      if (!sent) throw new BadRequestException({ code: 'JOB_NOT_EXTERNAL', message: 'That Job was never sent to an external shop.' });
+      if (!sent) throw new BadRequestException({ code: 'JOB_NEVER_EXTERNAL', message: 'That Job was never sent to an external shop.' });
       externalKind = kindOf(sent.relevantValue);
     }
     return { workOrderId: job.workOrder.id, workOrderJobId: job.id, externalKind };
