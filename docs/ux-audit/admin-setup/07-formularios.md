@@ -448,6 +448,47 @@ Lo que sigue no es un defecto: describe las reglas vigentes (D11, D19, D22, D24,
 - **Recomendación:** en el aviso de bloqueo, un botón "Devolver a la cola" (y "Reasignar a…") que resuelva todo en un paso y vuelva a intentar Deactivate o Remove.
 - **Esfuerzo:** M.
 
+## Corrida 2 · Parts & costs (2026-10-09)
+
+**Alcance:** New / Edit purchase (`apps/web/src/components/admin-purchase-form.tsx`), New / Edit outside repair (`admin-outside-repair-form.tsx`) y el detalle de la compra (`admin-purchase-detail.tsx`). **Método:** reporte del dueño en producción con dos capturas (formulario y detalle), recorrido en la demo local (`ltl_shop_setup_demo`) y lectura del código. El panel del navegador estaba oculto: no hay capturas nuevas, solo observaciones.
+
+| Formulario | Ruta | Flujo | Patrón | Revisión |
+|---|---|---|---|---|
+| New / Edit purchase | `/admin/parts/purchases` (diálogo) | J13 | Modal con `<form onSubmit noValidate>`, estado local, borrador en `sessionStorage` | Completa |
+| New / Edit outside repair | `/admin/parts/outside-repairs` (diálogo) | J13 | El mismo patrón, sin borrador | Muestreo (mismo patrón) |
+
+### UX-7-026 · Al guardar con datos faltantes no dice qué falta
+- **Dónde:** New purchase · `admin-purchase-form.tsx:316-322` (submit) y los campos `aria-invalid` sin texto (`:358`, `:384`, `:463`); igual en `admin-outside-repair-form.tsx`
+- **Evidencia:** (observado) demo: New purchase vacío → Save purchase: 4 campos con borde rojo, **un** solo texto ("Pick a part or describe it."), nada arriba, el foco queda en el `BODY`. Reporte del dueño: "si falta información no me dice que falta por llenar".
+- **Criterio:** Nielsen H9 (reconocer y recuperarse de errores) · WCAG 3.3.1 (identificación de errores) y 1.4.1 (no solo color)
+- **Severidad:** 3 · Cada compra; el Manager no sabe por qué no guarda y prueba al azar
+- **Recomendación:** Al tocar Save con faltantes: un resumen arriba del formulario ("Falta: Proveedor, N.º de factura, Línea 1: costo unitario") y un texto junto a **cada** campo; el foco y el scroll van al primer campo que falta. Marcar los campos opcionales "(optional)" para que lo obligatorio se deduzca.
+- **Esfuerzo:** S
+
+### UX-7-027 · Lo que la pantalla calcula o llena sola no se explica
+- **Dónde:** New purchase · costo unitario que se llena con el último pagado o el de referencia (`admin-purchase-form.tsx:173-179`), total de línea, reparto del impuesto y el flete (`:283-288`, la nota solo con varios camiones), recuadro de totales sin impuesto ni flete
+- **Evidencia:** (observado) captura del dueño: "Unit cost 22.00" ya puesto y debajo "Last paid $22.00 on Oct 9" sin decir que es de ahí; el recuadro dice Subtotal $286.00 · Total $530.00 sin mostrar los $222.00 de impuesto ni los $22.00 de flete. Reporte: "no sé si se hacen ajustes o cálculos automáticos".
+- **Criterio:** Nielsen H1 (visibilidad del estado) y H10 (ayuda en contexto)
+- **Severidad:** 2 · El Manager completa la compra, pero no confía en el total
+- **Recomendación:** Bajo el costo: "Filled with the last price paid to {vendor} ({date}). Change it if the invoice is different." (o "with the part's reference cost"). Recuadro de totales: Subtotal, Tax, Freight & other, **Total**, y una línea de a dónde va ("All to Truck 277" / "Truck 606 $49.80 · No truck $10.20"). Bajo Lines: "Line total = Qty × Unit cost."
+- **Esfuerzo:** S
+
+### UX-7-028 · "Other (not in catalog)" no dice que la pieza no entra al catálogo
+- **Dónde:** New purchase · opción "Other" del selector de parte (`admin-purchase-form.tsx:410-420`)
+- **Evidencia:** (observado) reporte del dueño: "cuando no está la parte sale other (not in catalog), ¿así se agregan piezas nuevas?". No se agrega: la descripción queda solo en esa compra (D-PC3).
+- **Criterio:** Nielsen H2 (coincidencia con el mundo real) y H6 (reconocer antes que recordar)
+- **Severidad:** 2 · Puede creer que agregó la pieza al catálogo y no encontrarla después
+- **Recomendación:** Renombrar la opción "Other — only on this invoice" y, al elegirla, un texto: "Saved only on this purchase; it is not added to Parts. PM parts are added in Parts → Add part." con el enlace (en otra pestaña, para no perder el formulario).
+- **Esfuerzo:** S
+
+### UX-7-029 · "Discard this purchase?" aparece al final del formulario, fuera de la vista
+- **Dónde:** Edit / New purchase · bloque `alertdialog` debajo de las notas (`admin-purchase-form.tsx:535-545`)
+- **Evidencia:** (observado) captura del dueño: el aviso queda abajo, después de Notes; con varias líneas no se ve al tocar Cancel y parece que Cancel no hace nada.
+- **Criterio:** Nielsen H1 (visibilidad) y H3 (control y libertad)
+- **Severidad:** 3 · Cada vez que cierra con cambios; parece un botón roto
+- **Recomendación:** Barra inferior fija dentro del diálogo (sticky) con el error, el aviso de descartar y los botones Cancel / Save, siempre a la vista; al tocar Cancel con cambios, el aviso aparece ahí mismo, junto a los botones.
+- **Esfuerzo:** S
+
 ## Lo que funciona bien
 - **Doble envío cubierto en todos los formularios.**
   - Cada envío tiene su `busy` o `saving`, y deshabilita el botón y los campos mientras dura (`admin-catalog-write.tsx:146,188`; `admin-mechanic-roster.tsx:162,200`; `admin-shop-workflow.tsx:39,115`).

@@ -376,6 +376,18 @@ El dueño pidió que el tablero del Yard sea un Kanban real, con columnas vertic
 | ~~K1~~ | E | ~~Los pasos se ven como carriles horizontales (filas), no como columnas de un tablero Kanban; con muchos camiones el tablero crece hacia abajo y no se ve el flujo de un vistazo~~ — **hecho**: listas verticales de 18 rem como Trello (también las vacías, con su título arriba), cada lista desplaza sus tarjetas por dentro, scroll lateral solo dentro del tablero; e2e `yard-operations.spec.ts` (D33) | `admin-yard-operations.tsx` |
 | ~~K2~~ | E | ~~No hay forma de ver el tablero a pantalla completa (por ejemplo, en una TV del taller)~~ — **hecho**: botón Full screen (API Fullscreen del navegador + capa fija desde el borde de arriba, así los diálogos siguen abriendo encima), Esc sale. Primera versión corregida el mismo día: dejaba 20 px arriba (margen de la página) y las columnas vacías iban angostas con el título de lado; e2e (D33) | `admin-yard-operations.tsx` |
 
+## 1o. Parts & costs: formulario de compra y detalle (2026-10-09) — **ABIERTO**
+
+El dueño lo reportó al usar Purchases en producción, con capturas. Se evaluó con las skills audit-ux-7 (formularios) y audit-ux-4 (jerarquía); los hallazgos están en `docs/ux-audit/admin-setup/07-formularios.md` (corrida 2) y `04-jerarquia-visual.md`.
+
+| # | Clase | Problema | Estado |
+|---|---|---|---|
+| PC1 | B | **Al guardar con datos faltantes no dice qué falta.** Solo bordes rojos y un texto, sin resumen ni foco en el primer campo (UX-7-026). También en Outside repairs. | Abierto |
+| PC2 | C | **No explica lo que calcula o llena solo:** el costo unitario viene del último pagado o del costo de referencia, el total de línea, el reparto del impuesto y el flete; el recuadro de totales no muestra Tax ni Freight (UX-7-027). | Abierto |
+| PC3 | C | **"Other (not in catalog)" parece una forma de agregar piezas**; no dice que queda solo en esa compra ni dónde se agregan al catálogo (UX-7-028). | Abierto |
+| PC4 | B | **"Discard this purchase?" sale al final del formulario**, fuera de la vista; Cancel parece no hacer nada (UX-7-029). | Abierto |
+| PC5 | E | **El detalle de la compra está desordenado:** el total al final y suelto, "Per truck" repetido con un solo camión, archivo, notas y autor mezclados (UX-4-012). | Abierto |
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):
