@@ -6,10 +6,10 @@ import { cn } from '@/lib/utils';
 import { Button } from './ui';
 
 /*
- * D33: a Kanban board — vertical columns side by side, cards stacked in each one. Layout follows the shadcn
- * Kanban of Kibo UI (column = rounded box with a header and a count, cards scroll inside the column, the board
- * scrolls sideways inside itself) and the collapsed empty columns of Jira. Phones keep a foldable list per column
- * (no sideways scroll on phones, design-system rule).
+ * D33: a Kanban board laid out like Trello. Lists of a fixed width (18 rem) side by side, the title on top (an empty
+ * list too); a list is as tall as its cards and, once it reaches the bottom of the board, scrolls its cards inside;
+ * the board scrolls sideways inside itself. Phones keep a foldable list per column, empty ones hidden (no sideways
+ * scroll on phones, design-system rule).
  */
 
 export function KanbanBoard({ children, label, labelId, className, ...rest }: {
@@ -24,7 +24,7 @@ export function KanbanBoard({ children, label, labelId, className, ...rest }: {
       aria-labelledby={labelId}
       className={cn(
         'space-y-4',
-        'lg:flex lg:min-h-[26rem] lg:items-stretch lg:gap-3 lg:space-y-0 lg:overflow-x-auto lg:overscroll-x-contain lg:pb-2',
+        'lg:flex lg:items-start lg:gap-3 lg:space-y-0 lg:overflow-x-auto lg:overflow-y-hidden lg:overscroll-x-contain lg:pb-3',
         className,
       )}
       {...rest}
@@ -41,7 +41,7 @@ export function KanbanColumn({ id, index, title, count, emptyLabel, open = true,
   index?: number;
   title: string;
   count: number;
-  /** Shown as the tooltip of a collapsed empty column. */
+  /** Shown inside an empty list. */
   emptyLabel: string;
   /** Phones only: the column folds. */
   open?: boolean;
@@ -51,31 +51,16 @@ export function KanbanColumn({ id, index, title, count, emptyLabel, open = true,
   const headingId = `kanban-column-${id}`;
   const empty = count === 0;
 
-  if (empty) {
-    // Collapsed empty column (Jira): a narrow strip with the title sideways and 0. Hidden on phones.
-    return (
-      <section
-        aria-labelledby={headingId}
-        title={`${title} · ${emptyLabel}`}
-        className="hidden w-11 shrink-0 flex-col items-center gap-2 rounded-xl border border-dashed bg-muted/20 py-3 text-muted-foreground lg:flex"
-        {...props}
-      >
-        <span aria-hidden="true" className="tnum text-xs">0</span>
-        <h3 id={headingId} className="whitespace-nowrap text-xs font-medium [writing-mode:vertical-rl]">
-          {index !== undefined ? <span aria-hidden="true">{index}. </span> : null}{title}
-        </h3>
-        <span className="sr-only">{emptyLabel}</span>
-      </section>
-    );
-  }
-
   return (
     <section
       aria-labelledby={headingId}
-      className="lg:flex lg:w-72 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:bg-muted/30"
+      className={cn(
+        'lg:flex lg:max-h-full lg:w-72 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:bg-muted/30',
+        empty && 'hidden',
+      )}
       {...props}
     >
-      <h3 id={headingId} className="lg:border-b lg:bg-card/60 lg:px-3 lg:py-2.5">
+      <h3 id={headingId} className="lg:shrink-0 lg:px-3 lg:pb-1 lg:pt-2.5">
         <button
           type="button"
           aria-expanded={open}
@@ -88,8 +73,8 @@ export function KanbanColumn({ id, index, title, count, emptyLabel, open = true,
           <ChevronDown aria-hidden="true" className={cn('ml-auto size-3.5 text-muted-foreground transition-transform lg:hidden', open && 'rotate-180')} />
         </button>
       </h3>
-      <div className={cn('mt-1 flex-col gap-2 lg:mt-0 lg:flex lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-y-contain lg:p-2', open ? 'flex' : 'hidden')}>
-        {children}
+      <div className={cn('mt-1 flex-col gap-2 lg:mt-0 lg:flex lg:min-h-0 lg:overflow-y-auto lg:overscroll-y-contain lg:p-2', open ? 'flex' : 'hidden')}>
+        {empty ? <p className="px-1 pb-1 text-xs text-muted-foreground">{emptyLabel}</p> : children}
       </div>
     </section>
   );

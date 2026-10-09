@@ -142,7 +142,7 @@ test.describe('Yard Operations Phase 1', () => {
   test('Kanban: one column per step on desktop, a foldable list on phones, the page never scrolls sideways (D33)', async ({ page }) => {
     for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 834, height: 1194 }, { width: 1440, height: 1024 }]) {
       await page.setViewportSize(viewport);
-      // D33: desktop shows every step as a column (an empty one is a narrow column); phones hide the empty steps.
+      // D33: desktop shows every step as a list, an empty one too; phones hide the empty steps.
       const phases = viewport.width >= 1024
         ? ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']
         : ['Inspection', 'Shop Work', 'PM'];
@@ -155,8 +155,8 @@ test.describe('Yard Operations Phase 1', () => {
       expect(overflow, `horizontal overflow at ${viewport.width}px`).toBe(false);
     }
     await page.setViewportSize({ width: 1440, height: 1024 });
-    // An empty step is a narrow column that says so on hover; the columns sit side by side.
-    await expect(page.locator('[data-testid="yard-lanes"] section[title$="No trucks"]').first()).toBeVisible();
+    // An empty step is a list like the others (title on top) that says so; the lists sit side by side.
+    await expect(page.getByTestId('yard-lanes').getByText('No trucks', { exact: true }).first()).toBeVisible();
     const inspection = await page.locator('[data-phase="inspection"]').boundingBox();
     const shopWork = await page.locator('[data-phase="shop_work"]').boundingBox();
     expect(shopWork!.x).toBeGreaterThan(inspection!.x);
@@ -171,8 +171,7 @@ test.describe('Yard Operations Phase 1', () => {
     await page.getByTestId('kanban-fullscreen').click();
     await expect(panel).toHaveAttribute('data-fullscreen', 'true');
     // The board covers the whole window (a fixed layer over the menu and the header).
-    await expect(panel).toHaveCSS('position', 'fixed');
-    expect((await panel.boundingBox())?.width).toBe(1440);
+    expect(await panel.boundingBox()).toMatchObject({ x: 0, y: 0, width: 1440 });
     await expect(page.getByTestId('kanban-fullscreen')).toHaveText('Exit full screen');
     // Search and quick filters keep working in full screen.
     await expect(page.getByTestId('yard-quick-high')).toBeVisible();
