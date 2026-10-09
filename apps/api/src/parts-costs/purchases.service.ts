@@ -22,6 +22,7 @@ import type { AuthUser } from '../auth/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { reverseSource, truckAmounts, writeEntries } from './cost-ledger';
 import { INVOICE_BUCKET, InvoiceFiles } from './invoice-files';
+import { assertNewInvoice, currentAttachment, duplicateInvoice, filedOwners, findInvoice, linkAttachment, lockVendorInvoices } from './invoice-registry';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SOURCE = 'part_purchase' as const;
@@ -74,7 +75,7 @@ export class PurchasesService {
       } : {}),
     };
     const rows = await this.prisma.partPurchase.findMany({ where, include: purchaseInclude, orderBy: [{ invoiceDate: 'desc' }, { createdAt: 'desc' }], take: 300 });
-    const filed = await this.filedOwners(rows.map((row) => row.id));
+    const filed = await filedOwners(this.prisma, 'part_purchase', rows.map((row) => row.id));
     const items = rows.map((row) => this.summary(row, filed.has(row.id))).filter((item) => !query.noFile || !item.hasFile);
     const live = rows.filter((row) => !row.voidedAt && (!query.noFile || !filed.has(row.id)));
     return {
@@ -89,11 +90,7 @@ export class PurchasesService {
 
   async detail(id: string): Promise<AdminPurchaseDetailDto> {
     const row = await this.row(id);
-    const attachment = await this.prisma.attachment.findFirst({
-      where: { ownerType: 'part_purchase', ownerId: id, deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, fileName: true, contentType: true, sizeBytes: true },
-    });
+    const attachment = await currentAttachment(this.prisma, 'part_purchase', id);
     const { shares, noTruckCents } = this.amounts(row);
     return {
       ...this.summary(row, Boolean(attachment)),
@@ -149,7 +146,7 @@ export class PurchasesService {
   /** The warning when leaving the invoice # field (D-PC8). */
   async checkInvoice(raw: unknown): Promise<AdminInvoiceMatchDto> {
     const query = parse(adminInvoiceCheckQuerySchema, raw);
-    return (await this.findInvoice(this.prisma, query.vendorId, normalizeInvoiceNumber(query.number), query.excludeId)) ?? { exists: false };
+    return (await findInvoice(this.prisma, query.vendorId, normalizeInvoiceNumber(query.number), query.excludeId)) ?? { exists: false };
   }
 
   async create(actor: AuthUser, raw: unknown, idempotencyKey: string | undefined) {
@@ -161,11 +158,11 @@ export class PurchasesService {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const prepared = await this.prepare(tx, input);
-        await this.lockVendor(tx, input.vendorId);
+        await lockVendorInvoices(tx, input.vendorId);
         // A second send that waited on the lock finds what the first one saved (A59).
         const saved = await tx.partPurchase.findUnique({ where: { idempotencyKey: key }, select: { id: true } });
         if (saved) return { id: saved.id, replayed: true };
-        await this.assertNewInvoice(tx, input.vendorId, prepared.invoiceNorm);
+        await assertNewInvoice(tx, input.vendorId, prepared.invoiceNorm);
         const purchase = await tx.partPurchase.create({
           data: {
             vendorId: input.vendorId,
@@ -184,7 +181,7 @@ export class PurchasesService {
           include: purchaseInclude,
         });
         await this.writeLedger(tx, purchase, actor.id);
-        await this.linkAttachment(tx, purchase.id, input.attachmentId);
+        await linkAttachment(tx, 'part_purchase', purchase.id, input.attachmentId);
         await this.activity.log(tx, {
           eventType: ActivityEventType.PART_PURCHASE_SAVED,
           entityType: SOURCE,
@@ -200,7 +197,7 @@ export class PurchasesService {
         // Two sends at once: the same key returns the purchase the first one saved.
         const saved = await this.prisma.partPurchase.findUnique({ where: { idempotencyKey: key }, select: { id: true } });
         if (saved) return { id: saved.id, replayed: true };
-        throw this.duplicate(await this.findInvoice(this.prisma, input.vendorId, normalizeInvoiceNumber(input.invoiceNumber)));
+        throw duplicateInvoice(await findInvoice(this.prisma, input.vendorId, normalizeInvoiceNumber(input.invoiceNumber)));
       }
       throw error;
     }
@@ -212,7 +209,7 @@ export class PurchasesService {
     const input = parse(adminSavePurchaseSchema, raw);
     return this.prisma.$transaction(async (tx) => {
       const prepared = await this.prepare(tx, input, before.vendorId);
-      await this.assertNewInvoice(tx, input.vendorId, prepared.invoiceNorm, id);
+      await assertNewInvoice(tx, input.vendorId, prepared.invoiceNorm, id);
       await tx.partPurchaseLine.deleteMany({ where: { purchaseId: id } });
       const purchase = await tx.partPurchase.update({
         where: { id },
@@ -232,7 +229,7 @@ export class PurchasesService {
       });
       await reverseSource(tx, { sourceType: SOURCE, sourceId: id }, actor.id);
       await this.writeLedger(tx, purchase, actor.id);
-      if (input.attachmentId !== undefined) await this.linkAttachment(tx, id, input.attachmentId);
+      if (input.attachmentId !== undefined) await linkAttachment(tx, 'part_purchase', id, input.attachmentId);
       await this.activity.log(tx, {
         eventType: ActivityEventType.PART_PURCHASE_SAVED,
         entityType: SOURCE,
@@ -321,34 +318,6 @@ export class PurchasesService {
     return { lines, subtotalCents, totalCents, invoiceNorm: normalizeInvoiceNumber(input.invoiceNumber) || input.invoiceNumber.toUpperCase() };
   }
 
-  /** One vendor at a time, so two saves of the same invoice cannot both pass the check. */
-  private async lockVendor(tx: Prisma.TransactionClient, vendorId: string) {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`invoice:${vendorId}`}))`;
-  }
-
-  private async assertNewInvoice(tx: Prisma.TransactionClient, vendorId: string, invoiceNorm: string, exceptId?: string) {
-    await this.lockVendor(tx, vendorId);
-    const match = await this.findInvoice(tx, vendorId, invoiceNorm, exceptId);
-    if (match) throw this.duplicate(match);
-  }
-
-  private async findInvoice(db: Prisma.TransactionClient | PrismaService, vendorId: string, invoiceNorm: string, exceptId?: string): Promise<AdminInvoiceMatchDto | null> {
-    const row = await db.partPurchase.findFirst({
-      where: { vendorId, invoiceNorm, voidedAt: null, ...(exceptId ? { id: { not: exceptId } } : {}) },
-      select: { id: true, invoiceNumber: true, invoiceDate: true, totalCents: true, vendor: { select: { name: true } } },
-    });
-    if (!row) return null;
-    return { exists: true, kind: 'part_purchase', id: row.id, invoiceNumber: row.invoiceNumber, invoiceDate: dateOnly(row.invoiceDate), totalCents: row.totalCents, vendorName: row.vendor.name };
-  }
-
-  private duplicate(match: AdminInvoiceMatchDto | null) {
-    return new ConflictException({
-      code: 'DUPLICATE_INVOICE',
-      message: match ? `${match.vendorName} invoice ${match.invoiceNumber} is already saved.` : 'That invoice is already saved.',
-      ...(match ?? {}),
-    });
-  }
-
   private async writeLedger(tx: Prisma.TransactionClient, purchase: PurchaseRow, actorId: string) {
     const { shares } = this.amounts(purchase);
     await writeEntries(tx, {
@@ -366,20 +335,6 @@ export class PurchasesService {
         .map((line) => `${line.description}${line.partNumber ? ` ${line.partNumber}` : ''} × ${Number(line.quantity)}`)
         .join(', ')}`,
     })));
-  }
-
-  private async linkAttachment(tx: Prisma.TransactionClient, purchaseId: string, attachmentId: string | null | undefined) {
-    if (attachmentId === undefined) return;
-    await tx.attachment.updateMany({
-      where: { ownerType: 'part_purchase', ownerId: purchaseId, deletedAt: null, ...(attachmentId ? { id: { not: attachmentId } } : {}) },
-      data: { deletedAt: new Date() },
-    });
-    if (!attachmentId) return;
-    const linked = await tx.attachment.updateMany({
-      where: { id: attachmentId, deletedAt: null, OR: [{ ownerId: null }, { ownerType: 'part_purchase', ownerId: purchaseId }] },
-      data: { ownerType: 'part_purchase', ownerId: purchaseId },
-    });
-    if (!linked.count) throw new BadRequestException({ code: 'ATTACHMENT_NOT_FOUND', message: 'The invoice file was not found. Attach it again.' });
   }
 
   /** Each truck's amount (lines + share of tax and freight) and what has no truck. */
@@ -423,12 +378,6 @@ export class PurchasesService {
       totalCents: row.totalCents,
       lines: row.lines.map((line) => ({ partId: line.partId, description: line.description, quantity: line.quantity.toFixed(2), unitCostCents: line.unitCostCents, truckId: line.truckId })),
     };
-  }
-
-  private async filedOwners(ids: string[]) {
-    if (!ids.length) return new Set<string>();
-    const rows = await this.prisma.attachment.findMany({ where: { ownerType: 'part_purchase', ownerId: { in: ids }, deletedAt: null }, select: { ownerId: true } });
-    return new Set(rows.map((row) => row.ownerId!));
   }
 
   private async row(id: string) {

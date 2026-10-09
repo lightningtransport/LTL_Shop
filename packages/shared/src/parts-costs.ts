@@ -371,3 +371,78 @@ export function truckAmounts(lines: Array<{ truckId: string | null; lineTotalCen
   return groups.map((group) => ({ truckId: group.truckId, amountCents: group.baseCents + (extra.get(group.truckId) ?? 0) }));
 }
 
+
+// ── PC-3: outside repairs ────────────────────────────────────────────────────────────────────────────────────
+
+export const adminSaveOutsideRepairSchema = z.object({
+  truckId: z.string().uuid(),
+  vendorId: z.string().uuid(),
+  invoiceNumber: z.string().trim().min(1).max(60),
+  invoiceDate: isoDate,
+  description: z.string().trim().min(1).max(500),
+  amountCents: moneyCents,
+  /** The Job sent to an external shop (out now, or back within 90 days). Null = not tied to a Job. */
+  workOrderJobId: z.string().uuid().nullable().optional(),
+  notes: optionalText(1000),
+  attachmentId: z.string().uuid().nullable().optional(),
+});
+
+export const adminOutsideRepairsQuerySchema = z.object({
+  q: z.string().trim().max(120).optional(),
+  vendorId: z.string().uuid().optional(),
+  truckId: z.string().uuid().optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+  noFile: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+});
+
+export const adminExternalJobsQuerySchema = z.object({ truckId: z.string().uuid() });
+
+export type AdminSaveOutsideRepairInput = z.input<typeof adminSaveOutsideRepairSchema>;
+
+/** A Job that went to an external shop: still out, or back within 90 days. */
+export interface AdminExternalJobDto {
+  jobId: string;
+  displayName: string;
+  workOrderId: string;
+  workOrderDisplayId: string;
+  kind: 'part' | 'truck' | null;
+  sentAt: string | null;
+  returnedAt: string | null;
+  /** Still at the external shop. */
+  out: boolean;
+}
+
+export interface AdminOutsideRepairSummaryDto {
+  id: string;
+  truck: AdminTruckRefDto;
+  vendor: { id: string; name: string };
+  invoiceNumber: string;
+  invoiceDate: string;
+  description: string;
+  amountCents: number;
+  job: { id: string; displayName: string; workOrderId: string; workOrderDisplayId: string; kind: 'part' | 'truck' | null } | null;
+  hasFile: boolean;
+  voidedAt: string | null;
+}
+
+export interface AdminOutsideRepairListDto {
+  items: AdminOutsideRepairSummaryDto[];
+  totals: { count: number; totalCents: number };
+}
+
+export interface AdminOutsideRepairDetailDto extends AdminOutsideRepairSummaryDto {
+  notes: string | null;
+  attachment: AdminAttachmentDto | null;
+  createdBy: { id: string; name: string } | null;
+  createdAt: string;
+  voidedBy: { id: string; name: string } | null;
+  voidReason: string | null;
+}
+
+/** On the admin Work Order: the outside invoices tied to a Job (Manager and System Admin only). */
+export interface AdminJobOutsideInvoiceDto {
+  id: string;
+  amountCents: number;
+  vendorName: string;
+}

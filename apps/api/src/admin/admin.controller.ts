@@ -17,7 +17,7 @@ import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { Capabilities } from '../auth/capabilities.decorator';
 import { CapabilitiesGuard } from '../auth/capabilities.guard';
-import { ManagerWritesGuard } from '../auth/manager-writes.guard';
+import { ManagerWritesGuard, canDoManagerWrites } from '../auth/manager-writes.guard';
 import { TrucksService } from '../trucks/trucks.service';
 import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
@@ -68,8 +68,11 @@ export class AdminController {
   }
 
   @Get('work-orders/:id')
-  workOrder(@Param('id') id: string) {
-    return this.admin.detail(id);
+  async workOrder(@Req() request: Request, @Param('id') id: string) {
+    const detail = await this.admin.detail(id);
+    // LTR-200 / D-PC7: money is for the Shop Manager and the System Admin only.
+    if (canDoManagerWrites(request.user)) return detail;
+    return { ...detail, jobs: detail.jobs.map(({ outsideInvoices: _invoices, ...job }) => job) };
   }
 
   @Patch('work-orders/:id')
