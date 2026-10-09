@@ -562,6 +562,9 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Manda un Job afuera, carga la factura y después marca Regresó (o al revés) | "Enviar a taller externo" y "Regresó" funcionan igual que antes, con o sin factura cargada; la factura sigue ligada al Job | ✅ | A64 |
 | Carga como reparación una factura que ya cargó como compra (mismo proveedor y número) | La app avisa y no deja guardar: dice cuál es (D-PC8) | ✅ | A65 |
 | Corrige o anula una reparación externa | Igual que una compra: reversas en el costo del camión, nada se borra; anular pide motivo | ✅ | A65 |
+| Abre Truck → Costs y elige un período (este mes, 3 meses, este año, todo) (PC-4) | Ve el total de partes, de reparaciones externas y el total; las barras por mes; y cada movimiento (compra o reparación) con su WO, que abre su compra o reparación. Lo anulado o corregido sale como reversa en negativo y baja el total | 🔲 PC-4 | A66 |
+| Quiere ver la mano de obra del camión | Por ahora solo las horas registradas en el período (sesiones cerradas, D18, D21), sin monto: la tarifa queda para después | 🔲 PC-4 | A67 |
+| Un mecánico o Safety intenta ver los costos de un camión; un PM se termina | No puede (403); terminar un PM no escribe nada en el costo del camión (D-PC4) | 🔲 PC-4 | A68 |
 | Quiere cobrarle a Finanzas | No en la etapa 1: diseñado (mano de obra × horas y factura interna por período), no construido | 🔲 después | — |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)

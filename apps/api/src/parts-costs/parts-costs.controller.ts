@@ -8,6 +8,7 @@ import { ManagerWritesGuard } from '../auth/manager-writes.guard';
 import { PartsCatalogService } from './parts-catalog.service';
 import { OutsideRepairsService } from './outside-repairs.service';
 import { PurchasesService } from './purchases.service';
+import { TruckCostsService } from './truck-costs.service';
 
 /**
  * LTR-200 / D32, D-PC7: Parts & costs is for the Shop Manager and the System Admin only — reading too, because it
@@ -21,6 +22,7 @@ export class PartsCostsController {
     private readonly catalog: PartsCatalogService,
     private readonly purchases: PurchasesService,
     private readonly repairs: OutsideRepairsService,
+    private readonly truckCosts: TruckCostsService,
   ) {}
 
   @Get('parts')
@@ -128,5 +130,11 @@ export class PartsCostsController {
   @Post('outside-repairs/:id/void')
   voidOutsideRepair(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.repairs.void(request.user!, id, body);
+  }
+
+  // PC-4: Truck → Costs (reads the ledger).
+  @Get('trucks/:id/costs')
+  costsOfTruck(@Param('id') id: string, @Query() query: Record<string, unknown>) {
+    return this.truckCosts.costs(id, query);
   }
 }

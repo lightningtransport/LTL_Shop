@@ -446,3 +446,32 @@ export interface AdminJobOutsideInvoiceDto {
   amountCents: number;
   vendorName: string;
 }
+
+// ── PC-4: Truck → Costs ──────────────────────────────────────────────────────────────────────────────────────
+
+export const adminTruckCostsQuerySchema = z.object({ from: isoDate.optional(), to: isoDate.optional() });
+
+export interface AdminTruckCostEntryDto {
+  id: string;
+  occurredOn: string;
+  kind: 'part_purchase' | 'outside_repair' | 'labor' | 'internal_invoice';
+  amountCents: number;
+  description: string;
+  sourceType: string;
+  sourceId: string;
+  workOrder: { id: string; displayId: string } | null;
+  /** A reversal row: `voided` when its record was voided, `corrected` when it was edited. */
+  reversal: 'voided' | 'corrected' | null;
+}
+
+export interface AdminTruckCostsDto {
+  truck: AdminTruckRefDto;
+  from: string | null;
+  to: string | null;
+  totals: { partsCents: number; outsideCents: number; totalCents: number };
+  /** One per month with costs, oldest first ("2026-10"). */
+  months: Array<{ month: string; partsCents: number; outsideCents: number }>;
+  entries: AdminTruckCostEntryDto[];
+  /** D18 / D21: hours on closed sessions of this truck's Work Orders in the period. No rate yet, so no amount. */
+  laborHours: number;
+}
