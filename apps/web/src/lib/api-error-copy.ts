@@ -7,6 +7,8 @@ import type { ShopLocale } from './shop-locale';
  * Keys with a shared audience avoid the Truck/unidad noun; the QC keys are Safety copy (unidad).
  */
 export type ApiErrorCode =
+  | 'PERSON_HAS_HISTORY'
+  | 'PERSON_REMOVED'
   | 'ALIAS_EMPTY'
   | 'ALIAS_IS_JOB_NAME'
   | 'CATALOG_CATEGORY_EXISTS'
@@ -84,6 +86,8 @@ export type ApiErrorCopy = Record<ApiErrorCode | 'network' | 'timeout', string>;
 export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
+    PERSON_HAS_HISTORY: 'This person has history in the Shop, so they cannot be deleted. Remove them from the Shop instead.',
+    PERSON_REMOVED: 'This person was removed from the Shop. To bring them back, add them again.',
     ALIAS_EMPTY: 'An alias needs a letter or a number.',
     ALIAS_IS_JOB_NAME: "The Job's own name is always an alias. Rename the Job instead.",
     CATALOG_CATEGORY_EXISTS: 'A Category with this name already exists.',
@@ -159,6 +163,8 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   },
   es: {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
+    PERSON_HAS_HISTORY: 'Esta persona tiene historial en el taller, así que no se puede borrar. Quítala del Shop en su lugar.',
+    PERSON_REMOVED: 'Esta persona fue quitada del Shop. Para que vuelva, agrégala de nuevo.',
     ALIAS_EMPTY: 'Un alias necesita una letra o un número.',
     ALIAS_IS_JOB_NAME: 'El nombre del Job siempre es un alias. Renombra el Job en su lugar.',
     CATALOG_CATEGORY_EXISTS: 'Ya existe una categoría con ese nombre.',
