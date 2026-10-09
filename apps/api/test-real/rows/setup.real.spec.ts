@@ -34,9 +34,8 @@ describe('Manager: Setup (Shop workflow, catálogo, personas)', () => {
     const steps = ok('leer Shop workflow', await manager.get('/admin/setup/workflow-steps')) as Json[];
     const detailing = steps.find((step) => step.stepKey === 'detailing');
     same('el paso está activo', detailing?.catalogJob.active, true);
-    const blocked = await manager.patch(`/admin/catalog/jobs/${detailing?.catalogJob.id}`, { status: 'inactive' });
-    refused('desactivar el Job de un paso', blocked, 409, 'CATALOG_JOB_IN_WORKFLOW');
-    same('dice qué paso', blocked.json.stepKey, 'detailing');
+    // LTR-198 / D30: the step's Job is a System Job, so the lock answers first.
+    refused('desactivar el Job de un paso', await manager.patch(`/admin/catalog/jobs/${detailing?.catalogJob.id}`, { status: 'inactive' }), 409, 'SYSTEM_JOB_LOCKED');
 
     // A step whose Job went inactive anyway (data from before this rule) is marked on the screen.
     // `resetDb` keeps the catalog, so everything this row changes there is put back.

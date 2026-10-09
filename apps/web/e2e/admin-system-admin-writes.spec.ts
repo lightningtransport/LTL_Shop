@@ -27,11 +27,11 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
   await expect(page.getByText('Only a Shop Manager or the System Admin can change them')).toHaveCount(0);
   await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
-  // Categories do not change (D25).
-  await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);
+  // LTR-198 / D30: the Manager manages Categories too.
+  await expect(page.getByRole('button', { name: 'Add Category' })).toBeVisible();
   await page.getByRole('link', { name: 'Brakes' }).click();
   await expect(page.getByRole('heading', { name: 'Brakes' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Rename Job' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Actions for / }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Add Job' }).first().click();
   const jobDialog = page.getByRole('dialog');
   await expect(jobDialog.getByLabel('Job name')).toBeFocused();
@@ -41,7 +41,7 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
   await jobDialog.getByLabel('Job name').fill('Adjust slack adjusters');
   await jobDialog.getByRole('button', { name: 'Add Job' }).click();
   await expect(page.getByText('Job added.')).toBeVisible();
-  await expect(page.getByText('Adjust slack adjusters', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('catalog-job-row').filter({ hasText: 'Adjust slack adjusters' }).first()).toBeVisible();
 });
 
 test('manager adds a Safety person and gets the temporary password once (D22, HU-M9)', async ({ page }) => {
@@ -141,12 +141,17 @@ test('system admin with only admin.access sees catalog and roster writes', async
   await expect(page.getByText('Only a Shop Manager or the System Admin can change them')).toHaveCount(0);
   await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add Category' })).toBeVisible();
 
-  await page.getByLabel('Search Category').fill('zzzz-no-category');
-  await expect(page.getByText('No Categories match this search.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add Job' })).toHaveCount(2);
-  await page.getByLabel('Search Category').fill('');
+  // LTR-198 / JC2: the search finds Jobs and aliases in every Category, accents ignored.
+  const search = page.getByLabel('Search categories, Jobs or aliases');
+  await search.fill('zzzz-no-category');
+  await expect(page.getByText('No Job or alias matches.')).toBeVisible();
+  await search.fill('cámara');
+  await expect(page.getByTestId('catalog-search-results')).toBeVisible();
+  await search.fill('chamber');
+  await expect(page.getByTestId('catalog-search-results').getByText('Inspect brake chamber')).toBeVisible();
+  await search.fill('');
   await expect(page.getByRole('link', { name: 'Brakes' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add Job' })).toHaveCount(1);
 
@@ -162,7 +167,6 @@ test('system admin adds, renames, and activates a Job, then creates and activate
 
   await page.goto('/admin/catalog');
   await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
-  await expect(page.getByRole('button', { name: 'Add Category' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Add Job' }).click();
   const jobDialog = page.getByRole('dialog');
   // The Modal focuses its first control one frame after opening (ui.tsx); wait so typing is not redirected.
@@ -176,19 +180,26 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await page.getByRole('link', { name: 'Suspension' }).click();
   await expect(page.getByRole('heading', { name: 'Suspension' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add Job' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Activate' }).click();
+  // JC3: the Category is inactive, so its Jobs cannot be activated until the Category is.
+  await page.getByRole('button', { name: 'Actions for Suspension' }).click();
+  await page.getByRole('menuitem', { name: 'Activate Category' }).click();
+  await expect(page.getByText('Category activated.')).toBeVisible();
+  await page.getByRole('button', { name: 'Actions for Retired suspension job' }).click();
+  await page.getByRole('menuitem', { name: 'Activate' }).click();
   await expect(page.getByText('Job activated.')).toBeVisible();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Retired suspension job' })).not.toContainText('Inactive');
-  await page.getByRole('button', { name: 'Rename Job' }).click();
+  await expect(page.getByTestId('catalog-job-row').filter({ hasText: 'Retired suspension job' })).not.toContainText('Inactive');
+  await page.getByRole('button', { name: 'Actions for Retired suspension job' }).click();
+  await page.getByRole('menuitem', { name: 'Rename Job' }).click();
   const renameDialog = page.getByRole('dialog');
   await expect(renameDialog.getByLabel('Job name')).toBeFocused();
+  await expect(renameDialog.getByRole('checkbox')).toBeChecked();
   await renameDialog.getByLabel('Job name').fill('Service suspension');
   await renameDialog.getByRole('button', { name: 'Rename Job' }).click();
   await expect(page.getByText('Job renamed.')).toBeVisible();
-  await expect(page.getByText('Service suspension', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('catalog-job-row').filter({ hasText: 'Service suspension' }).first()).toBeVisible();
 
   await page.goto('/admin/catalog/categories/00000000-0000-4000-8000-000000000301');
-  await expect(page.getByText('Bleed brakes', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('catalog-job-row').filter({ hasText: 'Bleed brakes' }).first()).toBeVisible();
 
   await page.setViewportSize({ width: 320, height: 568 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);

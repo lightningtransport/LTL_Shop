@@ -502,6 +502,7 @@ describe('SystemAdminWritesService catalog', () => {
         }),
         update: vi.fn(),
         create: vi.fn(),
+        createMany: vi.fn(),
         delete: vi.fn(),
       },
     };
@@ -512,6 +513,7 @@ describe('SystemAdminWritesService catalog', () => {
     await expect(service.updateCatalogJob(JOB_ID, {
       displayName: 'Brake inspect',
       status: CatalogStatus.ACTIVE,
+      keepOldNameAsAlias: false,
     })).resolves.toEqual({
       id: JOB_ID,
       categoryId: CATEGORY_ID,

@@ -211,11 +211,28 @@ function catalogSummary(category) {
     activeJobCount: category.jobs.filter((job) => job.status === 'active').length,
     inactiveJobCount: category.jobs.filter((job) => job.status !== 'active').length,
     aliasCount: category.jobs.reduce((count, job) => count + job.aliases.length, 0),
+    systemKey: category.systemKey ?? null,
+    inactiveReason: category.inactiveReason ?? null,
+    holdsSystemJob: false,
   };
 }
 
+// LTR-198 / D30: the detail carries alias ids, "Used by" and how many Work Orders use each Job.
 function catalogDetail(category) {
-  return { ...catalogSummary(category), jobs: category.jobs };
+  return {
+    ...catalogSummary(category),
+    jobs: category.jobs.map((job) => ({
+      ...job,
+      systemKey: null,
+      aliasItems: job.aliases.map((text, index) => ({ id: fixtureUuid(5000 + index + Number(job.id.slice(-3))), text })),
+      workOrderCount: 0,
+      usedByStep: null,
+    })),
+  };
+}
+
+function foldCatalogText(text) {
+  return String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 function rosterSummary(candidate) {
@@ -535,6 +552,11 @@ createServer(async (request, response) => {
     }
     if (status !== undefined) {
       if (status !== 'active' && status !== 'inactive') { json(response, 400, { message: 'Invalid status' }); return; }
+      // JC3: a Job of an inactive Category cannot be activated.
+      if (status === 'active' && job.status !== 'active' && category.status !== 'active') {
+        json(response, 400, { code: 'CATALOG_CATEGORY_INACTIVE', message: 'This Job\'s Category is inactive, so the Job cannot be activated.' });
+        return;
+      }
       job.status = status;
     }
     json(response, 200, { id: job.id, displayName: job.displayName, status: job.status, aliases: job.aliases, categoryId: category.id });
@@ -542,6 +564,35 @@ createServer(async (request, response) => {
   }
   if (request.url === '/api/admin/catalog/categories') {
     json(response, 200, adminCatalog.map(catalogSummary));
+    return;
+  }
+  // LTR-198 / JC2: Jobs and aliases across Categories, accents and capitals ignored.
+  if (request.url?.startsWith('/api/admin/catalog/search')) {
+    const q = foldCatalogText(new URL(request.url, 'http://fixture').searchParams.get('q') ?? '');
+    const hits = q ? adminCatalog.flatMap((category) => category.jobs
+      .filter((job) => foldCatalogText(job.displayName).includes(q) || job.aliases.some((alias) => foldCatalogText(alias).includes(q)))
+      .map((job) => ({
+        jobId: job.id,
+        displayName: job.displayName,
+        status: job.status,
+        categoryId: category.id,
+        categoryName: category.name,
+        categoryStatus: category.status,
+        matchedAlias: foldCatalogText(job.displayName).includes(q) ? null : job.aliases.find((alias) => foldCatalogText(alias).includes(q)) ?? null,
+      }))) : [];
+    json(response, 200, hits);
+    return;
+  }
+  const categoryPatch = request.url?.match(/^\/api\/admin\/catalog\/categories\/([0-9a-f-]+)$/i);
+  if (categoryPatch && request.method === 'PATCH') {
+    if (denyUnlessManagerWriter()) return;
+    const body = await readJson(request);
+    const category = adminCatalog.find((item) => item.id === categoryPatch[1]);
+    if (!category) { json(response, 404, { message: 'Category not found' }); return; }
+    if (body?.name !== undefined) category.name = String(body.name).trim();
+    if (body?.status !== undefined) category.status = body.status;
+    category.inactiveReason = category.status === 'active' ? null : (body?.inactiveReason ?? category.inactiveReason ?? null);
+    json(response, 200, catalogSummary(category));
     return;
   }
   if (request.url?.startsWith('/api/admin/catalog/categories/')) {

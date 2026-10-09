@@ -516,7 +516,9 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page).toHaveURL(/\/admin\/catalog\/categories\/00000000-0000-4000-8000-000000000301$/);
     await expect(page.getByRole('heading', { name: 'Brakes' })).toBeVisible();
     await expect(page.getByText('Inspect brake chamber')).toBeVisible();
-    await expect(page.getByText('Brake chamber, Chamber')).toBeVisible();
+    // LTR-198: aliases are chips the Manager can edit.
+    await expect(page.getByText('Brake chamber', { exact: true })).toBeVisible();
+    await expect(page.getByText('Chamber', { exact: true })).toBeVisible();
     await expect(page.getByText('Retired brake job')).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
   });
