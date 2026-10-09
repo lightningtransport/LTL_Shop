@@ -392,6 +392,13 @@ Las barras por mes son simples (sin librería de gráficos); las reversas se mar
 Nada de esto entra en la etapa 1. Se describe para comprobar que el modelo de §5 lo soporta **solo agregando
 tablas y valores**.
 
+**Decidido el 2026-10-09 ([D34](../../DECISIONS.md)), se construye en LB-1 y LB-2.** Cambios respecto de lo que sigue:
+- **Una sola tarifa del taller** (sin tarifas por mecánico). `labor_rates` queda con `user_id` vacío.
+- **Partes al costo**, sin recargo.
+- **Factura por camión y mes.**
+- **Finanzas no entra a la app** y no hay permiso `finance.review`. El Manager descarga el PDF (una página para imprimir o guardar como PDF), lo manda por fuera y marca **Accepted**.
+- **Mano de obra:** solo de Work Orders **completados**. Un WO cancelado no cobra mano de obra; si estaba completado y se cancela, se reversa.
+
 ### 8.1 Costo de mano de obra
 
 - **Tabla `labor_rates`** (no se construye): `id`, `user_id?` (tarifa de un mecánico; nula = tarifa general del
