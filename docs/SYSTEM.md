@@ -281,6 +281,35 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - Partes: catálogo de 9 categorías filtrado por marca/modelo del Truck; se
   exige al menos una.
 
+### Partes y proveedores (`parts`, `part_fitments`, `vendors`; LTR-200 / D32, PC-1)
+- **El catálogo de partes es el del PM.** Admin → Parts & costs → **Parts**
+  (`/admin/parts/catalog`) lo muestra por las 9 categorías del PM con su costo
+  de referencia (`unit_cost_cents`, centavos; "No cost yet" si falta), su
+  proveedor habitual y **Sirve para** (`part_fitments`: sin filas = todos los
+  camiones; si no, marca y/o modelo). La misma regla (`partFitsTruck`, en
+  `packages/shared`) decide qué partes ofrece el PM.
+- **El PM no ve costos ni proveedores** (D-PC7): `GET /work-orders/:id/pm` no
+  cambia.
+- **Una parte elegida en un PM en curso** (su Job de PM sin terminar y el WO
+  abierto) no se puede desactivar ni quitarle la marca de ese camión:
+  `PART_IN_OPEN_PM`, con el camión. Así el siguiente guardado del mecánico no
+  falla. Al terminar el PM, sí.
+- Una parte nunca se borra (los PM viejos la muestran); se desactiva.
+  `source` = `seed` (lista base) o `app` (la creó el Manager).
+- **La lista base** (`applyPmParts`, `apps/api/prisma/pm-parts.ts`, la usa el
+  seed) solo agrega las partes que faltan: no apaga, no reactiva y no cambia
+  marcas, costos ni proveedores.
+- **Vendors** (`/admin/parts/vendors`): nombre único sin importar mayúsculas
+  (`VENDOR_NAME_TAKEN`), vende partes y/o hace reparaciones afuera, teléfono,
+  correo, número de cuenta, notas. No se borra; se desactiva.
+- **Quién:** solo el Shop Manager y el System Admin, también para leer
+  (`/api/admin/parts-costs/*` con `ManagerWritesGuard`). El grupo del menú
+  no aparece para nadie más.
+- **Ya existen para las etapas siguientes** (sin escribirse todavía):
+  `attachments` (facturas en Supabase Storage) y `truck_cost_entries` (el
+  libro de costos de cada camión: filas que nunca se editan; un cambio escribe
+  una reversa).
+
 ### Notas (`work_order_notes`)
 - Solo se agregan, nunca se editan (D8). Tipos: `note` y `work_request`
   ("Pedir trabajo": el mecánico avisa de trabajo extra).

@@ -10,6 +10,7 @@ import {
 import {
   AppCapability,
   ActivityEventType,
+  partFitsTruck,
   MechanicMode,
   WorkPlanJobLane,
   OPEN_WORK_ORDER_STATUSES,
@@ -1917,17 +1918,8 @@ export class WorkOrdersService {
     fitments: Array<{ make: string | null; model: string | null }>,
     truck: { make: string | null; model: string | null },
   ) {
-    if (!fitments.length) return true;
-    const make = this.normalizeVehicleValue(truck.make);
-    const model = this.normalizeVehicleValue(truck.model);
-    return fitments.some((fitment) =>
-      (!fitment.make || this.normalizeVehicleValue(fitment.make) === make) &&
-      (!fitment.model || this.normalizeVehicleValue(fitment.model) === model),
-    );
-  }
-
-  private normalizeVehicleValue(value: string | null) {
-    return value?.toLocaleLowerCase('en-US').replace(/[^a-z0-9]/g, '') ?? '';
+    // LTR-200: the same rule the Parts catalog uses to protect a PM in progress.
+    return partFitsTruck(fitments, truck);
   }
 }
 

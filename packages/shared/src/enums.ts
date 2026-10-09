@@ -140,6 +140,13 @@ export enum ActivityEventType {
   READINESS_APPROVED = 'readiness_approved',
   READINESS_APPROVAL_INVALIDATED = 'readiness_approval_invalidated',
   READINESS_ASSESSMENT_CLOSED = 'readiness_assessment_closed',
+  // LTR-200 / D32: Parts & costs.
+  VENDOR_SAVED = 'vendor_saved',
+  PART_CATALOG_UPDATED = 'part_catalog_updated',
+  PART_PURCHASE_SAVED = 'part_purchase_saved',
+  PART_PURCHASE_VOIDED = 'part_purchase_voided',
+  OUTSIDE_REPAIR_SAVED = 'outside_repair_saved',
+  OUTSIDE_REPAIR_VOIDED = 'outside_repair_voided',
 }
 
 /** LTR-126 / D8: kind of an append-only Work Order note entry. */

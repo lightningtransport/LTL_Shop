@@ -531,7 +531,7 @@ Ver la fila E7 en HU-ME2.
 
 Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
-### HU-M12 · Saber cuánto cuesta cada camión (J13) — 🔲 decidido (D32), bloque S4
+### HU-M12 · Saber cuánto cuesta cada camión (J13) — 🟡 en construcción (D32, bloque S4): PC-1 construido
 
 **Quién:** el Manager. Más adelante, Finanzas.
 
@@ -543,7 +543,12 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
-| El PM usa una parte | La elige del mismo catálogo; el PM sigue igual que hoy | 🔲 S4 | — |
+| Le pone a una parte su costo, su proveedor habitual o para qué camiones sirve (PC-1) | Se guarda; el PM de ese camión sigue mostrando las mismas partes y la misma "más usada", y el mecánico nunca ve el costo | ✅ | A53 |
+| Quiere desactivar una parte, o quitarle la marca de un camión, mientras está elegida en un PM en curso (PC-1) | No deja y dice en qué camión está; cuando ese PM termina, sí. El mecánico guarda su PM sin error | ✅ | A54 |
+| Se vuelve a cargar la lista base de partes (seed) después de que el Manager cambió el catálogo (PC-1) | Solo agrega las partes de la lista que faltan: no apaga ni reactiva nada, no cambia marcas ni costos | ✅ | A55 |
+| Carga un proveedor con un nombre que ya existe ("fleetpride") (PC-1) | No deja y dice cuál existe | ✅ | A55 |
+| Un mecánico o Safety intenta ver el catálogo con costos o los proveedores | No puede (403) | ✅ | A56 |
+| El PM usa una parte | La elige del mismo catálogo; el PM sigue igual que hoy | ✅ | A53 |
 | Carga dos veces la misma factura | La app avisa que ese número de factura de ese proveedor ya existe | 🔲 S4 | — |
 | Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock) | 🔲 S4 | — |
 | Quiere cobrarle a Finanzas | No en la etapa 1: diseñado (mano de obra × horas y factura interna por período), no construido | 🔲 después | — |

@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 89 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
+PASA 93 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 
 | # | Flujo | API real |
 |---|---|---|
@@ -44,7 +44,7 @@ PASA 89 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A28 | NO APLICA: WO de PM legacy (pausa, reanudar, terminar): ya no se pueden crear y no queda ninguno abierto | NO APLICA |
 | A29 | Crear Standard, PM y Safety: entran al roster con su tipo; correo repetido y mecánico no pueden; Safety solo es dueño del QC | PASA |
 | A30 | Desactivar: no deja con Jobs pendientes o tiempo corriendo (dice qué reasignar); sin trabajo abierto deja de entrar y de aparecer; reactivar | PASA |
-| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); S3 no toca reiniciar contraseña |
+| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); PC-1 no toca reiniciar contraseña |
 | A32 | Cierre del día: el reloj se cierra a las 5:00 p.m. (no a la hora en que alguien mira), el viernes no corre el fin de semana, fuera de horario a las 11:59 p.m., y al día siguiente "toca Continue" | PASA |
 | A33 | Horario del taller en Setup: el Manager (o el System Admin) cambia la hora y los días; aplica desde ese momento; los demás roles no pueden; datos inválidos no | PASA |
 | A34 | Ayudante: Job aparte "· ayudante" con su dueño; su reloj corre a su nombre en ese WO; no deja al mismo dueño, a quien no hace Standard, ni en PM / QC / otro ayudante; el bloqueo del principal no lo bloquea; cancelar el principal no lo cancela; solo el Manager | PASA |
@@ -66,6 +66,10 @@ PASA 89 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A50 | Quitar con trabajo pendiente: se niega con la lista; después de mandar sus Jobs a la cola del equipo, se puede | PASA |
 | A51 | Borrar: solo a alguien que nunca hizo nada; con historial se niega y pide quitar del Shop | PASA |
 | A52 | Cambiar de tipo: con Jobs pendientes se niega; sin Jobs, sale de los equipos que ya no puede hacer | PASA |
+| A53 | Costo, proveedor habitual y "Fits": el PM sigue mostrando lo mismo y nunca recibe un costo | PASA |
+| A54 | Una parte elegida en un PM en curso no se desactiva ni pierde ese camión; al terminar el PM, sí | PASA |
+| A55 | La lista base no deshace el catálogo del Manager; un proveedor no se repite | PASA |
+| A56 | Mecánicos y Safety no ven el catálogo con costos ni los proveedores | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

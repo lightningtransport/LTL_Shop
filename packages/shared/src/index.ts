@@ -1,5 +1,6 @@
 export * from './attention';
 export * from './catalog';
+export * from './parts-costs';
 export * from './pm';
 export * from './quality-check';
 export * from './enums';

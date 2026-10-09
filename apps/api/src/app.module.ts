@@ -13,6 +13,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { HealthController } from './health.controller';
 import { RequestTimingInterceptor } from './observability/request-timing.interceptor';
 import { SentryHttpFilter } from './observability/sentry-http.filter';
+import { PartsCostsModule } from './parts-costs/parts-costs.module';
 import { AdminModule } from './admin/admin.module';
 import { QualityCheckModule } from './quality-check/quality-check.module';
 
@@ -33,6 +34,7 @@ import { QualityCheckModule } from './quality-check/quality-check.module';
     IntegrationsModule,
     AdminModule,
     QualityCheckModule,
+    PartsCostsModule,
   ],
   controllers: [HealthController],
   providers: [

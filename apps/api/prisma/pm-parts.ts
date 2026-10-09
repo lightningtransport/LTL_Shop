@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import type { PrismaClient } from '@prisma/client';
 import { resolve } from 'node:path';
 
 export type PmPartFitment = { make: string | null; model: string | null };
@@ -121,4 +122,37 @@ export function loadCanonicalPmParts(): CanonicalPmPart[] {
       }
     }
   return [...canonical.values()];
+}
+
+/**
+ * LTR-200 / D32 (PC-1): loads the base PM part list without undoing the Manager's catalog. It only adds the
+ * categories and parts that are missing: an existing part keeps its active state, its "Fits", its cost and its
+ * vendor, and a part the Manager created (`source = app`) is never touched. Returns how many parts it created.
+ */
+export async function applyPmParts(prisma: PrismaClient): Promise<{ listed: number; created: number }> {
+  const categoryIds: Record<string, string> = {};
+  for (let index = 0; index < PM_PART_CATEGORIES.length; index += 1) {
+    const source = PM_PART_CATEGORIES[index];
+    const category = await prisma.partCategory.upsert({
+      where: { name: source.name },
+      update: {},
+      create: { name: source.name, slug: source.slug, sortOrder: index, aliases: [...source.aliases] },
+    });
+    categoryIds[source.name] = category.id;
+  }
+  const listed = loadCanonicalPmParts();
+  let created = 0;
+  for (const item of listed) {
+    const categoryId = categoryIds[item.category];
+    const existing = await prisma.part.findUnique({
+      where: { categoryId_partNumber_displayName: { categoryId, partNumber: item.partNumber, displayName: item.displayName } },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await prisma.part.create({
+      data: { categoryId, partNumber: item.partNumber, displayName: item.displayName, source: 'seed', fitments: { create: item.fitments } },
+    });
+    created += 1;
+  }
+  return { listed: listed.length, created };
 }

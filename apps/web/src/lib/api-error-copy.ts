@@ -7,6 +7,12 @@ import type { ShopLocale } from './shop-locale';
  * Keys with a shared audience avoid the Truck/unidad noun; the QC keys are Safety copy (unidad).
  */
 export type ApiErrorCode =
+  | 'PART_IN_OPEN_PM'
+  | 'PART_EXISTS'
+  | 'PART_CATEGORY_NOT_FOUND'
+  | 'VENDOR_NAME_TAKEN'
+  | 'VENDOR_NOT_ACTIVE'
+  | 'VENDOR_NEEDS_KIND'
   | 'PERSON_HAS_HISTORY'
   | 'PERSON_REMOVED'
   | 'ALIAS_EMPTY'
@@ -86,6 +92,12 @@ export type ApiErrorCopy = Record<ApiErrorCode | 'network' | 'timeout', string>;
 export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
+    PART_IN_OPEN_PM: 'This part is picked in a PM in progress. Change it after that PM is finished.',
+    PART_EXISTS: 'That part is already in this category.',
+    PART_CATEGORY_NOT_FOUND: 'That category no longer exists. Reload the page.',
+    VENDOR_NAME_TAKEN: 'A vendor with that name already exists.',
+    VENDOR_NOT_ACTIVE: 'Pick an active vendor.',
+    VENDOR_NEEDS_KIND: 'A vendor sells parts, does outside repairs, or both.',
     PERSON_HAS_HISTORY: 'This person has history in the Shop, so they cannot be deleted. Remove them from the Shop instead.',
     PERSON_REMOVED: 'This person was removed from the Shop. To bring them back, add them again.',
     ALIAS_EMPTY: 'An alias needs a letter or a number.',
@@ -163,6 +175,12 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   },
   es: {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
+    PART_IN_OPEN_PM: 'Esta parte está elegida en un PM en curso. Cámbiala cuando ese PM termine.',
+    PART_EXISTS: 'Esa parte ya está en esta categoría.',
+    PART_CATEGORY_NOT_FOUND: 'Esa categoría ya no existe. Vuelve a cargar la página.',
+    VENDOR_NAME_TAKEN: 'Ya existe un proveedor con ese nombre.',
+    VENDOR_NOT_ACTIVE: 'Elige un proveedor activo.',
+    VENDOR_NEEDS_KIND: 'Un proveedor vende partes, hace reparaciones afuera, o las dos cosas.',
     PERSON_HAS_HISTORY: 'Esta persona tiene historial en el taller, así que no se puede borrar. Quítala del Shop en su lugar.',
     PERSON_REMOVED: 'Esta persona fue quitada del Shop. Para que vuelva, agrégala de nuevo.',
     ALIAS_EMPTY: 'Un alias necesita una letra o un número.',
