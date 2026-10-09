@@ -339,6 +339,27 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - `attachments.owner_type` y los valores `labor` / `internal_invoice` del libro
   quedan para las etapas siguientes (§8 de la propuesta).
 
+### Reparaciones externas (`outside_repairs`; LTR-200 / D32, PC-3)
+- **Outside repairs** (`/admin/parts/outside-repairs`): camión (obligatorio),
+  proveedor, fecha y número de factura, qué se hizo, monto, factura adjunta y
+  notas; opcionalmente **el Job enviado a taller externo** (D24).
+- **Los Jobs que se ofrecen** (`GET /external-jobs?truckId=`): los del camión que
+  están afuera ahora y los que salieron en los últimos 90 días (del Activity Log,
+  `job_sent_external` / `job_returned_external`). Un Job de otro camión responde
+  `JOB_NOT_ON_TRUCK`; uno que nunca salió, `JOB_NEVER_EXTERNAL`. Se guarda una copia
+  de qué salió (pieza o camión).
+- **"Enviar a taller externo" y "Regresó" no cambian**: la reparación guarda el id
+  del Job, así sigue ligada aunque "Regresó" borre el estado externo.
+- En el Work Order, el `…` del Job afuera tiene **"Add outside repair invoice"**
+  (abre el formulario con el camión y el Job ya elegidos) y el Job muestra
+  "Invoice $1,840.00 · Diesel Pro". Solo el Manager y el System Admin ven
+  montos: `GET /admin/work-orders/:id` quita `outsideInvoices` a los demás.
+- **Factura repetida entre compras y reparaciones** (D-PC8): mismo proveedor y
+  número entre las no anuladas de las dos tablas (`invoice-registry.ts`, mismo
+  candado por proveedor); el aviso dice si la existente es compra o reparación.
+- **Libro de costos**: una fila `outside_repair` en el camión, con su Work Order;
+  corregir y anular escriben reversas como en las compras.
+
 ### Notas (`work_order_notes`)
 - Solo se agregan, nunca se editan (D8). Tipos: `note` y `work_request`
   ("Pedir trabajo": el mecánico avisa de trabajo extra).
