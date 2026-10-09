@@ -801,6 +801,14 @@ los dos catálogos), usa la copia de red/timeout y, si no hay código, cae al
 respaldo del catálogo (el texto crudo solo se ve en inglés). Los errores de
 Supabase Auth se mapean igual (`authErrorMessage()`). *(LTR-181.)*
 
+**Panel de demo (D36, solo local):** en un build con Dev Login y con el modo
+encendido desde `/login` ("Enter demo mode"), el encabezado de los dos shells
+muestra un botón **Demo** a la izquierda del perfil. Abre un panel flotante
+(copia del panel de las maquetas) con las cuentas demo: tocar una cambia de
+usuario sin cerrar sesión y carga su pantalla de inicio. En producción el
+botón no existe (`lib/dev-login.ts`, `lib/demo/`, `components/demo-panel.tsx`).
+Detalle en [`reference/DEMO.md`](reference/DEMO.md).
+
 **App instalada (PWA):** una sola app para todos los roles, nombre "Lightning
 Shop" ("LTL Shop" bajo el ícono), ícono verde con rayo (incluye versión
 maskable 512, generada por `apps/web/scripts/generate-app-icons.mjs`) y
@@ -876,6 +884,13 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
 - `CRON_SECRET` (API, solo servidor): secreto con el que Vercel Cron llama
   `GET /api/internal/day-close` (respaldo del cierre del día, D20). Vercel lo
   manda solo en el encabezado `Authorization: Bearer …`.
+- `npm run start:demo` — levanta la demo local (`start-demo.sh`): la API
+  en `:3141` contra `ltl_shop_demo` con `AUTH_DEV_BYPASS=true` y la web en
+  `:3042` con Dev Login y el Panel de demo (D36). `DEMO_API_PORT`,
+  `DEMO_WEB_PORT` y `DEMO_DATABASE_URL` cambian los valores por defecto.
+- `GET /api/dev/demo/users` (D36): la lista de cuentas que el Panel de demo
+  puede usar (activas, no quitadas). Solo existe con `AUTH_DEV_BYPASS=true`;
+  si no, 404 (`src/dev-demo/`).
 - Solo en desarrollo: `AUTH_DEV_BYPASS`, `NEXT_PUBLIC_E2E_DEV_LOGIN`.
 
 ---

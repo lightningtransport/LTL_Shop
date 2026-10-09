@@ -13,6 +13,8 @@ import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, Moon, SlidersHorizon
 import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
+import { DEMO_MODE_AVAILABLE } from '@/lib/dev-login';
+import { DemoHeaderButton } from './demo-panel';
 import { useShopLocale } from '@/lib/locale-context';
 import { shouldTakeInitialFocus } from '@/lib/modal-initial-focus';
 import { shouldOpenUpdatePasswordSheet, updatePasswordSheetCopy } from '@/lib/password-change-prompt';
@@ -644,9 +646,17 @@ function UpdatePasswordSheet({
   );
 }
 
-/** LTR-167: the header holds only the profile button; language and theme live in its menu. */
+/**
+ * LTR-167: the header holds only the profile button; language and theme live in its menu.
+ * D36: in a local build with demo mode on, the Demo button sits to its left (both shells use this slot).
+ */
 export function AppHeaderActions() {
-  return <ProfileDialog />;
+  return (
+    <>
+      {DEMO_MODE_AVAILABLE ? <DemoHeaderButton /> : null}
+      <ProfileDialog />
+    </>
+  );
 }
 
 export function HomeTopBar({ mode }: { mode?: MechanicMode }) {

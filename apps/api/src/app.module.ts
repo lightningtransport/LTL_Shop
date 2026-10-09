@@ -16,6 +16,7 @@ import { SentryHttpFilter } from './observability/sentry-http.filter';
 import { PartsCostsModule } from './parts-costs/parts-costs.module';
 import { AdminModule } from './admin/admin.module';
 import { QualityCheckModule } from './quality-check/quality-check.module';
+import { DevDemoModule } from './dev-demo/dev-demo.module';
 
 @Module({
   imports: [
@@ -35,6 +36,8 @@ import { QualityCheckModule } from './quality-check/quality-check.module';
     AdminModule,
     QualityCheckModule,
     PartsCostsModule,
+    // D36: local demo panel; its routes answer 404 unless AUTH_DEV_BYPASS=true.
+    DevDemoModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -1,6 +1,6 @@
 # Demo local: toda la app en uso
 
-**Actualizado:** 2026-10-09
+**Actualizado:** 2026-10-09 (modo demo, D36)
 **Para qué:** mostrarles la app a los usuarios (Manager, mecánicos, PM, Safety) con datos que hacen ver cada pantalla en uso.
 **Dónde:** solo en esta máquina, base `ltl_shop_demo`. Nunca en producción.
 
@@ -23,11 +23,26 @@ Es mejor **armarla la mañana de la demo**, porque las horas son relativas al mo
 Si corre después de las 5:00 p.m., el cierre del día ya cortó los relojes de hoy.
 
 Para verla:
-1. `npm run build --workspace=@ltl-shop/api`.
-2. Arrancar `demo-api` (puerto 3141) y `demo-web` (puerto 3042) desde `.claude/launch.json`.
-   - La API usa `AUTH_DEV_BYPASS=true` y `YARD_READY_TO_GO_SINCE=2000-01-01T00:00:00Z`.
-   - La web usa `NEXT_PUBLIC_E2E_DEV_LOGIN=1`.
-3. Abrir `http://127.0.0.1:3042/login`, escribir el correo y tocar **Acceso de desarrollo (bypass local)**. No pide contraseña.
+1. `npm run start:demo` (desde la raíz). Compila `packages/shared` y la API y levanta las dos cosas:
+   - la API en `http://127.0.0.1:3141` contra `ltl_shop_demo`, con `AUTH_DEV_BYPASS=true` y `YARD_READY_TO_GO_SINCE=2000-01-01T00:00:00Z`;
+   - la web en `http://127.0.0.1:3042` con `NEXT_PUBLIC_E2E_DEV_LOGIN=1` (Dev Login y Panel de demo).
+
+   Si un puerto está ocupado: `DEMO_API_PORT=3151 DEMO_WEB_PORT=3043 npm run start:demo`. Otra base: `DEMO_DATABASE_URL=…` (tiene que ser `localhost` y decir "demo").
+2. Abrir `http://127.0.0.1:3042/login`, escribir `manager@lightning.local` y tocar **Enter demo mode (this machine only)**. No pide contraseña. (El botón **Dev login** de siempre sigue ahí: entra sin el panel.)
+
+## Modo demo (D36)
+
+Con el modo demo encendido, el encabezado de todas las pantallas tiene un botón **Demo** (matraz) a la izquierda del perfil. Abre el **Demo panel**, el mismo panel flotante de las maquetas (`docs/proposals/*/mockup.html`), ahora dentro de la app. Sus textos están en inglés porque es una herramienta para presentar, no parte del producto.
+
+- **User:** las diez cuentas demo agrupadas (Management, Mechanics, PM, Safety), cada una con una pista de qué muestra. Tocar una **cambia de usuario sin cerrar sesión**: la web pone la cookie de Admin con el token `dev:` nuevo y **recarga la página** en la pantalla de inicio de esa cuenta (Manager → Operaciones, mecánico → Mi trabajo, PM → PM, Safety → Quality Check). Nada del usuario anterior queda en pantalla. La cuenta actual sale marcada; una cuenta que no esté activa en la base sale como "inactive". Las cuentas que no son del reparto (por ejemplo `cristian@ltransl.com`) salen bajo **Others**.
+- **Stories** *(segunda etapa, PR 2)*: elegir una historia de `USER_FLOWS.md` y recorrerla paso a paso; cada paso cambia de usuario y de pantalla y dice qué tocar y qué explicar.
+- **Reset demo:** limpia la historia y vuelve al Manager en Operaciones. **No rearma los datos**: para eso, `npm run prisma:demo-local`.
+- **Leave demo mode:** esconde el panel y el botón; la sesión sigue. Se vuelve a encender desde `/login`.
+- El estado (encendido, panel abierto, historia y paso) queda en el navegador (`localStorage['ltl_shop_demo']`) y sobrevive a recargas y a cerrar sesión.
+
+Dónde no existe: en producción. El panel se monta solo donde está Dev Login (`DEMO_MODE_AVAILABLE`, `apps/web/src/lib/dev-login.ts`, `false` en el deploy) y cambiar de usuario necesita la API con `AUTH_DEV_BYPASS=true`; `GET /api/dev/demo/users` responde 404 sin esa variable. La suite e2e (`apps/web/e2e/demo-mode.spec.ts`) comprueba que sin el modo encendido el botón no está, aunque el build tenga Dev Login.
+
+Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de las 5:00 p.m., recordar que el cierre del día corta los relojes de hoy.
 
 ## Cuentas
 
