@@ -1596,6 +1596,9 @@ function detailRow(overrides: Record<string, unknown> = {}) {
 function assignmentTx(wo: ReturnType<typeof detailRow>, extra: Record<string, unknown> = {}) {
   return {
     $queryRaw: vi.fn().mockResolvedValue([]),
+    // LTR-201 / D34: the labor sync reads the truck's cost ledger and the shop rate (none here).
+    truckCostEntry: { findMany: vi.fn().mockResolvedValue([]), create: vi.fn() },
+    laborRate: { findMany: vi.fn().mockResolvedValue([]) },
     workOrder: {
       findUnique: vi.fn().mockResolvedValue(wo),
       findFirst: vi.fn().mockResolvedValue(null),

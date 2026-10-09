@@ -8,6 +8,7 @@ import { ManagerWritesGuard } from '../auth/manager-writes.guard';
 import { PartsCatalogService } from './parts-catalog.service';
 import { OutsideRepairsService } from './outside-repairs.service';
 import { PurchasesService } from './purchases.service';
+import { LaborRatesService } from './labor-rates.service';
 import { TruckCostsService } from './truck-costs.service';
 
 /**
@@ -23,6 +24,7 @@ export class PartsCostsController {
     private readonly purchases: PurchasesService,
     private readonly repairs: OutsideRepairsService,
     private readonly truckCosts: TruckCostsService,
+    private readonly laborRates: LaborRatesService,
   ) {}
 
   @Get('parts')
@@ -136,5 +138,16 @@ export class PartsCostsController {
   @Get('trucks/:id/costs')
   costsOfTruck(@Param('id') id: string, @Query() query: Record<string, unknown>) {
     return this.truckCosts.costs(id, query);
+  }
+
+  // LB-1 (LTR-201 / D34): the shop's labor rate.
+  @Get('labor-rates')
+  listLaborRates() {
+    return this.laborRates.list();
+  }
+
+  @Post('labor-rates')
+  setLaborRate(@Req() request: Request, @Body() body: unknown) {
+    return this.laborRates.set(request.user!, body);
   }
 }

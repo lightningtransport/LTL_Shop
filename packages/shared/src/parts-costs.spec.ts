@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adminCreateVendorSchema, centsToInput, formatCents, parseMoneyToCents, partFitsTruck } from './parts-costs';
+import { adminCreateVendorSchema, centsToInput, formatCents, laborAmount, parseMoneyToCents, partFitsTruck } from './parts-costs';
 
 describe('money as cents (LTR-200 / D-PC1)', () => {
   it('reads what the Manager types', () => {
@@ -38,5 +38,18 @@ describe('vendor form', () => {
   it('needs parts, repairs or both; an empty email is no email', () => {
     expect(adminCreateVendorSchema.safeParse({ name: 'Diesel Pro', doesParts: false, doesRepairs: false }).success).toBe(false);
     expect(adminCreateVendorSchema.parse({ name: 'Diesel Pro', doesRepairs: true, email: '' }).email).toBeNull();
+  });
+});
+
+describe('laborAmount (D34)', () => {
+  const at = (iso: string) => new Date(iso);
+  it('hours × the rate in effect the day each session started; before the first rate, hours with no amount', () => {
+    const rates = [{ rateCentsPerHour: 9500, effectiveFrom: '2026-10-01' }, { rateCentsPerHour: 10000, effectiveFrom: '2026-10-05' }];
+    const labor = laborAmount([
+      { startedAt: at('2026-09-30T14:00:00Z'), endedAt: at('2026-09-30T15:00:00Z') },
+      { startedAt: at('2026-10-02T14:00:00Z'), endedAt: at('2026-10-02T16:00:00Z') },
+      { startedAt: at('2026-10-06T14:00:00Z'), endedAt: at('2026-10-06T14:30:00Z') },
+    ], rates);
+    expect(labor).toEqual({ minutes: 210, ratedMinutes: 150, amountCents: 19000 + 5000, rateCents: [9500, 10000] });
   });
 });

@@ -468,10 +468,64 @@ export interface AdminTruckCostsDto {
   truck: AdminTruckRefDto;
   from: string | null;
   to: string | null;
-  totals: { partsCents: number; outsideCents: number; totalCents: number };
+  totals: { partsCents: number; outsideCents: number; laborCents: number; totalCents: number };
   /** One per month with costs, oldest first ("2026-10"). */
-  months: Array<{ month: string; partsCents: number; outsideCents: number }>;
+  months: Array<{ month: string; partsCents: number; outsideCents: number; laborCents: number }>;
   entries: AdminTruckCostEntryDto[];
-  /** D18 / D21: hours on closed sessions of this truck's Work Orders in the period. No rate yet, so no amount. */
+  /** D18 / D21: hours on closed sessions of this truck's Work Orders in the period. */
   laborHours: number;
+  /** D34: whether the shop has a labor rate; without one, labor has hours but no amount. */
+  laborRateSet: boolean;
+}
+
+// ── LB-1 (LTR-201 / D34): the shop's labor rate ──────────────────────────────────────────────────────────────
+
+export const adminSetLaborRateSchema = z.object({
+  rateCentsPerHour: moneyCents,
+  effectiveFrom: isoDate,
+  notes: optionalText(300),
+});
+
+export type AdminSetLaborRateInput = z.input<typeof adminSetLaborRateSchema>;
+
+export interface AdminLaborRateDto {
+  id: string;
+  rateCentsPerHour: number;
+  effectiveFrom: string;
+  notes: string | null;
+  createdBy: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+export interface AdminLaborRatesDto {
+  /** Newest first. */
+  rates: AdminLaborRateDto[];
+  /** The rate in effect today, if any. */
+  current: AdminLaborRateDto | null;
+}
+
+/**
+ * D34: labor of one Work Order — each closed session's minutes × the rate in effect the day it started (UTC date).
+ * Sessions before the first rate are counted as hours but have no amount.
+ */
+export function laborAmount(
+  sessions: ReadonlyArray<{ startedAt: Date; endedAt: Date }>,
+  rates: ReadonlyArray<{ rateCentsPerHour: number; effectiveFrom: string }>,
+): { minutes: number; ratedMinutes: number; amountCents: number; rateCents: number[] } {
+  const ordered = [...rates].sort((left, right) => right.effectiveFrom.localeCompare(left.effectiveFrom));
+  let minutes = 0;
+  let ratedMinutes = 0;
+  let exact = 0;
+  const used = new Set<number>();
+  for (const session of sessions) {
+    const sessionMinutes = Math.max(0, session.endedAt.getTime() - session.startedAt.getTime()) / 60_000;
+    minutes += sessionMinutes;
+    const day = session.startedAt.toISOString().slice(0, 10);
+    const rate = ordered.find((item) => item.effectiveFrom <= day);
+    if (!rate) continue;
+    ratedMinutes += sessionMinutes;
+    exact += (sessionMinutes * rate.rateCentsPerHour) / 60;
+    used.add(rate.rateCentsPerHour);
+  }
+  return { minutes, ratedMinutes, amountCents: Math.round(exact), rateCents: [...used] };
 }

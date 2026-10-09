@@ -8,7 +8,7 @@ import type { Prisma, TruckCostKind } from '@prisma/client';
 
 export { allocateExtra, truckAmounts } from '@ltl-shop/shared';
 
-type Source = { sourceType: 'part_purchase' | 'outside_repair'; sourceId: string };
+type Source = { sourceType: 'part_purchase' | 'outside_repair' | 'work_order_labor'; sourceId: string };
 
 /** The rows of a source that still count: not reversals, and not reversed yet. */
 export async function liveEntries(tx: Prisma.TransactionClient, source: Source) {

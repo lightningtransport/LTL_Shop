@@ -82,6 +82,7 @@ import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { LaborClockService } from '../work-orders/labor-clock.service';
 import { blockerActivityLogsInclude, blockerLogDetails, toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
+import { syncWorkOrderLabor } from '../parts-costs/labor-ledger';
 
 const ATTENTION_LIMIT = 8;
 // D1 / UX-5-002 (stage 3): the Dashboard queue lists everything that waits on the Manager. A shop has
@@ -994,13 +995,16 @@ export class AdminService {
           newValue: { status: 'cancelled', reason: input.reason },
           relevantValue: { action: 'work_order_cancelled', reason: input.reason },
         });
-        return this.persistWorkOrderMutation(tx, {
+        const persisted = await this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
           operation,
           payloadHash,
           actorId: user.id,
         });
+        // LTR-201 / D34: the Work Order's labor in the truck's costs follows its status and its time.
+        await syncWorkOrderLabor(tx, workOrderId, user.id);
+        return persisted;
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) {
@@ -1094,13 +1098,16 @@ export class AdminService {
             totalWaitingMs: totals.totalWaitingMs,
           },
         });
-        return this.persistWorkOrderMutation(tx, {
+        const persisted = await this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
           operation,
           payloadHash,
           actorId: user.id,
         });
+        // LTR-201 / D34: the Work Order's labor in the truck's costs follows its status and its time.
+        await syncWorkOrderLabor(tx, workOrderId, user.id);
+        return persisted;
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) {
@@ -1210,13 +1217,16 @@ export class AdminService {
             relevantValue: { reason: 'work_order_reopened', workOrderId },
           });
         }
-        return this.persistWorkOrderMutation(tx, {
+        const persisted = await this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
           operation,
           payloadHash,
           actorId: user.id,
         });
+        // LTR-201 / D34: the Work Order's labor in the truck's costs follows its status and its time.
+        await syncWorkOrderLabor(tx, workOrderId, user.id);
+        return persisted;
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) {
@@ -1543,13 +1553,16 @@ export class AdminService {
           },
           relevantValue: { action: 'time_corrected', targetType: input.targetType, reason: input.reason },
         });
-        return this.persistWorkOrderMutation(tx, {
+        const persisted = await this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
           operation,
           payloadHash,
           actorId: user.id,
         });
+        // LTR-201 / D34: the Work Order's labor in the truck's costs follows its status and its time.
+        await syncWorkOrderLabor(tx, workOrderId, user.id);
+        return persisted;
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) {
