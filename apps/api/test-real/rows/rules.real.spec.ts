@@ -8,7 +8,7 @@ import {
 describe('Reglas: Custom Jobs y permisos', () => {
   beforeEach(resetDb);
 
-  it('A24 | Custom Job: agregar y duplicados (la revisión no existe: defecto #3)', async () => {
+  it('A24 | Custom Job: agregar y duplicados; nace pendiente de revisión (la bandeja es A76–A79)', async () => {
     const { truck: row, workOrderId } = await createWo('905');
     await inspect(row.id, 'issues_found');
     const category = await prisma.jobCategory.findFirstOrThrow({ where: { name: 'Electrical & Starting' } });

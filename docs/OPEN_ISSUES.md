@@ -106,7 +106,7 @@ Todo lo demás es mejora, y va a §6 hasta que se decida.
 
 | # | Problema | Qué pasa | Dónde |
 |---|---|---|---|
-| 3 | **Custom Jobs sin revisión** — **E (bajó de C), decidido D25 (2026-10-05)** | **Hecho (2026-10-05):** el Manager agrega y edita Jobs del catálogo (Admin → Job Catalog) y, en el Work Plan, puede marcar "Agregar también al catálogo" al crear un Job personalizado; un nombre repetido en la categoría no se acepta y se elige el que existe (fila A36; A26 sin 403 para el Manager). **Sigue:** los Custom Jobs viejos quedan en `pending_review` sin pantalla; la bandeja para revisarlos va después (LTR-57). | `work-orders.service.ts` (l. 367, 851), `admin.controller.ts` (catálogo) |
+| ~~3~~ | **Custom Jobs sin revisión** — **E (bajó de C), decidido D25 (2026-10-05)** | **Hecho (2026-10-05):** el Manager agrega y edita Jobs del catálogo (Admin → Job Catalog) y, en el Work Plan, puede marcar "Agregar también al catálogo" al crear un Job personalizado; un nombre repetido en la categoría no se acepta y se elige el que existe (fila A36; A26 sin 403 para el Manager). **Sigue:** los Custom Jobs viejos quedan en `pending_review` sin pantalla; la bandeja para revisarlos va después (LTR-57). | `work-orders.service.ts` (l. 367, 851), `admin.controller.ts` (catálogo) **Cerrado (2026-10-09):** la bandeja **Job Catalog → Custom Jobs to review** agrupa los Custom Jobs y los liga al catálogo, los agrega o los deja como únicos, con Deshacer (LTR-57, A76–A79). |
 | ~~5~~ | ~~"Mechanic note: undefined"~~ — cerrado | No se reproduce en el recorrido de pantallas del 2026-09-29 (§1d). | — |
 
 

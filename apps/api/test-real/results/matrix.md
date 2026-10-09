@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 112 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
+PASA 116 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 
 | # | Flujo | API real |
 |---|---|---|
@@ -37,14 +37,14 @@ PASA 112 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A21 | Yard: tablero por fase y contadores (Movement sin integración) | PASA |
 | A22 | Notas y "Pedir trabajo" → Manager marca atendido; WO cerrado rechaza notas | PASA |
 | A23 | Corrección de tiempos (admin); cada sesión dice de qué mecánico es | PASA |
-| A24 | Custom Job: agregar y duplicados (la revisión no existe: defecto #3) | PASA |
+| A24 | Custom Job: agregar y duplicados; nace pendiente de revisión (la bandeja es A76–A79) | PASA |
 | A25 | Setup → Shop workflow: cambiar dueño por defecto; dueño inactivo → Unassigned | PASA |
 | A26 | Permisos: mecánico 403 en crear/pausar/agregar/terminar, en el roster y en el catálogo; Safety 403 en roster y catálogo | PASA |
 | A27 | NO APLICA: login de Supabase, reset de contraseña, idioma, tema y app instalada son de la web (se prueban en el navegador) | NO APLICA |
 | A28 | NO APLICA: WO de PM legacy (pausa, reanudar, terminar): ya no se pueden crear y no queda ninguno abierto | NO APLICA |
 | A29 | Crear Standard, PM y Safety: entran al roster con su tipo; correo repetido y mecánico no pueden; Safety solo es dueño del QC | PASA |
 | A30 | Desactivar: no deja con Jobs pendientes o tiempo corriendo (dice qué reasignar); sin trabajo abierto deja de entrar y de aparecer; reactivar | PASA |
-| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); LB-2 no toca reiniciar contraseña |
+| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); la bandeja no toca reiniciar contraseña |
 | A32 | Cierre del día: el reloj se cierra a las 5:00 p.m. (no a la hora en que alguien mira), el viernes no corre el fin de semana, fuera de horario a las 11:59 p.m., y al día siguiente "toca Continue" | PASA |
 | A33 | Horario del taller en Setup: el Manager (o el System Admin) cambia la hora y los días; aplica desde ese momento; los demás roles no pueden; datos inválidos no | PASA |
 | A34 | Ayudante: Job aparte "· ayudante" con su dueño; su reloj corre a su nombre en ese WO; no deja al mismo dueño, a quien no hace Standard, ni en PM / QC / otro ayudante; el bloqueo del principal no lo bloquea; cancelar el principal no lo cancela; solo el Manager | PASA |
@@ -89,6 +89,10 @@ PASA 112 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A73 | Una línea que se saca queda sin cobrar: no vuelve al traer lo nuevo y entra en la factura siguiente | PASA |
 | A74 | Enviada: número SHOP, congelada; una corrección posterior cae en la siguiente; Finanzas la acepta | PASA |
 | A75 | Anular una enviada libera sus movimientos; el número no se reusa; mecánicos y Safety no entran | PASA |
+| A76 | La bandeja agrupa por categoría y nombre (sin mayúsculas ni espacios), con cuántos, en qué WO y sugerencias | PASA |
+| A77 | Unir: todo el grupo queda ligado al Job del catálogo de una vez; el nombre queda como alias; el WO no cambia | PASA |
+| A78 | Agregar al catálogo: crea el Job y le liga el grupo; un nombre que ya existe no se acepta | PASA |
+| A79 | Dejar como único: sale de la bandeja sin tocar el catálogo; Deshacer lo devuelve | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

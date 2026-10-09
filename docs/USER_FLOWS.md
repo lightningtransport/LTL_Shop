@@ -110,10 +110,10 @@ hallazgos, cada Job extra queda en el plan con su dueño.
 | Agrega un Job que no está en el catálogo (Custom) | Lo acepta y lo marca "pendiente de revisión" | ✅ | A24 |
 | …y repite el nombre (aunque cambie mayúsculas o espacios) | No deja repetir | ✅ | A24 |
 | Quiere que ese Job quede en el catálogo | Al crearlo marca "Agregar también al catálogo": entra como Job de catálogo (D25) | ✅ | A36 |
-| Quiere revisar los Custom Jobs (Job Catalog → **Custom Jobs to review**) | La bandeja los agrupa por categoría y nombre (sin importar mayúsculas, tildes ni espacios), con cuántas veces se usaron, en qué Work Orders y los Jobs del catálogo que se parecen | 🔲 LTR-57 | A76 |
-| …y uno es en realidad un Job del catálogo | **Unir:** todo el grupo queda ligado a ese Job del catálogo de una sola vez; el nombre viejo queda como alias para la próxima vez. La historia de los Work Orders no cambia | 🔲 LTR-57 | A77 |
-| …y es un trabajo que se repite y falta en el catálogo | **Agregar al catálogo:** crea el Job (con el nombre del grupo o uno corregido) y le liga todo el grupo; un nombre que ya existe no se acepta y propone unir | 🔲 LTR-57 | A78 |
-| …y fue un trabajo de una sola vez | **Dejar como único:** sale de la bandeja sin tocar el catálogo. Si se equivocó, **Deshacer** lo devuelve a la bandeja | 🔲 LTR-57 | A79 |
+| Quiere revisar los Custom Jobs (Job Catalog → **Custom Jobs to review**) | La bandeja los agrupa por categoría y nombre (sin importar mayúsculas, tildes ni espacios), con cuántas veces se usaron, en qué Work Orders y los Jobs del catálogo que se parecen | ✅ | A76 |
+| …y uno es en realidad un Job del catálogo | **Unir:** todo el grupo queda ligado a ese Job del catálogo de una sola vez; el nombre viejo queda como alias para la próxima vez. La historia de los Work Orders no cambia | ✅ | A77 |
+| …y es un trabajo que se repite y falta en el catálogo | **Agregar al catálogo:** crea el Job (con el nombre del grupo o uno corregido) y le liga todo el grupo; un nombre que ya existe no se acepta y propone unir | ✅ | A78 |
+| …y fue un trabajo de una sola vez | **Dejar como único:** sale de la bandeja sin tocar el catálogo. Si se equivocó, **Deshacer** lo devuelve a la bandeja | ✅ | A79 |
 | Se cancela la visita y se abre otra | El Work Order nuevo empieza con la inspección pendiente | ✅ | A15c |
 
 ### HU-M3 · Repartir el trabajo (J2)
@@ -668,7 +668,7 @@ una historia:
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
-| 3 | Custom Jobs sin revisar — **D25:** el Manager ya mantiene el catálogo y guarda Jobs nuevos en él (hecho, A36); la bandeja de revisión **se construye** (pedida por el dueño el 2026-10-09) | Manager | E | LTR-57 | A24, A36, A76–A79 |
+| — | **Nada abierto** (2026-10-09). El #3 (Custom Jobs sin revisar) se cerró con la bandeja de revisión (LTR-57, filas A76–A79) | — | — | — | — |
 
 **B** bloqueante · **C** confuso · **E** estético. Detalle técnico en
 [`OPEN_ISSUES.md`](OPEN_ISSUES.md).

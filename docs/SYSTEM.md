@@ -154,7 +154,27 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - El Job trae su categoría (`categoryId`). Un WO puede mezclar categorías.
 - Los Jobs de catálogo no se repiten; los Custom Jobs no repiten nombre
   (normalizado). Los Custom Jobs quedan con `review_status = pending_review`
-  (la bandeja para revisarlos va después, LTR-57).
+  (revisión en la bandeja, abajo).
+
+### Bandeja de Custom Jobs (LTR-57 / D25)
+- **Job Catalog → Custom Jobs to review** (`/admin/catalog/review`; el catálogo
+  muestra "N Custom Jobs to review" cuando hay). Lee los Jobs con `is_custom` y
+  `review_status = pending_review` (o vacío, los viejos).
+- **Grupos:** misma categoría y mismo nombre sin mayúsculas, tildes ni espacios
+  (`normalizeCatalogText`). Cada grupo dice cuántas veces se usó, en qué Work
+  Orders, las notas y los Jobs del catálogo parecidos (nombre o alias igual o
+  contenido, la misma categoría primero). El nombre del grupo es la forma más
+  usada (la más prolija si empatan).
+- **Acciones sobre todo el grupo** (Manager y System Admin):
+  - **Tie** a un Job del catálogo: `review_status = mapped`, `mapped_catalog_job_id`,
+    y el nombre del grupo queda como alias de ese Job (si el alias está libre).
+  - **Add to catalog**: crea el Job (categoría activa, nombre que no exista:
+    `CATALOG_JOB_EXISTS` propone ligar) y le liga el grupo (`added`).
+  - **Keep as one-off**: `kept`, sin tocar el catálogo.
+  - **Undo** en la pestaña Reviewed: vuelve a `pending_review` (el Job o el alias
+    creados quedan).
+- Los Work Orders **no cambian**: el Job conserva su nombre y sigue siendo Custom;
+  el lazo está en `mapped_catalog_job_id`. Historial: `custom_jobs_reviewed`.
 - **Catálogo con protecciones (D30, LTR-198):**
   - Los Jobs del sistema (`catalog_jobs.system_key`: `pm_a`, `pm_b`, `alignment`, `detailing`, `quality_check`) no se desactivan ni se borran (`SYSTEM_JOB_LOCKED`); se pueden renombrar. Cada Job de un WO hecho de ellos copia la clave (`work_order_jobs.system_key`, trigger `work_order_jobs_copy_system_key`), y `classifyWorkPlanLane` la lee antes que el nombre.
   - Las categorías del sistema (PM, Detailing, Quality Check; `job_categories.system_key`) no se renombran, desactivan ni borran (`SYSTEM_CATEGORY_LOCKED`): la app lee "PM" por nombre en muchos lugares. Una categoría con un Job del sistema (Suspension & Steering) no se desactiva (`CATEGORY_HAS_SYSTEM_JOB`).

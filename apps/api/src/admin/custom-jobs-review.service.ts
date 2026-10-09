@@ -21,6 +21,16 @@ function parse<T>(schema: { safeParse(raw: unknown): { success: true; data: T } 
   return parsed.data;
 }
 
+/** Tie-break between spellings used as often: tidy spacing first, then a capital first letter. */
+function nameScore(name: string) {
+  return (name === name.trim().replace(/\s+/g, ' ') ? 2 : 0) + (/^[A-Z0-9]/.test(name.trim()) ? 1 : 0);
+}
+
+/** The group's name: the spelling used most, the tidiest on a tie. */
+export function preferredName(names: Map<string, number>) {
+  return [...names.entries()].sort((left, right) => right[1] - left[1] || nameScore(right[0]) - nameScore(left[0]))[0][0];
+}
+
 /** The key of a Custom Job's group: the name compared like catalog names, or its lowercase text when it has no letters. */
 export function customJobNameNorm(displayName: string) {
   return normalizeCatalogText(displayName) || displayName.trim().toLowerCase();
@@ -86,7 +96,7 @@ export class CustomJobsReviewService {
     const result = [...groups.values()].map((rows): AdminCustomJobGroupDto => {
       const names = new Map<string, number>();
       for (const row of rows) names.set(row.displayName, (names.get(row.displayName) ?? 0) + 1);
-      const [displayName] = [...names.entries()].sort((left, right) => right[1] - left[1])[0];
+      const displayName = preferredName(names);
       const nameNorm = customJobNameNorm(displayName);
       const first = rows[0];
       return {
@@ -207,7 +217,7 @@ export class CustomJobsReviewService {
   private mostUsedName(jobs: Array<{ displayName: string }>) {
     const counts = new Map<string, number>();
     for (const job of jobs) counts.set(job.displayName, (counts.get(job.displayName) ?? 0) + 1);
-    return [...counts.entries()].sort((left, right) => right[1] - left[1])[0][0];
+    return preferredName(counts);
   }
 
   /** Catalog Jobs whose name or an alias equals or contains the group's name (or the other way), same category first. */
