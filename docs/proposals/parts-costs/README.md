@@ -328,10 +328,16 @@ oscuro. Antes de construir, las filas de HU-M12 en `USER_FLOWS.md` se completan 
 | A-PC3 | Correr el seed otra vez no apaga una parte creada por el Manager ni le borra el costo. |
 | A-PC4 | Mecánico Standard, PM y Safety reciben 403 en el catálogo. |
 
-**PC-2 · Proveedores y compras**
+**Cómo quedó PC-1 (2026-10-09, rama `claude/setup-s4-pc1`).** Construido con las filas A53–A56, con dos cambios:
+- **Vendors entra en PC-1**, no en PC-2: el formulario de la parte pide el proveedor habitual, y sin la pantalla de
+  proveedores ese campo quedaba vacío.
+- **La lista base solo agrega lo que falta.** No reactiva ni rehace las marcas de las partes que ya existen, aunque
+  vengan de la lista (no solo las de `source = 'app'`). Es la misma regla que la recarga del catálogo de Jobs (JC1).
+
+**PC-2 · Compras**
 - Migración: `part_purchases`, `part_purchase_lines` e índices parciales.
 - Subida de archivos a Supabase Storage (bucket privado, URL firmada).
-- Pantallas **Vendors** y **Purchases** (lista, New purchase, detalle, Edit, Void).
+- Pantalla **Purchases** (lista, New purchase, detalle, Edit, Void). Vendors ya está desde PC-1.
 
 | Fila | Qué prueba |
 |---|---|
