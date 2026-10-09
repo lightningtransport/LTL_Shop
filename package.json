@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "./node_modules/.bin/concurrently -n api,web -c blue,magenta \"npm run dev:api\" \"npm run dev:web\"",
     "start:local": "./start-local.sh",
+    "start:demo": "./start-demo.sh",
     "dev:web": "npm run dev --workspace=@ltl-shop/web",
     "dev:api": "npm run dev --workspace=@ltl-shop/api",
     "build": "npm run build --workspaces --if-present",

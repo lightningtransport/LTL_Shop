@@ -16,7 +16,7 @@ para entender por qué se decidió algo, nunca para saber cómo funciona hoy.
 | [`OPEN_ISSUES.md`](OPEN_ISSUES.md) | **Plan de cierre** (§0: por qué salen defectos, reglas, matriz de 28 flujos, fases A–D), defectos conocidos, limpieza, salida en vivo, fuera de alcance. |
 | [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md) | Paso a paso para salir en vivo (fases 0–8, quién hace qué). |
 | [`design-system/`](design-system/README.md) | Tokens, componentes, patrones y glosario EN/ES. |
-| [`proposals/`](proposals/wo-detail-redesign/README.md) | Propuestas de diseño **no construidas**, con maqueta: [Work Order Detail](proposals/wo-detail-redesign/README.md), [Truck Detail](proposals/truck-detail-redesign/README.md) y [Dashboard y Yard](proposals/dashboard-yard-redesign/README.md). |
+| [`proposals/`](proposals/wo-detail-redesign/README.md) | Propuestas de diseño con maqueta: [Work Order Detail](proposals/wo-detail-redesign/README.md), [Truck Detail](proposals/truck-detail-redesign/README.md), [Dashboard y Yard](proposals/dashboard-yard-redesign/README.md) y el [Modo demo local](proposals/demo-mode/README.md) (D36). |
 | [`ux-audit/`](ux-audit/admin-truck-wo/00-contexto.md) | Auditorías UX con las skills `audit-ux-*`: [Truck ↔ Work Order](ux-audit/admin-truck-wo/00-contexto.md) y [Dashboard y Yard](ux-audit/admin-dashboard-yard/00-contexto.md). |
 
 ### Referencia técnica (`reference/`)
@@ -29,7 +29,7 @@ para entender por qué se decidió algo, nunca para saber cómo funciona hoy.
 | [`PERFORMANCE.md`](reference/PERFORMANCE.md) | Mediciones y metas de rendimiento. |
 | [`NINOX_SHOP_MAPPING.md`](reference/NINOX_SHOP_MAPPING.md) | IDs de Ninox verificados. |
 | [`NINOX_TRUCK_SEED.md`](reference/NINOX_TRUCK_SEED.md) | Carga única de camiones desde Ninox. |
-| [`DEMO.md`](reference/DEMO.md) | Demo local con toda la app en uso: cómo armarla, cuentas y qué muestra cada camión. |
+| [`DEMO.md`](reference/DEMO.md) | Demo local con toda la app en uso: cómo armarla y arrancarla, el Panel de demo (D36), cuentas y qué muestra cada camión. |
 | [`YARD_DATA_BOUNDARY.md`](reference/YARD_DATA_BOUNDARY.md) | Tarjetas del Yard que vienen de agent-reporting. |
 | [`TRUCK_IDENTITY_AND_MILEAGE_CURRENT.md`](reference/TRUCK_IDENTITY_AND_MILEAGE_CURRENT.md) | Identidad del camión y millaje. |
 

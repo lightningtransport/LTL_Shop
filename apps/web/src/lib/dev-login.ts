@@ -14,3 +14,9 @@ export const DEV_LOGIN_ENABLED = devLoginEnabled(process.env.NODE_ENV, process.e
 export function adminSessionCookieSecure(nodeEnv: string | undefined, e2eDevLogin: string | undefined): boolean {
   return nodeEnv === 'production' && e2eDevLogin !== '1';
 }
+
+/**
+ * D36: the local demo panel (switch between demo accounts, guided stories) mounts only where Dev Login
+ * does: this is false in the production build, and switching needs an API with AUTH_DEV_BYPASS=true anyway.
+ */
+export const DEMO_MODE_AVAILABLE = DEV_LOGIN_ENABLED;

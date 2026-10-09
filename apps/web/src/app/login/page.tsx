@@ -17,7 +17,8 @@ import { postLoginPath } from '@/lib/admin-routing';
 import { useShopLocale } from '@/lib/locale-context';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { replaceAppLocation } from '@/lib/session-restore';
-import { DEV_LOGIN_ENABLED } from '@/lib/dev-login';
+import { DEMO_MODE_AVAILABLE, DEV_LOGIN_ENABLED } from '@/lib/dev-login';
+import { DEFAULT_DEMO_STATE, writeDemoState } from '@/lib/demo/state';
 import { LoginLoader } from '@/components/login-loader';
 
 export default function LoginPage() {
@@ -73,6 +74,12 @@ export default function LoginPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  /** D36: Dev Login plus the Demo panel (user switcher, guided stories). Local builds only. */
+  function onEnterDemoMode() {
+    writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, panelOpen: true });
+    void onDevLogin();
   }
 
   async function onDevLogin() {
@@ -176,6 +183,16 @@ export default function LoginPage() {
             onClick={onDevLogin}
           >
             {messages.devLogin}
+          </Button>
+        ) : null}
+        {DEMO_MODE_AVAILABLE ? (
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={busy}
+            onClick={onEnterDemoMode}
+          >
+            Enter demo mode (this machine only)
           </Button>
         ) : null}
         </Card>

@@ -467,6 +467,11 @@ createServer(async (request, response) => {
     json(response, 200, { user });
     return;
   }
+  // D36: the local demo panel lists the accounts it can switch to (active ones only).
+  if (request.url === '/api/dev/demo/users') {
+    json(response, 200, { users: Object.values(users).filter((item) => item.active && !item.removedAt) });
+    return;
+  }
   if (request.url === '/api/admin/access') {
     json(
       response,

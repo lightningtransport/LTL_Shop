@@ -12,6 +12,8 @@ import { ObservabilityProvider } from '@/components/observability-provider';
 import { AppFrame } from '@/components/app-frame';
 import { ActionToastProvider } from '@/components/action-toast';
 import { ShopLocaleProvider } from '@/lib/locale-context';
+import { DemoModeProvider } from '@/lib/demo/demo-context';
+import { DemoPanel } from '@/components/demo-panel';
 import { parseShopLocale, SHOP_LOCALE_COOKIE } from '@/lib/shop-locale';
 
 const bodyFont = Inter({
@@ -81,7 +83,11 @@ export default async function RootLayout({
             <ActionToastProvider>
               <AuthProvider>
                 <DataProvider>
-                  <AppFrame>{children}</AppFrame>
+                  {/* D36: local demo panel; a no-op provider outside demo-capable builds. */}
+                  <DemoModeProvider>
+                    <AppFrame>{children}</AppFrame>
+                    <DemoPanel />
+                  </DemoModeProvider>
                 </DataProvider>
               </AuthProvider>
             </ActionToastProvider>
