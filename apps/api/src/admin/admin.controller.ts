@@ -27,6 +27,7 @@ import { SystemAdminWritesService } from './system-admin-writes.service';
 import { ShopWorkflowService } from './shop-workflow.service';
 import { CatalogAdminService } from './catalog-admin.service';
 import { PeopleAdminService } from './people-admin.service';
+import { CustomJobsReviewService } from './custom-jobs-review.service';
 import { LaborClockService } from '../work-orders/labor-clock.service';
 
 @Controller('admin')
@@ -43,6 +44,7 @@ export class AdminController {
     private readonly shopWorkflow: ShopWorkflowService,
     private readonly catalogAdmin: CatalogAdminService,
     private readonly people: PeopleAdminService,
+    private readonly customJobsReview: CustomJobsReviewService,
     private readonly clock: LaborClockService,
   ) {}
 
@@ -327,6 +329,24 @@ export class AdminController {
   }
 
   // LTR-198 / D30: Categories, deleting Jobs, aliases and the search across Jobs and aliases.
+  // LTR-57 / D25: the Custom Jobs review inbox (static paths before `catalog/categories/:id`).
+  @Get('catalog/custom-jobs')
+  customJobs(@Query() query: Record<string, unknown>) {
+    return this.customJobsReview.list(query);
+  }
+
+  @Post('catalog/custom-jobs/review')
+  @UseGuards(ManagerWritesGuard)
+  reviewCustomJobs(@Req() request: Request, @Body() body: unknown) {
+    return this.customJobsReview.review(request.user!, body);
+  }
+
+  @Post('catalog/custom-jobs/undo')
+  @UseGuards(ManagerWritesGuard)
+  undoCustomJobs(@Req() request: Request, @Body() body: unknown) {
+    return this.customJobsReview.undo(request.user!, body);
+  }
+
   @Get('catalog/search')
   searchCatalog(@Query('q') q?: string) {
     return this.catalogAdmin.search(q);

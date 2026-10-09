@@ -152,6 +152,8 @@ export enum ActivityEventType {
   INTERNAL_INVOICE_SENT = 'internal_invoice_sent',
   INTERNAL_INVOICE_ACCEPTED = 'internal_invoice_accepted',
   INTERNAL_INVOICE_VOIDED = 'internal_invoice_voided',
+  // LTR-57.
+  CUSTOM_JOBS_REVIEWED = 'custom_jobs_reviewed',
 }
 
 /** LTR-126 / D8: kind of an append-only Work Order note entry. */
