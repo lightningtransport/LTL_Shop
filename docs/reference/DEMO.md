@@ -35,7 +35,7 @@ Para verla:
 Con el modo demo encendido, el encabezado de todas las pantallas tiene un botón **Demo** (matraz) a la izquierda del perfil. Abre el **Demo panel**, el mismo panel flotante de las maquetas (`docs/proposals/*/mockup.html`), ahora dentro de la app. Sus textos están en inglés porque es una herramienta para presentar, no parte del producto.
 
 - **User:** las diez cuentas demo agrupadas (Management, Mechanics, PM, Safety), cada una con una pista de qué muestra. Tocar una **cambia de usuario sin cerrar sesión**: la web pone la cookie de Admin con el token `dev:` nuevo y **recarga la página** en la pantalla de inicio de esa cuenta (Manager → Operaciones, mecánico → Mi trabajo, PM → PM, Safety → Quality Check). Nada del usuario anterior queda en pantalla. La cuenta actual sale marcada; una cuenta que no esté activa en la base sale como "inactive". Las cuentas que no son del reparto (por ejemplo `cristian@ltransl.com`) salen bajo **Others**.
-- **Stories** *(segunda etapa, PR 2)*: elegir una historia de `USER_FLOWS.md` y recorrerla paso a paso; cada paso cambia de usuario y de pantalla y dice qué tocar y qué explicar.
+- **Story:** elegir una historia de `USER_FLOWS.md` (agrupadas por job to be done J1–J14). El panel muestra "Step n of m", quién (cambia de usuario solo si hace falta), dónde (navega a la pantalla), **Do** (qué tocar), **Say** (qué explicar) y **Expect** (qué debe verse). Botones Back / Next / Go to screen. "Changes data" marca los pasos que mutan. Con "Switch user and screen automatically" apagado, el panel solo indica y el presentador navega. El guion vive en `apps/web/src/lib/demo/scripts.ts` y usa los mismos ids que USER_FLOWS. Tabla de historias más abajo.
 - **Reset demo:** limpia la historia y vuelve al Manager en Operaciones. **No rearma los datos**: para eso, `npm run prisma:demo-local`.
 - **Leave demo mode:** esconde el panel y el botón; la sesión sigue. Se vuelve a encender desde `/login`.
 - El estado (encendido, panel abierto, historia y paso) queda en el navegador (`localStorage['ltl_shop_demo']`) y sobrevive a recargas y a cerrar sesión.
@@ -43,6 +43,36 @@ Con el modo demo encendido, el encabezado de todas las pantallas tiene un botón
 Dónde no existe: en producción. El panel se monta solo donde está Dev Login (`DEMO_MODE_AVAILABLE`, `apps/web/src/lib/dev-login.ts`, `false` en el deploy) y cambiar de usuario necesita la API con `AUTH_DEV_BYPASS=true`; `GET /api/dev/demo/users` responde 404 sin esa variable. La suite e2e (`apps/web/e2e/demo-mode.spec.ts`) comprueba que sin el modo encendido el botón no está, aunque el build tenga Dev Login.
 
 Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de las 5:00 p.m., recordar que el cierre del día corta los relojes de hoy.
+
+### Historias guiadas: cuentas, camiones y pantallas
+
+| Historia | J | Cuentas (en orden) | Camiones | Pasos | Muta datos |
+|---|---|---|---|---|---|
+| HU-M1 Receive a truck | J1 | Manager | 973 | 3 | sí (crea el WO) |
+| HU-M2 Inspect and record findings | J1 | Manager | 601, 602 | 4 | sí (inspección del 601) |
+| HU-M3 Split the work | J2 | Manager | 602 | 3 | sí (asigna) |
+| HU-M4 Unblock a truck | J3 | Manager, Elliot, Manager | 605, 609 | 4 | sí (Resolve, Resume) |
+| HU-M5 Review, close and Return to Service | J4 | Manager | 931, 607, 606 | 4 | sí (Close 931, Return 607) |
+| HU-M6 Cancel and reopen | J4 | Manager | 613, 615 | 3 | no |
+| HU-M7 See the whole shop | J5 | Manager | — | 5 | no |
+| HU-M8 Configure the shop workflow | J2 | Manager, Anthony, Manager | 957 | 4 | no |
+| HU-M9 Add staff | J12 | Manager | — | 3 | opcional (Add) |
+| HU-M10 Helper on a Job | J2 | Manager, Alejandro 2 | 612 | 2 | no |
+| HU-M11 Send work to an outside shop | J3 | Manager | 610, 611 | 4 | no |
+| HU-M12 Know what each truck costs | J13 | Manager | 611 | 5 | no |
+| HU-M13 Charge Finance | J14 | Manager | 611 | 4 | opcional (Send) |
+| HU-ME1 See my work | J6 | Anthony | 604, 957 | 4 | no |
+| HU-ME2 Work and finish | J7 | Alejandro 1 | 603 | 3 | sí (Start, Complete) |
+| HU-ME3 Report a blocker | J8 | Elliot, Manager, Elliot | 605 | 4 | sí (Resolve, Continue) |
+| HU-ME4 Notes and Request Work | J7 | Anthony, Manager | 613 | 3 | sí (nota, Mark handled) |
+| HU-ME5 Day closes by itself | J7 | John, Manager | 944 | 4 | no |
+| HU-ME6 One clock across trucks | J7 | Anthony | 604, 612 | 3 | sí (mueve el reloj) |
+| HU-PM1 Record a preventive maintenance | J9 | Daniel | 968, 603 | 4 | opcional (Finish) |
+| HU-QC1 Approve or return a truck | J11 | Safety 1, Safety 2, Manager | 616, 617, 606, 905, 922, 931 | 7 | sí (Take, Approve/Return) |
+| HU-A1 Correct time without breaking history | J10 | Admin | 617 | 2 | sí (Correct…) |
+| HU-A2 Catalog and people | — | Admin | — | 3 | no |
+
+Orden recomendado: **HU-ME1 antes de HU-ME6** (mueve el reloj de Anthony); **HU-M4 y HU-ME3 comparten el 605** (una u otra, o rearmar entre las dos); HU-M5 deja el 606 para HU-QC1. Lo que no se ve en local (contraseña temporal en HU-M9, Dispatch en HU-M7, el cierre de las 5 PM en vivo en HU-ME5) lo dice la nota del primer paso.
 
 ## Cuentas
 
