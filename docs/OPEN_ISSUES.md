@@ -483,12 +483,13 @@ usuarios reales sin un defecto B.
 
 ## 6. Fuera de alcance (no se construye hasta decidirlo)
 
-- Presencia física en el patio (Samsara), McLeod, Dispatch, Schedule_Teams.
+- **Samsara** (millaje de referencia, ubicación, fallas) y **camiones propios** con API para terceros: decidido en parte (D35), **propuesta** en `docs/proposals/samsara-trucks/`, sin construir; preguntas P12–P14.
+- Presencia física en el patio (geocerca de Samsara, LTR-55), McLeod, Dispatch, Schedule_Teams.
 - Off Duty (decidido: se lanza sin eso), sincronizar con Ninox (P4).
 - Trailers como activos: el taller los necesita; falta decidir cuándo (P11).
 - Pantalla de permisos. Alta de mecánicos **sí** entra (LTR-187, D22), y
   también los Jobs del catálogo (D25). Las **categorías y los aliases** entran
-  desde D30 (2026-10-07). Camiones, después.
+  desde D30 (2026-10-07). Camiones, después (P13, propuesta en `docs/proposals/samsara-trucks/`).
 - Inventario de partes (stock, entradas y salidas): diseñado en D32 (§8.3 de la
   propuesta `docs/proposals/parts-costs/`), **no se construye** todavía. La mano de
   obra y la factura interna a Finanzas **ya están construidas** (D34, 2026-10-09).
