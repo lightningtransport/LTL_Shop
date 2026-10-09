@@ -228,7 +228,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         role="tabpanel"
         id="yard-panel-shop"
         aria-labelledby="yard-tab-shop"
-        className={cn('flex flex-col gap-4', fullscreen.active && 'fixed inset-0 z-[45] overflow-y-auto bg-background p-4 lg:overflow-hidden lg:p-6')}
+        className={cn('flex flex-col gap-4', fullscreen.active && 'fixed inset-0 z-[45] !mt-0 overflow-y-auto bg-background p-4 lg:overflow-hidden lg:p-6')}
         data-fullscreen={fullscreen.active || undefined}
       >
         {fullscreen.active ? <p className="text-lg font-semibold" aria-hidden="true">{messages.yardOperationsTitle}</p> : null}
@@ -298,13 +298,13 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             {anyFilter ? <Button type="button" variant="outline" onClick={clearFilters}>{messages.clearFilters}</Button> : null}
           </div>
         ) : (
-          // D33: desktop — a Kanban board, one vertical column per step, side by side; the board scrolls sideways inside
-          // itself and each column scrolls its own cards; an empty step is a narrow column. Phones — a foldable list
-          // per step, empty steps hidden. No sideways scroll of the page.
+          // D33: desktop — a Kanban board like Trello, one list per step side by side (an empty one too); a list scrolls
+          // its own cards and the board scrolls sideways inside itself. Phones — a foldable list per step, empty steps
+          // hidden. No sideways scroll of the page.
           <KanbanBoard
             label={messages.yardLanes}
             labelId="yard-lanes-title"
-            className={fullscreen.active ? 'lg:min-h-0 lg:flex-1' : 'lg:h-[max(26rem,calc(100dvh-19rem))]'}
+            className={fullscreen.active ? 'lg:min-h-0 lg:flex-1' : 'lg:h-[max(24rem,calc(100dvh-19rem))]'}
             data-testid="yard-lanes"
           >
             {WORK_PLAN_YARD_PHASES.map((phase, index) => {

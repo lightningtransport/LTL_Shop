@@ -373,8 +373,8 @@ El dueño pidió que el tablero del Yard sea un Kanban real, con columnas vertic
 
 | # | Clase | Problema | Dónde |
 |---|---|---|---|
-| ~~K1~~ | E | ~~Los pasos se ven como carriles horizontales (filas), no como columnas de un tablero Kanban; con muchos camiones el tablero crece hacia abajo y no se ve el flujo de un vistazo~~ — **hecho**: columnas verticales de 18 rem (como Jira/Trello), vacías angostas, scroll lateral solo dentro del tablero; e2e `yard-operations.spec.ts` (D33) | `admin-yard-operations.tsx` |
-| ~~K2~~ | E | ~~No hay forma de ver el tablero a pantalla completa (por ejemplo, en una TV del taller)~~ — **hecho**: botón Full screen (API Fullscreen del navegador + capa fija, así los diálogos siguen abriendo encima), Esc sale; e2e (D33) | `admin-yard-operations.tsx` |
+| ~~K1~~ | E | ~~Los pasos se ven como carriles horizontales (filas), no como columnas de un tablero Kanban; con muchos camiones el tablero crece hacia abajo y no se ve el flujo de un vistazo~~ — **hecho**: listas verticales de 18 rem como Trello (también las vacías, con su título arriba), cada lista desplaza sus tarjetas por dentro, scroll lateral solo dentro del tablero; e2e `yard-operations.spec.ts` (D33) | `admin-yard-operations.tsx` |
+| ~~K2~~ | E | ~~No hay forma de ver el tablero a pantalla completa (por ejemplo, en una TV del taller)~~ — **hecho**: botón Full screen (API Fullscreen del navegador + capa fija desde el borde de arriba, así los diálogos siguen abriendo encima), Esc sale. Primera versión corregida el mismo día: dejaba 20 px arriba (margen de la página) y las columnas vacías iban angostas con el título de lado; e2e (D33) | `admin-yard-operations.tsx` |
 
 ## 2. Pruebas
 
