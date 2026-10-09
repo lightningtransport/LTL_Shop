@@ -486,5 +486,41 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     expect(rtsBody).not.toHaveProperty('reason');
     await expect(card).toHaveAttribute('data-kind', 'create_work_order');
   });
-});
 
+  // LTR-200 / D32 (PC-4): Overview · Costs for the Shop Manager.
+  test('Truck → Costs: totals, bars by month, movements with a voided reversal, labor hours only', async ({ page }) => {
+    await mockWorkPlanApi(page, emptyPlan());
+    const periods: string[] = [];
+    await page.route('**/api/admin/parts-costs/trucks/**', async (route) => {
+      periods.push(new URL(route.request().url()).search);
+      await json(route, {
+        truck: { id: truckId, truckNumber: 'Y-WP1' },
+        from: null,
+        to: null,
+        totals: { partsCents: 4820, outsideCents: 184000, totalCents: 188820 },
+        months: [{ month: '2026-09', partsCents: 4820, outsideCents: 0 }, { month: '2026-10', partsCents: 0, outsideCents: 184000 }],
+        entries: [
+          { id: 'e3', occurredOn: '2026-10-08', kind: 'outside_repair', amountCents: 184000, description: 'Diesel Pro · 7712 · Radiator recore', sourceType: 'outside_repair', sourceId: 'r1', workOrder: { id: 'wo1', displayId: 'WO-001' }, reversal: null },
+          { id: 'e2', occurredOn: '2026-09-20', kind: 'part_purchase', amountCents: -1200, description: 'TruckPro · 55 · Mud flaps × 1', sourceType: 'part_purchase', sourceId: 'p2', workOrder: null, reversal: 'voided' },
+          { id: 'e1', occurredOn: '2026-09-20', kind: 'part_purchase', amountCents: 1200, description: 'TruckPro · 55 · Mud flaps × 1', sourceType: 'part_purchase', sourceId: 'p2', workOrder: null, reversal: null },
+        ],
+        laborHours: 44.75,
+      });
+    });
+    await loginManager(page);
+    await page.goto(`/admin/trucks/${truckId}`);
+    await page.getByTestId('truck-tabs').getByRole('link', { name: 'Costs' }).click();
+    await expect(page).toHaveURL(/tab=costs/);
+    await expect(page.getByRole('heading', { name: 'Costs of Truck Y-WP1' })).toBeVisible();
+    await expect(page.getByTestId('truck-costs-total')).toHaveText('$1,888.20');
+    await expect(page.getByTestId('truck-costs-labor')).toHaveText('44.75 h recorded in this period');
+    await expect(page.getByTestId('truck-costs-entries').getByText('Voided')).toBeVisible();
+    await expect(page.getByTestId('truck-costs-entries')).toContainText('-$12.00');
+    await expect(page.getByRole('link', { name: 'Add purchase' })).toHaveAttribute('href', `/admin/parts/purchases?new=1&truckId=${truckId}`);
+    await page.getByRole('radio', { name: 'All time' }).click();
+    await expect.poll(() => periods.at(-1)).toBe('');
+    expect(periods[0]).toMatch(/^\?from=\d{4}-\d{2}-01&to=\d{4}-\d{2}-\d{2}$/);
+    await page.getByTestId('truck-tabs').getByRole('link', { name: 'Overview' }).click();
+    await expect(page.getByRole('heading', { name: 'Work Plan' }).first()).toBeVisible();
+  });
+});

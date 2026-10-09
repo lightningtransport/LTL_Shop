@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Paperclip, Plus } from 'lucide-react';
 import { formatCents, type AdminPurchaseSummaryDto } from '@ltl-shop/shared';
 import { AdminNavLink } from './admin-nav-link';
@@ -39,6 +39,16 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
   }, [filters]);
   const { data, error, isLoading, mutate } = useAdminPurchases(query);
   const [formOpen, setFormOpen] = useState(false);
+  const [presetTruckId, setPresetTruckId] = useState<string | undefined>();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  // PC-4: "Add purchase" from Truck → Costs opens New purchase with that truck.
+  useEffect(() => {
+    if (params.get('new') !== '1' || !canWrite) return;
+    setPresetTruckId(params.get('truckId') ?? undefined);
+    setFormOpen(true);
+    router.replace(pathname);
+  }, [params, canWrite, router, pathname]);
   const { data: formData } = useAdminPurchaseFormData(true);
   const { data: catalog } = useAdminPartsCatalog('includeInactive=true');
   const { data: vendors, mutate: mutateVendors } = useAdminVendors();
@@ -144,12 +154,13 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
       {formOpen && formData && catalog && vendors ? (
         <PurchaseForm
           purchase={null}
+          presetTruckId={presetTruckId}
           categories={catalog.categories}
           vendors={vendors}
           formData={formData}
           locale={locale}
           messages={messages}
-          onClose={() => setFormOpen(false)}
+          onClose={() => { setFormOpen(false); setPresetTruckId(undefined); }}
           onVendorAdded={() => void mutateVendors()}
           onSaved={(id) => { setFormOpen(false); void mutate(); router.push(`/admin/parts/purchases/${id}`); }}
         />
