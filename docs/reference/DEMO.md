@@ -33,7 +33,7 @@ Para verla:
 
 | Rol | Correo | Qué ve |
 |---|---|---|
-| Shop Manager | `manager@lightning.local` | Operaciones, Yard, Work Orders, Trucks, Partes y costos, Setup |
+| Shop Manager | `manager@lightning.local` | Operaciones, Yard, Work Orders, Trucks, Partes y costos (con tarifa y facturas a Finanzas), Setup |
 | Mecánico general | `anthony@lightning.local` | Reloj corriendo, cola del equipo, Jobs por iniciar, completados por día |
 | Mecánico general | `elliot@lightning.local` | El Job bloqueado esperando piezas |
 | Mecánico general | `john@lightning.local` | "Ayer quedó en curso · toca Continuar" |
@@ -94,7 +94,7 @@ Algunas visitas tuvieron un bloqueo resuelto, y dos fueron devueltas por Safety.
 
 Así se pueden mostrar:
 - **Truck → Resumen:** historial de reparaciones, con filtro por categoría.
-- **Truck → Costos:** barras por mes, movimientos (con una compra corregida y una anulada) y horas de mano de obra.
+- **Truck → Costos:** barras por mes, movimientos (con una compra corregida y una anulada) y mano de obra en horas y en dinero.
 - **Mecánicos → Completados:** agrupados en Ayer y Antes, con notas.
 - **PM:** "Último PM: millas · fecha" en cada camión, y la pieza más usada por modelo.
 - **Safety → Hechos:** lo de los últimos 7 días.
@@ -112,11 +112,16 @@ Así se pueden mostrar:
   - la transmisión (Diesel Pro), ligada al Job que regresó;
   - la del camión 611, que está afuera ahora;
   - un DPF y un parabrisas, sin Job.
+- **Tarifa de mano de obra (Partes y costos → Tarifa de mano de obra):** $95/h desde hace unos 4 meses y medio, y $105/h desde el 1 de este mes. Cada Work Order cerrado tiene su mano de obra en Costos, por ejemplo "WO-037 · 5.71 h × $95.00/h", a la tarifa del día en que se hizo el trabajo.
+- **Facturas internas a Finanzas (Partes y costos → Facturas internas):**
+  - dos **aceptadas**, de hace dos meses;
+  - una **enviada** y una **anulada** (con su motivo), del mes pasado;
+  - un **borrador** de este mes.
+
+  Los números son `SHOP-AAAA-NNNN`. El PDF se descarga desde la factura.
 
 ## Lo que la demo local no puede mostrar
 - **Dispatch, Movement y "Sale pronto":** vienen de agent-reporting, que no está conectado en local. La pantalla dice que no respondió.
 - **Samsara y la ubicación física:** no están conectados.
 - **Archivos de factura:** necesitan Supabase Storage; en local el campo no aparece.
 - **Contraseñas temporales y "Quitar del Shop":** necesitan Supabase Auth.
-- **Tarifa de mano de obra y monto en dinero:** llegan con el PR 276 (LB-1). Cuando entre, la demo agrega $95/h, un cambio de tarifa y el monto en Costos. Hasta entonces, Costos muestra solo horas.
-- **Factura interna a Finanzas (LB-2):** no está construida.
