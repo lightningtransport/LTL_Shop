@@ -7,7 +7,6 @@ import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { partsCostsFailure } from './admin-parts-catalog';
 import { PurchaseForm } from './admin-purchase-form';
-import { purchaseTrucksLabel } from './admin-purchases';
 import { AdminBackLink, Badge, Button, DataTable, DialogActions, EmptyState, InlineAlert, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard, Textarea } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { openAdminAttachment, useAdminPartsCatalog, useAdminPurchase, useAdminPurchaseFormData, useAdminVendors, voidAdminPurchase } from '@/lib/admin-data';
@@ -47,12 +46,17 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
   }
 
   const live = !data.voidedAt;
+  // UX-4-012 / PC5: "Per truck" adds something only with several trucks, or a part with no truck.
+  const showShares = data.truckShares.length > 1 || (data.truckShares.length > 0 && data.noTruckCents > 0);
+  const destination = data.truckShares.length
+    ? data.truckShares.map((share) => fillPlaceholders(messages.pcTruckLabel, { truck: share.truckNumber })).join(', ') + (data.noTruckCents ? ` + ${messages.pcNoTruckOption}` : '')
+    : messages.pcNoTruckOption;
   return (
     <div className="space-y-6">
       <AdminBackLink href="/admin/parts/purchases">{messages.pcBackToPurchases}</AdminBackLink>
       <PageHeader
         title={`${data.vendor.name} · ${data.invoiceNumber}`}
-        subtitle={`${formatInvoiceDate(data.invoiceDate, locale)} · ${purchaseTrucksLabel(data, messages)}`}
+        subtitle={formatInvoiceDate(data.invoiceDate, locale)}
         badges={data.voidedAt ? <Badge variant="secondary">{messages.pcVoided}</Badge> : null}
         actions={canWrite && live ? (
           <div className="flex flex-wrap gap-2">
@@ -66,6 +70,44 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
           {fillPlaceholders(messages.pcVoidedBy, { name: data.voidedBy?.name ?? '—', date: formatShortDateTime(data.voidedAt, locale), reason: data.voidReason ?? '' })}
         </p>
       ) : null}
+
+      {/* UX-4-012 / PC5: what was bought, from whom, how much and for which truck, before the detail. */}
+      <section className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-[1fr_auto]" data-testid="purchase-summary">
+        <dl className="grid grid-cols-[8.5rem_1fr] gap-x-4 gap-y-2 text-sm">
+          <dt className="text-muted-foreground">{messages.pcVendorField}</dt>
+          <dd className="font-medium">{data.vendor.name}</dd>
+          <dt className="text-muted-foreground">{messages.pcInvoiceNumber}</dt>
+          <dd className="font-mono">{data.invoiceNumber}</dd>
+          <dt className="text-muted-foreground">{messages.pcInvoiceDate}</dt>
+          <dd>{formatInvoiceDate(data.invoiceDate, locale)}</dd>
+          <dt className="text-muted-foreground">{messages.pcColTrucks}</dt>
+          <dd>
+            {data.truckShares.length === 1 && !data.noTruckCents
+              ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${data.truckShares[0].id}`}>{destination}</AdminNavLink>
+              : destination}
+          </dd>
+          <dt className="text-muted-foreground">{messages.pcInvoiceFile}</dt>
+          <dd className="flex flex-wrap items-center gap-2">
+            {data.attachment ? (
+              <>
+                <Paperclip aria-hidden="true" className="size-4 text-muted-foreground" />
+                <span className="min-w-0 truncate">{data.attachment.fileName}</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => void openFile()}>{messages.pcOpenFile}</Button>
+              </>
+            ) : <Badge variant="warning">{messages.pcNoInvoiceFile}</Badge>}
+          </dd>
+        </dl>
+        <dl className="grid min-w-56 grid-cols-[1fr_auto] content-start gap-x-6 gap-y-1 rounded-lg bg-muted/60 px-4 py-3 text-sm">
+          <dt>{messages.pcSubtotal}</dt><dd className="text-right tabular-nums">{formatCents(data.subtotalCents, locale)}</dd>
+          <dt className="text-muted-foreground">{messages.pcTax}</dt><dd className="text-right tabular-nums text-muted-foreground">{formatCents(data.taxCents, locale)}</dd>
+          <dt className="text-muted-foreground">{messages.pcFreight}</dt><dd className="text-right tabular-nums text-muted-foreground">{formatCents(data.freightCents, locale)}</dd>
+          <dt className="mt-1 border-t pt-1 text-base font-semibold">{messages.pcTotal}</dt>
+          <dd className={`mt-1 border-t pt-1 text-right text-base font-semibold tabular-nums ${live ? '' : 'line-through'}`} data-testid="purchase-detail-total">{formatCents(data.totalCents, locale)}</dd>
+        </dl>
+        <p className="text-xs text-muted-foreground sm:col-span-2">
+          {fillPlaceholders(messages.pcLoadedBy, { name: data.createdBy?.name ?? '—', date: formatShortDateTime(data.createdAt, locale) })}
+        </p>
+      </section>
 
       <SectionCard title={messages.pcLines} count={data.lines.length}>
         <DataTable
@@ -84,59 +126,44 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
             { key: 'qty', header: messages.pcLineQty, cell: (line) => <span className="tabular-nums">{Number(line.quantity)}</span> },
             { key: 'unit', header: messages.pcLineUnitCost, cell: (line) => <span className="tabular-nums">{formatCents(line.unitCostCents, locale)}</span> },
             { key: 'total', header: messages.pcLineTotal, cell: (line) => <span className="tabular-nums">{formatCents(line.lineTotalCents, locale)}</span> },
-            {
+            ...(data.truckShares.length > 1 || data.noTruckCents ? [{
               key: 'truck',
               header: messages.pcLineTruck,
-              cell: (line) => line.truck
+              cell: (line: (typeof data.lines)[number]) => line.truck
                 ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${line.truck.id}`}>{fillPlaceholders(messages.pcTruckLabel, { truck: line.truck.truckNumber })}</AdminNavLink>
                 : <span className="text-muted-foreground">{messages.pcNoTruckOption}</span>,
-            },
+            }] : []),
           ]}
         />
-        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 border-t px-4 py-3 text-sm sm:ml-auto sm:max-w-xs">
-          <dt>{messages.pcSubtotal}</dt><dd className="text-right tabular-nums">{formatCents(data.subtotalCents, locale)}</dd>
-          <dt>{messages.pcTax}</dt><dd className="text-right tabular-nums">{formatCents(data.taxCents, locale)}</dd>
-          <dt>{messages.pcFreight}</dt><dd className="text-right tabular-nums">{formatCents(data.freightCents, locale)}</dd>
-          <dt className="font-semibold">{messages.pcTotal}</dt><dd className={`text-right font-semibold tabular-nums ${live ? '' : 'line-through'}`}>{formatCents(data.totalCents, locale)}</dd>
-        </dl>
       </SectionCard>
 
-      <SectionCard title={messages.pcTruckShares}>
-        <div className="space-y-2 px-4 py-3 text-sm">
-          <p className="text-xs text-muted-foreground">{messages.pcTruckSharesHint}</p>
-          <ul className="divide-y" data-testid="truck-shares">
-            {data.truckShares.map((share) => (
-              <li key={share.id} className="flex justify-between gap-3 py-1.5">
-                <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${share.id}`}>{fillPlaceholders(messages.pcTruckLabel, { truck: share.truckNumber })}</AdminNavLink>
-                <span className="tabular-nums">{formatCents(share.amountCents, locale)}</span>
-              </li>
-            ))}
-            {data.noTruckCents ? (
-              <li className="flex justify-between gap-3 py-1.5 text-muted-foreground">
-                <span>{messages.pcNoTruckShare}</span>
-                <span className="tabular-nums">{formatCents(data.noTruckCents, locale)}</span>
-              </li>
-            ) : null}
-          </ul>
-        </div>
-      </SectionCard>
+      {showShares ? (
+        <SectionCard title={messages.pcTruckShares}>
+          <div className="space-y-2 px-4 py-3 text-sm">
+            <p className="text-xs text-muted-foreground">{messages.pcTruckSharesHint}</p>
+            <ul className="divide-y" data-testid="truck-shares">
+              {data.truckShares.map((share) => (
+                <li key={share.id} className="flex justify-between gap-3 py-1.5">
+                  <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${share.id}`}>{fillPlaceholders(messages.pcTruckLabel, { truck: share.truckNumber })}</AdminNavLink>
+                  <span className="tabular-nums">{formatCents(share.amountCents, locale)}</span>
+                </li>
+              ))}
+              {data.noTruckCents ? (
+                <li className="flex justify-between gap-3 py-1.5 text-muted-foreground">
+                  <span>{messages.pcNoTruckShare}</span>
+                  <span className="tabular-nums">{formatCents(data.noTruckCents, locale)}</span>
+                </li>
+              ) : null}
+            </ul>
+          </div>
+        </SectionCard>
+      ) : null}
 
-      <SectionCard title={messages.pcInvoiceFile}>
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-          {data.attachment ? (
-            <>
-              <Paperclip aria-hidden="true" className="size-4 text-muted-foreground" />
-              <span className="min-w-0 truncate">{data.attachment.fileName}</span>
-              <Button type="button" variant="outline" size="sm" onClick={() => void openFile()}>{messages.pcOpenFile}</Button>
-            </>
-          ) : <Badge variant="warning">{messages.pcNoInvoiceFile}</Badge>}
-        </div>
-        {data.notes ? <p className="border-t px-4 py-3 text-sm whitespace-pre-line">{data.notes}</p> : null}
-        <p className="border-t px-4 py-2 text-xs text-muted-foreground">
-          {fillPlaceholders(messages.pcLoadedBy, { name: data.createdBy?.name ?? '—', date: formatShortDateTime(data.createdAt, locale) })}
-        </p>
-      </SectionCard>
-
+      {data.notes ? (
+        <SectionCard title={messages.pcNotes}>
+          <p className="whitespace-pre-line px-4 py-3 text-sm">{data.notes}</p>
+        </SectionCard>
+      ) : null}
       {editing && formData && catalog && vendors ? (
         <PurchaseForm
           purchase={data}

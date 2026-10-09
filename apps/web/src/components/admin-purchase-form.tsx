@@ -21,8 +21,9 @@ import {
 import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { duplicateText, invoiceHref } from './admin-outside-repair-form';
+import { MissingSummary, OptionalTag, RequiredNote, StickyFormFooter, focusField, type MissingField } from './parts-costs-form-ui';
 import { partsCostsFailure } from './admin-parts-catalog';
-import { Button, DialogActions, InlineAlert, Input, Label, Modal, Select, Textarea } from './ui';
+import { Button, Input, Label, Modal, Select, Textarea } from './ui';
 import {
   checkAdminInvoice,
   createAdminPurchase,
@@ -41,7 +42,8 @@ const DRAFT_KEY = 'ltl.admin.purchase-draft';
 const OTHER = '__other__';
 const ADD_VENDOR = '__add_vendor__';
 
-type LineState = { partId: string; description: string; quantity: string; unitCost: string; truckId: string };
+/** `costFrom`: where the unit cost was filled from when the part was picked (shown until the cost is changed). */
+type LineState = { partId: string; description: string; quantity: string; unitCost: string; truckId: string; costFrom?: 'last' | 'reference' | null };
 type FormState = {
   vendorId: string;
   invoiceNumber: string;
@@ -168,11 +170,11 @@ export function PurchaseForm({
   const truckNumber = (id: string) => formData.trucks.find((truck) => truck.id === id)?.truckNumber ?? '';
 
   /** D-PC6: the last price paid to this vendor, else the part's reference cost. */
-  function startingCost(partId: string, vendorId: string) {
+  function startingCost(partId: string, vendorId: string): { cost: string; from: 'last' | 'reference' | null } {
     const paid = formData.lastPaid.find((row) => row.partId === partId && row.vendorId === vendorId);
-    if (paid) return centsToInput(paid.unitCostCents);
+    if (paid) return { cost: centsToInput(paid.unitCostCents), from: 'last' };
     const part = partById.get(partId);
-    return part?.unitCostCents !== null && part?.unitCostCents !== undefined ? centsToInput(part.unitCostCents) : '';
+    return part?.unitCostCents !== null && part?.unitCostCents !== undefined ? { cost: centsToInput(part.unitCostCents), from: 'reference' } : { cost: '', from: null };
   }
 
   const computed = state.lines.map((line) => {
@@ -198,6 +200,23 @@ export function PurchaseForm({
   const moneyValid = tax !== undefined && freight !== undefined;
   const uploading = Boolean(file && !file.id && !file.error);
   const valid = Boolean(state.vendorId && state.invoiceNumber.trim() && state.invoiceDate && linesValid && moneyValid);
+  // UX-7-026 / PC1: everything that stops the save, in form order, with the field to go to.
+  const missing: MissingField[] = [
+    ...(!state.vendorId ? [{ label: messages.pcMissingVendor, fieldId: 'purchase-vendor' }] : []),
+    ...(!state.invoiceDate ? [{ label: messages.pcMissingDate, fieldId: 'purchase-date' }] : []),
+    ...(!state.invoiceNumber.trim() ? [{ label: messages.pcMissingInvoice, fieldId: 'purchase-invoice' }] : []),
+    ...computed.flatMap((line, index) => {
+      const n = String(index + 1);
+      return [
+        ...(line.needsPart ? [{ label: fillPlaceholders(messages.pcMissingLinePart, { n }), fieldId: state.lines[index].partId === OTHER ? `line-description-${index}` : `line-part-${index}` }] : []),
+        ...(line.hundredths === undefined ? [{ label: fillPlaceholders(messages.pcMissingLineQty, { n }), fieldId: `line-qty-${index}` }] : []),
+        ...(typeof line.unit !== 'number' ? [{ label: fillPlaceholders(messages.pcMissingLineCost, { n }), fieldId: `line-cost-${index}` }] : []),
+      ];
+    }),
+    ...(tax === undefined ? [{ label: messages.pcMissingTax, fieldId: 'purchase-tax' }] : []),
+    ...(freight === undefined ? [{ label: messages.pcMissingFreight, fieldId: 'purchase-freight' }] : []),
+  ];
+  const trucksInvoiced = shares.filter((row) => row.truckId);
   const dirty = JSON.stringify(state) !== pristine.current || (file?.id ?? null) !== (purchase?.attachment?.id ?? null);
 
   async function checkDuplicate() {
@@ -240,7 +259,11 @@ export function PurchaseForm({
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setShowErrors(true);
-    if (!valid || busy || uploading) return;
+    if (!valid) {
+      if (missing[0]) focusField(missing[0].fieldId);
+      return;
+    }
+    if (busy || uploading) return;
     setBusy(true);
     setError(null);
     const body: AdminSavePurchaseInput = {
@@ -293,6 +316,7 @@ export function PurchaseForm({
   return (
     <Modal open title={purchase ? messages.pcEditPurchase : messages.pcNewPurchase} onClose={close} closeLabel={messages.closeDialog} dismissible={!dirty} className="sm:max-w-3xl">
       <form className="space-y-5" onSubmit={(event) => void submit(event)} data-testid="purchase-form" noValidate>
+        {showErrors ? <MissingSummary missing={missing} messages={messages} /> : null}
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="purchase-vendor">{messages.pcVendorField}</Label>
@@ -312,6 +336,7 @@ export function PurchaseForm({
               {vendorChoices.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
               <option value={ADD_VENDOR}>{messages.pcAddVendorOption}</option>
             </Select>
+            <RequiredNote show={showErrors && !state.vendorId && newVendor === null} messages={messages} />
             {newVendor !== null ? (
               <div className="flex gap-2">
                 <Input aria-label={messages.pcNewVendorName} placeholder={messages.pcNewVendorName} value={newVendor} onChange={(event) => setNewVendor(event.target.value)} autoComplete="off" />
@@ -321,7 +346,8 @@ export function PurchaseForm({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="purchase-date">{messages.pcInvoiceDate}</Label>
-            <Input id="purchase-date" type="date" value={state.invoiceDate} onChange={(event) => set('invoiceDate', event.target.value)} disabled={busy} required />
+            <Input id="purchase-date" type="date" value={state.invoiceDate} onChange={(event) => set('invoiceDate', event.target.value)} disabled={busy} required aria-invalid={(showErrors && !state.invoiceDate) || undefined} />
+            <RequiredNote show={showErrors && !state.invoiceDate} messages={messages} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="purchase-invoice">{messages.pcInvoiceNumber}</Label>
@@ -335,6 +361,7 @@ export function PurchaseForm({
               autoComplete="off"
               aria-invalid={(showErrors && !state.invoiceNumber.trim()) || Boolean(duplicate) || undefined}
             />
+            <RequiredNote show={showErrors && !state.invoiceNumber.trim()} messages={messages} />
           </div>
         </div>
         {duplicate?.exists ? (
@@ -371,6 +398,7 @@ export function PurchaseForm({
 
         <fieldset className="space-y-3">
           <legend className="text-sm font-medium">{messages.pcLines}</legend>
+          <p className="text-xs text-muted-foreground">{messages.pcLinesHelp}</p>
           {state.lines.map((line, index) => {
             const row = computed[index];
             const paid = line.partId && line.partId !== OTHER ? formData.lastPaid.find((item) => item.partId === line.partId && item.vendorId === state.vendorId) : null;
@@ -385,7 +413,8 @@ export function PurchaseForm({
                     aria-invalid={(showErrors && row.needsPart) || undefined}
                     onChange={(event) => {
                       const partId = event.target.value;
-                      setLine(index, { partId, unitCost: partId && partId !== OTHER ? startingCost(partId, state.vendorId) || line.unitCost : line.unitCost });
+                      const start = partId && partId !== OTHER ? startingCost(partId, state.vendorId) : { cost: '', from: null };
+                      setLine(index, start.cost ? { partId, unitCost: start.cost, costFrom: start.from } : { partId, costFrom: null });
                     }}
                   >
                     <option value="">{messages.pcLinePart}…</option>
@@ -399,9 +428,20 @@ export function PurchaseForm({
                     <option value={OTHER}>{messages.pcLineOther}</option>
                   </Select>
                   {line.partId === OTHER ? (
-                    <Input aria-label={messages.pcLineDescription} placeholder={messages.pcLineDescription} value={line.description} onChange={(event) => setLine(index, { description: event.target.value })} disabled={busy} autoComplete="off" />
+                    <>
+                      <Input id={`line-description-${index}`} aria-label={messages.pcLineDescription} placeholder={messages.pcLineDescription} value={line.description} onChange={(event) => setLine(index, { description: event.target.value })} disabled={busy} autoComplete="off" aria-invalid={(showErrors && row.needsPart) || undefined} />
+                      {/* UX-7-028 / PC3: an "Other" line stays on this invoice; parts are added to the catalog in Parts. */}
+                      <p className="text-xs text-muted-foreground" data-testid="other-hint">
+                        {messages.pcOtherHint}{' '}
+                        <a className="tap-inline underline" href="/admin/parts/catalog" target="_blank" rel="noopener">{messages.pcOtherCatalogLink}</a>
+                      </p>
+                    </>
                   ) : null}
-                  {paid ? <p className="text-xs text-muted-foreground">{fillPlaceholders(messages.pcLastPaidHint, { amount: formatCents(paid.unitCostCents, locale), date: formatInvoiceDate(paid.invoiceDate, locale) })}</p> : null}
+                  {line.costFrom === 'last' && paid ? (
+                    <p className="text-xs text-muted-foreground" data-testid="cost-source">{fillPlaceholders(messages.pcCostFromLast, { vendor: paid.vendorName, date: formatInvoiceDate(paid.invoiceDate, locale) })}</p>
+                  ) : line.costFrom === 'reference' ? (
+                    <p className="text-xs text-muted-foreground" data-testid="cost-source">{messages.pcCostFromRef}</p>
+                  ) : paid ? <p className="text-xs text-muted-foreground">{fillPlaceholders(messages.pcLastPaidHint, { amount: formatCents(paid.unitCostCents, locale), date: formatInvoiceDate(paid.invoiceDate, locale) })}</p> : null}
                   {showErrors && row.needsPart ? <p className="text-xs text-destructive-text">{messages.pcLineNeedsPart}</p> : null}
                   {state.split ? (
                     <Select aria-label={`${messages.pcLineTruck} ${index + 1}`} value={line.truckId} onChange={(event) => setLine(index, { truckId: event.target.value })} disabled={busy}>
@@ -417,8 +457,8 @@ export function PurchaseForm({
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor={`line-cost-${index}`} className="text-xs">{messages.pcLineUnitCost}</Label>
-                  <Input id={`line-cost-${index}`} inputMode="decimal" className="tabular-nums" placeholder="0.00" value={line.unitCost} onChange={(event) => setLine(index, { unitCost: event.target.value })} disabled={busy} aria-invalid={typeof row.unit !== 'number' && (showErrors || row.unit === undefined) || undefined} />
-                  {row.unit === undefined ? <p className="text-xs text-destructive-text">{messages.pcCostInvalid}</p> : null}
+                  <Input id={`line-cost-${index}`} inputMode="decimal" className="tabular-nums" placeholder="0.00" value={line.unitCost} onChange={(event) => setLine(index, { unitCost: event.target.value, costFrom: null })} disabled={busy} aria-invalid={typeof row.unit !== 'number' && (showErrors || row.unit === undefined) || undefined} />
+                  {row.unit === undefined ? <p className="text-xs text-destructive-text">{messages.pcCostInvalid}</p> : <RequiredNote show={showErrors && row.unit === null} messages={messages} />}
                 </div>
                 <div className="space-y-1">
                   <span className="block text-xs font-medium">{messages.pcLineTotal}</span>
@@ -440,28 +480,33 @@ export function PurchaseForm({
         <div className="grid gap-4 sm:grid-cols-[1fr_1fr_1.4fr]">
           {(['tax', 'freight'] as const).map((key) => (
             <div key={key} className="space-y-1.5">
-              <Label htmlFor={`purchase-${key}`}>{key === 'tax' ? messages.pcTax : messages.pcFreight}</Label>
+              <Label htmlFor={`purchase-${key}`}>{key === 'tax' ? messages.pcTax : messages.pcFreight}<OptionalTag messages={messages} /></Label>
               <Input id={`purchase-${key}`} inputMode="decimal" className="tabular-nums" placeholder="0.00" value={state[key]} onChange={(event) => set(key, event.target.value)} disabled={busy} aria-invalid={parseMoneyToCents(state[key]) === undefined || undefined} />
               {parseMoneyToCents(state[key]) === undefined ? <p className="text-xs text-destructive-text">{messages.pcCostInvalid}</p> : null}
             </div>
           ))}
           <div className="rounded-lg bg-muted/60 px-3 py-2 text-sm" aria-live="polite">
+            {/* UX-7-027 / PC2: every amount that makes the total, and where it goes. */}
             <p className="flex justify-between gap-2"><span>{messages.pcSubtotal}</span><span className="tabular-nums">{formatCents(subtotal, locale)}</span></p>
-            <p className="flex justify-between gap-2 text-base font-semibold"><span>{messages.pcTotal}</span><span className="tabular-nums" data-testid="purchase-total">{formatCents(total, locale)}</span></p>
-            {toTrucks && toTrucks !== total ? (
-              <p className="text-xs text-muted-foreground">{fillPlaceholders(messages.pcAssignedSplit, { trucks: formatCents(toTrucks, locale), none: formatCents(total - toTrucks, locale) })}</p>
-            ) : null}
-            {extra && shares.filter((row) => row.truckId).length > 1 ? <p className="text-xs text-muted-foreground">{messages.pcSharedNote}</p> : null}
+            <p className="flex justify-between gap-2 text-muted-foreground"><span>{messages.pcTax}</span><span className="tabular-nums">{formatCents(tax ?? 0, locale)}</span></p>
+            <p className="flex justify-between gap-2 text-muted-foreground"><span>{messages.pcFreight}</span><span className="tabular-nums">{formatCents(freight ?? 0, locale)}</span></p>
+            <p className="mt-1 flex justify-between gap-2 border-t pt-1 text-base font-semibold"><span>{messages.pcTotal}</span><span className="tabular-nums" data-testid="purchase-total">{formatCents(total, locale)}</span></p>
+            <div className="mt-1 space-y-0.5 text-xs text-muted-foreground" data-testid="purchase-destination">
+              {!trucksInvoiced.length ? <p>{messages.pcAllNoTruck}</p> : null}
+              {trucksInvoiced.length === 1 && toTrucks === total ? <p>{fillPlaceholders(messages.pcAllToTruck, { truck: truckNumber(trucksInvoiced[0].truckId!) })}</p> : null}
+              {trucksInvoiced.length > 1 || (trucksInvoiced.length && toTrucks !== total) ? (
+                <>
+                  {trucksInvoiced.map((row) => <p key={row.truckId}>{fillPlaceholders(messages.pcTruckLabel, { truck: truckNumber(row.truckId!) })}: {formatCents(row.amountCents, locale)}</p>)}
+                  {toTrucks !== total ? <p>{messages.pcNoTruckOption}: {formatCents(total - toTrucks, locale)}</p> : null}
+                  {extra ? <p>{messages.pcSharedNote}</p> : null}
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
-        {state.split ? (
-          <p className="text-xs text-muted-foreground">
-            {shares.filter((row) => row.truckId).map((row) => `${fillPlaceholders(messages.pcTruckLabel, { truck: truckNumber(row.truckId!) })}: ${formatCents(row.amountCents, locale)}`).join(' · ')}
-          </p>
-        ) : null}
 
         <div className="space-y-1.5">
-          <span className="block text-sm font-medium">{messages.pcInvoiceFile}</span>
+          <span className="block text-sm font-medium">{messages.pcInvoiceFile}<OptionalTag messages={messages} /></span>
           {!formData.filesEnabled ? (
             <p className="text-xs text-muted-foreground" data-testid="files-off">{messages.pcFilesOff}</p>
           ) : file ? (
@@ -482,25 +527,21 @@ export function PurchaseForm({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="purchase-notes">{messages.pcNotes}</Label>
+          <Label htmlFor="purchase-notes">{messages.pcNotes}<OptionalTag messages={messages} /></Label>
           <Textarea id="purchase-notes" rows={2} value={state.notes} onChange={(event) => set('notes', event.target.value)} disabled={busy} />
         </div>
 
-        {error ? <InlineAlert>{error}</InlineAlert> : null}
-        {confirmDiscard ? (
-          <div className="rounded-lg border px-3 py-3 text-sm" role="alertdialog" aria-label={messages.pcDiscardTitle}>
-            <p className="font-medium">{messages.pcDiscardTitle}</p>
-            <p className="text-muted-foreground">{messages.pcDiscardBody}</p>
-            <div className="mt-2 flex gap-2">
-              <Button type="button" variant="destructive" size="sm" onClick={discard}>{messages.pcDiscard}</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setConfirmDiscard(false)}>{messages.pcKeepEditing}</Button>
-            </div>
-          </div>
-        ) : null}
-        <DialogActions>
-          <Button type="button" variant="outline" onClick={close} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={busy || uploading || Boolean(duplicate?.exists)}>{busy ? messages.pcSaving : messages.pcSavePurchase}</Button>
-        </DialogActions>
+        <StickyFormFooter
+          error={error}
+          confirmDiscard={confirmDiscard}
+          onDiscard={discard}
+          onKeepEditing={() => setConfirmDiscard(false)}
+          onCancel={close}
+          submitLabel={messages.pcSavePurchase}
+          submitDisabled={busy || uploading || Boolean(duplicate?.exists)}
+          busy={busy}
+          messages={messages}
+        />
       </form>
     </Modal>
   );

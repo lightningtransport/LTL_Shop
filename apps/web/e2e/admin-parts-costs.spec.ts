@@ -92,9 +92,11 @@ test('manager loads a purchase: live total, repeated invoice warning, split truc
   // D-PC6: picking the part fills the last price paid to this vendor.
   await form.getByLabel('Part', { exact: true }).first().selectOption({ label: 'Fuel Filter 4 Micron · LFF8897' });
   await expect(form.getByLabel('Unit cost').first()).toHaveValue('24.10');
+  await expect(form.getByTestId('cost-source').first()).toHaveText('Filled with the last price paid to FleetPride (Oct 6, 2026). Change it if the invoice is different.');
   await form.getByLabel('Qty').first().fill('2');
   await form.getByRole('button', { name: 'Add line' }).click();
-  await form.getByLabel('Part', { exact: true }).nth(1).selectOption({ label: 'Other (not in catalog)' });
+  await form.getByLabel('Part', { exact: true }).nth(1).selectOption({ label: 'Other — only on this invoice' });
+  await expect(form.getByTestId('other-hint')).toContainText('Saved only on this purchase; it is not added to Parts.');
   await form.getByPlaceholder('Description').fill('Shop rags');
   await form.getByLabel('Unit cost').nth(1).fill('10');
   await form.getByLabel('Tax').fill('1.50');
@@ -102,7 +104,8 @@ test('manager loads a purchase: live total, repeated invoice warning, split truc
 
   await form.getByLabel('Lines go to different trucks').check();
   await form.getByLabel('Truck 1').selectOption({ label: 'Truck 606' });
-  await expect(form.getByText(/Assigned to trucks: \$49\.\d\d · No truck: \$10\.\d\d/)).toBeVisible();
+  await expect(form.getByTestId('purchase-destination')).toContainText(/Truck 606: \$49\.\d\d/);
+  await expect(form.getByTestId('purchase-destination')).toContainText(/No truck · shop stock: \$10\.\d\d/);
   await expect(form.getByTestId('files-off')).toBeVisible();
   await form.getByRole('button', { name: 'Save purchase' }).click();
 
@@ -126,7 +129,8 @@ test('a new purchase that was not saved comes back in the same tab; Discard asks
   await page.getByRole('button', { name: 'New purchase' }).click();
   await page.getByRole('dialog').getByLabel('Invoice #').fill('DRAFT-1');
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByRole('alertdialog', { name: 'Discard this purchase?' })).toBeVisible();
+  // UX-7-029: the question shows in the footer, in place of the buttons, always in view.
+  await expect(page.getByTestId('form-footer').getByRole('alertdialog', { name: 'Discard this purchase?' })).toBeInViewport();
   await page.getByRole('button', { name: 'Keep editing' }).click();
   await page.reload();
   await page.getByRole('button', { name: 'New purchase' }).click();
@@ -160,4 +164,33 @@ test('manager loads an outside shop invoice from the Job: truck and Job come pic
   await expect(page.getByText('Outside repair saved · $1,840.00')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'FleetPride · DP-4410' })).toBeVisible();
   await expect(page.getByTestId('outside-job')).toHaveText('Radiator Repair · WO-001 · part');
+});
+
+// UX-7-026 / PC1: Save with something missing says what, and goes to it.
+test('saving a purchase with missing fields lists them and goes to the first one', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/purchases');
+  await page.getByRole('button', { name: 'New purchase' }).click();
+  const form = page.getByRole('dialog');
+  await form.getByRole('button', { name: 'Save purchase' }).click();
+  const missing = form.getByTestId('form-missing');
+  await expect(missing).toContainText('Complete these to save:');
+  for (const item of ['Vendor', 'Invoice #', 'Line 1: part or description', 'Line 1: unit cost']) await expect(missing.getByRole('button', { name: item, exact: true })).toBeVisible();
+  await expect(form.getByLabel('Vendor')).toBeFocused();
+  await missing.getByRole('button', { name: 'Line 1: unit cost' }).click();
+  await expect(form.getByLabel('Unit cost')).toBeFocused();
+  await expect(form.getByText('Tax (optional)')).toBeVisible();
+});
+
+// UX-4-012 / PC5: the summary comes first; "Per truck" only with several trucks.
+test('a purchase detail starts with vendor, invoice, truck, file and total', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/purchases/00000000-0000-4000-8000-00000000b001');
+  const summary = page.getByTestId('purchase-summary');
+  await expect(summary).toContainText('FleetPride');
+  await expect(summary).toContainText('88412093');
+  await expect(summary).toContainText('Truck 606');
+  await expect(summary).toContainText('No invoice file');
+  await expect(page.getByTestId('purchase-detail-total')).toHaveText('$48.20');
+  await expect(page.getByTestId('truck-shares')).toHaveCount(0);
 });
