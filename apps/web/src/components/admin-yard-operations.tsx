@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Building2, CalendarClock, ChevronDown, CirclePause, OctagonPause, PlugZap, Search, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
+import { Building2, CalendarClock, CirclePause, OctagonPause, PlugZap, Search, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
 import { AppCapability, Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
@@ -35,6 +35,7 @@ import { formatVehicleYmm } from '@/lib/format';
 import { formatAdminDateOnly } from '@/lib/admin-format';
 import { compactAge, dispatchSignalsByTruck, fillYardText, yardCardAlert, type YardCardAlert, type YardDispatchSignal } from '@/lib/yard-card';
 import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
+import { KanbanBoard, KanbanColumn, KanbanFullscreenButton, useKanbanFullscreen } from './kanban';
 import { Button, LoadFailure, PageSkeleton, PriorityBadge } from './ui';
 
 const phaseMessageKey = {
@@ -56,6 +57,8 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const tab: 'shop' | 'movement' = searchParams.get('tab') === 'movement' ? 'movement' : 'shop';
   const [movementSearch, setMovementSearch] = useState('');
   const [closedLanes, setClosedLanes] = useState<Record<string, boolean>>({});
+  // D33: the board opens full screen (Esc leaves).
+  const fullscreen = useKanbanFullscreen();
   const query = searchParams.toString();
   // D4 / UX-5-006: the Truck's back link returns here with the same search, filters and tab.
   const yardFromPath = useMemo(() => yardOperationsFromPath(query), [query]);
@@ -221,7 +224,14 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
       </section>
       </div>
     ) : isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : (
-      <div role="tabpanel" id="yard-panel-shop" aria-labelledby="yard-tab-shop" className="flex flex-col gap-4">
+      <div
+        role="tabpanel"
+        id="yard-panel-shop"
+        aria-labelledby="yard-tab-shop"
+        className={cn('flex flex-col gap-4', fullscreen.active && 'fixed inset-0 z-[45] overflow-y-auto bg-background p-4 lg:overflow-hidden lg:p-6')}
+        data-fullscreen={fullscreen.active || undefined}
+      >
+        {fullscreen.active ? <p className="text-lg font-semibold" aria-hidden="true">{messages.yardOperationsTitle}</p> : null}
         {/* Stage 8 (mockup): search and the quick filters on one row; no "More filters" (owner decision). The URL
             still accepts readiness, phase, Work Order status and priority from links on other screens. */}
         <section className="flex flex-col gap-3 lg:flex-row lg:items-center" aria-label={messages.yardQuickFilters}>
@@ -260,6 +270,13 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             ))}
           </div>
           {anyFilter ? <Button type="button" variant="ghost" size="sm" className="self-start lg:ml-auto lg:self-auto" onClick={clearFilters}><X aria-hidden="true" />{messages.clearFilters}</Button> : null}
+          <KanbanFullscreenButton
+            active={fullscreen.active}
+            onClick={fullscreen.toggle}
+            enterLabel={messages.yardFullscreen}
+            exitLabel={messages.yardExitFullscreen}
+            className={cn('hidden shrink-0 lg:inline-flex', !anyFilter && 'lg:ml-auto')}
+          />
         </section>
 
         <p className="-mt-1 text-xs text-muted-foreground" data-testid="yard-showing">
@@ -281,46 +298,37 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             {anyFilter ? <Button type="button" variant="outline" onClick={clearFilters}>{messages.clearFilters}</Button> : null}
           </div>
         ) : (
-          // Stage 6 (UX-4-004, D9) / Stage 8 (mockup): desktop — one card, a lane per step top to bottom (an empty step
-          // is one line); phones — a foldable list per step, empty steps hidden. No sideways scroll.
-          <section aria-labelledby="yard-lanes-title" className="space-y-4 lg:space-y-0 lg:overflow-hidden lg:rounded-xl lg:border lg:bg-card" data-testid="yard-lanes">
-            <h2 id="yard-lanes-title" className="sr-only">{messages.yardLanes}</h2>
+          // D33: desktop — a Kanban board, one vertical column per step, side by side; the board scrolls sideways inside
+          // itself and each column scrolls its own cards; an empty step is a narrow column. Phones — a foldable list
+          // per step, empty steps hidden. No sideways scroll of the page.
+          <KanbanBoard
+            label={messages.yardLanes}
+            labelId="yard-lanes-title"
+            className={fullscreen.active ? 'lg:min-h-0 lg:flex-1' : 'lg:h-[max(26rem,calc(100dvh-19rem))]'}
+            data-testid="yard-lanes"
+          >
             {WORK_PLAN_YARD_PHASES.map((phase, index) => {
               const phaseItems = items.filter((item) => item.phase === phase);
-              const laneCount = counts?.byPhase?.[phase] ?? phaseItems.length;
-              const label = messages[phaseMessageKey[phase]];
-              if (!phaseItems.length) {
-                return (
-                  <div key={phase} data-phase={phase} className={cn('hidden items-center gap-3 px-4 py-2 text-xs text-muted-foreground lg:flex', index > 0 && 'border-t')}>
-                    <h3 className="w-32 shrink-0"><span aria-hidden="true">{index + 1}. </span>{label}</h3>
-                    <span>{messages.yardNoTrucksLane}</span>
-                  </div>
-                );
-              }
+              const laneCount = phaseItems.length ? counts?.byPhase?.[phase] ?? phaseItems.length : 0;
               const open = !closedLanes[phase];
               return (
-                <section key={phase} aria-labelledby={`yard-group-${phase}`} data-phase={phase} className={cn('lg:grid lg:grid-cols-[8rem_minmax(0,1fr)] lg:gap-3 lg:px-4 lg:py-3', index > 0 && 'lg:border-t')}>
-                  <h3 id={`yard-group-${phase}`} className="lg:pt-1">
-                    <button
-                      type="button"
-                      aria-expanded={open}
-                      className="flex min-h-11 w-full items-center gap-2 text-left font-semibold lg:pointer-events-none lg:min-h-0 lg:text-sm"
-                      onClick={() => setClosedLanes((current) => ({ ...current, [phase]: open }))}
-                    >
-                      <span aria-hidden="true" className="hidden lg:inline">{index + 1}.</span>
-                      {label}
-                      <span aria-hidden="true" className="tnum rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border lg:bg-transparent lg:px-0 lg:ring-0">{laneCount}</span>
-                      <ChevronDown aria-hidden="true" className={cn('ml-auto size-3.5 text-muted-foreground transition-transform lg:hidden', open && 'rotate-180')} />
-                    </button>
-                  </h3>
-                  <div className={cn('mt-1 gap-2 lg:mt-0 lg:grid lg:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]', open ? 'grid' : 'hidden')}>
-                    {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} soonUntil={soonUntil} canManage={canManageWorkOrders} fromPath={yardFromPath} onChanged={() => mutate()} />)}
-                  </div>
-                </section>
+                <KanbanColumn
+                  key={phase}
+                  id={phase}
+                  data-phase={phase}
+                  index={index + 1}
+                  title={messages[phaseMessageKey[phase]]}
+                  count={laneCount}
+                  emptyLabel={messages.yardNoTrucksLane}
+                  open={open}
+                  onToggle={() => setClosedLanes((current) => ({ ...current, [phase]: open }))}
+                >
+                  {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} soonUntil={soonUntil} canManage={canManageWorkOrders} fromPath={yardFromPath} onChanged={() => mutate()} />)}
+                </KanbanColumn>
               );
             })}
             <p className="text-center text-xs text-muted-foreground lg:hidden">{messages.yardEmptyHidden}</p>
-          </section>
+          </KanbanBoard>
         )}
         {hasMore ? <Button variant="outline" className="w-full" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.yardLoadMore}…` : messages.yardLoadMore}</Button> : null}
       </div>
@@ -360,7 +368,7 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
   const rts = readyToGo && canManage && item.nextStep?.workOrderId ? item.nextStep.workOrderId : null;
 
   return (
-    <article className={cn('rounded-lg border bg-card', warning && 'shadow-[inset_3px_0_0_var(--warning)]')}>
+    <article className={cn('shrink-0 rounded-lg border bg-card shadow-sm', warning && 'shadow-[inset_3px_0_0_var(--warning)]')}>
       <Link
         href={adminTruckHref(item.truck.id, fromPath)}
         aria-label={item.truck.truckNumber}
