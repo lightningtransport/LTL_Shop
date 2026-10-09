@@ -28,6 +28,12 @@ import type {
   YardDataBoundaryDto,
   YardOperationsPageDto,
   TruckWorkPlanDto,
+  AdminCreatePartInput,
+  AdminCreateVendorInput,
+  AdminPartsCatalogDto,
+  AdminUpdatePartInput,
+  AdminUpdateVendorInput,
+  AdminVendorDto,
 } from '@ltl-shop/shared';
 import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
@@ -765,4 +771,45 @@ export function updateAdminWorkflowSteps(steps: Array<{ stepKey: string; memberI
     method: 'PUT',
     body: JSON.stringify({ steps }),
   });
+}
+
+// ── LTR-200 / D32: Parts & costs (PC-1: the part catalog and the vendors) ──────────────────────────────────
+
+export function useAdminPartsCatalog(query: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminPartsCatalogDto>(token ? `/api/admin/parts-costs/parts${query ? `?${query}` : ''}` : null, adminReadFetcher, {
+      dedupingInterval: 10_000,
+      keepPreviousData: true,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+export function useAdminVendors() {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminVendorDto[]>(token ? '/api/admin/parts-costs/vendors' : null, adminReadFetcher, {
+      dedupingInterval: 10_000,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+export function createAdminPart(input: AdminCreatePartInput) {
+  return apiFetch<{ id: string }>('/api/admin/parts-costs/parts', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateAdminPart(id: string, input: AdminUpdatePartInput) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/parts/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function createAdminVendor(input: AdminCreateVendorInput) {
+  return apiFetch<{ id: string }>('/api/admin/parts-costs/vendors', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateAdminVendor(id: string, input: AdminUpdateVendorInput) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/vendors/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
 }

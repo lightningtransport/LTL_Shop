@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { AdminNavLink } from './admin-nav-link';
 import { AdminBreadcrumbProvider, useAdminCrumbs, type Crumb } from './admin-breadcrumb';
 import { AppHeaderActions, Button, Modal } from './ui';
-import { AdminActorProvider } from '@/lib/admin-actor';
+import { AdminActorProvider, useCanShowManagerWrites } from '@/lib/admin-actor';
 import type { AdminMessages } from '@/lib/admin-messages';
 
 // LTR-122: daily operation first, then setup, then audit (same pages for every role).
@@ -21,6 +21,15 @@ const navigationGroups = [
       { message: 'yardOperations', icon: Warehouse, href: '/admin/yard-operations' },
       { message: 'workOrders', icon: ClipboardList, href: '/admin/work-orders' },
       { message: 'trucks', icon: Truck, href: '/admin/trucks' },
+    ],
+  },
+  {
+    // LTR-200 / D32, D-PC7: money, so only the Shop Manager and the System Admin see it.
+    title: 'navGroupPartsCosts',
+    managerOnly: true,
+    items: [
+      { message: 'pcParts', icon: Package, href: '/admin/parts/catalog' },
+      { message: 'pcVendors', icon: Store, href: '/admin/parts/vendors' },
     ],
   },
   {
@@ -70,6 +79,7 @@ const NAV_ITEM = 'flex min-h-11 w-full items-center gap-2.5 rounded-md px-2 text
  */
 function ShellFrame({ children, messages, user }: { children: React.ReactNode; messages: AdminMessages; user: { name: string; role: string } }) {
   const pathname = usePathname();
+  const canSeeManagerGroups = useCanShowManagerWrites();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const pageCrumbs = useAdminCrumbs();
@@ -87,7 +97,7 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
   if (authUser?.capabilities.includes(AppCapability.MECHANIC_STANDARD)) workspaces.push({ href: '/mechanic/standard', label: messages.standardWorkspace, icon: Wrench });
   if (authUser?.capabilities.includes(AppCapability.MECHANIC_PM)) workspaces.push({ href: '/mechanic/pm', label: messages.pmWorkspace, icon: ClipboardCheck });
 
-  const navGroups = (onNavigate?: () => void) => [...navigationGroups.map((group) => (
+  const navGroups = (onNavigate?: () => void) => [...navigationGroups.filter((group) => !('managerOnly' in group) || canSeeManagerGroups).map((group) => (
     <div key={group.title} className="space-y-0.5">
       <p className="px-2 pb-1 text-xs text-muted-foreground">{messages[group.title]}</p>
       {group.items.map(({ message, icon: Icon, href }) => {

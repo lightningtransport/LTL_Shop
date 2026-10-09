@@ -108,6 +108,12 @@ export const ADMIN_ACTIVITY_EVENT_KEY = {
   [ActivityEventType.READINESS_APPROVED]: 'activityReadinessApproved',
   [ActivityEventType.READINESS_APPROVAL_INVALIDATED]: 'activityReadinessApprovalInvalidated',
   [ActivityEventType.READINESS_ASSESSMENT_CLOSED]: 'activityReadinessAssessmentClosed',
+  [ActivityEventType.VENDOR_SAVED]: 'activityVendorSaved',
+  [ActivityEventType.PART_CATALOG_UPDATED]: 'activityPartCatalogUpdated',
+  [ActivityEventType.PART_PURCHASE_SAVED]: 'activityPartPurchaseSaved',
+  [ActivityEventType.PART_PURCHASE_VOIDED]: 'activityPartPurchaseVoided',
+  [ActivityEventType.OUTSIDE_REPAIR_SAVED]: 'activityOutsideRepairSaved',
+  [ActivityEventType.OUTSIDE_REPAIR_VOIDED]: 'activityOutsideRepairVoided',
 } as const;
 
 export function workOrderStatusVariant(status: string): ChipVariant {
