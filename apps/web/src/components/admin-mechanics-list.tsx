@@ -7,10 +7,20 @@ import { UserRole, type AdminMechanicSummaryDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { ActivateMechanicDialog, CreateMechanicDialog } from './admin-mechanic-roster';
 import { AdminWriteTip } from './admin-write-tip';
-import { AdminFilterToolbar, DataTable, PageHeader, Badge, Button, EmptyState, LoadFailure, PageSkeleton } from './ui';
+import { stepLabel } from './admin-shop-workflow';
+import { currentMode } from './admin-mechanic-roster';
+import { AdminFilterToolbar, DataTable, PageHeader, Badge, Button, EmptyState, LoadFailure, PageSkeleton, Select } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminMechanics } from '@/lib/admin-data';
-import { adminCapabilityLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
+import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { MechanicMode } from '@ltl-shop/shared';
+
+/** ME5: Standard, PM, Safety — or System Admin for an admin row on the roster. */
+export function personTypeLabel(person: Pick<AdminMechanicSummaryDto, 'role' | 'capabilities'>, messages: AdminMessages) {
+  if (person.role === UserRole.ADMIN) return messages.peopleSystemAdminType;
+  const mode = currentMode(person.capabilities);
+  return mode === MechanicMode.PM ? messages.mechanicPm : mode === MechanicMode.SAFETY ? messages.capabilitySafety : messages.mechanicStandard;
+}
 
 export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   // D22: the Shop Manager manages the roster (System Admin too); the Job catalog too (D25).
@@ -21,14 +31,16 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
   const query = searchParams.toString();
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   // LTR-160: deactivated accounts stay hidden unless the Manager asks to see them (e.g. to reactivate).
-  const [showInactive, setShowInactive] = useState(searchParams.get('includeInactive') === 'true');
+  // LTR-199 / D31: removed people show only under "Removed from the Shop".
+  const showFrom = (params: URLSearchParams) => (params.get('status') === 'removed' ? 'removed' : params.get('includeInactive') === 'true' ? 'all' : 'active');
+  const [show, setShow] = useState(showFrom(searchParams));
   const [createOpen, setCreateOpen] = useState(false);
   const [activateTarget, setActivateTarget] = useState<AdminMechanicSummaryDto | null>(null);
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminMechanics(query);
 
   useEffect(() => {
     setSearch(searchParams.get('search') ?? '');
-    setShowInactive(searchParams.get('includeInactive') === 'true');
+    setShow(showFrom(searchParams));
   }, [searchParams]);
 
   const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
@@ -52,11 +64,15 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
         searchLabel={messages.searchMechanics}
         filtersLabel={messages.filters}
         closeLabel={messages.closeDialog}
-        activeFilterCount={searchParams.get('includeInactive') === 'true' ? 1 : 0}
+        activeFilterCount={showFrom(searchParams) === 'active' ? 0 : 1}
         filters={(
-          <label className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-sm">
-            <input type="checkbox" className="size-5" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
-            {messages.showInactiveMechanics}
+          <label className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap text-sm">
+            {messages.peopleShow}
+            <Select value={show} onChange={(event) => setShow(event.target.value as typeof show)} className="w-auto">
+              <option value="active">{messages.peopleShowActive}</option>
+              <option value="all">{messages.peopleShowActiveInactive}</option>
+              <option value="removed">{messages.peopleShowRemoved}</option>
+            </Select>
           </label>
         )}
         onClear={() => router.replace('/admin/mechanics')}
@@ -65,7 +81,8 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
         onSubmit={() => {
           const next = new URLSearchParams();
           if (search.trim()) next.set('search', search.trim());
-          if (showInactive) next.set('includeInactive', 'true');
+          if (show === 'all') next.set('includeInactive', 'true');
+          if (show === 'removed') next.set('status', 'removed');
           router.replace(`/admin/mechanics${next.size ? `?${next}` : ''}`);
         }}
       />
@@ -87,8 +104,9 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
                 <div className="min-w-0">
                   <Link className="tap-inline font-semibold text-primary hover:underline" href={`/admin/mechanics/${item.id}`}>{item.name}</Link>
                   <p className="break-words text-sm text-muted-foreground">{item.email}</p>
-                  {!item.active ? <Badge variant="secondary" className="mt-1">{messages.mechanicInactive}</Badge> : null}
-                  {canWrite && item.role === UserRole.MECHANIC && !item.active ? (
+                  {item.removedAt ? <Badge variant="secondary" className="mt-1">{messages.peopleRemovedBadge}</Badge>
+                    : !item.active ? <Badge variant="secondary" className="mt-1">{messages.mechanicInactive}</Badge> : null}
+                  {canWrite && item.role === UserRole.MECHANIC && !item.active && !item.removedAt ? (
                     <div className="mt-2">
                       <Button type="button" size="sm" variant="outline" onClick={() => setActivateTarget(item)}>
                         {messages.activateMechanic}
@@ -99,19 +117,25 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
               ),
             },
             {
-              key: 'capabilities',
-              header: messages.capabilitiesLabel,
-              // LTR-169: people-facing names, not keys like mechanic.standard.
-              cell: (item) => item.capabilities.length ? (
-                <div className="flex flex-wrap gap-1 max-md:justify-end">
-                  {item.capabilities.map((capability) => <Badge key={capability} variant="outline">{adminCapabilityLabel(capability, messages)}</Badge>)}
-                </div>
-              ) : <span>—</span>,
+              key: 'type',
+              header: messages.peopleTypeColumn,
+              // ME5: one type per person, in people-facing words (LTR-169), not a list of permissions.
+              cell: (item) => <Badge variant="outline">{personTypeLabel(item, messages)}</Badge>,
             },
-            { key: 'open', header: messages.openAssignments, cell: (item) => <span>{item.openWorkOrderCount}</span> },
+            {
+              key: 'teams',
+              header: messages.peopleTeamsColumn,
+              cell: (item) => item.teamStepKeys?.length ? (
+                <div className="flex flex-wrap gap-1 max-md:justify-end">
+                  {item.teamStepKeys.map((stepKey) => <Badge key={stepKey} variant="secondary">{stepLabel(stepKey, messages)}</Badge>)}
+                </div>
+              ) : <span className="text-muted-foreground">—</span>,
+            },
+            { key: 'pending', header: messages.peoplePendingColumn, cell: (item) => <span>{item.pendingJobCount ?? item.openWorkOrderCount}</span> },
           ]}
         />
       ) : null}
+      {items.length ? <p className="text-xs text-muted-foreground">{messages.peoplePendingHint}</p> : null}
       {hasMore ? <Button type="button" variant="outline" disabled={isValidating} onClick={() => setSize(size + 1)}>{messages.loadMore}</Button> : null}
       {canWrite ? (
         <>

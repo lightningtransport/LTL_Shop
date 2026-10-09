@@ -85,6 +85,8 @@ app (**Personal**, abajo).
   `pendingJobs` (WO, camión, Job) y `runningSession`. Desactivada, no entra
   (403 al iniciar sesión) ni aparece para asignar; su historial se conserva.
   **Reactivar** no tiene regla.
+- **Quitar del Shop (D31, LTR-199):** `POST /api/admin/mechanics/:id/remove` pone `active = false`, `removed_at` y `removed_by_id` y saca a la persona de todos los equipos. Se niega con `MECHANIC_HAS_OPEN_WORK` igual que desactivar. Una persona quitada no entra, no aparece en ninguna lista (solo con `?status=removed`) y no se reactiva (`PERSON_REMOVED`). `DELETE /api/admin/mechanics/:id` la borra de verdad solo si no tiene ningún historial (Jobs, WOs, notas, tiempo, bloqueos, Activity Log, eventos del camión); si no, `PERSON_HAS_HISTORY`. `POST /api/admin/mechanics/:id/send-to-queue` devuelve a su cola los Jobs que vinieron de una cola de equipo (no con su reloj corriendo en ese camión).
+- **Cambiar de tipo (D-SET2, D-SET3):** con Jobs pendientes o tiempo corriendo se niega (`MECHANIC_HAS_OPEN_WORK`); si no, la persona sale de los equipos que ya no puede hacer.
 - **Trabajo abierto (ME1):** en la lista y en el detalle se cuenta por los Jobs
   `to_do` de la persona en WOs abiertos (la misma regla que bloquea
   desactivar), no por `mechanic_assignments`. Así el PM y Safety también

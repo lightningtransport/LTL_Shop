@@ -136,15 +136,18 @@ enum TruckServiceStatus {
 }
 
 model User {
-  id              String   @id @default(uuid()) @db.Uuid
-  email           String   @unique
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique
   name            String
-  role            UserRole @default(mechanic)
-  active          Boolean  @default(true)
-  supabaseAuthId  String?  @unique @map("supabase_auth_id")
-  ninoxExternalId String?  @map("ninox_external_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  role            UserRole  @default(mechanic)
+  active          Boolean   @default(true)
+  // LTR-199 / D31: removed from the Shop — out of every list and team for good; history stays.
+  removedAt       DateTime? @map("removed_at")
+  removedById     String?   @map("removed_by_id") @db.Uuid
+  supabaseAuthId  String?   @unique @map("supabase_auth_id")
+  ninoxExternalId String?   @map("ninox_external_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   createdWorkOrders              WorkOrder[]                @relation("WorkOrderCreatedBy")
   completedWorkOrders            WorkOrder[]                @relation("WorkOrderCompletedBy")
@@ -173,6 +176,8 @@ model User {
   updatedWorkflowSteps           ShopWorkflowStep[]         @relation("ShopWorkflowStepUpdatedBy")
   workflowStepMemberships        ShopWorkflowStepMember[]   @relation("ShopWorkflowStepMemberUser")
   addedWorkflowStepMembers       ShopWorkflowStepMember[]   @relation("ShopWorkflowStepMemberAddedBy")
+  removedBy                      User?                      @relation("UserRemovedBy", fields: [removedById], references: [id], onDelete: SetNull)
+  removedUsers                   User[]                     @relation("UserRemovedBy")
   updatedShopSettings            ShopSettings[]             @relation("ShopSettingsUpdatedBy")
 
   @@map("users")

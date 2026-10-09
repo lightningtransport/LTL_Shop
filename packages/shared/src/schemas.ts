@@ -135,6 +135,13 @@ export const adminMechanicsQuerySchema = adminNamedListQuerySchema.extend({
   assignable: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
   // LTR-160: deactivated accounts are hidden unless the roster asks for them.
   includeInactive: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  /** LTR-199 / D31: People filter. Removed people show only under `removed` (or `all`). */
+  status: z.enum(['active', 'inactive', 'removed', 'all']).optional(),
+});
+
+/** LTR-199 / D28, D31: send some of a person's pending queue Jobs back to their team queue. */
+export const adminSendJobsToQueueSchema = z.object({
+  jobIds: z.array(z.string().uuid()).max(100).optional(),
 });
 
 const closedWorkOrderStatus = z.enum([WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]);

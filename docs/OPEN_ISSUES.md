@@ -352,7 +352,7 @@ Aquí van los defectos de lo que ya está construido. Lo que cambia por las deci
 | ~~ME2~~ | C | **Desactivar avisa del bloqueo recién después de confirmar**, y desde ahí no se puede reasignar (UX-6-013, UX-3-013, UX-7-018). | **Hecho** (arreglos de Setup, rama `claude/setup-fixes`, 2026-10-07): el bloqueo se ve al abrir el diálogo; test-real A40. |
 | ~~ME3~~ | C | **Esc o un clic fuera cierra "Add person" y se pierde lo escrito**, incluida la contraseña temporal que se ve una sola vez (`ui.tsx:1170`) (UX-7-002). | **Hecho** (arreglos de Setup, rama `claude/setup-fixes`, 2026-10-07): el diálogo no se cierra con Esc ni con un clic fuera mientras hay algo escrito o la contraseña a la vista. |
 | ~~ME4~~ | E | **El detalle se contradice.** Dice "Completed Jobs: 3" y al lado "No closed Work Orders". Además, "Job labor time is not available" es un texto fijo (UX-6-012, UX-3-011, UX-3-012). | **Hecho** (arreglos de Setup, rama `claude/setup-fixes`, 2026-10-07): los WOs cerrados son los de sus Jobs completados; se quitó el texto fijo; test-real A39. |
-| ME5 | E | **La sección se llama "Mechanics" y lista Safety y admins.** "Capabilities" mezcla el tipo de la persona con permisos (UX-3-008, UX-3-009, UX-5-003). | Abierto (S3: "People / Personas") |
+| ~~ME5~~ | E | **La sección se llama "Mechanics" y lista Safety y admins.** "Capabilities" mezcla el tipo de la persona con permisos (UX-3-008, UX-3-009, UX-5-003). | **Hecho** (S3, rama `claude/setup-s3`, 2026-10-09): la sección se llama People / Personas; la lista muestra un tipo por persona (System Admin para una fila de admin), sus equipos y sus Jobs pendientes. |
 
 **Cambia por decisión del dueño** (D28–D32, 2026-10-07). No son defectos: es trabajo nuevo, con propuesta y maqueta antes de construir.
 
@@ -360,7 +360,7 @@ Aquí van los defectos de lo que ya está construido. Lo que cambia por las deci
 |---|---|---|---|
 | ~~S1~~ | **Hecho** (rama `claude/setup-s1`, 2026-10-08): equipo y cola por paso, Take / Let go en el inicio del mecánico, el Manager hace QC como respaldo desde `/qc`, el paso se llama "PM", Shop hours en su pestaña (D-SET5); test-real A41–A44 y QC11 | D28, D29 | UX-7-020, UX-6-019, UX-5-009, UX-1-005, UX-1-006, UX-1-007 |
 | ~~S2~~ | **Hecho** (rama `claude/setup-s2`, 2026-10-08): categorías (crear, renombrar, activar/desactivar con motivo, borrar vacía), Jobs (borrar si nunca se usó, si no desactivar), aliases (agregar/quitar, el choque dice de qué Job), búsqueda, Jobs y categorías del sistema protegidos, la recarga no pisa; test-real A45–A48 | D30 | UX-7-022, UX-6-021, UX-4-004, UX-4-007, UX-1-011, UX-5-002 |
-| S3 | "Remove" a una persona conservando su historial; detalle con cabecera de estado y los pasos de los que es dueña | D31 | UX-7-023, UX-6-023, UX-4-009, UX-5-011, UX-1-016 |
+| ~~S3~~ | **Hecho** (rama `claude/setup-s3`, 2026-10-09): Quitar del Shop (conserva el historial, bloqueo antes de confirmar), borrado real solo sin historial, detalle con cabecera de estado, Jobs pendientes con "mandar a la cola", equipos y Jobs completados, cambio de tipo bloqueado con Jobs pendientes (D-SET3); test-real A49–A52 | D31 | UX-7-023, UX-6-023, UX-4-009, UX-5-011, UX-1-016 |
 | S4 | Partes y costos etapa 1 (catálogo de partes, compras, reparaciones externas, costo por camión); el cobro a Finanzas queda diseñado | D32 | UX-1-020, UX-5-004, UX-6-024, UX-7-024 |
 
 Orden acordado:

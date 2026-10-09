@@ -192,6 +192,21 @@ export function useAdminRoster() {
   return swr;
 }
 
+/** LTR-199 / D31: Remove from Shop (history stays). */
+export function removeAdminMechanic(id: string) {
+  return apiFetch<{ removed: true }>(`/api/admin/mechanics/${id}/remove`, { method: 'POST', body: '{}' });
+}
+
+/** LTR-199 / D31: a real delete, only for someone who never did anything. */
+export function deleteAdminMechanic(id: string) {
+  return apiFetch<{ deleted: true }>(`/api/admin/mechanics/${id}`, { method: 'DELETE' });
+}
+
+/** LTR-199 / D28: the person's Jobs that came from a team queue go back to it. */
+export function sendAdminMechanicJobsToQueue(id: string, jobIds?: string[]) {
+  return apiFetch<{ sent: number; skipped: number }>(`/api/admin/mechanics/${id}/send-to-queue`, { method: 'POST', body: JSON.stringify(jobIds ? { jobIds } : {}) });
+}
+
 export function useAdminMechanic(id: string) {
   const { token } = useAuth();
   return withAdminReadPending(

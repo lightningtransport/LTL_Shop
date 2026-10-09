@@ -172,21 +172,21 @@ test.describe('Shop Admin Phase 2A', () => {
     const mobileNav = dialog.getByRole('navigation', { name: 'Shop Admin mobile navigation' });
     await expect(mobileNav).toBeVisible();
     await expect(mobileNav).not.toHaveClass(/grid-cols-2/);
-    for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'Mechanics', 'Job Catalog', 'Shop workflow', 'History']) {
+    for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'People', 'Job Catalog', 'Shop workflow', 'History']) {
       await expect(mobileNav.getByRole('link', { name, exact: true })).toBeVisible();
     }
     // LTR-122: grouped by job — operation, setup, audit.
     for (const group of ['Operations', 'Setup', 'Audit']) {
       await expect(mobileNav.getByText(group, { exact: true })).toBeVisible();
     }
-    await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Mechanics', 'Job Catalog', 'Shop workflow', 'History']);
+    await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'People', 'Job Catalog', 'Shop workflow', 'History']);
 
     await page.getByRole('button', { name: 'Close Shop Admin navigation' }).click();
     await switchLanguage(page, 'es');
     await expect(page.getByRole('heading', { name: 'Operaciones', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Abrir navegación de Shop Admin' }).click();
     const esMobileNav = page.getByRole('dialog').getByRole('navigation', { name: 'Navegación móvil de Shop Admin' });
-    for (const name of ['Operaciones', 'Work Orders', 'Operaciones del patio', 'Trucks', 'Mecánicos', 'Catálogo de Jobs', 'Historial']) {
+    for (const name of ['Operaciones', 'Work Orders', 'Operaciones del patio', 'Trucks', 'Personas', 'Catálogo de Jobs', 'Historial']) {
       await expect(esMobileNav.getByRole('link', { name, exact: true })).toBeVisible();
     }
     await expect(esMobileNav.getByRole('link', { name: 'Dashboard', exact: true })).toHaveCount(0);
@@ -490,9 +490,9 @@ test.describe('Shop Admin Phase 2A', () => {
 
   test('manager opens read-only Mechanics, History, and Trucks', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
-    await openAdminNavLink(page, 'Mechanics');
+    await openAdminNavLink(page, 'People');
     await expect(page).toHaveURL(/\/admin\/mechanics$/);
-    await expect(page.getByRole('heading', { name: 'Mechanics' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
     await openAdminNavLink(page, 'History');
     await expect(page).toHaveURL(/\/admin\/history$/);

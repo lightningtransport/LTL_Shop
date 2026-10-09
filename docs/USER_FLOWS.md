@@ -280,10 +280,10 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 | Falla la creación de la cuenta de acceso | No se crea nada; la app avisa y se reintenta | ✅ (unitaria: la API borra la cuenta si falla la fila) | A29 |
 | Mira cuánto trabajo abierto tiene una persona | Cuenta los WOs donde tiene Jobs por hacer, también para PM y Safety | ✅ | A39 |
 | Toca Deactivate con trabajo abierto | El diálogo muestra desde el principio qué Jobs reasignar, y Deactivate queda apagado | ✅ | A40 |
-| Cambia el tipo de alguien que es dueño de un paso o tiene Jobs | Avisa de qué pasos es dueña y cuántos Jobs le quedan; hay que tocar "Change type anyway" | ✅ | A40 |
-| **Quita del Shop** a alguien sin trabajo abierto (D31) | Deja de entrar y de aparecer en listas y equipos; su nombre sigue en el historial | 🔲 S3 | — |
-| Quita a alguien con trabajo abierto | La app lo dice **antes** de confirmar y ofrece reasignar o mandar sus Jobs a la cola del equipo | 🔲 S3 | — |
-| Borra a alguien creado por error, que nunca hizo nada | Se borra de verdad | 🔲 S3 | — |
+| Cambia el tipo de alguien que tiene Jobs pendientes (D-SET3) | No deja: primero se mueven sus Jobs. Sin Jobs, cambia y sale de los equipos que ya no puede hacer (D-SET2) | ✅ | A52 |
+| **Quita del Shop** a alguien sin trabajo abierto (D31) | Deja de entrar y de aparecer en listas y equipos; su nombre sigue en el historial; solo se ve con el filtro "Quitadas del Shop" y no se puede reactivar | ✅ | A49 |
+| Quita a alguien con trabajo abierto | La app lo dice **antes** de confirmar, dice qué pasa con sus equipos y manda a la cola los Jobs que vinieron de una cola; los demás se reasignan en su Work Order | ✅ | A50 |
+| Borra a alguien creado por error, que nunca hizo nada | Se borra de verdad; con cualquier historial no deja y pide quitarlo del Shop | ✅ | A51 |
 
 ---
 

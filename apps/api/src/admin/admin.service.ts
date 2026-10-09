@@ -143,17 +143,22 @@ const mechanicListInclude = {
   capabilities: { select: { capability: true } },
   assignedJobs: {
     where: { status: 'to_do' as const, workOrder: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } } },
-    select: { displayName: true, ...mechanicAssignmentInclude },
+    select: { id: true, displayName: true, workflowStepKey: true, ...mechanicAssignmentInclude },
     orderBy: { addedAt: 'asc' as const },
+  },
+  // LTR-197 / D28, LTR-199: the steps whose team this person is on.
+  workflowStepMemberships: {
+    select: {
+      step: {
+        select: { stepKey: true, sortOrder: true, catalogJob: { select: { displayName: true } }, _count: { select: { members: true } } },
+      },
+    },
   },
 };
 
 const mechanicDetailInclude = {
   ...mechanicListInclude,
-  // LTR-197 / D28: the steps whose team this person is on.
-  workflowStepMemberships: {
-    select: { step: { select: { stepKey: true, sortOrder: true, catalogJob: { select: { displayName: true } } } } },
-  },
+  removedBy: { select: { id: true, name: true } },
 };
 
 const summaryInclude = {
@@ -556,7 +561,7 @@ export class AdminService {
       include: mechanicDetailInclude,
     });
     if (!row) throw new NotFoundException('Mechanic not found');
-    const [completedJobCount, closedWorkOrders, runningSession] = await Promise.all([
+    const [completedJobCount, closedWorkOrders, runningSession, completedJobs, history] = await Promise.all([
       this.prisma.workOrderJob.count({ where: { completedById: id, status: 'completed' } }),
       // ME4: the closed Work Orders where this person completed a Job, so the list agrees with "Completed Jobs".
       this.prisma.workOrder.findMany({
@@ -566,6 +571,14 @@ export class AdminService {
         take: 10,
       }),
       this.prisma.workSession.findFirst({ where: { userId: id, endedAt: null }, select: { id: true } }),
+      // ME4: the Jobs they completed, not just their Work Orders.
+      this.prisma.workOrderJob.findMany({
+        where: { completedById: id, status: 'completed' },
+        select: { id: true, displayName: true, completedAt: true, workOrder: { select: { id: true, displayId: true, truck: { select: { truckNumber: true } } } } },
+        orderBy: [{ completedAt: 'desc' }, { id: 'desc' }],
+        take: 10,
+      }),
+      personHistoryCount(this.prisma, id),
     ]);
     return {
       ...toMechanicSummary(row),
@@ -577,12 +590,25 @@ export class AdminService {
         workOrderDisplayId: job.workOrder.displayId,
         truckNumber: job.workOrder.truck.truckNumber,
         jobDisplayName: job.displayName,
+        jobId: job.id,
+        workflowStepKey: job.workflowStepKey,
       })),
       runningSession: Boolean(runningSession),
       defaultOwnerOfSteps: row.workflowStepMemberships
         .map((membership) => membership.step)
         .sort((left, right) => left.sortOrder - right.sortOrder)
-        .map((step) => ({ stepKey: step.stepKey, jobDisplayName: step.catalogJob.displayName })),
+        .map((step) => ({ stepKey: step.stepKey, jobDisplayName: step.catalogJob.displayName, memberCount: step._count.members })),
+      recentCompletedJobs: completedJobs.map((job) => ({
+        jobId: job.id,
+        displayName: job.displayName,
+        workOrderId: job.workOrder.id,
+        displayId: job.workOrder.displayId,
+        truckNumber: job.workOrder.truck.truckNumber,
+        completedAt: job.completedAt?.toISOString() ?? null,
+      })),
+      // D31: a real delete only for someone who never did anything.
+      canDelete: history === 0,
+      removedBy: row.removedBy ?? null,
     };
   }
 
@@ -2260,7 +2286,12 @@ export class AdminService {
   private buildMechanicWhere(query: AdminMechanicsQuery, cursor: AdminMechanicCursor | null): Prisma.UserWhereInput {
     const filters: Prisma.UserWhereInput[] = [query.assignable ? mechanicCapabilityWhere : rosterCapabilityWhere];
     if (query.assignable) filters.push({ role: { not: 'admin' } });
-    if (!query.includeInactive) filters.push({ active: true });
+    // LTR-199 / D31: a removed person shows only under the Removed filter; Active and Inactive are the Shop's people.
+    const status = query.status ?? (query.includeInactive ? 'all_in_shop' : 'active');
+    if (status === 'removed') filters.push({ removedAt: { not: null } });
+    else if (status !== 'all') filters.push({ removedAt: null });
+    if (status === 'active') filters.push({ active: true });
+    if (status === 'inactive') filters.push({ active: false });
     if (query.search) {
       const contains = { contains: query.search, mode: 'insensitive' as const };
       filters.push({ OR: [{ name: contains }, { email: contains }] });
@@ -2543,6 +2574,8 @@ function toMechanicSummary(row: {
   active: boolean;
   capabilities: { capability: AppCapability }[];
   assignedJobs: Parameters<typeof toMechanicAssignment>[0][];
+  removedAt?: Date | null;
+  workflowStepMemberships?: Array<{ step: { stepKey: string; sortOrder: number } }>;
 }): import('@ltl-shop/shared').AdminMechanicSummaryDto {
   // One row per open Work Order where the person still has a Job to do (ME1).
   const byWorkOrder = new Map<string, Parameters<typeof toMechanicAssignment>[0]>();
@@ -2559,7 +2592,37 @@ function toMechanicSummary(row: {
     capabilities: row.capabilities.map((item) => toSharedCapability(item.capability)),
     openWorkOrderCount: currentAssignments.length,
     currentAssignments,
+    pendingJobCount: row.assignedJobs.length,
+    teamStepKeys: (row.workflowStepMemberships ?? [])
+      .map((membership) => membership.step)
+      .sort((left, right) => left.sortOrder - right.sortOrder)
+      .map((step) => step.stepKey),
+    removedAt: row.removedAt?.toISOString() ?? null,
   };
+}
+
+/**
+ * LTR-199 / D31: how much a person left in the Shop's records — Jobs they owned, added or completed, Work Orders,
+ * notes, time, blockers, team memberships of Work Orders and the Activity Log. Zero means they can be deleted.
+ */
+export async function personHistoryCount(
+  prisma: Pick<PrismaService, 'workOrderJob' | 'workOrder' | 'workOrderNote' | 'workSession' | 'activityLog' | 'mechanicAssignment' | 'pauseEvent' | 'truckServiceStatusEvent' | 'truckReadinessAssessment' | 'truckMileageAdjustment' | 'catalogJob'>,
+  id: string,
+) {
+  const counts = await Promise.all([
+    prisma.workOrderJob.count({ where: { OR: [{ assignedMechanicId: id }, { addedById: id }, { completedById: id }] } }),
+    prisma.workOrder.count({ where: { OR: [{ createdById: id }, { completedById: id }] } }),
+    prisma.workOrderNote.count({ where: { authorId: id } }),
+    prisma.workSession.count({ where: { userId: id } }),
+    prisma.activityLog.count({ where: { userId: id } }),
+    prisma.mechanicAssignment.count({ where: { mechanicId: id } }),
+    prisma.pauseEvent.count({ where: { OR: [{ createdById: id }, { reportedById: id }, { resolvedById: id }] } }),
+    prisma.truckServiceStatusEvent.count({ where: { actorId: id } }),
+    prisma.truckReadinessAssessment.count({ where: { OR: [{ startedById: id }, { approvedById: id }, { closedById: id }] } }),
+    prisma.truckMileageAdjustment.count({ where: { createdById: id } }),
+    prisma.catalogJob.count({ where: { createdById: id } }),
+  ]);
+  return counts.reduce((sum, count) => sum + count, 0);
 }
 
 function toTruckSummary(row: {

@@ -61,6 +61,10 @@ export interface AdminMechanicPendingJobDto {
   workOrderDisplayId: string;
   truckNumber: string;
   jobDisplayName: string;
+  /** LTR-199: present on the person detail. */
+  jobId?: string;
+  /** LTR-199 / D28: set when the Job came from a team queue, so it can be sent back there. */
+  workflowStepKey?: string | null;
 }
 
 /** D22: the `MECHANIC_HAS_OPEN_WORK` body — what the Manager must reassign or stop first. */
@@ -371,6 +375,12 @@ export interface AdminMechanicSummaryDto {
   capabilities: AppCapability[];
   openWorkOrderCount: number;
   currentAssignments: AdminMechanicAssignmentDto[];
+  /** LTR-199 / ME1: Jobs still to do in their name on open Work Orders. */
+  pendingJobCount?: number;
+  /** LTR-199 / D28: the Shop workflow steps whose team they are on. */
+  teamStepKeys?: string[];
+  /** LTR-199 / D31: when they were removed from the Shop (null while still in it). */
+  removedAt?: string | null;
 }
 
 export interface AdminMechanicDetailDto extends AdminMechanicSummaryDto {
@@ -380,8 +390,13 @@ export interface AdminMechanicDetailDto extends AdminMechanicSummaryDto {
   /** D22: Jobs still to do that block deactivating, shown before the Manager confirms (ME2). */
   pendingJobs: AdminMechanicPendingJobDto[];
   runningSession: boolean;
-  /** Shop workflow steps this person is the default owner of (SW3). */
-  defaultOwnerOfSteps: Array<{ stepKey: string; jobDisplayName: string }>;
+  /** Shop workflow steps whose team this person is on (SW3); `memberCount` is the team's size. */
+  defaultOwnerOfSteps: Array<{ stepKey: string; jobDisplayName: string; memberCount?: number }>;
+  /** LTR-199 / ME4: the Jobs they completed lately, newest first (up to 10). */
+  recentCompletedJobs?: Array<{ jobId: string; displayName: string; workOrderId: string; displayId: string; truckNumber: string; completedAt: string | null }>;
+  /** LTR-199 / D31: true when they never did anything (no Jobs, notes, time or Work Orders), so Delete is offered. */
+  canDelete?: boolean;
+  removedBy?: { id: string; name: string } | null;
 }
 
 export interface AdminMutationMeta {

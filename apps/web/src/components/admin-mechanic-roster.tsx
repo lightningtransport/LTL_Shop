@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
   AppCapability,
@@ -11,8 +12,8 @@ import {
   type AdminMechanicSummaryDto,
 } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, InlineAlert, Input, Label, Modal } from './ui';
-import { createAdminMechanic, resetAdminMechanicPassword, updateAdminMechanic } from '@/lib/admin-data';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DialogActions, InlineAlert, Input, Label, Modal } from './ui';
+import { createAdminMechanic, deleteAdminMechanic, removeAdminMechanic, resetAdminMechanicPassword, sendAdminMechanicJobsToQueue, updateAdminMechanic } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminWriteFailureMessage, isRosterEmail, mechanicOpenWorkFromError } from '@/lib/system-admin';
@@ -285,14 +286,17 @@ export function MechanicCapabilityEditor({
 export function MechanicOpenWorkAlert({
   openWork,
   messages,
+  listOnly = false,
 }: {
   openWork: Pick<AdminMechanicOpenWorkDto, 'pendingJobs' | 'runningSession'>;
   messages: AdminMessages;
+  /** LTR-199: inside another notice (Remove from Shop), only the list. */
+  listOnly?: boolean;
 }) {
   return (
-    <div role="alert" className="space-y-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm" data-testid="mechanic-open-work">
-      <p className="font-semibold text-destructive-text">{messages.mechanicOpenWorkTitle}</p>
-      <p className="text-destructive-text">{messages.apiError.MECHANIC_HAS_OPEN_WORK}</p>
+    <div role="alert" className={listOnly ? 'space-y-2 text-sm' : 'space-y-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm'} data-testid="mechanic-open-work">
+      {listOnly ? null : <p className="font-semibold text-destructive-text">{messages.mechanicOpenWorkTitle}</p>}
+      {listOnly ? null : <p className="text-destructive-text">{messages.apiError.MECHANIC_HAS_OPEN_WORK}</p>}
       {openWork.pendingJobs.length ? (
         <ul className="space-y-1">
           {openWork.pendingJobs.map((job, index) => (
@@ -325,7 +329,9 @@ export function MechanicAccessCard({
   onChanged: () => void;
 }) {
   const { showToast } = useActionToast();
+  const router = useRouter();
   const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -368,6 +374,44 @@ export function MechanicAccessCard({
     }
   }
 
+  // LTR-199 / D31: Remove from Shop — the block is known when the dialog opens; queue Jobs can go back from here.
+  const queueJobs = mechanic.pendingJobs.filter((job) => job.workflowStepKey);
+  async function sendQueueJobs() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await sendAdminMechanicJobsToQueue(mechanic.id);
+      showToast('success', [
+        fillPlaceholders(messages.peopleSentToQueue, { count: String(result.sent) }),
+        result.skipped ? fillPlaceholders(messages.peopleSendSkipped, { count: String(result.skipped) }) : '',
+      ].filter(Boolean).join(' '));
+      onChanged();
+    } catch (failure) {
+      setError(adminWriteFailureMessage(failure, rosterCopy(messages)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeOrDelete(kind: 'remove' | 'delete') {
+    setBusy(true);
+    setError(null);
+    try {
+      if (kind === 'remove') await removeAdminMechanic(mechanic.id);
+      else await deleteAdminMechanic(mechanic.id);
+      showToast('success', kind === 'remove' ? messages.peopleRemoved : messages.peopleDeleted);
+      setRemoveOpen(false);
+      if (kind === 'delete') router.push('/admin/mechanics');
+      else onChanged();
+    } catch (failure) {
+      const blocked = mechanicOpenWorkFromError(failure);
+      if (blocked) onChanged();
+      else setError(adminWriteFailureMessage(failure, rosterCopy(messages)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function reactivate() {
     setBusy(true);
     setError(null);
@@ -402,16 +446,64 @@ export function MechanicAccessCard({
         <CardDescription>{mechanic.active ? messages.accessActiveHint : messages.accessInactiveHint}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {error && !deactivateOpen && !resetOpen ? <InlineAlert>{error}</InlineAlert> : null}
-        <div className="flex flex-wrap gap-2">
-          {mechanic.active ? (
-            <Button type="button" variant="outline" disabled={busy} onClick={() => setDeactivateOpen(true)}>{messages.deactivateMechanic}</Button>
-          ) : (
-            <Button type="button" disabled={busy} onClick={() => void reactivate()}>{messages.reactivateMechanic}</Button>
-          )}
-          <Button type="button" variant="outline" disabled={busy} onClick={() => setResetOpen(true)}>{messages.resetPasswordAction}</Button>
-        </div>
+        {error && !deactivateOpen && !resetOpen && !removeOpen ? <InlineAlert>{error}</InlineAlert> : null}
+        <ul className="divide-y rounded-lg border">
+          <li className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+            <p className="min-w-0 flex-1 text-sm text-muted-foreground">{messages.peopleResetHint}</p>
+            <Button type="button" variant="outline" disabled={busy} onClick={() => setResetOpen(true)}>{messages.resetPasswordAction}</Button>
+          </li>
+          <li className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+            <p className="min-w-0 flex-1 text-sm text-muted-foreground">{messages.peopleDeactivateHint}</p>
+            {mechanic.active ? (
+              <Button type="button" variant="outline" disabled={busy} onClick={() => setDeactivateOpen(true)}>{messages.deactivateMechanic}</Button>
+            ) : (
+              <Button type="button" disabled={busy} onClick={() => void reactivate()}>{messages.reactivateMechanic}</Button>
+            )}
+          </li>
+          <li className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+            <p className="min-w-0 flex-1 text-sm text-muted-foreground">{messages.peopleRemoveHint}</p>
+            <Button type="button" variant="outline" className="text-destructive-text" disabled={busy} onClick={() => { setError(null); setRemoveOpen(true); }}>{messages.peopleRemove}</Button>
+          </li>
+        </ul>
       </CardContent>
+
+      <Modal open={removeOpen} title={fillPlaceholders(messages.peopleRemoveTitle, { name: mechanic.name })} onClose={() => setRemoveOpen(false)} closeLabel={messages.closeDialog}>
+        <div className="space-y-4" data-testid="remove-person-dialog">
+          <p className="text-sm text-muted-foreground">{fillPlaceholders(messages.peopleRemoveBody, { name: mechanic.name })}</p>
+          {knownOpenWork ? (
+            <div className="space-y-2 rounded-xl border border-warning/40 bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
+              <p className="font-semibold">{fillPlaceholders(messages.peopleMoveFirst, { count: String(mechanic.pendingJobs.length) })}</p>
+              {queueJobs.length ? (
+                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void sendQueueJobs()}>
+                  {fillPlaceholders(messages.peopleSendAllToQueue, { count: String(queueJobs.length) })}
+                </Button>
+              ) : null}
+              <MechanicOpenWorkAlert openWork={knownOpenWork} messages={messages} listOnly />
+            </div>
+          ) : (
+            <p className="text-sm text-success">{messages.peopleReadyToRemove}</p>
+          )}
+          {mechanic.defaultOwnerOfSteps.map((step) => {
+            const left = Math.max((step.memberCount ?? 1) - 1, 0);
+            return (
+              <p key={step.stepKey} className="text-sm text-muted-foreground">
+                {left
+                  ? fillPlaceholders(messages.peopleLeavesTeam, { step: step.jobDisplayName, count: String(left) })
+                  : fillPlaceholders(messages.peopleLeavesTeamEmpty, { step: step.jobDisplayName })}
+              </p>
+            );
+          })}
+          {mechanic.canDelete ? <p className="text-sm">{messages.peopleDeleteOffer}</p> : null}
+          {error ? <InlineAlert>{error}</InlineAlert> : null}
+          <DialogActions>
+            <Button type="button" variant="outline" onClick={() => setRemoveOpen(false)} disabled={busy}>{messages.cancel}</Button>
+            {mechanic.canDelete ? (
+              <Button type="button" variant="outline" className="text-destructive-text" disabled={busy || Boolean(knownOpenWork)} onClick={() => void removeOrDelete('delete')}>{messages.peopleDelete}</Button>
+            ) : null}
+            <Button type="button" variant="destructive" disabled={busy || Boolean(knownOpenWork)} onClick={() => void removeOrDelete('remove')}>{messages.peopleRemove}</Button>
+          </DialogActions>
+        </div>
+      </Modal>
 
       <Modal open={deactivateOpen} title={messages.deactivateMechanicTitle} onClose={closeDeactivate} closeLabel={messages.closeDialog}>
         <div className="space-y-4">
@@ -460,18 +552,29 @@ export function MechanicAccessCard({
 }
 
 /** SW3: what changing this person's type leaves behind — steps they own by default and Jobs still in their name. */
-function typeChangeWarning(mechanic: AdminMechanicDetailDto, messages: AdminMessages): string[] {
-  const lines: string[] = [];
+/**
+ * SW3, LTR-199 / D-SET2, D-SET3: what changing this person's type does. With Jobs still pending it is blocked
+ * (they move first, like deactivating); otherwise it takes them off the step teams of their old type.
+ */
+function typeChangeWarning(mechanic: AdminMechanicDetailDto, messages: AdminMessages): TypeChangeWarning {
+  const pending = mechanic.pendingJobs.length;
+  if (pending || mechanic.runningSession) {
+    const type = mechanicTypeName(currentMode(mechanic.capabilities), messages);
+    return { blocked: true, lines: [fillPlaceholders(messages.peopleTypeBlocked, { count: String(pending), type })] };
+  }
   if (mechanic.defaultOwnerOfSteps.length) {
-    lines.push(fillPlaceholders(messages.mechanicOwnsStepsWarning, {
-      name: mechanic.name,
-      steps: mechanic.defaultOwnerOfSteps.map((step) => step.jobDisplayName).join(', '),
-    }));
+    return {
+      blocked: false,
+      lines: [fillPlaceholders(messages.peopleTypeLeavesTeams, { name: mechanic.name, steps: mechanic.defaultOwnerOfSteps.map((step) => step.jobDisplayName).join(', ') })],
+    };
   }
-  if (mechanic.pendingJobs.length) {
-    lines.push(fillPlaceholders(messages.mechanicTypeJobsWarning, { name: mechanic.name, count: String(mechanic.pendingJobs.length) }));
-  }
-  return lines;
+  return { blocked: false, lines: [] };
+}
+
+type TypeChangeWarning = { blocked: boolean; lines: string[] };
+
+function mechanicTypeName(mode: MechanicMode, messages: AdminMessages) {
+  return mode === MechanicMode.PM ? messages.mechanicPm : mode === MechanicMode.SAFETY ? messages.capabilitySafety : messages.mechanicStandard;
 }
 
 function CapabilityForm({
@@ -480,7 +583,7 @@ function CapabilityForm({
   initialName,
   initialCapability,
   submitLabel,
-  typeChangeWarning = [],
+  typeChangeWarning = { blocked: false, lines: [] },
   onCancel,
   onSuccess,
   onSubmit,
@@ -490,8 +593,8 @@ function CapabilityForm({
   initialName?: string;
   initialCapability: MechanicMode;
   submitLabel: string;
-  /** SW3: shown when the type changes; the first Save only shows it, the second one saves. */
-  typeChangeWarning?: string[];
+  /** SW3 / D-SET3: shown when the type changes. Blocked: Save stays off. Otherwise the first Save only shows it. */
+  typeChangeWarning?: TypeChangeWarning;
   onCancel?: () => void;
   onSuccess: () => void;
   onSubmit: (mode: MechanicMode, name?: string) => Promise<unknown>;
@@ -501,7 +604,9 @@ function CapabilityForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [warned, setWarned] = useState(false);
-  const warnings = capability !== initialCapability ? typeChangeWarning : [];
+  const typeChanged = capability !== initialCapability;
+  const warnings = typeChanged ? typeChangeWarning.lines : [];
+  const blocked = typeChanged && typeChangeWarning.blocked;
 
   async function onSubmitForm(event: React.FormEvent) {
     event.preventDefault();
@@ -551,7 +656,7 @@ function CapabilityForm({
       {error ? <InlineAlert>{error}</InlineAlert> : null}
       <div className="flex justify-end gap-2">
         {onCancel ? <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>{messages.cancel}</Button> : null}
-        <Button type="submit" disabled={busy}>{warnings.length && warned ? messages.mechanicTypeChangeConfirm : submitLabel}</Button>
+        <Button type="submit" disabled={busy || blocked}>{warnings.length && warned && !blocked ? messages.mechanicTypeChangeConfirm : submitLabel}</Button>
       </div>
     </form>
   );
