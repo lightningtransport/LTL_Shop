@@ -790,19 +790,21 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
 - `npm run prisma:reset-demo-work-orders --workspace=@ltl-shop/api` — borra
   los WOs y arma un Truck por escenario (M01–M04, MECH01–03, PM). Dry-run por
   defecto; no corre en producción si hay usuarios fuera del roster de prueba.
-- `npm run prisma:demo-local --workspace=@ltl-shop/api` — **datos demo en
-  local** (2026-10-06): crea `ltl_shop_demo` en esta máquina, aplica las
-  migraciones, el seed y arma 16 Work Orders, uno por escenario de las
-  maquetas: falta inspección, sin asignar, listo para empezar, en curso,
-  bloqueado, listo para cerrar, Ready to Go, de vuelta en servicio, **en
-  pausa oficial, pieza y camión en taller externo, ayudante, Job cancelado con
-  pedido de trabajo, paso obligatorio faltante, WO cancelado** y PM en curso;
-  los camiones 973, 986 y 991 quedan sin WO. Se niega a correr fuera de
-  `localhost` o con una base cuyo nombre no diga "demo". Volver a correrlo
-  reinicia los datos. Para verla: API con
-  `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ltl_shop_demo`
-  y `AUTH_DEV_BYPASS=true`, web con `NEXT_PUBLIC_E2E_DEV_LOGIN=1` (en
-  `.claude/launch.json`: `demo-api` en 3141 y `demo-web` en 3042).
+- `npm run prisma:demo-local --workspace=@ltl-shop/api` — **demo local con
+  toda la app en uso** (2026-10-09). Crea `ltl_shop_demo` en esta máquina,
+  aplica las migraciones y el seed, y arma:
+  - 23 Work Orders, uno por situación: los de las maquetas, más QC por
+    Safety (por revisar, tomado, devuelto, aprobado), la cola del equipo y
+    un reloj que quedó corriendo ayer. Algunos se crearon días atrás;
+  - unos 4 meses de visitas cerradas, con horas reales, PM con millaje y
+    QC de Safety;
+  - Partes y costos: proveedores, precios, compras (una corregida y una
+    anulada) y reparaciones externas.
+
+  Volver a correrlo reinicia todo, incluido Partes y costos. Se niega a
+  correr fuera de `localhost` o con una base cuyo nombre no diga "demo".
+  Cuentas, guion por camión y lo que no se puede mostrar en local:
+  [`reference/DEMO.md`](reference/DEMO.md).
 - **Nunca** correr `db:seed` en producción: pisa los camiones 905/922/968.
 - `SUPABASE_URL` (o `NEXT_PUBLIC_SUPABASE_URL`) + `SUPABASE_SERVICE_ROLE_KEY`
   (API, solo servidor): con las dos, la API crea y reinicia cuentas de
