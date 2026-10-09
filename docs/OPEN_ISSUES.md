@@ -367,6 +367,15 @@ Orden acordado:
 1. **Arreglos sin rediseño:** SW1–SW4, JC3 (en parte), JC4, JC6 y ME1–ME4. Un PR, como el "bloque A" de los roles de campo. JC5 (normalizar tildes en aliases) pide recalcular `alias_norm` con una migración y pasa a S2; ME5 (nombre "People") pasa a S3.
 2. **Bloques S1 → S2 → S3 → S4**, un PR cada uno. JC1, JC2, JC3 y SW5 se cierran en S2.
 
+## 1n. Tablero Kanban del Yard (2026-10-09) — **HECHO** (rama `claude/kanban-board-component-c15dff`)
+
+El dueño pidió que el tablero del Yard sea un Kanban real, con columnas verticales, y que se pueda abrir a pantalla completa (D33).
+
+| # | Clase | Problema | Dónde |
+|---|---|---|---|
+| ~~K1~~ | E | ~~Los pasos se ven como carriles horizontales (filas), no como columnas de un tablero Kanban; con muchos camiones el tablero crece hacia abajo y no se ve el flujo de un vistazo~~ — **hecho**: columnas verticales de 18 rem (como Jira/Trello), vacías angostas, scroll lateral solo dentro del tablero; e2e `yard-operations.spec.ts` (D33) | `admin-yard-operations.tsx` |
+| ~~K2~~ | E | ~~No hay forma de ver el tablero a pantalla completa (por ejemplo, en una TV del taller)~~ — **hecho**: botón Full screen (API Fullscreen del navegador + capa fija, así los diálogos siguen abriendo encima), Esc sale; e2e (D33) | `admin-yard-operations.tsx` |
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):
