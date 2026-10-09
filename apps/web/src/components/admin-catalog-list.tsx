@@ -9,12 +9,15 @@ import { fillPlaceholders } from '@/lib/admin-next-step';
 import { AdminWriteTip } from './admin-write-tip';
 import { DataTable, PageHeader, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
-import { useAdminCatalogCategories } from '@/lib/admin-data';
+import { useAdminCatalogCategories, useAdminCustomJobs } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategories();
+  // LTR-57: Custom Jobs waiting in the review inbox.
+  const { data: customJobs } = useAdminCustomJobs('pending');
+  const toReview = (customJobs ?? []).reduce((sum, group) => sum + group.count, 0);
   const [search, setSearch] = useState('');
   // LTR-198 / JC2: the box filters Categories by name and, below, finds Jobs and aliases across every Category.
   const items = useMemo(() => {
@@ -36,6 +39,14 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
         actions={canWrite ? <div className="flex flex-wrap gap-2"><AddCategoryButton messages={messages} onAdded={() => void mutate()} />{addJobButton()}</div> : null}
       />
       {canWrite ? <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip> : null}
+      {toReview ? (
+        <AdminNavLink className="tap-inline flex items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning-surface px-4 py-3 text-sm text-warning-foreground hover:underline" href="/admin/catalog/review" data-testid="custom-jobs-to-review">
+          {fillPlaceholders(messages.cjInboxCount, { count: String(toReview) })}
+          <span aria-hidden="true">›</span>
+        </AdminNavLink>
+      ) : (
+        <AdminNavLink className="tap-inline text-sm text-primary hover:underline" href="/admin/catalog/review">{messages.cjInbox}</AdminNavLink>
+      )}
       <Card className="p-3">
         <CardContent>
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchCatalog} aria-label={messages.searchCatalog} />

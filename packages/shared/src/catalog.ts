@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { WorkPlanJobLane } from './enums';
 
 /**
@@ -39,4 +40,52 @@ export function laneForSystemKey(systemKey: string | null | undefined): WorkPlan
     case CatalogSystemKey.QUALITY_CHECK: return WorkPlanJobLane.QUALITY_CHECK;
     default: return null;
   }
+}
+
+// ── LTR-57: the Custom Jobs review inbox ─────────────────────────────────────────────────────────────────────
+
+/** `pending_review` is how a Custom Job is born; the inbox moves a whole group to one of the others. */
+export type CustomJobReviewStatus = 'pending_review' | 'mapped' | 'added' | 'kept';
+
+/** A group = the Custom Jobs of one category with the same name, ignoring capitals, accents and spaces. */
+export const adminCustomJobGroupSchema = z.object({
+  categoryId: z.string().uuid(),
+  nameNorm: z.string().min(1).max(200),
+});
+
+export const adminReviewCustomJobsSchema = adminCustomJobGroupSchema.extend({
+  action: z.enum(['map', 'add', 'keep']),
+  /** `map`: the catalog Job the group is. */
+  catalogJobId: z.string().uuid().optional(),
+  /** `add`: the catalog name (defaults to the group's most used name). */
+  displayName: z.string().trim().min(1).max(120).optional(),
+  /** `map`: keep the group's name as an alias of the catalog Job (default yes). */
+  addAlias: z.boolean().default(true),
+}).refine((value) => value.action !== 'map' || Boolean(value.catalogJobId), { message: 'Pick the catalog Job', path: ['catalogJobId'] });
+
+export const adminCustomJobsQuerySchema = z.object({
+  status: z.enum(['pending', 'reviewed']).default('pending'),
+});
+
+export type AdminReviewCustomJobsInput = z.input<typeof adminReviewCustomJobsSchema>;
+
+export interface AdminCustomJobGroupDto {
+  categoryId: string;
+  categoryName: string;
+  nameNorm: string;
+  /** The name used most often in the group. */
+  displayName: string;
+  /** Other spellings seen ("fix mirror  bracket"). */
+  otherNames: string[];
+  count: number;
+  lastAddedAt: string;
+  /** Up to 5, newest first. */
+  workOrders: Array<{ id: string; displayId: string; truckNumber: string }>;
+  /** Up to 3 notes written on the Jobs. */
+  descriptions: string[];
+  status: CustomJobReviewStatus;
+  /** Reviewed groups: the catalog Job they were tied to (map or add). */
+  mappedTo: { id: string; displayName: string } | null;
+  /** Pending groups: catalog Jobs with a similar name or alias, best first. */
+  suggestions: Array<{ catalogJobId: string; displayName: string; categoryName: string; matchedAlias: string | null }>;
 }

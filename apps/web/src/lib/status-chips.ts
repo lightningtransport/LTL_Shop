@@ -118,6 +118,7 @@ export const ADMIN_ACTIVITY_EVENT_KEY = {
   [ActivityEventType.INTERNAL_INVOICE_SENT]: 'activityInternalInvoiceSent',
   [ActivityEventType.INTERNAL_INVOICE_ACCEPTED]: 'activityInternalInvoiceAccepted',
   [ActivityEventType.INTERNAL_INVOICE_VOIDED]: 'activityInternalInvoiceVoided',
+  [ActivityEventType.CUSTOM_JOBS_REVIEWED]: 'activityCustomJobsReviewed',
 } as const;
 
 export function workOrderStatusVariant(status: string): ChipVariant {

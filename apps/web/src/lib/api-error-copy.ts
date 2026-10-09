@@ -8,6 +8,8 @@ import type { ShopLocale } from './shop-locale';
  */
 export type ApiErrorCode =
   | 'LABOR_RATE_DATE_TAKEN'
+  | 'CUSTOM_JOB_GROUP_NOT_FOUND'
+  | 'CATALOG_NAME_INVALID'
   | 'INTERNAL_INVOICE_DRAFT_EXISTS'
   | 'NOTHING_TO_CHARGE'
   | 'INVOICE_NOT_DRAFT'
@@ -112,6 +114,8 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
     LABOR_RATE_DATE_TAKEN: 'There is already a rate from that date. Pick another date.',
+    CUSTOM_JOB_GROUP_NOT_FOUND: 'Those Custom Jobs were already reviewed. Reload the inbox.',
+    CATALOG_NAME_INVALID: 'Use letters or numbers in the name.',
     INTERNAL_INVOICE_DRAFT_EXISTS: 'There is already a draft for this truck and month.',
     NOTHING_TO_CHARGE: 'This truck has nothing left to charge up to the end of that month.',
     INVOICE_NOT_DRAFT: 'A sent invoice does not change. Void it and make another.',
@@ -214,6 +218,8 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   es: {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
     LABOR_RATE_DATE_TAKEN: 'Ya hay una tarifa desde esa fecha. Elige otra fecha.',
+    CUSTOM_JOB_GROUP_NOT_FOUND: 'Esos Custom Jobs ya se revisaron. Vuelve a cargar la bandeja.',
+    CATALOG_NAME_INVALID: 'Usa letras o números en el nombre.',
     INTERNAL_INVOICE_DRAFT_EXISTS: 'Ya hay un borrador para este camión y mes.',
     NOTHING_TO_CHARGE: 'Este camión no tiene nada pendiente de cobrar hasta el fin de ese mes.',
     INVOICE_NOT_DRAFT: 'Una factura enviada no cambia. Anúlala y arma otra.',

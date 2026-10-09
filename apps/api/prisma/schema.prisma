@@ -117,6 +117,8 @@ enum ActivityEventType {
   internal_invoice_sent
   internal_invoice_accepted
   internal_invoice_voided
+  // LTR-57: the Custom Jobs review inbox.
+  custom_jobs_reviewed
 }
 
 enum ReadinessAssessmentStatus {

@@ -1,6 +1,11 @@
 # Salida en vivo — paso a paso
 
-**Para:** Cristian · **Fecha:** 2026-10-05 · **Ticket:** LTR-45
+**Para:** Cristian · **Fecha:** 2026-10-05, actualizada el 2026-10-09 · **Ticket:** LTR-45
+
+> **En espera (2026-10-09):** el dueño decidió no salir en vivo todavía. La guía queda al día para cuando se
+> retome. Estado de producción al 2026-10-09: **todas las migraciones aplicadas** (la última,
+> `20261014120000_internal_invoices_ltr201`), la API y la web en `main` (`bd2dd54`). Las fases 1 a 3 ya se
+> hicieron de hecho; al retomar alcanza con repetir la 1 para confirmar que no apareció nada nuevo.
 **Lista anterior (Ninox, septiembre):** [`archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md`](archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md)
 
 Este documento es el orden exacto para abrir el Shop a personas reales. Cada
@@ -37,13 +42,12 @@ web ya puede estar en la versión nueva.
 **1.1 · Tú — migraciones pendientes.** GitHub → Actions → **Release safety**
 → *Run workflow* con **Run prisma migrate deploy = desactivado** y
 **Probe API = activado**.
-- Esperado: el paso "Check Prisma migration status" **falla** y lista las
-  migraciones pendientes. Deberían ser algunas de estas, en este orden:
-  `20260930020000_safety_quality_check_ltr185`,
-  `20260930120000_drop_pm_authorized_ltr180`,
-  `20261005120000_day_close_ltr186`,
-  `20261005180000_helper_external_jobs_ltr188`.
-- Si lista otras más viejas, avísame antes de seguir.
+- Esperado (al 2026-10-09): el paso "Check Prisma migration status" sale en
+  **verde**, sin pendientes. Si lista alguna, es de un PR mergeado después:
+  sigue con la fase 3 para aplicarla.
+- Regla de siempre: después de mergear un PR con migración, corre Release
+  safety **en ese momento** y vuelve a publicar la API; si no, la API de
+  producción se queda en la versión anterior (pasó el 2026-10-09).
 
 **1.2 · Tú — lecturas de la base (solo lectura).** En tu terminal:
 
@@ -101,8 +105,8 @@ muestra "Dev login"). Opcional: `NEXT_PUBLIC_SENTRY_DSN`.
 
 ## Fase 3 — Migrar la base y desplegar (fuera de horario)
 
-Hazlo **todo seguido**: entre el paso 3.1 y el 3.2 la API vieja falla porque
-la migración `drop_pm_authorized` quita una columna que ella todavía lee.
+Hazlo **todo seguido**. Solo hace falta si la fase 1 listó migraciones
+pendientes. (Al 2026-10-09 no queda ninguna.)
 
 **3.1 · Tú — aplicar migraciones.** GitHub → Actions → **Release safety** →
 *Run workflow* con **Run prisma migrate deploy = activado** y **Probe API =
@@ -114,6 +118,9 @@ activado**.
 **3.2 · Tú — desplegar la API.** Vercel → `ltl-shop-api` → *Deployments* →
 último commit de `main` → **Redeploy** (sin caché).
 - Esperado: el build pasa (ahora la base está al día).
+- Ojo: redespliega **el último** commit de `main`. Si después se mergeó otro PR
+  y ya está *Ready*, no hace falta; un Redeploy de un commit anterior pisaría
+  la versión nueva.
 
 **3.3 · Tú — desplegar la web.** Vercel → `ltl-shop-web` → **Redeploy** del
 último commit de `main`.
@@ -144,7 +151,7 @@ tienen fila, avísame y te paso cómo crearla.
   Admin.
 
 **4.2 · Tú — el resto del personal (desde la app).**
-Admin → **Mecánicos** → **Agregar persona**, uno por uno: nombre, correo y
+Admin → **People** (Personas) → **Add person**, uno por uno: nombre, correo y
 tipo:
 - **Daniel** → PM.
 - Cada mecánico → Standard.
@@ -155,26 +162,36 @@ dásela a esa persona. Al entrar por primera vez la app le pide cambiarla.
 - ✅ La persona entra con su correo y la contraseña temporal, cambia la
   contraseña y ve su pantalla (mecánico, PM o Quality Check).
 
-**4.3 · Tú — desactivar las cuentas de prueba** (MG, MPM, MD, MA y cualquier
-otra que no sea real): Mecánicos → la persona → **Desactivar**. Si la app
-dice que tiene trabajo abierto, haz primero la fase 6 y vuelve aquí.
+**4.3 · Tú — sacar las cuentas de prueba** (MG, MPM, MD, MA y cualquier
+otra que no sea real): People → la persona → **Remove from Shop** (D31: deja de
+entrar y de aparecer, su historial queda). Si nunca hizo nada, aparece
+**Delete** y se borra del todo. Si la app dice que tiene trabajo pendiente,
+manda sus Jobs a la cola del equipo desde ahí mismo, o haz primero la fase 6.
 
 ---
 
 ## Fase 5 — Configurar el taller
 
-**5.1 · Tú — Setup → Shop workflow:**
-- Responsable por defecto de **PM** → Daniel; de **Alignment** y
-  **Detailing** → quien los haga normalmente. **Quality Check** lo toma
-  Safety desde su pantalla (no lleva responsable).
-- **Horario del taller:** cierre 5:00 p.m., lunes a viernes. Guardar.
+**5.1 · Tú — Setup → Shop workflow** (D28):
+- **Equipo** de cada paso: **PM** → Daniel; **Alignment** y **Detailing** →
+  quienes los hagan. Con una persona, el Job nace suyo; con dos o más, nace en
+  la cola del equipo y lo toma el primero. **Quality Check** → las personas de
+  Safety (el Manager puede hacerlo de respaldo, D29).
+- **Shop hours:** cierre 5:00 p.m., lunes a viernes. Guardar.
 
 **5.2 · Tú / Yo — camiones.** Con el conteo de la consulta 1.2: si falta
 algún camión que el taller va a buscar, avísame; la carga se hace una sola
 vez con el script de Ninox (nunca con `db:seed`, que pisaría datos reales).
 
 **5.3 · Catálogo de Jobs:** ya lo cargó la fase 3. Abre Admin → Job Catalog y
-confirma que están las categorías que usa el taller.
+confirma que están las categorías que usa el taller; activa o desactiva las
+que hagan falta (D30).
+
+**5.4 · Tú — Parts & costs** (D32, D34):
+- **Labor rate:** la tarifa por hora del taller y desde qué fecha vale.
+- **Vendors:** los proveedores de partes y los talleres externos.
+- **Parts:** el costo de referencia y el proveedor habitual de las partes
+  del PM que más se usan (puede hacerse de a poco).
 
 ---
 
@@ -185,6 +202,11 @@ Con la lista de la consulta 1.2 (Work Orders abiertos):
 **6.1 · Tú — cancelar los Work Orders de prueba desde la app.** Work Order →
 menú **…** → **Cancel Work Order** → motivo "Prueba antes de salir en vivo".
 Así queda registrado y los camiones quedan libres.
+
+**6.2 · Tú — anular lo de prueba en Parts & costs.** Compras, reparaciones
+externas y facturas internas de prueba (por ejemplo "Prueba · 123123"):
+abrirlas → **Void** con el motivo "Prueba antes de salir en vivo". No se borra
+nada: quedan tachadas y su costo sale del camión.
 
 **No** corras scripts de reseteo ni `db:seed` en producción.
 
@@ -211,6 +233,8 @@ Primero instala la app: Safari → Compartir → **Agregar a pantalla de inicio*
 | 12 | Manager | Cerrar Work Order → Return to Service | El camión sale del tablero |
 | 13 | Mecánico | Deja un Job a medias al irse | Al día siguiente su reloj cerró a las 5:00 y ve "Ayer quedó en curso · toca Continuar" |
 | 14 | Mecánico | Start en un camión y después en otro | El reloj del primero se cierra ("cambio de camión") |
+| 15 | Manager | Cargar una compra real con su factura en PDF para un camión | Aparece en Truck → Costs del camión |
+| 16 | Manager | Fin de mes: factura interna del camión → Send → Download PDF | Sale con número SHOP-… y el PDF para Finanzas |
 
 Cualquier cosa que falle o confunda: mándame captura y la registro en
 `OPEN_ISSUES.md` con su clase (B bloqueante, C confuso, E estético).

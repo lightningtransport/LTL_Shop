@@ -51,6 +51,8 @@ import type {
   AdminCreateInternalInvoiceInput,
   AdminInternalInvoiceDetailDto,
   AdminInternalInvoiceSummaryDto,
+  AdminCustomJobGroupDto,
+  AdminReviewCustomJobsInput,
 } from '@ltl-shop/shared';
 import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
@@ -1035,4 +1037,22 @@ export function voidAdminInternalInvoice(id: string, reason: string) {
 }
 export function deleteAdminInternalInvoice(id: string) {
   return apiFetch<{ deleted: true }>(invoicePath(id), { method: 'DELETE' });
+}
+
+// ── LTR-57: the Custom Jobs review inbox ────────────────────────────────────────────────────────────────────
+
+export function useAdminCustomJobs(status: 'pending' | 'reviewed') {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminCustomJobGroupDto[]>(token ? `/api/admin/catalog/custom-jobs?status=${status}` : null, adminReadFetcher, { dedupingInterval: 5_000, keepPreviousData: true, ...adminReadRetry }),
+  );
+}
+
+export function reviewAdminCustomJobs(input: AdminReviewCustomJobsInput) {
+  return apiFetch<{ updated: number; status: string; catalogJob: { id: string; displayName: string } | null; aliasAdded: boolean }>('/api/admin/catalog/custom-jobs/review', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function undoAdminCustomJobs(categoryId: string, nameNorm: string) {
+  return apiFetch<{ updated: number }>('/api/admin/catalog/custom-jobs/undo', { method: 'POST', body: JSON.stringify({ categoryId, nameNorm }) });
 }
