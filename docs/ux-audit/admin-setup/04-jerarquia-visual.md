@@ -245,6 +245,24 @@ Medido sobre `admin-shop-workflow.tsx`, `admin-catalog-list.tsx`, `admin-catalog
 - **Componentes duplicados:** no hay tablas ni modales duplicados. Todo pasa por `DataTable` y `Modal`.
 - **Conclusión:** el sistema existe y se respeta en la escala tipográfica y en los componentes base. Lo que falta es aplicar las piezas de la Etapa 8 (secciones, menús de fila, chips de estado, guardado con cambios pendientes). Es un problema de aplicación, no de sistema.
 
+## Corrida 2 · Parts & costs (2026-10-09)
+
+### UX-4-012 · El detalle de la compra no responde primero "¿qué compré, a quién, cuánto y para qué camión?"
+- **Dónde:** detalle de la compra (`/admin/parts/purchases/[id]`) · `apps/web/src/components/admin-purchase-detail.tsx`
+- **Evidencia:** (observado) captura del dueño ("me parece un poco confusa o desorganizada"):
+  - El total solo aparece al final de la tabla, en un bloque suelto a la derecha.
+  - "Per truck" repite el mismo camión y el mismo total cuando hay un solo camión.
+  - El archivo, las notas y "Loaded by" van juntos en una tarjeta "Invoice file".
+  - El encabezado dice "Prueba · 123123", proveedor y número sin rótulo.
+- **Criterio:** jerarquía visual (lo importante primero), agrupación por proximidad, Nielsen H8 (diseño minimalista)
+- **Severidad:** 2 · Se entiende con esfuerzo; cada consulta obliga a recorrer la página
+- **Recomendación:**
+  - Una tarjeta de resumen arriba: Vendor, Invoice #, Invoice date, Truck(s), **Total** grande, Invoice file (Open) y "Loaded by …".
+  - Debajo, Lines con Subtotal / Tax / Freight / Total como pie de la misma tabla.
+  - "Per truck" solo cuando hay más de un camión o una parte sin camión.
+  - Las notas, en su propia sección corta.
+- **Esfuerzo:** S
+
 ## Lo que funciona bien
 - **Las dos listas usan el mismo `DataTable`**, con la columna principal como enlace en negrita, y en el teléfono se vuelven tarjetas sin scroll horizontal. Hay que conservar esa base y ajustar solo qué columnas se muestran.
 - **Shop workflow en el teléfono se lee bien:** una columna, el número de paso, el nombre y el select a ancho completo, con controles de 44 px.
