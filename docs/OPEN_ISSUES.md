@@ -86,7 +86,7 @@ salir en vivo. Regla que sigue vigente para cualquier arreglo: su fila en
 Borrar el código heredado y unificar los textos, para que nadie vuelva a
 construir sobre algo muerto.
 
-### Fase D — Salir en vivo (§5) — LTR-45 — **SIGUE**
+### Fase D — Salir en vivo (§5) — LTR-45 — **EN ESPERA** (2026-10-09: el dueño decidió no salir en vivo todavía)
 
 Paso a paso en [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md): migrar y
 desplegar, cuentas reales, bypass apagado, un día de prueba con gente real.
@@ -489,8 +489,9 @@ usuarios reales sin un defecto B.
 - Pantalla de permisos. Alta de mecánicos **sí** entra (LTR-187, D22), y
   también los Jobs del catálogo (D25). Las **categorías y los aliases** entran
   desde D30 (2026-10-07). Camiones, después.
-- Inventario de partes (stock, entradas y salidas) y la factura interna a
-  Finanzas: diseñados en D32 pero **no se construyen** en la etapa 1.
+- Inventario de partes (stock, entradas y salidas): diseñado en D32 (§8.3 de la
+  propuesta `docs/proposals/parts-costs/`), **no se construye** todavía. La mano de
+  obra y la factura interna a Finanzas **ya están construidas** (D34, 2026-10-09).
 - Rendimiento por Job, tiempos por Job, espera por motivo.
 - Espacios de trabajo de Detailing, Body Shop, Trailer e Inspector.
 - Notificaciones push (decidido: solo dentro de la app).

@@ -110,7 +110,10 @@ hallazgos, cada Job extra queda en el plan con su dueño.
 | Agrega un Job que no está en el catálogo (Custom) | Lo acepta y lo marca "pendiente de revisión" | ✅ | A24 |
 | …y repite el nombre (aunque cambie mayúsculas o espacios) | No deja repetir | ✅ | A24 |
 | Quiere que ese Job quede en el catálogo | Al crearlo marca "Agregar también al catálogo": entra como Job de catálogo (D25) | ✅ | A36 |
-| Quiere revisar o mapear los Custom Jobs viejos | **Todavía no existe la bandeja** (va después, LTR-57) | ❌ #3 | A24 |
+| Quiere revisar los Custom Jobs (Job Catalog → **Custom Jobs to review**) | La bandeja los agrupa por categoría y nombre (sin importar mayúsculas, tildes ni espacios), con cuántas veces se usaron, en qué Work Orders y los Jobs del catálogo que se parecen | 🔲 LTR-57 | A76 |
+| …y uno es en realidad un Job del catálogo | **Unir:** todo el grupo queda ligado a ese Job del catálogo de una sola vez; el nombre viejo queda como alias para la próxima vez. La historia de los Work Orders no cambia | 🔲 LTR-57 | A77 |
+| …y es un trabajo que se repite y falta en el catálogo | **Agregar al catálogo:** crea el Job (con el nombre del grupo o uno corregido) y le liga todo el grupo; un nombre que ya existe no se acepta y propone unir | 🔲 LTR-57 | A78 |
+| …y fue un trabajo de una sola vez | **Dejar como único:** sale de la bandeja sin tocar el catálogo. Si se equivocó, **Deshacer** lo devuelve a la bandeja | 🔲 LTR-57 | A79 |
 | Se cancela la visita y se abre otra | El Work Order nuevo empieza con la inspección pendiente | ✅ | A15c |
 
 ### HU-M3 · Repartir el trabajo (J2)
@@ -566,7 +569,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Abre Truck → Costs y elige un período (este mes, 3 meses, este año, todo) (PC-4) | Ve el total de partes, de reparaciones externas y el total; las barras por mes; y cada movimiento (compra o reparación) con su WO, que abre su compra o reparación. Lo anulado o corregido sale como reversa en negativo y baja el total | ✅ | A66 |
 | Quiere ver la mano de obra del camión | Las horas registradas en el período (sesiones cerradas, D18, D21) y, con la tarifa del taller (D34), su monto | ✅ | A67, A69 |
 | Un mecánico o Safety intenta ver los costos de un camión; un PM se termina | No puede (403); terminar un PM no escribe nada en el costo del camión (D-PC4) | ✅ | A68 |
-| Quiere cobrarle a Finanzas | No en la etapa 1: diseñado (mano de obra × horas y factura interna por período), no construido | 🔲 después | — |
+| Quiere cobrarle a Finanzas | Factura interna por camión y mes con partes al costo, reparaciones externas y mano de obra (HU-M13, D34) | ✅ | A72–A75 |
 
 ### HU-M13 · Cobrarle a Finanzas lo que hizo el taller (J14) — ✅ construido (D34: LB-1 tarifa y mano de obra, LB-2 factura interna)
 
@@ -665,7 +668,7 @@ una historia:
 
 | # | Qué falla | A quién le pega | Clase | Ticket | Filas |
 |---|---|---|---|---|---|
-| 3 | Custom Jobs viejos sin revisar — **D25:** el Manager ya mantiene el catálogo y guarda Jobs nuevos en él (hecho, A36); la bandeja de revisión va después | Manager | E | LTR-57 | A24, A36 |
+| 3 | Custom Jobs sin revisar — **D25:** el Manager ya mantiene el catálogo y guarda Jobs nuevos en él (hecho, A36); la bandeja de revisión **se construye** (pedida por el dueño el 2026-10-09) | Manager | E | LTR-57 | A24, A36, A76–A79 |
 
 **B** bloqueante · **C** confuso · **E** estético. Detalle técnico en
 [`OPEN_ISSUES.md`](OPEN_ISSUES.md).
