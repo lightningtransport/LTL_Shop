@@ -114,6 +114,9 @@ enum ActivityEventType {
   outside_repair_voided
   // LTR-201 / D34.
   labor_rate_saved
+  internal_invoice_sent
+  internal_invoice_accepted
+  internal_invoice_voided
 }
 
 enum ReadinessAssessmentStatus {
@@ -193,6 +196,10 @@ model User {
   voidedPartPurchases            PartPurchase[]             @relation("PartPurchaseVoidedBy")
   createdOutsideRepairs          OutsideRepair[]            @relation("OutsideRepairCreatedBy")
   createdLaborRates              LaborRate[]                @relation("LaborRateCreatedBy")
+  createdInternalInvoices        InternalInvoice[]          @relation("InternalInvoiceCreatedBy")
+  sentInternalInvoices           InternalInvoice[]          @relation("InternalInvoiceSentBy")
+  acceptedInternalInvoices       InternalInvoice[]          @relation("InternalInvoiceAcceptedBy")
+  voidedInternalInvoices         InternalInvoice[]          @relation("InternalInvoiceVoidedBy")
   voidedOutsideRepairs           OutsideRepair[]            @relation("OutsideRepairVoidedBy")
   uploadedAttachments            Attachment[]               @relation("AttachmentUploadedBy")
   createdTruckCostEntries        TruckCostEntry[]           @relation("TruckCostEntryCreatedBy")
@@ -251,6 +258,7 @@ model Truck {
   costEntries          TruckCostEntry[]
   partPurchaseLines    PartPurchaseLine[]
   outsideRepairs       OutsideRepair[]
+  internalInvoices     InternalInvoice[]
 
   @@index([truckNumber])
   @@map("trucks")
@@ -609,6 +617,75 @@ model PartPurchase {
   @@map("part_purchases")
 }
 
+enum InternalInvoiceStatus {
+  draft
+  sent
+  accepted
+  void
+
+  @@map("internal_invoice_status")
+}
+
+/// LTR-201 / D34 (LB-2): what the shop charges Finance for one truck and month — parts at cost, outside repairs and
+/// labor, taken from the truck's cost ledger. A draft can lose lines; once sent it never changes (number, totals,
+/// lines) and a later correction goes to the next invoice. Finance gets the PDF outside the app.
+model InternalInvoice {
+  id                   String                @id @default(uuid()) @db.Uuid
+  /// SHOP-2026-0001, given when it is sent.
+  number               String?               @unique
+  truckId              String                @map("truck_id") @db.Uuid
+  periodStart          DateTime              @map("period_start") @db.Date
+  periodEnd            DateTime              @map("period_end") @db.Date
+  status               InternalInvoiceStatus @default(draft)
+  subtotalPartsCents   Int                   @default(0) @map("subtotal_parts_cents")
+  subtotalOutsideCents Int                   @default(0) @map("subtotal_outside_cents")
+  subtotalLaborCents   Int                   @default(0) @map("subtotal_labor_cents")
+  totalCents           Int                   @default(0) @map("total_cents")
+  currency             String                @default("USD") @db.Char(3)
+  notes                String?
+  createdById          String?               @map("created_by_id") @db.Uuid
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  sentAt               DateTime?             @map("sent_at")
+  sentById             String?               @map("sent_by_id") @db.Uuid
+  acceptedAt           DateTime?             @map("accepted_at")
+  acceptedById         String?               @map("accepted_by_id") @db.Uuid
+  voidedAt             DateTime?             @map("voided_at")
+  voidedById           String?               @map("voided_by_id") @db.Uuid
+  voidReason           String?               @map("void_reason")
+
+  truck      Truck                 @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  createdBy  User?                 @relation("InternalInvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  sentBy     User?                 @relation("InternalInvoiceSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+  acceptedBy User?                 @relation("InternalInvoiceAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+  voidedBy   User?                 @relation("InternalInvoiceVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  lines      InternalInvoiceLine[]
+
+  @@index([truckId, periodStart])
+  @@index([status])
+  @@map("internal_invoices")
+}
+
+/// One ledger row on an internal invoice (a copy of what it said). A ledger row is on at most one invoice that is not
+/// voided (`active`, partial unique index): voiding frees its rows for another invoice.
+model InternalInvoiceLine {
+  id          String        @id @default(uuid()) @db.Uuid
+  invoiceId   String        @map("invoice_id") @db.Uuid
+  costEntryId String        @map("cost_entry_id") @db.Uuid
+  kind        TruckCostKind
+  description String
+  occurredOn  DateTime      @map("occurred_on") @db.Date
+  amountCents Int           @map("amount_cents")
+  active      Boolean       @default(true)
+
+  invoice   InternalInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  costEntry TruckCostEntry  @relation(fields: [costEntryId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([costEntryId])
+  @@map("internal_invoice_lines")
+}
+
 /// LTR-201 / D34 (LB-1): the shop's labor rate per hour, from a date. A new rate starts a new row; a rate already
 /// used is never edited. Labor = hours of closed sessions × the rate in effect the day each session started.
 model LaborRate {
@@ -743,12 +820,13 @@ model TruckCostEntry {
   createdById     String?       @map("created_by_id") @db.Uuid
   createdAt       DateTime      @default(now()) @map("created_at")
 
-  truck     Truck            @relation(fields: [truckId], references: [id], onDelete: Restrict)
-  workOrder WorkOrder?       @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
-  vendor    Vendor?          @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  reverses  TruckCostEntry?  @relation("TruckCostEntryReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict)
-  reversals TruckCostEntry[] @relation("TruckCostEntryReversal")
-  createdBy User?            @relation("TruckCostEntryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  truck        Truck                 @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  workOrder    WorkOrder?            @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  vendor       Vendor?               @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  reverses     TruckCostEntry?       @relation("TruckCostEntryReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict)
+  reversals    TruckCostEntry[]      @relation("TruckCostEntryReversal")
+  invoiceLines InternalInvoiceLine[]
+  createdBy    User?                 @relation("TruckCostEntryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([truckId, occurredOn])
   @@index([sourceType, sourceId])

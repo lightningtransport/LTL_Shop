@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AppCapability } from '@ltl-shop/shared';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
@@ -8,6 +8,7 @@ import { ManagerWritesGuard } from '../auth/manager-writes.guard';
 import { PartsCatalogService } from './parts-catalog.service';
 import { OutsideRepairsService } from './outside-repairs.service';
 import { PurchasesService } from './purchases.service';
+import { InternalInvoicesService } from './internal-invoices.service';
 import { LaborRatesService } from './labor-rates.service';
 import { TruckCostsService } from './truck-costs.service';
 
@@ -25,6 +26,7 @@ export class PartsCostsController {
     private readonly repairs: OutsideRepairsService,
     private readonly truckCosts: TruckCostsService,
     private readonly laborRates: LaborRatesService,
+    private readonly invoices: InternalInvoicesService,
   ) {}
 
   @Get('parts')
@@ -149,5 +151,56 @@ export class PartsCostsController {
   @Post('labor-rates')
   setLaborRate(@Req() request: Request, @Body() body: unknown) {
     return this.laborRates.set(request.user!, body);
+  }
+
+  // LB-2 (LTR-201 / D34): internal invoices to Finance.
+  @Get('internal-invoices')
+  listInternalInvoices(@Query() query: Record<string, unknown>) {
+    return this.invoices.list(query);
+  }
+
+  @Get('internal-invoices/:id')
+  internalInvoice(@Param('id') id: string) {
+    return this.invoices.detail(id);
+  }
+
+  @Post('internal-invoices')
+  createInternalInvoice(@Req() request: Request, @Body() body: unknown) {
+    return this.invoices.create(request.user!, body);
+  }
+
+  @Post('internal-invoices/:id/refresh')
+  refreshInternalInvoice(@Param('id') id: string) {
+    return this.invoices.refresh(id);
+  }
+
+  @Post('internal-invoices/:id/lines/:lineId/remove')
+  removeInternalInvoiceLine(@Param('id') id: string, @Param('lineId') lineId: string) {
+    return this.invoices.setLine(id, lineId, false);
+  }
+
+  @Post('internal-invoices/:id/lines/:lineId/restore')
+  restoreInternalInvoiceLine(@Param('id') id: string, @Param('lineId') lineId: string) {
+    return this.invoices.setLine(id, lineId, true);
+  }
+
+  @Post('internal-invoices/:id/send')
+  sendInternalInvoice(@Req() request: Request, @Param('id') id: string) {
+    return this.invoices.send(request.user!, id);
+  }
+
+  @Post('internal-invoices/:id/accept')
+  acceptInternalInvoice(@Req() request: Request, @Param('id') id: string) {
+    return this.invoices.accept(request.user!, id);
+  }
+
+  @Post('internal-invoices/:id/void')
+  voidInternalInvoice(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.invoices.void(request.user!, id, body);
+  }
+
+  @Delete('internal-invoices/:id')
+  deleteInternalInvoice(@Param('id') id: string) {
+    return this.invoices.deleteDraft(id);
   }
 }

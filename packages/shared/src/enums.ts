@@ -149,6 +149,9 @@ export enum ActivityEventType {
   OUTSIDE_REPAIR_VOIDED = 'outside_repair_voided',
   // LTR-201 / D34.
   LABOR_RATE_SAVED = 'labor_rate_saved',
+  INTERNAL_INVOICE_SENT = 'internal_invoice_sent',
+  INTERNAL_INVOICE_ACCEPTED = 'internal_invoice_accepted',
+  INTERNAL_INVOICE_VOIDED = 'internal_invoice_voided',
 }
 
 /** LTR-126 / D8: kind of an append-only Work Order note entry. */

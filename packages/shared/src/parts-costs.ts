@@ -529,3 +529,64 @@ export function laborAmount(
   }
   return { minutes, ratedMinutes, amountCents: Math.round(exact), rateCents: [...used] };
 }
+
+// ── LB-2 (LTR-201 / D34): internal invoices to Finance ───────────────────────────────────────────────────────
+
+export type InternalInvoiceStatus = 'draft' | 'sent' | 'accepted' | 'void';
+
+export const adminCreateInternalInvoiceSchema = z.object({
+  truckId: z.string().uuid(),
+  /** "2026-10": the invoice covers that month (and anything earlier not charged yet). */
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  notes: optionalText(1000),
+});
+
+export const adminInternalInvoicesQuerySchema = z.object({
+  status: z.enum(['draft', 'sent', 'accepted', 'void']).optional(),
+  truckId: z.string().uuid().optional(),
+});
+
+export type AdminCreateInternalInvoiceInput = z.input<typeof adminCreateInternalInvoiceSchema>;
+
+export interface AdminInternalInvoiceSummaryDto {
+  id: string;
+  number: string | null;
+  truck: AdminTruckRefDto;
+  periodStart: string;
+  periodEnd: string;
+  status: InternalInvoiceStatus;
+  totalCents: number;
+  lineCount: number;
+  sentAt: string | null;
+}
+
+export interface AdminInternalInvoiceLineDto {
+  id: string;
+  costEntryId: string;
+  kind: 'part_purchase' | 'outside_repair' | 'labor' | 'internal_invoice';
+  description: string;
+  occurredOn: string;
+  amountCents: number;
+  /** Where the movement came from, to open it. */
+  sourceType: string;
+  sourceId: string;
+  workOrder: { id: string; displayId: string } | null;
+}
+
+export interface AdminInternalInvoiceDetailDto extends AdminInternalInvoiceSummaryDto {
+  subtotals: { partsCents: number; outsideCents: number; laborCents: number };
+  lines: AdminInternalInvoiceLineDto[];
+  notes: string | null;
+  createdBy: { id: string; name: string } | null;
+  createdAt: string;
+  sentBy: { id: string; name: string } | null;
+  acceptedAt: string | null;
+  acceptedBy: { id: string; name: string } | null;
+  voidedAt: string | null;
+  voidedBy: { id: string; name: string } | null;
+  voidReason: string | null;
+  /** Draft only: lines taken off this invoice (they stay uncharged and can be put back). */
+  removedLines: AdminInternalInvoiceLineDto[];
+  /** Draft only: movements of this truck up to the period end that are not on the invoice and not charged elsewhere. */
+  availableCount: number;
+}
