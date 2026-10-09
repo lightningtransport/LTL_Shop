@@ -385,6 +385,26 @@ function fixtureWorkPlan(item, currentUser) {
 
 // LTR-162: every test starts from the same data. Specs call POST /__test/reset (see e2e/support/test.ts);
 // without it one test's cancel/create/assign leaked into the next test and into the other browser project.
+// LTR-200 / D32 (PC-1): the PM part catalog with cost and usual vendor, and the vendors.
+function freshPartsState() {
+  return {
+    vendors: [
+      { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride', doesParts: true, doesRepairs: false, phone: '(760) 555-0142', email: null, accountNumber: null, notes: null, active: true, partCount: 1 },
+    ],
+    categories: [
+      {
+        id: '00000000-0000-4000-8000-00000000c001',
+        name: 'Fuel Filter',
+        parts: [
+          { id: '00000000-0000-4000-8000-00000000a001', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'LFF8897', displayName: 'Fuel Filter 4 Micron', active: true, source: 'seed', unitCostCents: 2410, defaultVendor: { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride' }, fits: [], usedInPmCount: 38, lastUsedAt: '2026-10-06T15:00:00.000Z', openPms: [] },
+          { id: '00000000-0000-4000-8000-00000000a002', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'WF10447', displayName: 'Fuel Filter Volvo', active: true, source: 'seed', unitCostCents: null, defaultVendor: null, fits: [{ make: 'Volvo', model: null }], usedInPmCount: 4, lastUsedAt: '2026-10-07T15:00:00.000Z', openPms: [{ workOrderId: 'wo-968', displayId: 'WO-968-1', truckId: 'truck-968', truckNumber: '968' }] },
+        ],
+      },
+    ],
+  };
+}
+let partsState = freshPartsState();
+
 const initialState = structuredClone({ users, adminCatalog, workOrders, yardOperations, workPlanByTruck: [...workPlanByTruck], workflowSteps });
 
 function resetFixtureState() {
@@ -400,6 +420,7 @@ function resetFixtureState() {
   catalogWriteSeq = 900;
   createdCatalogJobs = [];
   rosterWriteSeq = 20;
+  partsState = freshPartsState();
 }
 
 createServer(async (request, response) => {
@@ -502,6 +523,55 @@ createServer(async (request, response) => {
     if (user.role === 'admin' || (user.capabilities.includes('admin.access') && canManageWorkOrders)) return false;
     json(response, 403, { message: 'Only the Shop Manager or a System Admin can change this.' });
     return true;
+  }
+  // LTR-200 / D-PC7: Parts & costs is Manager and System Admin only, reading too.
+  if (request.url?.startsWith('/api/admin/parts-costs/')) {
+    if (denyUnlessManagerWriter()) return;
+    const path = request.url.split('?')[0];
+    const allParts = () => partsState.categories.flatMap((category) => category.parts);
+    if (path === '/api/admin/parts-costs/parts' && request.method === 'GET') {
+      const includeInactive = request.url.includes('includeInactive=true');
+      const categories = partsState.categories.map((category) => ({ ...category, parts: category.parts.filter((part) => includeInactive || part.active) }));
+      json(response, 200, { categories, truckMakes: ['Freightliner', 'Volvo'], costedPartCount: allParts().filter((part) => part.unitCostCents !== null).length });
+      return;
+    }
+    const partPatch = path.match(/^\/api\/admin\/parts-costs\/parts\/([0-9a-f-]+)$/i);
+    if (partPatch && request.method === 'PATCH') {
+      const body = await readJson(request);
+      const part = allParts().find((item) => item.id === partPatch[1]);
+      if (!part) { json(response, 404, { message: 'Part not found' }); return; }
+      if (body?.active === false && part.openPms.length) {
+        json(response, 409, { code: 'PART_IN_OPEN_PM', message: 'Used in a PM in progress.', openPms: part.openPms });
+        return;
+      }
+      if (body?.unitCostCents !== undefined) part.unitCostCents = body.unitCostCents;
+      if (body?.displayName !== undefined) part.displayName = body.displayName;
+      if (body?.partNumber !== undefined) part.partNumber = body.partNumber;
+      if (body?.fits !== undefined) part.fits = body.fits;
+      if (body?.active !== undefined) part.active = body.active;
+      if (body?.defaultVendorId !== undefined) {
+        const vendor = partsState.vendors.find((item) => item.id === body.defaultVendorId);
+        part.defaultVendor = vendor ? { id: vendor.id, name: vendor.name } : null;
+      }
+      json(response, 200, { id: part.id });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/vendors' && request.method === 'GET') {
+      json(response, 200, partsState.vendors);
+      return;
+    }
+    if (path === '/api/admin/parts-costs/vendors' && request.method === 'POST') {
+      const body = await readJson(request);
+      const name = String(body?.name ?? '').trim();
+      const taken = partsState.vendors.find((vendor) => vendor.name.toLowerCase() === name.toLowerCase());
+      if (taken) { json(response, 409, { code: 'VENDOR_NAME_TAKEN', vendorId: taken.id, vendorName: taken.name }); return; }
+      const vendor = { id: `00000000-0000-4000-8000-0000000f${String(partsState.vendors.length + 1).padStart(4, '0')}`, name, doesParts: body?.doesParts ?? true, doesRepairs: body?.doesRepairs ?? false, phone: body?.phone || null, email: body?.email || null, accountNumber: body?.accountNumber || null, notes: body?.notes || null, active: true, partCount: 0 };
+      partsState.vendors.push(vendor);
+      json(response, 201, { id: vendor.id });
+      return;
+    }
+    json(response, 404, { message: 'Not found' });
+    return;
   }
   if (request.url === '/api/admin/catalog/jobs' && request.method === 'POST') {
     if (denyUnlessManagerWriter()) return;
