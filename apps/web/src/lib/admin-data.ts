@@ -45,6 +45,7 @@ import type {
   AdminOutsideRepairDetailDto,
   AdminOutsideRepairListDto,
   AdminSaveOutsideRepairInput,
+  AdminTruckCostsDto,
 } from '@ltl-shop/shared';
 import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
@@ -959,4 +960,18 @@ export function updateAdminOutsideRepair(id: string, input: AdminSaveOutsideRepa
 
 export function voidAdminOutsideRepair(id: string, reason: string) {
   return apiFetch<{ id: string }>(`/api/admin/parts-costs/outside-repairs/${id}/void`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
+
+// ── LTR-200 / D32 (PC-4): Truck → Costs ────────────────────────────────────────────────────────────────────
+
+export function useAdminTruckCosts(truckId: string, query: string, enabled: boolean) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminTruckCostsDto>(token && truckId && enabled ? `/api/admin/parts-costs/trucks/${truckId}/costs${query ? `?${query}` : ''}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      keepPreviousData: true,
+      ...adminReadRetry,
+    }),
+  );
 }

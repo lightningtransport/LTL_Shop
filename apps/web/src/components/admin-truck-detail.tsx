@@ -35,13 +35,18 @@ import { NewWorkOrderDialog } from './new-work-order-dialog';
 import { TruckStepper, truckStepLabel } from './truck-stepper';
 import { useActionToast } from './action-toast';
 import { useAuth } from '@/lib/auth-context';
-import { Badge, Button, CardListSkeleton, EmptyState, LoadFailure, PageSkeleton, SectionCard, Select, type BadgeProps } from './ui';
+import { useCanShowManagerWrites } from '@/lib/admin-actor';
+import { cn } from '@/lib/utils';
+import { AdminNavLink } from './admin-nav-link';
+import { AdminTruckCosts } from './admin-truck-costs';
+import { Badge, Button, CardListSkeleton, EmptyState, LoadFailure, PageHeader, PageSkeleton, SectionCard, Select, type BadgeProps } from './ui';
 
-export function AdminTruckDetail({ id, from = null, locale, messages }: { id: string; from?: string | null; locale: AdminLocale; messages: AdminMessages }) {
+export function AdminTruckDetail({ id, from = null, tab = null, locale, messages }: { id: string; from?: string | null; tab?: string | null; locale: AdminLocale; messages: AdminMessages }) {
   const origin = adminTruckOrigin(from, messages);
   const { mutate: mutateRelated } = useSWRConfig();
   const { data, error, isLoading, mutate } = useAdminTruck(id);
   const { user } = useAuth();
+  const canSeeCosts = useCanShowManagerWrites();
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   // Stage 8 (F6, mockup): "Trucks › 601", or where the Truck was opened from (Yard, Dashboard…).
   useAdminBreadcrumb(data ? [{ label: originCrumb(origin.href, messages), href: origin.href }, { label: data.truck.truckNumber }] : null);
@@ -56,7 +61,21 @@ export function AdminTruckDetail({ id, from = null, locale, messages }: { id: st
     void mutateRelated(isYardRelatedListKey, undefined, { revalidate: true, populateCache: false });
   }
 
+  // LTR-200 / PC-4: Overview · Costs. Costs is money, so only the Shop Manager and the System Admin get the tabs.
+  const tabs = canSeeCosts ? <TruckTabs truckId={id} from={from} active={tab === 'costs' ? 'costs' : 'overview'} messages={messages} /> : null;
+  if (canSeeCosts && tab === 'costs') {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={fillPlaceholders(messages.pcCostsTitle, { truck: data.truck.truckNumber })} />
+        {tabs}
+        <AdminTruckCosts truckId={id} truckNumber={data.truck.truckNumber} locale={locale} messages={messages} />
+      </div>
+    );
+  }
+
   return (
+    <div className="space-y-4">
+    {tabs}
     <TruckDetailBody
       data={data}
       origin={origin}
@@ -70,6 +89,33 @@ export function AdminTruckDetail({ id, from = null, locale, messages }: { id: st
       }}
       onPlanUpdated={handleWorkPlanUpdated}
     />
+    </div>
+  );
+}
+
+function TruckTabs({ truckId, from, active, messages }: { truckId: string; from: string | null; active: 'overview' | 'costs'; messages: AdminMessages }) {
+  const base = `/admin/trucks/${truckId}`;
+  const withFrom = (extra: string[]) => {
+    const query = [...(from ? [`from=${encodeURIComponent(from)}`] : []), ...extra].join('&');
+    return query ? `${base}?${query}` : base;
+  };
+  const items: Array<['overview' | 'costs', string, string]> = [
+    ['overview', messages.pcTruckOverviewTab, withFrom([])],
+    ['costs', messages.pcTruckCostsTab, withFrom(['tab=costs'])],
+  ];
+  return (
+    <nav aria-label={messages.pcTruckCostsTab} className="flex gap-1 border-b" data-testid="truck-tabs">
+      {items.map(([key, label, href]) => (
+        <AdminNavLink
+          key={key}
+          href={href}
+          aria-current={active === key ? 'page' : undefined}
+          className={cn('-mb-px border-b-2 px-3 py-2 text-sm', active === key ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}
+        >
+          {label}
+        </AdminNavLink>
+      ))}
+    </nav>
   );
 }
 
