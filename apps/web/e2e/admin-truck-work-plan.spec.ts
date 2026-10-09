@@ -488,7 +488,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
   });
 
   // LTR-200 / D32 (PC-4): Overview · Costs for the Shop Manager.
-  test('Truck → Costs: totals, bars by month, movements with a voided reversal, labor hours only', async ({ page }) => {
+  test('Truck → Costs: totals, bars by month, movements with a voided reversal, labor amount and hours', async ({ page }) => {
     await mockWorkPlanApi(page, emptyPlan());
     const periods: string[] = [];
     await page.route('**/api/admin/parts-costs/trucks/**', async (route) => {
@@ -497,14 +497,15 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
         truck: { id: truckId, truckNumber: 'Y-WP1' },
         from: null,
         to: null,
-        totals: { partsCents: 4820, outsideCents: 184000, totalCents: 188820 },
-        months: [{ month: '2026-09', partsCents: 4820, outsideCents: 0 }, { month: '2026-10', partsCents: 0, outsideCents: 184000 }],
+        totals: { partsCents: 4820, outsideCents: 184000, laborCents: 57000, totalCents: 245820 },
+        months: [{ month: '2026-09', partsCents: 4820, outsideCents: 0, laborCents: 0 }, { month: '2026-10', partsCents: 0, outsideCents: 184000, laborCents: 57000 }],
         entries: [
           { id: 'e3', occurredOn: '2026-10-08', kind: 'outside_repair', amountCents: 184000, description: 'Diesel Pro · 7712 · Radiator recore', sourceType: 'outside_repair', sourceId: 'r1', workOrder: { id: 'wo1', displayId: 'WO-001' }, reversal: null },
           { id: 'e2', occurredOn: '2026-09-20', kind: 'part_purchase', amountCents: -1200, description: 'TruckPro · 55 · Mud flaps × 1', sourceType: 'part_purchase', sourceId: 'p2', workOrder: null, reversal: 'voided' },
           { id: 'e1', occurredOn: '2026-09-20', kind: 'part_purchase', amountCents: 1200, description: 'TruckPro · 55 · Mud flaps × 1', sourceType: 'part_purchase', sourceId: 'p2', workOrder: null, reversal: null },
         ],
         laborHours: 44.75,
+        laborRateSet: true,
       });
     });
     await loginManager(page);
@@ -512,7 +513,9 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await page.getByTestId('truck-tabs').getByRole('link', { name: 'Costs' }).click();
     await expect(page).toHaveURL(/tab=costs/);
     await expect(page.getByRole('heading', { name: 'Costs of Truck Y-WP1' })).toBeVisible();
-    await expect(page.getByTestId('truck-costs-total')).toHaveText('$1,888.20');
+    await expect(page.getByTestId('truck-costs-total')).toHaveText('$2,458.20');
+    // LTR-201 / D34: labor has an amount once the shop has a rate.
+    await expect(page.getByTestId('truck-costs-labor-tile')).toContainText('$570.00');
     await expect(page.getByTestId('truck-costs-labor')).toHaveText('44.75 h recorded in this period');
     await expect(page.getByTestId('truck-costs-entries').getByText('Voided')).toBeVisible();
     await expect(page.getByTestId('truck-costs-entries')).toContainText('-$12.00');

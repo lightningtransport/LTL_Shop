@@ -46,6 +46,8 @@ import type {
   AdminOutsideRepairListDto,
   AdminSaveOutsideRepairInput,
   AdminTruckCostsDto,
+  AdminLaborRatesDto,
+  AdminSetLaborRateInput,
 } from '@ltl-shop/shared';
 import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
@@ -974,4 +976,18 @@ export function useAdminTruckCosts(truckId: string, query: string, enabled: bool
       ...adminReadRetry,
     }),
   );
+}
+
+// ── LB-1 (LTR-201 / D34): the shop's labor rate ──────────────────────────────────────────────────────────────
+
+export function useAdminLaborRates() {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminLaborRatesDto>(token ? '/api/admin/parts-costs/labor-rates' : null, adminReadFetcher, { dedupingInterval: 10_000, ...adminReadRetry }),
+  );
+}
+
+export function setAdminLaborRate(input: AdminSetLaborRateInput) {
+  return apiFetch<{ id: string; recalculatedWorkOrders: number }>('/api/admin/parts-costs/labor-rates', { method: 'POST', body: JSON.stringify(input) });
 }

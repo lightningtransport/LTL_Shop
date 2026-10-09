@@ -391,6 +391,8 @@ function freshPartsState() {
     vendors: [
       { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride', doesParts: true, doesRepairs: false, phone: '(760) 555-0142', email: null, accountNumber: null, notes: null, active: true, partCount: 1 },
     ],
+    // LB-1: no labor rate yet.
+    laborRates: [],
     // PC-3: one Job of truck 606 is at an external shop; no outside repairs yet.
     externalJobs: [{ jobId: '00000000-0000-4000-8000-0000000e0001', displayName: 'Radiator Repair', workOrderId: 'wo-606', workOrderDisplayId: 'WO-001', kind: 'part', sentAt: '2026-10-06T15:00:00.000Z', returnedAt: null, out: true, truckId: 'truck-606' }],
     repairs: [],
@@ -585,6 +587,24 @@ createServer(async (request, response) => {
       const vendor = { id: `00000000-0000-4000-8000-0000000f${String(partsState.vendors.length + 1).padStart(4, '0')}`, name, doesParts: body?.doesParts ?? true, doesRepairs: body?.doesRepairs ?? false, phone: body?.phone || null, email: body?.email || null, accountNumber: body?.accountNumber || null, notes: body?.notes || null, active: true, partCount: 0 };
       partsState.vendors.push(vendor);
       json(response, 201, { id: vendor.id });
+      return;
+    }
+    // LB-1 (LTR-201 / D34): the shop's labor rate.
+    if (path === '/api/admin/parts-costs/labor-rates' && request.method === 'GET') {
+      const sorted = [...partsState.laborRates].sort((left, right) => right.effectiveFrom.localeCompare(left.effectiveFrom));
+      const today = new Date().toISOString().slice(0, 10);
+      json(response, 200, { rates: sorted, current: sorted.find((rate) => rate.effectiveFrom <= today) ?? null });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/labor-rates' && request.method === 'POST') {
+      const body = await readJson(request);
+      if (partsState.laborRates.some((rate) => rate.effectiveFrom === body.effectiveFrom)) {
+        json(response, 409, { code: 'LABOR_RATE_DATE_TAKEN' });
+        return;
+      }
+      const rate = { id: `rate-${partsState.laborRates.length + 1}`, rateCentsPerHour: body.rateCentsPerHour, effectiveFrom: body.effectiveFrom, notes: null, createdBy: { id: 'manager', name: 'Shop Manager' }, createdAt: new Date().toISOString() };
+      partsState.laborRates.push(rate);
+      json(response, 201, { id: rate.id, recalculatedWorkOrders: 3 });
       return;
     }
     // PC-3: outside repairs.
