@@ -45,6 +45,7 @@ const mechanicSelect = {
   name: true,
   role: true,
   active: true,
+  removedAt: true,
   supabaseAuthId: true,
   capabilities: { select: { capability: true } },
 } as const;
@@ -143,8 +144,19 @@ export class SystemAdminWritesService {
         throw new BadRequestException('Choose Standard, PM or Safety before changing this person.');
       }
 
+      // LTR-199 / D31: someone removed from the Shop stays out (to come back, they are added again).
+      if (current.removedAt) {
+        throw new ConflictException({ code: 'PERSON_REMOVED', message: 'This person was removed from the Shop.' });
+      }
+
       // D22: deactivating is refused while the person has Jobs to do or labor time running.
       if (input.active === false && current.active) {
+        const openWork = await this.openWorkOf(tx, id);
+        if (openWork) throw new ConflictException(openWork);
+      }
+
+      // LTR-199 / D-SET3: a new type with Jobs of the old one still pending is refused, like deactivating.
+      if (input.mode && mechanicCapability(input.mode) !== currentMechanicCapability(current)) {
         const openWork = await this.openWorkOf(tx, id);
         if (openWork) throw new ConflictException(openWork);
       }
@@ -235,8 +247,8 @@ export class SystemAdminWritesService {
     return new BadGatewayException({ code, message, detail: error.message });
   }
 
-  /** Jobs still to do on open Work Orders plus any running labor session (D22). */
-  private async openWorkOf(tx: Prisma.TransactionClient, userId: string): Promise<AdminMechanicOpenWorkDto | null> {
+  /** Jobs still to do on open Work Orders plus any running labor session (D22). Also used by Remove (D31). */
+  async openWorkOf(tx: Prisma.TransactionClient, userId: string): Promise<AdminMechanicOpenWorkDto | null> {
     const [jobs, session] = await Promise.all([
       tx.workOrderJob.findMany({
         where: {
@@ -470,6 +482,10 @@ export class SystemAdminWritesService {
       message: 'This email belongs to a non-mechanic account and cannot be created as a mechanic.',
     });
   }
+}
+
+function currentMechanicCapability(row: { capabilities: { capability: AppCapability }[] }): AppCapability | null {
+  return row.capabilities.find((item) => (MECHANIC_CAPS as readonly AppCapability[]).includes(item.capability))?.capability ?? null;
 }
 
 export function mechanicCapability(mode: MechanicMode): AppCapability {

@@ -26,6 +26,7 @@ import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { SystemAdminWritesService } from './system-admin-writes.service';
 import { ShopWorkflowService } from './shop-workflow.service';
 import { CatalogAdminService } from './catalog-admin.service';
+import { PeopleAdminService } from './people-admin.service';
 import { LaborClockService } from '../work-orders/labor-clock.service';
 
 @Controller('admin')
@@ -41,6 +42,7 @@ export class AdminController {
     private readonly systemAdminWrites: SystemAdminWritesService,
     private readonly shopWorkflow: ShopWorkflowService,
     private readonly catalogAdmin: CatalogAdminService,
+    private readonly people: PeopleAdminService,
     private readonly clock: LaborClockService,
   ) {}
 
@@ -246,6 +248,25 @@ export class AdminController {
   @UseGuards(ManagerWritesGuard)
   resetMechanicPassword(@Param('id') id: string) {
     return this.systemAdminWrites.resetPassword(id);
+  }
+
+  // LTR-199 / D31: Remove from Shop, delete (never did anything) and send queue Jobs back to their team queue.
+  @Post('mechanics/:id/remove')
+  @UseGuards(ManagerWritesGuard)
+  removeMechanic(@Req() request: Request, @Param('id') id: string) {
+    return this.people.remove(request.user!, id);
+  }
+
+  @Delete('mechanics/:id')
+  @UseGuards(ManagerWritesGuard)
+  deleteMechanic(@Param('id') id: string) {
+    return this.people.delete(id);
+  }
+
+  @Post('mechanics/:id/send-to-queue')
+  @UseGuards(ManagerWritesGuard)
+  sendMechanicJobsToQueue(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.people.sendJobsToQueue(request.user!, id, body);
   }
 
   @Get('mechanics/:id')
