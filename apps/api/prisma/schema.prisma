@@ -105,6 +105,13 @@ enum ActivityEventType {
   readiness_approved
   readiness_approval_invalidated
   readiness_assessment_closed
+  // LTR-200 / D32: Parts & costs.
+  vendor_saved
+  part_catalog_updated
+  part_purchase_saved
+  part_purchase_voided
+  outside_repair_saved
+  outside_repair_voided
 }
 
 enum ReadinessAssessmentStatus {
@@ -179,6 +186,9 @@ model User {
   removedBy                      User?                      @relation("UserRemovedBy", fields: [removedById], references: [id], onDelete: SetNull)
   removedUsers                   User[]                     @relation("UserRemovedBy")
   updatedShopSettings            ShopSettings[]             @relation("ShopSettingsUpdatedBy")
+  createdVendors                 Vendor[]                   @relation("VendorCreatedBy")
+  uploadedAttachments            Attachment[]               @relation("AttachmentUploadedBy")
+  createdTruckCostEntries        TruckCostEntry[]           @relation("TruckCostEntryCreatedBy")
 
   @@map("users")
 }
@@ -231,6 +241,7 @@ model Truck {
   mileageAdjustments   TruckMileageAdjustment[]
   readinessAssessments TruckReadinessAssessment[]
   serviceStatusEvents  TruckServiceStatusEvent[]
+  costEntries          TruckCostEntry[]
 
   @@index([truckNumber])
   @@map("trucks")
@@ -458,6 +469,7 @@ model WorkOrder {
   readinessAssessment           TruckReadinessAssessment? @relation(fields: [readinessAssessmentId], references: [id], onDelete: SetNull)
   readinessEvidenceRequirements ReadinessRequirement[]    @relation("ReadinessRequirementEvidence")
   serviceStatusEvents           TruckServiceStatusEvent[]
+  costEntries                   TruckCostEntry[]
 
   @@index([status])
   @@index([truckId, status])
@@ -499,21 +511,124 @@ model PartCategory {
 }
 
 model Part {
-  id          String   @id @default(uuid()) @db.Uuid
-  categoryId  String   @map("category_id") @db.Uuid
-  partNumber  String?  @map("part_number")
-  displayName String   @map("display_name")
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id              String     @id @default(uuid()) @db.Uuid
+  categoryId      String     @map("category_id") @db.Uuid
+  partNumber      String?    @map("part_number")
+  displayName     String     @map("display_name")
+  active          Boolean    @default(true)
+  /// LTR-200 / D32: the reference cost in cents (D-PC6: set by the Manager). Never sent to the PM.
+  unitCostCents   Int?       @map("unit_cost_cents")
+  defaultVendorId String?    @map("default_vendor_id") @db.Uuid
+  /// `seed` = from the base list; `app` = created by the Manager. Loading the base list never turns off or rewrites a part.
+  source          PartSource @default(seed)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
 
   category       PartCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  defaultVendor  Vendor?         @relation(fields: [defaultVendorId], references: [id], onDelete: SetNull)
   fitments       PartFitment[]
   pmServiceParts PmServicePart[]
 
   @@unique([categoryId, partNumber, displayName])
   @@index([categoryId, active])
   @@map("parts")
+}
+
+enum PartSource {
+  seed
+  app
+
+  @@map("part_source")
+}
+
+/// LTR-200 / D32: who the Shop buys parts from or pays for outside repairs. Unique by lower(name) (SQL index).
+model Vendor {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  doesParts     Boolean  @default(true) @map("does_parts")
+  doesRepairs   Boolean  @default(false) @map("does_repairs")
+  phone         String?
+  email         String?
+  accountNumber String?  @map("account_number")
+  notes         String?
+  active        Boolean  @default(true)
+  createdById   String?  @map("created_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  createdBy   User?            @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  parts       Part[]
+  costEntries TruckCostEntry[]
+
+  @@map("vendors")
+}
+
+enum AttachmentOwnerType {
+  part_purchase
+  outside_repair
+  internal_invoice
+
+  @@map("attachment_owner_type")
+}
+
+/// LTR-200 / D32: an invoice file in the private Supabase Storage bucket. Written from PC-2 on.
+model Attachment {
+  id           String               @id @default(uuid()) @db.Uuid
+  bucket       String
+  objectPath   String               @map("object_path")
+  fileName     String               @map("file_name")
+  contentType  String               @map("content_type")
+  sizeBytes    Int                  @map("size_bytes")
+  sha256       String?
+  ownerType    AttachmentOwnerType? @map("owner_type")
+  ownerId      String?              @map("owner_id") @db.Uuid
+  uploadedById String?              @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime             @default(now()) @map("created_at")
+  deletedAt    DateTime?            @map("deleted_at")
+
+  uploadedBy User? @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([ownerType, ownerId])
+  @@map("attachments")
+}
+
+enum TruckCostKind {
+  part_purchase
+  outside_repair
+  labor
+  internal_invoice
+
+  @@map("truck_cost_kind")
+}
+
+/// LTR-200 / D32: the cost ledger of each Truck. Rows are never edited or deleted: a change writes a reversal.
+/// Stage 1 writes `part_purchase` and `outside_repair` (from PC-2 on); `labor` and `internal_invoice` come later.
+model TruckCostEntry {
+  id              String        @id @default(uuid()) @db.Uuid
+  truckId         String        @map("truck_id") @db.Uuid
+  kind            TruckCostKind
+  amountCents     Int           @map("amount_cents")
+  currency        String        @default("USD") @db.Char(3)
+  occurredOn      DateTime      @map("occurred_on") @db.Date
+  sourceType      String        @map("source_type")
+  sourceId        String        @map("source_id") @db.Uuid
+  workOrderId     String?       @map("work_order_id") @db.Uuid
+  vendorId        String?       @map("vendor_id") @db.Uuid
+  description     String
+  reversesEntryId String?       @map("reverses_entry_id") @db.Uuid
+  createdById     String?       @map("created_by_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  truck     Truck            @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  workOrder WorkOrder?       @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  vendor    Vendor?          @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  reverses  TruckCostEntry?  @relation("TruckCostEntryReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict)
+  reversals TruckCostEntry[] @relation("TruckCostEntryReversal")
+  createdBy User?            @relation("TruckCostEntryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([truckId, occurredOn])
+  @@index([sourceType, sourceId])
+  @@map("truck_cost_entries")
 }
 
 model PartFitment {
