@@ -70,3 +70,69 @@ test('the System Admin sees Parts & costs too (D-PC7)', async ({ page }) => {
   await loginToAdmin(page, 'system-admin@lightning.local');
   await expectPartsCostsNav(page);
 });
+
+// LTR-200 / D32 (PC-2): Purchases.
+test('manager loads a purchase: live total, repeated invoice warning, split trucks, detail and void', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/purchases');
+  await expect(page.getByRole('heading', { name: 'Purchases', exact: true })).toBeVisible();
+  await expect(page.getByTestId('purchases-summary')).toHaveText('1 purchases · $48.20');
+  await expect(page.getByRole('row', { name: /88412093/ })).toContainText('No invoice file');
+
+  await page.getByRole('button', { name: 'New purchase' }).click();
+  const form = page.getByRole('dialog');
+  await form.getByLabel('Vendor').selectOption({ label: 'FleetPride' });
+  await form.getByLabel('Invoice #').fill('8841-2093');
+  await form.getByLabel('Invoice #').blur();
+  await expect(form.getByTestId('duplicate-invoice')).toContainText('FleetPride invoice 88412093 is already saved (Oct 6, 2026 · $48.20).');
+  await expect(form.getByRole('button', { name: 'Save purchase' })).toBeDisabled();
+  await form.getByLabel('Invoice #').fill('88412200');
+  await expect(form.getByTestId('duplicate-invoice')).toHaveCount(0);
+
+  // D-PC6: picking the part fills the last price paid to this vendor.
+  await form.getByLabel('Part', { exact: true }).first().selectOption({ label: 'Fuel Filter 4 Micron · LFF8897' });
+  await expect(form.getByLabel('Unit cost').first()).toHaveValue('24.10');
+  await form.getByLabel('Qty').first().fill('2');
+  await form.getByRole('button', { name: 'Add line' }).click();
+  await form.getByLabel('Part', { exact: true }).nth(1).selectOption({ label: 'Other (not in catalog)' });
+  await form.getByPlaceholder('Description').fill('Shop rags');
+  await form.getByLabel('Unit cost').nth(1).fill('10');
+  await form.getByLabel('Tax').fill('1.50');
+  await expect(form.getByTestId('purchase-total')).toHaveText('$59.70');
+
+  await form.getByLabel('Lines go to different trucks').check();
+  await form.getByLabel('Truck 1').selectOption({ label: 'Truck 606' });
+  await expect(form.getByText(/Assigned to trucks: \$49\.\d\d · No truck: \$10\.\d\d/)).toBeVisible();
+  await expect(form.getByTestId('files-off')).toBeVisible();
+  await form.getByRole('button', { name: 'Save purchase' }).click();
+
+  await expect(page.getByText('Purchase saved · $59.70')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FleetPride · 88412200' })).toBeVisible();
+  await expect(page.getByTestId('truck-shares')).toContainText('Truck 606');
+  await expect(page.getByTestId('truck-shares')).toContainText('No truck · shop stock');
+
+  await page.getByRole('button', { name: 'Void' }).click();
+  const voidDialog = page.getByRole('dialog');
+  await expect(voidDialog.getByRole('button', { name: 'Void' })).toBeDisabled();
+  await voidDialog.getByLabel('Reason').fill('Loaded twice');
+  await voidDialog.getByRole('button', { name: 'Void' }).click();
+  await expect(page.getByTestId('purchase-voided')).toContainText('“Loaded twice”');
+  await expect(page.getByRole('button', { name: 'Edit purchase' })).toHaveCount(0);
+});
+
+test('a new purchase that was not saved comes back in the same tab; Discard asks first', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/purchases');
+  await page.getByRole('button', { name: 'New purchase' }).click();
+  await page.getByRole('dialog').getByLabel('Invoice #').fill('DRAFT-1');
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('alertdialog', { name: 'Discard this purchase?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Keep editing' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'New purchase' }).click();
+  await expect(page.getByText('Your unsaved purchase is back.')).toBeVisible();
+  await expect(page.getByRole('dialog').getByLabel('Invoice #')).toHaveValue('DRAFT-1');
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Discard' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});

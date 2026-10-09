@@ -391,13 +391,27 @@ function freshPartsState() {
     vendors: [
       { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride', doesParts: true, doesRepairs: false, phone: '(760) 555-0142', email: null, accountNumber: null, notes: null, active: true, partCount: 1 },
     ],
+    // PC-2: one purchase already saved, to show the list and the repeated-invoice warning.
+    purchases: [
+      {
+        id: '00000000-0000-4000-8000-00000000b001',
+        vendor: { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride' },
+        invoiceNumber: '88412093',
+        invoiceNorm: '88412093',
+        invoiceDate: '2026-10-06',
+        lines: [{ id: 'l1', partId: '00000000-0000-4000-8000-00000000a001', description: 'Fuel Filter 4 Micron', partNumber: 'LFF8897', quantity: '2.00', unitCostCents: 2410, lineTotalCents: 4820, truck: { id: 'truck-606', truckNumber: '606' } }],
+        subtotalCents: 4820, taxCents: 0, freightCents: 0, totalCents: 4820,
+        notes: null, attachment: null, voidedAt: null, voidedBy: null, voidReason: null,
+        createdBy: { id: 'manager', name: 'Shop Manager' }, createdAt: '2026-10-06T15:00:00.000Z',
+      },
+    ],
     categories: [
       {
         id: '00000000-0000-4000-8000-00000000c001',
         name: 'Fuel Filter',
         parts: [
-          { id: '00000000-0000-4000-8000-00000000a001', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'LFF8897', displayName: 'Fuel Filter 4 Micron', active: true, source: 'seed', unitCostCents: 2410, defaultVendor: { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride' }, fits: [], usedInPmCount: 38, lastUsedAt: '2026-10-06T15:00:00.000Z', openPms: [] },
-          { id: '00000000-0000-4000-8000-00000000a002', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'WF10447', displayName: 'Fuel Filter Volvo', active: true, source: 'seed', unitCostCents: null, defaultVendor: null, fits: [{ make: 'Volvo', model: null }], usedInPmCount: 4, lastUsedAt: '2026-10-07T15:00:00.000Z', openPms: [{ workOrderId: 'wo-968', displayId: 'WO-968-1', truckId: 'truck-968', truckNumber: '968' }] },
+          { id: '00000000-0000-4000-8000-00000000a001', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'LFF8897', displayName: 'Fuel Filter 4 Micron', active: true, source: 'seed', unitCostCents: 2410, defaultVendor: { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride' }, fits: [], usedInPmCount: 38, lastUsedAt: '2026-10-06T15:00:00.000Z', openPms: [], lastPaid: null },
+          { id: '00000000-0000-4000-8000-00000000a002', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'WF10447', displayName: 'Fuel Filter Volvo', active: true, source: 'seed', unitCostCents: null, defaultVendor: null, fits: [{ make: 'Volvo', model: null }], usedInPmCount: 4, lastUsedAt: '2026-10-07T15:00:00.000Z', openPms: [{ workOrderId: 'wo-968', displayId: 'WO-968-1', truckId: 'truck-968', truckNumber: '968' }], lastPaid: null },
         ],
       },
     ],
@@ -425,7 +439,7 @@ function resetFixtureState() {
 
 createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
-  response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key');
   response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   if (request.method === 'OPTIONS') {
     response.writeHead(204).end();
@@ -568,6 +582,95 @@ createServer(async (request, response) => {
       const vendor = { id: `00000000-0000-4000-8000-0000000f${String(partsState.vendors.length + 1).padStart(4, '0')}`, name, doesParts: body?.doesParts ?? true, doesRepairs: body?.doesRepairs ?? false, phone: body?.phone || null, email: body?.email || null, accountNumber: body?.accountNumber || null, notes: body?.notes || null, active: true, partCount: 0 };
       partsState.vendors.push(vendor);
       json(response, 201, { id: vendor.id });
+      return;
+    }
+    // PC-2: purchases.
+    const purchaseSummary = (purchase) => {
+      const trucks = [...new Map(purchase.lines.filter((line) => line.truck).map((line) => [line.truck.id, line.truck])).values()];
+      return {
+        id: purchase.id, vendor: purchase.vendor, invoiceNumber: purchase.invoiceNumber, invoiceDate: purchase.invoiceDate,
+        lineCount: purchase.lines.length, trucks, hasNoTruckLines: purchase.lines.some((line) => !line.truck),
+        totalCents: purchase.totalCents, hasFile: Boolean(purchase.attachment), voidedAt: purchase.voidedAt,
+      };
+    };
+    const purchaseDetail = (purchase) => {
+      const byTruck = new Map();
+      for (const line of purchase.lines.filter((item) => item.truck)) byTruck.set(line.truck.id, { ...line.truck, amountCents: (byTruck.get(line.truck.id)?.amountCents ?? 0) + line.lineTotalCents });
+      const noTruckCents = purchase.lines.filter((line) => !line.truck).reduce((sum, line) => sum + line.lineTotalCents, 0);
+      return { ...purchaseSummary(purchase), ...purchase, truckShares: [...byTruck.values()], noTruckCents };
+    };
+    const normInvoice = (text) => String(text ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const invoiceMatch = (vendorId, number, excludeId) => {
+      const found = partsState.purchases.find((item) => item.vendor.id === vendorId && item.invoiceNorm === normInvoice(number) && !item.voidedAt && item.id !== excludeId);
+      return found ? { exists: true, kind: 'part_purchase', id: found.id, invoiceNumber: found.invoiceNumber, invoiceDate: found.invoiceDate, totalCents: found.totalCents, vendorName: found.vendor.name } : null;
+    };
+    if (path === '/api/admin/parts-costs/purchases/form-data') {
+      json(response, 200, {
+        trucks: [{ id: 'truck-606', truckNumber: '606', make: 'Freightliner', model: 'Cascadia' }, { id: 'truck-918', truckNumber: '918', make: 'Peterbilt', model: '579' }],
+        lastPaid: [{ partId: '00000000-0000-4000-8000-00000000a001', unitCostCents: 2410, invoiceDate: '2026-10-06', vendorId: '00000000-0000-4000-8000-00000000f001', vendorName: 'FleetPride' }],
+        filesEnabled: false,
+      });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/invoices/check') {
+      const params = new URL(request.url, 'http://fixture').searchParams;
+      json(response, 200, invoiceMatch(params.get('vendorId'), params.get('number'), params.get('excludeId')) ?? { exists: false });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/purchases' && request.method === 'GET') {
+      const items = [...partsState.purchases].reverse().map(purchaseSummary);
+      const live = partsState.purchases.filter((item) => !item.voidedAt);
+      json(response, 200, { items, totals: { count: live.length, totalCents: live.reduce((sum, item) => sum + item.totalCents, 0), noTruckCents: live.reduce((sum, item) => sum + purchaseDetail(item).noTruckCents, 0) } });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/purchases' && request.method === 'POST') {
+      const key = request.headers['idempotency-key'];
+      if (!key) { json(response, 400, { code: 'IDEMPOTENCY_KEY_REQUIRED' }); return; }
+      const replay = partsState.purchases.find((item) => item.idempotencyKey === key);
+      if (replay) { json(response, 201, { id: replay.id, replayed: true }); return; }
+      const body = await readJson(request);
+      const match = invoiceMatch(body.vendorId, body.invoiceNumber);
+      if (match) { json(response, 409, { code: 'DUPLICATE_INVOICE', ...match }); return; }
+      const allPartsList = allParts();
+      const trucks = { 'truck-606': { id: 'truck-606', truckNumber: '606' }, 'truck-918': { id: 'truck-918', truckNumber: '918' } };
+      const lines = body.lines.map((line, index) => {
+        const part = allPartsList.find((item) => item.id === line.partId);
+        const hundredths = Math.round(Number(line.quantity) * 100);
+        return {
+          id: `line-${index}`, partId: part?.id ?? null, description: line.description || part?.displayName, partNumber: part?.partNumber ?? null,
+          quantity: (hundredths / 100).toFixed(2), unitCostCents: line.unitCostCents, lineTotalCents: Math.round((hundredths * line.unitCostCents) / 100),
+          truck: line.truckId ? trucks[line.truckId] : null,
+        };
+      });
+      const subtotalCents = lines.reduce((sum, line) => sum + line.lineTotalCents, 0);
+      const totalCents = subtotalCents + (body.taxCents ?? 0) + (body.freightCents ?? 0);
+      if (body.expectedTotalCents !== undefined && body.expectedTotalCents !== totalCents) { json(response, 400, { code: 'TOTAL_MISMATCH', totalCents }); return; }
+      const vendor = partsState.vendors.find((item) => item.id === body.vendorId);
+      const purchase = {
+        id: `00000000-0000-4000-8000-0000000b${String(partsState.purchases.length + 1).padStart(4, '0')}`,
+        idempotencyKey: key, vendor: { id: vendor.id, name: vendor.name }, invoiceNumber: body.invoiceNumber, invoiceNorm: normInvoice(body.invoiceNumber),
+        invoiceDate: body.invoiceDate, lines, subtotalCents, taxCents: body.taxCents ?? 0, freightCents: body.freightCents ?? 0, totalCents,
+        notes: body.notes || null, attachment: null, voidedAt: null, voidedBy: null, voidReason: null,
+        createdBy: { id: 'manager', name: 'Shop Manager' }, createdAt: new Date().toISOString(),
+      };
+      partsState.purchases.push(purchase);
+      json(response, 201, { id: purchase.id, replayed: false });
+      return;
+    }
+    const purchaseVoid = path.match(/^\/api\/admin\/parts-costs\/purchases\/([0-9a-f-]+)\/void$/i);
+    if (purchaseVoid && request.method === 'POST') {
+      const body = await readJson(request);
+      const purchase = partsState.purchases.find((item) => item.id === purchaseVoid[1]);
+      if (!purchase) { json(response, 404, { message: 'Purchase not found' }); return; }
+      Object.assign(purchase, { voidedAt: new Date().toISOString(), voidedBy: { id: 'manager', name: 'Shop Manager' }, voidReason: body.reason });
+      json(response, 201, { id: purchase.id });
+      return;
+    }
+    const purchaseGet = path.match(/^\/api\/admin\/parts-costs\/purchases\/([0-9a-f-]+)$/i);
+    if (purchaseGet && request.method === 'GET') {
+      const purchase = partsState.purchases.find((item) => item.id === purchaseGet[1]);
+      if (!purchase) { json(response, 404, { message: 'Purchase not found' }); return; }
+      json(response, 200, purchaseDetail(purchase));
       return;
     }
     json(response, 404, { message: 'Not found' });
