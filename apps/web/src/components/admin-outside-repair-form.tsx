@@ -17,7 +17,8 @@ import {
 import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { partsCostsFailure } from './admin-parts-catalog';
-import { Button, DialogActions, InlineAlert, Input, Label, Modal, Select, Textarea } from './ui';
+import { MissingSummary, OptionalTag, RequiredNote, StickyFormFooter, focusField, type MissingField } from './parts-costs-form-ui';
+import { Button, Input, Label, Modal, Select, Textarea } from './ui';
 import {
   checkAdminInvoice,
   createAdminOutsideRepair,
@@ -104,6 +105,7 @@ export function OutsideRepairForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const { data: externalJobs } = useAdminExternalJobs(form.truckId);
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -117,6 +119,15 @@ export function OutsideRepairForm({
     .sort((left, right) => Number(right.doesRepairs) - Number(left.doesRepairs) || left.name.localeCompare(right.name));
   const uploading = Boolean(file && !file.id && !file.error);
   const valid = Boolean(form.truckId && form.vendorId && form.invoiceNumber.trim() && form.invoiceDate && form.description.trim() && typeof amount === 'number');
+  // UX-7-026 / PC1: what stops the save, in form order.
+  const missing: MissingField[] = [
+    ...(!form.truckId ? [{ label: messages.pcMissingTruck, fieldId: 'outside-truck' }] : []),
+    ...(!form.vendorId ? [{ label: messages.pcMissingVendor, fieldId: 'outside-vendor' }] : []),
+    ...(!form.invoiceDate ? [{ label: messages.pcMissingDate, fieldId: 'outside-date' }] : []),
+    ...(!form.invoiceNumber.trim() ? [{ label: messages.pcMissingInvoice, fieldId: 'outside-invoice' }] : []),
+    ...(!form.description.trim() ? [{ label: messages.pcMissingWhat, fieldId: 'outside-what' }] : []),
+    ...(typeof amount !== 'number' ? [{ label: messages.pcMissingAmount, fieldId: 'outside-amount' }] : []),
+  ];
   const dirty = JSON.stringify(form) !== JSON.stringify(initial) || (file?.id ?? null) !== (repair?.attachment?.id ?? null);
 
   async function checkDuplicate() {
@@ -143,10 +154,20 @@ export function OutsideRepairForm({
     }
   }
 
+  /** UX-7-029 / PC4: closing with changes asks first (Cancel used to close at once and lose what was typed). */
+  function close() {
+    if (dirty && !busy) setConfirmDiscard(true);
+    else onClose();
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setShowErrors(true);
-    if (!valid || busy || uploading) return;
+    if (!valid) {
+      if (missing[0]) focusField(missing[0].fieldId);
+      return;
+    }
+    if (busy || uploading) return;
     setBusy(true);
     setError(null);
     const body = {
@@ -176,8 +197,9 @@ export function OutsideRepairForm({
   }
 
   return (
-    <Modal open title={repair ? messages.pcEditOutside : messages.pcNewOutside} description={presetJob ? fillPlaceholders(messages.pcFromJob, { wo: presetJob.workOrderDisplayId, job: presetJob.displayName }) : undefined} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!dirty} className="sm:max-w-2xl">
+    <Modal open title={repair ? messages.pcEditOutside : messages.pcNewOutside} description={presetJob ? fillPlaceholders(messages.pcFromJob, { wo: presetJob.workOrderDisplayId, job: presetJob.displayName }) : undefined} onClose={close} closeLabel={messages.closeDialog} dismissible={!dirty} className="sm:max-w-2xl">
       <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="outside-repair-form" noValidate>
+        {showErrors ? <MissingSummary missing={missing} messages={messages} /> : null}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="outside-truck">{messages.pcTruckRequired}</Label>
@@ -185,6 +207,7 @@ export function OutsideRepairForm({
               <option value="">{messages.pcPickTruck}</option>
               {formData.trucks.map((truck) => <option key={truck.id} value={truck.id}>{fillPlaceholders(messages.pcTruckLabel, { truck: truck.truckNumber })}</option>)}
             </Select>
+            <RequiredNote show={showErrors && !form.truckId} messages={messages} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="outside-vendor">{messages.pcVendorField}</Label>
@@ -192,6 +215,7 @@ export function OutsideRepairForm({
               <option value="">{messages.pcPickVendor}</option>
               {vendorChoices.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
             </Select>
+            <RequiredNote show={showErrors && !form.vendorId} messages={messages} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="outside-date">{messages.pcInvoiceDate}</Label>
@@ -200,6 +224,7 @@ export function OutsideRepairForm({
           <div className="space-y-1.5">
             <Label htmlFor="outside-invoice">{messages.pcInvoiceNumber}</Label>
             <Input id="outside-invoice" className="font-mono" value={form.invoiceNumber} onChange={(event) => { set('invoiceNumber', event.target.value); setDuplicate(null); }} onBlur={() => void checkDuplicate()} disabled={busy} autoComplete="off" aria-invalid={(showErrors && !form.invoiceNumber.trim()) || Boolean(duplicate) || undefined} />
+            <RequiredNote show={showErrors && !form.invoiceNumber.trim()} messages={messages} />
           </div>
         </div>
         {duplicate?.exists ? (
@@ -210,7 +235,7 @@ export function OutsideRepairForm({
         ) : null}
 
         <div className="space-y-1.5">
-          <Label htmlFor="outside-job">{messages.pcExternalJob}</Label>
+          <Label htmlFor="outside-job">{messages.pcExternalJob}<OptionalTag messages={messages} /></Label>
           <Select id="outside-job" value={form.jobId} disabled={busy || !form.truckId} onChange={(event) => set('jobId', event.target.value)}>
             <option value="">{messages.pcNotLinked}</option>
             {jobs.map((job) => <option key={job.jobId} value={job.jobId}>{externalJobLabel(job, locale, messages)}</option>)}
@@ -221,6 +246,7 @@ export function OutsideRepairForm({
         <div className="space-y-1.5">
           <Label htmlFor="outside-what">{messages.pcWhatWasDone}</Label>
           <Textarea id="outside-what" rows={2} value={form.description} onChange={(event) => set('description', event.target.value)} disabled={busy} aria-invalid={(showErrors && !form.description.trim()) || undefined} />
+          <RequiredNote show={showErrors && !form.description.trim()} messages={messages} />
         </div>
         <div className="space-y-1.5 sm:max-w-xs">
           <Label htmlFor="outside-amount">{messages.pcAmount}</Label>
@@ -228,11 +254,11 @@ export function OutsideRepairForm({
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">$</span>
             <Input id="outside-amount" className="pl-7 tabular-nums" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={(event) => set('amount', event.target.value)} disabled={busy} aria-invalid={amount === undefined || (showErrors && amount === null) || undefined} />
           </div>
-          {amount === undefined ? <p className="text-xs text-destructive-text">{messages.pcCostInvalid}</p> : null}
+          {amount === undefined ? <p className="text-xs text-destructive-text">{messages.pcCostInvalid}</p> : <RequiredNote show={showErrors && amount === null} messages={messages} />}
         </div>
 
         <div className="space-y-1.5">
-          <span className="block text-sm font-medium">{messages.pcInvoiceFile}</span>
+          <span className="block text-sm font-medium">{messages.pcInvoiceFile}<OptionalTag messages={messages} /></span>
           {!formData.filesEnabled ? (
             <p className="text-xs text-muted-foreground" data-testid="files-off">{messages.pcFilesOff}</p>
           ) : file ? (
@@ -252,15 +278,21 @@ export function OutsideRepairForm({
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="outside-notes">{messages.pcNotes}</Label>
+          <Label htmlFor="outside-notes">{messages.pcNotes}<OptionalTag messages={messages} /></Label>
           <Textarea id="outside-notes" rows={2} value={form.notes} onChange={(event) => set('notes', event.target.value)} disabled={busy} />
         </div>
 
-        {error ? <InlineAlert>{error}</InlineAlert> : null}
-        <DialogActions>
-          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={busy || uploading || Boolean(duplicate?.exists)}>{busy ? messages.pcSaving : repair ? messages.pcSaveChanges : messages.pcNewOutside}</Button>
-        </DialogActions>
+        <StickyFormFooter
+          error={error}
+          confirmDiscard={confirmDiscard}
+          onDiscard={onClose}
+          onKeepEditing={() => setConfirmDiscard(false)}
+          onCancel={close}
+          submitLabel={repair ? messages.pcSaveChanges : messages.pcNewOutside}
+          submitDisabled={busy || uploading || Boolean(duplicate?.exists)}
+          busy={busy}
+          messages={messages}
+        />
       </form>
     </Modal>
   );
