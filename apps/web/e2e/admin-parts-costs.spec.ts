@@ -136,3 +136,28 @@ test('a new purchase that was not saved comes back in the same tab; Discard asks
   await page.getByRole('button', { name: 'Discard' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+// LTR-200 / D32 (PC-3): Outside repairs.
+test('manager loads an outside shop invoice from the Job: truck and Job come picked; a purchase invoice number is refused', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/outside-repairs?new=1&truckId=truck-606&jobId=00000000-0000-4000-8000-0000000e0001');
+  const form = page.getByRole('dialog', { name: 'New outside repair' });
+  await expect(form.getByText('From WO-001 · Radiator Repair')).toBeVisible();
+  await expect(form.getByLabel('Truck', { exact: true })).toHaveValue('truck-606');
+  await expect(form.getByLabel('Job sent to an external shop')).toHaveValue('00000000-0000-4000-8000-0000000e0001');
+  await expect(form.getByLabel('Job sent to an external shop').locator('option:checked')).toHaveText('Radiator Repair · WO-001 · part out since Oct 6, 2026');
+  await expect(page).toHaveURL(/\/admin\/parts\/outside-repairs$/);
+
+  await form.getByLabel('Vendor').selectOption({ label: 'FleetPride' });
+  await form.getByLabel('Invoice #').fill('88412093');
+  await form.getByLabel('Invoice #').blur();
+  await expect(form.getByTestId('duplicate-invoice')).toContainText('It was loaded as a purchase.');
+  await form.getByLabel('Invoice #').fill('DP-4410');
+  await form.getByLabel('What was done').fill('Radiator recore');
+  await form.getByLabel('Amount (USD)').fill('1,840');
+  await form.getByRole('button', { name: 'New outside repair' }).click();
+
+  await expect(page.getByText('Outside repair saved · $1,840.00')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'FleetPride · DP-4410' })).toBeVisible();
+  await expect(page.getByTestId('outside-job')).toHaveText('Radiator Repair · WO-001 · part');
+});

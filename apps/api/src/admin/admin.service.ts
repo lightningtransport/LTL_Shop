@@ -213,6 +213,12 @@ const detailInclude = {
       category: { select: { name: true } },
       assignedMechanic: { select: { id: true, name: true } },
       completedBy: { select: { id: true, name: true } },
+      // LTR-200 / PC-3: outside shop invoices tied to the Job (the controller hides them from non-Managers).
+      outsideRepairs: {
+        where: { voidedAt: null },
+        select: { id: true, amountCents: true, vendor: { select: { name: true } } },
+        orderBy: { createdAt: 'asc' as const },
+      },
     },
     orderBy: { addedAt: 'asc' as const },
   },
@@ -2497,6 +2503,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     external: toJobExternalDto(job),
     // LTR-197 / D28: an unowned Job born in a team queue reads "In team queue", not "Unassigned".
     workflowStepKey: job.workflowStepKey ?? null,
+    outsideInvoices: (job.outsideRepairs ?? []).map((repair) => ({ id: repair.id, amountCents: repair.amountCents, vendorName: repair.vendor.name })),
   }));
   return {
     ...summary,

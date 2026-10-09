@@ -41,6 +41,11 @@ import type {
   AdminPurchaseListDto,
   AdminRequestAttachmentInput,
   AdminSavePurchaseInput,
+  AdminExternalJobDto,
+  AdminOutsideRepairDetailDto,
+  AdminOutsideRepairListDto,
+  AdminSaveOutsideRepairInput,
+  AdminTruckCostsDto,
 } from '@ltl-shop/shared';
 import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
@@ -902,4 +907,71 @@ export function uploadInvoiceFile(uploadUrl: string, file: File, onProgress: (pe
     request.onerror = () => reject(new Error('Upload failed'));
     request.send(file);
   });
+}
+
+// ── LTR-200 / D32 (PC-3): outside repairs ──────────────────────────────────────────────────────────────────
+
+export function useAdminOutsideRepairs(query: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminOutsideRepairListDto>(token ? `/api/admin/parts-costs/outside-repairs${query ? `?${query}` : ''}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      keepPreviousData: true,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+export function useAdminOutsideRepair(id: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminOutsideRepairDetailDto>(token && id ? `/api/admin/parts-costs/outside-repairs/${id}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+/** The truck's Jobs that went to an external shop (out now, or within 90 days). */
+export function useAdminExternalJobs(truckId: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminExternalJobDto[]>(token && truckId ? `/api/admin/parts-costs/external-jobs?truckId=${truckId}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+export function createAdminOutsideRepair(input: AdminSaveOutsideRepairInput, idempotencyKey: string) {
+  return apiFetch<{ id: string; replayed: boolean }>('/api/admin/parts-costs/outside-repairs', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    headers: { 'Idempotency-Key': idempotencyKey },
+  });
+}
+
+export function updateAdminOutsideRepair(id: string, input: AdminSaveOutsideRepairInput) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/outside-repairs/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function voidAdminOutsideRepair(id: string, reason: string) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/outside-repairs/${id}/void`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
+
+// ── LTR-200 / D32 (PC-4): Truck → Costs ────────────────────────────────────────────────────────────────────
+
+export function useAdminTruckCosts(truckId: string, query: string, enabled: boolean) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminTruckCostsDto>(token && truckId && enabled ? `/api/admin/parts-costs/trucks/${truckId}/costs${query ? `?${query}` : ''}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      keepPreviousData: true,
+      ...adminReadRetry,
+    }),
+  );
 }

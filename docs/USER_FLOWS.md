@@ -531,7 +531,7 @@ Ver la fila E7 en HU-ME2.
 
 Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
-### HU-M12 · Saber cuánto cuesta cada camión (J13) — 🟡 en construcción (D32, bloque S4): PC-1 y PC-2 construidos
+### HU-M12 · Saber cuánto cuesta cada camión (J13) — ✅ construido, etapa 1 (D32, bloque S4: PC-1 a PC-4); el cobro a Finanzas, diseñado
 
 **Quién:** el Manager. Más adelante, Finanzas.
 
@@ -558,6 +558,13 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Un mecánico o Safety intenta ver o cargar compras | No puede (403) | ✅ | A62 |
 | Carga dos veces la misma factura | La app avisa que ese número de factura de ese proveedor ya existe | ✅ | A58 |
 | Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock) | ✅ | A60 |
+| Carga la factura de un taller externo por un Job que mandó afuera (PC-3) | La liga al Job (afuera ahora o ya de regreso en los últimos 90 días) y el monto va al camión; el Job muestra "Factura $… · proveedor" en el Work Order (solo Manager y System Admin). Un Job de otro camión no se puede ligar | ✅ | A63 |
+| Manda un Job afuera, carga la factura y después marca Regresó (o al revés) | "Enviar a taller externo" y "Regresó" funcionan igual que antes, con o sin factura cargada; la factura sigue ligada al Job | ✅ | A64 |
+| Carga como reparación una factura que ya cargó como compra (mismo proveedor y número) | La app avisa y no deja guardar: dice cuál es (D-PC8) | ✅ | A65 |
+| Corrige o anula una reparación externa | Igual que una compra: reversas en el costo del camión, nada se borra; anular pide motivo | ✅ | A65 |
+| Abre Truck → Costs y elige un período (este mes, 3 meses, este año, todo) (PC-4) | Ve el total de partes, de reparaciones externas y el total; las barras por mes; y cada movimiento (compra o reparación) con su WO, que abre su compra o reparación. Lo anulado o corregido sale como reversa en negativo y baja el total | ✅ | A66 |
+| Quiere ver la mano de obra del camión | Por ahora solo las horas registradas en el período (sesiones cerradas, D18, D21), sin monto: la tarifa queda para después | ✅ | A67 |
+| Un mecánico o Safety intenta ver los costos de un camión; un PM se termina | No puede (403); terminar un PM no escribe nada en el costo del camión (D-PC4) | ✅ | A68 |
 | Quiere cobrarle a Finanzas | No en la etapa 1: diseñado (mano de obra × horas y factura interna por período), no construido | 🔲 después | — |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)

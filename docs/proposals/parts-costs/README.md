@@ -1,6 +1,6 @@
 # Propuesta: Partes y costos por camión (etapa 1)
 
-**Clasificación:** PROPUESTA — no es el estado actual de la app.
+**Clasificación:** CONSTRUIDA (etapa 1, PC-1 a PC-4, 2026-10-09). El estado actual está en `docs/SYSTEM.md`; §8 (mano de obra y factura interna) sigue siendo propuesta.
 **Fecha:** 2026-10-07 · **Rama:** `claude/shop-workflow-revision-9afabe` · **Esperando la aprobación del dueño.**
 **Pantallas (nuevas):**
 - Parts & costs → **Purchases** (`/admin/parts/purchases`), **Outside repairs** (`/admin/parts/outside-repairs`),
@@ -366,6 +366,12 @@ oscuro. Antes de construir, las filas de HU-M12 en `USER_FLOWS.md` se completan 
 | A-PC12 | Enviar a taller externo y Regresó siguen igual que A35 con y sin factura cargada. |
 | A-PC13 | La factura repetida se detecta entre una compra y una reparación del mismo proveedor. |
 
+**Cómo quedó PC-3 (2026-10-09, rama `claude/setup-s4-pc3`).** Construido con las filas A63–A65, con dos notas:
+- "Add outside repair invoice" está en el `…` del Job mientras está afuera (y en uno que ya tiene factura, para
+  cargar otra). Después de **Regresó** no se agrega un enlace aparte: el Job sigue apareciendo en el formulario
+  entre los que salieron en los últimos 90 días.
+- Un Job que nunca salió a un taller externo no se puede ligar (`JOB_NEVER_EXTERNAL`).
+
 **PC-4 · Truck → Costs**
 - API `GET /trucks/:id/costs` y la pestaña **Costs** con los lugares reservados de Labor y Charge to Finance.
 - Verificación final: `ui-audit` con la cuenta del Manager, inglés y español, claro y oscuro, teléfono y
@@ -376,6 +382,10 @@ oscuro. Antes de construir, las filas de HU-M12 en `USER_FLOWS.md` se completan 
 | A-PC14 | Los totales por tipo y por mes son la suma del libro en el período; una anulación los baja. |
 | A-PC15 | "Labor hours" es la suma de las sesiones cerradas del camión en el período (D18, D21) y no tiene monto. |
 | A-PC16 | Mecánicos y Safety reciben 403 en los costos del camión; terminar un PM no escribe nada en el libro (D-PC4). |
+
+**Cómo quedó PC-4 (2026-10-09, rama `claude/setup-s4-pc4`).** Construido con las filas A66–A68. La API quedó en
+`/admin/parts-costs/trucks/:id/costs` (mismo guard que el resto de Parts & costs) en vez de `/trucks/:id/costs`.
+Las barras por mes son simples (sin librería de gráficos); las reversas se marcan **Voided** o **Corrected**.
 
 ## 8. Futuro: mano de obra y factura interna a Finanzas (diseñado, **no se construye**)
 

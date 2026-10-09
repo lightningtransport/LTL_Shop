@@ -6,7 +6,9 @@ import { Capabilities } from '../auth/capabilities.decorator';
 import { CapabilitiesGuard } from '../auth/capabilities.guard';
 import { ManagerWritesGuard } from '../auth/manager-writes.guard';
 import { PartsCatalogService } from './parts-catalog.service';
+import { OutsideRepairsService } from './outside-repairs.service';
 import { PurchasesService } from './purchases.service';
+import { TruckCostsService } from './truck-costs.service';
 
 /**
  * LTR-200 / D32, D-PC7: Parts & costs is for the Shop Manager and the System Admin only — reading too, because it
@@ -19,6 +21,8 @@ export class PartsCostsController {
   constructor(
     private readonly catalog: PartsCatalogService,
     private readonly purchases: PurchasesService,
+    private readonly repairs: OutsideRepairsService,
+    private readonly truckCosts: TruckCostsService,
   ) {}
 
   @Get('parts')
@@ -95,5 +99,42 @@ export class PartsCostsController {
   @Get('attachments/:id')
   openAttachment(@Param('id') id: string) {
     return this.purchases.openAttachment(id);
+  }
+
+  // PC-3: outside repairs. Static paths come before `outside-repairs/:id`.
+  @Get('external-jobs')
+  externalJobs(@Query() query: Record<string, unknown>) {
+    return this.repairs.externalJobs(query);
+  }
+
+  @Get('outside-repairs')
+  listOutsideRepairs(@Query() query: Record<string, unknown>) {
+    return this.repairs.list(query);
+  }
+
+  @Get('outside-repairs/:id')
+  outsideRepair(@Param('id') id: string) {
+    return this.repairs.detail(id);
+  }
+
+  @Post('outside-repairs')
+  createOutsideRepair(@Req() request: Request, @Body() body: unknown, @Headers('idempotency-key') idempotencyKey?: string) {
+    return this.repairs.create(request.user!, body, idempotencyKey);
+  }
+
+  @Patch('outside-repairs/:id')
+  updateOutsideRepair(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.repairs.update(request.user!, id, body);
+  }
+
+  @Post('outside-repairs/:id/void')
+  voidOutsideRepair(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.repairs.void(request.user!, id, body);
+  }
+
+  // PC-4: Truck → Costs (reads the ledger).
+  @Get('trucks/:id/costs')
+  costsOfTruck(@Param('id') id: string, @Query() query: Record<string, unknown>) {
+    return this.truckCosts.costs(id, query);
   }
 }

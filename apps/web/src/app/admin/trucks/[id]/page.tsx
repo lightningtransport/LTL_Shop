@@ -8,10 +8,10 @@ export default async function AdminTruckDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; tab?: string }>;
 }) {
-  const [{ id }, { from }, cookieStore] = await Promise.all([params, searchParams, cookies()]);
+  const [{ id }, { from, tab }, cookieStore] = await Promise.all([params, searchParams, cookies()]);
   const cookieLocale = cookieStore.get(ADMIN_LOCALE_COOKIE)?.value;
   const locale = isAdminLocale(cookieLocale) ? cookieLocale : 'en';
-  return <AdminTruckDetail id={id} from={from ?? null} locale={locale} messages={getAdminMessages(locale)} />;
+  return <AdminTruckDetail id={id} from={from ?? null} tab={tab ?? null} locale={locale} messages={getAdminMessages(locale)} />;
 }
