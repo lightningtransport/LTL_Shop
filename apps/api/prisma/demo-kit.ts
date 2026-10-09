@@ -15,6 +15,7 @@ import type { OutsideRepairsService } from '../src/parts-costs/outside-repairs.s
 import type { PartsCatalogService } from '../src/parts-costs/parts-catalog.service';
 import type { LaborRatesService } from '../src/parts-costs/labor-rates.service';
 import type { InternalInvoicesService } from '../src/parts-costs/internal-invoices.service';
+import type { CustomJobsReviewService } from '../src/admin/custom-jobs-review.service';
 import type { AuthUser } from '../src/auth/auth.guard';
 
 export type TruckRow = { id: string; truckNumber: string; make: string | null; model: string | null; mileage: number | null };
@@ -30,7 +31,8 @@ export type Actors = {
   safety: AuthUser[];
 };
 
-export type ShopJobInput = { category: string; job: string; assignee?: AuthUser };
+/** `custom`: a Custom Job — `job` is the name the Manager typed, not a catalog Job (LTR-57 reviews them). */
+export type ShopJobInput = { category: string; job: string; assignee?: AuthUser; custom?: boolean; description?: string };
 
 export type DemoKit = {
   prisma: PrismaService;
@@ -44,6 +46,7 @@ export type DemoKit = {
   partsCatalog: PartsCatalogService;
   laborRates: LaborRatesService;
   internalInvoices: InternalInvoicesService;
+  customJobsReview: CustomJobsReviewService;
   meta: (expectedVersion: number) => { expectedVersion: number; idempotencyKey: string };
   version: (workOrderId: string) => Promise<number>;
   createWorkOrder: (actors: Actors, truck: TruckRow, input: { priority?: Priority; notes?: string }) => Promise<string>;

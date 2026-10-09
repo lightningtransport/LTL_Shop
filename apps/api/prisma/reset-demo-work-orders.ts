@@ -56,13 +56,14 @@ import { PartsCatalogService } from '../src/parts-costs/parts-catalog.service';
 import { InvoiceFiles } from '../src/parts-costs/invoice-files';
 import { LaborRatesService } from '../src/parts-costs/labor-rates.service';
 import { InternalInvoicesService } from '../src/parts-costs/internal-invoices.service';
+import { CustomJobsReviewService } from '../src/admin/custom-jobs-review.service';
 import { toSharedCapability } from '../src/auth/capabilities';
 import type { AuthUser } from '../src/auth/auth.guard';
 import { TEST_ROSTER } from '../src/admin/test-roster-plan';
 import { WORK_ORDER_ACTIVITY_WHERE, wipeWorkOrders } from './wipe-work-orders';
 import { wipePartsCosts } from './wipe-parts-costs';
 import type { Actors, DemoKit, ShopJobInput, TruckRow } from './demo-kit';
-import { buildHistory } from './demo-history';
+import { buildHistory, reviewCustomJobs } from './demo-history';
 import { buildPartsCosts, type CurrentJobs } from './demo-parts-costs';
 import { buildLaborAndInvoices } from './demo-labor-finance';
 import { retime, shopMinutesNow, shopToday, workdaysAgo } from './demo-time';
@@ -533,6 +534,17 @@ async function addShopJobs(
 ) {
   const rows = [];
   for (const item of jobs) {
+    if (item.custom) {
+      const category = await prisma.jobCategory.findFirst({ where: { name: item.category, status: 'active' } });
+      if (!category) throw new Error(`Category "${item.category}" not found or inactive`);
+      rows.push({
+        categoryId: category.id,
+        displayName: item.job,
+        ...(item.description ? { customDescription: item.description } : {}),
+        ...(item.assignee ? { assignedMechanicId: item.assignee.id } : {}),
+      });
+      continue;
+    }
     const catalogJob = await prisma.catalogJob.findFirst({
       where: { displayName: item.job, status: 'active', category: { name: item.category, status: 'active' } },
     });
@@ -708,6 +720,7 @@ const demoKit: DemoKit = {
   partsCatalog: new PartsCatalogService(prisma, activity),
   laborRates: new LaborRatesService(prisma, activity),
   internalInvoices: new InternalInvoicesService(prisma, activity),
+  customJobsReview: new CustomJobsReviewService(prisma, activity),
   meta, version, createWorkOrder, inspect, addShopJobs, jobId, laneJobId, assignMandatory, finishJob, finishPm,
 };
 
@@ -792,6 +805,8 @@ async function main() {
     ].filter(Boolean);
     console.log('\nHistory (about four months)');
     history = await buildHistory(demoKit, actors, withHistory, recent);
+    const customJobs = await reviewCustomJobs(demoKit, actors);
+    console.log(`  Custom Jobs: ${customJobs.pending} groups to review, ${customJobs.reviewed} reviewed`);
   }
 
   console.log('\nDemo');

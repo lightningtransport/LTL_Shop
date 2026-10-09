@@ -100,6 +100,21 @@ Así se pueden mostrar:
 - **Safety → Hechos:** lo de los últimos 7 días.
 - **Operaciones:** completados hoy y en los últimos 7 días.
 
+### Custom Jobs por revisar (Catálogo de Jobs → Custom Jobs to review)
+Algunas visitas de la historia tienen Jobs que no están en el catálogo, escritos como los escribiría alguien en el taller (con mayúsculas y espacios distintos):
+- **Por revisar:**
+  - "Check engine light" (3, escrito de 3 formas; la bandeja sugiere Engine Repair);
+  - "Cambiar foco de cabina" (3);
+  - "Air horn" (2);
+  - "Tire pressure check" (1).
+
+  Como Manager, ligo un grupo a un Job del catálogo, lo agrego al catálogo o lo dejo así.
+- **Revisados hace unos días:**
+  - "Brake inspec" quedó ligado a Brake Inspection (y es su alias);
+  - "Load bar repair" se dejó así.
+
+  Deshacer los devuelve a la bandeja.
+
 ### Partes y costos
 - **Proveedores:** FleetPride, TruckPro, Rush Truck Centers, Diesel Pro Repair y Bay Area Body Shop. Old Supply Co está **inactivo**.
 - **Partes:** todas las piezas de PM tienen precio de referencia. Las que se usan tienen proveedor habitual. Hay una creada en la app: "Wiper blade 22 in heavy duty".

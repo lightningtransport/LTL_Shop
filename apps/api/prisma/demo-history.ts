@@ -12,6 +12,7 @@ import type { LocalDate } from '../src/common/shop-time';
 import type { AuthUser } from '../src/auth/auth.guard';
 import type { Actors, DemoKit, TruckRow } from './demo-kit';
 import { daysAgo, isoDay, retime, seededRandom, workdaysAgo } from './demo-time';
+import { customJobNameNorm as customNorm } from '../src/admin/custom-jobs-review.service';
 
 /** Repairs the history picks from: catalog Job and the mechanic's closing note. */
 const REPAIRS: Array<{ category: string; job: string; note: string }> = [
@@ -29,11 +30,32 @@ const REPAIRS: Array<{ category: string; job: string; note: string }> = [
   { category: 'Transmission & Drivetrain', job: '5th Wheel', note: 'Engrase y ajuste de la quinta rueda.' },
 ];
 
+/**
+ * Custom Jobs (not in the catalog), as the Manager typed them — the same name written a few ways — for the review
+ * inbox (LTR-57). Every fourth visit gets the next one. "Brake inspec" is then tied to Brake Inspection and
+ * "Load bar repair" kept as a one-off (`reviewCustomJobs`); the rest wait in the inbox.
+ */
+const CUSTOM_REPAIRS: Array<{ category: string; job: string; note: string; description?: string }> = [
+  { category: 'Electrical & Starting', job: 'Cambiar foco de cabina', note: 'Foco LED nuevo.', description: 'El foco del techo de la cabina no prende.' },
+  { category: 'Engine & Emissions', job: 'Check engine light', note: 'Sensor de NOx; código borrado.', description: 'Se prendió la luz en ruta.' },
+  { category: 'Air & Brake System', job: 'Brake inspec', note: 'Frenos dentro de especificación.' },
+  { category: 'Cab, Body & Glass', job: 'Air horn', note: 'Solenoide de la corneta cambiado.' },
+  { category: 'Electrical & Starting', job: 'cambiar foco de cabina', note: 'Foco cambiado.' },
+  { category: 'Engine & Emissions', job: 'check engine light', note: 'Manguera de vacío suelta.' },
+  { category: 'Cab, Body & Glass', job: 'Load bar repair', note: 'Barra de carga soldada.', description: 'La barra de carga del tráiler no traba.' },
+  { category: 'Tires & Wheels', job: 'Tire pressure check', note: 'Presión ajustada en las 18 llantas.' },
+  { category: 'Air & Brake System', job: 'Brake inspec', note: 'Pastillas al 40 %.' },
+  { category: 'Cab, Body & Glass', job: 'air horn', note: 'Línea de aire de la corneta reparada.' },
+  { category: 'Electrical & Starting', job: 'Cambiar  foco de Cabina', note: 'Socket nuevo.' },
+  { category: 'Engine & Emissions', job: 'Check Engine Light', note: 'Sin códigos activos.' },
+];
+
 /** The repair a visit sent to an outside shop (tied to an outside repair invoice in `demo-parts-costs.ts`). */
 const EXTERNAL_REPAIR = { category: 'Transmission & Drivetrain', job: 'Transmission', note: 'Diesel Pro reconstruyó la transmisión.' };
 
 type Variant = 'plain' | 'blocker' | 'qc-return' | 'external';
-type Visit = { truck: TruckRow; day: LocalDate; variant: Variant; observedMileage: number; recent: boolean };
+type Repair = { category: string; job: string; note: string; custom?: boolean; description?: string };
+type Visit = { truck: TruckRow; day: LocalDate; variant: Variant; observedMileage: number; recent: boolean; custom?: Repair };
 
 export type HistoryWorkOrder = {
   id: string;
@@ -98,6 +120,11 @@ export async function buildHistory(kit: DemoKit, actors: Actors, trucks: TruckRo
   }
   visits.sort((left, right) => isoDay(left.day).localeCompare(isoDay(right.day)));
 
+  let nextCustom = 0;
+  visits.forEach((visit, index) => {
+    if (index % 4 === 1 && visit.variant !== 'external' && nextCustom < CUSTOM_REPAIRS.length) visit.custom = { ...CUSTOM_REPAIRS[nextCustom++], custom: true };
+  });
+
   const result: HistoryResult = { workOrders: [], external: null };
   for (const [index, visit] of visits.entries()) {
     const since = new Date();
@@ -126,12 +153,15 @@ async function buildVisit(
   const priority = random() < 0.15 ? Priority.HIGH : Priority.NORMAL;
   const id = await kit.createWorkOrder(actors, visit.truck, { priority });
 
-  const repairs = visit.variant === 'external'
+  const catalogRepairs: Repair[] = visit.variant === 'external'
     ? [EXTERNAL_REPAIR]
     : random() < 0.25 ? [] : [...new Set([pick(REPAIRS), ...(random() < 0.4 ? [pick(REPAIRS)] : [])])];
+  const repairs: Repair[] = [...catalogRepairs, ...(visit.custom ? [visit.custom] : [])];
   await kit.inspect(actors, visit.truck, repairs.length ? WorkPlanInspectionOutcome.ISSUES_FOUND : WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
   if (repairs.length) {
-    await kit.addShopJobs(actors, visit.truck, repairs.map((repair) => ({ category: repair.category, job: repair.job, assignee: mechanic })));
+    await kit.addShopJobs(actors, visit.truck, repairs.map((repair) => ({
+      category: repair.category, job: repair.job, assignee: mechanic, custom: repair.custom, description: repair.description,
+    })));
   }
   await kit.assignMandatory(actors, id);
   if (random() < 0.3) await admin.addNote(actors.manager, id, { body: pick(['Revisar presión de llantas al salir.', 'El conductor pide revisar el aire acondicionado.', 'Prioridad: carga el lunes.']) });
@@ -187,4 +217,24 @@ async function buildVisit(
 async function startIfStopped(kit: DemoKit, mechanic: AuthUser, workOrderId: string) {
   const open = await kit.prisma.workSession.findFirst({ where: { workOrderId, userId: mechanic.id, endedAt: null } });
   if (!open) await kit.workOrders.start(mechanic, workOrderId);
+}
+
+/**
+ * The Manager already reviewed two Custom Job groups (Custom Jobs to review → Reviewed): "Brake inspec" is Brake
+ * Inspection (and becomes its alias), "Load bar repair" was a one-off. Done a few days ago.
+ */
+export async function reviewCustomJobs(kit: DemoKit, actors: Actors) {
+  // The alias an earlier run of the demo left, so every run reviews the same way.
+  await kit.prisma.jobAlias.deleteMany({ where: { aliasNorm: customNorm('Brake inspec') } });
+  const since = new Date();
+  const groups = await kit.customJobsReview.list({ status: 'pending' });
+  const brake = groups.find((group) => group.nameNorm === customNorm('Brake inspec'));
+  const brakeInspection = await kit.prisma.catalogJob.findFirst({ where: { displayName: 'Brake Inspection', status: 'active' }, select: { id: true } });
+  if (brake && brakeInspection) {
+    await kit.customJobsReview.review(actors.manager, { action: 'map', categoryId: brake.categoryId, nameNorm: brake.nameNorm, catalogJobId: brakeInspection.id, addAlias: true });
+  }
+  const loadBar = groups.find((group) => group.nameNorm === customNorm('Load bar repair'));
+  if (loadBar) await kit.customJobsReview.review(actors.manager, { action: 'keep', categoryId: loadBar.categoryId, nameNorm: loadBar.nameNorm });
+  await retime(kit.prisma, since, workdaysAgo(3), { startMinutes: 15 * 60 });
+  return { pending: groups.length - Number(Boolean(brake)) - Number(Boolean(loadBar)), reviewed: Number(Boolean(brake)) + Number(Boolean(loadBar)) };
 }
