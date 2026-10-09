@@ -305,10 +305,39 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - **Quién:** solo el Shop Manager y el System Admin, también para leer
   (`/api/admin/parts-costs/*` con `ManagerWritesGuard`). El grupo del menú
   no aparece para nadie más.
-- **Ya existen para las etapas siguientes** (sin escribirse todavía):
-  `attachments` (facturas en Supabase Storage) y `truck_cost_entries` (el
-  libro de costos de cada camión: filas que nunca se editan; un cambio escribe
-  una reversa).
+
+### Compras de partes (`part_purchases`, `part_purchase_lines`, `attachments`, `truck_cost_entries`; LTR-200 / D32, PC-2)
+- **Purchases** (`/admin/parts/purchases`): una compra = proveedor, fecha y
+  número de factura, líneas (parte del catálogo u "Other" con descripción;
+  cantidad con 2 decimales; costo unitario), impuesto, flete, notas y la
+  factura adjunta (opcional, D-PC10).
+- **Dinero en centavos.** La API calcula cada total de línea (cantidad × costo,
+  al centavo) y el total; si el que manda la pantalla no cuadra responde
+  `TOTAL_MISMATCH`.
+- **Factura repetida** (D-PC8): mismo proveedor y número (sin espacios,
+  guiones ni mayúsculas: `invoice_norm`) entre las no anuladas → 409
+  `DUPLICATE_INVOICE` con la que ya existe. Un candado por proveedor en la
+  transacción y un índice parcial único lo aseguran. La pantalla avisa al salir
+  del campo (`GET /invoices/check`).
+- **Doble envío** (A59): `POST` exige el encabezado `Idempotency-Key` (uno por
+  formulario abierto); la misma clave devuelve la misma compra.
+- **El libro de costos de cada camión** (`truck_cost_entries`): una compra
+  escribe una fila por camión = sus líneas + su parte del impuesto y el flete,
+  repartidos según las líneas (el centavo que sobra al grupo más grande,
+  `allocateExtra`, D-PC2). Las líneas sin camión no cuentan en ningún camión
+  (D-PC5). Las filas **no se editan ni se borran**: corregir escribe la reversa
+  de cada fila viva y las nuevas; anular (con motivo) escribe solo reversas.
+  Nada se borra; una compra anulada queda tachada y libera su número.
+- **Facturas adjuntas**: Supabase Storage, bucket **privado** `invoices`
+  (se crea solo la primera vez, con tipos PDF/JPG/PNG/HEIC y límite de 10 MB).
+  El navegador sube directo a una URL firmada; se abre con un enlace de 5
+  minutos. Sin `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` el campo no aparece
+  y la API responde `FILES_NOT_CONFIGURED`.
+- **Último pagado** (D-PC6): Parts lo muestra por parte; la compra nueva parte
+  del último precio pagado a ese proveedor, o del costo de referencia. El
+  costo de referencia solo lo cambia el Manager.
+- `attachments.owner_type` y los valores `labor` / `internal_invoice` del libro
+  quedan para las etapas siguientes (§8 de la propuesta).
 
 ### Notas (`work_order_notes`)
 - Solo se agregan, nunca se editan (D8). Tipos: `note` y `work_request`

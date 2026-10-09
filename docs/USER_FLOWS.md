@@ -531,7 +531,7 @@ Ver la fila E7 en HU-ME2.
 
 Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
-### HU-M12 · Saber cuánto cuesta cada camión (J13) — 🟡 en construcción (D32, bloque S4): PC-1 construido
+### HU-M12 · Saber cuánto cuesta cada camión (J13) — 🟡 en construcción (D32, bloque S4): PC-1 y PC-2 construidos
 
 **Quién:** el Manager. Más adelante, Finanzas.
 
@@ -549,8 +549,15 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Carga un proveedor con un nombre que ya existe ("fleetpride") (PC-1) | No deja y dice cuál existe | ✅ | A55 |
 | Un mecánico o Safety intenta ver el catálogo con costos o los proveedores | No puede (403) | ✅ | A56 |
 | El PM usa una parte | La elige del mismo catálogo; el PM sigue igual que hoy | ✅ | A53 |
-| Carga dos veces la misma factura | La app avisa que ese número de factura de ese proveedor ya existe | 🔲 S4 | — |
-| Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock) | 🔲 S4 | — |
+| Carga una compra de 3 líneas con impuesto y flete (PC-2) | La app calcula el total; si el total que manda la pantalla no cuadra, no guarda | ✅ | A57 |
+| Carga dos veces la misma factura (mismo proveedor y número, sin importar espacios ni mayúsculas) | La app avisa al escribir el número y no deja guardar: dice cuál es y la abre. Anulada la primera, sí se puede cargar (D-PC8) | ✅ | A58 |
+| Toca Guardar dos veces, o se repite el envío por mala señal | Se guarda una sola compra | ✅ | A59 |
+| Una factura trae partes de dos camiones y otras sin camión | Cada camión recibe sus líneas más su parte del impuesto y el flete; lo sin camión no cuenta en ningún camión; la suma cuadra con el total (D-PC2, D-PC5, D-PC9) | ✅ | A60 |
+| Corrige o anula una compra | El costo de los camiones se corrige con movimientos de reversa; nada de lo ya escrito cambia. Anular pide el motivo y no borra nada | ✅ | A61 |
+| Adjunta la factura (PDF, JPG, PNG o HEIC, hasta 10 MB) | Se guarda en un lugar privado y se abre con un enlace que dura 5 minutos. Otro tipo de archivo, o uno más grande, no se acepta. Sin archivo también se guarda, marcada "No invoice file" (D-PC10) | ✅ | A62 |
+| Un mecánico o Safety intenta ver o cargar compras | No puede (403) | ✅ | A62 |
+| Carga dos veces la misma factura | La app avisa que ese número de factura de ese proveedor ya existe | ✅ | A58 |
+| Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock) | ✅ | A60 |
 | Quiere cobrarle a Finanzas | No en la etapa 1: diseñado (mano de obra × horas y factura interna por período), no construido | 🔲 después | — |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)

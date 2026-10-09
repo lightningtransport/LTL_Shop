@@ -1146,6 +1146,7 @@ export function Modal({
   closeLabel,
   description,
   dismissible = true,
+  className,
 }: {
   open: boolean;
   title: string;
@@ -1157,6 +1158,8 @@ export function Modal({
   description?: React.ReactNode;
   /** ME3: false while closing would lose something (typed fields, a password shown once): Esc and a click outside do nothing; X and the dialog's buttons still close. */
   dismissible?: boolean;
+  /** A wider dialog for a long form (New purchase). */
+  className?: string;
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const capturedFocusRef = React.useRef<HTMLElement | null>(null);
@@ -1173,6 +1176,7 @@ export function Modal({
     <DialogPrimitive.Root open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent
         ref={contentRef}
+        className={className}
         {...(description ? {} : { 'aria-describedby': undefined })}
         onEscapeKeyDown={(event) => { if (!dismissible) event.preventDefault(); }}
         onInteractOutside={(event) => { if (!dismissible) event.preventDefault(); }}

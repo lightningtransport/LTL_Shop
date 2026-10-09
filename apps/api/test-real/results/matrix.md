@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 93 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
+PASA 99 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 
 | # | Flujo | API real |
 |---|---|---|
@@ -44,7 +44,7 @@ PASA 93 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A28 | NO APLICA: WO de PM legacy (pausa, reanudar, terminar): ya no se pueden crear y no queda ninguno abierto | NO APLICA |
 | A29 | Crear Standard, PM y Safety: entran al roster con su tipo; correo repetido y mecánico no pueden; Safety solo es dueño del QC | PASA |
 | A30 | Desactivar: no deja con Jobs pendientes o tiempo corriendo (dice qué reasignar); sin trabajo abierto deja de entrar y de aparecer; reactivar | PASA |
-| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); PC-1 no toca reiniciar contraseña |
+| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); PC-2 no toca reiniciar contraseña |
 | A32 | Cierre del día: el reloj se cierra a las 5:00 p.m. (no a la hora en que alguien mira), el viernes no corre el fin de semana, fuera de horario a las 11:59 p.m., y al día siguiente "toca Continue" | PASA |
 | A33 | Horario del taller en Setup: el Manager (o el System Admin) cambia la hora y los días; aplica desde ese momento; los demás roles no pueden; datos inválidos no | PASA |
 | A34 | Ayudante: Job aparte "· ayudante" con su dueño; su reloj corre a su nombre en ese WO; no deja al mismo dueño, a quien no hace Standard, ni en PM / QC / otro ayudante; el bloqueo del principal no lo bloquea; cancelar el principal no lo cancela; solo el Manager | PASA |
@@ -70,6 +70,12 @@ PASA 93 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A54 | Una parte elegida en un PM en curso no se desactiva ni pierde ese camión; al terminar el PM, sí | PASA |
 | A55 | La lista base no deshace el catálogo del Manager; un proveedor no se repite | PASA |
 | A56 | Mecánicos y Safety no ven el catálogo con costos ni los proveedores | PASA |
+| A57 | Compra de 3 líneas con impuesto y flete: la API calcula el total y rechaza uno que no cuadra | PASA |
+| A58 | La misma factura del mismo proveedor: el aviso lo dice y guardar responde 409; anulada la primera, sí | PASA |
+| A59 | Dos envíos con la misma Idempotency-Key guardan una sola compra | PASA |
+| A60 | Una factura de dos camiones: cada uno recibe su parte con el impuesto repartido y la suma cuadra | PASA |
+| A61 | Corregir y anular escriben reversas; ninguna fila del libro cambia | PASA |
+| A62 | La factura adjunta: tipo y tamaño se revisan; mecánicos y Safety no ven ni cargan compras | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

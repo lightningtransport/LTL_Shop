@@ -348,6 +348,13 @@ oscuro. Antes de construir, las filas de HU-M12 en `USER_FLOWS.md` se completan 
 | A-PC9 | Editar y anular escriben reversas; el libro nunca cambia una fila ya escrita. |
 | A-PC10 | Proveedor con nombre repetido ("fleetpride") responde 409. |
 
+**Cómo quedó PC-2 (2026-10-09, rama `claude/setup-s4-pc2`).** Construido con las filas A57–A62, con tres notas:
+- El número de factura se compara sin espacios, guiones ni mayúsculas (columna `invoice_norm`), así "INV 5521" =
+  "inv-5521".
+- El bucket privado `invoices` se crea solo la primera vez que se sube un archivo. Donde no hay Storage
+  configurado (local, pruebas) el campo del archivo no aparece y la compra se guarda sin él.
+- New purchase es un diálogo ancho (no un panel lateral); en el teléfono ocupa la pantalla como los demás.
+
 **PC-3 · Reparaciones externas y el Job enviado afuera**
 - Migración: `outside_repairs`.
 - Pantalla **Outside repairs**; **Add outside repair invoice** en el `…` del Job externo y el enlace después de

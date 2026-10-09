@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AppCapability } from '@ltl-shop/shared';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
@@ -6,6 +6,7 @@ import { Capabilities } from '../auth/capabilities.decorator';
 import { CapabilitiesGuard } from '../auth/capabilities.guard';
 import { ManagerWritesGuard } from '../auth/manager-writes.guard';
 import { PartsCatalogService } from './parts-catalog.service';
+import { PurchasesService } from './purchases.service';
 
 /**
  * LTR-200 / D32, D-PC7: Parts & costs is for the Shop Manager and the System Admin only — reading too, because it
@@ -15,7 +16,10 @@ import { PartsCatalogService } from './parts-catalog.service';
 @UseGuards(AuthGuard, CapabilitiesGuard, ManagerWritesGuard)
 @Capabilities(AppCapability.ADMIN_ACCESS)
 export class PartsCostsController {
-  constructor(private readonly catalog: PartsCatalogService) {}
+  constructor(
+    private readonly catalog: PartsCatalogService,
+    private readonly purchases: PurchasesService,
+  ) {}
 
   @Get('parts')
   parts(@Query() query: Record<string, unknown>) {
@@ -45,5 +49,51 @@ export class PartsCostsController {
   @Patch('vendors/:id')
   updateVendor(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.catalog.updateVendor(request.user!, id, body);
+  }
+
+  // PC-2: purchases. Static paths come before `purchases/:id`.
+  @Get('purchases/form-data')
+  purchaseFormData() {
+    return this.purchases.formData();
+  }
+
+  @Get('purchases')
+  listPurchases(@Query() query: Record<string, unknown>) {
+    return this.purchases.list(query);
+  }
+
+  @Get('purchases/:id')
+  purchase(@Param('id') id: string) {
+    return this.purchases.detail(id);
+  }
+
+  @Post('purchases')
+  createPurchase(@Req() request: Request, @Body() body: unknown, @Headers('idempotency-key') idempotencyKey?: string) {
+    return this.purchases.create(request.user!, body, idempotencyKey);
+  }
+
+  @Patch('purchases/:id')
+  updatePurchase(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.purchases.update(request.user!, id, body);
+  }
+
+  @Post('purchases/:id/void')
+  voidPurchase(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.purchases.void(request.user!, id, body);
+  }
+
+  @Get('invoices/check')
+  checkInvoice(@Query() query: Record<string, unknown>) {
+    return this.purchases.checkInvoice(query);
+  }
+
+  @Post('attachments')
+  requestAttachment(@Req() request: Request, @Body() body: unknown) {
+    return this.purchases.requestAttachment(request.user!, body);
+  }
+
+  @Get('attachments/:id')
+  openAttachment(@Param('id') id: string) {
+    return this.purchases.openAttachment(id);
   }
 }

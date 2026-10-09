@@ -30,10 +30,10 @@ export type Reply = { status: number; json: Json; method: string; path: string }
 export const prisma = new PrismaClient({ datasourceUrl: inject('databaseUrl') });
 
 export function as(email: string) {
-  const call = async (method: string, path: string, body?: unknown): Promise<Reply> => {
+  const call = async (method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<Reply> => {
     const response = await fetch(`${inject('apiUrl')}/api${path}`, {
       method,
-      headers: { Authorization: `Bearer dev:${email}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer dev:${email}`, 'Content-Type': 'application/json', ...extraHeaders },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await response.text();
@@ -47,7 +47,7 @@ export function as(email: string) {
   };
   return {
     get: (path: string) => call('GET', path),
-    post: (path: string, body?: unknown) => call('POST', path, body ?? {}),
+    post: (path: string, body?: unknown, headers?: Record<string, string>) => call('POST', path, body ?? {}, headers),
     put: (path: string, body?: unknown) => call('PUT', path, body ?? {}),
     patch: (path: string, body?: unknown) => call('PATCH', path, body ?? {}),
     del: (path: string) => call('DELETE', path),
