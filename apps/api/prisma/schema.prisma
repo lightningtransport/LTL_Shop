@@ -326,6 +326,11 @@ model JobCategory {
   status          CatalogStatus @default(active)
   sortOrder       Int           @default(0) @map("sort_order")
   ninoxExternalId String?       @map("ninox_external_id")
+  // LTR-198 / D30: PM, Detailing and Quality Check are system Categories (locked); seed_key is the catalog load's id.
+  systemKey       String?       @unique @map("system_key")
+  seedKey         String?       @unique @map("seed_key")
+  // D-SET9: why the Category is inactive (optional, one line).
+  inactiveReason  String?       @map("inactive_reason")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -342,6 +347,9 @@ model CatalogJob {
   displayName     String        @map("display_name")
   status          CatalogStatus @default(active)
   ninoxExternalId String?       @map("ninox_external_id")
+  // LTR-198 / D30: pm_a, pm_b, alignment, detailing, quality_check — found by key, never by name.
+  systemKey       String?       @unique @map("system_key")
+  seedKey         String?       @unique @map("seed_key")
   createdAt       DateTime      @default(now()) @map("created_at")
   createdById     String?       @map("created_by_id") @db.Uuid
   updatedAt       DateTime      @updatedAt @map("updated_at")
@@ -598,6 +606,8 @@ model WorkOrderJob {
   externalById       String?          @map("external_by_id") @db.Uuid
   // LTR-197 / D28: the Shop workflow step a mandatory Job belongs to; with no owner it sits in that step's team queue.
   workflowStepKey    String?          @map("workflow_step_key")
+  // LTR-198 / SW5: the catalog System Job's key (pm_a, pm_b, alignment, detailing, quality_check); lanes read it first.
+  systemKey          String?          @map("system_key")
 
   workOrder        WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   catalogJob       CatalogJob?    @relation(fields: [catalogJobId], references: [id])
