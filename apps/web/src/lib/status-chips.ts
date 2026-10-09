@@ -115,6 +115,9 @@ export const ADMIN_ACTIVITY_EVENT_KEY = {
   [ActivityEventType.OUTSIDE_REPAIR_SAVED]: 'activityOutsideRepairSaved',
   [ActivityEventType.OUTSIDE_REPAIR_VOIDED]: 'activityOutsideRepairVoided',
   [ActivityEventType.LABOR_RATE_SAVED]: 'activityLaborRateSaved',
+  [ActivityEventType.INTERNAL_INVOICE_SENT]: 'activityInternalInvoiceSent',
+  [ActivityEventType.INTERNAL_INVOICE_ACCEPTED]: 'activityInternalInvoiceAccepted',
+  [ActivityEventType.INTERNAL_INVOICE_VOIDED]: 'activityInternalInvoiceVoided',
 } as const;
 
 export function workOrderStatusVariant(status: string): ChipVariant {

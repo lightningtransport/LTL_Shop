@@ -48,6 +48,9 @@ import type {
   AdminTruckCostsDto,
   AdminLaborRatesDto,
   AdminSetLaborRateInput,
+  AdminCreateInternalInvoiceInput,
+  AdminInternalInvoiceDetailDto,
+  AdminInternalInvoiceSummaryDto,
 } from '@ltl-shop/shared';
 import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
@@ -990,4 +993,46 @@ export function useAdminLaborRates() {
 
 export function setAdminLaborRate(input: AdminSetLaborRateInput) {
   return apiFetch<{ id: string; recalculatedWorkOrders: number }>('/api/admin/parts-costs/labor-rates', { method: 'POST', body: JSON.stringify(input) });
+}
+
+// ── LB-2 (LTR-201 / D34): internal invoices to Finance ───────────────────────────────────────────────────────
+
+export function useAdminInternalInvoices(query: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminInternalInvoiceSummaryDto[]>(token ? `/api/admin/parts-costs/internal-invoices${query ? `?${query}` : ''}` : null, adminReadFetcher, { dedupingInterval: 5_000, keepPreviousData: true, ...adminReadRetry }),
+  );
+}
+
+export function useAdminInternalInvoice(id: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminInternalInvoiceDetailDto>(token && id ? `/api/admin/parts-costs/internal-invoices/${id}` : null, adminReadFetcher, { dedupingInterval: 3_000, ...adminReadRetry }),
+  );
+}
+
+const invoicePath = (id: string, action = '') => `/api/admin/parts-costs/internal-invoices/${id}${action}`;
+
+export function createAdminInternalInvoice(input: AdminCreateInternalInvoiceInput) {
+  return apiFetch<{ id: string }>('/api/admin/parts-costs/internal-invoices', { method: 'POST', body: JSON.stringify(input) });
+}
+export function refreshAdminInternalInvoice(id: string) {
+  return apiFetch<{ id: string; added: number }>(invoicePath(id, '/refresh'), { method: 'POST', body: '{}' });
+}
+export function setAdminInternalInvoiceLine(id: string, lineId: string, active: boolean) {
+  return apiFetch<{ id: string }>(invoicePath(id, `/lines/${lineId}/${active ? 'restore' : 'remove'}`), { method: 'POST', body: '{}' });
+}
+export function sendAdminInternalInvoice(id: string) {
+  return apiFetch<{ id: string; number: string }>(invoicePath(id, '/send'), { method: 'POST', body: '{}' });
+}
+export function acceptAdminInternalInvoice(id: string) {
+  return apiFetch<{ id: string }>(invoicePath(id, '/accept'), { method: 'POST', body: '{}' });
+}
+export function voidAdminInternalInvoice(id: string, reason: string) {
+  return apiFetch<{ id: string }>(invoicePath(id, '/void'), { method: 'POST', body: JSON.stringify({ reason }) });
+}
+export function deleteAdminInternalInvoice(id: string) {
+  return apiFetch<{ deleted: true }>(invoicePath(id), { method: 'DELETE' });
 }

@@ -8,6 +8,12 @@ import type { ShopLocale } from './shop-locale';
  */
 export type ApiErrorCode =
   | 'LABOR_RATE_DATE_TAKEN'
+  | 'INTERNAL_INVOICE_DRAFT_EXISTS'
+  | 'NOTHING_TO_CHARGE'
+  | 'INVOICE_NOT_DRAFT'
+  | 'INVOICE_NOT_SENT'
+  | 'INVOICE_EMPTY'
+  | 'LINE_ALREADY_CHARGED'
   | 'DUPLICATE_INVOICE'
   | 'REPAIR_VOIDED'
   | 'JOB_NOT_ON_TRUCK'
@@ -106,6 +112,12 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
     LABOR_RATE_DATE_TAKEN: 'There is already a rate from that date. Pick another date.',
+    INTERNAL_INVOICE_DRAFT_EXISTS: 'There is already a draft for this truck and month.',
+    NOTHING_TO_CHARGE: 'This truck has nothing left to charge up to the end of that month.',
+    INVOICE_NOT_DRAFT: 'A sent invoice does not change. Void it and make another.',
+    INVOICE_NOT_SENT: 'Only a sent invoice can do that.',
+    INVOICE_EMPTY: 'Put at least one line on the invoice before sending it.',
+    LINE_ALREADY_CHARGED: 'That movement is already on another invoice.',
     DUPLICATE_INVOICE: 'That invoice from this vendor is already saved.',
     REPAIR_VOIDED: 'This outside repair is voided. Load it again instead.',
     JOB_NOT_ON_TRUCK: 'That Job is not on this truck.',
@@ -202,6 +214,12 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   es: {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
     LABOR_RATE_DATE_TAKEN: 'Ya hay una tarifa desde esa fecha. Elige otra fecha.',
+    INTERNAL_INVOICE_DRAFT_EXISTS: 'Ya hay un borrador para este camión y mes.',
+    NOTHING_TO_CHARGE: 'Este camión no tiene nada pendiente de cobrar hasta el fin de ese mes.',
+    INVOICE_NOT_DRAFT: 'Una factura enviada no cambia. Anúlala y arma otra.',
+    INVOICE_NOT_SENT: 'Solo una factura enviada puede hacer eso.',
+    INVOICE_EMPTY: 'Pon al menos una línea en la factura antes de enviarla.',
+    LINE_ALREADY_CHARGED: 'Ese movimiento ya está en otra factura.',
     DUPLICATE_INVOICE: 'Esa factura de este proveedor ya está cargada.',
     REPAIR_VOIDED: 'Esta reparación externa está anulada. Cárgala de nuevo.',
     JOB_NOT_ON_TRUCK: 'Ese Job no es de este camión.',
