@@ -20,6 +20,7 @@ import {
 } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
+import { duplicateText, invoiceHref } from './admin-outside-repair-form';
 import { partsCostsFailure } from './admin-parts-catalog';
 import { Button, DialogActions, InlineAlert, Input, Label, Modal, Select, Textarea } from './ui';
 import {
@@ -338,13 +339,8 @@ export function PurchaseForm({
         </div>
         {duplicate?.exists ? (
           <p className="rounded-lg border border-warning/40 bg-warning-surface px-3 py-2 text-sm text-warning-foreground" role="alert" data-testid="duplicate-invoice">
-            {fillPlaceholders(messages.pcDuplicateInvoice, {
-              vendor: duplicate.vendorName ?? '',
-              number: duplicate.invoiceNumber ?? '',
-              date: duplicate.invoiceDate ? formatInvoiceDate(duplicate.invoiceDate, locale) : '',
-              total: duplicate.totalCents !== undefined ? formatCents(duplicate.totalCents, locale) : '',
-            })}{' '}
-            <AdminNavLink className="tap-inline font-medium underline" href={`/admin/parts/purchases/${duplicate.id}`}>{messages.pcOpenIt}</AdminNavLink>
+            {duplicateText(duplicate, locale, messages)}{' '}
+            <AdminNavLink className="tap-inline font-medium underline" href={invoiceHref(duplicate)}>{messages.pcOpenIt}</AdminNavLink>
           </p>
         ) : null}
 

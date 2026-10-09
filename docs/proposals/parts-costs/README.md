@@ -366,6 +366,12 @@ oscuro. Antes de construir, las filas de HU-M12 en `USER_FLOWS.md` se completan 
 | A-PC12 | Enviar a taller externo y Regresó siguen igual que A35 con y sin factura cargada. |
 | A-PC13 | La factura repetida se detecta entre una compra y una reparación del mismo proveedor. |
 
+**Cómo quedó PC-3 (2026-10-09, rama `claude/setup-s4-pc3`).** Construido con las filas A63–A65, con dos notas:
+- "Add outside repair invoice" está en el `…` del Job mientras está afuera (y en uno que ya tiene factura, para
+  cargar otra). Después de **Regresó** no se agrega un enlace aparte: el Job sigue apareciendo en el formulario
+  entre los que salieron en los últimos 90 días.
+- Un Job que nunca salió a un taller externo no se puede ligar (`JOB_NEVER_EXTERNAL`).
+
 **PC-4 · Truck → Costs**
 - API `GET /trucks/:id/costs` y la pestaña **Costs** con los lugares reservados de Labor y Charge to Finance.
 - Verificación final: `ui-audit` con la cuenta del Manager, inglés y español, claro y oscuro, teléfono y

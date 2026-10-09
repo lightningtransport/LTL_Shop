@@ -391,6 +391,9 @@ function freshPartsState() {
     vendors: [
       { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride', doesParts: true, doesRepairs: false, phone: '(760) 555-0142', email: null, accountNumber: null, notes: null, active: true, partCount: 1 },
     ],
+    // PC-3: one Job of truck 606 is at an external shop; no outside repairs yet.
+    externalJobs: [{ jobId: '00000000-0000-4000-8000-0000000e0001', displayName: 'Radiator Repair', workOrderId: 'wo-606', workOrderDisplayId: 'WO-001', kind: 'part', sentAt: '2026-10-06T15:00:00.000Z', returnedAt: null, out: true, truckId: 'truck-606' }],
+    repairs: [],
     // PC-2: one purchase already saved, to show the list and the repeated-invoice warning.
     purchases: [
       {
@@ -582,6 +585,49 @@ createServer(async (request, response) => {
       const vendor = { id: `00000000-0000-4000-8000-0000000f${String(partsState.vendors.length + 1).padStart(4, '0')}`, name, doesParts: body?.doesParts ?? true, doesRepairs: body?.doesRepairs ?? false, phone: body?.phone || null, email: body?.email || null, accountNumber: body?.accountNumber || null, notes: body?.notes || null, active: true, partCount: 0 };
       partsState.vendors.push(vendor);
       json(response, 201, { id: vendor.id });
+      return;
+    }
+    // PC-3: outside repairs.
+    if (path === '/api/admin/parts-costs/external-jobs') {
+      const truckId = new URL(request.url, 'http://fixture').searchParams.get('truckId');
+      json(response, 200, partsState.externalJobs.filter((job) => job.truckId === truckId).map(({ truckId: _truck, ...job }) => job));
+      return;
+    }
+    if (path === '/api/admin/parts-costs/outside-repairs' && request.method === 'GET') {
+      const items = [...partsState.repairs].reverse();
+      const live = items.filter((item) => !item.voidedAt);
+      json(response, 200, { items, totals: { count: live.length, totalCents: live.reduce((sum, item) => sum + item.amountCents, 0) } });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/outside-repairs' && request.method === 'POST') {
+      if (!request.headers['idempotency-key']) { json(response, 400, { code: 'IDEMPOTENCY_KEY_REQUIRED' }); return; }
+      const body = await readJson(request);
+      const normRepair = String(body.invoiceNumber).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const purchaseClash = partsState.purchases.find((item) => item.vendor.id === body.vendorId && item.invoiceNorm === normRepair && !item.voidedAt);
+      if (purchaseClash) {
+        json(response, 409, { code: 'DUPLICATE_INVOICE', exists: true, kind: 'part_purchase', id: purchaseClash.id, invoiceNumber: purchaseClash.invoiceNumber, invoiceDate: purchaseClash.invoiceDate, totalCents: purchaseClash.totalCents, vendorName: purchaseClash.vendor.name });
+        return;
+      }
+      const vendor = partsState.vendors.find((item) => item.id === body.vendorId);
+      const job = partsState.externalJobs.find((item) => item.jobId === body.workOrderJobId);
+      const repair = {
+        id: `00000000-0000-4000-8000-0000000d${String(partsState.repairs.length + 1).padStart(4, '0')}`,
+        truck: { id: body.truckId, truckNumber: body.truckId === 'truck-918' ? '918' : '606' },
+        vendor: { id: vendor.id, name: vendor.name },
+        invoiceNumber: body.invoiceNumber, invoiceDate: body.invoiceDate, description: body.description, amountCents: body.amountCents,
+        job: job ? { id: job.jobId, displayName: job.displayName, workOrderId: job.workOrderId, workOrderDisplayId: job.workOrderDisplayId, kind: job.kind } : null,
+        hasFile: false, voidedAt: null, notes: body.notes || null, attachment: null,
+        createdBy: { id: 'manager', name: 'Shop Manager' }, createdAt: new Date().toISOString(), voidedBy: null, voidReason: null,
+      };
+      partsState.repairs.push(repair);
+      json(response, 201, { id: repair.id, replayed: false });
+      return;
+    }
+    const repairGet = path.match(/^\/api\/admin\/parts-costs\/outside-repairs\/([0-9a-f-]+)$/i);
+    if (repairGet && request.method === 'GET') {
+      const repair = partsState.repairs.find((item) => item.id === repairGet[1]);
+      if (!repair) { json(response, 404, { message: 'Outside repair not found' }); return; }
+      json(response, 200, repair);
       return;
     }
     // PC-2: purchases.
