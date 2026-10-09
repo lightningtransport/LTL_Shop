@@ -30,6 +30,7 @@ type JobRow = {
   externalSince?: Date | null;
   externalKind?: string | null;
   externalNote?: string | null;
+  workflowStepKey?: string | null;
 };
 
 /** LTR-188 / D24: a Job at an external shop, as the DTOs carry it (null when in the shop). */
@@ -151,6 +152,8 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
       assignedMechanic: j.assignedMechanic ?? null,
       completedBy: j.completedBy ?? null,
       helperOfJobId: j.helperOfJobId ?? null,
+    // LTR-197 / D28: a Job from a team queue can be let go back to it.
+    workflowStepKey: j.workflowStepKey ?? null,
       external: jobExternal(j),
       // Stage MG-1 (UX-1-011): Completed shows when each Job was closed and its closing note.
       completedAt: j.completedAt?.toISOString() ?? null,
@@ -290,6 +293,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
     startedAt: j.startedAt?.toISOString() ?? null,
     // LTR-188 / D23, D24: helper Jobs and Jobs at an external shop (read-only for mechanics).
     helperOfJobId: j.helperOfJobId ?? null,
+    workflowStepKey: j.workflowStepKey ?? null,
     external: jobExternal(j),
     };
   });

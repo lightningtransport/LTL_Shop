@@ -11,6 +11,7 @@ import { PmInProgressNotice } from '@/components/pm-in-progress-notice';
 import { useActionToast } from '@/components/action-toast';
 import { StandardHome } from '@/components/mechanic-home';
 import { PmHome } from '@/components/pm-home';
+import { TeamQueueCard } from '@/components/team-queue-card';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -173,6 +174,8 @@ export default function HomePage() {
       ) : null}
 
       {/* Stage MG-3: the General mechanic's home (docs/proposals/mechanic-standard-redesign). */}
+      {/* LTR-197 / D28: Jobs of my Shop workflow steps waiting for someone on the team to take them. */}
+      <TeamQueueCard enabled={!!token && hasWorkspaceAccess} />
       {data && !isPm ? <StandardHome data={data} userId={user.id} StartAction={StartWorkAction} /> : null}
 
       {/* Stage PM-3: the PM mechanic's home (docs/proposals/mechanic-pm-redesign). */}

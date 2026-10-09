@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 76 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
+PASA 81 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 
 | # | Flujo | API real |
 |---|---|---|
@@ -44,16 +44,20 @@ PASA 76 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | A28 | NO APLICA: WO de PM legacy (pausa, reanudar, terminar): ya no se pueden crear y no queda ninguno abierto | NO APLICA |
 | A29 | Crear Standard, PM y Safety: entran al roster con su tipo; correo repetido y mecánico no pueden; Safety solo es dueño del QC | PASA |
 | A30 | Desactivar: no deja con Jobs pendientes o tiempo corriendo (dice qué reasignar); sin trabajo abierto deja de entrar y de aparecer; reactivar | PASA |
-| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); el PR de arreglos de Setup no toca ese flujo |
+| A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin | SIN PROBAR — este worktree no tiene el `.env` de Supabase (responde AUTH_NOT_CONFIGURED); S1 no toca ese flujo |
 | A32 | Cierre del día: el reloj se cierra a las 5:00 p.m. (no a la hora en que alguien mira), el viernes no corre el fin de semana, fuera de horario a las 11:59 p.m., y al día siguiente "toca Continue" | PASA |
 | A33 | Horario del taller en Setup: el Manager (o el System Admin) cambia la hora y los días; aplica desde ese momento; los demás roles no pueden; datos inválidos no | PASA |
 | A34 | Ayudante: Job aparte "· ayudante" con su dueño; su reloj corre a su nombre en ese WO; no deja al mismo dueño, a quien no hace Standard, ni en PM / QC / otro ayudante; el bloqueo del principal no lo bloquea; cancelar el principal no lo cancela; solo el Manager | PASA |
 | A35 | Taller externo: sale la pieza o el camión con nota; sin dueño, sin reloj y sin "sin asignar"; siguiente paso "En taller externo" igual en todas las pantallas; no se puede cerrar; los demás Jobs siguen; el Yard dice "Fuera del taller"; solo el Manager; "Regresó" → completar o asignar | PASA |
 | A36 | El Manager crea un Job de catálogo, entra al Work Order como Job de catálogo; mismo nombre en la categoría no se duplica; mecánico y Safety no pueden | PASA |
-| A37 | SW1: el dueño de un paso cambia de tipo → se ve marcado y no impide guardar los otros pasos | PASA |
+| A37 | SW1: el dueño de un paso deja de poder hacerlo (desactivado) → se ve marcado y no impide guardar los otros pasos | PASA |
 | A38 | SW2 + JC3: el Job de un paso no se puede desactivar; un Job de una categoría inactiva no se puede activar | PASA |
 | A39 | ME1 + ME4: el trabajo abierto de una persona son sus Jobs por hacer (también para PM); los cerrados coinciden con sus Jobs completados | PASA |
 | A40 | ME2 + SW3: el detalle de una persona dice antes de confirmar qué bloquea desactivarla y de qué pasos es dueña | PASA |
+| A41 | Equipo de 3 en Detailing: el Job nace en la cola; el primero que lo toma es el dueño; los otros ya no pueden; soltarlo lo devuelve | PASA |
+| A42 | Equipo de 1: el Job nace asignado a esa persona, como antes | PASA |
+| A43 | Equipo vacío o con alguien que ya no puede: el Job nace sin dueño y el Manager lo ve para asignar; guardar no se bloquea | PASA |
+| A44 | El paso de PM: equipo de mecánicos de PM; nace con PM A y el mecánico sigue eligiendo A o B | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |
@@ -76,10 +80,11 @@ PASA 76 · FALLA 0 · NO APLICA 2 · SIN PROBAR 1
 | QC1 | Safety ve solo los camiones con todo lo demás hecho | PASA |
 | QC2 | Tomar y aprobar: el primero gana; aprobar deja el camión listo para cerrar | PASA |
 | QC3 | Devolver con nota: el Manager lo ve, agrega el trabajo y el camión vuelve a Safety | PASA |
-| QC4 | Safety no puede hacer nada más; el motivo "Devuelto por Safety" es solo suyo | PASA |
+| QC4 | Safety no puede hacer nada más; el motivo "Devuelto por Safety" es solo suyo; un mecánico no entra a la lista de Safety | PASA |
 | QC5 | El Manager conserva "Mark QC complete" como respaldo, y puede dar el QC a alguien de Safety | PASA |
 | QC6 | Let go: Safety suelta el camión que tomó y la otra persona lo puede tomar (D-QC2) | PASA |
 | QC7 | Revisión del camión: qué se hizo, con quién, cuándo y la nota; el PM; solo para camiones de la lista (Q2) | PASA |
 | QC8 | Devolver diciendo qué Job falló: el Manager lo lee al principio de la nota (D-QC3) | PASA |
 | QC9 | Done: lo que aprobé y devolví, lo más nuevo primero; cada persona ve lo suyo (D-QC6) | PASA |
 | QC10 | Orden por urgencia: Critical y High antes que el que lleva más tiempo listo (D-QC5) | PASA |
+| QC11 | El Manager hace QC como respaldo en la pantalla de Safety: toma y aprueba a su nombre; Safety fuera del equipo no ve la cola; un mecánico sigue sin entrar | PASA |

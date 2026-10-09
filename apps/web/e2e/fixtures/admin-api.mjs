@@ -98,12 +98,12 @@ const adminCatalog = [
   },
 ];
 
-// LTR-157 / D15, D16: Setup → Shop workflow (mandatory steps and default owners).
+// LTR-157 / D15, D16: Setup → Shop workflow. LTR-197 / D28: each step has a team (`memberIds`).
 const workflowSteps = [
-  { stepKey: 'pm', sortOrder: 10, catalogJob: { id: '00000000-0000-4000-8000-000000000851', displayName: 'PM A Service', categoryId: '00000000-0000-4000-8000-000000000303', categoryName: 'PM' }, defaultMechanicId: null, requiredCapability: 'mechanic.pm' },
-  { stepKey: 'alignment', sortOrder: 20, catalogJob: { id: '00000000-0000-4000-8000-000000000852', displayName: 'Alignment', categoryId: '00000000-0000-4000-8000-000000000302', categoryName: 'Suspension' }, defaultMechanicId: null, requiredCapability: 'mechanic.standard' },
-  { stepKey: 'detailing', sortOrder: 30, catalogJob: { id: '00000000-0000-4000-8000-000000000853', displayName: 'Detailing', categoryId: '00000000-0000-4000-8000-000000000304', categoryName: 'Detailing' }, defaultMechanicId: null, requiredCapability: 'mechanic.standard' },
-  { stepKey: 'quality_check', sortOrder: 40, catalogJob: { id: '00000000-0000-4000-8000-000000000854', displayName: 'Quality Check', categoryId: '00000000-0000-4000-8000-000000000305', categoryName: 'Quality Check' }, defaultMechanicId: null, requiredCapability: null },
+  { stepKey: 'pm', sortOrder: 10, catalogJob: { id: '00000000-0000-4000-8000-000000000851', displayName: 'PM A Service', categoryId: '00000000-0000-4000-8000-000000000303', categoryName: 'PM' }, memberIds: [], requiredCapability: 'mechanic.pm' },
+  { stepKey: 'alignment', sortOrder: 20, catalogJob: { id: '00000000-0000-4000-8000-000000000852', displayName: 'Alignment', categoryId: '00000000-0000-4000-8000-000000000302', categoryName: 'Suspension' }, memberIds: [], requiredCapability: 'mechanic.standard' },
+  { stepKey: 'detailing', sortOrder: 30, catalogJob: { id: '00000000-0000-4000-8000-000000000853', displayName: 'Detailing', categoryId: '00000000-0000-4000-8000-000000000304', categoryName: 'Detailing' }, memberIds: [], requiredCapability: 'mechanic.standard' },
+  { stepKey: 'quality_check', sortOrder: 40, catalogJob: { id: '00000000-0000-4000-8000-000000000854', displayName: 'Quality Check', categoryId: '00000000-0000-4000-8000-000000000305', categoryName: 'Quality Check' }, memberIds: [], requiredCapability: 'quality_check.perform' },
 ];
 
 // LTR-158: a reduced copy of deriveTruckNextStep (the API uses the shared rule).
@@ -122,17 +122,31 @@ function userById(id) {
   return Object.values(users).find((item) => item.id === id) ?? null;
 }
 
+function isTeamEligible(step, person) {
+  return Boolean(person?.active && step.requiredCapability && person.capabilities.includes(step.requiredCapability));
+}
+
+/** D28: the one eligible member owns new Jobs; two or more (or QC) share a queue; none leaves them unassigned. */
+function teamOwner(step) {
+  const eligible = step.memberIds.map(userById).filter((person) => isTeamEligible(step, person));
+  if (!eligible.length) return { mode: 'none', owner: null };
+  if (step.stepKey === 'quality_check' || eligible.length > 1) return { mode: 'queue', owner: null };
+  return { mode: 'direct', owner: eligible[0] };
+}
+
 function workflowStepDto(step) {
-  const owner = step.defaultMechanicId ? userById(step.defaultMechanicId) : null;
+  const members = step.memberIds.map(userById).filter(Boolean).map((person) => ({
+    id: person.id, name: person.name, active: person.active, eligible: isTeamEligible(step, person), pendingJobCount: 0,
+  }));
   return {
     stepKey: step.stepKey,
     sortOrder: step.sortOrder,
     active: true,
     catalogJob: { id: step.catalogJob.id, displayName: step.catalogJob.displayName, categoryName: step.catalogJob.categoryName, active: step.catalogJob.active !== false },
-    defaultMechanic: owner
-      ? { id: owner.id, name: owner.name, active: owner.active, eligible: owner.active && owner.capabilities.includes(step.requiredCapability) }
-      : null,
-    allowsDefaultMechanic: step.requiredCapability !== null,
+    defaultMechanic: members.length === 1 ? { id: members[0].id, name: members[0].name, active: members[0].active, eligible: members[0].eligible } : null,
+    members,
+    assignment: teamOwner(step).mode,
+    allowsDefaultMechanic: step.stepKey !== 'quality_check',
     requiredCapability: step.requiredCapability,
     updatedAt: '2026-09-28T12:00:00.000Z',
     updatedBy: null,
@@ -219,7 +233,7 @@ function rosterSummary(candidate) {
 
 function rosterDetail(candidate) {
   const defaultOwnerOfSteps = workflowSteps
-    .filter((step) => step.defaultMechanicId === candidate.id)
+    .filter((step) => step.memberIds.includes(candidate.id))
     .map((step) => ({ stepKey: step.stepKey, jobDisplayName: step.catalogJob.displayName }));
   return { ...rosterSummary(candidate), completedJobCount: 0, recentClosedWorkOrders: [], pendingJobs: [], runningSession: false, defaultOwnerOfSteps };
 }
@@ -901,24 +915,23 @@ createServer(async (request, response) => {
       return;
     }
     const body = await readJson(request);
+    const teams = [];
     for (const change of body?.steps ?? []) {
       const step = workflowSteps.find((item) => item.stepKey === change.stepKey);
       if (!step) { json(response, 400, { code: 'UNKNOWN_STEP', message: 'Unknown step' }); return; }
-      if (change.defaultMechanicId && !step.requiredCapability) {
-        json(response, 400, { code: 'STEP_HAS_NO_OWNER', message: 'Quality Check has no default owner.' });
+      if (step.stepKey === 'quality_check' && change.memberIds === undefined) {
+        if (change.defaultMechanicId) { json(response, 400, { code: 'STEP_HAS_NO_OWNER', message: 'Quality Check has no default owner.' }); return; }
+        continue;
+      }
+      const memberIds = [...new Set(change.memberIds ?? (change.defaultMechanicId ? [change.defaultMechanicId] : []))];
+      // SW1 / D-SET2: someone already on the team is not re-checked.
+      if (memberIds.some((id) => !step.memberIds.includes(id) && !isTeamEligible(step, userById(id)))) {
+        json(response, 400, { code: 'OWNER_NOT_ELIGIBLE', message: 'Owner not eligible', stepKey: step.stepKey });
         return;
       }
-      const owner = change.defaultMechanicId ? userById(change.defaultMechanicId) : null;
-      // SW1: an unchanged owner is not re-checked.
-      if (change.defaultMechanicId && change.defaultMechanicId === step.defaultMechanicId) continue;
-      if (change.defaultMechanicId && (!owner?.active || !owner.capabilities.includes(step.requiredCapability))) {
-        json(response, 400, { code: 'OWNER_NOT_ELIGIBLE', message: 'Owner not eligible' });
-        return;
-      }
+      teams.push([step, memberIds]);
     }
-    for (const change of body.steps) {
-      workflowSteps.find((item) => item.stepKey === change.stepKey).defaultMechanicId = change.defaultMechanicId ?? null;
-    }
+    for (const [step, memberIds] of teams) step.memberIds = memberIds;
     json(response, 200, workflowSteps.map(workflowStepDto));
     return;
   }
@@ -947,7 +960,7 @@ createServer(async (request, response) => {
       completionNotes: null,
     }));
     for (const step of workflowSteps) {
-      const owner = step.defaultMechanicId ? userById(step.defaultMechanicId) : null;
+      const { owner, mode } = teamOwner(step);
       created.jobs.push({
         id: `00000000-0000-4000-8000-0000000009${String(step.sortOrder).padStart(2, '0')}`,
         catalogJobId: step.catalogJob.id,
@@ -955,7 +968,8 @@ createServer(async (request, response) => {
         customDescription: null,
         category: { id: step.catalogJob.categoryId, name: step.catalogJob.categoryName },
         status: 'to_do',
-        assignedMechanic: owner?.active ? { id: owner.id, name: owner.name } : null,
+        assignedMechanic: owner ? { id: owner.id, name: owner.name } : null,
+        workflowStepKey: mode === 'queue' ? step.stepKey : null,
         completedAt: null,
         completedBy: null,
         completionNotes: null,

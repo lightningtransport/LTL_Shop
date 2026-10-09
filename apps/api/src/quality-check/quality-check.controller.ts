@@ -1,15 +1,12 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { AppCapability } from '@ltl-shop/shared';
 import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
-import { Capabilities } from '../auth/capabilities.decorator';
-import { CapabilitiesGuard } from '../auth/capabilities.guard';
+import { QualityCheckAccessGuard } from '../auth/quality-check-access.guard';
 import { QualityCheckService } from './quality-check.service';
 
-/** LTR-185 / D19: the Safety workspace. */
+/** LTR-185 / D19: the Safety workspace. LTR-197 / D29: the Shop Manager and the System Admin use it as backup. */
 @Controller('qc')
-@UseGuards(AuthGuard, CapabilitiesGuard)
-@Capabilities(AppCapability.QUALITY_CHECK_PERFORM)
+@UseGuards(AuthGuard, QualityCheckAccessGuard)
 export class QualityCheckController {
   constructor(private readonly qualityCheck: QualityCheckService) {}
 

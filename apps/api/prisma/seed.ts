@@ -190,6 +190,18 @@ async function main() {
 
   const catalog = await applyJobCatalog(prisma, { createdById: mechanic.id });
   const shopWorkflowSteps = await applyShopWorkflowSteps(prisma);
+  // LTR-197 / D-SET7: Quality Check's team is every active Safety person (the migration does the same once).
+  const qualityCheckStep = await prisma.shopWorkflowStep.findUnique({ where: { stepKey: 'quality_check' }, select: { id: true } });
+  if (qualityCheckStep) {
+    const safetyPeople = await prisma.user.findMany({
+      where: { active: true, capabilities: { some: { capability: 'QUALITY_CHECK_PERFORM' } } },
+      select: { id: true },
+    });
+    await prisma.shopWorkflowStepMember.createMany({
+      data: safetyPeople.map((person) => ({ stepId: qualityCheckStep.id, userId: person.id })),
+      skipDuplicates: true,
+    });
+  }
 
   const partCategories: Record<string, string> = {};
   for (let index = 0; index < PM_PART_CATEGORIES.length; index += 1) {

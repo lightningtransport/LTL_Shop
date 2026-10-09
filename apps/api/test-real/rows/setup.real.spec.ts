@@ -5,33 +5,29 @@ import { USERS, Json, createWo, laneJob, adminWo, manager, ok, prisma, refused, 
 describe('Manager: Setup (Shop workflow, catálogo, personas)', () => {
   beforeEach(resetDb);
 
-  it('A37 | SW1: el dueño de un paso cambia de tipo → se ve marcado y no impide guardar los otros pasos', async () => {
+  it('A37 | SW1: el dueño de un paso deja de poder hacerlo (desactivado) → se ve marcado y no impide guardar los otros pasos', async () => {
     const alignmentOwner = await userId(USERS.alignment);
     const spare = await userId(USERS.spare);
-    ok('el dueño de Alignment pasa a PM', await manager.patch(`/admin/mechanics/${alignmentOwner}`, { mode: 'pm' }));
-    // `resetDb` does not reset capabilities: put the type back even if a check fails.
-    try {
+    // LTR-197 / D-SET2: deactivating keeps the person on the team, marked (changing type would take them off).
+    ok('el dueño de Alignment se desactiva', await manager.patch(`/admin/mechanics/${alignmentOwner}`, { active: false }));
 
     const steps = ok('leer Shop workflow', await manager.get('/admin/setup/workflow-steps')) as Json[];
     const alignment = steps.find((step) => step.stepKey === 'alignment');
-    same('sigue a su nombre, marcado como no elegible', [alignment?.defaultMechanic?.id, alignment?.defaultMechanic?.eligible], [alignmentOwner, false]);
+    same('sigue en el equipo, marcado como no elegible', [alignment?.members[0]?.id, alignment?.members[0]?.eligible], [alignmentOwner, false]);
 
-    ok('cambiar Detailing guarda aunque Alignment tenga un dueño no elegible', await manager.put('/admin/setup/workflow-steps', {
-      steps: [{ stepKey: 'detailing', defaultMechanicId: spare }],
+    ok('cambiar Detailing guarda aunque Alignment tenga a alguien no elegible', await manager.put('/admin/setup/workflow-steps', {
+      steps: [{ stepKey: 'detailing', memberIds: [spare] }],
     }));
-    ok('reenviar el dueño que no cambió tampoco falla', await manager.put('/admin/setup/workflow-steps', {
-      steps: [{ stepKey: 'alignment', defaultMechanicId: alignmentOwner }, { stepKey: 'detailing', defaultMechanicId: spare }],
+    ok('reenviar el equipo que no cambió tampoco falla', await manager.put('/admin/setup/workflow-steps', {
+      steps: [{ stepKey: 'alignment', memberIds: [alignmentOwner] }, { stepKey: 'detailing', memberIds: [spare] }],
     }));
-    refused('elegirlo de nuevo en otro paso sí se rechaza', await manager.put('/admin/setup/workflow-steps', {
-      steps: [{ stepKey: 'detailing', defaultMechanicId: alignmentOwner }],
+    refused('agregarlo a otro paso sí se rechaza', await manager.put('/admin/setup/workflow-steps', {
+      steps: [{ stepKey: 'detailing', memberIds: [spare, alignmentOwner] }],
     }), 400, 'OWNER_NOT_ELIGIBLE');
 
     const created = await createWo('968');
     same('WO nuevo: Alignment sin dueño', laneJob(await adminWo(created.workOrderId), 'alignment').assignedMechanic, null);
     same('WO nuevo: Detailing con el dueño nuevo', laneJob(await adminWo(created.workOrderId), 'detailing').assignedMechanic?.id, spare);
-    } finally {
-      await manager.patch(`/admin/mechanics/${alignmentOwner}`, { mode: 'standard' });
-    }
   });
 
   it('A38 | SW2 + JC3: el Job de un paso no se puede desactivar; un Job de una categoría inactiva no se puede activar', async () => {

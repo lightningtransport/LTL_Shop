@@ -1,8 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { ActivityEventType, BlockerReason, PauseReason, Priority, ReadinessRequirementType, WorkPlanJobLane } from '@ltl-shop/shared';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import type { AuthUser } from '../auth/auth.guard';
+import { isQualityCheckBackup } from '../auth/quality-check-access.guard';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { classifyWorkPlanLane } from '../admin/yard-work-plan-derivation';
@@ -170,6 +171,8 @@ export class QualityCheckService {
 
   /** Trucks waiting for Quality Check, and the ones Safety returned that wait for the Manager. */
   async getQueue(user: AuthUser, client: QueueClient = this.prisma) {
+    // LTR-197 / D-SET7: Safety sees the queue only while on Quality Check's team; the Manager always (D29).
+    if (!(await this.onQualityCheckTeam(user))) return { pending: [], returned: [], onTeam: false };
     const rows = await queueRows(client);
     const dispatch = await this.dispatchInfo();
     const pending: QueueItem[] = [];
@@ -193,11 +196,28 @@ export class QualityCheckService {
     }
     const today = localDateTimeIn(new Date(), SHOP_TIME_ZONE);
     pending.sort(byQcUrgency(isoDate(addLocalDays(today, 1))));
-    return { pending, returned };
+    return { pending, returned, onTeam: true };
+  }
+
+  /** LTR-197 / D-SET7: a Safety person works the queue while on Quality Check's team. The Manager is backup (D29). */
+  private async onQualityCheckTeam(user: AuthUser): Promise<boolean> {
+    if (isQualityCheckBackup(user)) return true;
+    const member = await this.prisma.shopWorkflowStepMember.findFirst({
+      where: { userId: user.id, step: { stepKey: 'quality_check' } },
+      select: { userId: true },
+    });
+    return Boolean(member);
+  }
+
+  private async assertOnQualityCheckTeam(user: AuthUser) {
+    if (!(await this.onQualityCheckTeam(user))) {
+      throw new ForbiddenException({ code: 'NOT_ON_STEP_TEAM', message: 'You are not on the Quality Check team. Ask the Shop Manager.' });
+    }
   }
 
   /** Safety takes a truck: the QC Job becomes theirs. First one wins. */
   async take(user: AuthUser, workOrderId: string) {
+    await this.assertOnQualityCheckTeam(user);
     return this.prisma.$transaction(async (tx) => {
       const row = await this.requireReady(tx, workOrderId);
       const qcJob = qcJobOf(row)!;
@@ -213,7 +233,7 @@ export class QualityCheckService {
         entityType: 'work_order_job',
         entityId: qcJob.id,
         userId: user.id,
-        newValue: { jobId: qcJob.id, assignedMechanicId: user.id, displayName: qcJob.displayName, actor: 'safety' },
+        newValue: { jobId: qcJob.id, assignedMechanicId: user.id, displayName: qcJob.displayName, actor: qcActor(user) },
         relevantValue: { action: 'quality_check_taken', displayName: qcJob.displayName },
       });
       return this.getQueue(user, tx);
@@ -222,6 +242,7 @@ export class QualityCheckService {
 
   /** Safety approves: the QC Job completes and the Work Order is ready to close. */
   async approve(user: AuthUser, workOrderId: string) {
+    await this.assertOnQualityCheckTeam(user);
     return this.prisma.$transaction(async (tx) => {
       const row = await this.requireMine(tx, workOrderId, user);
       const qcJob = qcJobOf(row)!;
@@ -245,7 +266,7 @@ export class QualityCheckService {
         userId: user.id,
         previousValue: { status: 'to_do', displayName: qcJob.displayName },
         newValue: { status: 'completed', displayName: qcJob.displayName },
-        relevantValue: { action: 'quality_check_approved', displayName: qcJob.displayName, actor: 'safety' },
+        relevantValue: { action: 'quality_check_approved', displayName: qcJob.displayName, actor: qcActor(user) },
       });
       return this.getQueue(user, tx);
     });
@@ -253,6 +274,7 @@ export class QualityCheckService {
 
   /** Safety returns the truck with what they found. The Manager adds the work and resolves. */
   async returnTruck(user: AuthUser, workOrderId: string, raw: unknown) {
+    await this.assertOnQualityCheckTeam(user);
     const parsed = returnQualityCheckSchema.safeParse(raw ?? {});
     if (!parsed.success) throw new BadRequestException({ code: 'QC_NOTE_REQUIRED', message: 'Say what you found before returning the truck.' });
     return this.prisma.$transaction(async (tx) => {
@@ -291,7 +313,7 @@ export class QualityCheckService {
         userId: user.id,
         newValue: {
           jobId: qcJob.id, jobName: qcJob.displayName, reason: BlockerReason.QUALITY_CHECK_FAILED,
-          notes, laborStopped: false, actor: 'safety',
+          notes, laborStopped: false, actor: qcActor(user),
           ...(failedJob ? { failedJobId: failedJob.id, failedJobName: failedJob.displayName } : {}),
         },
       });
@@ -301,6 +323,7 @@ export class QualityCheckService {
 
   /** D-QC2: Safety lets go of a truck they took, so the other Safety person can take it. */
   async release(user: AuthUser, workOrderId: string) {
+    await this.assertOnQualityCheckTeam(user);
     return this.prisma.$transaction(async (tx) => {
       const row = await this.requireMine(tx, workOrderId, user);
       const qcJob = qcJobOf(row)!;
@@ -312,7 +335,7 @@ export class QualityCheckService {
         entityType: 'work_order_job',
         entityId: qcJob.id,
         userId: user.id,
-        previousValue: { jobId: qcJob.id, assignedMechanicId: user.id, displayName: qcJob.displayName, actor: 'safety' },
+        previousValue: { jobId: qcJob.id, assignedMechanicId: user.id, displayName: qcJob.displayName, actor: qcActor(user) },
         relevantValue: { action: 'quality_check_released', displayName: qcJob.displayName },
       });
       return this.getQueue(user, tx);
@@ -478,4 +501,9 @@ export class QualityCheckService {
     }
     return row;
   }
+}
+
+/** D29: who did it — Safety, or the Shop Manager / System Admin as backup. */
+function qcActor(user: AuthUser): 'safety' | 'manager_backup' {
+  return isQualityCheckBackup(user) ? 'manager_backup' : 'safety';
 }

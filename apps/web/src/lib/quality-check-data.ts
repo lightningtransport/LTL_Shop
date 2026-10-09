@@ -32,6 +32,8 @@ export type QualityCheckReturnedItem = QualityCheckItem & {
 export type QualityCheckQueue = {
   pending: QualityCheckItem[];
   returned: QualityCheckReturnedItem[];
+  /** LTR-197 / D-SET7: false when this Safety person is not on Quality Check's team (the list is then empty). */
+  onTeam?: boolean;
 };
 
 /** Stage QC-1 (Q2): GET /api/qc/:workOrderId — everything Safety needs to decide on one truck. */

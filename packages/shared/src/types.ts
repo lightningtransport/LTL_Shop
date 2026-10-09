@@ -143,6 +143,8 @@ export interface WorkOrderJobDto {
   helperOfJobId?: string | null;
   /** LTR-188 / D24: set while the Job is at an external shop. */
   external?: JobExternalDto | null;
+  /** LTR-197 / D28: the step whose team queue the Job came from (it can be let go back there). */
+  workflowStepKey?: string | null;
 }
 
 /** LTR-188 / D24: a Job at an external shop — what went out, the Manager's note and since when. */
@@ -445,6 +447,8 @@ export interface AdminWorkOrderJobDto {
   helperOfJobId?: string | null;
   /** LTR-188 / D24: set while the Job is at an external shop. */
   external?: JobExternalDto | null;
+  /** LTR-197 / D28: the step whose team queue the Job came from (it can be let go back there). */
+  workflowStepKey?: string | null;
 }
 
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
@@ -667,6 +671,8 @@ export interface WorkPlanJobDto {
   helperOfJobId?: string | null;
   /** LTR-188 / D24: set while the Job is at an external shop (uiStatus `external`). */
   external?: JobExternalDto | null;
+  /** LTR-197 / D28: set while the Job waits, with no owner, in this step's team queue. */
+  teamQueueStepKey?: string | null;
   /** Stage 8: when the Job was completed ("Done 3:53 PM"). */
   completedAt?: string | null;
 }
@@ -894,17 +900,45 @@ export interface AdminCatalogCategoryDetailDto extends AdminCatalogCategorySumma
 }
 
 /** LTR-157 / D16: one row of Admin → Setup → Shop workflow. */
+/** LTR-197 / D28: a Job waiting in the mechanic's team queue (GET /team-queue). */
+export interface TeamQueueItemDto {
+  jobId: string;
+  displayName: string;
+  stepKey: string;
+  /** How many people share this queue. */
+  teamSize: number;
+  addedAt: string;
+  workOrderId: string;
+  workOrderDisplayId: string;
+  priority: Priority;
+  truck: { truckNumber: string; make: string | null; model: string | null; year: number | null };
+}
+
+/** LTR-197 / D28: one person on a step's team. */
+export interface ShopWorkflowStepMemberDto {
+  id: string;
+  name: string;
+  active: boolean;
+  eligible: boolean;
+  /** Jobs still to do in this person's name on open Work Orders. */
+  pendingJobCount: number;
+}
+
 export interface ShopWorkflowStepDto {
   stepKey: string;
   sortOrder: number;
   active: boolean;
   /** `active` is false when the Job or its category is inactive: new Work Orders skip the step (SW2). */
   catalogJob: { id: string; displayName: string; categoryName: string; active: boolean };
-  /** `eligible` is false when the owner is inactive or lost the step's capability (SW1). */
+  /** The only member when the team has exactly one; kept for screens from before teams (LTR-197). */
   defaultMechanic: { id: string; name: string; active: boolean; eligible: boolean } | null;
-  /** D15: Quality Check has no default owner; the Manager completes it from the Truck. */
+  /** LTR-197 / D28: the step's team. `eligible` is false for someone inactive or of another type (D-SET2). */
+  members: ShopWorkflowStepMemberDto[];
+  /** What a new Work Order gets: `direct` (the one eligible member), `queue` (team queue) or `none` (unassigned). */
+  assignment: 'direct' | 'queue' | 'none';
+  /** Pre-team flag: false for Quality Check (its Job always waits in Safety's queue). */
   allowsDefaultMechanic: boolean;
-  /** Capability a default owner needs: `mechanic.pm` for PM, `mechanic.standard` otherwise. */
+  /** Capability a team member needs: `mechanic.pm`, `mechanic.standard`, or `quality_check.perform` for QC. */
   requiredCapability: AppCapability | null;
   updatedAt: string;
   updatedBy: { id: string; name: string } | null;

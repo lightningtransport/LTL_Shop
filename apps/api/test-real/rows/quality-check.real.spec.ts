@@ -117,14 +117,14 @@ describe('Safety: Quality Check (D19)', () => {
     await sameNextStepEverywhere('listo para cerrar', workOrderId, truck.id, 'close');
   });
 
-  it('QC4 | Safety no puede hacer nada más; el motivo "Devuelto por Safety" es solo suyo', async () => {
+  it('QC4 | Safety no puede hacer nada más; el motivo "Devuelto por Safety" es solo suyo; un mecánico no entra a la lista de Safety', async () => {
     const { truck, workOrderId } = await readyForQc('905');
     refused('Safety: entrar a Admin', await safety.get('/admin/dashboard'), 403);
     refused('Safety: lista de mecánico', await safety.get('/work-orders?mode=standard'), 403);
     refused('Safety: cerrar el WO', await safety.post(`/admin/work-orders/${workOrderId}/complete`, await meta(workOrderId)), 403);
     refused('Safety: inspeccionar', await safety.post(`/admin/trucks/${truck.id}/work-plan/inspection`, { outcome: 'no_issues_found', idempotencyKey: crypto.randomUUID() }), 403);
     refused('un mecánico no entra a la lista de Safety', await as(USERS.general).get('/qc/queue'), 403);
-    refused('el Manager tampoco (no es su pantalla)', await manager.get('/qc/queue'), 403);
+    // LTR-197 / D29: the Manager now uses this screen as Safety's backup (QC11).
 
     const other = await plannedWo('922', [{ category: 'Electrical & Starting', job: 'Lights', assignee: USERS.general }]);
     ok('Start', await start(USERS.general, other.workOrderId));

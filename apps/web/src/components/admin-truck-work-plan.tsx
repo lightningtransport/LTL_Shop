@@ -239,7 +239,7 @@ export function AdminTruckWorkPlan({
               </span>
             );
           } else {
-            who = <span className="text-muted-foreground">{messages.jobUnassigned}</span>;
+            who = <span className="text-muted-foreground">{job.teamQueueStepKey ? messages.jobInTeamQueue : messages.jobUnassigned}</span>;
           }
           const status = job.status === JobStatus.COMPLETED ? (
             <span className="inline-flex items-center gap-1.5 text-success"><Check aria-hidden="true" className="size-3.5" />{messages.jobDoneShort}</span>

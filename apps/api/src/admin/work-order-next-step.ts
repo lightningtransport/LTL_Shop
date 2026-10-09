@@ -30,6 +30,7 @@ export type NextStepWorkOrderRow = {
     externalSince?: Date | null;
     externalKind?: string | null;
     externalNote?: string | null;
+    workflowStepKey?: string | null;
   }>;
   pauseEvents?: Array<{
     id: string;
@@ -65,6 +66,7 @@ export function workOrderNextStep(
       externalSince: job.externalSince ?? null,
       externalKind: job.externalKind ?? null,
       externalNote: job.externalNote ?? null,
+      workflowStepKey: job.workflowStepKey ?? null,
     }, row.status as never);
   });
   const blocker = (row.pauseEvents ?? []).find((pause) => pause.isOfficialPause === false && !pause.resolvedAt) ?? null;

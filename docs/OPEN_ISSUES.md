@@ -358,7 +358,7 @@ Aquí van los defectos de lo que ya está construido. Lo que cambia por las deci
 
 | Bloque | Qué | Decisión | Hallazgos que lo piden |
 |---|---|---|---|
-| S1 | Equipo y cola por paso; el Manager hace QC como respaldo desde `/qc` (hoy lo redirige sin mensaje); el paso se llama "PM" | D28, D29 | UX-7-020, UX-6-019, UX-5-009, UX-1-005, UX-1-006, UX-1-007 |
+| ~~S1~~ | **Hecho** (rama `claude/setup-s1`, 2026-10-08): equipo y cola por paso, Take / Let go en el inicio del mecánico, el Manager hace QC como respaldo desde `/qc`, el paso se llama "PM", Shop hours en su pestaña (D-SET5); test-real A41–A44 y QC11 | D28, D29 | UX-7-020, UX-6-019, UX-5-009, UX-1-005, UX-1-006, UX-1-007 |
 | S2 | El Manager maneja categorías, Jobs y aliases; borrar solo lo que nunca se usó; Jobs del sistema protegidos con `system_key`; la recarga no pisa al Manager | D30 | UX-7-022, UX-6-021, UX-4-004, UX-4-007, UX-1-011, UX-5-002 |
 | S3 | "Remove" a una persona conservando su historial; detalle con cabecera de estado y los pasos de los que es dueña | D31 | UX-7-023, UX-6-023, UX-4-009, UX-5-011, UX-1-016 |
 | S4 | Partes y costos etapa 1 (catálogo de partes, compras, reparaciones externas, costo por camión); el cobro a Finanzas queda diseñado | D32 | UX-1-020, UX-5-004, UX-6-024, UX-7-024 |

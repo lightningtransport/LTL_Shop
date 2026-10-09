@@ -270,7 +270,8 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
       break;
     case 'qc':
       title = messages.dashQcTitle;
-      detail = messages.dashQcSub;
+      // D-SET6: the Manager reaches Quality Check as backup from here (D29).
+      detail = <>{messages.dashQcSub} <Link className="tap-inline font-medium text-primary hover:underline" href="/qc">{messages.shopWorkflowQcBackupLink}</Link></>;
       break;
     case 'add_missing_steps':
       detail = messages.calloutMissingSub;

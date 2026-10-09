@@ -452,9 +452,16 @@ export type AdminUpdateCatalogJobInput = z.infer<typeof adminUpdateCatalogJobSch
  * LTR-157 / D15, D16: the Manager (or System Admin) sets the default owner of
  * each mandatory step. Quality Check never has one (D15).
  */
+/**
+ * LTR-197 / D28: each step's team (`memberIds`). `defaultMechanicId` is the pre-team shape (one owner) and is read
+ * as a team of one — or an empty team when null.
+ */
 export const updateShopWorkflowStepsSchema = z.object({
   steps: z.array(z.object({
     stepKey: z.nativeEnum(ShopWorkflowStepKey),
-    defaultMechanicId: z.string().uuid().nullable(),
+    memberIds: z.array(z.string().uuid()).max(50).optional(),
+    defaultMechanicId: z.string().uuid().nullable().optional(),
+  }).refine((step) => step.memberIds !== undefined || step.defaultMechanicId !== undefined, {
+    message: 'Send memberIds for each step.',
   })).min(1),
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useSWRConfig } from 'swr';
@@ -13,6 +14,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { defaultWorkspacePath } from '@/lib/admin-routing';
+import { canShowManagerWrites } from '@/lib/system-admin';
 import { formatMileage, formatShopDateTime, formatVehicleYmm } from '@/lib/format';
 import { formatAdminDateOnly } from '@/lib/admin-format';
 import { draftKeys, useLocalDraft } from '@/lib/local-draft';
@@ -50,7 +52,10 @@ export function QualityCheckPage() {
   const pathname = usePathname();
   const search = useSearchParams();
   const tab: Tab = search.get('tab') === 'returned' ? 'returned' : search.get('tab') === 'done' ? 'done' : 'review';
-  const canPerform = !!user?.capabilities.includes(AppCapability.QUALITY_CHECK_PERFORM);
+  const isSafety = !!user?.capabilities.includes(AppCapability.QUALITY_CHECK_PERFORM);
+  // LTR-197 / D29: the Shop Manager and the System Admin use this screen as Safety's backup.
+  const isBackup = !isSafety && canShowManagerWrites(user?.role, user);
+  const canPerform = isSafety || isBackup;
   const { data, error, mutate } = useQualityCheckQueue(!!token && canPerform);
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState<Action | null>(null);
@@ -149,6 +154,13 @@ export function QualityCheckPage() {
 
       {/* Block C (Q10): one notice without a connection. */}
       <OfflineStrip message={messages.offlineNotSent} />
+      {isBackup && user ? (
+        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between" data-testid="qc-backup-banner">
+          <p><span className="font-semibold">{t.backupTitle}</span> {t.backupBody(user.name)}</p>
+          <Button asChild variant="outline" size="sm" className="shrink-0"><Link href="/admin">{t.backToAdmin}</Link></Button>
+        </div>
+      ) : null}
+      {data && data.onTeam === false ? <p className="mb-4 rounded-xl border px-4 py-3 text-sm text-muted-foreground" data-testid="qc-not-on-team">{t.notOnTeam}</p> : null}
       {actionError && !openId ? <InlineAlert className="mb-3">{actionError}</InlineAlert> : null}
 
       {tab === 'done' ? (

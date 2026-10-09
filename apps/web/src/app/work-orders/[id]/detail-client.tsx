@@ -239,6 +239,22 @@ export default function WorkOrderDetailPage() {
   const stoppedLine = !wo.resolvedBlocker && needsStart ? clockStoppedLine(wo.myClockStopped, messages) : null;
   const othersOpen = others.filter((job) => job.status !== 'cancelled');
   const blockerSince = (iso: string) => new Intl.DateTimeFormat(intlLocale(messages.locale), { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+  // LTR-197 / D28: let a Job taken from the team queue go back to it, then go home (it is no longer mine).
+  const releaseToTeamQueue = async (jobId: string, jobName: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/team-queue/${jobId}/release`, { method: 'POST' });
+      await mutateGlobal(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
+      void mutateGlobal('/api/team-queue');
+      showToast('success', messages.teamQueueReleased(jobName));
+      router.push('/');
+    } catch (e) {
+      setError(apiErrorMessage(e, messages, messages.actionFailed));
+    } finally {
+      setBusy(false);
+    }
+  };
   const startOrContinue = () => {
     // Block A (MG2): say when Start moved my clock from another Truck (D21).
     let movedFrom: WorkOrderDetailDto['clockMovedFrom'] = null;
@@ -463,6 +479,21 @@ export default function WorkOrderDetailPage() {
                           </Button>
                         ) : null}
                       </div>
+                    ) : null}
+                    {/* LTR-197 / D28: a Job taken from the team queue can go back to it (not while my time runs here). */}
+                    {job.workflowStepKey && job.status === 'to_do' && !job.activeBlocker ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="-ml-2"
+                        disabled={busy}
+                        title={messages.teamQueueReleaseHint}
+                        onClick={() => void releaseToTeamQueue(job.id, job.displayName)}
+                        data-testid="release-to-team-queue"
+                      >
+                        {messages.teamQueueRelease}
+                      </Button>
                     ) : null}
                   </li>
                 ))}

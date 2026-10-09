@@ -30,6 +30,7 @@ import { generateTemporaryPassword } from '../auth/temporary-password';
 import { normalizeAlias } from '../job-catalog/job-catalog.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LaborClockService } from '../work-orders/labor-clock.service';
+import { workflowStepMemberCapability } from '../work-orders/mandatory-jobs';
 
 /** D22: the three roster types. Exactly one per person with `role: mechanic`. */
 export const MECHANIC_CAPS = [
@@ -159,6 +160,13 @@ export class SystemAdminWritesService {
             grantedById: actor.id,
           },
         });
+        // LTR-197 / D-SET2: a new type takes the person off the step teams they can no longer be on.
+        const newCapability = mechanicCapability(input.mode);
+        const memberships = await tx.shopWorkflowStepMember.findMany({ where: { userId: id }, select: { stepId: true, step: { select: { stepKey: true } } } });
+        const leave = memberships.filter((membership) => workflowStepMemberCapability(membership.step.stepKey) !== toSharedCapability(newCapability));
+        if (leave.length) {
+          await tx.shopWorkflowStepMember.deleteMany({ where: { userId: id, stepId: { in: leave.map((membership) => membership.stepId) } } });
+        }
       }
 
       const data: Prisma.UserUpdateInput = {};

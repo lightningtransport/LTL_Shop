@@ -177,6 +177,7 @@ describe('SystemAdminWritesService roster', () => {
         findUnique: vi.fn().mockResolvedValueOnce(current).mockResolvedValueOnce(updated),
         update: vi.fn(),
       },
+      shopWorkflowStepMember: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn() },
       userCapability: {
         deleteMany: vi.fn(),
         create: vi.fn(),

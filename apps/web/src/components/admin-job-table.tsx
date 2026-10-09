@@ -231,7 +231,7 @@ export function AdminJobTable({
         <span className="flex h-10 min-w-0 items-center gap-2 max-lg:order-2 lg:h-9">
           {job.assignedMechanic ? (
             <><MechanicAvatar id={job.assignedMechanic.id} name={job.assignedMechanic.name} size="sm" /><span className="truncate">{job.assignedMechanic.name}</span></>
-          ) : <span className="text-muted-foreground">{isPmJob ? messages.pmJobUnassigned : messages.jobUnassigned}</span>}
+          ) : <span className="text-muted-foreground">{job.workflowStepKey ? messages.jobInTeamQueue : isPmJob ? messages.pmJobUnassigned : messages.jobUnassigned}</span>}
         </span>
       );
     }

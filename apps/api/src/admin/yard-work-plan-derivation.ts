@@ -36,6 +36,8 @@ export type WorkPlanDerivationJob = {
   externalSince?: Date | null;
   externalKind?: string | null;
   externalNote?: string | null;
+  /** LTR-197 / D28: the step whose team queue the Job waits in (only for a Job born in a queue). */
+  workflowStepKey?: string | null;
 };
 
 /** LTR-188 / D24: the Job's external-shop state as the DTOs carry it (null when it is in the shop). */
@@ -172,6 +174,8 @@ export function toWorkPlanJobDto(
     ...(job.assignedMechanic !== undefined ? { assignedMechanic: job.assignedMechanic } : {}),
     helperOfJobId: job.helperOfJobId ?? null,
     external,
+    // LTR-197 / D28: unowned and in its step's team queue — waiting to be taken, not "unassigned".
+    teamQueueStepKey: job.workflowStepKey && !job.assignedMechanic && job.status === 'to_do' ? job.workflowStepKey : null,
   };
 }
 

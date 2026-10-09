@@ -15,16 +15,21 @@ type Owner = { id: string; active: boolean; capabilities: { capability: string }
 const daniel: Owner = { id: 'daniel', active: true, capabilities: [{ capability: 'MECHANIC_PM' }] };
 const anthony: Owner = { id: 'anthony', active: true, capabilities: [{ capability: 'MECHANIC_STANDARD' }] };
 
-function step(stepKey: string, jobName: string, categoryName: string, owner: Owner = null) {
+const alejandro: Owner = { id: 'alejandro', active: true, capabilities: [{ capability: 'MECHANIC_STANDARD' }] };
+const safety: Owner = { id: 'safety', active: true, capabilities: [{ capability: 'QUALITY_CHECK_PERFORM' }] };
+
+/** LTR-197 / D28: a step's team (`owner` alone is a team of one; an array is the whole team). */
+function step(stepKey: string, jobName: string, categoryName: string, owner: Owner | Owner[] = null) {
   const job = catalog[jobName];
+  const team = (Array.isArray(owner) ? owner : [owner]).filter((member): member is NonNullable<Owner> => member !== null);
   return {
     stepKey,
     catalogJob: { id: job.id, categoryId: job.categoryId, displayName: job.displayName, category: { name: categoryName } },
-    defaultMechanic: owner,
+    members: team.map((user) => ({ user })),
   };
 }
 
-const configuredSteps = (overrides: { pm?: Owner; detailing?: Owner; qc?: Owner } = {}) => [
+const configuredSteps = (overrides: { pm?: Owner; detailing?: Owner | Owner[]; qc?: Owner | Owner[] } = {}) => [
   step('pm', 'PM A Service', 'PM', overrides.pm ?? daniel),
   step('alignment', 'Alignment', 'Suspension & Steering', anthony),
   step('detailing', 'Detailing', 'Detailing', overrides.detailing ?? anthony),
@@ -61,6 +66,22 @@ describe('mandatory Work Plan jobs from the shop workflow (LTR-157 / D13, D15)',
       Detailing: null,
       'Quality Check': null,
     });
+  });
+
+  it('LTR-197 / D28: a team of two or more sends the Job to the team queue; QC always waits in Safety\'s queue', async () => {
+    const jobs = await resolveMandatoryJobs(client(configuredSteps({ detailing: [anthony, alejandro], qc: [safety] })) as never, []);
+    expect(jobs.map((job) => [job.displayName, job.assignedMechanicId, job.workflowStepKey])).toEqual([
+      ['PM A Service', 'daniel', null],
+      ['Alignment', 'anthony', null],
+      ['Detailing', null, 'detailing'],
+      ['Quality Check', null, 'quality_check'],
+    ]);
+  });
+
+  it('LTR-197 / D-SET2: a team member who changed type counts for nobody; the one left gets the Job', async () => {
+    const changed: Owner = { id: 'now-pm', active: true, capabilities: [{ capability: 'MECHANIC_PM' }] };
+    const jobs = await resolveMandatoryJobs(client(configuredSteps({ detailing: [changed, alejandro] })) as never, []);
+    expect(jobs.find((job) => job.displayName === 'Detailing')).toMatchObject({ assignedMechanicId: 'alejandro', workflowStepKey: null });
   });
 
   it('skips steps the Manager already picked (PM B counts as PM)', async () => {
