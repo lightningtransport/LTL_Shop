@@ -838,7 +838,9 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
   - unos 4 meses de visitas cerradas, con horas reales, PM con millaje y
     QC de Safety;
   - Partes y costos: proveedores, precios, compras (una corregida y una
-    anulada) y reparaciones externas.
+    anulada) y reparaciones externas;
+  - tarifa de mano de obra ($95/h, luego $105/h este mes) y facturas
+    internas a Finanzas (aceptadas, enviada, anulada y un borrador).
 
   Volver a correrlo reinicia todo, incluido Partes y costos. Se niega a
   correr fuera de `localhost` o con una base cuyo nombre no diga "demo".

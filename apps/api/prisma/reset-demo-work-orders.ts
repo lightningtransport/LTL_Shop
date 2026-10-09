@@ -11,7 +11,8 @@
  * `--demo` (used by `prisma:demo-local`): the local `ltl_shop_demo` database (DEMO_DATABASE_URL), more trucks, the
  * extra scenarios of the mockups (official pause, external shop, helper, cancelled Job and Work Order, missing steps,
  * work request, Quality Check by Safety, team queue, a clock left running yesterday), about four months of finished
- * visits (`demo-history.ts`) and Parts & costs in use (`demo-parts-costs.ts`). Some open Work Orders are moved a few
+ * visits (`demo-history.ts`), Parts & costs in use (`demo-parts-costs.ts`), the labor rate and internal invoices to
+ * Finance (`demo-labor-finance.ts`). Some open Work Orders are moved a few
  * days back (`demo-time.ts`). It also wipes Parts & costs first. It refuses any host other than this machine.
  *
  * Production reads apps/api/.env.production.local (gitignored) and refuses to run while any active user is
@@ -53,6 +54,8 @@ import { PurchasesService } from '../src/parts-costs/purchases.service';
 import { OutsideRepairsService } from '../src/parts-costs/outside-repairs.service';
 import { PartsCatalogService } from '../src/parts-costs/parts-catalog.service';
 import { InvoiceFiles } from '../src/parts-costs/invoice-files';
+import { LaborRatesService } from '../src/parts-costs/labor-rates.service';
+import { InternalInvoicesService } from '../src/parts-costs/internal-invoices.service';
 import { toSharedCapability } from '../src/auth/capabilities';
 import type { AuthUser } from '../src/auth/auth.guard';
 import { TEST_ROSTER } from '../src/admin/test-roster-plan';
@@ -61,6 +64,7 @@ import { wipePartsCosts } from './wipe-parts-costs';
 import type { Actors, DemoKit, ShopJobInput, TruckRow } from './demo-kit';
 import { buildHistory } from './demo-history';
 import { buildPartsCosts, type CurrentJobs } from './demo-parts-costs';
+import { buildLaborAndInvoices } from './demo-labor-finance';
 import { retime, shopMinutesNow, shopToday, workdaysAgo } from './demo-time';
 
 const demo = process.argv.includes('--demo');
@@ -702,6 +706,8 @@ const demoKit: DemoKit = {
   purchases: new PurchasesService(prisma, activity, new InvoiceFiles(null)),
   outsideRepairs: new OutsideRepairsService(prisma, activity),
   partsCatalog: new PartsCatalogService(prisma, activity),
+  laborRates: new LaborRatesService(prisma, activity),
+  internalInvoices: new InternalInvoicesService(prisma, activity),
   meta, version, createWorkOrder, inspect, addShopJobs, jobId, laneJobId, assignMandatory, finishJob, finishPm,
 };
 
@@ -822,6 +828,8 @@ async function main() {
     const summary = await buildPartsCosts(demoKit, actors, history, current);
     console.log('\nParts & costs');
     console.log(`  ${summary.vendors} vendors (1 inactive), ${summary.partsPriced} parts priced (${summary.partsWithVendor} with a usual vendor), ${summary.purchases} purchases (1 corrected, 1 voided), ${summary.outsideRepairs} outside repairs`);
+    const finance = await buildLaborAndInvoices(demoKit, actors, history);
+    console.log(`  ${finance.rates} labor rates ($95/h, then $105/h this month), ${finance.invoices} internal invoices to Finance (accepted, sent, void, draft)`);
     const trucksWithoutWorkOrder = await prisma.truck.findMany({
       where: { workOrders: { none: { status: { in: ['created', 'in_progress', 'waiting_paused'] } } } },
       select: { truckNumber: true },

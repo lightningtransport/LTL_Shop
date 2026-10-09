@@ -1,5 +1,6 @@
 /**
- * What `reset-demo-work-orders.ts` hands the demo builders (`demo-history.ts`, `demo-parts-costs.ts`): the services,
+ * What `reset-demo-work-orders.ts` hands the demo builders (`demo-history.ts`, `demo-parts-costs.ts`,
+ * `demo-labor-finance.ts`): the services,
  * acting as each user, and the steps the scenarios share.
  */
 import type { Priority, WorkPlanInspectionOutcome, WorkPlanJobLane } from '@ltl-shop/shared';
@@ -12,6 +13,8 @@ import type { ShopWorkflowService } from '../src/admin/shop-workflow.service';
 import type { PurchasesService } from '../src/parts-costs/purchases.service';
 import type { OutsideRepairsService } from '../src/parts-costs/outside-repairs.service';
 import type { PartsCatalogService } from '../src/parts-costs/parts-catalog.service';
+import type { LaborRatesService } from '../src/parts-costs/labor-rates.service';
+import type { InternalInvoicesService } from '../src/parts-costs/internal-invoices.service';
 import type { AuthUser } from '../src/auth/auth.guard';
 
 export type TruckRow = { id: string; truckNumber: string; make: string | null; model: string | null; mileage: number | null };
@@ -39,6 +42,8 @@ export type DemoKit = {
   purchases: PurchasesService;
   outsideRepairs: OutsideRepairsService;
   partsCatalog: PartsCatalogService;
+  laborRates: LaborRatesService;
+  internalInvoices: InternalInvoicesService;
   meta: (expectedVersion: number) => { expectedVersion: number; idempotencyKey: string };
   version: (workOrderId: string) => Promise<number>;
   createWorkOrder: (actors: Actors, truck: TruckRow, input: { priority?: Priority; notes?: string }) => Promise<string>;
