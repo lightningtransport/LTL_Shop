@@ -8,9 +8,11 @@
  *   ... -- --trucks=905,968,922,931,944,957,973,986,991                                   # pick the trucks (in scenario order)
  *   npm run prisma:demo-local --workspace=@ltl-shop/api                                    # local demo database, every scenario
  *
- * `--demo` (used by `prisma:demo-local`): the local `ltl_shop_demo` database (DEMO_DATABASE_URL), more trucks and
- * the extra scenarios of the mockups (official pause, external shop, helper, cancelled Job and Work Order, missing
- * steps, work request). It refuses any host other than this machine.
+ * `--demo` (used by `prisma:demo-local`): the local `ltl_shop_demo` database (DEMO_DATABASE_URL), more trucks, the
+ * extra scenarios of the mockups (official pause, external shop, helper, cancelled Job and Work Order, missing steps,
+ * work request, Quality Check by Safety, team queue, a clock left running yesterday), about four months of finished
+ * visits (`demo-history.ts`) and Parts & costs in use (`demo-parts-costs.ts`). Some open Work Orders are moved a few
+ * days back (`demo-time.ts`). It also wipes Parts & costs first. It refuses any host other than this machine.
  *
  * Production reads apps/api/.env.production.local (gitignored) and refuses to run while any active user is
  * outside the LTR-160 test roster: once real users are live, their Work Orders are not demo data.
@@ -44,10 +46,22 @@ import { AdminService } from '../src/admin/admin.service';
 import { YardOperationsService } from '../src/admin/yard-operations.service';
 import { YardWorkPlanService } from '../src/admin/yard-work-plan.service';
 import { classifyWorkPlanLane } from '../src/admin/yard-work-plan-derivation';
+import { ShopWorkflowService } from '../src/admin/shop-workflow.service';
+import { LaborClockService } from '../src/work-orders/labor-clock.service';
+import { QualityCheckService } from '../src/quality-check/quality-check.service';
+import { PurchasesService } from '../src/parts-costs/purchases.service';
+import { OutsideRepairsService } from '../src/parts-costs/outside-repairs.service';
+import { PartsCatalogService } from '../src/parts-costs/parts-catalog.service';
+import { InvoiceFiles } from '../src/parts-costs/invoice-files';
 import { toSharedCapability } from '../src/auth/capabilities';
 import type { AuthUser } from '../src/auth/auth.guard';
 import { TEST_ROSTER } from '../src/admin/test-roster-plan';
 import { WORK_ORDER_ACTIVITY_WHERE, wipeWorkOrders } from './wipe-work-orders';
+import { wipePartsCosts } from './wipe-parts-costs';
+import type { Actors, DemoKit, ShopJobInput, TruckRow } from './demo-kit';
+import { buildHistory } from './demo-history';
+import { buildPartsCosts, type CurrentJobs } from './demo-parts-costs';
+import { retime, shopMinutesNow, shopToday, workdaysAgo } from './demo-time';
 
 const demo = process.argv.includes('--demo');
 const local = demo || process.argv.includes('--local');
@@ -76,22 +90,24 @@ if (demo) {
 // needs far more than Prisma's 5 s default for the same round trips.
 const prisma = new PrismaService({ transactionOptions: { timeout: 60_000, maxWait: 30_000 } });
 const activity = new ActivityLogService();
-const workOrders = new WorkOrdersService(prisma, activity);
+// --demo: the day close and one clock per mechanic, as the API runs them (D20, D21).
+const clock = demo ? new LaborClockService(prisma, activity) : undefined;
+const workOrders = new WorkOrdersService(prisma, activity, clock);
 const yardOperations = new YardOperationsService(prisma, new TrucksService(prisma), activity);
-const admin = new AdminService(prisma, activity, workOrders, yardOperations);
-const workPlan = new YardWorkPlanService(prisma, workOrders, yardOperations);
-
-type Actors = { manager: AuthUser; general: AuthUser; pm: AuthUser; alignment: AuthUser; detailing: AuthUser };
+const admin = new AdminService(prisma, activity, workOrders, yardOperations, clock);
+const workPlan = new YardWorkPlanService(prisma, workOrders, yardOperations, clock);
+const qualityCheck = new QualityCheckService(prisma, activity);
+const shopWorkflow = new ShopWorkflowService(prisma);
 
 type Scenario = {
   key: string;
   title: string;
   check: string;
   needsFinishedPm?: boolean;
+  /** --demo: the Work Order happened this many workdays ago (`retime`), from `startMinutes` (shop time). */
+  backdate?: { workdays: number; startMinutes?: number };
   build: (truck: TruckRow, actors: Actors) => Promise<string>;
 };
-
-type TruckRow = { id: string; truckNumber: string; make: string | null; model: string | null; mileage: number | null };
 
 const SCENARIOS: Scenario[] = [
   {
@@ -109,6 +125,7 @@ const SCENARIOS: Scenario[] = [
     key: 'M02-assign',
     title: 'Inspección con hallazgos: trabajo extra sin asignar',
     check: 'Manager: "Siguiente paso" pide asignar Brake Inspection y Lights. Needs attention lo marca.',
+    backdate: { workdays: 2 },
     build: async (truck, actors) => {
       const id = await createWorkOrder(actors, truck, { priority: Priority.HIGH });
       await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
@@ -149,20 +166,23 @@ const SCENARIOS: Scenario[] = [
     title: 'Bloqueado: esperando piezas',
     check: 'MG terminó Battery y bloqueó Air Bag Replacement (Waiting for Parts); su tiempo se detuvo. '
       + 'Manager lo ve en Needs attention, el Truck y la WO, con la nota, y lo resuelve.',
+    backdate: { workdays: 2 },
     build: async (truck, actors) => {
+      // Not the mechanic of "Trabajo en curso": a clock runs on one truck at a time (D21).
+      const mechanic = actors.generals[1] ?? actors.general;
       const id = await createWorkOrder(actors, truck, {
         priority: Priority.CRITICAL,
         notes: 'Tiene carga programada para mañana.',
       });
       await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
       await addShopJobs(actors, truck, [
-        { category: 'Suspension & Steering', job: 'Air Bag Replacement', assignee: actors.general },
-        { category: 'Electrical & Starting', job: 'Battery', assignee: actors.general },
+        { category: 'Suspension & Steering', job: 'Air Bag Replacement', assignee: mechanic },
+        { category: 'Electrical & Starting', job: 'Battery', assignee: mechanic },
       ]);
       await assignMandatory(actors, id);
-      await workOrders.start(actors.general, id);
-      await workOrders.completeJob(actors.general, id, await jobId(id, 'Battery'), { notes: 'Batería nueva instalada.' });
-      await workOrders.reportBlocker(actors.general, id, {
+      await workOrders.start(mechanic, id);
+      await workOrders.completeJob(mechanic, id, await jobId(id, 'Battery'), { notes: 'Batería nueva instalada.' });
+      await workOrders.reportBlocker(mechanic, id, {
         jobId: await jobId(id, 'Air Bag Replacement'),
         reason: BlockerReason.WAITING_FOR_PARTS,
         notes: 'Falta la bolsa de aire trasera del lado del conductor.',
@@ -170,7 +190,7 @@ const SCENARIOS: Scenario[] = [
       const blocker = await prisma.pauseEvent.findFirstOrThrow({
         where: { workOrderId: id, isOfficialPause: false, resolvedAt: null },
       });
-      await workOrders.addBlockerNote(actors.general, id, blocker.id, { body: 'Pedida al proveedor; dicen que llega mañana.' });
+      await workOrders.addBlockerNote(mechanic, id, blocker.id, { body: 'Pedida al proveedor; dicen que llega mañana.' });
       return id;
     },
   },
@@ -238,6 +258,7 @@ const DEMO_SCENARIOS: Scenario[] = [
     key: 'DEMO-paused',
     title: 'En pausa oficial: esperando aprobación',
     check: 'Manager: Dashboard "Blocked or paused" con Resume; la WO dice "Paused · Waiting for Approval".',
+    backdate: { workdays: 1 },
     build: async (truck, actors) => {
       const id = await createWorkOrder(actors, truck, { priority: Priority.HIGH, notes: 'El cliente debe aprobar el presupuesto.' });
       await inspect(actors, truck, WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
@@ -265,7 +286,8 @@ const DEMO_SCENARIOS: Scenario[] = [
   {
     key: 'DEMO-external-truck',
     title: 'Camión fuera del taller (taller externo)',
-    check: 'Yard: "Out of shop · Air Bag Replacement"; la WO dice "Truck out".',
+    check: 'Yard: "Out of shop · Air Bag Replacement"; la WO dice "Truck out". Outside repairs: su factura está ligada al Job.',
+    backdate: { workdays: 3 },
     build: async (truck, actors) => {
       const id = await createWorkOrder(actors, truck, { priority: Priority.CRITICAL });
       await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
@@ -292,6 +314,7 @@ const DEMO_SCENARIOS: Scenario[] = [
     key: 'DEMO-cancelled-job-request',
     title: 'Job cancelado y pedido de trabajo abierto',
     check: 'Lights en "Done and cancelled" con su motivo; Notas con un pedido "Work request · Open" y Mark handled.',
+    backdate: { workdays: 1 },
     build: async (truck, actors) => {
       const id = await createWorkOrder(actors, truck, {});
       await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
@@ -328,6 +351,111 @@ const DEMO_SCENARIOS: Scenario[] = [
       return id;
     },
   },
+  {
+    key: 'DEMO-qc-critical',
+    title: 'Solo falta QC (Critical)',
+    check: 'Safety: primero en "To review" por ser Critical; Take y Approve o Return.',
+    needsFinishedPm: true,
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, { priority: Priority.CRITICAL, notes: 'Sale mañana temprano.' });
+      await inspect(actors, truck, WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
+      await assignMandatory(actors, id);
+      await finishAllButQc(actors, truck, id);
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-qc-high',
+    title: 'Solo falta QC (High)',
+    check: 'Safety: segundo en "To review".',
+    needsFinishedPm: true,
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, { priority: Priority.HIGH });
+      await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
+      // Not Anthony: his clock runs on "Trabajo en curso" (D21).
+      const mechanic = actors.generals[1] ?? actors.general;
+      await addShopJobs(actors, truck, [{ category: 'Tires & Wheels', job: 'Tire Rotation', assignee: mechanic }]);
+      await assignMandatory(actors, id);
+      await finishAllButQc(actors, truck, id);
+      await workOrders.start(mechanic, id);
+      await workOrders.completeJob(mechanic, id, await jobId(id, 'Tire Rotation'), { notes: 'Rotación hecha, presión ajustada.' });
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-qc-taken',
+    title: 'QC tomado por Safety 2',
+    check: 'Safety 2 lo tiene como suyo (Approve, Return, Let go); Safety 1 lo ve tomado por otra persona.',
+    needsFinishedPm: true,
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, {});
+      await inspect(actors, truck, WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
+      await assignMandatory(actors, id);
+      await finishAllButQc(actors, truck, id);
+      await qualityCheck.take(actors.safety[1] ?? actors.safety[0], id);
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-qc-returned',
+    title: 'Devuelto por Safety',
+    check: 'Safety 1 lo devolvió por la alineación: Safety lo ve en "Returned"; el Manager lo ve bloqueado con la nota y lo resuelve.',
+    needsFinishedPm: true,
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, {});
+      await inspect(actors, truck, WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
+      await assignMandatory(actors, id);
+      await finishAllButQc(actors, truck, id);
+      await qualityCheck.take(actors.safety[0], id);
+      await qualityCheck.returnTruck(actors.safety[0], id, {
+        notes: 'Sigue jalando a la derecha en la prueba de manejo.',
+        jobId: await laneJobId(id, WorkPlanJobLane.ALIGNMENT),
+      });
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-qc-approved',
+    title: 'QC aprobado por Safety: listo para cerrar',
+    check: 'Dashboard "Ready to close"; el Manager cierra la WO desde el Truck o la WO.',
+    needsFinishedPm: true,
+    build: async (truck, actors) => {
+      const id = await createWorkOrder(actors, truck, {});
+      await inspect(actors, truck, WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
+      await assignMandatory(actors, id);
+      await finishAllButQc(actors, truck, id);
+      await qualityCheck.take(actors.safety[0], id);
+      await qualityCheck.approve(actors.safety[0], id);
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-yesterday-running',
+    title: 'Reloj que quedó corriendo ayer',
+    check: 'El mecánico ve "Ayer quedó en curso": el cierre del día cortó su tiempo a las 5:00 p.m.; Continue lo retoma.',
+    backdate: { workdays: 1, startMinutes: 8 * 60 },
+    build: async (truck, actors) => {
+      const mechanic = actors.generals[2] ?? actors.generals[1] ?? actors.general;
+      const id = await createWorkOrder(actors, truck, {});
+      await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
+      await addShopJobs(actors, truck, [{ category: 'Air & Brake System', job: 'Air Lines', assignee: mechanic }]);
+      await assignMandatory(actors, id);
+      await workOrders.start(mechanic, id);
+      return id;
+    },
+  },
+  {
+    key: 'DEMO-team-queue',
+    title: 'Detailing en la cola del equipo',
+    check: 'Setup: Detailing tiene equipo de dos. Los dos ven el Job en "Team queue" y cualquiera lo toma.',
+    build: async (truck, actors) => {
+      await shopWorkflow.update(actors.manager, { steps: [{ stepKey: ShopWorkflowStepKey.DETAILING, memberIds: [actors.detailing.id, actors.general.id] }] });
+      const id = await createWorkOrder(actors, truck, {});
+      await inspect(actors, truck, WorkPlanInspectionOutcome.NO_ISSUES_FOUND);
+      await assignMandatory(actors, id, [WorkPlanJobLane.DETAILING]);
+      return id;
+    },
+  },
 ];
 
 /** `--demo`: more trucks (a few stay with no Work Order: "No open Work Order"). */
@@ -342,7 +470,17 @@ const DEMO_TRUCKS = [
   { truckNumber: '608', make: 'Volvo', model: 'VNL 860', year: 2025, mileage: 45200, vin: '4V4NC9EH0SN000608', location: 'Orient Rd, Tampa, FL 33610' },
   { truckNumber: '609', make: 'Freightliner', model: 'Cascadia', year: 2022, mileage: 333000, vin: '3AKJHHDR0NS000609', location: null },
   { truckNumber: '610', make: 'Peterbilt', model: '579', year: 2026, mileage: 21000, vin: '1XPBD49X6TD000610', location: null },
+  { truckNumber: '611', make: 'Volvo', model: 'VNL 860', year: 2023, mileage: 254300, vin: '4V4NC9EH0PN000611', location: null },
+  { truckNumber: '612', make: 'Freightliner', model: 'Cascadia', year: 2024, mileage: 132700, vin: '3AKJHHDR0RS000612', location: 'Orient Rd, Tampa, FL 33610' },
+  { truckNumber: '613', make: 'Mack', model: 'Anthem', year: 2023, mileage: 298400, vin: '1M1AN4GY0PM000613', location: null },
+  { truckNumber: '614', make: 'Volvo', model: 'VNL 760', year: 2024, mileage: 118900, vin: '4V4NC9EH0RN000614', location: null },
+  { truckNumber: '615', make: 'Freightliner', model: 'Cascadia', year: 2022, mileage: 377100, vin: '3AKJHHDR0NS000615', location: null },
+  { truckNumber: '616', make: 'Mack', model: 'Anthem', year: 2025, mileage: 76500, vin: '1M1AN4GY0SM000616', location: null },
+  { truckNumber: '617', make: 'Kenworth', model: 'T680', year: 2024, mileage: 165800, vin: '1XKYD49X0RJ000617', location: null },
 ];
+
+/** --demo: a mechanic who left (People → inactive). Not in any scenario. */
+const DEMO_INACTIVE_MECHANIC = { email: 'luis@lightning.local', name: 'Luis' };
 
 async function upsertDemoTrucks() {
   for (const truck of DEMO_TRUCKS) {
@@ -387,7 +525,7 @@ async function inspect(actors: Actors, truck: TruckRow, outcome: WorkPlanInspect
 async function addShopJobs(
   actors: Actors,
   truck: TruckRow,
-  jobs: Array<{ category: string; job: string; assignee?: AuthUser }>,
+  jobs: ShopJobInput[],
 ) {
   const rows = [];
   for (const item of jobs) {
@@ -430,13 +568,14 @@ async function laneJobId(workOrderId: string, lane: WorkPlanJobLane) {
 }
 
 /** PM, Alignment and Detailing go to their owners when the Shop workflow has no default owner (local seed). */
-async function assignMandatory(actors: Actors, workOrderId: string) {
+async function assignMandatory(actors: Actors, workOrderId: string, skip: WorkPlanJobLane[] = []) {
   const owners: Array<[WorkPlanJobLane, AuthUser]> = [
     [WorkPlanJobLane.PM, actors.pm],
     [WorkPlanJobLane.ALIGNMENT, actors.alignment],
     [WorkPlanJobLane.DETAILING, actors.detailing],
   ];
   for (const [lane, owner] of owners) {
+    if (skip.includes(lane)) continue;
     const id = await laneJobId(workOrderId, lane);
     const job = await prisma.workOrderJob.findUniqueOrThrow({ where: { id } });
     if (job.assignedMechanicId) continue;
@@ -449,15 +588,15 @@ async function finishJob(mechanic: AuthUser, workOrderId: string, lane: WorkPlan
   await workOrders.completeJob(mechanic, workOrderId, await laneJobId(workOrderId, lane), { notes });
 }
 
-async function finishPm(actors: Actors, truck: TruckRow, workOrderId: string) {
+async function finishPm(actors: Actors, truck: TruckRow, workOrderId: string, options: { observedMileage?: number; categories?: number } = {}) {
   const pmJobId = await laneJobId(workOrderId, WorkPlanJobLane.PM);
   await workOrders.startPmJob(actors.pm, workOrderId, pmJobId);
   const service = await workOrders.getPmService(actors.pm, workOrderId);
-  const category = service.categories.find((item) => item.parts.length);
-  if (!category) throw new Error(`No PM part fits truck ${truck.truckNumber}`);
+  const categories = service.categories.filter((item) => item.parts.length).slice(0, options.categories ?? 1);
+  if (!categories.length) throw new Error(`No PM part fits truck ${truck.truckNumber}`);
   await workOrders.updatePmService(actors.pm, workOrderId, {
-    observedMileage: truck.mileage ?? 0,
-    selections: [{ partCategoryId: category.id, partId: category.parts[0].id }],
+    observedMileage: options.observedMileage ?? truck.mileage ?? 0,
+    selections: categories.map((category) => ({ partCategoryId: category.id, partId: category.parts[0].id })),
   });
   await workOrders.completeJob(actors.pm, workOrderId, pmJobId, { notes: 'PM completo.' });
 }
@@ -511,9 +650,16 @@ async function resolveActors(users: UserRow[]): Promise<Actors> {
   const alignment = defaultOwner(ShopWorkflowStepKey.ALIGNMENT, 'MECHANIC_STANDARD') ?? standard[0];
   const detailing = defaultOwner(ShopWorkflowStepKey.DETAILING, 'MECHANIC_STANDARD')
     ?? standard.find((user) => user.id !== alignment?.id);
-  const general = standard.find((user) => user.id !== alignment?.id && user.id !== detailing?.id);
+  // Anthony first when he is there: the demo's general mechanic (docs/reference/DEMO.md). Cristian (the owner) last.
+  const rank = (user: UserRow) => (user.email.startsWith('anthony@') ? 0 : user.email.startsWith('cristian@') ? 2 : 1);
+  const generals = standard
+    .filter((user) => user.id !== alignment?.id && user.id !== detailing?.id && user.role === 'mechanic')
+    .sort((left, right) => rank(left) - rank(right));
+  const general = generals[0];
+  const safety = users.filter((user) => user.role === 'mechanic' && has(user, 'QUALITY_CHECK_PERFORM'));
 
   const missing = Object.entries({ manager, pm, alignment, detailing, general }).filter(([, user]) => !user).map(([role]) => role);
+  if (demo && !safety.length) missing.push('safety');
   if (missing.length) throw new Error(`Cannot find an active user for: ${missing.join(', ')}`);
   return {
     manager: toAuthUser(manager!),
@@ -521,6 +667,8 @@ async function resolveActors(users: UserRow[]): Promise<Actors> {
     alignment: toAuthUser(alignment!),
     detailing: toAuthUser(detailing!),
     general: toAuthUser(general!),
+    generals: generals.map(toAuthUser),
+    safety: safety.map(toAuthUser),
   };
 }
 
@@ -549,6 +697,14 @@ async function pickTrucks(): Promise<TruckRow[]> {
   return picked;
 }
 
+const demoKit: DemoKit = {
+  prisma, workOrders, admin, workPlan, qualityCheck, shopWorkflow,
+  purchases: new PurchasesService(prisma, activity, new InvoiceFiles(null)),
+  outsideRepairs: new OutsideRepairsService(prisma, activity),
+  partsCatalog: new PartsCatalogService(prisma, activity),
+  meta, version, createWorkOrder, inspect, addShopJobs, jobId, laneJobId, assignMandatory, finishJob, finishPm,
+};
+
 async function main() {
   const host = new URL(process.env.DATABASE_URL ?? 'postgresql://unknown').hostname;
   console.log(`Database host: ${host} (${local ? 'local' : 'production'})`);
@@ -568,7 +724,9 @@ async function main() {
 
   const actors = await resolveActors(users);
   console.log('\nActors');
-  for (const [role, user] of Object.entries(actors)) console.log(`  ${role.padEnd(10)} ${user.name} <${user.email}>`);
+  for (const [role, value] of Object.entries(actors)) {
+    for (const user of [value].flat()) console.log(`  ${role.padEnd(10)} ${user.name} <${user.email}>`);
+  }
 
   if (demo && apply) await upsertDemoTrucks();
   const trucks = await pickTrucks();
@@ -598,14 +756,51 @@ async function main() {
     return;
   }
 
-  await prisma.$transaction((tx) => wipeWorkOrders(tx), { timeout: 60_000 });
-  console.log('\nDeleted.');
+  await prisma.$transaction(async (tx) => {
+    if (demo) await wipePartsCosts(tx);
+    await wipeWorkOrders(tx);
+  }, { timeout: 60_000 });
+  console.log(demo ? '\nDeleted (and Parts & costs).' : '\nDeleted.');
+
+  let history: Awaited<ReturnType<typeof buildHistory>> | null = null;
+  if (demo) {
+    await prisma.user.upsert({
+      where: { email: DEMO_INACTIVE_MECHANIC.email },
+      update: { name: DEMO_INACTIVE_MECHANIC.name, role: 'mechanic', active: false },
+      create: { ...DEMO_INACTIVE_MECHANIC, role: 'mechanic', active: false, capabilities: { create: [{ capability: 'MECHANIC_STANDARD' }] } },
+    });
+    // The step teams start empty (Quality Check keeps Safety); DEMO-team-queue gives Detailing a team.
+    await shopWorkflow.update(actors.manager, {
+      steps: [ShopWorkflowStepKey.PM, ShopWorkflowStepKey.ALIGNMENT, ShopWorkflowStepKey.DETAILING].map((stepKey) => ({ stepKey, memberIds: [] })),
+    });
+    const scenarios = activeScenarios();
+    const spare = (await prisma.truck.findMany({
+      where: { mileage: { not: null }, id: { notIn: trucks.map((truck) => truck.id) } },
+      select: { id: true, truckNumber: true, make: true, model: true, mileage: true },
+      orderBy: { truckNumber: 'asc' },
+    }));
+    const withHistory = [...trucks, ...spare].filter((truck) => truck.truckNumber !== '610');
+    const recent = [
+      ...spare,
+      ...['M04-in-service', 'DEMO-helper'].map((key) => trucks[scenarios.findIndex((scenario) => scenario.key === key)]),
+    ].filter(Boolean);
+    console.log('\nHistory (about four months)');
+    history = await buildHistory(demoKit, actors, withHistory, recent);
+  }
 
   console.log('\nDemo');
+  const current: CurrentJobs = {};
+  const todaySince = new Date();
   for (const [index, scenario] of activeScenarios().entries()) {
     const truck = trucks[index];
     try {
+      const since = new Date();
       const id = await scenario.build(truck, actors);
+      if (demo && scenario.backdate) {
+        await retime(prisma, since, workdaysAgo(scenario.backdate.workdays), { startMinutes: scenario.backdate.startMinutes ?? 7 * 60 + 40 });
+      }
+      if (scenario.key === 'DEMO-external-truck') current.truckOut = { truck, jobId: await jobId(id, 'Air Bag Replacement') };
+      if (scenario.key === 'M03-blocked') current.waitingForParts = { truck };
       const wo = await prisma.workOrder.findUniqueOrThrow({ where: { id }, select: { displayId: true, status: true } });
       console.log(`  ✓ Truck ${truck.truckNumber} · ${wo.displayId} · ${wo.status} · ${scenario.title}`);
       console.log(`      ${scenario.check}`);
@@ -613,6 +808,26 @@ async function main() {
       console.error(`  ✗ Truck ${truck.truckNumber} · ${scenario.key}: ${describe(error)}`);
       process.exitCode = 1;
     }
+  }
+
+  if (demo) {
+    // Today's Work Orders happened this morning, not in the same second: spread from 7:00 up to now.
+    const end = shopMinutesNow() - 2;
+    await retime(prisma, todaySince, shopToday(), { startMinutes: Math.max(0, Math.min(7 * 60, end - 60)), endMinutes: end });
+  }
+
+  if (demo && history) {
+    // The API closes yesterday's clock on its first read; do it now so the data is as the app shows it.
+    await clock!.closeDue();
+    const summary = await buildPartsCosts(demoKit, actors, history, current);
+    console.log('\nParts & costs');
+    console.log(`  ${summary.vendors} vendors (1 inactive), ${summary.partsPriced} parts priced (${summary.partsWithVendor} with a usual vendor), ${summary.purchases} purchases (1 corrected, 1 voided), ${summary.outsideRepairs} outside repairs`);
+    const trucksWithoutWorkOrder = await prisma.truck.findMany({
+      where: { workOrders: { none: { status: { in: ['created', 'in_progress', 'waiting_paused'] } } } },
+      select: { truckNumber: true },
+      orderBy: { truckNumber: 'asc' },
+    });
+    console.log(`\nNo open Work Order: ${trucksWithoutWorkOrder.map((truck) => truck.truckNumber).join(', ')}`);
   }
 }
 

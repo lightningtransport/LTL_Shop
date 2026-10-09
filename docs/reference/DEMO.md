@@ -1,0 +1,122 @@
+# Demo local: toda la app en uso
+
+**Actualizado:** 2026-10-09
+**Para qué:** mostrarles la app a los usuarios (Manager, mecánicos, PM, Safety) con datos que hacen ver cada pantalla en uso.
+**Dónde:** solo en esta máquina, base `ltl_shop_demo`. Nunca en producción.
+
+## Armarla
+
+```bash
+npm run prisma:demo-local --workspace=@ltl-shop/api
+```
+
+Esto hace cuatro cosas:
+1. Crea `ltl_shop_demo` si no existe y aplica las migraciones.
+2. Corre el seed: personas, catálogo, piezas de PM, Shop workflow y camiones.
+3. Corre `reset-demo-work-orders.ts --demo --apply`.
+4. Si se vuelve a correr, borra todo y lo arma de nuevo. No da errores de proveedor o factura repetidos.
+
+Es mejor **armarla la mañana de la demo**, porque las horas son relativas al momento en que corre:
+- lo de hoy queda repartido entre las 7:00 y la hora en que corre;
+- lo de ayer y los días anteriores, en horario de taller.
+
+Si corre después de las 5:00 p.m., el cierre del día ya cortó los relojes de hoy.
+
+Para verla:
+1. `npm run build --workspace=@ltl-shop/api`.
+2. Arrancar `demo-api` (puerto 3141) y `demo-web` (puerto 3042) desde `.claude/launch.json`.
+   - La API usa `AUTH_DEV_BYPASS=true` y `YARD_READY_TO_GO_SINCE=2000-01-01T00:00:00Z`.
+   - La web usa `NEXT_PUBLIC_E2E_DEV_LOGIN=1`.
+3. Abrir `http://127.0.0.1:3042/login`, escribir el correo y tocar **Acceso de desarrollo (bypass local)**. No pide contraseña.
+
+## Cuentas
+
+| Rol | Correo | Qué ve |
+|---|---|---|
+| Shop Manager | `manager@lightning.local` | Operaciones, Yard, Work Orders, Trucks, Partes y costos, Setup |
+| Mecánico general | `anthony@lightning.local` | Reloj corriendo, cola del equipo, Jobs por iniciar, completados por día |
+| Mecánico general | `elliot@lightning.local` | El Job bloqueado esperando piezas |
+| Mecánico general | `john@lightning.local` | "Ayer quedó en curso · toca Continuar" |
+| Alignment | `mechanic@lightning.local` (Alejandro 1) | Alineaciones por hacer y hechas |
+| Detailing | `alejandro-2@lightning.local` | Detailing; también está en la cola del equipo |
+| Mecánico PM | `daniel@lightning.local` | PM en curso, "Esperan PM" con "Último PM", PM pausado |
+| Safety | `safety-1@lightning.local`, `safety-2@lightning.local` | Por revisar, Devueltos, Hechos |
+| Admin | `admin@lightning.local` | Todo lo del Manager |
+
+`luis@lightning.local` está **inactivo**: sirve para mostrar el filtro de People.
+
+## Qué muestra cada camión
+
+### Hoy en el taller
+Algunos Work Orders se crearon días atrás, así que salen como "abierto hace más de 24 h".
+
+| Camión | Situación | Historia de usuario |
+|---|---|---|
+| 601 | Recién llegado | Como Manager, registro la inspección de llegada. |
+| 602 | Inspección con hallazgos, de hace 2 días | Como Manager, asigno Brake Inspection y Lights. |
+| 603 | Sin hallazgos | Como mecánico, veo mi Job listo para iniciar. |
+| 604 | Trabajo en curso | Como Anthony, veo mi reloj corriendo en la 604. |
+| 605 | Bloqueado, esperando piezas, de hace 2 días | Como Manager, veo el bloqueo con la nota y lo resuelvo. La compra de la bolsa de aire ya está cargada hoy. |
+| 606 | Solo falta QC (Normal) | Como Safety, lo tomo y lo apruebo o lo devuelvo. Como Manager, también puedo hacerlo (respaldo). |
+| 607 | Ready to Go | Como Manager, lo devuelvo al servicio (Return to Service). |
+| 608 | De vuelta en servicio hoy | El Work Order queda en el historial. |
+| 609 | En pausa oficial, esperando aprobación | Como Manager, lo reanudo. Como PM, lo veo en "pausados". |
+| 610 | Pieza en taller externo | La fila del Job dice "Part out", con el botón Returned. |
+| 611 | Camión fuera, en taller externo, de hace 3 días | En el Yard sale "Out of shop". La factura de Bay Area Body Shop está ligada al Job. |
+| 612 | Job con ayudante | "Brake Inspection · helper". |
+| 613 | Job cancelado y pedido de trabajo abierto | Como Manager, marco el pedido como atendido. |
+| 614 | Le falta un paso obligatorio | "Add missing steps". |
+| 615 | Work Order cancelado | Se ve el motivo. El camión queda sin WO abierto. |
+| 616 | Solo falta QC (Critical) | Sale primero en "Por revisar" de Safety. |
+| 617 | Solo falta QC (High) | Sale segundo. |
+| 905 | QC tomado por Safety 2 | Safety 1 lo ve como "Lo tomó Safety 2". |
+| 922 | Devuelto por Safety 1 | Safety lo ve en "Devueltos". El Manager lo ve bloqueado con la nota y lo resuelve. |
+| 931 | QC aprobado | Como Manager, lo veo en "Listos para cerrar" y lo cierro. |
+| 944 | Reloj de ayer | Como John, veo "Ayer quedó en curso": el cierre del día lo cortó a las 5:00 p.m. |
+| 957 | Detailing en la cola del equipo | Setup: Detailing tiene un equipo de dos. Anthony y Alejandro 2 lo ven en "Cola del equipo". |
+| 968 | PM en curso | Como Daniel, continúo el PM. |
+| 973, 986, 991 | Sin Work Order abierto (visitas recientes) | Como Manager, creo un Work Order nuevo. |
+
+Los números de camión son los del seed. El script imprime la tabla real al terminar.
+
+### Historia: unos 4 meses
+
+Cada camión tiene de 1 a 3 visitas cerradas en los últimos 4 meses. Algunas son de los últimos días, incluida ayer. Cada visita pasó por el ciclo completo:
+1. inspección;
+2. reparaciones con su nota de cierre;
+3. PM con piezas y millaje;
+4. Alignment y Detailing;
+5. QC aprobado por Safety;
+6. cierre;
+7. Return to Service.
+
+Algunas visitas tuvieron un bloqueo resuelto, y dos fueron devueltas por Safety. Una, de hace un mes, mandó la transmisión a Diesel Pro.
+
+Así se pueden mostrar:
+- **Truck → Resumen:** historial de reparaciones, con filtro por categoría.
+- **Truck → Costos:** barras por mes, movimientos (con una compra corregida y una anulada) y horas de mano de obra.
+- **Mecánicos → Completados:** agrupados en Ayer y Antes, con notas.
+- **PM:** "Último PM: millas · fecha" en cada camión, y la pieza más usada por modelo.
+- **Safety → Hechos:** lo de los últimos 7 días.
+- **Operaciones:** completados hoy y en los últimos 7 días.
+
+### Partes y costos
+- **Proveedores:** FleetPride, TruckPro, Rush Truck Centers, Diesel Pro Repair y Bay Area Body Shop. Old Supply Co está **inactivo**.
+- **Partes:** todas las piezas de PM tienen precio de referencia. Las que se usan tienen proveedor habitual. Hay una creada en la app: "Wiper blade 22 in heavy duty".
+- **Compras:** unas 45 en 4 meses. Incluyen:
+  - varias líneas, con impuesto y flete;
+  - una repartida entre dos camiones;
+  - una para el estante, sin camión;
+  - una **corregida** y una **anulada**.
+- **Reparaciones externas:**
+  - la transmisión (Diesel Pro), ligada al Job que regresó;
+  - la del camión 611, que está afuera ahora;
+  - un DPF y un parabrisas, sin Job.
+
+## Lo que la demo local no puede mostrar
+- **Dispatch, Movement y "Sale pronto":** vienen de agent-reporting, que no está conectado en local. La pantalla dice que no respondió.
+- **Samsara y la ubicación física:** no están conectados.
+- **Archivos de factura:** necesitan Supabase Storage; en local el campo no aparece.
+- **Contraseñas temporales y "Quitar del Shop":** necesitan Supabase Auth.
+- **Tarifa de mano de obra y monto en dinero:** llegan con el PR 276 (LB-1). Cuando entre, la demo agrega $95/h, un cambio de tarifa y el monto en Costos. Hasta entonces, Costos muestra solo horas.
+- **Factura interna a Finanzas (LB-2):** no está construida.
