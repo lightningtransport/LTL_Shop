@@ -483,14 +483,14 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Un mecánico o Safety intenta escribir el catálogo | No puede | ✅ | A26 |
 | Alta y baja de personal | El Manager y el System Admin (D22, HU-M9) | ✅ | A29–A31 |
 | Usuario inactivo, desconocido o sin sesión | No entra | ✅ | E4 |
-| Busca un Job o un alias por nombre | El buscador solo encuentra categorías | ❌ JC2 | — |
-| Se publica una versión nueva | La carga del catálogo base deshace lo que cambió el Manager | ❌ JC1 | — |
-| Activa o desactiva una **categoría** (D30) | Puede; una inactiva dice por qué y no recibe Jobs nuevos | 🔲 S2 | — |
-| Agrega o quita un **alias** | Puede; no deja repetir un alias de otro Job y dice de cuál es | 🔲 S2 | — |
-| Borra un Job que nunca se usó | Se borra | 🔲 S2 | — |
-| Borra un Job que ya está en Work Orders | No se borra; se desactiva y la pantalla dice por qué | 🔲 S2 | — |
-| Desactiva o borra PM, Alignment, Detailing o Quality Check | No deja (Jobs del sistema); renombrarlos no rompe Yard ni los pasos | 🔲 S2 | — |
-| Desactiva un Job que usa un paso obligatorio | No deja hasta cambiar el paso | 🔲 S2 | — |
+| Busca un Job o un alias por nombre | Encuentra Jobs y aliases de todas las categorías, sin importar tildes ni mayúsculas | ✅ | A47 |
+| Se publica una versión nueva | La carga del catálogo base solo agrega lo que falta; no deshace nada del Manager ni duplica | ✅ | A48 |
+| Crea, renombra, activa o desactiva una **categoría** (D30) | Puede; una inactiva dice por qué (motivo opcional) y no aparece al agregar trabajo; solo una vacía y nunca usada se borra | ✅ | A45 |
+| Agrega o quita un **alias** | Puede; no deja repetir un alias de otro Job y dice de cuál Job y categoría es; las tildes no cuentan; el nombre del Job no se quita | ✅ | A47 |
+| Borra un Job que nunca se usó | Se borra | ✅ | A45 |
+| Borra un Job que ya está en Work Orders | No se borra; la pantalla dice en cuántos Work Orders está y ofrece desactivarlo | ✅ | A46 |
+| Desactiva o borra PM, Alignment, Detailing o Quality Check | No deja (Jobs del sistema). Renombrar el Job no lo saca de su carril ni duplica el paso, y el nombre viejo queda como alias (D-SET4). Las categorías PM, Detailing y Quality Check no se renombran | ✅ | A46 |
+| Desactiva un Job que usa un paso obligatorio | No deja (es un Job del sistema) | ✅ | A38 |
 
 ---
 
