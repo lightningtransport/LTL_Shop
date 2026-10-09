@@ -1,6 +1,6 @@
 import { AppCapability, PrismaClient } from '@prisma/client';
 import { applyJobCatalog } from './job-catalog';
-import { loadCanonicalPmParts, PM_PART_CATEGORIES } from './pm-parts';
+import { applyPmParts } from './pm-parts';
 import { applyShopWorkflowSteps } from './shop-workflow-steps';
 
 const prisma = new PrismaClient();
@@ -203,31 +203,7 @@ async function main() {
     });
   }
 
-  const partCategories: Record<string, string> = {};
-  for (let index = 0; index < PM_PART_CATEGORIES.length; index += 1) {
-    const sourceCategory = PM_PART_CATEGORIES[index];
-    const { name } = sourceCategory;
-    const category = await prisma.partCategory.upsert({
-      where: { name },
-      update: { sortOrder: index, active: true, aliases: [...sourceCategory.aliases] },
-      create: { name, slug: sourceCategory.slug, sortOrder: index, aliases: [...sourceCategory.aliases] },
-    });
-    partCategories[name] = category.id;
-  }
-  const partsToSeed = loadCanonicalPmParts();
-  await prisma.part.updateMany({
-    where: { categoryId: { in: Object.values(partCategories) } },
-    data: { active: false },
-  });
-  for (const item of partsToSeed) {
-    const part = await prisma.part.upsert({
-      where: { categoryId_partNumber_displayName: { categoryId: partCategories[item.category], partNumber: item.partNumber, displayName: item.displayName } },
-      update: { active: true },
-      create: { categoryId: partCategories[item.category], partNumber: item.partNumber, displayName: item.displayName },
-    });
-    await prisma.partFitment.deleteMany({ where: { partId: part.id } });
-    if (item.fitments.length) await prisma.partFitment.createMany({ data: item.fitments.map((fitment) => ({ partId: part.id, ...fitment })) });
-  }
+  const pmParts = await applyPmParts(prisma);
 
   console.log('Seed complete', {
     mechanic: mechanic.email,
@@ -238,7 +214,7 @@ async function main() {
     categories: catalog.categories,
     catalogJobs: catalog.catalogJobs,
     shopWorkflowSteps,
-    pmParts: partsToSeed.length,
+    pmParts,
   });
 }
 
