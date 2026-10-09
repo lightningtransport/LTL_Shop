@@ -3,6 +3,11 @@ import { devLogin, waitForLoginForm } from './support/dev-login';
 
 const DEMO_STATE = JSON.stringify({ version: 1, enabled: true, storyId: null, stepIndex: 0, panelOpen: true, autoFollow: true });
 
+/** Runs on every document load, so it only seeds the state the first time; later writes by the panel must survive reloads. */
+function seedDemoState(value: string) {
+  if (!window.localStorage.getItem('ltl_shop_demo')) window.localStorage.setItem('ltl_shop_demo', value);
+}
+
 /**
  * D36: the local demo panel. The e2e build has Dev Login on, so the Demo button must still be absent until
  * the presenter turns the mode on (header-profile-menu.spec counts exactly one header button).
@@ -59,8 +64,39 @@ test.describe('D36 demo mode', () => {
     await expect(page.getByRole('button', { name: /Open profile for Shop Manager/ })).toBeVisible();
   });
 
+  test('a story walks the presenter screen by screen (HU-M7, no data changes)', async ({ page }) => {
+    await page.addInitScript(seedDemoState, DEMO_STATE);
+    await devLogin(page, 'manager@lightning.local');
+    const panel = page.getByRole('complementary', { name: 'Demo panel' });
+    await expect(panel).toBeVisible({ timeout: 15_000 });
+
+    await panel.getByRole('combobox', { name: 'Story' }).selectOption('HU-M7');
+    const card = panel.getByTestId('demo-step');
+    await expect(card).toContainText('Step 1 of 5');
+    await expect(card).toContainText('Operations');
+    await expect(page).toHaveURL(/\/admin$/);
+
+    await card.getByRole('button', { name: 'Next' }).click();
+    await expect(page).toHaveURL(/\/admin\/yard-operations$/, { timeout: 15_000 });
+    await expect(card).toContainText('Step 2 of 5');
+
+    await card.getByRole('button', { name: 'Next' }).click();
+    await expect(page).toHaveURL(/\/admin\/yard-operations\?tab=movement$/, { timeout: 15_000 });
+    await expect(card).toContainText('Step 3 of 5');
+
+    await card.getByRole('button', { name: 'Back' }).click();
+    await expect(card).toContainText('Step 2 of 5');
+
+    // The step survives a reload.
+    await page.reload();
+    await expect(panel.getByTestId('demo-step')).toContainText('Step 2 of 5', { timeout: 15_000 });
+
+    await panel.getByRole('combobox', { name: 'Story' }).selectOption('');
+    await expect(panel.getByTestId('demo-step')).toHaveCount(0);
+  });
+
   test('a saved state reopens the panel after a sign-in', async ({ page }) => {
-    await page.addInitScript((value) => window.localStorage.setItem('ltl_shop_demo', value), DEMO_STATE);
+    await page.addInitScript(seedDemoState, DEMO_STATE);
     await devLogin(page, 'daniel@lightning.local');
     await expect(page.getByRole('complementary', { name: 'Demo panel' })).toBeVisible({ timeout: 15_000 });
   });

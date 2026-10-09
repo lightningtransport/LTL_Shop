@@ -3,10 +3,12 @@
 import { usePathname } from 'next/navigation';
 import { FlaskConical, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { DEMO_CAST, DEMO_CAST_GROUPS, castMemberByEmail } from '@/lib/demo/cast';
+import { DEMO_CAST, DEMO_CAST_GROUPS, castMember, castMemberByEmail } from '@/lib/demo/cast';
+import { describeTarget } from '@/lib/demo/resolve-target';
+import { DEMO_JOB_IDS, DEMO_JTBD, DEMO_STORIES } from '@/lib/demo/scripts';
 import { useDemoMode } from '@/lib/demo/demo-context';
 import { cn } from '@/lib/utils';
-import { Button, InlineAlert } from './ui';
+import { Badge, Button, InlineAlert, Select } from './ui';
 
 /**
  * D36: the "Demo" panel from the proposal mockups (docs/proposals/wo-detail-redesign/mockup.html), now inside
@@ -68,12 +70,18 @@ export function DemoPanel() {
           <X aria-hidden="true" className="size-4" />
         </button>
       </div>
+      {/* Flex column so the Story block can move above the user grid (order-first) while a story is active. */}
+      <div className="flex flex-col">
 
-      <p className="mb-2 text-xs text-muted-foreground">User · signed in as {user.name}</p>
       {demo.error ? <InlineAlert className="mb-2">{demo.error}</InlineAlert> : null}
       {demo.usersError ? (
         <InlineAlert className="mb-2">The account list did not load. Does the API run with AUTH_DEV_BYPASS=true?</InlineAlert>
       ) : null}
+      {/* With a story active the step card comes first; the user grid folds under a summary line. */}
+      <details open={!demo.story} className="group">
+        <summary className="mb-2 cursor-pointer list-none text-xs text-muted-foreground">
+          User · signed in as {user.name}{demo.story ? ' · tap to switch by hand' : ''}
+        </summary>
       {DEMO_CAST_GROUPS.map((group) => (
         <div key={group} className="mb-2">
           <p className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">{group}</p>
@@ -123,10 +131,84 @@ export function DemoPanel() {
         </div>
       ) : null}
 
+      </details>
+
+      <div className={demo.story ? 'order-first' : 'mt-4 border-t pt-3'}>
+        <p className="mb-2 text-xs text-muted-foreground">Story · one of USER_FLOWS, step by step</p>
+        <Select
+          aria-label="Story"
+          value={demo.story?.id ?? ''}
+          onChange={(event) => void demo.selectStory(event.target.value || null)}
+        >
+          <option value="">None</option>
+          {DEMO_JOB_IDS.map((job) => {
+            const stories = DEMO_STORIES.filter((story) => story.jtbd === job);
+            if (!stories.length) return null;
+            return (
+              <optgroup key={job} label={`${job} · ${DEMO_JTBD[job].title}`}>
+                {stories.map((story) => (
+                  <option key={story.id} value={story.id}>{story.id} · {story.title} ({story.steps.length} steps)</option>
+                ))}
+              </optgroup>
+            );
+          })}
+          <optgroup label="Other">
+            {DEMO_STORIES.filter((story) => !story.jtbd).map((story) => (
+              <option key={story.id} value={story.id}>{story.id} · {story.title} ({story.steps.length} steps)</option>
+            ))}
+          </optgroup>
+        </Select>
+        {demo.story && demo.step ? (
+          <div className="mt-3 rounded-lg border bg-background p-3" data-testid="demo-step">
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              Step {demo.stepIndex + 1} of {demo.story.steps.length} · {demo.story.role}
+            </p>
+            <p className="mt-1 font-semibold">{demo.step.title}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <Badge variant={castMember(demo.step.user).email === current ? 'default' : 'warning'}>
+                {castMember(demo.step.user).label}
+              </Badge>
+              <Badge variant="outline">{describeTarget(demo.step.target)}</Badge>
+              {demo.step.mutates ? <Badge variant="secondary">Changes data</Badge> : null}
+            </div>
+            {demo.story.note && demo.stepIndex === 0 ? (
+              <p className="mt-2 text-xs text-muted-foreground">{demo.story.note}</p>
+            ) : null}
+            <p className="mt-2"><b>Do:</b> {demo.step.do}</p>
+            {demo.step.say ? <p className="mt-1 text-muted-foreground"><b className="text-foreground">Say:</b> {demo.step.say}</p> : null}
+            {demo.step.expect ? <p className="mt-1 text-xs text-muted-foreground"><b>Expect:</b> {demo.step.expect}</p> : null}
+            <div className="mt-3 flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={demo.busy || demo.stepIndex === 0} onClick={() => void demo.goToStep(demo.stepIndex - 1)}>
+                Back
+              </Button>
+              {demo.stepIndex < demo.story.steps.length - 1 ? (
+                <Button size="sm" disabled={demo.busy} onClick={() => void demo.goToStep(demo.stepIndex + 1)}>Next</Button>
+              ) : (
+                <Button size="sm" disabled={demo.busy} onClick={() => void demo.selectStory(null)}>Finish</Button>
+              )}
+              <Button variant="ghost" size="sm" disabled={demo.busy} onClick={() => void demo.goToScreen()}>Go to screen</Button>
+            </div>
+          </div>
+        ) : null}
+        <label className="mt-3 flex items-center justify-between gap-3 text-xs">
+          <span>Switch user and screen automatically</span>
+          <input
+            type="checkbox"
+            className="size-4 accent-[var(--primary)]"
+            checked={demo.state.autoFollow}
+            onChange={(event) => demo.setAutoFollow(event.target.checked)}
+          />
+        </label>
+        {new Date().getHours() >= 17 ? (
+          <p className="mt-2 text-xs text-muted-foreground">After 5 PM the day close has stopped today's clocks. Rebuild the demo in the morning.</p>
+        ) : null}
+      </div>
+
       <details className="mt-4 border-t pt-3">
         <summary className="cursor-pointer font-medium">What each button does</summary>
         <ul className="mt-2 list-disc space-y-1.5 pl-4 text-muted-foreground">
           <li><b className="text-foreground">A user</b>: signs you in as that account and opens its home screen. No password; the page loads again.</li>
+          <li><b className="text-foreground">A story</b>: one of the user stories of USER_FLOWS. Each step switches to the right user and screen (or tells you to, with auto-follow off) and says what to tap and what to explain. You tap; the app never acts by itself.</li>
           <li><b className="text-foreground">Reset demo</b>: clears the story and goes back to the Manager dashboard. It does not rebuild the data: run <code>npm run prisma:demo-local</code> for that.</li>
           <li><b className="text-foreground">Leave demo mode</b>: hides this panel and the Demo button. You stay signed in.</li>
           <li>Only on this machine: the panel needs a local build and an API with <code>AUTH_DEV_BYPASS=true</code>.</li>
@@ -146,6 +228,7 @@ export function DemoPanel() {
       {castMemberByEmail(user.email) ? null : (
         <p className="mt-2 text-xs text-muted-foreground">{user.email} is not one of the demo accounts.</p>
       )}
+      </div>
     </div>
   );
 }
