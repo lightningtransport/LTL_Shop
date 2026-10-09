@@ -34,6 +34,13 @@ import type {
   AdminUpdatePartInput,
   AdminUpdateVendorInput,
   AdminVendorDto,
+  AdminAttachmentUploadDto,
+  AdminInvoiceMatchDto,
+  AdminPurchaseDetailDto,
+  AdminPurchaseFormDataDto,
+  AdminPurchaseListDto,
+  AdminRequestAttachmentInput,
+  AdminSavePurchaseInput,
 } from '@ltl-shop/shared';
 import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
@@ -812,4 +819,87 @@ export function createAdminVendor(input: AdminCreateVendorInput) {
 
 export function updateAdminVendor(id: string, input: AdminUpdateVendorInput) {
   return apiFetch<{ id: string }>(`/api/admin/parts-costs/vendors/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+// ── LTR-200 / D32 (PC-2): purchases and invoice files ──────────────────────────────────────────────────────
+
+export function useAdminPurchases(query: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminPurchaseListDto>(token ? `/api/admin/parts-costs/purchases${query ? `?${query}` : ''}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      keepPreviousData: true,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+export function useAdminPurchase(id: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminPurchaseDetailDto>(token && id ? `/api/admin/parts-costs/purchases/${id}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+export function useAdminPurchaseFormData(enabled: boolean) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminPurchaseFormDataDto>(token && enabled ? '/api/admin/parts-costs/purchases/form-data' : null, adminReadFetcher, {
+      dedupingInterval: 10_000,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+/** A59: the key is made once per open form, so a repeated tap or send saves one purchase. */
+export function createAdminPurchase(input: AdminSavePurchaseInput, idempotencyKey: string) {
+  return apiFetch<{ id: string; replayed: boolean }>('/api/admin/parts-costs/purchases', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    headers: { 'Idempotency-Key': idempotencyKey },
+  });
+}
+
+export function updateAdminPurchase(id: string, input: AdminSavePurchaseInput) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/purchases/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function voidAdminPurchase(id: string, reason: string) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/purchases/${id}/void`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
+
+export function checkAdminInvoice(vendorId: string, number: string, excludeId?: string) {
+  const params = new URLSearchParams({ vendorId, number });
+  if (excludeId) params.set('excludeId', excludeId);
+  return apiFetch<AdminInvoiceMatchDto>(`/api/admin/parts-costs/invoices/check?${params.toString()}`, { timeoutMs: ADMIN_READ_TIMEOUT_MS });
+}
+
+export function requestAdminAttachment(input: AdminRequestAttachmentInput) {
+  return apiFetch<AdminAttachmentUploadDto>('/api/admin/parts-costs/attachments', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function openAdminAttachment(id: string) {
+  return apiFetch<{ url: string }>(`/api/admin/parts-costs/attachments/${id}`, { timeoutMs: ADMIN_READ_TIMEOUT_MS });
+}
+
+/** PUTs the file straight to the signed Storage URL, reporting progress (0–100). */
+export function uploadInvoiceFile(uploadUrl: string, file: File, onProgress: (percent: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('PUT', uploadUrl);
+    request.setRequestHeader('Content-Type', file.type);
+    request.setRequestHeader('x-upsert', 'false');
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    request.onload = () => (request.status >= 200 && request.status < 300 ? resolve() : reject(new Error(`Upload failed (${request.status})`)));
+    request.onerror = () => reject(new Error('Upload failed'));
+    request.send(file);
+  });
 }

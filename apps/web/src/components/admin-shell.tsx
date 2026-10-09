@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Receipt, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { AdminNavLink } from './admin-nav-link';
@@ -28,6 +28,7 @@ const navigationGroups = [
     title: 'navGroupPartsCosts',
     managerOnly: true,
     items: [
+      { message: 'pcPurchases', icon: Receipt, href: '/admin/parts/purchases' },
       { message: 'pcParts', icon: Package, href: '/admin/parts/catalog' },
       { message: 'pcVendors', icon: Store, href: '/admin/parts/vendors' },
     ],

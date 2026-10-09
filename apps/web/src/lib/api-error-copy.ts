@@ -7,6 +7,15 @@ import type { ShopLocale } from './shop-locale';
  * Keys with a shared audience avoid the Truck/unidad noun; the QC keys are Safety copy (unidad).
  */
 export type ApiErrorCode =
+  | 'DUPLICATE_INVOICE'
+  | 'TOTAL_MISMATCH'
+  | 'PURCHASE_VOIDED'
+  | 'IDEMPOTENCY_KEY_REQUIRED'
+  | 'ATTACHMENT_NOT_FOUND'
+  | 'FILES_NOT_CONFIGURED'
+  | 'FILES_UNAVAILABLE'
+  | 'PART_NOT_FOUND'
+  | 'TRUCK_NOT_FOUND'
   | 'PART_IN_OPEN_PM'
   | 'PART_EXISTS'
   | 'PART_CATEGORY_NOT_FOUND'
@@ -92,6 +101,15 @@ export type ApiErrorCopy = Record<ApiErrorCode | 'network' | 'timeout', string>;
 export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
+    DUPLICATE_INVOICE: 'That invoice from this vendor is already saved.',
+    TOTAL_MISMATCH: 'The total changed. Check the lines, tax and freight, and save again.',
+    PURCHASE_VOIDED: 'This purchase is voided. Load it again instead.',
+    IDEMPOTENCY_KEY_REQUIRED: 'Could not save. Close the form and try again.',
+    ATTACHMENT_NOT_FOUND: 'The invoice file was not found. Attach it again.',
+    FILES_NOT_CONFIGURED: 'Invoice files are not set up in this environment.',
+    FILES_UNAVAILABLE: 'The file service did not answer. Try again.',
+    PART_NOT_FOUND: 'A part on this purchase is no longer in the catalog.',
+    TRUCK_NOT_FOUND: 'A truck on this purchase does not exist.',
     PART_IN_OPEN_PM: 'This part is picked in a PM in progress. Change it after that PM is finished.',
     PART_EXISTS: 'That part is already in this category.',
     PART_CATEGORY_NOT_FOUND: 'That category no longer exists. Reload the page.',
@@ -175,6 +193,15 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   },
   es: {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
+    DUPLICATE_INVOICE: 'Esa factura de este proveedor ya está cargada.',
+    TOTAL_MISMATCH: 'El total cambió. Revisa las líneas, el impuesto y el flete, y guarda otra vez.',
+    PURCHASE_VOIDED: 'Esta compra está anulada. Cárgala de nuevo.',
+    IDEMPOTENCY_KEY_REQUIRED: 'No se pudo guardar. Cierra el formulario e inténtalo de nuevo.',
+    ATTACHMENT_NOT_FOUND: 'No se encontró la factura adjunta. Adjúntala de nuevo.',
+    FILES_NOT_CONFIGURED: 'Las facturas adjuntas no están configuradas en este entorno.',
+    FILES_UNAVAILABLE: 'El servicio de archivos no respondió. Inténtalo de nuevo.',
+    PART_NOT_FOUND: 'Una parte de esta compra ya no está en el catálogo.',
+    TRUCK_NOT_FOUND: 'Un camión de esta compra no existe.',
     PART_IN_OPEN_PM: 'Esta parte está elegida en un PM en curso. Cámbiala cuando ese PM termine.',
     PART_EXISTS: 'Esa parte ya está en esta categoría.',
     PART_CATEGORY_NOT_FOUND: 'Esa categoría ya no existe. Vuelve a cargar la página.',

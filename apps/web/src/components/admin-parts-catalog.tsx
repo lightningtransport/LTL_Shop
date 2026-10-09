@@ -24,6 +24,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { ApiError } from '@/lib/api';
 import { apiErrorCode } from '@/lib/api-error-message';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
+import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { formatShortDateTime } from '@/lib/work-order-view';
 
 export function partsCostsFailure(failure: unknown, messages: AdminMessages) {
@@ -190,9 +191,18 @@ function PartsTable({ category, canWrite, locale, messages, onEdit, onChanged }:
         {
           key: 'cost',
           header: messages.pcRefCost,
-          cell: (part) => part.unitCostCents === null
-            ? <span className="text-xs text-muted-foreground">{messages.pcNoCostYet}</span>
-            : <span className="tabular-nums">{formatCents(part.unitCostCents, locale)}</span>,
+          cell: (part) => (
+            <span>
+              {part.unitCostCents === null
+                ? <span className="text-xs text-muted-foreground">{messages.pcNoCostYet}</span>
+                : <span className="tabular-nums">{formatCents(part.unitCostCents, locale)}</span>}
+              {part.lastPaid ? (
+                <span className="block text-xs text-muted-foreground" data-testid="part-last-paid">
+                  {fillPlaceholders(messages.pcLastPaid, { amount: formatCents(part.lastPaid.unitCostCents, locale), date: formatInvoiceDate(part.lastPaid.invoiceDate, locale), vendor: part.lastPaid.vendorName })}
+                </span>
+              ) : null}
+            </span>
+          ),
         },
         {
           key: 'vendor',
