@@ -860,7 +860,9 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
   - Partes y costos: proveedores, precios, compras (una corregida y una
     anulada) y reparaciones externas;
   - tarifa de mano de obra ($95/h, luego $105/h este mes) y facturas
-    internas a Finanzas (aceptadas, enviada, anulada y un borrador).
+    internas a Finanzas (aceptadas, enviada, anulada y un borrador);
+  - Custom Jobs en la bandeja de revisión (4 grupos por revisar y 2
+    revisados).
 
   Volver a correrlo reinicia todo, incluido Partes y costos. Se niega a
   correr fuera de `localhost` o con una base cuyo nombre no diga "demo".

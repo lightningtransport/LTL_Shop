@@ -16,7 +16,7 @@ export async function wipePartsCosts(tx: Prisma.TransactionClient) {
   await tx.attachment.deleteMany({});
   await tx.partPurchase.deleteMany({});
   await tx.outsideRepair.deleteMany({});
-  await tx.activityLog.deleteMany({ where: { entityType: { in: ['vendor', 'part', 'part_purchase', 'outside_repair', 'labor_rate', 'internal_invoice'] } } });
+  await tx.activityLog.deleteMany({ where: { entityType: { in: ['vendor', 'part', 'part_purchase', 'outside_repair', 'labor_rate', 'internal_invoice', 'custom_job_group'] } } });
   await tx.part.deleteMany({ where: { source: 'app' } });
   await tx.part.updateMany({ data: { unitCostCents: null, defaultVendorId: null } });
   await tx.vendor.deleteMany({});
