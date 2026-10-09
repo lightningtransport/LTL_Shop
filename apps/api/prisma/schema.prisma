@@ -189,6 +189,8 @@ model User {
   createdVendors                 Vendor[]                   @relation("VendorCreatedBy")
   createdPartPurchases           PartPurchase[]             @relation("PartPurchaseCreatedBy")
   voidedPartPurchases            PartPurchase[]             @relation("PartPurchaseVoidedBy")
+  createdOutsideRepairs          OutsideRepair[]            @relation("OutsideRepairCreatedBy")
+  voidedOutsideRepairs           OutsideRepair[]            @relation("OutsideRepairVoidedBy")
   uploadedAttachments            Attachment[]               @relation("AttachmentUploadedBy")
   createdTruckCostEntries        TruckCostEntry[]           @relation("TruckCostEntryCreatedBy")
 
@@ -245,6 +247,7 @@ model Truck {
   serviceStatusEvents  TruckServiceStatusEvent[]
   costEntries          TruckCostEntry[]
   partPurchaseLines    PartPurchaseLine[]
+  outsideRepairs       OutsideRepair[]
 
   @@index([truckNumber])
   @@map("trucks")
@@ -473,6 +476,7 @@ model WorkOrder {
   readinessEvidenceRequirements ReadinessRequirement[]    @relation("ReadinessRequirementEvidence")
   serviceStatusEvents           TruckServiceStatusEvent[]
   costEntries                   TruckCostEntry[]
+  outsideRepairs                OutsideRepair[]
 
   @@index([status])
   @@index([truckId, status])
@@ -560,10 +564,11 @@ model Vendor {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  createdBy   User?            @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  parts       Part[]
-  costEntries TruckCostEntry[]
-  purchases   PartPurchase[]
+  createdBy      User?            @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  parts          Part[]
+  costEntries    TruckCostEntry[]
+  purchases      PartPurchase[]
+  outsideRepairs OutsideRepair[]
 
   @@map("vendors")
 }
@@ -599,6 +604,45 @@ model PartPurchase {
   @@index([invoiceDate])
   @@index([vendorId, invoiceNorm])
   @@map("part_purchases")
+}
+
+/// LTR-200 / D32 (PC-3): an invoice from an outside shop for one truck, optionally tied to the Job sent out (D24).
+/// Same rules as a purchase: never deleted, void writes reversals; vendor + invoice number unique among the ones
+/// not voided, across purchases too (the API checks both).
+model OutsideRepair {
+  id             String           @id @default(uuid()) @db.Uuid
+  truckId        String           @map("truck_id") @db.Uuid
+  vendorId       String           @map("vendor_id") @db.Uuid
+  invoiceNumber  String           @map("invoice_number")
+  invoiceNorm    String           @map("invoice_norm")
+  invoiceDate    DateTime         @map("invoice_date") @db.Date
+  description    String
+  amountCents    Int              @map("amount_cents")
+  currency       String           @default("USD") @db.Char(3)
+  workOrderId    String?          @map("work_order_id") @db.Uuid
+  workOrderJobId String?          @map("work_order_job_id") @db.Uuid
+  /// A copy of what went out (part or truck) when it was tied to the Job.
+  externalKind   JobExternalKind? @map("external_kind")
+  notes          String?
+  idempotencyKey String           @unique @map("idempotency_key")
+  createdById    String?          @map("created_by_id") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  voidedAt       DateTime?        @map("voided_at")
+  voidedById     String?          @map("voided_by_id") @db.Uuid
+  voidReason     String?          @map("void_reason")
+
+  truck        Truck         @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  vendor       Vendor        @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  workOrder    WorkOrder?    @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  workOrderJob WorkOrderJob? @relation(fields: [workOrderJobId], references: [id], onDelete: SetNull)
+  createdBy    User?         @relation("OutsideRepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  voidedBy     User?         @relation("OutsideRepairVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+
+  @@index([truckId, invoiceDate])
+  @@index([vendorId, invoiceNorm])
+  @@index([workOrderJobId])
+  @@map("outside_repairs")
 }
 
 /// One line of a parts invoice. The truck is per line (D-PC9); description and part number are copies.
@@ -790,16 +834,17 @@ model WorkOrderJob {
   // LTR-198 / SW5: the catalog System Job's key (pm_a, pm_b, alignment, detailing, quality_check); lanes read it first.
   systemKey          String?          @map("system_key")
 
-  workOrder        WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  catalogJob       CatalogJob?    @relation(fields: [catalogJobId], references: [id])
-  category         JobCategory    @relation(fields: [categoryId], references: [id])
-  addedBy          User           @relation("JobAddedBy", fields: [addedById], references: [id])
-  completedBy      User?          @relation("JobCompletedBy", fields: [completedById], references: [id])
-  assignedMechanic User?          @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
-  externalBy       User?          @relation("JobSentExternalBy", fields: [externalById], references: [id], onDelete: SetNull)
-  helperOf         WorkOrderJob?  @relation("JobHelperOf", fields: [helperOfJobId], references: [id], onDelete: SetNull)
-  helpers          WorkOrderJob[] @relation("JobHelperOf")
+  workOrder        WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalogJob       CatalogJob?     @relation(fields: [catalogJobId], references: [id])
+  category         JobCategory     @relation(fields: [categoryId], references: [id])
+  addedBy          User            @relation("JobAddedBy", fields: [addedById], references: [id])
+  completedBy      User?           @relation("JobCompletedBy", fields: [completedById], references: [id])
+  assignedMechanic User?           @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
+  externalBy       User?           @relation("JobSentExternalBy", fields: [externalById], references: [id], onDelete: SetNull)
+  helperOf         WorkOrderJob?   @relation("JobHelperOf", fields: [helperOfJobId], references: [id], onDelete: SetNull)
+  helpers          WorkOrderJob[]  @relation("JobHelperOf")
   pmService        PmService?
+  outsideRepairs   OutsideRepair[]
   blockers         PauseEvent[]
 
   @@index([workOrderId, status])

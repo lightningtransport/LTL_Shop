@@ -558,6 +558,10 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Un mecánico o Safety intenta ver o cargar compras | No puede (403) | ✅ | A62 |
 | Carga dos veces la misma factura | La app avisa que ese número de factura de ese proveedor ya existe | ✅ | A58 |
 | Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock) | ✅ | A60 |
+| Carga la factura de un taller externo por un Job que mandó afuera (PC-3) | La liga al Job (afuera ahora o ya de regreso en los últimos 90 días) y el monto va al camión; el Job muestra "Factura $… · proveedor" en el Work Order (solo Manager y System Admin). Un Job de otro camión no se puede ligar | 🔲 PC-3 | A63 |
+| Manda un Job afuera, carga la factura y después marca Regresó (o al revés) | "Enviar a taller externo" y "Regresó" funcionan igual que antes, con o sin factura cargada; la factura sigue ligada al Job | 🔲 PC-3 | A64 |
+| Carga como reparación una factura que ya cargó como compra (mismo proveedor y número) | La app avisa y no deja guardar: dice cuál es (D-PC8) | 🔲 PC-3 | A65 |
+| Corrige o anula una reparación externa | Igual que una compra: reversas en el costo del camión, nada se borra; anular pide motivo | 🔲 PC-3 | A65 |
 | Quiere cobrarle a Finanzas | No en la etapa 1: diseñado (mano de obra × horas y factura interna por período), no construido | 🔲 después | — |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
