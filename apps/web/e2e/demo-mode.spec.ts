@@ -47,8 +47,8 @@ test.describe('D36 demo mode', () => {
     await page.getByRole('button', { name: 'Demo', exact: true }).click();
     await expect(panel).toBeVisible();
 
-    // Accounts the API does not list (the fixture has no Safety) stay disabled, so a tap never ends in a 403.
-    await expect(panel.getByRole('button', { name: /^QC1/ })).toBeDisabled();
+    // Every roster account the fixture knows is enabled; the one signed in is marked and disabled.
+    await expect(panel.getByRole('button', { name: /^QC1/ })).toBeEnabled();
 
     await panel.getByRole('button', { name: /^MPM/ }).click();
     await page.waitForURL(/\/mechanic\/pm$/, { timeout: 30_000 });
@@ -102,6 +102,29 @@ test.describe('D36 demo mode', () => {
 
     await panel.getByRole('combobox', { name: 'Story' }).selectOption('');
     await expect(panel.getByTestId('demo-step')).toHaveCount(0);
+  });
+
+  test('the demo flow runs by chapters and the chapter list jumps', async ({ page }) => {
+    await page.addInitScript(seedDemoState, DEMO_STATE);
+    await devLogin(page, 'ms@lightning.local');
+    const panel = page.getByRole('complementary', { name: 'Demo panel' });
+    await expect(panel).toBeVisible({ timeout: 15_000 });
+
+    await panel.getByRole('combobox', { name: 'Story' }).selectOption('FLOW');
+    const card = panel.getByTestId('demo-step');
+    await expect(card).toContainText('Ready · 49 steps');
+    await expect(card).toContainText('Chapter 1 of 14 · Start of the day');
+    // Chapter 1 is MG3's: Start switches the account (page replaced) and lands on the mechanic home.
+    await card.getByRole('button', { name: /^Start as MG3/ }).click();
+    await page.waitForURL(/\/mechanic\/standard$/, { timeout: 30_000 });
+    await expect(page.getByRole('button', { name: 'Open profile for MG3 · Mecánico General' })).toBeVisible({ timeout: 15_000 });
+    await expect(panel.getByTestId('demo-step')).toContainText('Chapter 1 of 14');
+
+    // The chapter list jumps: chapter 14 is the Manager's Shop workflow.
+    await panel.getByText(/^Chapters · 14/).click();
+    await panel.getByRole('button', { name: /^14 · Setup/ }).click();
+    await page.waitForURL(/\/admin\/setup\/workflow$/, { timeout: 30_000 });
+    await expect(panel.getByTestId('demo-step')).toContainText('Chapter 14 of 14');
   });
 
   test('a saved state reopens the panel after a sign-in', async ({ page }) => {

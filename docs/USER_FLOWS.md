@@ -50,7 +50,7 @@ respuestas confirman lo construido y 7 muestran huecos (sección 7).
 | J13 | Manager | compro partes o pago una reparación afuera | cargarla con su factura y asignarla al camión | saber cuánto cuesta cada camión y, después, cobrarle a Finanzas lo que hace el taller |
 | J14 | Manager | cierro el mes | mandarle a Finanzas lo que el taller hizo por cada camión (partes, talleres externos y mano de obra) | que el taller cobre su trabajo sin armar la cuenta a mano |
 
-Cada historia se puede recorrer con el **modo demo local** (D36, [`reference/DEMO.md`](reference/DEMO.md)): el panel cambia de usuario sin cerrar sesión y, en su segunda etapa, guía cada HU paso a paso. El guion vive en `apps/web/src/lib/demo/` y usa estos mismos ids (J y HU): mantenerlos estables.
+Cada historia se puede recorrer con el **modo demo local** (D36, [`reference/DEMO.md`](reference/DEMO.md)): el panel cambia de cuenta sin cerrar sesión y guía cada HU paso a paso; el **Demo flow** encadena los pasos de las HU en 14 capítulos (un día del taller). En el panel las historias se muestran con títulos en lenguaje de usuario y agrupadas por quién las hace; el guion vive en `apps/web/src/lib/demo/scripts.ts` y usa estos mismos ids (J y HU) como clave: mantenerlos estables.
 
 **Quién usa qué:** los mecánicos, en el teléfono. El Manager, en el teléfono
 (caminando por el taller) y en la computadora. Idioma: mezclado, así que

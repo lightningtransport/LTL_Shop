@@ -35,7 +35,7 @@ Para verla:
 Con el modo demo encendido, el encabezado de todas las pantallas tiene un botón **Demo** (matraz) a la izquierda del perfil. Abre el **Demo panel**, el mismo panel flotante de las maquetas (`docs/proposals/*/mockup.html`), ahora dentro de la app. Sus textos están en inglés porque es una herramienta para presentar, no parte del producto.
 
 - **User:** las diez cuentas demo agrupadas (Management, Mechanics, PM, Safety), cada una con una pista de qué muestra. Tocar una **cambia de usuario sin cerrar sesión**: la web pone la cookie de Admin con el token `dev:` nuevo y **recarga la página** en la pantalla de inicio de esa cuenta (Manager → Operaciones, mecánico → Mi trabajo, PM → PM, Safety → Quality Check). Nada del usuario anterior queda en pantalla. La cuenta actual sale marcada; una cuenta que no esté activa en la base sale como "inactive". Las cuentas que no son del reparto (por ejemplo `cristian@ltransl.com`) salen bajo **Others**.
-- **Story:** elegir una historia de `USER_FLOWS.md` (agrupadas por job to be done J1–J14). El panel muestra "Step n of m", quién (cambia de usuario solo si hace falta), dónde (navega a la pantalla), **Do** (qué tocar), **Say** (qué explicar) y **Expect** (qué debe verse). Botones Back / Next / Go to screen. "Changes data" marca los pasos que mutan. Con "Switch user and screen automatically" apagado, el panel solo indica y el presentador navega. El guion vive en `apps/web/src/lib/demo/scripts.ts` y usa los mismos ids que USER_FLOWS. Tabla de historias más abajo.
+- **Story:** arriba de todo, el **Demo flow** "A day at the shop": una sola historia continua en 14 capítulos que pasa por las diez cuentas (abajo la tabla). Debajo, las 23 historias de `USER_FLOWS.md` con nombres en lenguaje de usuario y agrupadas por quién las hace (Manager Shop, Mecánicos, Mecánico PM, Quality Check, Admin Shop); el id HU queda como etiqueta chica en la tarjeta. El panel muestra "Step n of m", quién (cambia de usuario solo si hace falta), dónde (navega a la pantalla), **Do** (qué tocar), **Say** (qué explicar) y **Expect** (qué debe verse). Botones Back / Next / Go to screen. "Changes data" marca los pasos que mutan. Con "Switch user and screen automatically" apagado, el panel solo indica y el presentador navega. El guion vive en `apps/web/src/lib/demo/scripts.ts` y usa los mismos ids que USER_FLOWS. Tabla de historias más abajo.
 - **Start:** elegir una historia solo la muestra (paso 1, quién y dónde); nada cambia hasta tocar **Start**. Después, **Next** es el botón principal; "Follow each step" (encendido por defecto) hace que cada paso cambie de cuenta y de pantalla solo. Si la pantalla que se ve no es la del paso (por ejemplo tras tocar Atrás), el chip de la pantalla se pone ámbar y aparece "Go to this step's screen".
 - **Back to the Manager dashboard:** cierra la historia y vuelve a Operaciones como Manager. **No rearma los datos**: para eso, `npm run prisma:demo-local`.
 - **Turn demo mode off:** pregunta antes; esconde el panel y el botón, la sesión sigue. Se vuelve a encender desde el **menú de perfil** (iniciales arriba a la derecha → "Demo mode · Turn on") o desde `/login`.
@@ -47,32 +47,53 @@ Dónde no existe: en producción. El panel se monta solo donde está Dev Login (
 
 Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de las 5:00 p.m., recordar que el cierre del día corta los relojes de hoy.
 
+### Demo flow: "A day at the shop" (14 capítulos, 49 pasos)
+
+Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a su primer paso) y la tarjeta dice "Chapter n of 14 · título" sobre "Step n of 49". Los pasos son los mismos ya ensayados de las historias; el orden evita que un capítulo rompa uno posterior (el bloqueo del 605 se resuelve una sola vez, el 606 queda para el respaldo de QC, el 931 se cierra después de que QC1 aprueba el 616).
+
+| # | Capítulo | Cuenta(s) | Camiones | Pasos | Muta datos |
+|---|---|---|---|---|---|
+| 1 | Start of the day: a clock left running yesterday | MG3 | 944 | 2 | no |
+| 2 | A truck arrives: a Work Order in one tap | MS | 973 | 3 | sí (crea el WO) |
+| 3 | Inspect, add work, assign | MS | 601, 602 | 5 | sí |
+| 4 | My work: clock, team queue, notes and requests | MG1 | 604, 613 | 3 | sí (Request Work) |
+| 5 | A blocker: the mechanic reports, the Manager resolves | MG2, MS, MG2 | 605 | 4 | sí |
+| 6 | Pause and resume; cancel and reopen | MS | 609, 613, 615 | 3 | sí (Resume) |
+| 7 | Alignment: start and finish | MA | 603 | 3 | sí |
+| 8 | PM: mileage, parts, finish | MPM | 968 | 2 | opcional |
+| 9 | Detailing: the team queue and a helper | MD | 957, 612 | 2 | sí (Take) |
+| 10 | Quality Check: take, approve, return; the backup | QC1, QC2, MS | 616, 922, 905 | 6 | sí |
+| 11 | Close, Ready to Go, Return to Service; the whole shop | MS | 931, 607, Yard | 5 | sí |
+| 12 | Outside shop, costs and Finance | MS | 611, 603 | 5 | no |
+| 13 | Admin: correct time, people, catalog | AS | 617 | 4 | sí (Correct…) |
+| 14 | Setup: the shop workflow and the hours | MS | — | 2 | no |
+
 ### Historias guiadas: cuentas, camiones y pantallas
 
 | Historia | J | Cuentas (en orden) | Camiones | Pasos | Muta datos |
 |---|---|---|---|---|---|
-| HU-M1 Receive a truck | J1 | MS | 973 | 3 | sí (crea el WO) |
-| HU-M2 Inspect and record findings | J1 | MS | 601, 602 | 4 | sí (inspección del 601) |
+| HU-M1 A truck arrives | J1 | MS | 973 | 3 | sí (crea el WO) |
+| HU-M2 Inspect and add work | J1 | MS | 601, 602 | 4 | sí (inspección del 601) |
 | HU-M3 Split the work | J2 | MS | 602 | 3 | sí (asigna) |
 | HU-M4 Unblock a truck | J3 | MS, MG2, MS | 605, 609 | 4 | sí (Resolve, Resume) |
-| HU-M5 Review, close and Return to Service | J4 | MS | 931, 607, 606 | 4 | sí (Close 931, Return 607) |
+| HU-M5 Close and return to service | J4 | MS | 931, 607, 606 | 4 | sí (Close 931, Return 607) |
 | HU-M6 Cancel and reopen | J4 | MS | 613, 615 | 3 | no |
 | HU-M7 See the whole shop | J5 | MS | — | 5 | no |
-| HU-M8 Configure the shop workflow | J2 | MS, MG1, MS | 957 | 4 | no |
+| HU-M8 Set up the shop workflow | J2 | MS, MG1, MS | 957 | 4 | no |
 | HU-M9 Add staff | J12 | MS | — | 3 | opcional (Add) |
-| HU-M10 Helper on a Job | J2 | MS, MD | 612 | 2 | no |
+| HU-M10 A helper on a Job | J2 | MS, MD | 612 | 2 | no |
 | HU-M11 Send work to an outside shop | J3 | MS | 610, 611 | 4 | no |
-| HU-M12 Know what each truck costs | J13 | MS | 611 | 5 | no |
+| HU-M12 What each truck costs | J13 | MS | 611 | 5 | no |
 | HU-M13 Charge Finance | J14 | MS | 603 | 4 | opcional (Send) |
 | HU-ME1 See my work | J6 | MG1 | 604, 957 | 4 | no |
 | HU-ME2 Work and finish | J7 | MA | 603 | 3 | sí (Start, Complete) |
 | HU-ME3 Report a blocker | J8 | MG2, MS, MG2 | 605 | 4 | sí (Resolve, Continue) |
-| HU-ME4 Notes and Request Work | J7 | MG1, MS | 613 | 3 | sí (nota, Mark handled) |
-| HU-ME5 Day closes by itself | J7 | MG3, MS | 944 | 4 | no |
+| HU-ME4 Notes and work requests | J7 | MG1, MS | 613 | 3 | sí (nota, Mark handled) |
+| HU-ME5 The day closes by itself | J7 | MG3, MS | 944 | 4 | no |
 | HU-ME6 One clock across trucks | J7 | MG1 | 604, 612 | 3 | sí (mueve el reloj) |
-| HU-PM1 Record a preventive maintenance | J9 | MPM | 968, 603 | 4 | opcional (Finish) |
+| HU-PM1 Record a PM | J9 | MPM | 968, 603 | 4 | opcional (Finish) |
 | HU-QC1 Approve or return a truck | J11 | QC1, QC2, MS | 616, 617, 606, 905, 922, 931 | 7 | sí (Take, Approve/Return) |
-| HU-A1 Correct time without breaking history | J10 | AS | 617 | 2 | sí (Correct…) |
+| HU-A1 Correct a mechanic's time | J10 | AS | 617 | 2 | sí (Correct…) |
 | HU-A2 Catalog and people | — | AS | — | 3 | no |
 
 Orden recomendado: **HU-ME1 antes de HU-ME6** (mueve el reloj de MG1); **HU-M4 y HU-ME3 comparten el 605** (una u otra, o rearmar entre las dos); HU-M5 deja el 606 para HU-QC1. Lo que no se ve en local (contraseña temporal en HU-M9, Dispatch en HU-M7, el cierre de las 5 PM en vivo en HU-ME5) lo dice la nota del primer paso.

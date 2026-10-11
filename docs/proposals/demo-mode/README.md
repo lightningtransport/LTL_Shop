@@ -45,13 +45,12 @@ Por qué recarga y no `logout()` + `loginDev()`: la pantalla del mecánico redir
 - Pruebas: unit (`state.spec.ts`, `switch-user.spec.ts`, `dev-bypass.guard.spec.ts`, `dev-demo.controller.spec.ts`) y Playwright (`apps/web/e2e/demo-mode.spec.ts`, con `/api/dev/demo/users` en la fixture).
 - Docs: D36, `SYSTEM.md` §6 y §9, `USER_FLOWS.md` §1, `reference/DEMO.md`, este README.
 
-## 4. Segunda etapa: historias guiadas
+## 4. Historias guiadas y el Demo flow (PRs 284 y C)
 
-Sección **Story** en el panel: un `select` agrupado por job to be done (J1…J14) con las 23 HU. Elegida una, el panel muestra "Step n of m", quién (cambia de usuario si hace falta, con recarga), dónde (navega a la ruta; los camiones se resuelven por número de unidad con `GET /api/trucks`, que ya trae el Work Order abierto: `lib/demo/resolve-target.ts`), **Do**, **Say**, **Expect**, "Changes data", y los botones Back / Next (Finish) / Go to screen. Con una historia activa la grilla de usuarios se pliega para que el paso quede arriba. "Switch user and screen automatically" apagado: el panel solo indica. Antes de un paso bajo `/admin` con el mismo usuario se renueva la cookie de Admin (dura 60 min). Si un camión o su Work Order no están, el paso lo dice y no navega.
+Sección **Story** en el panel. Primero el **Demo flow** "A day at the shop" (PR C, 2026-10-10): una historia continua de 14 capítulos y 49 pasos que pasa por las diez cuentas; los pasos son los de las HU ya ensayadas (`pick()` en `scripts.ts`), en un orden que no rompe capítulos posteriores. El panel muestra la lista de capítulos (clic = ir al primer paso del capítulo) y "Chapter n of 14 · título" sobre "Step n of 49". Debajo, las 23 HU agrupadas por quién las hace (`who`: MS, Mecánicos, MPM, QC, AS) con **títulos en lenguaje de usuario** ("A truck arrives (973) · 3 steps"); el id HU va como etiqueta chica en la tarjeta. Elegir una historia la previsualiza; **Start** abre el primer paso; Next/Back/Go to this step's screen como en PR 286. Los camiones se resuelven por número de unidad con `GET /api/trucks` (`lib/demo/resolve-target.ts`). Tabla de capítulos y de historias: [`../../reference/DEMO.md`](../../reference/DEMO.md).
 
-- Guion: `apps/web/src/lib/demo/scripts.ts` (23 historias, ~99 pasos, en inglés). `scripts.spec.ts` comprueba que están las 23 HU en el orden de USER_FLOWS, que cada J tiene historia, que cada paso usa una cuenta del reparto en una ruta que sus capacidades permiten, y que los camiones son los de DEMO.md.
-- Mapeo HU → cuentas → camiones → pasos: tabla en [`../../reference/DEMO.md`](../../reference/DEMO.md).
-- e2e: `demo-mode.spec.ts`, caso "a story walks the presenter screen by screen" (HU-M7).
+- `scripts.spec.ts`: las 23 HU en el orden de USER_FLOWS, títulos sin códigos, cada J con historia, cada paso con una cuenta del roster en una ruta que sus capacidades permiten, camiones de DEMO.md; el flujo tiene 14 capítulos, 49 pasos y visita a las diez cuentas.
+- e2e `demo-mode.spec.ts`: HU-M7 paso a paso y el flujo (Start como MG3, salto por la lista de capítulos).
 
 ## 4b. Cuentas por rol (PR B)
 

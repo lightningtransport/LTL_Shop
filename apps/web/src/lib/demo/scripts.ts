@@ -24,6 +24,8 @@ export type DemoStep = {
   expect?: string;
   /** This step changes data: later stories see the result; rebuild the demo to run it again. */
   mutates?: boolean;
+  /** Demo flow only: the chapter this step belongs to (shown above the step; same label = same chapter). */
+  chapter?: string;
 };
 
 export type DemoJobId = `J${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14}`;
@@ -33,11 +35,24 @@ export type DemoStoryId =
   | 'HU-ME1' | 'HU-ME2' | 'HU-ME3' | 'HU-ME4' | 'HU-ME5' | 'HU-ME6'
   | 'HU-PM1' | 'HU-QC1' | 'HU-A1' | 'HU-A2';
 
-export type DemoRole = 'Manager' | 'Standard mechanic' | 'PM mechanic' | 'Safety' | 'System Admin';
+export type DemoRole = 'Manager' | 'Standard mechanic' | 'PM mechanic' | 'Safety' | 'System Admin' | 'Everyone';
+
+/** How the panel groups the stories: by who does them, in the shop's words (UX-5-003). */
+export type DemoWho = 'MS' | 'Mechanics' | 'MPM' | 'QC' | 'AS';
+
+export const DEMO_WHO_LABELS: Record<DemoWho, string> = {
+  MS: 'Manager Shop (MS)',
+  Mechanics: 'Mecánicos (MG, MA, MD)',
+  MPM: 'Mecánico PM (MPM)',
+  QC: 'Quality Check (QC)',
+  AS: 'Admin Shop (AS)',
+};
 
 export type DemoStory = {
-  id: DemoStoryId;
+  id: DemoStoryId | 'FLOW';
+  /** Plain title in the user's words: no HU/J codes (UX-3-001). */
   title: string;
+  who: DemoWho;
   /** Job to be done (USER_FLOWS §1); null for HU-A2, which has none. */
   jtbd: DemoJobId | null;
   role: DemoRole;
@@ -68,7 +83,7 @@ const manager = 'MS' as const;
 
 export const DEMO_STORIES: DemoStory[] = [
   {
-    id: 'HU-M1', title: 'Receive a truck', jtbd: 'J1', role: 'Manager', trucks: ['973'],
+    id: 'HU-M1', title: 'A truck arrives', who: 'MS', jtbd: 'J1', role: 'Manager', trucks: ['973'],
     steps: [
       { user: manager, target: { kind: 'path', path: '/admin/trucks' }, title: 'The truck list',
         do: 'Find truck 973: "No open Work Order", In Service.',
@@ -85,7 +100,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M2', title: 'Inspect and record findings', jtbd: 'J1', role: 'Manager', trucks: ['601', '602'],
+    id: 'HU-M2', title: 'Inspect and add work', who: 'MS', jtbd: 'J1', role: 'Manager', trucks: ['601', '602'],
     steps: [
       { user: manager, target: { kind: 'adminTruck', unit: '601' }, title: 'Arrival inspection',
         do: 'The next step asks for the inspection. Tap "Issues found": the "Add work" sheet opens.',
@@ -106,7 +121,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M3', title: 'Split the work', jtbd: 'J2', role: 'Manager', trucks: ['602'],
+    id: 'HU-M3', title: 'Split the work', who: 'MS', jtbd: 'J2', role: 'Manager', trucks: ['602'],
     steps: [
       { user: manager, target: { kind: 'path', path: '/admin' }, title: 'Unassigned on the Dashboard',
         do: 'Tap the "Unassigned" counter: 602 says "Nobody is assigned to Brake Inspection", with Assign right on the row.',
@@ -123,7 +138,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M4', title: 'Unblock a truck', jtbd: 'J3', role: 'Manager', trucks: ['605', '609'],
+    id: 'HU-M4', title: 'Unblock a truck', who: 'MS', jtbd: 'J3', role: 'Manager', trucks: ['605', '609'],
     steps: [
       { user: manager, target: { kind: 'path', path: '/admin' }, title: 'Blocked or paused',
         do: 'Read the "Blocked or paused" group at the top of "Needs you": 605 blocked (Waiting for Parts, MG2, two days), 609 paused, 922 returned by Safety. Each row has its action (Resolve, Resume).',
@@ -144,7 +159,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M5', title: 'Review, close and Return to Service', jtbd: 'J4', role: 'Manager', trucks: ['931', '607', '606'],
+    id: 'HU-M5', title: 'Close and return to service', who: 'MS', jtbd: 'J4', role: 'Manager', trucks: ['931', '607', '606'],
     steps: [
       { user: manager, target: { kind: 'path', path: '/admin' }, title: 'Ready to close',
         do: 'Tap the "Ready to close" counter: 931 is there, QC approved by Safety.',
@@ -165,7 +180,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M6', title: 'Cancel and reopen', jtbd: 'J4', role: 'Manager', trucks: ['613', '615'],
+    id: 'HU-M6', title: 'Cancel and reopen', who: 'MS', jtbd: 'J4', role: 'Manager', trucks: ['613', '615'],
     steps: [
       { user: manager, target: { kind: 'adminWorkOrder', unit: '613' }, title: 'A cancelled Job',
         do: 'Find Lights under "Done and cancelled" with its reason. The "…" of a cancelled Job has "Reopen job".',
@@ -182,7 +197,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M7', title: 'See the whole shop', jtbd: 'J5', role: 'Manager', trucks: [],
+    id: 'HU-M7', title: 'See the whole shop', who: 'MS', jtbd: 'J5', role: 'Manager', trucks: [],
     note: 'Dispatch, Movement and "Leaving soon" come from agent-reporting, which is not connected locally; that tab says it did not answer.',
     steps: [
       { user: manager, target: { kind: 'path', path: '/admin' }, title: 'Operations',
@@ -208,7 +223,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M8', title: 'Configure the shop workflow', jtbd: 'J2', role: 'Manager', trucks: ['957'],
+    id: 'HU-M8', title: 'Set up the shop workflow', who: 'MS', jtbd: 'J2', role: 'Manager', trucks: ['957'],
     steps: [
       { user: manager, target: { kind: 'path', path: '/admin/setup/workflow' }, title: 'Steps and teams',
         do: 'Show the four steps and their teams: PM → MPM and Alignment → MA (a team of one: new Jobs go straight to them), Detailing → MD and MG1 (a team of two: the Job waits in the team queue), Quality Check → Safety.',
@@ -229,7 +244,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M9', title: 'Add staff', jtbd: 'J12', role: 'Manager', trucks: [],
+    id: 'HU-M9', title: 'Add staff', who: 'MS', jtbd: 'J12', role: 'Manager', trucks: [],
     note: 'Temporary passwords and "Remove from Shop" need Supabase Auth; locally a new person is created without an access account and the app says so.',
     steps: [
       { user: manager, target: { kind: 'path', path: '/admin/mechanics' }, title: 'People',
@@ -247,7 +262,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M10', title: 'Helper on a Job', jtbd: 'J2', role: 'Manager', trucks: ['612'],
+    id: 'HU-M10', title: 'A helper on a Job', who: 'MS', jtbd: 'J2', role: 'Manager', trucks: ['612'],
     steps: [
       { user: manager, target: { kind: 'adminWorkOrder', unit: '612' }, title: 'A helper Job',
         do: 'Find "Brake Inspection · helper" under the main Job. The "…" of a pending standard Job has "Add helper".',
@@ -260,7 +275,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M11', title: 'Send work to an outside shop', jtbd: 'J3', role: 'Manager', trucks: ['610', '611'],
+    id: 'HU-M11', title: 'Send work to an outside shop', who: 'MS', jtbd: 'J3', role: 'Manager', trucks: ['610', '611'],
     steps: [
       { user: manager, target: { kind: 'adminWorkOrder', unit: '610' }, title: 'The part goes out',
         do: 'Find Battery: "Part out" with its note, "At external shop" and "Returned". Do not tap Returned.',
@@ -281,7 +296,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M12', title: 'Know what each truck costs', jtbd: 'J13', role: 'Manager', trucks: ['611'],
+    id: 'HU-M12', title: 'What each truck costs', who: 'MS', jtbd: 'J13', role: 'Manager', trucks: ['611'],
     steps: [
       { user: manager, target: { kind: 'path', path: '/admin/parts/catalog' }, title: 'Parts',
         do: 'Show a part with its reference cost, usual vendor, the trucks it fits, how many PMs used it and the last price paid.',
@@ -304,7 +319,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-M13', title: 'Charge Finance', jtbd: 'J14', role: 'Manager', trucks: ['603'],
+    id: 'HU-M13', title: 'Charge Finance', who: 'MS', jtbd: 'J14', role: 'Manager', trucks: ['603'],
     steps: [
       { user: manager, target: { kind: 'path', path: '/admin/parts/labor-rate' }, title: 'Labor rate',
         do: 'Show $95/h and $105/h from the 1st of this month.',
@@ -325,7 +340,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-ME1', title: 'See my work', jtbd: 'J6', role: 'Standard mechanic', trucks: ['604', '957'],
+    id: 'HU-ME1', title: 'See my work', who: 'Mechanics', jtbd: 'J6', role: 'Standard mechanic', trucks: ['604', '957'],
     steps: [
       { user: 'MG1', target: { kind: 'path', path: '/mechanic/standard' }, title: 'My Assigned Work',
         do: 'Read the clock strip ("Your clock · Truck 604 · since …"), the Team queue with 957, In Progress (604, "Clock running") and Ready to Start.',
@@ -346,7 +361,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-ME2', title: 'Work and finish', jtbd: 'J7', role: 'Standard mechanic', trucks: ['603'],
+    id: 'HU-ME2', title: 'Work and finish', who: 'Mechanics', jtbd: 'J7', role: 'Standard mechanic', trucks: ['603'],
     steps: [
       { user: 'MA', target: { kind: 'path', path: '/mechanic/standard' }, title: 'A Job ready to start',
         do: 'Find 603 under "Ready to Start": Alignment, with "Start Work".',
@@ -363,7 +378,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-ME3', title: 'Report a blocker', jtbd: 'J8', role: 'Standard mechanic', trucks: ['605'],
+    id: 'HU-ME3', title: 'Report a blocker', who: 'Mechanics', jtbd: 'J8', role: 'Standard mechanic', trucks: ['605'],
     note: 'HU-M4 resolves the same blocker on 605. Run one or the other, or rebuild the demo between them.',
     steps: [
       { user: 'MG2', target: { kind: 'path', path: '/mechanic/standard' }, title: 'Blocked, waiting on the Manager',
@@ -384,7 +399,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-ME4', title: 'Notes and Request Work', jtbd: 'J7', role: 'Standard mechanic', trucks: ['613'],
+    id: 'HU-ME4', title: 'Notes and work requests', who: 'Mechanics', jtbd: 'J7', role: 'Standard mechanic', trucks: ['613'],
     steps: [
       { user: 'MG1', target: { kind: 'workOrder', unit: '613' }, title: 'Leave a note, request work',
         do: 'Write a note and "Add Note". Then "Request Work" → "What does the Truck need?" → "Send to Manager". His earlier request is there too, "Waiting for Manager".',
@@ -400,7 +415,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-ME5', title: 'Day closes by itself', jtbd: 'J7', role: 'Standard mechanic', trucks: ['944'],
+    id: 'HU-ME5', title: 'The day closes by itself', who: 'Mechanics', jtbd: 'J7', role: 'Standard mechanic', trucks: ['944'],
     note: 'The day close happens at 5:00 PM; the demo shows its result on 944 (MG3 left yesterday with their clock running). Rebuild the demo in the morning.',
     steps: [
       { user: 'MG3', target: { kind: 'path', path: '/mechanic/standard' }, title: '"Yesterday\'s work is still open"',
@@ -420,7 +435,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-ME6', title: 'One clock across trucks', jtbd: 'J7', role: 'Standard mechanic', trucks: ['604', '612'],
+    id: 'HU-ME6', title: 'One clock across trucks', who: 'Mechanics', jtbd: 'J7', role: 'Standard mechanic', trucks: ['604', '612'],
     note: 'Moves MG1\'s clock off 604. Run HU-ME1 before this one.',
     steps: [
       { user: 'MG1', target: { kind: 'path', path: '/mechanic/standard' }, title: 'Clock on 604',
@@ -437,7 +452,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-PM1', title: 'Record a preventive maintenance', jtbd: 'J9', role: 'PM mechanic', trucks: ['968', '603'],
+    id: 'HU-PM1', title: 'Record a PM', who: 'MPM', jtbd: 'J9', role: 'PM mechanic', trucks: ['968', '603'],
     steps: [
       { user: 'MPM', target: { kind: 'path', path: '/mechanic/pm' }, title: 'PM home',
         do: 'Show "Active PM services" (968), "Waiting for PM" most urgent first with "Last PM: miles · date" on each truck, and "Paused PM services" (609).',
@@ -458,7 +473,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-QC1', title: 'Approve or return a truck', jtbd: 'J11', role: 'Safety', trucks: ['616', '617', '606', '905', '922', '931'],
+    id: 'HU-QC1', title: 'Approve or return a truck', who: 'QC', jtbd: 'J11', role: 'Safety', trucks: ['616', '617', '606', '905', '922', '931'],
     steps: [
       { user: 'QC1', target: { kind: 'path', path: '/qc' }, title: 'To review, most urgent first',
         do: 'Read the order: 616 (Critical), 617 (High), 606; 905 shows "Taken by QC2".',
@@ -490,7 +505,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-A1', title: 'Correct time without breaking history', jtbd: 'J10', role: 'System Admin', trucks: ['617'],
+    id: 'HU-A1', title: 'Correct a mechanic\'s time', who: 'AS', jtbd: 'J10', role: 'System Admin', trucks: ['617'],
     steps: [
       { user: 'AS', target: { kind: 'adminWorkOrder', unit: '617' }, title: 'History › Times › Correct…',
         do: 'Open History › Times: each closed segment has "Correct…". Pick one: corrected start or end, and the reason (required). "Apply time correction" is optional.',
@@ -503,7 +518,7 @@ export const DEMO_STORIES: DemoStory[] = [
     ],
   },
   {
-    id: 'HU-A2', title: 'Catalog and people', jtbd: null, role: 'System Admin', trucks: [],
+    id: 'HU-A2', title: 'Catalog and people', who: 'AS', jtbd: null, role: 'System Admin', trucks: [],
     steps: [
       { user: 'AS', target: { kind: 'path', path: '/admin/catalog' }, title: 'Job Catalog',
         do: 'Search "check engine" (Jobs and aliases). Open a category. PM, Detailing and Quality Check carry the "Shop workflow" tag: their Jobs cannot be deactivated or deleted.',
@@ -520,8 +535,82 @@ export const DEMO_STORIES: DemoStory[] = [
   },
 ];
 
-export function findDemoStory(id: string | null | undefined): DemoStory | null {
-  return id ? DEMO_STORIES.find((story) => story.id === id) ?? null : null;
+function huStory(id: DemoStoryId): DemoStory {
+  return DEMO_STORIES.find((story) => story.id === id)!;
 }
+
+/** Steps of a story, in a chapter of the flow, optionally with a different account or text. */
+function pick(chapter: string, id: DemoStoryId, indices: number[], patch: Partial<DemoStep> = {}): DemoStep[] {
+  const steps = huStory(id).steps;
+  return indices.map((index) => ({ ...steps[index], ...patch, chapter }));
+}
+
+/**
+ * The demo flow (owner, 2026-10-10): one day at the shop, chapter by chapter, through every account. It reuses
+ * the rehearsed steps of the stories, in an order where no chapter undoes a later one: the 605 blocker is
+ * resolved once (chapter 5), 606 stays for the QC backup (chapter 10), 931 is closed after Safety approved it.
+ */
+export const DEMO_FLOW: DemoStory = {
+  id: 'FLOW',
+  title: 'A day at the shop',
+  who: 'MS',
+  jtbd: null,
+  role: 'Everyone',
+  trucks: ['944', '973', '601', '602', '604', '613', '605', '609', '615', '603', '968', '957', '612', '616', '922', '905', '931', '607', '611', '617'],
+  note: 'Rebuild the demo the morning of the day (npm run prisma:demo-local). Chapters that change data are marked; the flow is ordered so none breaks a later one.',
+  steps: [
+    ...pick('1 · Start of the day: a clock left running yesterday', 'HU-ME5', [0, 1]),
+    ...pick('2 · A truck arrives: a Work Order in one tap', 'HU-M1', [0, 1, 2]),
+    ...pick('3 · Inspect, add work, assign', 'HU-M2', [0, 1, 2]),
+    ...pick('3 · Inspect, add work, assign', 'HU-M3', [1, 2]),
+    ...pick('4 · My work: clock, team queue, notes and requests', 'HU-ME1', [0, 1]),
+    ...pick('4 · My work: clock, team queue, notes and requests', 'HU-ME4', [0]),
+    ...pick('5 · A blocker: the mechanic reports, the Manager resolves', 'HU-ME3', [0, 1, 2, 3]),
+    ...pick('6 · Pause and resume; cancel and reopen', 'HU-M4', [3]),
+    ...pick('6 · Pause and resume; cancel and reopen', 'HU-M6', [0, 1]),
+    ...pick('7 · Alignment: start and finish', 'HU-ME2', [0, 1, 2]),
+    ...pick('8 · PM: mileage, parts, finish', 'HU-PM1', [0, 1]),
+    ...pick('9 · Detailing: the team queue and a helper', 'HU-M8', [2], {
+      user: 'MD',
+      title: 'The team queue, as MD',
+      do: 'Show "Team queue · 1" with 957 Detailing: MG1 sees the same card. Tap Take: it becomes MD\'s Job and leaves MG1\'s queue.',
+      say: 'A step with a team of two is not assigned to anyone: the first one who takes it owns it. "Let go" returns it to the queue unless a clock runs on that truck.',
+      expect: '957 in the Team queue with Take.',
+      mutates: true,
+    }),
+    ...pick('9 · Detailing: the team queue and a helper', 'HU-M10', [1]),
+    ...pick('10 · Quality Check: take, approve, return; the backup', 'HU-QC1', [0, 1, 2, 3, 5, 6]),
+    ...pick('11 · Close, Ready to Go, Return to Service; the whole shop', 'HU-M5', [0, 1, 2]),
+    ...pick('11 · Close, Ready to Go, Return to Service; the whole shop', 'HU-M7', [1, 2]),
+    ...pick('12 · Outside shop, costs and Finance', 'HU-M11', [2]),
+    ...pick('12 · Outside shop, costs and Finance', 'HU-M12', [2, 4]),
+    ...pick('12 · Outside shop, costs and Finance', 'HU-M13', [0, 2]),
+    ...pick('13 · Admin: correct time, people, catalog', 'HU-A1', [0, 1]),
+    ...pick('13 · Admin: correct time, people, catalog', 'HU-A2', [2, 0]),
+    ...pick('14 · Setup: the shop workflow and the hours', 'HU-M8', [0, 3]),
+  ],
+};
+
+export type DemoChapter = { title: string; from: number; to: number };
+
+/** The chapters of a story (consecutive steps with the same `chapter` label); empty for the HU stories. */
+export function storyChapters(story: DemoStory): DemoChapter[] {
+  const chapters: DemoChapter[] = [];
+  story.steps.forEach((step, index) => {
+    if (!step.chapter) return;
+    const last = chapters[chapters.length - 1];
+    if (last && last.title === step.chapter) last.to = index;
+    else chapters.push({ title: step.chapter, from: index, to: index });
+  });
+  return chapters;
+}
+
+export function findDemoStory(id: string | null | undefined): DemoStory | null {
+  if (!id) return null;
+  if (id === DEMO_FLOW.id) return DEMO_FLOW;
+  return DEMO_STORIES.find((story) => story.id === id) ?? null;
+}
+
+export const DEMO_WHO_ORDER: DemoWho[] = ['MS', 'Mechanics', 'MPM', 'QC', 'AS'];
 
 export const DEMO_JOB_IDS = Object.keys(DEMO_JTBD) as DemoJobId[];
