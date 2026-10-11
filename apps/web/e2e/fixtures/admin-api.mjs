@@ -70,6 +70,12 @@ const users = {
   'as@lightning.local': { id: '00000000-0000-4000-8000-000000000102', email: 'as@lightning.local', name: 'AS · Admin Shop', role: 'admin', active: true, capabilities: ['admin.access', 'yard.operations.manage', 'work_orders.manage'] },
   'mg1@lightning.local': { id: '00000000-0000-4000-8000-000000000103', email: 'mg1@lightning.local', name: 'MG1 · Mecánico General', role: 'mechanic', active: true, capabilities: ['mechanic.standard'] },
   'mpm@lightning.local': { id: '00000000-0000-4000-8000-000000000104', email: 'mpm@lightning.local', name: 'MPM · Mecánico PM', role: 'mechanic', active: true, capabilities: ['mechanic.pm'] },
+  'mg2@lightning.local': { id: '00000000-0000-4000-8000-000000000105', email: 'mg2@lightning.local', name: 'MG2 · Mecánico General', role: 'mechanic', active: true, capabilities: ['mechanic.standard'] },
+  'mg3@lightning.local': { id: '00000000-0000-4000-8000-000000000106', email: 'mg3@lightning.local', name: 'MG3 · Mecánico General', role: 'mechanic', active: true, capabilities: ['mechanic.standard'] },
+  'ma@lightning.local': { id: '00000000-0000-4000-8000-000000000107', email: 'ma@lightning.local', name: 'MA · Mecánico Alineación', role: 'mechanic', active: true, capabilities: ['mechanic.standard'] },
+  'md@lightning.local': { id: '00000000-0000-4000-8000-000000000108', email: 'md@lightning.local', name: 'MD · Mecánico Detailing', role: 'mechanic', active: true, capabilities: ['mechanic.standard'] },
+  'qc1@lightning.local': { id: '00000000-0000-4000-8000-000000000109', email: 'qc1@lightning.local', name: 'QC1 · Quality Check', role: 'mechanic', active: true, capabilities: ['quality_check.perform'] },
+  'qc2@lightning.local': { id: '00000000-0000-4000-8000-000000000110', email: 'qc2@lightning.local', name: 'QC2 · Quality Check', role: 'mechanic', active: true, capabilities: ['quality_check.perform'] },
   'retired@lightning.local': {
     id: '00000000-0000-4000-8000-000000000007',
     email: 'retired@lightning.local',
