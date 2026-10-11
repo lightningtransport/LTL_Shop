@@ -13,6 +13,14 @@ describe('profileInitials (LTR-167)', () => {
     expect(profileInitials('Ñ')).toBe('Ñ');
   });
 
+  it('shows the role code of a demo roster name (D36)', () => {
+    expect(profileInitials('MG1 · Mecánico General')).toBe('MG1');
+    expect(profileInitials('MG2 · Mecánico General')).toBe('MG2');
+    expect(profileInitials('QC2 · Quality Check')).toBe('QC2');
+    expect(profileInitials('MS · Manager Shop')).toBe('MS');
+    expect(profileInitials('MG · Mecánico')).toBe('M·');
+  });
+
   it('never returns an empty button label', () => {
     expect(profileInitials('   ')).toBe('?');
   });

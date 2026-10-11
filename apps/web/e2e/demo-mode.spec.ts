@@ -24,21 +24,21 @@ test.describe('D36 demo mode', () => {
     await page.goto('/login');
     await waitForLoginForm(page);
     const input = page.getByLabel('Email');
-    await input.fill('manager@lightning.local');
-    await expect(input).toHaveValue('manager@lightning.local');
+    await input.fill('ms@lightning.local');
+    await expect(input).toHaveValue('ms@lightning.local');
     await page.getByRole('button', { name: /Enter demo mode/ }).click();
     await page.waitForURL(/\/admin$/, { timeout: 30_000 });
 
     const panel = page.getByRole('complementary', { name: 'Demo panel' });
     await expect(panel).toBeVisible({ timeout: 15_000 });
-    await expect(panel.getByRole('button', { name: /Shop Manager/ })).toHaveAttribute('aria-pressed', 'true');
+    await expect(panel.getByRole('button', { name: /^MS/ })).toHaveAttribute('aria-pressed', 'true');
 
     // A user button loads that account's home from scratch (new document, new cookie).
-    await panel.getByRole('button', { name: /^Anthony/ }).click();
+    await panel.getByRole('button', { name: /^MG1/ }).click();
     await page.waitForURL(/\/mechanic\/standard$/, { timeout: 30_000 });
-    await expect(page.getByRole('button', { name: 'Open profile for Anthony' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Open profile for MG1 · Mecánico General' })).toBeVisible({ timeout: 15_000 });
     await expect(panel).toBeVisible();
-    await expect(panel.getByRole('button', { name: /^Anthony/ })).toHaveAttribute('aria-pressed', 'true');
+    await expect(panel.getByRole('button', { name: /^MG1/ })).toHaveAttribute('aria-pressed', 'true');
 
     await page.getByRole('button', { name: 'Demo', exact: true }).click();
     await expect(panel).toHaveCount(0);
@@ -48,13 +48,13 @@ test.describe('D36 demo mode', () => {
     await expect(panel).toBeVisible();
 
     // Accounts the API does not list (the fixture has no Safety) stay disabled, so a tap never ends in a 403.
-    await expect(panel.getByRole('button', { name: /Safety 1/ })).toBeDisabled();
+    await expect(panel.getByRole('button', { name: /^QC1/ })).toBeDisabled();
 
-    await panel.getByRole('button', { name: /^Daniel/ }).click();
+    await panel.getByRole('button', { name: /^MPM/ }).click();
     await page.waitForURL(/\/mechanic\/pm$/, { timeout: 30_000 });
-    await expect(page.getByRole('button', { name: 'Open profile for Daniel' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Open profile for MPM · Mecánico PM' })).toBeVisible({ timeout: 15_000 });
 
-    await panel.getByRole('button', { name: /Shop Manager/ }).click();
+    await panel.getByRole('button', { name: /^MS/ }).click();
     await page.waitForURL(/\/admin$/, { timeout: 30_000 });
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 15_000 });
 
@@ -63,16 +63,16 @@ test.describe('D36 demo mode', () => {
     await panel.getByRole('button', { name: 'Turn off' }).click();
     await expect(panel).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Demo', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Open profile for Shop Manager/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Open profile for MS/ })).toBeVisible();
 
-    await page.getByRole('button', { name: /Open profile for Shop Manager/ }).click();
+    await page.getByRole('button', { name: /Open profile for MS/ }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Turn on' }).click();
     await expect(page.getByRole('button', { name: 'Demo', exact: true })).toBeVisible({ timeout: 15_000 });
   });
 
   test('a story walks the presenter screen by screen (HU-M7, no data changes)', async ({ page }) => {
     await page.addInitScript(seedDemoState, DEMO_STATE);
-    await devLogin(page, 'manager@lightning.local');
+    await devLogin(page, 'ms@lightning.local');
     const panel = page.getByRole('complementary', { name: 'Demo panel' });
     await expect(panel).toBeVisible({ timeout: 15_000 });
 
@@ -106,7 +106,7 @@ test.describe('D36 demo mode', () => {
 
   test('a saved state reopens the panel after a sign-in', async ({ page }) => {
     await page.addInitScript(seedDemoState, DEMO_STATE);
-    await devLogin(page, 'daniel@lightning.local');
+    await devLogin(page, 'mpm@lightning.local');
     await expect(page.getByRole('complementary', { name: 'Demo panel' })).toBeVisible({ timeout: 15_000 });
   });
 });

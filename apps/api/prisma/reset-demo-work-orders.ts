@@ -30,7 +30,9 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config } from 'dotenv';
 import {
+  AppCapability,
   BlockerReason,
+  DEMO_ROSTER,
   JobExternalKind,
   PauseReason,
   Priority,
@@ -377,7 +379,7 @@ const DEMO_SCENARIOS: Scenario[] = [
     build: async (truck, actors) => {
       const id = await createWorkOrder(actors, truck, { priority: Priority.HIGH });
       await inspect(actors, truck, WorkPlanInspectionOutcome.ISSUES_FOUND);
-      // Not Anthony: his clock runs on "Trabajo en curso" (D21).
+      // Not MG1: their clock runs on "Trabajo en curso" (D21).
       const mechanic = actors.generals[1] ?? actors.general;
       await addShopJobs(actors, truck, [{ category: 'Tires & Wheels', job: 'Tire Rotation', assignee: mechanic }]);
       await assignMandatory(actors, id);
@@ -389,8 +391,8 @@ const DEMO_SCENARIOS: Scenario[] = [
   },
   {
     key: 'DEMO-qc-taken',
-    title: 'QC tomado por Safety 2',
-    check: 'Safety 2 lo tiene como suyo (Approve, Return, Let go); Safety 1 lo ve tomado por otra persona.',
+    title: 'QC tomado por QC2',
+    check: 'QC2 lo tiene como suyo (Approve, Return, Let go); QC1 lo ve tomado por otra persona.',
     needsFinishedPm: true,
     build: async (truck, actors) => {
       const id = await createWorkOrder(actors, truck, {});
@@ -404,7 +406,7 @@ const DEMO_SCENARIOS: Scenario[] = [
   {
     key: 'DEMO-qc-returned',
     title: 'Devuelto por Safety',
-    check: 'Safety 1 lo devolvió por la alineación: Safety lo ve en "Returned"; el Manager lo ve bloqueado con la nota y lo resuelve.',
+    check: 'QC1 lo devolvió por la alineación: Safety lo ve en "Returned"; el Manager lo ve bloqueado con la nota y lo resuelve.',
     needsFinishedPm: true,
     build: async (truck, actors) => {
       const id = await createWorkOrder(actors, truck, {});
@@ -485,7 +487,52 @@ const DEMO_TRUCKS = [
 ];
 
 /** --demo: a mechanic who left (People → inactive). Not in any scenario. */
-const DEMO_INACTIVE_MECHANIC = { email: 'luis@lightning.local', name: 'Luis' };
+const SHARED_TO_PRISMA_CAPABILITY: Record<AppCapability, 'ADMIN_ACCESS' | 'MECHANIC_STANDARD' | 'MECHANIC_PM' | 'YARD_OPERATIONS_MANAGE' | 'WORK_ORDERS_MANAGE' | 'QUALITY_CHECK_PERFORM'> = {
+  [AppCapability.ADMIN_ACCESS]: 'ADMIN_ACCESS',
+  [AppCapability.MECHANIC_STANDARD]: 'MECHANIC_STANDARD',
+  [AppCapability.MECHANIC_PM]: 'MECHANIC_PM',
+  [AppCapability.YARD_OPERATIONS_MANAGE]: 'YARD_OPERATIONS_MANAGE',
+  [AppCapability.WORK_ORDERS_MANAGE]: 'WORK_ORDERS_MANAGE',
+  [AppCapability.QUALITY_CHECK_PERFORM]: 'QUALITY_CHECK_PERFORM',
+};
+
+/**
+ * D36 (2026-10-10): the demo accounts are named by role (MS, AS, MG1–MG3, MA, MD, MPM, QC1, QC2; MG4 inactive).
+ * The seed keeps its person accounts (the test database and the Playwright fixture rely on them), so the demo
+ * build renames them here, by email, after every seed run. When the seed re-created a person account that
+ * the roster already replaced on a previous build, that fresh duplicate is deleted (it has no history: the
+ * Work Orders were wiped and the seed writes only the user, its capabilities and step members); if a foreign
+ * key still refuses, it is removed from the Shop instead. Active accounts outside the roster (the owner's real
+ * accounts in the seed) are removed from the Shop in the demo database so the demo shows the roster only.
+ */
+async function applyDemoRoster() {
+  for (const row of DEMO_ROSTER) {
+    const byDemo = await prisma.user.findUnique({ where: { email: row.email } });
+    const bySeed = row.seedEmail === row.email ? null : await prisma.user.findUnique({ where: { email: row.seedEmail } });
+    if (byDemo && bySeed) {
+      try {
+        await prisma.user.delete({ where: { id: bySeed.id } });
+      } catch {
+        await prisma.user.update({ where: { id: bySeed.id }, data: { active: false, removedAt: new Date(), email: `removed+${bySeed.email}` } });
+      }
+    }
+    const data = { name: row.name, email: row.email, role: row.role, active: row.active, removedAt: null };
+    const user = byDemo ?? bySeed
+      ? await prisma.user.update({ where: { id: (byDemo ?? bySeed)!.id }, data })
+      : await prisma.user.create({ data });
+    await prisma.userCapability.deleteMany({ where: { userId: user.id } });
+    await prisma.userCapability.createMany({
+      data: row.capabilities.map((capability) => ({ userId: user.id, capability: SHARED_TO_PRISMA_CAPABILITY[capability] })),
+      skipDuplicates: true,
+    });
+  }
+  const rosterEmails = new Set(DEMO_ROSTER.map((row) => row.email));
+  const outside = await prisma.user.findMany({ where: { active: true, email: { notIn: [...rosterEmails] } }, select: { id: true, email: true } });
+  for (const user of outside) {
+    await prisma.user.update({ where: { id: user.id }, data: { active: false, removedAt: new Date() } });
+  }
+  return outside.map((user) => user.email);
+}
 
 async function upsertDemoTrucks() {
   for (const truck of DEMO_TRUCKS) {
@@ -653,6 +700,25 @@ function toAuthUser(user: UserRow): AuthUser {
 
 async function resolveActors(users: UserRow[]): Promise<Actors> {
   const has = (user: UserRow, capability: string) => user.capabilities.some((item) => item.capability === capability);
+  if (demo) {
+    // The roster decides who plays what (D36): no name order, no email prefixes.
+    const byCode = (code: (typeof DEMO_ROSTER)[number]['code']) => {
+      const email = DEMO_ROSTER.find((row) => row.code === code)!.email;
+      const user = users.find((item) => item.email === email);
+      if (!user) throw new Error(`Demo roster account ${code} <${email}> is missing or inactive`);
+      return toAuthUser(user);
+    };
+    const generals = [byCode('MG1'), byCode('MG2'), byCode('MG3')];
+    return {
+      manager: byCode('MS'),
+      pm: byCode('MPM'),
+      alignment: byCode('MA'),
+      detailing: byCode('MD'),
+      general: generals[0],
+      generals,
+      safety: [byCode('QC1'), byCode('QC2')],
+    };
+  }
   const steps = await prisma.shopWorkflowStep.findMany({ where: { active: true } });
   const defaultOwner = (key: ShopWorkflowStepKey, capability: string) => {
     const ownerId = steps.find((step) => step.stepKey === key)?.defaultMechanicId;
@@ -666,7 +732,7 @@ async function resolveActors(users: UserRow[]): Promise<Actors> {
   const alignment = defaultOwner(ShopWorkflowStepKey.ALIGNMENT, 'MECHANIC_STANDARD') ?? standard[0];
   const detailing = defaultOwner(ShopWorkflowStepKey.DETAILING, 'MECHANIC_STANDARD')
     ?? standard.find((user) => user.id !== alignment?.id);
-  // Anthony first when he is there: the demo's general mechanic (docs/reference/DEMO.md). Cristian (the owner) last.
+  // Production (test roster): the general mechanic account first, the owner's own account last.
   const rank = (user: UserRow) => (user.email.startsWith('anthony@') ? 0 : user.email.startsWith('cristian@') ? 2 : 1);
   const generals = standard
     .filter((user) => user.id !== alignment?.id && user.id !== detailing?.id && user.role === 'mechanic')
@@ -729,6 +795,11 @@ async function main() {
   console.log(`Database host: ${host} (${local ? 'local' : 'production'})`);
   console.log(apply ? 'Mode: APPLY' : 'Mode: dry-run (pass --apply to write)');
 
+  if (demo && apply) {
+    const removed = await applyDemoRoster();
+    console.log(`\nDemo roster: ${DEMO_ROSTER.filter((row) => row.active).map((row) => row.code).join(', ')} (${DEMO_ROSTER.filter((row) => !row.active).map((row) => row.code).join(', ')} inactive)`);
+    if (removed.length) console.log(`  Removed from the Shop (not in the roster): ${removed.join(', ')}`);
+  }
   const users = await loadUsers();
   if (!local) {
     const roster = new Set(TEST_ROSTER.map((target) => target.email.toLowerCase()));
@@ -783,11 +854,6 @@ async function main() {
 
   let history: Awaited<ReturnType<typeof buildHistory>> | null = null;
   if (demo) {
-    await prisma.user.upsert({
-      where: { email: DEMO_INACTIVE_MECHANIC.email },
-      update: { name: DEMO_INACTIVE_MECHANIC.name, role: 'mechanic', active: false },
-      create: { ...DEMO_INACTIVE_MECHANIC, role: 'mechanic', active: false, capabilities: { create: [{ capability: 'MECHANIC_STANDARD' }] } },
-    });
     // The step teams start empty (Quality Check keeps Safety); DEMO-team-queue gives Detailing a team.
     await shopWorkflow.update(actors.manager, {
       steps: [ShopWorkflowStepKey.PM, ShopWorkflowStepKey.ALIGNMENT, ShopWorkflowStepKey.DETAILING].map((stepKey) => ({ stepKey, memberIds: [] })),

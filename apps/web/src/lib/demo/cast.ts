@@ -1,43 +1,52 @@
-/**
- * D36: the demo accounts (apps/api/prisma/seed.ts) in the order the panel shows them, with the one-line hint
- * the presenter reads before switching. Which accounts exist comes from the API; this is only narrative.
- */
-export type DemoUserKey =
-  | 'manager'
-  | 'admin'
-  | 'anthony'
-  | 'elliot'
-  | 'john'
-  | 'alejandro1'
-  | 'alejandro2'
-  | 'daniel'
-  | 'safety1'
-  | 'safety2';
+import { DEMO_ROSTER, type DemoRosterCode } from '@ltl-shop/shared';
 
-export type DemoCastGroup = 'Management' | 'Mechanics' | 'PM' | 'Safety';
+/**
+ * D36: the demo accounts the panel can switch to, with the one-line hint the presenter reads before switching.
+ * The accounts themselves come from packages/shared (demo-roster.ts) and are created by the demo build;
+ * which ones exist comes from the API. This is only narrative.
+ */
+export type DemoUserKey = Exclude<DemoRosterCode, 'MG4'>;
+
+export type DemoCastGroup = 'Management' | 'Mechanics' | 'PM' | 'Quality Check';
 
 export type DemoCastMember = {
   key: DemoUserKey;
   email: string;
+  /** The role code: what the audience sees everywhere ("MG1"). */
   label: string;
+  /** The role in the shop's words ("Mecánico General"). */
+  roleLabel: string;
   group: DemoCastGroup;
   hint: string;
 };
 
-export const DEMO_CAST: readonly DemoCastMember[] = [
-  { key: 'manager', email: 'manager@lightning.local', label: 'Shop Manager', group: 'Management', hint: 'Dashboard, Yard, Work Orders, Parts & costs, Setup' },
-  { key: 'admin', email: 'admin@lightning.local', label: 'System Admin', group: 'Management', hint: 'Everything the Manager has; corrects time and history' },
-  { key: 'anthony', email: 'anthony@lightning.local', label: 'Anthony', group: 'Mechanics', hint: 'Clock running on 604; team queue' },
-  { key: 'elliot', email: 'elliot@lightning.local', label: 'Elliot', group: 'Mechanics', hint: 'Blocked Job on 605, waiting for parts' },
-  { key: 'john', email: 'john@lightning.local', label: 'John', group: 'Mechanics', hint: 'Clock left running yesterday on 944' },
-  { key: 'alejandro1', email: 'mechanic@lightning.local', label: 'Alejandro 1', group: 'Mechanics', hint: 'Alignment; 603 ready to start' },
-  { key: 'alejandro2', email: 'alejandro-2@lightning.local', label: 'Alejandro 2', group: 'Mechanics', hint: 'Detailing; helper on 612; team queue' },
-  { key: 'daniel', email: 'daniel@lightning.local', label: 'Daniel', group: 'PM', hint: 'PM in progress on 968' },
-  { key: 'safety1', email: 'safety-1@lightning.local', label: 'Safety 1', group: 'Safety', hint: 'To review: 616 first; returned 922' },
-  { key: 'safety2', email: 'safety-2@lightning.local', label: 'Safety 2', group: 'Safety', hint: 'Took 905 for review' },
-];
+const GROUPS: Record<DemoUserKey, DemoCastGroup> = {
+  MS: 'Management', AS: 'Management', MG1: 'Mechanics', MG2: 'Mechanics', MG3: 'Mechanics', MA: 'Mechanics', MD: 'Mechanics', MPM: 'PM', QC1: 'Quality Check', QC2: 'Quality Check',
+};
 
-export const DEMO_CAST_GROUPS: readonly DemoCastGroup[] = ['Management', 'Mechanics', 'PM', 'Safety'];
+const HINTS: Record<DemoUserKey, string> = {
+  MS: 'Dashboard, Yard, Work Orders, Parts & costs, Setup',
+  AS: 'Everything the Manager has; corrects time and history',
+  MG1: 'Clock running on 604; team queue',
+  MG2: 'Blocked Job on 605, waiting for parts',
+  MG3: 'Clock left running yesterday on 944',
+  MA: 'Alignment; 603 ready to start',
+  MD: 'Detailing; helper on 612; team queue',
+  MPM: 'PM in progress on 968',
+  QC1: 'To review: 616 first; returned 922',
+  QC2: 'Took 905 for review',
+};
+
+export const DEMO_CAST: readonly DemoCastMember[] = DEMO_ROSTER.filter((row) => row.active).map((row) => ({
+  key: row.code as DemoUserKey,
+  email: row.email,
+  label: row.code,
+  roleLabel: row.roleLabel,
+  group: GROUPS[row.code as DemoUserKey],
+  hint: HINTS[row.code as DemoUserKey],
+}));
+
+export const DEMO_CAST_GROUPS: readonly DemoCastGroup[] = ['Management', 'Mechanics', 'PM', 'Quality Check'];
 
 export function castMember(key: DemoUserKey): DemoCastMember {
   const member = DEMO_CAST.find((item) => item.key === key);
