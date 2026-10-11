@@ -390,9 +390,10 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   reversas salen en negativo, marcadas **Voided** (anulada) o **Corrected**
   (corregida), y bajan los totales.
 - Período: este mes, últimos 3 meses (por defecto), este año, todo.
-- **Mano de obra · coming later**: solo las horas de las sesiones **cerradas** de
-  los WO del camión que empezaron en el período (D18, D21), sin monto. **Charge to
-  Finance · coming later**: lugar reservado (§8 de la propuesta).
+- **Labor** (D34, LB-1): las horas de las sesiones **cerradas** de los WO del
+  camión en el período (D18, D21) y, con tarifa, su monto; sin tarifa, solo horas
+  y "Set a labor rate". **Charge to Finance** (D34, LB-2): la tarjeta abre
+  Internal invoices (2026-10-10; antes decía "coming later", OPEN_ISSUES DM4).
 - "Add purchase" y "Add outside repair" abren el formulario con el camión elegido.
 - Terminar un PM no escribe nada en el libro (D-PC4).
 

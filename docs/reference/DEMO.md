@@ -1,6 +1,6 @@
 # Demo local: toda la app en uso
 
-**Actualizado:** 2026-10-09 (modo demo, D36)
+**Actualizado:** 2026-10-10 (ensayo completo del modo demo, D36)
 **Para qué:** mostrarles la app a los usuarios (Manager, mecánicos, PM, Safety) con datos que hacen ver cada pantalla en uso.
 **Dónde:** solo en esta máquina, base `ltl_shop_demo`. Nunca en producción.
 
@@ -39,6 +39,7 @@ Con el modo demo encendido, el encabezado de todas las pantallas tiene un botón
 - **Reset demo:** limpia la historia y vuelve al Manager en Operaciones. **No rearma los datos**: para eso, `npm run prisma:demo-local`.
 - **Leave demo mode:** esconde el panel y el botón; la sesión sigue. Se vuelve a encender desde `/login`.
 - El estado (encendido, panel abierto, historia y paso) queda en el navegador (`localStorage['ltl_shop_demo']`) y sobrevive a recargas y a cerrar sesión.
+- **Pantalla:** con el panel abierto, la página le deja su propia columna a la derecha: desde 1000 px de ancho en las pantallas del mecánico y desde 1200 px en el Admin. En una ventana más angosta el panel flota encima: si tapa el botón que hay que tocar, cerrarlo con la X y volver a abrirlo con **Demo** (la historia y el paso se mantienen). Lo mejor es presentar con el navegador a pantalla completa.
 
 Dónde no existe: en producción. El panel se monta solo donde está Dev Login (`DEMO_MODE_AVAILABLE`, `apps/web/src/lib/dev-login.ts`, `false` en el deploy) y cambiar de usuario necesita la API con `AUTH_DEV_BYPASS=true`; `GET /api/dev/demo/users` responde 404 sin esa variable. La suite e2e (`apps/web/e2e/demo-mode.spec.ts`) comprueba que sin el modo encendido el botón no está, aunque el build tenga Dev Login.
 
@@ -60,7 +61,7 @@ Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de
 | HU-M10 Helper on a Job | J2 | Manager, Alejandro 2 | 612 | 2 | no |
 | HU-M11 Send work to an outside shop | J3 | Manager | 610, 611 | 4 | no |
 | HU-M12 Know what each truck costs | J13 | Manager | 611 | 5 | no |
-| HU-M13 Charge Finance | J14 | Manager | 611 | 4 | opcional (Send) |
+| HU-M13 Charge Finance | J14 | Manager | 603 | 4 | opcional (Send) |
 | HU-ME1 See my work | J6 | Anthony | 604, 957 | 4 | no |
 | HU-ME2 Work and finish | J7 | Alejandro 1 | 603 | 3 | sí (Start, Complete) |
 | HU-ME3 Report a blocker | J8 | Elliot, Manager, Elliot | 605 | 4 | sí (Resolve, Continue) |
@@ -73,6 +74,8 @@ Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de
 | HU-A2 Catalog and people | — | Admin | — | 3 | no |
 
 Orden recomendado: **HU-ME1 antes de HU-ME6** (mueve el reloj de Anthony); **HU-M4 y HU-ME3 comparten el 605** (una u otra, o rearmar entre las dos); HU-M5 deja el 606 para HU-QC1. Lo que no se ve en local (contraseña temporal en HU-M9, Dispatch en HU-M7, el cierre de las 5 PM en vivo en HU-ME5) lo dice la nota del primer paso.
+
+**Ensayo completo (2026-10-09/10):** se recorrieron las 23 historias tocando lo que dice cada paso, con la base recién armada; los textos se ajustaron a la pantalla real. El armado deja el Shop workflow como en el taller: PM → Daniel, Alignment → Alejandro 1, Detailing → equipo de dos (Anthony y Alejandro 2), Quality Check → Safety. Por eso un Work Order nuevo (HU-M1) nace con sus dueños. Defectos encontrados: `OPEN_ISSUES.md` §1p.
 
 ## Cuentas
 
@@ -172,7 +175,7 @@ Algunas visitas de la historia tienen Jobs que no están en el catálogo, escrit
   - la transmisión (Diesel Pro), ligada al Job que regresó;
   - la del camión 611, que está afuera ahora;
   - un DPF y un parabrisas, sin Job.
-- **Tarifa de mano de obra (Partes y costos → Tarifa de mano de obra):** $95/h desde hace unos 4 meses y medio, y $105/h desde el 1 de este mes. Cada Work Order cerrado tiene su mano de obra en Costos, por ejemplo "WO-037 · 5.71 h × $95.00/h", a la tarifa del día en que se hizo el trabajo.
+- **Tarifa de mano de obra (Partes y costos → Tarifa de mano de obra):** $95/h desde hace unos 4 meses y medio, y $105/h desde el 1 de este mes. Cada Work Order cerrado tiene su mano de obra en Costos, por ejemplo en el camión 603 "WO-037 · … h × $95.00/h" (las horas cambian un poco en cada armado), a la tarifa del día en que se hizo el trabajo.
 - **Facturas internas a Finanzas (Partes y costos → Facturas internas):**
   - dos **aceptadas**, de hace dos meses;
   - una **enviada** y una **anulada** (con su motivo), del mes pasado;

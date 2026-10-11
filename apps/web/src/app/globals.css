@@ -284,3 +284,18 @@ select.field {
     padding-bottom: calc(4.5rem + var(--app-safe-bottom));
   }
 }
+
+/* D36: the local Demo panel (360px + 16px gap on the right) keeps its own column on wide screens, so it never
+   covers the page's buttons. The mechanic column (36rem) fits next to it from 1000px; the Admin, with its sidebar,
+   from 1200px. Narrower screens float it as before; the presenter closes it with X and reopens it with Demo. */
+@media (min-width: 1000px) {
+  html[data-demo-panel='open'] main#main-content.app-shell {
+    margin-left: max(1rem, calc((100vw - 392px - 36rem) / 2));
+    margin-right: 392px;
+  }
+}
+@media (min-width: 1200px) {
+  html[data-demo-panel='open'] div#main-content {
+    padding-right: 392px;
+  }
+}
