@@ -16,7 +16,7 @@ import { refreshAdminSessionCookie, switchDemoUser } from './switch-user';
 
 export type DemoUserDto = Pick<UserDto, 'id' | 'name' | 'email' | 'role' | 'active' | 'capabilities'>;
 
-export const DEMO_MANAGER_EMAIL = 'manager@lightning.local';
+export const DEMO_MANAGER_EMAIL = 'ms@lightning.local';
 
 /** The Admin cookie lives 60 minutes (api/admin/session); a demo lasts longer (UX-1-003). */
 const ADMIN_COOKIE_REFRESH_MS = 20 * 60_000;

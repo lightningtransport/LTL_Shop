@@ -11,3 +11,4 @@ export * from './schemas';
 export * from './types';
 export * from './yard-data-boundary-copy';
 export * from './shop-hours';
+export * from './demo-roster';

@@ -5,16 +5,16 @@ import { DEMO_JOB_IDS, DEMO_STORIES, findDemoStory } from './scripts';
 const KNOWN_PREFIXES = ['/admin', '/mechanic/standard', '/mechanic/pm', '/qc', '/work-orders', '/trucks'];
 
 const ALLOWED_PREFIXES: Record<string, string[]> = {
-  manager: ['/admin', '/qc'],
-  admin: ['/admin', '/qc', '/mechanic'],
-  anthony: ['/mechanic/standard', '/work-orders', '/trucks'],
-  elliot: ['/mechanic/standard', '/work-orders', '/trucks'],
-  john: ['/mechanic/standard', '/work-orders', '/trucks'],
-  alejandro1: ['/mechanic/standard', '/work-orders', '/trucks'],
-  alejandro2: ['/mechanic/standard', '/work-orders', '/trucks'],
-  daniel: ['/mechanic/pm', '/work-orders', '/trucks'],
-  safety1: ['/qc'],
-  safety2: ['/qc'],
+  MS: ['/admin', '/qc'],
+  AS: ['/admin', '/qc', '/mechanic'],
+  MG1: ['/mechanic/standard', '/work-orders', '/trucks'],
+  MG2: ['/mechanic/standard', '/work-orders', '/trucks'],
+  MG3: ['/mechanic/standard', '/work-orders', '/trucks'],
+  MA: ['/mechanic/standard', '/work-orders', '/trucks'],
+  MD: ['/mechanic/standard', '/work-orders', '/trucks'],
+  MPM: ['/mechanic/pm', '/work-orders', '/trucks'],
+  QC1: ['/qc'],
+  QC2: ['/qc'],
 };
 
 function routePrefix(target: (typeof DEMO_STORIES)[number]['steps'][number]['target']): string {

@@ -65,6 +65,11 @@ const users = {
     active: true,
     capabilities: ['mechanic.pm'],
   },
+  // D36: the demo roster (packages/shared/src/demo-roster.ts); the person accounts above stay for the other specs.
+  'ms@lightning.local': { id: '00000000-0000-4000-8000-000000000101', email: 'ms@lightning.local', name: 'MS · Manager Shop', role: 'manager', active: true, capabilities: ['admin.access', 'yard.operations.manage', 'work_orders.manage'] },
+  'as@lightning.local': { id: '00000000-0000-4000-8000-000000000102', email: 'as@lightning.local', name: 'AS · Admin Shop', role: 'admin', active: true, capabilities: ['admin.access', 'yard.operations.manage', 'work_orders.manage'] },
+  'mg1@lightning.local': { id: '00000000-0000-4000-8000-000000000103', email: 'mg1@lightning.local', name: 'MG1 · Mecánico General', role: 'mechanic', active: true, capabilities: ['mechanic.standard'] },
+  'mpm@lightning.local': { id: '00000000-0000-4000-8000-000000000104', email: 'mpm@lightning.local', name: 'MPM · Mecánico PM', role: 'mechanic', active: true, capabilities: ['mechanic.pm'] },
   'retired@lightning.local': {
     id: '00000000-0000-4000-8000-000000000007',
     email: 'retired@lightning.local',

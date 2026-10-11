@@ -165,8 +165,8 @@ export function DemoPanel() {
                       className={cn(PRESET_BUTTON, active && PRESET_ACTIVE, loading && 'opacity-60')}
                       title={loading ? 'Loading accounts…' : known ? member.hint : 'Not in the demo database'}
                     >
-                      <span>{member.label}{active ? ' · you' : ''}</span>
-                      <span className="font-normal text-muted-foreground">{loading ? 'Loading…' : known ? member.hint : 'inactive'}</span>
+                      <span>{member.label} <span className="font-normal text-muted-foreground">· {member.roleLabel}</span>{active ? ' · you' : ''}</span>
+                      <span className="line-clamp-2 font-normal text-muted-foreground">{loading ? 'Loading…' : known ? member.hint : 'inactive'}</span>
                     </button>
                   );
                 })}

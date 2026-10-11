@@ -10,6 +10,7 @@
 
 - Nada de esto se ve ni funciona en producción. El panel se monta solo donde está Dev Login (`DEMO_MODE_AVAILABLE = DEV_LOGIN_ENABLED`, `apps/web/src/lib/dev-login.ts`, constante de build que en el deploy es `false`) y el botón aparece solo con el modo encendido en `localStorage`. La API sirve `GET /api/dev/demo/users` solo con `AUTH_DEV_BYPASS=true` (404 si no), y cambiar de usuario usa los mismos tokens `dev:` que Dev Login.
 - Los roles son los de siempre: Shop Manager, System Admin, Mecánico Standard, Mecánico PM y Safety. Finance no es un usuario (recibe un PDF).
+- **Las cuentas de la demo se llaman por rol** (2026-10-10): MS, AS, MG1–MG3, MA, MD, MPM, QC1, QC2 y MG4 inactivo; nombre "MG1 · Mecánico General", correo `mg1@lightning.local`, avatar con el código. La tabla vive en `packages/shared/src/demo-roster.ts`; el armado de la demo (`reset-demo-work-orders.ts --demo`) renombra las cuentas del seed y quita del Shop a las que no son del roster. **El seed no cambia**: la base de pruebas y la fixture de Playwright dependen de sus cuentas.
 - Las historias son las de `USER_FLOWS.md` (J1–J14, HU-M1…HU-A2), con los mismos ids. No se inventan historias para la demo.
 - Los pasos guían; el presentador toca. La app no ejecuta acciones sola.
 - La demo muta datos: se rearma con `npm run prisma:demo-local` la mañana de la demo. "Reset demo" no toca la base.
@@ -51,6 +52,13 @@ Sección **Story** en el panel: un `select` agrupado por job to be done (J1…J1
 - Guion: `apps/web/src/lib/demo/scripts.ts` (23 historias, ~99 pasos, en inglés). `scripts.spec.ts` comprueba que están las 23 HU en el orden de USER_FLOWS, que cada J tiene historia, que cada paso usa una cuenta del reparto en una ruta que sus capacidades permiten, y que los camiones son los de DEMO.md.
 - Mapeo HU → cuentas → camiones → pasos: tabla en [`../../reference/DEMO.md`](../../reference/DEMO.md).
 - e2e: `demo-mode.spec.ts`, caso "a story walks the presenter screen by screen" (HU-M7).
+
+## 4b. Cuentas por rol (PR B)
+
+- `packages/shared/src/demo-roster.ts`: `DEMO_ROSTER` (código, nombre, rol en palabras del taller, correo, correo del seed que reemplaza, rol, capacidades, activo) y `demoRosterCodeOf(name)`.
+- `apps/api/prisma/reset-demo-work-orders.ts --demo --apply`: `applyDemoRoster()` antes de resolver actores: renombra cada cuenta del seed a su fila (si el seed volvió a crear la cuenta persona, borra ese duplicado sin historia o lo quita del Shop si una FK lo impide), deja MG4 inactivo y marca "Removed from the Shop" a las cuentas activas fuera del roster. `resolveActors` en modo demo asigna por código: MS, MPM, MA, MD, MG1–MG3, QC1–QC2.
+- `apps/web/src/lib/demo/cast.ts` se construye desde el roster; `profileInitials` devuelve el código para un nombre del roster ("MG1 · Mecánico General" → "MG1").
+- La fixture e2e suma `ms@`, `as@`, `mg1@`, `mpm@` sin quitar las cuentas persona que usan las demás pruebas.
 
 ## 5. Fuera de v1
 

@@ -28,7 +28,7 @@ Para verla:
    - la web en `http://localhost:3042` con `NEXT_PUBLIC_E2E_DEV_LOGIN=1` (Dev Login y Panel de demo). Abrirla siempre como **localhost**, no `127.0.0.1`: el servidor de desarrollo redirige a `localhost` cuando vence la sesión del Admin, y para el navegador son dos sitios distintos (se perdería la sesión y el panel).
 
    Si un puerto está ocupado: `DEMO_API_PORT=3151 DEMO_WEB_PORT=3043 npm run start:demo`. Otra base: `DEMO_DATABASE_URL=…` (tiene que ser `localhost` y decir "demo").
-2. Abrir `http://localhost:3042/login`, escribir `manager@lightning.local` y tocar **Enter demo mode (this machine only)**. No pide contraseña; con el correo vacío o inexistente lo dice y no enciende nada. (El botón **Dev login** de siempre sigue ahí: entra sin el panel; el modo se puede encender después desde el menú de perfil.)
+2. Abrir `http://localhost:3042/login`, escribir `ms@lightning.local` y tocar **Enter demo mode (this machine only)**. No pide contraseña; con el correo vacío o inexistente lo dice y no enciende nada. (El botón **Dev login** de siempre sigue ahí: entra sin el panel; el modo se puede encender después desde el menú de perfil.)
 
 ## Modo demo (D36)
 
@@ -51,51 +51,53 @@ Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de
 
 | Historia | J | Cuentas (en orden) | Camiones | Pasos | Muta datos |
 |---|---|---|---|---|---|
-| HU-M1 Receive a truck | J1 | Manager | 973 | 3 | sí (crea el WO) |
-| HU-M2 Inspect and record findings | J1 | Manager | 601, 602 | 4 | sí (inspección del 601) |
-| HU-M3 Split the work | J2 | Manager | 602 | 3 | sí (asigna) |
-| HU-M4 Unblock a truck | J3 | Manager, Elliot, Manager | 605, 609 | 4 | sí (Resolve, Resume) |
-| HU-M5 Review, close and Return to Service | J4 | Manager | 931, 607, 606 | 4 | sí (Close 931, Return 607) |
-| HU-M6 Cancel and reopen | J4 | Manager | 613, 615 | 3 | no |
-| HU-M7 See the whole shop | J5 | Manager | — | 5 | no |
-| HU-M8 Configure the shop workflow | J2 | Manager, Anthony, Manager | 957 | 4 | no |
-| HU-M9 Add staff | J12 | Manager | — | 3 | opcional (Add) |
-| HU-M10 Helper on a Job | J2 | Manager, Alejandro 2 | 612 | 2 | no |
-| HU-M11 Send work to an outside shop | J3 | Manager | 610, 611 | 4 | no |
-| HU-M12 Know what each truck costs | J13 | Manager | 611 | 5 | no |
-| HU-M13 Charge Finance | J14 | Manager | 603 | 4 | opcional (Send) |
-| HU-ME1 See my work | J6 | Anthony | 604, 957 | 4 | no |
-| HU-ME2 Work and finish | J7 | Alejandro 1 | 603 | 3 | sí (Start, Complete) |
-| HU-ME3 Report a blocker | J8 | Elliot, Manager, Elliot | 605 | 4 | sí (Resolve, Continue) |
-| HU-ME4 Notes and Request Work | J7 | Anthony, Manager | 613 | 3 | sí (nota, Mark handled) |
-| HU-ME5 Day closes by itself | J7 | John, Manager | 944 | 4 | no |
-| HU-ME6 One clock across trucks | J7 | Anthony | 604, 612 | 3 | sí (mueve el reloj) |
-| HU-PM1 Record a preventive maintenance | J9 | Daniel | 968, 603 | 4 | opcional (Finish) |
-| HU-QC1 Approve or return a truck | J11 | Safety 1, Safety 2, Manager | 616, 617, 606, 905, 922, 931 | 7 | sí (Take, Approve/Return) |
-| HU-A1 Correct time without breaking history | J10 | Admin | 617 | 2 | sí (Correct…) |
-| HU-A2 Catalog and people | — | Admin | — | 3 | no |
+| HU-M1 Receive a truck | J1 | MS | 973 | 3 | sí (crea el WO) |
+| HU-M2 Inspect and record findings | J1 | MS | 601, 602 | 4 | sí (inspección del 601) |
+| HU-M3 Split the work | J2 | MS | 602 | 3 | sí (asigna) |
+| HU-M4 Unblock a truck | J3 | MS, MG2, MS | 605, 609 | 4 | sí (Resolve, Resume) |
+| HU-M5 Review, close and Return to Service | J4 | MS | 931, 607, 606 | 4 | sí (Close 931, Return 607) |
+| HU-M6 Cancel and reopen | J4 | MS | 613, 615 | 3 | no |
+| HU-M7 See the whole shop | J5 | MS | — | 5 | no |
+| HU-M8 Configure the shop workflow | J2 | MS, MG1, MS | 957 | 4 | no |
+| HU-M9 Add staff | J12 | MS | — | 3 | opcional (Add) |
+| HU-M10 Helper on a Job | J2 | MS, MD | 612 | 2 | no |
+| HU-M11 Send work to an outside shop | J3 | MS | 610, 611 | 4 | no |
+| HU-M12 Know what each truck costs | J13 | MS | 611 | 5 | no |
+| HU-M13 Charge Finance | J14 | MS | 603 | 4 | opcional (Send) |
+| HU-ME1 See my work | J6 | MG1 | 604, 957 | 4 | no |
+| HU-ME2 Work and finish | J7 | MA | 603 | 3 | sí (Start, Complete) |
+| HU-ME3 Report a blocker | J8 | MG2, MS, MG2 | 605 | 4 | sí (Resolve, Continue) |
+| HU-ME4 Notes and Request Work | J7 | MG1, MS | 613 | 3 | sí (nota, Mark handled) |
+| HU-ME5 Day closes by itself | J7 | MG3, MS | 944 | 4 | no |
+| HU-ME6 One clock across trucks | J7 | MG1 | 604, 612 | 3 | sí (mueve el reloj) |
+| HU-PM1 Record a preventive maintenance | J9 | MPM | 968, 603 | 4 | opcional (Finish) |
+| HU-QC1 Approve or return a truck | J11 | QC1, QC2, MS | 616, 617, 606, 905, 922, 931 | 7 | sí (Take, Approve/Return) |
+| HU-A1 Correct time without breaking history | J10 | AS | 617 | 2 | sí (Correct…) |
+| HU-A2 Catalog and people | — | AS | — | 3 | no |
 
-Orden recomendado: **HU-ME1 antes de HU-ME6** (mueve el reloj de Anthony); **HU-M4 y HU-ME3 comparten el 605** (una u otra, o rearmar entre las dos); HU-M5 deja el 606 para HU-QC1. Lo que no se ve en local (contraseña temporal en HU-M9, Dispatch en HU-M7, el cierre de las 5 PM en vivo en HU-ME5) lo dice la nota del primer paso.
+Orden recomendado: **HU-ME1 antes de HU-ME6** (mueve el reloj de MG1); **HU-M4 y HU-ME3 comparten el 605** (una u otra, o rearmar entre las dos); HU-M5 deja el 606 para HU-QC1. Lo que no se ve en local (contraseña temporal en HU-M9, Dispatch en HU-M7, el cierre de las 5 PM en vivo en HU-ME5) lo dice la nota del primer paso.
 
 **Auditoría UX (2026-10-10):** `docs/ux-audit/demo-mode/09-informe-final.md`; lo corregido y lo pendiente, en `OPEN_ISSUES.md` §1q.
 
-**Ensayo completo (2026-10-09/10):** se recorrieron las 23 historias tocando lo que dice cada paso, con la base recién armada; los textos se ajustaron a la pantalla real. El armado deja el Shop workflow como en el taller: PM → Daniel, Alignment → Alejandro 1, Detailing → equipo de dos (Anthony y Alejandro 2), Quality Check → Safety. Por eso un Work Order nuevo (HU-M1) nace con sus dueños. Defectos encontrados: `OPEN_ISSUES.md` §1p.
+**Ensayo completo (2026-10-09/10):** se recorrieron las 23 historias tocando lo que dice cada paso, con la base recién armada; los textos se ajustaron a la pantalla real. El armado deja el Shop workflow como en el taller: PM → MPM, Alignment → MA, Detailing → equipo de dos (MG1 y MD), Quality Check → QC1 y QC2. Por eso un Work Order nuevo (HU-M1) nace con sus dueños. Defectos encontrados: `OPEN_ISSUES.md` §1p.
 
 ## Cuentas
 
-| Rol | Correo | Qué ve |
-|---|---|---|
-| Shop Manager | `manager@lightning.local` | Operaciones, Yard, Work Orders, Trucks, Partes y costos (con tarifa y facturas a Finanzas), Setup |
-| Mecánico general | `anthony@lightning.local` | Reloj corriendo, cola del equipo, Jobs por iniciar, completados por día |
-| Mecánico general | `elliot@lightning.local` | El Job bloqueado esperando piezas |
-| Mecánico general | `john@lightning.local` | "Ayer quedó en curso · toca Continuar" |
-| Alignment | `mechanic@lightning.local` (Alejandro 1) | Alineaciones por hacer y hechas |
-| Detailing | `alejandro-2@lightning.local` | Detailing; también está en la cola del equipo |
-| Mecánico PM | `daniel@lightning.local` | PM en curso, "Esperan PM" con "Último PM", PM pausado |
-| Safety | `safety-1@lightning.local`, `safety-2@lightning.local` | Por revisar, Devueltos, Hechos |
-| Admin | `admin@lightning.local` | Todo lo del Manager |
+Las cuentas de la demo se llaman por rol, como en el taller (y como el roster de prueba de producción). Las crea el armado de la demo a partir de las cuentas del seed; el nombre visible es el código y el rol, y el avatar muestra el código.
 
-`luis@lightning.local` está **inactivo**: sirve para mostrar el filtro de People.
+| Código | Nombre en la app | Correo | Qué ve |
+|---|---|---|---|
+| MS | MS · Manager Shop | `ms@lightning.local` | Operaciones, Yard, Work Orders, Trucks, Partes y costos (con tarifa y facturas a Finanzas), Setup |
+| AS | AS · Admin Shop | `as@lightning.local` | Todo lo del Manager; corrige tiempos |
+| MG1 | MG1 · Mecánico General | `mg1@lightning.local` | Reloj corriendo en el 604, cola del equipo, Jobs por iniciar, completados |
+| MG2 | MG2 · Mecánico General | `mg2@lightning.local` | El Job bloqueado del 605 esperando piezas |
+| MG3 | MG3 · Mecánico General | `mg3@lightning.local` | "Yesterday's work is still open · tap Continue" (944) |
+| MA | MA · Mecánico Alineación | `ma@lightning.local` | Alineaciones por hacer (603) y hechas |
+| MD | MD · Mecánico Detailing | `md@lightning.local` | Detailing; ayudante en el 612; cola del equipo (957) |
+| MPM | MPM · Mecánico PM | `mpm@lightning.local` | PM en curso (968), "Waiting for PM" con "Last PM", PM pausado (609) |
+| QC1, QC2 | QC1 · Quality Check, QC2 · Quality Check | `qc1@`, `qc2@lightning.local` | Por revisar, Devueltos, Hechos; QC2 tiene tomado el 905 |
+
+`MG4 · Mecánico General` (`mg4@lightning.local`) está **inactivo**: sirve para mostrar el filtro de People. Las cuentas reales del seed que no son del roster (`cristian@ltransl.com`, `ibrain@ltransl.com`, `cristian240588@hotmail.com`) quedan "Removed from the Shop" en la base demo: no aparecen en pickers, People ni en el panel. La tabla vive en `packages/shared/src/demo-roster.ts`.
 
 ## Qué muestra cada camión
 
@@ -107,7 +109,7 @@ Algunos Work Orders se crearon días atrás, así que salen como "abierto hace m
 | 601 | Recién llegado | Como Manager, registro la inspección de llegada. |
 | 602 | Inspección con hallazgos, de hace 2 días | Como Manager, asigno Brake Inspection y Lights. |
 | 603 | Sin hallazgos | Como mecánico, veo mi Job listo para iniciar. |
-| 604 | Trabajo en curso | Como Anthony, veo mi reloj corriendo en la 604. |
+| 604 | Trabajo en curso | Como MG1, veo mi reloj corriendo en la 604. |
 | 605 | Bloqueado, esperando piezas, de hace 2 días | Como Manager, veo el bloqueo con la nota y lo resuelvo. La compra de la bolsa de aire ya está cargada hoy. |
 | 606 | Solo falta QC (Normal) | Como Safety, lo tomo y lo apruebo o lo devuelvo. Como Manager, también puedo hacerlo (respaldo). |
 | 607 | Ready to Go | Como Manager, lo devuelvo al servicio (Return to Service). |
@@ -121,12 +123,12 @@ Algunos Work Orders se crearon días atrás, así que salen como "abierto hace m
 | 615 | Work Order cancelado | Se ve el motivo. El camión queda sin WO abierto. |
 | 616 | Solo falta QC (Critical) | Sale primero en "Por revisar" de Safety. |
 | 617 | Solo falta QC (High) | Sale segundo. |
-| 905 | QC tomado por Safety 2 | Safety 1 lo ve como "Lo tomó Safety 2". |
-| 922 | Devuelto por Safety 1 | Safety lo ve en "Devueltos". El Manager lo ve bloqueado con la nota y lo resuelve. |
+| 905 | QC tomado por QC2 | QC1 lo ve como "Taken by QC2". |
+| 922 | Devuelto por QC1 | Safety lo ve en "Devueltos". El Manager lo ve bloqueado con la nota y lo resuelve. |
 | 931 | QC aprobado | Como Manager, lo veo en "Listos para cerrar" y lo cierro. |
-| 944 | Reloj de ayer | Como John, veo "Ayer quedó en curso": el cierre del día lo cortó a las 5:00 p.m. |
-| 957 | Detailing en la cola del equipo | Setup: Detailing tiene un equipo de dos. Anthony y Alejandro 2 lo ven en "Cola del equipo". |
-| 968 | PM en curso | Como Daniel, continúo el PM. |
+| 944 | Reloj de ayer | Como MG3, veo "Yesterday's work is still open": el cierre del día lo cortó a las 5:00 p.m. |
+| 957 | Detailing en la cola del equipo | Setup: Detailing tiene un equipo de dos. MG1 y MD lo ven en "Team queue". |
+| 968 | PM en curso | Como MPM, continúo el PM. |
 | 973, 986, 991 | Sin Work Order abierto (visitas recientes) | Como Manager, creo un Work Order nuevo. |
 
 Los números de camión son los del seed. El script imprime la tabla real al terminar.

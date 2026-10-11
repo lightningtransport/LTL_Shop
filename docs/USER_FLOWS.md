@@ -419,7 +419,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Algo lo detiene | Bloquea su PM; no puede terminarlo hasta que el Manager resuelva | ✅ | A11 |
 | Quiere cambiar algo de un PM terminado | Solo lectura | ✅ | E11 |
 | Un mecánico normal intenta hacer un PM | No puede | ✅ | A26 |
-| Daniel (el único que hace PM) no está | Los camiones esperan en el paso PM. Si urge, el Manager cancela el PM con motivo (salida urgente) | ✅ | A16, E16 |
+| El mecánico PM (el único que hace PM) no está | Los camiones esperan en el paso PM. Si urge, el Manager cancela el PM con motivo (salida urgente) | ✅ | A16, E16 |
 | El PM no cambia ninguna parte | Nunca pasa; la app exige al menos una parte | ✅ | E11 |
 | Work Orders de PM del modelo viejo | Ya no se pueden crear y en producción no queda ninguno abierto (consultado el 2026-09-29: 0). No aplica | ✅ | A28 |
 
