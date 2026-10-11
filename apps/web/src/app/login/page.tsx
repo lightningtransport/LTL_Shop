@@ -76,21 +76,32 @@ export default function LoginPage() {
     }
   }
 
-  /** D36: Dev Login plus the Demo panel (user switcher, guided stories). Local builds only. */
+  /**
+   * D36: Dev Login plus the Demo panel (user switcher, guided stories). Local builds only. The mode is
+   * turned on only after the sign-in succeeded, and an empty email is refused here (UX-7-001).
+   */
   function onEnterDemoMode() {
-    writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, panelOpen: true });
-    void onDevLogin();
+    if (!email.trim().includes('@')) {
+      setError('Type the email of a demo account first, for example manager@lightning.local.');
+      return;
+    }
+    void onDevLogin(true);
   }
 
-  async function onDevLogin() {
+  async function onDevLogin(enterDemo = false) {
     setBusy(true);
     setError(null);
     try {
       const signedInUser = await loginDev(email);
+      if (enterDemo) writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, panelOpen: true, welcome: true });
       navigationStarted.current = true;
       replaceAppLocation(postLoginPath(signedInUser, requestedPath()), router, { scroll: true });
     } catch (err) {
-      setError(apiErrorMessage(err, messages, messages.accountNotConfigured));
+      setError(
+        enterDemo
+          ? 'No active account with this email in the demo database. Use one of the demo accounts, or rebuild the demo (npm run prisma:demo-local).'
+          : apiErrorMessage(err, messages, messages.accountNotConfigured),
+      );
     } finally {
       setBusy(false);
     }
@@ -180,7 +191,7 @@ export default function LoginPage() {
             variant="secondary"
             className="w-full"
             disabled={busy}
-            onClick={onDevLogin}
+            onClick={() => void onDevLogin()}
           >
             {messages.devLogin}
           </Button>

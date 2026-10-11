@@ -1,20 +1,25 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import useSWR, { useSWRConfig } from 'swr';
-import type { UserDto } from '@ltl-shop/shared';
+import { AppCapability, type UserDto } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
-import { defaultWorkspacePath } from '@/lib/admin-routing';
+import { defaultWorkspacePath, hasCapability } from '@/lib/admin-routing';
 import { DEMO_MODE_AVAILABLE } from '@/lib/dev-login';
 import { useTrucks } from '@/lib/shop-data';
-import { castMember } from './cast';
+import { castMember, castMemberByEmail } from './cast';
 import { resolveDemoTarget } from './resolve-target';
 import { type DemoStep, type DemoStory, findDemoStory } from './scripts';
 import { DEFAULT_DEMO_STATE, DEMO_STATE_EVENT, type DemoState, demoPanelAvailable, readDemoState, writeDemoState } from './state';
 import { refreshAdminSessionCookie, switchDemoUser } from './switch-user';
 
 export type DemoUserDto = Pick<UserDto, 'id' | 'name' | 'email' | 'role' | 'active' | 'capabilities'>;
+
+export const DEMO_MANAGER_EMAIL = 'manager@lightning.local';
+
+/** The Admin cookie lives 60 minutes (api/admin/session); a demo lasts longer (UX-1-003). */
+const ADMIN_COOKIE_REFRESH_MS = 20 * 60_000;
 
 export type DemoMode = {
   /** False until the saved state has been read on the client (keeps server and first client render equal). */
@@ -25,25 +30,32 @@ export type DemoMode = {
   users: DemoUserDto[] | undefined;
   usersError: unknown;
   busy: boolean;
+  /** Label of the account being switched to while the page is replaced (UX-6-002). */
+  switchingTo: string | null;
   error: string | null;
   /** The chosen story and its current step, clamped to the story length. */
   story: DemoStory | null;
   step: DemoStep | null;
   stepIndex: number;
+  /** The screen on view is the current step's screen (null while trucks have not loaded) (UX-5-001). */
+  onStepScreen: boolean | null;
   setPanelOpen: (open: boolean) => void;
   setAutoFollow: (on: boolean) => void;
+  /** Turn the mode on or off from anywhere (profile menu); the sign-in stays (UX-1-001). */
+  setEnabled: (on: boolean) => void;
+  dismissWelcome: () => void;
   /** Become another demo account and load its home (or `path`) from scratch. */
   switchTo: (email: string, path?: string) => Promise<void>;
-  /** Pick a story (null clears it). With auto-follow on, its first step opens at once. */
-  selectStory: (id: string | null) => Promise<void>;
+  /** Pick a story (null clears it). The card previews step 1; nothing navigates until `startStory` (UX-7-003). */
+  selectStory: (id: string | null) => void;
+  /** Open the first step of the chosen story (switches account and screen). */
+  startStory: () => Promise<void>;
   /** Move to a step; with auto-follow on, switches user and screen. */
   goToStep: (index: number) => Promise<void>;
-  /** Open the current step's screen now (used when auto-follow is off, or to come back to it). */
+  /** Open the current step's screen now (auto-follow off, or the presenter wandered off). */
   goToScreen: () => Promise<void>;
-  /** Clear the story and go back to the Manager dashboard. */
-  resetDemo: () => Promise<void>;
-  /** Turn the mode off; the current sign-in stays. */
-  leave: () => void;
+  /** Clear the story and go back to the Manager dashboard. Data is not rebuilt. */
+  backToManager: () => Promise<void>;
 };
 
 const DemoModeContext = createContext<DemoMode | null>(null);
@@ -63,7 +75,9 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<DemoState>(DEFAULT_DEMO_STATE);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pendingStep = useRef<DemoStep | null>(null);
 
   useEffect(() => {
     const sync = () => setState(readDemoState());
@@ -93,62 +107,92 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   const stepIndex = clampStep(story, state.stepIndex);
   const step = story ? story.steps[stepIndex] : null;
 
+  // UX-1-003: while the demo is on and the account can enter the Admin, keep its server cookie alive.
+  const canAdmin = hasCapability(user, AppCapability.ADMIN_ACCESS);
+  useEffect(() => {
+    if (!available || !token || !canAdmin) return;
+    const id = window.setInterval(() => void refreshAdminSessionCookie(token), ADMIN_COOKIE_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, [available, token, canAdmin]);
+
   const switchTo = useCallback(
     async (email: string, path?: string) => {
       setBusy(true);
       setError(null);
-      const target = path ?? data?.users.find((item) => item.email === email.toLowerCase());
-      const landing = typeof target === 'string' ? target : target ? defaultWorkspacePath(target) : '/';
+      const normalized = email.toLowerCase();
+      const known = data?.users.find((item) => item.email.toLowerCase() === normalized);
+      setSwitchingTo(castMemberByEmail(normalized)?.label ?? known?.name ?? email);
+      const landing = path ?? (known ? defaultWorkspacePath(known) : '/');
       // Saved before the page is replaced, so the new document reopens the panel where it was.
       writeDemoState({ ...readDemoState(), enabled: true, panelOpen: true });
       const result = await switchDemoUser(
         { email, path: landing },
-        { fetch: (input, init) => window.fetch(input, init), storage: window.localStorage, assign: (to) => window.location.assign(to) },
+        { fetch: (input, init) => window.fetch(input, init), storage: window.localStorage, replace: (to) => window.location.replace(to) },
       );
       if (!result.ok) {
         setBusy(false);
+        setSwitchingTo(null);
         setError(
           result.status === 0
-            ? 'The API did not answer. Is demo-api running (npm run start:demo)?'
-            : `Could not switch to ${email} (HTTP ${result.status}). Is the account active, and does the API have AUTH_DEV_BYPASS=true?`,
+            ? 'The demo server is not answering. Start it from a terminal: npm run start:demo'
+            : result.status === 403 || result.status === 401
+              ? `${email} is not an active account in the demo database. Rebuild the demo: npm run prisma:demo-local`
+              : `Could not switch to ${email} (HTTP ${result.status}). Check the demo server and try again.`,
         );
       }
     },
     [data],
   );
 
+  const resolvedPathOf = useCallback(
+    (target: DemoStep) => {
+      if (!trucks && target.target.kind !== 'path') return null;
+      const resolved = resolveDemoTarget(target.target, trucks ?? []);
+      return 'error' in resolved ? resolved : resolved.path;
+    },
+    [trucks],
+  );
+
   const openStep = useCallback(
     async (target: DemoStep) => {
       setError(null);
-      if (!trucks && target.target.kind !== 'path') {
-        setError('The truck list has not loaded yet. Try again in a second.');
+      const resolved = resolvedPathOf(target);
+      if (resolved === null) {
+        // UX-6-003: wait for the truck list instead of asking the presenter to tap again.
+        pendingStep.current = target;
         return;
       }
-      const resolved = resolveDemoTarget(target.target, trucks ?? []);
-      if ('error' in resolved) {
+      if (typeof resolved !== 'string') {
         setError(
           resolved.error === 'truck_not_found'
-            ? `Truck ${resolved.unit} is not in this database. Did you build the demo (npm run prisma:demo-local)?`
-            : `Truck ${resolved.unit} has no open Work Order. Did you rebuild the demo (npm run prisma:demo-local)?`,
+            ? `Truck ${resolved.unit} is not in this database. Build the demo data first: npm run prisma:demo-local`
+            : `Truck ${resolved.unit} has no open Work Order any more: this story was already run on this data. Rebuild the demo: npm run prisma:demo-local`,
         );
         return;
       }
       const email = castMember(target.user).email;
       if (user?.email.toLowerCase() !== email) {
-        await switchTo(email, resolved.path);
+        await switchTo(email, resolved);
         return;
       }
-      if (resolved.path.startsWith('/admin') && token) await refreshAdminSessionCookie(token);
+      if (resolved.startsWith('/admin') && token) await refreshAdminSessionCookie(token);
       const current = `${pathname}${window.location.search}`;
-      if (current === resolved.path) {
+      if (current === resolved) {
         router.refresh();
         void mutate(() => true);
       } else {
-        router.push(resolved.path);
+        router.push(resolved);
       }
     },
-    [trucks, user?.email, token, pathname, router, mutate, switchTo],
+    [resolvedPathOf, user?.email, token, pathname, router, mutate, switchTo],
   );
+
+  useEffect(() => {
+    if (!trucks || !pendingStep.current) return;
+    const target = pendingStep.current;
+    pendingStep.current = null;
+    void openStep(target);
+  }, [trucks, openStep]);
 
   const goToStep = useCallback(
     async (index: number) => {
@@ -156,39 +200,60 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
       const target = findDemoStory(current.storyId);
       if (!target) return;
       const next = clampStep(target, index);
-      update({ stepIndex: next, panelOpen: true });
+      update({ stepIndex: next, panelOpen: true, started: true });
       if (current.autoFollow) await openStep(target.steps[next]);
     },
     [update, openStep],
   );
 
   const selectStory = useCallback(
-    async (id: string | null) => {
+    (id: string | null) => {
       const target = findDemoStory(id);
-      update({ storyId: target?.id ?? null, stepIndex: 0, panelOpen: true });
+      pendingStep.current = null;
       setError(null);
-      if (target && readDemoState().autoFollow) await openStep(target.steps[0]);
+      update({ storyId: target?.id ?? null, stepIndex: 0, started: false, panelOpen: true });
     },
-    [update, openStep],
+    [update],
   );
+
+  const startStory = useCallback(async () => {
+    const current = readDemoState();
+    const target = findDemoStory(current.storyId);
+    if (!target) return;
+    update({ stepIndex: 0, started: true, panelOpen: true });
+    await openStep(target.steps[0]);
+  }, [update, openStep]);
 
   const goToScreen = useCallback(async () => {
     if (step) await openStep(step);
   }, [step, openStep]);
 
-  const resetDemo = useCallback(async () => {
-    update({ storyId: null, stepIndex: 0, panelOpen: true });
-    const manager = 'manager@lightning.local';
-    if (user?.email === manager) {
-      window.location.assign('/admin');
+  const backToManager = useCallback(async () => {
+    update({ storyId: null, stepIndex: 0, started: false, panelOpen: true });
+    if (user?.email === DEMO_MANAGER_EMAIL) {
+      window.location.replace('/admin');
       return;
     }
-    await switchTo(manager, '/admin');
+    await switchTo(DEMO_MANAGER_EMAIL, '/admin');
   }, [switchTo, update, user?.email]);
 
-  const leave = useCallback(() => {
-    update({ ...DEFAULT_DEMO_STATE });
-  }, [update]);
+  const setEnabled = useCallback(
+    (on: boolean) => {
+      if (on) update({ enabled: true, panelOpen: true });
+      else update({ ...DEFAULT_DEMO_STATE });
+    },
+    [update],
+  );
+
+  const onStepScreen = useMemo(() => {
+    if (!step || !state.started) return null;
+    const resolved = resolvedPathOf(step);
+    if (resolved === null || typeof resolved !== 'string') return null;
+    const stepUser = castMember(step.user).email;
+    if (user?.email.toLowerCase() !== stepUser) return false;
+    const current = typeof window === 'undefined' ? pathname : `${pathname}${window.location.search}`;
+    return current === resolved;
+  }, [step, state.started, resolvedPathOf, user?.email, pathname]);
 
   const value = useMemo<DemoMode>(
     () => ({
@@ -198,20 +263,24 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
       users: data?.users,
       usersError,
       busy,
+      switchingTo,
       error,
       story,
       step,
       stepIndex,
+      onStepScreen,
       setPanelOpen: (open) => update({ panelOpen: open }),
       setAutoFollow: (on) => update({ autoFollow: on }),
+      setEnabled,
+      dismissWelcome: () => update({ welcome: false }),
       switchTo,
       selectStory,
+      startStory,
       goToStep,
       goToScreen,
-      resetDemo,
-      leave,
+      backToManager,
     }),
-    [ready, state, available, data?.users, usersError, busy, error, story, step, stepIndex, update, switchTo, selectStory, goToStep, goToScreen, resetDemo, leave],
+    [ready, state, available, data?.users, usersError, busy, switchingTo, error, story, step, stepIndex, onStepScreen, update, setEnabled, switchTo, selectStory, startStory, goToStep, goToScreen, backToManager],
   );
 
   return <DemoModeContext.Provider value={value}>{children}</DemoModeContext.Provider>;

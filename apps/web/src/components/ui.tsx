@@ -14,7 +14,7 @@ import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
 import { DEMO_MODE_AVAILABLE } from '@/lib/dev-login';
-import { DemoHeaderButton } from './demo-panel';
+import { DemoHeaderButton, DemoModeMenuRow } from './demo-panel';
 import { useShopLocale } from '@/lib/locale-context';
 import { shouldTakeInitialFocus } from '@/lib/modal-initial-focus';
 import { shouldOpenUpdatePasswordSheet, updatePasswordSheetCopy } from '@/lib/password-change-prompt';
@@ -518,6 +518,9 @@ function ProfileDialog() {
           <ProfileSettings />
 
           {error ? <p className="mt-4 text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
+
+          {/* D36: local builds can turn the Demo panel on and off from here (UX-1-001). */}
+          {DEMO_MODE_AVAILABLE ? <DemoModeMenuRow onNavigate={() => setMenuOpen(false)} /> : null}
 
           {/* Signing out is rare; it sits last and does not compete with the settings above. */}
           <Button
