@@ -1,6 +1,6 @@
 # Pendientes: defectos, limpieza y salida en vivo
 
-**Actualizado:** 2026-10-05 (G3 y G4 hechos, LTR-188; Fase A hecha; cuestionario de operación)
+**Actualizado:** 2026-10-10 (§1p: ensayo del modo demo; antes: G3 y G4 hechos, LTR-188)
 
 Una sola lista de lo que falta. Cuando algo se arregla, se borra de aquí
 (el historial queda en git y en Linear). El orden es el orden de trabajo.
@@ -387,6 +387,19 @@ El dueño lo reportó al usar Purchases en producción, con capturas. Se evaluó
 | ~~PC3~~ | C | **"Other (not in catalog)" parece una forma de agregar piezas**; no dice que queda solo en esa compra ni dónde se agregan al catálogo (UX-7-028). | **Hecho:** La opción se llama "Other — only on this invoice" y al elegirla dice que no se agrega a Partes, con el enlace para agregar una parte al catálogo. |
 | ~~PC4~~ | B | **"Discard this purchase?" sale al final del formulario**, fuera de la vista; Cancel parece no hacer nada (UX-7-029). | **Hecho:** Los botones quedan fijos abajo del diálogo; "Discard this purchase?" aparece ahí, en lugar de los botones. Outside repairs ahora también pregunta antes de descartar. |
 | ~~PC5~~ | E | **El detalle de la compra está desordenado:** el total al final y suelto, "Per truck" repetido con un solo camión, archivo, notas y autor mezclados (UX-4-012). | **Hecho:** Arriba, un resumen: proveedor, factura, fecha, camión, archivo, Subtotal/Tax/Freight/Total y quién la cargó; Lines debajo; "Per truck" solo con varios camiones; Notes aparte. |
+
+## 1p. Ensayo completo del modo demo (2026-10-09/10) — **ABIERTO: DM1–DM3** (DM4–DM6 hechos) · Linear [LTR-204](https://linear.app/ltransl/issue/LTR-204)
+
+Se recorrieron en el navegador las 23 historias del Panel de demo (D36) contra `ltl_shop_demo` recién armada, tocando lo que dice cada paso. Los textos de los pasos que no coincidían con la pantalla se corrigieron en `apps/web/src/lib/demo/scripts.ts`. Esto es lo que salió del producto y de la demo:
+
+| # | Clase | Problema | Dónde | Estado |
+|---|---|---|---|---|
+| DM1 | C | **La lista de Work Orders no dice "Return to Service"** para un camión Ready to Go: la columna Next dice "4 Jobs · all done". La lista de Trucks sí lo dice. USER_FLOWS (HU-M5, fila A19b) dice que las dos listas lo muestran. | `/admin/work-orders`, columna Next | Abierto |
+| DM2 | E | **People: el filtro no refleja la URL.** Con `?status=all` la lista muestra a los inactivos (Luis), pero el selector "Show" sigue diciendo "Active". | `/admin/mechanics` | Abierto |
+| DM3 | E | **Plurales con 1:** "1 open Work Orders" (Shop workflow → Add), "1 parts" (Vendors), "1 lines" (Purchases). | Admin, varios | Abierto |
+| ~~DM4~~ | C | **Truck → Costs decía "Charge to Finance · coming later"** (gris, deshabilitado) aunque las facturas internas existen desde D34. | `admin-truck-costs.tsx` | **Hecho:** la tarjeta dice "Charge to Finance" y abre Internal invoices (EN/ES). |
+| ~~DM5~~ | C | **En la demo, un Work Order nuevo nacía sin dueño en PM y Alignment**: el armado dejaba vacíos esos equipos del Shop workflow, y HU-M1 dice que cada paso nace con su dueño. | `reset-demo-work-orders.ts --demo` | **Hecho:** al final del armado, PM → Daniel y Alignment → Alejandro 1 (Detailing y QC ya tenían equipo). |
+| ~~DM6~~ | C | **El Panel de demo tapaba botones de la derecha** (Resolve en el Admin, Request Work en el mecánico); el presentador tenía que cerrarlo en cada paso. | `globals.css`, `demo-panel.tsx` | **Hecho:** con el panel abierto la página le deja su columna: desde 1000 px en las pantallas del mecánico, desde 1200 px en el Admin. Más angosto, flota como antes y se cierra con la X. |
 
 ## 2. Pruebas
 

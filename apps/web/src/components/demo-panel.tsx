@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { FlaskConical, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -39,6 +40,20 @@ export function DemoHeaderButton() {
   );
 }
 
+/**
+ * While the panel is open, wide screens keep its column free (globals.css, html[data-demo-panel]) so it never
+ * covers the buttons the presenter has to tap, such as Resolve on the right of the Admin pages.
+ */
+function ReservePanelSpace() {
+  useEffect(() => {
+    document.documentElement.dataset.demoPanel = 'open';
+    return () => {
+      delete document.documentElement.dataset.demoPanel;
+    };
+  }, []);
+  return null;
+}
+
 export function DemoPanel() {
   const demo = useDemoMode();
   const { user } = useAuth();
@@ -59,6 +74,7 @@ export function DemoPanel() {
       className="fixed inset-x-3 bottom-3 z-50 max-h-[75vh] overflow-auto rounded-xl border bg-card p-4 text-sm text-card-foreground shadow-2xl sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:w-[360px]"
       style={{ paddingBottom: 'calc(1rem + var(--app-safe-bottom))' }}
     >
+      <ReservePanelSpace />
       <div className="mb-3 flex items-center justify-between">
         <p className="font-semibold">Demo panel</p>
         <button

@@ -95,10 +95,15 @@ export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { tr
               <p className="mt-0.5 text-xs text-muted-foreground" data-testid="truck-costs-labor">{fillPlaceholders(messages.pcCostsLaborHours, { hours: data.laborHours.toLocaleString(locale === 'es' ? 'es-US' : 'en-US', { maximumFractionDigits: 2 }) })}</p>
               {!data.laborRateSet ? <AdminNavLink className="tap-inline text-xs text-primary underline" href="/admin/parts/labor-rate">{messages.pcCostsSetRate}</AdminNavLink> : null}
             </div>
-            <div className="rounded-xl border border-dashed px-4 py-3 text-muted-foreground" aria-disabled="true">
-              <p className="text-xs">{messages.pcCostsFinance}</p>
+            {/* D34 (LB-2): built; the tile opens the internal invoices instead of saying "coming later". */}
+            <AdminNavLink
+              href="/admin/parts/internal-invoices"
+              className="block rounded-xl border bg-card px-4 py-3 text-muted-foreground hover:bg-accent"
+              data-testid="truck-costs-finance"
+            >
+              <p className="flex items-center gap-1.5 text-xs"><Receipt aria-hidden="true" className="size-3.5" />{messages.pcCostsFinance}</p>
               <p className="mt-1 text-sm">{messages.pcCostsFinanceHint}</p>
-            </div>
+            </AdminNavLink>
           </div>
 
           {!data.entries.length ? (

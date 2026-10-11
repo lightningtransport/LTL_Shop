@@ -835,6 +835,16 @@ async function main() {
     // Today's Work Orders happened this morning, not in the same second: spread from 7:00 up to now.
     const end = shopMinutesNow() - 2;
     await retime(prisma, todaySince, shopToday(), { startMinutes: Math.max(0, Math.min(7 * 60, end - 60)), endMinutes: end });
+    // The shop as it runs from now on (Setup → Shop workflow, HU-M1 and HU-M8): a new Work Order is born with PM on
+    // the PM mechanic and Alignment on the alignment mechanic. Detailing keeps the team of two from
+    // DEMO-team-queue; Quality Check keeps Safety. Set after the scenarios, which assign every step themselves.
+    await shopWorkflow.update(actors.manager, {
+      steps: [
+        { stepKey: ShopWorkflowStepKey.PM, memberIds: [actors.pm.id] },
+        { stepKey: ShopWorkflowStepKey.ALIGNMENT, memberIds: [actors.alignment.id] },
+      ],
+    });
+    console.log(`\nShop workflow: PM → ${actors.pm.name}, Alignment → ${actors.alignment.name}, Detailing → team of two, Quality Check → Safety`);
   }
 
   if (demo && history) {
