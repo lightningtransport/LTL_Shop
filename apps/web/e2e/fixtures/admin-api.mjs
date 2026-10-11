@@ -1307,6 +1307,8 @@ createServer(async (request, response) => {
     if (completedFrom) items = items.filter((item) => item.completedAt && new Date(item.completedAt) >= new Date(completedFrom));
     if (completedBefore) items = items.filter((item) => item.completedAt && new Date(item.completedAt) < new Date(completedBefore));
     const hasFilters = Boolean(status || priority || search || createdBefore || completedFrom || completedBefore);
+    // DM1 (LTR-204): like the real API, every list item carries its Next step (the Trucks list and Yard already do).
+    items = items.map((item) => ({ ...item, nextStep: fixtureNextStepForWorkOrder(item) }));
     if (!hasFilters && !cursor) {
       json(response, 200, { items: items.slice(0, 2), nextCursor: 'fixture-page-2' });
     } else if (cursor) {

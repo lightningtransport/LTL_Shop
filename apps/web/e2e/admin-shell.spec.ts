@@ -399,6 +399,25 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('WO-0101')).toHaveCount(0);
   });
 
+  test('work order table Next column says the same next step as the Trucks list (DM1, LTR-204)', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/admin/work-orders?status=completed');
+    const row = page.locator('table tbody tr', { has: page.getByRole('link', { name: 'WO-0104', exact: true }) });
+    await expect(row).toBeVisible();
+    // A completed Work Order whose Truck is Ready to Go reads "Return to Service", not "1 Jobs · all done".
+    const next = row.getByTestId('work-order-row-next-step');
+    await expect(next).toHaveAttribute('data-kind', 'return_to_service');
+    await expect(next).toHaveText('Ready to Go. Return it to service when it leaves the shop.');
+    await expect(row.getByText('all done')).toHaveCount(0);
+
+    // An open Work Order with a Job left names that Job, like the Truck does.
+    await page.goto('/admin/work-orders?status=in_progress');
+    const open = page.locator('table tbody tr', { has: page.getByRole('link', { name: 'WO-0106', exact: true }) });
+    await expect(open.getByTestId('work-order-row-next-step')).toHaveText('1 Jobs left · next: Inspect brake chamber');
+  });
+
   test('work order filters stay collapsed on mobile and compact on desktop', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
