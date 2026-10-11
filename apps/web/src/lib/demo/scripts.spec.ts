@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEMO_CAST, castMember } from './cast';
-import { DEMO_JOB_IDS, DEMO_STORIES, findDemoStory } from './scripts';
+import { DEMO_FLOW, DEMO_JOB_IDS, DEMO_STORIES, findDemoStory, storyChapters } from './scripts';
 
 const KNOWN_PREFIXES = ['/admin', '/mechanic/standard', '/mechanic/pm', '/qc', '/work-orders', '/trucks'];
 
@@ -58,6 +58,28 @@ describe('demo stories (D36)', () => {
         expect(step.do.length, story.id).toBeGreaterThan(0);
       }
     }
+  });
+
+  it('names stories in plain words, grouped by who does them', () => {
+    for (const story of DEMO_STORIES) {
+      expect(story.title, story.id).not.toMatch(/HU-|J\d/);
+      expect(['MS', 'Mechanics', 'MPM', 'QC', 'AS']).toContain(story.who);
+    }
+  });
+
+  it('has a demo flow with chapters that visits every account and reuses rehearsed steps', () => {
+    const chapters = storyChapters(DEMO_FLOW);
+    expect(chapters.length).toBe(14);
+    expect(DEMO_FLOW.steps.length).toBe(49);
+    for (const chapter of chapters) expect(chapter.to, chapter.title).toBeGreaterThanOrEqual(chapter.from);
+    const users = new Set(DEMO_FLOW.steps.map((step) => step.user));
+    for (const member of DEMO_CAST) expect(users.has(member.key), member.key).toBe(true);
+    for (const step of DEMO_FLOW.steps) {
+      expect(step.chapter, step.title).toBeTruthy();
+      expect(ALLOWED_PREFIXES[step.user].some((allowed) => routePrefix(step.target).startsWith(allowed)), `${step.user} → ${step.title}`).toBe(true);
+    }
+    expect(findDemoStory('FLOW')).toBe(DEMO_FLOW);
+    expect(DEMO_STORIES.some((story) => story.id === 'FLOW')).toBe(false);
   });
 
   it('names the demo trucks of DEMO.md only', () => {

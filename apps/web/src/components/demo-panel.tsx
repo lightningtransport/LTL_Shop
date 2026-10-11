@@ -6,7 +6,7 @@ import { FlaskConical, Loader2, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { DEMO_CAST, DEMO_CAST_GROUPS, castMember, castMemberByEmail } from '@/lib/demo/cast';
 import { describeTarget } from '@/lib/demo/resolve-target';
-import { DEMO_JOB_IDS, DEMO_JTBD, DEMO_STORIES } from '@/lib/demo/scripts';
+import { DEMO_FLOW, DEMO_STORIES, DEMO_WHO_LABELS, DEMO_WHO_ORDER, storyChapters } from '@/lib/demo/scripts';
 import { useDemoMode } from '@/lib/demo/demo-context';
 import { cn } from '@/lib/utils';
 import { Badge, Button, InlineAlert, Select } from './ui';
@@ -98,6 +98,8 @@ export function DemoPanel() {
   const stepIsMine = !!stepUser && stepUser.email === current;
   const offScreen = demo.state.started && demo.onStepScreen === false;
   const afterFive = new Date().getHours() >= 17;
+  const chapters = demo.story ? storyChapters(demo.story) : [];
+  const chapterIndex = chapters.findIndex((chapter) => demo.stepIndex >= chapter.from && demo.stepIndex <= chapter.to);
 
   return (
     <div
@@ -206,28 +208,52 @@ export function DemoPanel() {
             onChange={(event) => demo.selectStory(event.target.value || null)}
           >
             <option value="">None</option>
-            {DEMO_JOB_IDS.map((job) => {
-              const stories = DEMO_STORIES.filter((story) => story.jtbd === job);
-              if (!stories.length) return null;
-              return (
-                <optgroup key={job} label={`${job} · ${DEMO_JTBD[job].title}`}>
-                  {stories.map((story) => (
-                    <option key={story.id} value={story.id}>{story.id} · {story.title} ({story.steps.length} steps)</option>
-                  ))}
-                </optgroup>
-              );
-            })}
-            <optgroup label="Other">
-              {DEMO_STORIES.filter((story) => !story.jtbd).map((story) => (
-                <option key={story.id} value={story.id}>{story.id} · {story.title} ({story.steps.length} steps)</option>
-              ))}
+            <optgroup label="Demo flow">
+              <option value={DEMO_FLOW.id}>{DEMO_FLOW.title} · {storyChapters(DEMO_FLOW).length} chapters</option>
             </optgroup>
+            {DEMO_WHO_ORDER.map((who) => (
+              <optgroup key={who} label={DEMO_WHO_LABELS[who]}>
+                {DEMO_STORIES.filter((story) => story.who === who).map((story) => (
+                  <option key={story.id} value={story.id}>
+                    {story.title}{story.trucks.length ? ` (${story.trucks.join(', ')})` : ''} · {story.steps.length} steps
+                  </option>
+                ))}
+              </optgroup>
+            ))}
           </Select>
+          {demo.story && chapters.length ? (
+            <details className="mt-2 rounded-md border px-2 py-1 text-xs">
+              <summary className="cursor-pointer select-none text-muted-foreground">Chapters · {chapters.length}{chapterIndex >= 0 ? ` · now ${chapterIndex + 1}` : ''}</summary>
+            <ol className="mt-1 space-y-0.5" aria-label="Chapters">
+              {chapters.map((chapter, index) => {
+                const active = demo.stepIndex >= chapter.from && demo.stepIndex <= chapter.to;
+                return (
+                  <li key={chapter.title}>
+                    <button
+                      type="button"
+                      disabled={demo.busy}
+                      onClick={() => void demo.goToStep(chapter.from)}
+                      aria-current={active ? 'step' : undefined}
+                      className={cn('w-full rounded-md px-2 py-1 text-left hover:bg-accent', active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground')}
+                    >
+                      {chapter.title}
+                      <span className="ml-1 font-normal text-muted-foreground">· {castMember(demo.story!.steps[chapter.from].user).label}{chapter.to > chapter.from ? ` · ${chapter.to - chapter.from + 1} steps` : ''}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+            </details>
+          ) : null}
 
           {demo.story && demo.step && stepUser ? (
             <div className="mt-3 rounded-lg border bg-background p-3" data-testid="demo-step">
+              {chapterIndex >= 0 ? (
+                <p className="text-xs font-medium text-primary">Chapter {chapterIndex + 1} of {chapters.length} · {chapters[chapterIndex].title.replace(/^\d+ · /, '')}</p>
+              ) : null}
               <p className="text-xs text-muted-foreground" aria-live="polite">
-                {demo.state.started ? `Step ${demo.stepIndex + 1} of ${demo.story.steps.length}` : `Ready · ${demo.story.steps.length} steps`} · {demo.story.role}
+                {demo.state.started ? `Step ${demo.stepIndex + 1} of ${demo.story.steps.length}` : `Ready · ${demo.story.steps.length} steps`}{demo.story.id === 'FLOW' ? '' : ` · ${demo.story.role}`}
+                {demo.story.id !== 'FLOW' ? <span className="ml-1 rounded border px-1 font-mono text-[10px]">{demo.story.id}</span> : null}
               </p>
               <p className="mt-1 text-base font-semibold">{demo.step.title}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
