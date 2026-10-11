@@ -11,7 +11,7 @@ import { Badge, Button, DataTable, DialogActions, EmptyState, InlineAlert, Input
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { createAdminInternalInvoice, useAdminInternalInvoices, useAdminPurchaseFormData } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminCountLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { ApiError } from '@/lib/api';
 import { apiErrorCode } from '@/lib/api-error-message';
 
@@ -83,7 +83,7 @@ export function AdminInternalInvoices({ locale, messages }: { locale: AdminLocal
                 return <Badge variant={chip.variant}>{chip.label}</Badge>;
               },
             },
-            { key: 'lines', header: messages.pcColLines, cell: (item) => fillPlaceholders(messages.pcLinesCount, { count: String(item.lineCount) }) },
+            { key: 'lines', header: messages.pcColLines, cell: (item) => adminCountLabel(item.lineCount, messages.pcLinesCountOne, messages.pcLinesCount) },
             { key: 'total', header: messages.pcColTotal, cell: (item) => <span className={`tabular-nums font-medium ${item.status === 'void' ? 'text-muted-foreground line-through' : ''}`}>{formatCents(item.totalCents, locale)}</span> },
           ]}
         />

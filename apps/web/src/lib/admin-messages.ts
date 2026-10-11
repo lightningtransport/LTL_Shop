@@ -80,6 +80,7 @@ const messages = {
     pcVendorAccount: 'Our account #',
     pcVendorNotes: 'Notes',
     pcVendorPartCount: 'Usual vendor of',
+    pcVendorPartCountValueOne: '1 part',
     pcVendorPartCountValue: '{count} parts',
     pcVendorActiveHelp: 'An inactive vendor is not offered for new parts. Its history stays.',
     pcVendorNeedsKind: 'Choose Parts, Outside repairs, or both.',
@@ -112,6 +113,7 @@ const messages = {
     pcColLines: 'Lines',
     pcColTrucks: 'Truck',
     pcColTotal: 'Total',
+    pcLinesCountOne: '1 line',
     pcLinesCount: '{count} lines',
     pcTruckLabel: 'Truck {truck}',
     pcNoInvoiceFile: 'No invoice file',
@@ -405,6 +407,7 @@ const messages = {
     shopWorkflowAddMemberEmpty: 'Everyone who can do this step is already on the team.',
     shopWorkflowAddMemberAction: 'Add to team',
     shopWorkflowRemoveMember: 'Remove {name} from {step}',
+    shopWorkflowMemberOpenWorkOne: '1 open Work Order',
     shopWorkflowMemberOpenWork: '{count} open Work Orders',
     shopWorkflowMemberInactive: 'inactive',
     shopWorkflowMemberWrongType: "can't do this step",
@@ -1551,6 +1554,7 @@ const messages = {
     pcVendorAccount: 'N.º de cuenta del taller',
     pcVendorNotes: 'Notas',
     pcVendorPartCount: 'Proveedor habitual de',
+    pcVendorPartCountValueOne: '1 parte',
     pcVendorPartCountValue: '{count} partes',
     pcVendorActiveHelp: 'Un proveedor inactivo no se ofrece para partes nuevas. Su historial queda.',
     pcVendorNeedsKind: 'Elige Partes, Reparaciones afuera, o las dos.',
@@ -1583,6 +1587,7 @@ const messages = {
     pcColLines: 'Líneas',
     pcColTrucks: 'Camión',
     pcColTotal: 'Total',
+    pcLinesCountOne: '1 línea',
     pcLinesCount: '{count} líneas',
     pcTruckLabel: 'Camión {truck}',
     pcNoInvoiceFile: 'Sin factura adjunta',
@@ -1875,6 +1880,7 @@ const messages = {
     shopWorkflowAddMemberEmpty: 'Todas las personas que pueden hacer este paso ya están en el equipo.',
     shopWorkflowAddMemberAction: 'Agregar al equipo',
     shopWorkflowRemoveMember: 'Quitar a {name} de {step}',
+    shopWorkflowMemberOpenWorkOne: '1 Work Order abierto',
     shopWorkflowMemberOpenWork: '{count} Work Orders abiertos',
     shopWorkflowMemberInactive: 'inactiva',
     shopWorkflowMemberWrongType: 'no puede hacer este paso',
@@ -2976,6 +2982,14 @@ const ADMIN_CAPABILITY_KEY = {
 } as const;
 
 /** LTR-169: "Standard", "PM", "Shop Admin"… instead of keys like mechanic.standard. Unknown keys pass through. */
+/**
+ * DM3 (LTR-204): one count with its noun. `one` is the full text for exactly 1 ("1 part"); `many` carries
+ * `{count}` ("{count} parts"). Both come from the catalog, so EN and ES each pick their own plural.
+ */
+export function adminCountLabel(count: number, one: string, many: string): string {
+  return count === 1 ? one : many.replace('{count}', String(count));
+}
+
 export function adminCapabilityLabel(capability: string, catalog: AdminMessages): string {
   return capability in ADMIN_CAPABILITY_KEY
     ? catalog[ADMIN_CAPABILITY_KEY[capability as keyof typeof ADMIN_CAPABILITY_KEY]]

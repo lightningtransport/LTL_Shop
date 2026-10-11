@@ -8,8 +8,7 @@ import { partsCostsFailure } from './admin-parts-catalog';
 import { Badge, Button, DataTable, DialogActions, EmptyState, InlineAlert, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton, Textarea } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { createAdminVendor, updateAdminVendor, useAdminVendors } from '@/lib/admin-data';
-import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminCountLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 
 /**
  * LTR-200 / D32 (PC-1): Parts & costs → Vendors. A vendor with history is never deleted, only made inactive, so it
@@ -65,7 +64,7 @@ export function AdminVendors({ messages }: { locale: AdminLocale; messages: Admi
             {
               key: 'parts',
               header: messages.pcVendorPartCount,
-              cell: (vendor) => <span className="tabular-nums">{fillPlaceholders(messages.pcVendorPartCountValue, { count: String(vendor.partCount) })}</span>,
+              cell: (vendor) => <span className="tabular-nums">{adminCountLabel(vendor.partCount, messages.pcVendorPartCountValueOne, messages.pcVendorPartCountValue)}</span>,
             },
             ...(canWrite ? [{
               key: 'actions',

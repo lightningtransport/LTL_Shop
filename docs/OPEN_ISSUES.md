@@ -1,6 +1,6 @@
 # Pendientes: defectos, limpieza y salida en vivo
 
-**Actualizado:** 2026-10-10 (§1p: ensayo del modo demo; antes: G3 y G4 hechos, LTR-188)
+**Actualizado:** 2026-10-10 (§1p cerrado: DM1–DM3 hechos; antes: ensayo del modo demo, G3 y G4, LTR-188)
 
 Una sola lista de lo que falta. Cuando algo se arregla, se borra de aquí
 (el historial queda en git y en Linear). El orden es el orden de trabajo.
@@ -388,7 +388,7 @@ El dueño lo reportó al usar Purchases en producción, con capturas. Se evaluó
 | ~~PC4~~ | B | **"Discard this purchase?" sale al final del formulario**, fuera de la vista; Cancel parece no hacer nada (UX-7-029). | **Hecho:** Los botones quedan fijos abajo del diálogo; "Discard this purchase?" aparece ahí, en lugar de los botones. Outside repairs ahora también pregunta antes de descartar. |
 | ~~PC5~~ | E | **El detalle de la compra está desordenado:** el total al final y suelto, "Per truck" repetido con un solo camión, archivo, notas y autor mezclados (UX-4-012). | **Hecho:** Arriba, un resumen: proveedor, factura, fecha, camión, archivo, Subtotal/Tax/Freight/Total y quién la cargó; Lines debajo; "Per truck" solo con varios camiones; Notes aparte. |
 
-## 1p. Ensayo completo del modo demo (2026-10-09/10) — **ABIERTO: DM3** (DM1–DM2, DM4–DM6 hechos) · Linear [LTR-204](https://linear.app/ltransl/issue/LTR-204)
+## 1p. Ensayo completo del modo demo (2026-10-09/10) — **CERRADO** (DM1–DM6 hechos, 2026-10-10) · Linear [LTR-204](https://linear.app/ltransl/issue/LTR-204)
 
 Se recorrieron en el navegador las 23 historias del Panel de demo (D36) contra `ltl_shop_demo` recién armada, tocando lo que dice cada paso. Los textos de los pasos que no coincidían con la pantalla se corrigieron en `apps/web/src/lib/demo/scripts.ts`. Esto es lo que salió del producto y de la demo:
 
@@ -396,7 +396,7 @@ Se recorrieron en el navegador las 23 historias del Panel de demo (D36) contra `
 |---|---|---|---|---|
 | ~~DM1~~ | C | **La lista de Work Orders no dice "Return to Service"** para un camión Ready to Go: la columna Next dice "4 Jobs · all done". La lista de Trucks sí lo dice. USER_FLOWS (HU-M5, fila A19b) dice que las dos listas lo muestran. | `/admin/work-orders`, columna Next | **Hecho:** la columna Next de la tabla dice el `nextStep` de la API con el mismo texto que el Truck y la lista de Trucks (`workOrderListNextText`); sin paso, sigue la línea de Jobs. La API falsa de e2e manda `nextStep` en la lista, como la real; prueba en `admin-shell.spec.ts`. |
 | ~~DM2~~ | E | **People: el filtro no refleja la URL.** Con `?status=all` la lista muestra a los inactivos (Luis), pero el selector "Show" sigue diciendo "Active". | `/admin/mechanics` | **Hecho:** el selector lee la URL igual que la API: `status=all`, `all_in_shop`, `inactive` o `includeInactive=true` → "Active and inactive"; `status=removed` → "Removed"; el botón Filters cuenta 1. Prueba en `admin-shell.spec.ts`; la API falsa filtra por `status` como la real. |
-| DM3 | E | **Plurales con 1:** "1 open Work Orders" (Shop workflow → Add), "1 parts" (Vendors), "1 lines" (Purchases). | Admin, varios | Abierto |
+| ~~DM3~~ | E | **Plurales con 1:** "1 open Work Orders" (Shop workflow → Add), "1 parts" (Vendors), "1 lines" (Purchases). | Admin, varios | **Hecho:** "1 open Work Order", "1 part", "1 line" (ES: "1 Work Order abierto", "1 parte", "1 línea") con `adminCountLabel` y las claves `…One` / `…` del catálogo; regla en `design-system/patterns.md`. |
 | ~~DM4~~ | C | **Truck → Costs decía "Charge to Finance · coming later"** (gris, deshabilitado) aunque las facturas internas existen desde D34. | `admin-truck-costs.tsx` | **Hecho:** la tarjeta dice "Charge to Finance" y abre Internal invoices (EN/ES). |
 | ~~DM5~~ | C | **En la demo, un Work Order nuevo nacía sin dueño en PM y Alignment**: el armado dejaba vacíos esos equipos del Shop workflow, y HU-M1 dice que cada paso nace con su dueño. | `reset-demo-work-orders.ts --demo` | **Hecho:** al final del armado, PM → Daniel y Alignment → Alejandro 1 (Detailing y QC ya tenían equipo). |
 | ~~DM6~~ | C | **El Panel de demo tapaba botones de la derecha** (Resolve en el Admin, Request Work en el mecánico); el presentador tenía que cerrarlo en cada paso. | `globals.css`, `demo-panel.tsx` | **Hecho:** con el panel abierto la página le deja su columna: desde 1000 px en las pantallas del mecánico, desde 1200 px en el Admin. Más angosto, flota como antes y se cierra con la X. |

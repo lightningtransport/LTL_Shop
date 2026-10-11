@@ -11,7 +11,7 @@ import { PageHeader, Button, Card, CardContent, DialogActions, EmptyState, Inlin
 import { updateAdminShopHours, updateAdminWorkflowSteps, useAdminRoster, useAdminShopHours, useAdminWorkflowSteps } from '@/lib/admin-data';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminCountLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { useAuth } from '@/lib/auth-context';
 import { useUnsavedChangesGuard } from '@/lib/use-unsaved-changes-guard';
 import { cn } from '@/lib/utils';
@@ -289,7 +289,7 @@ function AddMemberDialog({
                   <MechanicAvatar id={person.id} name={person.name} size="sm" />
                   <span className="min-w-0 flex-1 truncate font-medium">{person.name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {fillPlaceholders(messages.shopWorkflowMemberOpenWork, { count: String(person.openWorkOrderCount) })}
+                    {adminCountLabel(person.openWorkOrderCount, messages.shopWorkflowMemberOpenWorkOne, messages.shopWorkflowMemberOpenWork)}
                   </span>
                 </label>
               </li>
