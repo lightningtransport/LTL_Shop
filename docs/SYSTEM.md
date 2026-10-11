@@ -653,7 +653,7 @@ también para un Truck Ready to Go ("Return to Service") mientras dure
 | `/admin/work-orders`, `/admin/work-orders/[id]` | Lista con filtros; cada tarjeta y, en computadora, la columna **Siguiente** de la tabla dicen el mismo siguiente paso que el Truck, la lista de Trucks y el Yard (`nextStep` de la API; un camión Ready to Go dice "Return to Service", no "4 Jobs · all done"; DM1). Detalle del WO (ver abajo). |
 | `/admin/work-orders/new` | Crear WO (solo Truck, prioridad, nota). |
 | `/admin/history` | WOs completados y cancelados. |
-| `/admin/mechanics`, `/admin/mechanics/[id]` | Roster. Manager y System Admin: Agregar persona (con contraseña temporal), nombre y tipo, Desactivar / Reactivar, Reiniciar contraseña (D22). |
+| `/admin/mechanics`, `/admin/mechanics/[id]` | Roster. Manager y System Admin: Agregar persona (con contraseña temporal), nombre y tipo, Desactivar / Reactivar, Reiniciar contraseña (D22). El filtro "Show" (Active / Active and inactive / Removed) refleja la URL: Apply escribe `includeInactive=true` o `status=removed`, y un enlace con `?status=all` (o `all_in_shop`, `inactive`) también se lee como "Active and inactive" (DM2). |
 | `/admin/catalog`, `/admin/catalog/categories/[id]` | Catálogo de Jobs. Manager y System Admin: Agregar Job a una categoría activa, Renombrar y Activar (D25); un nombre repetido en la categoría no se acepta. Las categorías son de solo lectura. |
 | `/admin/setup/workflow` | Shop workflow: el **equipo** de cada paso (chips, "Add", qué pasa con un WO nuevo, nota de QC como respaldo del Manager; D28, D29). |
 | `/admin/setup/workflow/hours` | **Shop hours**: hora del cierre del día y días hábiles, con su propio Save (D20, D-SET5). |

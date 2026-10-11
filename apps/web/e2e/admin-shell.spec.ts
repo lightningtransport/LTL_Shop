@@ -543,6 +543,19 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
   });
 
+  test('People: the Show filter reads ?status=all from the URL (DM2, LTR-204)', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.goto('/admin/mechanics?status=all');
+    await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
+    // The list shows the inactive person, and the filter says so instead of "Active".
+    await expect(page.getByRole('row', { name: /Retired Mechanic/ })).toBeVisible();
+    const filtersButton = page.getByRole('search').getByRole('button', { name: /^Filters( [0-9]+)?$/ });
+    await expect(filtersButton).toHaveAccessibleName(/Filters 1/);
+    await filtersButton.click();
+    await expect(page.getByRole('dialog', { name: 'Filters' }).getByLabel('Show')).toHaveValue('all');
+  });
+
   test('login and Admin SSR the shared ltl_shop_locale cookie without an EN/ES flash', async ({ page }) => {
     await page.goto('/login');
     const cookieUrl = `${new URL(page.url()).origin}/`;
