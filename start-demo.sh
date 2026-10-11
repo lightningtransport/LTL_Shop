@@ -39,6 +39,7 @@ npm run build:shared
 npm run build --workspace=@ltl-shop/api
 
 echo "Starting demo API (:$DEMO_API_PORT, $DEMO_DATABASE_URL) and demo web (:$DEMO_WEB_PORT)..."
+echo "Open http://localhost:$DEMO_WEB_PORT/login (localhost, not 127.0.0.1: the dev server redirects to localhost)."
 ulimit -n 10240 2>/dev/null || true
 exec ./node_modules/.bin/concurrently -n demo-api,demo-web -c blue,magenta \
   "cd apps/api && DATABASE_URL='$DEMO_DATABASE_URL' DIRECT_URL='$DEMO_DATABASE_URL' PORT=$DEMO_API_PORT CORS_ORIGIN=http://127.0.0.1:$DEMO_WEB_PORT,http://localhost:$DEMO_WEB_PORT AUTH_DEV_BYPASS=true DATA_SOURCE=supabase YARD_READY_TO_GO_SINCE=2000-01-01T00:00:00Z NODE_ENV=development node dist/src/main.js" \

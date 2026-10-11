@@ -25,10 +25,10 @@ Si corre después de las 5:00 p.m., el cierre del día ya cortó los relojes de 
 Para verla:
 1. `npm run start:demo` (desde la raíz). Compila `packages/shared` y la API y levanta las dos cosas:
    - la API en `http://127.0.0.1:3141` contra `ltl_shop_demo`, con `AUTH_DEV_BYPASS=true` y `YARD_READY_TO_GO_SINCE=2000-01-01T00:00:00Z`;
-   - la web en `http://127.0.0.1:3042` con `NEXT_PUBLIC_E2E_DEV_LOGIN=1` (Dev Login y Panel de demo).
+   - la web en `http://localhost:3042` con `NEXT_PUBLIC_E2E_DEV_LOGIN=1` (Dev Login y Panel de demo). Abrirla siempre como **localhost**, no `127.0.0.1`: el servidor de desarrollo redirige a `localhost` cuando vence la sesión del Admin, y para el navegador son dos sitios distintos (se perdería la sesión y el panel).
 
    Si un puerto está ocupado: `DEMO_API_PORT=3151 DEMO_WEB_PORT=3043 npm run start:demo`. Otra base: `DEMO_DATABASE_URL=…` (tiene que ser `localhost` y decir "demo").
-2. Abrir `http://127.0.0.1:3042/login`, escribir `manager@lightning.local` y tocar **Enter demo mode (this machine only)**. No pide contraseña. (El botón **Dev login** de siempre sigue ahí: entra sin el panel.)
+2. Abrir `http://localhost:3042/login`, escribir `manager@lightning.local` y tocar **Enter demo mode (this machine only)**. No pide contraseña; con el correo vacío o inexistente lo dice y no enciende nada. (El botón **Dev login** de siempre sigue ahí: entra sin el panel; el modo se puede encender después desde el menú de perfil.)
 
 ## Modo demo (D36)
 
@@ -36,8 +36,10 @@ Con el modo demo encendido, el encabezado de todas las pantallas tiene un botón
 
 - **User:** las diez cuentas demo agrupadas (Management, Mechanics, PM, Safety), cada una con una pista de qué muestra. Tocar una **cambia de usuario sin cerrar sesión**: la web pone la cookie de Admin con el token `dev:` nuevo y **recarga la página** en la pantalla de inicio de esa cuenta (Manager → Operaciones, mecánico → Mi trabajo, PM → PM, Safety → Quality Check). Nada del usuario anterior queda en pantalla. La cuenta actual sale marcada; una cuenta que no esté activa en la base sale como "inactive". Las cuentas que no son del reparto (por ejemplo `cristian@ltransl.com`) salen bajo **Others**.
 - **Story:** elegir una historia de `USER_FLOWS.md` (agrupadas por job to be done J1–J14). El panel muestra "Step n of m", quién (cambia de usuario solo si hace falta), dónde (navega a la pantalla), **Do** (qué tocar), **Say** (qué explicar) y **Expect** (qué debe verse). Botones Back / Next / Go to screen. "Changes data" marca los pasos que mutan. Con "Switch user and screen automatically" apagado, el panel solo indica y el presentador navega. El guion vive en `apps/web/src/lib/demo/scripts.ts` y usa los mismos ids que USER_FLOWS. Tabla de historias más abajo.
-- **Reset demo:** limpia la historia y vuelve al Manager en Operaciones. **No rearma los datos**: para eso, `npm run prisma:demo-local`.
-- **Leave demo mode:** esconde el panel y el botón; la sesión sigue. Se vuelve a encender desde `/login`.
+- **Start:** elegir una historia solo la muestra (paso 1, quién y dónde); nada cambia hasta tocar **Start**. Después, **Next** es el botón principal; "Follow each step" (encendido por defecto) hace que cada paso cambie de cuenta y de pantalla solo. Si la pantalla que se ve no es la del paso (por ejemplo tras tocar Atrás), el chip de la pantalla se pone ámbar y aparece "Go to this step's screen".
+- **Back to the Manager dashboard:** cierra la historia y vuelve a Operaciones como Manager. **No rearma los datos**: para eso, `npm run prisma:demo-local`.
+- **Turn demo mode off:** pregunta antes; esconde el panel y el botón, la sesión sigue. Se vuelve a encender desde el **menú de perfil** (iniciales arriba a la derecha → "Demo mode · Turn on") o desde `/login`.
+- Mientras el modo está encendido y la cuenta puede entrar al Admin, la sesión del Admin se renueva sola cada 20 min (antes vencía a la hora y sacaba al presentador).
 - El estado (encendido, panel abierto, historia y paso) queda en el navegador (`localStorage['ltl_shop_demo']`) y sobrevive a recargas y a cerrar sesión.
 - **Pantalla:** con el panel abierto, la página le deja su propia columna a la derecha: desde 1000 px de ancho en las pantallas del mecánico y desde 1200 px en el Admin. En una ventana más angosta el panel flota encima: si tapa el botón que hay que tocar, cerrarlo con la X y volver a abrirlo con **Demo** (la historia y el paso se mantienen). Lo mejor es presentar con el navegador a pantalla completa.
 
@@ -74,6 +76,8 @@ Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de
 | HU-A2 Catalog and people | — | Admin | — | 3 | no |
 
 Orden recomendado: **HU-ME1 antes de HU-ME6** (mueve el reloj de Anthony); **HU-M4 y HU-ME3 comparten el 605** (una u otra, o rearmar entre las dos); HU-M5 deja el 606 para HU-QC1. Lo que no se ve en local (contraseña temporal en HU-M9, Dispatch en HU-M7, el cierre de las 5 PM en vivo en HU-ME5) lo dice la nota del primer paso.
+
+**Auditoría UX (2026-10-10):** `docs/ux-audit/demo-mode/09-informe-final.md`; lo corregido y lo pendiente, en `OPEN_ISSUES.md` §1q.
 
 **Ensayo completo (2026-10-09/10):** se recorrieron las 23 historias tocando lo que dice cada paso, con la base recién armada; los textos se ajustaron a la pantalla real. El armado deja el Shop workflow como en el taller: PM → Daniel, Alignment → Alejandro 1, Detailing → equipo de dos (Anthony y Alejandro 2), Quality Check → Safety. Por eso un Work Order nuevo (HU-M1) nace con sus dueños. Defectos encontrados: `OPEN_ISSUES.md` §1p.
 

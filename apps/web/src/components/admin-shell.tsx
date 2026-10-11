@@ -145,7 +145,7 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
         {/* LTR-179 (U4): installed on an iPad, the name/role block stays above the home indicator. */}
         <div className="shrink-0 border-t p-3 pb-[calc(0.75rem+var(--app-safe-bottom))]">
           <p className="truncate font-medium">{user.name}</p>
-          <p className="text-xs capitalize text-muted-foreground">{user.role}</p>
+          <p className="text-xs text-muted-foreground">{user.role === 'admin' ? messages.roleLabelAdmin : messages.roleLabelManager}</p>
         </div>
       </aside>
 

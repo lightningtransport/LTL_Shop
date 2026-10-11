@@ -1,6 +1,6 @@
 # Pendientes: defectos, limpieza y salida en vivo
 
-**Actualizado:** 2026-10-10 (§1p: ensayo del modo demo; antes: G3 y G4 hechos, LTR-188)
+**Actualizado:** 2026-10-10 (§1q: auditoría UX del modo demo; §1p: ensayo del modo demo)
 
 Una sola lista de lo que falta. Cuando algo se arregla, se borra de aquí
 (el historial queda en git y en Linear). El orden es el orden de trabajo.
@@ -400,6 +400,23 @@ Se recorrieron en el navegador las 23 historias del Panel de demo (D36) contra `
 | ~~DM4~~ | C | **Truck → Costs decía "Charge to Finance · coming later"** (gris, deshabilitado) aunque las facturas internas existen desde D34. | `admin-truck-costs.tsx` | **Hecho:** la tarjeta dice "Charge to Finance" y abre Internal invoices (EN/ES). |
 | ~~DM5~~ | C | **En la demo, un Work Order nuevo nacía sin dueño en PM y Alignment**: el armado dejaba vacíos esos equipos del Shop workflow, y HU-M1 dice que cada paso nace con su dueño. | `reset-demo-work-orders.ts --demo` | **Hecho:** al final del armado, PM → Daniel y Alignment → Alejandro 1 (Detailing y QC ya tenían equipo). |
 | ~~DM6~~ | C | **El Panel de demo tapaba botones de la derecha** (Resolve en el Admin, Request Work en el mecánico); el presentador tenía que cerrarlo en cada paso. | `globals.css`, `demo-panel.tsx` | **Hecho:** con el panel abierto la página le deja su columna: desde 1000 px en las pantallas del mecánico, desde 1200 px en el Admin. Más angosto, flota como antes y se cierra con la X. |
+
+## 1q. Auditoría UX del modo demo (2026-10-10) — **ABIERTO: UX-1-010/UX-4-001, UX-1-011, UX-6-006, UX-6-007, UX-3-008, UX-3-009** (el resto hecho o en las PRs de cuentas por rol y flujo) · Linear [LTR-204](https://linear.app/ltransl/issue/LTR-204)
+
+Se corrieron las skills audit-ux 0, 1, 3, 4, 5, 6, 7 y 9 sobre el Panel de demo y las pantallas que recorre la demo: `docs/ux-audit/demo-mode/` (45 hallazgos, informe en `09-informe-final.md`). Lo corregido en la misma rama: sesión de Admin que vencía y rebotaba a otro host (UX-1-003), estado "Switching to…" (UX-1-002, UX-6-002), encender/apagar desde el menú de perfil (UX-1-001), "Turn demo mode off" con confirmación (UX-1-006), "Back to the Manager dashboard" en vez de "Reset demo" (UX-1-005, UX-3-004, UX-4-002), Next como acción principal y "Follow each step" junto a los botones (UX-3-005, UX-7-004), la historia se previsualiza y arranca con "Start" (UX-7-003), chip ámbar y "Go to this step's screen" cuando la pantalla no es la del paso (UX-5-001, UX-1-008), Atrás del navegador ya no vuelve a la cuenta anterior (UX-5-005), el resolver espera la lista de camiones (UX-6-003), saludo al entrar (UX-6-005), errores en lenguaje llano (UX-3-003), rol del pie del Admin desde el catálogo (UX-3-006), validación del correo en "Enter demo mode" (UX-7-001), cuentas en "cargando" hasta tener la lista (UX-6-001).
+
+| # | Clase | Problema | Dónde | Estado |
+|---|---|---|---|---|
+| UX-1-010 / UX-4-001 | C | **En teléfono el panel tapa el 75 % de la pantalla**; hay que cerrarlo y reabrirlo en cada paso. Propuesta: barra inferior de una línea con Back/Next que se despliega al tocar. | `demo-panel.tsx`, < 1000 px | Abierto (esfuerzo M; el teléfono es secundario en la demo) |
+| UX-1-011 | C | **La pestaña Trucks del mecánico es solo un buscador**: exige recordar el número de unidad. Propuesta: lista "Trucks with your Jobs" debajo. | `/mechanic/standard/trucks`, `/mechanic/pm/trucks` | Abierto (también en `mecanico-general/01`) |
+| UX-6-006 | C | **Nada avisa que una historia ya se ejecutó en esta base** (sus datos cambiaron). Propuesta: fecha de armado expuesta por la API y "· done" en la opción. | panel, `scripts.ts` | Abierto (esfuerzo M) |
+| UX-6-007 | E | **"Loading work order" en texto plano** en la pantalla del mecánico; el Admin usa `PageSkeleton`. | `work-orders/[id]/detail-client.tsx` | Abierto |
+| UX-3-008 | C | **Con la app en español, el guion cita etiquetas en inglés** ("Needs you" vs "Te necesita"). Propuesta: aviso en el panel cuando `locale === 'es'`, o presentar en inglés (DEMO.md). | panel, `scripts.ts` | Abierto |
+| UX-3-009 | E | **La pestaña "Dispatch" del Yard se llama `movement` en la URL.** | `admin-yard-operations.tsx` | Abierto |
+| UX-1-007 / UX-3-001 / UX-5-003 / UX-4-004 / UX-5-002 | C | Historias por código HU/J, sin capítulos ni contexto. | panel | **Va en la PR del flujo de demo (plan aprobado 2026-10-10)** |
+| UX-3-002 / UX-1-004 / UX-4-003 | C | Nombres de persona en vez de roles; cuentas del dueño en "Others". | demo build, `cast.ts` | **Va en la PR de cuentas por rol (plan aprobado 2026-10-10)** |
+| UX-1-012 / UX-3-007 | C/E | DM1 y DM3 de §1p. | Admin | Ver §1p |
+| UX-7-005 | C | "Add to team" aplica pero no guarda hasta "Save steps"; en la demo el guard de cambios sin guardar corta el paso. | `admin-shop-workflow.tsx` | Abierto (el guion de HU-M8 recuerda guardar) |
 
 ## 2. Pruebas
 

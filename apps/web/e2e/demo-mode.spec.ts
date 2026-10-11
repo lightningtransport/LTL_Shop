@@ -58,10 +58,16 @@ test.describe('D36 demo mode', () => {
     await page.waitForURL(/\/admin$/, { timeout: 30_000 });
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 15_000 });
 
-    await panel.getByRole('button', { name: 'Leave demo mode' }).click();
+    // Turning the mode off asks first (UX-1-006) and can be undone from the profile menu (UX-1-001).
+    await panel.getByRole('button', { name: 'Turn demo mode off' }).click();
+    await panel.getByRole('button', { name: 'Turn off' }).click();
     await expect(panel).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Demo', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Open profile for Shop Manager/ })).toBeVisible();
+
+    await page.getByRole('button', { name: /Open profile for Shop Manager/ }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Turn on' }).click();
+    await expect(page.getByRole('button', { name: 'Demo', exact: true })).toBeVisible({ timeout: 15_000 });
   });
 
   test('a story walks the presenter screen by screen (HU-M7, no data changes)', async ({ page }) => {
@@ -72,8 +78,11 @@ test.describe('D36 demo mode', () => {
 
     await panel.getByRole('combobox', { name: 'Story' }).selectOption('HU-M7');
     const card = panel.getByTestId('demo-step');
-    await expect(card).toContainText('Step 1 of 5');
+    // Choosing a story only previews it (UX-7-003); Start opens the first screen.
+    await expect(card).toContainText('Ready · 5 steps');
     await expect(card).toContainText('Operations');
+    await card.getByRole('button', { name: 'Start' }).click();
+    await expect(card).toContainText('Step 1 of 5');
     await expect(page).toHaveURL(/\/admin$/);
 
     await card.getByRole('button', { name: 'Next' }).click();

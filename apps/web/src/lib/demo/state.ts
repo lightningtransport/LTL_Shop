@@ -14,6 +14,10 @@ export type DemoState = {
   panelOpen: boolean;
   /** Each step switches user and screen by itself; off, the presenter navigates by hand. */
   autoFollow: boolean;
+  /** The chosen story was started (its first screen opened); before that the card only previews step 1. */
+  started: boolean;
+  /** Just entered from /login: the panel greets once, then clears this. */
+  welcome: boolean;
 };
 
 export const DEFAULT_DEMO_STATE: DemoState = {
@@ -23,6 +27,8 @@ export const DEFAULT_DEMO_STATE: DemoState = {
   stepIndex: 0,
   panelOpen: false,
   autoFollow: true,
+  started: false,
+  welcome: false,
 };
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -48,6 +54,8 @@ export function readDemoState(storage: StorageLike | null = browserStorage()): D
       stepIndex: Number.isInteger(parsed.stepIndex) && (parsed.stepIndex as number) >= 0 ? (parsed.stepIndex as number) : 0,
       panelOpen: parsed.panelOpen === true,
       autoFollow: parsed.autoFollow !== false,
+      started: parsed.started === true,
+      welcome: parsed.welcome === true,
     };
   } catch {
     return DEFAULT_DEMO_STATE;

@@ -37,7 +37,12 @@ export async function middleware(request: NextRequest) {
 }
 
 function loginRedirect(request: NextRequest) {
-  const login = new URL('/login', request.url);
+  // Build the redirect from the Host the browser sent (behind a proxy, x-forwarded-host), not from
+  // `request.url`: in `next dev` that one carries the server's own hostname. Note that the dev server still
+  // rewrites an absolute Location to its hostname, so the local demo is opened at http://localhost:3042
+  // (docs/reference/DEMO.md), never at 127.0.0.1, or a bounce lands on another origin (UX-1-003).
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? request.nextUrl.host;
+  const login = new URL('/login', `${request.nextUrl.protocol}//${host}`);
   login.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
   return NextResponse.redirect(login);
 }
