@@ -5,20 +5,20 @@
  *
  * Creates `ltl_shop_demo` on this machine (DEMO_DATABASE_URL), applies the migrations, runs the seed (users,
  * catalog, PM parts, Shop workflow, trucks) and rebuilds the demo Work Orders (`reset-demo-work-orders --demo`).
- * It refuses any host other than this machine, and any database whose name lacks "demo". Run it again to reset.
+ * It refuses any host other than this machine, and any database whose name lacks "demo"; the published demo's own
+ * Supabase project (DEMO_SUPABASE_REF, D39) is the only remote one it accepts. Run it again to reset.
  */
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { PrismaClient } from '@prisma/client';
+import { demoDatabaseRefusal } from '../src/dev-demo/demo-target';
 
 const DEMO_DATABASE_URL = process.env.DEMO_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ltl_shop_demo';
 
 async function main() {
-  const target = new URL(DEMO_DATABASE_URL);
-  const database = target.pathname.replace(/^\//, '');
-  if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(target.hostname) || !/demo/i.test(database)) {
-    throw new Error(`Refusing ${target.hostname}/${database}: only a local database whose name contains "demo".`);
-  }
+  const refusal = demoDatabaseRefusal(DEMO_DATABASE_URL);
+  if (refusal) throw new Error(refusal);
+  const database = new URL(DEMO_DATABASE_URL).pathname.replace(/^\//, '');
   const maintenance = new URL(DEMO_DATABASE_URL);
   maintenance.pathname = '/postgres';
   const prisma = new PrismaClient({ datasourceUrl: maintenance.toString() });
@@ -35,7 +35,9 @@ async function main() {
   execFileSync(bin('prisma'), ['migrate', 'deploy'], { cwd, env, stdio: 'inherit' });
   execFileSync(bin('tsx'), ['prisma/seed.ts'], { cwd, env, stdio: 'inherit' });
   execFileSync(bin('tsx'), ['prisma/reset-demo-work-orders.ts', '--demo', '--apply'], { cwd, env, stdio: 'inherit' });
-  console.log(`\nDemo database ready: ${database}. Start the API with DATABASE_URL=${DEMO_DATABASE_URL}.`);
+  // The published demo's URL carries its password: only a local one is printed.
+  const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(new URL(DEMO_DATABASE_URL).hostname);
+  console.log(`\nDemo database ready: ${database}.${local ? ` Start the API with DATABASE_URL=${DEMO_DATABASE_URL}.` : ''}`);
 }
 
 main().catch((error) => {

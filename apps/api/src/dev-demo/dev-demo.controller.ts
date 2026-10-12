@@ -36,3 +36,16 @@ export class DevDemoController {
     };
   }
 }
+
+/**
+ * D39 (DP3): the published demo asks for its access code before showing anything; this answers whether the code
+ * sent in `x-demo-access` is the right one (DevBypassGuard checks it), with no sign-in needed yet.
+ */
+@Controller('dev/demo')
+@UseGuards(DevBypassGuard)
+export class DevDemoAccessController {
+  @Get('access')
+  access() {
+    return { ok: true };
+  }
+}

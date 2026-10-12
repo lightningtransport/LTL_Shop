@@ -1,4 +1,5 @@
 import { AUTH_TOKEN_KEY } from '../api';
+import { demoAccessHeaders } from '../demo-access';
 
 /**
  * D36: become another demo account without signing out. The Admin server session (httpOnly cookie read by
@@ -27,7 +28,7 @@ export async function switchDemoUser(
   try {
     response = await deps.fetch('/api/admin/session', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, ...demoAccessHeaders() },
     });
   } catch {
     return { ok: false, status: 0 };
@@ -41,7 +42,7 @@ export async function switchDemoUser(
 /** Same user, Admin route: renew the one-hour server cookie before the middleware sees the navigation. */
 export async function refreshAdminSessionCookie(token: string, fetchImpl: typeof fetch = fetch): Promise<void> {
   try {
-    await fetchImpl('/api/admin/session', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    await fetchImpl('/api/admin/session', { method: 'POST', headers: { Authorization: `Bearer ${token}`, ...demoAccessHeaders() } });
   } catch {
     // The page falls back to the normal /login?next= bounce if the cookie is really gone.
   }

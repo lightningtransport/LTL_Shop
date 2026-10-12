@@ -16,7 +16,14 @@ export function adminSessionCookieSecure(nodeEnv: string | undefined, e2eDevLogi
 }
 
 /**
- * D36: the local demo panel (switch between demo accounts, guided stories) mounts only where Dev Login
- * does: this is false in the production build, and switching needs an API with AUTH_DEV_BYPASS=true anyway.
+ * D39 (DP3): the published demo, a build of its own (its own Vercel project, NEXT_PUBLIC_DEMO_HOSTED=1) against the
+ * demo database. Inlined at build time: false in the production build. Dev Login stays off there; the demo is
+ * entered from /login with "Start the demo", and the API asks for the shared access code on every `dev:` request.
  */
-export const DEMO_MODE_AVAILABLE = DEV_LOGIN_ENABLED;
+export const DEMO_HOSTED = process.env.NEXT_PUBLIC_DEMO_HOSTED === '1';
+
+/**
+ * D36: the demo panel (switch between demo accounts, guided stories) mounts only where Dev Login does, or in
+ * the published demo: this is false in the production build, and switching needs an API with AUTH_DEV_BYPASS=true.
+ */
+export const DEMO_MODE_AVAILABLE = DEV_LOGIN_ENABLED || DEMO_HOSTED;

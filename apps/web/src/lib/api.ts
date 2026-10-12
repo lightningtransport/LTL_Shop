@@ -1,4 +1,5 @@
 import { trackEvent } from './observability';
+import { demoAccessHeaders } from './demo-access';
 
 export const AUTH_TOKEN_KEY = 'ltl_shop_token';
 
@@ -24,7 +25,7 @@ export function getAuthToken() {
   return resolveAuthToken();
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export class ApiError extends Error {
   status: number;
@@ -112,6 +113,7 @@ export async function apiFetch<T>(
   else if (hasBodyMethod(requestInit.method)) headers.set('Content-Type', 'application/json');
   const token = resolveAuthToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
+  for (const [name, value] of Object.entries(demoAccessHeaders())) headers.set(name, value);
 
   const controller = new AbortController();
   let timedOut = false;
