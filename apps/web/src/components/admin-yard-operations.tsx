@@ -212,6 +212,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         ) : (
           <AdminYardDataBoundaryCards
             locale={locale}
+            messages={messages}
             boundary={yardBoundary}
             loading={yardBoundaryLoading}
             fetchFailed={Boolean(yardBoundaryError) && yardBoundary === undefined}

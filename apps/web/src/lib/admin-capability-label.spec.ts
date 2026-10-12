@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { adminCapabilityLabel, getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
+import { adminCapabilityLabel } from './admin-messages';
 
 describe('adminCapabilityLabel (LTR-169)', () => {
   it('names each capability for people, in both languages', () => {

@@ -1,6 +1,6 @@
 import { AppCapability, UserRole } from '@ltl-shop/shared';
 import { describe, expect, it } from 'vitest';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import { ApiError } from './api';
 import {
   adminWriteFailureMessage, canShowManagerWrites, isRosterEmail, isSystemAdmin, mechanicOpenWorkFromError,

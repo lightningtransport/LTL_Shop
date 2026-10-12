@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import { externalShopLabel } from './external-shop';
 import { truckNextStepText } from './truck-next-step';
 import { workPlanJobUiStatusLabel, workPlanJobUiStatusVariant } from './work-plan';

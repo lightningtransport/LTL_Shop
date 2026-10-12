@@ -10,7 +10,7 @@ import {
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { describe, expect, it } from 'vitest';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import {
   draftContainsCatalogJob,
   draftContainsCustomName,

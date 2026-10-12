@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { AdminPurchases } from '@/components/admin-purchases';
-import { getAdminMessages, isAdminLocale } from '@/lib/admin-messages';
+import { getAdminMessages } from '@/lib/admin-messages-catalog';
+import { isAdminLocale } from '@/lib/admin-messages';
 import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
 
 export default async function AdminPurchasesPage() {

@@ -2,7 +2,8 @@ import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import { AdminYardOperations } from '@/components/admin-yard-operations';
 import { PageSkeleton } from '@/components/ui';
-import { getAdminMessages, isAdminLocale } from '@/lib/admin-messages';
+import { getAdminMessages } from '@/lib/admin-messages-catalog';
+import { isAdminLocale } from '@/lib/admin-messages';
 import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
 
 export default async function AdminYardOperationsPage() {
