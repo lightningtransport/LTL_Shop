@@ -6,7 +6,7 @@ import { Paperclip, Plus } from 'lucide-react';
 import { formatCents, type AdminPurchaseSummaryDto } from '@ltl-shop/shared';
 import { AdminNavLink } from './admin-nav-link';
 import { PurchaseForm } from './admin-purchase-form';
-import { Badge, Button, Card, CardContent, DataTable, EmptyState, Input, Label, LoadFailure, PageHeader, PageSkeleton, Select } from './ui';
+import { AdminFilterToolbar, Badge, Button, DataTable, EmptyState, Input, Label, LoadFailure, PageHeader, PageSkeleton, Select } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminPartsCatalog, useAdminPurchaseFormData, useAdminPurchases, useAdminVendors } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -14,6 +14,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { safeAdminPath } from '@/lib/admin-truck-origin';
 import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 const PURCHASE_FILTERS = { q: '', vendorId: '', truckId: '', from: '', to: '', noFile: false };
 
@@ -33,7 +34,8 @@ export function purchaseTrucksLabel(item: AdminPurchaseSummaryDto, messages: Adm
 export function AdminPurchases({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const canWrite = useCanShowManagerWrites();
-  const { filters, set, clear, query, here, active: filtered } = useUrlFilters(PURCHASE_FILTERS);
+  useDocumentTitle(messages.pcPurchasesTitle);
+  const { filters, set, setMany, clear, query, here, active: filtered } = useUrlFilters(PURCHASE_FILTERS);
   const [search, setSearch] = useDebouncedFilterText(filters.q, (next) => set('q', next));
   const { data, error, isLoading, mutate } = useAdminPurchases(query);
   const [formOpen, setFormOpen] = useState(false);
@@ -54,6 +56,14 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
   const { data: formData } = useAdminPurchaseFormData(true);
   const { data: catalog } = useAdminPartsCatalog('includeInactive=true');
   const { data: vendors, mutate: mutateVendors } = useAdminVendors();
+  // PCA9 (UX-5-004): only vendors that sell parts; an inactive one stays only while it is the filter.
+  const vendorOptions = (vendors ?? []).filter((vendor) => (vendor.doesParts && vendor.active) || vendor.id === filters.vendorId);
+  // PCA13 (UX-5-008): the shared toolbar; on phones the fields live in a "Filters" sheet and apply together.
+  const [draft, setDraft] = useState({ vendorId: filters.vendorId, truckId: filters.truckId, from: filters.from, to: filters.to, noFile: filters.noFile });
+  useEffect(() => {
+    setDraft({ vendorId: filters.vendorId, truckId: filters.truckId, from: filters.from, to: filters.to, noFile: filters.noFile });
+  }, [filters.vendorId, filters.truckId, filters.from, filters.to, filters.noFile]);
+  const activeFilterCount = [filters.vendorId, filters.truckId, filters.from, filters.to].filter(Boolean).length + (filters.noFile ? 1 : 0);
   const ready = Boolean(formData && catalog && vendors);
   const newButton = canWrite ? (
     <Button type="button" onClick={() => setFormOpen(true)} disabled={!ready}><Plus aria-hidden="true" />{messages.pcNewPurchase}</Button>
@@ -62,40 +72,49 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
   return (
     <div className="space-y-6">
       <PageHeader title={messages.pcPurchasesTitle} subtitle={messages.pcPurchasesSubtitle} actions={newButton} />
-      <Card className="p-3">
-        <CardContent className="flex flex-wrap items-end gap-3">
-          <div className="min-w-56 flex-1">
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.pcSearchPurchases} aria-label={messages.pcSearchPurchases} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="purchases-vendor">{messages.pcFilterVendor}</Label>
-            <Select id="purchases-vendor" value={filters.vendorId} onChange={(event) => set('vendorId', event.target.value)}>
-              <option value="">{messages.pcAnyVendor}</option>
-              {(vendors ?? []).map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="purchases-truck">{messages.pcFilterTruck}</Label>
-            <Select id="purchases-truck" value={filters.truckId} onChange={(event) => set('truckId', event.target.value)}>
-              <option value="">{messages.pcAnyTruck}</option>
-              <option value="none">{messages.pcNoTruckOption}</option>
-              {(formData?.trucks ?? []).map((truck) => <option key={truck.id} value={truck.id}>{fillPlaceholders(messages.pcTruckLabel, { truck: truck.truckNumber })}</option>)}
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="purchases-from">{messages.pcFrom}</Label>
-            <Input id="purchases-from" type="date" value={filters.from} onChange={(event) => set('from', event.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="purchases-to">{messages.pcTo}</Label>
-            <Input id="purchases-to" type="date" value={filters.to} onChange={(event) => set('to', event.target.value)} />
-          </div>
-          <label className="flex min-h-11 items-center gap-2 text-sm">
-            <input type="checkbox" checked={filters.noFile} onChange={(event) => set('noFile', event.target.checked)} />
-            {messages.pcNoFileFilter}
-          </label>
-        </CardContent>
-      </Card>
+      <AdminFilterToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchLabel={messages.pcSearchPurchases}
+        filtersLabel={messages.filters}
+        closeLabel={messages.closeDialog}
+        clearLabel={messages.pcClearFilters}
+        applyLabel={messages.searchAction}
+        activeFilterCount={activeFilterCount}
+        onClear={clear}
+        onSubmit={() => setMany(draft)}
+        filters={(
+          <>
+            <div className="space-y-1">
+              <Label htmlFor="purchases-vendor">{messages.pcFilterVendor}</Label>
+              <Select id="purchases-vendor" value={draft.vendorId} onChange={(event) => setDraft((current) => ({ ...current, vendorId: event.target.value }))}>
+                <option value="">{messages.pcAnyVendor}</option>
+                {vendorOptions.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.active ? vendor.name : `${vendor.name} ${messages.pcInactiveSuffix}`}</option>)}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="purchases-truck">{messages.pcFilterTruck}</Label>
+              <Select id="purchases-truck" value={draft.truckId} onChange={(event) => setDraft((current) => ({ ...current, truckId: event.target.value }))}>
+                <option value="">{messages.pcAnyTruck}</option>
+                <option value="none">{messages.pcNoTruckOption}</option>
+                {(formData?.trucks ?? []).map((truck) => <option key={truck.id} value={truck.id}>{fillPlaceholders(messages.pcTruckLabel, { truck: truck.truckNumber })}</option>)}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="purchases-from">{messages.pcFrom}</Label>
+              <Input id="purchases-from" type="date" value={draft.from} onChange={(event) => setDraft((current) => ({ ...current, from: event.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="purchases-to">{messages.pcTo}</Label>
+              <Input id="purchases-to" type="date" value={draft.to} onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))} />
+            </div>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input type="checkbox" checked={draft.noFile} onChange={(event) => setDraft((current) => ({ ...current, noFile: event.target.checked }))} />
+              {messages.pcNoFileFilter}
+            </label>
+          </>
+        )}
+      />
 
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.pcPurchasesTitle} header={false} /> : null}

@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import { formatCents, type InternalInvoiceStatus } from '@ltl-shop/shared';
+import { formatCents, type AdminInternalInvoiceSummaryDto, type InternalInvoiceStatus } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { partsCostsFailure } from './admin-parts-catalog';
-import { Badge, Button, DataTable, DialogActions, EmptyState, InlineAlert, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton, Select, type BadgeProps } from './ui';
+import { Badge, Button, Card, CardContent, DataTable, DialogActions, EmptyState, InlineAlert, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard, Select, type BadgeProps } from './ui';
+import { useDocumentTitle } from './admin-breadcrumb';
+import { useUrlFilters } from '@/lib/use-url-filters';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { createAdminInternalInvoice, useAdminInternalInvoices, useAdminPurchaseFormData } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -33,61 +35,97 @@ const lastMonth = () => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 };
 
+const INVOICE_FILTERS = { status: '', month: '' };
+
 /**
  * LTR-201 / D34 (LB-2): Parts & costs → Internal invoices. One per truck and month; a draft brings what the truck has
  * uncharged up to the end of the month. Sent ones get their SHOP number; Finance gets the PDF outside the app.
+ * PCA14 (UX-5-009): grouped by month with what each month adds up to, filtered by status and month from the URL.
  */
 export function AdminInternalInvoices({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const canWrite = useCanShowManagerWrites();
-  const { data, error, isLoading, mutate } = useAdminInternalInvoices('');
+  useDocumentTitle(messages.pcInvoicesTitle);
+  const { filters, set, clear, query, active: filtered } = useUrlFilters(INVOICE_FILTERS);
+  const { data, error, isLoading, mutate } = useAdminInternalInvoices(query);
   const { data: formData } = useAdminPurchaseFormData(true);
   const [creating, setCreating] = useState(false);
   const newButton = canWrite ? <Button type="button" onClick={() => setCreating(true)} disabled={!formData}><Plus aria-hidden="true" />{messages.pcNewInvoice}</Button> : null;
+  const months = useMemo(() => {
+    const groups = new Map<string, AdminInternalInvoiceSummaryDto[]>();
+    for (const item of data ?? []) groups.set(item.periodStart, [...(groups.get(item.periodStart) ?? []), item]);
+    return [...groups.entries()].sort(([left], [right]) => right.localeCompare(left));
+  }, [data]);
+  const statuses: Array<[InternalInvoiceStatus, string]> = [['draft', messages.pcInvoiceDraft], ['sent', messages.pcInvoiceSent], ['accepted', messages.pcInvoiceAccepted], ['void', messages.pcInvoiceVoid]];
 
   return (
     <div className="space-y-6">
       <PageHeader title={messages.pcInvoicesTitle} subtitle={messages.pcInvoicesSubtitle} actions={newButton} />
+      <Card className="p-3">
+        <CardContent className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="invoices-status">{messages.pcInvoiceFilterStatus}</Label>
+            <Select id="invoices-status" value={filters.status} onChange={(event) => set('status', event.target.value)}>
+              <option value="">{messages.pcInvoiceAnyStatus}</option>
+              {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="invoices-month">{messages.pcInvoiceFilterMonth}</Label>
+            <Input id="invoices-month" type="month" value={filters.month} onChange={(event) => set('month', event.target.value)} />
+          </div>
+          {filtered ? <Button type="button" variant="ghost" onClick={clear}>{messages.pcClearFilters}</Button> : null}
+        </CardContent>
+      </Card>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.pcInvoicesTitle} header={false} /> : null}
       {data && !data.length ? (
         <EmptyState>
-          <p>{messages.pcNoInvoices}</p>
-          {newButton ? <div className="mt-4 flex justify-center">{newButton}</div> : null}
+          <p>{filtered ? messages.pcInvoiceNoMatch : messages.pcNoInvoices}</p>
+          {filtered ? <Button type="button" variant="outline" className="mt-4" onClick={clear}>{messages.pcClearFilters}</Button> : newButton ? <div className="mt-4 flex justify-center">{newButton}</div> : null}
         </EmptyState>
       ) : null}
-      {data?.length ? (
-        <DataTable
-          items={data}
-          caption={messages.pcInvoicesTitle}
-          getKey={(item) => item.id}
-          getRowLabel={(item) => item.number ?? messages.pcInvoiceDraft}
-          columns={[
-            {
-              key: 'number',
-              header: messages.pcInvoiceColNumber,
-              primary: true,
-              cell: (item) => (
-                <AdminNavLink className={`tap-inline font-mono font-semibold text-primary hover:underline ${item.status === 'void' ? 'line-through' : ''}`} href={`/admin/parts/internal-invoices/${item.id}`}>
-                  {item.number ?? messages.pcInvoiceDraft}
-                </AdminNavLink>
-              ),
-            },
-            { key: 'truck', header: messages.pcInvoiceTruck, cell: (item) => fillPlaceholders(messages.pcTruckLabel, { truck: item.truck.truckNumber }) },
-            { key: 'month', header: messages.pcInvoiceColPeriod, cell: (item) => invoiceMonth(item.periodStart, locale) },
-            {
-              key: 'status',
-              header: messages.pcInvoiceColStatus,
-              cell: (item) => {
-                const chip = invoiceStatusChip(item.status, messages);
-                return <Badge variant={chip.variant}>{chip.label}</Badge>;
-              },
-            },
-            { key: 'lines', header: messages.pcColLines, cell: (item) => fillPlaceholders(messages.pcLinesCount, { count: String(item.lineCount) }) },
-            { key: 'total', header: messages.pcColTotal, cell: (item) => <span className={`tabular-nums font-medium ${item.status === 'void' ? 'text-muted-foreground line-through' : ''}`}>{formatCents(item.totalCents, locale)}</span> },
-          ]}
-        />
-      ) : null}
+      {months.map(([periodStart, items]) => {
+        const count = (status: InternalInvoiceStatus) => items.filter((item) => item.status === status).length;
+        const invoiced = items.filter((item) => item.status === 'sent' || item.status === 'accepted').reduce((sum, item) => sum + item.totalCents, 0);
+        return (
+          <SectionCard key={periodStart} title={invoiceMonth(periodStart, locale)} count={items.length} data-testid="invoices-month">
+            <p className="px-4 pt-3 text-xs text-muted-foreground" data-testid="invoices-month-summary">
+              {fillPlaceholders(messages.pcInvoiceMonthSummary, { sent: String(count('sent')), accepted: String(count('accepted')), drafts: String(count('draft')), total: formatCents(invoiced, locale) })}
+            </p>
+            <DataTable
+              className="md:rounded-none md:border-0"
+              items={items}
+              caption={invoiceMonth(periodStart, locale)}
+              getKey={(item) => item.id}
+              getRowLabel={(item) => item.number ?? messages.pcInvoiceDraft}
+              columns={[
+                {
+                  key: 'number',
+                  header: messages.pcInvoiceColNumber,
+                  primary: true,
+                  cell: (item) => (
+                    <AdminNavLink className={`tap-inline font-mono font-semibold text-primary hover:underline ${item.status === 'void' ? 'line-through' : ''}`} href={`/admin/parts/internal-invoices/${item.id}`}>
+                      {item.number ?? fillPlaceholders(messages.pcInvoiceDraftLabel, { truck: item.truck.truckNumber, month: invoiceMonth(item.periodStart, locale) })}
+                    </AdminNavLink>
+                  ),
+                },
+                { key: 'truck', header: messages.pcInvoiceTruck, cell: (item) => fillPlaceholders(messages.pcTruckLabel, { truck: item.truck.truckNumber }) },
+                {
+                  key: 'status',
+                  header: messages.pcInvoiceColStatus,
+                  cell: (item) => {
+                    const chip = invoiceStatusChip(item.status, messages);
+                    return <Badge variant={chip.variant}>{chip.label}</Badge>;
+                  },
+                },
+                { key: 'lines', header: messages.pcColLines, cell: (item) => fillPlaceholders(messages.pcLinesCount, { count: String(item.lineCount) }) },
+                { key: 'total', header: messages.pcColTotal, cell: (item) => <span className={`tabular-nums font-medium ${item.status === 'void' ? 'text-muted-foreground line-through' : ''}`}>{formatCents(item.totalCents, locale)}</span> },
+              ]}
+            />
+          </SectionCard>
+        );
+      })}
       {creating && formData ? (
         <NewInvoiceDialog
           trucks={formData.trucks}

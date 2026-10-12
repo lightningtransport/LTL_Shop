@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
 import { ArrowUpRight, Check, CheckCheck, CircleAlert, CircleCheck, CircleX, Clock, Copy, Eye, FileClock, Lock, MapPin, MoreHorizontal, Pause, Play, Plus, RotateCcw, RotateCw, Truck as TruckIcon } from 'lucide-react';
-import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind } from '@ltl-shop/shared';
-import { adminTruckHref } from '@/lib/admin-truck-origin';
+import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, formatCents } from '@ltl-shop/shared';
+import { adminTruckCostsHref, adminTruckHref } from '@/lib/admin-truck-origin';
 import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { ApiError } from '@/lib/api';
 import { intlLocale } from '@/lib/shop-locale';
@@ -289,6 +289,14 @@ export function AdminWorkOrderDetail({
             <span className="hidden sm:inline"><Dot />{fillPlaceholders(messages.woOpened, { date: formatShortDateTime(data.createdAt, locale) })}</span>
             <Dot />{fillPlaceholders(messages.woUpdatedShort, { date: formatShortDateTime(data.updatedAt, locale) })}
           </p>
+          {/* PCA10 (UX-5-005): what this Work Order has cost so far (Manager and System Admin only; the API sends it to nobody else). */}
+          {data.costs ? (
+            <p className="text-muted-foreground" data-testid="wo-costs-so-far">
+              {fillPlaceholders(messages.pcWoCostsSoFar, { labor: formatCents(data.costs.laborCents, locale), outside: formatCents(data.costs.outsideCents, locale) })}
+              <Dot />
+              <Link href={adminTruckCostsHref(truck.id, `/admin/work-orders/${data.id}`)} className="text-primary hover:underline">{messages.pcWoOpenTruckCosts}</Link>
+            </p>
+          ) : null}
           {!canManageWorkOrders ? (
             <p className="flex items-center gap-1.5 pt-1 text-muted-foreground"><Eye aria-hidden="true" className="size-3.5" />{messages.woViewOnly}</p>
           ) : canOfficialPause && !isPaused && !pauseEnabled ? (

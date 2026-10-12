@@ -166,6 +166,10 @@ export interface AdminVendorDto {
   active: boolean;
   /** Parts that have it as their usual vendor. */
   partCount: number;
+  /** PCA9 (UX-5-004): live (not voided) purchases and outside repairs from this vendor, and the newest invoice date. */
+  purchaseCount: number;
+  repairCount: number;
+  lastInvoiceDate: string | null;
 }
 
 // ── PC-2: purchases ──────────────────────────────────────────────────────────────────────────────────────────
@@ -570,6 +574,8 @@ export const adminCreateInternalInvoiceSchema = z.object({
 export const adminInternalInvoicesQuerySchema = z.object({
   status: z.enum(['draft', 'sent', 'accepted', 'void']).optional(),
   truckId: z.string().uuid().optional(),
+  /** PCA14 (UX-5-009): one month (`2026-10`). */
+  month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
 });
 
 export type AdminCreateInternalInvoiceInput = z.input<typeof adminCreateInternalInvoiceSchema>;
