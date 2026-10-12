@@ -4,6 +4,7 @@ import { ADMIN_READ_TIMEOUT_MS, ApiError } from './api';
 import {
   ADMIN_CATALOG_JOBS_PATH,
   ADMIN_MECHANICS_COLLECTION_PATH,
+  adminInfiniteOptions,
   adminMechanicsPageKey,
   adminReadRetryPending,
   adminReadFetcher,
@@ -181,5 +182,13 @@ describe('assignable mechanics picker (LTR-151)', () => {
     expect(hasUnloadedAdminPage([{ items: [], nextCursor: 'abc' }], 1)).toBe(true);
     expect(hasUnloadedAdminPage([{ items: [], nextCursor: 'abc' }], 2)).toBe(false);
     expect(hasUnloadedAdminPage([{ items: [], nextCursor: 'abc' }, { items: [], nextCursor: null }], 2)).toBe(false);
+  });
+});
+
+describe('admin paged list options (PF4)', () => {
+  it('keeps the rows on screen while a new filter or page loads, and still refreshes on mount (#109)', () => {
+    expect(adminInfiniteOptions.keepPreviousData).toBe(true);
+    expect(adminInfiniteOptions.revalidateOnMount).toBe(true);
+    expect(adminInfiniteOptions.dedupingInterval).toBe(5_000);
   });
 });
