@@ -60,6 +60,11 @@ export const DEFAULT_MUTATION_TIMEOUT_MS = 15_000;
 /** Admin list/detail reads: cold Nest/Prisma + Work Plan can exceed the default 8s GET budget. */
 export const ADMIN_READ_TIMEOUT_MS = 20_000;
 
+/** Methods the API reads a JSON body from; they keep `Content-Type` even with an empty body (PF8). */
+export function hasBodyMethod(method?: string) {
+  return !!method && !['GET', 'HEAD'].includes(method.toUpperCase());
+}
+
 function defaultTimeout(method?: string) {
   return !method || method.toUpperCase() === 'GET' ? DEFAULT_READ_TIMEOUT_MS : DEFAULT_MUTATION_TIMEOUT_MS;
 }
@@ -101,7 +106,10 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const { timeoutMs = defaultTimeout(init.method), signal: callerSignal, ...requestInit } = init;
   const headers = new Headers(requestInit.headers);
-  headers.set('Content-Type', 'application/json');
+  // PF8: a GET carries no body, and a `Content-Type` on it turns a simple request into one that needs a
+  // CORS preflight. Mutations keep it, so the API parses their JSON exactly as before.
+  if (requestInit.body !== undefined && requestInit.body !== null) headers.set('Content-Type', 'application/json');
+  else if (hasBodyMethod(requestInit.method)) headers.set('Content-Type', 'application/json');
   const token = resolveAuthToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
