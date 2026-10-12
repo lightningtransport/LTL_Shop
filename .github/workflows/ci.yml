@@ -40,4 +40,5 @@ jobs:
       - run: npm run prisma:release-status --workspace=@ltl-shop/api
       - run: npm test --workspace=@ltl-shop/api
       - run: npm run lint --workspace=@ltl-shop/api
+      - run: npm run lint --workspace=@ltl-shop/web
       - run: npm run build --workspace=@ltl-shop/web
