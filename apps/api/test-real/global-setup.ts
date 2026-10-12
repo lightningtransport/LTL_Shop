@@ -81,6 +81,8 @@ export default async function setup({ provide }: GlobalSetupContext) {
       DIRECT_URL: REAL_DATABASE_URL,
       PORT: String(port),
       AUTH_DEV_BYPASS: 'true',
+      // P20 / D38: these tests deactivate users straight in the database, so the guard's user cache is off here.
+      AUTH_USER_CACHE_TTL_MS: '0',
       NODE_ENV: 'development',
       DATA_SOURCE: 'supabase',
       // Every completed Work Order stays Ready to Go until Return to Service (row A21).

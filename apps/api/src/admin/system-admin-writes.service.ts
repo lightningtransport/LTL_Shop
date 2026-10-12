@@ -24,6 +24,7 @@ import {
 } from '@ltl-shop/shared';
 import { AppCapability, Prisma, type UserRole as PrismaUserRole, type WorkOrderStatus } from '@prisma/client';
 import type { AuthUser } from '../auth/auth.guard';
+import { invalidateAuthUserCache } from '../auth/auth-user-cache';
 import { toSharedCapability } from '../auth/capabilities';
 import { SupabaseAdminClient, SupabaseAdminError } from '../auth/supabase-admin';
 import { generateTemporaryPassword } from '../auth/temporary-password';
@@ -104,6 +105,7 @@ export class SystemAdminWritesService {
         },
         select: mechanicSelect,
       });
+      invalidateAuthUserCache();
       return { ...toUserDto(created), temporaryPassword: account?.temporaryPassword ?? null };
     } catch (error) {
       // The Shop row failed: take the auth account back so a retry starts clean.
@@ -191,7 +193,7 @@ export class SystemAdminWritesService {
       const updated = await tx.user.findUnique({ where: { id }, select: mechanicSelect });
       if (!updated) throw new NotFoundException('Mechanic not found');
       return toUserDto(updated);
-    });
+    }).finally(invalidateAuthUserCache);
   }
 
   /**
@@ -214,6 +216,7 @@ export class SystemAdminWritesService {
       const account = await this.createAuthAccount(current.email, current.name);
       if (!account) throw new ServiceUnavailableException({ code: 'AUTH_NOT_CONFIGURED', message: 'Access accounts are not managed in this environment.' });
       const linked = await this.prisma.user.updateMany({ where: { id, supabaseAuthId: null }, data: { supabaseAuthId: account.authId } });
+      invalidateAuthUserCache();
       if (linked.count !== 1) {
         await this.supabaseAdmin.deleteUser(account.authId).catch(() => undefined);
         throw new ConflictException({ code: 'AUTH_ACCOUNT_MISSING', message: 'This person changed while the access account was created. Try again.' });

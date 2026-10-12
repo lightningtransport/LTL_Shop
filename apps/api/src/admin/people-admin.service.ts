@@ -3,6 +3,7 @@ import { ActivityEventType, OPEN_WORK_ORDER_STATUSES, ShopWorkflowStepKey, admin
 import type { WorkOrderStatus } from '@prisma/client';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
+import { invalidateAuthUserCache } from '../auth/auth-user-cache';
 import { SupabaseAdminClient } from '../auth/supabase-admin';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
@@ -36,6 +37,7 @@ export class PeopleAdminService {
       await tx.shopWorkflowStepMember.deleteMany({ where: { userId: id } });
       await tx.user.update({ where: { id }, data: { active: false, removedAt: new Date(), removedById: actor.id } });
     });
+    invalidateAuthUserCache();
     return { removed: true };
   }
 
@@ -51,6 +53,7 @@ export class PeopleAdminService {
       await this.supabaseAdmin.deleteUser(person.supabaseAuthId);
     }
     await this.prisma.user.delete({ where: { id } });
+    invalidateAuthUserCache();
     return { deleted: true };
   }
 

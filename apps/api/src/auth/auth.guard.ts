@@ -11,6 +11,7 @@ import type { Request } from 'express';
 import { UserRole } from '@ltl-shop/shared';
 import type { AppCapability } from '@ltl-shop/shared';
 import { toSharedCapability } from './capabilities';
+import { authUserCacheKey, authUserCacheTtlMs, readAuthUserCache, writeAuthUserCache } from './auth-user-cache';
 
 export type AuthUser = {
   id: string;
@@ -116,6 +117,23 @@ export class AuthGuard implements CanActivate {
   }
 
   private async resolveShopUser(
+    email: string,
+    supabaseAuthId: string | null,
+  ): Promise<AuthUser> {
+    // P20 / D38: a short per-process cache of the answer below (see auth-user-cache.ts). Inactive users are never
+    // cached: they throw before reaching the write.
+    const ttlMs = authUserCacheTtlMs();
+    const cacheKey = authUserCacheKey(email, supabaseAuthId);
+    if (ttlMs > 0) {
+      const cached = readAuthUserCache(cacheKey);
+      if (cached) return cached;
+    }
+    const resolved = await this.loadShopUser(email, supabaseAuthId);
+    writeAuthUserCache(cacheKey, resolved, ttlMs);
+    return resolved;
+  }
+
+  private async loadShopUser(
     email: string,
     supabaseAuthId: string | null,
   ): Promise<AuthUser> {
