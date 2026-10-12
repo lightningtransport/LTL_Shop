@@ -32,7 +32,14 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   // LTR-160: deactivated accounts stay hidden unless the Manager asks to see them (e.g. to reactivate).
   // LTR-199 / D31: removed people show only under "Removed from the Shop".
-  const showFrom = (params: URLSearchParams) => (params.get('status') === 'removed' ? 'removed' : params.get('includeInactive') === 'true' ? 'all' : 'active');
+  // DM2 (LTR-204): the select reads whatever the URL asked the API for. Apply writes `includeInactive=true`; a link
+  // or a typed `?status=all` (or `all_in_shop`, `inactive`) also lists inactive people, so it reads "Active and inactive".
+  const showFrom = (params: URLSearchParams): 'active' | 'all' | 'removed' => {
+    const status = params.get('status');
+    if (status === 'removed') return 'removed';
+    if (status === 'all' || status === 'all_in_shop' || status === 'inactive' || params.get('includeInactive') === 'true') return 'all';
+    return 'active';
+  };
   const [show, setShow] = useState(showFrom(searchParams));
   const [createOpen, setCreateOpen] = useState(false);
   const [activateTarget, setActivateTarget] = useState<AdminMechanicSummaryDto | null>(null);

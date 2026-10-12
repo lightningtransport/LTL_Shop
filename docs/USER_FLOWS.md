@@ -197,7 +197,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Completa un Job en un Work Order que nadie empezó | El Work Order pasa a "en curso" | ✅ | A12b |
 | Devuelve a servicio con el Work Order abierto o cancelado | No deja | ✅ | A14, E15 |
 | Devuelve a servicio dos veces | No deja | ✅ | A14 |
-| Mira la **lista** de Trucks o de Work Orders con un camión Ready to Go | Las dos dicen "Return to Service", igual que el Truck y el Yard | ✅ | A19b |
+| Mira la **lista** de Trucks o de Work Orders con un camión Ready to Go | Las dos dicen "Return to Service", igual que el Truck y el Yard (en Work Orders, la tarjeta y la columna Siguiente de la tabla; DM1) | ✅ | A19b |
 | Cancela todos los Jobs pendientes | El Work Order se puede cerrar | ✅ | E16 |
 | **Salida urgente:** el camión tiene que salir sin terminar todo | Con autorización del Manager: cancela con motivo los Jobs que no se harán y cierra | ✅ | E16 |
 | El camión vuelve por algo que quedó mal | Se abre un Work Order nuevo (no se reabre el anterior) | ✅ | A17, E14 |

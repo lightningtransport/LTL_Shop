@@ -213,7 +213,7 @@ export const DEMO_STORIES: DemoStory[] = [
         say: 'Locally the Dispatch gateway is not connected, so each card says "Data unavailable" instead of showing invented lists.',
         expect: '"Data unavailable" on each card.' },
       { user: manager, target: { kind: 'path', path: '/admin/work-orders' }, title: 'Work Orders list',
-        do: 'Filter by status or priority, search a truck or a mechanic. Each row: next Job, status, Jobs progress and mechanics.',
+        do: 'Filter by status or priority, search a truck or a mechanic. Each row: next step (the same as the Truck), status, Jobs progress and mechanics.',
         say: 'Every Work Order, open and closed, in one list.',
         expect: 'Open and recently closed Work Orders with their progress.' },
       { user: manager, target: { kind: 'path', path: '/admin/trucks' }, title: 'Trucks list',

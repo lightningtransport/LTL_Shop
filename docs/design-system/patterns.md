@@ -84,6 +84,16 @@ same catalog keys as the chips (singular Created/Creado … Paused/Pausado).
 Activity Log lines are `eventType` → catalog label + timestamp + actor.
 Never render `relevantValue` / `newValue` JSON to the operator.
 
+## Counts with a noun (DM3, LTR-204)
+
+A number followed by what it counts ("3 parts", "1 open Work Order") goes
+through `adminCountLabel(count, messages.xOne, messages.xMany)` from
+`apps/web/src/lib/admin-messages.ts`, with both forms in the EN and ES
+catalogs (`pcLinesCountOne` / `pcLinesCount`, `truckMechanicsOne` /
+`truckMechanicsMany`…). Never `locale === 'es'` or an `s` appended in a
+component: "1 parts", "1 lines" and "1 open Work Orders" came from a single
+`{count}` template.
+
 ## Location vs Presence (LTR-13)
 
 CURRENT UI hides Yard Presence (`UNKNOWN`, “Presence unknown”,
