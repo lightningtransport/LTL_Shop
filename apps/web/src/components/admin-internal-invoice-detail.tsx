@@ -7,6 +7,7 @@ import { formatCents, type AdminInternalInvoiceDetailDto, type AdminInternalInvo
 import { useActionToast } from './action-toast';
 import { invoiceMonth, invoiceStatusChip } from './admin-internal-invoices';
 import { AdminNavLink } from './admin-nav-link';
+import { useAdminBreadcrumb, useDocumentTitle } from './admin-breadcrumb';
 import { partsCostsFailure } from './admin-parts-catalog';
 import { AdminBackLink, Badge, Button, DialogActions, EmptyState, InlineAlert, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard, Textarea } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
@@ -54,6 +55,10 @@ export function AdminInternalInvoiceDetail({ id, locale, messages }: { id: strin
   const [dialog, setDialog] = useState<'send' | 'void' | 'delete' | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // PCA11 (UX-5-006): "Internal invoices › SHOP-2026-0004" in the top bar and the tab.
+  const crumbName = data ? data.number ?? fillPlaceholders(messages.pcInvoiceDraftLabel, { truck: data.truck.truckNumber, month: invoiceMonth(data.periodStart, locale) }) : null;
+  useAdminBreadcrumb(crumbName ? [{ label: messages.pcInvoices, href: '/admin/parts/internal-invoices' }, { label: crumbName }] : null);
+  useDocumentTitle(crumbName ? `${crumbName} — ${messages.pcInvoices}` : null);
 
   if (isLoading) return <PageSkeleton label={messages.pcInvoicesTitle} />;
   if (error instanceof ApiError && error.status === 404) {

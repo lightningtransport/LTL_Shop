@@ -592,7 +592,13 @@ createServer(async (request, response) => {
       return;
     }
     if (path === '/api/admin/parts-costs/vendors' && request.method === 'GET') {
-      json(response, 200, partsState.vendors);
+      // PCA9: how much history each vendor has.
+      json(response, 200, partsState.vendors.map((vendor) => {
+        const purchases = partsState.purchases.filter((item) => item.vendor.id === vendor.id && !item.voidedAt);
+        const repairs = partsState.repairs.filter((item) => item.vendor.id === vendor.id && !item.voidedAt);
+        const dates = [...purchases, ...repairs].map((item) => item.invoiceDate).sort();
+        return { ...vendor, purchaseCount: purchases.length, repairCount: repairs.length, lastInvoiceDate: dates.at(-1) ?? null };
+      }));
       return;
     }
     if (path === '/api/admin/parts-costs/vendors' && request.method === 'POST') {
@@ -1959,7 +1965,8 @@ createServer(async (request, response) => {
   }
 
   json(response, 404, { message: 'Fixture route not found' });
-}).listen(3101, '127.0.0.1');
+// E2E_FIXTURE_PORT lets a second checkout run the suite beside another one (the config's webServer still uses 3101).
+}).listen(Number(process.env.E2E_FIXTURE_PORT ?? 3101), '127.0.0.1');
 
 function fixtureWorkOrderDetail(summary) {
   return {

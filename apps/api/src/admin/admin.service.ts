@@ -430,7 +430,10 @@ export class AdminService {
     await this.clock?.closeDue();
     const row = await this.prisma.workOrder.findUnique({ where: { id }, include: detailInclude });
     if (!row) throw new NotFoundException('Work Order not found');
-    return toAdminDetail(row);
+    // PCA10 (UX-5-005): what the Work Order has cost so far (its labor and outside repairs in the truck's ledger).
+    const entries = await this.prisma.truckCostEntry.findMany({ where: { workOrderId: id }, select: { kind: true, amountCents: true } });
+    const sum = (kind: string) => entries.filter((entry) => entry.kind === kind).reduce((total, entry) => total + entry.amountCents, 0);
+    return { ...toAdminDetail(row), costs: { partsCents: sum('part_purchase'), outsideCents: sum('outside_repair'), laborCents: sum('labor') } };
   }
 
   async listMechanics(rawQuery: unknown): Promise<AdminPage<AdminMechanicSummaryDto>> {

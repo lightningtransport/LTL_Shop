@@ -27,6 +27,7 @@ import { adminWriteFailureMessage } from '@/lib/system-admin';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { formatShortDateTime } from '@/lib/work-order-view';
 import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 const CATALOG_FILTERS = { q: '', make: '', includeInactive: false };
 
@@ -77,6 +78,7 @@ const MenuTrigger = forwardRef<HTMLButtonElement, { label: string } & React.Butt
  */
 export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
+  useDocumentTitle(messages.pcPartsTitle);
   // PCA1 (UX-5-001): the filters live in the URL, so Back and a reload keep them.
   const { filters, set, clear, query, active: filtered } = useUrlFilters(CATALOG_FILTERS);
   const [search, setSearch] = useDebouncedFilterText(filters.q, (next) => set('q', next));

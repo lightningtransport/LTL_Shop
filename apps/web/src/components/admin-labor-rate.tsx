@@ -5,6 +5,7 @@ import { Trash2 } from 'lucide-react';
 import { formatCents, parseMoneyToCents, type AdminLaborRateDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { partsCostsFailure } from './admin-parts-catalog';
+import { useDocumentTitle } from './admin-breadcrumb';
 import { Button, Card, CardContent, DataTable, DialogActions, InlineAlert, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { removeAdminLaborRate, setAdminLaborRate, useAdminLaborRatePreview, useAdminLaborRates } from '@/lib/admin-data';
@@ -25,6 +26,7 @@ const today = () => {
  */
 export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
+  useDocumentTitle(messages.pcLaborRate);
   const { showToast } = useActionToast();
   const { data, error, isLoading, mutate } = useAdminLaborRates();
   const [rate, setRate] = useState('');

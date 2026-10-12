@@ -4,19 +4,23 @@ import { useState } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import { adminCreateVendorSchema, type AdminVendorDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
+import { AdminNavLink } from './admin-nav-link';
+import { useDocumentTitle } from './admin-breadcrumb';
 import { partsCostsFailure } from './admin-parts-catalog';
 import { Badge, Button, DataTable, DialogActions, EmptyState, InlineAlert, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton, Textarea } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { createAdminVendor, updateAdminVendor, useAdminVendors } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { formatInvoiceDate } from '@/lib/parts-costs-format';
 
 /**
  * LTR-200 / D32 (PC-1): Parts & costs → Vendors. A vendor with history is never deleted, only made inactive, so it
  * stops being offered. The name is unique without caring about capitals (A55).
  */
-export function AdminVendors({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
+export function AdminVendors({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
+  useDocumentTitle(messages.pcVendorsTitle);
   const { data, error, isLoading, mutate } = useAdminVendors();
   const [editing, setEditing] = useState<AdminVendorDto | 'new' | null>(null);
   const addButton = canWrite ? <Button type="button" onClick={() => setEditing('new')}><Plus aria-hidden="true" />{messages.pcAddVendor}</Button> : null;
@@ -43,12 +47,26 @@ export function AdminVendors({ messages }: { locale: AdminLocale; messages: Admi
               key: 'name',
               header: messages.pcVendorName,
               primary: true,
+              // PCA9 (UX-5-004): the name opens the vendor's invoices (purchases, or repairs if that is what it does).
               cell: (vendor) => (
                 <span className={vendor.active ? 'font-medium' : 'font-medium text-muted-foreground'}>
-                  {vendor.name}
+                  <AdminNavLink className="tap-inline text-primary hover:underline" href={vendor.doesParts || !vendor.doesRepairs ? `/admin/parts/purchases?vendorId=${vendor.id}` : `/admin/parts/outside-repairs?vendorId=${vendor.id}`}>{vendor.name}</AdminNavLink>
                   {!vendor.active ? <Badge variant="secondary" className="ml-2">{messages.pcInactive}</Badge> : null}
                 </span>
               ),
+            },
+            {
+              key: 'invoices',
+              header: messages.pcVendorInvoices,
+              cell: (vendor) => (vendor.purchaseCount ?? 0) + (vendor.repairCount ?? 0) === 0
+                ? <span className="text-muted-foreground">{messages.pcVendorNoInvoices}</span>
+                : (
+                  <span className="flex flex-wrap gap-x-2 gap-y-0.5 text-sm" data-testid="vendor-invoices">
+                    {vendor.purchaseCount ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/parts/purchases?vendorId=${vendor.id}`}>{fillPlaceholders(messages.pcVendorPurchasesCount, { count: String(vendor.purchaseCount) })}</AdminNavLink> : null}
+                    {vendor.repairCount ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/parts/outside-repairs?vendorId=${vendor.id}`}>{fillPlaceholders(messages.pcVendorRepairsCount, { count: String(vendor.repairCount) })}</AdminNavLink> : null}
+                    {vendor.lastInvoiceDate ? <span className="text-muted-foreground">{fillPlaceholders(messages.pcVendorLastInvoice, { date: formatInvoiceDate(vendor.lastInvoiceDate, locale) })}</span> : null}
+                  </span>
+                ),
             },
             {
               key: 'does',

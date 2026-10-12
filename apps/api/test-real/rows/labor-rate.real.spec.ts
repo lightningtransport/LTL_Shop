@@ -60,6 +60,8 @@ describe('Manager: tarifa de mano de obra (D34, LB-1)', () => {
     same('una fila de mano de obra con su WO', rows.map((row) => [row.kind, row.amountCents, row.workOrderId, row.truckId]), [['labor', expected, workOrderId, truck.id]]);
     const costs = ok('costos del camión', await manager.get(`/admin/parts-costs/trucks/${truck.id}/costs?from=${today()}&to=${today()}`));
     same('Costs suma la mano de obra', [costs.laborRateSet, costs.totals.laborCents >= expected], [true, true]);
+    // PCA10: the Work Order itself says what it has cost so far (Manager only; a mechanic gets no costs).
+    same('la WO dice su mano de obra', (await adminWo(workOrderId)).costs?.laborCents, expected);
     truthy('el movimiento dice el WO y las horas', (costs.entries as Array<{ kind: string; description: string }>).some((entry) => entry.kind === 'labor' && entry.description.includes('h ×')));
   });
 

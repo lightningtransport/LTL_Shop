@@ -88,7 +88,7 @@ export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { tr
       {isLoading && !data ? <PageSkeleton label={messages.pcTruckCostsTab} header={false} /> : null}
       {data ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" data-testid="truck-costs-totals">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5" data-testid="truck-costs-totals">
             {[
               [messages.pcCostsParts, data.totals.partsCents, Receipt],
               [messages.pcCostsOutside, data.totals.outsideCents, Building2],

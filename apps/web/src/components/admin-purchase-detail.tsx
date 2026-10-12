@@ -9,6 +9,7 @@ import { AdminNavLink } from './admin-nav-link';
 import { partsCostsFailure } from './admin-parts-catalog';
 import { PurchaseForm } from './admin-purchase-form';
 import { ChargedOnChips, chargedWarning } from './admin-charged-on';
+import { useAdminBreadcrumb, useDocumentTitle } from './admin-breadcrumb';
 import { InvoiceFileDialog } from './admin-invoice-file-dialog';
 import { AdminBackLink, Badge, Button, DataTable, DialogActions, EmptyState, InlineAlert, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard, Textarea } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
@@ -38,6 +39,10 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
   const from = useSearchParams().get('from');
   const origin = adminPartsOrigin(from, { href: '/admin/parts/purchases', backLabel: messages.pcBackToPurchases }, messages);
   const here = `/admin/parts/purchases/${id}`;
+  // PCA11 (UX-5-006): "Purchases › FleetPride · FP-48840" in the top bar and the tab.
+  const name = data ? `${data.vendor.name} · ${data.invoiceNumber}` : null;
+  useAdminBreadcrumb(name ? [{ label: messages.pcPurchases, href: '/admin/parts/purchases' }, { label: name }] : null);
+  useDocumentTitle(data ? `${data.invoiceNumber} · ${data.vendor.name} — ${messages.pcPurchases}` : null);
 
   if (isLoading) return <PageSkeleton label={messages.pcPurchasesTitle} />;
   if (error instanceof ApiError && error.status === 404) {
