@@ -1,0 +1,236 @@
+<!doctype html>
+<!--
+  Demo intro video, step 2 of 2 (README.md in this folder): the scenes, titles and transitions. render.mjs opens
+  this page at 1920x1080, calls build(shots) with shots/shots.json and seeks every animation frame by frame.
+  Open it in a browser and call play() from the console to preview it in real time.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lightning Shop: a day at the shop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=block" rel="stylesheet">
+<style>
+  /* Brand tokens from apps/web/src/app/globals.css (light theme) and the logo. */
+  :root {
+    --primary: oklch(0.5358 0.1444 248.0435);
+    --secondary: oklch(0.7062 0.1363 140.8559);
+    --ink: oklch(0.23 0.02 250);
+    --muted: oklch(0.48 0.02 250);
+    --canvas: #f4f7fb;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas); }
+  body { font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .backdrop { position: absolute; inset: 0;
+    background:
+      radial-gradient(900px 600px at 8% 0%, color-mix(in oklch, var(--primary) 12%, transparent), transparent 70%),
+      radial-gradient(800px 600px at 100% 100%, color-mix(in oklch, var(--secondary) 14%, transparent), transparent 70%),
+      var(--canvas); }
+  .scene { position: absolute; inset: 0; opacity: 0; }
+
+  /* Title block */
+  .chips { display: flex; gap: 12px; align-items: center; }
+  .chip { font-size: 20px; font-weight: 600; padding: 6px 14px; border-radius: 999px; letter-spacing: .01em; }
+  .chip.time { background: var(--primary); color: #fff; font-variant-numeric: tabular-nums; }
+  .chip.role { background: color-mix(in oklch, var(--secondary) 20%, white); color: oklch(0.42 0.12 145); }
+  h1 { font-weight: 800; letter-spacing: -0.025em; line-height: 1.05; }
+  .sub { color: var(--muted); line-height: 1.3; }
+  .head { position: absolute; left: 220px; top: 52px; right: 220px; }
+  .head h1 { font-size: 50px; margin-top: 14px; }
+  .head .sub { font-size: 24px; margin-top: 8px; }
+  .steps { position: absolute; right: 220px; top: 60px; display: flex; gap: 8px; }
+  .steps i { width: 10px; height: 10px; border-radius: 999px; background: color-mix(in oklch, var(--primary) 18%, white); }
+  .steps i.done { background: color-mix(in oklch, var(--primary) 45%, white); }
+  .steps i.on { width: 34px; background: var(--primary); }
+
+  /* App window */
+  .window { position: absolute; border-radius: 18px; overflow: hidden; background: #fff;
+    box-shadow: 0 2px 6px rgba(15, 30, 60, .06), 0 30px 80px -20px rgba(15, 40, 80, .35); border: 1px solid rgba(15, 30, 60, .08); }
+  .bar { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #eef2f7; border-bottom: 1px solid #e1e7ef; }
+  .bar b { width: 12px; height: 12px; border-radius: 999px; background: #d5dce6; }
+  .bar span { margin-left: 18px; font-size: 15px; color: var(--muted); background: #fff; border-radius: 8px; padding: 4px 14px; }
+  .viewport { position: relative; overflow: hidden; }
+  .zoom { position: absolute; inset: 0; will-change: transform; }
+  .zoom img { width: 100%; height: 100%; display: block; }
+  .ring { position: absolute; border-radius: 14px; border: 3px solid var(--primary);
+    box-shadow: 0 0 0 6px color-mix(in oklch, var(--primary) 22%, transparent), 0 0 0 4000px rgba(12, 28, 52, .12); opacity: 0; }
+
+  /* Phone */
+  .phone { position: absolute; width: 500px; padding: 15px; border-radius: 68px; background: #10151d;
+    box-shadow: 0 40px 90px -25px rgba(15, 40, 80, .55), inset 0 0 0 2px #2b3340; }
+  .phone .screen { border-radius: 54px; overflow: hidden; background: #fff; }
+  .phone img { width: 100%; display: block; }
+  .side { position: absolute; left: 220px; top: 0; bottom: 0; width: 820px; display: flex; flex-direction: column; justify-content: center; }
+  .side h1 { font-size: 72px; margin-top: 22px; }
+  .side .sub { font-size: 30px; margin-top: 20px; max-width: 720px; }
+
+  /* Intro and closing */
+  .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .card img { width: 440px; }
+  .card h1 { font-size: 88px; margin-top: 48px; }
+  .card .sub { font-size: 30px; margin-top: 18px; }
+  .cta { margin-top: 44px; font-size: 30px; font-weight: 700; color: #fff; background: var(--primary); padding: 18px 40px; border-radius: 999px;
+    box-shadow: 0 18px 40px -14px color-mix(in oklch, var(--primary) 70%, transparent); }
+</style>
+</head>
+<body>
+<div class="backdrop"></div>
+<div id="stage"></div>
+<script>
+  const FPS = 30;
+  const DURATION = 35;
+  const FADE = 0.45;
+  const INTRO_END = 2.4;
+  const STEP = 2.7;
+
+  // The order of a day at the shop (DEMO_FLOW in apps/web/src/lib/demo/scripts.ts), one feature per scene.
+  const SCENES = [
+    { shot: '01-dashboard', time: '6:00 AM', role: 'Manager', title: 'Start the day with what needs you', sub: 'Blocked, ready to close, ready to go and unassigned: in order.' },
+    { shot: '02-yard', time: '6:30 AM', role: 'Manager', title: 'Every truck, every stage, live', sub: 'The yard board shows where each truck is and what stops it.' },
+    { shot: '03-new-work-order', time: '7:00 AM', role: 'Manager', title: 'A truck arrives: one Work Order', sub: 'Pick the truck. PM, Alignment, Detailing and QC come with their owners.' },
+    { shot: '04-mechanic', phone: true, time: '7:30 AM', role: 'Mechanic', title: 'Mechanics work from their phone', sub: 'Clock in, take Jobs from the team queue, add notes and requests.' },
+    { shot: '05-blocker', time: '9:00 AM', role: 'Manager', title: 'A blocker reaches the desk at once', sub: 'The mechanic reports why; the Manager resolves it in one tap.' },
+    { shot: '06-pm', phone: true, time: '11:00 AM', role: 'PM', title: 'Every team works its own queue', sub: 'PM with mileage and parts. Alignment and Detailing the same way.' },
+    { shot: '07-qc', phone: true, time: '1:00 PM', role: 'Quality Check', title: 'Quality Check before it leaves', sub: 'Take the truck, approve it, or return the Job to the mechanic.' },
+    { shot: '08-ready-to-go', time: '3:00 PM', role: 'Manager', title: 'Ready to Go, back on the road', sub: 'Every step checked. Return it to service when it leaves.' },
+    { shot: '09-truck-costs', time: '4:00 PM', role: 'Admin', title: 'Every cost, per truck', sub: 'Parts, outside repairs and labor hours, by month.' },
+    { shot: '10-month-close', time: '4:30 PM', role: 'Admin', title: 'Month close for Finance', sub: 'One internal invoice per truck. Drafts for all in one click.' },
+    { shots: ['11a-people', '11b-shop-hours'], time: '5:00 PM', role: 'Admin', title: 'People and shop hours, in your hands', sub: 'Accounts and teams. At day close every running clock stops.' },
+  ];
+
+  const stage = document.getElementById('stage');
+  const animations = [];
+  const ease = 'cubic-bezier(.22,.8,.24,1)';
+
+  function el(tag, cls, parent, html) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (html !== undefined) node.innerHTML = html;
+    parent.appendChild(node);
+    return node;
+  }
+  // Every animation is created paused at absolute time `at` (seconds); render.mjs seeks them all together.
+  function anim(node, frames, at, duration, easing = ease) {
+    const a = node.animate(frames, { delay: at * 1000, duration: duration * 1000, fill: 'both', easing });
+    a.pause();
+    animations.push(a);
+    return a;
+  }
+  // Two animations on one property would override each other: the fade in is on the scene, the fade out on its child.
+  function sceneShell(start, end) {
+    const scene = el('div', 'scene', stage);
+    anim(scene, [{ opacity: 0 }, { opacity: 1 }], start, FADE, 'ease-out');
+    const inner = el('div', 'scene', scene);
+    inner.style.opacity = 1;
+    if (end < DURATION) anim(inner, [{ opacity: 1 }, { opacity: 0 }], end, FADE, 'ease-in');
+    return inner;
+  }
+  function rise(node, at, distance = 24, duration = 0.6) {
+    anim(node, [{ opacity: 0, transform: `translateY(${distance}px)` }, { opacity: 1, transform: 'none' }], at, duration);
+  }
+  function chips(parent, scene, at) {
+    const row = el('div', 'chips', parent);
+    el('span', 'chip time', row, scene.time);
+    el('span', 'chip role', row, scene.role);
+    rise(row, at);
+  }
+  function steps(parent, index, at) {
+    const row = el('div', 'steps', parent);
+    SCENES.forEach((_, i) => el('i', i < index ? 'done' : i === index ? 'on' : '', row));
+    rise(row, at, 10);
+  }
+  function appWindow(parent, shot, box, at, start, end) {
+    const w = el('div', 'window', parent);
+    Object.assign(w.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px` });
+    const bar = el('div', 'bar', w, '<b></b><b></b><b></b><span>lightning shop</span>');
+    const view = el('div', 'viewport', w);
+    view.style.height = `${box.width * 9 / 16}px`;
+    const zoom = el('div', 'zoom', view);
+    el('img', '', zoom).src = `shots/${shot.file}`;
+    anim(w, [{ opacity: 0, transform: 'translateY(70px) scale(.98)' }, { opacity: 1, transform: 'none' }], at, 0.75);
+    // Slow push toward the focus box, then a ring around it.
+    const f = shot.focus && shot.focus.h < 0.7 ? shot.focus : null;
+    const cx = f ? f.x + f.w / 2 : 0.5;
+    const cy = f ? Math.min(f.y + f.h / 2, 0.8) : 0.4;
+    // Wide panels already fill the window: push in only a little so the ring stays inside it.
+    const scale = !f ? 1.05 : f.w > 0.6 ? 1.035 : Math.min(1.22, Math.max(1.06, 0.75 / f.w));
+    zoom.style.transformOrigin = `${cx * 100}% ${cy * 100}%`;
+    anim(zoom, [{ transform: 'scale(1)' }, { transform: `scale(${scale})` }], start, end - start + FADE, 'cubic-bezier(.45,0,.35,1)');
+    if (f) {
+      const ring = el('div', 'ring', zoom);
+      const pad = 0.006;
+      Object.assign(ring.style, { left: `${(f.x - pad) * 100}%`, top: `${(f.y - pad * 1.6) * 100}%`, width: `${(f.w + pad * 2) * 100}%`, height: `${(f.h + pad * 3.2) * 100}%` });
+      anim(ring, [{ opacity: 0, transform: 'scale(1.04)' }, { opacity: 1, transform: 'none' }], at + 0.85, 0.5);
+    }
+    return w;
+  }
+
+  function build(shots) {
+    // Intro
+    {
+      const s = sceneShell(0, INTRO_END);
+      const card = el('div', 'card', s);
+      const logo = el('img', '', card); logo.src = '../../public/ltl-logo.png';
+      const h = el('h1', '', card, 'A day at the shop');
+      const p = el('p', 'sub', card, 'Lightning Shop, from the first truck in to the month close.');
+      anim(logo, [{ opacity: 0, transform: 'scale(.92)' }, { opacity: 1, transform: 'none' }], 0.1, 0.8);
+      rise(h, 0.45, 30); rise(p, 0.65, 30);
+    }
+    SCENES.forEach((scene, i) => {
+      const start = INTRO_END + i * STEP;
+      const end = start + STEP;
+      const s = sceneShell(start, end);
+      const t = start + 0.1;
+      if (scene.phone) {
+        const side = el('div', 'side', s);
+        chips(side, scene, t);
+        rise(el('h1', '', side, scene.title), t + 0.1, 30);
+        rise(el('p', 'sub', side, scene.sub), t + 0.2, 30);
+        const phone = el('div', 'phone', s);
+        Object.assign(phone.style, { left: '1170px', top: '118px' });
+        el('img', '', el('div', 'screen', phone)).src = `shots/${shots[scene.shot].file}`;
+        anim(phone, [{ opacity: 0, transform: 'translate(90px, 30px) rotate(3deg)' }, { opacity: 1, transform: 'rotate(0deg)' }], t, 0.8);
+        anim(phone.querySelector('.screen'), [{ transform: 'translateY(0)' }, { transform: 'translateY(-1.5%)' }], start, STEP + FADE, 'ease-in-out');
+      } else {
+        const head = el('div', 'head', s);
+        chips(head, scene, t);
+        rise(el('h1', '', head, scene.title), t + 0.08, 20);
+        rise(el('p', 'sub', head, scene.sub), t + 0.16, 20);
+        if (scene.shots) {
+          appWindow(s, shots[scene.shots[0]], { left: 160, top: 250, width: 1060 }, t + 0.1, start, end);
+          appWindow(s, shots[scene.shots[1]], { left: 820, top: 360, width: 960 }, t + 0.55, start, end);
+        } else {
+          appWindow(s, shots[scene.shot], { left: 220, top: 236, width: 1480 }, t + 0.1, start, end);
+        }
+      }
+      steps(s, i, t);
+    });
+    // Closing
+    {
+      const start = INTRO_END + SCENES.length * STEP;
+      const s = sceneShell(start, DURATION);
+      const card = el('div', 'card', s);
+      const logo = el('img', '', card); logo.src = '../../public/ltl-logo.png'; logo.style.width = '300px';
+      const h = el('h1', '', card, 'Now try it yourself');
+      const p = el('p', 'sub', card, 'Pick a role: Manager, Mechanic, PM, Quality Check or Admin.');
+      const cta = el('div', 'cta', card, 'Open the demo &rarr;');
+      anim(logo, [{ opacity: 0, transform: 'scale(.92)' }, { opacity: 1, transform: 'none' }], start + 0.1, 0.7);
+      rise(h, start + 0.3, 30); rise(p, start + 0.45, 30);
+      anim(cta, [{ opacity: 0, transform: 'translateY(20px) scale(.96)' }, { opacity: 1, transform: 'none' }], start + 0.7, 0.6);
+    }
+    return Promise.all([document.fonts.ready, ...[...document.images].map((img) => img.decode())]);
+  }
+
+  function seek(seconds) {
+    for (const a of animations) a.currentTime = seconds * 1000;
+  }
+  function play() {
+    const t0 = performance.now();
+    const tick = () => { const t = (performance.now() - t0) / 1000; seek(t); if (t < DURATION) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }
+  window.VIDEO = { FPS, DURATION };
+</script>
+</body>
+</html>

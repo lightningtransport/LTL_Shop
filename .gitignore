@@ -3,6 +3,8 @@ dist
 .next
 .next-*
 apps/web/e2e/ui-audit/output
+apps/web/e2e/demo-video/shots
+apps/web/e2e/demo-video/out
 .turbo
 coverage
 .env
