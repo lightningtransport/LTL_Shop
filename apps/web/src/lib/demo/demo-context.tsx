@@ -56,6 +56,9 @@ export type DemoMode = {
   goToScreen: () => Promise<void>;
   /** Clear the story and go back to the Manager dashboard. Data is not rebuilt. */
   backToManager: () => Promise<void>;
+  /** D39: the current step's highlight was tapped or dismissed; the panel then points at Next. */
+  spotlightDone: boolean;
+  markSpotlightDone: () => void;
 };
 
 const DemoModeContext = createContext<DemoMode | null>(null);
@@ -140,6 +143,10 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   const story = useMemo(() => findDemoStory(state.storyId), [state.storyId]);
   const stepIndex = clampStep(story, state.stepIndex);
   const step = story ? story.steps[stepIndex] : null;
+  const stepKey = story ? `${story.id}:${stepIndex}` : null;
+  const [spotlightDoneKey, setSpotlightDoneKey] = useState<string | null>(null);
+  const spotlightDone = !!stepKey && spotlightDoneKey === stepKey;
+  const markSpotlightDone = useCallback(() => setSpotlightDoneKey(stepKey), [stepKey]);
 
   // UX-1-003: while the demo is on and the account can enter the Admin, keep its server cookie alive.
   const canAdmin = hasCapability(user, AppCapability.ADMIN_ACCESS);
@@ -312,8 +319,10 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
       goToStep,
       goToScreen,
       backToManager,
+      spotlightDone,
+      markSpotlightDone,
     }),
-    [ready, state, available, data?.users, usersError, busy, switchingTo, error, story, step, stepIndex, onStepScreen, update, setEnabled, switchTo, selectStory, startStory, goToStep, goToScreen, backToManager],
+    [ready, state, available, data?.users, usersError, busy, switchingTo, error, story, step, stepIndex, onStepScreen, update, setEnabled, switchTo, selectStory, startStory, goToStep, goToScreen, backToManager, spotlightDone, markSpotlightDone],
   );
 
   return <DemoModeContext.Provider value={value}>{children}</DemoModeContext.Provider>;

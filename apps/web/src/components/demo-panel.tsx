@@ -87,6 +87,8 @@ export function DemoPanel() {
   const { user } = useAuth();
   const pathname = usePathname();
   const [confirmLeave, setConfirmLeave] = useState(false);
+  // UX-1-010 (DP2): on a phone the panel is a bottom bar with the step and Back/Next; "More" opens the rest.
+  const [expanded, setExpanded] = useState(false);
   if (!demo?.available || !demo.state.panelOpen || !user) return null;
   if (PANEL_HIDDEN_ON.some((prefix) => pathname.startsWith(prefix))) return null;
 
@@ -100,18 +102,27 @@ export function DemoPanel() {
   const afterFive = new Date().getHours() >= 17;
   const chapters = demo.story ? storyChapters(demo.story) : [];
   const chapterIndex = chapters.findIndex((chapter) => demo.stepIndex >= chapter.from && demo.stepIndex <= chapter.to);
+  const compact = demo.state.started && !!demo.story && !expanded;
+  /** Hidden on a phone while compact; always shown from sm up. */
+  const phoneHidden = compact ? 'max-sm:hidden' : '';
+  const pointAtNext = demo.state.started && !!demo.step?.spotlight && demo.spotlightDone;
 
   return (
     <div
       id="demo-panel"
       role="complementary"
       aria-label="Demo panel"
-      className="fixed inset-x-3 bottom-3 z-50 max-h-[75vh] overflow-auto rounded-xl border bg-card p-4 text-sm text-card-foreground shadow-2xl sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:w-[360px]"
+      className={cn('fixed inset-x-3 bottom-3 z-50 overflow-auto', compact ? 'max-h-[45vh]' : 'max-h-[75vh]', ' rounded-xl border bg-card p-4 text-sm text-card-foreground shadow-2xl sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:max-h-[calc(100vh-5rem)] sm:w-[360px]')}
       style={{ paddingBottom: 'calc(1rem + var(--app-safe-bottom))' }}
     >
       <ReservePanelSpace />
-      <div className="mb-3 flex items-center justify-between">
+      <div className={cn('mb-3 flex items-center justify-between', compact && 'max-sm:mb-1')}>
         <p className="font-semibold">Demo panel</p>
+        {demo.state.started && demo.story ? (
+          <button type="button" className="ml-auto mr-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent sm:hidden" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+            {expanded ? 'Less' : 'More'}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => demo.setPanelOpen(false)}
@@ -122,9 +133,9 @@ export function DemoPanel() {
         </button>
       </div>
 
-      {demo.state.welcome ? (
+      {demo.state.welcome && !demo.state.started ? (
         <p className="mb-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs" role="status">
-          Demo mode is on · you are <b>{castMemberByEmail(user.email)?.label ?? user.name}</b>. Pick a story below, or tap an account to see the app as that person.{' '}
+          Demo mode is on · you are <b>{castMemberByEmail(user.email)?.label ?? user.name}</b>. Tap <b>Start</b>: each step opens the right screen and lights up what to tap. You can also pick another story, or tap an account to see the app as that person.{' '}
           <button type="button" className="underline" onClick={() => demo.dismissWelcome()}>Got it</button>
         </p>
       ) : null}
@@ -145,7 +156,7 @@ export function DemoPanel() {
 
       {/* Flex column so the Story block can move above the user grid (order-first) while a story is active. */}
       <div className="flex flex-col">
-        <details open={!demo.story} className="group">
+        <details open={!demo.story} className={cn('group', phoneHidden)}>
           <summary className="mb-2 cursor-pointer list-none text-xs text-muted-foreground">
             Accounts · signed in as <b className="text-foreground">{castMemberByEmail(user.email)?.label ?? user.name}</b>{demo.story ? ' · tap to switch by hand' : ''}
           </summary>
@@ -201,7 +212,8 @@ export function DemoPanel() {
         </details>
 
         <div className={demo.story ? 'order-first' : 'mt-4 border-t pt-3'}>
-          <p className="mb-2 text-xs text-muted-foreground">Story</p>
+          <p className={cn('mb-2 text-xs text-muted-foreground', phoneHidden)}>Story</p>
+          <div className={phoneHidden}>
           <Select
             aria-label="Story"
             value={demo.story?.id ?? ''}
@@ -221,8 +233,9 @@ export function DemoPanel() {
               </optgroup>
             ))}
           </Select>
+          </div>
           {demo.story && chapters.length ? (
-            <details className="mt-2 rounded-md border px-2 py-1 text-xs">
+            <details className={cn('mt-2 rounded-md border px-2 py-1 text-xs', phoneHidden)}>
               <summary className="cursor-pointer select-none text-muted-foreground">Chapters · {chapters.length}{chapterIndex >= 0 ? ` · now ${chapterIndex + 1}` : ''}</summary>
             <ol className="mt-1 space-y-0.5" aria-label="Chapters">
               {chapters.map((chapter, index) => {
@@ -247,7 +260,7 @@ export function DemoPanel() {
           ) : null}
 
           {demo.story && demo.step && stepUser ? (
-            <div className="mt-3 rounded-lg border bg-background p-3" data-testid="demo-step">
+            <div className={cn('mt-3 rounded-lg border bg-background p-3', compact && 'max-sm:mt-0 max-sm:border-0 max-sm:p-0')} data-testid="demo-step">
               {chapterIndex >= 0 ? (
                 <p className="text-xs font-medium text-primary">Chapter {chapterIndex + 1} of {chapters.length} · {chapters[chapterIndex].title.replace(/^\d+ · /, '')}</p>
               ) : null}
@@ -256,7 +269,7 @@ export function DemoPanel() {
                 {demo.story.id !== 'FLOW' ? <span className="ml-1 rounded border px-1 font-mono text-[10px]">{demo.story.id}</span> : null}
               </p>
               <p className="mt-1 text-base font-semibold">{demo.step.title}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className={cn('mt-2 flex flex-wrap gap-1.5', phoneHidden)}>
                 <Badge variant={stepIsMine ? 'default' : 'warning'}>{stepUser.label}</Badge>
                 <Badge variant={offScreen ? 'warning' : 'outline'}>{describeTarget(demo.step.target)}</Badge>
                 {demo.step.mutates ? <Badge variant="secondary">Changes data</Badge> : null}
@@ -265,8 +278,8 @@ export function DemoPanel() {
                 <p className="mt-2 text-xs text-muted-foreground">{demo.story.note}</p>
               ) : null}
               <p className="mt-2"><b>Do:</b> {demo.step.do}</p>
-              {demo.step.say ? <p className="mt-1 text-muted-foreground"><b className="text-foreground">Say:</b> {demo.step.say}</p> : null}
-              {demo.step.expect ? <p className="mt-1 text-xs text-muted-foreground"><b>Expect:</b> {demo.step.expect}</p> : null}
+              {demo.step.say ? <p className={cn('mt-1 text-muted-foreground', phoneHidden)}><b className="text-foreground">Why:</b> {demo.step.say}</p> : null}
+              {demo.step.expect ? <p className={cn('mt-1 text-xs text-muted-foreground', phoneHidden)}><b>You should see:</b> {demo.step.expect}</p> : null}
 
               {!demo.state.started ? (
                 <>
@@ -288,7 +301,14 @@ export function DemoPanel() {
                       Back
                     </Button>
                     {demo.stepIndex < demo.story.steps.length - 1 ? (
-                      <Button className="flex-1" size="sm" disabled={demo.busy} onClick={() => void demo.goToStep(demo.stepIndex + 1)}>Next</Button>
+                      <Button
+                        className={cn('flex-1', pointAtNext && 'ring-2 ring-primary ring-offset-2 ring-offset-background motion-safe:animate-pulse')}
+                        size="sm"
+                        disabled={demo.busy}
+                        onClick={() => void demo.goToStep(demo.stepIndex + 1)}
+                      >
+                        Next
+                      </Button>
                     ) : (
                       <Button className="flex-1" size="sm" disabled={demo.busy} onClick={() => demo.selectStory(null)}>Finish</Button>
                     )}
@@ -298,7 +318,8 @@ export function DemoPanel() {
                       Go to this step's screen
                     </Button>
                   ) : null}
-                  <label className="mt-3 flex items-center justify-between gap-3 text-xs">
+                  {pointAtNext ? <p className="mt-2 text-xs text-muted-foreground" role="status">Done here? Tap <b className="text-foreground">Next</b> for the next step.</p> : null}
+                  <label className={cn('mt-3 flex items-center justify-between gap-3 text-xs', phoneHidden)}>
                     <span>Follow each step (switch account and open the screen)</span>
                     <input
                       type="checkbox"
@@ -313,7 +334,7 @@ export function DemoPanel() {
           ) : null}
         </div>
 
-        <details className="mt-4 border-t pt-3">
+        <details className={cn('mt-4 border-t pt-3', phoneHidden)}>
           <summary className="cursor-pointer text-xs font-medium">What each control does</summary>
           <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-muted-foreground">
             <li><b className="text-foreground">An account</b>: signs you in as that person and opens their home screen. No password; the page loads again.</li>
@@ -323,7 +344,7 @@ export function DemoPanel() {
           </ul>
         </details>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-3">
+        <div className={cn('mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-3', phoneHidden)}>
           <button type="button" className={TEXT_LINK} disabled={demo.busy} onClick={() => void demo.backToManager()}>
             Back to the Manager dashboard
           </button>
@@ -340,7 +361,7 @@ export function DemoPanel() {
             </button>
           )}
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">Data stays as it is. To start over, rebuild the demo: <code>npm run prisma:demo-local</code>.</p>
+        <p className={cn('mt-1 text-[11px] text-muted-foreground', phoneHidden)}>Data stays as it is. To start over, rebuild the demo: <code>npm run prisma:demo-local</code>.</p>
         {castMemberByEmail(user.email) ? null : (
           <p className="mt-2 text-xs text-muted-foreground">{user.email} is not one of the demo accounts.</p>
         )}

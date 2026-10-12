@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEMO_CAST, castMember } from './cast';
 import { DEMO_FLOW, DEMO_JOB_IDS, DEMO_STORIES, findDemoStory, storyChapters } from './scripts';
+import { spotlightPhase } from './spotlight';
 
 const KNOWN_PREFIXES = ['/admin', '/mechanic/standard', '/mechanic/pm', '/qc', '/work-orders', '/trucks'];
 
@@ -80,6 +81,24 @@ describe('demo stories (D36)', () => {
     }
     expect(findDemoStory('FLOW')).toBe(DEMO_FLOW);
     expect(DEMO_STORIES.some((story) => story.id === 'FLOW')).toBe(false);
+  });
+
+  it('lights up something on every step of the demo flow (D39, DP2)', () => {
+    DEMO_FLOW.steps.forEach((step, index) => {
+      for (let phase = 0, light = spotlightPhase(step.spotlight, 0); light; phase += 1, light = spotlightPhase(step.spotlight, phase)) {
+        expect(light.text || light.selector, `step ${index + 1} · ${step.title}`).toBeTruthy();
+        expect(light.hint.length, `step ${index + 1} · ${step.title}`).toBeGreaterThan(0);
+      }
+      expect(step.spotlight, `step ${index + 1} · ${step.title}`).toBeDefined();
+    });
+  });
+
+  it('walks a two-tap light one tap at a time', () => {
+    const light = { text: 'Resolve', hint: 'a', then: { text: 'Confirm resolve', hint: 'b' } };
+    expect(spotlightPhase(light, 0)?.text).toBe('Resolve');
+    expect(spotlightPhase(light, 1)?.text).toBe('Confirm resolve');
+    expect(spotlightPhase(light, 2)).toBeNull();
+    expect(spotlightPhase(undefined, 0)).toBeNull();
   });
 
   it('names the demo trucks of DEMO.md only', () => {
