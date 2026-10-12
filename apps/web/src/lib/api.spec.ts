@@ -4,6 +4,7 @@ import {
   ApiError,
   apiFetch,
   DEFAULT_READ_TIMEOUT_MS,
+  hasBodyMethod,
   isTransientApiError,
 } from './api';
 
@@ -51,6 +52,23 @@ describe('apiFetch', () => {
       route: '/api/work-orders',
       method: 'GET',
     });
+  });
+
+  it('sends Content-Type only on requests that can carry a body, so a GET needs no CORS preflight (PF8)', async () => {
+    installBrowserGlobals();
+    const fetchMock = vi.fn(() => Promise.resolve(new Response('{}', { status: 200 })));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await apiFetch('/api/work-orders');
+    await apiFetch('/api/work-orders/1/resume', { method: 'POST' });
+    await apiFetch('/api/work-orders/1/notes', { method: 'POST', body: JSON.stringify({ body: 'x' }) });
+
+    const headersOf = (call: number) => fetchMock.mock.calls[call][1].headers as Headers;
+    expect(headersOf(0).has('Content-Type')).toBe(false);
+    expect(headersOf(1).get('Content-Type')).toBe('application/json');
+    expect(headersOf(2).get('Content-Type')).toBe('application/json');
+    expect(hasBodyMethod('GET')).toBe(false);
+    expect(hasBodyMethod('delete')).toBe(true);
   });
 
   it('keeps the default GET budget at 8s and exposes a longer Admin read budget', () => {
