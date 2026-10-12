@@ -70,11 +70,17 @@ const adminReadRetry = {
   shouldRetryOnError: isTransientApiError,
 } as const;
 
-const adminInfiniteOptions = {
+/**
+ * Admin paged lists. They refresh on every mount (#109, so a list is never stale after an action elsewhere),
+ * and since PF4 they keep the rows already on screen while a new page or a new filter loads: the skeleton is
+ * for "nothing yet", not for "updating". Same 5 s dedupe as the rest of the app.
+ */
+export const adminInfiniteOptions = {
   revalidateFirstPage: true,
   persistSize: false,
   revalidateOnMount: true,
-  dedupingInterval: 1_000,
+  keepPreviousData: true,
+  dedupingInterval: 5_000,
   ...adminReadRetry,
 } as const;
 

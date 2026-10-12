@@ -127,6 +127,16 @@ Current freshness policy:
 | Mechanics | Deduplicate for 1 minute |
 | Work-order lists | Deduplicate for 10 seconds; refresh every 30 seconds |
 | Work-order detail | Deduplicate for 5 seconds; refresh every 15 seconds |
+| Admin paged lists (Work Orders, Trucks, Mechanics, History, Yard, repair history) | Refresh on every mount; keep the rows on screen while a new page or filter loads (`keepPreviousData`); skeleton only when there is nothing yet |
+
+Two rules that follow from the 2026-10-12 review (OPEN_ISSUES §1s):
+
+- A skeleton means "nothing to show yet", never "updating". Check `data === undefined`
+  (or `isLoading && !data`), not `isLoading` alone, before replacing content.
+- When a mutation answers with the document the screen shows, write that answer to
+  the cache (`mutate(result, { revalidate: false })`) instead of refetching it. The
+  Admin Work Order actions do this through `workOrderDetailFromResult`; the mechanic
+  detail does it in `run()`.
 | Repair history | Deduplicate for 30 seconds |
 
 After a mutation, update the affected detail cache from the response and
