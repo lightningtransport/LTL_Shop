@@ -63,7 +63,7 @@ describe('apiFetch', () => {
     await apiFetch('/api/work-orders/1/resume', { method: 'POST' });
     await apiFetch('/api/work-orders/1/notes', { method: 'POST', body: JSON.stringify({ body: 'x' }) });
 
-    const headersOf = (call: number) => fetchMock.mock.calls[call][1].headers as Headers;
+    const headersOf = (call: number) => (fetchMock.mock.calls[call] as unknown as [string, RequestInit])[1].headers as Headers;
     expect(headersOf(0).has('Content-Type')).toBe(false);
     expect(headersOf(1).get('Content-Type')).toBe('application/json');
     expect(headersOf(2).get('Content-Type')).toBe('application/json');
