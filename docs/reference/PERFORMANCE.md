@@ -204,6 +204,22 @@ pesaba 133–135 kB.
 | Home del mecánico tras recargar | token → `/me` (y `POST /api/admin/session` que llama `/me` otra vez) → `GET /api/work-orders` |
 | Cada lectura al API desde el navegador | preflight `OPTIONS` + `GET` (sin `max-age`) |
 
+### Después de PR 6 (bundle) — mismo `next build`, 2026-10-12
+
+| Ruta | Antes | Después |
+| --- | --- | --- |
+| Compartido por todas las páginas | 225 kB | **187 kB** |
+| `/login` | 341 kB | 303 kB |
+| `/mechanic/standard` | 348 kB | 309 kB |
+| `/work-orders/[id]` | 419 kB | 381 kB |
+| `/admin` | 413 kB | 375 kB |
+
+Qué cambió: Sentry Replay (38 kB gz) ya no va en la primera carga, llega con
+`lazyLoadIntegration` después de pintar; el proveedor y el panel del demo son un
+chunk `next/dynamic` que producción no pide. `optimizePackageImports` para
+`radix-ui` no movió la aguja (< 1 kB). Sigue pendiente el catálogo
+`admin-messages` en el bundle cliente (PF12, 42 kB gz en las páginas admin).
+
 ### Después de PF12 (catálogo Admin fuera del bundle cliente) — `next build` sobre main sin PR 6, 2026-10-12
 
 | Ruta | main | Con PF12 |
@@ -216,4 +232,4 @@ pesaba 133–135 kB.
 
 Ningún chunk cliente contiene ya textos del catálogo (se buscó una cadena en y
 una es en todos los `.js` del build). El ahorro se suma al de PR 6 (compartido
-225 → 187 kB) cuando ambos estén en main.
+225 → 187 kB, arriba).
