@@ -33,10 +33,11 @@ function kindLabel(kind: string, messages: AdminMessages) {
   return messages.pcCostsParts;
 }
 
-function sourceHref(line: AdminInternalInvoiceLineDto) {
-  if (line.sourceType === 'part_purchase') return `/admin/parts/purchases/${line.sourceId}`;
-  if (line.sourceType === 'outside_repair') return `/admin/parts/outside-repairs/${line.sourceId}`;
-  if (line.sourceType === 'work_order_labor') return `/admin/work-orders/${line.sourceId}`;
+function sourceHref(line: AdminInternalInvoiceLineDto, from: string) {
+  const back = `?from=${encodeURIComponent(from)}`;
+  if (line.sourceType === 'part_purchase') return `/admin/parts/purchases/${line.sourceId}${back}`;
+  if (line.sourceType === 'outside_repair') return `/admin/parts/outside-repairs/${line.sourceId}${back}`;
+  if (line.sourceType === 'work_order_labor') return `/admin/work-orders/${line.sourceId}${back}`;
   return null;
 }
 
@@ -78,6 +79,11 @@ export function AdminInternalInvoiceDetail({ id, locale, messages }: { id: strin
 
   const draft = data.status === 'draft';
   const month = invoiceMonth(data.periodStart, locale);
+  // PCA5 (UX-10-003): what comes from before the month (D34 carries the uncharged forward) is shown apart, not mixed in.
+  const carried = data.lines.filter((line) => line.occurredOn < data.periodStart);
+  const inPeriod = data.lines.filter((line) => line.occurredOn >= data.periodStart);
+  const carriedCents = carried.reduce((sum, line) => sum + line.amountCents, 0);
+  const carriedNotice = carried.length ? fillPlaceholders(messages.pcInvoiceCarriedNotice, { amount: formatCents(carriedCents, locale), month }) : null;
   const chip = invoiceStatusChip(data.status, messages);
   const title = data.number
     ? fillPlaceholders(messages.pcInvoiceTitle, { number: data.number, truck: data.truck.truckNumber, month })
@@ -127,7 +133,7 @@ export function AdminInternalInvoiceDetail({ id, locale, messages }: { id: strin
 
       <section className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-[1fr_auto]" data-testid="invoice-summary">
         <div className="space-y-1 text-sm">
-          <p><AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${data.truck.id}?tab=costs`}>{fillPlaceholders(messages.pcTruckLabel, { truck: data.truck.truckNumber })}</AdminNavLink></p>
+          <p><AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${data.truck.id}?from=${encodeURIComponent(`/admin/parts/internal-invoices/${id}`)}&tab=costs`}>{fillPlaceholders(messages.pcTruckLabel, { truck: data.truck.truckNumber })}</AdminNavLink></p>
           <p><span className="text-muted-foreground">{messages.pcInvoicePrintPeriod}: </span>{formatInvoiceDate(data.periodStart, locale)} – {formatInvoiceDate(data.periodEnd, locale)}</p>
           {data.sentAt ? <p className="text-xs text-muted-foreground">{fillPlaceholders(messages.pcInvoiceSentBy, { name: data.sentBy?.name ?? '—', date: formatShortDateTime(data.sentAt, locale) })}</p> : null}
           {data.acceptedAt ? <p className="text-xs text-muted-foreground">{fillPlaceholders(messages.pcInvoiceAcceptedBy, { name: data.acceptedBy?.name ?? '—', date: formatShortDateTime(data.acceptedAt, locale) })}</p> : null}
@@ -136,19 +142,26 @@ export function AdminInternalInvoiceDetail({ id, locale, messages }: { id: strin
         <Totals data={data} locale={locale} messages={messages} />
       </section>
 
+      {carried.length ? (
+        <SectionCard title={messages.pcInvoiceCarriedTitle} count={carried.length} data-testid="invoice-lines-carried">
+          <p className="px-4 pt-3 text-xs text-muted-foreground">{fillPlaceholders(messages.pcInvoiceCarriedHint, { month })}</p>
+          <LineList invoiceId={id} lines={carried} locale={locale} messages={messages} action={draft && canWrite ? { label: messages.pcInvoiceRemoveLine, icon: 'remove', run: (line) => void run(() => setAdminInternalInvoiceLine(id, line.id, false), messages.pcInvoiceRemoveLine) } : null} busy={busy} />
+          <p className="flex justify-between border-t px-4 py-2 text-sm font-medium"><span>{messages.pcInvoiceCarriedTitle}</span><span className="tabular-nums" data-testid="invoice-carried-total">{formatCents(carriedCents, locale)}</span></p>
+        </SectionCard>
+      ) : null}
       {KIND_ORDER.map((kind) => {
-        const lines = data.lines.filter((line) => line.kind === kind);
+        const lines = inPeriod.filter((line) => line.kind === kind);
         if (!lines.length) return null;
         return (
           <SectionCard key={kind} title={kindLabel(kind, messages)} count={lines.length} data-testid={`invoice-lines-${kind}`}>
-            <LineList lines={lines} locale={locale} messages={messages} action={draft && canWrite ? { label: messages.pcInvoiceRemoveLine, icon: 'remove', run: (line) => void run(() => setAdminInternalInvoiceLine(id, line.id, false), messages.pcInvoiceRemoveLine) } : null} busy={busy} />
+            <LineList invoiceId={id} lines={lines} locale={locale} messages={messages} action={draft && canWrite ? { label: messages.pcInvoiceRemoveLine, icon: 'remove', run: (line) => void run(() => setAdminInternalInvoiceLine(id, line.id, false), messages.pcInvoiceRemoveLine) } : null} busy={busy} />
           </SectionCard>
         );
       })}
       {!data.lines.length ? <EmptyState><p>{messages.pcInvoiceEmptyLines}</p></EmptyState> : null}
       {data.removedLines.length ? (
         <SectionCard title={messages.pcInvoiceRemovedTitle} count={data.removedLines.length} data-testid="invoice-removed">
-          <LineList lines={data.removedLines} locale={locale} messages={messages} muted action={canWrite ? { label: messages.pcInvoiceRestoreLine, icon: 'restore', run: (line) => void run(() => setAdminInternalInvoiceLine(id, line.id, true), messages.pcInvoiceRestoreLine) } : null} busy={busy} />
+          <LineList invoiceId={id} lines={data.removedLines} locale={locale} messages={messages} muted action={canWrite ? { label: messages.pcInvoiceRestoreLine, icon: 'restore', run: (line) => void run(() => setAdminInternalInvoiceLine(id, line.id, true), messages.pcInvoiceRestoreLine) } : null} busy={busy} />
         </SectionCard>
       ) : null}
 
@@ -156,6 +169,7 @@ export function AdminInternalInvoiceDetail({ id, locale, messages }: { id: strin
 
       {dialog === 'send' ? (
         <Modal open title={messages.pcInvoiceSendTitle} description={messages.pcInvoiceSendBody} onClose={() => setDialog(null)} closeLabel={messages.closeDialog}>
+          {carriedNotice ? <InlineAlert className="mb-3" data-testid="invoice-send-carried">{carriedNotice}</InlineAlert> : null}
           {actionError ? <InlineAlert className="mb-3">{actionError}</InlineAlert> : null}
           <DialogActions>
             <Button type="button" variant="outline" onClick={() => setDialog(null)} disabled={busy}>{messages.cancel}</Button>
@@ -192,7 +206,8 @@ function Totals({ data, locale, messages }: { data: AdminInternalInvoiceDetailDt
   );
 }
 
-function LineList({ lines, locale, messages, action, busy, muted = false }: {
+function LineList({ invoiceId, lines, locale, messages, action, busy, muted = false }: {
+  invoiceId: string;
   lines: AdminInternalInvoiceLineDto[];
   locale: AdminLocale;
   messages: AdminMessages;
@@ -203,13 +218,15 @@ function LineList({ lines, locale, messages, action, busy, muted = false }: {
   return (
     <ul className="divide-y">
       {lines.map((line) => {
-        const href = sourceHref(line);
+        const href = sourceHref(line, `/admin/parts/internal-invoices/${invoiceId}`);
         return (
           <li key={line.id} className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5 text-sm ${muted ? 'text-muted-foreground' : ''}`}>
             <span className="w-24 shrink-0 text-muted-foreground">{formatInvoiceDate(line.occurredOn, locale)}</span>
             <span className="min-w-0 flex-1">
               {href ? <AdminNavLink className="tap-inline hover:underline" href={href}>{line.description}</AdminNavLink> : line.description}
               {line.workOrder ? <span className="ml-2 font-mono text-xs text-muted-foreground">{line.workOrder.displayId}</span> : null}
+              {/* PCA4 (UX-10-002): a credit that undoes something an earlier invoice charged says which one. */}
+              {line.correctsInvoice?.number ? <span className="ml-2 text-xs text-muted-foreground" data-testid="invoice-line-corrects">{fillPlaceholders(messages.pcCorrectsInvoice, { number: line.correctsInvoice.number })}</span> : null}
             </span>
             <span className={`tabular-nums ${line.amountCents < 0 ? 'text-muted-foreground' : 'font-medium'}`}>{formatCents(line.amountCents, locale)}</span>
             {action ? (
@@ -232,19 +249,22 @@ function PrintableInvoice({ data, title, locale, messages }: { data: AdminIntern
       <h1 style={{ fontSize: 22, fontWeight: 700, margin: '4px 0 12px' }}>{title}</h1>
       <p style={{ fontSize: 13 }}>{messages.pcInvoicePrintPeriod}: {formatInvoiceDate(data.periodStart, locale)} – {formatInvoiceDate(data.periodEnd, locale)}</p>
       {data.sentAt ? <p style={{ fontSize: 13 }}>{messages.pcInvoicePrintIssued}: {formatShortDateTime(data.sentAt, locale)}</p> : null}
-      {KIND_ORDER.map((kind) => {
-        const lines = data.lines.filter((line) => line.kind === kind);
+      {/* PCA5 (UX-10-003): Finance sees what belongs to the month and what was carried over, apart. */}
+      {[
+        ...(data.lines.some((line) => line.occurredOn < data.periodStart) ? [{ key: 'carried', title: messages.pcInvoiceCarriedTitle, lines: data.lines.filter((line) => line.occurredOn < data.periodStart) }] : []),
+        ...KIND_ORDER.map((kind) => ({ key: kind, title: kindLabel(kind, messages), lines: data.lines.filter((line) => line.kind === kind && line.occurredOn >= data.periodStart) })),
+      ].map(({ key, title: sectionTitle, lines }) => {
         if (!lines.length) return null;
         return (
-          <table key={kind} style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16, fontSize: 12 }}>
+          <table key={key} style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16, fontSize: 12 }}>
             <thead>
-              <tr><th colSpan={3} style={{ textAlign: 'left', borderBottom: '1px solid #000', padding: '4px 0' }}>{kindLabel(kind, messages)}</th></tr>
+              <tr><th colSpan={3} style={{ textAlign: 'left', borderBottom: '1px solid #000', padding: '4px 0' }}>{sectionTitle}</th></tr>
             </thead>
             <tbody>
               {lines.map((line) => (
                 <tr key={line.id}>
                   <td style={{ padding: '3px 8px 3px 0', whiteSpace: 'nowrap' }}>{formatInvoiceDate(line.occurredOn, locale)}</td>
-                  <td style={{ padding: '3px 8px 3px 0' }}>{line.description}{line.workOrder ? ` · ${line.workOrder.displayId}` : ''}</td>
+                  <td style={{ padding: '3px 8px 3px 0' }}>{line.description}{line.workOrder ? ` · ${line.workOrder.displayId}` : ''}{line.correctsInvoice?.number ? ` · ${fillPlaceholders(messages.pcCorrectsInvoice, { number: line.correctsInvoice.number })}` : ''}</td>
                   <td style={{ padding: '3px 0', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCents(line.amountCents, locale)}</td>
                 </tr>
               ))}

@@ -125,6 +125,30 @@ describe('Manager: compras de partes con su factura (D32, PC-2)', () => {
     truthy('el filtro "sin camión" la incluye', ok('sin camión', await manager.get(`${PURCHASES}?truckId=none&vendorId=${vendorId}`)).items.length === 1);
   });
 
+  it('A79 | Agregar o cambiar el archivo, o solo las notas, no toca el libro del camión; cambiar el dinero sí (PCA6)', async () => {
+    const vendorId = await vendor('File');
+    const t905 = await truck('905');
+    const body = { vendorId, invoiceNumber: `F-${RUN}`, invoiceDate: '2026-10-05', lines: [{ description: 'Belt', quantity: 1, unitCostCents: 4000, truckId: t905.id }] };
+    const saved = ok('guardar sin archivo', await save(body));
+    same('una fila en el libro', (await ledger(saved.id)).rows.length, 1);
+
+    // El archivo llega después: se adjunta solo, sin Edit.
+    const file = await prisma.attachment.create({ data: { bucket: 'invoices', objectPath: `test/${RUN}/f.pdf`, fileName: `f-${RUN}.pdf`, contentType: 'application/pdf', sizeBytes: 10, uploadedById: (await prisma.user.findFirstOrThrow({ where: { email: USERS.manager } })).id } });
+    ok('adjuntar', await manager.patch(`${PURCHASES}/${saved.id}/attachment`, { attachmentId: file.id }));
+    same('el detalle tiene el archivo y el libro sigue con una fila', [ok('detalle', await manager.get(`${PURCHASES}/${saved.id}`)).attachment?.id, (await ledger(saved.id)).rows.length], [file.id, 1]);
+
+    // Editar solo las notas tampoco escribe reversas.
+    ok('editar notas', await manager.patch(`${PURCHASES}/${saved.id}`, { ...body, notes: 'Pagada con la tarjeta del taller' }));
+    same('sigue una fila', (await ledger(saved.id)).rows.length, 1);
+
+    // Cambiar el dinero sí: reversa + fila nueva.
+    ok('editar el monto', await manager.patch(`${PURCHASES}/${saved.id}`, { ...body, lines: [{ description: 'Belt', quantity: 2, unitCostCents: 4000, truckId: t905.id }] }));
+    const state = await ledger(saved.id);
+    same('reversa y fila nueva; el camión queda en 80.00', [state.rows.length, state.byTruck.get(t905.id)], [3, 8000]);
+    ok('quitar el archivo', await manager.patch(`${PURCHASES}/${saved.id}/attachment`, { attachmentId: null }));
+    same('sin archivo, y el libro no se movió', [ok('detalle', await manager.get(`${PURCHASES}/${saved.id}`)).attachment, (await ledger(saved.id)).rows.length], [null, 3]);
+  });
+
   it('A61 | Corregir y anular escriben reversas; ninguna fila del libro cambia', async () => {
     const vendorId = await vendor('Edit');
     const t905 = await truck('905');

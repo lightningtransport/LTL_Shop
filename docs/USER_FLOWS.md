@@ -560,10 +560,12 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Toca Guardar dos veces, o se repite el envío por mala señal | Se guarda una sola compra | ✅ | A59 |
 | Una factura trae partes de dos camiones y otras sin camión | Cada camión recibe sus líneas más su parte del impuesto y el flete; lo sin camión no cuenta en ningún camión; la suma cuadra con el total (D-PC2, D-PC5, D-PC9) | ✅ | A60 |
 | Corrige o anula una compra | El costo de los camiones se corrige con movimientos de reversa; nada de lo ya escrito cambia. Anular pide el motivo y no borra nada | ✅ | A61 |
+| Agrega el archivo después, o solo cambia las notas | Se guarda sin tocar el costo del camión ni las facturas internas; solo un cambio de dinero, camión o fecha escribe reversas (PCA6) | ✅ | A79 |
+| Quiere saber si una compra o un movimiento ya se cobró a Finanzas | El detalle y Truck → Costs dicen "Charged on SHOP-… · Sent" o "Not charged yet"; editar o anular algo facturado avisa que la corrección cae en la factura siguiente (PCA4) | ✅ | A78 |
 | Adjunta la factura (PDF, JPG, PNG o HEIC, hasta 10 MB) | Se guarda en un lugar privado y se abre con un enlace que dura 5 minutos. Otro tipo de archivo, o uno más grande, no se acepta. Sin archivo también se guarda, marcada "No invoice file" (D-PC10) | ✅ | A62 |
 | Un mecánico o Safety intenta ver o cargar compras | No puede (403) | ✅ | A62 |
 | Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock) | ✅ | A60 |
-| Carga la factura de un taller externo por un Job que mandó afuera (PC-3) | La liga al Job (afuera ahora o ya de regreso en los últimos 90 días) y el monto va al camión; el Job muestra "Factura $… · proveedor" en el Work Order (solo Manager y System Admin). Un Job de otro camión no se puede ligar | ✅ | A63 |
+| Carga la factura de un taller externo por un Job que mandó afuera (PC-3) | La liga al Job (afuera ahora o ya de regreso, sin límite de tiempo) y el monto va al camión; el Job muestra "Factura $… · proveedor" en el Work Order (solo Manager y System Admin), y mientras no tenga factura, "Regresó · sin factura todavía" con la acción para cargarla. Un Job de otro camión no se puede ligar | ✅ | A63, A76 |
 | Manda un Job afuera, carga la factura y después marca Regresó (o al revés) | "Enviar a taller externo" y "Regresó" funcionan igual que antes, con o sin factura cargada; la factura sigue ligada al Job | ✅ | A64 |
 | Carga como reparación una factura que ya cargó como compra (mismo proveedor y número) | La app avisa y no deja guardar: dice cuál es (D-PC8) | ✅ | A65 |
 | Corrige o anula una reparación externa | Igual que una compra: reversas en el costo del camión, nada se borra; anular pide motivo | ✅ | A65 |
@@ -587,9 +589,11 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 |---|---|---|---|
 | Se completa un Work Order con 6 h registradas y la tarifa es $95/h | El camión suma $570.00 de mano de obra, con su WO, en Truck → Costs | ✅ | A69 |
 | Cambia la tarifa desde una fecha | Lo calculado antes de esa fecha no cambia; los WO completados con sesiones desde esa fecha se recalculan con reversas | ✅ | A70 |
+| Antes de guardar la tarifa, o se equivocó al escribirla | La pantalla dice cuántos WO recalcula y cuántos ya están facturados; la última tarifa se puede quitar mientras ninguna factura enviada la use (PCA7) | ✅ | A77 |
 | Se reabre o se cancela un WO completado, o se corrige un tiempo | La mano de obra se corrige con reversas; nada de lo escrito cambia | ✅ | A70 |
 | No hay tarifa todavía | La mano de obra no tiene monto; Costs muestra las horas y "Set a labor rate" | ✅ | A71 |
 | Arma la factura de un camión y un mes | Trae los movimientos no cobrados del período, con subtotales por tipo; cada movimiento se cobra una sola vez | ✅ | A72 |
+| La factura trae costos de meses anteriores que nadie cobró | Van aparte, como "Carried over from earlier months" con su subtotal, en pantalla y en el PDF; Send avisa cuánto es (PCA5). Un crédito por una corrección dice de qué factura viene (PCA4) | ✅ | A78 |
 | Saca una línea antes de enviar | Queda sin cobrar y aparece en la próxima factura de ese camión | ✅ | A73 |
 | Envía la factura | Queda congelada con su número, se descarga en PDF; una corrección posterior va a la del mes siguiente | ✅ | A74 |
 | Anula una factura enviada | Sus movimientos quedan libres para otra factura; el número no se reusa | ✅ | A75 |

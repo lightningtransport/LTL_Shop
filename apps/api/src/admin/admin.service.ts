@@ -2483,6 +2483,8 @@ function nextJobInFlow(jobs: Array<{ status: string; displayName?: string; categ
   return pending[0]?.job.displayName ?? null;
 }
 
+const logAction = (value: unknown) => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>).action : undefined);
+
 function jobCompletionNotes(
   activityLogs: Array<{ eventType: string; entityId: string | null; newValue: unknown }>,
   jobId: string,
@@ -2517,6 +2519,8 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     // LTR-197 / D28: an unowned Job born in a team queue reads "In team queue", not "Unassigned".
     workflowStepKey: job.workflowStepKey ?? null,
     outsideInvoices: (job.outsideRepairs ?? []).map((repair) => ({ id: repair.id, amountCents: repair.amountCents, vendorName: repair.vendor.name })),
+    // PCA3 (UX-10-001): the outside shop's invoice usually arrives after "Returned"; the Job keeps offering to load it.
+    wentExternal: Boolean(job.externalSince) || row.activityLogs.some((entry) => entry.entityId === job.id && logAction(entry.relevantValue) === 'job_sent_external'),
   }));
   return {
     ...summary,

@@ -104,6 +104,31 @@ describe('Manager: factura interna a Finanzas (D34, LB-2)', () => {
     refused('aceptar otra vez', await manager.post(`${INVOICES}/${id}/accept`), 409, 'INVOICE_NOT_SENT');
   });
 
+  it('A78 | La compra, la reparación y los movimientos dicen en qué factura se cobraron; la corrección de algo facturado dice de cuál viene (PCA4)', async () => {
+    const purchaseId = await purchase('CH1', '2026-10-03', 10000);
+    const repairId = await repair('CH2', '2026-10-04', 5000);
+    same('sin factura: nada cobrado', [ok('compra', await manager.get(`/admin/parts-costs/purchases/${purchaseId}`)).chargedOn, ok('reparación', await manager.get(`/admin/parts-costs/outside-repairs/${repairId}`)).chargedOn], [[], []]);
+
+    const first = await draft('2026-10');
+    same('en borrador: la compra lo dice', (ok('compra', await manager.get(`/admin/parts-costs/purchases/${purchaseId}`)).chargedOn as Json[]).map((row) => [row.id, row.status]), [[first, 'draft']]);
+    const sent = ok('enviar', await manager.post(`${INVOICES}/${first}/send`, {}));
+    same('enviada: compra y reparación la nombran', [
+      (ok('compra', await manager.get(`/admin/parts-costs/purchases/${purchaseId}`)).chargedOn as Json[]).map((row) => [row.number, row.status]),
+      (ok('reparación', await manager.get(`/admin/parts-costs/outside-repairs/${repairId}`)).chargedOn as Json[]).map((row) => [row.number, row.status]),
+    ], [[[sent.number, 'sent']], [[sent.number, 'sent']]]);
+    const costs = ok('costos', await manager.get(`/admin/parts-costs/trucks/${truckId}/costs?from=2026-10-01&to=2026-10-31`));
+    same('cada movimiento sabe en qué factura está', (costs.entries as Json[]).map((entry) => entry.chargedOn?.number), [sent.number, sent.number]);
+
+    // Corregir la compra ya facturada: la siguiente factura trae el crédito y dice de qué factura viene.
+    ok('corregir el monto', await manager.patch(`/admin/parts-costs/purchases/${purchaseId}`, {
+      vendorId, invoiceNumber: `CH1-${RUN}`, invoiceDate: '2026-10-03', lines: [{ description: 'Part CH1', quantity: 1, unitCostCents: 12000, truckId }],
+    }));
+    const second = await detail(await draft('2026-11'));
+    const credit = (second.lines as Json[]).find((line) => line.amountCents === -10000);
+    same('el crédito dice de qué factura viene', credit?.correctsInvoice?.number, sent.number);
+    same('el cargo nuevo no corrige nada', (second.lines as Json[]).find((line) => line.amountCents === 12000)?.correctsInvoice, null);
+  });
+
   it('A75 | Anular una enviada libera sus movimientos; el número no se reusa; mecánicos y Safety no entran', async () => {
     await repair('R5', '2026-10-12', 12000);
     const first = await draft('2026-10');

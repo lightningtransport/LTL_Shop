@@ -10,6 +10,8 @@ function invoice(status: 'draft' | 'sent', removed = false) {
     { id: 'l1', costEntryId: 'e1', kind: 'part_purchase', description: 'FleetPride · 88412093 · Fuel Filter × 2', occurredOn: '2026-10-06', amountCents: 4820, sourceType: 'part_purchase', sourceId: 'p1', workOrder: null },
     { id: 'l2', costEntryId: 'e2', kind: 'outside_repair', description: 'Diesel Pro · 7712 · Radiator recore', occurredOn: '2026-10-08', amountCents: 184000, sourceType: 'outside_repair', sourceId: 'r1', workOrder: { id: 'wo1', displayId: 'WO-001' } },
     { id: 'l3', costEntryId: 'e3', kind: 'labor', description: 'WO-001 · 6.00 h × $95.00/h', occurredOn: '2026-10-09', amountCents: 57000, sourceType: 'work_order_labor', sourceId: 'wo1', workOrder: { id: 'wo1', displayId: 'WO-001' } },
+    // PCA5 (UX-10-003): a September purchase nobody charged yet rides on October's invoice, shown apart.
+    { id: 'l4', costEntryId: 'e4', kind: 'part_purchase', description: 'TruckPro · 55120 · Wiper blades × 2', occurredOn: '2026-09-18', amountCents: 2600, sourceType: 'part_purchase', sourceId: 'p0', workOrder: null, correctsInvoice: null },
   ];
   const active = removed ? lines.filter((line) => line.id !== 'l2') : lines;
   const sum = (kind: string) => active.filter((line) => line.kind === kind).reduce((total, line) => total + line.amountCents, 0);
@@ -54,18 +56,23 @@ test('manager makes a truck invoice for the month, takes a line off, sends it an
   await dialog.getByRole('button', { name: 'Make draft' }).click();
 
   await expect(page.getByRole('heading', { name: 'Draft · Truck 606 · Oct 2026' })).toBeVisible();
-  await expect(page.getByTestId('invoice-total')).toHaveText('$2,458.20');
+  await expect(page.getByTestId('invoice-total')).toHaveText('$2,484.20');
+  await expect(page.getByTestId('invoice-lines-carried')).toContainText('Carried over from earlier months');
+  await expect(page.getByTestId('invoice-carried-total')).toHaveText('$26.00');
+  await expect(page.getByTestId('invoice-lines-part_purchase')).not.toContainText('Wiper blades');
   await expect(page.getByTestId('invoice-available')).toContainText('1 new movements can be added.');
   await page.getByRole('button', { name: 'Take off: Diesel Pro · 7712 · Radiator recore' }).click();
-  await expect(page.getByTestId('invoice-total')).toHaveText('$618.20');
+  await expect(page.getByTestId('invoice-total')).toHaveText('$644.20');
   await expect(page.getByTestId('invoice-removed')).toContainText('Radiator recore');
 
   await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(page.getByTestId('invoice-send-carried')).toHaveText('This invoice includes $26.00 from before Oct 2026 that was never charged.');
   await page.getByRole('dialog').getByRole('button', { name: 'Send', exact: true }).click();
   await expect(page.getByText('Invoice SHOP-2026-0001 sent')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'SHOP-2026-0001 · Truck 606 · Oct 2026' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download PDF' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Take off: FleetPride · 88412093 · Fuel Filter × 2' })).toHaveCount(0);
   await expect(page.locator('#invoice-print')).toContainText('SHOP-2026-0001');
-  await expect(page.locator('#invoice-print')).toContainText('$618.20');
+  await expect(page.locator('#invoice-print')).toContainText('$644.20');
+  await expect(page.locator('#invoice-print')).toContainText('Carried over from earlier months');
 });

@@ -6,13 +6,15 @@
 import { afterEach, beforeEach, describe, it } from 'vitest';
 import { laborAmount } from '@ltl-shop/shared';
 import {
-  USERS, adminCompleteJob, adminWo, as, closeWo, doPm, laneJob, manager, meta, ok, plannedWo, prisma, refused, resetDb, same, truthy,
+  Json, USERS, adminCompleteJob, adminWo, as, closeWo, doPm, laneJob, manager, meta, ok, plannedWo, prisma, refused, resetDb, same, truthy,
 } from '../harness';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 /** Rates are shop-wide and labor rows would show in other rows' truck costs: both go after each row. */
 async function clearRates() {
+  // A77 sends an internal invoice with labor on it; its lines point at labor rows, so it goes first.
+  await prisma.internalInvoice.deleteMany({ where: { lines: { some: { costEntry: { sourceType: 'work_order_labor' } } } } });
   await prisma.laborRate.deleteMany({});
   await prisma.truckCostEntry.deleteMany({ where: { sourceType: 'work_order_labor', reversesEntryId: { not: null } } });
   await prisma.truckCostEntry.deleteMany({ where: { sourceType: 'work_order_labor' } });
@@ -78,6 +80,35 @@ describe('Manager: tarifa de mano de obra (D34, LB-1)', () => {
     ok('cerrar otra vez', await closeWo(workOrderId));
     state = await labor(workOrderId);
     same('cerrado: vuelve', state.net, await expectedCents(workOrderId, 12000));
+  });
+
+  it('A77 | Antes de guardar, la tarifa dice cuántos WOs recalcula; la última se puede quitar mientras nada facturado la use (PCA7)', async () => {
+    await setRate(9500, '2020-01-01');
+    const { truck, workOrderId } = await completedWo('931');
+    const before = (await labor(workOrderId)).net;
+
+    const preview = ok('vista previa', await manager.get(`/admin/parts-costs/labor-rates/preview?effectiveFrom=${today()}`));
+    same('dice que recalcula este WO y que nada está facturado', [preview.workOrders >= 1, preview.invoiced], [true, 0]);
+
+    const wrong = await setRate(15000, today());
+    same('la tarifa equivocada recalculó el WO', (await labor(workOrderId)).net, await expectedCents(workOrderId, 15000));
+    const listed = ok('tarifas', await manager.get('/admin/parts-costs/labor-rates'));
+    same('solo la última se puede quitar', (listed.rates as Json[]).map((rate) => [rate.rateCentsPerHour, rate.deletable]), [[15000, true], [9500, false]]);
+    refused('la anterior no se quita', await manager.del(`/admin/parts-costs/labor-rates/${(listed.rates as Json[])[1].id}`), 409, 'LABOR_RATE_NOT_LATEST');
+
+    const removed = ok('quitar la equivocada', await manager.del(`/admin/parts-costs/labor-rates/${wrong.id}`));
+    same('vuelve a la tarifa anterior, con reversas', [(await labor(workOrderId)).net, removed.recalculatedWorkOrders >= 1], [before, true]);
+
+    // Con la mano de obra en una factura enviada, la tarifa ya no se quita.
+    const again = await setRate(12000, today());
+    const month = today().slice(0, 7);
+    const invoiceId = ok('borrador', await manager.post('/admin/parts-costs/internal-invoices', { truckId: truck.id, month })).id;
+    ok('enviar', await manager.post(`/admin/parts-costs/internal-invoices/${invoiceId}/send`, {}));
+    const after = ok('vista previa con factura', await manager.get(`/admin/parts-costs/labor-rates/preview?effectiveFrom=${today()}`));
+    same('la vista previa avisa que hay WOs facturados', after.invoiced >= 1, true);
+    refused('no se quita una tarifa ya facturada', await manager.del(`/admin/parts-costs/labor-rates/${again.id}`), 409, 'LABOR_RATE_IN_USE');
+    same('la lista tampoco la ofrece', ((ok('tarifas', await manager.get('/admin/parts-costs/labor-rates')).rates as Json[])[0]).deletable, false);
+    await prisma.internalInvoice.deleteMany({ where: { truckId: truck.id } });
   });
 
   it('A71 | Sin tarifa no hay monto (solo horas); mecánicos y Safety no ven ni cambian la tarifa', async () => {

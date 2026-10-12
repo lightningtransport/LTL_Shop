@@ -1,3 +1,4 @@
+import type { AdminChargedOnDto } from '@ltl-shop/shared';
 import type { Prisma, TruckCostKind } from '@prisma/client';
 
 /**
@@ -63,4 +64,27 @@ export async function writeEntries(
       },
     });
   }
+}
+
+type Db = { internalInvoiceLine: Prisma.TransactionClient['internalInvoiceLine'] };
+
+/** PCA4 (UX-10-002): the internal invoices (drafts included) that charge the live rows of a purchase or a repair. */
+export async function chargedOnBySource(db: Db, source: Pick<Source, 'sourceType' | 'sourceId'>): Promise<AdminChargedOnDto[]> {
+  const lines = await db.internalInvoiceLine.findMany({
+    where: { active: true, costEntry: { sourceType: source.sourceType, sourceId: source.sourceId, reversesEntryId: null } },
+    select: { invoice: { select: { id: true, number: true, status: true } } },
+  });
+  const seen = new Map<string, AdminChargedOnDto>();
+  for (const line of lines) if (line.invoice.status !== 'void') seen.set(line.invoice.id, line.invoice);
+  return [...seen.values()].sort((left, right) => (left.number ?? '').localeCompare(right.number ?? ''));
+}
+
+/** PCA4: for each ledger row id, the internal invoice that charges it (active line, invoice not void). */
+export async function chargedOnByEntry(db: Db, entryIds: string[]): Promise<Map<string, AdminChargedOnDto>> {
+  if (!entryIds.length) return new Map();
+  const lines = await db.internalInvoiceLine.findMany({
+    where: { active: true, costEntryId: { in: entryIds }, invoice: { status: { not: 'void' } } },
+    select: { costEntryId: true, invoice: { select: { id: true, number: true, status: true } } },
+  });
+  return new Map(lines.map((line) => [line.costEntryId, line.invoice]));
 }

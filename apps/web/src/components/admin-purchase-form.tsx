@@ -23,7 +23,7 @@ import { AdminNavLink } from './admin-nav-link';
 import { duplicateText, invoiceHref } from './admin-outside-repair-form';
 import { MissingSummary, OptionalTag, RequiredNote, StickyFormFooter, focusField, type MissingField } from './parts-costs-form-ui';
 import { partsCostsFailure } from './admin-parts-catalog';
-import { Button, Input, Label, Modal, Select, Textarea } from './ui';
+import { Button, Input, Label, Modal, Select, Textarea, InlineAlert } from './ui';
 import {
   checkAdminInvoice,
   createAdminPurchase,
@@ -121,8 +121,11 @@ export function PurchaseForm({
   onClose,
   onSaved,
   onVendorAdded,
+  notice,
 }: {
   purchase: AdminPurchaseDetailDto | null;
+  /** PCA4 (UX-10-002): said above the fields when the purchase is already on a sent invoice. */
+  notice?: string | null;
   presetTruckId?: string;
   categories: AdminPartCategoryDto[];
   vendors: AdminVendorDto[];
@@ -316,6 +319,7 @@ export function PurchaseForm({
   return (
     <Modal open title={purchase ? messages.pcEditPurchase : messages.pcNewPurchase} onClose={close} closeLabel={messages.closeDialog} dismissible={!dirty} className="sm:max-w-3xl">
       <form className="space-y-5" onSubmit={(event) => void submit(event)} data-testid="purchase-form" noValidate>
+        {notice ? <InlineAlert data-testid="purchase-charged-notice">{notice}</InlineAlert> : null}
         {showErrors ? <MissingSummary missing={missing} messages={messages} /> : null}
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">

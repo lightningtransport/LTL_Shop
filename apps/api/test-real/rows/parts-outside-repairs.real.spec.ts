@@ -100,6 +100,26 @@ describe('Manager: reparaciones externas con su factura (D32, PC-3)', () => {
     same('el Job no cambió de estado', namedJob(await adminWo(workOrderId), 'Battery').status, 'to_do');
   });
 
+  it('A76 | El Job que volvió sin factura se sigue ofreciendo meses después, y la WO lo marca hasta que la tenga (PCA3)', async () => {
+    const vendorId = await vendor('Late Shop');
+    const { truck: t931, workOrderId } = await plannedWo('931', [{ category: 'Air & Brake System', job: 'Air Dryer', assignee: USERS.general }]);
+    const job = namedJob(await adminWo(workOrderId), 'Air Dryer');
+    ok('sale la pieza', await sendOut(workOrderId, job.id, 'part'));
+    ok('Regresó sin factura', await returned(workOrderId, job.id));
+    // La factura llega cuatro meses después: el rastro del Activity Log queda viejo.
+    await prisma.activityLog.updateMany({ where: { entityType: 'work_order_job', entityId: job.id }, data: { createdAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000) } });
+
+    const offered = ok('Jobs para ligar', await manager.get(`/admin/parts-costs/external-jobs?truckId=${t931.id}`)) as Json[];
+    const back = offered.find((item) => item.jobId === job.id);
+    same('el Job se ofrece sin ventana de tiempo, ya de regreso', [back?.out, back?.kind], [false, 'part']);
+    const before = namedJob(await adminWo(workOrderId), 'Air Dryer');
+    same('la WO dice que salió, que volvió y que no tiene factura', [before.wentExternal, before.external, (before.outsideInvoices as Json[] | undefined)?.length ?? 0], [true, null, 0]);
+
+    ok('la factura entra ligada al Job', await saveRepair({ truckId: t931.id, vendorId, invoiceNumber: `L1-${RUN}`, invoiceDate: '2026-10-09', description: 'Air dryer rebuild', amountCents: 90000, workOrderJobId: job.id }));
+    const after = namedJob(await adminWo(workOrderId), 'Air Dryer');
+    same('la WO ya muestra la factura y sigue diciendo que salió', [after.wentExternal, (after.outsideInvoices as Json[]).length], [true, 1]);
+  });
+
   it('A65 | Factura repetida entre compra y reparación; corregir y anular con reversas; mecánicos y Safety no entran', async () => {
     const vendorId = await vendor('TruckPro');
     const t905 = await truck('905');

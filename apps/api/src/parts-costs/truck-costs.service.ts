@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { adminTruckCostsQuerySchema, type AdminTruckCostEntryDto, type AdminTruckCostsDto } from '@ltl-shop/shared';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { chargedOnByEntry } from './cost-ledger';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const dateOnly = (value: Date) => value.toISOString().slice(0, 10);
@@ -42,7 +43,7 @@ export class TruckCostsService {
       }),
     ]);
 
-    const voided = await this.voidedSources(rows);
+    const [voided, chargedOn] = await Promise.all([this.voidedSources(rows), chargedOnByEntry(this.prisma, rows.map((row) => row.id))]);
     const months = new Map<string, { partsCents: number; outsideCents: number; laborCents: number }>();
     let partsCents = 0;
     let outsideCents = 0;
@@ -75,6 +76,8 @@ export class TruckCostsService {
         sourceId: row.sourceId,
         workOrder: row.workOrder,
         reversal: row.reversesEntryId ? (voided.has(row.sourceId) ? 'voided' : 'corrected') : null,
+        // PCA4 (UX-10-002): which internal invoice charges this row, so the Manager sees it before correcting anything.
+        chargedOn: chargedOn.get(row.id) ?? null,
       })),
       laborHours: Math.round((minutes / 60) * 100) / 100,
       laborRateSet,

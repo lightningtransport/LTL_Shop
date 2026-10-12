@@ -217,6 +217,8 @@ export const adminSavePurchaseSchema = z.object({
 });
 
 export const adminVoidSchema = z.object({ reason: z.string().trim().min(1).max(300) });
+/** PCA6 (UX-10-004): attach or replace the invoice file without editing the record (the ledger is not touched). */
+export const adminSetAttachmentSchema = z.object({ attachmentId: z.string().uuid().nullable() });
 
 export const adminPurchasesQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
@@ -300,6 +302,15 @@ export interface AdminPurchaseDetailDto extends AdminPurchaseSummaryDto {
   createdAt: string;
   voidedBy: { id: string; name: string } | null;
   voidReason: string | null;
+  /** PCA4 (UX-10-002): the internal invoices to Finance that charge this purchase's live ledger rows (drafts included). */
+  chargedOn: AdminChargedOnDto[];
+}
+
+/** PCA4 (UX-10-002): an internal invoice that charges a ledger row. */
+export interface AdminChargedOnDto {
+  id: string;
+  number: string | null;
+  status: InternalInvoiceStatus;
 }
 
 /** 409 DUPLICATE_INVOICE and the invoice check: the record that already has that number. */
@@ -438,6 +449,8 @@ export interface AdminOutsideRepairDetailDto extends AdminOutsideRepairSummaryDt
   createdAt: string;
   voidedBy: { id: string; name: string } | null;
   voidReason: string | null;
+  /** PCA4 (UX-10-002): the internal invoices to Finance that charge this repair's live ledger row (drafts included). */
+  chargedOn: AdminChargedOnDto[];
 }
 
 /** On the admin Work Order: the outside invoices tied to a Job (Manager and System Admin only). */
@@ -462,6 +475,8 @@ export interface AdminTruckCostEntryDto {
   workOrder: { id: string; displayId: string } | null;
   /** A reversal row: `voided` when its record was voided, `corrected` when it was edited. */
   reversal: 'voided' | 'corrected' | null;
+  /** PCA4 (UX-10-002): the internal invoice that charges this row, if any. */
+  chargedOn: AdminChargedOnDto | null;
 }
 
 export interface AdminTruckCostsDto {
@@ -495,6 +510,17 @@ export interface AdminLaborRateDto {
   notes: string | null;
   createdBy: { id: string; name: string } | null;
   createdAt: string;
+  /** PCA7 (UX-10-005): only the latest rate can be removed, and only while no sent invoice charges labor priced with it. */
+  deletable: boolean;
+}
+
+/** PCA7 (UX-10-005): what saving a rate from a date would recalculate, before saving it. */
+export const adminLaborRatePreviewQuerySchema = z.object({ effectiveFrom: isoDate });
+export interface AdminLaborRatePreviewDto {
+  /** Completed Work Orders with closed work on or after the date. */
+  workOrders: number;
+  /** Of those, how many have their labor on a sent or accepted internal invoice (the correction lands on the next one). */
+  invoiced: number;
 }
 
 export interface AdminLaborRatesDto {
@@ -571,6 +597,8 @@ export interface AdminInternalInvoiceLineDto {
   sourceType: string;
   sourceId: string;
   workOrder: { id: string; displayId: string } | null;
+  /** PCA4 (UX-10-002): a negative line that reverses a row charged on an earlier invoice says which one. */
+  correctsInvoice: { id: string; number: string | null } | null;
 }
 
 export interface AdminInternalInvoiceDetailDto extends AdminInternalInvoiceSummaryDto {

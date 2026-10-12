@@ -162,9 +162,11 @@ CardFooter.displayName = 'CardFooter';
 export function InlineAlert({
   children,
   className,
+  ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
+      {...props}
       className={cn(
         'rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive-text',
         className,

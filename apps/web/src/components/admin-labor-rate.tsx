@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { formatCents, parseMoneyToCents } from '@ltl-shop/shared';
+import { Trash2 } from 'lucide-react';
+import { formatCents, parseMoneyToCents, type AdminLaborRateDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { partsCostsFailure } from './admin-parts-catalog';
-import { Button, Card, CardContent, DataTable, InlineAlert, Input, Label, LoadFailure, PageHeader, PageSkeleton, SectionCard } from './ui';
+import { Button, Card, CardContent, DataTable, DialogActions, InlineAlert, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
-import { setAdminLaborRate, useAdminLaborRates } from '@/lib/admin-data';
+import { removeAdminLaborRate, setAdminLaborRate, useAdminLaborRatePreview, useAdminLaborRates } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
@@ -19,6 +20,8 @@ const today = () => {
 /**
  * LTR-201 / D34 (LB-1): Parts & costs → Labor rate. One rate for the whole shop, from a date. Saving re-computes the
  * labor of completed Work Orders with work from that date (reversals in the ledger); earlier work keeps its rate.
+ * PCA7 (UX-10-005): the screen says what a date would recalculate before Save, and the latest rate can be taken back
+ * while no sent invoice uses it.
  */
 export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
@@ -29,7 +32,29 @@ export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; mess
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
+  const [removing, setRemoving] = useState<AdminLaborRateDto | null>(null);
   const cents = parseMoneyToCents(rate);
+  const { data: preview } = useAdminLaborRatePreview(canWrite && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : null);
+  const previewText = preview
+    ? preview.workOrders === 0
+      ? fillPlaceholders(messages.pcLaborRatePreviewNone, { date: formatInvoiceDate(from, locale) })
+      : `${fillPlaceholders(messages.pcLaborRatePreview, { count: String(preview.workOrders), date: formatInvoiceDate(from, locale) })}${preview.invoiced ? ` ${fillPlaceholders(messages.pcLaborRatePreviewInvoiced, { count: String(preview.invoiced) })}` : ''}`
+    : null;
+
+  async function remove(target: AdminLaborRateDto) {
+    setBusy(true);
+    setSaveError(null);
+    try {
+      const removed = await removeAdminLaborRate(target.id);
+      showToast('success', fillPlaceholders(messages.pcLaborRateRemoved, { count: String(removed.recalculatedWorkOrders) }));
+      setRemoving(null);
+      void mutate();
+    } catch (failure) {
+      setSaveError(partsCostsFailure(failure, messages));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -83,7 +108,8 @@ export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; mess
             </div>
             <div className="flex min-w-60 flex-1 flex-col gap-2 pt-6">
               <p className="text-xs text-muted-foreground">{messages.pcLaborRateHelp}</p>
-              {saveError ? <InlineAlert>{saveError}</InlineAlert> : null}
+              {previewText ? <p className="text-xs" data-testid="labor-rate-preview">{previewText}</p> : null}
+              {saveError && !removing ? <InlineAlert>{saveError}</InlineAlert> : null}
             </div>
             <div className="pt-6">
               <Button type="submit" disabled={busy}>{busy ? messages.pcSaving : messages.pcLaborRateSave}</Button>
@@ -104,9 +130,25 @@ export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; mess
               { key: 'from', header: messages.pcLaborRateColFrom, primary: true, cell: (item) => formatInvoiceDate(item.effectiveFrom, locale) },
               { key: 'rate', header: messages.pcLaborRateColRate, cell: (item) => <span className="tabular-nums">{formatCents(item.rateCentsPerHour, locale)}</span> },
               { key: 'by', header: messages.pcLaborRateColBy, cell: (item) => item.createdBy?.name ?? '—' },
+              ...(canWrite ? [{
+                key: 'actions',
+                header: messages.pcLaborRateColActions,
+                cell: (item: AdminLaborRateDto) => item.deletable
+                  ? <Button type="button" variant="ghost" size="sm" data-testid="labor-rate-remove" disabled={busy} onClick={() => { setSaveError(null); setRemoving(item); }}><Trash2 aria-hidden="true" />{messages.pcLaborRateRemove}</Button>
+                  : null,
+              }] : []),
             ]}
           />
         </SectionCard>
+      ) : null}
+      {removing ? (
+        <Modal open title={messages.pcLaborRateRemoveTitle} description={fillPlaceholders(messages.pcLaborRateRemoveBody, { rate: formatCents(removing.rateCentsPerHour, locale), date: formatInvoiceDate(removing.effectiveFrom, locale) })} onClose={() => setRemoving(null)} closeLabel={messages.closeDialog}>
+          {saveError ? <InlineAlert className="mb-3">{saveError}</InlineAlert> : null}
+          <DialogActions>
+            <Button type="button" variant="outline" onClick={() => setRemoving(null)} disabled={busy}>{messages.cancel}</Button>
+            <Button type="button" variant="destructive" disabled={busy} onClick={() => void remove(removing)}>{busy ? messages.pcSaving : messages.pcLaborRateRemove}</Button>
+          </DialogActions>
+        </Modal>
       ) : null}
     </div>
   );

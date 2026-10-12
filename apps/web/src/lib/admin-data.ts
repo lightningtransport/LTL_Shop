@@ -47,6 +47,7 @@ import type {
   AdminSaveOutsideRepairInput,
   AdminTruckCostsDto,
   AdminLaborRatesDto,
+  AdminLaborRatePreviewDto,
   AdminSetLaborRateInput,
   AdminCreateInternalInvoiceInput,
   AdminInternalInvoiceDetailDto,
@@ -886,6 +887,15 @@ export function voidAdminPurchase(id: string, reason: string) {
   return apiFetch<{ id: string }>(`/api/admin/parts-costs/purchases/${id}/void`, { method: 'POST', body: JSON.stringify({ reason }) });
 }
 
+/** PCA6 (UX-10-004): the invoice file on its own; the trucks' costs are not touched. */
+export function setAdminPurchaseAttachment(id: string, attachmentId: string | null) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/purchases/${id}/attachment`, { method: 'PATCH', body: JSON.stringify({ attachmentId }) });
+}
+
+export function setAdminOutsideRepairAttachment(id: string, attachmentId: string | null) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/outside-repairs/${id}/attachment`, { method: 'PATCH', body: JSON.stringify({ attachmentId }) });
+}
+
 export function checkAdminInvoice(vendorId: string, number: string, excludeId?: string) {
   const params = new URLSearchParams({ vendorId, number });
   if (excludeId) params.set('excludeId', excludeId);
@@ -995,6 +1005,20 @@ export function useAdminLaborRates() {
 
 export function setAdminLaborRate(input: AdminSetLaborRateInput) {
   return apiFetch<{ id: string; recalculatedWorkOrders: number }>('/api/admin/parts-costs/labor-rates', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** PCA7 (UX-10-005): what a rate from that date would recalculate, before saving it. */
+export function useAdminLaborRatePreview(effectiveFrom: string | null) {
+  const { token } = useAuth();
+  return useSWR<AdminLaborRatePreviewDto>(
+    token && effectiveFrom ? `/api/admin/parts-costs/labor-rates/preview?effectiveFrom=${effectiveFrom}` : null,
+    adminReadFetcher,
+    { dedupingInterval: 5_000, keepPreviousData: true, ...adminReadRetry },
+  );
+}
+
+export function removeAdminLaborRate(id: string) {
+  return apiFetch<{ id: string; recalculatedWorkOrders: number }>(`/api/admin/parts-costs/labor-rates/${id}`, { method: 'DELETE' });
 }
 
 // ── LB-2 (LTR-201 / D34): internal invoices to Finance ───────────────────────────────────────────────────────

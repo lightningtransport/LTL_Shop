@@ -18,7 +18,7 @@ import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { partsCostsFailure } from './admin-parts-catalog';
 import { MissingSummary, OptionalTag, RequiredNote, StickyFormFooter, focusField, type MissingField } from './parts-costs-form-ui';
-import { Button, Input, Label, Modal, Select, Textarea } from './ui';
+import { Button, Input, Label, Modal, Select, Textarea, InlineAlert } from './ui';
 import {
   checkAdminInvoice,
   createAdminOutsideRepair,
@@ -77,8 +77,11 @@ export function OutsideRepairForm({
   messages,
   onClose,
   onSaved,
+  notice,
 }: {
   repair: AdminOutsideRepairDetailDto | null;
+  /** PCA4 (UX-10-002): said above the fields when the repair is already on a sent invoice. */
+  notice?: string | null;
   preset?: { truckId?: string; jobId?: string };
   vendors: AdminVendorDto[];
   formData: AdminPurchaseFormDataDto;
@@ -199,6 +202,7 @@ export function OutsideRepairForm({
   return (
     <Modal open title={repair ? messages.pcEditOutside : messages.pcNewOutside} description={presetJob ? fillPlaceholders(messages.pcFromJob, { wo: presetJob.workOrderDisplayId, job: presetJob.displayName }) : undefined} onClose={close} closeLabel={messages.closeDialog} dismissible={!dirty} className="sm:max-w-2xl">
       <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="outside-repair-form" noValidate>
+        {notice ? <InlineAlert data-testid="outside-charged-notice">{notice}</InlineAlert> : null}
         {showErrors ? <MissingSummary missing={missing} messages={messages} /> : null}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">

@@ -346,8 +346,19 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   repartidos según las líneas (el centavo que sobra al grupo más grande,
   `allocateExtra`, D-PC2). Las líneas sin camión no cuentan en ningún camión
   (D-PC5). Las filas **no se editan ni se borran**: corregir escribe la reversa
-  de cada fila viva y las nuevas; anular (con motivo) escribe solo reversas.
-  Nada se borra; una compra anulada queda tachada y libera su número.
+  de cada fila viva y las nuevas **solo si cambió algo que llega al libro**
+  (proveedor, número, fecha, líneas, camiones, impuesto, flete; PCA6); cambiar
+  solo el archivo o las notas no toca el libro. Anular (con motivo) escribe
+  solo reversas. Nada se borra; una compra anulada queda tachada y libera su número.
+- **El archivo adjunto por separado** (PCA6): `PATCH /purchases/:id/attachment` y
+  `PATCH /outside-repairs/:id/attachment` (`{ attachmentId | null }`) agregan,
+  reemplazan o quitan el archivo sin pasar por Edit; en pantalla, "Add invoice
+  file" / "Replace file" en el detalle.
+- **"Charged to Finance"** (PCA4): el detalle de la compra y de la reparación trae
+  `chargedOn` (las facturas internas, borradores incluidos, que cobran sus filas
+  vivas) y cada movimiento de Truck → Costs trae el suyo. Editar o anular algo que
+  ya está en una factura enviada avisa que la corrección cae como crédito en la
+  factura siguiente del camión.
 - **Facturas adjuntas**: Supabase Storage, bucket **privado** `invoices`
   (se crea solo la primera vez, con tipos PDF/JPG/PNG/HEIC y límite de 10 MB).
   El navegador sube directo a una URL firmada; se abre con un enlace de 5
@@ -364,8 +375,10 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   proveedor, fecha y número de factura, qué se hizo, monto, factura adjunta y
   notas; opcionalmente **el Job enviado a taller externo** (D24).
 - **Los Jobs que se ofrecen** (`GET /external-jobs?truckId=`): los del camión que
-  están afuera ahora y los que salieron en los últimos 90 días (del Activity Log,
-  `job_sent_external` / `job_returned_external`). Un Job de otro camión responde
+  están afuera ahora y los que salieron alguna vez, sin límite de tiempo (del Activity Log,
+  `job_sent_external` / `job_returned_external`; PCA3). En el Work Order, cada Job trae
+  `wentExternal`, y el que volvió sin factura muestra "Returned · no invoice yet" con la
+  acción "Add outside repair invoice". Un Job de otro camión responde
   `JOB_NOT_ON_TRUCK`; uno que nunca salió, `JOB_NEVER_EXTERNAL`. Se guarda una copia
   de qué salió (pieza o camión).
 - **"Enviar a taller externo" y "Regresó" no cambian**: la reparación guarda el id
@@ -401,6 +414,13 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - **Parts & costs → Labor rate** (`/admin/parts/labor-rate`): **una tarifa por hora
   para todo el taller**, desde una fecha (una por fecha: `LABOR_RATE_DATE_TAKEN`).
   Nunca se edita una tarifa: se agrega otra. Solo Manager y System Admin.
+- **Antes de guardar** (PCA7): `GET /labor-rates/preview?effectiveFrom=` dice cuántos
+  WO completados se recalculan desde esa fecha y cuántos ya están en una factura
+  enviada; la pantalla lo muestra debajo del formulario.
+- **Quitar la última tarifa** (PCA7): `DELETE /labor-rates/:id`, solo la más reciente
+  (`LABOR_RATE_NOT_LATEST`) y solo mientras ninguna factura enviada o aceptada cobre
+  mano de obra valorada con ella (`LABOR_RATE_IN_USE`); los WO vuelven a la tarifa
+  anterior con reversas. La lista marca `deletable` en la que se puede quitar.
 - **Mano de obra de un Work Order** = minutos de sus sesiones **cerradas** × la tarifa
   vigente el día en que empezó cada sesión (`laborAmount`, `packages/shared`). Las
   sesiones de antes de la primera tarifa cuentan horas pero no monto. Solo los WO
@@ -421,7 +441,11 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - **Borrador:** trae las filas del libro del camión con fecha **hasta el fin del mes**
   que ninguna otra factura (no anulada) cobra: partes al costo, reparaciones externas y
   mano de obra. Así, una corrección hecha después de enviar una factura cae en la
-  siguiente. Una fila y su reversa, ambas sin cobrar, se cancelan y no entran. Un solo
+  siguiente. Una fila y su reversa, ambas sin cobrar, se cancelan y no entran.
+  Lo anterior al mes se muestra aparte, en pantalla y en el PDF, como **"Carried over
+  from earlier months"** con su subtotal, y el diálogo de Send avisa cuánto es (PCA5).
+  Una línea negativa que corrige algo ya facturado dice de qué factura viene
+  (`correctsInvoice`, PCA4). Un solo
   borrador por camión y mes (`INTERNAL_INVOICE_DRAFT_EXISTS`); sin nada pendiente,
   `NOTHING_TO_CHARGE`.
 - En el borrador se puede **sacar** una línea (queda sin cobrar para una factura

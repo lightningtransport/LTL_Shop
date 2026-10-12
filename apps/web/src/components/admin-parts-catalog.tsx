@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useMemo, useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { MoreHorizontal, Pencil, Plus, Power, X } from 'lucide-react';
 import {
   centsToInput,
@@ -26,6 +26,9 @@ import { apiErrorCode } from '@/lib/api-error-message';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { formatShortDateTime } from '@/lib/work-order-view';
+import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
+
+const CATALOG_FILTERS = { q: '', make: '', includeInactive: false };
 
 export function partsCostsFailure(failure: unknown, messages: AdminMessages) {
   if (failure instanceof ApiError && apiErrorCode(failure) === 'PART_IN_OPEN_PM') {
@@ -74,20 +77,12 @@ const MenuTrigger = forwardRef<HTMLButtonElement, { label: string } & React.Butt
  */
 export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
-  const [search, setSearch] = useState('');
-  const [make, setMake] = useState('');
-  const [showInactive, setShowInactive] = useState(false);
-  const query = useMemo(() => {
-    const params = new URLSearchParams();
-    if (search.trim()) params.set('q', search.trim());
-    if (make) params.set('make', make);
-    if (showInactive) params.set('includeInactive', 'true');
-    return params.toString();
-  }, [search, make, showInactive]);
+  // PCA1 (UX-5-001): the filters live in the URL, so Back and a reload keep them.
+  const { filters, set, clear, query, active: filtered } = useUrlFilters(CATALOG_FILTERS);
+  const [search, setSearch] = useDebouncedFilterText(filters.q, (next) => set('q', next));
   const { data, error, isLoading, mutate } = useAdminPartsCatalog(query);
   const { data: vendors } = useAdminVendors();
   const [editing, setEditing] = useState<AdminPartDto | 'new' | null>(null);
-  const filtered = Boolean(query);
   const categories = (data?.categories ?? []).filter((category) => category.parts.length || !filtered);
   const partCount = categories.reduce((sum, category) => sum + category.parts.length, 0);
 
@@ -108,13 +103,13 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
           </div>
           <div className="space-y-1">
             <Label htmlFor="parts-fits-filter">{messages.pcFitsFilter}</Label>
-            <Select id="parts-fits-filter" value={make} onChange={(event) => setMake(event.target.value)}>
+            <Select id="parts-fits-filter" value={filters.make} onChange={(event) => set('make', event.target.value)}>
               <option value="">{messages.pcFitsAny}</option>
               {(data?.truckMakes ?? []).map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
           </div>
           <label className="flex min-h-11 items-center gap-2 text-sm">
-            <input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
+            <input type="checkbox" checked={filters.includeInactive} onChange={(event) => set('includeInactive', event.target.checked)} />
             {messages.pcShowInactive}
           </label>
         </CardContent>
@@ -125,7 +120,7 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
       {data && filtered && partCount === 0 ? (
         <EmptyState>
           <p>{messages.pcNoParts}</p>
-          <Button type="button" variant="outline" className="mt-4" onClick={() => { setSearch(''); setMake(''); setShowInactive(false); }}>{messages.pcClearFilters}</Button>
+          <Button type="button" variant="outline" className="mt-4" onClick={clear}>{messages.pcClearFilters}</Button>
         </EmptyState>
       ) : null}
 

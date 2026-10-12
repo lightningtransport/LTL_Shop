@@ -4,6 +4,7 @@ import {
   adminExternalJobsQuerySchema,
   adminOutsideRepairsQuerySchema,
   adminSaveOutsideRepairSchema,
+  adminSetAttachmentSchema,
   adminVoidSchema,
   normalizeInvoiceNumber,
   type AdminExternalJobDto,
@@ -15,13 +16,12 @@ import { Prisma } from '@prisma/client';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
-import { reverseSource, writeEntries } from './cost-ledger';
+import { chargedOnBySource, reverseSource, writeEntries } from './cost-ledger';
 import { assertNewInvoice, currentAttachment, duplicateInvoice, filedOwners, findInvoice, linkAttachment, lockVendorInvoices } from './invoice-registry';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SOURCE = 'outside_repair' as const;
 /** The Jobs offered to tie an invoice to: still out, or sent out within this many days. */
-export const EXTERNAL_JOB_WINDOW_DAYS = 90;
 
 function parse<T>(schema: { safeParse(raw: unknown): { success: true; data: T } | { success: false; error: { flatten(): unknown } } }, raw: unknown): T {
   const parsed = schema.safeParse(raw ?? {});
@@ -50,7 +50,7 @@ type SaveInput = ReturnType<typeof adminSaveOutsideRepairSchema.parse>;
 
 /**
  * LTR-200 / D32 (PC-3): invoices from an outside shop. One truck each, optionally tied to the Job sent to an
- * external shop (D24, out now or back within 90 days). "Send to external shop" and "Returned" do not change: the
+ * external shop (D24, out now or back, with no time window: PCA3). "Send to external shop" and "Returned" do not change: the
  * invoice keeps the Job's id. One ledger row on the truck; edit and void write reversals (as purchases do).
  */
 @Injectable()
@@ -84,7 +84,7 @@ export class OutsideRepairsService {
 
   async detail(id: string): Promise<AdminOutsideRepairDetailDto> {
     const row = await this.row(id);
-    const attachment = await currentAttachment(this.prisma, 'outside_repair', id);
+    const [attachment, chargedOn] = await Promise.all([currentAttachment(this.prisma, 'outside_repair', id), chargedOnBySource(this.prisma, { sourceType: SOURCE, sourceId: id })]);
     return {
       ...this.summary(row, Boolean(attachment)),
       notes: row.notes,
@@ -93,20 +93,46 @@ export class OutsideRepairsService {
       createdAt: row.createdAt.toISOString(),
       voidedBy: row.voidedBy,
       voidReason: row.voidReason,
+      chargedOn,
     };
   }
 
-  /** The Jobs of this truck that are at an external shop now, or went out within 90 days (from the Activity Log). */
+  /** PCA6 (UX-10-004): attach, replace or remove the invoice file on its own; nothing else changes. */
+  async setAttachment(actor: AuthUser, id: string, raw: unknown) {
+    const { attachmentId } = parse(adminSetAttachmentSchema, raw);
+    const before = await this.row(id);
+    if (before.voidedAt) throw new ConflictException({ code: 'REPAIR_VOIDED', message: 'This outside repair is voided. Load it again instead.' });
+    await this.prisma.$transaction(async (tx) => {
+      await linkAttachment(tx, 'outside_repair', id, attachmentId);
+      await this.activity.log(tx, {
+        workOrderId: before.workOrderId ?? undefined,
+        eventType: ActivityEventType.OUTSIDE_REPAIR_SAVED,
+        entityType: SOURCE,
+        entityId: id,
+        userId: actor.id,
+        relevantValue: { action: attachmentId ? 'outside_repair_file_attached' : 'outside_repair_file_removed', vendor: before.vendor.name, invoiceNumber: before.invoiceNumber },
+      });
+    });
+    return { id };
+  }
+
+  /** What the ledger is written from; two repairs with the same key write the same row. */
+  private ledgerKey(row: RepairRow) {
+    return JSON.stringify([row.vendorId, row.invoiceNumber, dateOnly(row.invoiceDate), row.amountCents, row.truckId, row.description, row.workOrderId, row.workOrderJobId]);
+  }
+
+  /** The Jobs of this truck that are at an external shop now, or went out at some point (from the Activity Log). */
   async externalJobs(raw: unknown): Promise<AdminExternalJobDto[]> {
     const { truckId } = parse(adminExternalJobsQuerySchema, raw);
-    const since = new Date(Date.now() - EXTERNAL_JOB_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    // PCA3 (UX-10-001): no time window. The invoice arrives after "Returned", sometimes months later, and a Job
+    // that went out must stay available until it has one (and after, so the tie can be edited).
     const [outNow, logs] = await Promise.all([
       this.prisma.workOrderJob.findMany({
         where: { externalSince: { not: null }, workOrder: { truckId } },
         select: { id: true, displayName: true, externalSince: true, externalKind: true, workOrder: { select: { id: true, displayId: true } } },
       }),
       this.prisma.activityLog.findMany({
-        where: { entityType: 'work_order_job', eventType: 'manager_correction', createdAt: { gte: since }, workOrder: { truckId } },
+        where: { entityType: 'work_order_job', eventType: 'manager_correction', workOrder: { truckId } },
         select: { entityId: true, relevantValue: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
@@ -187,8 +213,11 @@ export class OutsideRepairsService {
       const link = await this.prepare(tx, input, before.vendorId);
       await assertNewInvoice(tx, input.vendorId, invoiceNorm, id);
       const repair = await tx.outsideRepair.update({ where: { id }, data: this.fields(input, invoiceNorm, link), include: repairInclude });
-      await reverseSource(tx, { sourceType: SOURCE, sourceId: id }, actor.id);
-      await this.writeLedger(tx, repair, actor.id);
+      // PCA6 (UX-10-004): only a change that reaches the ledger rewrites it; a new file or a note does not.
+      if (this.ledgerKey(before) !== this.ledgerKey(repair)) {
+        await reverseSource(tx, { sourceType: SOURCE, sourceId: id }, actor.id);
+        await this.writeLedger(tx, repair, actor.id);
+      }
       if (input.attachmentId !== undefined) await linkAttachment(tx, 'outside_repair', id, input.attachmentId);
       await this.activity.log(tx, {
         workOrderId: repair.workOrderId ?? undefined,
