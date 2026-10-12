@@ -56,6 +56,10 @@ function createPrisma() {
     truck: {
       findMany: vi.fn(),
     },
+    // PCA10: the detail sums the Work Order's ledger rows.
+    truckCostEntry: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     jobCategory: {
       findMany: vi.fn(),
       findUnique: vi.fn(),

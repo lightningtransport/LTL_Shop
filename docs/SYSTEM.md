@@ -411,7 +411,7 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 - Terminar un PM no escribe nada en el libro (D-PC4).
 
 ### Mano de obra (`labor_rates`; LTR-201 / D34, LB-1)
-- **Parts & costs → Labor rate** (`/admin/parts/labor-rate`): **una tarifa por hora
+- **Setup → Labor rate** (`/admin/parts/labor-rate`; en el menú va en Setup desde PCA8): **una tarifa por hora
   para todo el taller**, desde una fecha (una por fecha: `LABOR_RATE_DATE_TAKEN`).
   Nunca se edita una tarifa: se agrega otra. Solo Manager y System Admin.
 - **Antes de guardar** (PCA7): `GET /labor-rates/preview?effectiveFrom=` dice cuántos

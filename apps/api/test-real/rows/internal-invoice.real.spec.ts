@@ -129,6 +129,22 @@ describe('Manager: factura interna a Finanzas (D34, LB-2)', () => {
     same('el cargo nuevo no corrige nada', (second.lines as Json[]).find((line) => line.amountCents === 12000)?.correctsInvoice, null);
   });
 
+  it('A80 | El proveedor dice cuántas facturas tiene; la lista de facturas filtra por mes; la WO dice lo que lleva gastado (PCA9, PCA10, PCA14)', async () => {
+    await purchase('V1', '2026-10-03', 10000);
+    await purchase('V2', '2026-09-03', 2500);
+    await repair('V3', '2026-10-04', 5000);
+    const vendors = ok('proveedores', await manager.get('/admin/parts-costs/vendors')) as Json[];
+    const mine = vendors.find((row) => row.id === vendorId);
+    same('2 compras, 1 reparación, última factura', [mine?.purchaseCount, mine?.repairCount, mine?.lastInvoiceDate], [2, 1, '2026-10-04']);
+
+    const october = await draft('2026-10');
+    const sent = ok('enviar', await manager.post(`${INVOICES}/${october}/send`, {}));
+    same('filtra por mes', (ok('octubre', await manager.get(`${INVOICES}?month=2026-10`)) as Json[]).map((row) => row.number), [sent.number]);
+    same('otro mes: nada', (ok('noviembre', await manager.get(`${INVOICES}?month=2026-11`)) as Json[]).length, 0);
+    ok('anular', await manager.post(`${INVOICES}/${october}/void`, { reason: 'Prueba' }));
+    same('anulada: conserva cuántas líneas tenía', (ok('anuladas', await manager.get(`${INVOICES}?status=void&month=2026-10`)) as Json[])[0]?.lineCount, 3);
+  });
+
   it('A75 | Anular una enviada libera sus movimientos; el número no se reusa; mecánicos y Safety no entran', async () => {
     await repair('R5', '2026-10-12', 12000);
     const first = await draft('2026-10');

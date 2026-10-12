@@ -473,6 +473,8 @@ export interface AdminWorkOrderJobDto {
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   truck: TruckDto;
   version: number;
+  /** PCA10 (UX-5-005): what this Work Order has cost so far from the truck's ledger (Manager and System Admin only). */
+  costs?: { partsCents: number; outsideCents: number; laborCents: number };
   notes: string | null;
   createdBy: { id: string; name: string };
   completedBy: { id: string; name: string } | null;

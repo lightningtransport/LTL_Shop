@@ -25,15 +25,16 @@ const navigationGroups = [
   },
   {
     // LTR-200 / D32, D-PC7: money, so only the Shop Manager and the System Admin see it.
+    // PCA8 (UX-5-003): the week's work first (purchases, outside repairs), then the month's close (internal
+    // invoices), then the catalogs. The labor rate is a shop setting, so it lives in Setup.
     title: 'navGroupPartsCosts',
     managerOnly: true,
     items: [
       { message: 'pcPurchases', icon: Receipt, href: '/admin/parts/purchases' },
       { message: 'pcOutsideRepairs', icon: Building2, href: '/admin/parts/outside-repairs' },
+      { message: 'pcInvoices', icon: FileText, href: '/admin/parts/internal-invoices' },
       { message: 'pcParts', icon: Package, href: '/admin/parts/catalog' },
       { message: 'pcVendors', icon: Store, href: '/admin/parts/vendors' },
-      { message: 'pcLaborRate', icon: Clock, href: '/admin/parts/labor-rate' },
-      { message: 'pcInvoices', icon: FileText, href: '/admin/parts/internal-invoices' },
     ],
   },
   {
@@ -42,6 +43,8 @@ const navigationGroups = [
       { message: 'mechanics', icon: UsersRound, href: '/admin/mechanics' },
       { message: 'jobCatalog', icon: Library, href: '/admin/catalog' },
       { message: 'shopWorkflow', icon: ListChecks, href: '/admin/setup/workflow' },
+      // D-PC7: money, so the rate is for the Shop Manager and the System Admin only.
+      { message: 'pcLaborRate', icon: Clock, href: '/admin/parts/labor-rate', managerOnly: true },
     ],
   },
   {
@@ -104,7 +107,7 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
   const navGroups = (onNavigate?: () => void) => [...navigationGroups.filter((group) => !('managerOnly' in group) || canSeeManagerGroups).map((group) => (
     <div key={group.title} className="space-y-0.5">
       <p className="px-2 pb-1 text-xs text-muted-foreground">{messages[group.title]}</p>
-      {group.items.map(({ message, icon: Icon, href }) => {
+      {group.items.filter((item) => !('managerOnly' in item) || canSeeManagerGroups).map(({ message, icon: Icon, href }) => {
         const active = isActivePath(pathname, href);
         return (
           <AdminNavLink

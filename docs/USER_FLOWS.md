@@ -579,7 +579,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 **Quién:** el Manager. Finanzas recibe un PDF, no entra a la app.
 
 **Flujo**
-1. **Parts & costs → Labor rate:** pone la tarifa por hora del taller y desde qué fecha vale.
+1. **Setup → Labor rate:** pone la tarifa por hora del taller y desde qué fecha vale.
 2. Al completar un Work Order, su mano de obra (horas × tarifa) entra al costo del camión. Truck → Costs la muestra.
 3. **Parts & costs → Internal invoices → New invoice:** elige camión y mes. La app trae lo que todavía no se cobró de ese camión en ese mes (compras, reparaciones externas, mano de obra), al costo.
 4. Revisa las líneas; puede sacar alguna (queda para la próxima). **Send**: la factura se congela con su número `SHOP-2026-0001` y se descarga en PDF para mandarla a Finanzas.

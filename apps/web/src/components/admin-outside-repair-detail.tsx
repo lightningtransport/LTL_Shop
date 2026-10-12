@@ -8,6 +8,7 @@ import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { OutsideRepairForm } from './admin-outside-repair-form';
 import { ChargedOnChips, chargedWarning } from './admin-charged-on';
+import { useAdminBreadcrumb, useDocumentTitle } from './admin-breadcrumb';
 import { InvoiceFileDialog } from './admin-invoice-file-dialog';
 import { partsCostsFailure } from './admin-parts-catalog';
 import { AdminBackLink, Badge, Button, DialogActions, EmptyState, InlineAlert, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard, Textarea } from './ui';
@@ -34,6 +35,10 @@ export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string;
   const from = useSearchParams().get('from');
   const origin = adminPartsOrigin(from, { href: '/admin/parts/outside-repairs', backLabel: messages.pcBackToOutside }, messages);
   const here = `/admin/parts/outside-repairs/${id}`;
+  // PCA11 (UX-5-006): "Outside repairs › Diesel Pro · DP-48137" in the top bar and the tab.
+  const name = data ? `${data.vendor.name} · ${data.invoiceNumber}` : null;
+  useAdminBreadcrumb(name ? [{ label: messages.pcOutsideRepairs, href: '/admin/parts/outside-repairs' }, { label: name }] : null);
+  useDocumentTitle(data ? `${data.invoiceNumber} · ${data.vendor.name} — ${messages.pcOutsideRepairs}` : null);
 
   if (isLoading) return <PageSkeleton label={messages.pcOutsideTitle} />;
   if (error instanceof ApiError && error.status === 404) {
