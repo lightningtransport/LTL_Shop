@@ -453,6 +453,8 @@ function resetFixtureState() {
   partsState = freshPartsState();
 }
 
+let adminAccessCalls = 0;
+
 createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key');
@@ -463,7 +465,13 @@ createServer(async (request, response) => {
   }
   if (request.url === '/__test/reset' && request.method === 'POST') {
     resetFixtureState();
+    adminAccessCalls = 0;
     response.writeHead(204).end();
+    return;
+  }
+  // P19 / D38: how many times the web's middleware asked `/api/admin/access` (e2e/perf-admin-middleware.spec.ts).
+  if (request.url === '/__test/admin-access-calls' && request.method === 'GET') {
+    json(response, 200, { count: adminAccessCalls });
     return;
   }
 
@@ -484,6 +492,7 @@ createServer(async (request, response) => {
     return;
   }
   if (request.url === '/api/admin/access') {
+    adminAccessCalls += 1;
     json(
       response,
       user.capabilities.includes('admin.access') ? 200 : 403,
