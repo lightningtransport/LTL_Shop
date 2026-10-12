@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WorkOrderStatus } from '@ltl-shop/shared';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import { mechanicNamesLabel, openCurrentWork, workOrderNextJobLine } from './admin-work-summary';
 
 describe('Admin work summaries (LTR-151)', () => {

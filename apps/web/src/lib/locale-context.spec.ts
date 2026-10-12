@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ADMIN_LOCALE_COOKIE } from './admin-session';
-import { adminPauseReasonLabel, getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
+import { adminPauseReasonLabel } from './admin-messages';
 import { getShopCopy } from './locale-context';
 import {
   parseShopLocale,

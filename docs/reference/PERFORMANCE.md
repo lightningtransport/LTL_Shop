@@ -219,3 +219,17 @@ Qué cambió: Sentry Replay (38 kB gz) ya no va en la primera carga, llega con
 chunk `next/dynamic` que producción no pide. `optimizePackageImports` para
 `radix-ui` no movió la aguja (< 1 kB). Sigue pendiente el catálogo
 `admin-messages` en el bundle cliente (PF12, 42 kB gz en las páginas admin).
+
+### Después de PF12 (catálogo Admin fuera del bundle cliente) — `next build` sobre main sin PR 6, 2026-10-12
+
+| Ruta | main | Con PF12 |
+| --- | --- | --- |
+| `/admin` | 413 kB | **371 kB** |
+| `/admin/yard-operations` | 401 kB | 360 kB |
+| `/admin/work-orders/[id]` | 441 kB | 399 kB |
+| `/work-orders/new` (mecánico) | 387 kB | 345 kB |
+| `/work-orders/[id]` (mecánico) | 419 kB | 376 kB |
+
+Ningún chunk cliente contiene ya textos del catálogo (se buscó una cadena en y
+una es en todos los `.js` del build). El ahorro se suma al de PR 6 (compartido
+225 → 187 kB, arriba).

@@ -1,7 +1,8 @@
 import { cookies, headers } from 'next/headers';
 import { forbidden } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
-import { getAdminMessages, isAdminLocale } from '@/lib/admin-messages';
+import { getAdminMessages } from '@/lib/admin-messages-catalog';
+import { isAdminLocale } from '@/lib/admin-messages';
 import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
 
 export const metadata = {

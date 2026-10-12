@@ -10,7 +10,7 @@ import type {
   YardUpcomingDepartureItemDto,
   YardWorkLocationItemDto,
 } from '@ltl-shop/shared';
-import { getAdminMessages, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
+import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { cn } from '@/lib/utils';
 import { dispatchShopConflicts, fillYardText, groupWorkLocations, matchesTruckSearch } from '@/lib/yard-card';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
@@ -47,6 +47,7 @@ const PHASE_KEY: Record<string, keyof AdminMessages> = {
  */
 export function AdminYardDataBoundaryCards({
   locale,
+  messages,
   boundary,
   loading,
   fetchFailed,
@@ -56,6 +57,7 @@ export function AdminYardDataBoundaryCards({
   soonUntil = null,
 }: {
   locale: AdminLocale;
+  messages: AdminMessages;
   boundary: YardDataBoundaryDto | undefined;
   loading: boolean;
   fetchFailed: boolean;
@@ -74,7 +76,6 @@ export function AdminYardDataBoundaryCards({
   // Stage 6 (D8): the shop's side of each Truck — rows and chips open the Truck; open Work Orders are marked.
   const shop = new Map((boundary?.shop ?? []).map((truck) => [truck.truckNumber, truck]));
   const conflicts = dispatchShopConflicts(boundary?.workLocation, boundary?.shop);
-  const messages = getAdminMessages(locale);
 
   return (
     <div className="space-y-4">
@@ -107,7 +108,7 @@ export function AdminYardDataBoundaryCards({
           expanded={expanded}
           preview={movementPreview(locale, boundary?.incomingTrucks.items ?? [], 'returnDate')}
         >
-          {boundary?.incomingTrucks.status === 'ok' ? <MovementRows locale={locale} items={incomingItems} dateKey="returnDate" shop={shop} /> : null}
+          {boundary?.incomingTrucks.status === 'ok' ? <MovementRows locale={locale} messages={messages} items={incomingItems} dateKey="returnDate" shop={shop} /> : null}
         </BoundaryCard>
         <BoundaryCard
           cardId="upcomingDepartures"
@@ -120,7 +121,7 @@ export function AdminYardDataBoundaryCards({
           expanded={expanded}
           preview={movementPreview(locale, boundary?.upcomingDepartures.items ?? [], 'outDate')}
         >
-          {boundary?.upcomingDepartures.status === 'ok' ? <MovementRows locale={locale} items={departureItems} dateKey="outDate" shop={shop} today={today} soonUntil={soonUntil} /> : null}
+          {boundary?.upcomingDepartures.status === 'ok' ? <MovementRows locale={locale} messages={messages} items={departureItems} dateKey="outDate" shop={shop} today={today} soonUntil={soonUntil} /> : null}
         </BoundaryCard>
         <BoundaryCard
           cardId="workLocation"
@@ -133,7 +134,7 @@ export function AdminYardDataBoundaryCards({
           expanded={expanded}
           preview={workLocationPreview(boundary?.workLocation.items ?? [], boundary?.workLocation.summary)}
         >
-          {boundary?.workLocation.status === 'ok' ? <WorkLocationItems locale={locale} items={workLocationItems} shop={shop} /> : null}
+          {boundary?.workLocation.status === 'ok' ? <WorkLocationItems locale={locale} messages={messages} items={workLocationItems} shop={shop} /> : null}
         </BoundaryCard>
       </div>
     </div>
@@ -221,10 +222,9 @@ type Chip = { key: string; label: string; title?: string; href?: string; inShop?
 type ShopByNumber = Map<string, YardDispatchShopTruckDto>;
 
 /** Stage 6: a chip opens its Truck when the shop knows it; an open Work Order marks it (and sorts it first). */
-function shopChip(truckNumber: string, chip: Omit<Chip, 'href' | 'inShop'>, shop: ShopByNumber, locale: AdminLocale): Chip {
+function shopChip(truckNumber: string, chip: Omit<Chip, 'href' | 'inShop'>, shop: ShopByNumber, messages: AdminMessages): Chip {
   const truck = shop.get(truckNumber);
   if (!truck) return chip;
-  const messages = getAdminMessages(locale);
   return {
     ...chip,
     href: adminTruckHref(truck.truckId, DISPATCH_FROM),
@@ -235,14 +235,15 @@ function shopChip(truckNumber: string, chip: Omit<Chip, 'href' | 'inShop'>, shop
 
 function WorkLocationItems({
   locale,
+  messages,
   items,
   shop,
 }: {
   locale: AdminLocale;
+  messages: AdminMessages;
   items: YardWorkLocationItemDto[];
   shop: ShopByNumber;
 }) {
-  const messages = getAdminMessages(locale);
   if (!items.length) return <p className="px-4 py-3 text-muted-foreground">{messages.yardNoTrucksMatch}</p>;
   // LTR-103: group by reported status so 50+ rows read as a few lines.
   const groups = groupWorkLocations(items, messages.yardNoReportedLocation);
@@ -252,7 +253,7 @@ function WorkLocationItems({
         {groups.map((group) => (
           <li key={group.location} className="min-w-0 border-b px-4 py-3 last:border-b-0">
             <p className="mb-2 text-xs font-medium text-muted-foreground">{group.location} · {group.trucks.length}</p>
-            <ChipList locale={locale} chips={group.trucks.map((truck) => shopChip(truck, { key: truck, label: truck }, shop, locale))} />
+            <ChipList messages={messages} chips={group.trucks.map((truck) => shopChip(truck, { key: truck, label: truck }, shop, messages))} />
           </li>
         ))}
       </ul>
@@ -264,6 +265,7 @@ function WorkLocationItems({
 /** Arrivals and departures: the Truck, where the shop has it, and the date. */
 function MovementRows({
   locale,
+  messages,
   items,
   dateKey,
   shop,
@@ -271,13 +273,13 @@ function MovementRows({
   soonUntil = null,
 }: {
   locale: AdminLocale;
+  messages: AdminMessages;
   items: Array<YardIncomingTruckItemDto | YardUpcomingDepartureItemDto>;
   dateKey: 'returnDate' | 'outDate';
   shop: ShopByNumber;
   today?: string | null;
   soonUntil?: string | null;
 }) {
-  const messages = getAdminMessages(locale);
   const [showAll, setShowAll] = useState(false);
   if (!items.length) return <p className="px-4 py-3 text-muted-foreground">{messages.yardNoTrucksMatch}</p>;
   // Trucks the shop is working on first (stable otherwise).
@@ -327,8 +329,7 @@ function MovementRows({
   );
 }
 
-function ChipList({ locale, chips }: { locale: AdminLocale; chips: Chip[] }) {
-  const messages = getAdminMessages(locale);
+function ChipList({ messages, chips }: { messages: AdminMessages; chips: Chip[] }) {
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? chips : chips.slice(0, LIST_PREVIEW);
   return (

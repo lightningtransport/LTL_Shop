@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import { adminTruckHref, adminTruckOrigin, adminWorkOrderOrigin } from './admin-truck-origin';
 
 const en = getAdminMessages('en');

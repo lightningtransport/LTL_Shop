@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import { jobDisplayName } from './job-display-name';
 
 describe('jobDisplayName (LTR-188 / D23)', () => {

@@ -1,5 +1,6 @@
 import type { TruckDto } from '@ltl-shop/shared';
-import { getAdminMessages, type AdminLocale } from '@/lib/admin-messages';
+import type { AdminLocale } from '@/lib/admin-messages';
+import { TRUCK_INFORMATION_COPY } from '@/lib/truck-information-copy';
 import { formatIsoDate, formatMileage } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
@@ -20,7 +21,7 @@ export function TruckInformationFields({
   truck: TruckInformationTruck;
   locale: AdminLocale;
 }) {
-  const messages = getAdminMessages(locale);
+  const messages = TRUCK_INFORMATION_COPY[locale];
   return (
     <div className={truckInformationGridClass}>
       <Info label={messages.make} value={truck.make} />

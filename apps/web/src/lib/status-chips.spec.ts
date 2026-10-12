@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ActivityEventType, JobStatus, Priority, ReadinessPhase, WorkOrderStatus } from '@ltl-shop/shared';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import {
   adminActivityEventDetail,
   adminActivityEventLabel,
