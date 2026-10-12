@@ -80,9 +80,17 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   const pendingStep = useRef<DemoStep | null>(null);
   // The query string of the screen on view. `window.location.search` is stale during the render that follows
   // a navigation (Next updates history after it commits), so it is tracked here through the history API.
+  // Next calls pushState from an insertion effect, where React forbids scheduling updates: sync on the next tick.
   const [search, setSearch] = useState(() => (typeof window === 'undefined' ? '' : window.location.search));
   useEffect(() => {
-    const sync = () => setSearch(window.location.search);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const sync = () => {
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        setSearch(window.location.search);
+      }, 0);
+    };
     const { pushState, replaceState } = window.history;
     window.history.pushState = function patchedPushState(...args: Parameters<History['pushState']>) {
       pushState.apply(this, args);
@@ -95,6 +103,7 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
     window.addEventListener('popstate', sync);
     sync();
     return () => {
+      if (timer !== null) clearTimeout(timer);
       window.history.pushState = pushState;
       window.history.replaceState = replaceState;
       window.removeEventListener('popstate', sync);
