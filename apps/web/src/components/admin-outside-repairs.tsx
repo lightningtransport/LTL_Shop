@@ -6,7 +6,7 @@ import { Paperclip, Plus } from 'lucide-react';
 import { formatCents } from '@ltl-shop/shared';
 import { AdminNavLink } from './admin-nav-link';
 import { OutsideRepairForm } from './admin-outside-repair-form';
-import { Badge, Button, Card, CardContent, DataTable, EmptyState, Input, Label, LoadFailure, PageHeader, PageSkeleton, Select } from './ui';
+import { AdminFilterToolbar, Badge, Button, DataTable, EmptyState, Input, Label, LoadFailure, PageHeader, PageSkeleton, Select } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminOutsideRepairs, useAdminPurchaseFormData, useAdminVendors } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -14,6 +14,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { safeAdminPath } from '@/lib/admin-truck-origin';
 import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 const OUTSIDE_FILTERS = { q: '', vendorId: '', truckId: '', from: '', to: '', noFile: false };
 
@@ -28,11 +29,20 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
   const pathname = usePathname();
   const params = useSearchParams();
   const canWrite = useCanShowManagerWrites();
-  const { filters, set, clear, query, here, active: filtered } = useUrlFilters(OUTSIDE_FILTERS);
+  useDocumentTitle(messages.pcOutsideTitle);
+  const { filters, set, setMany, clear, query, here, active: filtered } = useUrlFilters(OUTSIDE_FILTERS);
   const [search, setSearch] = useDebouncedFilterText(filters.q, (next) => set('q', next));
   const { data, error, isLoading, mutate } = useAdminOutsideRepairs(query);
   const { data: formData } = useAdminPurchaseFormData(true);
   const { data: vendors } = useAdminVendors();
+  // PCA9 (UX-5-004): only vendors that do outside repairs; an inactive one stays only while it is the filter.
+  const vendorOptions = (vendors ?? []).filter((vendor) => (vendor.doesRepairs && vendor.active) || vendor.id === filters.vendorId);
+  // PCA13 (UX-5-008): the shared toolbar; on phones the fields live in a "Filters" sheet and apply together.
+  const [draft, setDraft] = useState({ vendorId: filters.vendorId, truckId: filters.truckId, from: filters.from, to: filters.to, noFile: filters.noFile });
+  useEffect(() => {
+    setDraft({ vendorId: filters.vendorId, truckId: filters.truckId, from: filters.from, to: filters.to, noFile: filters.noFile });
+  }, [filters.vendorId, filters.truckId, filters.from, filters.to, filters.noFile]);
+  const activeFilterCount = [filters.vendorId, filters.truckId, filters.from, filters.to].filter(Boolean).length + (filters.noFile ? 1 : 0);
   const [form, setForm] = useState<{ truckId?: string; jobId?: string } | null>(null);
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const ready = Boolean(formData && vendors);
@@ -52,39 +62,48 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
   return (
     <div className="space-y-6">
       <PageHeader title={messages.pcOutsideTitle} subtitle={messages.pcOutsideSubtitle} actions={newButton} />
-      <Card className="p-3">
-        <CardContent className="flex flex-wrap items-end gap-3">
-          <div className="min-w-56 flex-1">
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.pcSearchOutside} aria-label={messages.pcSearchOutside} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="outside-filter-vendor">{messages.pcFilterVendor}</Label>
-            <Select id="outside-filter-vendor" value={filters.vendorId} onChange={(event) => set('vendorId', event.target.value)}>
-              <option value="">{messages.pcAnyVendor}</option>
-              {(vendors ?? []).map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="outside-filter-truck">{messages.pcFilterTruck}</Label>
-            <Select id="outside-filter-truck" value={filters.truckId} onChange={(event) => set('truckId', event.target.value)}>
-              <option value="">{messages.pcAnyTruck}</option>
-              {(formData?.trucks ?? []).map((truck) => <option key={truck.id} value={truck.id}>{fillPlaceholders(messages.pcTruckLabel, { truck: truck.truckNumber })}</option>)}
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="outside-filter-from">{messages.pcFrom}</Label>
-            <Input id="outside-filter-from" type="date" value={filters.from} onChange={(event) => set('from', event.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="outside-filter-to">{messages.pcTo}</Label>
-            <Input id="outside-filter-to" type="date" value={filters.to} onChange={(event) => set('to', event.target.value)} />
-          </div>
-          <label className="flex min-h-11 items-center gap-2 text-sm">
-            <input type="checkbox" checked={filters.noFile} onChange={(event) => set('noFile', event.target.checked)} />
-            {messages.pcNoFileFilter}
-          </label>
-        </CardContent>
-      </Card>
+      <AdminFilterToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchLabel={messages.pcSearchOutside}
+        filtersLabel={messages.filters}
+        closeLabel={messages.closeDialog}
+        clearLabel={messages.pcClearFilters}
+        applyLabel={messages.searchAction}
+        activeFilterCount={activeFilterCount}
+        onClear={clear}
+        onSubmit={() => setMany(draft)}
+        filters={(
+          <>
+            <div className="space-y-1">
+              <Label htmlFor="outside-filter-vendor">{messages.pcFilterVendor}</Label>
+              <Select id="outside-filter-vendor" value={draft.vendorId} onChange={(event) => setDraft((current) => ({ ...current, vendorId: event.target.value }))}>
+                <option value="">{messages.pcAnyVendor}</option>
+                {vendorOptions.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.active ? vendor.name : `${vendor.name} ${messages.pcInactiveSuffix}`}</option>)}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="outside-filter-truck">{messages.pcFilterTruck}</Label>
+              <Select id="outside-filter-truck" value={draft.truckId} onChange={(event) => setDraft((current) => ({ ...current, truckId: event.target.value }))}>
+                <option value="">{messages.pcAnyTruck}</option>
+                {(formData?.trucks ?? []).map((truck) => <option key={truck.id} value={truck.id}>{fillPlaceholders(messages.pcTruckLabel, { truck: truck.truckNumber })}</option>)}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="outside-filter-from">{messages.pcFrom}</Label>
+              <Input id="outside-filter-from" type="date" value={draft.from} onChange={(event) => setDraft((current) => ({ ...current, from: event.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="outside-filter-to">{messages.pcTo}</Label>
+              <Input id="outside-filter-to" type="date" value={draft.to} onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))} />
+            </div>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input type="checkbox" checked={draft.noFile} onChange={(event) => setDraft((current) => ({ ...current, noFile: event.target.checked }))} />
+              {messages.pcNoFileFilter}
+            </label>
+          </>
+        )}
+      />
 
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.pcOutsideTitle} header={false} /> : null}

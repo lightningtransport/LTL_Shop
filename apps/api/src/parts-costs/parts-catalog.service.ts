@@ -204,11 +204,27 @@ export class PartsCatalogService {
   }
 
   async vendors(): Promise<AdminVendorDto[]> {
-    const vendors = await this.prisma.vendor.findMany({
-      orderBy: [{ active: 'desc' }, { name: 'asc' }],
-      include: { _count: { select: { parts: true } } },
+    const [vendors, purchases, repairs] = await Promise.all([
+      this.prisma.vendor.findMany({
+        orderBy: [{ active: 'desc' }, { name: 'asc' }],
+        include: { _count: { select: { parts: true } } },
+      }),
+      // PCA9 (UX-5-004): how much history each vendor has, so the row can open it.
+      this.prisma.partPurchase.groupBy({ by: ['vendorId'], where: { voidedAt: null }, _count: { _all: true }, _max: { invoiceDate: true } }),
+      this.prisma.outsideRepair.groupBy({ by: ['vendorId'], where: { voidedAt: null }, _count: { _all: true }, _max: { invoiceDate: true } }),
+    ]);
+    const bought = new Map(purchases.map((row) => [row.vendorId, row]));
+    const repaired = new Map(repairs.map((row) => [row.vendorId, row]));
+    return vendors.map(({ _count, createdById: _by, createdAt: _at, updatedAt: _up, ...vendor }) => {
+      const dates = [bought.get(vendor.id)?._max.invoiceDate, repaired.get(vendor.id)?._max.invoiceDate].filter((value): value is Date => Boolean(value));
+      return {
+        ...vendor,
+        partCount: _count.parts,
+        purchaseCount: bought.get(vendor.id)?._count._all ?? 0,
+        repairCount: repaired.get(vendor.id)?._count._all ?? 0,
+        lastInvoiceDate: dates.length ? new Date(Math.max(...dates.map((date) => date.getTime()))).toISOString().slice(0, 10) : null,
+      };
     });
-    return vendors.map(({ _count, createdById: _by, createdAt: _at, updatedAt: _up, ...vendor }) => ({ ...vendor, partCount: _count.parts }));
   }
 
   async createVendor(actor: AuthUser, raw: unknown) {

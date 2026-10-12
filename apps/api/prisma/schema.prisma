@@ -495,6 +495,8 @@ model WorkOrder {
   @@index([truckId, status])
   @@index([createdById])
   @@index([readinessAssessmentId])
+  @@index([updatedAt]) // PF10
+  @@index([status, completedAt]) // PF10
   @@map("work_orders")
 }
 
@@ -832,6 +834,9 @@ model TruckCostEntry {
 
   @@index([truckId, occurredOn])
   @@index([sourceType, sourceId])
+  @@index([reversesEntryId]) // PF10
+  @@index([workOrderId]) // PF10
+  @@index([vendorId]) // PF10
   @@map("truck_cost_entries")
 }
 
@@ -950,6 +955,9 @@ model WorkOrderJob {
   @@index([assignedMechanicId])
   @@index([helperOfJobId])
   @@index([workflowStepKey])
+  @@index([completedById]) // PF10
+  @@index([isCustom, reviewStatus]) // PF10
+  @@index([externalSince]) // PF10
   @@map("work_order_jobs")
 }
 
@@ -978,6 +986,7 @@ model WorkSession {
   @@index([workOrderId])
   @@index([workOrderId, userId])
   @@index([userId, endedAt])
+  @@index([endedAt]) // PF10
   @@map("work_sessions")
 }
 
@@ -1025,6 +1034,7 @@ model WorkOrderNote {
   handledBy User?     @relation("WorkRequestHandledBy", fields: [handledById], references: [id], onDelete: SetNull)
 
   @@index([workOrderId, createdAt])
+  @@index([kind, handledAt]) // PF10
   @@map("work_order_notes")
 }
 
@@ -1059,6 +1069,7 @@ model PauseEvent {
 
   @@index([workOrderId])
   @@index([jobId])
+  @@index([workOrderId, isOfficialPause, resolvedAt]) // PF10
   @@map("pause_events")
 }
 
@@ -1094,6 +1105,8 @@ model ActivityLog {
   user      User       @relation(fields: [userId], references: [id])
 
   @@index([workOrderId, createdAt])
+  @@index([userId, createdAt]) // PF10
+  @@index([entityType, eventType, createdAt]) // PF10
   @@map("activity_logs")
 }
 

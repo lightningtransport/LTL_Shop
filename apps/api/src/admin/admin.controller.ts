@@ -74,7 +74,8 @@ export class AdminController {
     const detail = await this.admin.detail(id);
     // LTR-200 / D-PC7: money is for the Shop Manager and the System Admin only.
     if (canDoManagerWrites(request.user)) return detail;
-    return { ...detail, jobs: detail.jobs.map(({ outsideInvoices: _invoices, ...job }) => job) };
+    const { costs: _costs, ...rest } = detail;
+    return { ...rest, jobs: detail.jobs.map(({ outsideInvoices: _invoices, ...job }) => job) };
   }
 
   @Patch('work-orders/:id')

@@ -40,6 +40,20 @@ export function useUrlFilters<T extends Record<string, FilterValue>>(defaults: T
     [searchParams, replace],
   );
 
+  /** Several filters at once (the phone's Filters sheet applies them together). */
+  const setMany = useCallback(
+    (values: Partial<T>) => {
+      const next = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(values)) {
+        if (value === undefined) continue;
+        if (value === '' || value === false) next.delete(key);
+        else next.set(key, value === true ? '1' : String(value));
+      }
+      replace(next);
+    },
+    [searchParams, replace],
+  );
+
   const clear = useCallback(() => {
     const next = new URLSearchParams(searchParams.toString());
     for (const key of Object.keys(defaults)) next.delete(key);
@@ -66,7 +80,7 @@ export function useUrlFilters<T extends Record<string, FilterValue>>(defaults: T
     return `${pathname}${params.size ? `?${params}` : ''}`;
   }, [filters, pathname]);
 
-  return { filters, set, clear, query, here, active: Boolean(query) };
+  return { filters, set, setMany, clear, query, here, active: Boolean(query) };
 }
 
 /**

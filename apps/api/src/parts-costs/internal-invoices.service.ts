@@ -52,7 +52,12 @@ export class InternalInvoicesService {
   async list(raw: unknown): Promise<AdminInternalInvoiceSummaryDto[]> {
     const query = parse(adminInternalInvoicesQuerySchema, raw);
     const rows = await this.prisma.internalInvoice.findMany({
-      where: { ...(query.status ? { status: query.status } : {}), ...(query.truckId ? { truckId: query.truckId } : {}) },
+      where: {
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.truckId ? { truckId: query.truckId } : {}),
+        // PCA14 (UX-5-009): one month.
+        ...(query.month ? { periodStart: new Date(`${query.month}-01T00:00:00.000Z`) } : {}),
+      },
       include: invoiceInclude,
       orderBy: [{ periodStart: 'desc' }, { createdAt: 'desc' }],
       take: 300,
@@ -153,9 +158,11 @@ export class InternalInvoicesService {
 
   async send(actor: AuthUser, id: string) {
     return this.prisma.$transaction(async (tx) => {
+      // PCA15: the lock comes first, so two sends of the same draft at the same moment cannot both pass the draft check
+      // and number it twice.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('internal-invoice-number'))`;
       const row = await this.draft(tx, id);
       if (!row.lines.some((line) => line.active)) throw new BadRequestException({ code: 'INVOICE_EMPTY', message: 'Put at least one line on the invoice before sending it.' });
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('internal-invoice-number'))`;
       const year = new Date().getUTCFullYear();
       const last = await tx.internalInvoice.findFirst({ where: { number: { startsWith: `SHOP-${year}-` } }, orderBy: { number: 'desc' }, select: { number: true } });
       const next = (last?.number ? Number(last.number.slice(-4)) : 0) + 1;
@@ -257,7 +264,8 @@ export class InternalInvoicesService {
       periodEnd: dateOnly(row.periodEnd),
       status: row.status as InternalInvoiceStatus,
       totalCents: row.totalCents,
-      lineCount: row.lines.filter((line) => line.active).length,
+      // A voided invoice keeps saying how many lines it had (PCA14); its lines are inactive so another invoice can take them.
+      lineCount: row.status === 'void' ? row.lines.length : row.lines.filter((line) => line.active).length,
       sentAt: row.sentAt?.toISOString() ?? null,
     };
   }

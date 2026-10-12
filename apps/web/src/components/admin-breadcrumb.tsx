@@ -16,6 +16,19 @@ export function useAdminCrumbs() {
   return useContext(BreadcrumbContext)?.crumbs ?? null;
 }
 
+/**
+ * PCA11 (UX-5-006): the browser tab says which screen it is ("FP-48840 · FleetPride — Purchases"), so two tabs with two
+ * purchases can be told apart. Restores the layout's title when the screen closes.
+ */
+export function useDocumentTitle(title: string | null) {
+  useEffect(() => {
+    if (!title) return undefined;
+    const previous = document.title;
+    document.title = `${title} — Lightning Shop`;
+    return () => { document.title = previous; };
+  }, [title]);
+}
+
 /** A detail page names itself in the top bar while it is open, e.g. `[{ label: 'Work Orders', href }, { label: 'WO-010' }]`. */
 export function useAdminBreadcrumb(crumbs: Crumb[] | null) {
   const context = useContext(BreadcrumbContext);
