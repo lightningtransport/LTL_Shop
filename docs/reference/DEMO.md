@@ -220,7 +220,7 @@ Algunas visitas de la historia tienen Jobs que no están en el catálogo, escrit
   Los números son `SHOP-AAAA-NNNN`. El PDF se descarga desde la factura.
 
 ## Video de introducción
-Un video de 44 s, "A day at the shop", para mostrar antes de entrar al link de la demo (D39). Abre con el loader de Lightning dibujando el logo y la promesa "Every truck. Every mechanic. Every dollar. One app.". Siguen 8 escenas en el orden del Demo flow, de 6:00 AM a 4:30 PM: Dashboard, Yard, el mecánico en su teléfono, un blocker, Quality Check, Ready to Go, costos por camión y Month close. Cada escena lleva rol y un título que dice lo que gana el taller, y dura unos 4.3 s para que se alcance a leer. Está en 1080p, sin audio, y usa pantallas reales de esta demo.
+Un video de 44 s, "A day at the shop", para mostrar antes de entrar al link de la demo (D39). Abre con el loader de Lightning dibujando el logo y la promesa "Every truck. Every mechanic. Every dollar. One app.". Siguen 8 escenas en el orden del Demo flow, de 8:00 AM a 4:45 PM: Dashboard, Yard, el mecánico en su teléfono, un blocker, Quality Check, Ready to Go, costos por camión y Month close. Cada escena lleva rol y un título que dice lo que gana el taller, y dura unos 4.3 s para que se alcance a leer. Está en 1080p, sin audio, y usa pantallas reales de esta demo.
 
 Se rehace con un comando, con la demo levantada: `DEMO_VIDEO_BASE_URL=http://localhost:3042 npm run demo:video --workspace=@ltl-shop/web`. El resultado sale en `apps/web/e2e/demo-video/out/`. Los detalles y cómo cambiar textos u orden están en `apps/web/e2e/demo-video/README.md`.
 
