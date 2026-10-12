@@ -47,9 +47,9 @@ Dónde no existe: en producción. El panel se monta solo donde está Dev Login (
 
 Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de las 5:00 p.m., recordar que el cierre del día corta los relojes de hoy.
 
-### Demo flow: "A day at the shop" (14 capítulos, 49 pasos)
+### Demo flow: "A day at the shop" (15 capítulos, 56 pasos)
 
-Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a su primer paso) y la tarjeta dice "Chapter n of 14 · título" sobre "Step n of 49". Los pasos son los mismos ya ensayados de las historias; el orden evita que un capítulo rompa uno posterior (el bloqueo del 605 se resuelve una sola vez, el 606 queda para el respaldo de QC, el 931 se cierra después de que QC1 aprueba el 616).
+Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a su primer paso) y la tarjeta dice "Chapter n of 15 · título" sobre "Step n of 56". Los pasos son los mismos ya ensayados de las historias; el orden evita que un capítulo rompa uno posterior (el bloqueo del 605 se resuelve una sola vez, el 606 queda para el respaldo de QC, el 931 se cierra después de que QC1 aprueba el 616).
 
 | # | Capítulo | Cuenta(s) | Camiones | Pasos | Muta datos |
 |---|---|---|---|---|---|
@@ -64,9 +64,12 @@ Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a
 | 9 | Detailing: the team queue and a helper | MD | 957, 612 | 2 | sí (Take) |
 | 10 | Quality Check: take, approve, return; the backup | QC1, QC2, MS | 616, 922, 905 | 6 | sí |
 | 11 | Close, Ready to Go, Return to Service; the whole shop | MS | 931, 607, Yard | 5 | sí |
-| 12 | Outside shop, costs and Finance | MS | 611, 603 | 5 | no |
-| 13 | Admin: correct time, people, catalog | AS | 617 | 4 | sí (Correct…) |
-| 14 | Setup: the shop workflow and the hours | MS | — | 2 | no |
+| 12 | Purchases and outside repairs: the cost lands on the truck | MS | 605, 612, 611 | 6 | sí (carga una compra y una reparación externa) |
+| 13 | Month close: the internal invoice for Finance | MS | todos los del mes pasado | 6 | sí (Make draft, Create drafts for all, Send) |
+| 14 | Admin: correct time, people, catalog | AS | 617 | 4 | sí (Correct…) |
+| 15 | Setup: the shop workflow and the hours | MS | — | 2 | no |
+
+Capítulos 12 y 13 (D39, DP1): Parts & costs se usa, no solo se mira. En el 12 se carga una compra de FleetPride al 605 con dos líneas, impuesto y flete, se ve en Costos del 605, y se carga una reparación externa sin Job (DPF en Diesel Pro, camión 612); el número de factura es libre, pero el mismo número para el mismo proveedor se rechaza (si alguien ya lo usó hoy, otro número). En el 13, Month close (el mes pasado, unos 20 camiones por cobrar con la base recién armada) arma un borrador, luego "Create drafts for all", y se envía uno con su PDF.
 
 ### Historias guiadas: cuentas, camiones y pantallas
 

@@ -69,8 +69,8 @@ describe('demo stories (D36)', () => {
 
   it('has a demo flow with chapters that visits every account and reuses rehearsed steps', () => {
     const chapters = storyChapters(DEMO_FLOW);
-    expect(chapters.length).toBe(14);
-    expect(DEMO_FLOW.steps.length).toBe(49);
+    expect(chapters.length).toBe(15);
+    expect(DEMO_FLOW.steps.length).toBe(56);
     for (const chapter of chapters) expect(chapter.to, chapter.title).toBeGreaterThanOrEqual(chapter.from);
     const users = new Set(DEMO_FLOW.steps.map((step) => step.user));
     for (const member of DEMO_CAST) expect(users.has(member.key), member.key).toBe(true);
