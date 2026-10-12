@@ -315,7 +315,7 @@ export const DEMO_STORIES: DemoStory[] = [
       { user: manager, target: { kind: 'adminTruck', unit: '611', tab: 'costs' }, title: 'Truck → Costs',
         do: 'Change the period (This month, Last 3 months, This year, All time). Show Parts, Outside repairs and Total, the bars per month, and the movements: the body shop repair and the voided purchase as a negative reversal.',
         say: 'Reversals appear negative and lower the total; nothing is deleted.',
-        expect: 'Outside repair $685.00; TP-48618 voided as -$189.00.' },
+        expect: 'Outside repair $685.00; the voided TruckPro purchase as -$189.00 (its number changes with each build).' },
     ],
   },
   {
@@ -568,12 +568,19 @@ export const DEMO_FLOW: DemoStory = {
     ...pick('5 · A blocker: the mechanic reports, the Manager resolves', 'HU-ME3', [0, 1, 2, 3]),
     ...pick('6 · Pause and resume; cancel and reopen', 'HU-M4', [3]),
     ...pick('6 · Pause and resume; cancel and reopen', 'HU-M6', [0, 1]),
-    ...pick('7 · Alignment: start and finish', 'HU-ME2', [0, 1, 2]),
-    ...pick('8 · PM: mileage, parts, finish', 'HU-PM1', [0, 1]),
+    ...pick('7 · Alignment: start and finish', 'HU-ME2', [0], {
+      say: 'MA does the alignments of every truck. Their clock still runs on 609 since the Manager resumed it: Start Work on 603 moves it.',
+    }),
+    ...pick('7 · Alignment: start and finish', 'HU-ME2', [1, 2]),
+    ...pick('8 · PM: mileage, parts, finish', 'HU-PM1', [0], {
+      do: 'Show "Active PM services" (968) and "Waiting for PM" most urgent first with "Last PM: miles · date" on each truck (973, born in chapter 2, is already there).',
+      expect: '968 active; the waiting list most urgent first.',
+    }),
+    ...pick('8 · PM: mileage, parts, finish', 'HU-PM1', [1]),
     ...pick('9 · Detailing: the team queue and a helper', 'HU-M8', [2], {
       user: 'MD',
       title: 'The team queue, as MD',
-      do: 'Show "Team queue · 1" with 957 Detailing: MG1 sees the same card. Tap Take: it becomes MD\'s Job and leaves MG1\'s queue.',
+      do: 'Show the Team queue: 957 Detailing and 973 (the truck from chapter 2); MG1 sees the same cards. Tap Take on 957: it becomes MD\'s Job and leaves MG1\'s queue.',
       say: 'A step with a team of two is not assigned to anyone: the first one who takes it owns it. "Let go" returns it to the queue unless a clock runs on that truck.',
       expect: '957 in the Team queue with Take.',
       mutates: true,

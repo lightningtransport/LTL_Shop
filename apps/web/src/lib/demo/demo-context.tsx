@@ -78,6 +78,31 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pendingStep = useRef<DemoStep | null>(null);
+  // The query string of the screen on view. `window.location.search` is stale during the render that follows
+  // a navigation (Next updates history after it commits), so it is tracked here through the history API.
+  const [search, setSearch] = useState(() => (typeof window === 'undefined' ? '' : window.location.search));
+  useEffect(() => {
+    const sync = () => setSearch(window.location.search);
+    const { pushState, replaceState } = window.history;
+    window.history.pushState = function patchedPushState(...args: Parameters<History['pushState']>) {
+      pushState.apply(this, args);
+      sync();
+    };
+    window.history.replaceState = function patchedReplaceState(...args: Parameters<History['replaceState']>) {
+      replaceState.apply(this, args);
+      sync();
+    };
+    window.addEventListener('popstate', sync);
+    sync();
+    return () => {
+      window.history.pushState = pushState;
+      window.history.replaceState = replaceState;
+      window.removeEventListener('popstate', sync);
+    };
+  }, []);
+  useEffect(() => {
+    setSearch(window.location.search);
+  }, [pathname]);
 
   useEffect(() => {
     const sync = () => setState(readDemoState());
@@ -251,9 +276,8 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
     if (resolved === null || typeof resolved !== 'string') return null;
     const stepUser = castMember(step.user).email;
     if (user?.email.toLowerCase() !== stepUser) return false;
-    const current = typeof window === 'undefined' ? pathname : `${pathname}${window.location.search}`;
-    return current === resolved;
-  }, [step, state.started, resolvedPathOf, user?.email, pathname]);
+    return `${pathname}${search}` === resolved;
+  }, [step, state.started, resolvedPathOf, user?.email, pathname, search]);
 
   const value = useMemo<DemoMode>(
     () => ({
