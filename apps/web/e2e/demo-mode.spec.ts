@@ -112,19 +112,19 @@ test.describe('D36 demo mode', () => {
 
     await panel.getByRole('combobox', { name: 'Story' }).selectOption('FLOW');
     const card = panel.getByTestId('demo-step');
-    await expect(card).toContainText('Ready · 49 steps');
-    await expect(card).toContainText('Chapter 1 of 14 · Start of the day');
+    await expect(card).toContainText('Ready · 56 steps');
+    await expect(card).toContainText('Chapter 1 of 15 · Start of the day');
     // Chapter 1 is MG3's: Start switches the account (page replaced) and lands on the mechanic home.
     await card.getByRole('button', { name: /^Start as MG3/ }).click();
     await page.waitForURL(/\/mechanic\/standard$/, { timeout: 30_000 });
     await expect(page.getByRole('button', { name: 'Open profile for MG3 · Mecánico General' })).toBeVisible({ timeout: 15_000 });
-    await expect(panel.getByTestId('demo-step')).toContainText('Chapter 1 of 14');
+    await expect(panel.getByTestId('demo-step')).toContainText('Chapter 1 of 15');
 
-    // The chapter list jumps: chapter 14 is the Manager's Shop workflow.
-    await panel.getByText(/^Chapters · 14/).click();
-    await panel.getByRole('button', { name: /^14 · Setup/ }).click();
+    // The chapter list jumps: chapter 15 is the Manager's Shop workflow.
+    await panel.getByText(/^Chapters · 15/).click();
+    await panel.getByRole('button', { name: /^15 · Setup/ }).click();
     await page.waitForURL(/\/admin\/setup\/workflow$/, { timeout: 30_000 });
-    await expect(panel.getByTestId('demo-step')).toContainText('Chapter 14 of 14');
+    await expect(panel.getByTestId('demo-step')).toContainText('Chapter 15 of 15');
   });
 
   test('a saved state reopens the panel after a sign-in', async ({ page }) => {
