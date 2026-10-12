@@ -142,11 +142,10 @@ bien protegidos en datos. Lo que falta no es una pantalla sino **los eslabones e
 volver a donde estaba, el Job que ya regresó, saber si algo ya se cobró, y el mes como unidad.
 
 ## 8. Pendientes
-- **Supuesto:** el Manager carga facturas sentado, con la computadora. **Preguntar al dueño** si
-  también quiere cargarlas desde el teléfono (foto de la factura en el mostrador). Cambia la
-  severidad de UX-5-007 y decide UX-10-008.
-- **Preguntar al dueño:** cuántos camiones se facturan por mes a Finanzas (decide UX-10-006) y si
-  Finanzas acepta que una factura de septiembre traiga costos de junio (UX-10-003).
-- **Preguntar al dueño:** si "¿cuánto costó esta WO?" es una pregunta que se hace (UX-10-007).
+- **Decidido el 2026-10-12 (D37):** las facturas se cargan en la computadora (UX-10-008 cerrada,
+  UX-5-008 queda en 2); el cierre a Finanzas se hace por mes con una vista de todos los camiones
+  (UX-10-006 → PCA16, por construir); Finanzas acepta el arrastre separado como "Carried over"
+  (UX-10-003); las compras no se atan a la WO (UX-10-007 cerrada: los costos de partes son por
+  camión y fecha).
 - **No verificado:** el flujo del archivo adjunto (sin Storage en la demo); el Job que **ya volvió**
   sin factura (la demo no trae uno; se infiere del código).
