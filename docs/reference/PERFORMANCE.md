@@ -152,3 +152,54 @@ wait on it. This change stays in `apps/web`.
   replaces an indefinite skeleton.
 - Manifest/icons/`viewport-fit=cover` so iOS splash matches the navy shell.
   No service worker was added.
+
+## Línea base — 2026-10-12 (revisión de velocidad y "feel")
+
+Hallazgos y plan en `docs/OPEN_ISSUES.md` §1s (PF1–PF14, P19–P22). Esta
+sección guarda las medidas de partida para comparar cada PR.
+
+### Producción, desde la red del dueño (`curl -w`, mañana del 2026-10-12)
+
+La red local era ruidosa esa mañana (`google.com` 0.4–0.9 s, un `connect` de
+35 s a Vercel), así que los absolutos no son comparables con 2026-08; sirven
+los relativos y las cabeceras.
+
+| Sonda | Observado |
+| --- | --- |
+| API `/api/health`, conexión nueva cada vez | 1.3–1.9 s total; `Server-Timing: app;dur=0.4` (la app tarda < 1 ms; el resto es red y enrutamiento `iad1::pdx1`) |
+| API `/api/health`, 4 peticiones por la misma conexión | 0.40–0.49 s las cuatro (≈ 0.1 s cada una tras el primer handshake) |
+| API `/api/auth/me` sin token (401 esperado) | 1.4–3.3 s |
+| Web `/login` | 0.75–1.2 s total, ttfb 0.72–0.78 s |
+| `OPTIONS /api/work-orders` (preflight CORS) | 204 en ≈ 1.0 s; **sin `Access-Control-Max-Age`** → el navegador lo repite cada ~5 s (PF8) |
+
+### Build de producción (`next build`, rama de la revisión, antes de cambios)
+
+| Ruta | First Load JS |
+| --- | --- |
+| Compartido por todas las páginas | **225 kB** (reportado por Next) · 343 kB gz sumando los chunks del layout |
+| `/`, `/mechanic/*` | 342–348 kB |
+| `/work-orders/[id]` | 419 kB |
+| `/admin` | 413 kB |
+| `/admin/work-orders` · `/admin/work-orders/[id]` | 411 · 441 kB |
+| `/admin/trucks` · `/admin/trucks/[id]` | 389 · 448 kB |
+| `/admin/yard-operations` | 401 kB |
+| `/admin/parts/*` | 371–388 kB |
+| Middleware | 99.6 kB |
+
+Qué llena el compartido (gz): Sentry núcleo 130 kB + Sentry Replay 38 kB +
+runtime 54 kB; chunk `773` 63 kB con código propio **incluidos los guiones del
+demo** ("A day at the shop", PF11); chunk `8018` 51 kB con radix y lucide. El
+chunk `336` (42 kB gz) que comparten las páginas admin lleva el catálogo
+`admin-messages` en ambos idiomas (PF12). En 2026-08 una ruta autenticada
+pesaba 133–135 kB.
+
+### Viajes por interacción (leídos del código; a confirmar en el panel de red)
+
+| Interacción | Hoy |
+| --- | --- |
+| Clic en la barra lateral del Admin | middleware → `GET /api/admin/access` (edge → pdx1) → RSC → hidratar → preflight + `GET` de la lista |
+| Acción en un Work Order (Admin) | preflight + `POST` → **descarta la respuesta** → preflight + `GET` detalle → toast |
+| Volver a una lista del Admin con datos en cache | esqueleto completo hasta que vuelve la lista |
+| Abrir el Yard | boundary + lista sin `soonTrucks` → lista otra vez con `soonTrucks` (dos esqueletos) |
+| Home del mecánico tras recargar | token → `/me` (y `POST /api/admin/session` que llama `/me` otra vez) → `GET /api/work-orders` |
+| Cada lectura al API desde el navegador | preflight `OPTIONS` + `GET` (sin `max-age`) |
