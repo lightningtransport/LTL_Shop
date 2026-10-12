@@ -17,7 +17,7 @@ para entender por qué se decidió algo, nunca para saber cómo funciona hoy.
 | [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md) | Paso a paso para salir en vivo (fases 0–8, quién hace qué). |
 | [`design-system/`](design-system/README.md) | Tokens, componentes, patrones y glosario EN/ES. |
 | [`proposals/`](proposals/wo-detail-redesign/README.md) | Propuestas de diseño con maqueta: [Work Order Detail](proposals/wo-detail-redesign/README.md), [Truck Detail](proposals/truck-detail-redesign/README.md), [Dashboard y Yard](proposals/dashboard-yard-redesign/README.md) y el [Modo demo local](proposals/demo-mode/README.md) (D36). |
-| [`ux-audit/`](ux-audit/admin-truck-wo/00-contexto.md) | Auditorías UX con las skills `audit-ux-*`: [Truck ↔ Work Order](ux-audit/admin-truck-wo/00-contexto.md), [Dashboard y Yard](ux-audit/admin-dashboard-yard/00-contexto.md), [Setup](ux-audit/admin-setup/00-contexto.md), [mecánico general](ux-audit/mecanico-general/00-contexto.md), [PM](ux-audit/mecanico-pm/00-contexto.md), [Safety](ux-audit/safety-qc/00-contexto.md) y el [modo demo](ux-audit/demo-mode/09-informe-final.md). |
+| [`ux-audit/`](ux-audit/admin-truck-wo/00-contexto.md) | Auditorías UX con las skills `audit-ux-*`: [Truck ↔ Work Order](ux-audit/admin-truck-wo/00-contexto.md), [Dashboard y Yard](ux-audit/admin-dashboard-yard/00-contexto.md), [Setup](ux-audit/admin-setup/00-contexto.md), [Parts & costs](ux-audit/admin-parts-costs/00-contexto.md), [mecánico general](ux-audit/mecanico-general/00-contexto.md), [PM](ux-audit/mecanico-pm/00-contexto.md), [Safety](ux-audit/safety-qc/00-contexto.md) y el [modo demo](ux-audit/demo-mode/09-informe-final.md). |
 
 ### Referencia técnica (`reference/`)
 
