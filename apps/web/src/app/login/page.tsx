@@ -19,6 +19,7 @@ import { apiErrorMessage } from '@/lib/api-error-message';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { DEMO_MODE_AVAILABLE, DEV_LOGIN_ENABLED } from '@/lib/dev-login';
 import { DEFAULT_DEMO_STATE, writeDemoState } from '@/lib/demo/state';
+import { shopLocaleCookieWrite } from '@/lib/shop-locale';
 import { LoginLoader } from '@/components/login-loader';
 
 export default function LoginPage() {
@@ -93,7 +94,11 @@ export default function LoginPage() {
     setError(null);
     try {
       const signedInUser = await loginDev(email);
-      if (enterDemo) writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, panelOpen: true, welcome: true });
+      if (enterDemo) {
+        // D39 (DP2): the demo opens on the guided flow ('FLOW', DEMO_FLOW in lib/demo/scripts: kept out of this bundle), in English (the script quotes the English labels, UX-3-008).
+        writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, panelOpen: true, welcome: true, storyId: 'FLOW' });
+        document.cookie = shopLocaleCookieWrite('en');
+      }
       navigationStarted.current = true;
       replaceAppLocation(postLoginPath(signedInUser, requestedPath()), router, { scroll: true });
     } catch (err) {

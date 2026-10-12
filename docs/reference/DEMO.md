@@ -47,6 +47,12 @@ Dónde no existe: en producción. El panel se monta solo donde está Dev Login (
 
 Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de las 5:00 p.m., recordar que el cierre del día corta los relojes de hoy.
 
+### Guía paso a paso (D39, DP2)
+
+Al entrar a la demo, el panel ya tiene elegido "A day at the shop" y la app queda en inglés. **Start** abre la primera pantalla y, en cada paso, la pantalla se oscurece salvo lo que hay que tocar o mirar, con un globo que lo dice. Tocar lo iluminado apaga la luz y hace pulsar **Next** ("Done here? Tap Next"). En los pasos de dos toques (Resolve → Confirm resolve, Confirm completion → Close Work Order, New purchase → Save purchase…) se ilumina el segundo. Los pasos que son un solo toque (Start Work, Make draft, Create drafts for all) pasan solos al siguiente. Dentro de un formulario solo se marca el botón, sin oscurecer, para poder llenar los campos. "Got it" apaga la luz sin tocar nada. En teléfono el panel es una barra inferior con el paso y Back/Next; **More** muestra cuentas, historias y capítulos.
+
+Qué ilumina cada paso está en `SPOTLIGHTS` (`apps/web/src/lib/demo/scripts.ts`), por historia y número de paso, con el texto en inglés del botón o un selector. No hay marcas de demo en las pantallas del producto. Si un texto de la app cambia, el paso deja de iluminar (el panel sigue funcionando): la prueba `scripts.spec.ts` exige que todo paso del flujo tenga su luz, y la e2e de demo comprueba una.
+
 ### Demo flow: "A day at the shop" (15 capítulos, 56 pasos)
 
 Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a su primer paso) y la tarjeta dice "Chapter n of 15 · título" sobre "Step n of 56". Los pasos son los mismos ya ensayados de las historias; el orden evita que un capítulo rompa uno posterior (el bloqueo del 605 se resuelve una sola vez, el 606 queda para el respaldo de QC, el 931 se cierra después de que QC1 aprueba el 616).

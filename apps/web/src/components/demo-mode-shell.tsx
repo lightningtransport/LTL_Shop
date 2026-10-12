@@ -2,6 +2,7 @@
 
 import { DemoModeProvider } from '@/lib/demo/demo-context';
 import { DemoPanel } from './demo-panel';
+import { DemoSpotlight } from './demo-spotlight';
 
 /** The demo provider and panel together, so one chunk carries both (see demo-mode.tsx). */
 export function DemoModeShell({ children }: { children: React.ReactNode }) {
@@ -9,6 +10,7 @@ export function DemoModeShell({ children }: { children: React.ReactNode }) {
     <DemoModeProvider>
       {children}
       <DemoPanel />
+      <DemoSpotlight />
     </DemoModeProvider>
   );
 }

@@ -31,6 +31,9 @@ test.describe('D36 demo mode', () => {
 
     const panel = page.getByRole('complementary', { name: 'Demo panel' });
     await expect(panel).toBeVisible({ timeout: 15_000 });
+    // D39 (DP2): the demo opens on the guided flow; with no story the account list is open.
+    await expect(panel.getByTestId('demo-step')).toContainText('Ready · 56 steps');
+    await panel.getByRole('combobox', { name: 'Story' }).selectOption('');
     await expect(panel.getByRole('button', { name: /^MS/ })).toHaveAttribute('aria-pressed', 'true');
 
     // A user button loads that account's home from scratch (new document, new cookie).
@@ -100,6 +103,8 @@ test.describe('D36 demo mode', () => {
     await page.reload();
     await expect(panel.getByTestId('demo-step')).toContainText('Step 2 of 5', { timeout: 15_000 });
 
+    // On a phone a started story keeps the panel to the step and Back/Next (UX-1-010); "More" shows the rest.
+    await panel.getByRole('button', { name: 'More' }).click();
     await panel.getByRole('combobox', { name: 'Story' }).selectOption('');
     await expect(panel.getByTestId('demo-step')).toHaveCount(0);
   });
@@ -120,11 +125,19 @@ test.describe('D36 demo mode', () => {
     await expect(page.getByRole('button', { name: 'Open profile for MG3 · Mecánico General' })).toBeVisible({ timeout: 15_000 });
     await expect(panel.getByTestId('demo-step')).toContainText('Chapter 1 of 15');
 
-    // The chapter list jumps: chapter 15 is the Manager's Shop workflow.
+    // The chapter list jumps: chapter 15 is the Manager's Shop workflow. On a phone it is under "More".
+    await panel.getByRole('button', { name: 'More' }).click();
     await panel.getByText(/^Chapters · 15/).click();
     await panel.getByRole('button', { name: /^15 · Setup/ }).click();
     await page.waitForURL(/\/admin\/setup\/workflow$/, { timeout: 30_000 });
     await expect(panel.getByTestId('demo-step')).toContainText('Chapter 15 of 15');
+    // D39 (DP2): the step lights up what to look at, with a bubble that says it; "Got it" puts it out and points at Next.
+    const bubble = page.locator('[data-demo-spotlight="bubble"]');
+    await expect(page.locator('[data-demo-spotlight="ring"]')).toBeVisible({ timeout: 15_000 });
+    await expect(bubble).toContainText('Each step and its team');
+    await bubble.getByRole('button', { name: 'Got it' }).click();
+    await expect(page.locator('[data-demo-spotlight="ring"]')).toHaveCount(0);
+    await expect(panel.getByText('Done here? Tap Next for the next step.')).toBeVisible();
   });
 
   test('a saved state reopens the panel after a sign-in', async ({ page }) => {
