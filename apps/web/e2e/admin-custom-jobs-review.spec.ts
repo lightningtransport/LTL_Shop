@@ -6,7 +6,7 @@ const group = (name: string, extra: Record<string, unknown> = {}) => ({
   categoryId: '00000000-0000-4000-8000-00000000e001', categoryName: 'Electrical & Starting', nameNorm: name.toLowerCase().replace(/[^a-z0-9]/g, ''),
   displayName: name, otherNames: [], count: 1, lastAddedAt: '2026-10-08T15:00:00.000Z',
   workOrders: [{ id: 'wo1', displayId: 'WO-001', truckNumber: '601' }], descriptions: ['Cable under the dash'],
-  status: 'pending_review', mappedTo: null, suggestions: [], ...extra,
+  status: 'pending_review', mappedTo: null as { id: string; displayName: string } | null, suggestions: [], ...extra,
 });
 
 test('manager ties a group to its catalog Job, adds another, keeps a one-off and undoes it', async ({ page }) => {
