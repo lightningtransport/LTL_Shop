@@ -30,6 +30,7 @@ import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
+import { workOrderDetailFromResult } from '@/lib/admin-mutation-result';
 import { useCategories } from '@/lib/shop-data';
 import { useActionToast } from './action-toast';
 import {
@@ -190,8 +191,10 @@ export function AdminWorkOrderDetail({
     setPendingAction(action);
     setFeedback(null);
     try {
-      await operation();
-      await mutate();
+      const result = await operation();
+      // PF2: every Work Order action answers with the Work Order as the API now sees it; that is the same
+      // document GET would return, so it goes straight to the cache and the screen updates without a second trip.
+      await applyWorkOrderResult(result);
       void mutateRelated(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
       // LTR-168: success is the toast only (the status badge shows the result); errors also stay inline.
       showToast('success', successMessage);
@@ -202,6 +205,12 @@ export function AdminWorkOrderDetail({
     } finally {
       setPendingAction(null);
     }
+  }
+
+  async function applyWorkOrderResult(result: unknown) {
+    const next = workOrderDetailFromResult(result, id);
+    if (next) await mutate(next, { revalidate: false });
+    else await mutate();
   }
 
   // Stage 2: refresh this Work Order and the lists after an action done by a shared component.
@@ -215,7 +224,7 @@ export function AdminWorkOrderDetail({
     setPendingAction('time');
     setFeedback(null);
     try {
-      await correctAdminTime({
+      const result = await correctAdminTime({
         workOrderId: data!.id,
         targetType: segment.targetType,
         targetId: segment.id,
@@ -224,7 +233,8 @@ export function AdminWorkOrderDetail({
         startedAt: input.startedAt,
         endedAt: input.endedAt,
       });
-      await refreshAfterAction();
+      await applyWorkOrderResult(result);
+      void mutateRelated(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
       showToast('success', messages.timeCorrectionSuccess);
       return true;
     } catch (failure) {
@@ -467,8 +477,9 @@ export function AdminWorkOrderDetail({
                     const body = draftNotes.trim();
                     if (!body) return;
                     void runMutation('add-note', messages.noteAddedSuccess, async () => {
-                      await addAdminWorkOrderNote(data.id, body);
+                      const result = await addAdminWorkOrderNote(data.id, body);
                       setDraftNotes('');
+                      return result;
                     }, () => messages.noteAddFailed);
                   }}
                 >
@@ -564,9 +575,7 @@ export function AdminWorkOrderDetail({
                     type="button"
                     className="flex-1"
                     disabled={Boolean(pendingAction)}
-                    onClick={() => void runMutation('fields', messages.fieldUpdatesSuccess, async () => {
-                      await patchAdminWorkOrder(data.id, { expectedVersion: data.version, priority: draftPriority });
-                    }, (failure) => fieldUpdateError(failure, messages))}
+                    onClick={() => void runMutation('fields', messages.fieldUpdatesSuccess, () => patchAdminWorkOrder(data.id, { expectedVersion: data.version, priority: draftPriority }), (failure) => fieldUpdateError(failure, messages))}
                   >
                     {pendingAction === 'fields' ? messages.saving : messages.updatePriority}
                   </Button>
@@ -688,10 +697,12 @@ export function AdminWorkOrderDetail({
                   }
                   setJobDialogError(null);
                   void runMutation(`${jobDialog.kind}-job-${dialogJob.id}`, isCancel ? messages.cancelJobSuccess : messages.reopenJobSuccess, async () => {
-                    if (isCancel) await cancelAdminJob(dialogJob.id, { reason, expectedVersion: data.version });
-                    else await reopenAdminJob(dialogJob.id, { reason, expectedVersion: data.version });
+                    const result = isCancel
+                      ? await cancelAdminJob(dialogJob.id, { reason, expectedVersion: data.version })
+                      : await reopenAdminJob(dialogJob.id, { reason, expectedVersion: data.version });
                     setJobReason('');
                     setJobDialog(null);
+                    return result;
                   }, (failure) => jobChangeError(failure, messages));
                 }}
               >
@@ -713,9 +724,10 @@ export function AdminWorkOrderDetail({
             if (!pauseEnabled || !pauseReason) return;
             const reason = pauseReason;
             void runMutation('pause-wo', messages.pauseWorkOrderSuccess, async () => {
-              await pauseAdminWorkOrder(data.id, { reason });
+              const result = await pauseAdminWorkOrder(data.id, { reason });
               setPauseReason('');
               setDialog(null);
+              return result;
             }, (failure) => pauseResumeError(failure, messages));
           }}
         >
@@ -746,9 +758,10 @@ export function AdminWorkOrderDetail({
             }
             setDialogError(null);
             void runMutation('cancel', messages.cancelWorkOrderSuccess, async () => {
-              await cancelAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
+              const result = await cancelAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
               setCancelReason('');
               setDialog(null);
+              return result;
             }, (failure) => cancelError(failure, messages));
           }}
         >
@@ -786,9 +799,10 @@ export function AdminWorkOrderDetail({
             }
             setDialogError(null);
             void runMutation('reopen', messages.reopenWorkOrderSuccess, async () => {
-              await reopenAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
+              const result = await reopenAdminWorkOrder(data.id, { reason, expectedVersion: data.version });
               setReopenReason('');
               setDialog(null);
+              return result;
             }, (failure) => reopenError(failure, messages));
           }}
         >
@@ -822,9 +836,10 @@ export function AdminWorkOrderDetail({
             // LTR-158: the reason is optional.
             const reason = returnReason.trim() || undefined;
             void runMutation('return-to-service', messages.returnToServiceSuccess, async () => {
-              await returnAdminWorkOrderToService(data.id, { reason, expectedVersion: data.version });
+              const result = await returnAdminWorkOrderToService(data.id, { reason, expectedVersion: data.version });
               setReturnReason('');
               setDialog(null);
+              return result;
             }, (failure) => returnToServiceError(failure, messages));
           }}
         >

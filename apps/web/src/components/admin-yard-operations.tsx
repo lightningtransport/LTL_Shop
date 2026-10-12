@@ -223,7 +223,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         )}
       </section>
       </div>
-    ) : isLoading ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : (
+    ) : isLoading && !data ? <PageSkeleton label={messages.loadingYardOperations} /> : error || !data?.[0] ? <LoadFailure message={messages.yardLoadError} retryLabel={messages.yardRetry} onRetry={() => void mutate()} /> : (
       <div
         role="tabpanel"
         id="yard-panel-shop"
