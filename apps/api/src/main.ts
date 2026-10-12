@@ -12,7 +12,14 @@ import { AppModule } from './app.module';
 const express = require('express') as typeof import('express');
 const expressApp: Express = express();
 
-function buildCorsOptions(): CorsOptions {
+/**
+ * PF8 (OPEN_ISSUES §1s): the web app lives on another origin, so every API call with an Authorization header
+ * needs a CORS preflight. Without `Access-Control-Max-Age` the browser repeats it about every 5 s, which doubles
+ * the trips of every read and every poll. Ten minutes is within what every browser honours (Chrome caps at 2 h).
+ */
+export const CORS_PREFLIGHT_MAX_AGE_SECONDS = 600;
+
+export function buildCorsOptions(): CorsOptions {
   const configured = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
     .split(',')
     .map((o) => o.trim())
@@ -22,6 +29,7 @@ function buildCorsOptions(): CorsOptions {
     return {
       origin: configured.length === 1 ? configured[0] : configured,
       credentials: true,
+      maxAge: CORS_PREFLIGHT_MAX_AGE_SECONDS,
     };
   }
 
@@ -41,6 +49,7 @@ function buildCorsOptions(): CorsOptions {
       callback(null, ok);
     },
     credentials: true,
+    maxAge: CORS_PREFLIGHT_MAX_AGE_SECONDS,
   };
 }
 
