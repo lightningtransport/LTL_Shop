@@ -5,6 +5,8 @@ const nextConfig = {
   transpilePackages: ['@ltl-shop/shared'],
   experimental: {
     authInterrupts: true,
+    // PF13: import only the Radix primitives each file uses.
+    optimizePackageImports: ['radix-ui'],
   },
 };
 
