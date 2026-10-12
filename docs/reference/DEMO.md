@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-10-10 (ensayo completo del modo demo, D36)
 **Para qué:** mostrarles la app a los usuarios (Manager, mecánicos, PM, Safety) con datos que hacen ver cada pantalla en uso.
-**Dónde:** solo en esta máquina, base `ltl_shop_demo`. Nunca en producción.
+**Dónde:** en esta máquina (base `ltl_shop_demo`) y, cuando esté publicada (D39, OPEN_ISSUES §1t), en un proyecto aparte con clave compartida. Nunca en el proyecto de producción.
 
 ## Armarla
 
