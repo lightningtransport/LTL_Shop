@@ -824,8 +824,7 @@ export class WorkOrdersService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        const initial = await this.requireWo(tx, id);
-        await lockTruckMutation(tx, initial.truckId);
+        await lockTruckMutation(tx, await this.requireTruckId(tx, id));
         const wo = await this.requireWo(tx, id);
         const replay = await this.findAddJobIdempotentInTransaction(
           tx,
@@ -989,8 +988,7 @@ export class WorkOrdersService {
    */
   async backfillMandatoryJobs(user: AuthUser, workOrderId: string, expectedVersion: number) {
     return this.prisma.$transaction(async (tx) => {
-      const initial = await this.requireWo(tx, workOrderId);
-      await lockTruckMutation(tx, initial.truckId);
+      await lockTruckMutation(tx, await this.requireTruckId(tx, workOrderId));
       const wo = await this.requireWo(tx, workOrderId);
       if (!(OPEN_WORK_ORDER_STATUSES as string[]).includes(wo.status)) {
         throw new BadRequestException('Only an open Work Order can get its missing steps');
@@ -1403,8 +1401,7 @@ export class WorkOrdersService {
     return this.prisma.$transaction(async (tx) => {
       const now = new Date();
       await this.clock?.closeDue(tx, now);
-      const initial = await this.requireWo(tx, id);
-      await lockTruckMutation(tx, initial.truckId);
+      await lockTruckMutation(tx, await this.requireTruckId(tx, id));
       const wo = await this.requireWo(tx, id);
       const job = wo.jobs.find((item) => item.id === jobId);
       if (!job) throw new NotFoundException('Job not found');
@@ -1875,6 +1872,16 @@ export class WorkOrdersService {
     jobId: string,
   ) {
     return wo.pauseEvents?.find((pause) => pause.isOfficialPause === false && !pause.resolvedAt && pause.jobId === jobId) ?? null;
+  }
+
+  /**
+   * PF9 (d): the read that happens before the Truck lock only needs the Truck id; the full Work Order is read
+   * once more under the lock (that second read stays: it is what makes the mutation see the latest state).
+   */
+  private async requireTruckId(tx: Prisma.TransactionClient, id: string): Promise<string> {
+    const wo = await tx.workOrder.findUnique({ where: { id }, select: { truckId: true } });
+    if (!wo) throw new NotFoundException('Work Order not found');
+    return wo.truckId;
   }
 
   private async requireWo(

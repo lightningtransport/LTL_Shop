@@ -211,6 +211,9 @@ type YardTruckRow = {
   readyWorkOrder?: SummaryWorkOrderRow | null;
 };
 
+/** PF9 (c): the engaged Trucks in page order, with the count of every Truck. */
+type Board = { presenceUnknown: number; rows: YardTruckRow[] };
+
 type YardOperationsCountRow = {
   workOrders: Array<{
     id: string;
@@ -603,6 +606,29 @@ export class YardOperationsService {
     let rawCursor = decodedCursor;
     let hasMore = false;
 
+    // PF9 (c): without a search or a mechanic filter the page and the counts read the very same board, so it is
+    // read once (in the page's order) and paged here from the cursor. If the cursor's Truck left the board, the
+    // database path below takes over, so the page is the same one it always was.
+    const board = query.search || query.mechanicId ? null : await this.loadBoard();
+    const cursorIndex = board && decodedCursor
+      ? board.rows.findIndex((row) => row.truckNumber === decodedCursor.truckNumber && row.id === decodedCursor.id)
+      : -1;
+    if (board && (!decodedCursor || cursorIndex >= 0)) {
+      for (let index = cursorIndex + 1; index < board.rows.length; index += 1) {
+        const row = board.rows[index];
+        if (isCompletedOnlyWithoutReadyWork(row)) continue;
+        const item = this.toTruckItem(row);
+        if (!this.matchesDerivedFilters(item, query)) continue;
+        items.push(item);
+        if (items.length === query.limit) {
+          hasMore = index < board.rows.length - 1;
+          break;
+        }
+      }
+      const counts = await this.getCounts(query, board);
+      return this.pageDto(items, hasMore, counts);
+    }
+
     while (items.length < query.limit) {
       const rows = await this.prisma.truck.findMany({
         where: this.buildWhere(query, rawCursor),
@@ -634,9 +660,12 @@ export class YardOperationsService {
       };
     }
 
-    const counts = await this.getCounts(query);
-    const feeds = this.movementFeeds();
+    const counts = await this.getCounts(query, board);
+    return this.pageDto(items, hasMore, counts);
+  }
 
+  private pageDto(items: YardOperationsTruckDto[], hasMore: boolean, counts: YardOperationsPageDto['counts']): YardOperationsPageDto {
+    const feeds = this.movementFeeds();
     return {
       items,
       nextCursor: hasMore && items.length ? this.encodeCursorFromItem(items[items.length - 1]) : null,
@@ -816,8 +845,8 @@ export class YardOperationsService {
    * match every filter (all pages, not only the loaded one), `total` is the board without filters and
    * `quick` counts each quick filter with the other filters applied.
    */
-  private async getCounts(query: AdminYardOperationsQuery) {
-    const [presenceUnknown, allRows] = await Promise.all([this.prisma.truck.count(), this.boardRows(null)]);
+  private async getCounts(query: AdminYardOperationsQuery, board: Board | null = null) {
+    const { presenceUnknown, rows: allRows } = board ?? (await this.loadBoard());
     const toItems = (rows: YardTruckRow[]) => rows.filter((row) => !isCompletedOnlyWithoutReadyWork(row)).map((row) => this.toTruckItem(row));
     const allItems = toItems(allRows);
     // Search and mechanic narrow in the database (same as the list); the rest is matched in memory.
@@ -862,9 +891,17 @@ export class YardOperationsService {
     const rows = await this.prisma.truck.findMany({
       where: query ? this.buildWhere(query, null) : activeYardEngagement(),
       include: yardTruckInclude as never,
+      // Same order as the page query, so the board can be paged in memory (PF9 c).
+      orderBy: [{ truckNumber: 'asc' }, { id: 'asc' }],
     }) as unknown as YardTruckRow[];
     await this.attachReadyWorkOrders(rows);
     return rows;
+  }
+
+  /** The whole board plus the Truck count, read together; shared by the page and the counts (PF9 c). */
+  private async loadBoard(): Promise<Board> {
+    const [presenceUnknown, rows] = await Promise.all([this.prisma.truck.count(), this.boardRows(null)]);
+    return { presenceUnknown, rows };
   }
 
   /** LTR-164 (#12): the Dashboard's Ready to Go metric is the Yard's Work Plan count. */

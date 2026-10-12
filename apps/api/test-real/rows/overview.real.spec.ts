@@ -102,7 +102,8 @@ describe('Tablero, Yard, notas y tiempos', () => {
     same('sin filtro se muestran todos', [matching, total], [4, 4]);
     same('filtros rápidos', quick, { all: 4, blocked: 1, highPriority: 0, outOfShop: 0, leavingSoon: 0 });
     // Etapa 8: el número de cada carril cuenta todas las páginas.
-    same('camiones por paso', byPhase, { shop_work: 2, inspection: 1, ready_to_go: 1 });
+    // `byPhase` es un mapa (la web lee `counts.byPhase[phase]`); el orden de sus claves sigue al tablero y no es contrato (PF9 c).
+    same('camiones por paso', Object.fromEntries(Object.entries(byPhase as Record<string, number>).sort()), { inspection: 1, ready_to_go: 1, shop_work: 2 });
     // Etapa 8: "Leaving soon" con los números que la web toma de Dispatch (solo camiones con WO abierta).
     const soon = ok('Yard sale pronto', await manager.get(`/admin/yard-operations?limit=100&soonTrucks=922,944&soon=true`));
     same('sale pronto: solo el abierto (el Ready to Go no cuenta)', (soon.items as Json[]).map((item) => item.truck.id), [working.truck.id]);

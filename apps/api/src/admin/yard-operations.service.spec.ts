@@ -136,18 +136,16 @@ describe('YardOperationsService', () => {
     const prisma = createPrisma();
     const first = truck('100', '00000000-0000-4000-8000-000000000001');
     const second = truck('200', '00000000-0000-4000-8000-000000000002');
-    prisma.truck.findMany
-      .mockResolvedValueOnce([first, second])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([second])
-      .mockResolvedValueOnce([]);
+    // PF9 (c): one board read answers the page and the counts; the same two Trucks every time, like a database would.
+    prisma.truck.findMany.mockResolvedValue([first, second]);
     prisma.truck.count.mockResolvedValue(2);
     const service = new YardOperationsService(prisma as never, {} as never, { log: vi.fn() } as never);
 
     const page = await service.list({ limit: 1 });
     expect(page.items.map((item) => item.truck.truckNumber)).toEqual(['100']);
     expect(page.nextCursor).toBeTypeOf('string');
-    expect(page.counts).toMatchObject({ notStarted: 0, underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2 });
+    expect(page.counts).toMatchObject({ readyToGo: 0, blocked: 0, presenceUnknown: 2, matching: 2, total: 2 });
+    expect(prisma.truck.findMany).toHaveBeenCalledTimes(1);
     const unavailableFeeds = { status: 'unavailable', reason: 'integration_not_connected', items: [], total: 0 };
     expect(page.workLocation).toEqual(unavailableFeeds);
     expect(page.incomingTrucks).toEqual(unavailableFeeds);
@@ -157,7 +155,9 @@ describe('YardOperationsService', () => {
     const next = await service.list({ limit: 1, cursor: page.nextCursor });
     expect(next.items.map((item) => item.truck.truckNumber)).toEqual(['200']);
     expect(next.nextCursor).toBeNull();
-    expect(JSON.stringify(prisma.truck.findMany.mock.calls[2][0].where)).toContain('100');
+    // The cursor page is cut from the same board read, never from a second cursor query.
+    expect(prisma.truck.findMany).toHaveBeenCalledTimes(2);
+    for (const call of prisma.truck.findMany.mock.calls) expect(JSON.stringify(call[0].where)).not.toContain('"gt"');
   });
 
   it('does not map agent-reporting or open work orders into movement feeds', async () => {
@@ -388,8 +388,8 @@ describe('YardOperationsService', () => {
       notStarted: 0, underReview: 0, readyToGo: 0, blocked: 0, presenceUnknown: 2,
       matching: 0, total: 0, quick: { all: 0, blocked: 0, highPriority: 0, outOfShop: 0, leavingSoon: 0 }, byPhase: {},
     });
-    expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[0][0].where)).toBe(true);
-    expect(querySelectsYardEngagement(prisma.truck.findMany.mock.calls[1][0].where)).toBe(true);
+    expect(prisma.truck.findMany).toHaveBeenCalled();
+    for (const call of prisma.truck.findMany.mock.calls) expect(querySelectsYardEngagement(call[0].where)).toBe(true);
   });
 
   it('LTR-144: a legacy PM Work Order sits in the PM column, not Inspection', async () => {
