@@ -16,6 +16,15 @@ const BASE = args.base;
 const OUT = fileURLToPath(new URL('./shots/', import.meta.url));
 mkdirSync(OUT, { recursive: true });
 
+// Without a running demo every step would fail with a bare ERR_CONNECTION_REFUSED; say what to do instead.
+try {
+  await fetch(`${BASE}/login`, { signal: AbortSignal.timeout(60_000) });
+} catch {
+  console.error(`No demo answers at ${BASE}. Start it first (npm run start:demo, docs/reference/DEMO.md)`
+    + ' or point DEMO_VIDEO_BASE_URL at the one that is running.');
+  process.exit(1);
+}
+
 // 1600x900 at 2.4x is a 3840x2160 image: the slow zoom of each scene stays sharp in a 1080p video.
 const DESKTOP = { viewport: { width: 1600, height: 900 }, deviceScaleFactor: 2.4 };
 const PHONE = { ...devices['iPhone 13'], deviceScaleFactor: 3 };
