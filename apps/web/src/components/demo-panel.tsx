@@ -8,6 +8,8 @@ import { DEMO_CAST, DEMO_CAST_GROUPS, castMember, castMemberByEmail } from '@/li
 import { describeTarget } from '@/lib/demo/resolve-target';
 import { DEMO_FLOW, DEMO_STORIES, DEMO_WHO_LABELS, DEMO_WHO_ORDER, storyChapters } from '@/lib/demo/scripts';
 import { useDemoMode } from '@/lib/demo/demo-context';
+import { DEMO_REBUILD, DEMO_SERVER_DOWN } from '@/lib/demo/copy';
+import { DEMO_HOSTED } from '@/lib/dev-login';
 import { cn } from '@/lib/utils';
 import { Badge, Button, InlineAlert, Select } from './ui';
 
@@ -52,7 +54,7 @@ export function DemoModeMenuRow({ onNavigate }: { onNavigate?: () => void }) {
     <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
       <div className="min-w-0">
         <p className="flex items-center gap-1.5 text-sm font-medium"><FlaskConical aria-hidden="true" className="size-4 text-primary" />Demo mode · {on ? 'on' : 'off'}</p>
-        <p className="text-xs text-muted-foreground">Local only. Switch accounts and follow the stories.</p>
+        <p className="text-xs text-muted-foreground">{DEMO_HOSTED ? 'Made-up data.' : 'Local only.'} Switch accounts and follow the stories.</p>
       </div>
       <Button
         variant={on ? 'outline' : 'default'}
@@ -146,11 +148,11 @@ export function DemoPanel() {
       ) : null}
       {demo.error ? <InlineAlert className="mb-3">{demo.error}</InlineAlert> : null}
       {demo.usersError ? (
-        <InlineAlert className="mb-3">The account list did not load. Is the demo server running (npm run start:demo)?</InlineAlert>
+        <InlineAlert className="mb-3">The account list did not load. {DEMO_SERVER_DOWN}</InlineAlert>
       ) : null}
       {afterFive ? (
         <p className="mb-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground dark:text-warning" role="status">
-          It is after 5 PM: the day close has stopped today's clocks. Rebuild the demo in the morning for a clean run.
+          It is after 5 PM: the day close has stopped today's clocks. {DEMO_HOSTED ? 'The data resets tonight.' : 'Rebuild the demo in the morning for a clean run.'}
         </p>
       ) : null}
 
@@ -274,8 +276,8 @@ export function DemoPanel() {
                 <Badge variant={offScreen ? 'warning' : 'outline'}>{describeTarget(demo.step.target)}</Badge>
                 {demo.step.mutates ? <Badge variant="secondary">Changes data</Badge> : null}
               </div>
-              {demo.story.note && demo.stepIndex === 0 ? (
-                <p className="mt-2 text-xs text-muted-foreground">{demo.story.note}</p>
+              {demo.story.note && demo.stepIndex === 0 && !DEMO_HOSTED ? (
+                <p className={cn('mt-2 text-xs text-muted-foreground', phoneHidden)}>{demo.story.note}</p>
               ) : null}
               <p className="mt-2"><b>Do:</b> {demo.step.do}</p>
               {demo.step.say ? <p className={cn('mt-1 text-muted-foreground', phoneHidden)}><b className="text-foreground">Why:</b> {demo.step.say}</p> : null}
@@ -339,8 +341,8 @@ export function DemoPanel() {
           <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-muted-foreground">
             <li><b className="text-foreground">An account</b>: signs you in as that person and opens their home screen. No password; the page loads again.</li>
             <li><b className="text-foreground">A story</b>: one of the shop's user stories. Start opens its first screen; Next switches to the right account and screen each time and says what to tap and what to explain. You tap; the app never acts by itself.</li>
-            <li><b className="text-foreground">Changes data</b>: that step creates or changes something. To run the story again, rebuild the demo data (<code>npm run prisma:demo-local</code>).</li>
-            <li>Only on this machine: the panel exists in local builds and needs the demo server (<code>npm run start:demo</code>).</li>
+            <li><b className="text-foreground">Changes data</b>: that step creates or changes something. {DEMO_REBUILD}</li>
+            {DEMO_HOSTED ? <li>Everyone who opens this demo shares the same made-up data, so a step someone else already did may look different.</li> : <li>Only on this machine: the panel exists in local builds and needs the demo server (<code>npm run start:demo</code>).</li>}
           </ul>
         </details>
 
@@ -361,7 +363,7 @@ export function DemoPanel() {
             </button>
           )}
         </div>
-        <p className={cn('mt-1 text-[11px] text-muted-foreground', phoneHidden)}>Data stays as it is. To start over, rebuild the demo: <code>npm run prisma:demo-local</code>.</p>
+        <p className={cn('mt-1 text-[11px] text-muted-foreground', phoneHidden)}>Data stays as it is. {DEMO_REBUILD}</p>
         {castMemberByEmail(user.email) ? null : (
           <p className="mt-2 text-xs text-muted-foreground">{user.email} is not one of the demo accounts.</p>
         )}

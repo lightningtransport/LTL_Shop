@@ -219,6 +219,43 @@ Algunas visitas de la historia tienen Jobs que no están en el catálogo, escrit
 
   Los números son `SHOP-AAAA-NNNN`. El PDF se descarga desde la factura.
 
+## Demo publicada (D39, DP3)
+
+La misma demo, en internet, para mandar por link. Vive en proyectos **aparte** de producción: su propia base (Supabase gratis) y dos proyectos Vercel (web y API). Los datos son los de `prisma:demo-local` y se rearman solos cada noche.
+
+**Cómo se entra:** el link abre una pantalla que pide la **clave de acceso** (se manda junto con el link). Con la clave correcta aparece "Start the demo", que entra como MS en el flujo guiado. La API rechaza cualquier pedido `dev:` sin la clave (`demoAccessGranted`, `apps/api/src/dev-demo/dev-bypass.guard.ts`), así que conocer la URL de la API no basta. Todos los que abren la demo comparten los mismos datos: si alguien ya hizo un paso hoy, se ve hecho; a la mañana siguiente vuelve a estar como nuevo.
+
+**Producción no cambia:** su build no tiene `NEXT_PUBLIC_DEMO_HOSTED`, ni la API tiene `AUTH_DEV_BYPASS`. El armado de la demo rechaza la base de producción aunque se configure por error (`demoDatabaseRefusal`, `apps/api/src/dev-demo/demo-target.ts`).
+
+### Armarla una vez
+
+1. **Supabase:** crear un proyecto gratis `ltl-shop-demo` (no el de producción). Anotar su *ref* (20 letras, en la URL del dashboard). Copiar la cadena **Session pooler** (puerto 5432) desde Connect. La cadena directa `db.<ref>.supabase.co` es solo IPv6 y GitHub no llega.
+2. **GitHub → Settings → Environments → New environment `demo`:**
+   - secret `DEMO_DATABASE_URL` = la cadena del pooler;
+   - variable `DEMO_SUPABASE_REF` = el ref.
+3. **Actions → Demo reset → Run workflow:** migra, siembra y arma la demo en esa base. Después corre solo cada día a las 5:15 AM (hora del Este).
+4. **Vercel, proyecto API demo** (raíz `apps/api`, mismo repo, rama `main`). Variables:
+
+   | Variable | Valor |
+   |---|---|
+   | `DATABASE_URL` | pooler en modo *transaction* (puerto 6543) con `?pgbouncer=true` |
+   | `DIRECT_URL` | la cadena de pooler del paso 1 |
+   | `AUTH_DEV_BYPASS` | `true` |
+   | `DEMO_HOSTED` | `1` |
+   | `DEMO_ACCESS_CODE` | la clave que se va a mandar |
+   | `DATA_SOURCE` | `supabase` |
+   | `YARD_READY_TO_GO_SINCE` | `2000-01-01T00:00:00Z` |
+   | `CORS_ORIGIN` | la URL de la web demo |
+
+   Sin `CRON_SECRET`: el cierre del día de las 5 PM no corre en la demo.
+5. **Vercel, proyecto web demo** (raíz `apps/web`). Variables:
+   - `NEXT_PUBLIC_DEMO_HOSTED` = `1`;
+   - `NEXT_PUBLIC_API_URL` = la URL del API demo;
+   - `ADMIN_PROFILE_SECRET` = cualquier texto largo, distinto del de producción.
+6. **Probar y mandar:** abrir la URL de la web demo. Sin la clave no se ve nada; con la clave, "Start the demo". Mandar el link y, aparte, la clave.
+
+**Cambiar la clave:** cambiar `DEMO_ACCESS_CODE` en el API demo y volver a desplegarlo. Los navegadores con la clave vieja vuelven a ver la pantalla de la clave.
+
 ## Lo que la demo local no puede mostrar
 - **Dispatch, Movement y "Sale pronto":** vienen de agent-reporting, que no está conectado en local. La pantalla dice que no respondió.
 - **Samsara y la ubicación física:** no están conectados.

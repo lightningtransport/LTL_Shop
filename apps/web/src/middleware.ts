@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { UserDto } from '@ltl-shop/shared';
 import { ADMIN_SESSION_COOKIE, apiBaseUrl } from '@/lib/admin-session';
 import { ADMIN_PROFILE_COOKIE, adminProfileSecret, readAdminProfile, type AdminProfile } from '@/lib/admin-profile-cookie';
+import { DEMO_ACCESS_COOKIE, DEMO_ACCESS_HEADER } from '@/lib/demo-access';
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
@@ -12,8 +13,9 @@ export async function middleware(request: NextRequest) {
   if (profile) return withProfile(request, profile);
 
   try {
+    const demoAccess = request.cookies.get(DEMO_ACCESS_COOKIE)?.value;
     const response = await fetch(`${apiBaseUrl()}/api/admin/access`, {
-      headers: { authorization: `Bearer ${token}` },
+      headers: demoAccess ? { authorization: `Bearer ${token}`, [DEMO_ACCESS_HEADER]: demoAccess } : { authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
 

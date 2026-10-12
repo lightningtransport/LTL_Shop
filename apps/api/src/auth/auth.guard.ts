@@ -12,6 +12,7 @@ import { UserRole } from '@ltl-shop/shared';
 import type { AppCapability } from '@ltl-shop/shared';
 import { toSharedCapability } from './capabilities';
 import { authUserCacheKey, authUserCacheTtlMs, readAuthUserCache, writeAuthUserCache } from './auth-user-cache';
+import { DEMO_ACCESS_HEADER, demoAccessGranted } from '../dev-demo/dev-bypass.guard';
 
 export type AuthUser = {
   id: string;
@@ -65,8 +66,11 @@ export class AuthGuard implements CanActivate {
     }
     const token = header.slice('Bearer '.length);
 
-    // Dev bypass for local/demo without Supabase
+    // Dev bypass for local/demo without Supabase; a published demo also needs its access code (D39).
     if (process.env.AUTH_DEV_BYPASS === 'true' && token.startsWith('dev:')) {
+      if (!demoAccessGranted(req.headers[DEMO_ACCESS_HEADER])) {
+        throw new UnauthorizedException({ code: 'DEMO_ACCESS', message: 'This demo needs its access code.' });
+      }
       const email = token.slice(4);
       const user = await this.resolveShopUser(email, null);
       req.user = user;

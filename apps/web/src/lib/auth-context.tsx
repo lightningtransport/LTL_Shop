@@ -27,6 +27,7 @@ import {
   writePasswordChangeResolved,
 } from './password-change-prompt';
 import { passwordResetRedirectUrl } from './site-url';
+import { demoAccessHeaders } from './demo-access';
 
 /** D22: tells the API the temporary password was replaced so the forced change stops (never throws). */
 async function notifyPasswordChanged() {
@@ -164,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               '/api/admin/session',
               {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${tok}` },
+                headers: { Authorization: `Bearer ${tok}`, ...demoAccessHeaders() },
               },
               PROFILE_RESTORE_TIMEOUT_MS,
             ).catch(() => new Response(null, { status: 503 })),
