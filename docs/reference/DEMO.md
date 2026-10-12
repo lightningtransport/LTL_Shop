@@ -210,6 +210,11 @@ Algunas visitas de la historia tienen Jobs que no están en el catálogo, escrit
 
   Los números son `SHOP-AAAA-NNNN`. El PDF se descarga desde la factura.
 
+## Video de introducción
+Un video de 35 s, "A day at the shop", para mostrar antes de entrar al link de la demo (D39). Tiene 11 escenas en el orden del Demo flow, de 6:00 AM a 5:00 PM: Dashboard, Yard, nueva Work Order, el mecánico en su teléfono, un blocker, PM, Quality Check, Ready to Go, costos por camión, Month close, y People con las horas del taller. Cada escena lleva título y rol. Está en 1080p, sin audio, y usa pantallas reales de esta demo.
+
+Se rehace con un comando, con la demo levantada: `DEMO_VIDEO_BASE_URL=http://localhost:3042 npm run demo:video --workspace=@ltl-shop/web`. El resultado sale en `apps/web/e2e/demo-video/out/`. Los detalles y cómo cambiar textos u orden están en `apps/web/e2e/demo-video/README.md`.
+
 ## Lo que la demo local no puede mostrar
 - **Dispatch, Movement y "Sale pronto":** vienen de agent-reporting, que no está conectado en local. La pantalla dice que no respondió.
 - **Samsara y la ubicación física:** no están conectados.
