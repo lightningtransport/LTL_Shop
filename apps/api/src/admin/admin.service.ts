@@ -334,7 +334,8 @@ export class AdminService {
     const now = new Date();
     const windows = getShopDashboardWindows(now);
     const olderThan24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const [open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days, attention, workRequests] =
+    // PF9: every read here is independent; they all go out together (Ready to Go and the queue used to wait).
+    const [open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days, attention, workRequests, readyToGo, queue] =
       await Promise.all([
         this.prisma.workOrder.count({ where: openWhere }),
         this.prisma.workOrder.count({ where: { status: WorkOrderStatus.waiting_paused } }),
@@ -367,10 +368,10 @@ export class AdminService {
           orderBy: { createdAt: 'desc' },
           take: 20,
         }),
+        // LTR-164 (#12): one Ready to Go rule, the Yard's (Work Plan phase), so both surfaces agree.
+        this.yard?.countReadyToGoTrucks().then((count) => count ?? 0) ?? Promise.resolve(0),
+        this.getDashboardQueue(openWhere),
       ]);
-    // LTR-164 (#12): one Ready to Go rule, the Yard's (Work Plan phase), so both surfaces agree.
-    const readyToGo = (await this.yard?.countReadyToGoTrucks()) ?? 0;
-    const queue = await this.getDashboardQueue(openWhere);
 
     return {
       generatedAt: now.toISOString(),
@@ -2184,21 +2185,26 @@ export class AdminService {
    * The Dashboard groups them by what the Manager has to do; nothing is cut at eight.
    */
   private async getDashboardQueue(openWhere: Prisma.WorkOrderWhereInput): Promise<AdminWorkOrderSummaryDto[]> {
-    const open = (await this.prisma.workOrder.findMany({
-      where: openWhere,
-      include: summaryInclude,
-      orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
-      take: DASHBOARD_QUEUE_LIMIT,
-    })) ?? [];
     const since = yardReadyToGoSince();
-    const completed = since
-      ? (await this.prisma.workOrder.findMany({
-          where: { status: WorkOrderStatus.completed, completedAt: { gte: since } },
-          include: summaryInclude,
-          orderBy: [{ completedAt: 'desc' }, { id: 'desc' }],
-          take: DASHBOARD_QUEUE_LIMIT,
-        })) ?? []
-      : [];
+    // PF9: open and recently completed rows do not depend on each other.
+    const [openRows, completedRows] = await Promise.all([
+      this.prisma.workOrder.findMany({
+        where: openWhere,
+        include: summaryInclude,
+        orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
+        take: DASHBOARD_QUEUE_LIMIT,
+      }),
+      since
+        ? this.prisma.workOrder.findMany({
+            where: { status: WorkOrderStatus.completed, completedAt: { gte: since } },
+            include: summaryInclude,
+            orderBy: [{ completedAt: 'desc' }, { id: 'desc' }],
+            take: DASHBOARD_QUEUE_LIMIT,
+          })
+        : Promise.resolve([]),
+    ]);
+    const open = openRows ?? [];
+    const completed = completedRows ?? [];
     const trucksWithOpenWork = new Set(open.map((row) => row.truckId));
     const seenTrucks = new Set<string>();
     const readyToGo = completed.filter((row) => {
