@@ -22,7 +22,7 @@ function parse<T>(schema: { safeParse(raw: unknown): { success: true; data: T } 
   return parsed.data;
 }
 
-const lineInclude = { costEntry: { select: { sourceType: true, sourceId: true, workOrder: { select: { id: true, displayId: true } } } } } satisfies Prisma.InternalInvoiceLineInclude;
+const lineInclude = { costEntry: { select: { sourceType: true, sourceId: true, reversesEntryId: true, workOrder: { select: { id: true, displayId: true } } } } } satisfies Prisma.InternalInvoiceLineInclude;
 const invoiceInclude = {
   truck: { select: { id: true, truckNumber: true } },
   lines: { include: lineInclude, orderBy: [{ kind: 'asc' }, { occurredOn: 'asc' }] },
@@ -64,11 +64,21 @@ export class InternalInvoicesService {
     const row = await this.row(this.prisma, id);
     const available = row.status === 'draft' ? (await this.available(this.prisma, row.truckId, row.periodEnd, row.id)).length : 0;
     const active = row.lines.filter((line) => line.active);
+    // PCA4 (UX-10-002): a reversal line says which earlier invoice charged the row it cancels.
+    const reversed = row.lines.map((line) => line.costEntry.reversesEntryId).filter((value): value is string => Boolean(value));
+    const corrects = new Map<string, { id: string; number: string | null }>();
+    if (reversed.length) {
+      const earlier = await this.prisma.internalInvoiceLine.findMany({
+        where: { costEntryId: { in: reversed }, active: true, invoiceId: { not: row.id }, invoice: { status: { not: 'void' } } },
+        select: { costEntryId: true, invoice: { select: { id: true, number: true } } },
+      });
+      for (const line of earlier) corrects.set(line.costEntryId, line.invoice);
+    }
     return {
       ...this.summary(row),
       subtotals: { partsCents: row.subtotalPartsCents, outsideCents: row.subtotalOutsideCents, laborCents: row.subtotalLaborCents },
-      lines: active.map((line) => this.line(line)),
-      removedLines: row.status === 'draft' ? row.lines.filter((line) => !line.active).map((line) => this.line(line)) : [],
+      lines: active.map((line) => this.line(line, corrects)),
+      removedLines: row.status === 'draft' ? row.lines.filter((line) => !line.active).map((line) => this.line(line, corrects)) : [],
       notes: row.notes,
       createdBy: row.createdBy,
       createdAt: row.createdAt.toISOString(),
@@ -252,7 +262,7 @@ export class InternalInvoicesService {
     };
   }
 
-  private line(line: InvoiceRow['lines'][number]): AdminInternalInvoiceLineDto {
+  private line(line: InvoiceRow['lines'][number], corrects: Map<string, { id: string; number: string | null }> = new Map()): AdminInternalInvoiceLineDto {
     return {
       id: line.id,
       costEntryId: line.costEntryId,
@@ -263,6 +273,7 @@ export class InternalInvoicesService {
       sourceType: line.costEntry.sourceType,
       sourceId: line.costEntry.sourceId,
       workOrder: line.costEntry.workOrder,
+      correctsInvoice: line.costEntry.reversesEntryId ? corrects.get(line.costEntry.reversesEntryId) ?? null : null,
     };
   }
 }

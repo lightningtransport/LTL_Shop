@@ -180,8 +180,11 @@ export function AdminJobTable({
     if (canHelp) items.push({ key: 'helper', label: messages.addHelperAction, icon: Users, testId: 'admin-wo-job-add-helper', onSelect: () => setDialog({ kind: 'helper', jobId: job.id }) });
     if (canSendOut) items.push({ key: 'external', label: messages.sendExternalAction, icon: Building2, testId: 'admin-wo-job-send-external', onSelect: () => setDialog({ kind: 'external', jobId: job.id }) });
     // LTR-200 / PC-3: the outside shop's invoice for this Job, with the truck and the Job already picked.
-    if (canSeeCosts && (isExternal || job.outsideInvoices?.length)) {
-      items.push({ key: 'outside-invoice', label: messages.pcAddOutsideInvoice, icon: Receipt, testId: 'admin-wo-job-outside-invoice', href: `/admin/parts/outside-repairs?new=1&truckId=${data.truck.id}&jobId=${job.id}` });
+    // PCA3 (UX-10-001): also once the Job is back, which is when the invoice usually arrives.
+    const outsideInvoiceHref = `/admin/parts/outside-repairs?new=1&forTruck=${data.truck.id}&jobId=${job.id}&from=${encodeURIComponent(`/admin/work-orders/${data.id}`)}`;
+    const awaitingInvoice = canSeeCosts && !isExternal && Boolean(job.wentExternal) && !job.outsideInvoices?.length;
+    if (canSeeCosts && (isExternal || job.wentExternal || job.outsideInvoices?.length)) {
+      items.push({ key: 'outside-invoice', label: messages.pcAddOutsideInvoice, icon: Receipt, testId: 'admin-wo-job-outside-invoice', href: outsideInvoiceHref });
     }
     if (canEdit) items.push({ key: 'cancel', label: messages.cancelJobAction, icon: XCircle, destructive: true, separatorBefore: items.length > 0, onSelect: () => onJobDialog('cancel', job.id) });
 
@@ -306,10 +309,18 @@ export function AdminJobTable({
               {job.helperOfJobId ? <span className="font-normal text-muted-foreground">{messages.helperJobSuffix}</span> : null}
             </p>
             <p className="text-xs text-muted-foreground">{sub}</p>
+            {awaitingInvoice ? (
+              <p className="mt-0.5" data-testid="admin-wo-job-awaiting-invoice">
+                <AdminNavLink href={outsideInvoiceHref} className="tap-inline inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/10 px-1.5 py-0.5 text-xs text-foreground hover:bg-warning/20">
+                  <Receipt aria-hidden="true" className="size-3" />
+                  {messages.pcJobReturnedNoInvoice}
+                </AdminNavLink>
+              </p>
+            ) : null}
             {canSeeCosts && job.outsideInvoices?.length ? (
               <p className="mt-0.5 flex flex-wrap gap-1" data-testid="admin-wo-job-outside-invoices">
                 {job.outsideInvoices.map((invoice) => (
-                  <AdminNavLink key={invoice.id} href={`/admin/parts/outside-repairs/${invoice.id}`} className="tap-inline inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground">
+                  <AdminNavLink key={invoice.id} href={`/admin/parts/outside-repairs/${invoice.id}?from=${encodeURIComponent(`/admin/work-orders/${data.id}`)}`} className="tap-inline inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground">
                     <Receipt aria-hidden="true" className="size-3" />
                     {fillPlaceholders(messages.pcJobInvoiceChip, { amount: formatCents(invoice.amountCents, locale), vendor: invoice.vendorName })}
                   </AdminNavLink>

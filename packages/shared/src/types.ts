@@ -466,6 +466,8 @@ export interface AdminWorkOrderJobDto {
   workflowStepKey?: string | null;
   /** LTR-200 / PC-3: outside shop invoices tied to this Job (Manager and System Admin only; others get none). */
   outsideInvoices?: Array<{ id: string; amountCents: number; vendorName: string }>;
+  /** PCA3 (UX-10-001): the Job went to an external shop at some point (out now or already back), so its invoice can still be loaded. */
+  wentExternal?: boolean;
 }
 
 export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {

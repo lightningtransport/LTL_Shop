@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Paperclip, Plus } from 'lucide-react';
 import { formatCents } from '@ltl-shop/shared';
@@ -12,42 +12,42 @@ import { useAdminOutsideRepairs, useAdminPurchaseFormData, useAdminVendors } fro
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
+import { safeAdminPath } from '@/lib/admin-truck-origin';
+import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
+
+const OUTSIDE_FILTERS = { q: '', vendorId: '', truckId: '', from: '', to: '', noFile: false };
 
 /**
  * LTR-200 / D32 (PC-3): Parts & costs → Outside repairs. Each row: date, truck, vendor, what was done, the Job tied
  * ("Radiator Repair · WO-001") and the amount. Opened from a Job's "Add outside repair invoice", New outside repair
- * starts with that truck and Job (`?new=1&truckId=&jobId=`).
+ * starts with that truck and Job (`?new=1&forTruck=&jobId=&from=`), and closes back to `from` (PCA2). PCA1: the filters
+ * live in the URL.
  */
 export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const canWrite = useCanShowManagerWrites();
-  const [filters, setFilters] = useState({ q: '', vendorId: '', truckId: '', from: '', to: '', noFile: false });
-  const query = useMemo(() => {
-    const search = new URLSearchParams();
-    for (const [key, value] of Object.entries(filters)) {
-      if (value === true) search.set(key, 'true');
-      else if (typeof value === 'string' && value.trim()) search.set(key, value.trim());
-    }
-    return search.toString();
-  }, [filters]);
+  const { filters, set, clear, query, here, active: filtered } = useUrlFilters(OUTSIDE_FILTERS);
+  const [search, setSearch] = useDebouncedFilterText(filters.q, (next) => set('q', next));
   const { data, error, isLoading, mutate } = useAdminOutsideRepairs(query);
   const { data: formData } = useAdminPurchaseFormData(true);
   const { data: vendors } = useAdminVendors();
   const [form, setForm] = useState<{ truckId?: string; jobId?: string } | null>(null);
-  const set = <K extends keyof typeof filters>(key: K, value: (typeof filters)[K]) => setFilters((current) => ({ ...current, [key]: value }));
+  const [returnTo, setReturnTo] = useState<string | null>(null);
   const ready = Boolean(formData && vendors);
 
-  // Opened from a Job: the form starts with its truck and Job, and the address goes back to the plain list.
+  // Opened from a Job or a Truck: the form starts with its truck and Job; the address keeps only the filters.
   useEffect(() => {
     if (params.get('new') !== '1' || !canWrite) return;
-    setForm({ truckId: params.get('truckId') ?? undefined, jobId: params.get('jobId') ?? undefined });
-    router.replace(pathname);
+    setForm({ truckId: params.get('forTruck') ?? undefined, jobId: params.get('jobId') ?? undefined });
+    setReturnTo(safeAdminPath(params.get('from')));
+    const next = new URLSearchParams(params.toString());
+    for (const key of ['new', 'forTruck', 'jobId', 'from']) next.delete(key);
+    router.replace(`${pathname}${next.size ? `?${next}` : ''}`, { scroll: false });
   }, [params, canWrite, router, pathname]);
 
   const newButton = canWrite ? <Button type="button" onClick={() => setForm({})} disabled={!ready}><Plus aria-hidden="true" />{messages.pcNewOutside}</Button> : null;
-  const filtered = Boolean(query);
 
   return (
     <div className="space-y-6">
@@ -55,7 +55,7 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
       <Card className="p-3">
         <CardContent className="flex flex-wrap items-end gap-3">
           <div className="min-w-56 flex-1">
-            <Input value={filters.q} onChange={(event) => set('q', event.target.value)} placeholder={messages.pcSearchOutside} aria-label={messages.pcSearchOutside} />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.pcSearchOutside} aria-label={messages.pcSearchOutside} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="outside-filter-vendor">{messages.pcFilterVendor}</Label>
@@ -97,7 +97,7 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
         <EmptyState>
           <p>{filtered ? messages.pcNoOutsideMatch : messages.pcNoOutside}</p>
           {filtered ? (
-            <Button type="button" variant="outline" className="mt-4" onClick={() => setFilters({ q: '', vendorId: '', truckId: '', from: '', to: '', noFile: false })}>{messages.pcClearFilters}</Button>
+            <Button type="button" variant="outline" className="mt-4" onClick={clear}>{messages.pcClearFilters}</Button>
           ) : newButton ? <div className="mt-4 flex justify-center">{newButton}</div> : null}
         </EmptyState>
       ) : null}
@@ -114,7 +114,7 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
               primary: true,
               cell: (item) => (
                 <div className={item.voidedAt ? 'text-muted-foreground line-through' : undefined}>
-                  <AdminNavLink className="tap-inline font-semibold text-primary hover:underline" href={`/admin/parts/outside-repairs/${item.id}`}>{item.description}</AdminNavLink>
+                  <AdminNavLink className="tap-inline font-semibold text-primary hover:underline" href={`/admin/parts/outside-repairs/${item.id}?from=${encodeURIComponent(here)}`}>{item.description}</AdminNavLink>
                   <span className="ml-2 font-mono text-xs text-muted-foreground">{item.invoiceNumber}</span>
                   {item.voidedAt ? <Badge variant="secondary" className="ml-2 no-underline">{messages.pcVoided}</Badge> : null}
                 </div>
@@ -152,8 +152,9 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
           formData={formData}
           locale={locale}
           messages={messages}
-          onClose={() => setForm(null)}
-          onSaved={(id) => { setForm(null); void mutate(); router.push(`/admin/parts/outside-repairs/${id}`); }}
+          onClose={() => { setForm(null); if (returnTo) router.push(returnTo); setReturnTo(null); }}
+          // PCA2: opened from a Job or a Truck, saving goes back there; otherwise to the repair.
+          onSaved={(id) => { setForm(null); void mutate(); router.push(returnTo ?? `/admin/parts/outside-repairs/${id}?from=${encodeURIComponent(here)}`); setReturnTo(null); }}
         />
       ) : null}
     </div>

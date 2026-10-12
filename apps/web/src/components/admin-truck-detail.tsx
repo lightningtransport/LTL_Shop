@@ -516,6 +516,10 @@ function originCrumb(href: string, messages: AdminMessages) {
   if (path === '/admin/work-orders') return messages.workOrders;
   if (path.startsWith('/admin/work-orders/')) return messages.workOrder;
   if (path === '/admin') return messages.dashboard;
+  // PCA2: opened from Parts & costs.
+  if (path.startsWith('/admin/parts/purchases')) return messages.pcPurchases;
+  if (path.startsWith('/admin/parts/outside-repairs')) return messages.pcOutsideRepairs;
+  if (path.startsWith('/admin/parts/internal-invoices')) return messages.pcInvoices;
   return messages.yardOperations;
 }
 

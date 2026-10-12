@@ -519,7 +519,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByTestId('truck-costs-labor')).toHaveText('44.75 h recorded in this period');
     await expect(page.getByTestId('truck-costs-entries').getByText('Voided')).toBeVisible();
     await expect(page.getByTestId('truck-costs-entries')).toContainText('-$12.00');
-    await expect(page.getByRole('link', { name: 'Add purchase' })).toHaveAttribute('href', `/admin/parts/purchases?new=1&truckId=${truckId}`);
+    await expect(page.getByRole('link', { name: 'Add purchase' })).toHaveAttribute('href', `/admin/parts/purchases?new=1&forTruck=${truckId}&from=${encodeURIComponent(`/admin/trucks/${truckId}?tab=costs`)}`);
     await page.getByRole('radio', { name: 'All time' }).click();
     await expect.poll(() => periods.at(-1)).toBe('');
     expect(periods[0]).toMatch(/^\?from=\d{4}-\d{2}-01&to=\d{4}-\d{2}-\d{2}$/);

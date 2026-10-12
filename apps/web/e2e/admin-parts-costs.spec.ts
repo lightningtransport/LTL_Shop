@@ -144,7 +144,7 @@ test('a new purchase that was not saved comes back in the same tab; Discard asks
 // LTR-200 / D32 (PC-3): Outside repairs.
 test('manager loads an outside shop invoice from the Job: truck and Job come picked; a purchase invoice number is refused', async ({ page }) => {
   await loginToAdmin(page, 'manager@lightning.local');
-  await page.goto('/admin/parts/outside-repairs?new=1&truckId=truck-606&jobId=00000000-0000-4000-8000-0000000e0001');
+  await page.goto('/admin/parts/outside-repairs?new=1&forTruck=truck-606&jobId=00000000-0000-4000-8000-0000000e0001');
   const form = page.getByRole('dialog', { name: 'New outside repair' });
   await expect(form.getByText('From WO-001 · Radiator Repair')).toBeVisible();
   await expect(form.getByLabel('Truck', { exact: true })).toHaveValue('truck-606');
@@ -176,6 +176,8 @@ test('manager sets the shop labor rate from a date; the same date twice is refus
   await expect(page.getByText('Enter the rate per hour.')).toBeVisible();
   await page.getByLabel('Rate per hour (USD)').fill('95');
   await page.getByLabel('From').fill('2026-09-01');
+  // PCA7 (UX-10-005): before saving, the screen says what the date recalculates and what is already invoiced.
+  await expect(page.getByTestId('labor-rate-preview')).toHaveText('Saving recalculates 3 completed Work Orders with work from Sep 1, 2026. 1 of them are already on sent invoices: the difference lands on the next invoice for each truck.');
   await page.getByRole('button', { name: 'Save rate' }).click();
   await expect(page.getByText('Rate saved · 3 Work Orders recalculated')).toBeVisible();
   await expect(page.getByTestId('labor-rate-current')).toContainText('$95.00 per hour, since Sep 1, 2026');
@@ -183,6 +185,13 @@ test('manager sets the shop labor rate from a date; the same date twice is refus
   await page.getByLabel('From').fill('2026-09-01');
   await page.getByRole('button', { name: 'Save rate' }).click();
   await expect(page.getByText('There is already a rate from that date. Pick another date.')).toBeVisible();
+
+  // PCA7: a mistyped rate can be taken back while nothing invoiced used it.
+  await page.getByTestId('labor-rate-remove').click();
+  await expect(page.getByRole('dialog', { name: 'Remove this rate?' })).toContainText('The rate of $95.00 from Sep 1, 2026 is taken back');
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByText('Rate removed · 3 Work Orders recalculated')).toBeVisible();
+  await expect(page.getByTestId('labor-rate-current')).toContainText('No labor rate yet.');
 });
 
 // UX-7-026 / PC1: Save with something missing says what, and goes to it.

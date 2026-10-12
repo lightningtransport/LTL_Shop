@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Clock, Plus, Receipt } from 'lucide-react';
 import { formatCents, type AdminTruckCostEntryDto } from '@ltl-shop/shared';
 import { AdminNavLink } from './admin-nav-link';
+import { ChargedOnChip } from './admin-charged-on';
 import { Badge, Button, CompactEmpty, LoadFailure, PageSkeleton, SectionCard } from './ui';
 import { useAdminTruckCosts } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -24,10 +26,13 @@ export function periodRange(period: Period, today = new Date()): { from?: string
   return { from: iso(new Date(today.getFullYear(), 0, 1)), to };
 }
 
-function sourceHref(entry: AdminTruckCostEntryDto) {
-  if (entry.sourceType === 'part_purchase') return `/admin/parts/purchases/${entry.sourceId}`;
-  if (entry.sourceType === 'outside_repair') return `/admin/parts/outside-repairs/${entry.sourceId}`;
-  if (entry.sourceType === 'work_order_labor') return `/admin/work-orders/${entry.sourceId}`;
+const PERIODS: Period[] = ['month', '3months', 'year', 'all'];
+
+function sourceHref(entry: AdminTruckCostEntryDto, from: string) {
+  const back = `?from=${encodeURIComponent(from)}`;
+  if (entry.sourceType === 'part_purchase') return `/admin/parts/purchases/${entry.sourceId}${back}`;
+  if (entry.sourceType === 'outside_repair') return `/admin/parts/outside-repairs/${entry.sourceId}${back}`;
+  if (entry.sourceType === 'work_order_labor') return `/admin/work-orders/${entry.sourceId}${back}`;
   return null;
 }
 
@@ -35,9 +40,21 @@ function sourceHref(entry: AdminTruckCostEntryDto) {
  * LTR-200 / D32 (PC-4): Truck → Costs. Totals for parts and outside repairs in the period, bars by month, and every
  * movement of the cost ledger (a void or an edit shows as its negative reversal). Labor and the charge to Finance
  * are reserved places: hours exist (D18), a rate does not yet. Shop Manager and System Admin only (D-PC7).
+ * PCA1/PCA2: the period lives in the URL (`?tab=costs&period=`), and every link out carries `from` so Back returns here.
  */
 export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { truckId: string; truckNumber: string; locale: AdminLocale; messages: AdminMessages }) {
-  const [period, setPeriod] = useState<Period>('3months');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const rawPeriod = searchParams.get('period');
+  const period: Period = PERIODS.includes(rawPeriod as Period) ? (rawPeriod as Period) : '3months';
+  const here = `${pathname}?${searchParams.toString() || 'tab=costs'}`;
+  const setPeriod = (next: Period) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', 'costs');
+    if (next === '3months') params.delete('period'); else params.set('period', next);
+    router.replace(`${pathname}?${params}`, { scroll: false });
+  };
   const query = useMemo(() => new URLSearchParams(Object.entries(periodRange(period)) as Array<[string, string]>).toString(), [period]);
   const { data, error, isLoading, mutate } = useAdminTruckCosts(truckId, query, true);
   const periods: Array<[Period, string]> = [['month', messages.pcPeriodMonth], ['3months', messages.pcPeriod3Months], ['year', messages.pcPeriodYear], ['all', messages.pcPeriodAll]];
@@ -62,8 +79,8 @@ export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { tr
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm"><AdminNavLink href={`/admin/parts/purchases?new=1&truckId=${truckId}`}><Plus aria-hidden="true" />{messages.pcAddPurchaseForTruck}</AdminNavLink></Button>
-          <Button asChild variant="outline" size="sm"><AdminNavLink href={`/admin/parts/outside-repairs?new=1&truckId=${truckId}`}><Plus aria-hidden="true" />{messages.pcAddOutsideForTruck}</AdminNavLink></Button>
+          <Button asChild variant="outline" size="sm"><AdminNavLink href={`/admin/parts/purchases?new=1&forTruck=${truckId}&from=${encodeURIComponent(here)}`}><Plus aria-hidden="true" />{messages.pcAddPurchaseForTruck}</AdminNavLink></Button>
+          <Button asChild variant="outline" size="sm"><AdminNavLink href={`/admin/parts/outside-repairs?new=1&forTruck=${truckId}&from=${encodeURIComponent(here)}`}><Plus aria-hidden="true" />{messages.pcAddOutsideForTruck}</AdminNavLink></Button>
         </div>
       </div>
 
@@ -134,16 +151,18 @@ export function AdminTruckCosts({ truckId, truckNumber, locale, messages }: { tr
               <SectionCard title={messages.pcCostsMovements} count={data.entries.length}>
                 <ul className="divide-y" data-testid="truck-costs-entries">
                   {data.entries.map((entry) => {
-                    const href = sourceHref(entry);
+                    const href = sourceHref(entry, here);
                     return (
                       <li key={entry.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
                         <span className="w-24 shrink-0 text-muted-foreground">{formatInvoiceDate(entry.occurredOn, locale)}</span>
                         <Badge variant="outline">{entry.kind === 'outside_repair' ? messages.pcCostsKindOutside : entry.kind === 'labor' ? messages.pcCostsKindLabor : messages.pcCostsKindPart}</Badge>
                         {entry.reversal ? <Badge variant="secondary">{entry.reversal === 'voided' ? messages.pcCostsVoided : messages.pcCostsCorrected}</Badge> : null}
+                        {/* PCA4 (UX-10-002): already on an invoice to Finance. */}
+                        {entry.chargedOn ? <ChargedOnChip invoice={entry.chargedOn} from={here} messages={messages} /> : null}
                         <span className="min-w-0 flex-1">
                           {href ? <AdminNavLink className="tap-inline hover:underline" href={href}>{entry.description}</AdminNavLink> : entry.description}
                           {entry.workOrder ? (
-                            <AdminNavLink className="tap-inline ml-2 font-mono text-xs text-muted-foreground hover:text-foreground hover:underline" href={`/admin/work-orders/${entry.workOrder.id}`}>{entry.workOrder.displayId}</AdminNavLink>
+                            <AdminNavLink className="tap-inline ml-2 font-mono text-xs text-muted-foreground hover:text-foreground hover:underline" href={`/admin/work-orders/${entry.workOrder.id}?from=${encodeURIComponent(here)}`}>{entry.workOrder.displayId}</AdminNavLink>
                           ) : null}
                         </span>
                         <span className={cn('tabular-nums', entry.amountCents < 0 ? 'text-muted-foreground' : 'font-medium')}>{formatCents(entry.amountCents, locale)}</span>

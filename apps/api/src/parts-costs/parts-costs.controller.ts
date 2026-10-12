@@ -90,6 +90,12 @@ export class PartsCostsController {
     return this.purchases.void(request.user!, id, body);
   }
 
+  // PCA6 (UX-10-004): the invoice file on its own; the ledger is not touched.
+  @Patch('purchases/:id/attachment')
+  setPurchaseAttachment(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.purchases.setAttachment(request.user!, id, body);
+  }
+
   @Get('invoices/check')
   checkInvoice(@Query() query: Record<string, unknown>) {
     return this.purchases.checkInvoice(query);
@@ -136,6 +142,12 @@ export class PartsCostsController {
     return this.repairs.void(request.user!, id, body);
   }
 
+  // PCA6 (UX-10-004): the invoice file on its own; the ledger is not touched.
+  @Patch('outside-repairs/:id/attachment')
+  setOutsideRepairAttachment(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.repairs.setAttachment(request.user!, id, body);
+  }
+
   // PC-4: Truck → Costs (reads the ledger).
   @Get('trucks/:id/costs')
   costsOfTruck(@Param('id') id: string, @Query() query: Record<string, unknown>) {
@@ -148,9 +160,21 @@ export class PartsCostsController {
     return this.laborRates.list();
   }
 
+  // PCA7 (UX-10-005): what a rate from a date would recalculate, before saving it.
+  @Get('labor-rates/preview')
+  previewLaborRate(@Query() query: Record<string, unknown>) {
+    return this.laborRates.preview(query);
+  }
+
   @Post('labor-rates')
   setLaborRate(@Req() request: Request, @Body() body: unknown) {
     return this.laborRates.set(request.user!, body);
+  }
+
+  // PCA7 (UX-10-005): take back the latest rate while nothing invoiced used it.
+  @Delete('labor-rates/:id')
+  removeLaborRate(@Req() request: Request, @Param('id') id: string) {
+    return this.laborRates.remove(request.user!, id);
   }
 
   // LB-2 (LTR-201 / D34): internal invoices to Finance.

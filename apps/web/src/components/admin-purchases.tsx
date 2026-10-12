@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Paperclip, Plus } from 'lucide-react';
 import { formatCents, type AdminPurchaseSummaryDto } from '@ltl-shop/shared';
@@ -12,6 +12,10 @@ import { useAdminPartsCatalog, useAdminPurchaseFormData, useAdminPurchases, useA
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
+import { safeAdminPath } from '@/lib/admin-truck-origin';
+import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
+
+const PURCHASE_FILTERS = { q: '', vendorId: '', truckId: '', from: '', to: '', noFile: false };
 
 export function purchaseTrucksLabel(item: AdminPurchaseSummaryDto, messages: AdminMessages) {
   const trucks = item.trucks.map((truck) => truck.truckNumber);
@@ -23,37 +27,33 @@ export function purchaseTrucksLabel(item: AdminPurchaseSummaryDto, messages: Adm
 /**
  * LTR-200 / D32 (PC-2): Parts & costs → Purchases. Newest first; filters by invoice, vendor or part, vendor, truck
  * ("No truck" included), period and "without invoice file". The line above the table totals what is filtered
- * (voided purchases do not count) and what has no truck.
+ * (voided purchases do not count) and what has no truck. PCA1: the filters live in the URL, so Back keeps them.
+ * PCA2: `?new=1&forTruck=<id>&from=<path>` opens New purchase for that truck and goes back to `from` when it closes.
  */
 export function AdminPurchases({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const canWrite = useCanShowManagerWrites();
-  const [filters, setFilters] = useState({ q: '', vendorId: '', truckId: '', from: '', to: '', noFile: false });
-  const query = useMemo(() => {
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(filters)) {
-      if (value === true) params.set(key, 'true');
-      else if (typeof value === 'string' && value.trim()) params.set(key, value.trim());
-    }
-    return params.toString();
-  }, [filters]);
+  const { filters, set, clear, query, here, active: filtered } = useUrlFilters(PURCHASE_FILTERS);
+  const [search, setSearch] = useDebouncedFilterText(filters.q, (next) => set('q', next));
   const { data, error, isLoading, mutate } = useAdminPurchases(query);
   const [formOpen, setFormOpen] = useState(false);
   const [presetTruckId, setPresetTruckId] = useState<string | undefined>();
+  const [returnTo, setReturnTo] = useState<string | null>(null);
   const pathname = usePathname();
   const params = useSearchParams();
-  // PC-4: "Add purchase" from Truck → Costs opens New purchase with that truck.
+  // PC-4: "Add purchase" from Truck → Costs opens New purchase with that truck; the address keeps only the filters.
   useEffect(() => {
     if (params.get('new') !== '1' || !canWrite) return;
-    setPresetTruckId(params.get('truckId') ?? undefined);
+    setPresetTruckId(params.get('forTruck') ?? undefined);
+    setReturnTo(safeAdminPath(params.get('from')));
     setFormOpen(true);
-    router.replace(pathname);
+    const next = new URLSearchParams(params.toString());
+    for (const key of ['new', 'forTruck', 'from']) next.delete(key);
+    router.replace(`${pathname}${next.size ? `?${next}` : ''}`, { scroll: false });
   }, [params, canWrite, router, pathname]);
   const { data: formData } = useAdminPurchaseFormData(true);
   const { data: catalog } = useAdminPartsCatalog('includeInactive=true');
   const { data: vendors, mutate: mutateVendors } = useAdminVendors();
-  const set = <K extends keyof typeof filters>(key: K, value: (typeof filters)[K]) => setFilters((current) => ({ ...current, [key]: value }));
-  const filtered = Boolean(query);
   const ready = Boolean(formData && catalog && vendors);
   const newButton = canWrite ? (
     <Button type="button" onClick={() => setFormOpen(true)} disabled={!ready}><Plus aria-hidden="true" />{messages.pcNewPurchase}</Button>
@@ -65,7 +65,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
       <Card className="p-3">
         <CardContent className="flex flex-wrap items-end gap-3">
           <div className="min-w-56 flex-1">
-            <Input value={filters.q} onChange={(event) => set('q', event.target.value)} placeholder={messages.pcSearchPurchases} aria-label={messages.pcSearchPurchases} />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.pcSearchPurchases} aria-label={messages.pcSearchPurchases} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="purchases-vendor">{messages.pcFilterVendor}</Label>
@@ -109,7 +109,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
         <EmptyState>
           <p>{filtered ? messages.pcNoPurchasesMatch : messages.pcNoPurchases}</p>
           {filtered ? (
-            <Button type="button" variant="outline" className="mt-4" onClick={() => setFilters({ q: '', vendorId: '', truckId: '', from: '', to: '', noFile: false })}>{messages.pcClearFilters}</Button>
+            <Button type="button" variant="outline" className="mt-4" onClick={clear}>{messages.pcClearFilters}</Button>
           ) : newButton ? <div className="mt-4 flex justify-center">{newButton}</div> : null}
         </EmptyState>
       ) : null}
@@ -126,7 +126,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
               primary: true,
               cell: (item) => (
                 <div className={item.voidedAt ? 'text-muted-foreground line-through' : undefined}>
-                  <AdminNavLink className="tap-inline font-mono font-semibold text-primary hover:underline" href={`/admin/parts/purchases/${item.id}`}>{item.invoiceNumber}</AdminNavLink>
+                  <AdminNavLink className="tap-inline font-mono font-semibold text-primary hover:underline" href={`/admin/parts/purchases/${item.id}?from=${encodeURIComponent(here)}`}>{item.invoiceNumber}</AdminNavLink>
                   {item.voidedAt ? <Badge variant="secondary" className="ml-2 no-underline">{messages.pcVoided}</Badge> : null}
                 </div>
               ),
@@ -160,9 +160,10 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
           formData={formData}
           locale={locale}
           messages={messages}
-          onClose={() => { setFormOpen(false); setPresetTruckId(undefined); }}
+          onClose={() => { setFormOpen(false); setPresetTruckId(undefined); if (returnTo) router.push(returnTo); setReturnTo(null); }}
           onVendorAdded={() => void mutateVendors()}
-          onSaved={(id) => { setFormOpen(false); void mutate(); router.push(`/admin/parts/purchases/${id}`); }}
+          // PCA2: opened from a Truck's Costs, saving goes back there (where the new cost shows); otherwise to the purchase.
+          onSaved={(id) => { setFormOpen(false); void mutate(); router.push(returnTo ?? `/admin/parts/purchases/${id}?from=${encodeURIComponent(here)}`); setReturnTo(null); }}
         />
       ) : null}
     </div>

@@ -691,6 +691,11 @@ test.describe('Shop Admin Phase 2A', () => {
     await returnDialog.getByRole('button', { name: 'Confirm' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'The Job is back from the external shop.' }).first()).toBeVisible();
     await expect(firstRow.getByTestId('admin-wo-job-external-where')).toHaveCount(0);
+    // PCA3 (UX-10-001): back without an invoice, the row says so and still offers to load it.
+    await expect(firstRow.getByTestId('admin-wo-job-awaiting-invoice')).toHaveText('Returned · no invoice yet');
+    await page.getByRole('button', { name: 'Actions for Inspect brake chamber', exact: true }).click();
+    await expect(page.getByTestId('admin-wo-job-outside-invoice')).toBeVisible();
+    await page.keyboard.press('Escape');
 
     await switchLanguage(page, 'es');
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');

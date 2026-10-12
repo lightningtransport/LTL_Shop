@@ -609,7 +609,21 @@ createServer(async (request, response) => {
     if (path === '/api/admin/parts-costs/labor-rates' && request.method === 'GET') {
       const sorted = [...partsState.laborRates].sort((left, right) => right.effectiveFrom.localeCompare(left.effectiveFrom));
       const today = new Date().toISOString().slice(0, 10);
-      json(response, 200, { rates: sorted, current: sorted.find((rate) => rate.effectiveFrom <= today) ?? null });
+      // PCA7: only the latest rate can be removed (the fixture never has invoiced labor).
+      json(response, 200, { rates: sorted.map((rate, index) => ({ ...rate, deletable: index === 0 })), current: sorted.find((rate) => rate.effectiveFrom <= today) ?? null });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/labor-rates/preview' && request.method === 'GET') {
+      const effectiveFrom = new URL(request.url, 'http://fixture').searchParams.get('effectiveFrom');
+      json(response, 200, effectiveFrom === '2026-09-01' ? { workOrders: 3, invoiced: 1 } : { workOrders: 0, invoiced: 0 });
+      return;
+    }
+    const rateDelete = path.match(/^\/api\/admin\/parts-costs\/labor-rates\/([\w-]+)$/i);
+    if (rateDelete && request.method === 'DELETE') {
+      const sorted = [...partsState.laborRates].sort((left, right) => right.effectiveFrom.localeCompare(left.effectiveFrom));
+      if (sorted[0]?.id !== rateDelete[1]) { json(response, 409, { code: 'LABOR_RATE_NOT_LATEST' }); return; }
+      partsState.laborRates = partsState.laborRates.filter((rate) => rate.id !== rateDelete[1]);
+      json(response, 200, { id: rateDelete[1], recalculatedWorkOrders: 3 });
       return;
     }
     if (path === '/api/admin/parts-costs/labor-rates' && request.method === 'POST') {
@@ -679,8 +693,19 @@ createServer(async (request, response) => {
       const byTruck = new Map();
       for (const line of purchase.lines.filter((item) => item.truck)) byTruck.set(line.truck.id, { ...line.truck, amountCents: (byTruck.get(line.truck.id)?.amountCents ?? 0) + line.lineTotalCents });
       const noTruckCents = purchase.lines.filter((line) => !line.truck).reduce((sum, line) => sum + line.lineTotalCents, 0);
-      return { ...purchaseSummary(purchase), ...purchase, truckShares: [...byTruck.values()], noTruckCents };
+      return { ...purchaseSummary(purchase), ...purchase, truckShares: [...byTruck.values()], noTruckCents, chargedOn: purchase.chargedOn ?? [] };
     };
+    // PCA6: the invoice file on its own.
+    const attachmentPatch = path.match(/^\/api\/admin\/parts-costs\/(purchases|outside-repairs)\/([0-9a-f-]+)\/attachment$/i);
+    if (attachmentPatch && request.method === 'PATCH') {
+      const body = await readJson(request);
+      const record = (attachmentPatch[1] === 'purchases' ? partsState.purchases : partsState.repairs).find((item) => item.id === attachmentPatch[2]);
+      if (!record) { json(response, 404, { message: 'Not found' }); return; }
+      record.attachment = body.attachmentId ? { id: body.attachmentId, fileName: 'invoice.pdf', contentType: 'application/pdf', sizeBytes: 1024 } : null;
+      record.hasFile = Boolean(record.attachment);
+      json(response, 200, { id: record.id });
+      return;
+    }
     const normInvoice = (text) => String(text ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     const invoiceMatch = (vendorId, number, excludeId) => {
       const found = partsState.purchases.find((item) => item.vendor.id === vendorId && item.invoiceNorm === normInvoice(number) && !item.voidedAt && item.id !== excludeId);
@@ -1169,6 +1194,7 @@ createServer(async (request, response) => {
       if (!String(body?.note ?? '').trim()) { json(response, 400, { message: 'A note is required.' }); return; }
       job.assignedMechanic = null;
       job.external = { kind: body.kind, note: String(body.note).trim(), since: '2026-10-05T14:00:00.000Z' };
+      job.wentExternal = true; // PCA3: the invoice can be loaded after "Returned" too.
     } else {
       if (!job.external) { json(response, 400, { code: 'JOB_NOT_EXTERNAL', message: 'This Job is not at an external shop.' }); return; }
       job.external = null;

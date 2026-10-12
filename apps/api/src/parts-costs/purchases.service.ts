@@ -6,6 +6,7 @@ import {
   adminPurchasesQuerySchema,
   adminRequestAttachmentSchema,
   adminSavePurchaseSchema,
+  adminSetAttachmentSchema,
   adminVoidSchema,
   lineTotalCents,
   normalizeInvoiceNumber,
@@ -20,7 +21,7 @@ import { Prisma } from '@prisma/client';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
-import { reverseSource, truckAmounts, writeEntries } from './cost-ledger';
+import { chargedOnBySource, reverseSource, truckAmounts, writeEntries } from './cost-ledger';
 import { INVOICE_BUCKET, InvoiceFiles } from './invoice-files';
 import { assertNewInvoice, currentAttachment, duplicateInvoice, filedOwners, findInvoice, linkAttachment, lockVendorInvoices } from './invoice-registry';
 
@@ -90,7 +91,7 @@ export class PurchasesService {
 
   async detail(id: string): Promise<AdminPurchaseDetailDto> {
     const row = await this.row(id);
-    const attachment = await currentAttachment(this.prisma, 'part_purchase', id);
+    const [attachment, chargedOn] = await Promise.all([currentAttachment(this.prisma, 'part_purchase', id), chargedOnBySource(this.prisma, { sourceType: SOURCE, sourceId: id })]);
     const { shares, noTruckCents } = this.amounts(row);
     return {
       ...this.summary(row, Boolean(attachment)),
@@ -115,6 +116,7 @@ export class PurchasesService {
       createdAt: row.createdAt.toISOString(),
       voidedBy: row.voidedBy,
       voidReason: row.voidReason,
+      chargedOn,
     };
   }
 
@@ -227,8 +229,12 @@ export class PurchasesService {
         },
         include: purchaseInclude,
       });
-      await reverseSource(tx, { sourceType: SOURCE, sourceId: id }, actor.id);
-      await this.writeLedger(tx, purchase, actor.id);
+      // PCA6 (UX-10-004): the ledger is rewritten only when something that reaches it changed (vendor, number, date,
+      // lines, trucks, tax, freight). A new file or a note leaves the trucks' costs, and the invoices, as they are.
+      if (this.ledgerKey(before) !== this.ledgerKey(purchase)) {
+        await reverseSource(tx, { sourceType: SOURCE, sourceId: id }, actor.id);
+        await this.writeLedger(tx, purchase, actor.id);
+      }
       if (input.attachmentId !== undefined) await linkAttachment(tx, 'part_purchase', id, input.attachmentId);
       await this.activity.log(tx, {
         eventType: ActivityEventType.PART_PURCHASE_SAVED,
@@ -240,6 +246,38 @@ export class PurchasesService {
         relevantValue: { action: 'part_purchase_updated', vendor: purchase.vendor.name, invoiceNumber: purchase.invoiceNumber, totalCents: purchase.totalCents },
       });
       return { id };
+    });
+  }
+
+  /** PCA6 (UX-10-004): attach, replace or remove the invoice file on its own; nothing else changes. */
+  async setAttachment(actor: AuthUser, id: string, raw: unknown) {
+    const { attachmentId } = parse(adminSetAttachmentSchema, raw);
+    const before = await this.row(id);
+    if (before.voidedAt) throw new ConflictException({ code: 'PURCHASE_VOIDED', message: 'This purchase is voided. Load it again instead.' });
+    await this.prisma.$transaction(async (tx) => {
+      await linkAttachment(tx, 'part_purchase', id, attachmentId);
+      await this.activity.log(tx, {
+        eventType: ActivityEventType.PART_PURCHASE_SAVED,
+        entityType: SOURCE,
+        entityId: id,
+        userId: actor.id,
+        relevantValue: { action: attachmentId ? 'part_purchase_file_attached' : 'part_purchase_file_removed', vendor: before.vendor.name, invoiceNumber: before.invoiceNumber },
+      });
+    });
+    return { id };
+  }
+
+  /** What the ledger is written from; two purchases with the same key write the same rows. */
+  private ledgerKey(row: PurchaseRow) {
+    return JSON.stringify({
+      vendorId: row.vendorId,
+      invoiceNumber: row.invoiceNumber,
+      invoiceDate: dateOnly(row.invoiceDate),
+      taxCents: row.taxCents,
+      freightCents: row.freightCents,
+      lines: row.lines
+        .map((line) => [line.partId, line.description, line.partNumber, line.quantity.toString(), line.unitCostCents, line.truckId])
+        .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
     });
   }
 

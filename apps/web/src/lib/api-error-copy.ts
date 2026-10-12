@@ -8,6 +8,8 @@ import type { ShopLocale } from './shop-locale';
  */
 export type ApiErrorCode =
   | 'LABOR_RATE_DATE_TAKEN'
+  | 'LABOR_RATE_NOT_LATEST'
+  | 'LABOR_RATE_IN_USE'
   | 'CUSTOM_JOB_GROUP_NOT_FOUND'
   | 'CATALOG_NAME_INVALID'
   | 'INTERNAL_INVOICE_DRAFT_EXISTS'
@@ -114,6 +116,8 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
     LABOR_RATE_DATE_TAKEN: 'There is already a rate from that date. Pick another date.',
+    LABOR_RATE_NOT_LATEST: 'Only the latest rate can be removed.',
+    LABOR_RATE_IN_USE: 'Labor priced with this rate is already on a sent invoice. Set a new rate from another date instead.',
     CUSTOM_JOB_GROUP_NOT_FOUND: 'Those Custom Jobs were already reviewed. Reload the inbox.',
     CATALOG_NAME_INVALID: 'Use letters or numbers in the name.',
     INTERNAL_INVOICE_DRAFT_EXISTS: 'There is already a draft for this truck and month.',
@@ -218,6 +222,8 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   es: {
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
     LABOR_RATE_DATE_TAKEN: 'Ya hay una tarifa desde esa fecha. Elige otra fecha.',
+    LABOR_RATE_NOT_LATEST: 'Solo se puede quitar la última tarifa.',
+    LABOR_RATE_IN_USE: 'Mano de obra con esta tarifa ya está en una factura enviada. Pon una tarifa nueva desde otra fecha.',
     CUSTOM_JOB_GROUP_NOT_FOUND: 'Esos Custom Jobs ya se revisaron. Vuelve a cargar la bandeja.',
     CATALOG_NAME_INVALID: 'Usa letras o números en el nombre.',
     INTERNAL_INVOICE_DRAFT_EXISTS: 'Ya hay un borrador para este camión y mes.',

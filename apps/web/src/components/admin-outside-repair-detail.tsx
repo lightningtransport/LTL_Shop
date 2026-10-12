@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Ban, Paperclip, Pencil } from 'lucide-react';
 import { formatCents } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { OutsideRepairForm } from './admin-outside-repair-form';
+import { ChargedOnChips, chargedWarning } from './admin-charged-on';
+import { InvoiceFileDialog } from './admin-invoice-file-dialog';
 import { partsCostsFailure } from './admin-parts-catalog';
 import { AdminBackLink, Badge, Button, DialogActions, EmptyState, InlineAlert, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard, Textarea } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
@@ -15,6 +18,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { ApiError } from '@/lib/api';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { formatShortDateTime } from '@/lib/work-order-view';
+import { adminPartsOrigin, adminTruckCostsHref } from '@/lib/admin-truck-origin';
 
 /** LTR-200 / D32 (PC-3): one outside repair — truck, Job, amount, the invoice file, Edit and Void. */
 export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
@@ -25,6 +29,11 @@ export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string;
   const { data: vendors } = useAdminVendors();
   const [editing, setEditing] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [filing, setFiling] = useState(false);
+  // PCA2 (UX-5-002): back to the Truck's costs, the Work Order, the invoice or the filtered list it was opened from.
+  const from = useSearchParams().get('from');
+  const origin = adminPartsOrigin(from, { href: '/admin/parts/outside-repairs', backLabel: messages.pcBackToOutside }, messages);
+  const here = `/admin/parts/outside-repairs/${id}`;
 
   if (isLoading) return <PageSkeleton label={messages.pcOutsideTitle} />;
   if (error instanceof ApiError && error.status === 404) {
@@ -44,7 +53,7 @@ export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string;
   const live = !data.voidedAt;
   return (
     <div className="space-y-6">
-      <AdminBackLink href="/admin/parts/outside-repairs">{messages.pcBackToOutside}</AdminBackLink>
+      <AdminBackLink href={origin.href}>{origin.backLabel}</AdminBackLink>
       <PageHeader
         title={`${data.vendor.name} · ${data.invoiceNumber}`}
         subtitle={`${formatInvoiceDate(data.invoiceDate, locale)} · ${fillPlaceholders(messages.pcTruckLabel, { truck: data.truck.truckNumber })}`}
@@ -67,15 +76,18 @@ export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string;
           <dt className="text-muted-foreground">{messages.pcWhatWasDone}</dt>
           <dd className="whitespace-pre-line">{data.description}</dd>
           <dt className="text-muted-foreground">{messages.pcTruckRequired}</dt>
-          <dd><AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${data.truck.id}`}>{fillPlaceholders(messages.pcTruckLabel, { truck: data.truck.truckNumber })}</AdminNavLink></dd>
+          <dd><AdminNavLink className="tap-inline text-primary hover:underline" href={adminTruckCostsHref(data.truck.id, here)}>{fillPlaceholders(messages.pcTruckLabel, { truck: data.truck.truckNumber })}</AdminNavLink></dd>
           <dt className="text-muted-foreground">{messages.pcExternalJob}</dt>
           <dd data-testid="outside-job">
             {data.job
-              ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/work-orders/${data.job.workOrderId}`}>{data.job.displayName} · {data.job.workOrderDisplayId}{data.job.kind ? ` · ${data.job.kind === 'truck' ? messages.pcWhatTruck : messages.pcWhatPart}` : ''}</AdminNavLink>
+              ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/work-orders/${data.job.workOrderId}?from=${encodeURIComponent(here)}`}>{data.job.displayName} · {data.job.workOrderDisplayId}{data.job.kind ? ` · ${data.job.kind === 'truck' ? messages.pcWhatTruck : messages.pcWhatPart}` : ''}</AdminNavLink>
               : <span className="text-muted-foreground">{messages.pcNotLinked}</span>}
           </dd>
           <dt className="text-muted-foreground">{messages.pcColAmount}</dt>
           <dd className={`font-semibold tabular-nums ${live ? '' : 'line-through'}`}>{formatCents(data.amountCents, locale)}</dd>
+          {/* PCA4 (UX-10-002): whether Finance already has this on an invoice. */}
+          <dt className="text-muted-foreground">{messages.pcChargedToFinance}</dt>
+          <dd><ChargedOnChips chargedOn={data.chargedOn} from={here} messages={messages} testId="outside-charged-on" /></dd>
         </dl>
       </SectionCard>
 
@@ -88,6 +100,10 @@ export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string;
               <Button type="button" variant="outline" size="sm" onClick={() => void openFile()}>{messages.pcOpenFile}</Button>
             </>
           ) : <Badge variant="warning">{messages.pcNoInvoiceFile}</Badge>}
+          {/* PCA6 (UX-10-004): the file on its own, without Edit. */}
+          {canWrite && live && formData?.filesEnabled ? (
+            <Button type="button" variant="ghost" size="sm" data-testid="outside-file-action" onClick={() => setFiling(true)}>{data.attachment ? messages.pcReplaceFile : messages.pcAddFile}</Button>
+          ) : null}
         </div>
         {data.notes ? <p className="border-t px-4 py-3 text-sm whitespace-pre-line">{data.notes}</p> : null}
         <p className="border-t px-4 py-2 text-xs text-muted-foreground">
@@ -104,14 +120,16 @@ export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string;
           messages={messages}
           onClose={() => setEditing(false)}
           onSaved={() => { setEditing(false); void mutate(); }}
+          notice={chargedWarning('edit', 'repair', data.chargedOn, messages)}
         />
       ) : null}
-      {voiding ? <VoidRepairDialog id={data.id} messages={messages} onClose={() => setVoiding(false)} onDone={() => { setVoiding(false); void mutate(); }} /> : null}
+      {voiding ? <VoidRepairDialog id={data.id} warning={chargedWarning('void', 'repair', data.chargedOn, messages)} messages={messages} onClose={() => setVoiding(false)} onDone={() => { setVoiding(false); void mutate(); }} /> : null}
+      {filing ? <InvoiceFileDialog owner="repair" id={data.id} current={data.attachment} messages={messages} onClose={() => setFiling(false)} onSaved={() => { setFiling(false); void mutate(); }} /> : null}
     </div>
   );
 }
 
-function VoidRepairDialog({ id, messages, onClose, onDone }: { id: string; messages: AdminMessages; onClose: () => void; onDone: () => void }) {
+function VoidRepairDialog({ id, warning, messages, onClose, onDone }: { id: string; warning: string | null; messages: AdminMessages; onClose: () => void; onDone: () => void }) {
   const { showToast } = useActionToast();
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -134,6 +152,7 @@ function VoidRepairDialog({ id, messages, onClose, onDone }: { id: string; messa
   return (
     <Modal open title={messages.pcOutsideVoidTitle} description={messages.pcOutsideVoidBody} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!reason.trim()}>
       <form className="space-y-4" onSubmit={(event) => void submit(event)}>
+        {warning ? <InlineAlert data-testid="outside-void-charged">{warning}</InlineAlert> : null}
         <div className="space-y-1.5">
           <Label htmlFor="outside-void-reason">{messages.pcVoidReason}</Label>
           <Textarea id="outside-void-reason" rows={2} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} />

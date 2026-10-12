@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Ban, Paperclip, Pencil } from 'lucide-react';
 import { formatCents } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { partsCostsFailure } from './admin-parts-catalog';
 import { PurchaseForm } from './admin-purchase-form';
+import { ChargedOnChips, chargedWarning } from './admin-charged-on';
+import { InvoiceFileDialog } from './admin-invoice-file-dialog';
 import { AdminBackLink, Badge, Button, DataTable, DialogActions, EmptyState, InlineAlert, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard, Textarea } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { openAdminAttachment, useAdminPartsCatalog, useAdminPurchase, useAdminPurchaseFormData, useAdminVendors, voidAdminPurchase } from '@/lib/admin-data';
@@ -15,6 +18,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { ApiError } from '@/lib/api';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { formatShortDateTime } from '@/lib/work-order-view';
+import { adminPartsOrigin, adminTruckCostsHref } from '@/lib/admin-truck-origin';
 
 /**
  * LTR-200 / D32 (PC-2): one purchase — its lines, what each truck gets (lines plus its share of tax and freight,
@@ -26,9 +30,14 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
   const { data, error, isLoading, mutate } = useAdminPurchase(id);
   const [editing, setEditing] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [filing, setFiling] = useState(false);
   const { data: formData } = useAdminPurchaseFormData(canWrite);
   const { data: catalog } = useAdminPartsCatalog('includeInactive=true');
   const { data: vendors, mutate: mutateVendors } = useAdminVendors();
+  // PCA2 (UX-5-002): back to the Truck's costs, the invoice or the filtered list this purchase was opened from.
+  const from = useSearchParams().get('from');
+  const origin = adminPartsOrigin(from, { href: '/admin/parts/purchases', backLabel: messages.pcBackToPurchases }, messages);
+  const here = `/admin/parts/purchases/${id}`;
 
   if (isLoading) return <PageSkeleton label={messages.pcPurchasesTitle} />;
   if (error instanceof ApiError && error.status === 404) {
@@ -53,7 +62,7 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
     : messages.pcNoTruckOption;
   return (
     <div className="space-y-6">
-      <AdminBackLink href="/admin/parts/purchases">{messages.pcBackToPurchases}</AdminBackLink>
+      <AdminBackLink href={origin.href}>{origin.backLabel}</AdminBackLink>
       <PageHeader
         title={`${data.vendor.name} · ${data.invoiceNumber}`}
         subtitle={formatInvoiceDate(data.invoiceDate, locale)}
@@ -83,7 +92,7 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
           <dt className="text-muted-foreground">{messages.pcColTrucks}</dt>
           <dd>
             {data.truckShares.length === 1 && !data.noTruckCents
-              ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${data.truckShares[0].id}`}>{destination}</AdminNavLink>
+              ? <AdminNavLink className="tap-inline text-primary hover:underline" href={adminTruckCostsHref(data.truckShares[0].id, here)}>{destination}</AdminNavLink>
               : destination}
           </dd>
           <dt className="text-muted-foreground">{messages.pcInvoiceFile}</dt>
@@ -95,7 +104,14 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
                 <Button type="button" variant="outline" size="sm" onClick={() => void openFile()}>{messages.pcOpenFile}</Button>
               </>
             ) : <Badge variant="warning">{messages.pcNoInvoiceFile}</Badge>}
+            {/* PCA6 (UX-10-004): the file on its own, without Edit (which would rewrite the trucks' costs). */}
+            {canWrite && live && formData?.filesEnabled ? (
+              <Button type="button" variant="ghost" size="sm" data-testid="purchase-file-action" onClick={() => setFiling(true)}>{data.attachment ? messages.pcReplaceFile : messages.pcAddFile}</Button>
+            ) : null}
           </dd>
+          {/* PCA4 (UX-10-002): whether Finance already has this on an invoice, before anyone edits or voids it. */}
+          <dt className="text-muted-foreground">{messages.pcChargedToFinance}</dt>
+          <dd><ChargedOnChips chargedOn={data.chargedOn} from={here} messages={messages} testId="purchase-charged-on" /></dd>
         </dl>
         <dl className="grid min-w-56 grid-cols-[1fr_auto] content-start gap-x-6 gap-y-1 rounded-lg bg-muted/60 px-4 py-3 text-sm">
           <dt>{messages.pcSubtotal}</dt><dd className="text-right tabular-nums">{formatCents(data.subtotalCents, locale)}</dd>
@@ -130,7 +146,7 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
               key: 'truck',
               header: messages.pcLineTruck,
               cell: (line: (typeof data.lines)[number]) => line.truck
-                ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${line.truck.id}`}>{fillPlaceholders(messages.pcTruckLabel, { truck: line.truck.truckNumber })}</AdminNavLink>
+                ? <AdminNavLink className="tap-inline text-primary hover:underline" href={adminTruckCostsHref(line.truck.id, here)}>{fillPlaceholders(messages.pcTruckLabel, { truck: line.truck.truckNumber })}</AdminNavLink>
                 : <span className="text-muted-foreground">{messages.pcNoTruckOption}</span>,
             }] : []),
           ]}
@@ -144,7 +160,7 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
             <ul className="divide-y" data-testid="truck-shares">
               {data.truckShares.map((share) => (
                 <li key={share.id} className="flex justify-between gap-3 py-1.5">
-                  <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/trucks/${share.id}`}>{fillPlaceholders(messages.pcTruckLabel, { truck: share.truckNumber })}</AdminNavLink>
+                  <AdminNavLink className="tap-inline text-primary hover:underline" href={adminTruckCostsHref(share.id, here)}>{fillPlaceholders(messages.pcTruckLabel, { truck: share.truckNumber })}</AdminNavLink>
                   <span className="tabular-nums">{formatCents(share.amountCents, locale)}</span>
                 </li>
               ))}
@@ -175,14 +191,16 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
           onClose={() => setEditing(false)}
           onVendorAdded={() => void mutateVendors()}
           onSaved={() => { setEditing(false); void mutate(); }}
+          notice={chargedWarning('edit', 'purchase', data.chargedOn, messages)}
         />
       ) : null}
-      {voiding ? <VoidDialog id={data.id} messages={messages} onClose={() => setVoiding(false)} onDone={() => { setVoiding(false); void mutate(); }} /> : null}
+      {voiding ? <VoidDialog id={data.id} warning={chargedWarning('void', 'purchase', data.chargedOn, messages)} messages={messages} onClose={() => setVoiding(false)} onDone={() => { setVoiding(false); void mutate(); }} /> : null}
+      {filing ? <InvoiceFileDialog owner="purchase" id={data.id} current={data.attachment} messages={messages} onClose={() => setFiling(false)} onSaved={() => { setFiling(false); void mutate(); }} /> : null}
     </div>
   );
 }
 
-function VoidDialog({ id, messages, onClose, onDone }: { id: string; messages: AdminMessages; onClose: () => void; onDone: () => void }) {
+function VoidDialog({ id, warning, messages, onClose, onDone }: { id: string; warning: string | null; messages: AdminMessages; onClose: () => void; onDone: () => void }) {
   const { showToast } = useActionToast();
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -205,6 +223,7 @@ function VoidDialog({ id, messages, onClose, onDone }: { id: string; messages: A
   return (
     <Modal open title={messages.pcVoidTitle} description={messages.pcVoidBody} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!reason.trim()}>
       <form className="space-y-4" onSubmit={(event) => void submit(event)}>
+        {warning ? <InlineAlert data-testid="purchase-void-charged">{warning}</InlineAlert> : null}
         <div className="space-y-1.5">
           <Label htmlFor="void-reason">{messages.pcVoidReason}</Label>
           <Textarea id="void-reason" rows={2} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} />
