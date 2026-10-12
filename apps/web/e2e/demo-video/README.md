@@ -1,6 +1,6 @@
 # Demo intro video
 
-A 35-second video, "A day at the shop", to show before people open the demo link (D39). It has 11 scenes in the order of `DEMO_FLOW` (6:00 AM dashboard → 5:00 PM people and shop hours), each with a time, a role and a title. It is 1920×1080 at 30 fps, H.264, with no audio.
+A 44-second video, "A day at the shop", to show before people open the demo link (D39). It opens with the login loader (`public/lightning-loader.svg`) drawing the logo, then shows 8 scenes in the order of `DEMO_FLOW` (6:00 AM dashboard → 4:30 PM month close). Each scene has a time, a role and a title that says what the shop gains, and stays about 4.3 s so both lines can be read. It is 1920×1080 at 30 fps, H.264, with no audio.
 
 It is not part of the Playwright suite. Rebuild it whenever the screens change.
 

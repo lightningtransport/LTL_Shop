@@ -68,6 +68,8 @@
   /* Intro and closing */
   .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
   .card img { width: 440px; }
+  .card .loader { width: 460px; }
+  .card .loader svg { width: 100%; display: block; }
   .card h1 { font-size: 88px; margin-top: 48px; }
   .card .sub { font-size: 30px; margin-top: 18px; }
   .cta { margin-top: 44px; font-size: 30px; font-weight: 700; color: #fff; background: var(--primary); padding: 18px 40px; border-radius: 999px;
@@ -79,28 +81,30 @@
 <div id="stage"></div>
 <script>
   const FPS = 30;
-  const DURATION = 35;
   const FADE = 0.45;
-  const INTRO_END = 2.4;
-  const STEP = 2.7;
+  const INTRO_END = 5.2;
+  const STEP = 4.3;
+  const OUTRO = 4.2;
+  // public/lightning-loader.svg draws the logo in its first 2.9 s, then fades out at 88% of 3.4 s: hold it drawn.
+  const LOADER_DRAWN = 2.9;
 
-  // The order of a day at the shop (DEMO_FLOW in apps/web/src/lib/demo/scripts.ts), one feature per scene.
+  // The order of a day at the shop (DEMO_FLOW in apps/web/src/lib/demo/scripts.ts). Titles say what the shop
+  // gains, the line under them says how; each scene stays long enough to read both.
   const SCENES = [
-    { shot: '01-dashboard', time: '6:00 AM', role: 'Manager', title: 'Start the day with what needs you', sub: 'Blocked, ready to close, ready to go and unassigned: in order.' },
-    { shot: '02-yard', time: '6:30 AM', role: 'Manager', title: 'Every truck, every stage, live', sub: 'The yard board shows where each truck is and what stops it.' },
-    { shot: '03-new-work-order', time: '7:00 AM', role: 'Manager', title: 'A truck arrives: one Work Order', sub: 'Pick the truck. PM, Alignment, Detailing and QC come with their owners.' },
-    { shot: '04-mechanic', phone: true, time: '7:30 AM', role: 'Mechanic', title: 'Mechanics work from their phone', sub: 'Clock in, take Jobs from the team queue, add notes and requests.' },
-    { shot: '05-blocker', time: '9:00 AM', role: 'Manager', title: 'A blocker reaches the desk at once', sub: 'The mechanic reports why; the Manager resolves it in one tap.' },
-    { shot: '06-pm', phone: true, time: '11:00 AM', role: 'PM', title: 'Every team works its own queue', sub: 'PM with mileage and parts. Alignment and Detailing the same way.' },
-    { shot: '07-qc', phone: true, time: '1:00 PM', role: 'Quality Check', title: 'Quality Check before it leaves', sub: 'Take the truck, approve it, or return the Job to the mechanic.' },
-    { shot: '08-ready-to-go', time: '3:00 PM', role: 'Manager', title: 'Ready to Go, back on the road', sub: 'Every step checked. Return it to service when it leaves.' },
-    { shot: '09-truck-costs', time: '4:00 PM', role: 'Admin', title: 'Every cost, per truck', sub: 'Parts, outside repairs and labor hours, by month.' },
-    { shot: '10-month-close', time: '4:30 PM', role: 'Admin', title: 'Month close for Finance', sub: 'One internal invoice per truck. Drafts for all in one click.' },
-    { shots: ['11a-people', '11b-shop-hours'], time: '5:00 PM', role: 'Admin', title: 'People and shop hours, in your hands', sub: 'Accounts and teams. At day close every running clock stops.' },
+    { shot: '01-dashboard', time: '6:00 AM', role: 'Manager', title: 'Know what needs you before the first coffee', sub: 'Blocked, ready to close, ready to go, unassigned. In order, live.' },
+    { shot: '02-yard', time: '6:30 AM', role: 'Manager', title: 'The whole yard at a glance', sub: 'Every truck, the stage it is in and what is stopping it.' },
+    { shot: '04-mechanic', phone: true, time: '7:30 AM', role: 'Mechanic', title: 'Mechanics work from their phone, not a whiteboard', sub: 'Clock in, take Jobs from the team queue, leave notes.' },
+    { shot: '05-blocker', time: '9:00 AM', role: 'Manager', title: 'A blocked truck reaches you in seconds', sub: 'The mechanic says why. You resolve it in one tap.' },
+    { shot: '07-qc', phone: true, time: '1:00 PM', role: 'Quality Check', title: 'Nothing leaves without Quality Check', sub: 'Approve the truck, or send the Job back to the mechanic.' },
+    { shot: '08-ready-to-go', time: '3:00 PM', role: 'Manager', title: 'Back on the road, every step checked', sub: 'Inspection, PM, Alignment, Detailing, QC: all done.' },
+    { shot: '09-truck-costs', time: '4:00 PM', role: 'Admin', title: 'Know what every truck really costs', sub: 'Parts, outside repairs and labor hours, per truck.' },
+    { shot: '10-month-close', time: '4:30 PM', role: 'Admin', title: 'Close the month for Finance in one click', sub: 'One internal invoice per truck, drafted for you.' },
   ];
+  const DURATION = INTRO_END + SCENES.length * STEP + OUTRO;
 
   const stage = document.getElementById('stage');
   const animations = [];
+  let loaderAnimations = [];
   const ease = 'cubic-bezier(.22,.8,.24,1)';
 
   function el(tag, cls, parent, html) {
@@ -166,16 +170,18 @@
     return w;
   }
 
-  function build(shots) {
-    // Intro
+  function build(shots, loaderSvg) {
+    // Intro: the login loader draws the logo, then it moves up for the promise.
     {
-      const s = sceneShell(0, INTRO_END);
+      const s = sceneShell(-FADE, INTRO_END);
       const card = el('div', 'card', s);
-      const logo = el('img', '', card); logo.src = '../../public/ltl-logo.png';
+      const logo = el('div', 'loader', card, loaderSvg);
+      loaderAnimations = logo.getAnimations({ subtree: true });
+      loaderAnimations.forEach((a) => a.pause());
+      anim(logo, [{ transform: 'translateY(150px) scale(1.25)' }, { transform: 'none' }], LOADER_DRAWN, 0.9);
       const h = el('h1', '', card, 'A day at the shop');
-      const p = el('p', 'sub', card, 'Lightning Shop, from the first truck in to the month close.');
-      anim(logo, [{ opacity: 0, transform: 'scale(.92)' }, { opacity: 1, transform: 'none' }], 0.1, 0.8);
-      rise(h, 0.45, 30); rise(p, 0.65, 30);
+      const p = el('p', 'sub', card, 'Every truck. Every mechanic. Every dollar. One app.');
+      rise(h, LOADER_DRAWN + 0.35, 30); rise(p, LOADER_DRAWN + 0.6, 30);
     }
     SCENES.forEach((scene, i) => {
       const start = INTRO_END + i * STEP;
@@ -212,8 +218,8 @@
       const s = sceneShell(start, DURATION);
       const card = el('div', 'card', s);
       const logo = el('img', '', card); logo.src = '../../public/ltl-logo.png'; logo.style.width = '300px';
-      const h = el('h1', '', card, 'Now try it yourself');
-      const p = el('p', 'sub', card, 'Pick a role: Manager, Mechanic, PM, Quality Check or Admin.');
+      const h = el('h1', '', card, 'Less chasing. More trucks on the road.');
+      const p = el('p', 'sub', card, 'Try it yourself: pick a role and run the shop for a day.');
       const cta = el('div', 'cta', card, 'Open the demo &rarr;');
       anim(logo, [{ opacity: 0, transform: 'scale(.92)' }, { opacity: 1, transform: 'none' }], start + 0.1, 0.7);
       rise(h, start + 0.3, 30); rise(p, start + 0.45, 30);
@@ -224,6 +230,7 @@
 
   function seek(seconds) {
     for (const a of animations) a.currentTime = seconds * 1000;
+    for (const a of loaderAnimations) a.currentTime = Math.min(Math.max(seconds, 0), LOADER_DRAWN) * 1000;
   }
   function play() {
     const t0 = performance.now();
