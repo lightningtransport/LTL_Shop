@@ -224,6 +224,12 @@ Un video de 35 s, "A day at the shop", para mostrar antes de entrar al link de l
 
 Se rehace con un comando, con la demo levantada: `DEMO_VIDEO_BASE_URL=http://localhost:3042 npm run demo:video --workspace=@ltl-shop/web`. El resultado sale en `apps/web/e2e/demo-video/out/`. Los detalles y cómo cambiar textos u orden están en `apps/web/e2e/demo-video/README.md`.
 
+### Landing de la demo
+
+**https://ltl-shop-landing.vercel.app** es la página que se manda antes de la demo. Primero se ve el video en autoplay. Abajo vienen las funciones del Shop, los cinco roles, "How the demo works" en 4 pasos y el botón **Open the demo**. Está en inglés.
+
+Es HTML estático en `apps/landing/`, con su propio proyecto Vercel `ltl-shop-landing`. Producción y la demo no se tocan. La URL de la demo se pone en un solo lugar, `apps/landing/config.js`, y después se redespliega. Mientras está vacía, el botón dice "Demo link coming soon". La clave **no** aparece en el landing: se manda aparte (D39). Para cambiar el video o volver a desplegar, ver `apps/landing/README.md`.
+
 ## Demo publicada (D39, DP3)
 
 La misma demo, en internet, para mandar por link. Vive en proyectos **aparte** de producción: su propia base (Supabase gratis) y dos proyectos Vercel (web y API). Los datos son los de `prisma:demo-local` y se rearman solos cada noche.
@@ -257,7 +263,8 @@ La misma demo, en internet, para mandar por link. Vive en proyectos **aparte** d
    - `NEXT_PUBLIC_DEMO_HOSTED` = `1`;
    - `NEXT_PUBLIC_API_URL` = la URL del API demo;
    - `ADMIN_PROFILE_SECRET` = cualquier texto largo, distinto del de producción.
-6. **Probar y mandar:** abrir la URL de la web demo. Sin la clave no se ve nada; con la clave, "Start the demo". Mandar el link y, aparte, la clave.
+6. **Probar y mandar:** abrir la URL de la web demo. Sin la clave no se ve nada; con la clave, "Start the demo".
+7. **Landing:** poner la URL de la web demo en `apps/landing/config.js` → `demoUrl` y volver a desplegar (`apps/landing/README.md`). Mandar el link del landing (https://ltl-shop-landing.vercel.app) y, aparte, la clave.
 
 **Cambiar la clave:** cambiar `DEMO_ACCESS_CODE` en el API demo y volver a desplegarlo. Los navegadores con la clave vieja vuelven a ver la pantalla de la clave.
 
