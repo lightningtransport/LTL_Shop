@@ -62,6 +62,16 @@ type PmJobLike = {
   category?: { name: string } | null;
 };
 
+/**
+ * P21 / D38: the mechanic's lists bring closed Work Orders from this many days back. Before, every closed Work
+ * Order the mechanic could see came back with its full detail on every load and every poll, forever.
+ */
+export const MECHANIC_COMPLETED_WINDOW_DAYS = 30;
+
+export function mechanicCompletedSince(now: Date = new Date()): Date {
+  return new Date(now.getTime() - MECHANIC_COMPLETED_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+}
+
 @Injectable()
 export class WorkOrdersService {
   private readonly logger = new Logger(WorkOrdersService.name);
@@ -103,6 +113,8 @@ export class WorkOrdersService {
       this.prisma.workOrder.findMany({
       where: {
         status: { in: ['created', 'in_progress', 'waiting_paused', 'completed'] },
+        // P21 / D38: closed Work Orders only from the last MECHANIC_COMPLETED_WINDOW_DAYS days; open ones always.
+        NOT: { status: 'completed', completedAt: { lt: mechanicCompletedSince() } },
         // LTR-146: the PM workspace also lists truck Work Orders whose PM job is mine.
         ...(pmMode
           ? {

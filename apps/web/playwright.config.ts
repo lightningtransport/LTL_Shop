@@ -55,6 +55,8 @@ export default defineConfig({
               NEXT_DIST_DIR: '.next-e2e',
               NEXT_PUBLIC_API_URL: 'http://127.0.0.1:3101',
               NEXT_PUBLIC_E2E_DEV_LOGIN: '1',
+              // P19 / D38: the signed Admin profile cookie is on in the e2e build, so its path is what the specs exercise.
+              ADMIN_PROFILE_SECRET: 'e2e-only-admin-profile-secret-0123456789abcdef',
               NEXT_TELEMETRY_DISABLED: '1',
             },
           },

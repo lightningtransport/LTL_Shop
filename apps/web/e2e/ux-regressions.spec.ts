@@ -191,6 +191,9 @@ async function mockShopApi(page: Page) {
     if (path === '/api/mechanics') return json(route, mechanics);
     if (path === '/api/trucks') return json(route, truckFixtures);
     if (path === '/api/admin/session') return json(route, {});
+    // The Home's team queue card polls this; unanswered it reached the fake API, which does not know this user,
+    // answered 401 and signed the mechanic out mid-test (a race that made 'authenticated root…' flaky).
+    if (path === '/api/team-queue') return json(route, []);
     if (path === `/api/trucks/${truck.id}/open-work-order`) return json(route, { exists: false });
     if (path === `/api/trucks/${truck.id}/repair-history`) return json(route, history);
 

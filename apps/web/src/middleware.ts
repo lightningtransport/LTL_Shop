@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { UserDto } from '@ltl-shop/shared';
 import { ADMIN_SESSION_COOKIE, apiBaseUrl } from '@/lib/admin-session';
+import { ADMIN_PROFILE_COOKIE, adminProfileSecret, readAdminProfile, type AdminProfile } from '@/lib/admin-profile-cookie';
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
   if (!token) return loginRedirect(request);
+
+  // P19 / D38: a valid signed profile cookie answers without a trip to the API (see admin-profile-cookie.ts).
+  const profile = await readAdminProfile(request.cookies.get(ADMIN_PROFILE_COOKIE)?.value, token, adminProfileSecret());
+  if (profile) return withProfile(request, profile);
 
   try {
     const response = await fetch(`${apiBaseUrl()}/api/admin/access`, {
@@ -24,16 +29,25 @@ export async function middleware(request: NextRequest) {
     }
 
     const { user } = (await response.json()) as { user: UserDto };
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-ltl-admin-name', encodeURIComponent(user.name));
-    requestHeaders.set('x-ltl-admin-role', user.role);
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return withProfile(request, { admin: true, name: user.name, role: user.role });
   } catch {
     return NextResponse.json(
       { message: 'Shop Admin authorization is temporarily unavailable.' },
       { status: 503 },
     );
   }
+}
+
+/** The headers the Admin layout reads; a profile without Admin access gets the 403 screen, as from the API. */
+function withProfile(request: NextRequest, profile: AdminProfile) {
+  const requestHeaders = new Headers(request.headers);
+  if (!profile.admin) {
+    requestHeaders.set('x-ltl-admin-denied', 'true');
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+  requestHeaders.set('x-ltl-admin-name', encodeURIComponent(profile.name));
+  requestHeaders.set('x-ltl-admin-role', profile.role);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 function loginRedirect(request: NextRequest) {
