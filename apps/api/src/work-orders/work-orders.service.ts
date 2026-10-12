@@ -97,8 +97,10 @@ export class WorkOrdersService {
     const pmMode = categoryFilter?.name === 'PM';
     // LTR-186 / D20: close yesterday's clocks before showing them.
     await this.clock?.closeDue();
-    const clockElsewhere = await this.clock?.clockOf(user.id);
-    const rows = await this.prisma.workOrder.findMany({
+    // PF9: my clock and the rows do not depend on each other; one round trip instead of two.
+    const [clockElsewhere, rows] = await Promise.all([
+      this.clock?.clockOf(user.id),
+      this.prisma.workOrder.findMany({
       where: {
         status: { in: ['created', 'in_progress', 'waiting_paused', 'completed'] },
         // LTR-146: the PM workspace also lists truck Work Orders whose PM job is mine.
@@ -127,7 +129,8 @@ export class WorkOrdersService {
       },
       include: workOrderDetailInclude,
       orderBy: { updatedAt: 'desc' },
-    });
+      }),
+    ]);
 
     // LTR-146: in the PM workspace a truck Work Order is bucketed by its PM job, not the WO status.
     const mapped = rows.map((row) => {
@@ -158,13 +161,17 @@ export class WorkOrdersService {
 
   async getById(user: AuthUser, id: string) {
     await this.clock?.closeDue();
-    const wo = await this.prisma.workOrder.findUnique({
-      where: { id },
-      include: workOrderDetailInclude,
-    });
+    // PF9: the Work Order and my clock elsewhere load together.
+    const [wo, clockElsewhere] = await Promise.all([
+      this.prisma.workOrder.findUnique({
+        where: { id },
+        include: workOrderDetailInclude,
+      }),
+      this.clock?.clockOf(user.id),
+    ]);
     if (!wo) throw new NotFoundException('Work Order not found');
     this.assertCanViewWorkOrder(user, wo);
-    return toWorkOrderDetail(wo, user.id, { clockElsewhere: await this.clock?.clockOf(user.id) });
+    return toWorkOrderDetail(wo, user.id, { clockElsewhere });
   }
 
   // Managers plan the intervention; mechanics execute it. The core create logic

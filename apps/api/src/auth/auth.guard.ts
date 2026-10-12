@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify } from 'jose';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Request } from 'express';
 import { UserRole } from '@ltl-shop/shared';
@@ -31,9 +31,28 @@ declare global {
   }
 }
 
+/**
+ * PF9: one key set for the whole process. Nest builds a guard per module that uses `@UseGuards(AuthGuard)`,
+ * so a per-instance cache fetched Supabase's JWKS once per module on every cold start.
+ */
+let sharedJwks: { url: string; keys: ReturnType<typeof createRemoteJWKSet> } | null = null;
+
+function remoteJwks(url: string) {
+  if (!sharedJwks || sharedJwks.url !== url) sharedJwks = { url, keys: createRemoteJWKSet(new URL(url)) };
+  return sharedJwks.keys;
+}
+
+/** The token says how it was signed; a legacy HS256 token should not be tried against the key set first. */
+export function tokenUsesSharedSecret(token: string): boolean {
+  try {
+    return decodeProtectedHeader(token).alg === 'HS256';
+  } catch {
+    return false;
+  }
+}
+
 @Injectable()
 export class AuthGuard implements CanActivate {
-  private jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -73,15 +92,11 @@ export class AuthGuard implements CanActivate {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
     const jwtSecret = process.env.SUPABASE_JWT_SECRET;
 
-    // Prefer JWKS — Supabase signing keys use ES256/RS256.
-    if (supabaseUrl) {
+    // Prefer JWKS — Supabase signing keys use ES256/RS256. A token that says HS256 goes straight to the secret
+    // (PF9): the key set could never verify it, and the failed attempt made jose re-fetch the keys.
+    if (supabaseUrl && !(jwtSecret && tokenUsesSharedSecret(token))) {
       try {
-        if (!this.jwks) {
-          this.jwks = createRemoteJWKSet(
-            new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`),
-          );
-        }
-        const { payload } = await jwtVerify(token, this.jwks);
+        const { payload } = await jwtVerify(token, remoteJwks(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
         return payload;
       } catch {
         // Fall through to legacy HS256 verification.
