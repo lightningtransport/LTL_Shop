@@ -1350,6 +1350,8 @@ createServer(async (request, response) => {
     if (completedFrom) items = items.filter((item) => item.completedAt && new Date(item.completedAt) >= new Date(completedFrom));
     if (completedBefore) items = items.filter((item) => item.completedAt && new Date(item.completedAt) < new Date(completedBefore));
     const hasFilters = Boolean(status || priority || search || createdBefore || completedFrom || completedBefore);
+    // DM1 (LTR-204): like the real API, every list item carries its Next step (the Trucks list and Yard already do).
+    items = items.map((item) => ({ ...item, nextStep: fixtureNextStepForWorkOrder(item) }));
     if (!hasFilters && !cursor) {
       json(response, 200, { items: items.slice(0, 2), nextCursor: 'fixture-page-2' });
     } else if (cursor) {
@@ -1435,7 +1437,13 @@ createServer(async (request, response) => {
       // LTR-185: the roster shows Safety too; Job pickers (`assignable`) do not offer them.
       .filter((candidate) => candidate.capabilities.some((cap) => (assignable ? cap === 'mechanic.standard' || cap === 'mechanic.pm' : ROSTER_CAPABILITIES.includes(cap))))
       .filter((candidate) => !assignable || candidate.role !== 'admin')
-      .filter((candidate) => candidate.active || new URL(request.url, 'http://fixture').searchParams.get('includeInactive') === 'true')
+      // DM2 (LTR-204): like the real API, `status=all` / `all_in_shop` / `inactive` list inactive people too.
+      .filter((candidate) => {
+        const params = new URL(request.url, 'http://fixture').searchParams;
+        const status = params.get('status') ?? (params.get('includeInactive') === 'true' ? 'all_in_shop' : 'active');
+        if (status === 'inactive') return !candidate.active;
+        return candidate.active || status === 'all' || status === 'all_in_shop';
+      })
       .map(rosterSummary);
     json(response, 200, { items, nextCursor: null });
     return;

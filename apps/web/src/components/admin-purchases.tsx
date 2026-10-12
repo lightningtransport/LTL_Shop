@@ -10,7 +10,7 @@ import { AdminFilterToolbar, Badge, Button, DataTable, EmptyState, Input, Label,
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminPartsCatalog, useAdminPurchaseFormData, useAdminPurchases, useAdminVendors } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminCountLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { safeAdminPath } from '@/lib/admin-truck-origin';
 import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
@@ -152,7 +152,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
             },
             { key: 'date', header: messages.pcColDate, cell: (item) => formatInvoiceDate(item.invoiceDate, locale) },
             { key: 'vendor', header: messages.pcColVendor, cell: (item) => item.vendor.name },
-            { key: 'lines', header: messages.pcColLines, cell: (item) => fillPlaceholders(messages.pcLinesCount, { count: String(item.lineCount) }) },
+            { key: 'lines', header: messages.pcColLines, cell: (item) => adminCountLabel(item.lineCount, messages.pcLinesCountOne, messages.pcLinesCount) },
             { key: 'trucks', header: messages.pcColTrucks, cell: (item) => purchaseTrucksLabel(item, messages) },
             {
               key: 'total',

@@ -399,6 +399,25 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('WO-0101')).toHaveCount(0);
   });
 
+  test('work order table Next column says the same next step as the Trucks list (DM1, LTR-204)', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/admin/work-orders?status=completed');
+    const row = page.locator('table tbody tr', { has: page.getByRole('link', { name: 'WO-0104', exact: true }) });
+    await expect(row).toBeVisible();
+    // A completed Work Order whose Truck is Ready to Go reads "Return to Service", not "1 Jobs · all done".
+    const next = row.getByTestId('work-order-row-next-step');
+    await expect(next).toHaveAttribute('data-kind', 'return_to_service');
+    await expect(next).toHaveText('Ready to Go. Return it to service when it leaves the shop.');
+    await expect(row.getByText('all done')).toHaveCount(0);
+
+    // An open Work Order with a Job left names that Job, like the Truck does.
+    await page.goto('/admin/work-orders?status=in_progress');
+    const open = page.locator('table tbody tr', { has: page.getByRole('link', { name: 'WO-0106', exact: true }) });
+    await expect(open.getByTestId('work-order-row-next-step')).toHaveText('1 Jobs left · next: Inspect brake chamber');
+  });
+
   test('work order filters stay collapsed on mobile and compact on desktop', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
@@ -522,6 +541,19 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('Chamber', { exact: true })).toBeVisible();
     await expect(page.getByText('Retired brake job')).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
+  });
+
+  test('People: the Show filter reads ?status=all from the URL (DM2, LTR-204)', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.goto('/admin/mechanics?status=all');
+    await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
+    // The list shows the inactive person, and the filter says so instead of "Active".
+    await expect(page.getByRole('row', { name: /Retired Mechanic/ })).toBeVisible();
+    const filtersButton = page.getByRole('search').getByRole('button', { name: /^Filters( [0-9]+)?$/ });
+    await expect(filtersButton).toHaveAccessibleName(/Filters 1/);
+    await filtersButton.click();
+    await expect(page.getByRole('dialog', { name: 'Filters' }).getByLabel('Show')).toHaveValue('all');
   });
 
   test('login and Admin SSR the shared ltl_shop_locale cookie without an EN/ES flash', async ({ page }) => {

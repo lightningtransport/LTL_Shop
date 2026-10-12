@@ -45,3 +45,11 @@ export function adminCapabilityLabel(capability: string, catalog: AdminMessages)
 export function isAdminLocale(value?: string): value is AdminLocale {
   return value === 'en' || value === 'es';
 }
+
+/**
+ * DM3 (LTR-204): one count with its noun. `one` is the full text for exactly 1 ("1 part"); `many` carries
+ * `{count}` ("{count} parts"). Both come from the catalog, so EN and ES each pick their own plural.
+ */
+export function adminCountLabel(count: number, one: string, many: string): string {
+  return count === 1 ? one : many.replace('{count}', String(count));
+}

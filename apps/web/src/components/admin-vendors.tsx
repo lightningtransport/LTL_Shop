@@ -11,7 +11,7 @@ import { Badge, Button, DataTable, DialogActions, EmptyState, InlineAlert, Input
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { createAdminVendor, updateAdminVendor, useAdminVendors } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminCountLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 
 /**
@@ -83,7 +83,7 @@ export function AdminVendors({ locale, messages }: { locale: AdminLocale; messag
             {
               key: 'parts',
               header: messages.pcVendorPartCount,
-              cell: (vendor) => <span className="tabular-nums">{fillPlaceholders(messages.pcVendorPartCountValue, { count: String(vendor.partCount) })}</span>,
+              cell: (vendor) => <span className="tabular-nums">{adminCountLabel(vendor.partCount, messages.pcVendorPartCountValueOne, messages.pcVendorPartCountValue)}</span>,
             },
             ...(canWrite ? [{
               key: 'actions',

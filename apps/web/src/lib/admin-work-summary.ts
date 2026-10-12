@@ -1,4 +1,6 @@
-import { OPEN_WORK_ORDER_STATUSES } from '@ltl-shop/shared';
+import { OPEN_WORK_ORDER_STATUSES, type TruckNextStepDto } from '@ltl-shop/shared';
+import type { AdminMessages } from './admin-messages';
+import { truckNextStepText } from './truck-next-step';
 
 /**
  * LTR-151 (§8.3): Truck "Current Work" lists only an open Work Order. The Truck detail also carries the
@@ -30,5 +32,17 @@ export function workOrderNextJobLine(
     return messages.workOrderJobsNext.replace('{count}', String(item.jobsTotal)).replace('{job}', item.nextJobName);
   }
   return item.jobsTotal > 0 ? messages.workOrderJobsAllDone.replace('{count}', String(item.jobsTotal)) : item.category.name;
+}
+
+/**
+ * DM1 (LTR-204): the "Next" cell of the Work Orders table says the same next step as the Truck, the Trucks list
+ * and the Yard (the API's `nextStep`, worded by `truckNextStepText`); a Ready to Go truck reads "Return to
+ * Service", not "4 Jobs · all done". Without a step (older API responses) it keeps the Jobs line.
+ */
+export function workOrderListNextText(
+  item: { category: { name: string }; jobsTotal: number; jobsCompleted: number; nextJobName?: string | null; nextStep?: TruckNextStepDto | null },
+  messages: AdminMessages,
+): string {
+  return truckNextStepText(item.nextStep, messages) ?? workOrderNextJobLine(item, messages);
 }
 
