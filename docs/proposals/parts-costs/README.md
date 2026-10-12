@@ -1,7 +1,7 @@
 # Propuesta: Partes y costos por camión (etapa 1)
 
 **Clasificación:** CONSTRUIDA (etapa 1, PC-1 a PC-4; §8 mano de obra y factura interna, LB-1 y LB-2; 2026-10-09). El estado actual está en `docs/SYSTEM.md`; solo el stock (§8.3) sigue siendo idea.
-**Fecha:** 2026-10-07 · **Rama:** `claude/shop-workflow-revision-9afabe` · **Esperando la aprobación del dueño.**
+**Fecha:** 2026-10-07 · **Rama:** `claude/shop-workflow-revision-9afabe` · **Aprobada y construida** (2026-10-09). Auditoría de lo construido: `docs/ux-audit/admin-parts-costs/` (2026-10-11).
 **Pantallas (nuevas):**
 - Parts & costs → **Purchases** (`/admin/parts/purchases`), **Outside repairs** (`/admin/parts/outside-repairs`),
   **Parts** (`/admin/parts/catalog`) y **Vendors** (`/admin/parts/vendors`).

@@ -1,6 +1,6 @@
 # Pendientes: defectos, limpieza y salida en vivo
 
-**Actualizado:** 2026-10-10 (§1q: auditoría UX del modo demo; §1p: ensayo del modo demo)
+**Actualizado:** 2026-10-11 (§1r: auditoría de IA y task flows de Parts & costs; §1q: auditoría UX del modo demo)
 
 Una sola lista de lo que falta. Cuando algo se arregla, se borra de aquí
 (el historial queda en git y en Linear). El orden es el orden de trabajo.
@@ -418,6 +418,33 @@ Se corrieron las skills audit-ux 0, 1, 3, 4, 5, 6, 7 y 9 sobre el Panel de demo 
 | UX-1-012 / UX-3-007 | C/E | DM1 y DM3 de §1p. | Admin | Ver §1p |
 | DM4 | B | **Ensayo del Demo flow (2026-10-11, base recién armada, 49 pasos):** (a) en los pasos cuya ruta lleva query (`/qc?tab=returned`, `/admin/history?status=cancelled`, `?tab=movement`) y en el paso siguiente, el panel decía "This is not the step's screen" aunque la pantalla era la correcta: `onStepScreen` leía `window.location.search` durante el render, antes de que Next actualizara el historial; (b) cuatro textos del flujo no cuadraban con los datos que los capítulos anteriores ya habían cambiado (el reloj de MA corre en el 609 tras Resume; "nine waiting · 609 paused" en PM; "Team queue · 1" cuando el 973 del capítulo 2 ya está; el número de la compra anulada cambia en cada armado). | `demo-context.tsx`, `scripts.ts` | **Hecho (PR del ensayo del flujo, 2026-10-11)**: la query se sigue por `pushState`/`replaceState`/`popstate`; los pasos del flujo llevan su propio texto con `pick(…, patch)`. |
 | UX-7-005 | C | "Add to team" aplica pero no guarda hasta "Save steps"; en la demo el guard de cambios sin guardar corta el paso. | `admin-shop-workflow.tsx` | Abierto (el guion de HU-M8 recuerda guardar) |
+
+## 1r. Parts & costs: arquitectura de información y task flows (2026-10-11) — **ABIERTO** · rama `claude/shop-factura-arquitectura-e2ed13`
+
+El dueño preguntó si lo nuevo de facturas de piezas y repuestos está bien pensado. Se auditó lo construido (PRs 269–272, 275–277) con las skills audit-ux-0 y audit-ux-5 más un recorrido de task flows contra las historias J13/J14 y HU-M11/M12/M13, en la demo `ltl_shop_parts_demo`. Los hallazgos completos, con evidencia y mapa de navegación, están en `docs/ux-audit/admin-parts-costs/` (`05-navegacion-ia.md`, `10-task-flows.md`). Veredicto: el modelo y cada pantalla están bien; lo que falta son los eslabones entre pantallas. Nada de esto se arregló en esta rama (solo docs).
+
+| # | Clase | Problema | Dónde | Estado |
+|---|---|---|---|---|
+| PCA1 | C | **Volver desde un detalle pierde los filtros** de Purchases, Outside repairs, Parts y el período de Truck → Costs (están en estado, no en la URL; Trucks/WO/History sí los guardan) (UX-5-001) | `admin-purchases.tsx:31`, `admin-truck-costs.tsx:40` | Abierto |
+| PCA2 | C | **"Volver" lleva siempre a la lista, no a donde se venía**; el camión abierto desde una compra cae en Overview con el crumb "Yard Operations"; "Add purchase" desde Costs no vuelve al camión (UX-5-002) | `ui.tsx:804` (`AdminBackLink`), `admin-purchase-detail.tsx:86`, `admin-truck-origin.ts:18` | Abierto |
+| PCA3 | C | **La factura del taller externo llega después de "Regresó" y el Job ya no ofrece "Add outside repair invoice"** ni marca que falta; desde la lista hay que buscar el Job (90 días) (UX-10-001) | `admin-job-table.tsx:183`, `outside-repairs.service.ts:24` | Abierto |
+| PCA4 | C | **Nada dice si un gasto ya se cobró a Finanzas**: el detalle y los movimientos no muestran "Charged on SHOP-…"; Edit y Void de algo facturado no avisan que la corrección cae en la factura siguiente (UX-10-002) | `admin-purchase-detail.tsx`, `truck-costs.service.ts:68`, `admin-messages.ts:180` | Abierto |
+| PCA5 | C | **La factura interna de "Sep 2026" trae junio y agosto sin decirlo** (todo lo no cobrado hasta fin de mes, D34). Falta la sección "Carried over" en pantalla y PDF, y un aviso antes de enviar (UX-10-003). Pregunta al dueño: ¿Finanzas acepta el arrastre? | `internal-invoices.service.ts:194-212` | Abierto |
+| PCA6 | C | **Agregar el archivo después = Edit**, que reversa y reescribe el ledger aunque no cambió dinero; ensucia Costs y la factura siguiente (UX-10-004) | `purchases.service.ts:230-232`, `outside-repairs.service.ts:190` | Abierto |
+| PCA7 | C | **La tarifa de mano de obra no se puede corregir ni borrar**, y una fecha pasada recalcula sin preview de cuántas WOs (ya facturadas) toca (UX-10-005) | `parts-costs.controller.ts:146-151`, `labor-rates.service.ts:55-59` | Abierto |
+| PCA8 | E | **El grupo del menú mezcla cuatro ritmos** (semanal, catálogo, ajuste, cierre de mes) en 6 ítems planos; Internal invoices queda último. Propuesta: Labor rate a Setup, Internal invoices tercero (UX-5-003) | `admin-shell.tsx:26-38` | Abierto |
+| PCA9 | E | **Vendors es un callejón sin salida** (sin enlace a sus facturas); los filtros Vendor listan proveedores que no hacen ese tipo de trabajo y al inactivo (UX-5-004) | `admin-vendors.tsx`, filtros de `admin-purchases.tsx` / `admin-outside-repairs.tsx` | Abierto |
+| PCA10 | E | **Desde la WO no se llega a Costs del camión ni se ve lo que costó** (solo el chip del Job afuera) (UX-5-005) | `admin-work-order-detail.tsx` | Abierto |
+| PCA11 | E | **Los detalles no tienen migas ni título de pestaña** ("Lightning Shop — Admin" en todas) (UX-5-006) | detalles de compra, reparación y factura interna; `app/admin/layout.tsx:7` | Abierto |
+| PCA12 | E | **Un admin sin el par Manager entra por URL y ve el error genérico de carga** en vez de "sin acceso" (UX-5-007) | páginas `/admin/parts/*`, `admin-purchases.tsx:100` | Abierto |
+| PCA13 | E | **Móvil: seis filtros apilados empujan la lista fuera de pantalla**; no usan `AdminFilterToolbar` (UX-5-008). Sube a C si el dueño carga desde el teléfono (P17) | `admin-purchases.tsx`, `admin-outside-repairs.tsx` | Abierto |
+| PCA14 | E | **Internal invoices sin filtros ni totales**; el borrador se lista como "Draft" sin camión; la anulada dice "0 lines" (UX-5-009) | `admin-internal-invoices.tsx:43`, `internal-invoices.service.ts:52` | Abierto |
+| PCA15 | E | Dos envíos simultáneos de la misma factura interna pueden numerar dos veces: el borrador se comprueba antes del lock (técnico; la UI deshabilita el botón) | `internal-invoices.service.ts:146-148` | Abierto |
+
+**Preguntas al dueño (deciden tres hallazgos; se responden en DECISIONS):**
+- **P15 · Cierre de mes por camión o por mes.** Hoy son 27 veces New invoice → Send → PDF → Accepted. ¿Una vista "By month" con todos los camiones y "Create drafts for all"? D34 no cambia (sigue una factura por camión y mes), solo se agrupa (UX-10-006).
+- **P16 · Compras atadas a la WO.** Hoy "¿cuánto costó la WO-065?" solo se responde para mano de obra y talleres externos. ¿Campo opcional Work Order en la compra, prellenado con la WO abierta del camión? Si no, dejarlo escrito en D32 (UX-10-007).
+- **P17 · Cargar facturas desde el teléfono.** La propuesta asume la computadora; D32 y USER_FLOWS dicen que el Manager también usa el teléfono. ¿Hace falta la historia "foto de la factura en el mostrador" y terminarla en el escritorio? Decide la severidad de PCA13 (UX-10-008).
 
 ## 2. Pruebas
 

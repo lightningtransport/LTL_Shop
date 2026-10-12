@@ -537,9 +537,9 @@ Ver la fila E7 en HU-ME2.
 
 Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
-### HU-M12 · Saber cuánto cuesta cada camión (J13) — ✅ construido, etapa 1 (D32, bloque S4: PC-1 a PC-4); el cobro a Finanzas, diseñado
+### HU-M12 · Saber cuánto cuesta cada camión (J13) — ✅ construido (D32, bloque S4: PC-1 a PC-4); el cobro a Finanzas es HU-M13 (D34)
 
-**Quién:** el Manager. Más adelante, Finanzas.
+**Quién:** el Manager (y el System Admin). Finanzas no entra a la app: recibe el PDF de HU-M13 (D34).
 
 **Flujo (etapa 1)**
 1. **Parts & costs → Parts:** mantiene el catálogo de partes (el mismo del PM), con costo unitario y proveedor.
@@ -562,7 +562,6 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Corrige o anula una compra | El costo de los camiones se corrige con movimientos de reversa; nada de lo ya escrito cambia. Anular pide el motivo y no borra nada | ✅ | A61 |
 | Adjunta la factura (PDF, JPG, PNG o HEIC, hasta 10 MB) | Se guarda en un lugar privado y se abre con un enlace que dura 5 minutos. Otro tipo de archivo, o uno más grande, no se acepta. Sin archivo también se guarda, marcada "No invoice file" (D-PC10) | ✅ | A62 |
 | Un mecánico o Safety intenta ver o cargar compras | No puede (403) | ✅ | A62 |
-| Carga dos veces la misma factura | La app avisa que ese número de factura de ese proveedor ya existe | ✅ | A58 |
 | Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock) | ✅ | A60 |
 | Carga la factura de un taller externo por un Job que mandó afuera (PC-3) | La liga al Job (afuera ahora o ya de regreso en los últimos 90 días) y el monto va al camión; el Job muestra "Factura $… · proveedor" en el Work Order (solo Manager y System Admin). Un Job de otro camión no se puede ligar | ✅ | A63 |
 | Manda un Job afuera, carga la factura y después marca Regresó (o al revés) | "Enviar a taller externo" y "Regresó" funcionan igual que antes, con o sin factura cargada; la factura sigue ligada al Job | ✅ | A64 |
