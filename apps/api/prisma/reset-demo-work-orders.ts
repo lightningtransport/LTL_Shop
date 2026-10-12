@@ -69,6 +69,7 @@ import { buildHistory, reviewCustomJobs } from './demo-history';
 import { buildPartsCosts, type CurrentJobs } from './demo-parts-costs';
 import { buildLaborAndInvoices } from './demo-labor-finance';
 import { retime, shopMinutesNow, shopToday, workdaysAgo } from './demo-time';
+import { demoDatabaseRefusal } from '../src/dev-demo/demo-target';
 
 const demo = process.argv.includes('--demo');
 const local = demo || process.argv.includes('--local');
@@ -77,9 +78,9 @@ const trucksArg = process.argv.find((arg) => arg.startsWith('--trucks='))?.slice
 
 if (demo) {
   const url = process.env.DEMO_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ltl_shop_demo';
-  const parsed = new URL(url);
-  if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname) || !/demo/i.test(parsed.pathname)) {
-    console.error(`Refusing --demo on ${parsed.hostname}${parsed.pathname}: only a local database whose name contains "demo".`);
+  const refusal = demoDatabaseRefusal(url);
+  if (refusal) {
+    console.error(`--demo: ${refusal}`);
     process.exit(1);
   }
   process.env.DATABASE_URL = url;

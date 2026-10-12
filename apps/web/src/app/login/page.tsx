@@ -17,8 +17,12 @@ import { postLoginPath } from '@/lib/admin-routing';
 import { useShopLocale } from '@/lib/locale-context';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { replaceAppLocation } from '@/lib/session-restore';
-import { DEMO_MODE_AVAILABLE, DEV_LOGIN_ENABLED } from '@/lib/dev-login';
+import { DEMO_HOSTED, DEMO_MODE_AVAILABLE, DEV_LOGIN_ENABLED } from '@/lib/dev-login';
+
+/** D39: the published demo starts as the Shop Manager (MS; DEMO_MANAGER_EMAIL in lib/demo, kept out of this bundle). */
+const DEMO_START_EMAIL = 'ms@lightning.local';
 import { DEFAULT_DEMO_STATE, writeDemoState } from '@/lib/demo/state';
+import { shopLocaleCookieWrite } from '@/lib/shop-locale';
 import { LoginLoader } from '@/components/login-loader';
 
 export default function LoginPage() {
@@ -88,18 +92,24 @@ export default function LoginPage() {
     void onDevLogin(true);
   }
 
-  async function onDevLogin(enterDemo = false) {
+  async function onDevLogin(enterDemo = false, as = email) {
     setBusy(true);
     setError(null);
     try {
-      const signedInUser = await loginDev(email);
-      if (enterDemo) writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, panelOpen: true, welcome: true });
+      const signedInUser = await loginDev(as);
+      if (enterDemo) {
+        // D39 (DP2): the demo opens on the guided flow ('FLOW', DEMO_FLOW in lib/demo/scripts: kept out of this bundle), in English (the script quotes the English labels, UX-3-008).
+        writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, panelOpen: true, welcome: true, storyId: 'FLOW' });
+        document.cookie = shopLocaleCookieWrite('en');
+      }
       navigationStarted.current = true;
       replaceAppLocation(postLoginPath(signedInUser, requestedPath()), router, { scroll: true });
     } catch (err) {
       setError(
         enterDemo
-          ? 'No active account with this email in the demo database. Use one of the demo accounts, or rebuild the demo (npm run prisma:demo-local).'
+          ? DEMO_HOSTED
+            ? 'The demo is not ready right now. Try again in a minute.'
+            : 'No active account with this email in the demo database. Use one of the demo accounts, or rebuild the demo (npm run prisma:demo-local).'
           : apiErrorMessage(err, messages, messages.accountNotConfigured),
       );
     } finally {
@@ -124,8 +134,8 @@ export default function LoginPage() {
     <div>
       <LoginLoader label={messages.appLoading} />
       <AuthBrandHeader
-        title={messages.signIn}
-        subtitle={messages.signInHint}
+        title={DEMO_HOSTED ? 'Lightning Shop demo' : messages.signIn}
+        subtitle={DEMO_HOSTED ? 'Made-up data that resets every night.' : messages.signInHint}
       />
       {sessionError ? (
         <div className="mb-4 space-y-2">
@@ -137,6 +147,18 @@ export default function LoginPage() {
           ) : null}
         </div>
       ) : null}
+      {DEMO_HOSTED ? (
+        // D39 (DP3): the published demo has no real accounts to sign in to; it starts as the Shop Manager on the flow.
+        <Card className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            You will follow a day at the shop through every role: the Manager, the mechanics, Safety and the Admin. Each step opens the right screen and lights up what to tap.
+          </p>
+          {error ? <InlineAlert>{error}</InlineAlert> : null}
+          <Button className="w-full" disabled={busy} onClick={() => void onDevLogin(true, DEMO_START_EMAIL)}>
+            Start the demo
+          </Button>
+        </Card>
+      ) : (
       <form onSubmit={onSubmit}>
         <Card className="space-y-4">
         <div>
@@ -208,6 +230,7 @@ export default function LoginPage() {
         ) : null}
         </Card>
       </form>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { defaultWorkspacePath, hasCapability } from '@/lib/admin-routing';
 import { DEMO_MODE_AVAILABLE } from '@/lib/dev-login';
 import { useTrucks } from '@/lib/shop-data';
 import { castMember, castMemberByEmail } from './cast';
+import { DEMO_REBUILD, DEMO_SERVER_DOWN } from './copy';
 import { resolveDemoTarget } from './resolve-target';
 import { type DemoStep, type DemoStory, findDemoStory } from './scripts';
 import { DEFAULT_DEMO_STATE, DEMO_STATE_EVENT, type DemoState, demoPanelAvailable, readDemoState, writeDemoState } from './state';
@@ -56,6 +57,9 @@ export type DemoMode = {
   goToScreen: () => Promise<void>;
   /** Clear the story and go back to the Manager dashboard. Data is not rebuilt. */
   backToManager: () => Promise<void>;
+  /** D39: the current step's highlight was tapped or dismissed; the panel then points at Next. */
+  spotlightDone: boolean;
+  markSpotlightDone: () => void;
 };
 
 const DemoModeContext = createContext<DemoMode | null>(null);
@@ -140,6 +144,10 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   const story = useMemo(() => findDemoStory(state.storyId), [state.storyId]);
   const stepIndex = clampStep(story, state.stepIndex);
   const step = story ? story.steps[stepIndex] : null;
+  const stepKey = story ? `${story.id}:${stepIndex}` : null;
+  const [spotlightDoneKey, setSpotlightDoneKey] = useState<string | null>(null);
+  const spotlightDone = !!stepKey && spotlightDoneKey === stepKey;
+  const markSpotlightDone = useCallback(() => setSpotlightDoneKey(stepKey), [stepKey]);
 
   // UX-1-003: while the demo is on and the account can enter the Admin, keep its server cookie alive.
   const canAdmin = hasCapability(user, AppCapability.ADMIN_ACCESS);
@@ -168,9 +176,9 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
         setSwitchingTo(null);
         setError(
           result.status === 0
-            ? 'The demo server is not answering. Start it from a terminal: npm run start:demo'
+            ? DEMO_SERVER_DOWN
             : result.status === 403 || result.status === 401
-              ? `${email} is not an active account in the demo database. Rebuild the demo: npm run prisma:demo-local`
+              ? `${email} is not an active account in the demo database. ${DEMO_REBUILD}`
               : `Could not switch to ${email} (HTTP ${result.status}). Check the demo server and try again.`,
         );
       }
@@ -199,8 +207,8 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
       if (typeof resolved !== 'string') {
         setError(
           resolved.error === 'truck_not_found'
-            ? `Truck ${resolved.unit} is not in this database. Build the demo data first: npm run prisma:demo-local`
-            : `Truck ${resolved.unit} has no open Work Order any more: this story was already run on this data. Rebuild the demo: npm run prisma:demo-local`,
+            ? `Truck ${resolved.unit} is not in this database. ${DEMO_REBUILD}`
+            : `Truck ${resolved.unit} has no open Work Order any more: this story was already run on this data. ${DEMO_REBUILD}`,
         );
         return;
       }
@@ -312,8 +320,10 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
       goToStep,
       goToScreen,
       backToManager,
+      spotlightDone,
+      markSpotlightDone,
     }),
-    [ready, state, available, data?.users, usersError, busy, switchingTo, error, story, step, stepIndex, onStepScreen, update, setEnabled, switchTo, selectStory, startStory, goToStep, goToScreen, backToManager],
+    [ready, state, available, data?.users, usersError, busy, switchingTo, error, story, step, stepIndex, onStepScreen, update, setEnabled, switchTo, selectStory, startStory, goToStep, goToScreen, backToManager, spotlightDone, markSpotlightDone],
   );
 
   return <DemoModeContext.Provider value={value}>{children}</DemoModeContext.Provider>;

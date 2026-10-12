@@ -47,9 +47,15 @@ Dónde no existe: en producción. El panel se monta solo donde está Dev Login (
 
 Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de las 5:00 p.m., recordar que el cierre del día corta los relojes de hoy.
 
-### Demo flow: "A day at the shop" (14 capítulos, 49 pasos)
+### Guía paso a paso (D39, DP2)
 
-Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a su primer paso) y la tarjeta dice "Chapter n of 14 · título" sobre "Step n of 49". Los pasos son los mismos ya ensayados de las historias; el orden evita que un capítulo rompa uno posterior (el bloqueo del 605 se resuelve una sola vez, el 606 queda para el respaldo de QC, el 931 se cierra después de que QC1 aprueba el 616).
+Al entrar a la demo, el panel ya tiene elegido "A day at the shop" y la app queda en inglés. **Start** abre la primera pantalla y, en cada paso, la pantalla se oscurece salvo lo que hay que tocar o mirar, con un globo que lo dice. Tocar lo iluminado apaga la luz y hace pulsar **Next** ("Done here? Tap Next"). En los pasos de dos toques (Resolve → Confirm resolve, Confirm completion → Close Work Order, New purchase → Save purchase…) se ilumina el segundo. Los pasos que son un solo toque (Start Work, Make draft, Create drafts for all) pasan solos al siguiente. Dentro de un formulario solo se marca el botón, sin oscurecer, para poder llenar los campos. "Got it" apaga la luz sin tocar nada. En teléfono el panel es una barra inferior con el paso y Back/Next; **More** muestra cuentas, historias y capítulos.
+
+Qué ilumina cada paso está en `SPOTLIGHTS` (`apps/web/src/lib/demo/scripts.ts`), por historia y número de paso, con el texto en inglés del botón o un selector. No hay marcas de demo en las pantallas del producto. Si un texto de la app cambia, el paso deja de iluminar (el panel sigue funcionando): la prueba `scripts.spec.ts` exige que todo paso del flujo tenga su luz, y la e2e de demo comprueba una.
+
+### Demo flow: "A day at the shop" (15 capítulos, 56 pasos)
+
+Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a su primer paso) y la tarjeta dice "Chapter n of 15 · título" sobre "Step n of 56". Los pasos son los mismos ya ensayados de las historias; el orden evita que un capítulo rompa uno posterior (el bloqueo del 605 se resuelve una sola vez, el 606 queda para el respaldo de QC, el 931 se cierra después de que QC1 aprueba el 616).
 
 | # | Capítulo | Cuenta(s) | Camiones | Pasos | Muta datos |
 |---|---|---|---|---|---|
@@ -64,9 +70,12 @@ Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a
 | 9 | Detailing: the team queue and a helper | MD | 957, 612 | 2 | sí (Take) |
 | 10 | Quality Check: take, approve, return; the backup | QC1, QC2, MS | 616, 922, 905 | 6 | sí |
 | 11 | Close, Ready to Go, Return to Service; the whole shop | MS | 931, 607, Yard | 5 | sí |
-| 12 | Outside shop, costs and Finance | MS | 611, 603 | 5 | no |
-| 13 | Admin: correct time, people, catalog | AS | 617 | 4 | sí (Correct…) |
-| 14 | Setup: the shop workflow and the hours | MS | — | 2 | no |
+| 12 | Purchases and outside repairs: the cost lands on the truck | MS | 605, 612, 611 | 6 | sí (carga una compra y una reparación externa) |
+| 13 | Month close: the internal invoice for Finance | MS | todos los del mes pasado | 6 | sí (Make draft, Create drafts for all, Send) |
+| 14 | Admin: correct time, people, catalog | AS | 617 | 4 | sí (Correct…) |
+| 15 | Setup: the shop workflow and the hours | MS | — | 2 | no |
+
+Capítulos 12 y 13 (D39, DP1): Parts & costs se usa, no solo se mira. En el 12 se carga una compra de FleetPride al 605 con dos líneas, impuesto y flete, se ve en Costos del 605, y se carga una reparación externa sin Job (DPF en Diesel Pro, camión 612); el número de factura es libre, pero el mismo número para el mismo proveedor se rechaza (si alguien ya lo usó hoy, otro número). En el 13, Month close (el mes pasado, unos 20 camiones por cobrar con la base recién armada) arma un borrador, luego "Create drafts for all", y se envía uno con su PDF.
 
 ### Historias guiadas: cuentas, camiones y pantallas
 
@@ -214,6 +223,43 @@ Algunas visitas de la historia tienen Jobs que no están en el catálogo, escrit
 Un video de 35 s, "A day at the shop", para mostrar antes de entrar al link de la demo (D39). Tiene 11 escenas en el orden del Demo flow, de 6:00 AM a 5:00 PM: Dashboard, Yard, nueva Work Order, el mecánico en su teléfono, un blocker, PM, Quality Check, Ready to Go, costos por camión, Month close, y People con las horas del taller. Cada escena lleva título y rol. Está en 1080p, sin audio, y usa pantallas reales de esta demo.
 
 Se rehace con un comando, con la demo levantada: `DEMO_VIDEO_BASE_URL=http://localhost:3042 npm run demo:video --workspace=@ltl-shop/web`. El resultado sale en `apps/web/e2e/demo-video/out/`. Los detalles y cómo cambiar textos u orden están en `apps/web/e2e/demo-video/README.md`.
+
+## Demo publicada (D39, DP3)
+
+La misma demo, en internet, para mandar por link. Vive en proyectos **aparte** de producción: su propia base (Supabase gratis) y dos proyectos Vercel (web y API). Los datos son los de `prisma:demo-local` y se rearman solos cada noche.
+
+**Cómo se entra:** el link abre una pantalla que pide la **clave de acceso** (se manda junto con el link). Con la clave correcta aparece "Start the demo", que entra como MS en el flujo guiado. La API rechaza cualquier pedido `dev:` sin la clave (`demoAccessGranted`, `apps/api/src/dev-demo/dev-bypass.guard.ts`), así que conocer la URL de la API no basta. Todos los que abren la demo comparten los mismos datos: si alguien ya hizo un paso hoy, se ve hecho; a la mañana siguiente vuelve a estar como nuevo.
+
+**Producción no cambia:** su build no tiene `NEXT_PUBLIC_DEMO_HOSTED`, ni la API tiene `AUTH_DEV_BYPASS`. El armado de la demo rechaza la base de producción aunque se configure por error (`demoDatabaseRefusal`, `apps/api/src/dev-demo/demo-target.ts`).
+
+### Armarla una vez
+
+1. **Supabase:** crear un proyecto gratis `ltl-shop-demo` (no el de producción). Anotar su *ref* (20 letras, en la URL del dashboard). Copiar la cadena **Session pooler** (puerto 5432) desde Connect. La cadena directa `db.<ref>.supabase.co` es solo IPv6 y GitHub no llega.
+2. **GitHub → Settings → Environments → New environment `demo`:**
+   - secret `DEMO_DATABASE_URL` = la cadena del pooler;
+   - variable `DEMO_SUPABASE_REF` = el ref.
+3. **Actions → Demo reset → Run workflow:** migra, siembra y arma la demo en esa base. Después corre solo cada día a las 5:15 AM (hora del Este).
+4. **Vercel, proyecto API demo** (raíz `apps/api`, mismo repo, rama `main`). Variables:
+
+   | Variable | Valor |
+   |---|---|
+   | `DATABASE_URL` | pooler en modo *transaction* (puerto 6543) con `?pgbouncer=true` |
+   | `DIRECT_URL` | la cadena de pooler del paso 1 |
+   | `AUTH_DEV_BYPASS` | `true` |
+   | `DEMO_HOSTED` | `1` |
+   | `DEMO_ACCESS_CODE` | la clave que se va a mandar |
+   | `DATA_SOURCE` | `supabase` |
+   | `YARD_READY_TO_GO_SINCE` | `2000-01-01T00:00:00Z` |
+   | `CORS_ORIGIN` | la URL de la web demo |
+
+   Sin `CRON_SECRET`: el cierre del día de las 5 PM no corre en la demo.
+5. **Vercel, proyecto web demo** (raíz `apps/web`). Variables:
+   - `NEXT_PUBLIC_DEMO_HOSTED` = `1`;
+   - `NEXT_PUBLIC_API_URL` = la URL del API demo;
+   - `ADMIN_PROFILE_SECRET` = cualquier texto largo, distinto del de producción.
+6. **Probar y mandar:** abrir la URL de la web demo. Sin la clave no se ve nada; con la clave, "Start the demo". Mandar el link y, aparte, la clave.
+
+**Cambiar la clave:** cambiar `DEMO_ACCESS_CODE` en el API demo y volver a desplegarlo. Los navegadores con la clave vieja vuelven a ver la pantalla de la clave.
 
 ## Lo que la demo local no puede mostrar
 - **Dispatch, Movement y "Sale pronto":** vienen de agent-reporting, que no está conectado en local. La pantalla dice que no respondió.

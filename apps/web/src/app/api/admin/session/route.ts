@@ -3,6 +3,7 @@ import type { UserDto } from '@ltl-shop/shared';
 import { cookies } from 'next/headers';
 import { ADMIN_SESSION_COOKIE, apiBaseUrl } from '@/lib/admin-session';
 import { adminSessionCookieSecure } from '@/lib/dev-login';
+import { DEMO_ACCESS_COOKIE, DEMO_ACCESS_HEADER } from '@/lib/demo-access';
 import { AppCapability } from '@ltl-shop/shared';
 import { ADMIN_PROFILE_COOKIE, ADMIN_PROFILE_MAX_AGE_SECONDS, adminProfileSecret, signAdminProfile } from '@/lib/admin-profile-cookie';
 
@@ -12,8 +13,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Missing authorization token' }, { status: 401 });
   }
 
+  // D39 (DP3): the published demo's access code travels with the request; the API checks it.
+  const demoAccess = request.headers.get(DEMO_ACCESS_HEADER);
   const response = await fetch(`${apiBaseUrl()}/api/auth/me`, {
-    headers: { authorization },
+    headers: demoAccess ? { authorization, [DEMO_ACCESS_HEADER]: demoAccess } : { authorization },
     cache: 'no-store',
   });
   if (!response.ok) {
@@ -34,6 +37,8 @@ export async function POST(request: NextRequest) {
     path: '/',
     maxAge: 60 * 60,
   });
+  // The Admin middleware calls the API without the browser: it reads the code from here.
+  if (demoAccess) cookieStore.set(DEMO_ACCESS_COOKIE, demoAccess, { httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 60 * 60 });
   // P19 / D38: what the middleware needs, signed, so Admin navigation does not call the API on every click.
   const secret = adminProfileSecret();
   if (secret) {

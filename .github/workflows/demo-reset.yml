@@ -1,0 +1,46 @@
+name: Demo reset
+
+# D39 (DP3): the published demo rebuilds its data every night, so each day starts clean and its times stay
+# "today" (they are relative to when the build runs). It also keeps the free Supabase project awake.
+# Only the demo's own database: `demoDatabaseRefusal` (apps/api/src/dev-demo/demo-target.ts) refuses anything
+# else, production's project above all. Run it by hand after the first setup or to clean up mid-day.
+
+on:
+  schedule:
+    # 09:15 UTC = 5:15 AM Eastern (4:15 AM in winter): before the shop's day in the data starts.
+    - cron: '15 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-reset
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    name: Rebuild the demo data
+    runs-on: ubuntu-latest
+    environment: demo
+    env:
+      # Session pooler URL of the demo Supabase project (port 5432; the direct host is IPv6 only).
+      DEMO_DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+      DEMO_SUPABASE_REF: ${{ vars.DEMO_SUPABASE_REF }}
+    steps:
+      - name: Refuse missing settings
+        run: |
+          if [ -z "$DEMO_DATABASE_URL" ] || [ -z "$DEMO_SUPABASE_REF" ]; then
+            echo "DEMO_DATABASE_URL (secret) and DEMO_SUPABASE_REF (variable) must be set on the demo GitHub Environment. Values are not printed."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run build --workspace=@ltl-shop/shared
+      - run: npm run prisma:generate --workspace=@ltl-shop/api
+      - name: Migrate, seed and rebuild the demo
+        run: npm run prisma:demo-local --workspace=@ltl-shop/api

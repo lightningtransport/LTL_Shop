@@ -1,4 +1,5 @@
 import type { DemoUserKey } from './cast';
+import type { DemoSpotlight } from './spotlight';
 
 /**
  * D36: the guided stories. Same ids and order as docs/USER_FLOWS.md (J1–J14, HU-M1…HU-A2); the trucks are
@@ -26,6 +27,8 @@ export type DemoStep = {
   mutates?: boolean;
   /** Demo flow only: the chapter this step belongs to (shown above the step; same label = same chapter). */
   chapter?: string;
+  /** D39 (DP2): what to light up on the screen, with a short line on what to tap or look at. */
+  spotlight?: DemoSpotlight;
 };
 
 export type DemoJobId = `J${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14}`;
@@ -81,7 +84,7 @@ export const DEMO_JTBD: Record<DemoJobId, { who: string; title: string }> = {
 
 const manager = 'MS' as const;
 
-export const DEMO_STORIES: DemoStory[] = [
+const STORY_SCRIPTS: DemoStory[] = [
   {
     id: 'HU-M1', title: 'A truck arrives', who: 'MS', jtbd: 'J1', role: 'Manager', trucks: ['973'],
     steps: [
@@ -293,6 +296,11 @@ export const DEMO_STORIES: DemoStory[] = [
         do: 'Show the four outside repairs; the 611 one is tied to Air Bag Replacement · WO-067.',
         say: 'Every outside repair with vendor, date, cost and file. Correcting or voiding never deletes: it reverses.',
         expect: 'Four outside repairs; 611 for $685.00.' },
+      { user: manager, target: { kind: 'path', path: '/admin/parts/outside-repairs' }, title: 'Load an outside repair',
+        do: 'Tap "New outside repair". Truck 612, vendor Diesel Pro Repair, today\'s date, any invoice number (for example your initials and the time), Job "Not linked", what was done "DPF cleaning", amount 420. Save.',
+        say: 'A repair that did not come from a Work Order still lands on the truck\'s cost. The same invoice number for a vendor is refused, so nothing is loaded twice.',
+        expect: 'A toast with the total; the repair at the top of the list for 612.',
+        mutates: true },
     ],
   },
   {
@@ -316,6 +324,15 @@ export const DEMO_STORIES: DemoStory[] = [
         do: 'Change the period (This month, Last 3 months, This year, All time). Show Parts, Outside repairs and Total, the bars per month, and the movements: the body shop repair and the voided purchase as a negative reversal.',
         say: 'Reversals appear negative and lower the total; nothing is deleted.',
         expect: 'Outside repair $685.00; the voided TruckPro purchase as -$189.00 (its number changes with each build).' },
+      { user: manager, target: { kind: 'path', path: '/admin/parts/purchases' }, title: 'Load a purchase',
+        do: 'Tap "New purchase". Vendor FleetPride, today\'s date, any invoice number (for example your initials and the time), Truck 605. Line 1: a part from the catalog, qty 2. "Add line": a second part, qty 1. Tax 12, Freight 25. Save purchase.',
+        say: 'The invoice as it comes from the vendor: lines from the catalog, tax and freight, charged to the truck. A line can go to another truck or to shop stock.',
+        expect: 'A toast with the total; the purchase at the top of the list.',
+        mutates: true },
+      { user: manager, target: { kind: 'adminTruck', unit: '605', tab: 'costs' }, title: 'The purchase on the truck',
+        do: 'Choose "This month": the FleetPride purchase you just loaded is a Parts movement, and the Total went up by it.',
+        say: 'No one types the cost twice: the purchase is the truck\'s cost. The mechanic never sees prices.',
+        expect: 'The new FleetPride purchase among the Parts movements of this month.' },
     ],
   },
   {
@@ -336,6 +353,20 @@ export const DEMO_STORIES: DemoStory[] = [
       { user: manager, target: { kind: 'path', path: '/admin/parts/internal-invoices' }, title: 'Send and download',
         do: 'Open the Draft (Truck 603, this month): remove a line (it waits for the next invoice), Send, download the PDF. Optional.',
         say: 'Finance receives the PDF; it does not enter the app. When they accept, the Manager marks it Accepted.',
+        mutates: true },
+      { user: manager, target: { kind: 'path', path: '/admin/parts/internal-invoices' }, title: 'Month close',
+        do: 'Look at "Month close" at the top: last month is chosen. Each row is a truck with what it has not been charged yet, and its invoice for the month if it has one.',
+        say: 'Month end on one screen: every truck with costs not charged yet (parts, outside repairs, labor), and which ones already have their invoice.',
+        expect: '"Month close" with a line "… trucks to charge · … not charged yet · … already invoiced" and one row per truck.' },
+      { user: manager, target: { kind: 'path', path: '/admin/parts/internal-invoices' }, title: 'One draft',
+        do: 'On one truck row, tap "Make draft".',
+        say: 'The draft brings everything the truck has not been charged yet up to the end of the month. Nothing is sent yet.',
+        expect: 'That row now shows a Draft with its total.',
+        mutates: true },
+      { user: manager, target: { kind: 'path', path: '/admin/parts/internal-invoices' }, title: 'Drafts for all',
+        do: 'Tap "Create drafts for all (…)".',
+        say: 'One tap makes the missing drafts of the month. Each one is still reviewed and sent per truck.',
+        expect: 'A toast "… drafts created"; every row has its Draft.',
         mutates: true },
     ],
   },
@@ -535,6 +566,75 @@ export const DEMO_STORIES: DemoStory[] = [
   },
 ];
 
+/**
+ * D39 (DP2): what each step lights up, by story and step number (from 0). Texts are the English labels on screen;
+ * a step without an entry shows only the panel. The demo e2e walks the flow and checks every light is found.
+ */
+const SPOTLIGHTS: Partial<Record<`${DemoStoryId}#${number}`, DemoSpotlight>> = {
+  'HU-ME5#0': { text: "Yesterday's work is still open", contains: true, hint: 'Yesterday\'s work on 944 is still open: this card says so.' },
+  'HU-ME5#1': { text: 'Your time', contains: true, hint: 'Yesterday\'s hours are already here, stopped at 5:00 PM.' },
+  'HU-M1#0': { text: '973', contains: true, selector: 'tr, [role="row"], li', hint: 'Truck 973: In Service, no open Work Order.' },
+  'HU-M1#1': { text: 'New Work Order', hint: 'Tap "New Work Order": the truck\'s work starts here.', then: { text: 'Create Work Order', hint: 'Pick a priority, add a note if you like, then "Create Work Order".' } },
+  'HU-M1#2': { text: 'Work Plan', contains: true, selector: 'h2, h3, [data-testid]', hint: 'The plan is ready: each step already has its mechanic or team.' },
+  'HU-M2#0': { text: 'Issues found', hint: 'Tap "Issues found": the inspection found work to add.' },
+  'HU-M2#1': { text: 'Add to Work Plan', hint: 'Pick a category and a Job, who does it, then "Add to Work Plan".' },
+  'HU-M2#2': { text: 'Brake Inspection', contains: true, hint: 'Found two days ago and still without an owner.' },
+  'HU-M3#1': { text: 'Assign', hint: 'Tap "Assign" and pick a mechanic. Then the same on Lights.' },
+  'HU-M3#2': { text: 'Assign', hint: 'Open the selector again: PM mechanics and Safety are not offered for this Job.' },
+  'HU-ME1#0': { text: 'Your clock', contains: true, hint: 'Your clock, then the Team queue, In Progress and Ready to Start.' },
+  'HU-ME1#1': { text: 'Your Jobs', contains: true, hint: 'Your Jobs on this truck and your time.' },
+  'HU-ME4#0': { text: 'Request Work', hint: 'Add a note first if you like, then "Request Work" to ask the Manager for more work.', then: { text: 'Send to Manager', hint: 'Say what the Truck needs, then "Send to Manager".' } },
+  'HU-ME3#0': { text: 'Blocked', contains: true, hint: '605 is blocked, waiting on the Manager.' },
+  'HU-ME3#1': { text: 'Add note', hint: 'The blocker with its reason. A note tells the Manager what changed.' },
+  'HU-ME3#2': { text: 'Resolve', hint: 'Tap "Resolve": the blocker reported by MG2 ends here.', then: { text: 'Confirm resolve', hint: 'A note for the mechanic is optional. Then "Confirm resolve".' } },
+  'HU-ME3#3': { text: 'Continue', hint: '605 is unblocked: tap Continue.' },
+  'HU-M4#3': { text: 'Resume', hint: 'Tap "Resume": the Work Order goes on.' },
+  'HU-M6#0': { text: 'Done and cancelled', contains: true, hint: 'Lights was cancelled, with its reason; its "…" menu can reopen it.' },
+  'HU-M6#1': { text: 'WO-071', contains: true, hint: 'Open WO-071: a cancelled Work Order and its reason.' },
+  'HU-ME2#0': { text: 'Start Work', hint: '603 Alignment is ready to start.' },
+  'HU-ME2#1': { text: 'Start Work', hint: 'Tap "Start Work": your clock starts on 603.', advanceOnClick: true },
+  'HU-ME2#2': { text: 'Complete job', hint: 'Tap "Complete job", write the note and confirm.' },
+  'HU-PM1#0': { text: 'Active PM services', contains: true, hint: '968 is in PM now; below, the trucks waiting for PM, most urgent first.' },
+  'HU-PM1#1': { text: 'Turn on what you changed', contains: true, hint: 'Turn on a part you changed. The bar at the bottom says what is missing.' },
+  'HU-M10#1': { text: '612', contains: true, selector: 'a, li, article, [data-testid]', hint: 'The 612 card: you help on this Job.' },
+  'HU-QC1#0': { text: '616', contains: true, selector: 'a, li, article, [data-testid]', hint: 'Most urgent first: 616 is Critical.' },
+  'HU-QC1#1': { text: 'Take', hint: 'Tap "Take" on 616: the review opens with each Job, the PM, the inspection and past returns.' },
+  'HU-QC1#2': { text: 'Continue review', hint: 'Open your review of 616: "Continue review".', then: { text: 'Approve', hint: 'Approve 616, or Return it with what you found.' } },
+  'HU-QC1#3': { text: '922', contains: true, selector: 'a, li, article, [data-testid]', hint: '922 came back with what Safety found.' },
+  'HU-QC1#5': { text: 'Continue review', hint: '905 is yours: inside, "Let go" frees it for QC1.' },
+  'HU-QC1#6': { text: 'backup', contains: true, selector: 'p, div[role="status"], [data-testid]', hint: 'You are doing Quality Check as backup for Safety.' },
+  'HU-M5#0': { text: 'Ready to close', contains: true, hint: 'Tap "Ready to close": 931 waits there.' },
+  'HU-M5#1': { text: 'Confirm completion', hint: 'Tap "Confirm completion": every Job is done and Safety approved.', then: { text: 'Close Work Order', hint: '"Close Work Order": the Work Order is closed.' } },
+  'HU-M5#2': { text: 'Return to Service', hint: 'Tap "Return to Service": the truck goes back to work.', then: { text: 'Confirm Return to Service', hint: 'The reason is optional. "Confirm Return to Service".' } },
+  'HU-M7#1': { text: 'Out of shop', contains: true, hint: 'Every truck by step. Filter "Out of shop" to find 611.' },
+  'HU-M7#2': { text: 'Dispatch', selector: '[role="tab"]', hint: 'Incoming trucks, departures and status come from Dispatch.' },
+  'HU-M12#2': { text: 'Voided', contains: true, selector: 'tr, [role="row"], li', hint: 'Every purchase with its lines; this one was voided, never deleted.' },
+  'HU-M12#5': { text: 'New purchase', hint: 'Tap "New purchase" and load a FleetPride invoice for 605.', then: { text: 'Save purchase', hint: 'Vendor, date, invoice number, Truck 605, the lines, tax and freight; then "Save purchase".' } },
+  'HU-M12#6': { text: 'This month', hint: 'Choose "This month": your purchase is among the Parts.' },
+  'HU-M11#4': { text: 'New outside repair', hint: 'Tap "New outside repair" and load a DPF cleaning for 612.', then: { selector: '[role="dialog"] button[type="submit"]', hint: 'Truck 612, Diesel Pro Repair, date, invoice number, what was done and the amount; then save.' } },
+  'HU-M11#2': { text: 'Bay Area Body Shop', contains: true, hint: 'The outside repair invoice is tied to this Job.' },
+  'HU-M12#4': { text: 'All time', hint: 'Change the period; a voided purchase shows as a negative reversal.' },
+  'HU-M13#0': { text: '$105', contains: true, selector: 'tr, [role="row"], li, p', hint: '$105/h from the 1st of this month; earlier work stays at $95/h.' },
+  'HU-M13#2': { text: 'Status', hint: 'Filter by status: show only Sent.' },
+  'HU-M13#4': { selector: '[data-testid="invoice-month-close"]', hint: 'Month close: each truck with costs not charged yet last month.' },
+  'HU-M13#5': { text: 'Make draft', hint: 'Tap "Make draft" on one truck.', advanceOnClick: true },
+  'HU-M13#6': { selector: '[data-testid="invoice-create-all"]', hint: 'One tap makes the missing drafts of the month.', advanceOnClick: true },
+  'HU-A1#0': { text: 'Times', hint: 'Open "Times" in the History: every clock segment of this Work Order.', then: { text: 'Correct', hint: 'Each closed segment has "Correct…": a new start or end, with the reason.' } },
+  'HU-A1#1': { text: 'Labor by mechanic', contains: true, hint: 'Time per mechanic on this Work Order.' },
+  'HU-A2#0': { selector: 'input[type="search"], input[placeholder*="Search" i]', hint: 'Search "check engine": Jobs and their aliases.' },
+  'HU-A2#2': { text: 'MG1', contains: true, selector: 'tr, [role="row"], li, a', hint: 'Open a person: deactivate, reset password, remove from Shop.' },
+  'HU-M8#0': { text: 'Detailing', contains: true, selector: 'h2, h3, h4, li, [data-testid]', hint: 'Each step and its team: Detailing has two people, so its Jobs wait in a team queue.' },
+  'HU-M8#3': { text: 'Day close', contains: true, hint: 'The day closes at 5:00 PM: running clocks stop.' },
+};
+
+export const DEMO_STORIES: DemoStory[] = STORY_SCRIPTS.map((story) => ({
+  ...story,
+  steps: story.steps.map((step, index) => {
+    const spotlight = SPOTLIGHTS[`${story.id as DemoStoryId}#${index}`];
+    return spotlight ? { ...step, spotlight } : step;
+  }),
+}));
+
 function huStory(id: DemoStoryId): DemoStory {
   return DEMO_STORIES.find((story) => story.id === id)!;
 }
@@ -584,17 +684,28 @@ export const DEMO_FLOW: DemoStory = {
       say: 'A step with a team of two is not assigned to anyone: the first one who takes it owns it. "Let go" returns it to the queue unless a clock runs on that truck.',
       expect: '957 in the Team queue with Take.',
       mutates: true,
+      spotlight: { text: 'Take', hint: 'Tap "Take" on 957: the Detailing Job becomes yours.' },
     }),
     ...pick('9 · Detailing: the team queue and a helper', 'HU-M10', [1]),
     ...pick('10 · Quality Check: take, approve, return; the backup', 'HU-QC1', [0, 1, 2, 3, 5, 6]),
     ...pick('11 · Close, Ready to Go, Return to Service; the whole shop', 'HU-M5', [0, 1, 2]),
     ...pick('11 · Close, Ready to Go, Return to Service; the whole shop', 'HU-M7', [1, 2]),
-    ...pick('12 · Outside shop, costs and Finance', 'HU-M11', [2]),
-    ...pick('12 · Outside shop, costs and Finance', 'HU-M12', [2, 4]),
-    ...pick('12 · Outside shop, costs and Finance', 'HU-M13', [0, 2]),
-    ...pick('13 · Admin: correct time, people, catalog', 'HU-A1', [0, 1]),
-    ...pick('13 · Admin: correct time, people, catalog', 'HU-A2', [2, 0]),
-    ...pick('14 · Setup: the shop workflow and the hours', 'HU-M8', [0, 3]),
+    ...pick('12 · Purchases and outside repairs: the cost lands on the truck', 'HU-M12', [2, 5, 6]),
+    ...pick('12 · Purchases and outside repairs: the cost lands on the truck', 'HU-M11', [4, 2]),
+    ...pick('12 · Purchases and outside repairs: the cost lands on the truck', 'HU-M12', [4]),
+    ...pick('13 · Month close: the internal invoice for Finance', 'HU-M13', [0, 4, 5, 6]),
+    ...pick('13 · Month close: the internal invoice for Finance', 'HU-M13', [3], {
+      do: 'In the list below, open one of the Drafts you just made: look at its lines (parts, outside repairs, labor), tap Send and confirm, then "Download PDF" (the print dialog opens: choose "Save as PDF").',
+      expect: 'The invoice gets its SHOP-YYYY-NNNN number; the print dialog shows the invoice for Finance.',
+      spotlight: { text: 'Draft', selector: 'section:not([data-testid="invoice-month-close"]) tbody tr', contains: true, hint: 'Open a Draft: Send it, then "Download PDF".' },
+    }),
+    ...pick('13 · Month close: the internal invoice for Finance', 'HU-M13', [2], {
+      do: 'Back on Internal invoices: the list is grouped by month with Accepted, Sent, Voided and the new Drafts. Filter by status to show only Sent.',
+      expect: 'The invoice you sent among the Sent ones.',
+    }),
+    ...pick('14 · Admin: correct time, people, catalog', 'HU-A1', [0, 1]),
+    ...pick('14 · Admin: correct time, people, catalog', 'HU-A2', [2, 0]),
+    ...pick('15 · Setup: the shop workflow and the hours', 'HU-M8', [0, 3]),
   ],
 };
 
