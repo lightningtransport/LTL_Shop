@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import { fillPlaceholders } from './admin-next-step';
 import { returnToServiceErrorMessage } from './return-to-service';
 

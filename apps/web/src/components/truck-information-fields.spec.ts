@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAdminMessages } from '../lib/admin-messages';
+import { getAdminMessages } from '../lib/admin-messages-catalog';
 import {
   truckInformationFieldClass,
   truckInformationGridClass,

@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { AdminPartsGate } from '@/components/admin-parts-gate';
-import { getAdminMessages, isAdminLocale } from '@/lib/admin-messages';
+import { getAdminMessages } from '@/lib/admin-messages-catalog';
+import { isAdminLocale } from '@/lib/admin-messages';
 import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
 
 /** PCA12 (UX-5-007): every Parts & costs screen is behind the same "Manager and System Admin only" door. */

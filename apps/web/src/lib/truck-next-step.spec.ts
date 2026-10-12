@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WorkPlanJobLane } from '@ltl-shop/shared';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import { truckNextStepActionLabel, truckNextStepText } from './truck-next-step';
 
 const en = getAdminMessages('en');

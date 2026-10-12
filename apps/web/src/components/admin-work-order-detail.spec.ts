@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../lib/api';
-import { getAdminMessages } from '../lib/admin-messages';
+import { getAdminMessages } from '../lib/admin-messages-catalog';
 import { pauseResumeError } from './pause-resume-error';
 
 describe('pauseResumeError', () => {

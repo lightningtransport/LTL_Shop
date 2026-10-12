@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { AdminDashboard } from '@/components/admin-dashboard';
-import { getAdminMessages, isAdminLocale } from '@/lib/admin-messages';
+import { getAdminMessages } from '@/lib/admin-messages-catalog';
+import { isAdminLocale } from '@/lib/admin-messages';
 import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
 
 export default async function AdminHomePage() {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AppCapability } from '@ltl-shop/shared';
 import { defaultWorkspacePath, postLoginPath } from './admin-routing';
-import { adminPauseReasonLabel, getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
+import { adminPauseReasonLabel } from './admin-messages';
 
 describe('Shop Admin routing and messages', () => {
   const admin = { capabilities: [AppCapability.ADMIN_ACCESS] };

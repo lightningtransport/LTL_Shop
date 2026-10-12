@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAdminMessages } from './admin-messages';
+import { getAdminMessages } from './admin-messages-catalog';
 import { ApiError } from './api';
 import { API_ERROR_COPY } from './api-error-copy';
 import { apiErrorCode, apiErrorMessage, authErrorMessage, UserFacingError } from './api-error-message';
