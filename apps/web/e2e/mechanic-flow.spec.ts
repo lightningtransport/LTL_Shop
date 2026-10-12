@@ -19,7 +19,7 @@ test.describe('Mechanic P0 critical path', () => {
     await expect(page.getByRole('link', { name: /Create New Work Order/i })).toHaveCount(0);
   });
 
-  test('restored session verifies current capabilities before loading work orders', async ({
+  test('restored session loads work orders in parallel with the profile (P23, D38)', async ({
     page,
   }) => {
     await devLogin(page);
@@ -34,20 +34,18 @@ test.describe('Mechanic P0 critical path', () => {
       await route.continue();
     });
 
-    let workOrdersRequested = false;
-    page.on('request', (request) => {
-      if (new URL(request.url()).pathname === '/api/work-orders') workOrdersRequested = true;
-    });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(250);
-    expect(workOrdersRequested).toBe(false);
+    // The list leaves while the profile is still on its way (it used to wait for it).
     const workOrdersRequest = page.waitForRequest((request) => {
       const url = new URL(request.url());
       return url.pathname === '/api/work-orders' && url.searchParams.get('mode') === 'standard';
     });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await workOrdersRequest;
+    // What is shown still waits for the profile: no list before it says which workspace this person has.
+    await expect(page.getByRole('link', { name: /^View (Work )?truck/ })).toHaveCount(0);
     const profileResponse = page.waitForResponse('**/api/auth/me');
     releaseProfile();
-    await Promise.all([profileResponse, workOrdersRequest]);
+    await profileResponse;
     await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
     await expect(page.getByRole('link', { name: /Create New Work Order/i })).toHaveCount(0);
   });

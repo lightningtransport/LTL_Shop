@@ -55,7 +55,9 @@ export default function HomePage() {
     ? AppCapability.MECHANIC_PM
     : AppCapability.MECHANIC_STANDARD;
   const hasWorkspaceAccess = !!mode && !!user?.capabilities.includes(requiredCapability);
-  const { data, error, mutate } = useWorkOrders(!!token && hasWorkspaceAccess, mode ?? undefined);
+  // P23 / D38: the list leaves with the token and the URL's workspace, in parallel with the profile; the profile
+  // still decides what is shown (no capability → "workspace unavailable", and the API answers 403 to that list).
+  const { data, error, mutate } = useWorkOrders(!!token && !!mode, mode ?? undefined);
 
   useEffect(() => {
     if (!sessionLoading && !token && !sessionError) replaceAppLocation('/login', router);
