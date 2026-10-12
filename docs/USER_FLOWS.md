@@ -581,7 +581,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 **Flujo**
 1. **Setup → Labor rate:** pone la tarifa por hora del taller y desde qué fecha vale.
 2. Al completar un Work Order, su mano de obra (horas × tarifa) entra al costo del camión. Truck → Costs la muestra.
-3. **Parts & costs → Internal invoices → New invoice:** elige camión y mes. La app trae lo que todavía no se cobró de ese camión en ese mes (compras, reparaciones externas, mano de obra), al costo.
+3. **Parts & costs → Internal invoices:** en "Month close" elige el mes y ve cada camión con lo que tiene sin cobrar; **Create drafts for all** arma los borradores que faltan de una vez (D37), o **New invoice** arma uno solo: camión y mes. Cada borrador trae lo que todavía no se cobró de ese camión hasta fin de mes (compras, reparaciones externas, mano de obra), al costo.
 4. Revisa las líneas; puede sacar alguna (queda para la próxima). **Send**: la factura se congela con su número `SHOP-2026-0001` y se descarga en PDF para mandarla a Finanzas.
 5. Cuando Finanzas la acepta, el Manager la marca **Accepted**. Si hay un error, la anula y arma otra.
 
@@ -597,6 +597,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Saca una línea antes de enviar | Queda sin cobrar y aparece en la próxima factura de ese camión | ✅ | A73 |
 | Envía la factura | Queda congelada con su número, se descarga en PDF; una corrección posterior va a la del mes siguiente | ✅ | A74 |
 | Anula una factura enviada | Sus movimientos quedan libres para otra factura; el número no se reusa | ✅ | A75 |
+| Cierra el mes con varios camiones | "Month close" lista cada camión con lo sin cobrar y su factura; "Create drafts for all" arma los que faltan y no repite los que ya tienen factura (D37) | ✅ | A81 |
 | Un mecánico o Safety intenta ver la tarifa o las facturas | No puede (403) | ✅ | A75 |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)

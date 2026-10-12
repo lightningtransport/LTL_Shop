@@ -183,6 +183,17 @@ export class PartsCostsController {
     return this.invoices.list(query);
   }
 
+  // PCA16 (D37, P15): the month's close, every truck at once. Declared before `:id` so "month" is not read as one.
+  @Get('internal-invoices/month')
+  invoiceMonth(@Query() query: Record<string, unknown>) {
+    return this.invoices.month(query);
+  }
+
+  @Post('internal-invoices/create-all')
+  createAllInternalInvoices(@Req() request: Request, @Body() body: unknown) {
+    return this.invoices.createAll(request.user!, body);
+  }
+
   @Get('internal-invoices/:id')
   internalInvoice(@Param('id') id: string) {
     return this.invoices.detail(id);

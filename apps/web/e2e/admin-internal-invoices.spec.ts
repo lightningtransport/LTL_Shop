@@ -33,6 +33,12 @@ async function mockInvoices(page: Page) {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (path.endsWith('/internal-invoices') && request.method() === 'GET') return json(route, state ? [state] : []);
+    // PCA16: the month close, one truck with something to charge until its draft exists.
+    if (path.endsWith('/internal-invoices/month')) {
+      const current = state ? invoice(state.status, removed) : null;
+      return json(route, { month: '2026-10', periodStart: '2026-10-01', periodEnd: '2026-10-31', rows: [{ truck, invoice: current, uncharged: { count: current ? 0 : 4, totalCents: current ? 0 : 248420 } }], totals: { trucksToCharge: current ? 0 : 1, unchargedCents: current ? 0 : 248420, invoicedCents: 0 } });
+    }
+    if (path.endsWith('/internal-invoices/create-all')) { state = invoice('draft'); return json(route, { created: 1, skipped: 0, ids: [invoiceId] }, 201); }
     if (path.endsWith('/internal-invoices') && request.method() === 'POST') { state = invoice('draft'); return json(route, { id: invoiceId }, 201); }
     if (path.endsWith('/lines/l2/remove')) { removed = true; state = invoice('draft', true); return json(route, { id: invoiceId }, 201); }
     if (path.endsWith('/send')) { state = invoice('sent', removed); return json(route, { id: invoiceId, number: 'SHOP-2026-0001' }, 201); }
@@ -47,6 +53,11 @@ test('manager makes a truck invoice for the month, takes a line off, sends it an
   await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
   await page.goto('/admin/parts/internal-invoices');
   await expect(page.getByText('No internal invoices yet.')).toBeVisible();
+  // PCA16 (D37, P15): the month close lists the truck with its uncharged costs and offers to make every draft at once.
+  await page.getByLabel('Month', { exact: true }).first().fill('2026-10');
+  await expect(page.getByTestId('invoice-month-summary-line')).toHaveText('1 trucks to charge · $2,484.20 not charged yet · $0.00 already invoiced');
+  await expect(page.getByTestId('invoice-month-close')).toContainText('4 movements · $2,484.20');
+  await expect(page.getByTestId('invoice-create-all')).toHaveText('Create drafts for all (1)');
   await page.getByRole('button', { name: 'New invoice' }).first().click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Make draft' }).click();

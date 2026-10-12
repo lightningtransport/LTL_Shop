@@ -3,8 +3,11 @@ import {
   ActivityEventType,
   adminCreateInternalInvoiceSchema,
   adminInternalInvoicesQuerySchema,
+  adminInvoiceMonthSchema,
   adminVoidSchema,
   type AdminInternalInvoiceDetailDto,
+  type AdminInvoiceMonthDto,
+  type AdminInvoiceMonthRowDto,
   type AdminInternalInvoiceLineDto,
   type AdminInternalInvoiceSummaryDto,
 } from '@ltl-shop/shared';
@@ -95,6 +98,84 @@ export class InternalInvoicesService {
       voidReason: row.voidReason,
       availableCount: available,
     };
+  }
+
+  /**
+   * PCA16 (D37, P15): the month's close as one screen. Every truck with something uncharged up to the end of the
+   * month, or with an invoice for that month, with what it has and what it got. The invoice stays per truck.
+   */
+  async month(raw: unknown): Promise<AdminInvoiceMonthDto> {
+    const { month } = parse(adminInvoiceMonthSchema, raw);
+    const [year, monthNumber] = month.split('-').map(Number);
+    const periodStart = new Date(Date.UTC(year, monthNumber - 1, 1));
+    const periodEnd = new Date(Date.UTC(year, monthNumber, 0));
+    const [trucks, invoices, rows] = await Promise.all([
+      this.prisma.truck.findMany({ select: { id: true, truckNumber: true }, orderBy: { truckNumber: 'asc' } }),
+      this.prisma.internalInvoice.findMany({ where: { periodStart }, include: invoiceInclude, orderBy: { createdAt: 'desc' } }),
+      this.prisma.truckCostEntry.findMany({
+        where: { occurredOn: { lte: periodEnd }, kind: { in: ['part_purchase', 'outside_repair', 'labor'] }, invoiceLines: { none: { active: true } } },
+        select: { id: true, truckId: true, amountCents: true, reversesEntryId: true },
+      }),
+    ]);
+    // A row and its reversal, both uncharged, cancel out (same rule as `available`).
+    const ids = new Set(rows.map((row) => row.id));
+    const netted = new Set<string>();
+    for (const row of rows) {
+      if (row.reversesEntryId && ids.has(row.reversesEntryId)) {
+        netted.add(row.id);
+        netted.add(row.reversesEntryId);
+      }
+    }
+    const uncharged = new Map<string, { count: number; totalCents: number }>();
+    for (const row of rows) {
+      if (netted.has(row.id)) continue;
+      const bucket = uncharged.get(row.truckId) ?? { count: 0, totalCents: 0 };
+      bucket.count += 1;
+      bucket.totalCents += row.amountCents;
+      uncharged.set(row.truckId, bucket);
+    }
+    const invoiceByTruck = new Map<string, InvoiceRow>();
+    for (const invoice of invoices) {
+      const current = invoiceByTruck.get(invoice.truckId);
+      if (!current || (current.status === 'void' && invoice.status !== 'void')) invoiceByTruck.set(invoice.truckId, invoice);
+    }
+    const result: AdminInvoiceMonthRowDto[] = [];
+    for (const truck of trucks) {
+      const invoice = invoiceByTruck.get(truck.id) ?? null;
+      const open = uncharged.get(truck.id) ?? { count: 0, totalCents: 0 };
+      if (!invoice && open.count === 0) continue;
+      result.push({ truck, invoice: invoice ? this.summary(invoice) : null, uncharged: open });
+    }
+    return {
+      month,
+      periodStart: dateOnly(periodStart),
+      periodEnd: dateOnly(periodEnd),
+      rows: result,
+      totals: {
+        trucksToCharge: result.filter((row) => row.uncharged.count > 0 && (!row.invoice || row.invoice.status === 'void')).length,
+        unchargedCents: result.reduce((sum, row) => sum + row.uncharged.totalCents, 0),
+        invoicedCents: result.reduce((sum, row) => sum + (row.invoice && row.invoice.status !== 'void' ? row.invoice.totalCents : 0), 0),
+      },
+    };
+  }
+
+  /** PCA16: a draft for every truck that has something to charge and no live invoice for the month yet. */
+  async createAll(actor: AuthUser, raw: unknown) {
+    const { month } = parse(adminInvoiceMonthSchema, raw);
+    const view = await this.month({ month });
+    const ids: string[] = [];
+    let skipped = 0;
+    for (const row of view.rows) {
+      if (row.uncharged.count === 0 || (row.invoice && row.invoice.status !== 'void')) { skipped += 1; continue; }
+      try {
+        ids.push((await this.create(actor, { truckId: row.truck.id, month })).id);
+      } catch (error) {
+        // Someone made that truck's draft meanwhile: it counts as already there.
+        if (error instanceof ConflictException || error instanceof BadRequestException) skipped += 1;
+        else throw error;
+      }
+    }
+    return { created: ids.length, skipped, ids };
   }
 
   async create(actor: AuthUser, raw: unknown) {

@@ -48,6 +48,7 @@ import type {
   AdminTruckCostsDto,
   AdminLaborRatesDto,
   AdminLaborRatePreviewDto,
+  AdminInvoiceMonthDto,
   AdminSetLaborRateInput,
   AdminCreateInternalInvoiceInput,
   AdminInternalInvoiceDetailDto,
@@ -1049,6 +1050,18 @@ const invoicePath = (id: string, action = '') => `/api/admin/parts-costs/interna
 
 export function createAdminInternalInvoice(input: AdminCreateInternalInvoiceInput) {
   return apiFetch<{ id: string }>('/api/admin/parts-costs/internal-invoices', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** PCA16 (D37, P15): the month's close, every truck at once. */
+export function useAdminInvoiceMonth(month: string | null) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminInvoiceMonthDto>(token && month ? `/api/admin/parts-costs/internal-invoices/month?month=${month}` : null, adminReadFetcher, { dedupingInterval: 3_000, keepPreviousData: true, ...adminReadRetry }),
+  );
+}
+export function createAllAdminInternalInvoices(month: string) {
+  return apiFetch<{ created: number; skipped: number; ids: string[] }>('/api/admin/parts-costs/internal-invoices/create-all', { method: 'POST', body: JSON.stringify({ month }) });
 }
 export function refreshAdminInternalInvoice(id: string) {
   return apiFetch<{ id: string; added: number }>(invoicePath(id, '/refresh'), { method: 'POST', body: '{}' });

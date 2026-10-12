@@ -145,6 +145,24 @@ describe('Manager: factura interna a Finanzas (D34, LB-2)', () => {
     same('anulada: conserva cuántas líneas tenía', (ok('anuladas', await manager.get(`${INVOICES}?status=void&month=2026-10`)) as Json[])[0]?.lineCount, 3);
   });
 
+  it('A81 | El cierre del mes lista los camiones con algo por cobrar y arma los borradores que faltan de una vez (PCA16, D37)', async () => {
+    await purchase('MC1', '2026-10-03', 10000);
+    await repair('MC2', '2026-10-04', 5000);
+    const before = ok('mes', await manager.get(`${INVOICES}/month?month=2026-10`));
+    const mine = (before.rows as Json[]).find((row) => row.truck.id === truckId);
+    same('el camión aparece con 2 movimientos sin cobrar y sin factura', [mine?.uncharged.count, mine?.uncharged.totalCents, mine?.invoice], [2, 15000, null]);
+    truthy('cuenta al menos este camión por cobrar', before.totals.trucksToCharge >= 1, before.totals);
+
+    const made = ok('armar todos', await manager.post(`${INVOICES}/create-all`, { month: '2026-10' }));
+    truthy('armó al menos un borrador', made.created >= 1 && (made.ids as string[]).length === made.created, made);
+    const after = ok('mes', await manager.get(`${INVOICES}/month?month=2026-10`));
+    const row = (after.rows as Json[]).find((item) => item.truck.id === truckId);
+    same('el camión ya tiene su borrador y nada sin cobrar', [row?.invoice?.status, row?.invoice?.totalCents, row?.uncharged.count], ['draft', 15000, 0]);
+    const again = ok('armar todos otra vez', await manager.post(`${INVOICES}/create-all`, { month: '2026-10' }));
+    same('la segunda vez no arma nada', again.created, 0);
+    await prisma.internalInvoice.deleteMany({ where: { id: { in: made.ids as string[] } } });
+  });
+
   it('A75 | Anular una enviada libera sus movimientos; el número no se reusa; mecánicos y Safety no entran', async () => {
     await repair('R5', '2026-10-12', 12000);
     const first = await draft('2026-10');

@@ -580,6 +580,25 @@ export const adminInternalInvoicesQuerySchema = z.object({
 
 export type AdminCreateInternalInvoiceInput = z.input<typeof adminCreateInternalInvoiceSchema>;
 
+/** PCA16 (D37, P15): the month's close, every truck at once. */
+export const adminInvoiceMonthSchema = z.object({ month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/) });
+
+export interface AdminInvoiceMonthRowDto {
+  truck: AdminTruckRefDto;
+  /** The truck's invoice for that month (the live one; a voided one only when nothing else exists), if any. */
+  invoice: AdminInternalInvoiceSummaryDto | null;
+  /** Ledger rows up to the end of the month that no invoice charges (reversal pairs netted). */
+  uncharged: { count: number; totalCents: number };
+}
+
+export interface AdminInvoiceMonthDto {
+  month: string;
+  periodStart: string;
+  periodEnd: string;
+  rows: AdminInvoiceMonthRowDto[];
+  totals: { trucksToCharge: number; unchargedCents: number; invoicedCents: number };
+}
+
 export interface AdminInternalInvoiceSummaryDto {
   id: string;
   number: string | null;

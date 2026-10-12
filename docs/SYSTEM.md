@@ -438,6 +438,11 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 ### Factura interna a Finanzas (`internal_invoices`, `internal_invoice_lines`; LTR-201 / D34, LB-2)
 - **Parts & costs → Internal invoices** (`/admin/parts/internal-invoices`): una por
   **camión y mes**. Finanzas no entra a la app.
+- **Cierre del mes** (PCA16, D37): arriba de la lista, "Month close" muestra, para un mes,
+  cada camión con costos sin cobrar hasta fin de mes y su factura del mes
+  (`GET /internal-invoices/month?month=`), y "Create drafts for all" arma los borradores que
+  faltan (`POST /internal-invoices/create-all`); salta los camiones que ya tienen factura viva.
+  Send, número y PDF siguen por camión.
 - **Borrador:** trae las filas del libro del camión con fecha **hasta el fin del mes**
   que ninguna otra factura (no anulada) cobra: partes al costo, reparaciones externas y
   mano de obra. Así, una corrección hecha después de enviar una factura cae en la
