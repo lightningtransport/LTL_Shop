@@ -88,6 +88,10 @@ the backstop:
 - [ ] No `AUTH_DEV_BYPASS`
 - [ ] `DATA_SOURCE=supabase` (Ninox adapter is a stub; do not set `ninox`)
 - [ ] Secrets only in host env (never `NEXT_PUBLIC_` for service role)
+- [ ] Web project: `ADMIN_PROFILE_SECRET` (≥ 32 random characters, server-only) so the Admin middleware reads the
+      signed profile cookie instead of calling the API on every navigation (D38, P19). Rotating it only makes every
+      Admin re-check once against the API.
+- [ ] API `DATABASE_URL` without `connection_limit=1` (D38, P22)
 - [ ] Optional Yard Phase 1 cards: set server-only `AGENT_REPORTING_KEY` on
       the API project (never `NEXT_PUBLIC_*`). See `YARD_DATA_BOUNDARY.md`.
 - [ ] Ninox live sync is **not** required for Shop go-live. Truck join, if a
