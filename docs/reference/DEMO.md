@@ -251,18 +251,30 @@ La misma demo, en internet, para mandar por link. Vive en proyectos **aparte** d
 
 **Cómo se entra:** el link abre una pantalla que pide la **clave de acceso** (se manda junto con el link). Con la clave correcta aparece "Start the demo", que entra como MS en el flujo guiado. La API rechaza cualquier pedido `dev:` sin la clave (`demoAccessGranted`, `apps/api/src/dev-demo/dev-bypass.guard.ts`), así que conocer la URL de la API no basta. Todos los que abren la demo comparten los mismos datos: si alguien ya hizo un paso hoy, se ve hecho; a la mañana siguiente vuelve a estar como nuevo.
 
+**Dónde está hoy (puesta en marcha 2026-10-12):**
+
+| Pieza | Valor |
+|---|---|
+| Web demo (el link) | https://ltl-shop-demo-web.vercel.app — proyecto Vercel `ltl-shop-demo-web` (equipo LTL) |
+| API demo | https://ltl-shop-demo-api.vercel.app — proyecto Vercel `ltl-shop-demo-api` |
+| Base | Supabase `ltl-shop-demo`, ref `bolqdxcwflllrydcwmav`, West US (Oregon) `us-west-2`, plan gratis, en la organización "lightningtransport's Org" (no es la de producción) |
+| Reinicio | GitHub environment `demo` + workflow Demo reset, cada día 9:15 UTC (5:15 AM Este) |
+| Clave y cadenas | Solo en la máquina del dueño, `~/.ltl-demo-secrets/` (permisos privados). Nunca en el repo. |
+
+Las cuentas de la demo son las de siempre (`ms@lightning.local`, `mg1@lightning.local`…); "Start the demo" entra como MS.
+
 **Producción no cambia:** su build no tiene `NEXT_PUBLIC_DEMO_HOSTED`, ni la API tiene `AUTH_DEV_BYPASS`. El armado de la demo rechaza la base de producción aunque se configure por error (`demoDatabaseRefusal`, `apps/api/src/dev-demo/demo-target.ts`).
 
 ### Armarla una vez
 
-1. **Supabase:** crear un proyecto gratis `ltl-shop-demo` (no el de producción). Anotar su *ref* (20 letras, en la URL del dashboard). Copiar la cadena **Session pooler** (puerto 5432) desde Connect. La cadena directa `db.<ref>.supabase.co` es solo IPv6 y GitHub no llega.
+1. **Supabase:** crear un proyecto gratis `ltl-shop-demo` (no el de producción) en **West US (Oregon), `us-west-2`**. El API corre en Oregón (`apps/api/vercel.json` → `pdx1`) y cada pantalla hace muchas consultas seguidas: con la base en Virginia el Dashboard tardaba unos 8 s; en Oregón, como producción, 0,6–0,7 s (la primera llamada tras un rato sin uso, unos 3,5 s). Anotar su *ref* (20 letras, en la URL del dashboard). Copiar la cadena **Session pooler** (puerto 5432) desde Connect. La cadena directa `db.<ref>.supabase.co` es solo IPv6 y GitHub no llega.
 2. **GitHub → Settings → Environments → New environment `demo`:**
    - secret `DEMO_DATABASE_URL` = la cadena del pooler;
    - variable `DEMO_SUPABASE_REF` = el ref.
-3. **Actions → Demo reset → Run workflow:** migra, siembra y arma la demo en esa base. Después corre solo cada día a las 5:15 AM (hora del Este).
+3. **Actions → Demo reset → Run workflow:** migra, siembra y arma la demo en esa base. Después corre solo cada día a las 5:15 AM (hora del Este). **Tarda casi 3 horas** (2 h 45 min el 2026-10-13): los runners de GitHub están lejos de Oregón y el armado hace miles de consultas seguidas. Mientras corre, la demo se ve a medio armar (OPEN_ISSUES §1t, DP5).
 Los pasos 4 y 5 los hace `scripts/setup-demo-vercel.sh`: crea `ltl-shop-demo-api` y `ltl-shop-demo-web` y los despliega. Pide sin mostrarlos `DATABASE_URL`, `DIRECT_URL` y la clave.
 
-4. **Vercel, proyecto API demo** (raíz `apps/api`, mismo repo, rama `main`). Variables:
+4. **Vercel, proyecto API demo** (raíz `apps/api`, mismo repo, rama `main`). Conviene que solo construya `main`: *Ignored Build Step* = `[ "$VERCEL_GIT_COMMIT_REF" != "main" ]`, así los PR no gastan builds en la demo. Variables (entorno Production):
 
    | Variable | Valor |
    |---|---|
@@ -276,12 +288,14 @@ Los pasos 4 y 5 los hace `scripts/setup-demo-vercel.sh`: crea `ltl-shop-demo-api
    | `CORS_ORIGIN` | la URL de la web demo |
 
    Sin `CRON_SECRET`: el cierre del día de las 5 PM no corre en la demo.
-5. **Vercel, proyecto web demo** (raíz `apps/web`). Variables:
+5. **Vercel, proyecto web demo** (raíz `apps/web`, mismo *Ignored Build Step*). Variables (entorno Production):
    - `NEXT_PUBLIC_DEMO_HOSTED` = `1`;
    - `NEXT_PUBLIC_API_URL` = la URL del API demo;
    - `ADMIN_PROFILE_SECRET` = cualquier texto largo, distinto del de producción.
 6. **Probar y mandar:** abrir la URL de la web demo. Sin la clave no se ve nada; con la clave, "Start the demo".
 7. **Landing:** poner la URL de la web demo en `apps/landing/config.js` → `demoUrl` y volver a desplegar (`apps/landing/README.md`). Mandar el link del landing (https://ltl-shop-landing.vercel.app) y, aparte, la clave.
+
+**Cambiar la base** (por ejemplo, de región): crear la nueva, cambiar `DEMO_DATABASE_URL` y `DEMO_SUPABASE_REF` en el environment `demo`, correr Demo reset, cambiar `DATABASE_URL` y `DIRECT_URL` en el API demo y volver a desplegarlo.
 
 **Cambiar la clave:** cambiar `DEMO_ACCESS_CODE` en el API demo y volver a desplegarlo. Los navegadores con la clave vieja vuelven a ver la pantalla de la clave.
 
