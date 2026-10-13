@@ -6,7 +6,8 @@
 
   function sync() {
     var paused = video.paused;
-    toggle.textContent = paused ? 'Play' : 'Pause';
+    toggle.querySelector('span').textContent = paused ? 'Play' : 'Pause';
+    toggle.querySelector('use').setAttribute('href', paused ? '#i-play' : '#i-pause');
     overlay.hidden = !paused;
   }
 
