@@ -18,7 +18,14 @@ export type DemoState = {
   started: boolean;
   /** Just entered from /login: the panel greets once, then clears this. */
   welcome: boolean;
+  /** D40 (DA3): Play is on: the demo does each step by itself and moves on (survives the reload of an account switch). */
+  playing: boolean;
+  /** D40: how fast Play goes (1 = the time it takes to read each step's "Why"). */
+  speed: DemoSpeed;
 };
+
+export type DemoSpeed = 0.5 | 1 | 2;
+export const DEMO_SPEEDS: DemoSpeed[] = [0.5, 1, 2];
 
 export const DEFAULT_DEMO_STATE: DemoState = {
   version: 1,
@@ -29,6 +36,8 @@ export const DEFAULT_DEMO_STATE: DemoState = {
   autoFollow: true,
   started: false,
   welcome: false,
+  playing: false,
+  speed: 1,
 };
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -56,6 +65,8 @@ export function readDemoState(storage: StorageLike | null = browserStorage()): D
       autoFollow: parsed.autoFollow !== false,
       started: parsed.started === true,
       welcome: parsed.welcome === true,
+      playing: parsed.playing === true,
+      speed: DEMO_SPEEDS.includes(parsed.speed as DemoSpeed) ? (parsed.speed as DemoSpeed) : 1,
     };
   } catch {
     return DEFAULT_DEMO_STATE;

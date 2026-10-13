@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { playActions } from './autoplay';
 import { DEMO_CAST, castMember } from './cast';
 import { DEMO_FLOW, DEMO_JOB_IDS, DEMO_STORIES, findDemoStory, storyChapters } from './scripts';
 import { spotlightPhase } from './spotlight';
@@ -109,5 +110,20 @@ describe('demo stories (D36)', () => {
       }
       for (const unit of story.trucks) expect(demoTrucks.has(unit), `${story.id}: ${unit}`).toBe(true);
     }
+  });
+
+  it('gives Play something to do on every step of the demo flow (D40, DA3)', () => {
+    DEMO_FLOW.steps.forEach((step, index) => {
+      const label = `step ${index + 1} · ${step.title}`;
+      const actions = playActions(step);
+      expect(actions.length, label).toBeGreaterThan(0);
+      for (const action of actions) {
+        if (action.do === 'wait' || action.do === 'key') continue;
+        expect(action.at.text || action.at.selector || action.at.label, label).toBeTruthy();
+        if (action.do === 'type') expect(action.text.length, label).toBeGreaterThan(0);
+      }
+      // A step that changes data does something; only a step to look at points without tapping.
+      if (step.mutates) expect(step.look, label).not.toBe(true);
+    });
   });
 });

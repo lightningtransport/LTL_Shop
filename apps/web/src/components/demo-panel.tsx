@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { FlaskConical, Loader2, X } from 'lucide-react';
+import { FlaskConical, Loader2, Pause, Play, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { DEMO_CAST, DEMO_CAST_GROUPS, castMember, castMemberByEmail } from '@/lib/demo/cast';
 import { describeTarget } from '@/lib/demo/resolve-target';
 import { DEMO_FLOW, DEMO_STORIES, DEMO_WHO_LABELS, DEMO_WHO_ORDER, storyChapters } from '@/lib/demo/scripts';
 import { useDemoMode } from '@/lib/demo/demo-context';
 import { DEMO_REBUILD, DEMO_SERVER_DOWN } from '@/lib/demo/copy';
+import { DEMO_SPEEDS } from '@/lib/demo/state';
 import { DEMO_HOSTED } from '@/lib/dev-login';
 import { cn } from '@/lib/utils';
 import { Badge, Button, InlineAlert, Select } from './ui';
@@ -100,7 +101,8 @@ export function DemoPanel() {
   const current = user.email.toLowerCase();
   const stepUser = demo.step ? castMember(demo.step.user) : null;
   const stepIsMine = !!stepUser && stepUser.email === current;
-  const offScreen = demo.state.started && demo.onStepScreen === false;
+  // While Play runs, a step's own tap may change the screen (a filter, a form that opens a page): no warning.
+  const offScreen = demo.state.started && demo.onStepScreen === false && !demo.state.playing;
   const afterFive = new Date().getHours() >= 17;
   const chapters = demo.story ? storyChapters(demo.story) : [];
   const chapterIndex = chapters.findIndex((chapter) => demo.stepIndex >= chapter.from && demo.stepIndex <= chapter.to);
@@ -137,7 +139,7 @@ export function DemoPanel() {
 
       {demo.state.welcome && !demo.state.started ? (
         <p className="mb-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs" role="status">
-          Demo mode is on · you are <b>{castMemberByEmail(user.email)?.label ?? user.name}</b>. Tap <b>Start</b>: each step opens the right screen and lights up what to tap. You can also pick another story, or tap an account to see the app as that person.{' '}
+          Demo mode is on · you are <b>{castMemberByEmail(user.email)?.label ?? user.name}</b>. Tap <b>Play</b> and the demo runs by itself, or <b>Start</b> to tap each step yourself: the cursor shows where. You can also pick another story, or tap an account to see the app as that person.{' '}
           <button type="button" className="underline" onClick={() => demo.dismissWelcome()}>Got it</button>
         </p>
       ) : null}
@@ -285,10 +287,14 @@ export function DemoPanel() {
 
               {!demo.state.started ? (
                 <>
-                  <Button className="mt-3 w-full" disabled={demo.busy} onClick={() => void demo.startStory()}>
-                    Start{stepIsMine ? '' : ` as ${stepUser.label}`}
+                  <Button className="mt-3 w-full" disabled={demo.busy} onClick={() => void demo.setPlaying(true)}>
+                    <Play aria-hidden="true" className="size-4" /> Play: the demo runs by itself
                   </Button>
-                  <p className="mt-1 text-xs text-muted-foreground">Opens the first screen{stepIsMine ? '' : ' and switches the account'}. Nothing changes until you tap.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">The cursor taps and types each step and moves on; you talk. Pause any time.</p>
+                  <Button variant="outline" className="mt-2 w-full" disabled={demo.busy} onClick={() => void demo.startStory()}>
+                    Start{stepIsMine ? '' : ` as ${stepUser.label}`}: I tap
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">Opens the first screen{stepIsMine ? '' : ' and switches the account'}; the cursor points, you tap, and the step moves on.</p>
                 </>
               ) : (
                 <>
@@ -298,13 +304,39 @@ export function DemoPanel() {
                   {offScreen && (stepIsMine || demo.state.autoFollow) ? (
                     <p className="mt-2 text-xs text-warning-foreground dark:text-warning">This is not the step's screen.</p>
                   ) : null}
+                  {demo.playError ? <InlineAlert className="mt-2">{demo.playError}</InlineAlert> : null}
                   <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant={demo.state.playing ? 'outline' : 'default'}
+                      className="flex-1"
+                      disabled={demo.busy && !demo.state.playing}
+                      onClick={() => void demo.setPlaying(!demo.state.playing)}
+                    >
+                      {demo.state.playing ? <><Pause aria-hidden="true" className="size-4" /> Pause</> : <><Play aria-hidden="true" className="size-4" /> Play</>}
+                    </Button>
+                    <div role="group" aria-label="Play speed" className="flex rounded-md border p-0.5">
+                      {DEMO_SPEEDS.map((speed) => (
+                        <button
+                          key={speed}
+                          type="button"
+                          aria-pressed={demo.state.speed === speed}
+                          className={cn('rounded px-2 py-1 text-xs', demo.state.speed === speed ? 'bg-primary text-primary-foreground' : 'hover:bg-accent')}
+                          onClick={() => demo.setSpeed(speed)}
+                        >
+                          {speed}×
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
                     <Button variant="outline" size="sm" disabled={demo.busy || demo.stepIndex === 0} onClick={() => void demo.goToStep(demo.stepIndex - 1)}>
                       Back
                     </Button>
                     {demo.stepIndex < demo.story.steps.length - 1 ? (
                       <Button
-                        className={cn('flex-1', pointAtNext && 'ring-2 ring-primary ring-offset-2 ring-offset-background motion-safe:animate-pulse')}
+                        variant={demo.state.playing ? 'outline' : 'default'}
+                        className={cn('flex-1', pointAtNext && !demo.state.playing && 'ring-2 ring-primary ring-offset-2 ring-offset-background motion-safe:animate-pulse')}
                         size="sm"
                         disabled={demo.busy}
                         onClick={() => void demo.goToStep(demo.stepIndex + 1)}
@@ -320,7 +352,7 @@ export function DemoPanel() {
                       Go to this step's screen
                     </Button>
                   ) : null}
-                  {pointAtNext ? <p className="mt-2 text-xs text-muted-foreground" role="status">Done here? Tap <b className="text-foreground">Next</b> for the next step.</p> : null}
+                  {pointAtNext && !demo.state.playing ? <p className="mt-2 text-xs text-muted-foreground" role="status">Done here? Tap <b className="text-foreground">Next</b> for the next step.</p> : null}
                   <label className={cn('mt-3 flex items-center justify-between gap-3 text-xs', phoneHidden)}>
                     <span>Follow each step (switch account and open the screen)</span>
                     <input
@@ -340,7 +372,8 @@ export function DemoPanel() {
           <summary className="cursor-pointer text-xs font-medium">What each control does</summary>
           <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-muted-foreground">
             <li><b className="text-foreground">An account</b>: signs you in as that person and opens their home screen. No password; the page loads again.</li>
-            <li><b className="text-foreground">A story</b>: one of the shop's user stories. Start opens its first screen; Next switches to the right account and screen each time and says what to tap and what to explain. You tap; the app never acts by itself.</li>
+            <li><b className="text-foreground">A story</b>: one of the shop's user stories. Start opens its first screen; Next switches to the right account and screen each time and says what to tap and what to explain. The cursor points at what to tap; when you tap it, the step moves on.</li>
+            <li><b className="text-foreground">Play</b>: the demo runs by itself. The cursor taps and types each step, waits the time it takes to read the "Why" and goes on, switching accounts. Pause stops it where it is; 0.5×, 1× and 2× set the pace.</li>
             <li><b className="text-foreground">Changes data</b>: that step creates or changes something. {DEMO_REBUILD}</li>
             {DEMO_HOSTED ? <li>Everyone who opens this demo shares the same made-up data, so a step someone else already did may look different.</li> : <li>Only on this machine: the panel exists in local builds and needs the demo server (<code>npm run start:demo</code>).</li>}
           </ul>

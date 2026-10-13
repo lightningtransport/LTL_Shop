@@ -12,7 +12,7 @@ import { castMember, castMemberByEmail } from './cast';
 import { DEMO_REBUILD, DEMO_SERVER_DOWN } from './copy';
 import { resolveDemoTarget } from './resolve-target';
 import { type DemoStep, type DemoStory, findDemoStory } from './scripts';
-import { DEFAULT_DEMO_STATE, DEMO_STATE_EVENT, type DemoState, demoPanelAvailable, readDemoState, writeDemoState } from './state';
+import { DEFAULT_DEMO_STATE, DEMO_STATE_EVENT, type DemoSpeed, type DemoState, demoPanelAvailable, readDemoState, writeDemoState } from './state';
 import { refreshAdminSessionCookie, switchDemoUser } from './switch-user';
 
 export type DemoUserDto = Pick<UserDto, 'id' | 'name' | 'email' | 'role' | 'active' | 'capabilities'>;
@@ -60,6 +60,12 @@ export type DemoMode = {
   /** D39: the current step's highlight was tapped or dismissed; the panel then points at Next. */
   spotlightDone: boolean;
   markSpotlightDone: () => void;
+  /** D40 (DA3): turn Play on (starts the chosen story when it was not started) or off. */
+  setPlaying: (on: boolean) => Promise<void>;
+  setSpeed: (speed: DemoSpeed) => void;
+  /** Why Play stopped by itself (the screen was not what the step expects); cleared by Play, Next or Back. */
+  playError: string | null;
+  stopPlaying: (error: string | null) => void;
 };
 
 const DemoModeContext = createContext<DemoMode | null>(null);
@@ -148,6 +154,7 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   const [spotlightDoneKey, setSpotlightDoneKey] = useState<string | null>(null);
   const spotlightDone = !!stepKey && spotlightDoneKey === stepKey;
   const markSpotlightDone = useCallback(() => setSpotlightDoneKey(stepKey), [stepKey]);
+  const [playError, setPlayError] = useState<string | null>(null);
 
   // UX-1-003: while the demo is on and the account can enter the Admin, keep its server cookie alive.
   const canAdmin = hasCapability(user, AppCapability.ADMIN_ACCESS);
@@ -242,6 +249,7 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
       const target = findDemoStory(current.storyId);
       if (!target) return;
       const next = clampStep(target, index);
+      setPlayError(null);
       update({ stepIndex: next, panelOpen: true, started: true });
       if (current.autoFollow) await openStep(target.steps[next]);
     },
@@ -253,7 +261,8 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
       const target = findDemoStory(id);
       pendingStep.current = null;
       setError(null);
-      update({ storyId: target?.id ?? null, stepIndex: 0, started: false, panelOpen: true });
+      setPlayError(null);
+      update({ storyId: target?.id ?? null, stepIndex: 0, started: false, panelOpen: true, playing: false });
     },
     [update],
   );
@@ -271,13 +280,35 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   }, [step, openStep]);
 
   const backToManager = useCallback(async () => {
-    update({ storyId: null, stepIndex: 0, started: false, panelOpen: true });
+    update({ storyId: null, stepIndex: 0, started: false, panelOpen: true, playing: false });
     if (user?.email === DEMO_MANAGER_EMAIL) {
       window.location.replace('/admin');
       return;
     }
     await switchTo(DEMO_MANAGER_EMAIL, '/admin');
   }, [switchTo, update, user?.email]);
+
+  const setPlaying = useCallback(
+    async (on: boolean) => {
+      setPlayError(null);
+      if (!on) {
+        update({ playing: false });
+        return;
+      }
+      const current = readDemoState();
+      update({ playing: true, panelOpen: true });
+      if (!current.started) await startStory();
+    },
+    [update, startStory],
+  );
+
+  const stopPlaying = useCallback(
+    (reason: string | null) => {
+      update({ playing: false });
+      setPlayError(reason);
+    },
+    [update],
+  );
 
   const setEnabled = useCallback(
     (on: boolean) => {
@@ -322,8 +353,12 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
       backToManager,
       spotlightDone,
       markSpotlightDone,
+      setPlaying,
+      setSpeed: (speed) => update({ speed }),
+      playError,
+      stopPlaying,
     }),
-    [ready, state, available, data?.users, usersError, busy, switchingTo, error, story, step, stepIndex, onStepScreen, update, setEnabled, switchTo, selectStory, startStory, goToStep, goToScreen, backToManager, spotlightDone, markSpotlightDone],
+    [ready, state, available, data?.users, usersError, busy, switchingTo, error, story, step, stepIndex, onStepScreen, update, setEnabled, switchTo, selectStory, startStory, goToStep, goToScreen, backToManager, spotlightDone, markSpotlightDone, setPlaying, playError, stopPlaying],
   );
 
   return <DemoModeContext.Provider value={value}>{children}</DemoModeContext.Provider>;

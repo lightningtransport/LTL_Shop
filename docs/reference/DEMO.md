@@ -49,9 +49,24 @@ Antes de presentar: armar la base esa mañana (ver arriba) y, si la demo pasa de
 
 ### Guía paso a paso (D39, DP2)
 
-Al entrar a la demo, el panel ya tiene elegido "A day at the shop" y la app queda en inglés. **Start** abre la primera pantalla y, en cada paso, la pantalla se oscurece salvo lo que hay que tocar o mirar, con un globo que lo dice. Tocar lo iluminado apaga la luz y hace pulsar **Next** ("Done here? Tap Next"). En los pasos de dos toques (Resolve → Confirm resolve, Confirm completion → Close Work Order, New purchase → Save purchase…) se ilumina el segundo. Los pasos que son un solo toque (Start Work, Make draft, Create drafts for all) pasan solos al siguiente. Dentro de un formulario solo se marca el botón, sin oscurecer, para poder llenar los campos. "Got it" apaga la luz sin tocar nada. En teléfono el panel es una barra inferior con el paso y Back/Next; **More** muestra cuentas, historias y capítulos.
+Al entrar a la demo, el panel ya tiene elegido "A day at the shop" y la app queda en inglés. **Start** abre la primera pantalla y, en cada paso, la pantalla se oscurece salvo lo que hay que tocar o mirar, con un globo que lo dice. Tocar lo iluminado apaga la luz; si era el toque del paso, el paso avanza solo (D40, abajo), y si era algo para mirar, hace pulsar **Next** ("Done here? Tap Next"). En los pasos de dos toques (Resolve → Confirm resolve, Confirm completion → Close Work Order, New purchase → Save purchase…) se ilumina el segundo. Desde D40 todo paso con un toque pasa solo al siguiente, no solo Start Work, Make draft y Create drafts for all. Dentro de un formulario solo se marca el botón, sin oscurecer, para poder llenar los campos. "Got it" apaga la luz sin tocar nada. En teléfono el panel es una barra inferior con el paso y Back/Next; **More** muestra cuentas, historias y capítulos.
 
 Qué ilumina cada paso está en `SPOTLIGHTS` (`apps/web/src/lib/demo/scripts.ts`), por historia y número de paso, con el texto en inglés del botón o un selector. No hay marcas de demo en las pantallas del producto. Si un texto de la app cambia, el paso deja de iluminar (el panel sigue funcionando): la prueba `scripts.spec.ts` exige que todo paso del flujo tenga su luz, y la e2e de demo comprueba una.
+
+### Play y el cursor (D40)
+
+Dos formas de presentar, las dos con un **cursor** (una flecha) que se ve en la pantalla:
+
+- **Play: the demo runs by itself** (botón principal del panel, también con la historia ya empezada). La demo se maneja sola: el cursor se desliza al botón de cada paso, lo toca, escribe o elige lo que el paso pide (la nota del mecánico, la compra de FleetPride con sus dos líneas, la reparación de Diesel Pro, el Approve de Quality Check…), espera lo que se tarda en leer el **Why** y pasa al siguiente, cambiando de cuenta y de pantalla. El presentador solo habla. **Pause** lo para donde está; **0.5× / 1× / 2×** cambia el ritmo. El flujo completo dura unos 12 minutos a 1×. Si algo en la pantalla no es lo que el paso espera, Play se detiene y el panel dice qué no encontró: se hace el paso a mano y se vuelve a tocar Play o Next. Play no descarga el PDF de la factura, porque el diálogo de impresión del navegador detendría la página. Tampoco aplica la corrección de horas: abre el formulario y lo cierra.
+- **Start: I tap** (manual). El cursor señala lo iluminado; al tocar el último botón del paso (Create Work Order, Confirm resolve, Save purchase, un filtro…), el paso **avanza solo** cuando el formulario se cierra. Si el formulario sigue abierto porque falta un dato, espera. Los pasos de solo mirar siguen con **Next**.
+
+Lo que Play hace en cada paso está en `PLAYS` (`apps/web/src/lib/demo/scripts.ts`): por historia y número de paso, acciones `tap`, `type`, `choose`, `point`, `wait` y `key`, que encuentran los botones y campos por su texto en inglés, su etiqueta o un selector. `look` marca los pasos de solo mirar. Un paso sin entrada toca lo que ilumina su luz.
+
+**Ensayo automático:** con la base recién armada y la demo corriendo, este comando hace Play del flujo completo en un Chrome sin ventana y dice paso por paso cómo fue (`--speed=2` para ir rápido, `--from=29` para empezar en el paso 30, `--shots` para guardar una captura por paso en `apps/web/e2e/demo-play/out/`). Cambia los datos igual que una demo: rearmar la base antes de presentar.
+
+```bash
+npm run demo:play --workspace=@ltl-shop/web
+```
 
 ### Demo flow: "A day at the shop" (15 capítulos, 56 pasos)
 

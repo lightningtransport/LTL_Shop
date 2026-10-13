@@ -3,6 +3,8 @@
 import { DemoModeProvider } from '@/lib/demo/demo-context';
 import { DEMO_HOSTED } from '@/lib/dev-login';
 import { DemoAccessGate } from './demo-access-gate';
+import { DemoAutoplay } from './demo-autoplay';
+import { DemoCursor } from './demo-cursor';
 import { DemoPanel } from './demo-panel';
 import { DemoSpotlight } from './demo-spotlight';
 
@@ -13,6 +15,8 @@ export function DemoModeShell({ children }: { children: React.ReactNode }) {
       {children}
       <DemoPanel />
       <DemoSpotlight />
+      <DemoAutoplay />
+      <DemoCursor />
     </DemoModeProvider>
   );
   // D39 (DP3): the published demo shows nothing until the visitor types the code that came with the link.
