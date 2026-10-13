@@ -33,6 +33,9 @@ test.describe('D36 demo mode', () => {
     await expect(panel).toBeVisible({ timeout: 15_000 });
     // D39 (DP2): the demo opens on the guided flow; with no story the account list is open.
     await expect(panel.getByTestId('demo-step')).toContainText('Ready · 56 steps');
+    // DA5: on a phone the chosen flow keeps the panel a bottom bar (Play and Start in view); the rest is under More.
+    await expect(panel.getByRole('button', { name: /^Play: the demo runs by itself/ })).toBeInViewport();
+    await panel.getByRole('button', { name: 'More' }).click();
     await panel.getByRole('combobox', { name: 'Story' }).selectOption('');
     await expect(panel.getByRole('button', { name: /^MS/ })).toHaveAttribute('aria-pressed', 'true');
 

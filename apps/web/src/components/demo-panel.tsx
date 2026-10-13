@@ -106,7 +106,8 @@ export function DemoPanel() {
   const afterFive = new Date().getHours() >= 17;
   const chapters = demo.story ? storyChapters(demo.story) : [];
   const chapterIndex = chapters.findIndex((chapter) => demo.stepIndex >= chapter.from && demo.stepIndex <= chapter.to);
-  const compact = demo.state.started && !!demo.story && !expanded;
+  // DA5: on a phone, a chosen story keeps the panel a bottom bar, before Start too; "More" opens the rest.
+  const compact = !!demo.story && !expanded;
   /** Hidden on a phone while compact; always shown from sm up. */
   const phoneHidden = compact ? 'max-sm:hidden' : '';
   const pointAtNext = demo.state.started && !!demo.step?.spotlight && demo.spotlightDone;
@@ -122,7 +123,7 @@ export function DemoPanel() {
       <ReservePanelSpace />
       <div className={cn('mb-3 flex items-center justify-between', compact && 'max-sm:mb-1')}>
         <p className="font-semibold">Demo panel</p>
-        {demo.state.started && demo.story ? (
+        {demo.story ? (
           <button type="button" className="ml-auto mr-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent sm:hidden" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
             {expanded ? 'Less' : 'More'}
           </button>
@@ -138,7 +139,7 @@ export function DemoPanel() {
       </div>
 
       {demo.state.welcome && !demo.state.started ? (
-        <p className="mb-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs" role="status">
+        <p className={cn('mb-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs', phoneHidden)} role="status">
           Demo mode is on · you are <b>{castMemberByEmail(user.email)?.label ?? user.name}</b>. Tap <b>Play</b> and the demo runs by itself, or <b>Start</b> to tap each step yourself: the cursor shows where. You can also pick another story, or tap an account to see the app as that person.{' '}
           <button type="button" className="underline" onClick={() => demo.dismissWelcome()}>Got it</button>
         </p>
@@ -153,7 +154,7 @@ export function DemoPanel() {
         <InlineAlert className="mb-3">The account list did not load. {DEMO_SERVER_DOWN}</InlineAlert>
       ) : null}
       {afterFive ? (
-        <p className="mb-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground dark:text-warning" role="status">
+        <p className={cn('mb-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground dark:text-warning', phoneHidden)} role="status">
           It is after 5 PM: the day close has stopped today's clocks. {DEMO_HOSTED ? 'The data resets tonight.' : 'Rebuild the demo in the morning for a clean run.'}
         </p>
       ) : null}
@@ -281,7 +282,7 @@ export function DemoPanel() {
               {demo.story.note && demo.stepIndex === 0 && !DEMO_HOSTED ? (
                 <p className={cn('mt-2 text-xs text-muted-foreground', phoneHidden)}>{demo.story.note}</p>
               ) : null}
-              <p className="mt-2"><b>Do:</b> {demo.step.do}</p>
+              <p className={cn('mt-2', compact && 'max-sm:line-clamp-2')}><b>Do:</b> {demo.step.do}</p>
               {demo.step.say ? <p className={cn('mt-1 text-muted-foreground', phoneHidden)}><b className="text-foreground">Why:</b> {demo.step.say}</p> : null}
               {demo.step.expect ? <p className={cn('mt-1 text-xs text-muted-foreground', phoneHidden)}><b>You should see:</b> {demo.step.expect}</p> : null}
 
@@ -290,11 +291,11 @@ export function DemoPanel() {
                   <Button className="mt-3 w-full" disabled={demo.busy} onClick={() => void demo.setPlaying(true)}>
                     <Play aria-hidden="true" className="size-4" /> Play: the demo runs by itself
                   </Button>
-                  <p className="mt-1 text-xs text-muted-foreground">The cursor taps and types each step and moves on; you talk. Pause any time.</p>
+                  <p className={cn('mt-1 text-xs text-muted-foreground', phoneHidden)}>The cursor taps and types each step and moves on; you talk. Pause any time.</p>
                   <Button variant="outline" className="mt-2 w-full" disabled={demo.busy} onClick={() => void demo.startStory()}>
                     Start{stepIsMine ? '' : ` as ${stepUser.label}`}: I tap
                   </Button>
-                  <p className="mt-1 text-xs text-muted-foreground">Opens the first screen{stepIsMine ? '' : ' and switches the account'}; the cursor points, you tap, and the step moves on.</p>
+                  <p className={cn('mt-1 text-xs text-muted-foreground', phoneHidden)}>Opens the first screen{stepIsMine ? '' : ' and switches the account'}; the cursor points, you tap, and the step moves on.</p>
                 </>
               ) : (
                 <>
@@ -305,17 +306,19 @@ export function DemoPanel() {
                     <p className="mt-2 text-xs text-warning-foreground dark:text-warning">This is not the step's screen.</p>
                   ) : null}
                   {demo.playError ? <InlineAlert className="mt-2">{demo.playError}</InlineAlert> : null}
-                  <div className="mt-3 flex items-center gap-2">
+                  {/* DA5: on a phone Back · Play · Next share one row and the speed sits under More; from sm up, Play and
+                      the speed, then Back and Next. */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
                       variant={demo.state.playing ? 'outline' : 'default'}
-                      className="flex-1"
+                      className="flex-1 max-sm:order-2"
                       disabled={demo.busy && !demo.state.playing}
                       onClick={() => void demo.setPlaying(!demo.state.playing)}
                     >
                       {demo.state.playing ? <><Pause aria-hidden="true" className="size-4" /> Pause</> : <><Play aria-hidden="true" className="size-4" /> Play</>}
                     </Button>
-                    <div role="group" aria-label="Play speed" className="flex rounded-md border p-0.5">
+                    <div role="group" aria-label="Play speed" className={cn('flex rounded-md border p-0.5 max-sm:order-4 max-sm:basis-full max-sm:justify-center', phoneHidden)}>
                       {DEMO_SPEEDS.map((speed) => (
                         <button
                           key={speed}
@@ -328,15 +331,14 @@ export function DemoPanel() {
                         </button>
                       ))}
                     </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Button variant="outline" size="sm" disabled={demo.busy || demo.stepIndex === 0} onClick={() => void demo.goToStep(demo.stepIndex - 1)}>
+                    <div aria-hidden="true" className="h-0 basis-full max-sm:hidden" />
+                    <Button variant="outline" size="sm" className="max-sm:order-1" disabled={demo.busy || demo.stepIndex === 0} onClick={() => void demo.goToStep(demo.stepIndex - 1)}>
                       Back
                     </Button>
                     {demo.stepIndex < demo.story.steps.length - 1 ? (
                       <Button
                         variant={demo.state.playing ? 'outline' : 'default'}
-                        className={cn('flex-1', pointAtNext && !demo.state.playing && 'ring-2 ring-primary ring-offset-2 ring-offset-background motion-safe:animate-pulse')}
+                        className={cn('flex-1 max-sm:order-3', pointAtNext && !demo.state.playing && 'ring-2 ring-primary ring-offset-2 ring-offset-background motion-safe:animate-pulse')}
                         size="sm"
                         disabled={demo.busy}
                         onClick={() => void demo.goToStep(demo.stepIndex + 1)}
@@ -344,7 +346,7 @@ export function DemoPanel() {
                         Next
                       </Button>
                     ) : (
-                      <Button className="flex-1" size="sm" disabled={demo.busy} onClick={() => demo.selectStory(null)}>Finish</Button>
+                      <Button className="flex-1 max-sm:order-3" size="sm" disabled={demo.busy} onClick={() => demo.selectStory(null)}>Finish</Button>
                     )}
                   </div>
                   {offScreen || !demo.state.autoFollow ? (
