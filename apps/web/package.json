@@ -12,7 +12,8 @@
     "test:e2e": "../../node_modules/.bin/playwright test",
     "ui-audit": "node e2e/ui-audit/audit.mjs",
     "ui-audit:states": "node e2e/ui-audit/states.mjs",
-    "demo:video": "node e2e/demo-video/capture.mjs && node e2e/demo-video/render.mjs"
+    "demo:video": "node e2e/demo-video/capture.mjs && node e2e/demo-video/render.mjs",
+    "demo:play": "node e2e/demo-play/run.mjs"
   },
   "dependencies": {
     "@ltl-shop/shared": "*",

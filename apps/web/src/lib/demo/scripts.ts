@@ -1,4 +1,5 @@
 import type { DemoUserKey } from './cast';
+import type { DemoAction } from './autoplay';
 import type { DemoSpotlight } from './spotlight';
 
 /**
@@ -29,6 +30,10 @@ export type DemoStep = {
   chapter?: string;
   /** D39 (DP2): what to light up on the screen, with a short line on what to tap or look at. */
   spotlight?: DemoSpotlight;
+  /** D40 (DA3): what Play does here, when it is more than tapping what the spotlight lights (a form to fill). */
+  play?: DemoAction[];
+  /** D40: the lit element is only to look at: Play points at it and does not tap it. */
+  look?: boolean;
 };
 
 export type DemoJobId = `J${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14}`;
@@ -552,7 +557,7 @@ const STORY_SCRIPTS: DemoStory[] = [
     id: 'HU-A2', title: 'Catalog and people', who: 'AS', jtbd: null, role: 'System Admin', trucks: [],
     steps: [
       { user: 'AS', target: { kind: 'path', path: '/admin/catalog' }, title: 'Job Catalog',
-        do: 'Search "check engine" (Jobs and aliases). Open a category. PM, Detailing and Quality Check carry the "Shop workflow" tag: their Jobs cannot be deactivated or deleted.',
+        do: 'Search "engine" (Jobs and aliases). Open a category. PM, Detailing and Quality Check carry the "Shop workflow" tag: their Jobs cannot be deactivated or deleted.',
         say: 'Manager and System Admin edit the catalog. A Job already used in Work Orders cannot be deleted, only deactivated.',
         expect: 'Categories with Job counts and "Custom Jobs to review".' },
       { user: 'AS', target: { kind: 'path', path: '/admin/catalog/review' }, title: 'Custom Jobs to review',
@@ -621,17 +626,150 @@ const SPOTLIGHTS: Partial<Record<`${DemoStoryId}#${number}`, DemoSpotlight>> = {
   'HU-M13#6': { selector: '[data-testid="invoice-create-all"]', hint: 'One tap makes the missing drafts of the month.', advanceOnClick: true },
   'HU-A1#0': { text: 'Times', hint: 'Open "Times" in the History: every clock segment of this Work Order.', then: { text: 'Correct', hint: 'Each closed segment has "Correct…": a new start or end, with the reason.' } },
   'HU-A1#1': { text: 'Labor by mechanic', contains: true, hint: 'Time per mechanic on this Work Order.' },
-  'HU-A2#0': { selector: 'input[type="search"], input[placeholder*="Search" i]', hint: 'Search "check engine": Jobs and their aliases.' },
+  'HU-A2#0': { selector: 'input[type="search"], input[placeholder*="Search" i]', hint: 'Search "engine": Jobs and their aliases.' },
   'HU-A2#2': { text: 'MG1', contains: true, selector: 'tr, [role="row"], li, a', hint: 'Open a person: deactivate, reset password, remove from Shop.' },
   'HU-M8#0': { text: 'Detailing', contains: true, selector: 'h2, h3, h4, li, [data-testid]', hint: 'Each step and its team: Detailing has two people, so its Jobs wait in a team queue.' },
   'HU-M8#3': { text: 'Day close', contains: true, hint: 'The day closes at 5:00 PM: running clocks stop.' },
 };
 
+const LOOK = { look: true } as const;
+const inDialog = (text: string) => ({ text, inDialog: true });
+const field = (label: string) => ({ label, inDialog: true });
+
+/**
+ * D40 (DA3): what Play does on each step, by story and step number (from 0), when it is more than tapping what
+ * the spotlight lights: a form to fill, or only something to look at (`look`: Play points, the manual mode waits
+ * for Next). Labels are the English ones on screen; `{stamp}` makes an invoice number new on every run.
+ * `node e2e/demo-play/run.mjs` plays the whole flow against a fresh demo and says where it stops.
+ */
+const PLAYS: Partial<Record<`${DemoStoryId}#${number}`, Pick<DemoStep, 'play' | 'look'>>> = {
+  'HU-ME5#0': LOOK,
+  'HU-ME5#1': LOOK,
+  'HU-M1#0': LOOK,
+  'HU-M1#1': {
+    play: [
+      { do: 'tap', at: { text: 'New Work Order' } },
+      { do: 'type', at: { selector: 'textarea', inDialog: true }, text: 'Arrived from Barstow, driver reports a soft brake pedal.' },
+      { do: 'tap', at: inDialog('Create Work Order') },
+    ],
+  },
+  'HU-M1#2': LOOK,
+  'HU-M2#1': {
+    play: [
+      { do: 'tap', at: inDialog('Air & Brake System') },
+      { do: 'tap', at: { selector: '[aria-label="Add Brake Inspection"]', inDialog: true } },
+      { do: 'choose', at: field('Who does Brake Inspection?'), option: 'MG1' },
+      { do: 'type', at: field('Custom job'), text: 'Check air horn' },
+      { do: 'tap', at: { selector: '[aria-label="Add custom job"]', inDialog: true } },
+      { do: 'tap', at: inDialog('Add to Work Plan') },
+    ],
+  },
+  'HU-M2#2': LOOK,
+  'HU-M3#1': {
+    play: [
+      { do: 'tap', at: { text: 'Assign', in: { selector: '[data-testid="admin-wo-next-step"]' } } },
+      { do: 'tap', at: { text: 'MG1', selector: '[data-radix-popper-content-wrapper] button' } },
+      { do: 'wait', ms: 1200 },
+      { do: 'key', key: 'Escape' },
+      { do: 'tap', at: { text: 'Assign', in: { selector: '[data-testid="admin-wo-next-step"]' } } },
+      { do: 'tap', at: { text: 'MG2', selector: '[data-radix-popper-content-wrapper] button' } },
+      { do: 'wait', ms: 1200 },
+      { do: 'key', key: 'Escape' },
+    ],
+  },
+  'HU-M3#2': LOOK,
+  'HU-ME1#0': LOOK,
+  'HU-ME1#1': LOOK,
+  'HU-ME4#0': {
+    play: [
+      { do: 'type', at: { label: 'Add a note' }, text: 'Front pads at 30%: worth a look on the next PM.' },
+      { do: 'tap', at: { text: 'Add Note' } },
+      { do: 'tap', at: { text: 'Request Work' } },
+      { do: 'type', at: { selector: 'textarea', inDialog: true }, text: 'The left mirror bracket is cracked: it needs a new one.' },
+      { do: 'tap', at: inDialog('Send to Manager') },
+    ],
+  },
+  'HU-ME3#0': LOOK,
+  'HU-ME3#1': LOOK,
+  'HU-ME2#0': LOOK,
+  'HU-ME2#2': {
+    play: [
+      { do: 'tap', at: { text: 'Complete job' } },
+      { do: 'type', at: { selector: 'textarea', inDialog: true }, text: 'Alignment done, toe within spec.' },
+      { do: 'tap', at: inDialog('Complete job') },
+    ],
+  },
+  'HU-PM1#0': LOOK,
+  'HU-PM1#1': {
+    play: [
+      { do: 'point', at: { text: 'Turn on what you changed', contains: true } },
+      { do: 'tap', at: { selector: '[role="switch"][aria-checked="false"]' } },
+    ],
+  },
+  'HU-M10#1': LOOK,
+  'HU-QC1#0': LOOK,
+  'HU-QC1#1': { play: [{ do: 'tap', at: { text: 'Take', in: { text: '616', contains: true, selector: 'li, article, [data-testid]' } } }] },
+  'HU-QC1#3': LOOK,
+  'HU-QC1#5': LOOK,
+  'HU-QC1#6': LOOK,
+  'HU-M12#5': {
+    play: [
+      { do: 'tap', at: { text: 'New purchase' } },
+      { do: 'choose', at: field('Vendor'), option: 'FleetPride' },
+      { do: 'type', at: field('Invoice #'), text: 'FP-{stamp}' },
+      { do: 'choose', at: field('Truck'), option: 'Truck 605' },
+      { do: 'choose', at: { selector: '#line-part-0', inDialog: true } },
+      { do: 'type', at: { selector: '#line-qty-0', inDialog: true }, text: '2' },
+      { do: 'tap', at: inDialog('Add line') },
+      { do: 'choose', at: { selector: '#line-part-1', inDialog: true }, option: 'Air' },
+      { do: 'type', at: field('Tax'), text: '12' },
+      { do: 'type', at: field('Freight'), text: '25' },
+      { do: 'tap', at: inDialog('Save purchase') },
+    ],
+  },
+  'HU-M11#4': {
+    play: [
+      { do: 'tap', at: { text: 'New outside repair' } },
+      { do: 'choose', at: field('Truck'), option: 'Truck 612' },
+      { do: 'choose', at: field('Vendor'), option: 'Diesel Pro' },
+      { do: 'type', at: field('Invoice #'), text: 'DP-{stamp}' },
+      { do: 'type', at: field('What was done'), text: 'DPF cleaning' },
+      { do: 'type', at: field('Amount'), text: '420' },
+      { do: 'tap', at: { selector: 'button[type="submit"]', inDialog: true } },
+    ],
+  },
+  'HU-QC1#2': {
+    play: [
+      // Take (the step before) already opened the review; from the chapter list it has to be opened.
+      { do: 'tap', at: { text: 'Continue review', in: { text: '616', contains: true, selector: 'li, article, [data-testid]' } }, optional: true },
+      { do: 'tap', at: inDialog('Approve') },
+      // "Approve Truck 616?" asks again in the same sheet: Back or Approve.
+      { do: 'tap', at: inDialog('Approve') },
+    ],
+  },
+  'HU-M13#0': LOOK,
+  'HU-M13#4': LOOK,
+  // The correction form is shown, not applied: a made-up correction would change the hours of the demo.
+  'HU-A1#0': {
+    play: [
+      { do: 'tap', at: { text: 'Times' } },
+      { do: 'tap', at: { text: 'Correct' } },
+      { do: 'wait', ms: 2500 },
+      { do: 'key', key: 'Escape' },
+    ],
+  },
+  'HU-A1#1': LOOK,
+  'HU-A2#0': { play: [{ do: 'type', at: { selector: 'input[type="search"], input[placeholder*="Search" i]' }, text: 'engine' }] },
+  'HU-M8#0': LOOK,
+  'HU-M8#3': LOOK,
+};
+
 export const DEMO_STORIES: DemoStory[] = STORY_SCRIPTS.map((story) => ({
   ...story,
   steps: story.steps.map((step, index) => {
-    const spotlight = SPOTLIGHTS[`${story.id as DemoStoryId}#${index}`];
-    return spotlight ? { ...step, spotlight } : step;
+    const key = `${story.id as DemoStoryId}#${index}` as const;
+    const spotlight = SPOTLIGHTS[key];
+    return { ...step, ...(spotlight ? { spotlight } : {}), ...PLAYS[key] };
   }),
 }));
 
@@ -685,6 +823,7 @@ export const DEMO_FLOW: DemoStory = {
       expect: '957 in the Team queue with Take.',
       mutates: true,
       spotlight: { text: 'Take', hint: 'Tap "Take" on 957: the Detailing Job becomes yours.' },
+      play: [{ do: 'tap', at: { text: 'Take', in: { text: '957', contains: true, selector: 'li, article, [data-testid]' } } }],
     }),
     ...pick('9 · Detailing: the team queue and a helper', 'HU-M10', [1]),
     ...pick('10 · Quality Check: take, approve, return; the backup', 'HU-QC1', [0, 1, 2, 3, 5, 6]),
@@ -698,10 +837,17 @@ export const DEMO_FLOW: DemoStory = {
       do: 'In the list below, open one of the Drafts you just made: look at its lines (parts, outside repairs, labor), tap Send and confirm, then "Download PDF" (the print dialog opens: choose "Save as PDF").',
       expect: 'The invoice gets its SHOP-YYYY-NNNN number; the print dialog shows the invoice for Finance.',
       spotlight: { text: 'Draft', selector: 'section:not([data-testid="invoice-month-close"]) tbody tr', contains: true, hint: 'Open a Draft: Send it, then "Download PDF".' },
+      // Play sends it; the PDF opens the browser's print dialog, which would stop the page, so Play leaves it out.
+      play: [
+        { do: 'tap', at: { text: 'Draft', selector: 'section:not([data-testid="invoice-month-close"]) tbody tr a, section:not([data-testid="invoice-month-close"]) tbody tr', contains: true } },
+        { do: 'tap', at: { text: 'Send' } },
+        { do: 'tap', at: { text: 'Send', selector: '[role="alertdialog"] button, [role="dialog"] button' } },
+      ],
     }),
     ...pick('13 · Month close: the internal invoice for Finance', 'HU-M13', [2], {
       do: 'Back on Internal invoices: the list is grouped by month with Accepted, Sent, Voided and the new Drafts. Filter by status to show only Sent.',
       expect: 'The invoice you sent among the Sent ones.',
+      play: [{ do: 'choose', at: { selector: '#invoices-status' }, option: 'Sent' }],
     }),
     ...pick('14 · Admin: correct time, people, catalog', 'HU-A1', [0, 1]),
     ...pick('14 · Admin: correct time, people, catalog', 'HU-A2', [2, 0]),

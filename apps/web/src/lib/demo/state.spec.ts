@@ -31,6 +31,14 @@ describe('demo state (D36)', () => {
     expect(readDemoState(null)).toEqual(DEFAULT_DEMO_STATE);
   });
 
+  it('keeps Play and its speed (D40), and drops a speed it does not know', () => {
+    const storage = memoryStorage();
+    writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, playing: true, speed: 2 }, storage);
+    expect(readDemoState(storage)).toMatchObject({ playing: true, speed: 2 });
+    expect(readDemoState(memoryStorage({ [DEMO_STATE_KEY]: '{"version":1,"enabled":true,"playing":"yes","speed":3}' })))
+      .toEqual({ ...DEFAULT_DEMO_STATE, enabled: true });
+  });
+
   it('never throws when storage is unavailable', () => {
     const broken = {
       getItem: () => { throw new Error('blocked'); },
