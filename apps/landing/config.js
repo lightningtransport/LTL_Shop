@@ -2,5 +2,5 @@
 // (the web demo project from docs/reference/DEMO.md → Demo publicada) and redeploy.
 // Empty = the button says "Demo link coming soon" and does nothing.
 window.LANDING = {
-  demoUrl: "",
+  demoUrl: "https://ltl-shop-demo-web.vercel.app",
 };
