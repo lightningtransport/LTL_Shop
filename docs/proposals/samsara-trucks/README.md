@@ -23,7 +23,7 @@ El Manager da de alta, edita y desactiva camiones desde Admin, como hoy hace con
 2. **Fallas**, en una pestaña **Faults** del camión para el Manager (como Costs): activas arriba (código, descripción, severidad STOP / warning / check engine, desde cuándo), historial abajo. **Ampliado por D42 (2026-10-13):** las fallas se recomiendan como Jobs en Add work y el mecánico ve la falla dentro de su Job (ver "Paso 2b").
 3. **Ubicación:** dirección y hora de Samsara en la ficha, con link al mapa. Sigue siendo informativa; la presencia en el patio por perímetro es LTR-55.
 
-**Recomendado (falta confirmar, P12):** un **cron cada 15–30 min** que lee el feed de Vehicle Stats de Samsara (`obdOdometerMeters`/`gpsOdometerMeters`, `gps`, `faultCodes`). Millaje y ubicación no tienen webhook, así que el cron hace falta igual; el webhook de fallas queda para después si hace falta enterarse al minuto.
+**Decidido (P12, D42, 2026-10-13):** una sincronización **cada 15–30 min** que lee el feed de Vehicle Stats de Samsara (`obdOdometerMeters`/`gpsOdometerMeters`, `gps`, `faultCodes`), **sin webhook** (basta con la lista). La dispara un **workflow programado de GitHub Actions** (como `.github/workflows/demo-reset.yml`) que llama a `POST /api/internal/samsara-sync` con el secreto de cron, porque Vercel Hobby solo permite crons una vez al día. No va en `apps/api/vercel.json`.
 
 **Cómo se construiría (resumen):**
 - Token de Samsara de **solo lectura** como secreto `SAMSARA_API_TOKEN` (solo servidor).
@@ -71,7 +71,7 @@ El dueño quiere ver la última ubicación y las fallas de **todos** sus camione
 | J19 | Mecánico PM | anoto las millas del tablero | ver lo que dice Samsara como referencia | detectar un tablero o un sensor mal |
 
 **Task flow (el sistema):**
-1. El cron lee Samsara cada 15–30 min (millas, GPS, fallas).
+1. Un workflow de GitHub Actions llama cada 15–30 min a la sincronización, que lee Samsara (millas, GPS, fallas).
 2. Falla nueva → se abre en `truck_faults`. Deja de venir → se cierra (`cleared_at`).
 3. En Add work la app lista las fallas activas STOP / warning / check engine que **no** están cubiertas por un Job abierto ni descartadas.
 4. Job sugerido por falla: el del mapa aprendido código → Job del catálogo; si el código es nuevo, el Manager elige uno (o escribe uno personalizado, que entra a la bandeja de Custom Jobs como cualquier otro).
@@ -94,10 +94,10 @@ API de **solo lectura** con su propia llave revocable, solo los campos que neces
 - Límite de consultas de Samsara: por eso se lee en segundo plano, nunca al abrir una pantalla.
 - Un código "aprendido" mal (el Manager eligió el Job equivocado una vez) se repite: el Job sugerido siempre se puede cambiar y el cambio reemplaza el aprendido.
 - La propuesta de inspección (`proposals/inspection-checklist/`, D41 reservada) también crea Jobs desde hallazgos: al construir, que las dos usen el mismo origen de Job.
-- Crons de menos de un día requieren **Vercel Pro**.
+- Vercel Hobby solo permite crons una vez al día. **Resuelto (P12, 2026-10-13):** la sincronización la dispara un workflow programado de **GitHub Actions** cada 15–30 min; Vercel sigue en Hobby.
 - El token lo crea un admin de la cuenta de Samsara.
 
 ## Preguntas abiertas (en DECISIONS)
-- **P12** Samsara: plan de Vercel, quién crea el token, umbral de diferencia de millaje. (El webhook ya no hace falta: D42.)
+- **P12** Samsara: quién crea el token, umbral de diferencia de millaje. (Sin webhook, D42; la sincronización la dispara GitHub Actions.)
 - **P13** Alta de camiones en Admin: ¿cuándo?, ¿qué campos de Ninox se conservan?
 - **P14** API para la otra persona: ¿qué datos usa hoy (solo camiones o también estado de WOs)?

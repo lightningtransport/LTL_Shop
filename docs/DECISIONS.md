@@ -1,6 +1,6 @@
 # Registro de decisiones de producto
 
-**Actualizado:** 2026-10-13 (D42: fallas de Samsara → Jobs recomendados, amplía D35; D41 queda reservada para la hoja de inspección)
+**Actualizado:** 2026-10-13 (D42: fallas de Samsara → Jobs recomendados, amplía D35; P12: la sincronización la dispara GitHub Actions; D41 queda reservada para la hoja de inspección)
 
 Esta es la **única** lista de decisiones vigentes. Antes estaban repartidas
 entre Linear (doc 16), el Decision Log del PRD maestro, el contrato de
@@ -150,7 +150,7 @@ Se deciden aquí; mientras tanto, no se construye nada que dependa de ellas.
 | ~~P9~~ | **Cerrada 2026-09-29 → D21:** el reloj corre en un solo camión a la vez. |
 | ~~P10~~ | **Cerrada 2026-09-29:** nunca hay PM sin partes. La app está bien como está (exige al menos una). |
 | ~~P11~~ | **Cerrada 2026-10-05:** trailers **después** de salir en vivo, cuando Cristian lo indique (LTR-56). |
-| P12 | **Samsara:** ¿plan de Vercel (Pro para cron cada 15 min)? ¿Quién crea el token de solo lectura (admin de Samsara)? ¿Qué diferencia de millas entre tablero y Samsara da aviso (ej. 500 mi)? (D35) — **Cron sin webhook, cerrado 2026-10-13 → D42:** no hace falta alerta, basta con la lista. |
+| P12 | **Samsara:** ¿Quién crea el token de solo lectura (admin de Samsara)? ¿Qué diferencia de millas entre tablero y Samsara da aviso (ej. 500 mi)? (D35) — **Cerrado 2026-10-13:** sin webhook, basta con la lista (D42). **Quién dispara la sincronización:** el dueño eligió **GitHub Actions** (opción 2): la cuenta de Vercel es Hobby y ahí un cron corre a lo sumo una vez al día; un workflow programado de GitHub llama cada 15–30 min a `POST /api/internal/samsara-sync` con el secreto de cron (como `demo-reset.yml`). Gratis; GitHub puede atrasar unos minutos la corrida, aquí no importa. No se pasa a Vercel Pro por esto. |
 | P13 | **Alta de camiones en Admin** (deja de depender de Ninox): ¿cuándo? ¿Qué campos que solo tiene Ninox se conservan (dispatcher, aseguradora, placas)? Reabre "Camiones: después" de D22. |
 | P14 | **API para la persona que hoy nos da la suya:** ¿qué datos usa (solo camiones o también estado de WOs)? Llave propia revocable y formato versionado. |
 | ~~P15~~ | **Cerrada 2026-10-12 → D37:** el cierre a Finanzas se hace por mes (vista con todos los camiones y "Create drafts for all"); la factura sigue siendo por camión. Construida (PCA16). |
