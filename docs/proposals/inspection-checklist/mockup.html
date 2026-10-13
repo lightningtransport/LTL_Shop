@@ -68,28 +68,7 @@
 </head>
 <body class="min-h-screen font-sans text-sm antialiased">
 
-<aside id="sidebar" class="fixed inset-y-0 left-0 hidden w-60 flex-col border-r bg-background md:flex">
-  <div class="flex h-14 items-center gap-2 border-b px-4">
-    <div class="grid size-7 place-items-center rounded-md bg-success/20 text-success"><i data-lucide="zap"></i></div>
-    <span class="font-semibold">LTL Shop</span><span class="text-xs text-muted-foreground">Admin</span>
-  </div>
-  <nav class="flex-1 space-y-5 p-3">
-    <div class="space-y-0.5">
-      <p class="px-2 pb-1 text-xs text-muted-foreground">Operations</p>
-      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="gauge"></i>Dashboard</a>
-      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="warehouse"></i>Yard Operations</a>
-      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="clipboard-list"></i>Work Orders</a>
-      <a class="flex h-9 items-center gap-2.5 rounded-md bg-accent px-2 font-medium text-foreground"><i data-lucide="truck"></i>Trucks</a>
-    </div>
-    <div class="space-y-0.5">
-      <p class="px-2 pb-1 text-xs text-muted-foreground">Setup</p>
-      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="users"></i>Mechanics</a>
-      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="library"></i>Job Catalog</a>
-      <a class="flex h-9 items-center gap-2.5 rounded-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground"><i data-lucide="workflow"></i>Shop workflow</a>
-    </div>
-  </nav>
-  <div class="border-t p-3"><p class="font-medium">Crixcrox</p><p class="text-xs text-muted-foreground">Admin</p></div>
-</aside>
+<aside id="sidebar" class="fixed inset-y-0 left-0 hidden w-60 flex-col border-r bg-background md:flex"></aside>
 
 <div id="shell" class="md:pl-60">
   <header class="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b bg-background/90 px-4 backdrop-blur md:px-6">
@@ -105,62 +84,66 @@
 
 <div id="v-bar"></div>
 <div id="layer"></div>
-<div id="toasts" class="pointer-events-none fixed inset-x-3 bottom-3 z-[70] flex flex-col items-center gap-2 sm:inset-x-auto sm:right-4 sm:items-end"></div>
+<div id="toasts" class="pointer-events-none fixed inset-x-3 bottom-20 z-[70] flex flex-col items-center gap-2 sm:inset-x-auto sm:bottom-3 sm:right-4 sm:items-end"></div>
 
-<div id="demo" class="fixed inset-x-3 bottom-3 z-[65] hidden max-h-[75vh] overflow-auto rounded-xl border bg-card p-4 shadow-2xl sm:inset-x-auto sm:right-4 sm:top-16 sm:bottom-auto sm:w-[380px]">
+<div id="demo" class="fixed inset-x-3 bottom-3 z-[65] hidden max-h-[80vh] overflow-auto rounded-xl border bg-card p-4 shadow-2xl sm:inset-x-auto sm:right-4 sm:top-16 sm:bottom-auto sm:w-[400px]">
   <div class="mb-3 flex items-center justify-between"><p class="font-semibold">Panel de demo</p><button onclick="toggleDemo()" class="grid size-8 place-items-center rounded-md hover:bg-accent" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
-  <p class="mb-2 text-xs text-muted-foreground">Estado de la inspección</p>
-  <div class="grid grid-cols-2 gap-1.5" id="presets"></div>
-  <p class="mb-2 mt-4 text-xs text-muted-foreground">Quién inspecciona</p>
-  <div class="grid grid-cols-2 gap-1 rounded-lg bg-sunken p-1 ring-1 ring-border" id="roles"></div>
+  <div id="presets" class="space-y-3"></div>
   <details class="mt-4 border-t pt-3">
-    <summary class="cursor-pointer font-medium">Qué cambia respecto a hoy</summary>
+    <summary class="cursor-pointer font-medium">Qué cambió con tus respuestas (v2)</summary>
     <ul class="mt-2 list-disc space-y-1.5 pl-4 text-muted-foreground">
-      <li>Hoy la inspección es solo <b class="text-foreground">No issues found / Issues found</b> (D14). No queda qué se revisó.</li>
-      <li>Aquí la hoja en papel pasa a la app: <b class="text-foreground">53 puntos</b> (Interior, Engine &amp; fluids, Exterior) con OK · Defect · N/A, y <b class="text-foreground">10 llantas</b> con PSI y tread /32.</li>
-      <li>Cada <b class="text-foreground">Defect</b> pide una nota y sugiere un Job del catálogo. Al terminar, el Manager elige cuáles agregar y quién los hace (el mismo Add work de hoy).</li>
-      <li>Si inspecciona un <b class="text-foreground">Mechanic</b>, los defectos le llegan al Manager como Request Work; el Mechanic no crea Jobs.</li>
-      <li>El resultado (Issues found / No issues found) <b class="text-foreground">sale solo</b> de la hoja: con un defecto o una llanta en rojo es Issues found.</li>
-      <li>El Truck guarda la última lectura de llantas y la compara con la anterior.</li>
+      <li><b class="text-foreground">Managers inspeccionan siempre</b>; un Mechanic solo si en People tiene <b class="text-foreground">Can inspect trucks</b>. Lo ve en My work → “To inspect”.</li>
+      <li><b class="text-foreground">Cada defecto crea su Job al guardar</b> (ya no hay casilla “Add Job” ni Must fix / Can wait). Varios defectos del mismo Job se juntan en uno.</li>
+      <li>Lo de limpieza va como nota al paso <b class="text-foreground">Detailing</b> que la WO ya trae; no se duplica.</li>
+      <li><b class="text-foreground">No se guarda</b> hasta revisar los 53 puntos, las 10 llantas y escribir la nota de cada defecto. Sin fotos en esta versión.</li>
+      <li>Ya no está “No issues found (skip sheet)”.</li>
+      <li>La lista se edita en <b class="text-foreground">Setup → Inspection checklist</b> (Admin y Manager); cada punto apunta a un Job del catálogo. Faltan 7 Jobs en el catálogo.</li>
+      <li>Solo trucks de 10 llantas; trailers después.</li>
     </ul>
   </details>
-  <button onclick="preset('pending')" class="mt-4 h-9 w-full rounded-md border font-medium hover:bg-accent">Reiniciar demo</button>
 </div>
 
 <script>
-/* ───────────────────────── Data (from the paper sheet) ───────────────────────── */
-// [label, suggested catalog Job, catalog category]. Spelling fixed; "Air Leaks" appears once; tire pressure lives in Tires.
-const SECS = [
-  { key: 'interior', title: 'Interior', icon: 'armchair', items: [
-    ['Mirrors', 'Mirrors', 'Cab, Body & Glass'], ['Windshield wipers', 'Wipers', 'Cab, Body & Glass'], ['Horn', 'Wiring', 'Electrical & Starting'],
-    ['Parking brake', 'Brake Inspection', 'Air & Brake System'], ['Fans / defroster', 'Blower Motor', 'HVAC / A/C'], ['Heater / A/C', 'A/C', 'HVAC / A/C'],
-    ['Radio / cellphone', null, null], ['Passenger door', 'Doors', 'Cab, Body & Glass'], ['Interior lights', 'Lights', 'Electrical & Starting'],
-    ['Driver seat & belts', null, null], ['Passenger seats', null, null], ['Fire extinguisher', null, null],
-    ['Windows clean', 'Detailing', 'Detailing'], ['Interior clean', 'Detailing', 'Detailing'], ['Cab air filter', 'Climate System', 'HVAC / A/C'],
+/* ───────────────────────── Data ───────────────────────── */
+// [label, catalog Job, category, step]. step = a mandatory step already on every WO (D13): a defect there becomes a note on that step, not a new Job.
+// Jobs marked NEW are not in apps/api/prisma/job-catalog.ts today; they would be added to the catalog (see ENCAJE.md §4).
+const NEW_JOBS = ['Horn', 'Parking Brake', 'Radio & Phone', 'Seats & Belts', 'Safety Equipment', 'Fluid Top-Off', 'Belts & Tensioners'];
+const SEED = [
+  { key: 'interior', title: 'Interior', items: [
+    ['Mirrors', 'Mirrors', 'Cab, Body & Glass'], ['Windshield wipers', 'Wipers', 'Cab, Body & Glass'], ['Horn', 'Horn', 'Electrical & Starting'],
+    ['Parking brake', 'Parking Brake', 'Air & Brake System'], ['Fans / defroster', 'Blower Motor', 'HVAC / A/C'], ['Heater / A/C', 'Climate System', 'HVAC / A/C'],
+    ['Radio / cellphone', 'Radio & Phone', 'Electrical & Starting'], ['Passenger door', 'Doors', 'Cab, Body & Glass'], ['Interior lights', 'Lights', 'Electrical & Starting'],
+    ['Driver seat & belts', 'Seats & Belts', 'Cab, Body & Glass'], ['Passenger seats', 'Seats & Belts', 'Cab, Body & Glass'], ['Fire extinguisher', 'Safety Equipment', 'Cab, Body & Glass'],
+    ['Windows clean', null, null, 'Detailing'], ['Interior clean', null, null, 'Detailing'], ['Cab air filter', 'Filter Service', 'Preventive Maintenance (PM)'],
   ] },
-  { key: 'engine', title: 'Engine & fluids', icon: 'droplet', items: [
-    ['Fuel level', null, null], ['Oil level / pressure', 'Oil Change', 'Preventive Maintenance (PM)'], ['Transmission fluid', 'Transmission', 'Transmission & Drivetrain'],
-    ['Power steering fluid', 'Steering', 'Suspension & Steering'], ['Battery charge', 'Battery', 'Electrical & Starting'], ['Washer fluid', null, null],
+  { key: 'engine', title: 'Engine & fluids', items: [
+    ['Fuel level', 'Fluid Top-Off', 'Preventive Maintenance (PM)'], ['Oil level / pressure', 'Oil Change', 'Preventive Maintenance (PM)'], ['Transmission fluid', 'Transmission', 'Transmission & Drivetrain'],
+    ['Power steering fluid', 'Steering', 'Suspension & Steering'], ['Battery charge', 'Battery', 'Electrical & Starting'], ['Washer fluid', 'Fluid Top-Off', 'Preventive Maintenance (PM)'],
     ['Radiator fluid level', 'Coolant Service', 'Cooling System'], ['Fluids leaking under', 'Engine Leak Repair', 'Engine & Emissions'], ['Engine warning lights', 'Derate Diagnose', 'Engine & Emissions'],
     ['EGR cooler', 'EGR Service', 'Engine & Emissions'], ['Soot level', 'DPF/DEF Service', 'Engine & Emissions'], ['Engine air filter', 'Filter Service', 'Preventive Maintenance (PM)'],
   ] },
-  { key: 'exterior', title: 'Exterior', icon: 'truck', items: [
+  { key: 'exterior', title: 'Exterior', items: [
     ['Headlights (high / low)', 'Lights', 'Electrical & Starting'], ['Fog / hazard lamps', 'Lights', 'Electrical & Starting'], ['Windshield', 'Windshield', 'Cab, Body & Glass'],
     ['Turn signals front / rear', 'Lights', 'Electrical & Starting'], ['Tail / running lights', 'Lights', 'Electrical & Starting'], ['Brake lights', 'Lights', 'Electrical & Starting'],
-    ['Tire condition', 'Tires', 'Tires & Wheels'], ['Luggage doors & engine panels', 'Body Work', 'Cab, Body & Glass'], ['Exterior clean', 'Detailing', 'Detailing'],
-    ['Body (scratches, dings, dents)', 'Body Work', 'Cab, Body & Glass'], ['Gladhand seals', 'Air Lines', 'Air & Brake System'], ['Rear end seals / breathers', 'Seal Replacement', 'Engine & Emissions'],
-    ['Grease', 'Lubrication', 'Preventive Maintenance (PM)'], ['Belts / tensioners', 'Engine Repair', 'Engine & Emissions'], ['Battery cables', 'Battery', 'Electrical & Starting'],
+    ['Tire condition', 'Tires', 'Tires & Wheels'], ['Luggage doors & engine panels', 'Body Work', 'Cab, Body & Glass'], ['Exterior clean', null, null, 'Detailing'],
+    ['Body (scratches, dings, dents)', 'Body Work', 'Cab, Body & Glass'], ['Gladhand seals', 'Air Lines', 'Air & Brake System'], ['Rear end seals / breathers', 'Differential', 'Transmission & Drivetrain'],
+    ['Grease', 'Lubrication', 'Preventive Maintenance (PM)'], ['Belts / tensioners', 'Belts & Tensioners', 'Engine & Emissions'], ['Battery cables', 'Battery', 'Electrical & Starting'],
     ['Fuses', 'Wiring', 'Electrical & Starting'], ['Wheel seals / hub', 'Wheel Seals', 'Tires & Wheels'], ['Brakes', 'Brake Inspection', 'Air & Brake System'],
     ['Air leaks', 'Air Leak', 'Air & Brake System'], ['Air dryer', 'Air Dryer', 'Air & Brake System'], ['Air manifold', 'Inspect Air System', 'Air & Brake System'],
     ['DEF lines', 'DPF/DEF Service', 'Engine & Emissions'], ['Coolant lines', 'Cooling Hoses', 'Cooling System'], ['Transmission lines', 'Transmission', 'Transmission & Drivetrain'],
     ['Pigtail / trailer air lines', 'Air Lines', 'Air & Brake System'], ['Deer guard', 'Body Work', 'Cab, Body & Glass'],
   ] },
 ];
-SECS.forEach((s) => s.items = s.items.map(([label, job, cat], i) => ({ id: `${s.key}-${i}`, label, job, cat })));
-const ALL_ITEMS = SECS.flatMap((s) => s.items);
-const ITEM = Object.fromEntries(ALL_ITEMS.map((it) => [it.id, it]));
+let SECS, ALL_ITEMS;
+function buildSecs(extra = []) {
+  SECS = SEED.map((s) => ({ ...s, items: s.items.map(([label, job, cat, step], i) => ({ id: `${s.key}-${i}`, label, job, cat, step })) }));
+  extra.forEach((x) => SECS.find((s) => s.key === x.sec).items.push(x));
+  ALL_ITEMS = SECS.flatMap((s) => s.items);
+}
+const CATALOG_PICK = ['Lights', 'Wiring', 'Battery', 'Body Work', 'Doors', 'Mirrors', 'Wipers', 'Windshield', 'Brake Inspection', 'Air Leak', 'Air Lines', 'Tires', 'Wheel Seals', 'Mudflaps', ...NEW_JOBS];
+const CAT_OF = Object.fromEntries(SEED.flatMap((s) => s.items).filter((x) => x[1]).map((x) => [x[1], x[2]]));
+CAT_OF.Mudflaps = 'Cab, Body & Glass';
 
-// The 10 positions of the sheet. Axle: steer (110 PSI on the sheet) and two drive axles (95 PSI).
 const AXLES = [
   { key: 'steer', label: 'Steer', left: ['LF'], right: ['RF'] },
   { key: 'd1', label: 'Drive 1', left: ['LFO', 'LFI'], right: ['RFI', 'RFO'] },
@@ -169,32 +152,41 @@ const AXLES = [
 const ORDER = ['LF', 'RF', 'LFO', 'LFI', 'RFI', 'RFO', 'LRO', 'LRI', 'RRI', 'RRO'];
 const POS_NAME = { LF: 'Left front', RF: 'Right front', LFO: 'Drive 1 · left outer', LFI: 'Drive 1 · left inner', RFI: 'Drive 1 · right inner', RFO: 'Drive 1 · right outer', LRO: 'Drive 2 · left outer', LRI: 'Drive 2 · left inner', RRI: 'Drive 2 · right inner', RRO: 'Drive 2 · right outer' };
 const axleOf = (p) => (p === 'LF' || p === 'RF' ? 'steer' : 'drive');
-const MIN_TREAD = { steer: 4, drive: 2 }; // DOT minimums (/32). Shop thresholds are an open question.
 const PREV = { LF: [112, 11], RF: [110, 11], LFO: [94, 9], LFI: [95, 9], RFI: [96, 10], RFO: [95, 9], LRO: [93, 7], LRI: [95, 7], RRI: [94, 8], RRO: [96, 8] };
 const PREV_DATE = 'Sep 12';
 
-const MECHS = [['ma', 'Miguel Ángel'], ['md', 'Mario Díaz'], ['mg', 'Manuel García'], ['lr', 'Luis Ramos'], ['jt', 'Jorge Torres']];
+const MECHS = ['Miguel Ángel', 'Mario Díaz', 'Manuel García', 'Luis Ramos', 'Jorge Torres'];
 const ROLES = { manager: { name: 'Crixcrox', ini: 'CR', label: 'Manager' }, mechanic: { name: 'Luis Ramos', ini: 'LR', label: 'Mechanic' } };
+// The WO already carries the mandatory steps (D13). Shop Work is empty until the inspection adds Jobs.
+const WO_STEPS = [['PM', 'PM A Service', 'Marco PM'], ['Alignment', 'Alignment', 'Miguel Ángel'], ['Detailing', 'Detailing', 'Mario Díaz'], ['Quality Check', 'Quality Check', 'Safety']];
 
 /* ───────────────────────── State ───────────────────────── */
 let S;
 function base() {
-  return { view: 'truck', role: 'manager', items: {}, tires: {}, target: { steer: 110, drive: 95 }, open: { interior: true, engine: true, exterior: true }, notes: '', tireView: 'diagram', record: null, jobs: [], sheet: null, pick: {}, signed: false, startedAt: '8:12 AM' };
+  buildSecs();
+  return { view: 'truck', role: 'manager', canInspect: true, items: {}, tires: {}, target: { steer: 110, drive: 95 }, minTread: { steer: 4, drive: 2 }, open: { interior: true, engine: true, exterior: true }, notes: '', tireView: 'diagram', record: null, jobs: [], stepNotes: {}, sheet: null, who: {}, signed: false, extra: [], dirty: false, dialog: null };
 }
-const PRESETS = {
-  pending: { label: 'Sin empezar', fn: () => {} },
-  progress: { label: 'En progreso', fn: () => {
-    S.view = 'inspect';
-    SECS[0].items.forEach((it) => S.items[it.id] = { s: 'ok' });
-    SECS[1].items.slice(0, 6).forEach((it) => S.items[it.id] = { s: 'ok' });
-    S.items['interior-6'] = { s: 'na' };
-    Object.assign(S.tires, { LF: { psi: 108, tread: 10 }, RF: { psi: 111, tread: 10 }, LFO: { psi: 72, tread: 8 } });
-  } },
-  defects: { label: 'Con defectos', fn: () => { fillAll(); S.view = 'inspect'; S.open = { interior: false, engine: false, exterior: true }; } },
-  summary: { label: 'Terminar (resumen)', fn: () => { fillAll(); S.view = 'summary'; } },
-  doneIssues: { label: 'Guardada · issues', fn: () => { fillAll(); finish(true); } },
-  doneClean: { label: 'Guardada · sin issues', fn: () => { fillAll(true); finish(true); } },
-};
+const GROUPS = [
+  ['Manager en el Truck', [
+    ['pending', 'Sin empezar', () => {}],
+    ['progress', 'En progreso', () => { S.view = 'inspect'; SECS[0].items.forEach((it) => S.items[it.id] = { s: 'ok' }); SECS[1].items.slice(0, 6).forEach((it) => S.items[it.id] = { s: 'ok' }); Object.assign(S.tires, { LF: { psi: 108, tread: 10 }, RF: { psi: 111, tread: 10 }, LFO: { psi: 72, tread: 8 } }); }],
+    ['defects', 'Con defectos', () => { fillAll(); S.view = 'inspect'; S.open = { interior: false, engine: false, exterior: true }; }],
+    ['summary', 'Revisar y guardar', () => { fillAll(); S.view = 'summary'; }],
+    ['doneIssues', 'Guardada · issues', () => { fillAll(); S.who['Brake Inspection'] = 'Manuel García'; finish(true); }],
+    ['doneClean', 'Guardada · sin issues', () => { fillAll(true); finish(true); }],
+  ]],
+  ['Mechanic con permiso', [
+    ['mhome', 'My work · To inspect', () => { S.role = 'mechanic'; S.view = 'mhome'; }],
+    ['mInspect', 'Inspeccionando', () => { S.role = 'mechanic'; fillAll(); S.view = 'summary'; }],
+    ['mDone', 'Guardada → Manager', () => { S.role = 'mechanic'; fillAll(); finish(true); S.view = 'mhome'; }],
+    ['mDoneTruck', 'Lo que ve el Manager', () => { S.role = 'mechanic'; fillAll(); finish(true); S.role = 'manager'; S.view = 'truck'; }],
+  ]],
+  ['Setup', [
+    ['setup', 'Inspection checklist', () => { S.view = 'setup'; }],
+    ['people', 'People · Can inspect', () => { S.view = 'people'; }],
+  ]],
+];
+const PRESETS = Object.fromEntries(GROUPS.flatMap(([, list]) => list.map(([k, l, fn]) => [k, { label: l, fn }])));
 function fillAll(clean) {
   ALL_ITEMS.forEach((it) => S.items[it.id] = { s: 'ok' });
   ['interior-6', 'interior-10'].forEach((k) => S.items[k] = { s: 'na' });
@@ -202,45 +194,51 @@ function fillAll(clean) {
   if (clean) { t.LFO = [95, 8]; t.LRO = [94, 6]; }
   ORDER.forEach((p) => S.tires[p] = { psi: t[p][0], tread: t[p][1] });
   if (!clean) {
-    S.items['exterior-17'] = { s: 'defect', sev: 'must', note: 'Rear drive axle, right side: pads under 1/4". Pulls to the right on the brake test.', photo: true };
-    S.items['exterior-18'] = { s: 'defect', sev: 'must', note: 'Audible leak at the gladhand coupling, trailer supply line.' };
-    S.items['exterior-1'] = { s: 'defect', sev: 'later', note: 'Left hazard lamp lens cracked; bulb works.' };
+    S.items['exterior-17'] = { s: 'defect', note: 'Rear drive axle, right side: pads under 1/4". Pulls right on the brake test.' };
+    S.items['exterior-18'] = { s: 'defect', note: 'Audible leak at the gladhand coupling, trailer supply line.' };
+    S.items['exterior-1'] = { s: 'defect', note: 'Left hazard lamp lens cracked; bulb works.' };
+    S.items['exterior-5'] = { s: 'defect', note: 'Right brake light out.' };
+    S.items['interior-13'] = { s: 'defect', note: 'Cab floor muddy, trash behind the seat.' };
   }
   S.notes = clean ? '' : 'Driver says the truck pulls right when braking at highway speed.';
 }
-function preset(k) { S = base(); S.role = (window.__role || 'manager'); PRESETS[k].fn(); S.preset = k; render(); }
+function preset(k) { S = base(); PRESETS[k].fn(); S.preset = k; render(); window.scrollTo(0, 0); }
 
 /* ───────────────────────── Derived ───────────────────────── */
 function tireStat(p) {
-  const t = S.tires[p]; if (!t || t.psi == null || t.psi === '') return 'empty';
-  const ax = axleOf(p), target = S.target[ax], ratio = t.psi / target;
+  const t = S.tires[p]; if (!t || t.psi == null) return 'empty';
+  const ax = axleOf(p), ratio = t.psi / S.target[ax], min = S.minTread[ax];
   let r = ratio < 0.8 || ratio > 1.2 ? 'bad' : ratio < 0.9 || ratio > 1.1 ? 'warn' : 'ok';
-  if (t.tread != null && t.tread !== '') {
-    if (t.tread < MIN_TREAD[ax]) r = 'bad';
-    else if (t.tread < MIN_TREAD[ax] + 2 && r === 'ok') r = 'warn';
-  }
+  if (t.tread == null) return r === 'ok' ? 'empty' : r;
+  if (t.tread < min) r = 'bad'; else if (t.tread < min + 2 && r === 'ok') r = 'warn';
   return r;
 }
+const tireDone = (p) => S.tires[p]?.psi != null && S.tires[p]?.tread != null;
 const counts = () => {
   const done = ALL_ITEMS.filter((it) => S.items[it.id]?.s).length;
   const defects = ALL_ITEMS.filter((it) => S.items[it.id]?.s === 'defect').length;
-  const tires = ORDER.filter((p) => tireStat(p) !== 'empty').length;
+  const tires = ORDER.filter(tireDone).length;
   const tireBad = ORDER.filter((p) => tireStat(p) === 'bad').length;
-  const tireWarn = ORDER.filter((p) => tireStat(p) === 'warn').length;
-  return { done, total: ALL_ITEMS.length, defects, tires, tireBad, tireWarn };
+  const missingNotes = ALL_ITEMS.filter((it) => S.items[it.id]?.s === 'defect' && !(S.items[it.id].note || '').trim()).length;
+  return { done, total: ALL_ITEMS.length, defects, tires, tireBad, missingNotes };
 };
-function findings() {
-  const out = [];
+// Every defect becomes work: defects that share a catalog Job merge into one Job; step items become a note on that step.
+function plan() {
+  const jobs = {}, steps = {}, watch = [];
+  const addJob = (job, cat, from, detail) => { (jobs[job] ||= { job, cat, from: [] }).from.push({ from, detail }); };
   ALL_ITEMS.forEach((it) => {
     const st = S.items[it.id]; if (st?.s !== 'defect') return;
-    out.push({ key: it.id, title: it.label, detail: st.note || '', sev: st.sev || 'must', photo: !!st.photo, job: it.job, cat: it.cat, sec: SECS.find((s) => it.id.startsWith(s.key)).title });
+    if (it.step) (steps[it.step] ||= []).push({ from: it.label, detail: st.note || '' });
+    else addJob(it.job, it.cat, it.label, st.note || '');
   });
   ORDER.forEach((p) => {
-    const s = tireStat(p); if (s !== 'bad' && s !== 'warn') return;
-    const t = S.tires[p], ax = axleOf(p), lowTread = t.tread != null && t.tread < MIN_TREAD[ax] + (s === 'bad' ? 0 : 2);
-    out.push({ key: `tire-${p}`, title: `Tire ${p}`, detail: `${t.psi} PSI (target ${S.target[ax]}) · tread ${t.tread ?? '—'}/32${lowTread ? ' · low tread' : ''}`, sev: s === 'bad' ? 'must' : 'later', job: lowTread && s === 'bad' ? 'Tire Mounting' : s === 'bad' ? 'Flat Repair' : 'Tires', cat: 'Tires & Wheels', sec: 'Tires', tire: true });
+    const s = tireStat(p), t = S.tires[p], ax = axleOf(p);
+    if (s === 'bad') {
+      const tread = t.tread < S.minTread[ax];
+      addJob(tread ? 'Tires' : 'Flat Repair', 'Tires & Wheels', `Tire ${p}`, `${t.psi} PSI (target ${S.target[ax]}) · tread ${t.tread}/32`);
+    } else if (s === 'warn') watch.push({ p, detail: `${t.psi} PSI · ${t.tread}/32` });
   });
-  return out.sort((a, b) => (a.sev === b.sev ? 0 : a.sev === 'must' ? -1 : 1));
+  return { jobs: Object.values(jobs), steps, watch };
 }
 
 /* ───────────────────────── Bits ───────────────────────── */
@@ -253,120 +251,151 @@ const btn = (v = 'outline', size = '') => {
   return `${b} ${vv} ${ss}`;
 };
 const badge = (tone, text, dot = true) => {
-  const t = { default: 'border-primary/30 bg-primary/10 text-primary', secondary: 'bg-muted text-muted-foreground', destructive: 'border-destructive/50 bg-destructive/20 text-destructive-text', success: 'border-success/40 bg-success/10 text-success', warning: 'border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning' }[tone];
+  const t = { default: 'border-primary/30 bg-primary/10 text-primary', secondary: 'bg-muted text-muted-foreground', outline: 'text-muted-foreground', destructive: 'border-destructive/50 bg-destructive/20 text-destructive-text', success: 'border-success/40 bg-success/10 text-success', warning: 'border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning' }[tone];
   return `<span class="inline-flex min-h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium ${t}">${dot ? '<span class="size-1.5 rounded-full bg-current"></span>' : ''}${text}</span>`;
 };
-const chip = (t) => `<span class="tnum rounded-md bg-muted px-1.5 text-xs text-muted-foreground ring-1 ring-border">${t}</span>`;
+const chip = (t) => `<span class="tnum rounded-md bg-muted px-1.5 text-xs font-normal text-muted-foreground ring-1 ring-border">${t}</span>`;
 const sectionCard = (title, right, body, extra = '') => `
   <section class="overflow-hidden rounded-xl border bg-card ${extra}">
-    <div class="flex min-h-12 items-center justify-between gap-3 border-b px-4 py-2.5"><h2 class="flex min-w-0 items-center gap-2 text-base font-semibold">${title}</h2><div class="flex shrink-0 items-center gap-2">${right}</div></div>
+    <div class="flex min-h-12 items-center justify-between gap-3 border-b px-4 py-2.5"><h2 class="flex min-w-0 flex-wrap items-center gap-2 text-base font-semibold">${title}</h2><div class="flex shrink-0 items-center gap-2">${right}</div></div>
     ${body}
   </section>`;
-const TIRE_TONE = {
-  empty: 'border-dashed bg-background text-muted-foreground',
-  ok: 'border-success/40 bg-success/10',
-  warn: 'border-warning/50 bg-warning-surface/70',
-  bad: 'border-destructive/50 bg-destructive/15',
+const callout = (tone, ic, eyebrow, title, text, actions = '') => {
+  const t = { warning: ['border-warning/40 bg-warning-surface/60', 'bg-warning/20 text-warning-foreground dark:text-warning'], primary: ['border-primary/40 bg-primary/[0.06]', 'bg-primary/15 text-primary'], success: ['border-success/40 bg-success/[0.06]', 'bg-success/15 text-success'], danger: ['border-destructive/40 bg-destructive/10', 'bg-destructive/20 text-destructive-text'] }[tone];
+  return `<div class="rounded-xl border ${t[0]}"><div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+    <div class="flex min-w-0 flex-1 items-start gap-3"><div class="grid size-9 shrink-0 place-items-center rounded-lg ${t[1]}">${icon(ic)}</div>
+    <div class="min-w-0"><p class="text-xs text-muted-foreground">${eyebrow}</p><p class="font-semibold">${title}</p>${text ? `<p class="text-muted-foreground">${text}</p>` : ''}</div></div>
+    ${actions ? `<div class="flex flex-wrap gap-2">${actions}</div>` : ''}</div></div>`;
 };
+const TIRE_TONE = { empty: 'border-dashed bg-background text-muted-foreground', ok: 'border-success/40 bg-success/10', warn: 'border-warning/50 bg-warning-surface/70', bad: 'border-destructive/50 bg-destructive/15' };
 const TIRE_TEXT = { empty: 'text-muted-foreground', ok: 'text-success', warn: 'text-warning-foreground dark:text-warning', bad: 'text-destructive-text' };
+const DOT = { empty: 'bg-border', ok: 'bg-success', warn: 'bg-warning', bad: 'bg-destructive' };
 const who = () => ROLES[S.role];
+const mech = () => S.role === 'mechanic';
 
-/* ───────────────────────── Views ───────────────────────── */
+/* ───────────────────────── Shell ───────────────────────── */
 function render() {
-  const mech = S.role === 'mechanic';
-  document.getElementById('sidebar').classList.toggle('md:flex', !mech);
-  document.getElementById('shell').classList.toggle('md:pl-60', !mech);
+  const m = mech();
+  document.getElementById('sidebar').classList.toggle('md:flex', !m);
+  document.getElementById('shell').classList.toggle('md:pl-60', !m);
+  document.getElementById('sidebar').innerHTML = sidebar();
   document.getElementById('v-avatar').textContent = who().ini;
   document.getElementById('v-crumb').innerHTML = crumb();
   const main = document.getElementById('v-main');
-  main.classList.toggle('max-w-[1440px]', !mech); main.classList.toggle('max-w-3xl', mech);
-  main.innerHTML = S.view === 'truck' ? truckView() : S.view === 'inspect' ? inspectView() : summaryView();
-  document.getElementById('v-bar').innerHTML = S.view === 'inspect' ? bar() : S.view === 'summary' && !S.readonly ? summaryBar() : '';
-  document.getElementById('layer').innerHTML = S.sheet ? tireSheet() : '';
+  main.classList.toggle('max-w-[1440px]', !m); main.classList.toggle('max-w-3xl', m);
+  main.innerHTML = { truck: truckView, inspect: inspectView, summary: summaryView, mhome: mechHome, setup: setupView, people: peopleView }[S.view]();
+  document.getElementById('v-bar').innerHTML = S.view === 'inspect' ? bar() : S.view === 'summary' && !S.readonly ? summaryBar() : S.view === 'setup' && S.dirty ? setupBar() : S.view === 'mhome' ? mechTabs() : '';
+  document.getElementById('layer').innerHTML = S.sheet ? tireSheet() : S.dialog ? addItemDialog() : '';
   renderDemo();
   lucide.createIcons();
 }
-function crumb() {
-  const parts = S.role === 'mechanic' ? ['My work', 'Truck 601'] : ['Trucks', '601'];
-  if (S.view !== 'truck') parts.push(S.readonly ? 'Inspection report' : 'Inspection');
-  return parts.map((p, i) => i === parts.length - 1 ? `<span class="truncate font-medium text-foreground">${p}</span>` : `<a href="#" onclick="${i === 1 ? "go('truck')" : ''};return false" class="text-muted-foreground hover:text-foreground">${p}</a>${icon('chevron-right', 's14 text-muted-foreground')}`).join('');
+function sidebar() {
+  const active = S.view === 'setup' ? 'Inspection checklist' : S.view === 'people' ? 'People' : 'Trucks';
+  const link = (ic, l, isNew) => `<a href="#" onclick="${l === 'Inspection checklist' ? "go('setup')" : l === 'People' ? "go('people')" : l === 'Trucks' ? "go('truck')" : ''};return false" class="flex h-9 items-center gap-2.5 rounded-md px-2 ${active === l ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}">${icon(ic)}<span class="flex-1">${l}</span>${isNew ? `<span class="rounded bg-primary/15 px-1.5 text-[11px] font-medium text-primary">New</span>` : ''}</a>`;
+  return `<div class="flex h-14 items-center gap-2 border-b px-4"><div class="grid size-7 place-items-center rounded-md bg-success/20 text-success">${icon('zap')}</div><span class="font-semibold">LTL Shop</span><span class="text-xs text-muted-foreground">Admin</span></div>
+  <nav class="flex-1 space-y-5 p-3">
+    <div class="space-y-0.5"><p class="px-2 pb-1 text-xs text-muted-foreground">Operations</p>${link('gauge', 'Dashboard')}${link('warehouse', 'Yard Operations')}${link('clipboard-list', 'Work Orders')}${link('truck', 'Trucks')}</div>
+    <div class="space-y-0.5"><p class="px-2 pb-1 text-xs text-muted-foreground">Setup</p>${link('workflow', 'Shop workflow')}${link('clipboard-check', 'Inspection checklist', true)}${link('library', 'Job Catalog')}${link('users', 'People')}</div>
+  </nav>
+  <div class="border-t p-3"><p class="font-medium">Crixcrox</p><p class="text-xs text-muted-foreground">Manager</p></div>`;
 }
-function go(v) { S.view = v; S.readonly = false; S.sheet = null; render(); window.scrollTo(0, 0); }
+function crumb() {
+  let parts;
+  if (S.view === 'setup') parts = ['Setup', 'Inspection checklist'];
+  else if (S.view === 'people') parts = ['People', 'Luis Ramos'];
+  else if (mech()) parts = S.view === 'mhome' ? ['My work'] : ['My work', 'Truck 601 · Inspection'];
+  else { parts = ['Trucks', '601']; if (S.view !== 'truck') parts.push(S.readonly ? 'Inspection report' : 'Inspection'); }
+  return parts.map((p, i) => i === parts.length - 1 ? `<span class="truncate font-medium text-foreground">${p}</span>` : `<a href="#" onclick="go('${mech() ? 'mhome' : 'truck'}');return false" class="whitespace-nowrap text-muted-foreground hover:text-foreground">${p}</a>${icon('chevron-right', 's14 text-muted-foreground')}`).join('');
+}
+function go(v) { S.view = v; S.readonly = false; S.sheet = null; S.dialog = null; render(); window.scrollTo(0, 0); }
 
-/* Truck page (only the parts that change) */
+/* ───────────────────────── Truck page (Manager) ───────────────────────── */
 function truckView() {
   const r = S.record;
-  const status = r ? (r.issues ? badge('warning', 'Not Ready · Shop Work') : badge('warning', 'Not Ready · PM')) : badge('warning', 'Not Ready · Inspection');
+  const unowned = S.jobs.find((j) => !j.mech);
+  const status = !r ? badge('warning', 'Not Ready · Inspection') : S.jobs.length ? badge('warning', 'Not Ready · Shop Work') : badge('warning', 'Not Ready · PM');
+  const next = !r ? callout('warning', 'clipboard-check', 'Next step', 'Inspect the truck', 'Walk around the truck: 53 checks and 10 tires. Defects become Jobs.', `<button class="${btn('default')} flex-1 sm:flex-none" onclick="go('inspect')">${icon('clipboard-check')}Start inspection</button>`)
+    : unowned ? callout('warning', 'user-plus', 'Next step', `Nobody is assigned to ${esc(unowned.job)}.`, `It came from the inspection${r.byRole === 'Mechanic' ? ` by ${esc(r.by)}` : ''}.`, `<button class="${btn('default')} flex-1 sm:flex-none" onclick="toast('Same Assign as today')">Assign</button>`) : '';
   return `
-  <section class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-    <div class="space-y-1.5"><div class="flex flex-wrap items-center gap-2"><h1 class="font-display text-2xl font-semibold tracking-tight md:text-[28px]">Truck 601</h1>${status}</div>
-    <p class="text-xs text-muted-foreground"><span class="font-mono text-[13px]">WO-1042</span> · 2021 Freightliner Cascadia · 412,380 mi · in yard since Oct 12</p></div>
-  </section>
-  ${r ? '' : nextStep()}
+  <section class="space-y-1.5"><div class="flex flex-wrap items-center gap-2"><h1 class="font-display text-2xl font-semibold tracking-tight md:text-[28px]">Truck 601</h1>${status}</div>
+    <p class="text-xs text-muted-foreground"><span class="font-mono text-[13px]">WO-1042</span> · 2021 Freightliner Cascadia · 412,380 mi · in yard since Oct 12</p></section>
+  ${next}
   <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
     <div class="min-w-0">${workPlan()}</div>
     <aside class="space-y-6">${tiresAside()}${truckDetails()}</aside>
   </div>`;
 }
-function nextStep() {
-  return `<div class="rounded-xl border border-warning/40 bg-warning-surface/60"><div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-    <div class="flex min-w-0 flex-1 items-start gap-3"><div class="grid size-9 shrink-0 place-items-center rounded-lg bg-warning/20 text-warning-foreground dark:text-warning">${icon('clipboard-check')}</div>
-    <div class="min-w-0"><p class="text-xs text-muted-foreground">Next step</p><p class="font-semibold">Inspect the truck</p><p class="text-muted-foreground">Walk around the truck, check each item and record tire pressure and tread.</p></div></div>
-    <div class="flex flex-wrap gap-2"><button class="${btn('default')} flex-1 sm:flex-none" onclick="go('inspect')">${icon('clipboard-check')}Start inspection</button></div>
-  </div></div>`;
-}
 function workPlan() {
   const r = S.record;
   const inspection = r ? `
     <div class="space-y-2 px-4 pb-4 sm:pl-[52px]">
-      <p class="flex flex-wrap items-center gap-x-2 gap-y-1">${r.issues ? badge('warning', `Issues found · ${r.issues}`) : badge('success', 'No issues found')}<span class="text-muted-foreground">${esc(r.by)} · Oct 13, ${r.at}</span></p>
-      <p class="text-muted-foreground">${r.done} of ${r.total} items checked · ${r.tires} of 10 tires${r.tireFlags ? ` · <span class="text-warning-foreground dark:text-warning">${r.tireFlags} tire${r.tireFlags > 1 ? 's' : ''} flagged</span>` : ''}</p>
-      <div class="flex flex-wrap gap-x-4 gap-y-1"><button class="text-sm font-medium text-primary hover:underline" onclick="S.view='summary';S.readonly=true;render()">View report</button><button class="text-sm font-medium text-primary hover:underline" onclick="go('inspect')">Edit inspection</button></div>
+      <p class="flex flex-wrap items-center gap-x-2 gap-y-1">${r.jobs ? badge('warning', `Issues found · ${r.jobs} Job${r.jobs > 1 ? 's' : ''}`) : badge('success', 'No issues found')}<span class="text-muted-foreground">${esc(r.by)}${r.byRole === 'Mechanic' ? ' (Mechanic)' : ''} · Oct 13, ${r.at}</span></p>
+      <p class="text-muted-foreground">53 checks · 10 tires${r.watch ? ` · <span class="text-warning-foreground dark:text-warning">${r.watch} tire${r.watch > 1 ? 's' : ''} to watch</span>` : ''}</p>
+      <button class="text-sm font-medium text-primary hover:underline" onclick="S.view='summary';S.readonly=true;render();scrollTo(0,0)">View report</button>
     </div>` : `
     <div class="space-y-3 px-4 pb-4 sm:pl-[52px]">
-      <p class="text-muted-foreground">Inspect the truck before planning work. Defects you find become Jobs.</p>
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-2"><button class="${btn('default', 'sm')}" onclick="go('inspect')">${icon('clipboard-check')}Start inspection</button>
-      <button class="text-sm font-medium text-primary hover:underline" onclick="toast('Today’s quick path still works: No issues found, without the sheet')">No issues found (skip sheet)</button></div>
+      <p class="text-muted-foreground">Inspect the truck before planning work. Each defect becomes a Job.</p>
+      <button class="${btn('default', 'sm')}" onclick="go('inspect')">${icon('clipboard-check')}Start inspection</button>
     </div>`;
   const step = (n, title, state, body = '') => `
     <li class="border-t first:border-t-0">
       <div class="flex min-h-12 items-center gap-3 px-4 py-3"><span class="grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold ${state === 'done' ? 'bg-success/15 text-success' : state === 'now' ? 'bg-warning/20 text-warning-foreground dark:text-warning' : 'bg-muted text-muted-foreground'}">${state === 'done' ? icon('check', 's14') : n}</span><span class="font-medium">${title}</span></div>${body}
     </li>`;
-  const jobs = S.jobs.length ? `<ul class="mx-4 mb-4 divide-y rounded-lg border sm:ml-[52px]">${S.jobs.map((j) => `<li class="flex min-h-11 items-center justify-between gap-3 px-3 py-2"><div class="min-w-0"><p class="truncate font-medium">${esc(j.job)}</p><p class="truncate text-xs text-muted-foreground">${esc(j.cat)} · from inspection: ${esc(j.from)}</p></div>${j.mech ? `<span class="text-xs text-muted-foreground">${esc(j.mech)}</span>` : badge('warning', 'No owner')}</li>`).join('')}</ul>` : '';
-  const issues = r && r.issues;
+  const jobRow = (j) => `<li class="flex min-h-12 items-center justify-between gap-3 px-3 py-2"><div class="min-w-0"><p class="truncate font-medium">${esc(j.job)}</p><p class="truncate text-xs text-muted-foreground">${esc(j.cat)} · from ${esc(j.from.map((f) => f.from).join(', '))}</p></div>${j.mech ? `<span class="shrink-0 text-xs text-muted-foreground">${esc(j.mech)}</span>` : `<button class="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-dashed px-2 text-xs font-medium text-muted-foreground hover:bg-accent">${icon('user-plus', 's14')}Assign</button>`}</li>`;
+  const jobs = S.jobs.length ? `<ul class="mx-4 mb-4 divide-y rounded-lg border sm:ml-[52px]">${S.jobs.map(jobRow).join('')}</ul>` : '';
+  const stepRow = ([lane, job, owner]) => {
+    const note = S.stepNotes[lane];
+    return `<div class="mx-4 mb-4 rounded-lg border sm:ml-[52px]"><div class="flex min-h-11 items-center justify-between gap-3 px-3 py-2"><span class="font-medium">${job}</span><span class="text-xs text-muted-foreground">${owner}</span></div>${note ? `<p class="flex items-start gap-1.5 border-t bg-sunken px-3 py-2 text-xs text-muted-foreground">${icon('message-square', 's14 mt-px')}From inspection: ${esc(note.map((n) => `${n.from} — ${n.detail}`).join(' · '))}</p>` : ''}</div>`;
+  };
+  const shop = S.jobs.length ? jobs : r ? '<p class="px-4 pb-4 text-muted-foreground sm:pl-[52px]">Nothing to repair.</p>' : '';
   return sectionCard('Work Plan', `<button class="${btn('outline', 'sm')}">${icon('plus')}Add work</button>`, `<ol>
     ${step(1, 'Inspection', r ? 'done' : 'now', inspection)}
-    ${step(2, 'Shop Work', issues ? 'now' : r ? 'done' : 'todo', issues ? jobs || `<p class="px-4 pb-4 text-muted-foreground sm:pl-[52px]">${S.role === 'mechanic' ? 'Sent to the Manager as Request Work.' : 'No Jobs added yet.'}</p>` : r ? '<p class="px-4 pb-4 text-muted-foreground sm:pl-[52px]">Nothing to repair.</p>' : '')}
-    ${step(3, 'PM', !issues && r ? 'now' : 'todo')}${step(4, 'Alignment', 'todo')}${step(5, 'Detailing', 'todo')}${step(6, 'Quality Check', 'todo')}
+    ${step(2, 'Shop Work', S.jobs.length ? 'now' : r ? 'done' : 'todo', shop)}
+    ${WO_STEPS.map((s, i) => step(i + 3, s[0], !S.jobs.length && r && i === 0 ? 'now' : 'todo', stepRow(s))).join('')}
   </ol>`);
 }
 function tiresAside() {
-  const any = ORDER.some((p) => tireStat(p) !== 'empty') && S.record;
-  const rows = AXLES.map((a) => `<div class="flex items-center justify-between gap-2"><div class="flex gap-1">${a.left.map(miniTire).join('')}</div><span class="text-xs text-muted-foreground">${a.label}</span><div class="flex gap-1">${a.right.map(miniTire).join('')}</div></div>`).join('');
+  const any = S.record && ORDER.some(tireDone);
+  const rows = tireRows();
   const flagged = ORDER.filter((p) => ['bad', 'warn'].includes(tireStat(p)));
   const body = any ? `<div class="space-y-3 p-4">${rows}
     ${flagged.length ? `<ul class="space-y-1.5 border-t pt-3">${flagged.map((p) => { const t = S.tires[p], d = t.psi - PREV[p][0]; return `<li class="flex items-center justify-between gap-2"><span><span class="font-medium">${p}</span> <span class="text-muted-foreground">${t.psi} PSI · ${t.tread}/32</span></span><span class="tnum inline-flex items-center gap-1 text-xs ${TIRE_TEXT[tireStat(p)]}">${icon(d < 0 ? 'arrow-down' : 'arrow-up', 's14')}${Math.abs(d)} PSI since ${PREV_DATE}</span></li>`; }).join('')}</ul>` : ''}
     <p class="text-xs text-muted-foreground">Checked Oct 13 by ${esc(S.record.by)} · previous ${PREV_DATE}</p></div>`
-    : `<p class="p-4 text-muted-foreground">No tire readings yet. They are recorded in the inspection.</p>`;
+    : `<p class="p-4 text-muted-foreground">No tire readings for this visit yet. They are recorded in the inspection.</p>`;
   return sectionCard(`${icon('circle-dot')}Tires`, any ? chip(`${ORDER.filter((p) => tireStat(p) === 'ok').length}/10 OK`) : '', body);
 }
-function miniTire(p) {
-  const s = tireStat(p), t = S.tires[p];
-  return `<span title="${p}" class="tnum grid h-9 w-10 place-items-center rounded-md border text-xs font-medium ${TIRE_TONE[s]} ${TIRE_TEXT[s]}">${t?.psi ?? '—'}</span>`;
-}
+const tireRows = () => AXLES.map((a) => `<div class="flex items-center justify-between gap-2"><div class="flex gap-1">${a.left.map(miniTire).join('')}</div><span class="text-xs text-muted-foreground">${a.label}</span><div class="flex gap-1">${a.right.map(miniTire).join('')}</div></div>`).join('');
+function miniTire(p) { const s = tireStat(p), t = S.tires[p]; return `<span title="${p}" class="tnum grid h-9 w-10 place-items-center rounded-md border text-xs font-medium ${TIRE_TONE[s]} ${TIRE_TEXT[s]}">${t?.psi ?? '—'}</span>`; }
 function truckDetails() {
-  const dl = [['Unit', '601'], ['VIN', '…4F8213'], ['Make / model', 'Freightliner Cascadia'], ['Mileage', '412,380 mi'], ['Axles', 'Steer + 2 drive (10 tires)']];
+  const dl = [['Unit', '601'], ['VIN', '…4F8213'], ['Make / model', 'Freightliner Cascadia'], ['Mileage', '412,380 mi'], ['Tires', '10 (steer + 2 drive)']];
   return sectionCard('Truck details', '', `<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 p-4">${dl.map(([k, v]) => `<dt class="text-muted-foreground">${k}</dt><dd class="text-right">${v}</dd>`).join('')}</dl>`);
 }
 
-/* Inspection form */
+/* ───────────────────────── Mechanic home ───────────────────────── */
+function mechHome() {
+  const toInspect = S.canInspect ? [!S.record && ['601', 'WO-1042', 'In yard since Oct 12 · 2021 Freightliner Cascadia'], ['918', 'WO-1047', 'Arrived today 7:40 AM · 2020 Volvo VNL']].filter(Boolean) : [];
+  return `
+  <section class="space-y-1"><h1 class="font-display text-2xl font-semibold tracking-tight">My Assigned Work</h1><p class="text-xs text-muted-foreground">Luis Ramos · Standard${S.canInspect ? ' · can inspect trucks' : ''}</p></section>
+  ${toInspect.length ? sectionCard(`${icon('clipboard-check')}To inspect ${chip(toInspect.length)}`, '', `<ul class="divide-y">${toInspect.map(([u, wo, sub]) => `<li class="flex min-h-14 items-center justify-between gap-3 px-4 py-3"><div class="min-w-0"><p class="font-medium">Truck ${u} <span class="font-mono text-xs font-normal text-muted-foreground">${wo}</span></p><p class="truncate text-xs text-muted-foreground">${sub}</p></div><button class="${btn(u === '601' ? 'default' : 'outline', 'sm')}" onclick="${u === '601' ? "go('inspect')" : "toast('Same flow as Truck 601')"}">Start</button></li>`).join('')}</ul>
+    <p class="border-t bg-sunken px-4 py-2.5 text-xs text-muted-foreground">Only trucks waiting for inspection. You see them because you can inspect trucks (People).</p>`) : ''}
+  ${sectionCard('My work', '', `<ul class="divide-y">
+    <li class="flex min-h-14 items-center justify-between gap-3 px-4 py-3"><div class="min-w-0"><p class="font-medium">Truck 744 · Air Dryer</p><p class="text-xs text-muted-foreground">Air &amp; Brake System · To do</p></div>${badge('secondary', 'To do', false)}</li>
+    ${S.record && S.record.byRole === 'Mechanic' ? '' : ''}
+  </ul>`)}
+  ${S.record && S.record.byRole === 'Mechanic' ? callout('success', 'circle-check', 'Inspection saved · Truck 601', `${S.record.jobs} Jobs created for the Manager to assign`, 'You only see them in My work if the Manager assigns them to you.') : ''}`;
+}
+function mechTabs() {
+  return `<nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t bg-card sm:hidden">${[['wrench', 'My work', 1], ['history', 'Trucks'], ['clipboard-check', 'Completed']].map(([ic, l, on]) => `<a class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium ${on ? 'text-primary' : 'text-muted-foreground'}">${icon(ic, 's20')}${l}</a>`).join('')}</nav>`;
+}
+
+/* ───────────────────────── Inspection sheet ───────────────────────── */
 function inspectView() {
   const c = counts();
-  const nav = [...SECS.map((s) => [s.key, s.title, `${SECS.find((x) => x.key === s.key).items.filter((it) => S.items[it.id]?.s).length}/${s.items.length}`]), ['tires', 'Tires', `${c.tires}/10`], ['notes', 'Notes', '']];
+  const nav = [...SECS.map((s) => [s.key, s.title, `${s.items.filter((it) => S.items[it.id]?.s).length}/${s.items.length}`]), ['tires', 'Tires', `${c.tires}/10`], ['notes', 'Notes', '']];
   return `
   <section class="space-y-1.5">
-    <div class="flex flex-wrap items-center gap-2"><h1 class="font-display text-2xl font-semibold tracking-tight md:text-[28px]">Inspection · Truck 601</h1>${c.defects + c.tireBad ? badge('warning', `${c.defects + c.tireBad} issue${c.defects + c.tireBad > 1 ? 's' : ''} so far`) : ''}</div>
-    <p class="text-xs text-muted-foreground">412,380 mi · ${esc(who().name)} (${who().label}) · started ${S.startedAt} · saved on this device</p>
+    <div class="flex flex-wrap items-center gap-2"><h1 class="font-display text-2xl font-semibold tracking-tight md:text-[28px]">Inspection · Truck 601</h1>${c.defects + c.tireBad ? badge('warning', `${c.defects + c.tireBad} defect${c.defects + c.tireBad > 1 ? 's' : ''} so far`) : ''}</div>
+    <p class="text-xs text-muted-foreground">412,380 mi · ${esc(who().name)} (${who().label}) · started 8:12 AM · saved on this device as you go</p>
     <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:hidden"><span class="inline-flex items-center gap-1">${icon('check', 's14')}OK</span><span class="inline-flex items-center gap-1">${icon('triangle-alert', 's14')}Defect</span><span class="inline-flex items-center gap-1">${icon('minus', 's14')}N/A</span><span>· tap again to clear</span></p>
   </section>
   <nav class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 xl:hidden" aria-label="Sections">${nav.map(([k, t, n]) => `<a href="#sec-${k}" class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border bg-card px-3 font-medium">${t}${n ? `<span class="tnum text-xs text-muted-foreground">${n}</span>` : ''}</a>`).join('')}</nav>
@@ -390,17 +419,12 @@ function itemRow(it) {
     const tone = { ok: 'bg-success/15 text-success ring-1 ring-success/40', defect: 'bg-destructive/20 text-destructive-text ring-1 ring-destructive/50', na: 'bg-muted text-foreground ring-1 ring-border' }[v];
     return `<button aria-pressed="${on}" aria-label="${label}" onclick="setItem('${it.id}','${v}')" class="inline-flex min-h-9 min-w-10 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium sm:px-2.5 ${on ? tone : 'text-muted-foreground hover:bg-accent hover:text-foreground'}">${icon(ic, 's14')}<span class="${on ? '' : 'hidden sm:inline'}">${label}</span></button>`;
   };
+  const target = it.step ? `Goes as a note on the <span class="font-medium text-foreground">${it.step}</span> step (already on the WO).` : `Creates the Job <span class="font-medium text-foreground">${esc(it.job)}</span> · ${esc(it.cat)}`;
   const defect = st.s === 'defect' ? `
-    <div class="space-y-3 border-t border-destructive/20 bg-destructive/[0.04] px-4 py-3">
+    <div class="space-y-2 border-t border-destructive/20 bg-destructive/[0.04] px-4 py-3">
       <label class="block space-y-1.5"><span class="text-sm font-medium">What’s wrong? <span class="text-destructive-text">*</span></span>
-        <textarea class="field min-h-20" placeholder="Where it is and what you see" oninput="S.items['${it.id}'].note=this.value">${esc(st.note || '')}</textarea></label>
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="grid grid-cols-2 gap-1 rounded-lg bg-sunken p-1 ring-1 ring-border" role="radiogroup" aria-label="Severity">
-          ${[['must', 'Must fix'], ['later', 'Can wait']].map(([v, l]) => `<button role="radio" aria-checked="${(st.sev || 'must') === v}" onclick="S.items['${it.id}'].sev='${v}';render()" class="min-h-9 rounded-md px-3 text-xs font-medium ${(st.sev || 'must') === v ? 'bg-card text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground'}">${l}</button>`).join('')}
-        </div>
-        ${st.photo ? `<span class="inline-flex items-center gap-2 rounded-md border bg-background p-1 pr-2"><span class="grid size-9 place-items-center rounded bg-muted text-muted-foreground">${icon('image')}</span><span class="text-xs">IMG_2041.jpg</span><button class="grid size-7 place-items-center rounded hover:bg-accent" aria-label="Remove photo" onclick="S.items['${it.id}'].photo=false;render()">${icon('x', 's14')}</button></span>` : `<button class="${btn('outline', 'sm')}" onclick="S.items['${it.id}'].photo=true;render()">${icon('camera')}Add photo</button>`}
-      </div>
-      <p class="flex items-center gap-1.5 text-xs text-muted-foreground">${icon('wrench', 's14')}${it.job ? `Suggested Job: <span class="font-medium text-foreground">${esc(it.job)}</span> · ${esc(it.cat)}` : 'No catalog Job for this item; it can become a Custom Job.'}</p>
+        <textarea class="field min-h-20" placeholder="Where it is and what you see" oninput="S.items['${it.id}'].note=this.value;refreshBar()">${esc(st.note || '')}</textarea></label>
+      <p class="flex items-start gap-1.5 text-xs text-muted-foreground">${icon(it.step ? 'message-square' : 'wrench', 's14 mt-px')}<span>${target}</span></p>
     </div>` : '';
   return `<li>
     <div class="flex min-h-12 items-center justify-between gap-3 px-4 py-1.5">
@@ -409,19 +433,14 @@ function itemRow(it) {
     </div>${defect}
   </li>`;
 }
-function setItem(id, v) {
-  const cur = S.items[id] || {};
-  S.items[id] = cur.s === v ? {} : { ...cur, s: v, sev: cur.sev || 'must' };
-  render();
-}
+function setItem(id, v) { const cur = S.items[id] || {}; S.items[id] = cur.s === v ? {} : { ...cur, s: v }; render(); }
 function markAll(k) { SECS.find((s) => s.key === k).items.forEach((it) => { if (!S.items[it.id]?.s) S.items[it.id] = { s: 'ok' }; }); render(); toast('Unchecked items marked OK'); }
 
 function tiresCard() {
-  const c = counts();
-  const view = S.tireView;
-  const toggle = `<div class="hidden grid-cols-2 gap-1 sm:grid rounded-lg bg-sunken p-1 ring-1 ring-border">${[['diagram', 'layout-grid', 'Diagram'], ['table', 'list', 'Table']].map(([v, ic, l]) => `<button aria-pressed="${view === v}" onclick="S.tireView='${v}';render()" class="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium ${view === v ? 'bg-card text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground'}">${icon(ic, 's14')}${l}</button>`).join('')}</div>`;
-  const targets = `<div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t bg-sunken px-4 py-2.5 text-xs text-muted-foreground"><span>Target: steer <b class="tnum text-foreground">${S.target.steer}</b> PSI · drive <b class="tnum text-foreground">${S.target.drive}</b> PSI</span><span>Min tread: steer 4/32 · drive 2/32</span></div>`;
-  const legend = `<div class="flex flex-wrap gap-x-3 gap-y-1 px-4 pb-3 text-xs text-muted-foreground"><span class="inline-flex items-center gap-1"><span class="size-2 rounded-full bg-success"></span>OK</span><span class="inline-flex items-center gap-1"><span class="size-2 rounded-full bg-warning"></span>Watch (±10% or tread near min)</span><span class="inline-flex items-center gap-1"><span class="size-2 rounded-full bg-destructive"></span>Fix (±20% or under min)</span></div>`;
+  const c = counts(), view = S.tireView;
+  const toggle = `<div class="hidden grid-cols-2 gap-1 rounded-lg bg-sunken p-1 ring-1 ring-border sm:grid">${[['diagram', 'layout-grid', 'Diagram'], ['table', 'list', 'Table']].map(([v, ic, l]) => `<button aria-pressed="${view === v}" onclick="S.tireView='${v}';render()" class="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium ${view === v ? 'bg-card text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground'}">${icon(ic, 's14')}${l}</button>`).join('')}</div>`;
+  const targets = `<div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t bg-sunken px-4 py-2.5 text-xs text-muted-foreground"><span>Target: steer <b class="tnum text-foreground">${S.target.steer}</b> PSI · drive <b class="tnum text-foreground">${S.target.drive}</b> PSI</span><span>Min tread: steer ${S.minTread.steer}/32 · drive ${S.minTread.drive}/32</span></div>`;
+  const legend = `<div class="flex flex-wrap gap-x-3 gap-y-1 px-4 pb-3 text-xs text-muted-foreground"><span class="inline-flex items-center gap-1"><span class="size-2 rounded-full bg-success"></span>OK</span><span class="inline-flex items-center gap-1"><span class="size-2 rounded-full bg-warning"></span>Watch (no Job)</span><span class="inline-flex items-center gap-1"><span class="size-2 rounded-full bg-destructive"></span>Fix (creates a Job)</span></div>`;
   return `<div id="sec-tires" class="scroll-mt-20">${sectionCard(`${icon('circle-dot')}Tires ${chip(`${c.tires}/10`)}${c.tireBad ? badge('destructive', `${c.tireBad} to fix`) : ''}`, toggle, (view === 'diagram' ? diagram() : tireTable()) + legend + targets)}</div>`;
 }
 function diagram() {
@@ -430,63 +449,53 @@ function diagram() {
     return `<button onclick="openTire('${p}')" class="flex h-[78px] w-[60px] flex-col items-center justify-center rounded-lg border-2 sm:w-16 ${TIRE_TONE[s]} hover:ring-2 hover:ring-ring/40" aria-label="${POS_NAME[p]}">
       <span class="text-[11px] font-semibold text-muted-foreground">${p}</span>
       <span class="tnum text-base font-semibold leading-tight ${TIRE_TEXT[s]}">${t.psi ?? '—'}</span>
-      <span class="tnum text-xs text-muted-foreground">${t.tread != null && t.tread !== '' ? `${t.tread}/32` : 'PSI'}</span></button>`;
+      <span class="tnum text-xs text-muted-foreground">${t.tread != null ? `${t.tread}/32` : 'PSI'}</span></button>`;
   };
-  return `<div class="px-4 pb-3 pt-4">
-    <div class="relative mx-auto max-w-[330px]">
+  return `<div class="px-4 pb-3 pt-4"><div class="mx-auto max-w-[330px]">
       <div class="mx-auto mb-2 flex h-10 w-[46%] items-center justify-center rounded-t-[18px] rounded-b-md border bg-sunken text-xs text-muted-foreground">${icon('arrow-up', 's14')}Front</div>
-      ${AXLES.map((a, i) => `
-        <div class="${i === 1 ? 'mt-6' : i === 2 ? 'mt-3' : ''}">
-          <div class="flex items-center justify-between gap-1.5">
-            <div class="flex gap-1.5">${a.left.map(tire).join('')}</div>
-            <div class="flex flex-1 flex-col items-center gap-1"><span class="text-xs text-muted-foreground">${a.label}</span><div class="axle w-full"></div><span class="tnum text-xs text-muted-foreground">${S.target[a.key === 'steer' ? 'steer' : 'drive']} PSI</span></div>
-            <div class="flex gap-1.5">${a.right.map(tire).join('')}</div>
-          </div>
-        </div>`).join('')}
-    </div>
-    <p class="mt-3 text-center text-xs text-muted-foreground">Tap a tire to enter PSI and tread. “Next tire” goes around in order.</p>
-  </div>`;
+      ${AXLES.map((a, i) => `<div class="${i === 1 ? 'mt-6' : i === 2 ? 'mt-3' : ''}"><div class="flex items-center justify-between gap-1.5">
+        <div class="flex gap-1.5">${a.left.map(tire).join('')}</div>
+        <div class="flex flex-1 flex-col items-center gap-1"><span class="text-xs text-muted-foreground">${a.label}</span><div class="axle w-full"></div><span class="tnum text-xs text-muted-foreground">${S.target[a.key === 'steer' ? 'steer' : 'drive']} PSI</span></div>
+        <div class="flex gap-1.5">${a.right.map(tire).join('')}</div></div></div>`).join('')}
+    </div><p class="mt-3 text-center text-xs text-muted-foreground">Tap a tire to enter PSI and tread. “Next tire” goes around in order.</p></div>`;
 }
 function tireTable() {
   return `<div class="overflow-x-auto"><table class="w-full text-sm">
     <thead class="bg-sunken text-xs text-muted-foreground"><tr><th class="px-4 py-2 text-left font-medium">Tire</th><th class="px-2 py-2 text-left font-medium">PSI</th><th class="px-2 py-2 text-left font-medium">Tread /32</th><th class="px-4 py-2 text-right font-medium">Last (${PREV_DATE})</th></tr></thead>
     <tbody class="divide-y">${ORDER.map((p) => { const t = S.tires[p] || {}; return `<tr>
-      <td class="px-4 py-1.5"><span class="inline-flex items-center gap-2"><span id="dot-${p}" class="size-2 rounded-full ${{ empty: 'bg-border', ok: 'bg-success', warn: 'bg-warning', bad: 'bg-destructive' }[tireStat(p)]}"></span><span class="font-medium">${p}</span></span></td>
+      <td class="px-4 py-1.5"><span class="inline-flex items-center gap-2"><span id="dot-${p}" class="size-2 rounded-full ${DOT[tireStat(p)]}"></span><span class="font-medium">${p}</span></span></td>
       <td class="px-2 py-1.5"><input type="number" inputmode="numeric" class="field tnum !min-h-9 w-20 !py-1.5" value="${t.psi ?? ''}" placeholder="${S.target[axleOf(p)]}" oninput="tireInput('${p}','psi',this.value)"></td>
       <td class="px-2 py-1.5"><input type="number" inputmode="numeric" class="field tnum !min-h-9 w-16 !py-1.5" value="${t.tread ?? ''}" oninput="tireInput('${p}','tread',this.value)"></td>
       <td class="tnum px-4 py-1.5 text-right text-xs text-muted-foreground">${PREV[p][0]} · ${PREV[p][1]}/32</td></tr>`; }).join('')}</tbody></table></div>`;
 }
-function tireInput(p, f, v) {
-  S.tires[p] = { ...(S.tires[p] || {}), [f]: v === '' ? null : Number(v) };
-  const dot = document.getElementById(`dot-${p}`);
-  if (dot) dot.className = `size-2 rounded-full ${{ empty: 'bg-border', ok: 'bg-success', warn: 'bg-warning', bad: 'bg-destructive' }[tireStat(p)]}`;
-  document.getElementById('v-bar').innerHTML = bar(); lucide.createIcons();
-}
+function tireInput(p, f, v) { S.tires[p] = { ...(S.tires[p] || {}), [f]: v === '' ? null : Number(v) }; const dot = document.getElementById(`dot-${p}`); if (dot) dot.className = `size-2 rounded-full ${DOT[tireStat(p)]}`; refreshBar(); }
 function notesCard() {
-  return `<div id="sec-notes" class="scroll-mt-20">${sectionCard('Notes', '', `<div class="space-y-1.5 p-4"><textarea class="field min-h-28" placeholder="Anything else the next person should know" oninput="S.notes=this.value">${esc(S.notes)}</textarea><p class="text-xs text-muted-foreground">Kept on this device until you finish.</p></div>`)}</div>`;
+  return `<div id="sec-notes" class="scroll-mt-20">${sectionCard('Notes', '', `<div class="space-y-1.5 p-4"><textarea class="field min-h-28" placeholder="Anything else the next person should know" oninput="S.notes=this.value">${esc(S.notes)}</textarea><p class="text-xs text-muted-foreground">Optional. Saved on the Work Order notes when you finish.</p></div>`)}</div>`;
 }
+function refreshBar() { if (S.view !== 'inspect') return; document.getElementById('v-bar').innerHTML = bar(); lucide.createIcons(); }
 function bar() {
-  const c = counts(), left = c.total - c.done, issues = c.defects + c.tireBad;
-  const sb = S.role === 'mechanic' ? '' : 'md:left-60';
+  const c = counts(), complete = c.done === c.total && c.tires === 10 && !c.missingNotes;
+  const sb = mech() ? '' : 'md:left-60';
+  const left = [c.total - c.done ? `${c.total - c.done} checks left` : '', 10 - c.tires ? `${10 - c.tires} tires left` : '', c.missingNotes ? `${c.missingNotes} defect${c.missingNotes > 1 ? 's' : ''} without a note` : ''].filter(Boolean).join(' · ');
   return `<div class="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur ${sb}"><div class="mx-auto flex max-w-[1440px] items-center gap-3 px-4 py-3 md:px-6">
     <div class="min-w-0 flex-1">
-      <p class="tnum font-medium">${c.done} of ${c.total} items · ${c.tires} of 10 tires</p>
-      <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full ${issues ? 'bg-warning' : 'bg-success'}" style="width:${Math.round(((c.done + c.tires) / (c.total + 10)) * 100)}%"></div></div>
+      <p class="tnum truncate font-medium">${complete ? 'All checked' : left}</p>
+      <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full ${complete ? 'bg-success' : 'bg-primary'}" style="width:${Math.round(((c.done + c.tires) / (c.total + 10)) * 100)}%"></div></div>
     </div>
-    <button class="${btn('default')}" onclick="go('summary')">${left || c.tires < 10 ? 'Review' : 'Finish'}${icon('arrow-right')}</button>
+    <button class="${btn('default')}" ${complete ? '' : 'disabled'} onclick="go('summary')">Review${icon('arrow-right')}</button>
   </div></div>`;
 }
 
 /* Tire sheet */
-function openTire(p) { S.sheet = p; render(); setTimeout(() => document.getElementById('in-psi')?.focus(), 30); }
+function openTire(p) { S.sheet = p; render(); sheetPreview(); setTimeout(() => document.getElementById('in-psi')?.focus(), 30); }
 function tireSheet() {
   const p = S.sheet, t = S.tires[p] || {}, ax = axleOf(p), prev = PREV[p], idx = ORDER.indexOf(p);
-  const stepper = (id, val, label, unit, step) => `
+  const stepper = (id, val, label, unit) => `
     <label class="block space-y-1.5"><span class="text-sm font-medium">${label}</span>
       <div class="flex items-stretch gap-1.5">
-        <button class="grid size-12 shrink-0 place-items-center rounded-md border hover:bg-accent" onclick="bump('${id}',-${step})" aria-label="Less">${icon('minus')}</button>
+        <button class="grid size-12 shrink-0 place-items-center rounded-md border hover:bg-accent" onclick="bump('${id}',-1)" aria-label="Less">${icon('minus')}</button>
         <div class="relative flex-1"><input id="${id}" type="number" inputmode="numeric" class="field tnum !min-h-12 text-center !text-xl font-semibold" value="${val ?? ''}" oninput="sheetPreview()"><span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">${unit}</span></div>
-        <button class="grid size-12 shrink-0 place-items-center rounded-md border hover:bg-accent" onclick="bump('${id}',${step})" aria-label="More">${icon('plus')}</button>
+        <button class="grid size-12 shrink-0 place-items-center rounded-md border hover:bg-accent" onclick="bump('${id}',1)" aria-label="More">${icon('plus')}</button>
       </div></label>`;
   return `<div class="fixed inset-0 z-50 bg-black/50 pop-in" onclick="closeTire()"></div>
   <div role="dialog" aria-label="Tire ${p}" class="sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[92vh] overflow-auto rounded-t-2xl border bg-card p-5 shadow-2xl sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:w-[420px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl">
@@ -495,11 +504,7 @@ function tireSheet() {
       <div><p class="text-xs text-muted-foreground">Tire ${idx + 1} of 10</p><p class="text-base font-semibold">${p} · ${POS_NAME[p]}</p><p class="tnum text-xs text-muted-foreground">Last check ${PREV_DATE}: ${prev[0]} PSI · ${prev[1]}/32</p></div>
       <button class="grid size-9 place-items-center rounded-md hover:bg-accent" onclick="closeTire()" aria-label="Close">${icon('x')}</button>
     </div>
-    <div class="space-y-4">
-      ${stepper('in-psi', t.psi, `Pressure · target ${S.target[ax]}`, 'PSI', 1)}
-      ${stepper('in-tread', t.tread, `Tread · min ${MIN_TREAD[ax]}/32`, '/32', 1)}
-      <div id="sheet-status"></div>
-    </div>
+    <div class="space-y-4">${stepper('in-psi', t.psi, `Pressure · target ${S.target[ax]}`, 'PSI')}${stepper('in-tread', t.tread, `Tread · min ${S.minTread[ax]}/32`, '/32')}<div id="sheet-status" class="min-h-6"></div></div>
     <div class="mt-5 flex gap-2">
       ${idx > 0 ? `<button class="${btn('outline')}" onclick="saveTire(-1)" aria-label="Previous tire">${icon('arrow-left')}</button>` : ''}
       <button class="${btn('outline')} flex-1" onclick="saveTire(0)">Done</button>
@@ -508,96 +513,146 @@ function tireSheet() {
   </div>`;
 }
 function bump(id, d) { const el = document.getElementById(id); el.value = Math.max(0, Number(el.value || (id === 'in-psi' ? S.target[axleOf(S.sheet)] : 8)) + d); sheetPreview(); }
+function readSheet() { const v = (id) => { const x = document.getElementById(id)?.value; return x == null || x === '' ? null : Number(x); }; return { psi: v('in-psi'), tread: v('in-tread') }; }
 function sheetPreview() {
-  const p = S.sheet, keep = S.tires[p];
-  S.tires[p] = readSheet();
-  const s = tireStat(p);
-  S.tires[p] = keep;
-  const msg = { empty: '', ok: badge('success', 'In range'), warn: badge('warning', 'Watch — will be listed, not a Job by default'), bad: badge('destructive', 'Fix — will be suggested as a Job') }[s];
-  document.getElementById('sheet-status').innerHTML = msg;
+  const el = document.getElementById('sheet-status'); if (!el) return;
+  const p = S.sheet, keep = S.tires[p]; S.tires[p] = readSheet(); const s = tireStat(p); S.tires[p] = keep;
+  el.innerHTML = { empty: '', ok: badge('success', 'In range'), warn: badge('warning', 'Watch — shown on the Truck, no Job'), bad: badge('destructive', 'Fix — creates a Job') }[s];
 }
-function readSheet() { const v = (id) => { const x = document.getElementById(id).value; return x === '' ? null : Number(x); }; return { psi: v('in-psi'), tread: v('in-tread') }; }
-function saveTire(dir) {
-  S.tires[S.sheet] = readSheet();
-  const i = ORDER.indexOf(S.sheet) + dir;
-  S.sheet = dir === 0 ? null : ORDER[i];
-  render();
-  if (S.sheet) { sheetPreview(); setTimeout(() => document.getElementById('in-psi')?.focus(), 30); }
-}
+function saveTire(dir) { S.tires[S.sheet] = readSheet(); const i = ORDER.indexOf(S.sheet) + dir; S.sheet = dir === 0 ? null : ORDER[i]; render(); if (S.sheet) { sheetPreview(); setTimeout(() => document.getElementById('in-psi')?.focus(), 30); } }
 function closeTire() { S.sheet = null; render(); }
 
-/* Summary / report */
+/* ───────────────────────── Review / report ───────────────────────── */
 function summaryView() {
-  const c = counts(), f = findings(), mech = S.role === 'mechanic', ro = S.readonly;
-  const unchecked = ALL_ITEMS.filter((it) => !S.items[it.id]?.s);
-  const missingNote = f.filter((x) => !x.tire && !x.detail.trim());
-  const issues = f.filter((x) => x.sev === 'must').length;
-  f.forEach((x) => { if (!S.pick[x.key]) S.pick[x.key] = { add: x.sev === 'must', mech: '' }; });
-  const outcome = issues ? `
-    <div class="rounded-xl border border-warning/40 bg-warning-surface/60"><div class="flex items-start gap-3 p-4"><div class="grid size-9 shrink-0 place-items-center rounded-lg bg-warning/20 text-warning-foreground dark:text-warning">${icon('triangle-alert')}</div>
-    <div><p class="text-xs text-muted-foreground">Result</p><p class="font-semibold">Issues found · ${issues} must fix${f.length > issues ? `, ${f.length - issues} can wait` : ''}</p><p class="text-muted-foreground">${ro ? 'Recorded on the Truck.' : mech ? 'They go to the Manager as Request Work. The Manager decides the Jobs.' : 'Choose which ones become Jobs and who does them.'}</p></div></div></div>`
-    : `<div class="rounded-xl border border-success/40 bg-success/[0.06]"><div class="flex items-start gap-3 p-4"><div class="grid size-9 shrink-0 place-items-center rounded-lg bg-success/15 text-success">${icon('circle-check')}</div>
-    <div><p class="text-xs text-muted-foreground">Result</p><p class="font-semibold">No issues found</p><p class="text-muted-foreground">${f.length ? `${f.length} item${f.length > 1 ? 's' : ''} to watch, nothing that must be fixed.` : 'Every item OK and all tires in range.'} The truck moves on to PM.</p></div></div></div>`;
-  const warn = !ro && (unchecked.length || c.tires < 10 || missingNote.length) ? `<div class="rounded-xl border border-warning/40 bg-warning-surface/60 px-4 py-3"><p class="flex items-start gap-2">${icon('circle-alert', 'mt-0.5 text-warning-foreground dark:text-warning')}<span>${[unchecked.length ? `${unchecked.length} item${unchecked.length > 1 ? 's' : ''} not checked` : '', c.tires < 10 ? `${10 - c.tires} tire${10 - c.tires > 1 ? 's' : ''} without a reading` : '', missingNote.length ? `${missingNote.length} defect${missingNote.length > 1 ? 's' : ''} without a note` : ''].filter(Boolean).join(' · ')}. <button class="font-medium text-primary hover:underline" onclick="go('inspect')">Go back</button></span></p></div>` : '';
-  const row = (x) => {
-    const pk = S.pick[x.key];
-    const ctl = ro ? (pk.add ? badge('default', 'Added as Job') : badge('secondary', 'Not added', false)) : mech ? '' : `
-      <div class="flex flex-wrap items-center gap-2 sm:justify-end">
-        <label class="inline-flex min-h-11 items-center gap-2 [@media(pointer:fine)]:min-h-9"><input type="checkbox" class="size-4 accent-[var(--primary)]" ${pk.add ? 'checked' : ''} onchange="S.pick['${x.key}'].add=this.checked;render()">Add Job</label>
-        <select class="field !min-h-9 w-auto !py-1.5 !text-sm ${pk.add ? '' : 'hidden'}" onchange="S.pick['${x.key}'].mech=this.value"><option value="">Who does it?</option>${MECHS.map(([k, n]) => `<option ${pk.mech === n ? 'selected' : ''}>${n}</option>`).join('')}</select>
-      </div>`;
-    return `<li class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+  const pl = plan(), m = mech(), ro = S.readonly, rec = S.record;
+  const nJobs = pl.jobs.length, stepEntries = Object.entries(pl.steps);
+  const outcome = nJobs || stepEntries.length
+    ? callout('warning', 'triangle-alert', 'Result', `Issues found · ${nJobs} Job${nJobs === 1 ? '' : 's'}${stepEntries.length ? ` + ${stepEntries.length} note${stepEntries.length > 1 ? 's' : ''} on steps` : ''}`, ro ? 'Recorded on the Truck.' : m ? 'The Jobs are created when you save. The Manager assigns them.' : 'The Jobs are created when you save. Pick who does each one now, or assign later.')
+    : callout('success', 'circle-check', 'Result', 'No issues found', `${pl.watch.length ? `${pl.watch.length} tire${pl.watch.length > 1 ? 's' : ''} to watch, nothing to fix.` : 'Every check OK and all tires in range.'} The truck moves on to PM.`);
+  const jobRow = (j) => {
+    const pick = ro ? `<span class="text-xs text-muted-foreground">${esc((S.jobs.find((x) => x.job === j.job) || {}).mech || 'Unassigned')}</span>`
+      : m ? `<span class="text-xs text-muted-foreground">Manager assigns</span>`
+      : `<select class="field !min-h-9 w-full !py-1.5 !text-sm sm:w-44" onchange="S.who['${j.job}']=this.value"><option value="">Assign later</option>${MECHS.map((n) => `<option ${S.who[j.job] === n ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+    return `<li class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <div class="min-w-0 space-y-1">
-        <p class="flex flex-wrap items-center gap-2"><span class="font-medium">${esc(x.title)}</span>${x.sev === 'must' ? badge('destructive', 'Must fix') : badge('warning', x.tire ? 'Watch' : 'Can wait')}<span class="text-xs text-muted-foreground">${x.sec}</span></p>
-        ${x.detail ? `<p class="text-muted-foreground">${esc(x.detail)}</p>` : '<p class="text-destructive-text">Add a note before finishing.</p>'}
-        <p class="flex items-center gap-1.5 text-xs text-muted-foreground">${icon('wrench', 's14')}${x.job ? `${esc(x.job)} · ${esc(x.cat)}` : 'Custom Job'}${x.photo ? ` · ${icon('image', 's14')}1 photo` : ''}</p>
-      </div>${ctl}</li>`;
+        <p class="flex flex-wrap items-center gap-2"><span class="font-medium">${esc(j.job)}</span><span class="text-xs text-muted-foreground">${esc(j.cat)}</span>${j.from.length > 1 ? badge('secondary', `${j.from.length} defects in one Job`, false) : ''}</p>
+        <ul class="space-y-0.5 text-muted-foreground">${j.from.map((f) => `<li><span class="text-foreground">${esc(f.from)}:</span> ${esc(f.detail)}</li>`).join('')}</ul>
+      </div><div class="shrink-0">${pick}</div></li>`;
   };
-  const sign = ro ? `<p class="flex items-center gap-2 p-4">${icon('pen-line', 'text-muted-foreground')}Signed by <b>${esc(S.record?.by || who().name)}</b> · Oct 13, ${S.record?.at || ''}</p>`
+  const okList = SECS.map((s) => { const n = (v) => s.items.filter((it) => S.items[it.id]?.s === v).length; return `<li class="flex items-center justify-between gap-3 px-4 py-2.5"><span>${s.title}</span><span class="tnum text-muted-foreground">${n('ok')} OK · ${n('na')} N/A · ${n('defect')} defect${n('defect') === 1 ? '' : 's'}</span></li>`; }).join('');
+  const sign = ro ? `<p class="flex items-center gap-2 p-4">${icon('pen-line', 'text-muted-foreground')}Signed by <b>${esc(rec.by)}</b> (${rec.byRole}) · Oct 13, ${rec.at}</p>`
     : `<label class="flex min-h-12 items-start gap-3 p-4"><input type="checkbox" class="mt-0.5 size-4 accent-[var(--primary)]" ${S.signed ? 'checked' : ''} onchange="S.signed=this.checked;render()"><span><span class="font-medium">I inspected Truck 601</span><span class="block text-xs text-muted-foreground">Signed as ${esc(who().name)} (${who().label}) · Oct 13</span></span></label>`;
-  const okList = SECS.map((s) => `<li class="flex items-center justify-between gap-3 px-4 py-2.5"><span>${s.title}</span><span class="tnum text-muted-foreground">${s.items.filter((it) => S.items[it.id]?.s === 'ok').length} OK · ${s.items.filter((it) => S.items[it.id]?.s === 'na').length} N/A · ${s.items.filter((it) => S.items[it.id]?.s === 'defect').length} defects</span></li>`).join('');
   return `
   <section class="space-y-1.5"><h1 class="font-display text-2xl font-semibold tracking-tight md:text-[28px]">${ro ? 'Inspection report' : 'Review inspection'} · Truck 601</h1>
-    <p class="text-xs text-muted-foreground">412,380 mi · ${esc(ro ? S.record.by : who().name)} · Oct 13 · ${c.done} of ${c.total} items · ${c.tires} of 10 tires</p></section>
-  ${warn}${outcome}
+    <p class="text-xs text-muted-foreground">412,380 mi · ${esc(ro ? rec.by : who().name)} · Oct 13 · 53 checks · 10 tires</p></section>
+  ${outcome}
+  ${ro ? `<p class="flex items-start gap-2 text-xs text-muted-foreground">${icon('lock', 's14 mt-px')}A saved inspection is not edited. Fix what changed in the Work Order (cancel or add Jobs) — the report stays as it was.</p>` : ''}
   <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
     <div class="min-w-0 space-y-6">
-      ${sectionCard(`Findings ${chip(f.length)}`, '', f.length ? `<ul class="divide-y">${f.map(row).join('')}</ul>` : '<p class="p-4 text-muted-foreground">Nothing found.</p>')}
+      ${sectionCard(`${ro ? 'Jobs created' : 'Jobs to create'} ${chip(nJobs)}`, '', nJobs ? `<ul class="divide-y">${pl.jobs.map(jobRow).join('')}</ul>` : '<p class="p-4 text-muted-foreground">None.</p>')}
+      ${stepEntries.length ? sectionCard('Notes on steps already on the WO', '', `<ul class="divide-y">${stepEntries.map(([step, list]) => `<li class="space-y-1 px-4 py-3"><p class="flex items-center gap-2"><span class="font-medium">${step}</span>${badge('secondary', 'no new Job', false)}</p>${list.map((f) => `<p class="text-muted-foreground"><span class="text-foreground">${esc(f.from)}:</span> ${esc(f.detail)}</p>`).join('')}</li>`).join('')}</ul>`) : ''}
+      ${pl.watch.length ? sectionCard(`To watch ${chip(pl.watch.length)}`, '', `<ul class="divide-y">${pl.watch.map((w) => `<li class="flex items-center justify-between gap-3 px-4 py-2.5"><span><span class="font-medium">Tire ${w.p}</span> <span class="text-muted-foreground">${w.detail}</span></span>${badge('warning', 'Watch')}</li>`).join('')}</ul><p class="border-t bg-sunken px-4 py-2.5 text-xs text-muted-foreground">Shown on the Truck’s Tires card. No Job.</p>`) : ''}
       ${S.notes ? sectionCard('Notes', '', `<p class="p-4">${esc(S.notes)}</p>`) : ''}
     </div>
     <div class="space-y-6">
-      ${sectionCard(`${icon('circle-dot')}Tires`, chip(`${ORDER.filter((p) => tireStat(p) === 'ok').length}/10 OK`), `<div class="space-y-2 p-4">${AXLES.map((a) => `<div class="flex items-center justify-between gap-2"><div class="flex gap-1">${a.left.map(miniTire).join('')}</div><span class="text-xs text-muted-foreground">${a.label}</span><div class="flex gap-1">${a.right.map(miniTire).join('')}</div></div>`).join('')}</div>`)}
+      ${sectionCard(`${icon('circle-dot')}Tires`, chip(`${ORDER.filter((p) => tireStat(p) === 'ok').length}/10 OK`), `<div class="space-y-2 p-4">${tireRows()}</div>`)}
       ${sectionCard('Checklist', '', `<ul class="divide-y">${okList}</ul>`)}
       ${sectionCard('Signature', '', sign)}
     </div>
   </div>`;
 }
 function summaryBar() {
-  const f = findings(), mech = S.role === 'mechanic', issues = f.filter((x) => x.sev === 'must').length;
-  const n = f.filter((x) => S.pick[x.key]?.add).length;
-  const blocked = !S.signed || f.some((x) => !x.tire && !x.detail.trim());
-  const label = mech ? (f.length ? `Sign & send ${f.length} to Manager` : 'Sign & finish') : issues || n ? `Save · add ${n} Job${n === 1 ? '' : 's'}` : 'Save · No issues found';
-  const sb = mech ? '' : 'md:left-60';
+  const pl = plan(), m = mech(), n = pl.jobs.length;
+  const label = n ? `Save · create ${n} Job${n > 1 ? 's' : ''}` : 'Save · No issues found';
+  const sb = m ? '' : 'md:left-60';
   return `<div class="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur ${sb}"><div class="mx-auto flex max-w-[1440px] flex-wrap items-center justify-end gap-2 px-4 py-3 md:px-6">
-    <span class="w-full text-xs text-muted-foreground sm:mr-auto sm:w-auto">${blocked ? (S.signed ? 'Every defect needs a note.' : 'Check “I inspected Truck 601” under Signature to finish.') : 'Saves the inspection on the Truck.'}</span>
+    <span class="w-full text-xs text-muted-foreground sm:mr-auto sm:w-auto">${S.signed ? (m ? 'Jobs go to the Manager unassigned.' : 'Jobs go to Shop Work on WO-1042.') : 'Check “I inspected Truck 601” under Signature to save.'}</span>
     <button class="${btn('outline')}" onclick="go('inspect')">${icon('arrow-left')}Back</button>
-    <button class="${btn('default')} flex-1 sm:flex-none" ${blocked ? 'disabled' : ''} onclick="finish()">${label}</button>
+    <button class="${btn('default')} flex-1 sm:flex-none" ${S.signed ? '' : 'disabled'} onclick="finish()">${label}</button>
   </div></div>`;
 }
 function finish(silent) {
-  const c = counts(), f = findings();
-  f.forEach((x) => { if (!S.pick[x.key]) S.pick[x.key] = { add: x.sev === 'must', mech: '' }; });
-  const issues = f.filter((x) => x.sev === 'must').length;
-  S.record = { by: who().name, at: '8:47 AM', issues, done: c.done, total: c.total, tires: c.tires, tireFlags: c.tireBad + c.tireWarn };
-  S.jobs = S.role === 'mechanic' ? [] : f.filter((x) => S.pick[x.key].add).map((x) => ({ job: x.job || x.title, cat: x.cat || 'Other', from: x.title, mech: S.pick[x.key].mech }));
-  S.view = 'truck'; S.readonly = false; S.signed = true;
-  if (!silent) { render(); window.scrollTo(0, 0); toast(S.role === 'mechanic' ? `Inspection saved · ${f.length} Request Work sent to the Manager` : issues ? `Inspection saved · ${S.jobs.length} Jobs added to WO-1042` : 'Inspection saved · No issues found'); }
+  const pl = plan();
+  S.jobs = pl.jobs.map((j) => ({ ...j, mech: mech() ? '' : (S.who[j.job] || '') }));
+  S.stepNotes = pl.steps;
+  S.record = { by: who().name, byRole: who().label, at: '8:47 AM', jobs: pl.jobs.length, watch: pl.watch.length };
+  S.signed = true; S.readonly = false;
+  S.view = mech() ? 'mhome' : 'truck';
+  if (!silent) { render(); window.scrollTo(0, 0); toast(pl.jobs.length ? `Inspection saved · ${pl.jobs.length} Jobs added to WO-1042` : 'Inspection saved · No issues found'); }
+}
+
+/* ───────────────────────── Setup → Inspection checklist ───────────────────────── */
+function setupView() {
+  const row = (it) => `<li class="flex min-h-12 items-center gap-2 px-2 py-1.5 sm:px-3">
+      <button class="grid size-9 shrink-0 cursor-grab place-items-center rounded-md text-muted-foreground hover:bg-accent" aria-label="Move ${esc(it.label)}" onclick="S.dirty=true;render()">${icon('grip-vertical')}</button>
+      <div class="min-w-0 flex-1"><p class="truncate">${esc(it.label)}${it.added ? ` ${badge('default', 'Added', false)}` : ''}</p>
+        <p class="truncate text-xs text-muted-foreground">${it.step ? `${icon('message-square', 's14 inline -mt-0.5')} Note on the ${it.step} step` : `${icon('wrench', 's14 inline -mt-0.5')} ${esc(it.job)} · ${esc(it.cat)}`}${NEW_JOBS.includes(it.job) ? ' · <span class="text-warning-foreground dark:text-warning">not in the catalog yet</span>' : ''}</p></div>
+      <button class="grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent" aria-label="More" onclick="toast('Rename · Change Job · Deactivate (kept in past inspections)')">${icon('ellipsis')}</button>
+    </li>`;
+  const sec = (s) => sectionCard(`${s.title} ${chip(s.items.length)}`, `<button class="${btn('outline', 'sm')}" onclick="S.dialog={sec:'${s.key}'};render()">${icon('plus')}Add check</button>`, `<ul class="divide-y">${s.items.map(row).join('')}</ul>`);
+  const missing = NEW_JOBS.length;
+  return `
+  <section class="space-y-1.5"><h1 class="font-display text-2xl font-semibold tracking-tight md:text-[28px]">Inspection checklist</h1>
+    <p class="max-w-2xl text-muted-foreground">What every inspection checks. Each check points to the catalog Job a defect creates. Changes apply to new inspections; saved ones keep what they had. Managers and Admins can edit.</p></section>
+  ${callout('warning', 'library', 'Job Catalog', `${missing} Jobs this checklist uses are not in the catalog yet`, NEW_JOBS.join(' · '), `<button class="${btn('outline')}" onclick="toast('Opens Job Catalog with these Jobs ready to add')">Add to catalog</button>`)}
+  <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div class="min-w-0 space-y-6">${SECS.map(sec).join('')}</div>
+    <div class="space-y-6 lg:sticky lg:top-20">
+      ${sectionCard(`${icon('circle-dot')}Tires`, '', `<div class="space-y-4 p-4">
+        <p class="text-muted-foreground">10 tires: steer + 2 drive axles. Trailers come later.</p>
+        <div class="grid grid-cols-2 gap-3">${[['Steer PSI', 'target', 'steer'], ['Drive PSI', 'target', 'drive'], ['Steer min tread /32', 'minTread', 'steer'], ['Drive min tread /32', 'minTread', 'drive']].map(([l, k, a]) => `<label class="space-y-1.5"><span class="text-sm font-medium">${l}</span><input type="number" class="field tnum" value="${S[k][a]}" oninput="S.${k}.${a}=Number(this.value);S.dirty=true;document.getElementById('v-bar').innerHTML=setupBar();lucide.createIcons()"></label>`).join('')}</div>
+        <ul class="space-y-1 text-xs text-muted-foreground"><li><span class="font-medium text-success">OK</span> within ±10% of target and tread 2/32 above min</li><li><span class="font-medium text-warning-foreground dark:text-warning">Watch</span> ±10–20% or tread near min · no Job</li><li><span class="font-medium text-destructive-text">Fix</span> beyond ±20% → Flat Repair · under min tread → Tires</li></ul>
+      </div>`)}
+      ${sectionCard('Who can inspect', '', `<div class="space-y-2 p-4"><p>Managers always. Mechanics only with <b>Can inspect trucks</b> in People.</p><button class="text-sm font-medium text-primary hover:underline" onclick="go('people')">Open People</button></div>`)}
+    </div>
+  </div>`;
+}
+function addItemDialog() {
+  const s = SECS.find((x) => x.key === S.dialog.sec);
+  return `<div class="fixed inset-0 z-50 bg-black/50 pop-in" onclick="S.dialog=null;render()"></div>
+  <div role="dialog" class="sheet-in fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border bg-card p-5 shadow-2xl sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:w-[480px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl">
+    <p class="mb-1 text-base font-semibold">Add check · ${s.title}</p><p class="mb-4 text-muted-foreground">It shows on new inspections at the end of ${s.title}.</p>
+    <div class="space-y-4">
+      <label class="block space-y-1.5"><span class="text-sm font-medium">Check</span><input id="ni-label" class="field" placeholder="e.g. Mud flaps"></label>
+      <label class="block space-y-1.5"><span class="text-sm font-medium">A defect creates</span><select id="ni-job" class="field">${CATALOG_PICK.map((j) => `<option>${j}</option>`).join('')}<option value="__Detailing">Note on the Detailing step</option></select></label>
+    </div>
+    <div class="mt-5 flex justify-end gap-2"><button class="${btn('outline')}" onclick="S.dialog=null;render()">Cancel</button><button class="${btn('default')}" onclick="addItem()">Add check</button></div>
+  </div>`;
+}
+function addItem() {
+  const label = document.getElementById('ni-label').value.trim() || 'Mud flaps', job = document.getElementById('ni-job').value;
+  const sec = S.dialog.sec, s = SECS.find((x) => x.key === sec);
+  const it = { id: `${sec}-x${s.items.length}`, label, sec, added: true, ...(job === '__Detailing' ? { step: 'Detailing' } : { job, cat: CAT_OF[job] || 'Cab, Body & Glass' }) };
+  S.extra.push(it); s.items.push(it); ALL_ITEMS.push(it);
+  S.dialog = null; S.dirty = true; render(); toast(`“${label}” added to ${s.title}`);
+}
+function setupBar() {
+  return `<div class="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur md:left-60"><div class="mx-auto flex max-w-[1440px] items-center justify-end gap-2 px-4 py-3 md:px-6">
+    <span class="mr-auto text-sm font-medium">Unsaved changes</span>
+    <button class="${btn('ghost')}" onclick="preset('setup')">Discard</button><button class="${btn('default')}" onclick="S.dirty=false;S.extra.forEach(x=>x.added=false);render();toast('Checklist saved · applies to new inspections')">Save</button>
+  </div></div>`;
+}
+
+/* ───────────────────────── People ───────────────────────── */
+function peopleView() {
+  const radio = (v, l, d) => `<label class="flex min-h-12 items-start gap-3 rounded-lg border p-3 ${v === 'standard' ? 'border-primary/50 bg-primary/[0.06]' : ''}"><input type="radio" name="type" class="mt-0.5 size-4 accent-[var(--primary)]" ${v === 'standard' ? 'checked' : ''}><span><span class="font-medium">${l}</span><span class="block text-xs text-muted-foreground">${d}</span></span></label>`;
+  return `
+  <section class="flex flex-wrap items-center gap-3"><div class="grid size-11 place-items-center rounded-full bg-rose-500/20 font-semibold text-rose-700 dark:text-rose-300">LR</div>
+    <div><h1 class="font-display text-2xl font-semibold tracking-tight">Luis Ramos</h1><p class="text-xs text-muted-foreground">Mechanic · Active · luis.ramos</p></div></section>
+  <div class="grid max-w-4xl items-start gap-6 lg:grid-cols-2">
+    ${sectionCard('Type', '', `<div class="space-y-2 p-4">${radio('standard', 'Standard', 'Repairs and shop work Jobs')}${radio('pm', 'PM', 'Preventive maintenance only')}${radio('safety', 'Safety', 'Quality Check only')}<p class="text-xs text-muted-foreground">One type per person (D22). Unchanged.</p></div>`)}
+    ${sectionCard(`Extra permissions ${badge('default', 'New', false)}`, '', `<div class="p-4">
+      <label class="flex min-h-12 items-start gap-3"><input type="checkbox" class="mt-0.5 size-4 accent-[var(--primary)]" ${S.canInspect ? 'checked' : ''} onchange="S.canInspect=this.checked;render();toast(this.checked?'Luis can now inspect trucks':'Luis can no longer inspect trucks')">
+        <span><span class="font-medium">Can inspect trucks</span><span class="block text-xs text-muted-foreground">Sees “To inspect” in My work and fills the inspection sheet. Defects become Jobs that the Manager assigns. Managers can always inspect.</span></span></label>
+      <p class="mt-3 border-t pt-3 text-xs text-muted-foreground">For Standard and PM mechanics. Safety keeps doing only Quality Check.</p>
+      <button class="mt-2 text-sm font-medium text-primary hover:underline" onclick="S.role='mechanic';go('mhome')">See Luis’s My work</button>
+    </div>`)}
+  </div>`;
 }
 
 /* ───────────────────────── Demo panel ───────────────────────── */
 function renderDemo() {
-  document.getElementById('presets').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<button onclick="preset('${k}')" class="min-h-9 rounded-md border px-2 text-left text-xs font-medium ${S.preset === k ? 'border-primary/50 bg-primary/10 text-primary' : 'hover:bg-accent'}">${p.label}</button>`).join('');
-  document.getElementById('roles').innerHTML = Object.entries(ROLES).map(([k, r]) => `<button aria-pressed="${S.role === k}" onclick="window.__role='${k}';S.role='${k}';render()" class="min-h-9 rounded-md text-xs font-medium ${S.role === k ? 'bg-card text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground'}">${r.label} · ${r.name}</button>`).join('');
+  document.getElementById('presets').innerHTML = GROUPS.map(([g, list]) => `<div><p class="mb-1.5 text-xs text-muted-foreground">${g}</p><div class="grid grid-cols-2 gap-1.5">${list.map(([k, l]) => `<button onclick="preset('${k}')" class="min-h-9 rounded-md border px-2 text-left text-xs font-medium ${S.preset === k ? 'border-primary/50 bg-primary/10 text-primary' : 'hover:bg-accent'}">${l}</button>`).join('')}</div></div>`).join('');
 }
 function toggleDemo() { document.getElementById('demo').classList.toggle('hidden'); }
 function toast(msg) {
