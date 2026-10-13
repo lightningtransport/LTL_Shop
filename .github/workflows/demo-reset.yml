@@ -4,6 +4,8 @@ name: Demo reset
 # "today" (they are relative to when the build runs). It also keeps the free Supabase project awake.
 # Only the demo's own database: `demoDatabaseRefusal` (apps/api/src/dev-demo/demo-target.ts) refuses anything
 # else, production's project above all. Run it by hand after the first setup or to clean up mid-day.
+# DP5: the demo is built on this runner's own Postgres and copied in one transaction. Seeding straight into
+# Supabase (Oregon) took 2 h 45 min; visitors saw it half built. Now the old demo stays until the copy commits.
 
 on:
   schedule:
@@ -23,6 +25,20 @@ jobs:
     name: Rebuild the demo data
     runs-on: ubuntu-latest
     environment: demo
+    services:
+      # Same major version as the demo's Supabase (17), so its pg_dump and psql fit both ends.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
     env:
       # Session pooler URL of the demo Supabase project (port 5432; the direct host is IPv6 only).
       DEMO_DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
@@ -42,5 +58,20 @@ jobs:
       - run: npm install
       - run: npm run build --workspace=@ltl-shop/shared
       - run: npm run prisma:generate --workspace=@ltl-shop/api
-      - name: Migrate, seed and rebuild the demo
+      - name: Build the demo on the runner's Postgres
+        env:
+          DEMO_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ltl_shop_demo
         run: npm run prisma:demo-local --workspace=@ltl-shop/api
+      - name: Copy it to the demo's Supabase in one transaction
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          umask 077
+          docker exec "$PG_CONTAINER" pg_dump -U postgres -d ltl_shop_demo --schema=public --no-owner --no-privileges --no-comments > "$RUNNER_TEMP/demo.sql"
+          # Refuses unless DEMO_DATABASE_URL is the demo's own project (never production).
+          npm run --silent prisma:demo-publish-sql --workspace=@ltl-shop/api < "$RUNNER_TEMP/demo.sql" > "$RUNNER_TEMP/publish.sql"
+          # The URL travels as an environment variable, never on a command line or in the log.
+          docker exec -i -e DEMO_DATABASE_URL "$PG_CONTAINER" sh -c 'psql "$DEMO_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 --single-transaction' < "$RUNNER_TEMP/publish.sql"
+          rm -f "$RUNNER_TEMP/demo.sql" "$RUNNER_TEMP/publish.sql"
+          echo "Demo copied."

@@ -271,7 +271,7 @@ Las cuentas de la demo son las de siempre (`ms@lightning.local`, `mg1@lightning.
 2. **GitHub → Settings → Environments → New environment `demo`:**
    - secret `DEMO_DATABASE_URL` = la cadena del pooler;
    - variable `DEMO_SUPABASE_REF` = el ref.
-3. **Actions → Demo reset → Run workflow:** migra, siembra y arma la demo en esa base. Después corre solo cada día a las 5:15 AM (hora del Este). **Tarda casi 3 horas** (2 h 45 min el 2026-10-13): los runners de GitHub están lejos de Oregón y el armado hace miles de consultas seguidas. Mientras corre, la demo se ve a medio armar (OPEN_ISSUES §1t, DP5).
+3. **Actions → Demo reset → Run workflow:** arma la demo en un Postgres propio del runner (migra, siembra y arma) y la copia a la base de Supabase en **una sola transacción** (`pg_dump` → `prisma:demo-publish-sql` → `psql --single-transaction`). Tarda unos 3 minutos (2 min 37 s el 2026-10-13; antes, sembrando directo en Oregón, 2 h 45 min). Mientras copia, la demo sigue mostrando la versión anterior hasta el final: nunca se ve a medio armar. Después corre solo cada día a las 5:15 AM (hora del Este).
 Los pasos 4 y 5 los hace `scripts/setup-demo-vercel.sh`: crea `ltl-shop-demo-api` y `ltl-shop-demo-web` y los despliega. Pide sin mostrarlos `DATABASE_URL`, `DIRECT_URL` y la clave.
 
 4. **Vercel, proyecto API demo** (raíz `apps/api`, mismo repo, rama `main`). Conviene que solo construya `main`: *Ignored Build Step* = `[ "$VERCEL_GIT_COMMIT_REF" != "main" ]`, así los PR no gastan builds en la demo. Variables (entorno Production):
