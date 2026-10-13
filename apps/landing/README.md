@@ -19,7 +19,7 @@ It is static HTML/CSS/JS with no build step. It is not part of the npm workspace
 1. Put the URL of the published web demo in `config.js` → `demoUrl` (see `docs/reference/DEMO.md` → Demo publicada).
 2. Redeploy.
 
-While it is empty, the button reads "Demo link coming soon" and does nothing. The access code never appears on this page. It is sent separately with the link (D39).
+Today it points to https://ltl-shop-demo-web.vercel.app. While it is empty, the button reads "Demo link coming soon" and does nothing. The access code never appears on this page. It is sent separately with the link (D39).
 
 ## Deploying
 
