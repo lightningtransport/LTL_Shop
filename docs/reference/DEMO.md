@@ -252,11 +252,11 @@ Las cuentas de la demo son las de siempre (`ms@lightning.local`, `mg1@lightning.
 
 ### Armarla una vez
 
-1. **Supabase:** crear un proyecto gratis `ltl-shop-demo` (no el de producción) en **West US (Oregon), `us-west-2`**. El API corre en Oregón (`apps/api/vercel.json` → `pdx1`) y cada pantalla hace muchas consultas seguidas: con la base en Virginia el Dashboard tardaba unos 8 s; en Oregón, como producción, menos de 1 s. Anotar su *ref* (20 letras, en la URL del dashboard). Copiar la cadena **Session pooler** (puerto 5432) desde Connect. La cadena directa `db.<ref>.supabase.co` es solo IPv6 y GitHub no llega.
+1. **Supabase:** crear un proyecto gratis `ltl-shop-demo` (no el de producción) en **West US (Oregon), `us-west-2`**. El API corre en Oregón (`apps/api/vercel.json` → `pdx1`) y cada pantalla hace muchas consultas seguidas: con la base en Virginia el Dashboard tardaba unos 8 s; en Oregón, como producción, 0,6–0,7 s (la primera llamada tras un rato sin uso, unos 3,5 s). Anotar su *ref* (20 letras, en la URL del dashboard). Copiar la cadena **Session pooler** (puerto 5432) desde Connect. La cadena directa `db.<ref>.supabase.co` es solo IPv6 y GitHub no llega.
 2. **GitHub → Settings → Environments → New environment `demo`:**
    - secret `DEMO_DATABASE_URL` = la cadena del pooler;
    - variable `DEMO_SUPABASE_REF` = el ref.
-3. **Actions → Demo reset → Run workflow:** migra, siembra y arma la demo en esa base. Después corre solo cada día a las 5:15 AM (hora del Este).
+3. **Actions → Demo reset → Run workflow:** migra, siembra y arma la demo en esa base. Después corre solo cada día a las 5:15 AM (hora del Este). **Tarda casi 3 horas** (2 h 45 min el 2026-10-13): los runners de GitHub están lejos de Oregón y el armado hace miles de consultas seguidas. Mientras corre, la demo se ve a medio armar (OPEN_ISSUES §1t, DP5).
 4. **Vercel, proyecto API demo** (raíz `apps/api`, mismo repo, rama `main`). Conviene que solo construya `main`: *Ignored Build Step* = `[ "$VERCEL_GIT_COMMIT_REF" != "main" ]`, así los PR no gastan builds en la demo. Variables (entorno Production):
 
    | Variable | Valor |
