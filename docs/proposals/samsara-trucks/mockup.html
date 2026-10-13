@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Samsara Faults Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: Object.fromEntries(['background', 'foreground', 'card', 'muted', 'muted-foreground', 'primary', 'primary-foreground', 'accent', 'border', 'ring', 'success', 'warning', 'warning-foreground', 'warning-surface', 'destructive', 'destructive-text', 'sunken'].map((n) => [n, tok(n)])),
+        borderColor: { DEFAULT: 'var(--border)' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      },
+    },
+  };
+</script>
+<style>
+  /* Same tokens as apps/web/src/app/globals.css (copied from docs/proposals/inspection-checklist/mockup.html). */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--background); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  svg.lucide.s14 { width: 14px; height: 14px; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; border-radius: 6px; border-width: 1px; padding: 2px 8px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .b-stop { border-color: color-mix(in oklch, var(--destructive) 50%, transparent); background: color-mix(in oklch, var(--destructive) 20%, transparent); color: var(--destructive-text); }
+  .b-warn { border-color: color-mix(in oklch, var(--warning) 40%, transparent); background: color-mix(in oklch, var(--warning) 10%, transparent); color: var(--warning-foreground); }
+  .b-ok { border-color: color-mix(in oklch, var(--success) 40%, transparent); background: color-mix(in oklch, var(--success) 10%, transparent); color: var(--success); }
+  .b-info { border-color: color-mix(in oklch, var(--primary) 30%, transparent); background: color-mix(in oklch, var(--primary) 10%, transparent); color: var(--primary); }
+  .b-out { color: var(--muted-foreground); }
+  .screen { display: none; }
+  .screen.on { display: block; }
+</style>
+</head>
+<body class="font-sans antialiased">
+
+<header class="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-3">
+    <span class="mr-2 text-sm font-semibold">Samsara · proposal (D35 + D42)</span>
+    <nav id="nav" class="flex flex-wrap gap-1 text-sm"></nav>
+    <button id="theme" class="ml-auto rounded-md border px-2 py-1 text-xs text-muted-foreground">Dark</button>
+  </div>
+</header>
+
+<main class="mx-auto max-w-6xl px-4 py-6">
+
+<!-- 1. Trucks list -->
+<section class="screen" data-name="Trucks list">
+  <p class="mb-1 text-xs text-muted-foreground">Admin · Trucks — J15 · HU-M14</p>
+  <h1 class="text-2xl font-semibold tracking-tight">Trucks</h1>
+  <div class="mt-4 flex flex-wrap items-center gap-2">
+    <div class="flex h-9 w-64 items-center gap-2 rounded-md border bg-background px-3 text-sm text-muted-foreground"><i data-lucide="search"></i>Search trucks</div>
+    <button class="badge b-info h-9">With faults · 2</button>
+    <button class="badge b-out h-9">All</button>
+    <span class="ml-auto text-xs text-muted-foreground">Samsara synced 4 min ago</span>
+  </div>
+  <div class="mt-4 overflow-x-auto rounded-xl border">
+    <table class="w-full min-w-[760px] text-sm">
+      <thead class="bg-card text-left text-xs text-muted-foreground">
+        <tr><th class="px-4 py-2 font-medium">Truck</th><th class="px-4 py-2 font-medium">Last location · Samsara</th><th class="px-4 py-2 font-medium">Faults</th><th class="px-4 py-2 font-medium">Current Work Order</th><th class="px-4 py-2 font-medium">Next step</th></tr>
+      </thead>
+      <tbody>
+        <tr class="border-t">
+          <td class="px-4 py-3"><a href="#" data-go="1" class="font-medium text-primary">601</a><div class="text-xs text-muted-foreground">2021 Cascadia</div></td>
+          <td class="px-4 py-3"><div class="flex items-center gap-1"><i data-lucide="navigation" class="s14 text-success"></i>I-10 W, Baytown, TX</div><div class="text-xs text-muted-foreground">12 min ago · moving 62 mph · <a href="#" class="underline">Map</a></div></td>
+          <td class="px-4 py-3"><a href="#" data-go="1" class="badge b-stop"><i data-lucide="octagon-alert" class="s14"></i>STOP</a> <span class="badge b-warn">+1</span></td>
+          <td class="px-4 py-3 text-muted-foreground">None</td>
+          <td class="px-4 py-3 text-muted-foreground">New Work Order</td>
+        </tr>
+        <tr class="border-t">
+          <td class="px-4 py-3"><a href="#" class="font-medium text-primary">614</a><div class="text-xs text-muted-foreground">2020 T680</div></td>
+          <td class="px-4 py-3"><div class="flex items-center gap-1"><i data-lucide="map-pin" class="s14 text-muted-foreground"></i>LTL yard, Houston, TX</div><div class="text-xs text-muted-foreground">3 min ago · parked</div></td>
+          <td class="px-4 py-3"><span class="badge b-warn"><i data-lucide="gauge" class="s14"></i>Check engine</span></td>
+          <td class="px-4 py-3"><span class="font-mono text-xs text-primary">WO-1182</span> <span class="badge b-info">In progress</span></td>
+          <td class="px-4 py-3">Assign Jobs</td>
+        </tr>
+        <tr class="border-t">
+          <td class="px-4 py-3"><a href="#" class="font-medium text-primary">622</a><div class="text-xs text-muted-foreground">2022 Cascadia</div></td>
+          <td class="px-4 py-3"><div class="flex items-center gap-1"><i data-lucide="map-pin" class="s14 text-muted-foreground"></i>Laredo, TX</div><div class="text-xs text-muted-foreground">1 h ago · parked</div></td>
+          <td class="px-4 py-3"><span class="badge b-ok"><i data-lucide="check" class="s14"></i>None</span></td>
+          <td class="px-4 py-3 text-muted-foreground">None</td>
+          <td class="px-4 py-3 text-muted-foreground">—</td>
+        </tr>
+        <tr class="border-t">
+          <td class="px-4 py-3"><a href="#" class="font-medium text-primary">630</a><div class="text-xs text-muted-foreground">2019 579</div></td>
+          <td class="px-4 py-3 text-muted-foreground"><div class="flex items-center gap-1"><i data-lucide="wifi-off" class="s14"></i>No Samsara signal</div><div class="text-xs">last seen Oct 9</div></td>
+          <td class="px-4 py-3 text-xs text-muted-foreground">Unknown</td>
+          <td class="px-4 py-3 text-muted-foreground">None</td>
+          <td class="px-4 py-3 text-muted-foreground">—</td>
+        </tr>
+        <tr class="border-t">
+          <td class="px-4 py-3"><a href="#" class="font-medium text-primary">641</a><div class="text-xs text-muted-foreground">2023 T680</div></td>
+          <td class="px-4 py-3 text-muted-foreground"><div class="text-xs">Not paired with Samsara</div></td>
+          <td class="px-4 py-3 text-xs text-muted-foreground">—</td>
+          <td class="px-4 py-3 text-muted-foreground">None</td>
+          <td class="px-4 py-3 text-muted-foreground">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-3 text-xs text-muted-foreground">The list sorts by the worst active fault (STOP, then warning, then check engine). No alert or push: the list is enough (D42).</p>
+</section>
+
+<!-- 2. Truck page · Faults tab -->
+<section class="screen" data-name="Truck · Faults">
+  <p class="mb-1 text-xs text-muted-foreground">Admin · Truck 601 — J15, J18 · HU-M14</p>
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h1 class="flex items-center gap-2 text-2xl font-semibold tracking-tight">Truck 601 <span class="badge b-out">No Work Order</span></h1>
+      <p class="text-sm text-muted-foreground">2021 Freightliner Cascadia · LTL Logistics</p>
+    </div>
+    <button data-go="2" class="flex h-9 items-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"><i data-lucide="plus"></i>New Work Order</button>
+  </div>
+  <div class="mt-4 flex items-center gap-2 rounded-lg border b-stop px-3 py-2 text-sm"><i data-lucide="octagon-alert"></i><span>2 active faults, 1 with the STOP light.</span></div>
+  <div class="mt-4 flex gap-5 border-b text-sm">
+    <span class="pb-2 text-muted-foreground">Overview</span>
+    <span class="pb-2 text-muted-foreground">Costs</span>
+    <span class="-mb-px border-b-2 border-primary pb-2 font-medium text-primary">Faults · 2</span>
+  </div>
+  <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div class="space-y-4">
+      <div class="rounded-xl border bg-card">
+        <div class="flex min-h-12 items-center border-b px-4 py-2.5"><span class="text-base font-semibold">Active</span></div>
+        <div class="divide-y">
+          <div class="px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-2"><span class="badge b-stop">STOP</span><span class="text-xs text-muted-foreground">since Oct 11 · 14 times</span></div>
+            <p class="mt-2 font-medium">Aftertreatment DPF differential pressure — too high</p>
+            <p class="font-mono text-xs text-muted-foreground">J1939 · SPN 3251 · FMI 0 · Engine #1</p>
+            <p class="mt-1 text-xs text-muted-foreground">Recommended Job: DPF cleaning / regen (learned)</p>
+          </div>
+          <div class="px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-2"><span class="badge b-warn">Warning</span><span class="text-xs text-muted-foreground">since Oct 12 · 2 times</span></div>
+            <p class="mt-2 font-medium">Engine coolant level — low</p>
+            <p class="font-mono text-xs text-muted-foreground">J1939 · SPN 111 · FMI 1</p>
+            <p class="mt-1 text-xs text-muted-foreground">New code: the Manager picks the Job the first time</p>
+          </div>
+          <div class="px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-2"><span class="badge b-out">Pending</span><span class="text-xs text-muted-foreground">since today</span></div>
+            <p class="mt-2 font-medium">Evap system — small leak</p>
+            <p class="font-mono text-xs text-muted-foreground">OBD-II · P0456 · pending, not confirmed</p>
+            <p class="mt-1 text-xs text-muted-foreground">Shown here only. Pending codes are not recommended as Jobs.</p>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border bg-card">
+        <div class="flex min-h-12 items-center border-b px-4 py-2.5"><span class="text-base font-semibold">History</span></div>
+        <div class="divide-y text-sm">
+          <div class="flex items-start justify-between gap-3 px-4 py-3"><div><p>Brake air pressure — low <span class="font-mono text-xs text-muted-foreground">SPN 117</span></p><p class="text-xs text-muted-foreground">Fixed in <a href="#" class="font-mono text-primary">WO-1104</a> · cleared Sep 28</p></div><span class="badge b-ok">Fixed</span></div>
+          <div class="flex items-start justify-between gap-3 px-4 py-3"><div><p>Turbo boost — low <span class="font-mono text-xs text-muted-foreground">SPN 102</span></p><p class="text-xs text-muted-foreground">Job done in <a href="#" class="font-mono text-primary">WO-1071</a> Sep 2 · came back Sep 3</p></div><span class="badge b-warn">Came back</span></div>
+          <div class="flex items-start justify-between gap-3 px-4 py-3"><div><p>Fuel rail pressure — low <span class="font-mono text-xs text-muted-foreground">P0087</span></p><p class="text-xs text-muted-foreground">Cleared by itself · Aug 20</p></div><span class="badge b-out">Cleared</span></div>
+          <div class="flex items-start justify-between gap-3 px-4 py-3"><div><p>Seat belt switch <span class="font-mono text-xs text-muted-foreground">SPN 1856</span></p><p class="text-xs text-muted-foreground">Dismissed by Cristian Aug 4: "sensor known bad, part on order"</p></div><span class="badge b-out">Dismissed</span></div>
+        </div>
+      </div>
+    </div>
+    <aside class="h-fit rounded-xl border bg-card">
+      <div class="flex min-h-12 items-center border-b px-4 py-2.5"><span class="text-base font-semibold">Truck</span></div>
+      <dl class="space-y-3 px-4 py-3 text-sm">
+        <div><dt class="text-xs text-muted-foreground">Mileage</dt><dd class="tnum">412,040 mi <span class="text-xs text-muted-foreground">· confirmed at PM, Sep 12</span></dd><dd class="tnum text-xs text-muted-foreground">Samsara 418,612 mi · 12 min ago</dd></div>
+        <div><dt class="text-xs text-muted-foreground">VIN</dt><dd class="font-mono text-xs">3AKJHHDR5MSMN1234</dd></div>
+        <div><dt class="text-xs text-muted-foreground">Company</dt><dd>LTL Logistics</dd></div>
+        <div class="border-t pt-3"><dd class="flex items-start gap-2"><i data-lucide="map-pin" class="mt-0.5"></i><span>I-10 W, Baytown, TX<br><span class="text-xs text-muted-foreground">Samsara · 12 min ago · <a href="#" class="underline">Open map</a></span></span></dd></div>
+      </dl>
+    </aside>
+  </div>
+</section>
+
+<!-- 3. New Work Order: warning only -->
+<section class="screen" data-name="New Work Order">
+  <p class="mb-1 text-xs text-muted-foreground">Admin · New Work Order — D13 stays: the WO starts with the truck only</p>
+  <h1 class="text-2xl font-semibold tracking-tight">New Work Order</h1>
+  <div class="mt-4 max-w-xl space-y-4">
+    <div class="rounded-xl border bg-card p-4">
+      <p class="text-base font-semibold">Truck</p>
+      <div class="mt-2 flex h-9 items-center rounded-md border bg-background px-3 text-sm">601 · 2021 Cascadia</div>
+      <div class="mt-3 flex items-start gap-2 rounded-lg border b-warn px-3 py-2 text-sm"><i data-lucide="triangle-alert" class="mt-0.5"></i><span>This truck has 2 active Samsara faults (1 STOP). You'll see them as recommended Jobs in Add work.</span></div>
+    </div>
+    <div class="rounded-xl border bg-card p-4">
+      <p class="text-base font-semibold">Details</p>
+      <div class="mt-2 flex h-9 items-center rounded-md border bg-background px-3 text-sm">Priority: High</div>
+      <div class="mt-2 h-16 rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">Note (optional)</div>
+    </div>
+    <div class="flex justify-end"><button data-go="3" class="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">Create Work Order</button></div>
+  </div>
+</section>
+
+<!-- 4. Add work: recommended from faults -->
+<section class="screen" data-name="Add work">
+  <p class="mb-1 text-xs text-muted-foreground">Admin · Truck 601 · WO-1190 · Add work — J16 · HU-M15</p>
+  <div class="max-w-2xl rounded-xl border bg-background">
+    <div class="flex min-h-12 items-center justify-between border-b px-4 py-2.5"><span class="text-base font-semibold">Add work</span><i data-lucide="x" class="text-muted-foreground"></i></div>
+    <div class="space-y-4 p-4">
+      <div class="rounded-lg border b-info px-3 py-2">
+        <p class="flex items-center gap-2 text-sm font-medium"><i data-lucide="lightbulb"></i>Recommended from Samsara faults</p>
+        <p class="text-xs">Active on this truck now: STOP, warning and check engine. Pending codes stay on the Faults tab.</p>
+      </div>
+      <div class="divide-y rounded-lg border">
+        <label class="flex items-start gap-3 px-3 py-3">
+          <input type="checkbox" checked class="mt-1 h-4 w-4 accent-[var(--primary)]">
+          <span class="flex-1 text-sm"><span class="font-medium">DPF cleaning / regen</span> <span class="text-muted-foreground">· Engine</span><br><span class="text-xs text-muted-foreground">From <span class="font-mono">SPN 3251 FMI 0</span> · DPF pressure too high · used the last 3 times for this code</span></span>
+          <span class="badge b-stop">STOP</span>
+        </label>
+        <div class="px-3 py-3">
+          <label class="flex items-start gap-3">
+            <input type="checkbox" checked class="mt-1 h-4 w-4 accent-[var(--primary)]">
+            <span class="flex-1 text-sm"><span class="font-medium">Engine coolant level — low</span> <span class="badge b-out ml-1">New code</span><br><span class="text-xs text-muted-foreground">From <span class="font-mono">SPN 111 FMI 1</span> · pick the catalog Job once; next time it comes suggested</span></span>
+            <span class="badge b-warn">Warning</span>
+          </label>
+          <div class="ml-7 mt-2 flex flex-wrap items-center gap-2">
+            <div class="flex h-9 min-w-[240px] flex-1 items-center justify-between rounded-md border bg-background px-3 text-sm"><span>Coolant leak diagnosis</span><i data-lucide="chevron-down" class="text-muted-foreground"></i></div>
+            <span class="text-xs text-muted-foreground">or a custom Job (goes to Custom Jobs to review)</span>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs text-muted-foreground">
+          <span>Not now: the fault stays active and isn't recommended again until it clears and comes back.</span>
+          <button class="rounded-md border px-2 py-1">Dismiss with reason</button>
+        </div>
+      </div>
+      <div>
+        <p class="mb-2 text-xs text-muted-foreground">Or pick from the catalog</p>
+        <div class="flex flex-wrap gap-2"><span class="badge b-out">PM</span><span class="badge b-out">Brakes</span><span class="badge b-out">Engine</span><span class="badge b-out">Tires</span><span class="badge b-out">Electrical</span></div>
+      </div>
+      <div>
+        <p class="mb-2 text-xs text-muted-foreground">Who does it?</p>
+        <div class="flex h-9 items-center justify-between rounded-md border bg-background px-3 text-sm"><span>Luis M.</span><i data-lucide="chevron-down" class="text-muted-foreground"></i></div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 border-t px-4 py-3">
+      <button class="h-9 rounded-md border px-3 text-sm">Cancel</button>
+      <button data-go="4" class="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">Add 2 Jobs</button>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Mechanic: Job with its fault -->
+<section class="screen" data-name="Mechanic Job">
+  <p class="mb-1 text-xs text-muted-foreground">Mechanic (phone) · Your Jobs · Truck 601 — J17 · HU-M15</p>
+  <div class="mx-auto max-w-sm rounded-[28px] border p-3">
+    <div class="rounded-2xl border bg-background p-4">
+      <p class="text-xs text-muted-foreground">Truck 601 · <span class="font-mono">WO-1190</span></p>
+      <p class="mt-1 text-lg font-semibold">DPF cleaning / regen</p>
+      <span class="badge b-out mt-1">To do</span>
+      <div class="mt-4 rounded-lg border bg-sunken p-3 text-sm">
+        <p class="flex items-center gap-2 font-medium"><i data-lucide="cpu"></i>Why: Samsara fault</p>
+        <p class="mt-1">Aftertreatment DPF differential pressure — too high</p>
+        <p class="font-mono text-xs text-muted-foreground">SPN 3251 · FMI 0 · STOP light</p>
+        <p class="text-xs text-muted-foreground">14 times since Oct 11</p>
+      </div>
+      <button class="mt-4 h-11 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground">Start</button>
+      <p class="mt-3 text-xs text-muted-foreground">The mechanic sees only the fault behind their own Job, not the whole Faults tab.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6. After: fixed or came back -->
+<section class="screen" data-name="After the WO">
+  <p class="mb-1 text-xs text-muted-foreground">Admin · Truck 601 · Faults — J18 · 48 h window</p>
+  <div class="grid gap-4 md:grid-cols-2">
+    <div class="rounded-xl border bg-card p-4">
+      <p class="text-sm font-semibold">Samsara stops reporting it</p>
+      <div class="mt-3 flex items-start justify-between gap-3 text-sm"><div><p>DPF differential pressure — too high</p><p class="text-xs text-muted-foreground">Fixed in <span class="font-mono text-primary">WO-1190</span> · cleared Oct 14</p></div><span class="badge b-ok">Fixed</span></div>
+      <p class="mt-3 text-xs text-muted-foreground">The Job was completed and the fault cleared. It moves to History.</p>
+    </div>
+    <div class="rounded-xl border bg-card p-4">
+      <p class="text-sm font-semibold">Samsara reports it again within 48 h</p>
+      <div class="mt-3 flex items-start justify-between gap-3 text-sm"><div><p>DPF differential pressure — too high</p><p class="text-xs text-muted-foreground">Job done in <span class="font-mono text-primary">WO-1190</span> Oct 14 · came back Oct 15</p></div><span class="badge b-warn">Came back</span></div>
+      <p class="mt-3 text-xs text-muted-foreground">Back to Active and recommended again in Add work, marked "Came back after WO-1190".</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7. PM: Samsara reference -->
+<section class="screen" data-name="PM mileage">
+  <p class="mb-1 text-xs text-muted-foreground">Mechanic PM (phone) · PM service — J19 · D35</p>
+  <div class="mx-auto max-w-sm rounded-[28px] border p-3">
+    <div class="rounded-2xl border bg-background p-4">
+      <p class="text-lg font-semibold">PM · Truck 601</p>
+      <label class="mt-4 block text-sm font-medium">Mileage on the dashboard</label>
+      <div class="mt-1 flex h-11 items-center rounded-md border bg-background px-3 text-sm text-muted-foreground">Type what the dashboard shows</div>
+      <p class="mt-1 text-xs text-muted-foreground">Samsara says 418,612 mi (12 min ago). Not filled in for you.</p>
+      <div class="mt-3 flex items-start gap-2 rounded-lg border b-warn px-3 py-2 text-xs"><i data-lucide="triangle-alert" class="s14 mt-0.5"></i><span>If you type 411,900 it differs from Samsara by 6,712 mi. Check the dashboard. You can still save.</span></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+  const screens = [...document.querySelectorAll('.screen')];
+  const nav = document.getElementById('nav');
+  function show(i) {
+    screens.forEach((s, j) => s.classList.toggle('on', j === i));
+    [...nav.children].forEach((b, j) => {
+      b.className = 'rounded-md px-2 py-1 ' + (j === i ? 'bg-accent font-medium text-primary' : 'text-muted-foreground');
+    });
+    try { localStorage.setItem('samsara-mockup-screen', i); } catch (e) {}
+    window.scrollTo(0, 0);
+  }
+  screens.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.textContent = `${i + 1}. ${s.dataset.name}`;
+    b.onclick = () => show(i);
+    nav.appendChild(b);
+  });
+  document.querySelectorAll('[data-go]').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); show(Number(el.dataset.go)); }));
+  document.getElementById('theme').onclick = (e) => {
+    const dark = document.documentElement.classList.toggle('dark');
+    e.target.textContent = dark ? 'Light' : 'Dark';
+  };
+  let start = 0;
+  try { start = Number(localStorage.getItem('samsara-mockup-screen')) || 0; } catch (e) {}
+  show(Math.min(start, screens.length - 1));
+  lucide.createIcons();
+</script>
+</body>
+</html>

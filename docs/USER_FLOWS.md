@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-05 (LTR-188: HU-M10 ayudante y HU-M11 taller externo construidos; auditoría LTR-174 + cuestionario de operación)
+**Actualizado:** 2026-10-13 (D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -49,6 +49,11 @@ respuestas confirman lo construido y 7 muestran huecos (sección 7).
 | J12 | Manager | entra un camión o un mecánico nuevo | darlo de alta yo mismo en la app | no depender de nadie para empezar a trabajar |
 | J13 | Manager | compro partes o pago una reparación afuera | cargarla con su factura y asignarla al camión | saber cuánto cuesta cada camión y, después, cobrarle a Finanzas lo que hace el taller |
 | J14 | Manager | cierro el mes | mandarle a Finanzas lo que el taller hizo por cada camión (partes, talleres externos y mano de obra) | que el taller cobre su trabajo sin armar la cuenta a mano |
+| J15 | Manager | reviso la flota | ver dónde está cada camión y cuáles traen fallas graves (Samsara) | decidir qué camión llamo al taller primero |
+| J16 | Manager | planeo el trabajo de un camión | que sus fallas activas me aparezcan como Jobs sugeridos | no olvidar reparar lo que el camión ya reportó |
+| J17 | Mecánico | trabajo un Job que vino de una falla | ver el código y qué significa | diagnosticar sin buscar en otro sistema |
+| J18 | Manager | se terminó el trabajo de una falla | saber si la falla se fue o volvió | no dar por reparado algo que sigue fallando |
+| J19 | Mecánico PM | anoto las millas del tablero | ver lo que dice Samsara como referencia | detectar un tablero o un sensor mal |
 
 Cada historia se puede recorrer con el **modo demo local** (D36, [`reference/DEMO.md`](reference/DEMO.md)): el panel cambia de cuenta sin cerrar sesión y guía cada HU paso a paso; el **Demo flow** encadena los pasos de las HU en 14 capítulos (un día del taller). En el panel las historias se muestran con títulos en lenguaje de usuario y agrupadas por quién las hace; el guion vive en `apps/web/src/lib/demo/scripts.ts` y usa estos mismos ids (J y HU) como clave: mantenerlos estables.
 
@@ -600,6 +605,56 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Cierra el mes con varios camiones | "Month close" lista cada camión con lo sin cobrar y su factura; "Create drafts for all" arma los que faltan y no repite los que ya tienen factura (D37) | ✅ | A81 |
 | Un mecánico o Safety intenta ver la tarifa o las facturas | No puede (403) | ✅ | A75 |
 
+### HU-M14 · Ver la flota con ubicación y fallas de Samsara (J15, J19) — 🔲 decidido, no construido (D35, D42; LTR-202)
+
+**Quién:** el Manager (y el System Admin). El mecánico PM ve solo la referencia de millas.
+
+**Función:** cada 15–30 min la app lee de Samsara millas, ubicación y fallas de todos los camiones; el Manager los ve sin salir de la app. Maqueta: [`proposals/samsara-trucks/mockup.html`](proposals/samsara-trucks/mockup.html), pantallas 1, 2 y 7.
+
+**Flujo**
+1. **Trucks:** cada camión muestra "Last location · Samsara" (dirección, hace cuánto, en movimiento o estacionado, link al mapa) y "Faults" (peor severidad y cuántas más). Filtro "With faults"; orden por severidad.
+2. Toca el badge de fallas: abre el camión en la pestaña **Faults**. Arriba, banner "2 active faults, 1 with the STOP light".
+3. **Faults:** activas (severidad, descripción, código SPN/FMI o DTC, desde cuándo, cuántas veces, qué Job se recomendará) e historial (Fixed in WO-x, Came back, Cleared, Dismissed).
+4. En el panel Truck: millas confirmadas en el PM y, debajo, "Samsara 418,612 mi · hace 12 min"; ubicación de Samsara con link al mapa.
+5. **PM:** bajo el campo de millas, "Samsara says…" como referencia; el campo no se precarga. Si difiere mucho, aviso que no bloquea (D35, umbral en P12).
+
+**Resultado:** el Manager decide qué camión llamar al taller mirando una lista. No hay alerta: basta con la lista (D42).
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| Samsara no tiene señal del camión | "No Samsara signal · last seen…"; fallas "Unknown" | 🔲 | — |
+| El camión no está emparejado con Samsara | "Not paired with Samsara"; aparece en la lista de sin emparejar de Integrations | 🔲 | — |
+| La sincronización corre dos veces | No duplica nada; nunca cambia las millas oficiales | 🔲 | — |
+| La falla es *pending* (OBD-II) | Se ve en Faults como "Pending"; no se recomienda como Job | 🔲 | — |
+| Un mecánico abre el camión | No ve la pestaña Faults (como Costs); ve la falla solo dentro de su Job (HU-M15) | 🔲 | — |
+
+### HU-M15 · Convertir fallas de Samsara en trabajo (J16, J17, J18) — 🔲 decidido, no construido (D42; LTR-202)
+
+**Quién:** el Manager. El mecánico ve la falla en su Job.
+
+**Función:** las fallas activas de un camión se recomiendan como Jobs en **Add work**; el Job queda ligado a la falla y, al terminar, se sabe si la falla se fue o volvió. Maqueta: pantallas 3–6.
+
+**Flujo**
+1. En **Trucks** ve el badge STOP del 601 y abre su pestaña Faults.
+2. **New Work Order:** la pantalla avisa "This truck has 2 active Samsara faults"; la WO nace solo con el camión (D13).
+3. **Add work:** arriba, "Recommended from Samsara faults", cada falla STOP / warning / check engine con su Job **marcado**. Si el código ya se vio, viene con el Job que se usó la última vez; si es nuevo, elige el Job del catálogo (o escribe uno personalizado).
+4. Elige quién lo hace y toca **Add 2 Jobs**. Cada Job queda ligado a su falla; la falla dice "In WO-1190" y deja de recomendarse.
+5. El mecánico abre el Job y ve "Why: Samsara fault" con descripción, código, luz y veces.
+6. Completado el Job: si Samsara deja de reportar la falla, el historial dice **Fixed in WO-1190**; si la reporta otra vez **dentro de 48 h**, **Came back** y vuelve a recomendarse.
+
+**Resultado:** ninguna falla que el camión ya reportó se pierde al planear su trabajo, y el Manager sabe si la reparación sirvió.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| El camión ya tiene una WO abierta y aparece una falla nueva | Se recomienda en Add work de esa WO; la ficha muestra el banner | 🔲 | — |
+| Dos fallas piden el mismo Job | Se crea un solo Job, ligado a las dos | 🔲 | — |
+| La falla se cierra sola antes de entrar al taller | Sale de recomendados; historial "Cleared" | 🔲 | — |
+| El Manager no quiere hacerla ahora | "Dismiss with reason": guarda razón y quién; no se recomienda hasta que se cierre y reaparezca | 🔲 | — |
+| El Job sugerido por el código no es el correcto | Lo cambia antes de agregar; el nuevo reemplaza al aprendido | 🔲 | — |
+| Escribe un Job personalizado para un código nuevo | Entra a la bandeja de Custom Jobs to review como cualquier otro (LTR-57) | 🔲 | — |
+| Cancelan el Job ligado | La falla vuelve a recomendarse si sigue activa | 🔲 | — |
+| La falla vuelve 3 días después del Job | Pasaron más de 48 h: es una falla nueva, sin "Came back" | 🔲 | — |
+
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 
 **Flujo**
@@ -688,3 +743,4 @@ una historia:
 | ~~G7~~ | El reloj corre en un solo camión a la vez — **hecho (D21, HU-ME6, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | ~~G3, G4~~ | Ayudante en un Job y taller externo — **hechos (D23, D24, HU-M10, HU-M11, 2026-10-05)** | Manager | LTR-188 |
 | G6 | Trailers — después de salir en vivo (P11) | Manager | LTR-56 |
+| G8 | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — decidido (D35, D42, HU-M14, HU-M15), falta P12 | Manager, mecánico | LTR-202 |
