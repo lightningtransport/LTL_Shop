@@ -15,11 +15,13 @@ const here = (path) => fileURLToPath(new URL(path, import.meta.url));
 const OUT = here('./out/');
 mkdirSync(OUT, { recursive: true });
 const shots = JSON.parse(readFileSync(here('./shots/shots.json'), 'utf8'));
+// Inlined, not an <img>: only then can its CSS animations be seeked frame by frame.
+const loaderSvg = readFileSync(here('../../public/lightning-loader.svg'), 'utf8');
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
 await page.goto(pathToFileURL(here('./video.html')).href);
-await page.evaluate((s) => build(s), shots);
+await page.evaluate(([s, svg]) => build(s, svg), [shots, loaderSvg]);
 const { FPS, DURATION } = await page.evaluate(() => window.VIDEO);
 
 async function frameAt(seconds, options = {}) {
@@ -48,7 +50,7 @@ if (args.stills) {
   ffmpeg.stdin.end();
   await done;
   // The poster is the intro title, for a <video poster> or a link preview.
-  await frameAt(1.6, { path: `${OUT}poster.jpg`, type: 'jpeg', quality: 90 });
+  await frameAt(5, { path: `${OUT}poster.jpg`, type: 'jpeg', quality: 90 });
   console.log(`\r${file}`);
 }
 await browser.close();

@@ -220,15 +220,15 @@ Algunas visitas de la historia tienen Jobs que no están en el catálogo, escrit
   Los números son `SHOP-AAAA-NNNN`. El PDF se descarga desde la factura.
 
 ## Video de introducción
-Un video de 35 s, "A day at the shop", para mostrar antes de entrar al link de la demo (D39). Tiene 11 escenas en el orden del Demo flow, de 6:00 AM a 5:00 PM: Dashboard, Yard, nueva Work Order, el mecánico en su teléfono, un blocker, PM, Quality Check, Ready to Go, costos por camión, Month close, y People con las horas del taller. Cada escena lleva título y rol. Está en 1080p, sin audio, y usa pantallas reales de esta demo.
+Un video de 44 s, "A day at the shop", para mostrar antes de entrar al link de la demo (D39). Abre con el loader de Lightning dibujando el logo y la promesa "Every truck. Every mechanic. Every dollar. One app.". Siguen 8 escenas en el orden del Demo flow, de 8:00 AM a 4:45 PM: Dashboard, Yard, el mecánico en su teléfono, un blocker, Quality Check, Ready to Go, costos por camión y Month close. Cada escena lleva rol y un título que dice lo que gana el taller, y dura unos 4.3 s para que se alcance a leer. Está en 1080p, sin audio, y usa pantallas reales de esta demo.
 
 Se rehace con un comando, con la demo levantada: `DEMO_VIDEO_BASE_URL=http://localhost:3042 npm run demo:video --workspace=@ltl-shop/web`. El resultado sale en `apps/web/e2e/demo-video/out/`. Los detalles y cómo cambiar textos u orden están en `apps/web/e2e/demo-video/README.md`.
 
 ### Landing de la demo
 
-**https://ltl-shop-landing.vercel.app** es la página que se manda antes de la demo. Primero se ve el video en autoplay. Abajo vienen el día del taller de 8:00 AM a 5:00 PM con lo que hace cada rol, los cinco roles con sus nombres del producto (Shop Manager, Mechanic, PM Mechanic, Safety, System Admin), "Coming next", los 4 pasos para entrar y el botón **Open the demo**. Está en inglés. "Coming next" anuncia Samsara (D35: ubicación, fallas, millaje) y las facturas de proveedores que llegan por correo y se cargan solas; esto último lo pidió el dueño el 2026-10-12 y todavía no tiene diseño.
+**https://ltl-shop-landing.vercel.app** es la página que se manda antes de la demo. Primero se ve el video en autoplay. Abajo vienen las funciones en tarjetas con pedazos de pantalla de la app, el día del taller de 8:00 AM a 5:00 PM, los cinco roles con sus nombres del producto (Shop Manager, Mechanic, PM Mechanic, Safety, System Admin), "Coming next", los 4 pasos para entrar, preguntas frecuentes y el botón **Open the demo**. Está en inglés, con letra Geist. "Coming next" anuncia Samsara (D35: ubicación, fallas, millaje) y las facturas de proveedores que llegan por correo y se cargan solas; esto último lo pidió el dueño el 2026-10-12 y todavía no tiene diseño. Los montos de la factura y el código de falla de las tarjetas son de ejemplo.
 
-Es HTML estático en `apps/landing/`, con su propio proyecto Vercel `ltl-shop-landing`. Producción y la demo no se tocan. La URL de la demo se pone en un solo lugar, `apps/landing/config.js`, y después se redespliega. Mientras está vacía, el botón dice "Demo link coming soon". La clave **no** aparece en el landing: se manda aparte (D39). Para cambiar el video o volver a desplegar, ver `apps/landing/README.md`.
+Es HTML estático en `apps/landing/`, con su propio proyecto Vercel `ltl-shop-landing`. Producción y la demo no se tocan. La URL de la demo se pone en un solo lugar, `apps/landing/config.js`, y después se redespliega. Hoy apunta a https://ltl-shop-demo-web.vercel.app; si se deja vacía, el botón dice "Demo link coming soon". La clave **no** aparece en el landing: se manda aparte (D39). Para cambiar el video o volver a desplegar, ver `apps/landing/README.md`.
 
 ## Demo publicada (D39, DP3)
 
