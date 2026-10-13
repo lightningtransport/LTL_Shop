@@ -2,214 +2,384 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lightning Shop · A day at the shop</title>
-  <meta name="description" content="Lightning Shop runs the work on every truck, from the first truck in to the month close. Watch a day at the shop, then try the demo yourself." />
-  <meta property="og:title" content="Lightning Shop · A day at the shop" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Lightning Shop</title>
+  <meta name="description" content="Lightning Shop follows every truck from the moment it arrives until it is back on the road. Watch a day at the shop, then try the demo." />
+  <meta property="og:title" content="Lightning Shop" />
   <meta property="og:description" content="Every truck. Every mechanic. Every dollar. One app." />
   <meta property="og:image" content="/media/poster.jpg" />
   <meta property="og:type" content="website" />
-  <meta name="theme-color" content="#0a7fc9" />
+  <meta name="theme-color" content="#0a74c2" />
   <link rel="icon" type="image/png" sizes="32x32" href="/media/favicon-32.png" />
   <link rel="apple-touch-icon" href="/media/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
-  <link rel="preload" as="image" href="/media/poster.jpg" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="wrap topbar-inner">
-      <a class="brand" href="/" aria-label="Lightning Shop home">
-        <img src="/media/ltl-logo.png" alt="Lightning Transport" width="96" height="56" />
+  <!-- Icons (lucide-style strokes) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+      <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/></symbol>
+      <symbol id="i-columns" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></symbol>
+      <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+      <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+      <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+      <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="nav-wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="brand" href="/">
+        <img src="/media/ltl-logo.png" alt="Lightning Transport &amp; Logistics" width="70" height="41" />
         <span class="brand-name">Lightning Shop</span>
       </a>
-      <nav class="topnav" aria-label="Sections">
+      <div class="nav-links">
         <a href="#features">Features</a>
+        <a href="#day">The day</a>
         <a href="#roles">Roles</a>
-        <a href="#how">How the demo works</a>
-        <a class="btn btn-primary btn-sm" href="#try">Try the demo</a>
-      </nav>
-    </div>
+        <a href="#next">Coming next</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <a class="btn btn-primary btn-sm" href="#try">Try the demo</a>
+    </nav>
   </header>
 
   <main>
-    <!-- Hero: the video is the first thing on screen -->
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="glow glow-blue" aria-hidden="true"></div>
-      <div class="glow glow-green" aria-hidden="true"></div>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-bg" aria-hidden="true"></div>
       <div class="wrap hero-inner">
-        <div class="hero-copy">
-          <h1 id="hero-title">A day at the shop, <span class="grad">in one app</span></h1>
-          <p class="lede">Lightning Shop runs the work on every truck, from the first truck in to the month close.</p>
+        <a class="announce" href="#how">
+          <span class="announce-tag">New</span>
+          <span>The demo is open by link</span>
+          <svg class="ico" aria-hidden="true"><use href="#i-arrow"/></svg>
+        </a>
+        <h1>Every truck. Every mechanic.<br class="br-wide" /> <span class="h1-soft">Every dollar. One app.</span></h1>
+        <p class="lede">Lightning Shop follows each truck from the moment it arrives until it is back on the road, and tells you what the work cost.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#try">Try the demo <svg class="ico" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          <a class="btn btn-outline" href="#day">See how a day runs</a>
         </div>
 
-        <figure class="screen">
-          <div class="screen-bar" aria-hidden="true"><i></i><i></i><i></i><span>lightning shop</span></div>
-          <div class="screen-video">
-            <video id="demo-video" autoplay muted loop playsinline preload="auto"
-                   poster="/media/poster.jpg" aria-label="A 44-second tour of a day at the shop">
-              <source src="/media/demo.mp4" type="video/mp4" />
-            </video>
-            <button class="play-overlay" id="play-overlay" type="button" aria-label="Play the video" hidden>
-              <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
-            </button>
+        <figure class="showcase">
+          <div class="showcase-ring">
+            <div class="showcase-frame">
+              <video id="demo-video" autoplay muted loop playsinline preload="auto"
+                     poster="/media/poster.jpg" aria-label="A 44-second tour of a day at the shop, 8:00 AM to 4:45 PM">
+                <source src="/media/demo.mp4" type="video/mp4" />
+              </video>
+              <button class="play-overlay" id="play-overlay" type="button" aria-label="Play the video" hidden>
+                <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>
+              </button>
+            </div>
           </div>
-          <figcaption class="screen-actions">
-            <button class="btn btn-ghost btn-sm" id="video-toggle" type="button">Pause</button>
-            <button class="btn btn-ghost btn-sm" id="video-restart" type="button">Watch from the start</button>
-            <a class="btn btn-primary btn-sm" href="#try">Try it yourself ↓</a>
+          <figcaption class="showcase-bar">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span class="showcase-caption">A day at the shop · 44 s · real screens from the demo</span>
+            <span class="showcase-actions">
+              <button class="chip-btn" id="video-toggle" type="button"><svg class="ico" aria-hidden="true"><use href="#i-pause"/></svg><span>Pause</span></button>
+              <button class="chip-btn" id="video-restart" type="button"><svg class="ico" aria-hidden="true"><use href="#i-rotate"/></svg><span>From the start</span></button>
+            </span>
           </figcaption>
         </figure>
 
-        <ul class="hero-facts" aria-label="At a glance">
-          <li><strong>6:00 AM → 5:00 PM</strong><span>The whole shop day</span></li>
-          <li><strong>5 roles</strong><span>Manager, mechanic, PM, QC, admin</span></li>
-          <li><strong>Phone + desktop</strong><span>Mechanics on the floor, managers at the desk</span></li>
-          <li><strong>English · Español</strong><span>Each person picks their language</span></li>
-        </ul>
+        <dl class="stats">
+          <div><dt>Shop day</dt><dd>8:00 AM – 5:00 PM</dd></div>
+          <div><dt>Roles</dt><dd>5</dd></div>
+          <div><dt>Guided chapters</dt><dd>15</dd></div>
+          <div><dt>Languages</dt><dd>EN · ES</dd></div>
+        </dl>
       </div>
     </section>
 
-    <!-- Features -->
+    <!-- Features bento -->
     <section class="section" id="features" aria-labelledby="features-title">
       <div class="wrap">
-        <div class="section-head">
-          <h2 id="features-title">Everything the shop does, in one place</h2>
-          <p>Built with the shop floor, for the questions people ask every day: what needs me now, where is every truck, can it leave, what did it cost.</p>
-        </div>
+        <header class="section-head">
+          <span class="kicker">Features</span>
+          <h2 id="features-title">The whole shop, from arrival to invoice</h2>
+          <p>Built around the questions the shop asks every day: what needs me now, where is each truck, can it leave, and what did it cost.</p>
+        </header>
 
-        <div class="features">
-          <article class="feature feature-wide">
-            <div class="icon i-blue"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3zm0 8h8v-6H3zm10 0h8V11h-8zm0-18v6h8V3z"/></svg></div>
-            <h3>Dashboard: what needs you now</h3>
-            <p>Four counters and a "Needs you" queue: blocked or paused, ready to close, ready to go, unassigned. Open it and you know what to do next.</p>
+        <div class="bento">
+          <article class="tile tile-a">
+            <div class="tile-copy">
+              <span class="tile-icon"><svg class="ico" aria-hidden="true"><use href="#i-gauge"/></svg></span>
+              <h3>Know what needs you first</h3>
+              <p>Four counts on top and a Needs you list in the order to act on it.</p>
+            </div>
+            <div class="mock mock-dash" aria-hidden="true">
+              <div class="kpis">
+                <div class="kpi kpi-warn"><span>Blocked or paused</span><b>3</b></div>
+                <div class="kpi"><span>Ready to close</span><b>1</b></div>
+                <div class="kpi kpi-ok"><span>Ready to Go</span><b>1</b></div>
+                <div class="kpi"><span>Unassigned</span><b>1</b></div>
+              </div>
+              <div class="rows">
+                <div class="row"><span class="row-truck">Truck 922</span><span class="pill pill-warn">Blocked · Returned by Safety</span><span class="mini-btn">Resolve</span></div>
+                <div class="row"><span class="row-truck">Truck 605</span><span class="pill pill-warn">Waiting for Parts</span><span class="mini-btn">Resolve</span></div>
+                <div class="row"><span class="row-truck">Truck 931</span><span class="pill pill-blue">All 4 Jobs are done</span><span class="mini-btn">Close</span></div>
+              </div>
+            </div>
           </article>
-          <article class="feature feature-wide">
-            <div class="icon i-green"><svg viewBox="0 0 24 24"><path d="M3 4h5v16H3zm6.5 0h5v10h-5zM16 4h5v7h-5z"/></svg></div>
-            <h3>Yard board: where every truck is</h3>
-            <p>A live board from arrival to ready to go. Filter by blocked, leaving soon or out of shop, and move trucks with a drag.</p>
+
+          <article class="tile tile-b">
+            <div class="tile-copy">
+              <span class="tile-icon"><svg class="ico" aria-hidden="true"><use href="#i-columns"/></svg></span>
+              <h3>The whole yard at a glance</h3>
+              <p>Every truck, the step it is in and what is stopping it.</p>
+            </div>
+            <div class="mock mock-yard" aria-hidden="true">
+              <div class="lane"><span class="lane-h">Inspection</span><span class="card-t">601</span></div>
+              <div class="lane"><span class="lane-h">Shop Work</span><span class="card-t">602</span><span class="card-t card-alert">605</span></div>
+              <div class="lane"><span class="lane-h">PM</span><span class="card-t">603</span><span class="card-t">609</span></div>
+            </div>
           </article>
-          <article class="feature">
-            <div class="icon i-blue"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm-1 7V3.5L18.5 9zM8 13h8v2H8zm0 4h5v2H8z"/></svg></div>
-            <h3>Work orders in one step</h3>
-            <p>Truck, priority, a note, and the work is open. Add jobs from the catalog, assign them, pause and close.</p>
+
+          <article class="tile tile-c">
+            <div class="tile-copy">
+              <span class="tile-icon"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg></span>
+              <h3>Mechanics work from the phone</h3>
+              <p>Their own Jobs, a clock, the team queue, notes, and a blocker reported in seconds.</p>
+            </div>
+            <div class="mock mock-phone" aria-hidden="true">
+              <div class="phone">
+                <span class="phone-job">Brake Inspection</span>
+                <span class="phone-truck">Truck 602 · Shop Work</span>
+                <span class="phone-clock">00:42:15</span>
+                <span class="phone-actions"><span class="mini-btn">Pause</span><span class="mini-btn mini-warn">Blocked</span></span>
+              </div>
+            </div>
           </article>
-          <article class="feature">
-            <div class="icon i-green"><svg viewBox="0 0 24 24"><path d="M17 1H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2m0 18H7V5h10z"/></svg></div>
-            <h3>The mechanic's phone</h3>
-            <p>My jobs, a clock that starts and stops the work, the team queue, notes, and a blocker reported in two taps.</p>
+
+          <article class="tile tile-d">
+            <div class="tile-copy">
+              <span class="tile-icon"><svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg></span>
+              <h3>Nothing leaves without Quality Check</h3>
+              <p>Safety approves the truck or sends the Job back with a note.</p>
+            </div>
+            <div class="mock mock-qc" aria-hidden="true">
+              <div class="qc-truck"><span class="row-truck">Truck 609</span><span class="pill pill-blue">Waiting for Quality Check</span></div>
+              <div class="qc-checks"><span><svg class="ico"><use href="#i-check"/></svg>Inspection</span><span><svg class="ico"><use href="#i-check"/></svg>Shop Work</span><span><svg class="ico"><use href="#i-check"/></svg>PM</span></div>
+              <span class="mini-btn mini-ok"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Approve</span>
+              <span class="mini-btn">Return to mechanic</span>
+            </div>
           </article>
-          <article class="feature">
-            <div class="icon i-blue"><svg viewBox="0 0 24 24"><path d="M22.7 19 13.6 9.9c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4"/></svg></div>
-            <h3>Preventive maintenance</h3>
-            <p>PM with mileage and the parts used, on its own lane so it never gets lost behind repairs.</p>
+
+          <article class="tile tile-e">
+            <div class="tile-copy">
+              <span class="tile-icon"><svg class="ico" aria-hidden="true"><use href="#i-receipt"/></svg></span>
+              <h3>Costs per truck, invoices for Finance</h3>
+              <p>Purchases, outside repairs and labor hours per truck. Month close drafts one internal invoice per truck, ready as a PDF.</p>
+            </div>
+            <div class="mock mock-invoice" aria-hidden="true">
+              <div class="inv-head"><span>Internal invoice</span><span class="mono">SHOP-2026-0001</span></div>
+              <div class="inv-line"><span>Parts</span><span class="mono">$1,284.60</span></div>
+              <div class="inv-line"><span>Outside repairs</span><span class="mono">$450.00</span></div>
+              <div class="inv-line"><span>Labor · 6.5 h</span><span class="mono">$617.50</span></div>
+              <div class="inv-total"><span>Truck 931 · October</span><span class="mono">$2,352.10</span></div>
+            </div>
           </article>
-          <article class="feature">
-            <div class="icon i-green"><svg viewBox="0 0 24 24"><path d="M12 1 3 5v6c0 5.6 3.8 10.7 9 12 5.2-1.3 9-6.4 9-12V5zm-2 16-4-4 1.4-1.4 2.6 2.6 6.6-6.6L18 9z"/></svg></div>
-            <h3>Quality check</h3>
-            <p>Safety takes the truck, approves it or sends it back with a note. Nothing leaves without a check.</p>
-          </article>
-          <article class="feature">
-            <div class="icon i-blue"><svg viewBox="0 0 24 24"><path d="M20 8h-3V4H3a2 2 0 0 0-2 2v11h2a3 3 0 0 0 6 0h6a3 3 0 0 0 6 0h2v-5zM6 18.5A1.5 1.5 0 1 1 6 15.5a1.5 1.5 0 0 1 0 3m13.5-9 2 2.5H17V9.5zM18 18.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3"/></svg></div>
-            <h3>The truck: can it leave?</h3>
-            <p>One page per truck with what is stopping it, its history and what it has cost, job by job.</p>
-          </article>
-          <article class="feature">
-            <div class="icon i-green"><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4M1 2v2h2l3.6 7.6L5.2 14c-.1.3-.2.6-.2 1a2 2 0 0 0 2 2h12v-2H7.4a.25.25 0 0 1-.2-.4l.9-1.6h7.4c.8 0 1.4-.4 1.7-1l3.6-6.5A1 1 0 0 0 20 4H5.2l-.9-2zm16 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/></svg></div>
-            <h3>Parts &amp; costs</h3>
-            <p>Purchases, outside repairs, vendors and the labor rate, each tied to the truck and the work order it belongs to.</p>
-          </article>
-          <article class="feature">
-            <div class="icon i-blue"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m0 16H5V8h14zM7 10h5v5H7z"/></svg></div>
-            <h3>Month close</h3>
-            <p>Every truck with costs to bill, drafts made in one click, internal invoices sent to Finance as a PDF.</p>
-          </article>
-          <article class="feature">
-            <div class="icon i-green"><svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6m0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13m8 0c-.3 0-.6 0-1 .1 1.2.8 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5"/></svg></div>
-            <h3>People and shop hours</h3>
-            <p>Add staff with a temporary password, set the team for each step and the hours the day closes on its own.</p>
-          </article>
-          <article class="feature">
-            <div class="icon i-blue"><svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m0 12h-4a3 3 0 0 1-6 0H5V5h14z"/></svg></div>
-            <h3>Custom jobs inbox</h3>
-            <p>When a mechanic writes a job that isn't in the catalog, it lands here to link, add or leave as is.</p>
+
+          <article class="tile tile-f">
+            <div class="tile-copy">
+              <span class="tile-icon"><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg></span>
+              <h3>The day closes on its own</h3>
+              <p>At 5:00 PM the app stops any clock still running. Mechanics tap Continue the next morning.</p>
+            </div>
           </article>
         </div>
+      </div>
+    </section>
+
+    <!-- The day -->
+    <section class="section section-tint" id="day" aria-labelledby="day-title">
+      <div class="wrap split">
+        <header class="section-head section-head-left">
+          <span class="kicker">The day</span>
+          <h2 id="day-title">How a shop day runs in the app</h2>
+          <p>The shop works Monday to Friday, 8:00 AM to 5:00 PM. This is who does what along the way.</p>
+        </header>
+
+        <ol class="timeline">
+          <li><time>8:00 AM</time><div><span class="who">Shop Manager</span><h3>Checks the dashboard</h3><p>Blocked, ready to close, ready to go and unassigned, in order.</p></div></li>
+          <li><time>8:20 AM</time><div><span class="who">Shop Manager</span><h3>Opens a Work Order</h3><p>Truck, priority and a note. Jobs from the Job Catalog, assigned to a mechanic or a team.</p></div></li>
+          <li><time>8:30 AM</time><div><span class="who">Mechanic</span><h3>Starts the clock on a Job</h3><p>From the phone. A Job that is not in the catalog goes to the Shop Manager to review.</p></div></li>
+          <li><time>10:00 AM</time><div><span class="who">Mechanic → Shop Manager</span><h3>Reports a blocker</h3><p>Waiting for parts or approval. The Shop Manager resolves it in one tap.</p></div></li>
+          <li><time>11:00 AM</time><div><span class="who">PM Mechanic</span><h3>Does preventive maintenance</h3><p>Records the mileage and the parts used.</p></div></li>
+          <li><time>1:00 PM</time><div><span class="who">Safety</span><h3>Runs Quality Check</h3><p>Approves the truck or sends the Job back with a note.</p></div></li>
+          <li><time>2:30 PM</time><div><span class="who">Shop Manager</span><h3>Closes the Work Order</h3><p>The truck is Ready to Go until Return to Service.</p></div></li>
+          <li><time>4:45 PM</time><div><span class="who">Shop Manager</span><h3>Closes the month for Finance</h3><p>One internal invoice per truck. Costs not billed carry over.</p></div></li>
+          <li><time>5:00 PM</time><div><span class="who">Automatic</span><h3>Day close</h3><p>Any clock still running stops.</p></div></li>
+        </ol>
       </div>
     </section>
 
     <!-- Roles -->
-    <section class="section section-tint" id="roles" aria-labelledby="roles-title">
+    <section class="section" id="roles" aria-labelledby="roles-title">
       <div class="wrap">
-        <div class="section-head">
-          <h2 id="roles-title">One shop, five ways to see it</h2>
-          <p>In the demo you can switch between them at any moment, without signing out.</p>
+        <header class="section-head">
+          <span class="kicker">Roles</span>
+          <h2 id="roles-title">Five roles, one shop</h2>
+          <p>Each person sees the screens they need, in English or Spanish.</p>
+        </header>
+
+        <div class="roles">
+          <article class="role">
+            <div class="role-top"><span class="avatar">SM</span><span class="device"><svg class="ico" aria-hidden="true"><use href="#i-monitor"/></svg>Computer</span></div>
+            <h3>Shop Manager</h3>
+            <p>Opens and assigns the work, resolves blockers, closes Work Orders, keeps Parts &amp; costs and closes the month.</p>
+          </article>
+          <article class="role">
+            <div class="role-top"><span class="avatar avatar-green">M</span><span class="device"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg>Phone</span></div>
+            <h3>Mechanic</h3>
+            <p>Works their Jobs with a clock, takes Jobs from the team queue and reports blockers. Some own a step, like alignment or detailing.</p>
+          </article>
+          <article class="role">
+            <div class="role-top"><span class="avatar">PM</span><span class="device"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg>Phone</span></div>
+            <h3>PM Mechanic</h3>
+            <p>Does preventive maintenance and records mileage and parts.</p>
+          </article>
+          <article class="role">
+            <div class="role-top"><span class="avatar avatar-green">S</span><span class="device"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg>Phone</span></div>
+            <h3>Safety</h3>
+            <p>Runs Quality Check: approves the truck or sends the Job back with a note.</p>
+          </article>
+          <article class="role">
+            <div class="role-top"><span class="avatar">SA</span><span class="device"><svg class="ico" aria-hidden="true"><use href="#i-monitor"/></svg>Computer</span></div>
+            <h3>System Admin</h3>
+            <p>Everything the Shop Manager does, plus people, the Job Catalog, the team for each step and shop hours.</p>
+          </article>
         </div>
-        <ol class="roles">
-          <li><span class="role-badge b-blue">MS</span><div><h3>Shop manager</h3><p>Opens the work, assigns it, unblocks it and closes the month.</p></div></li>
-          <li><span class="role-badge b-green">MG</span><div><h3>Mechanic</h3><p>Works from the phone: jobs, clock, notes and blockers.</p></div></li>
-          <li><span class="role-badge b-blue">PM</span><div><h3>PM mechanic</h3><p>Preventive maintenance with mileage and parts.</p></div></li>
-          <li><span class="role-badge b-green">QC</span><div><h3>Quality check</h3><p>Approves the truck or returns it with a note.</p></div></li>
-          <li><span class="role-badge b-blue">AS</span><div><h3>Admin</h3><p>People, job catalog, shop workflow and hours.</p></div></li>
-        </ol>
       </div>
     </section>
 
-    <!-- How the demo works -->
+    <!-- Coming next -->
+    <section class="section section-tint" id="next" aria-labelledby="next-title">
+      <div class="wrap">
+        <header class="section-head">
+          <span class="kicker">Coming next</span>
+          <h2 id="next-title">What we're building now</h2>
+          <p>In development. Not in the demo yet.</p>
+        </header>
+
+        <div class="next">
+          <article class="next-card">
+            <div class="next-top">
+              <span class="tile-icon"><svg class="ico" aria-hidden="true"><use href="#i-map"/></svg></span>
+              <span class="badge badge-blue">Designed</span>
+            </div>
+            <h3>Samsara on every truck</h3>
+            <ul class="checks">
+              <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Last reported location, with a link to the map</li>
+              <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Fault codes with severity and since when</li>
+              <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Samsara mileage next to the PM reading, with a warning when they disagree</li>
+            </ul>
+            <div class="mock mock-fault" aria-hidden="true">
+              <span class="pill pill-warn">Check engine</span><span class="mono">SPN 3226 · FMI 2</span><span class="muted">since 2 h</span>
+            </div>
+          </article>
+          <article class="next-card">
+            <div class="next-top">
+              <span class="tile-icon"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg></span>
+              <span class="badge badge-green">Planned</span>
+            </div>
+            <h3>Vendor invoices straight from email</h3>
+            <ul class="checks">
+              <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Invoices sent to the shop's email are read and filed in Parts &amp; costs</li>
+              <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Each one lands on the right truck and Work Order, ready to review</li>
+              <li><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>No more typing purchases and outside repairs by hand</li>
+            </ul>
+            <div class="mock mock-fault" aria-hidden="true">
+              <span class="pill pill-blue">Invoice received</span><span class="mono">INV-48213</span><span class="muted">→ Truck 605</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- How to get in -->
     <section class="section" id="how" aria-labelledby="how-title">
       <div class="wrap">
-        <div class="section-head">
-          <h2 id="how-title">How the demo works</h2>
-          <p>A guided day at a truck shop. It takes about 20 minutes start to finish, and you can stop anywhere.</p>
-        </div>
+        <header class="section-head">
+          <span class="kicker">The demo</span>
+          <h2 id="how-title">Four steps to get in</h2>
+          <p>A guided day at the shop in 15 short chapters, about 20 minutes. Stop whenever you want.</p>
+        </header>
+
         <ol class="steps">
-          <li>
-            <span class="step-n">1</span>
-            <h3>Open the demo</h3>
-            <p>Use the button below. It works on a computer or a phone; a computer shows more at once.</p>
-          </li>
-          <li>
-            <span class="step-n">2</span>
-            <h3>Type your access code</h3>
-            <p>The code came to you together with this link. Type it once and press <b>Open the demo</b>. Don't have one? Ask the person who sent you the link.</p>
-          </li>
-          <li>
-            <span class="step-n">3</span>
-            <h3>Press "Start the demo"</h3>
-            <p>You start as the shop manager. A guide darkens the screen and lights up what to tap, step by step, across 15 chapters: from the first truck in to the month close.</p>
-          </li>
-          <li>
-            <span class="step-n">4</span>
-            <h3>Switch roles anytime</h3>
-            <p>From the Demo panel, become the mechanic, PM, quality check or admin and see the same truck from their side.</p>
-          </li>
+          <li><span class="step-n">1</span><h3>Open the demo</h3><p>Use the button below. A computer shows more at once, but a phone works too.</p></li>
+          <li><span class="step-n">2</span><h3>Type your access code</h3><p>You received it with this link. Then select <b>Open the demo</b>.</p></li>
+          <li><span class="step-n">3</span><h3>Select Start the demo</h3><p>You start as the Shop Manager. Each step highlights what to tap.</p></li>
+          <li><span class="step-n">4</span><h3>Switch roles</h3><p>Use the Demo panel to see the same truck as a Mechanic, Safety or the System Admin.</p></li>
         </ol>
-        <p class="note">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20m1 15h-2v-6h2zm0-8h-2V7h2z"/></svg>
-          The data is made up and everyone shares it. It resets every night, so feel free to try anything.
-        </p>
       </div>
     </section>
 
-    <!-- Final CTA -->
-    <section class="cta" id="try" aria-labelledby="try-title">
-      <div class="glow glow-blue" aria-hidden="true"></div>
-      <div class="glow glow-green" aria-hidden="true"></div>
-      <div class="wrap cta-inner">
-        <h2 id="try-title">Now try it yourself</h2>
-        <p>Have your access code at hand. Then pick up where the video left off.</p>
-        <a class="btn btn-primary btn-lg" id="demo-cta" href="#" target="_blank" rel="noopener">Open the demo →</a>
-        <p class="cta-hint" id="demo-hint">Opens in a new tab. You'll be asked for the access code first.</p>
+    <!-- FAQ -->
+    <section class="section section-tint" id="faq" aria-labelledby="faq-title">
+      <div class="wrap faq-wrap">
+        <header class="section-head section-head-left">
+          <span class="kicker">FAQ</span>
+          <h2 id="faq-title">Before you start</h2>
+        </header>
+        <div class="faq">
+          <details>
+            <summary>Where do I get the access code?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <p>It comes with the link, from the person who sent it to you. If you don't have it, ask them.</p>
+          </details>
+          <details>
+            <summary>Is the data real?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <p>No. The trucks, people and costs are made up. Everyone with the link shares the same data, and it resets every night.</p>
+          </details>
+          <details>
+            <summary>Can I break something?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <p>No. Try anything: open, block, approve, close. The next morning the demo starts clean.</p>
+          </details>
+          <details>
+            <summary>Do I need to create an account?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <p>No. With the access code you go straight in, and you switch between roles from the Demo panel.</p>
+          </details>
+          <details>
+            <summary>Does it work on a phone?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <p>Yes. Mechanics and Safety use the app on their phone every day. The Shop Manager screens are easier on a computer.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section cta-section" id="try" aria-labelledby="try-title">
+      <div class="wrap">
+        <div class="cta">
+          <div class="cta-grid" aria-hidden="true"></div>
+          <div class="cta-content">
+            <h2 id="try-title">Run the shop for a day</h2>
+            <p>Have your access code ready. The demo opens in a new tab.</p>
+            <a class="btn btn-primary btn-lg" id="demo-cta" href="#" target="_blank" rel="noopener">Open the demo <svg class="ico" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+            <p class="cta-hint" id="demo-hint">You'll be asked for the access code first.</p>
+          </div>
+        </div>
       </div>
     </section>
   </main>
 
   <footer class="footer">
     <div class="wrap footer-inner">
-      <img src="/media/ltl-logo.png" alt="Lightning Transport &amp; Logistics" width="72" height="42" />
-      <span>Lightning Shop · built for the Lightning Transport shop</span>
+      <span class="brand brand-footer"><img src="/media/ltl-logo.png" alt="" width="56" height="33" /><span>Lightning Shop</span></span>
+      <span class="footer-note">The shop app of Lightning Transport &amp; Logistics</span>
     </div>
   </footer>
 

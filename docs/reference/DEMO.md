@@ -241,9 +241,9 @@ Se rehace con un comando, con la demo levantada: `DEMO_VIDEO_BASE_URL=http://loc
 
 ### Landing de la demo
 
-**https://ltl-shop-landing.vercel.app** es la página que se manda antes de la demo. Primero se ve el video en autoplay. Abajo vienen las funciones del Shop, los cinco roles, "How the demo works" en 4 pasos y el botón **Open the demo**. Está en inglés.
+**https://ltl-shop-landing.vercel.app** es la página que se manda antes de la demo. Primero se ve el video en autoplay. Abajo vienen las funciones en tarjetas con pedazos de pantalla de la app, el día del taller de 8:00 AM a 5:00 PM, los cinco roles con sus nombres del producto (Shop Manager, Mechanic, PM Mechanic, Safety, System Admin), "Coming next", los 4 pasos para entrar, preguntas frecuentes y el botón **Open the demo**. Está en inglés, con letra Geist. "Coming next" anuncia Samsara (D35: ubicación, fallas, millaje) y las facturas de proveedores que llegan por correo y se cargan solas; esto último lo pidió el dueño el 2026-10-12 y todavía no tiene diseño. Los montos de la factura y el código de falla de las tarjetas son de ejemplo.
 
-Es HTML estático en `apps/landing/`, con su propio proyecto Vercel `ltl-shop-landing`. Producción y la demo no se tocan. La URL de la demo se pone en un solo lugar, `apps/landing/config.js`, y después se redespliega. Mientras está vacía, el botón dice "Demo link coming soon". La clave **no** aparece en el landing: se manda aparte (D39). Para cambiar el video o volver a desplegar, ver `apps/landing/README.md`.
+Es HTML estático en `apps/landing/`, con su propio proyecto Vercel `ltl-shop-landing`. Producción y la demo no se tocan. La URL de la demo se pone en un solo lugar, `apps/landing/config.js`, y después se redespliega. Hoy apunta a https://ltl-shop-demo-web.vercel.app; si se deja vacía, el botón dice "Demo link coming soon". La clave **no** aparece en el landing: se manda aparte (D39). Para cambiar el video o volver a desplegar, ver `apps/landing/README.md`.
 
 ## Demo publicada (D39, DP3)
 
@@ -260,6 +260,8 @@ La misma demo, en internet, para mandar por link. Vive en proyectos **aparte** d
    - secret `DEMO_DATABASE_URL` = la cadena del pooler;
    - variable `DEMO_SUPABASE_REF` = el ref.
 3. **Actions → Demo reset → Run workflow:** migra, siembra y arma la demo en esa base. Después corre solo cada día a las 5:15 AM (hora del Este).
+Los pasos 4 y 5 los hace `scripts/setup-demo-vercel.sh`: crea `ltl-shop-demo-api` y `ltl-shop-demo-web` y los despliega. Pide sin mostrarlos `DATABASE_URL`, `DIRECT_URL` y la clave.
+
 4. **Vercel, proyecto API demo** (raíz `apps/api`, mismo repo, rama `main`). Variables:
 
    | Variable | Valor |
