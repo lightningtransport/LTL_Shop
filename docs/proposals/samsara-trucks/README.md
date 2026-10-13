@@ -19,14 +19,14 @@ El Manager da de alta, edita y desactiva camiones desde Admin, como hoy hace con
 
 ### Paso 2 — Datos de Samsara (sincronización automática)
 **Decidido por el dueño (D35):**
-1. **Millaje: dos valores.** El oficial lo sigue fijando el mecánico en el PM con el tablero físico (D10 igual). La lectura de Samsara se guarda aparte y se muestra como referencia ("Samsara: 412,300 mi · hace 2 h"). En el PM el campo **no se precarga**; si la diferencia pasa de un umbral, aviso suave que no bloquea.
+1. **Millaje: dos valores.** El oficial lo sigue fijando el mecánico en el PM con el tablero físico (D10 igual). La lectura de Samsara se guarda aparte y se muestra como referencia ("Samsara: 412,300 mi · hace 2 h"). En el PM el campo **no se precarga**; si la diferencia pasa de **50 mi** (P12), aviso suave que no bloquea.
 2. **Fallas**, en una pestaña **Faults** del camión para el Manager (como Costs): activas arriba (código, descripción, severidad STOP / warning / check engine, desde cuándo), historial abajo. **Ampliado por D42 (2026-10-13):** las fallas se recomiendan como Jobs en Add work y el mecánico ve la falla dentro de su Job (ver "Paso 2b").
 3. **Ubicación:** dirección y hora de Samsara en la ficha, con link al mapa. Sigue siendo informativa; la presencia en el patio por perímetro es LTR-55.
 
 **Decidido (P12, D42, 2026-10-13):** una sincronización **cada 15–30 min** que lee el feed de Vehicle Stats de Samsara (`obdOdometerMeters`/`gpsOdometerMeters`, `gps`, `faultCodes`), **sin webhook** (basta con la lista). La dispara un **workflow programado de GitHub Actions** (como `.github/workflows/demo-reset.yml`) que llama a `POST /api/internal/samsara-sync` con el secreto de cron, porque Vercel Hobby solo permite crons una vez al día. No va en `apps/api/vercel.json`.
 
 **Cómo se construiría (resumen):**
-- Token de Samsara de **solo lectura** como secreto `SAMSARA_API_TOKEN` (solo servidor).
+- Token de Samsara de **solo lectura** como secreto `SAMSARA_API_TOKEN` (solo servidor). **Creado 2026-10-13:** "LTL Shop", solo Read Vehicles y Read Vehicle Statistics (P12); el valor lo tiene el dueño.
 - Emparejar camiones por `samsara_id`, luego VIN, luego número; los que no casan se listan, no se adivinan.
 - Migración: campos `samsara_odometer_*`, `samsara_lat/lng/location_at` en `trucks`; tablas `truck_faults` (abre/actualiza/cierra con `cleared_at`) y `samsara_sync_state` (cursor, última corrida, error). Por Release safety.
 - `POST/GET /api/internal/samsara-sync` con secreto de cron (patrón `day-close.controller.ts`); idempotente; **nunca** escribe `trucks.mileage`.
@@ -95,9 +95,9 @@ API de **solo lectura** con su propia llave revocable, solo los campos que neces
 - Un código "aprendido" mal (el Manager eligió el Job equivocado una vez) se repite: el Job sugerido siempre se puede cambiar y el cambio reemplaza el aprendido.
 - La propuesta de inspección (`proposals/inspection-checklist/`, D41 reservada) también crea Jobs desde hallazgos: al construir, que las dos usen el mismo origen de Job.
 - Vercel Hobby solo permite crons una vez al día. **Resuelto (P12, 2026-10-13):** la sincronización la dispara un workflow programado de **GitHub Actions** cada 15–30 min; Vercel sigue en Hobby.
-- El token lo crea un admin de la cuenta de Samsara.
+- El token ya existe ("LTL Shop"); si se pierde el valor, se regenera en Samsara y se cambia el secreto en Vercel.
 
 ## Preguntas abiertas (en DECISIONS)
-- **P12** Samsara: quién crea el token, umbral de diferencia de millaje. (Sin webhook, D42; la sincronización la dispara GitHub Actions.)
+- ~~**P12**~~ Samsara: **cerrada 2026-10-13** — sin webhook, GitHub Actions dispara la sincronización, token "LTL Shop" de solo lectura creado, aviso de millas a 50 mi.
 - **P13** Alta de camiones en Admin: ¿cuándo?, ¿qué campos de Ninox se conservan?
 - **P14** API para la otra persona: ¿qué datos usa hoy (solo camiones o también estado de WOs)?

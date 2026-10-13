@@ -616,7 +616,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 2. Toca el badge de fallas: abre el camión en la pestaña **Faults**. Arriba, banner "2 active faults, 1 with the STOP light".
 3. **Faults:** activas (severidad, descripción, código SPN/FMI o DTC, desde cuándo, cuántas veces, qué Job se recomendará) e historial (Fixed in WO-x, Came back, Cleared, Dismissed).
 4. En el panel Truck: millas confirmadas en el PM y, debajo, "Samsara 418,612 mi · hace 12 min"; ubicación de Samsara con link al mapa.
-5. **PM:** bajo el campo de millas, "Samsara says…" como referencia; el campo no se precarga. Si difiere mucho, aviso que no bloquea (D35, umbral en P12).
+5. **PM:** bajo el campo de millas, "Samsara says…" como referencia; el campo no se precarga. Si difiere en más de 50 mi, aviso que no bloquea (D35, P12).
 
 **Resultado:** el Manager decide qué camión llamar al taller mirando una lista. No hay alerta: basta con la lista (D42).
 
@@ -743,4 +743,4 @@ una historia:
 | ~~G7~~ | El reloj corre en un solo camión a la vez — **hecho (D21, HU-ME6, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | ~~G3, G4~~ | Ayudante en un Job y taller externo — **hechos (D23, D24, HU-M10, HU-M11, 2026-10-05)** | Manager | LTR-188 |
 | G6 | Trailers — después de salir en vivo (P11) | Manager | LTR-56 |
-| G8 | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — decidido (D35, D42, HU-M14, HU-M15), falta P12 | Manager, mecánico | LTR-202 |
+| G8 | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — decidido (D35, D42, HU-M14, HU-M15; P12 cerrada) | Manager, mecánico | LTR-202 |
