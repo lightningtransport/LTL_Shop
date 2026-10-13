@@ -28,6 +28,7 @@ Abrir `http://127.0.0.1:4458/mockup.html`. Es HTML estático con Tailwind por CD
 El botón **Demo** tiene tres grupos de estados:
 - **Manager en el Truck:** sin empezar, en progreso, con defectos, revisar y guardar, guardada con issues, guardada sin issues.
 - **Mechanic con permiso:** My work con "To inspect", inspeccionando, guardada, y lo que ve el Manager después.
+- **Después de guardar:** agregar defectos, revisar lo agregado y reporte con agregados.
 - **Setup:** Inspection checklist y People con "Can inspect trucks".
 
 ## 2. El flujo
@@ -52,7 +53,10 @@ El botón **Demo** tiene tres grupos de estados:
    - El paso Inspection dice "Issues found · 4 Jobs · quién · cuándo · View report".
    - Si quedó un Job sin dueño, el Next step es el de hoy: "Nobody is assigned to Lights · Assign".
    - La tarjeta **Tires** muestra la lectura y cuánto bajó desde la anterior.
-6. **El reporte guardado no se edita.** Lo que cambie se corrige en la WO.
+6. **Después de guardar (opción 2):** lo guardado no se edita.
+   - **Add defects** (en el paso Inspection, en el reporte y en My work del Mechanic) reabre la hoja solo para marcar defectos nuevos. Lo ya marcado queda bloqueado y las llantas quedan como se anotaron.
+   - Los defectos nuevos crean su Job. Si el Job ya está en la WO, solo se suma la nota.
+   - Para quitar un defecto, se cancela su Job en la WO.
 
 ## 3. Cambios a la hoja en papel
 
@@ -92,8 +96,8 @@ Ver [ENCAJE §6](ENCAJE.md#6-lo-que-choca-y-hay-que-decidir-antes-de-d41).
 |---|---|---|
 | a | D14 se reemplaza: inspecciona el Manager, o un Mechanic con *Can inspect trucks* | **Sí** |
 | b | Excepción a A26: ese Mechanic crea Jobs, pero solo desde la inspección y sin dueño; el Manager los asigna | **Sí** |
-| c | Qué pasa si hay que corregir una inspección ya guardada | **Abierta**: el dueño pidió opciones (ver ENCAJE §6-c) |
+| c | Qué pasa si hay que corregir una inspección ya guardada | **Opción 2: agregar sí, quitar no.** Se puede volver a abrir la hoja (**Add defects**) para marcar más defectos, que crean sus Jobs o suman su nota al Job que ya está. Lo guardado no cambia; para quitar un defecto se cancela su Job en la WO. El reporte muestra "Added later · quién · hora" |
 | d | Dashboard (P3): los dos botones pasan a ser **Start inspection** | **Sí**: siempre se empieza la hoja |
 | — | Nombres de los 7 Jobs nuevos del catálogo | **Sí**, son los que usa el taller |
 
-Cuando se cierre la c, todo esto pasa a **D41** en `docs/DECISIONS.md`.
+Están todas respondidas; cuando se apruebe programar, todo esto pasa a **D41** en `docs/DECISIONS.md`.

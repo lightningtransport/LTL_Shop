@@ -62,7 +62,8 @@
 | No elige quién hace un Job | Queda sin dueño, y el Next step de hoy dice "Nobody is assigned to Lights" (A3) |
 | El truck no tiene WO abierta | Hoy el Next step sin WO es "New Work Order", así que la hoja se abre con la WO ya creada. Si en el futuro se inspecciona antes, guardar con defectos crea la WO (E12) |
 | Cierra la app a mitad de la hoja | El avance sigue en el teléfono (`useLocalDraft`) |
-| Se equivocó después de guardar | La inspección guardada no se edita. Se corrige en la WO (cancelar o agregar Jobs) y el reporte queda como estaba (§6-c) |
+| Encontró algo después de guardar | **Add defects** reabre la hoja solo para agregar. Cada defecto nuevo crea su Job, o suma su nota si el Job ya está en la WO. El reporte lo marca "Added later" (§6-c, opción 2) |
+| Marcó un defecto que no era | Lo guardado no cambia. Se cancela ese Job en la WO, con las reglas de hoy |
 | Cancela la visita y abre otra | La nueva WO empieza con la inspección pendiente, como hoy (A15c) |
 
 **HU-M8 / HU-A2 · Setup.** Se agrega **Inspection checklist**:
@@ -132,7 +133,7 @@ a. **D14 dice "la inspección la hace el Manager"**, y el cuestionario también 
 
 b. **A26: "el Mechanic no agrega Jobs".** Con tu respuesta, un Mechanic con permiso **sí crea Jobs**, pero solo desde la inspección y sin elegir dueño. La propuesta mantiene A26 para todo lo demás.
 
-c. **Editar después de guardar.** *(Abierta: el dueño pidió opciones.)*
+c. **Editar después de guardar.** *(Decidido el 2026-10-13: **opción 2**.)*
    - **El problema:** al guardar, cada defecto ya se volvió un Job de la WO, y un mecánico puede haberlo empezado. Si después alguien cambia un Defect a OK, ¿qué pasa con su Job? ¿Se cancela solo, aunque el mecánico ya le haya cargado tiempo? Y si el Job junta dos defectos (Lights = hazard + brake light) y solo uno pasa a OK, ¿qué se hace?
    - **Opción 1, solo lectura:** el reporte queda como se vio ese día. Lo que haya que corregir se hace en la WO: cancelar un Job o agregar uno con Add work. El error se atrapa antes de guardar, en Review.
    - **Opción 2, agregar sí, quitar no:** se puede reabrir la hoja para marcar **más** defectos, que crean más Jobs. No se puede pasar un Defect a OK; eso se hace cancelando el Job en la WO. El reporte muestra "Added later by X · hora".
