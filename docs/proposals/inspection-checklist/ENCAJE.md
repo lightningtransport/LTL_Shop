@@ -132,7 +132,11 @@ a. **D14 dice "la inspección la hace el Manager"**, y el cuestionario también 
 
 b. **A26: "el Mechanic no agrega Jobs".** Con tu respuesta, un Mechanic con permiso **sí crea Jobs**, pero solo desde la inspección y sin elegir dueño. La propuesta mantiene A26 para todo lo demás.
 
-c. **Editar después de guardar.** Si un Defect se cambia a OK después de guardar, ¿qué pasa con el Job que ya se creó? La propuesta es que la inspección guardada sea de solo lectura y las correcciones se hagan en la WO, como hoy (E13 ya rechaza "No issues found" si hay Shop Work).
+c. **Editar después de guardar.** *(Abierta: el dueño pidió opciones.)*
+   - **El problema:** al guardar, cada defecto ya se volvió un Job de la WO, y un mecánico puede haberlo empezado. Si después alguien cambia un Defect a OK, ¿qué pasa con su Job? ¿Se cancela solo, aunque el mecánico ya le haya cargado tiempo? Y si el Job junta dos defectos (Lights = hazard + brake light) y solo uno pasa a OK, ¿qué se hace?
+   - **Opción 1, solo lectura:** el reporte queda como se vio ese día. Lo que haya que corregir se hace en la WO: cancelar un Job o agregar uno con Add work. El error se atrapa antes de guardar, en Review.
+   - **Opción 2, agregar sí, quitar no:** se puede reabrir la hoja para marcar **más** defectos, que crean más Jobs. No se puede pasar un Defect a OK; eso se hace cancelando el Job en la WO. El reporte muestra "Added later by X · hora".
+   - **Opción 3, editable mientras el Job no haya empezado:** pasar un Defect a OK cancela su Job, si sigue en To do y sin tiempo. Si ya empezó, la app no deja y manda a la WO. Pasar OK a Defect crea el Job. En un Job compartido solo se quita esa nota. El reporte guarda quién cambió qué y cuándo.
 
 d. **Dashboard (PENDIENTES_UI P3).** Hoy la fila de inspección del Dashboard tiene "No issues found" e "Issues found" juntos. Como ahora no se guarda sin revisar todo, esos botones se cambian por **Start inspection**, que abre la hoja.
 

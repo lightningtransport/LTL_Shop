@@ -84,13 +84,16 @@ El botón **Demo** tiene tres grupos de estados:
 - Se quitó "No issues found (skip sheet)".
 - La inspección guardada ya no tiene "Edit inspection".
 
-## 6. Pendiente de decidir antes de programar
+## 6. Decisiones del dueño sobre los choques (2026-10-13, segunda ronda)
 
 Ver [ENCAJE §6](ENCAJE.md#6-lo-que-choca-y-hay-que-decidir-antes-de-d41).
 
-- **(a)** D14 se reemplaza: también inspecciona el Mechanic con permiso.
-- **(b)** Excepción a A26: ese Mechanic crea Jobs, pero solo desde la inspección y sin dueño.
-- **(c)** La inspección guardada es de solo lectura.
-- **(d)** Los dos botones del Dashboard (P3) pasan a ser **Start inspection**.
+| # | Tema | Respuesta |
+|---|---|---|
+| a | D14 se reemplaza: inspecciona el Manager, o un Mechanic con *Can inspect trucks* | **Sí** |
+| b | Excepción a A26: ese Mechanic crea Jobs, pero solo desde la inspección y sin dueño; el Manager los asigna | **Sí** |
+| c | Qué pasa si hay que corregir una inspección ya guardada | **Abierta**: el dueño pidió opciones (ver ENCAJE §6-c) |
+| d | Dashboard (P3): los dos botones pasan a ser **Start inspection** | **Sí**: siempre se empieza la hoja |
+| — | Nombres de los 7 Jobs nuevos del catálogo | **Sí**, son los que usa el taller |
 
-Además, confirmar los nombres de los 7 Jobs nuevos.
+Cuando se cierre la c, todo esto pasa a **D41** en `docs/DECISIONS.md`.
