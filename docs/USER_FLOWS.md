@@ -631,7 +631,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
 | Samsara no tiene señal del camión | "No Samsara signal · last seen…"; fallas "Unknown" | 🔲 | — |
-| El camión no está emparejado con Samsara | "Not paired with Samsara"; aparece en la lista de sin emparejar de Integrations | 🔲 | — |
+| El camión no está emparejado con Samsara | "Not paired with Samsara"; **Setup → Samsara** (S-1) lo lista con el motivo: sin coincidencia, ambiguo o compartido con otro camión. Sin token, la pantalla dice "no conectado" y no escribe nada | ✅ (Setup → Samsara) · 🔲 (ficha) | A91 |
 | La sincronización corre dos veces | No duplica nada; nunca cambia las millas oficiales | 🔲 | — |
 | La falla es *pending* (OBD-II) | Se ve en Faults como "Pending"; no se recomienda como Job | 🔲 | — |
 | Un mecánico abre el camión | No ve la pestaña Faults (como Costs); ve la falla solo dentro de su Job (HU-M15) | 🔲 | — |

@@ -89,6 +89,8 @@ export default async function setup({ provide }: GlobalSetupContext) {
       YARD_READY_TO_GO_SINCE: '2000-01-01T00:00:00Z',
       // LTR-186: the Vercel Cron backstop for the day close (row A32).
       CRON_SECRET: REAL_CRON_SECRET,
+      // D35 / S-1: never reach the real Samsara from tests; Setup → Samsara answers "not configured" (row A91).
+      SAMSARA_API_TOKEN: '',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
