@@ -1,6 +1,6 @@
 name: Samsara sync
 
-# D35 / P12 (OPEN_ISSUES §1x): every 15 minutes, ask the production API to read Samsara and store each truck's
+# D35 / P12 (OPEN_ISSUES §1x): every hour of the shop day plus once at night, ask the production API to read Samsara and store each truck's
 # Samsara mileage, location and faults. Vercel Hobby only runs crons once a day, so GitHub Actions is the clock.
 # The API does the work (POST /api/internal/samsara-sync, idempotent, one at a time); this job only knocks.
 # Needs, in the `production` environment: secret CRON_SECRET (the same value as the API's CRON_SECRET on Vercel).
@@ -8,8 +8,12 @@ name: Samsara sync
 
 on:
   schedule:
-    # GitHub may start a scheduled run a few minutes late; that is fine here.
-    - cron: '*/15 * * * *'
+    # The owner chose hourly (2026-10-14): the private repo has about 2,000 Actions minutes a month and every run bills
+    # at least one, so every 15 minutes (~2,900) was too many. ~316 a month now. Times are UTC; GitHub may start late.
+    # Every hour 11:00–23:00 UTC, Monday–Friday: 7 a.m.–7 p.m. EDT (6 a.m.–6 p.m. EST).
+    - cron: '0 11-23 * * 1-5'
+    # Once a night, every day (3 a.m. EDT): weekends and nights still get their lights and location.
+    - cron: '0 7 * * *'
   workflow_dispatch:
 
 permissions:

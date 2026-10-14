@@ -23,7 +23,7 @@ El Manager da de alta, edita y desactiva camiones desde Admin, como hoy hace con
 2. **Fallas**, en una pestaña **Faults** del camión para el Manager (como Costs): activas arriba (código, descripción, severidad STOP / warning / check engine, desde cuándo), historial abajo. **Ampliado por D42 (2026-10-13):** las fallas se recomiendan como Jobs en Add work y el mecánico ve la falla dentro de su Job (ver "Paso 2b").
 3. **Ubicación:** dirección y hora de Samsara en la ficha, con link al mapa. Sigue siendo informativa; la presencia en el patio por perímetro es LTR-55.
 
-**Decidido (P12, D42, 2026-10-13):** una sincronización **cada 15–30 min** que lee el feed de Vehicle Stats de Samsara (`obdOdometerMeters`/`gpsOdometerMeters`, `gps`, `faultCodes`), **sin webhook** (basta con la lista). La dispara un **workflow programado de GitHub Actions** (como `.github/workflows/demo-reset.yml`) que llama a `POST /api/internal/samsara-sync` con el secreto de cron, porque Vercel Hobby solo permite crons una vez al día. No va en `apps/api/vercel.json`.
+**Decidido (P12, D42, 2026-10-13):** una sincronización periódica (**cada hora de 7 a.m. a 7 p.m. entre semana y una de madrugada**, 2026-10-14; al principio cada 15 min) que lee el feed de Vehicle Stats de Samsara (`obdOdometerMeters`/`gpsOdometerMeters`, `gps`, `faultCodes`), **sin webhook** (basta con la lista). La dispara un **workflow programado de GitHub Actions** (como `.github/workflows/demo-reset.yml`) que llama a `POST /api/internal/samsara-sync` con el secreto de cron, porque Vercel Hobby solo permite crons una vez al día. No va en `apps/api/vercel.json`.
 
 **Cómo se construiría (resumen):**
 - Token de Samsara de **solo lectura** como secreto `SAMSARA_API_TOKEN` (solo servidor). **Creado 2026-10-13:** "LTL Shop", solo Read Vehicles y Read Vehicle Statistics (P12); el valor lo tiene el dueño.
@@ -32,7 +32,7 @@ El Manager da de alta, edita y desactiva camiones desde Admin, como hoy hace con
 - `POST/GET /api/internal/samsara-sync` con secreto de cron (patrón `day-close.controller.ts`); idempotente; **nunca** escribe `trucks.mileage`.
 - Estado en Integrations (última corrida, errores, sin emparejar).
 
-**Etapas:** S-1 token y lectura de prueba (no escribe) — **hecho 2026-10-14: Setup → Samsara** (OPEN_ISSUES §1w) · S-2 y S-3 **hechos 2026-10-14** (§1x: sincronización cada 15 min por GitHub Actions, columnas en Trucks, pestaña Faults) · S-2 millaje y ubicación · S-3 fallas · S-4 referencia en el PM · S-6 fallas → Jobs recomendados (D42). ~~S-5 webhook de fallas~~: **descartado** el 2026-10-13, al dueño le basta la lista (D42).
+**Etapas:** S-1 token y lectura de prueba (no escribe) — **hecho 2026-10-14: Setup → Samsara** (OPEN_ISSUES §1w) · S-2 y S-3 **hechos 2026-10-14** (§1x: sincronización por GitHub Actions cada hora del día de taller, columnas en Trucks, pestaña Faults) · S-2 millaje y ubicación · S-3 fallas · S-4 referencia en el PM · S-6 fallas → Jobs recomendados (D42). ~~S-5 webhook de fallas~~: **descartado** el 2026-10-13, al dueño le basta la lista (D42).
 
 ### Paso 2b — Fallas → Jobs recomendados (D42)
 
@@ -71,7 +71,7 @@ El dueño quiere ver la última ubicación y las fallas de **todos** sus camione
 | J19 | Mecánico PM | anoto las millas del tablero | ver lo que dice Samsara como referencia | detectar un tablero o un sensor mal |
 
 **Task flow (el sistema):**
-1. Un workflow de GitHub Actions llama cada 15–30 min a la sincronización, que lee Samsara (millas, GPS, fallas).
+1. Un workflow de GitHub Actions llama cada hora del día de taller (y una de madrugada) a la sincronización, que lee Samsara (millas, GPS, fallas).
 2. Falla nueva → se abre en `truck_faults`. Deja de venir → se cierra (`cleared_at`).
 3. En Add work la app lista las fallas activas STOP / warning / check engine que **no** están cubiertas por un Job abierto ni descartadas.
 4. Job sugerido por falla: el del mapa aprendido código → Job del catálogo; si el código es nuevo, el Manager elige uno (o escribe uno personalizado, que entra a la bandeja de Custom Jobs como cualquier otro).

@@ -3,7 +3,7 @@ import { assertCronSecret } from '../work-orders/day-close.controller';
 import { SamsaraSyncService } from './samsara-sync.service';
 
 /**
- * D35 / P12 (OPEN_ISSUES §1x): GitHub Actions calls this every 15 minutes with `Authorization: Bearer $CRON_SECRET`
+ * D35 / P12 (OPEN_ISSUES §1x): GitHub Actions calls this every hour of the shop day and once at night with `Authorization: Bearer $CRON_SECRET`
  * (Vercel Hobby only runs crons once a day). No user session, like the day close. Idempotent.
  */
 @Controller('internal')
