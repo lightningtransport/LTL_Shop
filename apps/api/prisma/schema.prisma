@@ -216,6 +216,8 @@ model User {
   updatedInspectionItems         InspectionChecklistItem[]  @relation("InspectionChecklistItemUpdatedBy")
   updatedInspectionSettings      InspectionSettings[]       @relation("InspectionSettingsUpdatedBy")
   createdWorkOrderJobSources     WorkOrderJobSource[]       @relation("WorkOrderJobSourceCreatedBy")
+  dismissedTruckFaults           TruckFault[]               @relation("TruckFaultDismissedBy")
+  samsaraFaultCodeJobs           SamsaraFaultCodeJob[]
 
   @@map("users")
 }
@@ -322,28 +324,37 @@ enum TruckFaultSeverity {
 /// D35 / S-3: one row per fault Samsara reports on a truck. Active while `clearedAt` is null; at most one active row per
 /// truck and `faultKey` (partial unique index in the migration). The same code reported again later is a new row.
 model TruckFault {
-  id              String             @id @default(uuid()) @db.Uuid
-  truckId         String             @map("truck_id") @db.Uuid
+  id                  String             @id @default(uuid()) @db.Uuid
+  truckId             String             @map("truck_id") @db.Uuid
   /// Stable identity of the code on this truck: `j1939:<source>:<spn>:<fmi>` or `obdii:<source>:<dtc>`.
-  faultKey        String             @map("fault_key")
-  protocol        TruckFaultProtocol
+  faultKey            String             @map("fault_key")
+  protocol            TruckFaultProtocol
   /// What the screen shows: `SPN 3251 · FMI 0` or `P0087`.
-  code            String
-  description     String
-  severity        TruckFaultSeverity
-  spnId           Int?               @map("spn_id")
-  fmiId           Int?               @map("fmi_id")
-  dtcShortCode    String?            @map("dtc_short_code")
+  code                String
+  description         String
+  severity            TruckFaultSeverity
+  spnId               Int?               @map("spn_id")
+  fmiId               Int?               @map("fmi_id")
+  dtcShortCode        String?            @map("dtc_short_code")
   /// The engine module that reported it (J1939 source address name or OBD-II tx id).
-  sourceName      String?            @map("source_name")
-  occurrenceCount Int?               @map("occurrence_count")
-  firstSeenAt     DateTime           @map("first_seen_at")
-  lastSeenAt      DateTime           @map("last_seen_at")
-  clearedAt       DateTime?          @map("cleared_at")
-  createdAt       DateTime           @default(now()) @map("created_at")
-  updatedAt       DateTime           @updatedAt @map("updated_at")
+  sourceName          String?            @map("source_name")
+  occurrenceCount     Int?               @map("occurrence_count")
+  firstSeenAt         DateTime           @map("first_seen_at")
+  lastSeenAt          DateTime           @map("last_seen_at")
+  clearedAt           DateTime?          @map("cleared_at")
+  /// D42 / S-6: "not now" with a reason; not recommended again until this row clears and the code comes back.
+  dismissedAt         DateTime?          @map("dismissed_at")
+  dismissedById       String?            @map("dismissed_by_id") @db.Uuid
+  dismissReason       String?            @map("dismiss_reason")
+  /// D42: Samsara reported this code again within 48 h after a Job for it was completed in that Work Order.
+  cameBackWorkOrderId String?            @map("came_back_work_order_id") @db.Uuid
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
 
-  truck Truck @relation(fields: [truckId], references: [id], onDelete: Cascade)
+  truck             Truck                @relation(fields: [truckId], references: [id], onDelete: Cascade)
+  dismissedBy       User?                @relation("TruckFaultDismissedBy", fields: [dismissedById], references: [id], onDelete: SetNull)
+  cameBackWorkOrder WorkOrder?           @relation("TruckFaultCameBack", fields: [cameBackWorkOrderId], references: [id], onDelete: SetNull)
+  jobSources        WorkOrderJobSource[]
 
   @@index([truckId, clearedAt])
   @@index([clearedAt])
@@ -498,6 +509,7 @@ model CatalogJob {
   workOrderJobs            WorkOrderJob[]
   workflowSteps            ShopWorkflowStep[]
   inspectionChecklistItems InspectionChecklistItem[]
+  samsaraFaultCodes        SamsaraFaultCodeJob[]
   inspectionItems          TruckInspectionItem[]
 
   @@index([categoryId, status])
@@ -596,6 +608,7 @@ model WorkOrder {
   costEntries                   TruckCostEntry[]
   outsideRepairs                OutsideRepair[]
   inspections                   TruckInspection[]
+  cameBackFaults                TruckFault[]              @relation("TruckFaultCameBack")
 
   @@index([status])
   @@index([truckId, status])
@@ -1418,6 +1431,8 @@ model WorkOrderJobSource {
   kind             WorkOrderJobSourceKind
   inspectionItemId String?                @map("inspection_item_id") @db.Uuid
   tireReadingId    String?                @map("tire_reading_id") @db.Uuid
+  /// D42 / S-6: the Samsara fault this Job takes care of.
+  truckFaultId     String?                @map("truck_fault_id") @db.Uuid
   /// The finding as written ("Left hazard lamp lens cracked"), shown on the Job.
   note             String?
   createdAt        DateTime               @default(now()) @map("created_at")
@@ -1426,11 +1441,30 @@ model WorkOrderJobSource {
   workOrderJob   WorkOrderJob         @relation(fields: [workOrderJobId], references: [id], onDelete: Cascade)
   inspectionItem TruckInspectionItem? @relation(fields: [inspectionItemId], references: [id], onDelete: Cascade)
   tireReading    TireReading?         @relation(fields: [tireReadingId], references: [id], onDelete: Cascade)
+  truckFault     TruckFault?          @relation(fields: [truckFaultId], references: [id], onDelete: Cascade)
   createdBy      User?                @relation("WorkOrderJobSourceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([workOrderJobId, inspectionItemId])
   @@unique([workOrderJobId, tireReadingId])
+  @@unique([workOrderJobId, truckFaultId])
   @@index([inspectionItemId])
   @@index([tireReadingId])
+  @@index([truckFaultId])
   @@map("work_order_job_sources")
+}
+
+/// D42 / S-6: what the Manager picked for a fault code; the next time that code shows on any truck it comes suggested.
+/// The key leaves out the engine module: `j1939:<spn>:<fmi>` or `obdii:<dtc>`.
+model SamsaraFaultCodeJob {
+  id           String   @id @default(uuid()) @db.Uuid
+  codeKey      String   @unique @map("code_key")
+  catalogJobId String   @map("catalog_job_id") @db.Uuid
+  updatedById  String?  @map("updated_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  catalogJob CatalogJob @relation(fields: [catalogJobId], references: [id], onDelete: Cascade)
+  updatedBy  User?      @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("samsara_fault_code_jobs")
 }

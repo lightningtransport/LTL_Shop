@@ -421,8 +421,24 @@ export const addJobSchema = z.object({
 export const addWorkPlanJobsSchema = z.object({
   idempotencyKey: z.string().uuid(),
   expectedVersion: z.number().int().nonnegative().optional(),
-  jobs: z.array(createWorkOrderJobSchema).min(1).max(50),
+  jobs: z.array(createWorkOrderJobSchema.extend({
+    // D42 / S-6: the Samsara faults this Job takes care of (recommended in Add work).
+    samsaraFaultIds: z.array(z.string().uuid()).min(1).max(20).optional(),
+  })).min(1).max(50),
 });
+
+/** D42 / S-6: tie active Samsara faults to a Job already on the open Work Order (no second Job). */
+export const linkTruckFaultsSchema = z.object({
+  workOrderJobId: z.string().uuid(),
+  faultIds: z.array(z.string().uuid()).min(1).max(20),
+});
+export type LinkTruckFaultsInput = z.infer<typeof linkTruckFaultsSchema>;
+
+/** D42 / S-6: "not now" on a recommended fault, with the reason. */
+export const dismissTruckFaultSchema = z.object({
+  reason: z.string().trim().min(1).max(300),
+});
+export type DismissTruckFaultInput = z.infer<typeof dismissTruckFaultSchema>;
 
 export const recordWorkPlanInspectionSchema = z.object({
   outcome: z.enum([

@@ -137,6 +137,8 @@ export function AdminTruckWorkPlan({
           displayName: job.displayName,
           customDescription: job.customDescription,
           ...(job.assignedMechanicId ? { assignedMechanicId: job.assignedMechanicId } : {}),
+          // D42 / S-6: the faults this Job takes care of.
+          ...(job.samsaraFaultIds?.length ? { samsaraFaultIds: job.samsaraFaultIds } : {}),
         })),
         expectedVersion: plan.workOrder?.version,
       }));
@@ -364,6 +366,7 @@ export function AdminTruckWorkPlan({
         >
           <div id="work-plan-add-work">
             <WorkPlanAddWork
+              truckId={truckId}
               plan={plan}
               messages={messages}
               disabled={Boolean(pendingAction)}

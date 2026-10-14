@@ -636,7 +636,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | La falla es *pending* (OBD-II) | Se ve en Faults como "Pending"; no se recomienda como Job (S-6) | ✅ (se ve) | — |
 | Un mecánico abre el camión | No ve la pestaña Faults (como Costs) ni puede sincronizar; ve la falla solo dentro de su Job (HU-M15, S-6) | ✅ (403) | A91, A94 |
 
-### HU-M15 · Convertir fallas de Samsara en trabajo (J16, J17, J18) — 🔲 decidido, no construido (D42; LTR-202)
+### HU-M15 · Convertir fallas de Samsara en trabajo (J16, J17, J18) — ✅ construido (D42, S-6, OPEN_ISSUES §1x; LTR-202)
 
 **Quién:** el Manager. El mecánico ve la falla en su Job.
 
@@ -654,14 +654,20 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
-| El camión ya tiene una WO abierta y aparece una falla nueva | Se recomienda en Add work de esa WO; la ficha muestra el banner | 🔲 | — |
-| Dos fallas piden el mismo Job | Se crea un solo Job, ligado a las dos | 🔲 | — |
-| La falla se cierra sola antes de entrar al taller | Sale de recomendados; historial "Cleared" | 🔲 | — |
-| El Manager no quiere hacerla ahora | "Dismiss with reason": guarda razón y quién; no se recomienda hasta que se cierre y reaparezca | 🔲 | — |
-| El Job sugerido por el código no es el correcto | Lo cambia antes de agregar; el nuevo reemplaza al aprendido | 🔲 | — |
-| Escribe un Job personalizado para un código nuevo | Entra a la bandeja de Custom Jobs to review como cualquier otro (LTR-57) | 🔲 | — |
-| Cancelan el Job ligado | La falla vuelve a recomendarse si sigue activa | 🔲 | — |
-| La falla vuelve 3 días después del Job | Pasaron más de 48 h: es una falla nueva, sin "Came back" | 🔲 | — |
+| Hay códigos de check engine y la luz STOP encendida | Se recomiendan los de check engine y, por la luz, también los demás códigos activos (J1939 no dice cuál la encendió); nunca los *pending* | ✅ | A95 |
+| El código ya tiene Job aprendido | Viene marcado ("Add EGR Service"); al agregar, el Job queda ligado a la falla | ✅ | A96 |
+| El camión ya tiene una WO abierta y el Job sugerido ya está en el plan | "Add to that Job": la falla se liga a ese Job, sin duplicarlo | ✅ | A96 |
+| Dos fallas piden el mismo Job | Un solo Job, ligado a las dos | ✅ | A96 |
+| Intentan ligar una falla que ya está en un Job abierto | Se rechaza (`FAULT_ALREADY_IN_WORK`) | ✅ | A96 |
+| Otro camión reporta un código ya aprendido | Viene con el mismo Job sugerido | ✅ | A96 |
+| El Manager no quiere hacerla ahora | "Not now" pide razón; sale de recomendados; Faults dice la razón; no vuelve hasta que la falla se cierre y reaparezca | ✅ | A97 |
+| Se completa el Job y Samsara deja de reportarla | Historial "Fixed in WO-x" | ✅ | A97 |
+| Vuelve dentro de 48 h después de completar el Job | "Came back after WO-x" y se recomienda otra vez | ✅ | A97 |
+| Se completa el Job pero Samsara la sigue reportando | Se recomienda de nuevo: "Still reported after WO-x" | ✅ (regla) | — |
+| La falla se cierra sola antes de entrar al taller | Sale de recomendados; historial "Cleared" | ✅ | A93 |
+| Cancelan el Job ligado | La falla vuelve a recomendarse si sigue activa | ✅ (regla) | — |
+| Código nuevo con un Job personalizado | El Job entra a Custom Jobs to review como cualquier otro; el código no aprende (no es del catálogo) | 👁 | — |
+| El mecánico abre su Job | Ve "Samsara fault SPN 2659 · FMI 17: …" debajo del nombre | ✅ | A96 |
 
 ### HU-M16 · Inspeccionar con la hoja y las llantas (J1, J20, J21) — ✅ construido (D41, IN-1 a IN-6)
 

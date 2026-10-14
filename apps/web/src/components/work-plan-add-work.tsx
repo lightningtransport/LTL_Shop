@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
-import type { CatalogJobDto, JobCategoryDto, TruckWorkPlanDto } from '@ltl-shop/shared';
+import type { CatalogJobDto, JobCategoryDto, TruckFaultRecommendationDto, TruckWorkPlanDto } from '@ltl-shop/shared';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
-import { createAdminCatalogJob } from '@/lib/admin-data';
+import { adminFaultRecommendationsKey, createAdminCatalogJob, dismissAdminTruckFault, linkAdminTruckFaults, useAdminFaultRecommendations } from '@/lib/admin-data';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { ApiError } from '@/lib/api';
 import { apiErrorCode } from '@/lib/api-error-message';
@@ -20,6 +20,7 @@ import {
 import { useCatalogJobs, useCategories } from '@/lib/shop-data';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
 import { CategoryJobList } from './category-job-list';
+import { WorkPlanFaultRecommendations } from './work-plan-fault-recommendations';
 import { Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -30,6 +31,7 @@ import {
 } from './ui';
 
 export function WorkPlanAddWork({
+  truckId,
   plan,
   messages,
   disabled,
@@ -39,6 +41,8 @@ export function WorkPlanAddWork({
   onSubmit,
   onCancel,
 }: {
+  /** D42 / S-6: the truck whose Samsara faults are recommended at the top. */
+  truckId?: string;
   plan: TruckWorkPlanDto;
   messages: AdminMessages;
   disabled: boolean;
@@ -67,6 +71,82 @@ export function WorkPlanAddWork({
     isLoading: jobsLoading,
     mutate: refreshCatalogJobs,
   } = useCatalogJobs(categoryId, Boolean(categoryId));
+
+  // D42 / S-6: Samsara faults recommended as Jobs; the ones with a learned Job start checked.
+  const { data: recommendations, mutate: refreshRecommendations } = useAdminFaultRecommendations(truckId ?? null);
+  const [pickingFaultId, setPickingFaultId] = useState<string | null>(null);
+  const [faultError, setFaultError] = useState<string | null>(null);
+  const preselected = useRef(false);
+  const checkedFaultIds = useMemo(() => new Set(drafts.flatMap((draft) => draft.samsaraFaultIds ?? [])), [drafts]);
+  const pickingFault = recommendations?.items.find((item) => item.fault.id === pickingFaultId) ?? null;
+
+  useEffect(() => {
+    if (preselected.current || !recommendations) return;
+    preselected.current = true;
+    for (const item of recommendations.items) {
+      if (item.suggestedJob && !item.existingJob) addFaultToJob(item, { id: item.suggestedJob.categoryId, name: item.suggestedJob.categoryName }, { id: item.suggestedJob.catalogJobId, displayName: item.suggestedJob.displayName });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the recommendations first load
+  }, [recommendations]);
+
+  /** Adds the fault to the draft of that catalog Job (one Job for several faults), creating the draft if needed. */
+  function addFaultToJob(item: TruckFaultRecommendationDto, category: Pick<JobCategoryDto, 'id' | 'name'>, job: Pick<CatalogJobDto, 'id' | 'displayName'>) {
+    setDrafts((current) => {
+      const existing = current.find((draft) => draft.catalogJobId === job.id);
+      if (existing) {
+        if (existing.samsaraFaultIds?.includes(item.fault.id)) return current;
+        return current.map((draft) => (draft === existing
+          ? { ...draft, samsaraFaultIds: [...(draft.samsaraFaultIds ?? []), item.fault.id], samsaraFaultCodes: [...(draft.samsaraFaultCodes ?? []), item.fault.code] }
+          : draft));
+      }
+      return [...current, {
+        key: crypto.randomUUID(), catalogJobId: job.id, categoryId: category.id, categoryName: category.name, displayName: job.displayName,
+        samsaraFaultIds: [item.fault.id], samsaraFaultCodes: [item.fault.code], fromSamsara: true,
+      }];
+    });
+  }
+
+  function removeFault(faultId: string) {
+    setDrafts((current) => current.flatMap((draft) => {
+      if (!draft.samsaraFaultIds?.includes(faultId)) return [draft];
+      const index = draft.samsaraFaultIds.indexOf(faultId);
+      const ids = draft.samsaraFaultIds.filter((id) => id !== faultId);
+      const codes = (draft.samsaraFaultCodes ?? []).filter((_, i) => i !== index);
+      if (!ids.length && draft.fromSamsara) return [];
+      return [{ ...draft, samsaraFaultIds: ids.length ? ids : undefined, samsaraFaultCodes: ids.length ? codes : undefined }];
+    }));
+  }
+
+  function toggleSuggested(item: TruckFaultRecommendationDto) {
+    if (!item.suggestedJob || disabled) return;
+    if (checkedFaultIds.has(item.fault.id)) removeFault(item.fault.id);
+    else addFaultToJob(item, { id: item.suggestedJob.categoryId, name: item.suggestedJob.categoryName }, { id: item.suggestedJob.catalogJobId, displayName: item.suggestedJob.displayName });
+  }
+
+  async function linkToExisting(item: TruckFaultRecommendationDto) {
+    if (!truckId || !item.existingJob) return;
+    setFaultError(null);
+    try {
+      await refreshRecommendations(await linkAdminTruckFaults(truckId, { workOrderJobId: item.existingJob.id, faultIds: [item.fault.id] }), { revalidate: false });
+      setCatalogNotice(fillPlaceholders(messages.faultRecLinked, { job: item.existingJob.displayName }));
+      void mutate(`/api/admin/trucks/${truckId}/faults`);
+    } catch {
+      setFaultError(messages.faultRecFailed);
+    }
+  }
+
+  async function dismissFault(item: TruckFaultRecommendationDto, reason: string) {
+    if (!truckId) return;
+    setFaultError(null);
+    try {
+      removeFault(item.fault.id);
+      await refreshRecommendations(await dismissAdminTruckFault(truckId, item.fault.id, reason), { revalidate: false });
+      setCatalogNotice(messages.faultRecDismissed);
+      void mutate(`/api/admin/trucks/${truckId}/faults`);
+    } catch {
+      setFaultError(messages.faultRecFailed);
+    }
+  }
 
   // LTR-145: the PM Category is a normal Work Plan step.
   const standardCategories = categories ?? [];
@@ -110,6 +190,12 @@ export function WorkPlanAddWork({
 
   function toggleCatalogJob(job: CatalogJobDto) {
     if (!selectedCategory || disabled) return;
+    // D42 / S-6: picking the Job for a new fault code ties the fault to it (and the code learns it when added).
+    if (pickingFault) {
+      addFaultToJob(pickingFault, selectedCategory, job);
+      setPickingFaultId(null);
+      return;
+    }
     setDrafts((current) => {
       if (draftContainsCatalogJob(current, job.id)) {
         return current.filter((draft) => draft.catalogJobId !== job.id);
@@ -119,6 +205,11 @@ export function WorkPlanAddWork({
   }
 
   function selectCatalogJob(category: JobCategoryDto, job: Pick<CatalogJobDto, 'id' | 'displayName'>) {
+    if (pickingFault) {
+      addFaultToJob(pickingFault, category, job);
+      setPickingFaultId(null);
+      return;
+    }
     setDrafts((current) => (draftContainsCatalogJob(current, job.id) ? current : [...current, catalogDraft(category, job)]));
   }
 
@@ -177,7 +268,9 @@ export function WorkPlanAddWork({
       categoryName: selectedCategory.name,
       displayName: name,
       customDescription: name,
+      ...(pickingFault ? { samsaraFaultIds: [pickingFault.fault.id], samsaraFaultCodes: [pickingFault.fault.code], fromSamsara: true } : {}),
     }]);
+    setPickingFaultId(null);
     setCustomName('');
   }
 
@@ -191,6 +284,10 @@ export function WorkPlanAddWork({
     if (!drafts.length || disabled || submitting) return;
     const added = await onSubmit(drafts);
     if (added === false) return;
+    if (truckId) {
+      void mutate(adminFaultRecommendationsKey(truckId));
+      void mutate(`/api/admin/trucks/${truckId}/faults`);
+    }
     setDrafts([]);
     setCustomName('');
     setJobQuery('');
@@ -199,6 +296,21 @@ export function WorkPlanAddWork({
   return (
     <div className="flex min-h-full flex-col">
       <div className="flex-1 space-y-5 px-5 py-4">
+        {recommendations?.items.length ? (
+          <WorkPlanFaultRecommendations
+            items={recommendations.items}
+            messages={messages}
+            disabled={disabled}
+            checkedFaultIds={checkedFaultIds}
+            pickingFaultId={pickingFaultId}
+            onToggleSuggested={toggleSuggested}
+            onPick={(item) => { setPickingFaultId(item.fault.id); document.getElementById('add-work-category-label')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }}
+            onCancelPick={() => setPickingFaultId(null)}
+            onLink={linkToExisting}
+            onDismiss={dismissFault}
+            error={faultError}
+          />
+        ) : null}
         {categoriesError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
         {categoriesLoading && !categories ? <p className="text-muted-foreground">{messages.loadingCategories}</p> : null}
         {!categoriesLoading && !categoriesError && standardCategories.length === 0 ? (
@@ -311,6 +423,9 @@ export function WorkPlanAddWork({
                       {job.customDescription ? <span className="text-xs font-normal text-muted-foreground"> · {messages.addWorkCustomShort}</span> : null}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">{job.categoryName}</p>
+                    {job.samsaraFaultCodes?.length ? (
+                      <p className="truncate text-xs text-primary">{fillPlaceholders(messages.faultRecFrom, { codes: job.samsaraFaultCodes.join(', ') })}</p>
+                    ) : null}
                   </div>
                   {/* D14: Quality Check is Safety's; the PM job goes to a PM mechanic on the plan. */}
                   {job.categoryName === 'Quality Check' ? (

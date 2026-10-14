@@ -13,7 +13,9 @@ import {
 import { ApiError, apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useActionToast } from './action-toast';
-import { createAdminWorkOrder } from '@/lib/admin-data';
+import { adminFaultRecommendationsKey, createAdminWorkOrder } from '@/lib/admin-data';
+import type { TruckFaultRecommendationsDto } from '@ltl-shop/shared';
+import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { adminPriorityLabel } from '@/lib/status-chips';
 import { useTrucks } from '@/lib/shop-data';
@@ -104,9 +106,16 @@ export function AdminNewWorkOrder({
     setActiveResult(trucks.length ? 0 : -1);
   }, [trucks]);
 
+  const [faultCount, setFaultCount] = useState(0);
+
   function selectTruck(item: TruckDto) {
     const requestId = ++openWorkOrderRequest.current;
     setSelectedTruck({ truck: item, openWorkOrder: null });
+    // D42 / S-6: say how many Samsara faults are waiting; they become Jobs in Add work (D13: the WO starts empty).
+    setFaultCount(0);
+    void apiFetch<TruckFaultRecommendationsDto>(adminFaultRecommendationsKey(item.id)).then((recommendations) => {
+      if (requestId === openWorkOrderRequest.current) setFaultCount(recommendations.items.length);
+    }).catch(() => undefined);
     setTruckQuery(item.truckNumber);
     setSearchOpen(false);
     setError(null);
@@ -300,6 +309,11 @@ export function AdminNewWorkOrder({
                 </div>
               ) : null}
 
+              {selectedTruck && faultCount ? (
+                <p className="mt-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground" role="status" data-testid="new-wo-faults">
+                  {faultCount === 1 ? messages.newWoFaultsWarningOne : fillPlaceholders(messages.newWoFaultsWarning, { count: String(faultCount) })}
+                </p>
+              ) : null}
               {selectedTruck?.openWorkOrder ? (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <InlineAlert className="min-w-0 flex-1">{messages.openWoWarning}</InlineAlert>

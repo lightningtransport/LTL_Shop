@@ -66,7 +66,41 @@ function FaultRow({ fault, locale, messages }: { fault: TruckFaultDto; locale: A
       </div>
       <p className={cn('font-medium', cleared && 'text-muted-foreground')}>{fault.description}</p>
       <p className="font-mono text-xs text-muted-foreground">{[fault.protocol === 'j1939' ? 'J1939' : 'OBD-II', fault.code, fault.sourceName].filter(Boolean).join(' · ')}</p>
+      <FaultWork fault={fault} messages={messages} />
     </li>
+  );
+}
+
+/** D42 / S-6: what the shop did about it: in a Work Order, fixed there, came back, or "not now". */
+function FaultWork({ fault, messages }: { fault: TruckFaultDto; messages: AdminMessages }) {
+  const lines: Array<{ key: string; text: string; href?: string; tone?: 'warning' | 'success' }> = [];
+  for (const job of fault.jobs ?? []) {
+    if (job.status === 'cancelled') continue;
+    const href = `/admin/work-orders/${job.workOrderId}`;
+    if (job.status === 'to_do') lines.push({ key: job.jobId, text: fillPlaceholders(messages.truckFaultsInWo, { wo: job.workOrderDisplayId, job: job.jobName }), href });
+    else if (fault.clearedAt) lines.push({ key: job.jobId, text: fillPlaceholders(messages.truckFaultsFixedIn, { wo: job.workOrderDisplayId }), href, tone: 'success' });
+    else lines.push({ key: job.jobId, text: fillPlaceholders(messages.truckFaultsStillAfter, { wo: job.workOrderDisplayId }), href, tone: 'warning' });
+  }
+  if (fault.cameBackAfter) {
+    lines.push({ key: 'came-back', text: fillPlaceholders(messages.truckFaultsCameBack, { wo: fault.cameBackAfter.displayId }), href: `/admin/work-orders/${fault.cameBackAfter.workOrderId}`, tone: 'warning' });
+  }
+  if (fault.dismissed) {
+    lines.push({
+      key: 'dismissed',
+      text: fault.dismissed.by
+        ? fillPlaceholders(messages.truckFaultsDismissedBy, { name: fault.dismissed.by, reason: fault.dismissed.reason })
+        : fillPlaceholders(messages.truckFaultsDismissed, { reason: fault.dismissed.reason }),
+    });
+  }
+  if (!lines.length) return null;
+  return (
+    <ul className="space-y-0.5 pt-1 text-xs" data-testid="truck-fault-work">
+      {lines.map((line) => (
+        <li key={line.key} className={cn(line.tone === 'warning' ? 'text-warning-foreground' : line.tone === 'success' ? 'text-success' : 'text-muted-foreground')}>
+          {line.href ? <Link className="hover:underline" href={line.href}>{line.text}</Link> : line.text}
+        </li>
+      ))}
+    </ul>
   );
 }
 

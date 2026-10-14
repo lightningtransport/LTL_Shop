@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, inject, it } from 'vitest';
 import { REAL_CRON_SECRET } from '../env';
-import { USERS, Json, as, manager, ok, prisma, refused, same, truthy } from '../harness';
+import { randomUUID } from 'node:crypto';
+import { USERS, Json, adminCompleteJob, as, catalogJob, manager, ok, prisma, refused, resetDb, same, truthy, userId } from '../harness';
 import { EMPTY_SAMSARA_FIXTURE, type SamsaraFixture } from '../samsara-mock';
 
 /** OPEN_ISSUES §1w and §1x (D35, D42): Samsara pairing, sync of miles and location, and faults. Never the real Samsara. */
@@ -46,6 +47,7 @@ function j1939(lights: { stop?: boolean; warning?: boolean; emissions?: boolean 
 }
 
 async function cleanSamsara() {
+  await prisma.samsaraFaultCodeJob.deleteMany({});
   await prisma.truckFault.deleteMany({});
   await prisma.truck.updateMany({
     data: {
@@ -147,5 +149,123 @@ describe('Manager: Samsara (D35, D42)', () => {
     same('quedó como corrida del cron', ((await response.json()) as Json).state.lastTrigger, 'cron');
     same('guardó las millas', (await truckRow()).samsaraOdometerMiles, 500_000);
     refused('un mecánico no puede Sync now', await as(USERS.alignment).post('/admin/integrations/samsara/sync'), 403);
+  });
+});
+
+/** D42 / S-6: a Samsara vehicle and its J1939 reading for another test truck. */
+function readingFor(truckNumber: string, lights: { stop?: boolean; warning?: boolean; emissions?: boolean }, ...codes: Array<{ spn: number; fmi: number; mil?: number }>) {
+  return { ...j1939(lights, ...codes), id: `v-${truckNumber}` };
+}
+
+async function sync() {
+  return ok('Sync now', await manager.post('/admin/integrations/samsara/sync')) as Json;
+}
+
+async function recommendations(truckId: string) {
+  return (ok('recomendaciones de fallas', await manager.get(`/admin/trucks/${truckId}/fault-recommendations`)) as Json).items as Json[];
+}
+
+describe('Manager: fallas de Samsara → Jobs recomendados (D42, S-6)', () => {
+  beforeEach(async (context) => {
+    if (!inject('samsaraMockUrl')) context.skip();
+    await resetDb();
+    await cleanSamsara();
+  });
+  afterAll(async () => {
+    if (inject('samsaraMockUrl')) await cleanSamsara();
+  });
+
+  it('A95 | S-6: se recomiendan los códigos que encendieron check engine; con la luz STOP también los demás, marcados por la luz', async () => {
+    const { id } = await truckRow();
+    await setSamsara({ vehicles: [vehicle()], faults: [j1939({ emissions: true }, { spn: 2659, fmi: 17, mil: 1 }, { spn: 111, fmi: 1, mil: 0 })] });
+    await sync();
+    let items = await recommendations(id);
+    same('sin STOP: solo el código de check engine, sin Job aprendido', items.map((item) => [item.fault.code, item.reason, item.suggestedJob]), [['SPN 2659 · FMI 17', 'check_engine', null]]);
+
+    await setSamsara({ vehicles: [vehicle()], faults: [j1939({ stop: true, emissions: true }, { spn: 2659, fmi: 17, mil: 1 }, { spn: 111, fmi: 1, mil: 0 })] });
+    await sync();
+    items = await recommendations(id);
+    same('con STOP: también el otro código, marcado por la luz', items.map((item) => [item.fault.code, item.reason]).sort(), [['SPN 111 · FMI 1', 'stop_light'], ['SPN 2659 · FMI 17', 'check_engine']].sort());
+    refused('un mecánico no ve las recomendaciones', await as(USERS.alignment).get(`/admin/trucks/${id}/fault-recommendations`), 403);
+  });
+
+  it('A96 | S-6: agregar el Job desde Add work lo liga a la falla, aprende el código, el mecánico la ve en su Job; otra falla se agrega al mismo Job; el código aprendido se sugiere en otro camión', async () => {
+    const { id } = await truckRow();
+    const other = await prisma.truck.findUniqueOrThrow({ where: { truckNumber: '944' } });
+    const airLeak = await catalogJob('Air & Brake System', 'Air Leak');
+    const mechanic = await userId(USERS.alignment);
+    await setSamsara({
+      vehicles: [vehicle(), vehicle('944')],
+      faults: [j1939({ stop: true }, { spn: 2659, fmi: 17, mil: 1 }, { spn: 111, fmi: 1, mil: 0 }), readingFor('944', {}, { spn: 2659, fmi: 17, mil: 1 })],
+    });
+    await sync();
+    const items = await recommendations(id);
+    const egr = items.find((item) => item.fault.code === 'SPN 2659 · FMI 17');
+    const coolant = items.find((item) => item.fault.code === 'SPN 111 · FMI 1');
+
+    const plan = ok('Add work con la falla', await manager.post(`/admin/trucks/${id}/work-plan/jobs`, {
+      idempotencyKey: randomUUID(),
+      jobs: [{ catalogJobId: airLeak.id, categoryId: airLeak.categoryId, displayName: airLeak.displayName, assignedMechanicId: mechanic, samsaraFaultIds: [egr.fault.id] }],
+    })) as Json;
+    const job = (plan.jobs as Json[]).find((row) => row.catalogJobId === airLeak.id);
+    truthy('el Job está en el plan', job);
+    same('la falla quedó ligada a ese Job', (await prisma.workOrderJobSource.findMany({ where: { truckFaultId: egr.fault.id }, select: { workOrderJobId: true, kind: true } })), [{ workOrderJobId: job.id, kind: 'samsara_fault' }]);
+    same('el código aprendió su Job', (await prisma.samsaraFaultCodeJob.findUnique({ where: { codeKey: 'j1939:SPN:2659:FMI:17' } }))?.catalogJobId, airLeak.id);
+    same('ya no se recomienda', (await recommendations(id)).map((item) => item.fault.code), ['SPN 111 · FMI 1']);
+
+    refused('agregarla otra vez se rechaza', await manager.post(`/admin/trucks/${id}/work-plan/jobs`, {
+      idempotencyKey: randomUUID(),
+      expectedVersion: plan.workOrder.version,
+      jobs: [{ catalogJobId: airLeak.id, categoryId: airLeak.categoryId, displayName: airLeak.displayName, samsaraFaultIds: [egr.fault.id] }],
+    }), 409, 'FAULT_ALREADY_IN_WORK');
+
+    ok('la otra falla se agrega al mismo Job', await manager.post(`/admin/trucks/${id}/faults/link`, { workOrderJobId: job.id, faultIds: [coolant.fault.id] }));
+    same('no queda nada por recomendar', (await recommendations(id)).length, 0);
+
+    const faults = ok('pestaña Faults', await manager.get(`/admin/trucks/${id}/faults`)) as Json;
+    same('cada falla dice en qué WO y Job está', (faults.active as Json[]).map((fault) => [fault.code, fault.jobs[0]?.jobName, fault.jobs[0]?.status]).sort(), [['SPN 111 · FMI 1', 'Air Leak', 'to_do'], ['SPN 2659 · FMI 17', 'Air Leak', 'to_do']].sort());
+
+    const detail = ok('el mecánico abre su Work Order', await as(USERS.alignment).get(`/work-orders/${plan.workOrder.id}`)) as Json;
+    const mine = (detail.jobs as Json[]).find((row) => row.id === job.id);
+    same('ve las fallas en su Job', (mine.samsaraFaults as Json[]).map((fault) => fault.code).sort(), ['SPN 111 · FMI 1', 'SPN 2659 · FMI 17']);
+
+    const elsewhere = await recommendations(other.id);
+    same('en otro camión el mismo código ya viene con su Job', elsewhere.map((item) => [item.fault.code, item.suggestedJob?.catalogJobId, item.existingJob]), [['SPN 2659 · FMI 17', airLeak.id, null]]);
+  });
+
+  it('A97 | S-6: "Ahora no" pide razón y saca la falla de las recomendaciones; completado el Job y cerrada la falla queda "Fixed"; si vuelve dentro de 48 h queda "Came back"', async () => {
+    const { id } = await truckRow();
+    const airLeak = await catalogJob('Air & Brake System', 'Air Leak');
+    await setSamsara({ vehicles: [vehicle()], faults: [j1939({ emissions: true }, { spn: 2659, fmi: 17, mil: 1 }, { spn: 3216, fmi: 5, mil: 1 })] });
+    await sync();
+    const items = await recommendations(id);
+    const egr = items.find((item) => item.fault.code === 'SPN 2659 · FMI 17');
+    const nox = items.find((item) => item.fault.code === 'SPN 3216 · FMI 5');
+
+    refused('descartar sin razón', await manager.post(`/admin/trucks/${id}/faults/${nox.fault.id}/dismiss`, { reason: ' ' }), 400);
+    ok('descartar con razón', await manager.post(`/admin/trucks/${id}/faults/${nox.fault.id}/dismiss`, { reason: 'Pieza pedida' }));
+    same('ya no se recomienda', (await recommendations(id)).map((item) => item.fault.code), ['SPN 2659 · FMI 17']);
+    let faults = ok('pestaña Faults', await manager.get(`/admin/trucks/${id}/faults`)) as Json;
+    same('la falla dice por qué', (faults.active as Json[]).find((fault) => fault.id === nox.fault.id)?.dismissed?.reason, 'Pieza pedida');
+
+    const plan = ok('Add work con la falla', await manager.post(`/admin/trucks/${id}/work-plan/jobs`, {
+      idempotencyKey: randomUUID(),
+      jobs: [{ catalogJobId: airLeak.id, categoryId: airLeak.categoryId, displayName: airLeak.displayName, samsaraFaultIds: [egr.fault.id] }],
+    })) as Json;
+    const job = (plan.jobs as Json[]).find((row) => row.catalogJobId === airLeak.id);
+    ok('el Manager completa el Job', await adminCompleteJob(plan.workOrder.id, job.id));
+
+    await setSamsara({ vehicles: [vehicle()], faults: [j1939({}, { spn: 3216, fmi: 5, mil: 1 })] });
+    await sync();
+    faults = ok('pestaña Faults', await manager.get(`/admin/trucks/${id}/faults`)) as Json;
+    const fixed = (faults.history as Json[]).find((fault) => fault.id === egr.fault.id);
+    same('cerrada con su Job completado (Fixed)', [Boolean(fixed?.clearedAt), fixed?.jobs[0]?.status, fixed?.jobs[0]?.workOrderDisplayId], [true, 'completed', plan.workOrder.displayId]);
+
+    await setSamsara({ vehicles: [vehicle()], faults: [j1939({ emissions: true }, { spn: 2659, fmi: 17, mil: 1 }, { spn: 3216, fmi: 5, mil: 1 })] });
+    await sync();
+    faults = ok('pestaña Faults', await manager.get(`/admin/trucks/${id}/faults`)) as Json;
+    const back = (faults.active as Json[]).find((fault) => fault.code === 'SPN 2659 · FMI 17');
+    same('volvió dentro de 48 h: dice de qué WO', back?.cameBackAfter?.displayId, plan.workOrder.displayId);
+    same('y se recomienda otra vez', (await recommendations(id)).map((item) => item.fault.code), ['SPN 2659 · FMI 17']);
   });
 });

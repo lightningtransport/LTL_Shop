@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma, WorkOrderStatus } from '@prisma/client';
 import {
@@ -25,6 +26,7 @@ import type { AuthUser } from '../auth/auth.guard';
 import { hasCapability } from '../auth/capabilities';
 import { idempotencyFingerprint } from '../common/idempotency';
 import { YardOperationsService } from './yard-operations.service';
+import { SamsaraFaultJobsService } from './samsara-fault-jobs.service';
 import { deriveWorkPlan } from './yard-work-plan-derivation';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
 
@@ -80,6 +82,7 @@ export class YardWorkPlanService {
     private readonly workOrders: WorkOrdersService,
     private readonly yardOperations: YardOperationsService,
     private readonly clock?: LaborClockService,
+    @Optional() private readonly samsaraFaults?: SamsaraFaultJobsService,
   ) {}
 
   async get(user: AuthUser, truckId: string): Promise<TruckWorkPlanDto> {
@@ -179,12 +182,18 @@ export class YardWorkPlanService {
     const truck = await this.prisma.truck.findUnique({ where: { id: truckId }, select: { id: true } });
     if (!truck) throw new NotFoundException('Truck not found');
 
+    // D42 / S-6: faults a Job takes care of are checked before anything is created, then tied to the new Jobs.
+    const faultIds = input.jobs.flatMap((job) => job.samsaraFaultIds ?? []);
+    const faults = faultIds.length && this.samsaraFaults ? await this.samsaraFaults.assertLinkable(truckId, faultIds) : [];
+
     let open = await this.findOpenWorkOrder(truckId);
+    const before = new Set(open?.jobs.map((job) => job.id) ?? []);
     if (open?.idempotencyKey === input.idempotencyKey) {
       return this.get(user, truckId);
     }
     if (open) {
       await this.addJobsToOpenWorkOrder(user, open, input);
+      await this.linkFaultsToNewJobs(user, truckId, input, faults, before);
       return this.get(user, truckId);
     }
 
@@ -201,7 +210,34 @@ export class YardWorkPlanService {
       if (!open) throw error;
       await this.addJobsToOpenWorkOrder(user, open, input);
     }
+    await this.linkFaultsToNewJobs(user, truckId, input, faults, before);
     return this.get(user, truckId);
+  }
+
+  /** D42 / S-6: each Job that came with faults gets them, matched to the Job just created for it (same catalog Job or name). */
+  private async linkFaultsToNewJobs(
+    user: AuthUser,
+    truckId: string,
+    input: AddWorkPlanJobsInput,
+    faults: Awaited<ReturnType<SamsaraFaultJobsService['assertLinkable']>>,
+    before: Set<string>,
+  ) {
+    if (!faults.length || !this.samsaraFaults) return;
+    const open = await this.findOpenWorkOrder(truckId);
+    if (!open) return;
+    const created = await this.prisma.workOrderJob.findMany({
+      where: { workOrderId: open.id, id: { notIn: [...before] }, status: { not: 'cancelled' } },
+      select: { id: true, catalogJobId: true, displayName: true },
+      orderBy: { addedAt: 'asc' },
+    });
+    const used = new Set<string>();
+    for (const draft of input.jobs) {
+      if (!draft.samsaraFaultIds?.length) continue;
+      const job = created.find((row) => !used.has(row.id) && (draft.catalogJobId ? row.catalogJobId === draft.catalogJobId : !row.catalogJobId && row.displayName === draft.displayName));
+      if (!job) continue;
+      used.add(job.id);
+      await this.samsaraFaults.linkToJob(user, job.id, faults.filter((fault) => draft.samsaraFaultIds!.includes(fault.id)));
+    }
   }
 
   /** LTR-158: add the mandatory steps an older open Work Order lacks. */

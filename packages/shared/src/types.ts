@@ -155,6 +155,8 @@ export interface WorkOrderJobDto {
   external?: JobExternalDto | null;
   /** LTR-197 / D28: the step whose team queue the Job came from (it can be let go back there). */
   workflowStepKey?: string | null;
+  /** D42 / S-6: the Samsara faults this Job takes care of, so the mechanic sees why. */
+  samsaraFaults?: Array<{ code: string; description: string }>;
 }
 
 /** LTR-188 / D24: a Job at an external shop — what went out, the Manager's note and since when. */
