@@ -272,6 +272,11 @@ export type TruckInspectionStateDto = {
   canInspect: boolean;
   /** Manager only: pick who does each new Job. A mechanic's Jobs are born unowned. */
   canAssign: boolean;
+  /**
+   * IN-8: this visit was inspected with the two buttons from before D41 ("No issues found" / "Issues found"), so there
+   * is no saved sheet. The sheet can still be filled; the screen says so instead of showing an empty report.
+   */
+  legacyInspection: { outcome: 'issues_found' | 'no_issues_found'; recordedAt: string | null; byName: string | null } | null;
 };
 
 /** D41 / HU-ME7: a Truck waiting for inspection, for "To inspect" in My work. */
@@ -284,4 +289,6 @@ export type InspectionQueueItemDto = {
   workOrderId: string;
   workOrderDisplayId: string;
   waitingSince: string;
+  /** IN-7: set when I already inspected this visit (the Work Order is still open): the row offers Add defects. */
+  inspectedAt: string | null;
 };

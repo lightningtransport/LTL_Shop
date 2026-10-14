@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import {
-  USERS, Json, adminWo, as, createWo, manager, ok, prisma, refused, resetDb, same, truckDetail, truthy, userId,
+  USERS, Json, adminWo, as, createWo, inspect, manager, ok, prisma, refused, resetDb, same, truckDetail, truthy, userId,
 } from '../harness';
 
 /**
@@ -151,8 +151,28 @@ describe('El mecánico con "Can inspect trucks" (D41, HU-ME7)', () => {
     const brake = jobsNamed(await adminWo(workOrderId), 'Brake Inspection')[0];
     same('el Job nace sin dueño', brake?.assignedMechanic ?? null, null);
     const after = ok('cola después', await general.get('/inspections/queue'));
-    same('el 944 sale de la cola', after.some((item: Json) => item.truckNumber === '944'), false);
+    // IN-7: it stays, marked as inspected by me, so Add defects is one tap away while the Work Order is open.
+    truthy('el 944 sigue como inspeccionado por mí', after.find((item: Json) => item.truckNumber === '944')?.inspectedAt);
     refused('fuera de la hoja sigue sin agregar Jobs (A26)', await general.post(`/admin/trucks/${row.id}/work-plan/jobs`, {}), 403);
+  });
+
+  it('A89 | En "To inspect" quedan los camiones que inspeccioné (Add defects, IN-7); no los que inspeccionó otro', async () => {
+    const id = await userId(USERS.general);
+    ok('permiso', await manager.patch(`/admin/mechanics/${id}`, { canInspect: true }));
+    const mine = await createWo('957');
+    const theirs = await createWo('973');
+    const sheetMine = await state(mine.truck.id, general);
+    ok('el mecánico inspecciona el 957', await general.post(`/inspections/trucks/${mine.truck.id}`, sheet(sheetMine)));
+    ok('el Manager inspecciona el 973', await manager.post(`/admin/trucks/${theirs.truck.id}/inspection`, sheet(await state(theirs.truck.id))));
+    const queue = ok('cola', await general.get('/inspections/queue'));
+    truthy('el 957 sigue, inspeccionado por mí', queue.find((item: Json) => item.truckNumber === '957')?.inspectedAt);
+    same('el 973 no aparece', queue.some((item: Json) => item.truckNumber === '973'), false);
+    const report = await state(mine.truck.id, general);
+    const horn = report.inspection.items.find((item: Json) => item.label === 'Horn');
+    ok('agrega un defecto desde ahí', await general.post(`/inspections/trucks/${mine.truck.id}/defects`, {
+      idempotencyKey: randomUUID(),
+      defects: [{ inspectionItemId: horn.id, note: 'No suena.' }],
+    }));
   });
 
   it('A87 | Safety no recibe el permiso, y cambiar a Safety lo quita', async () => {
@@ -163,6 +183,27 @@ describe('El mecánico con "Can inspect trucks" (D41, HU-ME7)', () => {
     truthy('tiene el permiso', await prisma.userCapability.findFirst({ where: { userId: id, capability: 'INSPECTION_PERFORM' } }));
     ok('apagar', await manager.patch(`/admin/mechanics/${id}`, { canInspect: false }));
     same('ya no lo tiene', await prisma.userCapability.count({ where: { userId: id, capability: 'INSPECTION_PERFORM' } }), 0);
+  });
+});
+
+describe('Inspecciones de antes de la hoja (IN-8)', () => {
+  beforeEach(resetDb);
+
+  it('A90 | Una visita inspeccionada con los botones viejos lo dice y deja llenar la hoja', async () => {
+    const { truck: row } = await createWo('986');
+    await inspect(row.id, 'issues_found');
+    const before = await state(row.id);
+    same('sin hoja guardada', before.inspection, null);
+    same('dice el resultado viejo', before.legacyInspection?.outcome, 'issues_found');
+    truthy('con quién', before.legacyInspection?.byName);
+    const general = await userId(USERS.general);
+    ok('permiso', await manager.patch(`/admin/mechanics/${general}`, { canInspect: true }));
+    const queue = ok('cola', await as(USERS.general).get('/inspections/queue'));
+    same('no está en "To inspect"', queue.some((item: Json) => item.truckNumber === '986'), false);
+    await prisma.userCapability.deleteMany({ where: { userId: general, capability: 'INSPECTION_PERFORM' } });
+    const saved = ok('llenar la hoja igual', await manager.post(`/admin/trucks/${row.id}/inspection`, sheet(before, { Brakes: 'Pastillas gastadas.' })));
+    same('ya no es vieja', saved.legacyInspection, null);
+    truthy('reporte guardado', saved.inspection);
   });
 });
 

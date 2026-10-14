@@ -132,7 +132,22 @@ export function InspectionSheet(props: InspectionSheetProps) {
   if (data.inspection && !adding) {
     return <InspectionReport state={data} inspection={data.inspection} copy={copy} locale={props.locale} doneHref={props.doneHref} onAdd={() => setAdding(true)} />;
   }
+  // IN-8: inspected with the old buttons (before D41): say so above the sheet instead of an empty report.
+  const legacy = data.legacyInspection;
   return (
+    <>
+    {legacy ? (
+      <div className="mb-6">
+        <NextStepCallout
+          tone="muted"
+          icon={Info}
+          eyebrow={copy.reportTitle(data.truck.truckNumber)}
+          title={copy.legacyTitle(legacy.outcome === 'issues_found')}
+          sub={copy.legacySub(legacy.recordedAt ? formatWhen(legacy.recordedAt, props.locale) : '', legacy.byName ?? '')}
+          testId="inspection-legacy"
+        />
+      </div>
+    ) : null}
     <SheetFlow
       {...props}
       copy={copy}
@@ -145,6 +160,7 @@ export function InspectionSheet(props: InspectionSheetProps) {
         props.onSaved?.(message);
       }}
     />
+    </>
   );
 }
 

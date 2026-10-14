@@ -32,6 +32,7 @@ const state = (jobCatalogIds: string[] = []): TruckInspectionStateDto => ({
   previousTires: [],
   canInspect: true,
   canAssign: true,
+  legacyInspection: null,
 });
 
 const allTires = (over: Record<string, [number, number]> = {}) => Object.fromEntries(TIRE_POSITIONS.map((position) => {
