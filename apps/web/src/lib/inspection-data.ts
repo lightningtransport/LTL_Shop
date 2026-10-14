@@ -3,6 +3,8 @@
 import useSWR from 'swr';
 import type {
   AddInspectionDefectsInput,
+  InspectionChecklistDto,
+  SaveInspectionChecklistInput,
   InspectionQueueItemDto,
   SaveInspectionInput,
   TruckInspectionStateDto,
@@ -45,4 +47,18 @@ export function useInspectionQueue(enabled: boolean) {
     refreshInterval: 30_000,
     dedupingInterval: 5_000,
   });
+}
+
+export const INSPECTION_CHECKLIST_KEY = '/api/admin/inspection-checklist';
+
+/** D41 / HU-M17: Setup → Inspection checklist (every check, active or not, the tire limits and the catalog Jobs). */
+export function useInspectionChecklist() {
+  const { token } = useAuth();
+  return useSWR<InspectionChecklistDto>(token ? INSPECTION_CHECKLIST_KEY : null, (path: string) => apiFetch<InspectionChecklistDto>(path), {
+    revalidateOnFocus: false,
+  });
+}
+
+export function saveInspectionChecklist(input: SaveInspectionChecklistInput) {
+  return apiFetch<InspectionChecklistDto>(INSPECTION_CHECKLIST_KEY, { method: 'PUT', body: JSON.stringify(input) });
 }

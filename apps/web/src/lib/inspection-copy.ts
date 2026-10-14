@@ -6,6 +6,49 @@ export type InspectionLocale = 'en' | 'es';
 
 export type InspectionCopy = {
   crumbTrucks: string;
+  setupTitle: string;
+  setupIntro: string;
+  addCheck: string;
+  addCheckTitle: (section: string) => string;
+  addCheckSub: (section: string) => string;
+  checkName: string;
+  checkNamePlaceholder: string;
+  defectCreates: string;
+  detailingOption: string;
+  noteOnDetailing: string;
+  rename: string;
+  renameTitle: string;
+  changeJob: string;
+  changeJobTitle: (label: string) => string;
+  moveUp: string;
+  moveDown: string;
+  deactivate: string;
+  activate: string;
+  inactiveBadge: string;
+  newBadge: string;
+  moreFor: (label: string) => string;
+  unsaved: string;
+  discard: string;
+  saveChanges: string;
+  checklistSaved: string;
+  checklistSaveFailed: string;
+  tiresLimitsTitle: string;
+  tiresLimitsHint: string;
+  steerPsi: string;
+  drivePsi: string;
+  steerMinTread: string;
+  driveMinTread: string;
+  watchPct: string;
+  fixPct: string;
+  ruleOk: string;
+  ruleWatch: string;
+  ruleFix: string;
+  whoCanInspectTitle: string;
+  whoCanInspectText: string;
+  openPeople: string;
+  readOnlyChecklist: string;
+  inactiveJobWarning: (count: number) => string;
+  applyNote: string;
   toInspectTitle: string;
   toInspectHint: string;
   start: string;
@@ -144,6 +187,49 @@ export type InspectionCopy = {
 
 const en: InspectionCopy = {
   crumbTrucks: 'Trucks',
+  setupTitle: 'Inspection checklist',
+  setupIntro: 'What every inspection checks. Each check points to the catalog Job a defect creates. Changes apply to new inspections; saved ones keep what they had.',
+  addCheck: 'Add check',
+  addCheckTitle: (section) => `Add check · ${section}`,
+  addCheckSub: (section) => `It shows on new inspections at the end of ${section}.`,
+  checkName: 'Check',
+  checkNamePlaceholder: 'e.g. Mud flaps',
+  defectCreates: 'A defect creates',
+  detailingOption: 'A note on the Detailing step',
+  noteOnDetailing: 'Note on the Detailing step',
+  rename: 'Rename',
+  renameTitle: 'Rename check',
+  changeJob: 'Change Job',
+  changeJobTitle: (label) => `What a defect in “${label}” creates`,
+  moveUp: 'Move up',
+  moveDown: 'Move down',
+  deactivate: 'Deactivate',
+  activate: 'Activate',
+  inactiveBadge: 'Inactive',
+  newBadge: 'New',
+  moreFor: (label) => `More for ${label}`,
+  unsaved: 'Unsaved changes',
+  discard: 'Discard',
+  saveChanges: 'Save',
+  checklistSaved: 'Checklist saved · applies to new inspections',
+  checklistSaveFailed: 'The checklist was not saved.',
+  tiresLimitsTitle: 'Tires',
+  tiresLimitsHint: '10 tires: steer + 2 drive axles. Trailers come later.',
+  steerPsi: 'Steer PSI',
+  drivePsi: 'Drive PSI',
+  steerMinTread: 'Steer min tread /32',
+  driveMinTread: 'Drive min tread /32',
+  watchPct: 'Watch past ±%',
+  fixPct: 'Fix past ±%',
+  ruleOk: 'OK — within the watch range and tread 2/32 above the minimum',
+  ruleWatch: 'Watch — past the watch range or tread near the minimum · no Job',
+  ruleFix: 'Fix — past the fix range → Flat Repair · under the minimum tread → Tires',
+  whoCanInspectTitle: 'Who can inspect',
+  whoCanInspectText: 'Managers always. Mechanics only with “Can inspect trucks” in People.',
+  openPeople: 'Open People',
+  readOnlyChecklist: 'Only the Shop Manager or a System Admin can change the checklist.',
+  inactiveJobWarning: (count) => `${count} active check${count === 1 ? '' : 's'} point${count === 1 ? 's' : ''} to a Job that is no longer active. Change ${count === 1 ? 'its' : 'their'} Job.`,
+  applyNote: 'Checks are never deleted: deactivate one and it stays in the reports that used it.',
   toInspectTitle: 'To inspect',
   toInspectHint: 'Trucks waiting for inspection. You see them because you can inspect trucks.',
   start: 'Start',
@@ -282,6 +368,49 @@ const en: InspectionCopy = {
 
 const es: InspectionCopy = {
   crumbTrucks: 'Camiones',
+  setupTitle: 'Lista de inspección',
+  setupIntro: 'Lo que revisa cada inspección. Cada punto apunta al Job del catálogo que crea un defecto. Los cambios valen para inspecciones nuevas; las guardadas quedan como estaban.',
+  addCheck: 'Agregar punto',
+  addCheckTitle: (section) => `Agregar punto · ${section}`,
+  addCheckSub: (section) => `Sale en las inspecciones nuevas al final de ${section}.`,
+  checkName: 'Punto',
+  checkNamePlaceholder: 'p. ej. Loderas',
+  defectCreates: 'Un defecto crea',
+  detailingOption: 'Una nota en el paso Detailing',
+  noteOnDetailing: 'Nota en el paso Detailing',
+  rename: 'Renombrar',
+  renameTitle: 'Renombrar punto',
+  changeJob: 'Cambiar Job',
+  changeJobTitle: (label) => `Qué crea un defecto en “${label}”`,
+  moveUp: 'Subir',
+  moveDown: 'Bajar',
+  deactivate: 'Desactivar',
+  activate: 'Activar',
+  inactiveBadge: 'Inactivo',
+  newBadge: 'Nuevo',
+  moreFor: (label) => `Más opciones de ${label}`,
+  unsaved: 'Cambios sin guardar',
+  discard: 'Descartar',
+  saveChanges: 'Guardar',
+  checklistSaved: 'Lista guardada · vale para las inspecciones nuevas',
+  checklistSaveFailed: 'La lista no se guardó.',
+  tiresLimitsTitle: 'Llantas',
+  tiresLimitsHint: '10 llantas: dirección + 2 ejes de tracción. Los trailers vienen después.',
+  steerPsi: 'PSI dirección',
+  drivePsi: 'PSI tracción',
+  steerMinTread: 'Tread mínimo dirección /32',
+  driveMinTread: 'Tread mínimo tracción /32',
+  watchPct: 'Vigilar desde ±%',
+  fixPct: 'Arreglar desde ±%',
+  ruleOk: 'OK — dentro del rango y tread 2/32 sobre el mínimo',
+  ruleWatch: 'Vigilar — fuera del rango de vigilar o tread cerca del mínimo · sin Job',
+  ruleFix: 'Arreglar — fuera del rango de arreglar → Flat Repair · bajo el tread mínimo → Tires',
+  whoCanInspectTitle: 'Quién inspecciona',
+  whoCanInspectText: 'Los Managers siempre. Los mecánicos solo con “Puede inspeccionar camiones” en People.',
+  openPeople: 'Abrir People',
+  readOnlyChecklist: 'Solo el Shop Manager o un System Admin pueden cambiar la lista.',
+  inactiveJobWarning: (count) => `${count} punto${count === 1 ? '' : 's'} activo${count === 1 ? '' : 's'} apunta${count === 1 ? '' : 'n'} a un Job que ya no está activo. Cambia su Job.`,
+  applyNote: 'Los puntos no se borran: si desactivas uno, sigue en los reportes que lo usaron.',
   toInspectTitle: 'Por inspeccionar',
   toInspectHint: 'Camiones que esperan inspección. Los ves porque puedes inspeccionar camiones.',
   start: 'Empezar',

@@ -43,6 +43,8 @@ const navigationGroups = [
       { message: 'mechanics', icon: UsersRound, href: '/admin/mechanics' },
       { message: 'jobCatalog', icon: Library, href: '/admin/catalog' },
       { message: 'shopWorkflow', icon: ListChecks, href: '/admin/setup/workflow' },
+      // D41 / HU-M17: the checks every inspection walks through.
+      { message: 'inspectionChecklistNav', icon: ClipboardCheck, href: '/admin/setup/inspection' },
       // D-PC7: money, so the rate is for the Shop Manager and the System Admin only.
       { message: 'pcLaborRate', icon: Clock, href: '/admin/parts/labor-rate', managerOnly: true },
     ],

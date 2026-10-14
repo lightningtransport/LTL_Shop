@@ -459,11 +459,21 @@ export class InspectionService {
   // ───────────────────────── Setup → Inspection checklist ─────────────────────────
 
   async getChecklist(user: AuthUser): Promise<InspectionChecklistDto> {
-    const [items, limits] = await Promise.all([
+    const [items, limits, jobs] = await Promise.all([
       this.prisma.inspectionChecklistItem.findMany({ include: checklistInclude, orderBy: [{ section: 'asc' }, { sortOrder: 'asc' }] }),
       this.limits(this.prisma),
+      this.prisma.catalogJob.findMany({
+        where: { status: 'active', category: { status: 'active' } },
+        select: { id: true, displayName: true, category: { select: { name: true, sortOrder: true } } },
+        orderBy: [{ category: { sortOrder: 'asc' } }, { displayName: 'asc' }],
+      }),
     ]);
-    return { items: items.map(toChecklistItemDto), limits, canEdit: canDoManagerWrites(user) };
+    return {
+      items: items.map(toChecklistItemDto),
+      limits,
+      canEdit: canDoManagerWrites(user),
+      catalogJobs: jobs.map((job) => ({ id: job.id, displayName: job.displayName, categoryName: job.category.name })),
+    };
   }
 
   /**

@@ -206,6 +206,8 @@ export type InspectionChecklistDto = {
   items: InspectionChecklistItemDto[];
   limits: InspectionTireLimits;
   canEdit: boolean;
+  /** Active catalog Jobs a check can point to (Setup's "A defect creates"). */
+  catalogJobs: Array<{ id: string; displayName: string; categoryName: string }>;
 };
 
 export type InspectionItemDto = {
