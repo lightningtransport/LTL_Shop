@@ -10,6 +10,7 @@ import {
   OPEN_WORK_ORDER_STATUSES,
   ReadinessRequirementOutcome,
   ReadinessRequirementType,
+  WorkPlanInspectionOutcome,
   addWorkPlanJobsSchema,
   recordWorkPlanInspectionSchema,
   type AddWorkPlanJobsInput,
@@ -216,7 +217,11 @@ export class YardWorkPlanService {
     return this.get(user, truckId);
   }
 
-  async recordInspection(user: AuthUser, truckId: string, raw: unknown): Promise<TruckWorkPlanDto> {
+  /**
+   * D41: `fromSheet` — the inspection sheet decides the outcome. Shop Work the Manager added before the sheet still
+   * means Issues found (the derivation already reads it so), instead of refusing.
+   */
+  async recordInspection(user: AuthUser, truckId: string, raw: unknown, options: { fromSheet?: boolean } = {}): Promise<TruckWorkPlanDto> {
     this.assertUuid(truckId, 'Invalid Truck id');
     const parsed = recordWorkPlanInspectionSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
@@ -226,25 +231,16 @@ export class YardWorkPlanService {
       (job) => job.lane === 'shop_work' && job.status !== 'cancelled',
     );
     if (input.outcome === 'no_issues_found' && hasShopWork) {
-      throw new BadRequestException(
-        'Cannot record No issues found while Shop Work jobs are on the Work Plan.',
-      );
+      if (!options.fromSheet) {
+        throw new BadRequestException(
+          'Cannot record No issues found while Shop Work jobs are on the Work Plan.',
+        );
+      }
+      input.outcome = WorkPlanInspectionOutcome.ISSUES_FOUND;
     }
 
-    let assessmentId = current.phase1.assessmentId;
-    if (!assessmentId) {
-      try {
-        const started = await this.yardOperations.startAssessment(user, truckId, {
-          idempotencyKey: childIdempotencyKey(input.idempotencyKey, 0),
-        }) as { assessment: { id: string } };
-        assessmentId = started.assessment.id;
-      } catch (error) {
-        if (conflictCode(error) !== 'ACTIVE_READINESS_ASSESSMENT_EXISTS') throw error;
-        const existing = await this.findActiveAssessment(truckId);
-        assessmentId = existing?.id ?? null;
-      }
-    }
-    if (!assessmentId) throw new ConflictException('Could not link a Phase 1 readiness assessment.');
+    const assessmentId = current.phase1.assessmentId
+      ?? await this.ensureInspectionAssessment(user, truckId, childIdempotencyKey(input.idempotencyKey, 0));
 
     const assessment = await this.prisma.truckReadinessAssessment.findUnique({
       where: { id: assessmentId },
@@ -398,6 +394,22 @@ export class YardWorkPlanService {
     ]);
     if (!completed || returnedToServiceAfter(latestServiceEvent, completed.completedAt)) return null;
     return completed;
+  }
+
+  /** The readiness assessment of the Truck's current visit (started if missing); the inspection belongs to it. */
+  async ensureInspectionAssessment(user: AuthUser, truckId: string, idempotencyKey: string): Promise<string> {
+    const active = await this.findActiveAssessment(truckId);
+    if (active) return active.id;
+    let assessmentId: string | null = null;
+    try {
+      const started = await this.yardOperations.startAssessment(user, truckId, { idempotencyKey }) as { assessment: { id: string } };
+      assessmentId = started.assessment.id;
+    } catch (error) {
+      if (conflictCode(error) !== 'ACTIVE_READINESS_ASSESSMENT_EXISTS') throw error;
+      assessmentId = (await this.findActiveAssessment(truckId))?.id ?? null;
+    }
+    if (!assessmentId) throw new ConflictException('Could not link a Phase 1 readiness assessment.');
+    return assessmentId;
   }
 
   private async findActiveAssessment(truckId: string) {

@@ -699,6 +699,8 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Otra persona ya guardó la inspección de esa visita | Al guardar le dice "Already inspected by …" y le ofrece Add defects | 🔲 | — |
 | Se cancela la visita y se abre otra | La WO nueva empieza con la inspección pendiente, como hoy (A15c) | 🔲 | — |
 
+**Etapa IN-2 (2026-10-13):** la lógica está lista y la prueban las filas A82–A85; faltan las pantallas (IN-3). Por eso la tabla sigue en 🔲.
+
 ### HU-ME7 · Inspeccionar un camión desde My work (J20) — 🔲 decidido, no construido (D41)
 
 **Quién:** un mecánico Standard o PM con **Can inspect trucks** encendido en People.
@@ -718,6 +720,8 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Encuentra algo después de guardar | **Add defects** desde el aviso de My work, mientras la WO siga abierta | 🔲 | — |
 | Intenta agregar Jobs fuera de la inspección | No puede (A26) | 🔲 | — |
 | Es de Safety | No tiene el permiso; Safety solo hace QC (QC4, D19) | 🔲 | — |
+
+**Etapa IN-2:** la lógica la prueban las filas A86 y A87; faltan las pantallas (IN-4).
 
 ### HU-M17 · Editar la hoja de inspección y dar el permiso (J2, J12) — 🔲 decidido, no construido (D41)
 
@@ -744,7 +748,9 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Desactiva un punto | Deja de salir en las inspecciones nuevas y sigue en los reportes viejos | 🔲 | — |
 | Desactiva en el catálogo un Job que usa la hoja | No deja hasta cambiar el Job de esos puntos (igual que con los pasos, A38) | 🔲 | — |
 | Un mecánico o Safety intenta editar la hoja | No puede (como el catálogo, A26) | 🔲 | — |
-| Da el permiso a alguien de Safety | La casilla no aparece; Safety solo hace QC | 🔲 | — |
+| Da el permiso a alguien de Safety | La casilla no aparece; Safety solo hace QC | 🔲 | A87 |
+
+**Etapa IN-2:** la lógica la prueba la fila A88; falta la pantalla (IN-5).
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 

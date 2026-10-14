@@ -193,11 +193,12 @@ describe('Manager writes: roster (D22) and Job catalog (D25)', () => {
     AppCapability.YARD_OPERATIONS_MANAGE,
   ];
 
-  it('lists the roster and the two catalog Job writes, and no category write', () => {
+  it('lists the roster, the two catalog Job writes and the inspection checklist (D41), and no category write', () => {
     expect(MANAGER_WRITES.map((entry) => entry.handler).sort()).toEqual([
       'createCatalogJob',
       'createMechanic',
       'resetMechanicPassword',
+      'saveInspectionChecklist',
       'updateCatalogJob',
       'updateMechanic',
     ]);

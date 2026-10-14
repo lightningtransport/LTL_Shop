@@ -99,7 +99,7 @@ export class CatalogAdminService {
     requireId(id, 'Catalog Job');
     const job = await this.prisma.catalogJob.findUnique({
       where: { id },
-      select: { id: true, systemKey: true, _count: { select: { workOrderJobs: true, workflowSteps: true } } },
+      select: { id: true, systemKey: true, _count: { select: { workOrderJobs: true, workflowSteps: true, inspectionChecklistItems: true, inspectionItems: true } } },
     });
     if (!job) throw new NotFoundException('Catalog job not found');
     if (job.systemKey) {
@@ -116,6 +116,10 @@ export class CatalogAdminService {
         message: 'Work Orders already use this Job, so it cannot be deleted. Deactivate it instead.',
         workOrderCount,
       });
+    }
+    // D41: the inspection checklist (or a saved inspection) points to it.
+    if (job._count.inspectionChecklistItems || job._count.inspectionItems) {
+      throw new ConflictException({ code: 'CATALOG_JOB_IN_INSPECTION_CHECKLIST', message: 'Inspection checks use this Job. Change them in Setup → Inspection checklist first.' });
     }
     await this.prisma.catalogJob.delete({ where: { id } });
     return { deleted: true };
