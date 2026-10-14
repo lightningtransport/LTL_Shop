@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { checkPmObservedMileage, type PmServiceDto } from '@ltl-shop/shared';
+import { checkPmObservedMileage, samsaraMileageGap, type PmServiceDto } from '@ltl-shop/shared';
 import { ApiError, apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { intlLocale } from '@/lib/shop-locale';
 import { formatMileage } from '@/lib/format';
+import { formatAdminAgo } from '@/lib/admin-format';
 import { pmSaveStatus } from '@/lib/pm-save-status';
 import { shopKeys, usePmService } from '@/lib/shop-data';
 import { Button, Card, CardListSkeleton, Input, Label, LoadFailure, SectionCard, Select } from '@/components/ui';
@@ -151,6 +152,9 @@ export function PmServiceCard({
   // Block A (PM3): clearing the field never saves an empty mileage; the last saved one stays.
   const mileageEmpty = !!data?.canEdit && hydrated && mileage === '';
   const mileageBlocked = mileageBelowCurrent || mileageNeedsConfirmation || mileageEmpty;
+  // D35 / S4-1: Samsara as a reference; past 50 mi a gentle check that never blocks saving (the dashboard is official).
+  const samsara = data?.samsaraOdometer ?? null;
+  const samsaraGap = /^\d+$/.test(mileage) ? samsaraMileageGap(Number(mileage), samsara?.miles) : null;
 
   const flushSaveQueue = useCallback(async () => {
     if (!data?.canEdit || savingRef.current) return;
@@ -372,6 +376,16 @@ export function PmServiceCard({
               />
               <span id="pm-observed-mileage-unit" className="text-sm text-muted-foreground">mi</span>
             </div>
+            {samsara ? (
+              <p className="mt-1.5 text-xs text-muted-foreground" data-testid="pm-samsara-reference">
+                {messages.pmSamsaraReference(formatMileage(samsara.miles), formatAdminAgo(samsara.at, messages.locale))}
+              </p>
+            ) : null}
+            {canEdit && samsara && samsaraGap !== null && !showBelow && !mileageNeedsConfirmation ? (
+              <p className="mt-2 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground" role="status" data-testid="pm-samsara-gap">
+                {messages.pmSamsaraGap(formatMileage(Math.abs(samsaraGap)), formatMileage(samsara.miles))}
+              </p>
+            ) : null}
             {showBelow && mileageCheck?.ok === false ? (
               <p className="mt-2 text-sm text-destructive-text" role="alert">
                 {messages.mileageBelowCurrent(formatMileage(mileageCheck.currentMileage))}

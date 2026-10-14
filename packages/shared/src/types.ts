@@ -890,6 +890,8 @@ export interface PmServiceDto {
   canEdit: boolean;
   currentTruckMileage: number | null;
   observedMileage: number | null;
+  /** D35 / S4-1: Samsara's last odometer reading, a reference only (the field is never filled from it). */
+  samsaraOdometer?: { miles: number; at: string | null; source: 'obd' | 'gps' | null } | null;
   /** LTR-137: set when this PM Work Order is completed (read-only history view). */
   serviceCompletedAt?: string | null;
   lastCompletedPm: {

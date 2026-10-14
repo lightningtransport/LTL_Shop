@@ -1676,6 +1676,14 @@ export class WorkOrdersService {
           ['in_progress', 'waiting_paused'].includes(wo.status),
       currentTruckMileage: wo.truck.mileage,
       observedMileage: wo.pmService?.observedMileage ?? null,
+      // D35 / S4-1: Samsara's odometer next to the field, as a reference.
+      samsaraOdometer: wo.truck.samsaraOdometerMiles == null
+        ? null
+        : {
+            miles: wo.truck.samsaraOdometerMiles,
+            at: wo.truck.samsaraOdometerAt?.toISOString() ?? null,
+            source: wo.truck.samsaraOdometerSource === 'obd' || wo.truck.samsaraOdometerSource === 'gps' ? wo.truck.samsaraOdometerSource : null,
+          },
       serviceCompletedAt: serviceCompletedAt ? serviceCompletedAt.toISOString() : null,
       lastCompletedPm: previous
         ? {
