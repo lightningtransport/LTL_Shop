@@ -50,6 +50,9 @@ export type InspectionCopy = {
   inactiveJobWarning: (count: number) => string;
   applyNote: string;
   toInspectTitle: string;
+  inspectedByYou: (date: string) => string;
+  legacyTitle: (issues: boolean) => string;
+  legacySub: (when: string, name: string) => string;
   toInspectHint: string;
   start: string;
   waitingSince: (date: string) => string;
@@ -231,7 +234,10 @@ const en: InspectionCopy = {
   inactiveJobWarning: (count) => `${count} active check${count === 1 ? '' : 's'} point${count === 1 ? 's' : ''} to a Job that is no longer active. Change ${count === 1 ? 'its' : 'their'} Job.`,
   applyNote: 'Checks are never deleted: deactivate one and it stays in the reports that used it.',
   toInspectTitle: 'To inspect',
-  toInspectHint: 'Trucks waiting for inspection. You see them because you can inspect trucks.',
+  inspectedByYou: (date) => `Inspected by you · ${date}`,
+  legacyTitle: (issues) => `Recorded before the inspection sheet: ${issues ? 'Issues found' : 'No issues found'}`,
+  legacySub: (when, name) => `${[name, when].filter(Boolean).join(' · ')}. There is no sheet for this visit; fill it now to keep the checks and the tire readings.`,
+  toInspectHint: 'Trucks waiting for inspection, and the ones you inspected while their Work Order is open. You see them because you can inspect trucks.',
   start: 'Start',
   waitingSince: (date) => `Waiting since ${date}`,
   myWork: 'My work',
@@ -412,7 +418,10 @@ const es: InspectionCopy = {
   inactiveJobWarning: (count) => `${count} punto${count === 1 ? '' : 's'} activo${count === 1 ? '' : 's'} apunta${count === 1 ? '' : 'n'} a un Job que ya no está activo. Cambia su Job.`,
   applyNote: 'Los puntos no se borran: si desactivas uno, sigue en los reportes que lo usaron.',
   toInspectTitle: 'Por inspeccionar',
-  toInspectHint: 'Camiones que esperan inspección. Los ves porque puedes inspeccionar camiones.',
+  inspectedByYou: (date) => `Lo inspeccionaste tú · ${date}`,
+  legacyTitle: (issues) => `Registrado antes de la hoja de inspección: ${issues ? 'Issues found' : 'No issues found'}`,
+  legacySub: (when, name) => `${[name, when].filter(Boolean).join(' · ')}. Esta visita no tiene hoja; llénala ahora para guardar los puntos y las llantas.`,
+  toInspectHint: 'Camiones que esperan inspección, y los que inspeccionaste mientras su Work Order siga abierta. Los ves porque puedes inspeccionar camiones.',
   start: 'Empezar',
   waitingSince: (date) => `Esperando desde ${date}`,
   myWork: 'Mi trabajo',

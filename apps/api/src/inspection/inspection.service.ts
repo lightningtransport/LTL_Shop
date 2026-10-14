@@ -114,6 +114,13 @@ export class InspectionService {
     const inspection = assessment
       ? await this.prisma.truckInspection.findUnique({ where: { assessmentId: assessment.id }, include: inspectionInclude })
       : null;
+    // IN-8: an outcome recorded with the old buttons (before D41) and no sheet saved for this visit.
+    const legacy = assessment && !inspection
+      ? await this.prisma.readinessRequirement.findFirst({
+          where: { assessmentId: assessment.id, type: 'inspection', outcome: { in: ['completed', 'required'] } },
+          select: { outcome: true, evaluatedAt: true, evaluatedBy: { select: { name: true } } },
+        })
+      : null;
     const tireJobs = await this.prisma.catalogJob.findMany({
       where: { seedKey: { in: [jobSeedKey(TIRES_CATEGORY, 'Flat Repair'), jobSeedKey(TIRES_CATEGORY, 'Tires')] } },
       select: { id: true, displayName: true, seedKey: true, category: { select: { name: true } } },
@@ -146,6 +153,13 @@ export class InspectionService {
       previousTires: previous.map(toTireDto),
       canInspect: actor !== null,
       canAssign: actor === 'manager',
+      legacyInspection: legacy
+        ? {
+            outcome: legacy.outcome === 'completed' ? 'no_issues_found' : 'issues_found',
+            recordedAt: legacy.evaluatedAt?.toISOString() ?? null,
+            byName: legacy.evaluatedBy?.name ?? null,
+          }
+        : null,
     };
   }
 
@@ -161,15 +175,24 @@ export class InspectionService {
         createdAt: true,
         truck: { select: { id: true, truckNumber: true, make: true, model: true, year: true } },
         readinessAssessment: {
-          select: { status: true, inspection: { select: { id: true } }, requirements: { where: { type: 'inspection' }, select: { outcome: true } } },
+          select: {
+            status: true,
+            inspection: { select: { id: true, inspectedById: true, inspectedAt: true } },
+            requirements: { where: { type: 'inspection' }, select: { outcome: true } },
+          },
         },
       },
     });
+    // IN-7: besides the trucks waiting, the ones I inspected while their Work Order is open (to reach Add defects).
+    const inspectedByMe = (row: (typeof rows)[number]) => {
+      const inspection = row.readinessAssessment?.status !== 'closed' ? row.readinessAssessment?.inspection : null;
+      return inspection && inspection.inspectedById === user.id ? inspection.inspectedAt : null;
+    };
     return rows
       .filter((row) => {
         const assessment = row.readinessAssessment;
         if (!assessment || assessment.status === 'closed') return true;
-        if (assessment.inspection) return false;
+        if (assessment.inspection) return Boolean(inspectedByMe(row));
         return (assessment.requirements[0]?.outcome ?? 'not_evaluated') === 'not_evaluated';
       })
       .map((row) => ({
@@ -181,7 +204,10 @@ export class InspectionService {
         workOrderId: row.id,
         workOrderDisplayId: row.displayId,
         waitingSince: row.createdAt.toISOString(),
-      }));
+        inspectedAt: inspectedByMe(row)?.toISOString() ?? null,
+      }))
+      // Waiting first (oldest first), then the ones already inspected.
+      .sort((a, b) => Number(a.inspectedAt !== null) - Number(b.inspectedAt !== null));
   }
 
   // ───────────────────────── Save the sheet ─────────────────────────

@@ -11,6 +11,7 @@ import { Button, CountChip } from './ui';
 
 /**
  * D41 / HU-ME7: "To inspect" in My work, only for a mechanic with "Can inspect trucks". Hidden when nothing waits.
+ * IN-7: the trucks I already inspected stay listed, after the waiting ones, while their Work Order is open (Add defects).
  * Start opens the same sheet the Manager uses; the Jobs it creates are born unowned for the Manager to assign.
  */
 export function InspectionQueueCard({ enabled, mode }: { enabled: boolean; mode: MechanicMode }) {
@@ -18,6 +19,7 @@ export function InspectionQueueCard({ enabled, mode }: { enabled: boolean; mode:
   const copy = inspectionCopy(messages.locale);
   const { data } = useInspectionQueue(enabled);
   if (!enabled || !data?.length) return null;
+  const waiting = data.filter((item) => !item.inspectedAt).length;
   const base = `/mechanic/${mode === MechanicMode.PM ? 'pm' : 'standard'}`;
   const date = (iso: string) => new Date(iso).toLocaleDateString(messages.locale === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric' });
   return (
@@ -26,7 +28,7 @@ export function InspectionQueueCard({ enabled, mode }: { enabled: boolean; mode:
         <h2 id="inspection-queue-title" className="flex items-center gap-2 text-base font-semibold">
           <ClipboardCheck aria-hidden="true" className="size-4 text-muted-foreground" />
           {copy.toInspectTitle}
-          <CountChip>{data.length}</CountChip>
+          {waiting ? <CountChip>{waiting}</CountChip> : null}
         </h2>
         <p className="text-xs text-muted-foreground">{copy.toInspectHint}</p>
       </div>
@@ -38,12 +40,13 @@ export function InspectionQueueCard({ enabled, mode }: { enabled: boolean; mode:
                 {messages.truckTitle(item.truckNumber)} <span className="font-mono text-xs font-normal text-muted-foreground">{item.workOrderDisplayId}</span>
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                {copy.waitingSince(date(item.waitingSince))}
+                {item.inspectedAt ? copy.inspectedByYou(date(item.inspectedAt)) : copy.waitingSince(date(item.waitingSince))}
                 {vehicleLine(item) ? ` · ${vehicleLine(item)}` : ''}
               </p>
             </div>
-            <Button asChild size="sm" variant={index === 0 ? 'default' : 'outline'}>
-              <Link href={`${base}/inspect/${item.truckId}`}>{copy.start}</Link>
+            {/* IN-7: a truck I already inspected stays here while its Work Order is open, to add what I find later. */}
+            <Button asChild size="sm" variant={index === 0 && !item.inspectedAt ? 'default' : 'outline'}>
+              <Link href={`${base}/inspect/${item.truckId}`}>{item.inspectedAt ? copy.addDefects : copy.start}</Link>
             </Button>
           </li>
         ))}

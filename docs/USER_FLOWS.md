@@ -698,6 +698,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Quiere cambiar una lectura de llanta ya guardada | No se cambia; si la llanta tiene un problema, marca **Tire condition** como defecto con Add defects | 👁 revisado en pantalla | — |
 | Otra persona ya guardó la inspección de esa visita | Al guardar le dice "Already inspected by …"; al volver a abrir ve el reporte con Add defects | ✅ | A83 |
 | Se cancela la visita y se abre otra | La WO nueva empieza con la inspección pendiente, como hoy (A15c) | sin prueba | — |
+| La visita se inspeccionó con los botones de antes de D41 | Arriba de la hoja: "Recorded before the inspection sheet: Issues found · quién · cuándo"; la hoja se llena igual y al guardarla queda el reporte (IN-8) | ✅ | A90 |
 
 **Construido (2026-10-13):** pruebas `test:real` A82–A85; probado a mano con la app real (OPEN_ISSUES §1v).
 
@@ -717,7 +718,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | No tiene el permiso | No ve "To inspect" ni puede abrir la hoja (A26 sigue) | ✅ | A86 |
 | Le quitan el permiso con la hoja a medias | No la puede guardar (403); lo marcado sigue en el teléfono | sin prueba | — |
 | Quiere ver los Jobs que creó | Los ve solo si el Manager se los asigna (A5); el reporte queda en el historial del camión | sin prueba | — |
-| Encuentra algo después de guardar | **Add defects** está en el reporte, pero hoy el mecánico no tiene cómo volver a él desde My work: el camión sale de "To inspect" al guardar (OPEN_ISSUES §1v, IN-7) | sin prueba | — |
+| Encuentra algo después de guardar | El camión sigue en "To inspect" como "Inspected by you" con **Add defects**, mientras la WO siga abierta; no aparecen los que inspeccionó otro (IN-7) | ✅ | A89 |
 | Intenta agregar Jobs fuera de la inspección | No puede (A26) | ✅ | A86 |
 | Es de Safety | No tiene el permiso; Safety solo hace QC (QC4, D19) | ✅ | A87 |
 
