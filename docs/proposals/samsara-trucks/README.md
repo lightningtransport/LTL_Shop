@@ -1,6 +1,6 @@
 # PROPUESTA: camiones propios, Samsara y API para terceros
 
-**Estado:** diseñado, **no construido** (2026-10-09; ampliado 2026-10-13). Sale de dos chats del dueño: "Base de datos propia de camiones" e "Integración API Samsara para camiones". Decisiones: D35 y **D42** (fallas → Jobs recomendados) en [`DECISIONS.md`](../../DECISIONS.md); preguntas abiertas P12–P14. **Maqueta:** [`mockup.html`](mockup.html) (7 pantallas; ábrela en el navegador). Linear: épica [LTR-46](https://linear.app/ltransl/issue/LTR-46); Samsara [LTR-202](https://linear.app/ltransl/issue/LTR-202); camiones propios y API [LTR-203](https://linear.app/ltransl/issue/LTR-203).
+**Estado:** Samsara (Paso 2 y Paso 2b) **construido y en producción el 2026-10-14** (S-1 a S-4 y S-6, OPEN_ISSUES §1w–§1x). **Pendientes:** Paso 1, camiones propios en Admin (P13), y Paso 3, API para terceros (P14), en LTR-203. Diseñado el 2026-10-09; ampliado el 2026-10-13. Sale de dos chats del dueño: "Base de datos propia de camiones" e "Integración API Samsara para camiones". Decisiones: D35 y **D42** (fallas → Jobs recomendados) en [`DECISIONS.md`](../../DECISIONS.md); preguntas abiertas P12–P14. **Maqueta:** [`mockup.html`](mockup.html) (7 pantallas; ábrela en el navegador). Linear: épica [LTR-46](https://linear.app/ltransl/issue/LTR-46); Samsara [LTR-202](https://linear.app/ltransl/issue/LTR-202); camiones propios y API [LTR-203](https://linear.app/ltransl/issue/LTR-203).
 
 ## Qué quiere el dueño
 
