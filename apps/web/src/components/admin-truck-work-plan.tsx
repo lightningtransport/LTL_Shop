@@ -6,10 +6,9 @@ import {
   AppCapability,
   JobStatus,
   WorkPlanInspectionOutcome,
-  type RecordWorkPlanInspectionInput,
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
-import { Building2, Check, ChevronDown, CircleSlash, CornerDownRight, Info, Lock, OctagonPause, Package, ShieldCheck, SquareArrowOutUpRight, Truck, UserPlus } from 'lucide-react';
+import { Building2, Check, ChevronDown, ClipboardCheck, CircleSlash, CornerDownRight, Info, Lock, OctagonPause, Package, ShieldCheck, SquareArrowOutUpRight, Truck, UserPlus } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import {
@@ -30,7 +29,6 @@ import { MechanicPicker, type PickerMechanic } from './mechanic-picker';
 import { SideSheet } from './side-sheet';
 import { STEP_TONE, TruckStepIcon, truckStepLabel } from './truck-stepper';
 import { MechanicAvatar } from './mechanic-avatar';
-import { ResponsiveMenu } from './responsive-menu';
 import { useActionToast } from './action-toast';
 import { Button } from './ui';
 
@@ -64,9 +62,7 @@ export function AdminTruckWorkPlan({
   messages,
   addWorkOpen,
   onAddWorkOpenChange,
-  inspectionPending,
   inspectionInNextStep,
-  onRecordInspection,
   onPlanUpdated,
   onError,
 }: {
@@ -82,10 +78,8 @@ export function AdminTruckWorkPlan({
   messages: AdminMessages;
   addWorkOpen: boolean;
   onAddWorkOpenChange: (open: boolean) => void;
-  inspectionPending: boolean;
   /** The Next step already shows the two inspection buttons (`inspect`); the section only states it. */
   inspectionInNextStep: boolean;
-  onRecordInspection: (outcome: RecordWorkPlanInspectionInput['outcome']) => void;
   onPlanUpdated: (next: TruckWorkPlanDto) => Promise<void> | void;
   onError: (message: string | null) => void;
 }) {
@@ -342,10 +336,9 @@ export function AdminTruckWorkPlan({
               {step.key === 'inspection' ? (
                 <InspectionControl
                   plan={plan}
+                  truckId={truckId}
                   messages={messages}
-                  canInspect={canInspect && !inspectionInNextStep}
-                  pending={inspectionPending || Boolean(pendingAction)}
-                  onRecord={onRecordInspection}
+                  canInspect={canInspect && canAddWork && !inspectionInNextStep}
                 />
               ) : null}
               {open ? renderJobs(step.key) : null}
@@ -420,28 +413,29 @@ function StepHead({ step, state, meta, collapsible, open, messages, onToggle }: 
 }
 
 /**
- * D14 / UX-4-003 / Stage 8 (mockup): pending → the prompt and the two buttons; recorded → the outcome is in the
- * step's line, with "Change" as a link (a menu with both outcomes), so a recorded result never looks like a button.
+ * D41 / HU-M16: pending → the prompt and "Start inspection" (the sheet); recorded → the outcome is in the step's
+ * line, with "View report" as a link (the report has "Add defects"). The two D14 buttons are gone: the sheet decides.
  */
 function InspectionControl({
   plan,
+  truckId,
   messages,
   canInspect,
-  pending,
-  onRecord,
 }: {
   plan: TruckWorkPlanDto;
+  truckId: string;
   messages: AdminMessages;
   canInspect: boolean;
-  pending: boolean;
-  onRecord: (outcome: RecordWorkPlanInspectionInput['outcome']) => void;
 }) {
   const outcome = plan.inspection.outcome;
+  const href = `/admin/trucks/${truckId}/inspection`;
   if (outcome === WorkPlanInspectionOutcome.NOT_STARTED) {
     return (
       <div className="space-y-3 px-4 pb-4 sm:pl-[52px]" data-testid="truck-inspection">
-        <p className="text-muted-foreground">{messages.inspectionPrompt}</p>
-        {canInspect ? <InspectionButtons messages={messages} pending={pending} onRecord={onRecord} /> : null}
+        <p className="text-muted-foreground">{messages.inspectionSheetPrompt}</p>
+        {canInspect && plan.workOrder ? (
+          <Button asChild size="sm"><Link href={href} data-testid="truck-inspection-start"><ClipboardCheck aria-hidden="true" />{messages.inspectionStart}</Link></Button>
+        ) : null}
       </div>
     );
   }
@@ -449,36 +443,11 @@ function InspectionControl({
   return (
     <div className="-mt-1 px-4 pb-3 pl-[52px]" data-testid="truck-inspection">
       <span className="sr-only">{fillPlaceholders(messages.inspectionRecordedOutcome, { outcome: label })}</span>
-      {canInspect ? (
-        <ResponsiveMenu
-          label={messages.inspection}
-          align="start"
-          items={([WorkPlanInspectionOutcome.NO_ISSUES_FOUND, WorkPlanInspectionOutcome.ISSUES_FOUND] as const).map((value) => ({
-            key: value,
-            label: value === WorkPlanInspectionOutcome.ISSUES_FOUND ? messages.workPlanIssuesFound : messages.workPlanNoIssuesFound,
-            icon: value === outcome ? Check : undefined,
-            onSelect: () => { if (value !== outcome) onRecord(value); },
-          }))}
-          trigger={<button type="button" disabled={pending} className="text-sm font-medium text-primary hover:underline disabled:opacity-60">{messages.inspectionChange}</button>}
-        />
-      ) : null}
+      <Link href={href} className="text-sm font-medium text-primary hover:underline" data-testid="truck-inspection-report">{messages.inspectionViewReport}</Link>
     </div>
   );
 }
 
-/** The two D14 buttons, also used by the Next step `inspect`. */
-export function InspectionButtons({ messages, pending, onRecord }: { messages: AdminMessages; pending: boolean; onRecord: (outcome: RecordWorkPlanInspectionInput['outcome']) => void }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onRecord(WorkPlanInspectionOutcome.NO_ISSUES_FOUND)}>
-        {messages.workPlanNoIssuesFound}
-      </Button>
-      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onRecord(WorkPlanInspectionOutcome.ISSUES_FOUND)}>
-        {messages.workPlanIssuesFound}
-      </Button>
-    </div>
-  );
-}
 
 function errorCode(errorValue: ApiError) {
   if (typeof errorValue.body === 'object' && errorValue.body !== null && 'code' in errorValue.body) {

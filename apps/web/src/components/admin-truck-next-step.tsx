@@ -21,7 +21,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
-import { WorkPlanInspectionOutcome, WorkPlanJobLane, type AdminTruckDetailDto, type RecordWorkPlanInspectionInput } from '@ltl-shop/shared';
+import { WorkPlanInspectionOutcome, WorkPlanJobLane, type AdminTruckDetailDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import {
   completeAdminJob,
@@ -56,8 +56,6 @@ export function AdminTruckNextStep({
   messages,
   canManage,
   fromPath,
-  inspectionPending,
-  onRecordInspection,
   onAddWork,
   onNewWorkOrder,
   onChanged,
@@ -68,8 +66,6 @@ export function AdminTruckNextStep({
   canManage: boolean;
   /** This Truck's path, for the Work Order's back link. */
   fromPath: string;
-  inspectionPending: boolean;
-  onRecordInspection: (outcome: RecordWorkPlanInspectionInput['outcome']) => void;
   /** Opens the Add work panel. */
   onAddWork: () => void;
   /** Opens the New Work Order dialog (owner decision 2026-10-05: the Manager stays on the Truck). */
@@ -157,12 +153,10 @@ export function AdminTruckNextStep({
         icon: ClipboardCheck,
         eyebrow: messages.calloutNextStep,
         title: messages.calloutInspectTitle,
-        sub: messages.calloutTruckInspectSub,
-        actions: truck.workPlan.capabilities.canRecordInspection ? (
-          <>
-            <Button type="button" variant="outline" disabled={inspectionPending} onClick={() => onRecordInspection(WorkPlanInspectionOutcome.NO_ISSUES_FOUND)}>{messages.workPlanNoIssuesFound}</Button>
-            <Button type="button" disabled={inspectionPending} onClick={() => onRecordInspection(WorkPlanInspectionOutcome.ISSUES_FOUND)}>{messages.workPlanIssuesFound}</Button>
-          </>
+        // D41: the inspection is the sheet (no more "No issues found / Issues found" buttons).
+        sub: messages.inspectionSheetPrompt,
+        actions: truck.workPlan.capabilities.canRecordInspection && truck.workPlan.capabilities.canAddWork ? (
+          <Button asChild className="flex-1 sm:flex-none"><Link href={`/admin/trucks/${truck.truck.id}/inspection`} data-testid="truck-next-step-inspect"><ClipboardCheck aria-hidden="true" />{messages.inspectionStart}</Link></Button>
         ) : null,
       });
     case 'add_missing_steps':

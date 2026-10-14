@@ -3,10 +3,9 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { CheckCheck, ClipboardCheck, FilePlus, ListPlus, Play, SquareArrowOutUpRight, Truck as TruckIcon, UserPlus, type LucideIcon } from 'lucide-react';
-import { AppCapability, isPmCategory, WorkPlanInspectionOutcome, type AdminWorkOrderDetailDto, type TruckNextStepDto } from '@ltl-shop/shared';
-import { useRouter } from 'next/navigation';
+import { AppCapability, isPmCategory, type AdminWorkOrderDetailDto, type TruckNextStepDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
-import { assignAdminWorkOrderJob, completeAdminJob, completeAdminWorkOrder, recordAdminWorkPlanInspection, resumeAdminWorkOrder, useAdminAssignableMechanics } from '@/lib/admin-data';
+import { assignAdminWorkOrderJob, completeAdminJob, completeAdminWorkOrder, resumeAdminWorkOrder, useAdminAssignableMechanics } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
@@ -65,7 +64,6 @@ export function NextStepAction({
   onResolve?: () => void;
 }) {
   const { showToast } = useActionToast();
-  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [dialog, setDialog] = useState<'close' | 'return' | null>(null);
   const label = truckNextStepActionLabel(step, messages);
@@ -162,27 +160,12 @@ export function NextStepAction({
         <AssignAction step={step} workOrderId={workOrderId} expectedVersion={expectedVersion} messages={messages} onChanged={onChanged} />
       ) : null;
     case 'inspect':
-      // P3 (owner, 2026-10-06): on the Dashboard the inspection is recorded in the row. "Issues found" then opens
-      // the Truck with Add work open (the work has to be added there). Elsewhere it is recorded on the Truck (D14).
-      if (place === 'dashboard') {
-        return (
-          <>
-            {button(messages.workPlanNoIssuesFound, () => void run(messages.workPlanInspectionRecorded, messages.workPlanInspectionFailed, () => recordAdminWorkPlanInspection(truck.id, WorkPlanInspectionOutcome.NO_ISSUES_FOUND)), 'outline')}
-            <Button
-              type="button"
-              disabled={pending}
-              data-testid="next-step-action-issues"
-              onClick={() => void run(messages.workPlanInspectionRecorded, messages.workPlanInspectionFailed, async () => {
-                await recordAdminWorkPlanInspection(truck.id, WorkPlanInspectionOutcome.ISSUES_FOUND);
-                router.push(`${truckHref}#add-work`);
-              })}
-            >
-              {messages.workPlanIssuesFound}
-            </Button>
-          </>
-        );
-      }
-      return link(label ?? '', `${truckHref}#truck-work-plan-title`);
+      // D41 (replaces P3): the inspection is always the sheet — "Start inspection", from the Dashboard too.
+      return (
+        <Button asChild variant={place === 'dashboard' ? 'default' : 'outline'} data-testid="next-step-action" data-kind={step.kind}>
+          <Link href={`${truckHref.split('?')[0]}/inspection`}>{Icon ? <Icon aria-hidden="true" /> : null}{messages.inspectionStart}</Link>
+        </Button>
+      );
     case 'create_work_order':
       return link(label ?? '', truckHref);
     case 'external':

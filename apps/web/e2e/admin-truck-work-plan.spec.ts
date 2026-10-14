@@ -260,7 +260,7 @@ async function loginManager(page: Page) {
 }
 
 test.describe('LTR-33 Truck Detail Work Plan', () => {
-  test('Issues found adds a catalog job without editing six gates', async ({ page }) => {
+  test('Add work adds a catalog job without editing six gates', async ({ page }) => {
     await mockWorkPlanApi(page, emptyPlan());
     await loginManager(page);
     await page.goto(`/admin/trucks/${truckId}`);
@@ -273,8 +273,8 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByLabel('Outcome: Inspection')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Issues found', exact: true }).click();
-    await expect(page.getByText('Inspection recorded.').first()).toBeVisible();
+    // D41: the inspection is the sheet now; the work is added with Add work.
+    await page.getByRole('button', { name: 'Add work' }).first().click();
     await page.getByRole('radio', { name: 'Air & Brake System' }).click();
     await page.getByRole('button', { name: 'Add Brake Inspection' }).click();
     await page.getByRole('button', { name: 'Add to Work Plan' }).click();
@@ -293,15 +293,13 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await expect(page.getByRole('heading', { name: 'Required Work' })).toHaveCount(0);
   });
 
-  test('No issues found does not invent a Required Work gate', async ({ page }) => {
+  test('The inspection step asks for the sheet, with no outcome buttons (D41)', async ({ page }) => {
     await mockWorkPlanApi(page, emptyPlan());
     await loginManager(page);
     await page.goto(`/admin/trucks/${truckId}`);
-    await page.getByRole('button', { name: 'No issues found' }).click();
-    // Stage 4 (UX-4-003): a recorded inspection is text with "Change", not a pressed button.
-    // Stage 8 (mockup): the outcome is in the step's line, with "Change" as a link-style button.
-    await expect(page.locator('#truck-step-inspection').getByText(/No issues found ·/)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Change' })).toBeVisible();
+    await expect(page.getByTestId('truck-inspection').getByText(/every check and the 10 tires/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'No issues found' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Issues found', exact: true })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Required Work' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Mark Ready to Go' })).toHaveCount(0);
   });
@@ -310,8 +308,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await mockWorkPlanApi(page, emptyPlan());
     await loginManager(page);
     await page.goto(`/admin/trucks/${truckId}`);
-    await page.getByRole('button', { name: 'Issues found', exact: true }).click();
-    await expect(page.getByText('Inspection recorded.').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Add work' }).first().click();
     await page.getByRole('radio', { name: 'Detailing' }).click();
     await expect(page.getByText('No Jobs are listed for this Category.')).toBeVisible();
     await expect(page.getByText('You can still add a custom Job.')).toBeVisible();
@@ -397,7 +394,7 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await mockWorkPlanApi(page, emptyPlan());
     await loginManager(page);
     await page.goto(`/admin/trucks/${truckId}`);
-    await page.getByRole('button', { name: 'Issues found', exact: true }).click();
+    await page.getByRole('button', { name: 'Add work' }).first().click();
     await page.getByRole('radio', { name: 'Air & Brake System' }).click();
     await page.getByRole('button', { name: 'Add Brake Inspection' }).click();
     await page.getByRole('button', { name: 'Add to Work Plan' }).click();

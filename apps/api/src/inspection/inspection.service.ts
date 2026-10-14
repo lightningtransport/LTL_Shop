@@ -64,7 +64,7 @@ const inspectionInclude = {
   workOrder: { select: { id: true, status: true } },
   items: {
     orderBy: [{ section: 'asc' }, { sortOrder: 'asc' }],
-    include: { catalogJob: { select: { displayName: true } }, addedLaterBy: { select: { name: true } } },
+    include: { catalogJob: { select: { displayName: true, category: { select: { name: true } } } }, addedLaterBy: { select: { name: true } } },
   },
   tires: true,
 } satisfies Prisma.TruckInspectionInclude;
@@ -114,6 +114,16 @@ export class InspectionService {
     const inspection = assessment
       ? await this.prisma.truckInspection.findUnique({ where: { assessmentId: assessment.id }, include: inspectionInclude })
       : null;
+    const tireJobs = await this.prisma.catalogJob.findMany({
+      where: { seedKey: { in: [jobSeedKey(TIRES_CATEGORY, 'Flat Repair'), jobSeedKey(TIRES_CATEGORY, 'Tires')] } },
+      select: { id: true, displayName: true, seedKey: true, category: { select: { name: true } } },
+    });
+    const tireJob = (name: string) => {
+      const row = tireJobs.find((job) => job.seedKey === jobSeedKey(TIRES_CATEGORY, name));
+      return row ? { id: row.id, displayName: row.displayName, categoryName: row.category.name } : null;
+    };
+    const flatRepair = tireJob('Flat Repair');
+    const tires = tireJob('Tires');
     const previous = await this.prisma.tireReading.findMany({
       where: { truckId, ...(inspection ? { inspectionId: { not: inspection.id } } : {}) },
       orderBy: { readAt: 'desc' },
@@ -121,8 +131,16 @@ export class InspectionService {
     });
     return {
       truck,
-      workOrder: workOrder ? { id: workOrder.id, displayId: workOrder.displayId, status: workOrder.status } : null,
+      workOrder: workOrder
+        ? {
+            id: workOrder.id,
+            displayId: workOrder.displayId,
+            status: workOrder.status,
+            jobCatalogIds: [...new Set(workOrder.jobs.filter((job) => job.status !== 'cancelled' && !job.helperOfJobId && job.catalogJobId).map((job) => job.catalogJobId as string))],
+          }
+        : null,
       checklist: checklist.map(toChecklistItemDto),
+      tireJobs: flatRepair && tires ? { flatRepair, tires } : null,
       limits,
       inspection: inspection ? await this.toInspectionDto(inspection) : null,
       previousTires: previous.map(toTireDto),
@@ -535,6 +553,8 @@ export class InspectionService {
         result: item.result as InspectionItemResult,
         note: item.note,
         catalogJobName: item.catalogJob?.displayName ?? null,
+        catalogJobId: item.catalogJobId,
+        catalogCategoryName: item.catalogJob?.category.name ?? null,
         workflowStepKey: item.workflowStepKey,
         addedLater: item.addedLaterAt ? { at: item.addedLaterAt.toISOString(), byName: item.addedLaterBy?.name ?? null } : null,
       })),

@@ -216,6 +216,8 @@ export type InspectionItemDto = {
   result: InspectionItemResult;
   note: string | null;
   catalogJobName: string | null;
+  catalogJobId: string | null;
+  catalogCategoryName: string | null;
   workflowStepKey: string | null;
   addedLater: { at: string; byName: string | null } | null;
 };
@@ -256,8 +258,11 @@ export type TruckInspectionDto = {
 /** GET the inspection of a Truck's current visit: the list to fill, or the saved report. */
 export type TruckInspectionStateDto = {
   truck: { id: string; truckNumber: string; mileage: number | null };
-  workOrder: { id: string; displayId: string; status: string } | null;
+  /** `jobCatalogIds`: catalog Jobs already on the Work Order (not cancelled), so Review shows "adds to …". */
+  workOrder: { id: string; displayId: string; status: string; jobCatalogIds: string[] } | null;
   checklist: InspectionChecklistItemDto[];
+  /** The Jobs a tire to fix creates: Flat Repair (pressure) and Tires (tread). */
+  tireJobs: { flatRepair: { id: string; displayName: string; categoryName: string }; tires: { id: string; displayName: string; categoryName: string } } | null;
   limits: InspectionTireLimits;
   inspection: TruckInspectionDto | null;
   /** The last reading per position from an earlier visit ("Last check Sep 12: 94 PSI · 9/32"). */

@@ -7,16 +7,14 @@ import {
   TruckOperationalStatus,
   WorkPlanInspectionOutcome,
   type AdminTruckDetailDto,
-  type RecordWorkPlanInspectionInput,
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { useSWRConfig } from 'swr';
 import { ArrowUpRight, CircleAlert, ClipboardList, Copy, Eye, FileClock, FilePlus, Link2, MapPin, MoreHorizontal, Pause, Plus } from 'lucide-react';
 import { ApiError } from '@/lib/api';
-import { apiErrorMessage } from '@/lib/api-error-message';
 import { intlLocale } from '@/lib/shop-locale';
 import { isYardRelatedListKey } from '@/lib/swr-cache-keys';
-import { recordAdminWorkPlanInspection, useAdminRepairHistory, useAdminTruck } from '@/lib/admin-data';
+import { useAdminRepairHistory, useAdminTruck } from '@/lib/admin-data';
 import { formatAdminDateOnly } from '@/lib/admin-format';
 import { formatDay } from '@/lib/work-order-view';
 import { useCategories } from '@/lib/shop-data';
@@ -39,6 +37,7 @@ import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { cn } from '@/lib/utils';
 import { AdminNavLink } from './admin-nav-link';
 import { AdminTruckCosts } from './admin-truck-costs';
+import { TruckTiresCard } from './truck-tires-card';
 import { Badge, Button, CardListSkeleton, EmptyState, LoadFailure, PageHeader, PageSkeleton, SectionCard, Select, type BadgeProps } from './ui';
 
 export function AdminTruckDetail({ id, from = null, tab = null, locale, messages }: { id: string; from?: string | null; tab?: string | null; locale: AdminLocale; messages: AdminMessages }) {
@@ -165,7 +164,6 @@ function TruckDetailBody({
       && !['close', 'return_to_service', 'resolve_blocker', 'resume'].includes(data.nextStep?.kind ?? ''),
   );
   const [newWorkOrderOpen, setNewWorkOrderOpen] = useState(false);
-  const [inspectionPending, setInspectionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [stepOverrides, setStepOverrides] = useState<Partial<Record<TruckStepKey, boolean>>>({});
   const steps = useMemo(() => truckSteps(workPlan), [workPlan]);
@@ -188,28 +186,7 @@ function TruckDetailBody({
     window.requestAnimationFrame(() => document.getElementById(`truck-step-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
-  async function recordInspection(outcome: RecordWorkPlanInspectionInput['outcome']) {
-    if (inspectionPending) return;
-    setInspectionPending(true);
-    setActionError(null);
-    try {
-      const next = await recordAdminWorkPlanInspection(truckId, outcome);
-      await onPlanUpdated(next);
-      showToast('success', messages.workPlanInspectionRecorded);
-      if (outcome === WorkPlanInspectionOutcome.ISSUES_FOUND && canAddWork) setAddWorkOpen(true);
-    } catch (failure) {
-      let message: string = messages.workPlanInspectionFailed;
-      if (failure instanceof ApiError) {
-        if (failure.status === 403) message = messages.workPlanInspectionForbidden;
-        else if (failure.status === 409) message = messages.mutationConflict;
-        else if (failure.status === 400) message = apiErrorMessage(failure, messages, messages.mutationBadRequest);
-      }
-      setActionError(message);
-      showToast('error', message);
-    } finally {
-      setInspectionPending(false);
-    }
-  }
+
 
   async function copyText(text: string, done: string) {
     try {
@@ -329,8 +306,6 @@ function TruckDetailBody({
       messages={messages}
       canManage={canManage}
       fromPath={fromPath}
-      inspectionPending={inspectionPending}
-      onRecordInspection={(outcome) => void recordInspection(outcome)}
       onAddWork={() => setAddWorkOpen(true)}
       onNewWorkOrder={() => setNewWorkOrderOpen(true)}
       onChanged={onChanged}
@@ -350,15 +325,15 @@ function TruckDetailBody({
           messages={messages}
           addWorkOpen={addWorkOpen}
           onAddWorkOpenChange={setAddWorkOpen}
-          inspectionPending={inspectionPending}
           inspectionInNextStep={data.nextStep?.kind === 'inspect'}
-          onRecordInspection={(outcome) => void recordInspection(outcome)}
           onPlanUpdated={onPlanUpdated}
           onError={setActionError}
         />
       </div>
 
       <aside className="min-w-0 space-y-5" aria-label={messages.contextSidebarLabel}>
+        {/* D41 / J21: this visit's tire reading and how it changed. */}
+        <TruckTiresCard truckId={truckId} locale={locale} />
         <SectionCard title={messages.truck} data-testid="truck-details">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 p-4">
             <dt className="text-muted-foreground">{messages.vehicleLabel}</dt><dd className="text-right font-medium">{vehicle || messages.noValue}</dd>
