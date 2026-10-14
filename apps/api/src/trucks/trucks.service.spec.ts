@@ -75,6 +75,7 @@ describe('TrucksService search', () => {
       vin: '1XKYD49X0LJ123456',
       location: 'West Main Street, Woodville, OH, 43469',
       locationUpdatedOn: '2026-09-11',
+      samsara: null,
     });
     expect(dto).not.toHaveProperty('samsaraId');
     expect(dto).not.toHaveProperty('samsaraTruckLocation');
@@ -94,6 +95,32 @@ describe('TrucksService search', () => {
       vin: null,
       location: null,
       locationUpdatedOn: null,
+      samsara: null,
+    });
+  });
+
+  it('D35 / S-2: shows the Samsara sync location over the Ninox copy and keeps the PM mileage', () => {
+    const dto = toTruckDto({
+      ...truck('905'),
+      mileage: 410_950,
+      samsaraTruckLocation: 'Old Ninox address',
+      samsaraLastConnectedDate: new Date('2026-09-11T00:00:00.000Z'),
+      samsaraOdometerMiles: 412_300,
+      samsaraOdometerSource: 'obd',
+      samsaraOdometerAt: new Date('2026-10-14T14:58:00.000Z'),
+      samsaraAddress: 'I-10 W, Baytown, TX',
+      samsaraLatitude: 29.7355,
+      samsaraLongitude: -94.9774,
+      samsaraSpeedMph: 62,
+      samsaraLocationAt: new Date('2026-10-14T14:58:00.000Z'),
+      samsaraSyncedAt: new Date('2026-10-14T15:00:00.000Z'),
+    });
+
+    expect(dto).toMatchObject({ mileage: 410_950, location: 'I-10 W, Baytown, TX', locationUpdatedOn: '2026-10-14' });
+    expect(dto.samsara).toEqual({
+      odometerMiles: 412_300, odometerSource: 'obd', odometerAt: '2026-10-14T14:58:00.000Z',
+      address: 'I-10 W, Baytown, TX', latitude: 29.7355, longitude: -94.9774, speedMph: 62,
+      locationAt: '2026-10-14T14:58:00.000Z', syncedAt: '2026-10-14T15:00:00.000Z',
     });
   });
 

@@ -1,6 +1,7 @@
 import type { WorkOrderAttentionReason } from './attention';
 import type { JobWorkStatus } from './job-work-status';
 import type { TruckNextStepDto } from './truck-next-step';
+import type { TruckFaultSummaryDto, TruckSamsaraDto } from './samsara';
 import type {
   AppCapability,
   ActivityEventType,
@@ -85,10 +86,15 @@ export interface TruckDto {
   company: string | null;
   owner: string | null;
   vin: string | null;
-  /** Last reported human address from `trucks.samsara_truck_location`. Not Yard Presence. */
+  /** Last reported address: the Samsara sync's (S-2) when there is one, else `trucks.samsara_truck_location`. Not Yard Presence. */
   location: string | null;
-  /** ISO date (`YYYY-MM-DD`) from `trucks.samsara_last_connected_date`. */
+  /**
+   * ISO date (`YYYY-MM-DD`) of `location`: the Samsara sync's GPS time when there is one (S-2), else
+   * `trucks.samsara_last_connected_date` (the old Ninox copy).
+   */
   locationUpdatedOn: string | null;
+  /** D35 / S-2: Samsara's odometer and last GPS point, when the truck is paired and synced. */
+  samsara?: TruckSamsaraDto | null;
   /** LTR-140: the Truck's open Work Order, sent by `GET /trucks` so search results can mark it. */
   openWorkOrder?: TruckOpenWorkOrderRefDto | null;
 }
@@ -664,6 +670,8 @@ export interface AdminTruckSummaryDto {
   } | null;
   /** LTR-159: the one Next step rule, as on Truck Detail. */
   nextStep?: TruckNextStepDto | null;
+  /** D35 / S-3: active Samsara faults (count and the worst). */
+  faults?: TruckFaultSummaryDto;
 }
 
 export interface AdminTruckDetailDto extends YardOperationsTruckDto {

@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import type { GlobalSetupContext } from 'vitest/node';
 import { REAL_CRON_SECRET, REAL_DATABASE_URL, assertLocalDatabase } from './env';
+import { SAMSARA_TEST_TOKEN, startSamsaraMock } from './samsara-mock';
 
 declare module 'vitest' {
   export interface ProvidedContext {
@@ -12,6 +13,8 @@ declare module 'vitest' {
     databaseUrl: string;
     /** False when attached to an API we did not start: its env (YARD_READY_TO_GO_SINCE) is unknown. */
     ownsApi: boolean;
+    /** D35 / §1x: the Samsara stand-in the API reads (empty when attached to an API we did not start). */
+    samsaraMockUrl: string;
   }
 }
 
@@ -63,6 +66,7 @@ export default async function setup({ provide }: GlobalSetupContext) {
   if (attached) {
     provide('apiUrl', attached.replace(/\/$/, ''));
     provide('ownsApi', false);
+    provide('samsaraMockUrl', '');
     await waitForHealth(attached.replace(/\/$/, ''), () => '');
     return;
   }
@@ -71,6 +75,7 @@ export default async function setup({ provide }: GlobalSetupContext) {
   const entry = resolve(cwd, 'dist/src/main.js');
   if (!existsSync(entry)) throw new Error(`Missing ${entry}. Run "nest build" first (npm run test:real does).`);
 
+  const samsara = await startSamsaraMock();
   const port = await freePort();
   let log = '';
   child = spawn(process.execPath, [entry], {
@@ -89,8 +94,9 @@ export default async function setup({ provide }: GlobalSetupContext) {
       YARD_READY_TO_GO_SINCE: '2000-01-01T00:00:00Z',
       // LTR-186: the Vercel Cron backstop for the day close (row A32).
       CRON_SECRET: REAL_CRON_SECRET,
-      // D35 / S-1: never reach the real Samsara from tests; Setup → Samsara answers "not configured" (row A91).
-      SAMSARA_API_TOKEN: '',
+      // D35: never the real Samsara. The API reads the local stand-in (rows A91–A94).
+      SAMSARA_API_TOKEN: SAMSARA_TEST_TOKEN,
+      SAMSARA_API_URL: samsara.url,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -101,8 +107,10 @@ export default async function setup({ provide }: GlobalSetupContext) {
   await waitForHealth(url, () => log);
   provide('apiUrl', url);
   provide('ownsApi', true);
+  provide('samsaraMockUrl', samsara.url);
 
   return async () => {
     child?.kill('SIGTERM');
+    await samsara.close();
   };
 }

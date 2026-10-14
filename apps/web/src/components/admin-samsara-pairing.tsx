@@ -1,20 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { RefreshCw, TriangleAlert } from 'lucide-react';
+import { useState } from 'react';
+import { RefreshCw, TriangleAlert, Zap } from 'lucide-react';
 import type {
   SamsaraOdometerDto,
   SamsaraPairedTruckDto,
   SamsaraPairingMethod,
   SamsaraPairingWarning,
+  SamsaraSyncStateDto,
   SamsaraTruckRefDto,
   SamsaraUnpairedReason,
   SamsaraUnpairedTruckDto,
   SamsaraVehicleRefDto,
 } from '@ltl-shop/shared';
+import { useActionToast } from './action-toast';
 import { useDocumentTitle } from './admin-breadcrumb';
 import { Badge, Button, DataTable, InlineAlert, LoadFailure, PageHeader, PageSkeleton, SectionCard } from './ui';
-import { useAdminSamsaraPairing } from '@/lib/admin-data';
+import { useCanShowManagerWrites } from '@/lib/admin-actor';
+import { runAdminSamsaraSync, useAdminSamsaraPairing } from '@/lib/admin-data';
+import { formatAdminAgo } from '@/lib/admin-format';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
@@ -43,6 +48,25 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
   useDocumentTitle(messages.samsaraTitle);
   const { data, error, isLoading, isValidating, mutate } = useAdminSamsaraPairing();
   const text = (key: keyof AdminMessages) => String(messages[key]);
+  const canSync = useCanShowManagerWrites();
+  const { showToast } = useActionToast();
+  const [syncing, setSyncing] = useState(false);
+
+  // D35 / S-2: run the sync now (GitHub Actions runs it every 15 minutes).
+  async function syncNow() {
+    setSyncing(true);
+    try {
+      const result = await runAdminSamsaraSync();
+      if (result.status === 'ok') showToast('success', fillPlaceholders(messages.samsaraSyncDone, { trucks: String(result.state?.trucksUpdated ?? 0) }));
+      else if (result.status === 'skipped') showToast('error', messages.samsaraSyncSkipped);
+      else showToast('error', syncErrorText(result.status, messages) ?? messages.samsaraSyncFailed);
+      await mutate();
+    } catch {
+      showToast('error', messages.samsaraSyncFailed);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   if (isLoading && !data) return <PageSkeleton label={messages.samsaraTitle} />;
   if (error || !data) return <LoadFailure message={messages.samsaraLoadFailed} retryLabel={messages.retry} onRetry={() => void mutate()} />;
@@ -55,8 +79,14 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
       {messages.samsaraRefresh}
     </Button>
   );
+  const syncCard = (
+    <SyncCard sync={data.sync} canSync={canSync} syncing={syncing} onSync={() => void syncNow()} locale={locale} messages={messages} />
+  );
   const header = (
-    <PageHeader title={messages.samsaraTitle} subtitle={messages.samsaraSubtitle} meta={fillPlaceholders(messages.samsaraCheckedAt, { time: checkedAt })} actions={refresh} />
+    <>
+      <PageHeader title={messages.samsaraTitle} subtitle={messages.samsaraSubtitle} meta={fillPlaceholders(messages.samsaraCheckedAt, { time: checkedAt })} actions={refresh} />
+      {syncCard}
+    </>
   );
 
   if (data.status !== 'ok' || !data.summary) {
@@ -192,5 +222,53 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
         ) : <p className="px-4 py-3 text-sm text-muted-foreground">{messages.samsaraEmptyUnpairedVehicles}</p>}
       </SectionCard>
     </div>
+  );
+}
+
+function syncErrorText(code: string | null, messages: AdminMessages) {
+  if (code === 'not_configured') return messages.samsaraNotConfigured;
+  if (code === 'unauthorized') return messages.samsaraUnauthorized;
+  if (code === 'unavailable') return messages.samsaraUnavailable;
+  if (code === 'faults_unavailable') return messages.samsaraSyncFaultsUnavailable;
+  return null;
+}
+
+/** D35 / S-2: how the last sync went, and Sync now (Manager and System Admin). */
+function SyncCard({ sync, canSync, syncing, onSync, locale, messages }: {
+  sync: SamsaraSyncStateDto | null;
+  canSync: boolean;
+  syncing: boolean;
+  onSync: () => void;
+  locale: AdminLocale;
+  messages: AdminMessages;
+}) {
+  const error = sync ? syncErrorText(sync.lastError, messages) : null;
+  return (
+    <SectionCard
+      title={messages.samsaraSyncTitle}
+      data-testid="samsara-sync"
+      action={canSync ? (
+        <Button type="button" size="sm" disabled={syncing} onClick={onSync}>
+          <Zap aria-hidden="true" className={syncing ? 'animate-pulse' : undefined} />
+          {syncing ? messages.samsaraSyncing : messages.samsaraSyncNow}
+        </Button>
+      ) : null}
+    >
+      <div className="space-y-2 px-4 py-3 text-sm">
+        {sync ? (
+          <p>
+            {fillPlaceholders(messages.samsaraSyncLast, {
+              ago: formatAdminAgo(sync.lastRunAt, locale),
+              trigger: sync.lastTrigger === 'manual' ? messages.samsaraSyncTriggerManual : messages.samsaraSyncTriggerCron,
+              trucks: String(sync.trucksUpdated),
+              opened: String(sync.faultsOpened),
+              cleared: String(sync.faultsCleared),
+              active: String(sync.activeFaults),
+            })}
+          </p>
+        ) : <p className="text-muted-foreground">{messages.samsaraSyncNever}</p>}
+        {error ? (sync?.lastError === 'faults_unavailable' ? <p className="text-warning-foreground">{error}</p> : <InlineAlert>{error}</InlineAlert>) : null}
+      </div>
+    </SectionCard>
   );
 }

@@ -48,6 +48,8 @@ import type {
   AdminTruckCostsDto,
   AdminLaborRatesDto,
   SamsaraPairingDto,
+  SamsaraSyncResultDto,
+  TruckFaultsDto,
   AdminLaborRatePreviewDto,
   AdminInvoiceMonthDto,
   AdminSetLaborRateInput,
@@ -1013,6 +1015,20 @@ export function useAdminSamsaraPairing() {
       revalidateOnFocus: false,
       ...adminReadRetry,
     }),
+  );
+}
+
+/** D35 / S-2: "Sync now" on Setup → Samsara. */
+export function runAdminSamsaraSync() {
+  return apiFetch<SamsaraSyncResultDto>('/api/admin/integrations/samsara/sync', { method: 'POST', body: '{}' });
+}
+
+/** D35 / S-3: Truck → Faults (and the banner on the Truck). */
+export function useAdminTruckFaults(truckId: string | null) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<TruckFaultsDto>(token && truckId ? `/api/admin/trucks/${truckId}/faults` : null, adminReadFetcher, { dedupingInterval: 30_000, ...adminReadRetry }),
   );
 }
 

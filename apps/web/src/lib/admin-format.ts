@@ -24,3 +24,15 @@ export function formatDuration(milliseconds: number) {
   const rest = minutes % 60;
   return hours ? `${hours}h ${rest}m` : `${rest}m`;
 }
+
+/** D35 / S-2: "5 min ago", "2 hr ago", "3 days ago" (Samsara readings). Future or bad values read as "now". */
+export function formatAdminAgo(value: string | null, locale: AdminLocale, now = Date.now()) {
+  if (!value) return '—';
+  const seconds = Math.max(0, Math.round((now - new Date(value).getTime()) / 1000));
+  if (!Number.isFinite(seconds)) return '—';
+  const format = new Intl.RelativeTimeFormat(intlLocale(locale), { numeric: 'auto', style: 'short' });
+  if (seconds < 60) return format.format(0, 'second');
+  if (seconds < 3600) return format.format(-Math.round(seconds / 60), 'minute');
+  if (seconds < 86_400) return format.format(-Math.round(seconds / 3600), 'hour');
+  return format.format(-Math.round(seconds / 86_400), 'day');
+}

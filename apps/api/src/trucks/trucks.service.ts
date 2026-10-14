@@ -6,6 +6,7 @@ import {
   type WorkOrderStatus,
   isPmCategory,
   type AdminRepairHistoryDto,
+  type TruckDto,
 } from '@ltl-shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { toWorkOrderSummary } from '../work-orders/work-order.mapper';
@@ -231,7 +232,18 @@ export function toTruckDto(truck: {
   vin?: string | null;
   samsaraTruckLocation?: string | null;
   samsaraLastConnectedDate?: Date | null;
-}) {
+  samsaraOdometerMiles?: number | null;
+  samsaraOdometerSource?: string | null;
+  samsaraOdometerAt?: Date | null;
+  samsaraAddress?: string | null;
+  samsaraLatitude?: number | null;
+  samsaraLongitude?: number | null;
+  samsaraSpeedMph?: number | null;
+  samsaraLocationAt?: Date | null;
+  samsaraSyncedAt?: Date | null;
+}): TruckDto {
+  // D35 / S-2: the sync's GPS point replaces the one-time Ninox copy when there is one. Still not Yard Presence.
+  const live = Boolean(truck.samsaraLocationAt && (truck.samsaraAddress?.trim() || truck.samsaraLatitude != null));
   return {
     id: truck.id,
     truckNumber: truck.truckNumber,
@@ -242,9 +254,26 @@ export function toTruckDto(truck: {
     company: truck.company,
     owner: truck.owner,
     vin: emptyToNull(truck.vin),
-    location: emptyToNull(truck.samsaraTruckLocation),
-    locationUpdatedOn: toIsoDate(truck.samsaraLastConnectedDate),
+    location: live ? emptyToNull(truck.samsaraAddress) ?? coordinates(truck.samsaraLatitude, truck.samsaraLongitude) : emptyToNull(truck.samsaraTruckLocation),
+    locationUpdatedOn: live ? toIsoDate(truck.samsaraLocationAt) : toIsoDate(truck.samsaraLastConnectedDate),
+    samsara: truck.samsaraSyncedAt
+      ? {
+          odometerMiles: truck.samsaraOdometerMiles ?? null,
+          odometerSource: truck.samsaraOdometerSource === 'obd' || truck.samsaraOdometerSource === 'gps' ? truck.samsaraOdometerSource : null,
+          odometerAt: truck.samsaraOdometerAt?.toISOString() ?? null,
+          address: emptyToNull(truck.samsaraAddress),
+          latitude: truck.samsaraLatitude ?? null,
+          longitude: truck.samsaraLongitude ?? null,
+          speedMph: truck.samsaraSpeedMph ?? null,
+          locationAt: truck.samsaraLocationAt?.toISOString() ?? null,
+          syncedAt: truck.samsaraSyncedAt.toISOString(),
+        }
+      : null,
   };
+}
+
+function coordinates(latitude: number | null | undefined, longitude: number | null | undefined) {
+  return latitude != null && longitude != null ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` : null;
 }
 
 function emptyToNull(value: string | null | undefined) {

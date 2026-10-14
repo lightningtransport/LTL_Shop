@@ -6,6 +6,7 @@ import {
   JobStatus,
   WorkOrderStatus,
   type PauseReason,
+  type TruckFaultSeverity,
 } from '@prisma/client';
 import {
   isPmCategory,
@@ -67,6 +68,7 @@ import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
 import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
+import { worstSeverity } from '../integrations/samsara/samsara-faults';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { resolveActiveBlockers } from '../work-orders/blockers';
 import { closeActiveAssessments, reopenAssessmentOfWorkOrder } from './readiness-visit';
@@ -496,6 +498,8 @@ export class AdminService {
           orderBy: { occurredAt: 'desc' },
           take: 1,
         },
+        // D35 / S-3: active Samsara faults for the Faults column.
+        faults: { where: { clearedAt: null }, select: { severity: true } },
       },
       orderBy: [{ truckNumber: query.direction }, { id: query.direction }],
       take: query.limit + 1,
@@ -2676,6 +2680,7 @@ function toTruckSummary(row: {
   }>;
   serviceStatusEvents: { status: string; occurredAt: Date }[];
   readinessAssessments?: Array<{ requirements: Array<{ outcome: string }> }>;
+  faults?: Array<{ severity: TruckFaultSeverity }>;
 }): AdminTruckSummaryDto {
   const open = row.workOrders.find((item) => (OPEN_WORK_ORDER_STATUSES as string[]).includes(item.status)) ?? null;
   const latestEvent = row.serviceStatusEvents[0] ?? null;
@@ -2691,6 +2696,7 @@ function toTruckSummary(row: {
         ? workOrderNextStep(readyToGo, { returnedToService: false })
         : { kind: 'create_work_order' },
     truck: toTruckDto(row),
+    ...(row.faults ? { faults: { active: row.faults.length, worst: worstSeverity(row.faults.map((fault) => fault.severity)) } } : {}),
     operationalStatus: operational.status,
     operationalStatusAt: operational.at,
     openWorkOrder: open

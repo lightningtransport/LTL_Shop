@@ -7,7 +7,7 @@ import { SamsaraPairingService } from './samsara-pairing.service';
 const NOW = new Date('2026-10-14T15:00:00.000Z');
 
 function service(env: Record<string, string | undefined>, trucks: unknown[] = []) {
-  const prisma = { truck: { findMany: vi.fn().mockResolvedValue(trucks) } };
+  const prisma = { truck: { findMany: vi.fn().mockResolvedValue(trucks) }, samsaraSyncState: { findUnique: vi.fn().mockResolvedValue(null) } };
   const config = { get: (key: string) => env[key] } as unknown as ConfigService;
   return { prisma, pairing: new SamsaraPairingService(config, prisma as unknown as PrismaService) };
 }
@@ -23,7 +23,7 @@ describe('SamsaraPairingService', () => {
 
     const result = await pairing.get(NOW, fetchImpl as unknown as typeof fetch);
 
-    expect(result).toEqual({ status: 'not_configured', checkedAt: NOW.toISOString(), summary: null, paired: [], unpairedTrucks: [], unpairedVehicles: [], odometersAvailable: false });
+    expect(result).toEqual({ sync: null, status: 'not_configured', checkedAt: NOW.toISOString(), summary: null, paired: [], unpairedTrucks: [], unpairedVehicles: [], odometersAvailable: false });
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(prisma.truck.findMany).not.toHaveBeenCalled();
   });

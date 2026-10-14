@@ -32,7 +32,7 @@ El Manager da de alta, edita y desactiva camiones desde Admin, como hoy hace con
 - `POST/GET /api/internal/samsara-sync` con secreto de cron (patrón `day-close.controller.ts`); idempotente; **nunca** escribe `trucks.mileage`.
 - Estado en Integrations (última corrida, errores, sin emparejar).
 
-**Etapas:** S-1 token y lectura de prueba (no escribe) — **hecho 2026-10-14: Setup → Samsara** (OPEN_ISSUES §1w) · S-2 millaje y ubicación · S-3 fallas · S-4 referencia en el PM · S-6 fallas → Jobs recomendados (D42). ~~S-5 webhook de fallas~~: **descartado** el 2026-10-13, al dueño le basta la lista (D42).
+**Etapas:** S-1 token y lectura de prueba (no escribe) — **hecho 2026-10-14: Setup → Samsara** (OPEN_ISSUES §1w) · S-2 y S-3 **hechos 2026-10-14** (§1x: sincronización cada 15 min por GitHub Actions, columnas en Trucks, pestaña Faults) · S-2 millaje y ubicación · S-3 fallas · S-4 referencia en el PM · S-6 fallas → Jobs recomendados (D42). ~~S-5 webhook de fallas~~: **descartado** el 2026-10-13, al dueño le basta la lista (D42).
 
 ### Paso 2b — Fallas → Jobs recomendados (D42)
 
