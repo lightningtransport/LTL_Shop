@@ -253,6 +253,24 @@ export const ADMIN_READ_BOUNDARIES: CapabilityBoundaryEntry[] = [
     enforcement: 'http_guard',
     notes: 'LTR-70 agent-reporting proxy for Incoming/Upcoming/Work location. Presence stays UNKNOWN.',
   },
+  {
+    method: 'GET',
+    path: '/admin/integrations/samsara/pairing',
+    handler: 'samsaraPairing',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+    notes: 'D35 / S-1: read-only Samsara pairing (Setup → Samsara). The Samsara token never leaves the API.',
+  },
+  {
+    method: 'GET',
+    path: '/admin/trucks/:id/faults',
+    handler: 'truckFaultsList',
+    controller: 'admin',
+    expected: [ADMIN],
+    enforcement: 'http_guard',
+    notes: 'D35 / S-3: Truck → Faults (active and history), read-only.',
+  },
   { method: 'GET', path: '/admin/trucks/:id', handler: 'yardTruck', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/trucks/:id/work-plan', handler: 'getWorkPlan', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/trucks/:id/repair-history', handler: 'repairHistory', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
@@ -362,6 +380,15 @@ export const ALL_MUTATION_BOUNDARIES = [
  * of `ADMIN_MUTATION_BOUNDARIES` because the role path is not a capability. No category writes.
  */
 export const MANAGER_WRITES: CapabilityBoundaryEntry[] = [
+  {
+    method: 'POST',
+    path: '/admin/integrations/samsara/sync',
+    handler: 'runSamsaraSync',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'manager_writes_guard',
+    notes: 'D35 / S-2: Sync now. Writes only the Samsara columns and truck_faults; never trucks.mileage.',
+  },
   {
     method: 'PUT',
     path: '/admin/inspection-checklist',

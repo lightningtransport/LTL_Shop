@@ -47,6 +47,9 @@ import type {
   AdminSaveOutsideRepairInput,
   AdminTruckCostsDto,
   AdminLaborRatesDto,
+  SamsaraPairingDto,
+  SamsaraSyncResultDto,
+  TruckFaultsDto,
   AdminLaborRatePreviewDto,
   AdminInvoiceMonthDto,
   AdminSetLaborRateInput,
@@ -1001,6 +1004,33 @@ export function useAdminTruckCosts(truckId: string, query: string, enabled: bool
 }
 
 // ── LB-1 (LTR-201 / D34): the shop's labor rate ──────────────────────────────────────────────────────────────
+
+/** D35 / S-1: Setup → Samsara. Read-only and calls Samsara on the server, so it never revalidates on its own. */
+export function useAdminSamsaraPairing() {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<SamsaraPairingDto>(token ? '/api/admin/integrations/samsara/pairing' : null, adminReadFetcher, {
+      dedupingInterval: 30_000,
+      revalidateOnFocus: false,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+/** D35 / S-2: "Sync now" on Setup → Samsara. */
+export function runAdminSamsaraSync() {
+  return apiFetch<SamsaraSyncResultDto>('/api/admin/integrations/samsara/sync', { method: 'POST', body: '{}' });
+}
+
+/** D35 / S-3: Truck → Faults (and the banner on the Truck). */
+export function useAdminTruckFaults(truckId: string | null) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<TruckFaultsDto>(token && truckId ? `/api/admin/trucks/${truckId}/faults` : null, adminReadFetcher, { dedupingInterval: 30_000, ...adminReadRetry }),
+  );
+}
 
 export function useAdminLaborRates() {
   const { token } = useAuth();

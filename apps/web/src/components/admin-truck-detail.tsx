@@ -15,7 +15,8 @@ import { ApiError } from '@/lib/api';
 import { intlLocale } from '@/lib/shop-locale';
 import { isYardRelatedListKey } from '@/lib/swr-cache-keys';
 import { useAdminRepairHistory, useAdminTruck } from '@/lib/admin-data';
-import { formatAdminDateOnly } from '@/lib/admin-format';
+import { formatAdminAgo, formatAdminDateOnly } from '@/lib/admin-format';
+import { mapHref } from '@/lib/samsara-view';
 import { formatDay } from '@/lib/work-order-view';
 import { useCategories } from '@/lib/shop-data';
 import { formatVehicleYmm } from '@/lib/format';
@@ -37,6 +38,7 @@ import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { cn } from '@/lib/utils';
 import { AdminNavLink } from './admin-nav-link';
 import { AdminTruckCosts } from './admin-truck-costs';
+import { AdminTruckFaults, TruckFaultsBanner } from './admin-truck-faults';
 import { TruckTiresCard } from './truck-tires-card';
 import { Badge, Button, CardListSkeleton, EmptyState, LoadFailure, PageHeader, PageSkeleton, SectionCard, Select, type BadgeProps } from './ui';
 
@@ -61,7 +63,17 @@ export function AdminTruckDetail({ id, from = null, tab = null, locale, messages
   }
 
   // LTR-200 / PC-4: Overview · Costs. Costs is money, so only the Shop Manager and the System Admin get the tabs.
-  const tabs = canSeeCosts ? <TruckTabs truckId={id} from={from} active={tab === 'costs' ? 'costs' : 'overview'} messages={messages} /> : null;
+  const tabs = canSeeCosts ? <TruckTabs truckId={id} from={from} active={tab === 'costs' ? 'costs' : tab === 'faults' ? 'faults' : 'overview'} messages={messages} /> : null;
+  // D35 / S-3: Faults sits with Costs (Manager and System Admin).
+  if (canSeeCosts && tab === 'faults') {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={fillPlaceholders(messages.truckFaultsTitle, { truck: data.truck.truckNumber })} />
+        {tabs}
+        <AdminTruckFaults truckId={id} locale={locale} messages={messages} />
+      </div>
+    );
+  }
   if (canSeeCosts && tab === 'costs') {
     return (
       <div className="space-y-6">
@@ -75,6 +87,7 @@ export function AdminTruckDetail({ id, from = null, tab = null, locale, messages
   return (
     <div className="space-y-4">
     {tabs}
+    {canSeeCosts ? <TruckFaultsBanner truckId={id} href={truckTabHref(id, from, 'tab=faults')} messages={messages} /> : null}
     <TruckDetailBody
       data={data}
       origin={origin}
@@ -92,15 +105,17 @@ export function AdminTruckDetail({ id, from = null, tab = null, locale, messages
   );
 }
 
-function TruckTabs({ truckId, from, active, messages }: { truckId: string; from: string | null; active: 'overview' | 'costs'; messages: AdminMessages }) {
+function truckTabHref(truckId: string, from: string | null, extra?: string) {
   const base = `/admin/trucks/${truckId}`;
-  const withFrom = (extra: string[]) => {
-    const query = [...(from ? [`from=${encodeURIComponent(from)}`] : []), ...extra].join('&');
-    return query ? `${base}?${query}` : base;
-  };
-  const items: Array<['overview' | 'costs', string, string]> = [
-    ['overview', messages.pcTruckOverviewTab, withFrom([])],
-    ['costs', messages.pcTruckCostsTab, withFrom(['tab=costs'])],
+  const query = [...(from ? [`from=${encodeURIComponent(from)}`] : []), ...(extra ? [extra] : [])].join('&');
+  return query ? `${base}?${query}` : base;
+}
+
+function TruckTabs({ truckId, from, active, messages }: { truckId: string; from: string | null; active: 'overview' | 'costs' | 'faults'; messages: AdminMessages }) {
+  const items: Array<['overview' | 'costs' | 'faults', string, string]> = [
+    ['overview', messages.pcTruckOverviewTab, truckTabHref(truckId, from)],
+    ['costs', messages.pcTruckCostsTab, truckTabHref(truckId, from, 'tab=costs')],
+    ['faults', messages.truckFaultsTab, truckTabHref(truckId, from, 'tab=faults')],
   ];
   return (
     <nav aria-label={messages.pcTruckCostsTab} className="flex gap-1 border-b" data-testid="truck-tabs">
@@ -212,6 +227,7 @@ function TruckDetailBody({
   const owners = uniqueOwners(workPlan.jobs);
   const left = workPlan.remainingJobCount;
   const vehicle = formatVehicleYmm(data.truck);
+  const samsara = data.truck.samsara ?? null;
   const subtitle = [vehicle, data.truck.company].filter(Boolean).join(' · ') || messages.noValue;
   const menuItems: MenuItem[] = [];
   if (workOrder && workOrderHref) menuItems.push({ key: 'open', label: fillPlaceholders(messages.truckMenuOpenWorkOrder, { workOrder: workOrder.displayId }), icon: ClipboardList, href: workOrderHref });
@@ -338,7 +354,15 @@ function TruckDetailBody({
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 p-4">
             <dt className="text-muted-foreground">{messages.vehicleLabel}</dt><dd className="text-right font-medium">{vehicle || messages.noValue}</dd>
             <dt className="text-muted-foreground">{messages.mileage}</dt>
-            <dd className="tnum text-right font-medium">{data.truck.mileage === null ? messages.noValue : fillPlaceholders(messages.mileageMi, { value: formatNumber(data.truck.mileage, locale, messages) })}</dd>
+            <dd className="tnum text-right font-medium">
+              {data.truck.mileage === null ? messages.noValue : fillPlaceholders(messages.mileageMi, { value: formatNumber(data.truck.mileage, locale, messages) })}
+              {/* D35 / S-2: Samsara's odometer as a reference; the official one is the PM's (D10). */}
+              {samsara?.odometerMiles != null ? (
+                <span className="block text-xs font-normal text-muted-foreground" data-testid="truck-samsara-miles">
+                  {fillPlaceholders(messages.truckSamsaraMiles, { miles: formatNumber(samsara.odometerMiles, locale, messages), ago: formatAdminAgo(samsara.odometerAt, locale) })}
+                </span>
+              ) : null}
+            </dd>
             <dt className="text-muted-foreground">{messages.vin}</dt>
             <dd className="flex min-w-0 items-center justify-end gap-1.5 font-mono text-[13px]">
               <span className="break-all">{data.truck.vin ?? messages.noValue}</span>
@@ -361,7 +385,16 @@ function TruckDetailBody({
             <p>
               <span className="sr-only">{messages.lastReportedLocation}: </span>
               <span className="text-foreground">{data.truck.location ?? messages.noValue}</span>
-              {data.truck.location && data.truck.locationUpdatedOn ? <><br /><span className="text-xs">{fillPlaceholders(messages.reportedOn, { date: formatAdminDateOnly(data.truck.locationUpdatedOn, locale) })}</span></> : null}
+              {samsara?.locationAt ? (
+                // D35 / S-2: the live point, how old it is, moving or parked, and a map link. Still not Yard Presence.
+                <><br /><span className="text-xs" data-testid="truck-samsara-location">
+                  {[
+                    fillPlaceholders(messages.truckLocationSamsara, { ago: formatAdminAgo(samsara.locationAt, locale) }),
+                    samsara.speedMph == null ? null : samsara.speedMph >= 3 ? fillPlaceholders(messages.truckLocationMoving, { speed: String(Math.round(samsara.speedMph)) }) : messages.truckLocationParked,
+                  ].filter(Boolean).join(' · ')}
+                  {samsara.latitude != null && samsara.longitude != null ? <> · <a className="text-primary hover:underline" href={mapHref(samsara.latitude, samsara.longitude)} target="_blank" rel="noreferrer">{messages.truckOpenMap}</a></> : null}
+                </span></>
+              ) : data.truck.location && data.truck.locationUpdatedOn ? <><br /><span className="text-xs">{fillPlaceholders(messages.reportedOn, { date: formatAdminDateOnly(data.truck.locationUpdatedOn, locale) })}</span></> : null}
             </p>
           </div>
         </SectionCard>

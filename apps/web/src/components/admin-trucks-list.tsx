@@ -4,14 +4,17 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus } from '@ltl-shop/shared';
-import { AdminFilterToolbar, DataTable, PageHeader, Button, EmptyState, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { AdminFilterToolbar, Badge, DataTable, PageHeader, Button, EmptyState, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
 import { truckNextStepText } from '@/lib/truck-next-step';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { useAdminTrucks } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
+import { formatAdminAgo } from '@/lib/admin-format';
+import { fillPlaceholders } from '@/lib/admin-next-step';
+import { faultSeverityLabel, faultSeverityVariant } from '@/lib/samsara-view';
 
-export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
+export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
@@ -24,6 +27,8 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
 
   const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
   const showOperationalStatus = items.some((item) => item.operationalStatus !== TruckOperationalStatus.UNKNOWN);
+  // D35 / S-2 + S-3: the Samsara columns appear once a sync has stored something.
+  const showSamsara = items.some((item) => item.truck.samsara);
   const hasMore = Boolean(data?.[data.length - 1]?.nextCursor);
 
   return (
@@ -67,6 +72,30 @@ export function AdminTrucksList({ messages }: { locale: AdminLocale; messages: A
                 </div>
               ),
             },
+            ...(showSamsara ? [
+              {
+                key: 'faults',
+                header: messages.trucksColFaults,
+                testId: 'truck-faults-cell',
+                cell: (item: (typeof items)[number]) => item.faults?.worst ? (
+                  <Link className="inline-flex flex-wrap items-center gap-1" href={`${adminTruckHref(item.truck.id, '/admin/trucks')}&tab=faults`}>
+                    <Badge variant={faultSeverityVariant(item.faults.worst)}>{faultSeverityLabel(item.faults.worst, messages)}</Badge>
+                    {item.faults.active > 1 ? <span className="text-xs text-muted-foreground">{fillPlaceholders(messages.faultsMore, { count: String(item.faults.active - 1) })}</span> : null}
+                  </Link>
+                ) : item.truck.samsara ? <span className="text-muted-foreground">{messages.faultsNone}</span> : <span className="text-muted-foreground">—</span>,
+              },
+              {
+                key: 'location',
+                header: messages.trucksColLocation,
+                hideOnMobile: true,
+                cell: (item: (typeof items)[number]) => item.truck.samsara?.locationAt ? (
+                  <div>
+                    <p>{item.truck.location ?? '—'}</p>
+                    <p className="text-xs text-muted-foreground">{formatAdminAgo(item.truck.samsara.locationAt, locale)}</p>
+                  </div>
+                ) : <span className="text-muted-foreground">—</span>,
+              },
+            ] : []),
             {
               key: 'work-order',
               header: messages.currentWorkOrder,

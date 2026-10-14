@@ -23,6 +23,9 @@ import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
 import { YardWorkPlanService } from './yard-work-plan.service';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
+import { SamsaraPairingService } from './samsara-pairing.service';
+import { SamsaraSyncService } from './samsara-sync.service';
+import { TruckFaultsService } from './truck-faults.service';
 import { SystemAdminWritesService } from './system-admin-writes.service';
 import { ShopWorkflowService } from './shop-workflow.service';
 import { CatalogAdminService } from './catalog-admin.service';
@@ -48,6 +51,9 @@ export class AdminController {
     private readonly customJobsReview: CustomJobsReviewService,
     private readonly clock: LaborClockService,
     private readonly inspections: InspectionService,
+    private readonly samsara: SamsaraPairingService,
+    private readonly samsaraSync: SamsaraSyncService,
+    private readonly truckFaults: TruckFaultsService,
   ) {}
 
   @Get('access')
@@ -404,6 +410,25 @@ export class AdminController {
   @Get('yard/data-boundary')
   yardDataBoundary() {
     return this.dataBoundary.get();
+  }
+
+  /** D35 / S-1: which Samsara vehicles are our trucks. Read-only; nothing is saved. */
+  @Get('integrations/samsara/pairing')
+  samsaraPairing() {
+    return this.samsara.get();
+  }
+
+  /** D35 / S-2: "Sync now" on Setup → Samsara. Writes only Samsara's columns and faults, so Manager writes. */
+  @Post('integrations/samsara/sync')
+  @UseGuards(ManagerWritesGuard)
+  runSamsaraSync() {
+    return this.samsaraSync.run('manual');
+  }
+
+  /** D35 / S-3: Truck → Faults. */
+  @Get('trucks/:id/faults')
+  truckFaultsList(@Param('id') id: string) {
+    return this.truckFaults.get(id);
   }
 
   @Get('trucks/:id')
