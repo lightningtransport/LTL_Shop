@@ -1,6 +1,6 @@
 # Pendientes: defectos, limpieza y salida en vivo
 
-**Actualizado:** 2026-10-12 (§1p cerrado: DM1–DM3 hechos; §1s: revisión de velocidad y "feel", PF1–PF14; §1r: auditoría de IA y task flows de Parts & costs; §1q: auditoría UX del modo demo)
+**Actualizado:** 2026-10-14 (§1w–§1x Samsara en producción: S-1 a S-4 y S-6; §1y A31; §1z lista de Trucks); antes 2026-10-12 (§1p cerrado: DM1–DM3 hechos; §1s: revisión de velocidad y "feel", PF1–PF14; §1r: auditoría de IA y task flows de Parts & costs; §1q: auditoría UX del modo demo)
 
 Una sola lista de lo que falta. Cuando algo se arregla, se borra de aquí
 (el historial queda en git y en Linear). El orden es el orden de trabajo.
@@ -513,7 +513,7 @@ El dueño decidió pasar a la app la hoja en papel de inspección: 53 puntos y 1
 | IN-7 | B | **El mecánico no puede volver a su inspección para Add defects.** Al guardar, el camión sale de "To inspect" y en My work no queda entrada al reporte. Solo se llega con la dirección `/mechanic/…/inspect/[truckId]`. Plan: mostrar en My work, mientras la WO siga abierta, "Inspected by you · Add defects" para los camiones que inspeccionó. | `inspection-queue-card.tsx`, API `queue` | **Hecho** (rama `claude/inspection-in7-in8`). Los camiones que inspeccioné siguen en "To inspect", debajo de los que esperan, con "Inspected by you · fecha" y el botón **Add defects**, mientras su WO esté abierta. Los que inspeccionó otro no aparecen. Fila A89 y A86 ajustada; probado a mano (968, Alejandro 2). |
 | IN-8 | C | **Inspecciones viejas (antes de D41).** Un camión inspeccionado con los dos botones viejos no tiene hoja guardada: "View report" abre una hoja vacía para llenar, en lugar de un reporte. Se puede llenar y guardar sin problema. En la demo le pasa al 602. Plan: decir "Recorded before the inspection sheet" y ofrecer llenar la hoja. | `inspection-sheet.tsx` | **Hecho** (rama `claude/inspection-in7-in8`). Arriba de la hoja aparece "Recorded before the inspection sheet: Issues found · quién · cuándo", y la hoja se puede llenar igual. Al guardarla, el aviso desaparece. El camión no vuelve a "To inspect". Fila A90; probado a mano (991). |
 
-## 1w. Samsara S-1: qué camiones de Samsara son los nuestros (2026-10-14) — **HECHO** (rama `claude/samsara-s1-pairing`; falta poner el token en Vercel) · Decisiones D35, D42 · Historia HU-M14 · Linear [LTR-202](https://linear.app/ltransl/issue/LTR-202)
+## 1w. Samsara S-1: qué camiones de Samsara son los nuestros (2026-10-14) — **HECHO, en producción** (PRs #326, #328; token "LTL Shop" puesto en Vercel el 2026-10-14) · Decisiones D35, D42 · Historia HU-M14 · Linear [LTR-202](https://linear.app/ltransl/issue/LTR-202)
 
 Primera etapa de Samsara ([`proposals/samsara-trucks/`](proposals/samsara-trucks/README.md)): leer los vehículos de Samsara y decir cuáles casan con nuestros camiones, **sin escribir nada**. Sirve para ver cuántos emparejan antes de sincronizar millas, ubicación y fallas (S-2, S-3). El token "LTL Shop" (solo Read Vehicles y Read Vehicle Statistics, P12) va como secreto `SAMSARA_API_TOKEN` del API en Vercel.
 
@@ -527,9 +527,9 @@ Primera etapa de Samsara ([`proposals/samsara-trucks/`](proposals/samsara-trucks
 | S1-7 | C | **Revisión de VIN (2026-10-14).** Las millas confirman que el emparejamiento es correcto (diferencias de 0 a 171 mi). **876 y 877:** a nuestro VIN le falta una "B" (16 caracteres). **740 y 743:** nuestro VIN es de otra marca (Volvo, Kenworth), Samsara dice Freightliner. **741** (mismo dueño que el 740) no está en Samsara. **9050, 9220, 9680:** el dueño está preguntando qué son. | `trucks` | **Abierto:** corregir VIN o quitar camiones espera la pantalla de camiones (P13); no se toca la base a mano |
 | S1-6 | C | **El dueño pidió ver millas y dueño en las listas.** Cada camión muestra su dueño (y compañía) y sus millas confirmadas en el PM; cada vehículo de Samsara, su odómetro actual (`obdOdometerMeters`, o `gpsOdometerMeters` si no hay; lectura en vivo, no se guarda). Si Samsara no da odómetros, las listas salen igual sin esa columna. | `samsara.client.ts` (`/fleet/vehicles/stats`), `admin-samsara-pairing.tsx` | **Hecho.** Revisado en la demo local con un Samsara falso: dueño y compañía, millas nuestras con las de Samsara debajo, los dos VIN en el aviso. Pide el permiso Read Vehicle Statistics, que el token ya tiene |
 
-**Para usarlo en producción:** el dueño pega el token "LTL Shop" como `SAMSARA_API_TOKEN` en el proyecto del API en Vercel y vuelve a desplegar el API. Setup → Samsara deja de decir "no conectado" y muestra cuántos emparejan. Los que no casen se revisan ahí antes de S-2.
+**Cómo se puso en producción (hecho 2026-10-14):** el dueño pegó el token "LTL Shop" como `SAMSARA_API_TOKEN` en el proyecto del API en Vercel y vuelve a desplegar el API. Setup → Samsara deja de decir "no conectado" y muestra cuántos emparejan. Los que no casen se revisan ahí antes de S-2.
 
-## 1x. Samsara S-2 + S-3: millas, ubicación y fallas sincronizadas (2026-10-14) — **HECHO** (rama `claude/samsara-s2-s3-sync`; falta Release safety y el secreto `CRON_SECRET` en GitHub) · Decisiones D35, D42, P12 · Historia HU-M14 · Linear [LTR-202](https://linear.app/ltransl/issue/LTR-202)
+## 1x. Samsara S-2 + S-3: millas, ubicación y fallas sincronizadas (2026-10-14) — **HECHO, en producción** (PRs #329, #330, #332, #333; Release safety corrido para las tres migraciones; `CRON_SECRET` igual en Vercel y en GitHub Production) · Decisiones D35, D42, P12 · Historia HU-M14 · Linear [LTR-202](https://linear.app/ltransl/issue/LTR-202)
 
 Sigue a §1w. **GitHub Actions** (cada hora del día de taller y una vez de madrugada; antes cada 15 min, ver S2-5) (P12: Vercel es Hobby) llama a la app; la app lee Samsara y guarda en cada camión emparejado sus millas de Samsara, su ubicación y sus fallas. **Nunca cambia `trucks.mileage`** (las oficiales son las del PM, D10/D35) ni las columnas que vinieron de Ninox (`samsara_id`, `samsara_truck_location`, `samsara_last_connected_date`).
 
@@ -553,7 +553,7 @@ Sigue a §1w. **GitHub Actions** (cada hora del día de taller y una vez de madr
 | S6-6 | C | **El mecánico ve la falla en su Job**: "Samsara: SPN 3251 · FMI 0 — DPF differential pressure". | `workOrderDetailInclude`, `WorkOrderJobDto.samsaraFaults`, `detail-client.tsx` | **Hecho** |
 | S6-7 | C | **Pruebas.** Filas de flujo real **A95–A97** contra el Samsara de prueba (recomendar, agregar y ligar, aprender, descartar, Fixed, Came back) y revisado en local: Add work con un Job aprendido marcado y "Pick the Job" para un código nuevo; Faults dice "In WO-001 · EGR Service"; New Work Order avisa. | `test-real/rows/samsara.real.spec.ts` | **Hecho** |
 
-**Para encenderlo en producción:** (1) merge y **Release safety** (hay migración); (2) en GitHub → Settings → Environments → `production`, el secreto `CRON_SECRET` con el mismo valor que tiene el API en Vercel; (3) "Sync now" en Setup → Samsara para la primera corrida sin esperar 15 min.
+**Cómo se encendió en producción (hecho 2026-10-14):** (1) merge y **Release safety** (hay migración); (2) en GitHub → Settings → Environments → `production`, el secreto `CRON_SECRET` con el mismo valor que tiene el API en Vercel; (3) "Sync now" en Setup → Samsara para la primera corrida sin esperar 15 min.
 
 ## 1y. Filas de `test:real` desactualizadas (2026-10-14) — **HECHO** (TR-1 en la rama `claude/a31-reset-password-row`)
 
@@ -561,7 +561,7 @@ Sigue a §1w. **GitHub Actions** (cada hora del día de taller y una vez de madr
 |---|---|---|---|---|
 | TR-1 | E | **A31 espera la respuesta de antes de G10.** La fila pide 409 `AUTH_ACCOUNT_MISSING` al reiniciar la contraseña de una persona sin cuenta de acceso. Desde G10 (#251), `resetPassword` responde primero 503 `AUTH_NOT_CONFIGURED` si el entorno no tiene `SUPABASE_SERVICE_ROLE_KEY` (así es `ltl_shop_test` en local); con la clave, crea la cuenta, la liga y da la contraseña temporal. `AUTH_ACCOUNT_MISSING` solo sale si la persona cambió mientras se creaba la cuenta. La app está bien; la prueba quedó vieja. Es una de las 5 que "fallan igual en main" (§1v, IN-1). Plan: A31 comprueba 503 `AUTH_NOT_CONFIGURED` sin clave, que no se crea ni liga nada, y que solo Manager o System Admin pueden; USER_FLOWS (HU-M9) dice lo mismo. | `apps/api/test-real/rows/roster.real.spec.ts`, `docs/USER_FLOWS.md` | **Hecho** (rama `claude/a31-reset-password-row`). A31 pide 503 `AUTH_NOT_CONFIGURED` al Manager y al System Admin, revisa que la persona sigue sin cuenta ligada, y que mecánico, PM y Safety reciben 403. La fila de HU-M9 en USER_FLOWS dice la regla de hoy. `test:real` el 2026-10-14 contra `ltl_shop_test`: 132 PASA, 0 FALLA, 2 NO APLICA (`results/matrix.md`). |
 
-## 1z. Lista de Trucks: columnas por la tarea (2026-10-14) — **HECHO** (rama `claude/trucks-list-columns`) · Auditoría [`ux-audit/admin-trucks-list/04-jerarquia-visual.md`](ux-audit/admin-trucks-list/04-jerarquia-visual.md)
+## 1z. Lista de Trucks: columnas por la tarea (2026-10-14) — **HECHO, en producción** (PR #331) · Auditoría [`ux-audit/admin-trucks-list/04-jerarquia-visual.md`](ux-audit/admin-trucks-list/04-jerarquia-visual.md)
 
 Con las columnas de Samsara (§1x) la tabla llegó a 8 columnas y el trabajo del taller quedó en el medio. El dueño la vio desordenada. Se pasa a 4 columnas en el orden en que se lee: **Camión · Trabajo · Fallas · Ubicación**.
 
@@ -677,7 +677,7 @@ usuarios reales sin un defecto B.
 
 ## 6. Fuera de alcance (no se construye hasta decidirlo)
 
-- **Samsara** (millaje de referencia, ubicación, fallas) y **camiones propios** con API para terceros: decidido en parte (D35; fallas → Jobs recomendados en D42, HU-M14/HU-M15), **propuesta** con maqueta en `docs/proposals/samsara-trucks/`, sin construir; preguntas P12–P14.
+- **Samsara** (millaje de referencia, ubicación, fallas) y **camiones propios** con API para terceros: **Samsara construido y en producción** (D35, D42; §1w–§1x; HU-M14, HU-M15). Siguen fuera de alcance los **camiones propios** (alta y edición en Admin, P13) y la **API para terceros** (P14), propuestos en `docs/proposals/samsara-trucks/` (LTR-203).
 - Presencia física en el patio (geocerca de Samsara, LTR-55), McLeod, Dispatch, Schedule_Teams.
 - Off Duty (decidido: se lanza sin eso), sincronizar con Ninox (P4).
 - Trailers como activos: el taller los necesita; falta decidir cuándo (P11).
