@@ -7,6 +7,8 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { YardOperationsService } from './yard-operations.service';
 import { YardWorkPlanService } from './yard-work-plan.service';
+import { InspectionService } from '../inspection/inspection.service';
+import { InspectionsController } from '../inspection/inspections.controller';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { SystemAdminWritesService } from './system-admin-writes.service';
 import { CatalogAdminService } from './catalog-admin.service';
@@ -16,7 +18,7 @@ import { ShopWorkflowService } from './shop-workflow.service';
 
 @Module({
   imports: [AuthModule, TrucksModule, ActivityLogModule, WorkOrdersModule],
-  controllers: [AdminController],
-  providers: [AdminService, YardOperationsService, YardWorkPlanService, YardDataBoundaryService, SystemAdminWritesService, ShopWorkflowService, CatalogAdminService, PeopleAdminService, CustomJobsReviewService],
+  controllers: [AdminController, InspectionsController],
+  providers: [AdminService, YardOperationsService, YardWorkPlanService, YardDataBoundaryService, SystemAdminWritesService, ShopWorkflowService, CatalogAdminService, PeopleAdminService, CustomJobsReviewService, InspectionService],
 })
 export class AdminModule {}

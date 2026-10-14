@@ -28,7 +28,8 @@ test.describe('Admin Truck detail and readiness controls', () => {
     // Current Work is gone: the Work Order chip in the header says it.
     await expect(page.getByRole('heading', { name: 'Current Work' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Work Plan', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Issues found', exact: true })).toBeVisible();
+    // D41: the inspection step asks for the sheet.
+    await expect(page.getByTestId('truck-inspection').getByText(/every check and the 10 tires/)).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Repair history' })).toBeVisible();
     // The Phase 1 six-gate editor, Mark Ready and its Blockers card are gone.
     await expect(page.getByRole('heading', { name: 'Blockers' })).toHaveCount(0);

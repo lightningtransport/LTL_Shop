@@ -24,6 +24,7 @@ const BASE = args.base;
 const OUT = fileURLToPath(new URL('./out/', import.meta.url));
 mkdirSync(OUT, { recursive: true });
 const STEP_TIMEOUT_MS = 120_000;
+const LAST_STEP_INDEX = 56;
 
 try {
   await fetch(`${BASE}/login`, { signal: AbortSignal.timeout(60_000) });
@@ -115,7 +116,8 @@ for (;;) {
     console.log(`→ step ${lastIndex + 1} · ${now.path}`);
   }
   if (!state.playing) {
-    if (state.stepIndex === 55 && !/Play could not|did not save|Play stopped/.test(now.alert)) {
+    // The Demo flow's last step (57 steps since D41 added the inspection sheet; keep in step with scripts.spec.ts).
+    if (state.stepIndex === LAST_STEP_INDEX && !/Play could not|did not save|Play stopped/.test(now.alert)) {
       result = 'done';
     } else {
       result = 'stopped';

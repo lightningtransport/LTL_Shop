@@ -40,21 +40,23 @@ su pantalla inicial y separa al System Admin.
 |---|---|---|---|
 | **Shop Manager** | `manager` | `admin.access`, `work_orders.manage`, `yard.operations.manage` | Crea y planea WOs, inspecciona, asigna, pausa, resuelve bloqueos, hace QC como respaldo de Safety en `/qc` (D29), arma los equipos de cada paso (D28), cierra, Return to Service. **Da de alta al personal** (Standard, PM, Safety), lo desactiva/reactiva y reinicia contraseñas (D22). **Mantiene el catálogo de Jobs** (D25, D30): categorías, Jobs y aliases; los Jobs y categorías del flujo del taller están protegidos. |
 | **System Admin** | `admin` | `admin.access` (+ las demás que necesite) | Lo mismo que el Manager (el roster y el catálogo de Jobs los abre por rol, aunque solo tenga `admin.access`). |
-| **Mecánico Standard** | `mechanic` | `mechanic.standard` | Ejecuta sus Jobs asignados. |
-| **Mecánico PM** | `mechanic` | `mechanic.pm` | Hace el PM de los camiones. |
+| **Mecánico Standard** | `mechanic` | `mechanic.standard` (+ `inspection.perform` si el Manager lo enciende) | Ejecuta sus Jobs asignados. Con "Can inspect trucks" también inspecciona (D41). |
+| **Mecánico PM** | `mechanic` | `mechanic.pm` (+ `inspection.perform` si el Manager lo enciende) | Hace el PM de los camiones. Con "Can inspect trucks" también inspecciona (D41). |
 | **Safety (Quality Check)** | `mechanic` | `quality_check.perform` | Revisa los camiones terminados: los aprueba o los devuelve con una nota (D19). Dos personas. |
 
 | Capability | Da acceso a |
 |---|---|
 | `admin.access` | Entrar a `/admin`. Reabrir WO, corregir tiempos, reabrir Job cancelado, Return to Service. **El Manager también la tiene**, así que puede hacer todo esto. |
 | `work_orders.manage` | Crear WO, agregar/cancelar Jobs, asignar, prioridad, notas, pausar/reanudar, completar/cancelar WO, resolver bloqueos, editar Shop workflow. Con `admin.access`, también el **roster** (`POST/PATCH /api/admin/mechanics`, reset-password; D22) y el **catálogo** (`/api/admin/catalog/jobs`, `/categories`, `/jobs/:id/aliases`, `GET /search`; D25, D30). Mecánicos y Safety reciben 403. |
-| `yard.operations.manage` | Registrar la inspección del Truck. |
+| `yard.operations.manage` | Registrar la inspección del Truck (con `work_orders.manage`, guardar la hoja y agregar defectos: `/api/admin/trucks/:id/inspection`). |
+| `inspection.perform` | D41: un mecánico Standard o PM inspecciona con la hoja: "To inspect" en My work y `/api/inspections/*`. Sus defectos crean Jobs **sin dueño** (única excepción a "el mecánico no agrega Jobs"). Se da en People → Extra permissions; Safety no la recibe y pasar a Safety la quita. |
 | `mechanic.standard` | Pantallas y acciones del mecánico Standard. |
 | `mechanic.pm` | Pantallas y acciones del mecánico PM. |
 | `quality_check.perform` | La pantalla de Safety (`/qc`): tomar, aprobar o devolver el Quality Check. Nada más. |
 
 El mecánico **nunca** crea WOs, cambia prioridad, agrega Jobs, pausa el WO ni
-la termina. La API responde 403.
+la termina. La API responde 403. Única excepción (D41): con `inspection.perform`
+los defectos de su inspección crean Jobs sin dueño.
 
 **Usuarios hoy (roster de prueba, LTR-160):** Crixcrox (admin), Cristian
 (manager), MG (Standard), MPM (PM), MD (Standard, dueño de Detailing), MA
@@ -214,8 +216,26 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   Cancelar o completar un Job afuera también limpia las columnas. Como sigue
   `to_do`, el WO no se puede cerrar ni el Truck quedar Ready to Go.
 
-### Inspección
-- Se registra en el Truck ("No issues found" / "Issues found") y **pertenece a
+### Inspección (D41: la hoja)
+- Es la hoja de inspección del taller (`inspection_checklist_items`, editable en
+  Setup → Inspection checklist; la lista base son los 53 puntos del papel y se
+  carga en cada publicación junto al catálogo, solo agrega lo que falta). Cada
+  punto apunta al Job del catálogo que crea un defecto, o al paso Detailing.
+- Guardar (`truck_inspections`, `truck_inspection_items`, `tire_readings`) pide
+  todos los puntos, la nota de cada defecto y las 10 llantas (PSI y tread). Cada
+  defecto crea su Job; los del mismo Job van en uno; si el Job ya está en la WO
+  solo se suma la nota; la limpieza va a Detailing; una llanta en "fix" crea
+  Flat Repair (presión) o Tires (tread). Cada hallazgo queda ligado a su Job en
+  `work_order_job_sources` (varios por Job; también lo usará Samsara S-6). El
+  resultado (Issues found / No issues found) sale de la hoja y se guarda en el
+  mismo requirement de readiness.
+- Lo guardado no se edita: "Add defects" solo pasa un punto OK / N/A a defecto.
+  Para quitar un defecto se cancela su Job en la WO.
+- Umbrales (`inspection_settings`): 110 / 95 PSI, tread mínimo 4/32 y 2/32,
+  vigilar a ±10 %, arreglar a ±20 % (`tireReadingStatus` en shared).
+- Hace falta una WO abierta que no sea de PM.
+- Antes de D41 se registraba con "No issues found" / "Issues found"; esas
+  inspecciones viejas quedan como estaban. La inspección **pertenece a
   la visita**: cuando se abre un WO nuevo, la inspección anterior se cierra y
   el WO nuevo empieza con la inspección pendiente. Cancelar el WO también la
   cierra; reabrirlo la devuelve (LTR-177).
@@ -524,10 +544,11 @@ en [`USER_FLOWS.md`](USER_FLOWS.md).
 2. El WO nace en `created` con **PM A, Alignment, Detailing y Quality
    Check**, cada uno con su dueño por defecto (si está activo; si no, queda
    Unassigned).
-3. En el Truck (`/admin/trucks/[id]`) registra la inspección:
-   **No issues found** o **Issues found**. Con Issues found agrega los Jobs
-   extra y elige "¿Quién lo hace?" en cada uno (D14). Un Job personalizado
-   puede entrar también al catálogo con "Agregar también al catálogo" (D25).
+3. En el Truck (`/admin/trucks/[id]`) toca **Start inspection** y llena la
+   hoja (`/admin/trucks/[id]/inspection`, D41): los puntos, las 10 llantas y
+   Review, donde elige "¿Quién lo hace?" en cada Job nuevo. Al guardar, cada
+   defecto es un Job. Para trabajo que no salió de la inspección sigue **Add
+   work**; un Job personalizado puede entrar también al catálogo (D25).
 
 **M02 — Asignar**
 - Un dueño por Job, desde el Work Plan del Truck o el detalle Admin del WO.
@@ -568,6 +589,10 @@ Completar o Asignar a un mecánico. Todo queda en el Activity Log.
 **MECH01 — Ver mi trabajo:** inicia sesión → "My Assigned Work" (solo sus
 Jobs, agrupados por Truck) → abre el WO: ve "Your Jobs" y, en solo lectura,
 "Other work on this truck".
+
+**MECH-INSP — Inspeccionar (con "Can inspect trucks", D41):** My work →
+"To inspect" → Start → la misma hoja (`/mechanic/{standard,pm}/inspect/[truckId]`).
+Sus Jobs nacen sin dueño; el Manager los asigna.
 
 **MECH02 — Trabajar:** Start/Continue abre su sesión → cada Job suyo es una
 tarjeta con dos botones debajo, **Completar Job** (primario) y **Reportar

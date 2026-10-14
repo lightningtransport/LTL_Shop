@@ -209,11 +209,31 @@ export const ADMIN_MUTATION_BOUNDARIES: CapabilityBoundaryEntry[] = [
     enforcement: 'service',
     notes: 'LTR-157 / D16: service requires work_orders.manage or the System Admin role.',
   },
+  {
+    method: 'POST',
+    path: '/admin/trucks/:id/inspection',
+    handler: 'saveTruckInspection',
+    controller: 'admin',
+    expected: [ADMIN, YARD, WORK_ORDERS],
+    enforcement: 'http_guard',
+    notes: 'D41: saves the inspection sheet and creates the Jobs its defects ask for. A mechanic with inspection.perform uses /inspections.',
+  },
+  {
+    method: 'POST',
+    path: '/admin/trucks/:id/inspection/defects',
+    handler: 'addTruckInspectionDefects',
+    controller: 'admin',
+    expected: [ADMIN, YARD, WORK_ORDERS],
+    enforcement: 'http_guard',
+    notes: 'D41 point 6: only adds defects to a saved inspection (ok / n/a → defect).',
+  },
 ];
 
 export const ADMIN_READ_BOUNDARIES: CapabilityBoundaryEntry[] = [
   { method: 'GET', path: '/admin/access', handler: 'access', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/dashboard', handler: 'dashboard', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/trucks/:id/inspection', handler: 'truckInspection', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
+  { method: 'GET', path: '/admin/inspection-checklist', handler: 'inspectionChecklist', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/setup/workflow-steps', handler: 'workflowSteps', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/work-orders', handler: 'workOrders', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
   { method: 'GET', path: '/admin/work-orders/:id', handler: 'workOrder', controller: 'admin', expected: [ADMIN], enforcement: 'http_guard' },
@@ -342,6 +362,15 @@ export const ALL_MUTATION_BOUNDARIES = [
  * of `ADMIN_MUTATION_BOUNDARIES` because the role path is not a capability. No category writes.
  */
 export const MANAGER_WRITES: CapabilityBoundaryEntry[] = [
+  {
+    method: 'PUT',
+    path: '/admin/inspection-checklist',
+    handler: 'saveInspectionChecklist',
+    controller: 'admin',
+    expected: [ADMIN, WORK_ORDERS],
+    enforcement: 'manager_writes_guard',
+    notes: 'D41 / HU-M17: Setup → Inspection checklist and the tire limits.',
+  },
   {
     method: 'POST',
     path: '/admin/mechanics',

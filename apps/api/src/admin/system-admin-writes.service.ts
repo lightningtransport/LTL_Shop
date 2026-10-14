@@ -183,6 +183,21 @@ export class SystemAdminWritesService {
         }
       }
 
+      // D41: "Can inspect trucks" is apart from the type. Safety only does QC, so a Safety person never keeps it.
+      const nextCapability = input.mode ? mechanicCapability(input.mode) : currentMechanicCapability(current);
+      const isSafety = nextCapability === 'QUALITY_CHECK_PERFORM';
+      if (input.canInspect === true && isSafety) {
+        throw new BadRequestException({ code: 'INSPECT_NOT_FOR_SAFETY', message: 'Safety does the Quality Check only; it cannot inspect trucks.' });
+      }
+      if (input.canInspect === false || isSafety) {
+        await tx.userCapability.deleteMany({ where: { userId: id, capability: 'INSPECTION_PERFORM' } });
+      } else if (input.canInspect === true) {
+        await tx.userCapability.createMany({
+          data: [{ userId: id, capability: 'INSPECTION_PERFORM', grantedById: actor.id }],
+          skipDuplicates: true,
+        });
+      }
+
       const data: Prisma.UserUpdateInput = {};
       if (input.name !== undefined) data.name = input.name;
       if (input.active !== undefined) data.active = input.active;
@@ -348,6 +363,15 @@ export class SystemAdminWritesService {
             code: 'CATALOG_JOB_IN_WORKFLOW',
             message: 'This Job is a Shop workflow step. Change the step before deactivating it.',
             stepKey: step.stepKey,
+          });
+        }
+        // D41 / HU-M17: an active inspection check that points to this Job would have nothing to create.
+        const checks = await tx.inspectionChecklistItem.count({ where: { catalogJobId: id, active: true } });
+        if (checks) {
+          throw new ConflictException({
+            code: 'CATALOG_JOB_IN_INSPECTION_CHECKLIST',
+            message: 'Inspection checks create this Job. Change them in Setup → Inspection checklist first.',
+            checkCount: checks,
           });
         }
       }

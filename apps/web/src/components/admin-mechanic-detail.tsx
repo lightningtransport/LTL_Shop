@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { UserRole, type AdminMechanicDetailDto } from '@ltl-shop/shared';
+import { AppCapability, UserRole, type AdminMechanicDetailDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { MechanicAccessCard, MechanicCapabilityEditor } from './admin-mechanic-roster';
 import { personTypeLabel } from './admin-mechanics-list';
@@ -13,7 +13,7 @@ import { AdminBackLink, PageHeader, Badge, Button, CompactEmpty, EmptyState, Inl
 import { ApiError } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
-import { sendAdminMechanicJobsToQueue, useAdminMechanic } from '@/lib/admin-data';
+import { sendAdminMechanicJobsToQueue, updateAdminMechanic, useAdminMechanic } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatShortDateTime } from '@/lib/work-order-view';
@@ -89,6 +89,7 @@ export function AdminMechanicDetail({ id, locale, messages }: { id: string; loca
 
       {canEditRoster ? <AdminWriteTip testId>{messages.mechanicRosterTip}</AdminWriteTip> : null}
       {canEditRoster ? <MechanicCapabilityEditor mechanic={data} messages={messages} onSaved={() => void mutate()} /> : null}
+      {canEditRoster ? <InspectPermissionCard person={data} messages={messages} onSaved={() => void mutate()} /> : null}
       {canEditRoster ? <MechanicAccessCard mechanic={data} messages={messages} onChanged={() => void mutate()} /> : null}
 
       <SectionCard title={messages.peopleCompletedTitle}>
@@ -164,6 +165,41 @@ function PendingJobs({ person, canWrite, messages, onChanged }: {
       {person.runningSession ? <p className="border-t px-4 py-2 text-xs text-warning-foreground">{messages.mechanicOpenWorkRunning}</p> : null}
       {canWrite && hasOthers ? <p className="border-t px-4 py-2 text-xs text-muted-foreground">{messages.peopleReassignHint}</p> : null}
       {error ? <InlineAlert className="m-3">{error}</InlineAlert> : null}
+    </SectionCard>
+  );
+}
+
+/**
+ * D41 / HU-M17: "Can inspect trucks", apart from the type (D22). Standard and PM mechanics only: Safety keeps doing
+ * only the Quality Check, so the box is not shown for Safety.
+ */
+function InspectPermissionCard({ person, messages, onSaved }: { person: AdminMechanicDetailDto; messages: AdminMessages; onSaved: () => void }) {
+  const { showToast } = useActionToast();
+  const [pending, setPending] = useState(false);
+  const isMechanic = person.capabilities.includes(AppCapability.MECHANIC_STANDARD) || person.capabilities.includes(AppCapability.MECHANIC_PM);
+  if (!isMechanic) return null;
+  const checked = person.capabilities.includes(AppCapability.INSPECTION_PERFORM);
+  async function toggle(next: boolean) {
+    setPending(true);
+    try {
+      await updateAdminMechanic(person.id, { canInspect: next });
+      showToast('success', fillPlaceholders(next ? messages.peopleCanInspectOn : messages.peopleCanInspectOff, { name: person.name }));
+      onSaved();
+    } catch (failure) {
+      showToast('error', apiErrorMessage(failure, messages, messages.peopleCanInspectFailed));
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <SectionCard title={messages.peopleExtraPermissions} data-testid="person-inspect-permission">
+      <label className="flex min-h-12 items-start gap-3 p-4">
+        <input type="checkbox" className="mt-0.5 size-4 accent-[var(--primary)]" checked={checked} disabled={pending} onChange={(event) => void toggle(event.target.checked)} />
+        <span>
+          <span className="font-medium">{messages.peopleCanInspect}</span>
+          <span className="block text-xs text-muted-foreground">{messages.peopleCanInspectHint}</span>
+        </span>
+      </label>
     </SectionCard>
   );
 }

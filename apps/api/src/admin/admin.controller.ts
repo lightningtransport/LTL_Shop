@@ -29,6 +29,7 @@ import { CatalogAdminService } from './catalog-admin.service';
 import { PeopleAdminService } from './people-admin.service';
 import { CustomJobsReviewService } from './custom-jobs-review.service';
 import { LaborClockService } from '../work-orders/labor-clock.service';
+import { InspectionService } from '../inspection/inspection.service';
 
 @Controller('admin')
 @UseGuards(AuthGuard, CapabilitiesGuard)
@@ -46,6 +47,7 @@ export class AdminController {
     private readonly people: PeopleAdminService,
     private readonly customJobsReview: CustomJobsReviewService,
     private readonly clock: LaborClockService,
+    private readonly inspections: InspectionService,
   ) {}
 
   @Get('access')
@@ -436,6 +438,37 @@ export class AdminController {
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE)
   recordWorkPlanInspection(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.workPlan.recordInspection(request.user!, id, body);
+  }
+
+  // D41 / HU-M16: the inspection sheet of the Truck's current visit.
+  @Get('trucks/:id/inspection')
+  truckInspection(@Req() request: Request, @Param('id') id: string) {
+    return this.inspections.getState(request.user!, id);
+  }
+
+  @Post('trucks/:id/inspection')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE, AppCapability.WORK_ORDERS_MANAGE)
+  saveTruckInspection(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.inspections.save(request.user!, id, body);
+  }
+
+  // D41 point 6: after saving, defects can only be added.
+  @Post('trucks/:id/inspection/defects')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.YARD_OPERATIONS_MANAGE, AppCapability.WORK_ORDERS_MANAGE)
+  addTruckInspectionDefects(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.inspections.addDefects(request.user!, id, body);
+  }
+
+  // D41 / HU-M17: Setup → Inspection checklist (read by Admin access, edited by the Manager or System Admin).
+  @Get('inspection-checklist')
+  inspectionChecklist(@Req() request: Request) {
+    return this.inspections.getChecklist(request.user!);
+  }
+
+  @Put('inspection-checklist')
+  @UseGuards(ManagerWritesGuard)
+  saveInspectionChecklist(@Req() request: Request, @Body() body: unknown) {
+    return this.inspections.saveChecklist(request.user!, body);
   }
 
   @Get('trucks/:id/repair-history')

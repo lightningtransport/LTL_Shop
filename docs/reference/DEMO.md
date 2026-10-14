@@ -68,7 +68,7 @@ Lo que Play hace en cada paso está en `PLAYS` (`apps/web/src/lib/demo/scripts.t
 npm run demo:play --workspace=@ltl-shop/web
 ```
 
-### Demo flow: "A day at the shop" (15 capítulos, 56 pasos)
+### Demo flow: "A day at the shop" (15 capítulos, 57 pasos)
 
 Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a su primer paso) y la tarjeta dice "Chapter n of 15 · título" sobre "Step n of 56". Los pasos son los mismos ya ensayados de las historias; el orden evita que un capítulo rompa uno posterior (el bloqueo del 605 se resuelve una sola vez, el 606 queda para el respaldo de QC, el 931 se cierra después de que QC1 aprueba el 616).
 
@@ -76,7 +76,7 @@ Con el flujo elegido, el panel muestra la lista de capítulos (tocar uno salta a
 |---|---|---|---|---|---|
 | 1 | Start of the day: a clock left running yesterday | MG3 | 944 | 2 | no |
 | 2 | A truck arrives: a Work Order in one tap | MS | 973 | 3 | sí (crea el WO) |
-| 3 | Inspect, add work, assign | MS | 601, 602 | 5 | sí |
+| 3 | Inspect, add work, assign (la hoja de inspección, D41) | MS | 601, 602 | 6 | sí |
 | 4 | My work: clock, team queue, notes and requests | MG1 | 604, 613 | 3 | sí (Request Work) |
 | 5 | A blocker: the mechanic reports, the Manager resolves | MG2, MS, MG2 | 605 | 4 | sí |
 | 6 | Pause and resume; cancel and reopen | MS | 609, 613, 615 | 3 | sí (Resume) |
@@ -97,7 +97,7 @@ Capítulos 12 y 13 (D39, DP1): Parts & costs se usa, no solo se mira. En el 12 s
 | Historia | J | Cuentas (en orden) | Camiones | Pasos | Muta datos |
 |---|---|---|---|---|---|
 | HU-M1 A truck arrives | J1 | MS | 973 | 3 | sí (crea el WO) |
-| HU-M2 Inspect and add work | J1 | MS | 601, 602 | 4 | sí (inspección del 601) |
+| HU-M2 Inspect and add work | J1 | MS | 601, 602 | 5 | sí (inspección del 601 con la hoja: 2 defectos, 10 llantas, LFO baja) |
 | HU-M3 Split the work | J2 | MS | 602 | 3 | sí (asigna) |
 | HU-M4 Unblock a truck | J3 | MS, MG2, MS | 605, 609 | 4 | sí (Resolve, Resume) |
 | HU-M5 Close and return to service | J4 | MS | 931, 607, 606 | 4 | sí (Close 931, Return 607) |

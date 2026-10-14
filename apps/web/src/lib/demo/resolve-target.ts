@@ -14,7 +14,7 @@ export function resolveDemoTarget(target: DemoTarget, trucks: readonly DemoTruck
   if (!truck) return { error: 'truck_not_found', unit: target.unit };
   switch (target.kind) {
     case 'adminTruck':
-      return { path: `/admin/trucks/${truck.id}${target.tab === 'costs' ? '?tab=costs' : ''}` };
+      return { path: target.tab === 'inspection' ? `/admin/trucks/${truck.id}/inspection` : `/admin/trucks/${truck.id}${target.tab === 'costs' ? '?tab=costs' : ''}` };
     case 'truckHistory':
       return { path: `/trucks/${truck.id}/history` };
     case 'adminWorkOrder':
@@ -31,7 +31,7 @@ export function describeTarget(target: DemoTarget): string {
     case 'path':
       return target.path;
     case 'adminTruck':
-      return `Truck ${target.unit}${target.tab === 'costs' ? ' · Costs' : ''}`;
+      return `Truck ${target.unit}${target.tab === 'costs' ? ' · Costs' : target.tab === 'inspection' ? ' · Inspection' : ''}`;
     case 'truckHistory':
       return `Truck ${target.unit} · history`;
     case 'adminWorkOrder':

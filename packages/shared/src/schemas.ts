@@ -30,8 +30,10 @@ export const adminUpdateMechanicSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   mode: mechanicModeSchema.optional(),
   active: z.boolean().optional(),
-}).refine((value) => value.name !== undefined || value.mode !== undefined || value.active !== undefined, {
-  message: 'Provide a name, Standard/PM/Safety mode, or active flag',
+  /** D41: "Can inspect trucks" — Standard and PM mechanics only (Safety keeps doing only QC). */
+  canInspect: z.boolean().optional(),
+}).refine((value) => value.name !== undefined || value.mode !== undefined || value.active !== undefined || value.canInspect !== undefined, {
+  message: 'Provide a name, Standard/PM/Safety mode, active flag or the inspect permission',
 });
 
 /** LTR-77. Adds a job to an existing category. Does not create categories. */
