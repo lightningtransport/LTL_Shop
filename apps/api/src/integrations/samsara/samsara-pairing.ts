@@ -1,4 +1,5 @@
 import type {
+  SamsaraOdometerDto,
   SamsaraPairedTruckDto,
   SamsaraPairingMethod,
   SamsaraPairingSummaryDto,
@@ -9,6 +10,9 @@ import type {
   SamsaraVehicleRefDto,
 } from '@ltl-shop/shared';
 import type { SamsaraVehicle } from './samsara.client';
+
+/** A Samsara vehicle with its odometer already in miles (null when Samsara gave none). */
+export type PairingVehicle = SamsaraVehicle & { odometer?: SamsaraOdometerDto | null };
 
 export type PairingTruck = SamsaraTruckRefDto & {
   /** `trucks.samsara_id` (filled once from Ninox), as a digit string. */
@@ -42,13 +46,13 @@ export function normalizeTruckNumber(value: string | null | undefined): string |
   return cleaned || null;
 }
 
-type Candidate = { truck: PairingTruck; vehicle: SamsaraVehicle; method: SamsaraPairingMethod; staleId: boolean };
+type Candidate = { truck: PairingTruck; vehicle: PairingVehicle; method: SamsaraPairingMethod; staleId: boolean };
 
 /**
  * D35 / S-1: match our trucks to Samsara vehicles by Samsara id, then VIN, then number. Never guesses: a VIN or number
  * that fits several vehicles, or a vehicle claimed by several trucks, leaves the trucks unpaired with the reason.
  */
-export function pairTrucks(trucks: PairingTruck[], vehicles: SamsaraVehicle[]): PairingResult {
+export function pairTrucks(trucks: PairingTruck[], vehicles: PairingVehicle[]): PairingResult {
   const byId = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
   const byVin = groupBy(vehicles, (vehicle) => normalizeVin(vehicle.vin));
   const byNumber = groupBy(vehicles, (vehicle) => normalizeTruckNumber(vehicle.name));
@@ -134,11 +138,11 @@ function warningsOf(candidate: Candidate): SamsaraPairingWarning[] {
 }
 
 function ref(truck: PairingTruck): SamsaraTruckRefDto {
-  return { id: truck.id, truckNumber: truck.truckNumber, vin: truck.vin };
+  return { id: truck.id, truckNumber: truck.truckNumber, vin: truck.vin, owner: truck.owner, company: truck.company, mileage: truck.mileage };
 }
 
-function vehicleRef(vehicle: SamsaraVehicle): SamsaraVehicleRefDto {
-  return { id: vehicle.id, name: vehicle.name, vin: vehicle.vin };
+function vehicleRef(vehicle: PairingVehicle): SamsaraVehicleRefDto {
+  return { id: vehicle.id, name: vehicle.name, vin: vehicle.vin, odometer: vehicle.odometer ?? null };
 }
 
 function groupBy<T>(items: T[], key: (item: T) => string | null): Map<string, T[]> {

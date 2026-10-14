@@ -6,7 +6,11 @@ const VIN_A = '3AKJHHDR5MSMN1234';
 const VIN_B = '1XKYD49X3MJ445566';
 
 function truck(id: string, truckNumber: string, vin: string | null = null, samsaraId: string | null = null): PairingTruck {
-  return { id, truckNumber, vin, samsaraId };
+  return { id, truckNumber, vin, owner: null, company: null, mileage: null, samsaraId };
+}
+
+function truckRef(id: string, truckNumber: string, vin: string | null = null) {
+  return { id, truckNumber, vin, owner: null, company: null, mileage: null };
 }
 
 function vehicle(id: string, name: string, vin: string | null = null): SamsaraVehicle {
@@ -47,7 +51,7 @@ describe('pairTrucks', () => {
       ['614', '200', 'vin'],
       ['622', '300', 'number'],
     ]);
-    expect(result.unpairedTrucks).toEqual([{ truck: { id: 't4', truckNumber: '630', vin: null }, reason: 'no_match' }]);
+    expect(result.unpairedTrucks).toEqual([{ truck: truckRef('t4', '630', null), reason: 'no_match' }]);
     expect(result.unpairedVehicles.map((row) => row.id)).toEqual(['400']);
     expect(result.summary).toEqual({
       samsaraVehicles: 4,
@@ -78,7 +82,7 @@ describe('pairTrucks', () => {
     const result = pairTrucks([truck('t1', '601')], [vehicle('100', '601'), vehicle('200', 'Truck 0601')]);
 
     expect(result.paired).toEqual([]);
-    expect(result.unpairedTrucks).toEqual([{ truck: { id: 't1', truckNumber: '601', vin: null }, reason: 'ambiguous' }]);
+    expect(result.unpairedTrucks).toEqual([{ truck: truckRef('t1', '601', null), reason: 'ambiguous' }]);
     expect(result.unpairedVehicles).toHaveLength(2);
   });
 
@@ -103,7 +107,18 @@ describe('pairTrucks', () => {
     const result = pairTrucks([truck('t1', '601', null, '100'), truck('t2', '700', VIN_A)], [vehicle('100', 'X', VIN_A)]);
 
     expect(result.paired.map((row) => [row.truck.truckNumber, row.method])).toEqual([['601', 'samsara_id']]);
-    expect(result.unpairedTrucks).toEqual([{ truck: { id: 't2', truckNumber: '700', vin: VIN_A }, reason: 'shared' }]);
+    expect(result.unpairedTrucks).toEqual([{ truck: truckRef('t2', '700', VIN_A), reason: 'shared' }]);
+  });
+
+  it('carries owner, mileage and the Samsara odometer through to the lists', () => {
+    const result = pairTrucks(
+      [{ ...truck('t1', '601', null, '100'), owner: 'Jose Diaz', company: 'LTL Logistics', mileage: 412_040 }],
+      [{ ...vehicle('100', '601'), odometer: { miles: 418_612, source: 'obd', at: '2026-10-14T15:00:00Z' } }, vehicle('200', 'Trailer 9')],
+    );
+
+    expect(result.paired[0].truck).toMatchObject({ owner: 'Jose Diaz', company: 'LTL Logistics', mileage: 412_040 });
+    expect(result.paired[0].vehicle.odometer).toEqual({ miles: 418_612, source: 'obd', at: '2026-10-14T15:00:00Z' });
+    expect(result.unpairedVehicles[0].odometer).toBeNull();
   });
 
   it('handles an empty fleet on either side', () => {

@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { RefreshCw, TriangleAlert } from 'lucide-react';
 import type {
+  SamsaraOdometerDto,
   SamsaraPairedTruckDto,
   SamsaraPairingMethod,
   SamsaraPairingWarning,
+  SamsaraTruckRefDto,
   SamsaraUnpairedReason,
   SamsaraUnpairedTruckDto,
   SamsaraVehicleRefDto,
@@ -45,7 +47,8 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
   if (isLoading && !data) return <PageSkeleton label={messages.samsaraTitle} />;
   if (error || !data) return <LoadFailure message={messages.samsaraLoadFailed} retryLabel={messages.retry} onRetry={() => void mutate()} />;
 
-  const checkedAt = new Date(data.checkedAt).toLocaleTimeString(locale === 'es' ? 'es-US' : 'en-US', { hour: 'numeric', minute: '2-digit' });
+  const numberLocale = locale === 'es' ? 'es-US' : 'en-US';
+  const checkedAt = new Date(data.checkedAt).toLocaleTimeString(numberLocale, { hour: 'numeric', minute: '2-digit' });
   const refresh = (
     <Button type="button" variant="secondary" size="sm" disabled={isValidating} onClick={() => void mutate()}>
       <RefreshCw aria-hidden="true" className={isValidating ? 'animate-spin' : undefined} />
@@ -83,6 +86,22 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
     <Link href={`/admin/trucks/${truck.id}`} className="font-medium text-primary hover:underline">{truck.truckNumber}</Link>
   );
   const vinCell = (vin: string | null) => (vin ? <span className="font-mono text-xs">{vin}</span> : <span className="text-muted-foreground">—</span>);
+  const miles = (value: number) => fillPlaceholders(messages.samsaraMiles, { miles: value.toLocaleString(numberLocale) });
+  // S1-6: who owns the truck, and the company under it when they differ.
+  const ownerCell = (truck: SamsaraTruckRefDto) => truck.owner || truck.company ? (
+    <span className="flex flex-col">
+      <span>{truck.owner ?? truck.company}</span>
+      {truck.owner && truck.company && truck.company !== truck.owner ? <span className="text-xs text-muted-foreground">{truck.company}</span> : null}
+    </span>
+  ) : <span className="text-muted-foreground">—</span>;
+  const samsaraMilesLine = (odometer: SamsaraOdometerDto | null) => (odometer ? fillPlaceholders(messages.samsaraMilesSamsara, { miles: odometer.miles.toLocaleString(numberLocale) }) : null);
+  // Ours (confirmed at PM, D10) first; Samsara's live reading under it as a reference (D35).
+  const mileageCell = (truck: SamsaraTruckRefDto, odometer: SamsaraOdometerDto | null = null) => (
+    <span className="flex flex-col whitespace-nowrap tabular-nums">
+      {truck.mileage != null ? <span title={messages.samsaraMilesConfirmed}>{miles(truck.mileage)}</span> : <span className="text-muted-foreground">{messages.samsaraMilesNone}</span>}
+      {samsaraMilesLine(odometer) ? <span className="text-xs text-muted-foreground">{samsaraMilesLine(odometer)}</span> : null}
+    </span>
+  );
 
   return (
     <div className="space-y-6">
@@ -98,6 +117,8 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
         ))}
       </dl>
 
+      {data.odometersAvailable ? null : <p className="rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">{messages.samsaraNoOdometers}</p>}
+
       <SectionCard title={messages.samsaraUnpairedTrucksTitle} count={data.unpairedTrucks.length}>
         {data.unpairedTrucks.length ? (
           <DataTable<SamsaraUnpairedTruckDto>
@@ -108,6 +129,8 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
             getRowLabel={(row) => row.truck.truckNumber}
             columns={[
               { key: 'truck', header: messages.samsaraColTruck, primary: true, cell: (row) => truckCell(row.truck) },
+              { key: 'owner', header: messages.samsaraColOwner, cell: (row) => ownerCell(row.truck) },
+              { key: 'mileage', header: messages.samsaraColMileage, cell: (row) => mileageCell(row.truck) },
               { key: 'vin', header: messages.samsaraColVin, cell: (row) => vinCell(row.truck.vin) },
               { key: 'why', header: messages.samsaraColWhy, cell: (row) => text(REASON_KEY[row.reason]) },
             ]}
@@ -125,6 +148,8 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
             getRowLabel={(row) => row.truck.truckNumber}
             columns={[
               { key: 'truck', header: messages.samsaraColTruck, primary: true, cell: (row) => truckCell(row.truck) },
+              { key: 'owner', header: messages.samsaraColOwner, cell: (row) => ownerCell(row.truck) },
+              { key: 'mileage', header: messages.samsaraColMileage, cell: (row) => mileageCell(row.truck, row.vehicle.odometer) },
               { key: 'vehicle', header: messages.samsaraColVehicle, cell: (row) => row.vehicle.name || row.vehicle.id },
               { key: 'how', header: messages.samsaraColHow, cell: (row) => <Badge variant="outline">{text(METHOD_KEY[row.method])}</Badge> },
               {
@@ -135,6 +160,13 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
                     {row.warnings.map((warning) => (
                       <Badge key={warning} variant="warning"><TriangleAlert aria-hidden="true" className="size-3.5" />{text(WARNING_KEY[warning])}</Badge>
                     ))}
+                    {/* S1-5: say which VIN each side has, so the Manager can tell which one is wrong. */}
+                    {row.warnings.includes('vin_mismatch') ? (
+                      <span className="flex w-full flex-col font-mono text-xs" data-testid="samsara-vin-compare">
+                        <span>{fillPlaceholders(messages.samsaraVinOurs, { vin: row.truck.vin ?? '—' })}</span>
+                        <span className="text-muted-foreground">{fillPlaceholders(messages.samsaraVinTheirs, { vin: row.vehicle.vin ?? '—' })}</span>
+                      </span>
+                    ) : null}
                   </span>
                 ) : <span className="text-muted-foreground">—</span>,
               },
@@ -153,6 +185,7 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
             getRowLabel={(row) => row.name || row.id}
             columns={[
               { key: 'vehicle', header: messages.samsaraColVehicle, primary: true, cell: (row) => row.name || row.id },
+              { key: 'mileage', header: messages.samsaraColSamsaraMileage, cell: (row) => (row.odometer ? <span className="whitespace-nowrap tabular-nums">{miles(row.odometer.miles)}</span> : <span className="text-muted-foreground">—</span>) },
               { key: 'vin', header: messages.samsaraColVin, cell: (row) => vinCell(row.vin) },
             ]}
           />

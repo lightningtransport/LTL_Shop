@@ -66,6 +66,14 @@ export type SamsaraVehicle = {
   vin: string | null;
 };
 
+export type SamsaraOdometer = {
+  meters: number;
+  source: 'obd' | 'gps';
+  at: string;
+};
+
+export const METERS_PER_MILE = 1609.344;
+
 /**
  * GET-only client for the Samsara REST API. The token is a header only: never put it in the URL, logs, errors or DTOs.
  */
@@ -96,6 +104,33 @@ export class SamsaraClient {
     }
 
     return vehicles;
+  }
+
+  /**
+   * Last known odometer per vehicle id (`GET /fleet/vehicles/stats`). D35: OBD first (the engine computer); the GPS
+   * estimate only when the ECU reports none. A vehicle reports one or the other, so both types are asked for.
+   */
+  async listOdometers(): Promise<Map<string, SamsaraOdometer>> {
+    const odometers = new Map<string, SamsaraOdometer>();
+    let after: string | null = null;
+
+    for (let page = 0; page < SAMSARA_MAX_PAGES; page += 1) {
+      const params: Record<string, string> = { types: 'obdOdometerMeters,gpsOdometerMeters', limit: String(SAMSARA_VEHICLES_PAGE_SIZE) };
+      if (after) params.after = after;
+      const body = await this.get('/fleet/vehicles/stats', params);
+      const data = Array.isArray(body.data) ? (body.data as Record<string, unknown>[]) : [];
+      for (const row of data) {
+        const id = typeof row.id === 'string' || typeof row.id === 'number' ? String(row.id).trim() : '';
+        const odometer = reading(row.obdOdometerMeters, 'obd') ?? reading(row.gpsOdometerMeters, 'gps');
+        if (id && odometer) odometers.set(id, odometer);
+      }
+      const pagination = (body.pagination ?? {}) as Record<string, unknown>;
+      const next = typeof pagination.endCursor === 'string' ? pagination.endCursor : '';
+      if (!pagination.hasNextPage || !next) return odometers;
+      after = next;
+    }
+
+    return odometers;
   }
 
   private async get(path: string, params: Record<string, string>): Promise<Record<string, unknown>> {
@@ -135,4 +170,11 @@ function toVehicle(row: Record<string, unknown>): SamsaraVehicle | null {
   const name = typeof row.name === 'string' ? row.name.trim() : '';
   const vin = typeof row.vin === 'string' && row.vin.trim() ? row.vin.trim() : null;
   return { id, name, vin };
+}
+
+function reading(value: unknown, source: SamsaraOdometer['source']): SamsaraOdometer | null {
+  if (!value || typeof value !== 'object') return null;
+  const { value: meters, time } = value as Record<string, unknown>;
+  if (typeof meters !== 'number' || !Number.isFinite(meters) || meters <= 0) return null;
+  return { meters, source, at: typeof time === 'string' ? time : '' };
 }

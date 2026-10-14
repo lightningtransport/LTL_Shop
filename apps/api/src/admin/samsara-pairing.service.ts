@@ -3,10 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import type { SamsaraPairingDto, SamsaraPairingStatus } from '@ltl-shop/shared';
 import { pairTrucks } from '../integrations/samsara/samsara-pairing';
 import {
+  METERS_PER_MILE,
   SamsaraClient,
   SamsaraConfigError,
   SamsaraUpstreamError,
   getSamsaraConfig,
+  type SamsaraOdometer,
   type SamsaraVehicle,
 } from '../integrations/samsara/samsara.client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -34,16 +36,19 @@ export class SamsaraPairingService {
     }
     if (!samsaraConfig) return empty(checkedAt, 'not_configured');
 
+    const client = new SamsaraClient(samsaraConfig, fetchImpl);
     let vehicles: SamsaraVehicle[];
+    let odometers: Map<string, SamsaraOdometer> | null;
     try {
-      vehicles = await new SamsaraClient(samsaraConfig, fetchImpl).listVehicles();
+      // S1-6: odometers are a bonus; the pairing still shows when Samsara gives vehicles but no stats.
+      [vehicles, odometers] = await Promise.all([client.listVehicles(), client.listOdometers().catch(() => null)]);
     } catch (error) {
       if (error instanceof SamsaraUpstreamError) return empty(checkedAt, error.unauthorized ? 'unauthorized' : 'unavailable');
       throw error;
     }
 
     const trucks = await this.prisma.truck.findMany({
-      select: { id: true, truckNumber: true, vin: true, samsaraId: true },
+      select: { id: true, truckNumber: true, vin: true, samsaraId: true, owner: true, company: true, mileage: true },
       orderBy: { truckNumber: 'asc' },
     });
 
@@ -52,12 +57,21 @@ export class SamsaraPairingService {
         id: truck.id,
         truckNumber: truck.truckNumber,
         vin: truck.vin,
+        owner: truck.owner,
+        company: truck.company,
+        mileage: truck.mileage,
         samsaraId: truck.samsaraId == null ? null : truck.samsaraId.toFixed(0),
       })),
-      vehicles,
+      vehicles.map((vehicle) => {
+        const odometer = odometers?.get(vehicle.id);
+        return {
+          ...vehicle,
+          odometer: odometer ? { miles: Math.round(odometer.meters / METERS_PER_MILE), source: odometer.source, at: odometer.at } : null,
+        };
+      }),
     );
 
-    return { status: 'ok', checkedAt, ...result };
+    return { status: 'ok', checkedAt, ...result, odometersAvailable: odometers !== null };
   }
 
   private envSnapshot(): NodeJS.ProcessEnv {
@@ -71,5 +85,5 @@ export class SamsaraPairingService {
 }
 
 function empty(checkedAt: string, status: SamsaraPairingStatus): SamsaraPairingDto {
-  return { status, checkedAt, summary: null, paired: [], unpairedTrucks: [], unpairedVehicles: [] };
+  return { status, checkedAt, summary: null, paired: [], unpairedTrucks: [], unpairedVehicles: [], odometersAvailable: false };
 }

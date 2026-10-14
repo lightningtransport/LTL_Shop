@@ -39,6 +39,32 @@ describe('getSamsaraConfig', () => {
   });
 });
 
+describe('SamsaraClient.listOdometers', () => {
+  it('asks for both odometer types and prefers OBD over the GPS estimate', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse({
+        data: [
+          { id: '1', obdOdometerMeters: { time: '2026-10-14T15:00:00Z', value: 1_609_344 } },
+          { id: '2', gpsOdometerMeters: { time: '2026-10-14T14:00:00Z', value: 3_218_688 } },
+          { id: '3', obdOdometerMeters: { time: 't', value: 0 } },
+          { id: '4' },
+        ],
+        pagination: { endCursor: '', hasNextPage: false },
+      }),
+    );
+
+    const odometers = await new SamsaraClient(config, fetchImpl as unknown as typeof fetch).listOdometers();
+
+    const [url] = fetchImpl.mock.calls[0] as [URL];
+    expect(url.pathname).toBe('/fleet/vehicles/stats');
+    expect(url.searchParams.get('types')).toBe('obdOdometerMeters,gpsOdometerMeters');
+    expect(odometers.get('1')).toEqual({ meters: 1_609_344, source: 'obd', at: '2026-10-14T15:00:00Z' });
+    expect(odometers.get('2')).toEqual({ meters: 3_218_688, source: 'gps', at: '2026-10-14T14:00:00Z' });
+    expect(odometers.has('3')).toBe(false);
+    expect(odometers.has('4')).toBe(false);
+  });
+});
+
 describe('SamsaraClient.listVehicles', () => {
   it('follows the cursor and sends the token only as a Bearer header', async () => {
     const fetchImpl = vi
