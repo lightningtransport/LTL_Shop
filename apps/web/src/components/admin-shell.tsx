@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Building2, ChevronLeft, Clock, FileText, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Receipt, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
+import { Building2, ChevronLeft, Clock, FileText, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Receipt, Satellite, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { AdminNavLink } from './admin-nav-link';
@@ -45,6 +45,8 @@ const navigationGroups = [
       { message: 'shopWorkflow', icon: ListChecks, href: '/admin/setup/workflow' },
       // D41 / HU-M17: the checks every inspection walks through.
       { message: 'inspectionChecklistNav', icon: ClipboardCheck, href: '/admin/setup/inspection' },
+      // D35 / S-1: which Samsara vehicles are our trucks (read-only).
+      { message: 'samsaraNav', icon: Satellite, href: '/admin/setup/samsara' },
       // D-PC7: money, so the rate is for the Shop Manager and the System Admin only.
       { message: 'pcLaborRate', icon: Clock, href: '/admin/parts/labor-rate', managerOnly: true },
     ],

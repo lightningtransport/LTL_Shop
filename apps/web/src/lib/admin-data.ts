@@ -47,6 +47,7 @@ import type {
   AdminSaveOutsideRepairInput,
   AdminTruckCostsDto,
   AdminLaborRatesDto,
+  SamsaraPairingDto,
   AdminLaborRatePreviewDto,
   AdminInvoiceMonthDto,
   AdminSetLaborRateInput,
@@ -1001,6 +1002,19 @@ export function useAdminTruckCosts(truckId: string, query: string, enabled: bool
 }
 
 // ── LB-1 (LTR-201 / D34): the shop's labor rate ──────────────────────────────────────────────────────────────
+
+/** D35 / S-1: Setup → Samsara. Read-only and calls Samsara on the server, so it never revalidates on its own. */
+export function useAdminSamsaraPairing() {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<SamsaraPairingDto>(token ? '/api/admin/integrations/samsara/pairing' : null, adminReadFetcher, {
+      dedupingInterval: 30_000,
+      revalidateOnFocus: false,
+      ...adminReadRetry,
+    }),
+  );
+}
 
 export function useAdminLaborRates() {
   const { token } = useAuth();

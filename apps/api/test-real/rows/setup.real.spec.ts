@@ -1,5 +1,5 @@
 import { beforeEach, describe, it } from 'vitest';
-import { USERS, Json, createWo, laneJob, adminWo, manager, ok, prisma, refused, resetDb, same, truthy, userId } from '../harness';
+import { USERS, Json, as, createWo, laneJob, adminWo, manager, ok, prisma, refused, resetDb, same, truthy, userId } from '../harness';
 
 /** OPEN_ISSUES §1m: Setup fixes before the redesign (SW1–SW4, JC3, ME1, ME2, ME4). */
 describe('Manager: Setup (Shop workflow, catálogo, personas)', () => {
@@ -83,5 +83,13 @@ describe('Manager: Setup (Shop workflow, catálogo, personas)', () => {
     truthy('trae sus Jobs por hacer antes de desactivar', (detail.pendingJobs as Json[]).some((job) => job.truckNumber === '931'));
     same('dueño por defecto de Detailing', (detail.defaultOwnerOfSteps as Json[]).map((step) => step.stepKey), ['detailing']);
     refused('desactivar sigue bloqueado con trabajo abierto', await manager.patch(`/admin/mechanics/${detailingOwner}`, { active: false }), 409, 'MECHANIC_HAS_OPEN_WORK');
+  });
+
+  it('A91 | S-1 (D35): Setup → Samsara sin token dice "no conectado" sin guardar nada; un mecánico no entra', async () => {
+    const before = await prisma.truck.findMany({ select: { id: true, samsaraId: true }, orderBy: { id: 'asc' } });
+    const pairing = ok('leer Setup → Samsara', await manager.get('/admin/integrations/samsara/pairing')) as Json;
+    same('sin SAMSARA_API_TOKEN el estado es not_configured y no hay listas', [pairing.status, pairing.summary, pairing.paired.length], ['not_configured', null, 0]);
+    same('no cambió ningún camión', await prisma.truck.findMany({ select: { id: true, samsaraId: true }, orderBy: { id: 'asc' } }), before);
+    refused('un mecánico no ve Setup → Samsara', await as(USERS.alignment).get('/admin/integrations/samsara/pairing'), 403);
   });
 });

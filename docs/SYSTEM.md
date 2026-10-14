@@ -897,7 +897,7 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
   (Incoming Trucks, Upcoming Departures, Work location), montado en la
   pestaña Movement del Yard. Necesita `AGENT_REPORTING_KEY` en la API
   (`reference/YARD_DATA_BOUNDARY.md`).
-- **Samsara, McLeod, Dispatch:** no conectados. Presencia = `UNKNOWN`. Samsara (millaje de referencia, ubicación, fallas) y el alta de camiones propia están propuestos en [`proposals/samsara-trucks/`](proposals/samsara-trucks/README.md) (D35; las fallas se recomiendan como Jobs en Add work, D42), sin construir.
+- **Samsara, McLeod, Dispatch:** no conectados. Presencia = `UNKNOWN`. Samsara (millaje de referencia, ubicación, fallas) y el alta de camiones propia están propuestos en [`proposals/samsara-trucks/`](proposals/samsara-trucks/README.md) (D35; las fallas se recomiendan como Jobs en Add work, D42), sin construir. **S-1 (2026-10-14):** Setup → Samsara lee los vehículos de Samsara con un token de solo lectura (`SAMSARA_API_TOKEN`, solo en el API) y muestra cuáles son nuestros camiones (por `samsara_id`, VIN o número); no escribe nada. `GET /api/admin/integrations/samsara/pairing`.
 
 ---
 
