@@ -290,7 +290,7 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 | Desactiva a alguien con Jobs pendientes o tiempo corriendo | No deja; la app dice qué reasignar primero | ✅ | A30 |
 | Desactiva a alguien sin trabajo abierto | Deja de entrar y de aparecer para asignar; su historial se conserva | ✅ | A30 |
 | Reactiva | Vuelve a entrar con su misma contraseña | ✅ | A30 |
-| La persona pierde la contraseña temporal | El Manager la **reinicia** desde el detalle: otra contraseña temporal y cambio obligatorio (en local: "sin cuenta de acceso") | ✅ | A31 |
+| La persona pierde la contraseña temporal | El Manager o el System Admin la **reinicia** desde el detalle: otra contraseña temporal y cambio obligatorio. Si la persona no tenía cuenta de acceso, la crea y la liga (G10). Donde no hay clave de Supabase (local) la app dice "Access accounts are not managed in this environment" y no cambia nada. Un mecánico, PM o Safety no puede | ✅ | A31 |
 | Un mecánico intenta crear personal | No puede | ✅ | A26 |
 | Falla la creación de la cuenta de acceso | No se crea nada; la app avisa y se reintenta | ✅ (unitaria: la API borra la cuenta si falla la fila) | A29 |
 | Mira cuánto trabajo abierto tiene una persona | Cuenta los WOs donde tiene Jobs por hacer, también para PM y Safety | ✅ | A39 |
