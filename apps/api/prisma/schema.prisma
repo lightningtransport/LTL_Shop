@@ -261,6 +261,21 @@ model Truck {
   /// Declared catalog insurance E.Y4. Also used to fill `company` on first insert.
   insurance                String?
   licensePlate             String?   @map("license_plate")
+  /// D35 / S-2: written only by the Samsara sync (OPEN_ISSUES §1x). Never `mileage`, never the Ninox columns above.
+  /// The Samsara vehicle this truck is paired with (by `samsara_id`, VIN or number, §1w).
+  samsaraVehicleId         String?   @map("samsara_vehicle_id")
+  /// Samsara's odometer in miles: a reference next to the official PM mileage (D10).
+  samsaraOdometerMiles     Int?      @map("samsara_odometer_miles")
+  /// `obd` (engine computer) or `gps` (Samsara's estimate when the ECU gives none).
+  samsaraOdometerSource    String?   @map("samsara_odometer_source")
+  samsaraOdometerAt        DateTime? @map("samsara_odometer_at")
+  /// Reverse-geocoded address of the last GPS point. Display only, never Yard Presence.
+  samsaraAddress           String?   @map("samsara_address")
+  samsaraLatitude          Float?    @map("samsara_latitude")
+  samsaraLongitude         Float?    @map("samsara_longitude")
+  samsaraSpeedMph          Float?    @map("samsara_speed_mph")
+  samsaraLocationAt        DateTime? @map("samsara_location_at")
+  samsaraSyncedAt          DateTime? @map("samsara_synced_at")
   createdAt                DateTime  @default(now()) @map("created_at")
   updatedAt                DateTime  @updatedAt @map("updated_at")
 
@@ -274,9 +289,77 @@ model Truck {
   internalInvoices     InternalInvoice[]
   inspections          TruckInspection[]
   tireReadings         TireReading[]
+  faults               TruckFault[]
 
   @@index([truckNumber])
   @@map("trucks")
+}
+
+enum TruckFaultProtocol {
+  j1939
+  obdii
+
+  @@map("truck_fault_protocol")
+}
+
+/// D42: STOP, warning and check engine are the ones recommended as Jobs (S-6); pending and info are shown only.
+enum TruckFaultSeverity {
+  stop
+  warning
+  check_engine
+  pending
+  info
+
+  @@map("truck_fault_severity")
+}
+
+/// D35 / S-3: one row per fault Samsara reports on a truck. Active while `clearedAt` is null; at most one active row per
+/// truck and `faultKey` (partial unique index in the migration). The same code reported again later is a new row.
+model TruckFault {
+  id              String             @id @default(uuid()) @db.Uuid
+  truckId         String             @map("truck_id") @db.Uuid
+  /// Stable identity of the code on this truck: `j1939:<source>:<spn>:<fmi>` or `obdii:<source>:<dtc>`.
+  faultKey        String             @map("fault_key")
+  protocol        TruckFaultProtocol
+  /// What the screen shows: `SPN 3251 · FMI 0` or `P0087`.
+  code            String
+  description     String
+  severity        TruckFaultSeverity
+  spnId           Int?               @map("spn_id")
+  fmiId           Int?               @map("fmi_id")
+  dtcShortCode    String?            @map("dtc_short_code")
+  /// The engine module that reported it (J1939 source address name or OBD-II tx id).
+  sourceName      String?            @map("source_name")
+  occurrenceCount Int?               @map("occurrence_count")
+  firstSeenAt     DateTime           @map("first_seen_at")
+  lastSeenAt      DateTime           @map("last_seen_at")
+  clearedAt       DateTime?          @map("cleared_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  truck Truck @relation(fields: [truckId], references: [id], onDelete: Cascade)
+
+  @@index([truckId, clearedAt])
+  @@index([clearedAt])
+  @@map("truck_faults")
+}
+
+/// D35 / S-2: the one row (`id = 1`) that says how the last Samsara sync went. Setup → Samsara shows it.
+model SamsaraSyncState {
+  id            Int       @id @default(1)
+  lastRunAt     DateTime? @map("last_run_at")
+  lastSuccessAt DateTime? @map("last_success_at")
+  lastError     String?   @map("last_error")
+  lastTrigger   String?   @map("last_trigger")
+  vehicles      Int       @default(0)
+  trucksUpdated Int       @default(0) @map("trucks_updated")
+  faultsOpened  Int       @default(0) @map("faults_opened")
+  faultsCleared Int       @default(0) @map("faults_cleared")
+  activeFaults  Int       @default(0) @map("active_faults")
+  durationMs    Int       @default(0) @map("duration_ms")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("samsara_sync_state")
 }
 
 model TruckServiceStatusEvent {

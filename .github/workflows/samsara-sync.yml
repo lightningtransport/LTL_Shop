@@ -1,0 +1,48 @@
+name: Samsara sync
+
+# D35 / P12 (OPEN_ISSUES §1x): every 15 minutes, ask the production API to read Samsara and store each truck's
+# Samsara mileage, location and faults. Vercel Hobby only runs crons once a day, so GitHub Actions is the clock.
+# The API does the work (POST /api/internal/samsara-sync, idempotent, one at a time); this job only knocks.
+# Needs, in the `production` environment: secret CRON_SECRET (the same value as the API's CRON_SECRET on Vercel).
+# Optional variable API_BASE_URL; without it, the production API below.
+
+on:
+  schedule:
+    # GitHub may start a scheduled run a few minutes late; that is fine here.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: samsara-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync Samsara
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      API_BASE_URL: ${{ vars.API_BASE_URL || 'https://ltl-shop-api.vercel.app' }}
+    steps:
+      - name: Ask the API to sync
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::warning::Add the secret CRON_SECRET to the production environment (same value as on Vercel). Skipping."
+            exit 0
+          fi
+          status=$(curl -sS -o response.json -w '%{http_code}' --max-time 120 \
+            -X POST -H "Authorization: Bearer $CRON_SECRET" "${API_BASE_URL%/}/api/internal/samsara-sync")
+          cat response.json; echo
+          if [ "$status" != "200" ]; then
+            echo "::error::The API answered HTTP $status."
+            exit 1
+          fi
+          if grep -q '"status":"\(not_configured\|unauthorized\|unavailable\)"' response.json; then
+            echo "::error::Samsara sync did not run. See the status above and Setup → Samsara in the app."
+            exit 1
+          fi

@@ -613,7 +613,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Cierra el mes con varios camiones | "Month close" lista cada camión con lo sin cobrar y su factura; "Create drafts for all" arma los que faltan y no repite los que ya tienen factura (D37) | ✅ | A81 |
 | Un mecánico o Safety intenta ver la tarifa o las facturas | No puede (403) | ✅ | A75 |
 
-### HU-M14 · Ver la flota con ubicación y fallas de Samsara (J15, J19) — 🔲 decidido, no construido (D35, D42; LTR-202)
+### HU-M14 · Ver la flota con ubicación y fallas de Samsara (J15, J19) — ✅ construido salvo la referencia en el PM (S-1 a S-3, OPEN_ISSUES §1w–§1x; LTR-202)
 
 **Quién:** el Manager (y el System Admin). El mecánico PM ve solo la referencia de millas.
 
@@ -630,11 +630,11 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
-| Samsara no tiene señal del camión | "No Samsara signal · last seen…"; fallas "Unknown" | 🔲 | — |
+| Samsara no tiene señal del camión | Se conserva la última lectura y su hora ("hace 4 d"); las fallas quedan como estaban | ✅ | A92 |
 | El camión no está emparejado con Samsara | "Not paired with Samsara"; **Setup → Samsara** (S-1) lo lista con el motivo: sin coincidencia, ambiguo o compartido con otro camión. Sin token, la pantalla dice "no conectado" y no escribe nada | ✅ (Setup → Samsara) · 🔲 (ficha) | A91 |
-| La sincronización corre dos veces | No duplica nada; nunca cambia las millas oficiales | 🔲 | — |
-| La falla es *pending* (OBD-II) | Se ve en Faults como "Pending"; no se recomienda como Job | 🔲 | — |
-| Un mecánico abre el camión | No ve la pestaña Faults (como Costs); ve la falla solo dentro de su Job (HU-M15) | 🔲 | — |
+| La sincronización corre dos veces | No duplica nada; nunca cambia las millas oficiales | ✅ | A92, A93 |
+| La falla es *pending* (OBD-II) | Se ve en Faults como "Pending"; no se recomienda como Job (S-6) | ✅ (se ve) | — |
+| Un mecánico abre el camión | No ve la pestaña Faults (como Costs) ni puede sincronizar; ve la falla solo dentro de su Job (HU-M15, S-6) | ✅ (403) | A91, A94 |
 
 ### HU-M15 · Convertir fallas de Samsara en trabajo (J16, J17, J18) — 🔲 decidido, no construido (D42; LTR-202)
 

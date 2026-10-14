@@ -198,6 +198,7 @@ describe('Manager writes: roster (D22) and Job catalog (D25)', () => {
       'createCatalogJob',
       'createMechanic',
       'resetMechanicPassword',
+      'runSamsaraSync',
       'saveInspectionChecklist',
       'updateCatalogJob',
       'updateMechanic',

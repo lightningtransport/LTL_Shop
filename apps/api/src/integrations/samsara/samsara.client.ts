@@ -74,6 +74,14 @@ export type SamsaraOdometer = {
 
 export const METERS_PER_MILE = 1609.344;
 
+export type SamsaraLocation = {
+  latitude: number;
+  longitude: number;
+  address: string | null;
+  speedMph: number | null;
+  at: string;
+};
+
 /**
  * GET-only client for the Samsara REST API. The token is a header only: never put it in the URL, logs, errors or DTOs.
  */
@@ -112,25 +120,52 @@ export class SamsaraClient {
    */
   async listOdometers(): Promise<Map<string, SamsaraOdometer>> {
     const odometers = new Map<string, SamsaraOdometer>();
+    for (const [id, row] of await this.listStats(['obdOdometerMeters', 'gpsOdometerMeters'])) {
+      const odometer = odometerOf(row);
+      if (odometer) odometers.set(id, odometer);
+    }
+    return odometers;
+  }
+
+  /** S-2: odometer and last GPS point per vehicle in one call (Samsara allows three types per request). */
+  async listOdometersAndLocations(): Promise<Map<string, { odometer: SamsaraOdometer | null; location: SamsaraLocation | null }>> {
+    const result = new Map<string, { odometer: SamsaraOdometer | null; location: SamsaraLocation | null }>();
+    for (const [id, row] of await this.listStats(['obdOdometerMeters', 'gpsOdometerMeters', 'gps'])) {
+      result.set(id, { odometer: odometerOf(row), location: locationOf(row.gps) });
+    }
+    return result;
+  }
+
+  /** S-3: the latest fault code reading per vehicle (`types=faultCodes`), raw; `samsara-faults.ts` reads it. */
+  async listFaultCodes(): Promise<Map<string, Record<string, unknown>>> {
+    const result = new Map<string, Record<string, unknown>>();
+    for (const [id, row] of await this.listStats(['faultCodes'])) {
+      if (row.faultCodes && typeof row.faultCodes === 'object') result.set(id, row.faultCodes as Record<string, unknown>);
+    }
+    return result;
+  }
+
+  /** `GET /fleet/vehicles/stats` (last known values), every page, keyed by vehicle id. */
+  private async listStats(types: string[]): Promise<Map<string, Record<string, unknown>>> {
+    const rows = new Map<string, Record<string, unknown>>();
     let after: string | null = null;
 
     for (let page = 0; page < SAMSARA_MAX_PAGES; page += 1) {
-      const params: Record<string, string> = { types: 'obdOdometerMeters,gpsOdometerMeters', limit: String(SAMSARA_VEHICLES_PAGE_SIZE) };
+      const params: Record<string, string> = { types: types.join(','), limit: String(SAMSARA_VEHICLES_PAGE_SIZE) };
       if (after) params.after = after;
       const body = await this.get('/fleet/vehicles/stats', params);
       const data = Array.isArray(body.data) ? (body.data as Record<string, unknown>[]) : [];
       for (const row of data) {
         const id = typeof row.id === 'string' || typeof row.id === 'number' ? String(row.id).trim() : '';
-        const odometer = reading(row.obdOdometerMeters, 'obd') ?? reading(row.gpsOdometerMeters, 'gps');
-        if (id && odometer) odometers.set(id, odometer);
+        if (id) rows.set(id, row);
       }
       const pagination = (body.pagination ?? {}) as Record<string, unknown>;
       const next = typeof pagination.endCursor === 'string' ? pagination.endCursor : '';
-      if (!pagination.hasNextPage || !next) return odometers;
+      if (!pagination.hasNextPage || !next) return rows;
       after = next;
     }
 
-    return odometers;
+    return rows;
   }
 
   private async get(path: string, params: Record<string, string>): Promise<Record<string, unknown>> {
@@ -170,6 +205,21 @@ function toVehicle(row: Record<string, unknown>): SamsaraVehicle | null {
   const name = typeof row.name === 'string' ? row.name.trim() : '';
   const vin = typeof row.vin === 'string' && row.vin.trim() ? row.vin.trim() : null;
   return { id, name, vin };
+}
+
+function odometerOf(row: Record<string, unknown>): SamsaraOdometer | null {
+  return reading(row.obdOdometerMeters, 'obd') ?? reading(row.gpsOdometerMeters, 'gps');
+}
+
+function locationOf(value: unknown): SamsaraLocation | null {
+  if (!value || typeof value !== 'object') return null;
+  const gps = value as Record<string, unknown>;
+  const { latitude, longitude, time } = gps;
+  if (typeof latitude !== 'number' || typeof longitude !== 'number' || typeof time !== 'string') return null;
+  const reverseGeo = (gps.reverseGeo ?? {}) as Record<string, unknown>;
+  const address = typeof reverseGeo.formattedLocation === 'string' && reverseGeo.formattedLocation.trim() ? reverseGeo.formattedLocation.trim() : null;
+  const speed = typeof gps.speedMilesPerHour === 'number' && Number.isFinite(gps.speedMilesPerHour) ? gps.speedMilesPerHour : null;
+  return { latitude, longitude, address, speedMph: speed, at: time };
 }
 
 function reading(value: unknown, source: SamsaraOdometer['source']): SamsaraOdometer | null {
