@@ -100,4 +100,4 @@ Ver [ENCAJE §6](ENCAJE.md#6-lo-que-choca-y-hay-que-decidir-antes-de-d41).
 | d | Dashboard (P3): los dos botones pasan a ser **Start inspection** | **Sí**: siempre se empieza la hoja |
 | — | Nombres de los 7 Jobs nuevos del catálogo | **Sí**, son los que usa el taller |
 
-Están todas respondidas; cuando se apruebe programar, todo esto pasa a **D41** en `docs/DECISIONS.md`.
+Están todas respondidas y escritas como **D41** en [`docs/DECISIONS.md`](../../DECISIONS.md). Las historias son HU-M16, HU-ME7 y HU-M17 (y J20–J21) en [`docs/USER_FLOWS.md`](../../USER_FLOWS.md).

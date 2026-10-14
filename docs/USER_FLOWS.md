@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-13 (D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-13 (D41: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; no construidas. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -54,6 +54,8 @@ respuestas confirman lo construido y 7 muestran huecos (sección 7).
 | J17 | Mecánico | trabajo un Job que vino de una falla | ver el código y qué significa | diagnosticar sin buscar en otro sistema |
 | J18 | Manager | se terminó el trabajo de una falla | saber si la falla se fue o volvió | no dar por reparado algo que sigue fallando |
 | J19 | Mecánico PM | anoto las millas del tablero | ver lo que dice Samsara como referencia | detectar un tablero o un sensor mal |
+| J20 | Manager o mecánico con permiso | inspecciono un camión que llega | recorrer la misma hoja de siempre (53 puntos y 10 llantas) y que cada defecto quede como trabajo | no olvidar nada ni escribir dos veces lo que encontré |
+| J21 | Manager | miro un camión | ver la presión y el tread de sus llantas y si empeoraron desde la última vez | reparar o cambiar a tiempo, antes de que falle en la ruta |
 
 Cada historia se puede recorrer con el **modo demo local** (D36, [`reference/DEMO.md`](reference/DEMO.md)): el panel cambia de cuenta sin cerrar sesión y guía cada HU paso a paso; el **Demo flow** encadena los pasos de las HU en 14 capítulos (un día del taller). En el panel las historias se muestran con títulos en lenguaje de usuario y agrupadas por quién las hace; el guion vive en `apps/web/src/lib/demo/scripts.ts` y usa estos mismos ids (J y HU) como clave: mantenerlos estables.
 
@@ -98,6 +100,8 @@ Quality Check nunca lleva responsable. El siguiente paso dice "inspeccionar".
 ### HU-M2 · Inspeccionar y anotar hallazgos (J1)
 
 **Función:** inspección en el Truck.
+
+> **Cambia con D41 (🔲 no construido):** la inspección pasa a ser la hoja de 53 puntos y 10 llantas, y los defectos crean los Jobs solos. Ver HU-M16. Esta historia describe lo construido hoy.
 
 **Flujo**
 1. Admin → **Trucks** → el camión. Arriba está el **siguiente paso**.
@@ -322,6 +326,7 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 | No tiene Jobs en un camión | No lo ve en su lista ni puede abrirlo | ✅ | A5 |
 | Le cancelan su único Job | Deja de ver ese Work Order | ✅ | A16 |
 | Intenta crear un Work Order, agregar Jobs, pausar o cerrar | No puede | ✅ | A26 |
+| Tiene **Can inspect trucks** (D41) | Ve **To inspect** en My work y llena la hoja; sus defectos crean Jobs sin dueño. Es la única excepción a A26 (HU-ME7) | 🔲 | — |
 | Intenta entrar a Admin | No puede | ✅ | A26 |
 
 ### HU-ME2 · Trabajar y terminar (J7)
@@ -384,6 +389,7 @@ hasta que lo publica con el botón (decisión del 2026-10-07, también para el P
 | Nota vacía | No deja | ✅ | A22 |
 | No tiene Jobs en ese camión | No puede escribir | ✅ | A22 |
 | El Work Order ya está cerrado | No deja (ni a él ni al Manager) | ✅ | A22 |
+| Lo que encontró fue en la inspección (D41) | No usa Request Work: los defectos de la hoja ya crean Jobs (HU-ME7). Request Work sigue para lo que encuentra mientras trabaja | 🔲 | — |
 
 ---
 
@@ -502,6 +508,8 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Borra un Job que ya está en Work Orders | No se borra; la pantalla dice en cuántos Work Orders está y ofrece desactivarlo | ✅ | A46 |
 | Desactiva o borra PM, Alignment, Detailing o Quality Check | No deja (Jobs del sistema). Renombrar el Job no lo saca de su carril ni duplica el paso, y el nombre viejo queda como alias (D-SET4). Las categorías PM, Detailing y Quality Check no se renombran | ✅ | A46 |
 | Desactiva un Job que usa un paso obligatorio | No deja (es un Job del sistema) | ✅ | A38 |
+| Edita la hoja de inspección (D41) | El Manager y el System Admin, en **Setup → Inspection checklist** (HU-M17) | 🔲 | — |
+| Faltan Jobs para la hoja | Se agregan 7 Jobs (Horn, Radio & Phone, Parking Brake, Seats & Belts, Safety Equipment, Fluid Top-Off, Belts & Tensioners) y 4 alias, desde Job Catalog como siempre (D41) | 🔲 | — |
 
 ---
 
@@ -654,6 +662,89 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Escribe un Job personalizado para un código nuevo | Entra a la bandeja de Custom Jobs to review como cualquier otro (LTR-57) | 🔲 | — |
 | Cancelan el Job ligado | La falla vuelve a recomendarse si sigue activa | 🔲 | — |
 | La falla vuelve 3 días después del Job | Pasaron más de 48 h: es una falla nueva, sin "Came back" | 🔲 | — |
+
+### HU-M16 · Inspeccionar con la hoja y las llantas (J1, J20, J21) — 🔲 decidido, no construido (D41)
+
+**Quién:** el Manager. El mecánico con permiso hace lo mismo desde My work (HU-ME7).
+
+**Función:** la hoja en papel del taller pasa a la app. Reemplaza los dos botones de HU-M2. Maqueta: [`proposals/inspection-checklist/mockup.html`](proposals/inspection-checklist/mockup.html).
+
+**Flujo**
+1. Admin → **Trucks** → el camión. El siguiente paso dice **Inspect the truck · Start inspection**. En el Dashboard la fila de inspección tiene el mismo botón (reemplaza los dos botones de PENDIENTES_UI P3).
+2. Recorre **Interior** (15), **Engine & fluids** (12) y **Exterior** (26), y marca cada punto **OK, Defect o N/A**. **Mark rest OK** marca lo que falta de una sección.
+3. En un **Defect** escribe qué tiene. La hoja muestra qué Job va a crear, o "nota en Detailing" si es de limpieza.
+4. **Tires:** toca cada llanta del diagrama (LF, RF, LFO … RRO) y anota **PSI** y **tread /32**. **Next tire** sigue en orden y se ve la lectura anterior. En la computadora también hay una tabla.
+5. **Review** se habilita con los 53 puntos, las 10 llantas y la nota de cada defecto. Muestra:
+   - **Jobs to create**, con los defectos del mismo Job juntos
+   - las notas a pasos que la WO ya tiene
+   - **To watch** (llantas cerca del límite)
+6. Elige **quién hace** cada Job o deja "Assign later", firma ("I inspected Truck 601") y toca **Save · create N Jobs**.
+
+**Resultado:** los Jobs quedan en Shop Work con su dueño o sin dueño, y el paso Inspection dice "Issues found · N Jobs · quién · cuándo · View report". Sin defectos queda "No issues found" y el camión sigue a PM. La tarjeta **Tires** del camión muestra la lectura y cuánto cambió desde la anterior.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| Quedan puntos sin revisar o llantas sin lectura | **Review** no se habilita; la barra dice cuántos faltan | 🔲 | — |
+| Un Defect no tiene nota | No deja avanzar ("1 defect without a note") | 🔲 | — |
+| Dos defectos piden el mismo Job (p. ej. Fog lamps y Brake lights → Lights) | Se crea **un** Job con las dos notas; el catálogo no acepta repetidos (A24) | 🔲 | — |
+| El Job ya está en la WO | No lo repite; suma la nota a ese Job | 🔲 | — |
+| El defecto es de limpieza (Windows, Interior o Exterior clean) | No crea Job: va como nota al paso **Detailing**, que la WO ya trae (D13) | 🔲 | — |
+| Una llanta a más de ±20 % del objetivo o bajo el tread mínimo | Crea **Flat Repair** (presión) o **Tires** (tread) | 🔲 | — |
+| Una llanta a ±10–20 % o con el tread cerca del mínimo | "Watch": se ve en el reporte y en Tires, sin Job | 🔲 | — |
+| Deja un Job sin dueño | El siguiente paso de hoy: "Nobody is assigned to Lights · Assign" (A3) | 🔲 | — |
+| Cierra la app a mitad de la hoja | Lo marcado sigue en el teléfono hasta guardar | 🔲 | — |
+| Encuentra algo después de guardar | **Add defects** reabre la hoja solo para agregar. El defecto nuevo crea su Job o suma su nota, y el reporte lo marca "Added later · quién · hora" | 🔲 | — |
+| Marcó un defecto que no era | Lo guardado no cambia; cancela ese Job en la WO, con las reglas de hoy | 🔲 | — |
+| Quiere cambiar una lectura de llanta ya guardada | No se cambia; si la llanta tiene un problema, marca **Tire condition** como defecto con Add defects | 🔲 | — |
+| Otra persona ya guardó la inspección de esa visita | Al guardar le dice "Already inspected by …" y le ofrece Add defects | 🔲 | — |
+| Se cancela la visita y se abre otra | La WO nueva empieza con la inspección pendiente, como hoy (A15c) | 🔲 | — |
+
+### HU-ME7 · Inspeccionar un camión desde My work (J20) — 🔲 decidido, no construido (D41)
+
+**Quién:** un mecánico Standard o PM con **Can inspect trucks** encendido en People.
+
+**Flujo**
+1. En **My work** aparece **To inspect**, con los camiones que esperan inspección: número, WO y desde cuándo están.
+2. **Start** abre la misma hoja de HU-M16.
+3. En Review ve los Jobs que se van a crear, con "Manager assigns". Firma y guarda.
+
+**Resultado:** el camión sale de "To inspect". Los Jobs nacen **sin dueño** y el Manager los ve en el Truck ("Nobody is assigned to …") y en el Dashboard (Unassigned). El reporte dice quién inspeccionó: "Luis Ramos (Mechanic)".
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| No tiene el permiso | No ve "To inspect" ni puede abrir la hoja (A26 sigue) | 🔲 | — |
+| Le quitan el permiso con la hoja a medias | No la puede guardar; lo marcado se pierde al salir | 🔲 | — |
+| Quiere ver los Jobs que creó | Los ve solo si el Manager se los asigna (A5); el reporte queda en el historial del camión | 🔲 | — |
+| Encuentra algo después de guardar | **Add defects** desde el aviso de My work, mientras la WO siga abierta | 🔲 | — |
+| Intenta agregar Jobs fuera de la inspección | No puede (A26) | 🔲 | — |
+| Es de Safety | No tiene el permiso; Safety solo hace QC (QC4, D19) | 🔲 | — |
+
+### HU-M17 · Editar la hoja de inspección y dar el permiso (J2, J12) — 🔲 decidido, no construido (D41)
+
+**Quién:** el Manager y el System Admin.
+
+**Flujo (la hoja)**
+1. Admin → **Setup → Inspection checklist**.
+2. Ve las tres secciones con sus puntos. Cada punto dice qué Job crea un defecto o si va como nota a Detailing.
+3. **Add check** pide el nombre y el Job que crea. El "…" de cada punto tiene Rename, Change Job y Deactivate, y se pueden reordenar arrastrando.
+4. En **Tires** cambia el PSI objetivo por eje y el tread mínimo.
+5. **Save** (barra "Unsaved changes", como el resto de Setup).
+
+**Flujo (el permiso)**
+1. Admin → **People** → el mecánico.
+2. En **Extra permissions** enciende **Can inspect trucks**.
+
+**Resultado:** la próxima inspección usa la hoja nueva y los umbrales nuevos, y el mecánico ve "To inspect" en su próximo inicio.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| Cambia la hoja con una inspección ya guardada | La guardada no cambia: guarda la lista que usó | 🔲 | — |
+| Cambia la hoja con una inspección a medias | La que está a medias sigue con la lista con la que empezó | 🔲 | — |
+| Un punto apunta a un Job que no está en el catálogo | Lo avisa arriba y ofrece agregarlo en Job Catalog | 🔲 | — |
+| Desactiva un punto | Deja de salir en las inspecciones nuevas y sigue en los reportes viejos | 🔲 | — |
+| Desactiva en el catálogo un Job que usa la hoja | No deja hasta cambiar el Job de esos puntos (igual que con los pasos, A38) | 🔲 | — |
+| Un mecánico o Safety intenta editar la hoja | No puede (como el catálogo, A26) | 🔲 | — |
+| Da el permiso a alguien de Safety | La casilla no aparece; Safety solo hace QC | 🔲 | — |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 
