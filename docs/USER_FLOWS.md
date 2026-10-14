@@ -613,7 +613,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 | Cierra el mes con varios camiones | "Month close" lista cada camión con lo sin cobrar y su factura; "Create drafts for all" arma los que faltan y no repite los que ya tienen factura (D37) | ✅ | A81 |
 | Un mecánico o Safety intenta ver la tarifa o las facturas | No puede (403) | ✅ | A75 |
 
-### HU-M14 · Ver la flota con ubicación y fallas de Samsara (J15, J19) — ✅ construido salvo la referencia en el PM (S-1 a S-3, OPEN_ISSUES §1w–§1x; LTR-202)
+### HU-M14 · Ver la flota con ubicación y fallas de Samsara (J15, J19) — ✅ construido (S-1 a S-4, OPEN_ISSUES §1w–§1x; LTR-202)
 
 **Quién:** el Manager (y el System Admin). El mecánico PM ve solo la referencia de millas.
 
@@ -624,7 +624,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 2. Toca el badge de fallas: abre el camión en la pestaña **Faults**. Arriba, banner "2 active faults, 1 with the STOP light".
 3. **Faults:** activas (severidad, descripción, código SPN/FMI o DTC, desde cuándo, cuántas veces, qué Job se recomendará) e historial (Fixed in WO-x, Came back, Cleared, Dismissed).
 4. En el panel Truck: millas confirmadas en el PM y, debajo, "Samsara 418,612 mi · hace 12 min"; ubicación de Samsara con link al mapa.
-5. **PM:** bajo el campo de millas, "Samsara says…" como referencia; el campo no se precarga. Si difiere en más de 50 mi, aviso que no bloquea (D35, P12).
+5. **PM:** bajo el campo de millas, "Samsara: 150,412 mi · 8 min ago" como referencia; el campo no se precarga. Si difiere en más de 50 mi, aviso ámbar que no bloquea (D35, P12, S4-1).
 
 **Resultado:** el Manager decide qué camión llamar al taller mirando una lista. No hay alerta: basta con la lista (D42).
 
