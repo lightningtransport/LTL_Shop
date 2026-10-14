@@ -241,6 +241,11 @@ export function toTruckDto(truck: {
   samsaraSpeedMph?: number | null;
   samsaraLocationAt?: Date | null;
   samsaraSyncedAt?: Date | null;
+  samsaraStopLamp?: boolean | null;
+  samsaraWarningLamp?: boolean | null;
+  samsaraProtectLamp?: boolean | null;
+  samsaraEmissionsLamp?: boolean | null;
+  samsaraLampsAt?: Date | null;
 }): TruckDto {
   // D35 / S-2: the sync's GPS point replaces the one-time Ninox copy when there is one. Still not Yard Presence.
   const live = Boolean(truck.samsaraLocationAt && (truck.samsaraAddress?.trim() || truck.samsaraLatitude != null));
@@ -267,8 +272,27 @@ export function toTruckDto(truck: {
           speedMph: truck.samsaraSpeedMph ?? null,
           locationAt: truck.samsaraLocationAt?.toISOString() ?? null,
           syncedAt: truck.samsaraSyncedAt.toISOString(),
+          lamps: dashLamps(truck),
         }
       : null,
+  };
+}
+
+/** S3-4: the truck's dash lights, or null before the first fault reading. */
+export function dashLamps(truck: {
+  samsaraStopLamp?: boolean | null;
+  samsaraWarningLamp?: boolean | null;
+  samsaraProtectLamp?: boolean | null;
+  samsaraEmissionsLamp?: boolean | null;
+  samsaraLampsAt?: Date | null;
+}) {
+  if (!truck.samsaraLampsAt) return null;
+  return {
+    stop: Boolean(truck.samsaraStopLamp),
+    warning: Boolean(truck.samsaraWarningLamp),
+    protect: Boolean(truck.samsaraProtectLamp),
+    emissions: Boolean(truck.samsaraEmissionsLamp),
+    at: truck.samsaraLampsAt.toISOString(),
   };
 }
 

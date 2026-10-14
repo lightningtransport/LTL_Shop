@@ -617,7 +617,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
 **Quién:** el Manager (y el System Admin). El mecánico PM ve solo la referencia de millas.
 
-**Función:** cada 15–30 min la app lee de Samsara millas, ubicación y fallas de todos los camiones; el Manager los ve sin salir de la app. Maqueta: [`proposals/samsara-trucks/mockup.html`](proposals/samsara-trucks/mockup.html), pantallas 1, 2 y 7.
+**Función:** cada hora del día de taller (y una vez de madrugada) la app lee de Samsara millas, ubicación y fallas de todos los camiones; el Manager los ve sin salir de la app. Maqueta: [`proposals/samsara-trucks/mockup.html`](proposals/samsara-trucks/mockup.html), pantallas 1, 2 y 7.
 
 **Flujo**
 1. **Trucks:** cada camión muestra "Last location · Samsara" (dirección, hace cuánto, en movimiento o estacionado, link al mapa) y "Faults" (peor severidad y cuántas más). Filtro "With faults"; orden por severidad.

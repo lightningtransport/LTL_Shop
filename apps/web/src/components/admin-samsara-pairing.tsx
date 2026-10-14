@@ -52,7 +52,7 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
   const { showToast } = useActionToast();
   const [syncing, setSyncing] = useState(false);
 
-  // D35 / S-2: run the sync now (GitHub Actions runs it every 15 minutes).
+  // D35 / S-2: run the sync now (GitHub Actions runs it every hour of the shop day).
   async function syncNow() {
     setSyncing(true);
     try {
