@@ -12,6 +12,7 @@ import { useActionToast } from '@/components/action-toast';
 import { StandardHome } from '@/components/mechanic-home';
 import { PmHome } from '@/components/pm-home';
 import { TeamQueueCard } from '@/components/team-queue-card';
+import { InspectionQueueCard } from '@/components/inspection-queue-card';
 import { replaceAppLocation } from '@/lib/session-restore';
 import { apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -177,6 +178,8 @@ export default function HomePage() {
 
       {/* Stage MG-3: the General mechanic's home (docs/proposals/mechanic-standard-redesign). */}
       {/* LTR-197 / D28: Jobs of my Shop workflow steps waiting for someone on the team to take them. */}
+      {/* D41 / HU-ME7: trucks waiting for inspection, for a mechanic with "Can inspect trucks". */}
+      <InspectionQueueCard enabled={!!token && hasWorkspaceAccess && user.capabilities.includes(AppCapability.INSPECTION_PERFORM)} mode={mode ?? MechanicMode.STANDARD} />
       <TeamQueueCard enabled={!!token && hasWorkspaceAccess} />
       {data && !isPm ? <StandardHome data={data} userId={user.id} StartAction={StartWorkAction} /> : null}
 

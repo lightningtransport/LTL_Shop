@@ -714,7 +714,7 @@ export function createAdminMechanic(input: { name: string; email: string; mode: 
 
 export function updateAdminMechanic(
   mechanicId: string,
-  input: { name?: string; mode?: MechanicMode; active?: boolean },
+  input: { name?: string; mode?: MechanicMode; active?: boolean; canInspect?: boolean },
 ) {
   return apiFetch<UserDto>(`${ADMIN_MECHANICS_COLLECTION_PATH}/${mechanicId}`, {
     method: 'PATCH',

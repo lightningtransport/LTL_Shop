@@ -6,6 +6,12 @@ export type InspectionLocale = 'en' | 'es';
 
 export type InspectionCopy = {
   crumbTrucks: string;
+  toInspectTitle: string;
+  toInspectHint: string;
+  start: string;
+  waitingSince: (date: string) => string;
+  myWork: string;
+  savedForManager: (jobs: number) => string;
   crumbInspection: string;
   sectionInterior: string;
   sectionEngine: string;
@@ -138,6 +144,12 @@ export type InspectionCopy = {
 
 const en: InspectionCopy = {
   crumbTrucks: 'Trucks',
+  toInspectTitle: 'To inspect',
+  toInspectHint: 'Trucks waiting for inspection. You see them because you can inspect trucks.',
+  start: 'Start',
+  waitingSince: (date) => `Waiting since ${date}`,
+  myWork: 'My work',
+  savedForManager: (jobs) => (jobs ? `Inspection saved · ${jobs} Job${jobs === 1 ? '' : 's'} for the Manager to assign` : 'Inspection saved · No issues found'),
   crumbInspection: 'Inspection',
   sectionInterior: 'Interior',
   sectionEngine: 'Engine & fluids',
@@ -270,6 +282,12 @@ const en: InspectionCopy = {
 
 const es: InspectionCopy = {
   crumbTrucks: 'Camiones',
+  toInspectTitle: 'Por inspeccionar',
+  toInspectHint: 'Camiones que esperan inspección. Los ves porque puedes inspeccionar camiones.',
+  start: 'Empezar',
+  waitingSince: (date) => `Esperando desde ${date}`,
+  myWork: 'Mi trabajo',
+  savedForManager: (jobs) => (jobs ? `Inspección guardada · ${jobs} Job${jobs === 1 ? '' : 's'} para que los asigne el Manager` : 'Inspección guardada · No issues found'),
   crumbInspection: 'Inspección',
   sectionInterior: 'Interior',
   sectionEngine: 'Motor y fluidos',

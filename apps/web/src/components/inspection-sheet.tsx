@@ -269,7 +269,7 @@ function SheetFlow({
           ...(assignments?.length ? { assignments } : {}),
         });
         clearStored();
-        await onDone(next, preview.issues ? copy.saved(preview.newJobs.length, state.workOrder?.displayId ?? '') : copy.savedNoIssues);
+        await onDone(next, !state.canAssign ? copy.savedForManager(preview.newJobs.length) : preview.issues ? copy.saved(preview.newJobs.length, state.workOrder?.displayId ?? '') : copy.savedNoIssues);
       }
       window.scrollTo(0, 0);
     } catch (error) {
