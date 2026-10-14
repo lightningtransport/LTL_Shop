@@ -23,3 +23,21 @@ export function faultSeverityVariant(severity: TruckFaultSeverity): 'destructive
 export function mapHref(latitude: number, longitude: number) {
   return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 }
+
+/**
+ * TL-4: "Pennsylvania Turnpike, Napier Township, PA, 15550" → "Napier Township, PA". City and state are what the
+ * Manager scans for; the full address stays in the title and on the Truck page.
+ */
+export function shortLocation(address: string | null | undefined): string | null {
+  const parts = (address ?? '').split(',').map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  if (/^\d{5}(-\d{4})?$/.test(parts[parts.length - 1])) parts.pop();
+  return parts.length >= 2 ? parts.slice(-2).join(', ') : parts[0];
+}
+
+/** TL-7: a GPS point older than a day is shown as "no signal". */
+export const STALE_LOCATION_MS = 24 * 60 * 60 * 1000;
+
+export function isStaleLocation(at: string | null | undefined, now = Date.now()) {
+  return Boolean(at) && now - new Date(at as string).getTime() > STALE_LOCATION_MS;
+}

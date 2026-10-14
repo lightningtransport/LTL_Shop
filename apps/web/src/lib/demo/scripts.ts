@@ -229,9 +229,9 @@ const STORY_SCRIPTS: DemoStory[] = [
         say: 'Every Work Order, open and closed, in one list.',
         expect: 'Open and recently closed Work Orders with their progress.' },
       { user: manager, target: { kind: 'path', path: '/admin/trucks' }, title: 'Trucks list',
-        do: 'Each truck with its open Work Order and next step; a Ready to Go truck says "Ready to Go. Return it to service when it leaves the shop."',
+        do: 'The Work column has each truck\'s open Work Order with its status and, under it, the next step; a Ready to Go truck says "Ready to Go. Return it to service when it leaves the shop."',
         say: 'From any list you reach the truck and its plan in one tap.',
-        expect: 'Trucks with their "Next step".' },
+        expect: 'Trucks with their Work Order and next step in the Work column.' },
     ],
   },
   {
