@@ -26,6 +26,7 @@ import { YardDataBoundaryService } from './yard-data-boundary.service';
 import { SamsaraPairingService } from './samsara-pairing.service';
 import { SamsaraSyncService } from './samsara-sync.service';
 import { TruckFaultsService } from './truck-faults.service';
+import { SamsaraFaultJobsService } from './samsara-fault-jobs.service';
 import { SystemAdminWritesService } from './system-admin-writes.service';
 import { ShopWorkflowService } from './shop-workflow.service';
 import { CatalogAdminService } from './catalog-admin.service';
@@ -54,6 +55,7 @@ export class AdminController {
     private readonly samsara: SamsaraPairingService,
     private readonly samsaraSync: SamsaraSyncService,
     private readonly truckFaults: TruckFaultsService,
+    private readonly faultJobs: SamsaraFaultJobsService,
   ) {}
 
   @Get('access')
@@ -429,6 +431,26 @@ export class AdminController {
   @Get('trucks/:id/faults')
   truckFaultsList(@Param('id') id: string) {
     return this.truckFaults.get(id);
+  }
+
+  /** D42 / S-6: Samsara faults recommended as Jobs in Add work. */
+  @Get('trucks/:id/fault-recommendations')
+  truckFaultRecommendations(@Param('id') id: string) {
+    return this.faultJobs.recommendations(id);
+  }
+
+  /** D42 / S-6: tie faults to a Job already on the open Work Order. */
+  @Post('trucks/:id/faults/link')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  linkTruckFaults(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.faultJobs.link(request.user!, id, body);
+  }
+
+  /** D42 / S-6: "not now", with the reason. */
+  @Post('trucks/:id/faults/:faultId/dismiss')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  dismissTruckFault(@Req() request: Request, @Param('id') id: string, @Param('faultId') faultId: string, @Body() body: unknown) {
+    return this.faultJobs.dismiss(request.user!, id, faultId, body);
   }
 
   @Get('trucks/:id')

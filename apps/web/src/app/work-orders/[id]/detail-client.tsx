@@ -768,6 +768,12 @@ function MyJobRow({ job, next, currentUserId }: { job: WorkOrderJobDto; next: bo
         </p>
         {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
         {job.external ? <p className="text-xs text-muted-foreground">{messages.jobAtExternalShop}</p> : null}
+        {/* D42 / S-6: why this Job is here when it came from a Samsara fault. */}
+        {job.samsaraFaults?.map((fault) => (
+          <p key={fault.code} className="text-xs text-muted-foreground" data-testid="job-samsara-fault">
+            {messages.jobSamsaraFault(fault.code, fault.description)}
+          </p>
+        ))}
         {blocked ? (
           <p className="text-xs font-medium text-warning-foreground dark:text-warning">
             {messages.blockedWithReason(pauseLabel(job.activeBlocker!.reason, messages.pauseReason) ?? '')} · {messages.waitingOnManagerShort}

@@ -294,6 +294,8 @@ type Copy = {
   mileageBelowCurrent: (current: string) => string;
   /** D35 / S4-1: Samsara's odometer under the PM mileage field, and the gentle check past 50 mi. */
   pmSamsaraReference: (miles: string, ago: string) => string;
+  /** D42 / S-6: the Samsara fault behind a Job. */
+  jobSamsaraFault: (code: string, description: string) => string;
   pmSamsaraGap: (gap: string, samsara: string) => string;
   mileageJumpWarning: (current: string) => string;
   confirmMileage: string;
@@ -783,6 +785,7 @@ const copy: Record<ShopLocale, Copy> = {
     enterMileageHint: 'Enter the observed mileage to record parts used.',
     mileageBelowCurrent: (current) => `Observed mileage cannot be lower than the truck's current mileage (${current}). Check the odometer.`,
     pmSamsaraReference: (miles, ago) => `Samsara: ${miles} · ${ago}`,
+    jobSamsaraFault: (code, description) => `Samsara fault ${code}: ${description}`,
     pmSamsaraGap: (gap, samsara) => `This is ${gap} away from Samsara (${samsara}). Check the dashboard; you can still save.`,
     mileageJumpWarning: (current) => `This is more than 50,000 mi above the truck's current mileage (${current}). Confirm the odometer reading.`,
     confirmMileage: 'Confirm mileage',
@@ -1271,6 +1274,7 @@ const copy: Record<ShopLocale, Copy> = {
     enterMileageHint: 'Ingresa el millaje observado para registrar las piezas usadas.',
     mileageBelowCurrent: (current) => `El millaje observado no puede ser menor al millaje actual del truck (${current}). Revisa el odómetro.`,
     pmSamsaraReference: (miles, ago) => `Samsara: ${miles} · ${ago}`,
+    jobSamsaraFault: (code, description) => `Falla de Samsara ${code}: ${description}`,
     pmSamsaraGap: (gap, samsara) => `Hay ${gap} de diferencia con Samsara (${samsara}). Revisa el tablero; igual puedes guardar.`,
     mileageJumpWarning: (current) => `Son más de 50,000 mi sobre el millaje actual del truck (${current}). Confirma la lectura del odómetro.`,
     confirmMileage: 'Confirmar millaje',

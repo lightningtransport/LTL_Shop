@@ -15,6 +15,9 @@ import {
 } from '../integrations/samsara/samsara.client';
 import { PrismaService } from '../prisma/prisma.service';
 
+/** D42: a code reported again this soon after its Job was completed "came back". */
+const CAME_BACK_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 /** Same key for every API instance: only one sync writes at a time. */
 const SYNC_LOCK_KEY = 820_350_042;
 
@@ -203,7 +206,18 @@ export class SamsaraSyncService {
         if (id) {
           await tx.truckFault.update({ where: { id }, data });
         } else {
-          await tx.truckFault.create({ data: { ...data, truckId, faultKey: fault.faultKey, firstSeenAt: now } });
+          // D42 / S-6: the code is back within 48 h after a Job for it was completed: say where it was "fixed".
+          const fixedJob = await tx.workOrderJobSource.findFirst({
+            where: {
+              truckFault: { truckId, faultKey: fault.faultKey, clearedAt: { not: null } },
+              workOrderJob: { status: 'completed', completedAt: { gte: new Date(now.getTime() - CAME_BACK_WINDOW_MS) } },
+            },
+            select: { workOrderJob: { select: { workOrderId: true } } },
+            orderBy: { workOrderJob: { completedAt: 'desc' } },
+          });
+          await tx.truckFault.create({
+            data: { ...data, truckId, faultKey: fault.faultKey, firstSeenAt: now, cameBackWorkOrderId: fixedJob?.workOrderJob.workOrderId ?? null },
+          });
           faultsOpened += 1;
         }
       }

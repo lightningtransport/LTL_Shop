@@ -12,6 +12,11 @@ export type WorkPlanJobDraft = {
   customDescription?: string;
   /** D14: who does the Job, chosen as it is added; unset stays Unassigned. */
   assignedMechanicId?: string;
+  /** D42 / S-6: the Samsara faults this Job takes care of, and their codes for the list. */
+  samsaraFaultIds?: string[];
+  samsaraFaultCodes?: string[];
+  /** The draft was added for a recommended fault: it goes away when its last fault is unchecked. */
+  fromSamsara?: boolean;
 };
 
 export function workPlanJobUiStatusVariant(status: string): ChipVariant {

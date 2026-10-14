@@ -50,6 +50,7 @@ import type {
   SamsaraPairingDto,
   SamsaraSyncResultDto,
   TruckFaultsDto,
+  TruckFaultRecommendationsDto,
   AdminLaborRatePreviewDto,
   AdminInvoiceMonthDto,
   AdminSetLaborRateInput,
@@ -736,7 +737,7 @@ export function resetAdminMechanicPassword(mechanicId: string) {
 export function addAdminWorkPlanJobs(
   truckId: string,
   input: {
-    jobs: Array<Pick<WorkPlanJobDraft, 'catalogJobId' | 'categoryId' | 'displayName' | 'customDescription' | 'assignedMechanicId'>>;
+    jobs: Array<Pick<WorkPlanJobDraft, 'catalogJobId' | 'categoryId' | 'displayName' | 'customDescription' | 'assignedMechanicId' | 'samsaraFaultIds'>>;
     expectedVersion?: number;
   },
   idempotencyKey = adminMutationIdempotencyKey(),
@@ -1030,6 +1031,27 @@ export function useAdminTruckFaults(truckId: string | null) {
     token,
     useSWR<TruckFaultsDto>(token && truckId ? `/api/admin/trucks/${truckId}/faults` : null, adminReadFetcher, { dedupingInterval: 30_000, ...adminReadRetry }),
   );
+}
+
+/** D42 / S-6: Samsara faults recommended as Jobs in Add work. */
+export function adminFaultRecommendationsKey(truckId: string) {
+  return `/api/admin/trucks/${truckId}/fault-recommendations`;
+}
+
+export function useAdminFaultRecommendations(truckId: string | null) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<TruckFaultRecommendationsDto>(token && truckId ? adminFaultRecommendationsKey(truckId) : null, adminReadFetcher, { dedupingInterval: 10_000, ...adminReadRetry }),
+  );
+}
+
+export function linkAdminTruckFaults(truckId: string, input: { workOrderJobId: string; faultIds: string[] }) {
+  return apiFetch<TruckFaultRecommendationsDto>(`/api/admin/trucks/${truckId}/faults/link`, { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function dismissAdminTruckFault(truckId: string, faultId: string, reason: string) {
+  return apiFetch<TruckFaultRecommendationsDto>(`/api/admin/trucks/${truckId}/faults/${faultId}/dismiss`, { method: 'POST', body: JSON.stringify({ reason }) });
 }
 
 export function useAdminLaborRates() {

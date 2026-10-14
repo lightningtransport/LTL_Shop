@@ -31,6 +31,7 @@ type JobRow = {
   externalKind?: string | null;
   externalNote?: string | null;
   workflowStepKey?: string | null;
+  sources?: Array<{ truckFault: { code: string; description: string } | null }>;
 };
 
 /** LTR-188 / D24: a Job at an external shop, as the DTOs carry it (null when in the shop). */
@@ -295,6 +296,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
     helperOfJobId: j.helperOfJobId ?? null,
     workflowStepKey: j.workflowStepKey ?? null,
     external: jobExternal(j),
+    samsaraFaults: (j.sources ?? []).flatMap((source) => (source.truckFault ? [{ code: source.truckFault.code, description: source.truckFault.description }] : [])),
     };
   });
   const viewerOwnsJobs = !!viewerId && wo.jobs.some((j) => jobAssigneeId(j) === viewerId);
@@ -479,6 +481,11 @@ export const workOrderDetailInclude = {
       category: { select: { id: true, name: true } },
       assignedMechanic: { select: { id: true, name: true } },
       completedBy: { select: { id: true, name: true } },
+      // D42 / S-6: the Samsara faults a Job takes care of, shown to the mechanic.
+      sources: {
+        where: { kind: 'samsara_fault' as const },
+        select: { truckFault: { select: { code: true, description: true } } },
+      },
     },
     orderBy: { addedAt: 'asc' as const },
   },

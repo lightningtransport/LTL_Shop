@@ -118,6 +118,15 @@ export type TruckFaultSeverity = 'stop' | 'warning' | 'check_engine' | 'pending'
 
 export const TRUCK_FAULT_SEVERITY_ORDER: readonly TruckFaultSeverity[] = ['stop', 'warning', 'check_engine', 'pending', 'info'];
 
+/** D42 / S-6: a Job tied to a fault, with its Work Order. */
+export type TruckFaultJobRefDto = {
+  workOrderId: string;
+  workOrderDisplayId: string;
+  jobId: string;
+  jobName: string;
+  status: 'to_do' | 'completed' | 'cancelled';
+};
+
 export type TruckFaultDto = {
   id: string;
   protocol: 'j1939' | 'obdii';
@@ -130,6 +139,35 @@ export type TruckFaultDto = {
   firstSeenAt: string;
   lastSeenAt: string;
   clearedAt: string | null;
+  /** D42 / S-6: Jobs that take care of it ("In WO-x", "Fixed in WO-x"). */
+  jobs?: TruckFaultJobRefDto[];
+  /** D42 / S-6: "not now", with who and why. */
+  dismissed?: { at: string; by: string | null; reason: string } | null;
+  /** D42: reported again within 48 h after a Job for it was completed in this Work Order. */
+  cameBackAfter?: { workOrderId: string; displayId: string } | null;
+};
+
+/** D42 / S-6: the code without the engine module, the key the learned Job is kept under. */
+export function faultCodeKey(fault: { protocol: 'j1939' | 'obdii'; code: string }): string {
+  return `${fault.protocol}:${fault.code.replace(/[^A-Za-z0-9]+/g, ':').replace(/^:|:$/g, '').toUpperCase()}`;
+}
+
+/** D42 / S-6: why a fault is recommended as a Job. */
+export type TruckFaultRecommendationReason = 'check_engine' | 'stop_light' | 'warning_light';
+
+export type TruckFaultRecommendationDto = {
+  fault: TruckFaultDto;
+  reason: TruckFaultRecommendationReason;
+  /** The Job learned for this code, or null for a new code (the Manager picks one). */
+  suggestedJob: { catalogJobId: string; displayName: string; categoryId: string; categoryName: string } | null;
+  /** When the suggested Job is already on the open Work Order: tie the fault to it instead of adding another. */
+  existingJob: { id: string; displayName: string } | null;
+  /** A Job for it was completed but Samsara still reports it. */
+  stillAfter: { workOrderId: string; displayId: string } | null;
+};
+
+export type TruckFaultRecommendationsDto = {
+  items: TruckFaultRecommendationDto[];
 };
 
 /** S3-4: the truck's dash lights as Samsara last reported them. J1939 gives STOP and warning only per truck. */
