@@ -77,12 +77,21 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
                 key: 'faults',
                 header: messages.trucksColFaults,
                 testId: 'truck-faults-cell',
-                cell: (item: (typeof items)[number]) => item.faults?.worst ? (
-                  <Link className="inline-flex flex-wrap items-center gap-1" href={`${adminTruckHref(item.truck.id, '/admin/trucks')}&tab=faults`}>
-                    <Badge variant={faultSeverityVariant(item.faults.worst)}>{faultSeverityLabel(item.faults.worst, messages)}</Badge>
-                    {item.faults.active > 1 ? <span className="text-xs text-muted-foreground">{fillPlaceholders(messages.faultsMore, { count: String(item.faults.active - 1) })}</span> : null}
-                  </Link>
-                ) : item.truck.samsara ? <span className="text-muted-foreground">{messages.faultsNone}</span> : <span className="text-muted-foreground">—</span>,
+                cell: (item: (typeof items)[number]) => {
+                  // S3-4: a badge only when a dash light is on or a code lit check engine; other codes are just counted.
+                  const codes = item.faults?.active ?? 0;
+                  const count = codes ? <span className="text-xs text-muted-foreground">{codes === 1 ? messages.faultsOneCode : fillPlaceholders(messages.faultsCodes, { count: String(codes) })}</span> : null;
+                  if (item.faults?.worst) {
+                    return (
+                      <Link className="inline-flex flex-wrap items-center gap-1" href={`${adminTruckHref(item.truck.id, '/admin/trucks')}&tab=faults`}>
+                        <Badge variant={faultSeverityVariant(item.faults.worst)}>{faultSeverityLabel(item.faults.worst, messages)}</Badge>
+                        {count}
+                      </Link>
+                    );
+                  }
+                  if (codes) return <Link href={`${adminTruckHref(item.truck.id, '/admin/trucks')}&tab=faults`}>{count}</Link>;
+                  return <span className="text-muted-foreground">{item.truck.samsara ? messages.faultsNone : '—'}</span>;
+                },
               },
               {
                 key: 'location',

@@ -3,6 +3,7 @@ import type { TruckFault } from '@prisma/client';
 import type { TruckFaultDto, TruckFaultsDto } from '@ltl-shop/shared';
 import { SEVERITY_RANK } from '../integrations/samsara/samsara-faults';
 import { PrismaService } from '../prisma/prisma.service';
+import { dashLamps } from '../trucks/trucks.service';
 
 const HISTORY_LIMIT = 50;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,7 +15,13 @@ export class TruckFaultsService {
 
   async get(truckId: string): Promise<TruckFaultsDto> {
     if (!UUID.test(truckId)) throw new BadRequestException('Invalid Truck id');
-    const truck = await this.prisma.truck.findUnique({ where: { id: truckId }, select: { samsaraVehicleId: true, samsaraSyncedAt: true } });
+    const truck = await this.prisma.truck.findUnique({
+      where: { id: truckId },
+      select: {
+        samsaraVehicleId: true, samsaraSyncedAt: true,
+        samsaraStopLamp: true, samsaraWarningLamp: true, samsaraProtectLamp: true, samsaraEmissionsLamp: true, samsaraLampsAt: true,
+      },
+    });
     if (!truck) throw new NotFoundException('Truck not found');
 
     const [active, history] = await Promise.all([
@@ -24,6 +31,7 @@ export class TruckFaultsService {
     active.sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || b.firstSeenAt.getTime() - a.firstSeenAt.getTime());
 
     return {
+      lamps: dashLamps(truck),
       active: active.map(toFaultDto),
       history: history.map(toFaultDto),
       syncedAt: truck.samsaraSyncedAt?.toISOString() ?? null,

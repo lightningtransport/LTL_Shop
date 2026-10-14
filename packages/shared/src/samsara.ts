@@ -132,8 +132,35 @@ export type TruckFaultDto = {
   clearedAt: string | null;
 };
 
+/** S3-4: the truck's dash lights as Samsara last reported them. J1939 gives STOP and warning only per truck. */
+export type TruckDashLampsDto = {
+  stop: boolean;
+  warning: boolean;
+  protect: boolean;
+  emissions: boolean;
+  at: string | null;
+};
+
+/**
+ * S3-4: what the Trucks list and the Truck banner show. The dash lights first (STOP, then warning or protect), then the
+ * codes that lit the check engine light. Codes that light nothing ("info", "pending") stay on the Faults tab only.
+ */
+export function truckAttention(
+  lamps: Partial<Pick<TruckDashLampsDto, 'stop' | 'warning' | 'protect' | 'emissions'>> | null | undefined,
+  severities: readonly TruckFaultSeverity[],
+): TruckFaultSeverity | null {
+  if (lamps?.stop) return 'stop';
+  if (lamps?.warning || lamps?.protect) return 'warning';
+  if (severities.includes('stop')) return 'stop';
+  if (severities.includes('warning')) return 'warning';
+  if (lamps?.emissions || severities.includes('check_engine')) return 'check_engine';
+  return null;
+}
+
 /** S-3: Truck → Faults. Active first (worst first), then the latest cleared ones. */
 export type TruckFaultsDto = {
+  /** S3-4: the dash lights now; null before the first fault reading. */
+  lamps: TruckDashLampsDto | null;
   active: TruckFaultDto[];
   history: TruckFaultDto[];
   /** When Samsara last updated this truck; null when it is not paired or never synced. */
@@ -141,7 +168,7 @@ export type TruckFaultsDto = {
   paired: boolean;
 };
 
-/** S-2/S-3 on the Trucks list: how many faults are active and the worst one. */
+/** S-2/S-3 on the Trucks list: how many codes are active and what to show (`truckAttention`: lights, then codes). */
 export type TruckFaultSummaryDto = {
   active: number;
   worst: TruckFaultSeverity | null;
@@ -158,4 +185,6 @@ export type TruckSamsaraDto = {
   speedMph: number | null;
   locationAt: string | null;
   syncedAt: string | null;
+  /** S3-4: the dash lights, or null before the first fault reading. */
+  lamps: TruckDashLampsDto | null;
 };

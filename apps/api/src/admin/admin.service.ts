@@ -68,7 +68,7 @@ import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
 import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
-import { worstSeverity } from '../integrations/samsara/samsara-faults';
+import { truckAttention } from '../integrations/samsara/samsara-faults';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
 import { resolveActiveBlockers } from '../work-orders/blockers';
 import { closeActiveAssessments, reopenAssessmentOfWorkOrder } from './readiness-visit';
@@ -2696,7 +2696,8 @@ function toTruckSummary(row: {
         ? workOrderNextStep(readyToGo, { returnedToService: false })
         : { kind: 'create_work_order' },
     truck: toTruckDto(row),
-    ...(row.faults ? { faults: { active: row.faults.length, worst: worstSeverity(row.faults.map((fault) => fault.severity)) } } : {}),
+    // S3-4: the dash lights first, then codes that lit check engine (info and pending stay on the Faults tab).
+    ...(row.faults ? { faults: { active: row.faults.length, worst: truckAttention(toTruckDto(row).samsara?.lamps, row.faults.map((fault) => fault.severity)) } } : {}),
     operationalStatus: operational.status,
     operationalStatusAt: operational.at,
     openWorkOrder: open

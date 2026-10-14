@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, type SamsaraSyncState } from '@prisma/client';
 import type { SamsaraSyncResultDto, SamsaraSyncStateDto } from '@ltl-shop/shared';
-import { parseFaultCodes, type ParsedFault } from '../integrations/samsara/samsara-faults';
+import { parseFaultReading, type DashLamps, type ParsedFault } from '../integrations/samsara/samsara-faults';
 import { pairTrucks } from '../integrations/samsara/samsara-pairing';
 import {
   METERS_PER_MILE,
@@ -24,8 +24,9 @@ type Snapshot = {
   vehicleId: string;
   odometer: SamsaraOdometer | null;
   location: SamsaraLocation | null;
-  /** Undefined: Samsara sent no fault reading for this vehicle, so its open faults stay as they are. */
+  /** Undefined: Samsara sent no fault reading for this vehicle, so its open faults and lights stay as they are. */
   faults: ParsedFault[] | undefined;
+  lamps: DashLamps | undefined;
 };
 
 /**
@@ -94,11 +95,13 @@ export class SamsaraSyncService {
     for (const row of pairing.paired) {
       const stat = stats.get(row.vehicle.id);
       const reading = faultCodes?.get(row.vehicle.id);
+      const parsed = reading ? parseFaultReading(reading) : undefined;
       snapshots.set(row.truck.id, {
         vehicleId: row.vehicle.id,
         odometer: stat?.odometer ?? null,
         location: stat?.location ?? null,
-        faults: reading ? parseFaultCodes(reading) : undefined,
+        faults: parsed?.faults,
+        lamps: parsed?.lamps,
       });
     }
 
@@ -135,12 +138,14 @@ export class SamsaraSyncService {
   private async write(tx: Prisma.TransactionClient, snapshots: Map<string, Snapshot>, now: Date) {
     // One statement for every paired truck (not one round trip each). `updated_at` stays: a sync is not an edit.
     // A null odometer or location keeps the last good reading.
-    const rows = [...snapshots].map(([truckId, { vehicleId, odometer, location }]) => Prisma.sql`(
+    const rows = [...snapshots].map(([truckId, { vehicleId, odometer, location, lamps }]) => Prisma.sql`(
       ${truckId}::uuid, ${vehicleId}::text,
       ${odometer ? Math.round(odometer.meters / METERS_PER_MILE) : null}::int, ${odometer?.source ?? null}::text,
       ${odometer ? (odometer.at || now.toISOString()) : null}::timestamptz,
       ${location?.address ?? null}::text, ${location?.latitude ?? null}::float8, ${location?.longitude ?? null}::float8,
-      ${location?.speedMph ?? null}::float8, ${location?.at ?? null}::timestamptz)`);
+      ${location?.speedMph ?? null}::float8, ${location?.at ?? null}::timestamptz,
+      ${lamps ? lamps.stop : null}::boolean, ${lamps ? lamps.warning : null}::boolean,
+      ${lamps ? lamps.protect : null}::boolean, ${lamps ? lamps.emissions : null}::boolean)`);
     let trucksUpdated = 0;
     for (let index = 0; index < rows.length; index += 200) {
       trucksUpdated += await tx.$executeRaw`
@@ -154,9 +159,16 @@ export class SamsaraSyncService {
           "samsara_latitude" = CASE WHEN v.location_at IS NULL THEN t."samsara_latitude" ELSE v.latitude END,
           "samsara_longitude" = CASE WHEN v.location_at IS NULL THEN t."samsara_longitude" ELSE v.longitude END,
           "samsara_speed_mph" = CASE WHEN v.location_at IS NULL THEN t."samsara_speed_mph" ELSE v.speed_mph END,
-          "samsara_location_at" = COALESCE(v.location_at AT TIME ZONE 'UTC', t."samsara_location_at")
+          "samsara_location_at" = COALESCE(v.location_at AT TIME ZONE 'UTC', t."samsara_location_at"),
+          -- S3-4: the dash lights move together; no fault reading this time keeps the last ones.
+          "samsara_stop_lamp" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_stop_lamp" ELSE v.stop_lamp END,
+          "samsara_warning_lamp" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_warning_lamp" ELSE v.warning_lamp END,
+          "samsara_protect_lamp" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_protect_lamp" ELSE v.protect_lamp END,
+          "samsara_emissions_lamp" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_emissions_lamp" ELSE v.emissions_lamp END,
+          "samsara_lamps_at" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_lamps_at" ELSE ${now.toISOString()}::timestamptz AT TIME ZONE 'UTC' END
         FROM (VALUES ${Prisma.join(rows.slice(index, index + 200))})
-          AS v(id, vehicle_id, odometer_miles, odometer_source, odometer_at, address, latitude, longitude, speed_mph, location_at)
+          AS v(id, vehicle_id, odometer_miles, odometer_source, odometer_at, address, latitude, longitude, speed_mph, location_at,
+            stop_lamp, warning_lamp, protect_lamp, emissions_lamp)
         WHERE t."id" = v.id`;
     }
     // A truck that is no longer paired keeps its last reading, but no longer points at a Samsara vehicle.

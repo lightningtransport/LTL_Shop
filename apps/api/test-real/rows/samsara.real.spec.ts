@@ -29,16 +29,16 @@ function stat(miles: number, address: string, at = '2026-10-14T15:00:00Z') {
   };
 }
 
-function j1939(...codes: Array<{ spn: number; fmi: number; red?: number; amber?: number; count?: number }>) {
+/** S3-4: J1939 as Samsara sends it: lights per truck, `milStatus` per code (1 = check engine). */
+function j1939(lights: { stop?: boolean; warning?: boolean; emissions?: boolean }, ...codes: Array<{ spn: number; fmi: number; mil?: number; count?: number }>) {
   return {
     id: `v-${TRUCK}`,
     faultCodes: {
       j1939: {
-        checkEngineLights: { stopIsOn: codes.some((code) => code.red), warningIsOn: codes.some((code) => code.amber) },
+        checkEngineLights: { stopIsOn: Boolean(lights.stop), warningIsOn: Boolean(lights.warning), emissionsIsOn: Boolean(lights.emissions), protectIsOn: false },
         diagnosticTroubleCodes: codes.map((code) => ({
           spnId: code.spn, spnDescription: `SPN ${code.spn} part`, fmiId: code.fmi, fmiDescription: 'Too high',
-          txId: 0, sourceAddressName: 'Engine #1', occurrenceCount: code.count ?? 1,
-          redLampStatus: code.red ?? 0, amberLampStatus: code.amber ?? 0, milStatus: 0, protectLampStatus: 0,
+          txId: 0, sourceAddressName: 'Engine #1', occurrenceCount: code.count ?? 1, milStatus: code.mil ?? 0,
         })),
       },
     },
@@ -105,32 +105,37 @@ describe('Manager: Samsara (D35, D42)', () => {
     same('estado de la última corrida', [pairing.sync.lastError, pairing.sync.trucksUpdated], [null, 1]);
   });
 
-  it('A93 | S-3: una falla se abre, sigue abierta sin duplicarse y se cierra cuando Samsara deja de reportarla; si la lectura de fallas falla no se cierra nada', async () => {
+  it('A93 | S-3, S3-4: las luces del tablero (STOP, advertencia) y los códigos que encendieron check engine se ven en Trucks y en Faults; una falla sigue abierta sin duplicarse y se cierra cuando Samsara deja de reportarla; si la lectura de fallas falla no se cierra nada', async () => {
     const { id } = await truckRow();
-    await setSamsara({ vehicles: [vehicle()], faults: [j1939({ spn: 3251, fmi: 0, red: 1, count: 3 }, { spn: 111, fmi: 1, amber: 1 })] });
+    await setSamsara({ vehicles: [vehicle()], faults: [j1939({ stop: true, emissions: true }, { spn: 2659, fmi: 17, mil: 1, count: 3 }, { spn: 111, fmi: 1, mil: 0 }, { spn: 520837, fmi: 12, mil: 3 })] });
     ok('primera corrida', await manager.post('/admin/integrations/samsara/sync'));
 
     let faults = ok('pestaña Faults', await manager.get(`/admin/trucks/${id}/faults`)) as Json;
-    same('dos activas, la STOP primero', (faults.active as Json[]).map((fault) => [fault.code, fault.severity]), [['SPN 3251 · FMI 0', 'stop'], ['SPN 111 · FMI 1', 'warning']]);
-    const list = ok('lista de Trucks', await manager.get(`/admin/trucks?search=${TRUCK}`)) as Json;
-    same('Trucks dice 2 activas y la peor', (list.items as Json[]).find((item) => item.truck.truckNumber === TRUCK)?.faults, { active: 2, worst: 'stop' });
+    same('las luces del tablero del camión', [faults.lamps.stop, faults.lamps.warning, faults.lamps.emissions], [true, false, true]);
+    same('check engine solo con milStatus 1; 0 y 3 (no disponible) son info', (faults.active as Json[]).map((fault) => [fault.code, fault.severity]), [['SPN 2659 · FMI 17', 'check_engine'], ['SPN 111 · FMI 1', 'info'], ['SPN 520837 · FMI 12', 'info']]);
+    let list = ok('lista de Trucks', await manager.get(`/admin/trucks?search=${TRUCK}`)) as Json;
+    same('Trucks muestra STOP por la luz del camión y cuenta los 3 códigos', (list.items as Json[]).find((item) => item.truck.truckNumber === TRUCK)?.faults, { active: 3, worst: 'stop' });
 
-    await setSamsara({ vehicles: [vehicle()], faults: [j1939({ spn: 3251, fmi: 0, red: 1, count: 14 })] });
-    const second = ok('segunda corrida: la 111 ya no viene', await manager.post('/admin/integrations/samsara/sync')) as Json;
-    same('no se abrió nada nuevo y se cerró una', [second.state.faultsOpened, second.state.faultsCleared], [0, 1]);
+    await setSamsara({ vehicles: [vehicle()], faults: [j1939({ warning: true }, { spn: 2659, fmi: 17, mil: 1, count: 14 })] });
+    const second = ok('segunda corrida: la STOP se apagó, quedó la advertencia; la 111 y la 520837 ya no vienen', await manager.post('/admin/integrations/samsara/sync')) as Json;
+    same('no se abrió nada nuevo y se cerraron dos', [second.state.faultsOpened, second.state.faultsCleared], [0, 2]);
     faults = ok('pestaña Faults', await manager.get(`/admin/trucks/${id}/faults`)) as Json;
-    same('la 3251 sigue siendo la misma fila, con las veces al día', (faults.active as Json[]).map((fault) => [fault.code, fault.occurrenceCount]), [['SPN 3251 · FMI 0', 14]]);
-    same('la 111 pasó al historial', (faults.history as Json[]).map((fault) => fault.code), ['SPN 111 · FMI 1']);
+    same('la 2659 sigue siendo la misma fila, con las veces al día', (faults.active as Json[]).map((fault) => [fault.code, fault.occurrenceCount]), [['SPN 2659 · FMI 17', 14]]);
+    same('las dos cerradas pasaron al historial', (faults.history as Json[]).map((fault) => fault.code).sort(), ['SPN 111 · FMI 1', 'SPN 520837 · FMI 12']);
     same('una sola fila por falla activa', await prisma.truckFault.count({ where: { truckId: id, clearedAt: null } }), 1);
+    list = ok('lista de Trucks', await manager.get(`/admin/trucks?search=${TRUCK}`)) as Json;
+    same('Trucks pasa a advertencia', (list.items as Json[]).find((item) => item.truck.truckNumber === TRUCK)?.faults.worst, 'warning');
 
     await setSamsara({ vehicles: [vehicle()], faults: [], fail: 'faults' });
     const failed = ok('corrida con la lectura de fallas caída', await manager.post('/admin/integrations/samsara/sync')) as Json;
-    same('millas y ubicación siguen; las fallas quedan como estaban', [failed.status, failed.state.lastError, failed.state.faultsCleared], ['ok', 'faults_unavailable', 0]);
-    same('la 3251 sigue activa', await prisma.truckFault.count({ where: { truckId: id, clearedAt: null } }), 1);
+    same('millas y ubicación siguen; las fallas y las luces quedan como estaban', [failed.status, failed.state.lastError, failed.state.faultsCleared], ['ok', 'faults_unavailable', 0]);
+    same('la advertencia sigue', (await truckRow()).samsaraWarningLamp, true);
+    same('la 2659 sigue activa', await prisma.truckFault.count({ where: { truckId: id, clearedAt: null } }), 1);
 
-    await setSamsara({ vehicles: [vehicle()], faults: [{ id: `v-${TRUCK}`, faultCodes: { j1939: { diagnosticTroubleCodes: [] } } }] });
-    ok('corrida sin fallas', await manager.post('/admin/integrations/samsara/sync'));
-    same('ya no queda ninguna activa', await prisma.truckFault.count({ where: { truckId: id, clearedAt: null } }), 0);
+    await setSamsara({ vehicles: [vehicle()], faults: [j1939({}, { spn: 111, fmi: 1, mil: 0 })] });
+    ok('corrida solo con un código que no enciende nada', await manager.post('/admin/integrations/samsara/sync'));
+    list = ok('lista de Trucks', await manager.get(`/admin/trucks?search=${TRUCK}`)) as Json;
+    same('Trucks no marca nada: un código info no enciende ninguna luz', (list.items as Json[]).find((item) => item.truck.truckNumber === TRUCK)?.faults, { active: 1, worst: null });
   });
 
   it('A94 | S-2: GitHub Actions corre la sincronización con el secreto de cron; sin secreto 401; un mecánico no puede Sync now', async () => {

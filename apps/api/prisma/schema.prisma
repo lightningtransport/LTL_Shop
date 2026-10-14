@@ -276,6 +276,12 @@ model Truck {
   samsaraSpeedMph          Float?    @map("samsara_speed_mph")
   samsaraLocationAt        DateTime? @map("samsara_location_at")
   samsaraSyncedAt          DateTime? @map("samsara_synced_at")
+  /// S3-4: the truck's dash lights from Samsara (J1939 gives STOP and warning per truck, not per code).
+  samsaraStopLamp          Boolean?  @map("samsara_stop_lamp")
+  samsaraWarningLamp       Boolean?  @map("samsara_warning_lamp")
+  samsaraProtectLamp       Boolean?  @map("samsara_protect_lamp")
+  samsaraEmissionsLamp     Boolean?  @map("samsara_emissions_lamp")
+  samsaraLampsAt           DateTime? @map("samsara_lamps_at")
   createdAt                DateTime  @default(now()) @map("created_at")
   updatedAt                DateTime  @updatedAt @map("updated_at")
 
