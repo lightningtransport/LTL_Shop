@@ -597,7 +597,7 @@ usuarios reales sin un defecto B.
 
 ## 6. Fuera de alcance (no se construye hasta decidirlo)
 
-- **Samsara** (millaje de referencia, ubicación, fallas) y **camiones propios** con API para terceros: decidido en parte (D35), **propuesta** en `docs/proposals/samsara-trucks/`, sin construir; preguntas P12–P14.
+- **Samsara** (millaje de referencia, ubicación, fallas) y **camiones propios** con API para terceros: decidido en parte (D35; fallas → Jobs recomendados en D42, HU-M14/HU-M15), **propuesta** con maqueta en `docs/proposals/samsara-trucks/`, sin construir; preguntas P12–P14.
 - Presencia física en el patio (geocerca de Samsara, LTR-55), McLeod, Dispatch, Schedule_Teams.
 - Off Duty (decidido: se lanza sin eso), sincronizar con Ninox (P4).
 - Trailers como activos: el taller los necesita; falta decidir cuándo (P11).
