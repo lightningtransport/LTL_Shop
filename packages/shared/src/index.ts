@@ -2,6 +2,7 @@ export * from './attention';
 export * from './catalog';
 export * from './parts-costs';
 export * from './pm';
+export * from './inspection';
 export * from './quality-check';
 export * from './enums';
 export * from './job-work-status';

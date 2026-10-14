@@ -21,6 +21,8 @@ enum AppCapability {
   YARD_OPERATIONS_MANAGE @map("yard.operations.manage")
   WORK_ORDERS_MANAGE     @map("work_orders.manage")
   QUALITY_CHECK_PERFORM  @map("quality_check.perform")
+  // D41: a mechanic who can inspect trucks (the Manager always can). Granted in People.
+  INSPECTION_PERFORM     @map("inspection.perform")
 }
 
 enum WorkOrderStatus {
@@ -119,6 +121,10 @@ enum ActivityEventType {
   internal_invoice_voided
   // LTR-57: the Custom Jobs review inbox.
   custom_jobs_reviewed
+  // D41: the inspection sheet.
+  inspection_saved
+  inspection_defects_added
+  inspection_checklist_updated
 }
 
 enum ReadinessAssessmentStatus {
@@ -205,6 +211,11 @@ model User {
   voidedOutsideRepairs           OutsideRepair[]            @relation("OutsideRepairVoidedBy")
   uploadedAttachments            Attachment[]               @relation("AttachmentUploadedBy")
   createdTruckCostEntries        TruckCostEntry[]           @relation("TruckCostEntryCreatedBy")
+  inspectionsDone                TruckInspection[]          @relation("TruckInspectionBy")
+  inspectionDefectsAdded         TruckInspectionItem[]      @relation("TruckInspectionItemAddedBy")
+  updatedInspectionItems         InspectionChecklistItem[]  @relation("InspectionChecklistItemUpdatedBy")
+  updatedInspectionSettings      InspectionSettings[]       @relation("InspectionSettingsUpdatedBy")
+  createdWorkOrderJobSources     WorkOrderJobSource[]       @relation("WorkOrderJobSourceCreatedBy")
 
   @@map("users")
 }
@@ -261,6 +272,8 @@ model Truck {
   partPurchaseLines    PartPurchaseLine[]
   outsideRepairs       OutsideRepair[]
   internalInvoices     InternalInvoice[]
+  inspections          TruckInspection[]
+  tireReadings         TireReading[]
 
   @@index([truckNumber])
   @@map("trucks")
@@ -307,6 +320,7 @@ model TruckReadinessAssessment {
   requirements ReadinessRequirement[]
   workOrders   WorkOrder[]
   mutations    ReadinessMutation[]
+  inspection   TruckInspection?
 
   @@index([truckId, status])
   @@index([status, updatedAt])
@@ -389,11 +403,13 @@ model CatalogJob {
   createdById     String?       @map("created_by_id") @db.Uuid
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  category      JobCategory        @relation(fields: [categoryId], references: [id])
-  createdBy     User?              @relation("CatalogJobCreatedBy", fields: [createdById], references: [id])
-  aliases       JobAlias[]
-  workOrderJobs WorkOrderJob[]
-  workflowSteps ShopWorkflowStep[]
+  category                 JobCategory               @relation(fields: [categoryId], references: [id])
+  createdBy                User?                     @relation("CatalogJobCreatedBy", fields: [createdById], references: [id])
+  aliases                  JobAlias[]
+  workOrderJobs            WorkOrderJob[]
+  workflowSteps            ShopWorkflowStep[]
+  inspectionChecklistItems InspectionChecklistItem[]
+  inspectionItems          TruckInspectionItem[]
 
   @@index([categoryId, status])
   @@map("catalog_jobs")
@@ -490,6 +506,7 @@ model WorkOrder {
   serviceStatusEvents           TruckServiceStatusEvent[]
   costEntries                   TruckCostEntry[]
   outsideRepairs                OutsideRepair[]
+  inspections                   TruckInspection[]
 
   @@index([status])
   @@index([truckId, status])
@@ -938,18 +955,20 @@ model WorkOrderJob {
   // LTR-198 / SW5: the catalog System Job's key (pm_a, pm_b, alignment, detailing, quality_check); lanes read it first.
   systemKey          String?          @map("system_key")
 
-  workOrder        WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  catalogJob       CatalogJob?     @relation(fields: [catalogJobId], references: [id])
-  category         JobCategory     @relation(fields: [categoryId], references: [id])
-  addedBy          User            @relation("JobAddedBy", fields: [addedById], references: [id])
-  completedBy      User?           @relation("JobCompletedBy", fields: [completedById], references: [id])
-  assignedMechanic User?           @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
-  externalBy       User?           @relation("JobSentExternalBy", fields: [externalById], references: [id], onDelete: SetNull)
-  helperOf         WorkOrderJob?   @relation("JobHelperOf", fields: [helperOfJobId], references: [id], onDelete: SetNull)
-  helpers          WorkOrderJob[]  @relation("JobHelperOf")
+  workOrder        WorkOrder            @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalogJob       CatalogJob?          @relation(fields: [catalogJobId], references: [id])
+  category         JobCategory          @relation(fields: [categoryId], references: [id])
+  addedBy          User                 @relation("JobAddedBy", fields: [addedById], references: [id])
+  completedBy      User?                @relation("JobCompletedBy", fields: [completedById], references: [id])
+  assignedMechanic User?                @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
+  externalBy       User?                @relation("JobSentExternalBy", fields: [externalById], references: [id], onDelete: SetNull)
+  helperOf         WorkOrderJob?        @relation("JobHelperOf", fields: [helperOfJobId], references: [id], onDelete: SetNull)
+  helpers          WorkOrderJob[]       @relation("JobHelperOf")
   pmService        PmService?
   outsideRepairs   OutsideRepair[]
   blockers         PauseEvent[]
+  // D41 (and D42 later): the findings this Job came from — several per Job.
+  sources          WorkOrderJobSource[]
 
   @@index([workOrderId, status])
   @@index([assignedMechanicId])
@@ -1127,4 +1146,202 @@ model NinoxTruckSeedRun {
 
   @@index([status, sourceTableId])
   @@map("ninox_truck_seed_runs")
+}
+
+// ───────────────────────── D41: inspection sheet ─────────────────────────
+
+enum InspectionSection {
+  interior
+  engine
+  exterior
+
+  @@map("inspection_section")
+}
+
+enum InspectionItemResult {
+  ok
+  defect
+  na
+
+  @@map("inspection_item_result")
+}
+
+/// D41: the 10 positions of a steer + 2 drive axle truck (trailers come later).
+enum TirePosition {
+  LF
+  RF
+  LFO
+  LFI
+  RFI
+  RFO
+  LRO
+  LRI
+  RRI
+  RRO
+
+  @@map("tire_position")
+}
+
+/// D41: ok, watch (near the limit, no Job) or fix (creates Flat Repair or Tires).
+enum TireReadingStatus {
+  ok
+  watch
+  fix
+
+  @@map("tire_reading_status")
+}
+
+/// D41 / D42: what a Work Order Job came from. samsara_fault is used by Samsara S-6.
+enum WorkOrderJobSourceKind {
+  inspection_item
+  tire_reading
+  samsara_fault
+
+  @@map("work_order_job_source_kind")
+}
+
+/// D41: the editable list (Setup → Inspection checklist). A defect creates `catalogJobId`, or becomes
+/// a note on the mandatory step `workflowStepKey` (Detailing). Exactly one of the two (CHECK in SQL).
+model InspectionChecklistItem {
+  id              String            @id @default(uuid()) @db.Uuid
+  section         InspectionSection
+  label           String
+  sortOrder       Int               @default(0) @map("sort_order")
+  catalogJobId    String?           @map("catalog_job_id") @db.Uuid
+  workflowStepKey String?           @map("workflow_step_key")
+  active          Boolean           @default(true)
+  /// The base list's id: the release only adds what is missing, never overwrites the Manager's edits.
+  seedKey         String?           @unique @map("seed_key")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  updatedById     String?           @map("updated_by_id") @db.Uuid
+
+  catalogJob      CatalogJob?           @relation(fields: [catalogJobId], references: [id])
+  updatedBy       User?                 @relation("InspectionChecklistItemUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  inspectionItems TruckInspectionItem[]
+
+  @@index([section, active, sortOrder])
+  @@index([catalogJobId])
+  @@map("inspection_checklist_items")
+}
+
+/// D41: one row (id = 1). Tire targets and limits; the Manager edits them in Setup.
+model InspectionSettings {
+  id             Int      @id @default(1)
+  steerTargetPsi Int      @default(110) @map("steer_target_psi")
+  driveTargetPsi Int      @default(95) @map("drive_target_psi")
+  /// Minimum tread in 32nds of an inch (DOT: 4 steer, 2 drive).
+  steerMinTread  Int      @default(4) @map("steer_min_tread")
+  driveMinTread  Int      @default(2) @map("drive_min_tread")
+  /// Percent away from target: past `watchPct` → watch, past `fixPct` → fix.
+  watchPct       Int      @default(10) @map("watch_pct")
+  fixPct         Int      @default(20) @map("fix_pct")
+  updatedById    String?  @map("updated_by_id") @db.Uuid
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  updatedBy User? @relation("InspectionSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("inspection_settings")
+}
+
+/// D41: the saved inspection of one visit (one per readiness assessment). Read-only once saved;
+/// "Add defects" only turns ok/na items into defects (D41 point 6).
+model TruckInspection {
+  id            String   @id @default(uuid()) @db.Uuid
+  truckId       String   @map("truck_id") @db.Uuid
+  assessmentId  String   @unique @map("assessment_id") @db.Uuid
+  workOrderId   String?  @map("work_order_id") @db.Uuid
+  inspectedById String   @map("inspected_by_id") @db.Uuid
+  inspectedAt   DateTime @default(now()) @map("inspected_at")
+  mileage       Int?
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  truck       Truck                    @relation(fields: [truckId], references: [id])
+  assessment  TruckReadinessAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  workOrder   WorkOrder?               @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  inspectedBy User                     @relation("TruckInspectionBy", fields: [inspectedById], references: [id])
+  items       TruckInspectionItem[]
+  tires       TireReading[]
+
+  @@index([truckId, inspectedAt])
+  @@index([workOrderId])
+  @@map("truck_inspections")
+}
+
+/// D41: one checked item, with a copy of the list item it used (section, label, Job or step), so later
+/// edits to the list never change a saved inspection.
+model TruckInspectionItem {
+  id              String               @id @default(uuid()) @db.Uuid
+  inspectionId    String               @map("inspection_id") @db.Uuid
+  checklistItemId String?              @map("checklist_item_id") @db.Uuid
+  section         InspectionSection
+  label           String
+  sortOrder       Int                  @map("sort_order")
+  catalogJobId    String?              @map("catalog_job_id") @db.Uuid
+  workflowStepKey String?              @map("workflow_step_key")
+  result          InspectionItemResult
+  note            String?
+  /// Set when the defect came later through "Add defects" (null for the original save).
+  addedLaterAt    DateTime?            @map("added_later_at")
+  addedLaterById  String?              @map("added_later_by_id") @db.Uuid
+
+  inspection    TruckInspection          @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  checklistItem InspectionChecklistItem? @relation(fields: [checklistItemId], references: [id], onDelete: SetNull)
+  catalogJob    CatalogJob?              @relation(fields: [catalogJobId], references: [id])
+  addedLaterBy  User?                    @relation("TruckInspectionItemAddedBy", fields: [addedLaterById], references: [id], onDelete: SetNull)
+  jobSources    WorkOrderJobSource[]
+
+  @@unique([inspectionId, checklistItemId])
+  @@index([inspectionId, result])
+  @@map("truck_inspection_items")
+}
+
+/// D41: PSI and tread of one tire at one inspection, with the target and limit used then.
+model TireReading {
+  id           String            @id @default(uuid()) @db.Uuid
+  inspectionId String            @map("inspection_id") @db.Uuid
+  truckId      String            @map("truck_id") @db.Uuid
+  position     TirePosition
+  psi          Int
+  /// 32nds of an inch.
+  tread        Int
+  targetPsi    Int               @map("target_psi")
+  minTread     Int               @map("min_tread")
+  status       TireReadingStatus
+  readAt       DateTime          @default(now()) @map("read_at")
+
+  inspection TruckInspection      @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  truck      Truck                @relation(fields: [truckId], references: [id])
+  jobSources WorkOrderJobSource[]
+
+  @@unique([inspectionId, position])
+  @@index([truckId, position, readAt])
+  @@map("tire_readings")
+}
+
+/// D41 / D42: a finding a Work Order Job came from. One Job can have several (Fog lamps + Brake lights
+/// → Lights). Exactly one source id per row, matching `kind` (CHECK in SQL); Samsara S-6 adds
+/// `samsaraFaultId`. Rows stay when the Job is cancelled: readers filter by the Job's status.
+model WorkOrderJobSource {
+  id               String                 @id @default(uuid()) @db.Uuid
+  workOrderJobId   String                 @map("work_order_job_id") @db.Uuid
+  kind             WorkOrderJobSourceKind
+  inspectionItemId String?                @map("inspection_item_id") @db.Uuid
+  tireReadingId    String?                @map("tire_reading_id") @db.Uuid
+  /// The finding as written ("Left hazard lamp lens cracked"), shown on the Job.
+  note             String?
+  createdAt        DateTime               @default(now()) @map("created_at")
+  createdById      String?                @map("created_by_id") @db.Uuid
+
+  workOrderJob   WorkOrderJob         @relation(fields: [workOrderJobId], references: [id], onDelete: Cascade)
+  inspectionItem TruckInspectionItem? @relation(fields: [inspectionItemId], references: [id], onDelete: Cascade)
+  tireReading    TireReading?         @relation(fields: [tireReadingId], references: [id], onDelete: Cascade)
+  createdBy      User?                @relation("WorkOrderJobSourceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([workOrderJobId, inspectionItemId])
+  @@unique([workOrderJobId, tireReadingId])
+  @@index([inspectionItemId])
+  @@index([tireReadingId])
+  @@map("work_order_job_sources")
 }

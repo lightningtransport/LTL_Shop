@@ -12,6 +12,8 @@ export enum AppCapability {
   WORK_ORDERS_MANAGE = 'work_orders.manage',
   /** LTR-185 / D19: Safety takes, approves or returns the Quality Check. */
   QUALITY_CHECK_PERFORM = 'quality_check.perform',
+  /** D41: a mechanic who can inspect trucks (the Manager always can). Granted in People, apart from the type. */
+  INSPECTION_PERFORM = 'inspection.perform',
 }
 
 /** Roster type (D22): exactly one of these capabilities per person with `role: mechanic`. */
@@ -154,6 +156,10 @@ export enum ActivityEventType {
   INTERNAL_INVOICE_VOIDED = 'internal_invoice_voided',
   // LTR-57.
   CUSTOM_JOBS_REVIEWED = 'custom_jobs_reviewed',
+  // D41: the inspection sheet.
+  INSPECTION_SAVED = 'inspection_saved',
+  INSPECTION_DEFECTS_ADDED = 'inspection_defects_added',
+  INSPECTION_CHECKLIST_UPDATED = 'inspection_checklist_updated',
 }
 
 /** LTR-126 / D8: kind of an append-only Work Order note entry. */

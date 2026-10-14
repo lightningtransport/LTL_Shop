@@ -1,4 +1,5 @@
 import { AppCapability, PrismaClient } from '@prisma/client';
+import { applyInspectionChecklist } from './inspection-checklist';
 import { applyJobCatalog } from './job-catalog';
 import { applyPmParts } from './pm-parts';
 import { applyShopWorkflowSteps } from './shop-workflow-steps';
@@ -190,6 +191,8 @@ async function main() {
 
   const catalog = await applyJobCatalog(prisma, { createdById: mechanic.id });
   const shopWorkflowSteps = await applyShopWorkflowSteps(prisma);
+  // D41: the base inspection checklist (needs the catalog above).
+  await applyInspectionChecklist(prisma);
   // LTR-197 / D-SET7: Quality Check's team is every active Safety person (the migration does the same once).
   const qualityCheckStep = await prisma.shopWorkflowStep.findUnique({ where: { stepKey: 'quality_check' }, select: { id: true } });
   if (qualityCheckStep) {

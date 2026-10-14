@@ -59,6 +59,8 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
       { displayName: 'Filter Service', aliases: ['filters', 'filtros'] },
       { displayName: 'Lubrication', aliases: ['lube', 'lubricación', 'lubricacion'] },
       { displayName: 'Scheduled Maintenance', aliases: ['mantenimiento programado'] },
+      // D41: fuel, washer fluid and other levels found low in the inspection.
+      { displayName: 'Fluid Top-Off', aliases: ['top off', 'fluids', 'rellenar fluidos'] },
     ],
   },
   {
@@ -83,10 +85,11 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
       { displayName: 'Engine Repair', aliases: ['motor', 'engine'] },
       { displayName: 'EGR Service', aliases: ['EGR'] },
       { displayName: 'Turbo Inspect', aliases: ['turbo'] },
-      { displayName: 'Derate Diagnose', aliases: ['derate'] },
+      { displayName: 'Derate Diagnose', aliases: ['derate', 'warning lights', 'check engine'] },
       { displayName: 'Engine Leak Repair', aliases: ['oil leak', 'engine leak', 'fuga de aceite'] },
       { displayName: 'Seal Replacement', aliases: ['seals', 'sellos'] },
       { displayName: 'DPF/DEF Service', aliases: ['DPF', 'DEF', 'DPF DEF'] },
+      { displayName: 'Belts & Tensioners', aliases: ['belts', 'tensioners', 'bandas', 'tensores'] },
     ],
   },
   {
@@ -126,11 +129,13 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
       { displayName: 'Battery', aliases: ['batería', 'bateria'] },
       { displayName: 'Alternator', aliases: ['alternador'] },
       { displayName: 'Starter', aliases: ['marcha', 'arrancador'] },
-      { displayName: 'Wiring', aliases: ['cableado'] },
+      { displayName: 'Wiring', aliases: ['cableado', 'fuses', 'fusibles'] },
       { displayName: 'Lights', aliases: ['luces'] },
       { displayName: 'ABS Electrical', aliases: ['ABS'] },
       { displayName: 'ABS Sensor Replacement', aliases: ['ABS sensor'] },
       { displayName: "Truck Won't Start", aliases: ['no start', 'no arranca'] },
+      { displayName: 'Horn', aliases: ['bocina', 'claxon'] },
+      { displayName: 'Radio & Phone', aliases: ['radio', 'cellphone', 'celular'] },
     ],
   },
   {
@@ -148,6 +153,7 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
       { displayName: 'Air Leak', aliases: ['fuga de aire'] },
       { displayName: 'Air Dryer', aliases: ['secador de aire'] },
       { displayName: 'Valves', aliases: ['válvulas', 'valvulas'] },
+      { displayName: 'Parking Brake', aliases: ['freno de mano', 'freno de estacionamiento'] },
     ],
   },
   {
@@ -180,7 +186,7 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
     jobs: [
       { displayName: 'Transmission', aliases: ['transmisión', 'transmision'] },
       { displayName: 'Clutch', aliases: ['clutching', 'embrague'] },
-      { displayName: 'Differential', aliases: ['diferencial'] },
+      { displayName: 'Differential', aliases: ['diferencial', 'breathers', 'rear end seals'] },
       { displayName: 'Driveshaft', aliases: ['cardán', 'cardan'] },
       { displayName: 'Axle Shaft', aliases: ['flecha'] },
       { displayName: '5th Wheel', aliases: ['fifth wheel', 'quinta rueda'] },
@@ -225,9 +231,11 @@ export const JOB_CATALOG_CATEGORIES: CatalogCategoryDefinition[] = [
       { displayName: 'Windshield', aliases: ['parabrisas'] },
       { displayName: 'Mirrors', aliases: ['espejos'] },
       { displayName: 'Doors', aliases: ['puertas'] },
-      { displayName: 'Body Work', aliases: ['carrocería', 'carroceria'] },
+      { displayName: 'Body Work', aliases: ['carrocería', 'carroceria', 'deer guard', 'defensa'] },
       { displayName: 'Wipers', aliases: ['limpiaparabrisas'] },
       { displayName: 'Mudflaps', aliases: ['loderas'] },
+      { displayName: 'Seats & Belts', aliases: ['seats', 'seat belts', 'asientos', 'cinturones'] },
+      { displayName: 'Safety Equipment', aliases: ['fire extinguisher', 'extintor', 'triangles'] },
     ],
   },
   {
