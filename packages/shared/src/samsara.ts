@@ -26,12 +26,25 @@ export type SamsaraTruckRefDto = {
   id: string;
   truckNumber: string;
   vin: string | null;
+  owner: string | null;
+  company: string | null;
+  /** Official mileage, confirmed by the PM mechanic from the dashboard (D10, D35). */
+  mileage: number | null;
+};
+
+/** S1-6: Samsara's current odometer, read live and never stored (S-2 stores it). */
+export type SamsaraOdometerDto = {
+  miles: number;
+  /** `obd`: the engine computer; `gps`: Samsara's estimate when the ECU gives none. */
+  source: 'obd' | 'gps';
+  at: string;
 };
 
 export type SamsaraVehicleRefDto = {
   id: string;
   name: string;
   vin: string | null;
+  odometer: SamsaraOdometerDto | null;
 };
 
 export type SamsaraPairedTruckDto = {
@@ -69,4 +82,6 @@ export type SamsaraPairingDto = {
   paired: SamsaraPairedTruckDto[];
   unpairedTrucks: SamsaraUnpairedTruckDto[];
   unpairedVehicles: SamsaraVehicleRefDto[];
+  /** False when Samsara gave vehicles but not their odometers; the lists still show. */
+  odometersAvailable: boolean;
 };
