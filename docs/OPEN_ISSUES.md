@@ -545,6 +545,12 @@ Sigue a §1w. Cada 15 min **GitHub Actions** (P12: Vercel es Hobby) llama a la a
 
 **Para encenderlo en producción:** (1) merge y **Release safety** (hay migración); (2) en GitHub → Settings → Environments → `production`, el secreto `CRON_SECRET` con el mismo valor que tiene el API en Vercel; (3) "Sync now" en Setup → Samsara para la primera corrida sin esperar 15 min.
 
+## 1y. Filas de `test:real` desactualizadas (2026-10-14) — **HECHO** (TR-1 en la rama `claude/a31-reset-password-row`)
+
+| # | Clase | Qué | Dónde | Estado |
+|---|---|---|---|---|
+| TR-1 | E | **A31 espera la respuesta de antes de G10.** La fila pide 409 `AUTH_ACCOUNT_MISSING` al reiniciar la contraseña de una persona sin cuenta de acceso. Desde G10 (#251), `resetPassword` responde primero 503 `AUTH_NOT_CONFIGURED` si el entorno no tiene `SUPABASE_SERVICE_ROLE_KEY` (así es `ltl_shop_test` en local); con la clave, crea la cuenta, la liga y da la contraseña temporal. `AUTH_ACCOUNT_MISSING` solo sale si la persona cambió mientras se creaba la cuenta. La app está bien; la prueba quedó vieja. Es una de las 5 que "fallan igual en main" (§1v, IN-1). Plan: A31 comprueba 503 `AUTH_NOT_CONFIGURED` sin clave, que no se crea ni liga nada, y que solo Manager o System Admin pueden; USER_FLOWS (HU-M9) dice lo mismo. | `apps/api/test-real/rows/roster.real.spec.ts`, `docs/USER_FLOWS.md` | **Hecho** (rama `claude/a31-reset-password-row`). A31 pide 503 `AUTH_NOT_CONFIGURED` al Manager y al System Admin, revisa que la persona sigue sin cuenta ligada, y que mecánico, PM y Safety reciben 403. La fila de HU-M9 en USER_FLOWS dice la regla de hoy. `test:real` el 2026-10-14 contra `ltl_shop_test`: 132 PASA, 0 FALLA, 2 NO APLICA (`results/matrix.md`). |
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):

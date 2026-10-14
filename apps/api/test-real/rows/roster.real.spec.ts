@@ -1,7 +1,8 @@
 /**
  * HU-M9 (D22, LTR-187): the Manager creates the people of the shop, deactivates and reactivates
  * them, and resets a lost temporary password. Locally the API has no Supabase service key, so
- * no access account is created (`temporaryPassword: null`) and reset answers AUTH_ACCOUNT_MISSING.
+ * no access account is created (`temporaryPassword: null`) and reset answers AUTH_NOT_CONFIGURED
+ * (G10: with a key, reset creates and links the missing account instead).
  */
 import { afterAll, beforeEach, describe, it } from 'vitest';
 import {
@@ -116,11 +117,15 @@ describe('Manager: dar de alta al personal (HU-M9, D22)', () => {
     refused('un mecánico no desactiva a nadie', await as(USERS.general).patch(`/admin/mechanics/${person.id}`, { active: false }), 403);
   });
 
-  it('A31 | Reiniciar contraseña: sin cuenta de acceso la app lo dice (AUTH_ACCOUNT_MISSING); solo Manager o System Admin', async () => {
+  it('A31 | Reiniciar contraseña: sin clave de Supabase la app lo dice (AUTH_NOT_CONFIGURED) y no toca nada; solo Manager o System Admin', async () => {
     const person = ok('crear PM', await createPerson('reset', 'pm'));
-    refused('sin cuenta de Supabase en este entorno', await manager.post(`/admin/mechanics/${person.id}/reset-password`), 409, 'AUTH_ACCOUNT_MISSING');
+    refused('sin clave de Supabase en este entorno', await manager.post(`/admin/mechanics/${person.id}/reset-password`), 503, 'AUTH_NOT_CONFIGURED');
+    refused('el System Admin también puede (llega a la misma respuesta)', await as(USERS.admin).post(`/admin/mechanics/${person.id}/reset-password`), 503, 'AUTH_NOT_CONFIGURED');
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: person.id }, select: { supabaseAuthId: true, active: true } });
+    same('no se creó ni ligó una cuenta de acceso', after, { supabaseAuthId: null, active: true });
     refused('un mecánico no reinicia contraseñas', await as(USERS.general).post(`/admin/mechanics/${person.id}/reset-password`), 403);
+    refused('un PM no reinicia contraseñas', await as(USERS.pm).post(`/admin/mechanics/${person.id}/reset-password`), 403);
+    refused('Safety no reinicia contraseñas', await as(USERS.safety).post(`/admin/mechanics/${person.id}/reset-password`), 403);
     refused('no se reinicia la del Manager', await manager.post(`/admin/mechanics/${await userId(USERS.manager)}/reset-password`), 404);
     refused('id inventado', await manager.post('/admin/mechanics/not-a-uuid/reset-password'), 400);
-  });
-});
+  });});
