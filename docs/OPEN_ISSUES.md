@@ -513,6 +513,12 @@ El dueño decidió pasar a la app la hoja en papel de inspección: 53 puntos y 1
 | IN-7 | B | **El mecánico no puede volver a su inspección para Add defects.** Al guardar, el camión sale de "To inspect" y en My work no queda entrada al reporte. Solo se llega con la dirección `/mechanic/…/inspect/[truckId]`. Plan: mostrar en My work, mientras la WO siga abierta, "Inspected by you · Add defects" para los camiones que inspeccionó. | `inspection-queue-card.tsx`, API `queue` | **Hecho** (rama `claude/inspection-in7-in8`). Los camiones que inspeccioné siguen en "To inspect", debajo de los que esperan, con "Inspected by you · fecha" y el botón **Add defects**, mientras su WO esté abierta. Los que inspeccionó otro no aparecen. Fila A89 y A86 ajustada; probado a mano (968, Alejandro 2). |
 | IN-8 | C | **Inspecciones viejas (antes de D41).** Un camión inspeccionado con los dos botones viejos no tiene hoja guardada: "View report" abre una hoja vacía para llenar, en lugar de un reporte. Se puede llenar y guardar sin problema. En la demo le pasa al 602. Plan: decir "Recorded before the inspection sheet" y ofrecer llenar la hoja. | `inspection-sheet.tsx` | **Hecho** (rama `claude/inspection-in7-in8`). Arriba de la hoja aparece "Recorded before the inspection sheet: Issues found · quién · cuándo", y la hoja se puede llenar igual. Al guardarla, el aviso desaparece. El camión no vuelve a "To inspect". Fila A90; probado a mano (991). |
 
+## 1w. Filas de `test:real` desactualizadas (2026-10-14) — **ABIERTO: TR-1** (rama `claude/a31-reset-password-row`)
+
+| # | Clase | Qué | Dónde | Estado |
+|---|---|---|---|---|
+| TR-1 | E | **A31 espera la respuesta de antes de G10.** La fila pide 409 `AUTH_ACCOUNT_MISSING` al reiniciar la contraseña de una persona sin cuenta de acceso. Desde G10 (#251), `resetPassword` responde primero 503 `AUTH_NOT_CONFIGURED` si el entorno no tiene `SUPABASE_SERVICE_ROLE_KEY` (así es `ltl_shop_test` en local); con la clave, crea la cuenta, la liga y da la contraseña temporal. `AUTH_ACCOUNT_MISSING` solo sale si la persona cambió mientras se creaba la cuenta. La app está bien; la prueba quedó vieja. Es una de las 5 que "fallan igual en main" (§1v, IN-1). Plan: A31 comprueba 503 `AUTH_NOT_CONFIGURED` sin clave, que no se crea ni liga nada, y que solo Manager o System Admin pueden; USER_FLOWS (HU-M9) dice lo mismo. | `apps/api/test-real/rows/roster.real.spec.ts`, `docs/USER_FLOWS.md` | Anotado. |
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):
