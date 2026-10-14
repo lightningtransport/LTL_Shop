@@ -127,10 +127,10 @@ describe('Inspección con la hoja y las llantas (D41)', () => {
 
 describe('El mecánico con "Can inspect trucks" (D41, HU-ME7)', () => {
   const general = as(USERS.general);
-  beforeEach(resetDb);
-  afterEach(async () => {
-    await prisma.userCapability.deleteMany({ where: { user: { email: USERS.general }, capability: 'INSPECTION_PERFORM' } });
-  });
+  const dropPermission = () => prisma.userCapability.deleteMany({ where: { user: { email: USERS.general }, capability: 'INSPECTION_PERFORM' } });
+  // resetDb does not reset capabilities: start and end without the permission, whatever the database had.
+  beforeEach(async () => { await resetDb(); await dropPermission(); });
+  afterEach(dropPermission);
 
   it('A86 | Sin el permiso no ve "To inspect" ni guarda; con el permiso inspecciona y sus Jobs nacen sin dueño', async () => {
     const { truck: row, workOrderId } = await createWo('944');
