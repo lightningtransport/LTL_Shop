@@ -938,6 +938,8 @@ export type DataTableColumn<T> = {
   /** Extra classes for the cell (desktop), e.g. `whitespace-nowrap`. */
   className?: string;
   testId?: string;
+  /** TL-8: leave this row's cell out of the phone card when it has nothing to say (no "Label —" lines). */
+  emptyOnMobile?: (item: T) => boolean;
 };
 
 /**
@@ -995,6 +997,7 @@ export function DataTable<T>({
                       ? 'max-md:pb-2 max-md:pt-0 max-md:text-base'
                       : 'max-md:border-t max-md:text-right max-md:before:shrink-0 max-md:before:text-left max-md:before:text-muted-foreground max-md:before:content-[attr(data-label)] max-md:[&>*]:min-w-0',
                     column.hideOnMobile && 'max-md:hidden',
+                    column.emptyOnMobile?.(item) && 'max-md:hidden',
                     column.className,
                   )}
                 >

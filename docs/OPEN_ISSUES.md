@@ -553,6 +553,23 @@ Sigue a §1w. **GitHub Actions** (cada hora del día de taller y una vez de madr
 |---|---|---|---|---|
 | TR-1 | E | **A31 espera la respuesta de antes de G10.** La fila pide 409 `AUTH_ACCOUNT_MISSING` al reiniciar la contraseña de una persona sin cuenta de acceso. Desde G10 (#251), `resetPassword` responde primero 503 `AUTH_NOT_CONFIGURED` si el entorno no tiene `SUPABASE_SERVICE_ROLE_KEY` (así es `ltl_shop_test` en local); con la clave, crea la cuenta, la liga y da la contraseña temporal. `AUTH_ACCOUNT_MISSING` solo sale si la persona cambió mientras se creaba la cuenta. La app está bien; la prueba quedó vieja. Es una de las 5 que "fallan igual en main" (§1v, IN-1). Plan: A31 comprueba 503 `AUTH_NOT_CONFIGURED` sin clave, que no se crea ni liga nada, y que solo Manager o System Admin pueden; USER_FLOWS (HU-M9) dice lo mismo. | `apps/api/test-real/rows/roster.real.spec.ts`, `docs/USER_FLOWS.md` | **Hecho** (rama `claude/a31-reset-password-row`). A31 pide 503 `AUTH_NOT_CONFIGURED` al Manager y al System Admin, revisa que la persona sigue sin cuenta ligada, y que mecánico, PM y Safety reciben 403. La fila de HU-M9 en USER_FLOWS dice la regla de hoy. `test:real` el 2026-10-14 contra `ltl_shop_test`: 132 PASA, 0 FALLA, 2 NO APLICA (`results/matrix.md`). |
 
+## 1z. Lista de Trucks: columnas por la tarea (2026-10-14) — **HECHO** (rama `claude/trucks-list-columns`) · Auditoría [`ux-audit/admin-trucks-list/04-jerarquia-visual.md`](ux-audit/admin-trucks-list/04-jerarquia-visual.md)
+
+Con las columnas de Samsara (§1x) la tabla llegó a 8 columnas y el trabajo del taller quedó en el medio. El dueño la vio desordenada. Se pasa a 4 columnas en el orden en que se lee: **Camión · Trabajo · Fallas · Ubicación**.
+
+| # | Clase | Qué | Dónde | Estado |
+|---|---|---|---|---|
+| TL-1 | C | El Work Order y el siguiente paso quedaron en las columnas 4 y 5 (UX-4-001). | `admin-trucks-list.tsx` | **Hecho:** columna **Trabajo** = Work Order y estado en una línea, siguiente paso debajo (máx. 2 líneas), en segundo lugar |
+| TL-2 | C | El vehículo se repite y se contradice (subtítulo y columna Make) (UX-4-002). | idem | **Hecho:** una línea año, marca y modelo bajo el número; sin columna Make |
+| TL-3 | C | Company ("CDT" en todos) y Operational status ("Not recorded" casi siempre, contradice a Ready to Go) no distinguen camiones (UX-4-003). | idem | **Hecho:** fuera de la lista (siguen en la ficha); "In Service" como insignia en Trabajo cuando aplica |
+| TL-4 | E | Ancho mal repartido; filas de 65 a 97 px; direcciones en dos líneas (UX-4-004). | idem | **Hecho:** anchos mínimos; ubicación corta (ciudad, estado · antigüedad) con la dirección completa en el título |
+| TL-5 | C | La celda del Work Order apila id, categoría y estado (UX-4-005). | idem | **Hecho:** incluido en TL-1 |
+| TL-6 | E | Tres formas de "nada urgente" en Fallas (UX-4-006). | idem | **Hecho:** solo STOP/Warning/Check engine con color; códigos sin luz en gris; "—" si no está en Samsara |
+| TL-7 | C | Una ubicación de hace días se ve igual que una de hace minutos (UX-4-007). | idem | **Hecho:** más de 24 h en ámbar, "No signal · 5 days ago" |
+| TL-8 | C | En el teléfono el orden cambia, hay filas vacías y no se ve la ubicación (UX-4-008). | `admin-trucks-list.tsx`, `DataTable` (`ui.tsx`) | **Hecho:** mismo orden; sin filas vacías; ubicación visible |
+
+Medido en local a 1440 px: 4 columnas (Truck 271 px, Work 500, Faults 181, Location 198); filas de 65–73 px (antes 65–97). Capturas antes y después en `ux-audit/admin-trucks-list/evidencia/`.
+
 ## 2. Pruebas
 
 - **Pruebas de flujo contra el sistema real** (`apps/api/test-real/`, LTR-174):
