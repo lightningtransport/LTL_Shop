@@ -1,6 +1,6 @@
 # Propuesta: inspección con hoja de chequeo y llantas (PSI y tread)
 
-**Clasificación:** PROPUESTA — no es el estado actual de la app. Solo maqueta, sin código del producto.
+**Clasificación:** PROPUESTA, **ya construida** (2026-10-13, IN-1 a IN-6 en la rama `claude/inspection-in1`; ver [OPEN_ISSUES §1v](../../OPEN_ISSUES.md)). La app sigue esta maqueta; lo que quedó distinto o pendiente está en IN-7 e IN-8.
 **Fecha:** 2026-10-13 (v1), con las respuestas del dueño el mismo día (v2) · **Rama:** `claude/inspection-form-tire-pressure-1e9e6c` · **Sin PR todavía.**
 **Pantallas:**
 - Paso Inspection del Truck (`/admin/trucks/[id]`, `InspectionControl` en `apps/web/src/components/admin-truck-work-plan.tsx`)

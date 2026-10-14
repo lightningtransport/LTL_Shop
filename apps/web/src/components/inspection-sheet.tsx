@@ -377,7 +377,7 @@ function SheetFlow({
               </SectionCard>
             ) : null}
             <SectionCard title={copy.signature}>
-              <label className="flex min-h-12 items-start gap-3 p-4">
+              <label className="flex min-h-12 items-start gap-3 p-4" data-testid="inspection-sign-label">
                 <input type="checkbox" className="mt-0.5 size-4 accent-[var(--primary)]" checked={signed} onChange={(event) => setSigned(event.target.checked)} data-testid="inspection-sign" />
                 <span>
                   <span className="font-medium">{adding ? copy.iFound(truckNumber) : copy.iInspected(truckNumber)}</span>
@@ -558,7 +558,7 @@ function CheckRow({
   ];
   const isDefect = answer?.result === InspectionItemResult.DEFECT;
   return (
-    <li data-testid="inspection-check">
+    <li data-testid="inspection-check" data-check={item.label}>
       <div className="flex min-h-12 items-center justify-between gap-3 px-4 py-1.5">
         <span className={cn('min-w-0 flex-1', answer?.result === InspectionItemResult.NA && 'text-muted-foreground line-through decoration-1')}>{item.label}</span>
         <div className="flex shrink-0 gap-1 rounded-lg bg-sunken p-1 ring-1 ring-border" role="group" aria-label={item.label}>
@@ -755,6 +755,7 @@ function TireDialog({
             type="number"
             inputMode="numeric"
             autoFocus={field === 'psi'}
+            aria-label={`${position} ${field === 'psi' ? 'PSI' : 'tread'}`}
             className="field tnum !min-h-12 text-center !text-xl font-semibold"
             value={current}
             onChange={(event) => set(event.target.value)}
