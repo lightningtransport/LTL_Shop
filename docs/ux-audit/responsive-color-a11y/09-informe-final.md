@@ -89,3 +89,11 @@ Los 14 arreglos rápidos y las tres decisiones del dueño. Falta comprobarlos en
 ## Fuera de alcance
 - **Contraste sin verificar en pantalla:** se calculó desde los tokens. Hay que comprobarlo en el navegador en claro y oscuro después de los cambios.
 - **Detalle de WO y Truck en 768 px:** no se midieron.
+
+**Verificado en el navegador (2026-10-15):**
+- **Anchos y temas:** probado a 768, 1024, 1280, 1440, 1728 y 2056 px, en tema claro y oscuro.
+- **Buscadores:** a 768 px Purchases y People pasan de 0 a 596 px; Work Orders, de 41 a 224 px.
+- **Yard:** a 2056 px usa 1816 px y muestra 6 columnas.
+- **Shop workflow:** chips en una línea; MPM, MG1 y QC2 caben en el avatar.
+- **Campos:** el borde se ve en tema claro (`oklch(0.64 0.02 256)`).
+- **Work Orders:** su barra propia pasó también a container query (filtros en línea desde 68rem de tarjeta; caben a 1440 px) y el número de WO va en una línea.
