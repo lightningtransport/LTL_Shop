@@ -10,6 +10,7 @@ import type {
   TruckInspectionStateDto,
 } from '@ltl-shop/shared';
 import { apiFetch } from './api';
+import { LIVE_REFRESH_MS } from './live-refresh';
 import { useAuth } from './auth-context';
 
 /**
@@ -44,7 +45,7 @@ export function addTruckInspectionDefects(mode: InspectionMode, truckId: string,
 export function useInspectionQueue(enabled: boolean) {
   const { token } = useAuth();
   return useSWR<InspectionQueueItemDto[]>(token && enabled ? INSPECTION_QUEUE_KEY : null, (path: string) => apiFetch<InspectionQueueItemDto[]>(path), {
-    refreshInterval: 30_000,
+    refreshInterval: LIVE_REFRESH_MS.board,
     dedupingInterval: 5_000,
   });
 }

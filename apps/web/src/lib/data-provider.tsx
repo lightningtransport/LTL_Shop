@@ -5,6 +5,7 @@ import { SWRConfig, useSWRConfig } from 'swr';
 import { ApiError, apiFetch } from './api';
 import { useAuth } from './auth-context';
 import { captureException } from './observability';
+import { FOCUS_REFRESH_THROTTLE_MS } from './live-refresh';
 
 export function sessionCacheAction(
   previousToken: string | null,
@@ -19,6 +20,7 @@ const config = {
   dedupingInterval: 5_000,
   errorRetryCount: 0,
   revalidateOnFocus: true,
+  focusThrottleInterval: FOCUS_REFRESH_THROTTLE_MS,
   shouldRetryOnError: () => false,
   onError: (error: unknown) => {
     if (error instanceof ApiError && ![401, 403].includes(error.status)) {
