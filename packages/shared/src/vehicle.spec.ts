@@ -21,6 +21,13 @@ describe('normalizeMakeModel (LTR-113)', () => {
     expect(normalizeMakeModel('  volvo ', 'VNL  860')).toEqual({ make: 'Volvo', model: 'VNL 860' });
   });
 
+  it('drops the make a Model repeats (41 Peterbilt: PETERBILT / PETERBILT 579)', () => {
+    expect(normalizeMakeModel('PETERBILT', 'PETERBILT 579')).toEqual({ make: 'Peterbilt', model: '579' });
+    expect(normalizeMakeModel('Western Star', 'western star 49X')).toEqual({ make: 'Western Star', model: '49X' });
+    expect(normalizeMakeModel('Volvo', 'Volvo')).toEqual({ make: 'Volvo', model: 'Volvo' });
+    expect(normalizeMakeModel('Peterbilt', 'Peterbuilt 579')).toEqual({ make: 'Peterbilt', model: 'Peterbuilt 579' });
+  });
+
   it('leaves what it does not know as typed', () => {
     expect(normalizeMakeModel('Tesla', 'Semi')).toEqual({ make: 'Tesla', model: 'Semi' });
     expect(normalizeMakeModel(null, null)).toEqual({ make: null, model: null });

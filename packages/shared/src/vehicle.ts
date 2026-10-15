@@ -45,12 +45,21 @@ function splitMakePrefix(value: string): { make: string; rest: string } | null {
   return rest ? { make, rest } : null;
 }
 
+/** "PETERBILT 579" with make Peterbilt → "579". A Model that is only the make stays as typed. */
+function withoutMake(model: string | null, make: string): string | null {
+  if (!model) return model;
+  const prefix = `${make.toLocaleLowerCase('en-US')} `;
+  if (!model.toLocaleLowerCase('en-US').startsWith(prefix)) return model;
+  return model.slice(prefix.length).trim() || model;
+}
+
 /**
  * LTR-113: one rule for every way Make and Model reach a truck (Ninox import, Samsara
  * connect, the Shop's truck form):
  * - a known make is spelled one way ("FREIGHTLINER" → "Freightliner");
  * - swapped fields are put back (Make "CASCADIA", Model "Freightliner" → Freightliner / CASCADIA);
- * - a Make that holds both ("Mack Anthem") is split when Model is empty or says the same.
+ * - a Make that holds both ("Mack Anthem") is split when Model is empty or says the same;
+ * - a Model that repeats the make drops it (Peterbilt / "PETERBILT 579" → Peterbilt / "579").
  * Anything it does not recognise stays as typed (only extra spaces go).
  */
 export function normalizeMakeModel(
@@ -63,7 +72,7 @@ export function normalizeMakeModel(
   if (!knownMake(make) && knownMake(model)) [make, model] = [model, make];
 
   const known = knownMake(make);
-  if (known) return { make: known, model };
+  if (known) return { make: known, model: withoutMake(model, known) };
 
   if (make) {
     const split = splitMakePrefix(make);
