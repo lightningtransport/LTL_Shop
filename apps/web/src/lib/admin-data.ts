@@ -69,6 +69,7 @@ import type {
 import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
 import { useAuth } from './auth-context';
+import { LIVE_REFRESH_MS } from './live-refresh';
 import type { WorkPlanJobDraft } from './work-plan';
 
 export function adminReadFetcher<T>(path: string) {
@@ -97,7 +98,7 @@ export const adminInfiniteOptions = {
 
 const adminWorkOrderListOptions = {
   ...adminInfiniteOptions,
-  refreshInterval: 15_000,
+  refreshInterval: LIVE_REFRESH_MS.board,
 } as const;
 
 export function withAdminReadPending<T extends { isLoading: boolean; isValidating: boolean; data: unknown }>(
@@ -129,7 +130,7 @@ export function useAdminDashboard() {
     token,
     useSWR<AdminDashboardDto>(token ? '/api/admin/dashboard' : null, adminReadFetcher, {
       dedupingInterval: 10_000,
-      refreshInterval: 30_000,
+      refreshInterval: LIVE_REFRESH_MS.board,
       ...adminReadRetry,
     }),
   );
@@ -159,7 +160,7 @@ export function useAdminWorkOrder(id: string) {
     token,
     useSWR<AdminWorkOrderDetailDto>(token && id ? `/api/admin/work-orders/${id}` : null, adminReadFetcher, {
       dedupingInterval: 2_000,
-      refreshInterval: 15_000,
+      refreshInterval: LIVE_REFRESH_MS.workingOn,
       ...adminReadRetry,
     }),
   );
@@ -293,7 +294,7 @@ export function useAdminYardOperations(query: string) {
       },
       adminReadFetcher,
       // D5 / UX-6-001: the board refreshes on its own (30s, like the Dashboard) so nobody decides on stale data.
-      { ...adminInfiniteOptions, refreshInterval: 30_000 },
+      { ...adminInfiniteOptions, refreshInterval: LIVE_REFRESH_MS.board },
     ),
   );
 }
@@ -303,7 +304,8 @@ export function useAdminYardDataBoundary() {
   const [failures, setFailures] = useState(0);
   const swr = useSWR<YardDataBoundaryDto>(token ? ADMIN_YARD_DATA_BOUNDARY_PATH : null, adminReadFetcher, {
     dedupingInterval: 10_000,
-    refreshInterval: 30_000,
+    // LTR-212: the Dispatch badge rarely changes; the board itself refreshes every 30 s.
+    refreshInterval: LIVE_REFRESH_MS.status,
     ...adminReadRetry,
     onSuccess: () => setFailures(0),
     onError: () => setFailures((count) => count + 1),

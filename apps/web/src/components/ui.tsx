@@ -680,8 +680,8 @@ export function HomeTopBar({ mode }: { mode?: MechanicMode }) {
           <Image
             src="/ltl-logo.png"
             alt="Lightning Transport and Logistics"
-            width={1536}
-            height={894}
+            width={69}
+            height={40}
             priority
             className="h-10 w-auto object-contain"
           />
@@ -743,8 +743,8 @@ export function AuthBrandHeader({
       <Image
         src="/ltl-logo.png"
         alt="Lightning Transport and Logistics"
-        width={1536}
-        height={894}
+        width={160}
+        height={93}
         priority
         className="h-auto w-36 object-contain sm:w-40"
       />

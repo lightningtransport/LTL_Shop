@@ -246,14 +246,15 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
   );
 }
 
+/** LTR-212 / PF13: the logo declares the size it is shown at, so next/image serves a small file, not the 1536 px original. */
 function AdminBrand() {
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Image
         src="/ltl-logo.png"
         alt="Lightning Transport and Logistics"
-        width={1536}
-        height={894}
+        width={48}
+        height={28}
         priority
         className="h-7 w-11 shrink-0 object-contain"
       />

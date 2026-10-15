@@ -8,6 +8,7 @@ import { apiFetch } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { useShopLocale } from '@/lib/locale-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
+import { LIVE_REFRESH_MS } from '@/lib/live-refresh';
 import { vehicleLine } from '@/lib/work-order-identity';
 import { useActionToast } from './action-toast';
 import { Button, CountChip, InlineAlert, PriorityBadge } from './ui';
@@ -22,7 +23,7 @@ export function TeamQueueCard({ enabled }: { enabled: boolean }) {
   const { messages } = useShopLocale();
   const { showToast } = useActionToast();
   const { mutate: mutateGlobal } = useSWRConfig();
-  const { data, mutate } = useSWR<TeamQueueItemDto[]>(enabled ? TEAM_QUEUE_KEY : null, { refreshInterval: 20_000, dedupingInterval: 5_000 });
+  const { data, mutate } = useSWR<TeamQueueItemDto[]>(enabled ? TEAM_QUEUE_KEY : null, { refreshInterval: LIVE_REFRESH_MS.board, dedupingInterval: 5_000 });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   if (!data?.length) return null;
