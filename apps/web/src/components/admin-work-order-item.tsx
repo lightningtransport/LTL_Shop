@@ -79,8 +79,9 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
         <div className={cn(compact && 'col-span-2 sm:col-span-1 xl:hidden')}><dt className="text-muted-foreground">{messages.updated}</dt><dd className="font-medium">{formatAdminDate(item.updatedAt, locale)}</dd></div>
       </dl>
       {compact ? <div className="mt-3 hidden min-w-0 text-right xl:block"><div className="flex justify-end gap-2">{priorityChip}{statusChip}</div><p className="mt-2 text-xs text-muted-foreground">{formatAdminDate(item.updatedAt, locale)}</p></div> : null}
+      {/* UX-4-102: "Ready to close" is blue everywhere; this was the old `shop-accent` tint. */}
       {item.status === 'in_progress' && item.jobsTotal > 0 && item.jobsCompleted === item.jobsTotal ? (
-        <p className={cn('mt-3 rounded-lg bg-shop-accent/10 px-3 py-2 text-sm font-medium', compact && 'xl:col-span-3 xl:mt-0')}>{messages.readyToCloseHint}</p>
+        <p className={cn('mt-3 rounded-lg bg-primary/5 px-3 py-2 text-sm font-medium', compact && 'xl:col-span-3 xl:mt-0')}>{messages.readyToCloseHint}</p>
       ) : null}
       {item.currentPause ? <p className={cn('mt-3 rounded-lg bg-warning-surface px-3 py-2 text-sm text-warning-foreground', compact && 'xl:col-span-3 xl:mt-0')}>{messages.currentPause}: {adminPauseReasonLabel(item.currentPause.reason, messages)}</p> : null}
       {!item.currentPause && item.latestReportedBlocker ? (

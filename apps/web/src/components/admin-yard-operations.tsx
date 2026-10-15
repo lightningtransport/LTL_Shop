@@ -188,7 +188,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           ) : null}
         </p>
         {yardBoundary && [yardBoundary.workLocation, yardBoundary.incomingTrucks, yardBoundary.upcomingDepartures].some((section) => section.status === 'ok' && section.items.length > 0) ? (
-          <label className="flex h-11 items-center gap-2 rounded-md border bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10 lg:w-72">
+          <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10 lg:w-72">
             <Search aria-hidden="true" className="size-3.5 text-muted-foreground" />
             <span className="sr-only">{messages.yardMovementSearch}</span>
             <input
@@ -236,8 +236,9 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         {/* Stage 8 (mockup): search and the quick filters on one row; no "More filters" (owner decision). The URL
             still accepts readiness, phase, Work Order status and priority from links on other screens. */}
         <section className="flex flex-col gap-3 lg:flex-row lg:items-center" aria-label={messages.yardQuickFilters}>
-          <form role="search" className="lg:w-72" onSubmit={(event) => { event.preventDefault(); commitFilters({ ...appliedFilters, search: filters.search }); }}>
-            <label className="flex h-11 items-center gap-2 rounded-md border bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10">
+          {/* UX-4-004: short placeholder, the full description in the aria-label, and a field that never cuts it. */}
+          <form role="search" className="w-full shrink-0 sm:w-80" onSubmit={(event) => { event.preventDefault(); commitFilters({ ...appliedFilters, search: filters.search }); }}>
+            <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10">
               <Search aria-hidden="true" className="size-3.5 text-muted-foreground" />
               <span className="sr-only">{messages.yardSearch}</span>
               <input
@@ -245,7 +246,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                 autoComplete="off"
                 enterKeyHint="search"
                 aria-label={messages.yardSearch}
-                placeholder={messages.yardSearch}
+                placeholder={messages.yardSearchPlaceholder}
                 className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
                 value={filters.search}
                 onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
@@ -262,7 +263,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                 onClick={() => commitFilters(withYardQuickFilter({ ...appliedFilters, search: filters.search }, value))}
                 className={cn(
                   'inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm [@media(pointer:fine)]:h-9',
-                  quick === value ? 'border-primary bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  quick === value ? 'border-primary bg-primary/15 text-primary-text' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >
                 {quickLabels[value]}

@@ -85,23 +85,25 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
       subtitle={messages.workOrdersDescription}
       actions={canCreateWorkOrder ? <Button asChild><Link href="/admin/work-orders/new">{messages.newWorkOrderCta}</Link></Button> : null}
     />
-    <Card className="min-w-0 p-3">
+    <Card className="min-w-0 p-3 [container-type:inline-size]">
+      {/* UX-4-005: five filters fit inline only when the card has the room (container, not window). */}
       <form role="search" className="min-w-0" onSubmit={applyFilters}>
-        <div className="flex min-w-0 items-end gap-2 md:flex-nowrap md:gap-1.5">
-          <label className="min-w-0 flex-1 space-y-1 md:flex-[1.35]">
-            <span className="sr-only md:not-sr-only md:block md:truncate md:text-xs md:font-medium" title={messages.search}>{messages.search}</span>
+        <div className="flex min-w-0 items-end gap-2 [@container(min-width:68rem)]:flex-nowrap [@container(min-width:68rem)]:gap-1.5">
+          {/* UX-4-005: the search keeps 14rem next to the inline filters; short placeholder, full aria-label. */}
+          <label className="min-w-0 flex-1 space-y-1 [@container(min-width:68rem)]:min-w-[14rem] [@container(min-width:68rem)]:flex-[1.35]">
+            <span className="sr-only [@container(min-width:68rem)]:not-sr-only [@container(min-width:68rem)]:block [@container(min-width:68rem)]:truncate [@container(min-width:68rem)]:text-xs [@container(min-width:68rem)]:font-medium" title={messages.search}>{messages.search}</span>
             <Input
               type="search"
               autoComplete="off"
               enterKeyHint="search"
               aria-label={messages.search}
               placeholder={messages.searchPlaceholder}
-              className="md:min-h-9 md:px-3"
+              className="[@container(min-width:68rem)]:min-h-9 [@container(min-width:68rem)]:px-3"
               value={filters.search}
               onChange={(event) => updateFilter('search', event.target.value)}
             />
           </label>
-          <div className="hidden min-w-0 md:contents">
+          <div className="hidden min-w-0 [@container(min-width:68rem)]:contents">
             <WorkOrderFilterFields filters={filters} messages={messages} onChange={updateFilter} compact />
             <div className="flex shrink-0 gap-1.5">
               <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={clearFilters}>{messages.clearFilters}</Button>
@@ -111,7 +113,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
           <Button
             type="button"
             variant="outline"
-            className="shrink-0 md:hidden"
+            className="shrink-0 [@container(min-width:68rem)]:hidden"
             aria-label={filtersButtonLabel}
             aria-expanded={filtersOpen}
             onClick={() => setFiltersOpen(true)}
@@ -125,7 +127,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
             ) : null}
           </Button>
         </div>
-        {hasDashboardRange ? <p className="mt-2 hidden rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground md:block">{messages.dashboardRangeActive}</p> : null}
+        {hasDashboardRange ? <p className="mt-2 hidden rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground [@container(min-width:68rem)]:block">{messages.dashboardRangeActive}</p> : null}
       </form>
     </Card>
     <Modal
@@ -145,8 +147,8 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
     {isLoading && !data ? <PageSkeleton label={messages.workOrdersTitle} /> : error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : items.length === 0 ? <EmptyState><p>{messages.noWorkOrders}</p></EmptyState> : <>
       <div className="space-y-3 xl:hidden">{items.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} canManage={canCreateWorkOrder} onChanged={() => mutate()} />)}</div>
       <div className="hidden min-h-60 max-h-[calc(100dvh-22rem)] overflow-auto rounded-xl border bg-card xl:block">
-        <table className="w-full min-w-[900px] text-left text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-3">{messages.truck}</th><th className="p-3">{messages.displayId}</th><th className="p-3">{messages.workOrderNextColumn}</th><th className="p-3">{messages.status}</th><th className="p-3">{messages.priority}</th><th className="p-3">{messages.progress}</th><th className="p-3">{messages.mechanicsLabel}</th><th className="p-3">{messages.updated}</th></tr></thead>
-          <tbody>{items.map((item) => <tr key={item.id} className="border-t"><td className="p-3 font-display text-base font-semibold"><Link className="text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/work-orders')}>{item.truck.truckNumber}</Link></td><td className="p-3 text-muted-foreground"><Link className="hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td><td className="p-3" data-testid="work-order-row-next-step" data-kind={item.nextStep?.kind}>{workOrderListNextText(item, messages)}</td><td className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></td><td className="p-3"><PriorityBadge priority={item.priority}>{adminPriorityLabel(item.priority, messages)}</PriorityBadge></td><td className="p-3">{item.jobsCompleted}/{item.jobsTotal}</td><td className="max-w-48 truncate p-3">{item.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || '—'}</td><td className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</td></tr>)}</tbody>
+        <table className="w-full min-w-[900px] text-left text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-3">{messages.truck}</th><th className="whitespace-nowrap p-3">{messages.displayId}</th><th className="p-3">{messages.workOrderNextColumn}</th><th className="p-3">{messages.status}</th><th className="p-3">{messages.priority}</th><th className="p-3">{messages.progress}</th><th className="p-3">{messages.mechanicsLabel}</th><th className="p-3">{messages.updated}</th></tr></thead>
+          <tbody>{items.map((item) => <tr key={item.id} className="border-t"><td className="p-3 font-display text-base font-semibold"><Link className="text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/work-orders')}>{item.truck.truckNumber}</Link></td><td className="whitespace-nowrap p-3 text-muted-foreground"><Link className="hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td><td className="p-3" data-testid="work-order-row-next-step" data-kind={item.nextStep?.kind}>{workOrderListNextText(item, messages)}</td><td className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></td><td className="p-3"><PriorityBadge priority={item.priority}>{adminPriorityLabel(item.priority, messages)}</PriorityBadge></td><td className="p-3">{item.jobsCompleted}/{item.jobsTotal}</td><td className="max-w-48 truncate p-3">{item.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || '—'}</td><td className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</td></tr>)}</tbody>
         </table>
       </div>
       {hasMore ? <Button variant="outline" className="w-full" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.loadMore}…` : messages.loadMore}</Button> : null}

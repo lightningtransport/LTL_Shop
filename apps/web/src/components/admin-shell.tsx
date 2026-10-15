@@ -59,6 +59,23 @@ const navigationGroups = [
   },
 ] as const;
 
+// UX-4-003 (owner, 2026-10-15): data screens (Dashboard, Yard, lists) use the full width on wide monitors; Work
+// Order and Truck detail, Setup and forms keep 1440 px. Exact paths, so `/admin/trucks/[id]` stays at 1440.
+const FULL_WIDTH_PATHS = new Set([
+  '/admin',
+  '/admin/yard-operations',
+  '/admin/trucks',
+  '/admin/work-orders',
+  '/admin/parts/purchases',
+  '/admin/parts/outside-repairs',
+  '/admin/parts/internal-invoices',
+  '/admin/parts/catalog',
+  '/admin/parts/vendors',
+  '/admin/mechanics',
+  '/admin/catalog',
+  '/admin/history',
+]);
+
 function isActivePath(pathname: string, href: string) {
   return href === '/admin' ? pathname === href : pathname.startsWith(href);
 }
@@ -87,6 +104,8 @@ const NAV_ITEM = 'flex min-h-11 w-full items-center gap-2.5 rounded-md px-2 text
  * Stage 8 (F6, mockups): the sidebar runs the full height with the brand on top, the top bar beside it holds
  * the breadcrumb, and the page content is `text-sm` on the page background (no glow). Phones: a menu button
  * opens the navigation as a sheet.
+ * UX-4-002 (owner, 2026-10-15): the sidebar is fixed from `lg` (1024 px); tablets use the header menu like phones,
+ * so the content keeps the whole width. `--admin-aside` is 0 below `lg`, so the fixed bottom bars still line up.
  */
 function ShellFrame({ children, messages, user }: { children: React.ReactNode; messages: AdminMessages; user: { name: string; role: string } }) {
   const pathname = usePathname();
@@ -97,6 +116,7 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
   const navItems: ReadonlyArray<{ message: (typeof navigationGroups)[number]['items'][number]['message']; href: string }> = navigationGroups.flatMap((group) => [...group.items]);
   const activeItem = navItems.find((item) => isActivePath(pathname, item.href));
   const crumbs: Crumb[] = pageCrumbs ?? (activeItem ? [{ label: messages[activeItem.message] }] : []);
+  const fullWidth = FULL_WIDTH_PATHS.has(pathname.replace(/\/$/, '') || '/');
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -138,9 +158,9 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
   ) : null];
 
   return (
-    <div className="app-safe-x flex h-full min-h-0 w-full min-w-0 overflow-hidden bg-background text-sm [--admin-aside:0px] md:[--admin-aside:15rem]">
+    <div className="app-safe-x flex h-full min-h-0 w-full min-w-0 overflow-hidden bg-background text-sm [--admin-aside:0px] lg:[--admin-aside:15rem]">
       <aside
-        className="app-safe-top hidden h-full min-h-0 w-[var(--admin-aside)] shrink-0 flex-col border-r bg-background md:flex"
+        className="app-safe-top hidden h-full min-h-0 w-[var(--admin-aside)] shrink-0 flex-col border-r bg-background lg:flex"
         aria-label={messages.navigation}
       >
         <div className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
@@ -167,7 +187,7 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
                 ref={menuButtonRef}
                 variant="ghost"
                 size="icon"
-                className="-ml-2 shrink-0 md:hidden"
+                className="-ml-2 shrink-0 lg:hidden"
                 aria-label={mobileNavOpen ? messages.closeMobileNavigation : messages.openMobileNavigation}
                 aria-expanded={mobileNavOpen}
                 aria-controls="admin-mobile-navigation"
@@ -207,7 +227,7 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
         <main className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overscroll-contain">
           {/* LTR-171: the home-indicator space is inside the scroller, so cards scroll under it instead of the
               page ending early above a flat band. */}
-          <div className="mx-auto w-full min-w-0 max-w-[1440px] px-4 pb-[calc(1.5rem+var(--app-safe-bottom))] pt-6 md:px-6">{children}</div>
+          <div className={`mx-auto w-full min-w-0 ${fullWidth ? 'max-w-none' : 'max-w-[1440px]'} px-4 pb-[calc(1.5rem+var(--app-safe-bottom))] pt-6 md:px-6`}>{children}</div>
         </main>
       </div>
 

@@ -274,7 +274,8 @@ export function OutsideRepairForm({
               <Button type="button" variant="ghost" size="sm" aria-label={messages.pcFileRemove} disabled={busy} onClick={() => setFile(null)}><X aria-hidden="true" /></Button>
             </div>
           ) : (
-            <label className="flex cursor-pointer flex-col items-start gap-1 rounded-lg border border-dashed px-3 py-3 text-sm hover:bg-accent">
+            <label className="flex cursor-pointer flex-col items-start gap-1 rounded-lg border border-dashed px-3 py-3 text-sm hover:bg-accent has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring">
+              {/* UX-2-013: the file input is sr-only, so the label draws the keyboard focus ring. */}
               <span className="font-medium text-primary">{messages.pcFileChoose}</span>
               <span className="text-xs text-muted-foreground">{messages.pcFileHint}</span>
               <input type="file" className="sr-only" accept={INVOICE_FILE_TYPES.join(',')} onChange={(event) => void pickFile(event.target.files?.[0])} disabled={busy} />
