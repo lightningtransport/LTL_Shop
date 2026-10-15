@@ -1,10 +1,10 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-05 (LTR-188: Job de ayudante (D23) y taller externo (D24); LTR-174: detalle del Truck y del Work Order reorganizados; LTR-187: el Manager da de alta al personal)
+**Actualizado:** 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
-historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en
-[`OPEN_ISSUES.md`](OPEN_ISSUES.md).
+historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
+(resumen en [`OPEN_ISSUES.md`](OPEN_ISSUES.md)).
 
 Los nombres del dominio se quedan en inglés, igual que en la app: Truck,
 Work Order (WO), Job, Manager, Ready to Go, Return to Service.
@@ -16,12 +16,18 @@ Work Order (WO), Job, Manager, Ready to Go, Return to Service.
 Lightning Shop es la aplicación del taller de Lightning Transport. Organiza el
 trabajo sobre cada camión desde que llega hasta que vuelve a servicio:
 
-1. El **Manager** abre un Work Order para el Truck.
-2. Inspecciona el camión y agrega el trabajo extra que encuentra (Hallazgos).
-3. Cada **mecánico** hace solo los Jobs que le asignaron.
-4. El Manager resuelve los bloqueos, hace el Quality Check y cierra el WO.
+1. El **Manager** abre un Work Order para el Truck (nace con PM, Alignment,
+   Detailing y Quality Check, D13).
+2. El Manager, o un mecánico con "Can inspect trucks", llena la **hoja de
+   inspección**; cada defecto crea su Job (D41). Las fallas de **Samsara** se
+   sugieren como Jobs (D42).
+3. Cada **mecánico** hace solo los Jobs que le asignaron o que tomó de la cola
+   de su equipo (D11, D28).
+4. El Manager resuelve los bloqueos; **Safety** hace el Quality Check (D19,
+   el Manager como respaldo, D29); el Manager cierra el WO.
 5. El Truck queda **Ready to Go** hasta que el Manager lo marca **Return to
-   Service**.
+   Service**. Las horas, partes y reparaciones externas quedan en el **costo
+   del camión** y se facturan a Finanzas por mes (D32, D34).
 
 **Stack:** Next.js (`apps/web`), NestJS + Prisma (`apps/api`), tipos y
 reglas compartidas (`packages/shared`), Supabase Postgres + Supabase Auth.
@@ -108,15 +114,18 @@ Esquema: `apps/api/prisma/schema.prisma`. Tipos compartidos:
 `packages/shared/src`.
 
 ### Truck
-- Se carga por seed/Ninox (`NINOX_TRUCK_SEED.md`). **No hay pantalla para
-  crear o editar camiones.**
+- **Vive en nuestra base** (D43). Se cargó una sola vez desde Ninox
+  (`NINOX_TRUCK_SEED.md`); la app no vuelve a consultar Ninox. Samsara
+  agrega millas, ubicación, luces y fallas en columnas aparte (`samsara_*`)
+  y no pisa los datos del camión. **No hay pantalla para crear o editar
+  camiones** (P13, LTR-203): un camión nuevo todavía entra por script.
 - **Estado de servicio:** eventos `truck_service_status_events`
   (`in_service | off_duty`), solo se agregan. Sin evento = `Unknown`.
   Return to Service escribe `in_service`. `off_duty` existe pero nada lo
   escribe.
 - **Presencia física** (en el patio o fuera): siempre `UNKNOWN`. La
-  "ubicación reportada" que viene de Ninox es solo informativa, no es
-  presencia.
+  "ubicación reportada" de la carga de Ninox y la de Samsara son solo
+  informativas, no son presencia.
 - El millaje oficial solo cambia al terminar un PM (con registro de auditoría
   en `truck_mileage_adjustments`).
 
@@ -890,9 +899,12 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
 
 ## 8. Integraciones
 
+- **Principio (D43):** nuestra base es la fuente; los terceros se leen solo
+  para lo que no tenemos y la app sigue funcionando si no responden.
 - **Ninox:** no es fuente operativa. Hubo una carga única de camiones
   (`reference/NINOX_TRUCK_SEED.md`). El cliente de la API es un stub
-  (`DATA_SOURCE=supabase`).
+  (`DATA_SOURCE=supabase`) que no consulta nada. Las columnas `ninox_*`
+  son una copia congelada de esa carga.
 - **agent-reporting:** la API expone `GET /api/admin/yard/data-boundary`
   (Incoming Trucks, Upcoming Departures, Work location), montado en la
   pestaña Movement del Yard. Necesita `AGENT_REPORTING_KEY` en la API

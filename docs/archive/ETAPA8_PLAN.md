@@ -1,3 +1,5 @@
+> **ARCHIVADO el 2026-10-14.** Plan ejecutado en PR 244 (Etapas 8.1–8.7). `PENDIENTES_UI.md` está al lado, en `archive/`.
+
 # Plan: Etapa 8, fidelidad a las maquetas (WO, Truck, Dashboard, Yard y marco común)
 
 ## Context

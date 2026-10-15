@@ -3,8 +3,9 @@
 **Para:** Cristian · **Fecha:** 2026-10-05, actualizada el 2026-10-09 · **Ticket:** LTR-45
 
 > **En espera (2026-10-09):** el dueño decidió no salir en vivo todavía. La guía queda al día para cuando se
-> retome. Estado de producción al 2026-10-09: **todas las migraciones aplicadas** (la última,
-> `20261014120000_internal_invoices_ltr201`), la API y la web en `main` (`bd2dd54`). Las fases 1 a 3 ya se
+> retome. Estado de producción al 2026-10-14: **todas las migraciones aplicadas** (la última,
+> `20261020120000_samsara_fault_jobs`, Release safety sobre `311adb9`), la API y la web en `main` (`79f19d9`).
+> El seguimiento de la salida en vivo está en Linear, proyecto **Plataforma y Go-live** (LTR-45, LTR-52). Las fases 1 a 3 ya se
 > hicieron de hecho; al retomar alcanza con repetir la 1 para confirmar que no apareció nada nuevo.
 **Lista anterior (Ninox, septiembre):** [`archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md`](archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md)
 

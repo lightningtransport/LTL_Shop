@@ -1,7 +1,9 @@
 # Propuesta: rediseño de las pantallas del Mecánico de PM
 
-**Clasificación:** PROPUESTA — no es el estado actual de la app.
-**Fecha:** 2026-10-07 · **Rama:** `claude/mechanic-pm-proposal` · **Esperando la aprobación del dueño.**
+> **Estado (2026-10-14): construida y en producción** — PR 256 (bloque A) y 262 (bloque B). Cómo funciona hoy: [`SYSTEM.md`](../../SYSTEM.md). Esta propuesta queda como referencia de diseño.
+
+**Clasificación:** PROPUESTA (ya construida; ver arriba).
+**Fecha:** 2026-10-07 · **Rama:** `claude/mechanic-pm-proposal` · Aprobada y construida.
 **Pantallas:**
 - Detalle del PM (`/work-orders/[id]?view=pm`): `apps/web/src/components/pm-job-detail.tsx` y `pm-service-card.tsx`.
 - Inicio (`/mechanic/pm`): `apps/web/src/app/page.tsx` en modo PM.
@@ -17,7 +19,7 @@
 - PM A ↔ PM B cambia el mismo Job;
 - el PM no tiene pausa: si algo lo detiene, se reporta un bloqueo y lo resuelve el Manager.
 
-Hallazgos en [`OPEN_ISSUES.md` §1l](../../OPEN_ISSUES.md) (PM1–PM6), en la auditoría
+Hallazgos en [`OPEN_ISSUES.md` §1l](../../archive/OPEN_ISSUES_HISTORIAL_2026-10.md) (PM1–PM6), en la auditoría
 [`docs/ux-audit/mecanico-pm/`](../../ux-audit/mecanico-pm/00-contexto.md) (skills audit-ux 0, 1, 4, 6 y 7)
 y en el [resumen de los roles de campo](../../ux-audit/RESUMEN-roles-de-campo.md) §3 y §4 (bloque B).
 

@@ -139,7 +139,7 @@ c. **Editar después de guardar.** *(Decidido el 2026-10-13: **opción 2**.)*
    - **Opción 2, agregar sí, quitar no:** se puede reabrir la hoja para marcar **más** defectos, que crean más Jobs. No se puede pasar un Defect a OK; eso se hace cancelando el Job en la WO. El reporte muestra "Added later by X · hora".
    - **Opción 3, editable mientras el Job no haya empezado:** pasar un Defect a OK cancela su Job, si sigue en To do y sin tiempo. Si ya empezó, la app no deja y manda a la WO. Pasar OK a Defect crea el Job. En un Job compartido solo se quita esa nota. El reporte guarda quién cambió qué y cuándo.
 
-d. **Dashboard (PENDIENTES_UI P3).** Hoy la fila de inspección del Dashboard tiene "No issues found" e "Issues found" juntos. Como ahora no se guarda sin revisar todo, esos botones se cambian por **Start inspection**, que abre la hoja.
+d. **Dashboard (UI-P3 de `archive/PENDIENTES_UI.md`).** Hoy la fila de inspección del Dashboard tiene "No issues found" e "Issues found" juntos. Como ahora no se guarda sin revisar todo, esos botones se cambian por **Start inspection**, que abre la hoja.
 
 **Otras notas:**
 - **Se quitó Must fix / Can wait.** Con "todo defecto crea su Job" ya no cambiaba nada. La urgencia del truck sigue en Priority, en la WO.

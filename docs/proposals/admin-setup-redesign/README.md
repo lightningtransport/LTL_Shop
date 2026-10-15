@@ -1,7 +1,9 @@
 # Propuesta: rediseño de Setup del Admin (Shop workflow, Job Catalog y People)
 
-**Clasificación:** PROPUESTA — no es el estado actual de la app.
-**Fecha:** 2026-10-07 · **Rama:** `claude/shop-workflow-revision-9afabe` · **Esperando la aprobación del dueño.**
+> **Estado (2026-10-14): construida y en producción** — PR 264 (etapa 0), 265 (S1), 267 (S2), 268 (S3), 269+ (S4, Parts & costs). Cómo funciona hoy: [`SYSTEM.md`](../../SYSTEM.md). Esta propuesta queda como referencia de diseño.
+
+**Clasificación:** PROPUESTA (ya construida; ver arriba).
+**Fecha:** 2026-10-07 · **Rama:** `claude/shop-workflow-revision-9afabe` · Aprobada y construida.
 **Pantallas:**
 - Shop workflow (`/admin/setup/workflow`): `apps/web/src/components/admin-shop-workflow.tsx` (con Shop hours).
 - Job Catalog (`/admin/catalog` y `/admin/catalog/categories/[id]`): `admin-catalog-list.tsx`, `admin-catalog-category-detail.tsx` y `admin-catalog-write.tsx`.
@@ -17,7 +19,7 @@
 
 **Lo que decidió el dueño el 2026-10-07 y esta propuesta dibuja:** D28 (equipo y cola por paso; el paso se llama "PM"), D29 (el Manager hace QC como respaldo), D30 (el Manager maneja todo el catálogo, con protecciones) y D31 ("Quitar del Shop" conserva el historial). D32 (partes y costos) va aparte, en S4.
 
-Hallazgos en [`OPEN_ISSUES.md` §1m](../../OPEN_ISSUES.md) (SW1–SW5, JC1–JC6, ME1–ME5), en la auditoría
+Hallazgos en [`OPEN_ISSUES.md` §1m](../../archive/OPEN_ISSUES_HISTORIAL_2026-10.md) (SW1–SW5, JC1–JC6, ME1–ME5), en la auditoría
 [`docs/ux-audit/admin-setup/`](../../ux-audit/admin-setup/09-informe-final.md) (skills audit-ux 0, 1, 3, 4, 5, 6, 7 y 9; patrones P1–P6)
 y en [`USER_FLOWS.md`](../../USER_FLOWS.md) HU-M8, HU-M9, HU-A2 y HU-QC1.
 
@@ -62,7 +64,7 @@ silencio.
 
 ## 3. Lo que está mal hoy (auditoría del 2026-10-07 con la base demo)
 
-**Defectos de lo construido** ([§1m](../../OPEN_ISSUES.md)):
+**Defectos de lo construido** ([§1m](../../archive/OPEN_ISSUES_HISTORIAL_2026-10.md)):
 
 | # | Qué pasa | Efecto | Auditoría |
 |---|---|---|---|

@@ -14,7 +14,7 @@
 - [ ] Behavior changed → `docs/SYSTEM.md` and `docs/USER_FLOWS.md` updated in this PR (or: no behavior change).
 - [ ] Flow changed or defect fixed → its row in `apps/api/test-real/` passes (`npm run test:real --workspace=@ltl-shop/api`).
 - [ ] New or changed product decision → recorded in `docs/DECISIONS.md`.
-- [ ] Known defect fixed or found → `docs/OPEN_ISSUES.md` updated.
+- [ ] Known defect fixed or found → Linear issue updated (Done or new, with B/C/E) and its line in `docs/OPEN_ISSUES.md`.
 - [ ] No new documents at the root of `docs/` (see `docs/README.md`).
 
 ## Data-flow and performance review

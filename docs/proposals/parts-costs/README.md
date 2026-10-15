@@ -19,7 +19,7 @@
 
 Hallazgos que cubre: UX-1-020, UX-5-004, UX-6-024 y UX-7-024 de la auditoría
 [`docs/ux-audit/admin-setup/`](../../ux-audit/admin-setup/09-informe-final.md) (bloque S4 de
-[`OPEN_ISSUES.md` §1m](../../OPEN_ISSUES.md)). La navegación sigue la estructura propuesta en
+[`OPEN_ISSUES.md` §1m](../../archive/OPEN_ISSUES_HISTORIAL_2026-10.md)). La navegación sigue la estructura propuesta en
 [`05-navegacion-ia.md`](../../ux-audit/admin-setup/05-navegacion-ia.md).
 
 ## 1. Cómo verla

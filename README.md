@@ -5,17 +5,21 @@ Transport.
 
 ## Documentation
 
-Start at [`docs/README.md`](docs/README.md). One source of truth per topic:
+Start at [`docs/README.md`](docs/README.md). One source of truth per topic
+(product docs are in Spanish):
 
-1. [`docs/SYSTEM.md`](docs/SYSTEM.md) — how the system works today (roles,
+1. [`docs/PRD.md`](docs/PRD.md) — what the product is, for whom, its modules,
+   what it does not do, success metrics and roadmap. **Read this first.**
+2. [`docs/SYSTEM.md`](docs/SYSTEM.md) — how the system works today (roles,
    flows, states, screens, rules).
-2. [`docs/USER_FLOWS.md`](docs/USER_FLOWS.md) — user stories, jobs to be
+3. [`docs/USER_FLOWS.md`](docs/USER_FLOWS.md) — user stories, jobs to be
    done, task flows and edge cases per role, each verified.
-3. [`docs/DECISIONS.md`](docs/DECISIONS.md) — product decisions D1–D18.
-4. [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) — known defects, cleanup,
-   go-live work, out of scope.
-5. [`docs/reference/`](docs/reference) — engineering practices, deploy,
-   performance, Ninox, Yard data boundary.
+4. [`docs/DECISIONS.md`](docs/DECISIONS.md) — product decisions D1–D43 and
+   open questions.
+5. **Linear** (team LTR, one project per module) — everything still to do.
+   [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) is a short summary.
+6. [`docs/reference/`](docs/reference) — engineering practices, deploy,
+   performance, demo, Ninox, Yard data boundary.
 
 `docs/archive/` is history and never overrides these sources or the code.
 
@@ -25,8 +29,12 @@ Start at [`docs/README.md`](docs/README.md). One source of truth per topic:
 - **API:** NestJS + Prisma (`apps/api`)
 - **Shared:** Domain types / Zod schemas (`packages/shared`)
 - **DB / Auth:** Supabase Postgres + Supabase Auth (local Postgres via Docker for development)
-- **Ninox:** Runtime adapter is still a stub (`DATA_SOURCE=supabase`). Monday
-  fleet load is a **one-shot** CLI (`npm run prisma:seed-ninox-trucks`) that
+- **Our database is the source of truth (D43).** Third parties are read only
+  for data we don't have, and the app keeps working if they are down.
+- **Samsara:** read-only hourly sync (mileage, location, lamps, faults) into
+  separate `samsara_*` columns; it never overwrites our truck data.
+- **Ninox:** not used at runtime (the adapter is a stub, `DATA_SOURCE=supabase`).
+  The initial fleet load was a **one-shot** CLI (`npm run prisma:seed-ninox-trucks`) that
   GETs TrucksDB `E` and upserts Shop rows by VIN + `truckNumber` (`E.CG` / `E.A`).
   It never writes Ninox and will not query Ninox again after a completed run.
   See [`docs/reference/NINOX_TRUCK_SEED.md`](docs/reference/NINOX_TRUCK_SEED.md).
@@ -135,22 +143,30 @@ the fleet with Ninox, match on `truckNumber` = Ninox `E.A` only.
 
 | Path | Role |
 |------|------|
-| `apps/web` | Mechanic mobile-first UI |
+| `apps/web` | Admin (Manager) and mobile-first mechanic / Safety UI |
 | `apps/api` | REST API + domain logic |
+| `apps/landing` | Static landing page for the hosted demo |
 | `packages/shared` | Enums, DTOs, Zod contracts |
 | `apps/api/prisma` | Prisma schema, migrations, and local seed; this is the only migration source |
 | `/admin` | Server-authorized responsive shell for users with `admin.access` |
 | `/admin/yard-operations` | Yard board by Work Plan phase; Movement tab with agent-reporting cards |
 | `/mechanic/standard` | Standard mechanic workspace for users with `mechanic.standard` |
 | `/mechanic/pm` | PM mechanic workspace for users with `mechanic.pm` |
+| `/qc` | Safety's Quality Check queue (`quality_check.perform`) |
+| `/admin/trucks/[id]/inspection` | Inspection sheet with tires (D41) |
+| `/admin/catalog`, `/admin/mechanics`, `/admin/setup/*` | Job Catalog, People, Shop workflow, shop hours, inspection checklist, Samsara |
+| `/admin/parts-costs/*` | Parts, vendors, purchases, outside repairs, labor rate, internal invoices (D32, D34) |
 
 ## API overview
 
 Endpoints live in the NestJS controllers under `apps/api/src`
-(`work-orders/`, `admin/`, `trucks/`, `job-catalog/`, `users/`, `auth/`).
+(`work-orders/`, `admin/`, `trucks/`, `job-catalog/`, `users/`, `auth/`,
+`inspection/`, `quality-check/`, `parts/`, `parts-costs/`, `activity-log/`,
+`integrations/` (Samsara, agent-reporting, Ninox stub), `dev-demo/`,
+`release/`, `observability/`).
 Which screen calls what, and who may call it, is in
 [`docs/SYSTEM.md`](docs/SYSTEM.md). Deprecated endpoints still present are
-listed in [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) §3.
+listed in [`docs/SYSTEM.md`](docs/SYSTEM.md) §11.
 
 ## Tests
 
@@ -169,4 +185,5 @@ npm run test:e2e --workspace=@ltl-shop/web   # requires running app
 
 ## Deferred beyond the current release
 
-See [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) §6.
+See [`docs/PRD.md`](docs/PRD.md) (what the app does not do) and
+[`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md).
