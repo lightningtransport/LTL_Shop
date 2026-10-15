@@ -29,6 +29,13 @@ export function MechanicTrucksPage({ mode }: { mode: MechanicMode }) {
   const numeric = Boolean(trucks?.length && trucks.every((truck) => /^\d+$/.test(truck.truckNumber)));
   const base = `/mechanic/${mode === MechanicMode.PM ? 'pm' : 'standard'}`;
   const { results } = useMemo(() => rankTruckResults(trucks ?? [], query), [trucks, query]);
+  // LTR-208: before any search, the trucks whose open Work Order has Jobs of mine — no number to remember.
+  const withMyJobs = useMemo(
+    () => (trucks ?? []).filter((truck) => truck.openWorkOrder && mine.has(truck.openWorkOrder.id)),
+    [trucks, mine],
+  );
+  const searching = Boolean(query.trim());
+  const shown = searching ? results.slice(0, 20) : withMyJobs;
 
   useEffect(() => {
     if (!sessionLoading && !token) replaceAppLocation('/login', router);
@@ -50,10 +57,11 @@ export function MechanicTrucksPage({ mode }: { mode: MechanicMode }) {
         onChange={(event) => setQuery(event.target.value)}
       />
       {error ? <LoadFailure message={messages.unableToLoadTrucks} onRetry={() => void mutate()} retryLabel={messages.retry} /> : null}
-      {!trucks && !error && query.trim() ? <CardListSkeleton count={2} /> : null}
-      {query.trim() && !results.length && trucks ? <EmptyState>{messages.noTrucks}</EmptyState> : null}
-      <ul className="space-y-2">
-        {results.slice(0, 20).map((truck) => (
+      {!trucks && !error ? <CardListSkeleton count={2} /> : null}
+      {searching && !results.length && trucks ? <EmptyState>{messages.noTrucks}</EmptyState> : null}
+      {!searching && withMyJobs.length ? <h2 className="mb-2 text-sm font-semibold text-shop-muted">{messages.mechanicTrucksMine}</h2> : null}
+      <ul className="space-y-2" data-testid={searching ? 'truck-search-results' : 'trucks-with-my-jobs'}>
+        {shown.map((truck) => (
           <li key={truck.id}>
             <Card className="space-y-1 p-3">
               <div className="flex items-start justify-between gap-2">

@@ -133,7 +133,7 @@ function WorkflowSteps({ messages, locale, canWrite }: { messages: AdminMessages
   if (!data?.length) return <EmptyState>{messages.shopWorkflowEmpty}</EmptyState>;
 
   return (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', canWrite && dirty && 'pb-24')}>
       <Card>
         <CardContent className="p-0">
           <ol className="divide-y" aria-label={messages.shopWorkflowTabSteps}>
@@ -231,10 +231,15 @@ function WorkflowSteps({ messages, locale, canWrite }: { messages: AdminMessages
       </Card>
       <p className="text-sm text-muted-foreground">{messages.shopWorkflowTeamsFooter}</p>
       {saveError ? <InlineAlert>{saveError}</InlineAlert> : null}
-      {canWrite ? (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Button type="button" className="w-full sm:w-auto" disabled={!dirty || saving} onClick={() => void save()}>{messages.shopWorkflowSave}</Button>
-          {dirty ? <p className="text-sm text-muted-foreground" role="status">{messages.shopWorkflowUnsaved}</p> : null}
+      {/* LTR-210: "Add to team" only changes the draft; the bar stays in view until it is saved or discarded
+          (same bar as Setup → Inspection checklist). */}
+      {canWrite && dirty ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur app-safe-bottom md:left-[var(--admin-aside)]" data-testid="workflow-unsaved">
+          <div className="mx-auto flex max-w-[1440px] items-center justify-end gap-2 px-4 py-3 md:px-6">
+            <span className="mr-auto text-sm font-medium" role="status">{messages.shopWorkflowUnsaved}</span>
+            <Button type="button" variant="ghost" disabled={saving} onClick={() => { setDrafts(Object.fromEntries(data.map((step) => [step.stepKey, step.members.map((member) => member.id)]))); setSaveError(null); }}>{messages.shopWorkflowDiscard}</Button>
+            <Button type="button" disabled={saving} onClick={() => void save()}>{messages.shopWorkflowSave}</Button>
+          </div>
         </div>
       ) : null}
       <AddMemberDialog
