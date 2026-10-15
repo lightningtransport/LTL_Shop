@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, Building2, CalendarClock, Check, CircleAlert, CircleCheck, ClipboardCheck, Flag, MessageSquarePlus, OctagonPause, ShieldCheck, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
-import { AppCapability, type AdminOpenWorkRequestDto, type AdminWorkOrderSummaryDto } from '@ltl-shop/shared';
+import { ArrowRight, Building2, CalendarClock, Check, CircleAlert, CircleCheck, ClipboardCheck, Flag, MessageSquarePlus, OctagonPause, Plus, ShieldCheck, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
+import { AppCapability, BlockerReason, type AdminOpenWorkRequestDto, type AdminWorkOrderSummaryDto } from '@ltl-shop/shared';
 import { NextStepAction } from './next-step-action';
 import { useActionToast } from './action-toast';
 import { Button, LoadFailure, PageSkeleton, PriorityBadge, Textarea } from './ui';
@@ -217,6 +217,9 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
   const vehicle = formatVehicleYmm(item.truck);
   const step = item.nextStep;
   const blocker = step?.kind === 'resolve_blocker' ? item.latestReportedBlocker : null;
+  // LTR-217: a Safety return is answered with work; resolving without it has to tell Safety why.
+  const safetyReturn = blocker?.blockerReason === BlockerReason.QUALITY_CHECK_FAILED;
+  const noteLabel = safetyReturn ? messages.resolveSafetyReturnNoteLabel : messages.resolveBlockerNoteLabel;
   const flagged = group === 'blocked';
   const left = Math.max(0, item.jobsTotal - item.jobsCompleted);
   const date = (value: string | null | undefined) => formatShortDateTime(value, locale);
@@ -284,7 +287,14 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
   }
 
   const action = blocker ? (
-    canManage && !resolving ? <Button type="button" onClick={() => setResolving(true)}><Check aria-hidden="true" />{messages.resolveBlocker}</Button> : null
+    canManage && !resolving ? (
+      safetyReturn ? (
+        <>
+          <Button asChild><Link href={`${adminTruckHref(item.truck.id, '/admin')}#add-work`}><Plus aria-hidden="true" />{messages.safetyReturnCompleteAddWork}</Link></Button>
+          <Button type="button" variant="outline" onClick={() => setResolving(true)}>{messages.resolveSafetyReturnWithoutWork}</Button>
+        </>
+      ) : <Button type="button" onClick={() => setResolving(true)}><Check aria-hidden="true" />{messages.resolveBlocker}</Button>
+    ) : null
   ) : (
     <NextStepAction
       step={step}
@@ -314,17 +324,18 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
           {resolving ? (
             <form className="mt-2 space-y-2" onSubmit={(event) => { event.preventDefault(); void resolve(); }}>
               <Textarea
-                aria-label={messages.resolveBlockerNoteLabel}
-                placeholder={messages.resolveBlockerNoteLabel}
+                aria-label={noteLabel}
+                placeholder={noteLabel}
                 rows={2}
                 maxLength={1000}
                 value={note}
                 disabled={pending}
+                required={safetyReturn}
                 autoFocus
                 onChange={(event) => setNote(event.target.value)}
               />
               <div className="flex gap-2">
-                <Button type="submit" disabled={pending}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
+                <Button type="submit" disabled={pending || (safetyReturn && !note.trim())}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
                 <Button type="button" variant="ghost" disabled={pending} onClick={() => { setResolving(false); setNote(''); }}>{messages.cancel}</Button>
               </div>
             </form>

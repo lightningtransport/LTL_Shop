@@ -194,6 +194,7 @@ export class YardWorkPlanService {
     if (open) {
       await this.addJobsToOpenWorkOrder(user, open, input);
       await this.linkFaultsToNewJobs(user, truckId, input, faults, before);
+      await this.answerSafetyReturn(user, open.id, before);
       return this.get(user, truckId);
     }
 
@@ -209,9 +210,31 @@ export class YardWorkPlanService {
       open = await this.findOpenWorkOrder(truckId);
       if (!open) throw error;
       await this.addJobsToOpenWorkOrder(user, open, input);
+      await this.answerSafetyReturn(user, open.id, before);
     }
     await this.linkFaultsToNewJobs(user, truckId, input, faults, before);
     return this.get(user, truckId);
+  }
+
+  /**
+   * LTR-217 (D19): Safety returned the truck and the Manager adds work — that is the answer, so the return is
+   * resolved with the new Jobs as its note. The truck goes back to Safety's list once that work is done.
+   */
+  private async answerSafetyReturn(user: AuthUser, workOrderId: string, before: Set<string>) {
+    const returns = await this.prisma.pauseEvent.findMany({
+      where: { workOrderId, isOfficialPause: false, resolvedAt: null, blockerReason: 'quality_check_failed' },
+      select: { id: true },
+    });
+    if (!returns.length) return;
+    const added = await this.prisma.workOrderJob.findMany({
+      where: { workOrderId, id: { notIn: [...before] } },
+      select: { displayName: true },
+      orderBy: { addedAt: 'asc' },
+    });
+    const notes = `Work added: ${added.map((job) => job.displayName).join(', ') || 'new work'}`;
+    for (const blocker of returns) {
+      await this.workOrders.resolveBlocker(user, workOrderId, blocker.id, { notes });
+    }
   }
 
   /** D42 / S-6: each Job that came with faults gets them, matched to the Job just created for it (same catalog Job or name). */

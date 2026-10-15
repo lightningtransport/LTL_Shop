@@ -134,6 +134,7 @@ export function AdminTruckNextStep({
           canResolve={canManage}
           footer={null}
           onResolved={onChanged}
+          onAddWork={truck.workPlan.capabilities.canAddWork ? onAddWork : undefined}
         />
       );
     }

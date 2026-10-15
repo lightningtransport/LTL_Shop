@@ -130,6 +130,8 @@ describe('YardWorkPlanService', () => {
         findUnique: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue({}),
       },
+      // LTR-217: no Safety return open, so adding work resolves nothing.
+      pauseEvent: { findMany: vi.fn().mockResolvedValue([]) },
       truckReadinessAssessment: { findFirst: vi.fn().mockResolvedValue(null) },
     };
     const workOrders = {
@@ -166,6 +168,7 @@ describe('YardWorkPlanService', () => {
           findUnique: vi.fn().mockResolvedValue(null),
           create: vi.fn().mockResolvedValue({}),
         },
+        pauseEvent: { findMany: vi.fn().mockResolvedValue([]) },
         user: {
           findMany: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) =>
             activeMechanics.filter((mechanic) => where.id.in.includes(mechanic.id))),

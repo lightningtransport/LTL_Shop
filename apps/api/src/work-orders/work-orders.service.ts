@@ -704,6 +704,11 @@ export class WorkOrdersService {
       if (blocker.resolvedAt) {
         throw new BadRequestException({ code: 'BLOCKER_ALREADY_RESOLVED', message: 'This blocker is already resolved.' });
       }
+      // LTR-217: a Safety return is answered with work (adding it resolves the return); resolving it without new
+      // work tells Safety why, because the same truck goes straight back to their list.
+      if (blocker.blockerReason === BlockerReason.QUALITY_CHECK_FAILED && !notes) {
+        throw new BadRequestException({ code: 'QC_RESOLVE_NOTE_REQUIRED', message: 'Tell Safety why the truck goes back without new work.' });
+      }
       await tx.pauseEvent.update({
         where: { id: blockerId },
         data: { resolvedAt: new Date(), resolvedById: user.id },

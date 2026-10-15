@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { PauseEventDto } from '@ltl-shop/shared';
+import { BlockerReason, type PauseEventDto } from '@ltl-shop/shared';
 import { resolveAdminBlocker } from '@/lib/admin-data';
 import { formatAdminDate } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
@@ -38,6 +38,10 @@ export function AdminBlockerResolve({
   const { showToast } = useActionToast();
   const reason = adminPauseReasonLabel(blocker.blockerReason ?? blocker.reason, messages);
   const reporter = blocker.reportedBy?.name ?? blocker.createdBy?.name ?? messages.noValue;
+  // LTR-217: resolving a Safety return without new work tells Safety why (the API asks for it too).
+  const safetyReturn = blocker.blockerReason === BlockerReason.QUALITY_CHECK_FAILED;
+  const noteLabel = safetyReturn ? messages.resolveSafetyReturnNoteLabel : messages.resolveBlockerNoteLabel;
+  const canSubmit = !pending && (!safetyReturn || Boolean(note.trim()));
 
   async function resolve() {
     if (pending) return;
@@ -94,8 +98,8 @@ export function AdminBlockerResolve({
       ) : canResolve && noteOnDemand ? (
         <form className="space-y-2 pt-1" onSubmit={(event) => { event.preventDefault(); void resolve(); }}>
           <Textarea
-            aria-label={messages.resolveBlockerNoteLabel}
-            placeholder={messages.resolveBlockerNoteLabel}
+            aria-label={noteLabel}
+            placeholder={noteLabel}
             value={note}
             rows={2}
             maxLength={1000}
@@ -104,23 +108,23 @@ export function AdminBlockerResolve({
             onChange={(event) => setNote(event.target.value)}
           />
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" size="sm" disabled={pending}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
+            <Button type="submit" size="sm" disabled={!canSubmit}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
             <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => { setNoteOpen(false); setNote(''); }}>{messages.cancel}</Button>
           </div>
         </form>
       ) : canResolve ? (
         <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-end">
           <Textarea
-            aria-label={messages.resolveBlockerNoteLabel}
-            placeholder={messages.resolveBlockerNoteLabel}
+            aria-label={noteLabel}
+            placeholder={noteLabel}
             value={note}
             rows={1}
             maxLength={1000}
             disabled={pending}
             onChange={(event) => setNote(event.target.value)}
           />
-          <Button type="button" size="sm" disabled={pending} onClick={() => void resolve()}>
-            {messages.resolveBlocker}
+          <Button type="button" size="sm" disabled={!canSubmit} onClick={() => void resolve()}>
+            {safetyReturn ? messages.resolveSafetyReturnWithoutWork : messages.resolveBlocker}
           </Button>
         </div>
       ) : null}
