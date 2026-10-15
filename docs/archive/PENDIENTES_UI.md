@@ -1,3 +1,5 @@
+> **ARCHIVADO el 2026-10-14.** Preguntas de UI de la Etapa 8, todas respondidas. Se citan como UI-P1…UI-P6 para no chocar con las preguntas P1–P23 de `DECISIONS.md`.
+
 # Preguntas pendientes de la UI (para responder después de la Etapa 8)
 
 **Fecha:** 2026-10-06 · **Rama:** `claude/exciting-lehmann-09883c` · **Linear:** LTR-190
@@ -10,12 +12,12 @@ que siguen abiertas al terminar la actualización de la UI (Etapa 8,
 
 | # | Pregunta | Decisión |
 |---|---|---|
-| P1 | ¿Son confiables día a día los datos de Dispatch? | Sí. "Leaving soon" (Dashboard, chip y alerta del Yard) y la pestaña Dispatch los siguen usando, marcados como "reported by Dispatch" |
-| P2 | ¿Return to Service por lotes desde el Yard? | No hace falta: de a uno, con su diálogo |
-| P3 | ¿Inspección desde el Dashboard? | **Dos botones en la fila**: "No issues found" se registra ahí; "Issues found" se registra y abre el Truck con Add work abierto. **Cambia con D41 (2026-10-13, no construido):** la fila tendrá un solo botón, **Start inspection**, que abre la hoja. |
-| P4 | ¿Dónde va el bloque Workspaces? | **En el menú lateral**: un grupo "Workspaces" al final, solo para quien también es mecánico (Standard / PM). Sale del Dashboard |
-| P5 | ¿Cerrar la WO de un toque? | **Solo en el Dashboard**, como la maqueta (se reabre desde la WO). En la WO y el Truck sigue confirmando (D27 cambiado) |
-| P6 | ¿Stepper en el Dashboard o en el Yard? | **Solo en el Truck** (sin cambios): el Dashboard dice el paso en la fila y en el Yard el carril es el paso |
+| UI-P1 | ¿Son confiables día a día los datos de Dispatch? | Sí. "Leaving soon" (Dashboard, chip y alerta del Yard) y la pestaña Dispatch los siguen usando, marcados como "reported by Dispatch" |
+| UI-P2 | ¿Return to Service por lotes desde el Yard? | No hace falta: de a uno, con su diálogo |
+| UI-P3 | ¿Inspección desde el Dashboard? | **Dos botones en la fila**: "No issues found" se registra ahí; "Issues found" se registra y abre el Truck con Add work abierto. **Cambió con D41 (construido, PR 324):** la fila tendrá un solo botón, **Start inspection**, que abre la hoja. |
+| UI-P4 | ¿Dónde va el bloque Workspaces? | **En el menú lateral**: un grupo "Workspaces" al final, solo para quien también es mecánico (Standard / PM). Sale del Dashboard |
+| UI-P5 | ¿Cerrar la WO de un toque? | **Solo en el Dashboard**, como la maqueta (se reabre desde la WO). En la WO y el Truck sigue confirmando (D27 cambiado) |
+| UI-P6 | ¿Stepper en el Dashboard o en el Yard? | **Solo en el Truck** (sin cambios): el Dashboard dice el paso en la fila y en el Yard el carril es el paso |
 
 ## Diferencias menores aceptadas
 

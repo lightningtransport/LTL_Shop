@@ -1,11 +1,13 @@
 # Propuesta: rediseño de la pantalla de Safety (Quality Check)
 
-**Clasificación:** PROPUESTA — no es el estado actual de la app.
-**Fecha:** 2026-10-07 · **Rama:** `claude/qc-screen-proposal` · **Aprobada (2026-10-07) y construida en la rama `claude/qc-redesign` (etapas QC-1 a QC-3).**
+> **Estado (2026-10-14): construida y en producción** — PR 259. Cómo funciona hoy: [`SYSTEM.md`](../../SYSTEM.md). Esta propuesta queda como referencia de diseño.
+
+**Clasificación:** PROPUESTA (ya construida; ver arriba).
+**Fecha:** 2026-10-07 · **Rama:** `claude/qc-screen-proposal` · **Aprobada (2026-10-07) y construida en PR 259 (etapas QC-1 a QC-3).**
 **Pantalla:** `/qc` → `apps/web/src/components/quality-check-page.tsx`
 **Reglas que no cambian:** D19 (el QC lo hace Safety; toma, aprueba o devuelve con nota) y
 [HU-QC1](../../USER_FLOWS.md) (quién ve qué y qué se rechaza). Hallazgos en
-[`OPEN_ISSUES.md` §1j](../../OPEN_ISSUES.md) y en la auditoría
+[`OPEN_ISSUES.md` §1j](../../archive/OPEN_ISSUES_HISTORIAL_2026-10.md) y en la auditoría
 [`docs/ux-audit/safety-qc/`](../../ux-audit/safety-qc/00-contexto.md) (skills audit-ux 0, 1, 4 y 6).
 
 ## 1. Cómo verla

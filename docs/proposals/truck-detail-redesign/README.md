@@ -1,10 +1,12 @@
 # Propuesta: rediseño de Truck Detail (Admin)
 
+> **Estado (2026-10-14): construida y en producción** — PR 244 (Etapas 1–8, LTR-190). Cómo funciona hoy: [`SYSTEM.md`](../../SYSTEM.md). Esta propuesta queda como referencia de diseño.
+
 **Clasificación:** PROPUESTA, ya construida (ver Etapa 8 abajo).
 **Fecha:** 2026-10-05 · **Rama:** `claude/ui-screen-improvement-baa9cf` · **Sin PR todavía.**
 **Pantalla:** `/admin/trucks/[id]` → `apps/web/src/components/admin-truck-detail.tsx`
 
-**Etapa 8 (2026-10-06): construido igual a la maqueta** (`mockup.html`): "Truck 601" con "Not Ready · paso", tarjeta de pasos con colores, avisos por tipo, Work Plan en una tarjeta y el panel Add work de 460 px. Lo que quedó distinto está en [`PENDIENTES_UI.md`](../PENDIENTES_UI.md).
+**Etapa 8 (2026-10-06): construido igual a la maqueta** (`mockup.html`): "Truck 601" con "Not Ready · paso", tarjeta de pasos con colores, avisos por tipo, Work Plan en una tarjeta y el panel Add work de 460 px. Lo que quedó distinto está en [`PENDIENTES_UI.md`](../../archive/PENDIENTES_UI.md).
 **Base:** auditoría [`docs/ux-audit/admin-truck-wo/`](../../ux-audit/admin-truck-wo/) (05
 navegación e IA, 04 jerarquía visual) y la propuesta hermana
 [`wo-detail-redesign/`](../wo-detail-redesign/README.md).

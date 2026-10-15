@@ -23,8 +23,9 @@ La columna **Fila** es el número de la prueba que lo comprueba
 (`apps/api/test-real/`, resultados en `apps/api/test-real/results/matrix.md`).
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
-**Resultado de la auditoría:** 61 comprobaciones · 59 funcionan · 0 fallan
-· 2 no aplican.
+**Resultado de la auditoría (2026-09-29):** 61 comprobaciones · 59 funcionan · 0 fallan
+· 2 no aplican. Desde entonces se sumaron filas hasta A97; la cuenta al día la da
+`npm run test:real --workspace=@ltl-shop/api`.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
 respuestas confirman lo construido y 7 muestran huecos (sección 7).
@@ -513,14 +514,12 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 
 ---
 
-## 7. Historias que el taller necesita y no están construidas
+## 7. Historias agregadas después del cuestionario de operación
 
 Salen del cuestionario de operación. Ninguna se construye hasta que su
 decisión esté escrita en [`DECISIONS.md`](DECISIONS.md).
 
-### HU-QC1 · Aprobar un camión (J11) — ✅ construido (D19)
-
-Ahora vive en la sección 5, "Safety".
+HU-QC1 (aprobar un camión, D19) y HU-M9 (dar de alta al personal, D22) nacieron aquí y ahora viven en las secciones 5 y 2.
 
 ### HU-ME5 · Mi día de trabajo se cierra solo (J7) — ✅ construido (D20, LTR-186)
 
@@ -545,10 +544,6 @@ Ahora vive en la sección 5, "Safety".
 ### HU-ME6 · Mi reloj corre en un solo camión (J7) — ✅ construido (D21, LTR-186)
 
 Ver la fila E7 en HU-ME2.
-
-### HU-M9 · Dar de alta al personal (J12) — decidido (D22)
-
-Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
 ### HU-M12 · Saber cuánto cuesta cada camión (J13) — ✅ construido (D32, bloque S4: PC-1 a PC-4); el cobro a Finanzas es HU-M13 (D34)
 
@@ -676,7 +671,7 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 **Función:** la hoja en papel del taller pasa a la app. Reemplaza los dos botones de HU-M2. Maqueta: [`proposals/inspection-checklist/mockup.html`](proposals/inspection-checklist/mockup.html).
 
 **Flujo**
-1. Admin → **Trucks** → el camión. El siguiente paso dice **Inspect the truck · Start inspection**. En el Dashboard la fila de inspección tiene el mismo botón (reemplaza los dos botones de PENDIENTES_UI P3).
+1. Admin → **Trucks** → el camión. El siguiente paso dice **Inspect the truck · Start inspection**. En el Dashboard la fila de inspección tiene el mismo botón (reemplaza los dos botones de UI-P3 de `archive/PENDIENTES_UI.md`).
 2. Recorre **Interior** (15), **Engine & fluids** (12) y **Exterior** (26), y marca cada punto **OK, Defect o N/A**. **Mark rest OK** marca lo que falta de una sección.
 3. En un **Defect** escribe qué tiene. La hoja muestra qué Job va a crear, o "nota en Detailing" si es de limpieza.
 4. **Tires:** toca cada llanta del diagrama (LF, RF, LFO … RRO) y anota **PSI** y **tread /32**. **Next tire** sigue en orden y se ve la lectura anterior. En la computadora también hay una tabla.
@@ -759,6 +754,34 @@ Ahora vive en la sección 2, "Manager". Camiones: fuera por ahora.
 
 **Construido (2026-10-13):** prueba A88; probado a mano en Setup → Inspection checklist.
 
+### HU-M18 · Dar de alta un camión y conectarle Samsara (J12, J15) — 🔲 por construir (D44, LTR-215)
+
+**Quién:** el Manager y el System Admin.
+
+**Flujo (alta)**
+1. Admin → **Trucks** → **Add truck**.
+2. Escribe el número (obligatorio) y lo que sepa: VIN, marca, modelo, año, placas, dueño, compañía, dispatcher, aseguradora.
+3. **Save.** El camión aparece en Trucks y en New Work Order.
+
+**Flujo (conectar Samsara, cuando el camión ya está en el patio)**
+1. En la ficha del camión, **Connect Samsara**.
+2. La lista muestra los vehículos de Samsara sin camión; arriba, el que coincide por VIN o número, marcado "Suggested".
+3. Elige el vehículo. Lo vacío de la ficha se llena con lo de Samsara; lo que difiere aparece lado a lado ("Yours · Samsara") y elige cuál queda.
+4. **Connect.** Desde la próxima sincronización el camión tiene millas, ubicación y fallas.
+
+**Resultado:** un camión nuevo entra al taller sin pasar por Ninox ni por un script, y su ficha queda completa con Samsara.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| El número ya existe | No deja guardar y lo dice | 🔲 | — |
+| El VIN ya es de otro camión | Lo avisa con enlace al otro camión | 🔲 | — |
+| La sincronización ve un VIN que coincide exacto | Lo propone en la ficha ("Samsara vehicle 1234 matches this VIN · Connect"); no conecta solo | 🔲 | — |
+| El vehículo de Samsara ya es de otro camión | No aparece en la lista | 🔲 | — |
+| Se desconecta Samsara | Deja de sincronizar; las últimas lecturas y las fallas quedan en el historial | 🔲 | — |
+| Desactiva un camión con una Work Order abierta | No deja; dice cuál cerrar primero | 🔲 | — |
+| Desactiva un camión sin trabajo abierto | Sale de las listas y de New Work Order; su historial y costos siguen | 🔲 | — |
+| Un mecánico o Safety intenta agregar o editar | No puede (403) | 🔲 | — |
+
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 
 **Flujo**
@@ -835,8 +858,9 @@ una historia:
 |---|---|---|---|---|---|
 | — | **Nada abierto** (2026-10-09). El #3 (Custom Jobs sin revisar) se cerró con la bandeja de revisión (LTR-57, filas A76–A79) | — | — | — | — |
 
-**B** bloqueante · **C** confuso · **E** estético. Detalle técnico en
-[`OPEN_ISSUES.md`](OPEN_ISSUES.md).
+**B** bloqueante · **C** confuso · **E** estético. Lo pendiente vive en Linear;
+resumen en [`OPEN_ISSUES.md`](OPEN_ISSUES.md) e historial en
+[`archive/OPEN_ISSUES_HISTORIAL_2026-10.md`](archive/OPEN_ISSUES_HISTORIAL_2026-10.md).
 
 ### Huecos de operación (no construido)
 
@@ -847,4 +871,4 @@ una historia:
 | ~~G7~~ | El reloj corre en un solo camión a la vez — **hecho (D21, HU-ME6, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | ~~G3, G4~~ | Ayudante en un Job y taller externo — **hechos (D23, D24, HU-M10, HU-M11, 2026-10-05)** | Manager | LTR-188 |
 | G6 | Trailers — después de salir en vivo (P11) | Manager | LTR-56 |
-| G8 | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — decidido (D35, D42, HU-M14, HU-M15; P12 cerrada) | Manager, mecánico | LTR-202 |
+| ~~G8~~ | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — **hecho (D35, D42, HU-M14, HU-M15)** | Manager, mecánico | LTR-202 |

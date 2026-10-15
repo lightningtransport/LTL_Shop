@@ -1,6 +1,8 @@
 # Propuesta: rediseño de las pantallas del Mecánico General (Standard)
 
-**Clasificación:** PROPUESTA — no es el estado actual de la app.
+> **Estado (2026-10-14): construida y en producción** — PR 256–257 (bloque A) y 261 (bloque B). Cómo funciona hoy: [`SYSTEM.md`](../../SYSTEM.md). Esta propuesta queda como referencia de diseño.
+
+**Clasificación:** PROPUESTA (ya construida; ver arriba).
 **Fecha:** 2026-10-07 · **Rama:** `claude/mechanic-standard-proposal` · **Sin aprobar; sin construir.**
 **Pantallas:**
 - Inicio "My Assigned Work": `/mechanic/standard` → `apps/web/src/app/page.tsx`.
@@ -18,7 +20,7 @@
 - D23: el ayudante tiene su propio Job "· helper".
 - [J6, J7, J8 y HU-ME1 a HU-ME6](../../USER_FLOWS.md).
 
-Hallazgos en [`OPEN_ISSUES.md` §1k](../../OPEN_ISSUES.md) (MG1–MG9), en la auditoría
+Hallazgos en [`OPEN_ISSUES.md` §1k](../../archive/OPEN_ISSUES_HISTORIAL_2026-10.md) (MG1–MG9), en la auditoría
 [`docs/ux-audit/mecanico-general/`](../../ux-audit/mecanico-general/00-contexto.md) (skills audit-ux 0, 1, 4, 6
 y 7) y en el [resumen de los roles de campo](../../ux-audit/RESUMEN-roles-de-campo.md) §2 y §4 (bloque B).
 Es la maqueta del bloque B para el Mecánico General.
