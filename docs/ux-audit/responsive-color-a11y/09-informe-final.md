@@ -56,6 +56,31 @@ Decidido: pantallas de datos a todo el ancho; menú lateral fijo desde 1024 px; 
 | UX-4-002 Menú lateral a 768 px | Menú fijo desde 1024 px / menú de iconos entre 768 y 1023 / dejar como está | Menú fijo desde 1024 px |
 | UX-4-102 "Ready to close" | Azul (acción del Manager) / ámbar (espera) | Azul, como en el stepper, el Dashboard y la WO |
 
+## Aplicado (2026-10-15, rama `claude/audit-responsive-color-a11y`, commit «Quick wins UX audit responsive-color-a11y»)
+
+Los 14 arreglos rápidos y las tres decisiones del dueño. Falta comprobarlos en el navegador en claro y oscuro.
+
+| Hallazgo | Estado | Cómo quedó |
+|---|---|---|
+| UX-4-001 | Aplicado | `AdminFilterToolbar` decide por **container query** (variante arbitraria `[@container(min-width:56rem)]`, sin plugin): filtros en línea con tarjeta ≥ 896 px, si no el botón "Filters". Buscador `sm:min-w-[14rem] sm:flex-[1_1_16rem]`; en el teléfono ocupa lo que queda. Work Orders (barra propia) con `md:min-w-[14rem]` |
+| UX-4-002 | Aplicado (decisión) | Menú lateral fijo desde `lg`; entre 768 y 1023 px el menú del encabezado. `--admin-aside` es 0 debajo de `lg`; las barras fijas usan `lg:left-[var(--admin-aside)]` |
+| UX-4-003 | Aplicado (decisión) | `AdminShell` usa `max-w-none` para una lista de rutas exactas (Dashboard, Yard y las 10 listas); detalle de WO y Truck, Setup y formularios siguen en 1440 px |
+| UX-4-004, 005, 006 | Aplicado | Placeholders cortos ("Search trucks", "Search work orders", "Search purchases", "Search outside repairs" y ES) y la descripción completa en `aria-label`. Yard `w-full sm:w-80` |
+| UX-4-007 | Aplicado | Shop workflow: 3 columnas desde `xl`; debajo, el equipo bajo el nombre del paso. Chip `max-w-full`, nombre `truncate` con `title` |
+| UX-4-008 / UX-2-011 | Aplicado | Avatar: máximo 3 caracteres; con 3, letra de 9/10/11 px (`sm`/`md`/`lg`) y `tracking-tight` |
+| UX-4-009 | Aplicado | Purchases: `whitespace-nowrap` en número, fecha y total |
+| UX-4-102 | Aplicado (decisión) | "Ready to close" azul: `status-chips.ts` y el chip del Truck pasan a `default`; el aviso de la tarjeta de WO a `bg-primary/5` |
+| UX-4-109 | Parcial | `theme-color` oscuro `#0f172a`. `login-loader` y `pm-service-card` (`bg-white` del pomo) sin cambiar |
+| UX-2-001 | Aplicado | `--input` propio (claro `oklch(0.64 0.02 256)`, oscuro `oklch(0.55 0.035 257)`); `.field`, la casilla de `MultiSelect` y las etiquetas de búsqueda (Yard ×2, mechanic picker, category job list) con `border-input` |
+| UX-2-002 | Aplicado | Token `--primary-text` + color Tailwind `primary-text`, en `Badge default`, chips seleccionados (Yard, Add work, categoría, QC), píldoras del stepper y el enlace sobre `hover:bg-accent` de Trucks del mecánico |
+| UX-2-003 | Aplicado | Llantas: icono (`Check` / `Eye` / `OctagonAlert`) además del color en tiles, mini tiles y leyenda; `aria-label` con posición, PSI, tread y estado; puntos con `bg-destructive-text` y `bg-warning-foreground dark:bg-warning` |
+| UX-2-005 | Aplicado | Pista apagada `bg-muted-foreground/75` |
+| UX-2-006 | Aplicado | Subrayado siempre en enlaces dentro de frases: banner de fallas (y "no emparejado"), línea de QC del Dashboard, mapa del Truck, costos del WO, "Reload" en el error del Truck |
+| UX-2-007 | Aplicado | New Work Order (mecánico): fila resaltada `bg-accent` con texto `foreground` (no `accent-foreground`, que es azul y da 4,48:1 sobre `accent`); Admin: `aria-selected:bg-accent` para la fila activa con teclado |
+| UX-2-013 | Aplicado | Selectores de factura (Purchase, Outside repair, diálogo) y `MultiSelect`: anillo en la etiqueta con `has-[:focus-visible]`; mechanic picker con `focus-within:ring-2` |
+| UX-2-015 | Aplicado | "Add to team": `aria-label` con el nombre. Los demás checkbox tienen texto propio o `aria-label` |
+| UX-4-110 | Aplicado (documento) | Tabla estado → rol en `docs/design-system/foundations.md`, con `primary-text` e `input` |
+
 ## Trabajo más grande (M)
 - **Tabla de estado → token** en `docs/design-system/foundations.md` (UX-4-110). Rol `info`, ámbar solo para "algo va mal" y un nombre de par por rol (UX-4-101, 103, 104, 108). Propuesta completa en `04b-color-semantico.md`.
 - **Retirar la familia `--shop-*`** (UX-4-107).

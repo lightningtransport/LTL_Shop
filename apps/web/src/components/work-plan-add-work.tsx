@@ -330,7 +330,7 @@ export function WorkPlanAddWork({
                   disabled={disabled}
                   className={cn(
                     'min-h-9 rounded-md border px-2.5 text-xs font-medium',
-                    category.id === categoryId ? 'border-primary bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                    category.id === categoryId ? 'border-primary bg-primary/15 text-primary-text' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                   )}
                   onClick={() => {
                     setCategoryId(category.id);

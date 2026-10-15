@@ -38,7 +38,7 @@ export function AdminTruckInspection({ truckId, locale }: { truckId: string; loc
       locale={locale}
       doneHref={truckHref}
       standardMechanics={standardMechanics}
-      barClassName="app-safe-bottom md:left-[var(--admin-aside)]"
+      barClassName="app-safe-bottom lg:left-[var(--admin-aside)]"
       onSaved={(message) => {
         showToast('success', message);
         void mutate(`/api/admin/trucks/${truckId}`);

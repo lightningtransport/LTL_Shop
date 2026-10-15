@@ -88,7 +88,8 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
     <Card className="min-w-0 p-3">
       <form role="search" className="min-w-0" onSubmit={applyFilters}>
         <div className="flex min-w-0 items-end gap-2 md:flex-nowrap md:gap-1.5">
-          <label className="min-w-0 flex-1 space-y-1 md:flex-[1.35]">
+          {/* UX-4-005: the search keeps 14rem next to the inline filters; short placeholder, full aria-label. */}
+          <label className="min-w-0 flex-1 space-y-1 md:min-w-[14rem] md:flex-[1.35]">
             <span className="sr-only md:not-sr-only md:block md:truncate md:text-xs md:font-medium" title={messages.search}>{messages.search}</span>
             <Input
               type="search"

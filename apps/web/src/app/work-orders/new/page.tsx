@@ -331,7 +331,8 @@ export default function NewWorkOrderPage() {
                     role="option"
                     aria-selected={results[activeResult]?.id === t.id}
                     variant="ghost"
-                    className="w-full justify-start rounded-none px-4 py-3 text-left font-normal hover:bg-shop-accent focus:bg-shop-accent"
+                    // UX-2-007: the highlighted row is the accent tint with dark text (the solid `shop-accent` blue was 2.8:1).
+                    className="w-full justify-start rounded-none px-4 py-3 text-left font-normal hover:bg-accent hover:text-foreground focus:bg-accent focus:text-foreground aria-selected:bg-accent aria-selected:text-foreground"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => void selectTruck(t)}
                   >

@@ -76,6 +76,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
         search={search}
         onSearchChange={setSearch}
         searchLabel={messages.pcSearchPurchases}
+        searchPlaceholder={messages.pcSearchPurchasesPlaceholder}
         filtersLabel={messages.filters}
         closeLabel={messages.closeDialog}
         clearLabel={messages.pcClearFilters}
@@ -143,6 +144,8 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
               key: 'invoice',
               header: messages.pcColInvoice,
               primary: true,
+              // UX-4-009: number, date and total stay on one line in a narrow table.
+              className: 'whitespace-nowrap',
               cell: (item) => (
                 <div className={item.voidedAt ? 'text-muted-foreground line-through' : undefined}>
                   <AdminNavLink className="tap-inline font-mono font-semibold text-primary hover:underline" href={`/admin/parts/purchases/${item.id}?from=${encodeURIComponent(here)}`}>{item.invoiceNumber}</AdminNavLink>
@@ -150,13 +153,14 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
                 </div>
               ),
             },
-            { key: 'date', header: messages.pcColDate, cell: (item) => formatInvoiceDate(item.invoiceDate, locale) },
+            { key: 'date', header: messages.pcColDate, className: 'whitespace-nowrap', cell: (item) => formatInvoiceDate(item.invoiceDate, locale) },
             { key: 'vendor', header: messages.pcColVendor, cell: (item) => item.vendor.name },
             { key: 'lines', header: messages.pcColLines, cell: (item) => adminCountLabel(item.lineCount, messages.pcLinesCountOne, messages.pcLinesCount) },
             { key: 'trucks', header: messages.pcColTrucks, cell: (item) => purchaseTrucksLabel(item, messages) },
             {
               key: 'total',
               header: messages.pcColTotal,
+              className: 'whitespace-nowrap',
               cell: (item) => (
                 <span className="flex flex-wrap items-center gap-2">
                   <span className={item.voidedAt ? 'tabular-nums text-muted-foreground line-through' : 'tabular-nums font-medium'}>{formatCents(item.totalCents, locale)}</span>

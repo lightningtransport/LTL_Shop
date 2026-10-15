@@ -17,12 +17,15 @@ Defined as CSS custom properties in `apps/web/src/app/globals.css`:
 | `--card`, `--card-foreground` | Cards / panels |
 | `--popover`, `--popover-foreground` | Dialogs |
 | `--primary`, `--primary-foreground` | Primary actions (LTL blue) |
+| `--primary-text` | Blue text on a blue tint: `Badge default` ("In progress", "New", "Yours", "Ready to close"), selected chips (`border-primary bg-primary/15 text-primary-text`), stepper pills, a blue link on `hover:bg-accent`. Light `oklch(0.48 0.14 248)` (5.0:1 on `primary/15` over the card); dark = `--primary`. UX-2-002 (2026-10-15) |
 | `--secondary`, `--secondary-foreground` | Secondary / success-leaning actions |
 | `--muted`, `--muted-foreground` | Quiet surfaces and helper text |
 | `--accent`, `--accent-foreground` | Hover / selected chrome |
 | `--destructive`, `--destructive-foreground` | Danger fills (buttons, the critical badge) |
 | `--destructive-text` | Danger text on the page, a card, or a `destructive/10` tint (`text-destructive-text`). Errors use this, never `text-destructive` |
-| `--border`, `--input`, `--ring` | Hairlines, fields, focus ring |
+| `--border` | Hairlines and separators (cards, table rows, chips). Not for controls |
+| `--input` | Borders of controls: `.field` (Input, Select, Textarea), search labels, an unchecked `MultiSelect` box (`border-input`). Its own value, ≥ 3:1: light `oklch(0.64 0.02 256)`, dark `oklch(0.55 0.035 257)`. UX-2-001 (2026-10-15); before, it equaled `--border` (1.2:1) and nothing used it |
+| `--ring` | Focus ring |
 | `--success` | Positive status |
 | `--warning`, `--warning-foreground`, `--warning-surface` | Caution banners (Yard Phase 1) |
 | `--sunken` | A step below the card: table headers, folded groups (R6) |
@@ -45,6 +48,25 @@ LTR-166 darkened the light `--muted-foreground` / `--shop-muted` (0.5544 → 0.5
 because `text-destructive` in dark mode measured 1.78:1. `--primary` is unchanged
 (white on it is 5.1:1). Check a new pair with `npm run ui-audit` (see
 `apps/web/e2e/ui-audit/README.md`).
+
+### State → color role (UX-4-110, 2026-10-15)
+
+Each state takes its role from `apps/web/src/lib/status-chips.ts` (or the screen's map that mirrors it), and
+no state is told by color alone: there is always a word or an icon. What the code does today:
+
+| State | Role → tokens | Sign besides the color |
+|---|---|---|
+| Created, To do, Cancelled, intermediate phases, Waiting for Safety, Inactive, Low / Normal | neutral → `outline` / `secondary` (`muted`, `muted-foreground`) | Text; empty circle for To do |
+| In progress, External, Out of shop, Unassigned, "New", "Yours", "Proposed" | primary → `Badge default` (`bg-primary/10 text-primary-text`) | Text; icon where the screen has one (`Building2` for External) |
+| **Ready to close** | primary → `Badge default` / stepper `ready` pill / `bg-primary/5` hint. Blue everywhere (UX-4-102, owner decision) | Text + `Flag` |
+| Completed, Ready to Go, In service, tire OK | success → `text-success`, `bg-success/10` | Text; `Check` |
+| Paused, Blocked, High priority, Leaving soon with work, Check engine / Warning, tire Watch, stale GPS, Needs evaluation, Ready for approval | warning → `warning-foreground` (light) / `warning` (dark) on `warning-surface` or `warning/10`; dots `bg-warning-foreground dark:bg-warning` | `OctagonPause` (Blocked), `Pause`, `CalendarClock`, `TriangleAlert`; tire `Eye` |
+| Critical, STOP, missing required steps, tire Fix, errors | danger → `destructive-text` on `destructive/10–20`; dots and bars `bg-destructive-text` (the `destructive` fill is near black in dark, 1.46:1) | `OctagonAlert` / `CircleAlert` |
+| Main action, link, selected filter or chip, focus | primary → `primary` (fills, links); `primary-text` on a primary tint | Links inside a sentence are always underlined (UX-2-006); `aria-pressed` on chips |
+
+Not done yet (see `docs/ux-audit/responsive-color-a11y/04b-color-semantico.md`): an `info` role separate from
+`primary` (UX-4-101), moving "your turn" states (Needs evaluation, Ready for approval) from warning to info
+(UX-4-103), and the clock-running green (UX-4-104).
 
 ## Shop channel tokens
 
@@ -148,13 +170,14 @@ The tokens already matched the mockups (Stage 7). Stage 8 changed how they are u
 - **Motion:** `anim-sheet-in`, `anim-pop-in`, `anim-flash`, `anim-spin`, all off with reduced motion.
 - **Segmented control:** `.seg` (`aria-checked` / `aria-pressed`) for Priority.
 - **Mechanic tones:** sky, violet, emerald, rose, cyan, amber, slate (AA in both themes).
+- **Avatar initials:** at most 3 characters; with 3 (role codes like "MPM", "MG1") the letter drops to 9 / 10 / 11 px for `sm` / `md` / `lg` with `tracking-tight` so it fits the circle (UX-4-008). The avatar is decorative (the name is beside it), the one exception to "nothing under 12px".
 
 ## Layout shells
 
 | Surface | Constraint |
 |---|---|
 | Mechanic / auth (`.app-shell`) | `max-w-md` mobile, `md:max-w-xl` desktop; safe-area padding |
-| Admin (`AdminShell` main) | `max-w-[1500px]`; sidebar from `md` |
+| Admin (`AdminShell` main) | Data screens (Dashboard, Yard, the lists) `max-w-none`; Work Order and Truck detail, Setup and forms `max-w-[1440px]` (`FULL_WIDTH_PATHS` in `admin-shell.tsx`, UX-4-003). Sidebar fixed from `lg` (1024 px); below, the header menu (UX-4-002) |
 
 Mechanic remains mobile-first. The `md:max-w-xl` widen is a cheap desktop
 polish only; do not turn mechanic Home into an Admin-density layout.

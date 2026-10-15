@@ -27,7 +27,8 @@ export function AdminTruckFaults({ truckId, locale, messages }: { truckId: strin
         data.syncedAt ? <p className="text-xs text-muted-foreground">{fillPlaceholders(messages.truckFaultsSynced, { ago: formatAdminAgo(data.syncedAt, locale) })}</p> : null
       ) : (
         <p className="rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">
-          {messages.truckFaultsNotPaired} <Link className="text-primary hover:underline" href="/admin/setup/samsara">{messages.samsaraNav}</Link>
+          {/* UX-2-006: links inside a sentence are always underlined. */}
+          {messages.truckFaultsNotPaired} <Link className="text-primary underline underline-offset-2" href="/admin/setup/samsara">{messages.samsaraNav}</Link>
         </p>
       )}
 
@@ -135,7 +136,8 @@ export function TruckFaultsBanner({ truckId, href, messages }: { truckId: string
     >
       <Icon aria-hidden="true" className="size-4 shrink-0" />
       <span>{title}{data.active.length ? ` · ${data.active.length === 1 ? messages.truckFaultsBannerOneCode : fillPlaceholders(messages.truckFaultsBannerCodes, { count: String(data.active.length) })}` : ''}</span>
-      <Link className="font-medium underline-offset-2 hover:underline" href={href}>{messages.truckFaultsSee}</Link>
+      {/* UX-2-006: same color as the banner text, so the underline is what marks it as a link. */}
+      <Link className="font-medium underline underline-offset-2" href={href}>{messages.truckFaultsSee}</Link>
     </div>
   );
 }

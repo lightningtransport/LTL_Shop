@@ -7,7 +7,8 @@ function BrowserThemeColor() {
   const { resolvedTheme } = useTheme();
 
   React.useEffect(() => {
-    const themeColor = resolvedTheme === 'dark' ? '#18243b' : '#ffffff';
+    // UX-4-109: the real dark background (--background, slate-900), so the iPhone status bar matches the page.
+    const themeColor = resolvedTheme === 'dark' ? '#0f172a' : '#ffffff';
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', themeColor);

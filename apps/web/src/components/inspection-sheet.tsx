@@ -23,12 +23,14 @@ import {
   ChevronDown,
   CircleCheck,
   CircleDot,
+  Eye,
   Info,
   LayoutGrid,
   List,
   Lock,
   MessageSquare,
   Minus,
+  OctagonAlert,
   PenLine,
   Plus,
   TriangleAlert,
@@ -98,7 +100,24 @@ const TIRE_TEXT: Record<Tone, string> = {
   watch: 'text-warning-foreground dark:text-warning',
   fix: 'text-destructive-text',
 };
-const DOT: Record<Tone, string> = { empty: 'bg-border', ok: 'bg-success', watch: 'bg-warning', fix: 'bg-destructive' };
+// UX-2-003: the dots use the text tones, which reach 3:1 in both themes (the `destructive` fill is near black in dark).
+const DOT: Record<Tone, string> = { empty: 'bg-border', ok: 'bg-success', watch: 'bg-warning-foreground dark:bg-warning', fix: 'bg-destructive-text' };
+// UX-2-003: a second sign besides the color, so OK / Watch / Fix read without telling green, amber and red apart.
+const TIRE_ICON: Record<Tone, typeof Check | null> = { empty: null, ok: Check, watch: Eye, fix: OctagonAlert };
+
+function tireStateLabel(tone: Tone, copy: InspectionCopy) {
+  return tone === 'ok' ? copy.legendOk : tone === 'watch' ? copy.legendWatch : tone === 'fix' ? copy.legendFix : '';
+}
+
+/** UX-2-003: what a screen reader hears for a tire: position, PSI, tread and state. */
+function tireAriaLabel(position: TirePosition, psi: number | null | undefined, tread: number | null | undefined, tone: Tone, copy: InspectionCopy) {
+  const parts = [
+    psi !== null && psi !== undefined ? `${psi} PSI` : null,
+    tread !== null && tread !== undefined ? `${tread}/32` : null,
+    tireStateLabel(tone, copy) || null,
+  ].filter(Boolean);
+  return parts.length ? `${position}: ${parts.join(', ')}` : position;
+}
 
 function toneOf(status: TireReadingStatus | null | undefined): Tone {
   if (!status) return 'empty';
@@ -670,13 +689,13 @@ function TiresCard({
               {AXLES.map((axle, index) => (
                 <div key={axle.key} className={cn(index === 1 && 'mt-6', index === 2 && 'mt-3')}>
                   <div className="flex items-center justify-between gap-1.5">
-                    <div className="flex gap-1.5">{axle.left.map((position) => <TireButton key={position} position={position} tire={draft.tires[position]} tone={toneOf(statusOf(position))} onClick={() => onOpenTire(position)} />)}</div>
+                    <div className="flex gap-1.5">{axle.left.map((position) => <TireButton key={position} copy={copy} position={position} tire={draft.tires[position]} tone={toneOf(statusOf(position))} onClick={() => onOpenTire(position)} />)}</div>
                     <div className="flex flex-1 flex-col items-center gap-1">
                       <span className="text-xs text-muted-foreground">{axleLabel(axle.key, copy)}</span>
                       <div aria-hidden="true" className="h-0.5 w-full bg-[repeating-linear-gradient(90deg,var(--border)_0_6px,transparent_6px_10px)]" />
                       <span className="tnum text-xs text-muted-foreground">{axle.key === 'steer' ? limits.steerTargetPsi : limits.driveTargetPsi} PSI</span>
                     </div>
-                    <div className="flex gap-1.5">{axle.right.map((position) => <TireButton key={position} position={position} tire={draft.tires[position]} tone={toneOf(statusOf(position))} onClick={() => onOpenTire(position)} />)}</div>
+                    <div className="flex gap-1.5">{axle.right.map((position) => <TireButton key={position} copy={copy} position={position} tire={draft.tires[position]} tone={toneOf(statusOf(position))} onClick={() => onOpenTire(position)} />)}</div>
                   </div>
                 </div>
               ))}
@@ -696,7 +715,7 @@ function TiresCard({
                   const number = (value: string) => (value === '' ? null : Math.max(0, Math.round(Number(value))));
                   return (
                     <tr key={position}>
-                      <td className="px-4 py-1.5"><span className="inline-flex items-center gap-2"><span className={cn('size-2 rounded-full', DOT[toneOf(statusOf(position))])} /><span className="font-medium">{position}</span></span></td>
+                      <td className="px-4 py-1.5"><span className="inline-flex items-center gap-2"><span aria-hidden="true" className={cn('size-2 rounded-full', DOT[toneOf(statusOf(position))])} /><span className="font-medium">{position}</span>{toneOf(statusOf(position)) !== 'empty' ? <span className="sr-only">{tireStateLabel(toneOf(statusOf(position)), copy)}</span> : null}</span></td>
                       <td className="px-2 py-1.5"><input type="number" inputMode="numeric" aria-label={`${position} PSI`} className="field tnum !min-h-9 w-20 !py-1.5" value={tire?.psi ?? ''} placeholder={String(tireTargets(position, limits).targetPsi)} onChange={(event) => onTire(position, { psi: number(event.target.value), tread: tire?.tread ?? null })} /></td>
                       <td className="px-2 py-1.5"><input type="number" inputMode="numeric" aria-label={`${position} tread`} className="field tnum !min-h-9 w-16 !py-1.5" value={tire?.tread ?? ''} onChange={(event) => onTire(position, { psi: tire?.psi ?? null, tread: number(event.target.value) })} /></td>
                       <td className="tnum px-4 py-1.5 text-right text-xs text-muted-foreground">{last ? `${last.psi} · ${last.tread}/32` : '—'}</td>
@@ -708,9 +727,10 @@ function TiresCard({
           </div>
         )}
         <div className="flex flex-wrap gap-x-3 gap-y-1 px-4 pb-3 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-success" />{copy.legendOk}</span>
-          <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-warning" />{copy.legendWatch}</span>
-          <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-destructive" />{copy.legendFix}</span>
+          {(['ok', 'watch', 'fix'] as const).map((tone) => {
+            const Icon = TIRE_ICON[tone]!;
+            return <span key={tone} className="inline-flex items-center gap-1"><span aria-hidden="true" className={cn('size-2 rounded-full', DOT[tone])} /><Icon aria-hidden="true" className={cn('size-3', TIRE_TEXT[tone])} />{tireStateLabel(tone, copy)}</span>;
+          })}
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t bg-sunken px-4 py-2.5 text-xs text-muted-foreground">
           <span>{copy.targets(limits.steerTargetPsi, limits.driveTargetPsi)}</span>
@@ -721,9 +741,11 @@ function TiresCard({
   );
 }
 
-function TireButton({ position, tire, tone, onClick }: { position: TirePosition; tire: TireAnswer | undefined; tone: Tone; onClick: () => void }) {
+function TireButton({ copy, position, tire, tone, onClick }: { copy: InspectionCopy; position: TirePosition; tire: TireAnswer | undefined; tone: Tone; onClick: () => void }) {
+  const Icon = TIRE_ICON[tone];
   return (
-    <button type="button" onClick={onClick} data-testid={`tire-${position}`} className={cn('flex h-[78px] w-[60px] flex-col items-center justify-center rounded-lg border-2 hover:ring-2 hover:ring-ring/40 sm:w-16', TIRE_TONE[tone])} aria-label={position}>
+    <button type="button" onClick={onClick} data-testid={`tire-${position}`} className={cn('relative flex h-[78px] w-[60px] flex-col items-center justify-center rounded-lg border-2 hover:ring-2 hover:ring-ring/40 sm:w-16', TIRE_TONE[tone])} aria-label={tireAriaLabel(position, tire?.psi, tire?.tread, tone, copy)}>
+      {Icon ? <Icon aria-hidden="true" className={cn('absolute right-1 top-1 size-3', TIRE_TEXT[tone])} /> : null}
       <span className="text-[11px] font-semibold text-muted-foreground">{position}</span>
       <span className={cn('tnum text-base font-semibold leading-tight', TIRE_TEXT[tone])}>{tire?.psi ?? '—'}</span>
       <span className="tnum text-xs text-muted-foreground">{tire?.tread !== null && tire?.tread !== undefined ? `${tire.tread}/32` : 'PSI'}</span>
@@ -822,7 +844,15 @@ export function MiniTires({
 }) {
   const tile = (position: TirePosition) => {
     const tone = toneOf(statusOf(position));
-    return <span key={position} title={position} className={cn('tnum grid h-9 w-10 place-items-center rounded-md border text-xs font-medium', TIRE_TONE[tone], TIRE_TEXT[tone])}>{psiOf(position) ?? '—'}</span>;
+    const Icon = TIRE_ICON[tone];
+    const label = tireAriaLabel(position, psiOf(position), null, tone, copy);
+    // UX-2-003: icon next to the PSI and the full state in the name, not only the color.
+    return (
+      <span key={position} role="img" aria-label={label} title={label} className={cn('tnum flex h-9 w-10 items-center justify-center gap-0.5 rounded-md border text-xs font-medium', TIRE_TONE[tone], TIRE_TEXT[tone])}>
+        {psiOf(position) ?? '—'}
+        {Icon ? <Icon aria-hidden="true" className="size-2.5 shrink-0" /> : null}
+      </span>
+    );
   };
   return (
     <div className="space-y-2 p-4">

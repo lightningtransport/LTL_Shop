@@ -185,7 +185,8 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border-primary/30 bg-primary/10 text-primary',
+        // UX-2-002: `primary-text` keeps "In progress", "New", "Yours" at AA on the blue tint.
+        default: 'border-primary/30 bg-primary/10 text-primary-text',
         secondary: 'border-border bg-muted text-muted-foreground',
         outline: 'border-border text-muted-foreground',
         destructive: 'border-destructive/50 bg-destructive/20 text-destructive-text',
@@ -315,7 +316,8 @@ export function MultiSelect({
               <label
                 key={option.value}
                 className={cn(
-                  'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors',
+                  // UX-2-013: the real checkbox is sr-only, so the label shows the keyboard focus.
+                  'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2',
                   checked ? 'border-primary bg-accent' : 'border-border hover:bg-muted',
                   option.disabled && 'cursor-not-allowed opacity-50',
                 )}
@@ -331,7 +333,8 @@ export function MultiSelect({
                   aria-hidden="true"
                   className={cn(
                     'flex size-5 shrink-0 items-center justify-center rounded border',
-                    checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background',
+                    // UX-2-001: an unchecked box needs the field border (3:1), not the separator one.
+                    checked ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background',
                   )}
                 >
                   {checked ? <Check className="size-3.5" /> : null}
@@ -824,14 +827,17 @@ export function AdminBackLink({
 
 /**
  * LTR-169: the Admin list filter bar, the same shape as Work Orders and Yard. A search field, then:
- * - with extra `filters`: inline from `md`; on phones a "Filters" button (with the active count) opens a sheet
- *   holding the fields and Clear / Apply;
+ * - with extra `filters`: inline when the card itself is at least 56rem wide; narrower (phones, tablets, a
+ *   window beside the sidebar) a "Filters" button (with the active count) opens a sheet holding the fields and
+ *   Clear / Apply. UX-4-001: decided by a container query on the card, not the window, so the search never
+ *   collapses next to the sidebar (Tailwind 3 arbitrary `@container` variant, no plugin);
  * - search only: Apply next to the field (Enter also applies), Clear from `md`.
  */
 export function AdminFilterToolbar({
   search,
   onSearchChange,
   searchLabel,
+  searchPlaceholder,
   filters,
   activeFilterCount = 0,
   onSubmit,
@@ -844,8 +850,10 @@ export function AdminFilterToolbar({
 }: {
   search: string;
   onSearchChange: (value: string) => void;
-  /** Visible placeholder and accessible name of the search field. */
+  /** Accessible name of the search field (and its placeholder unless `searchPlaceholder` is given). */
   searchLabel: string;
+  /** UX-4-006: a short visible placeholder when `searchLabel` is too long to fit. */
+  searchPlaceholder?: string;
   filters?: React.ReactNode;
   activeFilterCount?: number;
   onSubmit: () => void;
@@ -875,26 +883,27 @@ export function AdminFilterToolbar({
   );
 
   return (
-    <Card className={cn('min-w-0 p-3', className)}>
+    <Card className={cn('min-w-0 p-3 [container-type:inline-size]', className)}>
       <form role="search" className="flex min-w-0 items-end gap-2" onSubmit={submit}>
+        {/* UX-4-001: the search keeps 14rem once there is room for it; on the phone it takes what is left. */}
         <Input
           type="search"
           autoComplete="off"
           enterKeyHint="search"
-          className="min-w-0 flex-1"
+          className="min-w-0 flex-1 sm:min-w-[14rem] sm:flex-[1_1_16rem]"
           aria-label={searchLabel}
-          placeholder={searchLabel}
+          placeholder={searchPlaceholder ?? searchLabel}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
         />
         {filters ? (
           <>
-            <div className="hidden min-w-0 items-end gap-2 md:flex">{filters}{actions}</div>
+            <div className="hidden min-w-0 items-end gap-2 [@container(min-width:56rem)]:flex">{filters}{actions}</div>
             <Button
               ref={filtersButtonRef}
               type="button"
               variant="outline"
-              className="shrink-0 md:hidden"
+              className="shrink-0 [@container(min-width:56rem)]:hidden"
               aria-expanded={sheetOpen}
               onClick={() => setSheetOpen(true)}
             >

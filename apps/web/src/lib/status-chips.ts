@@ -42,7 +42,9 @@ export const PHASE_VARIANT = {
   [ReadinessPhase.READY_FOR_APPROVAL]: 'warning',
   [ReadinessPhase.READY_TO_GO]: 'success',
   [WorkPlanPhase.SHOP_WORK]: 'outline',
-  [WorkPlanPhase.READY_TO_CLOSE]: 'warning',
+  // UX-4-102 (owner, 2026-10-15): "Ready to close" is the Manager's next action, not a risk: blue (`default`),
+  // like the stepper, the Dashboard and the Work Order callout.
+  [WorkPlanPhase.READY_TO_CLOSE]: 'default',
 } as const satisfies Record<
   ReadinessPhase | typeof WorkPlanPhase.SHOP_WORK | typeof WorkPlanPhase.READY_TO_CLOSE,
   ChipVariant

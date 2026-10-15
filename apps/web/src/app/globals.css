@@ -12,6 +12,8 @@
   --popover-foreground: oklch(0.23 0.0038 106.6929);
   --primary: oklch(0.5358 0.1444 248.0435);
   --primary-foreground: oklch(1 0 0);
+  /* UX-2-002: blue text on a blue tint (Badge default, selected chips): 5.0:1 on primary/15 over the card. */
+  --primary-text: oklch(0.48 0.14 248);
   --secondary: oklch(0.7062 0.1363 140.8559);
   --secondary-foreground: oklch(1 0 0);
   --muted: oklch(0.9683 0.0069 247.8956);
@@ -22,7 +24,8 @@
   --destructive-text: oklch(0.5 0.19 27);
   --destructive-foreground: oklch(0.9842 0.0034 247.8575);
   --border: oklch(0.9288 0.0126 255.5078);
-  --input: oklch(0.9288 0.0126 255.5078);
+  /* UX-2-001: field borders get their own value (3.2:1 on the card); --border stays for separators. */
+  --input: oklch(0.64 0.02 256);
   --ring: oklch(0.5358 0.1444 248.0435);
   --success: oklch(0.48 0.13 151);
   --warning: oklch(0.74 0.15 80);
@@ -88,6 +91,7 @@
   --popover-foreground: oklch(0.9842 0.0034 247.8575);
   --primary: oklch(0.7535 0.139 232.6615);
   --primary-foreground: oklch(0.2077 0.0398 265.7549);
+  --primary-text: oklch(0.7535 0.139 232.6615);
   --secondary: oklch(0.8712 0.1363 154.4491);
   --secondary-foreground: oklch(0.2664 0.0628 152.9343);
   /* R6 (2026-10-06): muted and accent were the card color, so `bg-muted` and hovers did not show on cards. */
@@ -99,7 +103,7 @@
   --destructive-text: oklch(0.78 0.12 22);
   --destructive-foreground: oklch(0.9842 0.0034 247.8575);
   --border: oklch(0.3717 0.0392 257.287);
-  --input: oklch(0.3717 0.0392 257.287);
+  --input: oklch(0.55 0.035 257);
   --ring: oklch(0.7535 0.139 232.6615);
   --success: oklch(0.72 0.14 151);
   --warning: oklch(0.82 0.14 91.6054);
@@ -222,7 +226,7 @@ body {
   }
   /* 16px on every screen: iOS (iPhone and iPad) zooms into fields under 16px on focus (LTR-166). */
   .field {
-    @apply min-h-11 w-full rounded-md border bg-background px-3 py-2.5 text-base text-foreground outline-none placeholder:text-muted-foreground focus:border-ring;
+    @apply min-h-11 w-full rounded-md border border-input bg-background px-3 py-2.5 text-base text-foreground outline-none placeholder:text-muted-foreground focus:border-ring;
   }
   .card {
     @apply rounded-xl border bg-card p-4 text-card-foreground;

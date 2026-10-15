@@ -284,7 +284,8 @@ export function AdminNewWorkOrder({
                             role="option"
                             aria-selected={activeResult === index}
                             variant="ghost"
-                            className="w-full justify-start rounded-none px-4 py-3 text-left font-normal"
+                            // UX-2-007: the keyboard-active row shows the same accent tint as hover.
+                            className="w-full justify-start rounded-none px-4 py-3 text-left font-normal aria-selected:bg-accent aria-selected:text-foreground"
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => selectTruck(item)}
                           >

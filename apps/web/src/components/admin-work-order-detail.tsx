@@ -304,7 +304,8 @@ export function AdminWorkOrderDetail({
             <p className="text-muted-foreground" data-testid="wo-costs-so-far">
               {fillPlaceholders(messages.pcWoCostsSoFar, { labor: formatCents(data.costs.laborCents, locale), outside: formatCents(data.costs.outsideCents, locale) })}
               <Dot />
-              <Link href={adminTruckCostsHref(truck.id, `/admin/work-orders/${data.id}`)} className="text-primary hover:underline">{messages.pcWoOpenTruckCosts}</Link>
+              {/* UX-2-006: a link inside a sentence is always underlined. */}
+              <Link href={adminTruckCostsHref(truck.id, `/admin/work-orders/${data.id}`)} className="text-primary underline underline-offset-2">{messages.pcWoOpenTruckCosts}</Link>
             </p>
           ) : null}
           {!canManageWorkOrders ? (
@@ -885,7 +886,7 @@ export function AdminWorkOrderDetail({
       <div
         role="region"
         aria-label={messages.completeWorkOrderTitle}
-        className="anim-sheet-in fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 px-4 py-3 shadow-2xl backdrop-blur app-safe-bottom md:left-[var(--admin-aside)]"
+        className="anim-sheet-in fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 px-4 py-3 shadow-2xl backdrop-blur app-safe-bottom lg:left-[var(--admin-aside)]"
         data-testid="admin-wo-next-action"
       >
         <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-between md:px-2">

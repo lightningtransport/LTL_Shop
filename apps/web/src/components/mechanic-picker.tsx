@@ -48,7 +48,8 @@ export function MechanicPicker({
 
   const body = (
     <div data-testid="mechanic-picker">
-      <label className="flex items-center gap-2 rounded-md border bg-background px-2.5 focus-within:border-ring">
+      {/* UX-2-001 / UX-2-013: field border, and a visible ring around the label (the input drops its outline). */}
+      <label className="flex items-center gap-2 rounded-md border border-input bg-background px-2.5 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring">
         <Search aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="sr-only">{messages.mechanicSearchLabel}</span>
         <input
