@@ -198,6 +198,30 @@ describe('Safety: la pantalla nueva (bloque B, D-QC1…D-QC6)', () => {
     refused('un mecánico no ve el historial', await as(USERS.general).get('/qc/history'), 403);
   });
 
+  it('QC12 | LTR-216: el Manager no completa con un toque el QC que Safety devolvió; solo con confirmación y motivo', async () => {
+    const { workOrderId } = await readyForQc('905');
+    ok('tomar', await safety.post(`/qc/${workOrderId}/take`));
+    ok('devolver', await safety.post(`/qc/${workOrderId}/return`, { notes: 'Sigue jalando a la derecha en la prueba de manejo.' }));
+    const qcJobId = laneJob(await adminWo(workOrderId), 'quality_check').id;
+
+    refused('completar sin más: se rechaza y la devolución sigue', await manager.post(`/admin/jobs/${qcJobId}/complete`, { ...(await meta(workOrderId)) }), 409, 'QC_RETURNED_BY_SAFETY');
+    same('el bloqueo de Safety sigue abierto', (await activeBlocker(workOrderId))?.blockerReason, 'quality_check_failed');
+    refused('confirmar sin motivo no alcanza', await manager.post(`/admin/jobs/${qcJobId}/complete`, { ...(await meta(workOrderId)), overrideSafetyReturn: true, notes: '  ' }), 400, 'QC_OVERRIDE_NOTE_REQUIRED');
+
+    ok('confirmar con motivo', await manager.post(`/admin/jobs/${qcJobId}/complete`, {
+      ...(await meta(workOrderId)),
+      overrideSafetyReturn: true,
+      notes: 'Lo revisé en la prueba de manejo: va derecho.',
+    }));
+    const workOrder = await adminWo(workOrderId);
+    same('QC completado', laneJob(workOrder, 'quality_check').status, 'completed');
+    same('la devolución quedó resuelta', await activeBlocker(workOrderId), null);
+    const resolved = await prisma.activityLog.findFirst({ where: { workOrderId, eventType: 'blocker_resolved' }, orderBy: { createdAt: 'desc' } });
+    same('el historial dice que se completó sobre la devolución, con el motivo',
+      (resolved?.newValue as Json | null)?.notes,
+      'Quality Check completed by the Manager over the Safety return: Lo revisé en la prueba de manejo: va derecho.');
+  });
+
   it('QC10 | Orden por urgencia: Critical y High antes que el que lleva más tiempo listo (D-QC5)', async () => {
     const older = await readyForQc('905');
     const urgent = await readyForQc('922');

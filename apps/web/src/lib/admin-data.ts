@@ -601,7 +601,7 @@ export function cancelAdminJob(
 
 export function completeAdminJob(
   jobId: string,
-  input: { expectedVersion: number; notes?: string },
+  input: { expectedVersion: number; notes?: string; overrideSafetyReturn?: boolean },
   idempotencyKey = adminMutationIdempotencyKey(),
 ) {
   return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/jobs/${jobId}/complete`, {

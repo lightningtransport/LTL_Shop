@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
 import { ArrowUpRight, Check, CheckCheck, CircleAlert, CircleCheck, CircleX, Clock, Copy, Eye, FileClock, Lock, MapPin, MoreHorizontal, Pause, Play, Plus, RotateCcw, RotateCw, Truck as TruckIcon } from 'lucide-react';
-import { AppCapability, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, formatCents } from '@ltl-shop/shared';
+import { AppCapability, BlockerReason, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, formatCents } from '@ltl-shop/shared';
 import { adminTruckCostsHref, adminTruckHref } from '@/lib/admin-truck-origin';
 import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { ApiError } from '@/lib/api';
@@ -24,6 +24,7 @@ import { ResponsiveMenu, type MenuItem } from './responsive-menu';
 import { WorkOrderMetrics } from './work-order-metrics';
 import { WorkOrderNextStep } from './work-order-next-step';
 import { CloseWorkOrderDialog } from './close-work-order-dialog';
+import { SafetyReturnCompleteDialog } from './safety-return-complete-dialog';
 import { pauseResumeError } from './pause-resume-error';
 import { canOfficiallyPauseWorkOrder } from '@/lib/work-order-pause';
 import { isAdminWorkOrderReadyToClose } from '@/lib/admin-work-order-close';
@@ -78,6 +79,8 @@ export function AdminWorkOrderDetail({
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const [historyCategory, setHistoryCategory] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+  // LTR-216: the Quality Check Job whose Safety return the Manager is about to complete over.
+  const [safetyReturnJobId, setSafetyReturnJobId] = useState<string | null>(null);
   const [reopenReason, setReopenReason] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [jobReason, setJobReason] = useState('');
@@ -184,6 +187,9 @@ export function AdminWorkOrderDetail({
   // Stage 5 (R2) / Stage 8: an active blocker is the Next step (callout); its Job row is tinted.
   const activeBlockers = blockers.filter((blocker) => !blocker.resolvedAt);
   const blockedJobIds = activeBlockers.flatMap((blocker) => (blocker.job ? [blocker.job.id] : []));
+  // LTR-216: Safety's open return on a Job (its Quality Check); completing it goes through the dialog.
+  const safetyReturnOf = (jobId: string) => activeBlockers.find((blocker) => blocker.job?.id === jobId && blocker.blockerReason === BlockerReason.QUALITY_CHECK_FAILED) ?? null;
+  const safetyReturn = safetyReturnJobId ? safetyReturnOf(safetyReturnJobId) : null;
   const labor = laborByMechanic(data);
 
   async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
@@ -420,7 +426,13 @@ export function AdminWorkOrderDetail({
                 void runMutation(`unassign-job-${jobId}`, messages.unassignJobSuccess, () => unassignAdminWorkOrderJob(id, jobId, data.version), (failure) => jobChangeError(failure, messages));
               }
             }}
-            onComplete={(jobId) => void runMutation(`complete-job-${jobId}`, messages.completeJobSuccess, () => completeAdminJob(jobId, { expectedVersion: data.version }), (failure) => jobChangeError(failure, messages))}
+            onComplete={(jobId) => {
+              if (safetyReturnOf(jobId)) {
+                setSafetyReturnJobId(jobId);
+                return;
+              }
+              void runMutation(`complete-job-${jobId}`, messages.completeJobSuccess, () => completeAdminJob(jobId, { expectedVersion: data.version }), (failure) => jobChangeError(failure, messages));
+            }}
             onPmServiceChange={(jobId, catalogJobId) => void runMutation(`pm-service-${jobId}`, messages.pmServiceChangedSuccess, () => changeAdminPmService(data.id, jobId, { catalogJobId, expectedVersion: data.version }), () => messages.pmServiceChangeFailed)}
             onJobDialog={(kind, jobId) => { setJobDialogError(null); setJobDialog({ kind, jobId }); }}
             // LTR-188 / D23, D24: helper Job and external shop, from the row's "…" and "Returned".
@@ -429,6 +441,20 @@ export function AdminWorkOrderDetail({
             onReturnExternal={(jobId, input) => void runMutation(`return-external-${jobId}`, messages.externalReturnSuccess, () => returnAdminJobExternal(id, jobId, { ...input, expectedVersion: data.version }), (failure) => jobChangeError(failure, messages))}
           />
         </SectionCard>
+        <SafetyReturnCompleteDialog
+          open={Boolean(safetyReturn)}
+          safetyNote={safetyReturn?.notes ?? null}
+          reportedBy={safetyReturn?.reportedBy?.name ?? null}
+          addWorkHref={`${truckHref}#add-work`}
+          messages={messages}
+          onClose={() => setSafetyReturnJobId(null)}
+          onConfirm={(reason) => {
+            const jobId = safetyReturnJobId;
+            setSafetyReturnJobId(null);
+            if (!jobId) return;
+            void runMutation(`complete-job-${jobId}`, messages.completeJobSuccess, () => completeAdminJob(jobId, { expectedVersion: data.version, notes: reason, overrideSafetyReturn: true }), (failure) => jobChangeError(failure, messages));
+          }}
+        />
 
         <SectionCard title={messages.notes} count={notes.length} titleId="admin-wo-notes-title">
           <div className="space-y-4 p-4">

@@ -1688,6 +1688,7 @@ export class AdminService {
       workOrderId,
       expectedVersion: input.expectedVersion,
       notes,
+      overrideSafetyReturn: input.overrideSafetyReturn ?? false,
     });
     const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
     if (existing) return existing;
@@ -1712,7 +1713,20 @@ export class AdminService {
         if (job.status !== JobStatus.to_do) {
           throw new BadRequestException('Job is not in To Do status');
         }
-        await this.completeJobInTx(tx, user, wo, job, { notes, expectedVersion: input.expectedVersion });
+        // LTR-216 (D19, D29): Safety returned this truck. Completing its Quality Check skips that review, so it takes
+        // an explicit override with the Manager's reason; otherwise the work Safety asked for comes first.
+        const overSafetyReturn = wo.pauseEvents.some((event) => event.jobId === job.id
+          && event.isOfficialPause === false && !event.resolvedAt && event.blockerReason === SharedBlockerReason.QUALITY_CHECK_FAILED);
+        if (overSafetyReturn && !input.overrideSafetyReturn) {
+          throw new ConflictException({
+            code: 'QC_RETURNED_BY_SAFETY',
+            message: 'Safety returned this truck. Add the work Safety asked for, or confirm with a note to complete Quality Check anyway.',
+          });
+        }
+        if (overSafetyReturn && !notes) {
+          throw new BadRequestException({ code: 'QC_OVERRIDE_NOTE_REQUIRED', message: 'Say why Quality Check is completed over the Safety return.' });
+        }
+        await this.completeJobInTx(tx, user, wo, job, { notes, expectedVersion: input.expectedVersion, overSafetyReturn });
         return this.persistWorkOrderMutation(tx, {
           idempotencyKey: input.idempotencyKey,
           workOrderId,
@@ -1740,7 +1754,7 @@ export class AdminService {
     user: AuthUser,
     wo: DetailRow,
     job: DetailRow['jobs'][number],
-    options: { notes: string | null; expectedVersion: number },
+    options: { notes: string | null; expectedVersion: number; overSafetyReturn?: boolean },
   ) {
     const workOrderId = wo.id;
     // LTR-145: the PM job is finished from the PM service (mileage + parts), not a plain complete.
@@ -1782,7 +1796,10 @@ export class AdminService {
       userId: user.id,
       previousValue: { status: job.status, displayName: job.displayName },
       newValue: { status: JobStatus.completed, displayName: job.displayName, notes: options.notes },
-      relevantValue: { action: 'job_completed', displayName: job.displayName, notes: options.notes, actor: 'admin' },
+      relevantValue: {
+        action: 'job_completed', displayName: job.displayName, notes: options.notes, actor: 'admin',
+        ...(options.overSafetyReturn ? { overSafetyReturn: true } : {}),
+      },
     });
     if (startsWorkOrder) {
       await this.activity.log(tx, {
@@ -1796,7 +1813,14 @@ export class AdminService {
       });
     }
     // LTR-176: the Manager completing a blocked Job settles its blocker (the work is done).
-    await resolveActiveBlockers(tx, this.activity, { workOrderId, jobId: job.id, userId: user.id, note: 'Job completed by the Manager.' }, now);
+    await resolveActiveBlockers(tx, this.activity, {
+      workOrderId,
+      jobId: job.id,
+      userId: user.id,
+      note: options.overSafetyReturn
+        ? `Quality Check completed by the Manager over the Safety return: ${options.notes}`
+        : 'Job completed by the Manager.',
+    }, now);
     await stopLaborForMechanic(tx, workOrderId, job.assignedMechanicId);
   }
 

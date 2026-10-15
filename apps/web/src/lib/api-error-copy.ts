@@ -107,6 +107,8 @@ export type ApiErrorCode =
   | 'QC_NOT_TAKEN'
   | 'QC_OWNER_MUST_BE_SAFETY'
   | 'QC_RETURNED'
+  | 'QC_RETURNED_BY_SAFETY'
+  | 'QC_OVERRIDE_NOTE_REQUIRED'
   | 'QC_TAKEN'
   | 'RESUME_REQUIRED'
   | 'START_REQUIRED'
@@ -228,6 +230,8 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     QC_NOT_TAKEN: 'Take the truck before approving or returning it.',
     QC_OWNER_MUST_BE_SAFETY: 'Quality Check is done by Safety.',
     QC_RETURNED: 'This truck was returned to the Manager.',
+    QC_RETURNED_BY_SAFETY: 'Safety returned this truck. Add the work Safety asked for, or complete Quality Check with a reason.',
+    QC_OVERRIDE_NOTE_REQUIRED: 'Say why Quality Check is completed over the Safety return.',
     QC_TAKEN: 'Another Safety reviewer already took this truck.',
     RESUME_REQUIRED: 'Press Continue before completing Jobs.',
     START_REQUIRED: 'Press Start Work before completing Jobs.',
@@ -346,6 +350,8 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     QC_NOT_TAKEN: 'Toma la unidad antes de aprobarla o devolverla.',
     QC_OWNER_MUST_BE_SAFETY: 'El Quality Check lo hace Safety.',
     QC_RETURNED: 'Esta unidad fue devuelta al Manager.',
+    QC_RETURNED_BY_SAFETY: 'Safety devolvió esta unidad. Agrega el trabajo que pidió Safety o completa el Quality Check con un motivo.',
+    QC_OVERRIDE_NOTE_REQUIRED: 'Di por qué se completa el Quality Check sobre la devolución de Safety.',
     QC_TAKEN: 'Otro revisor de Safety ya tomó esta unidad.',
     RESUME_REQUIRED: 'Pulsa Continuar antes de completar Jobs.',
     START_REQUIRED: 'Pulsa Iniciar trabajo antes de completar Jobs.',

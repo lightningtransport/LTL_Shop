@@ -463,6 +463,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Cierra la hoja de devolver con la nota escrita | La nota queda en el teléfono, por camión, hasta devolverlo | ✅ | e2e bloque A |
 | Devuelve con nota | Pasa a "Devueltos"; el Manager lo ve como bloqueo "Devuelto por Safety" con la nota; nadie lo puede tomar hasta que el Manager resuelva | ✅ | QC3 |
 | El Manager agrega el trabajo y los mecánicos lo terminan | El camión vuelve a la lista, para cualquiera de los dos | ✅ | QC3 |
+| El Manager toca "Mark complete" en el QC devuelto (LTR-216) | No se completa con un toque: un diálogo muestra el motivo de Safety y ofrece "Add work". "Complete anyway" exige un motivo, y el historial dice que se completó sobre la devolución. Sin confirmación ni motivo, la API lo rechaza (`QC_RETURNED_BY_SAFETY`, `QC_OVERRIDE_NOTE_REQUIRED`) | ✅ | QC12 |
 | Intenta cerrar, asignar, inspeccionar o entrar a Admin | No puede | ✅ | QC4 |
 | Un mecánico intenta usar la lista de Safety | No puede | ✅ | QC4 |
 | Una persona de Safety no está en el equipo de Quality Check (D-SET7) | No ve camiones y la pantalla le dice que pida que la agreguen | ✅ | QC11 |
