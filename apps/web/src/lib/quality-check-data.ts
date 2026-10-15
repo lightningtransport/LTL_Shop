@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import { getShopCopy } from './locale-context';
+import { LIVE_REFRESH_MS } from './live-refresh';
 
 type Person = { id: string; name: string };
 
@@ -59,7 +60,7 @@ export const qualityCheckReviewKey = (workOrderId: string) => `/api/qc/${workOrd
 export function useQualityCheckQueue(enabled: boolean) {
   return useSWR<QualityCheckQueue>(enabled ? qualityCheckQueueKey : null, {
     dedupingInterval: 5_000,
-    refreshInterval: 20_000,
+    refreshInterval: LIVE_REFRESH_MS.board,
   });
 }
 

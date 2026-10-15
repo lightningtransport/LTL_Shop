@@ -15,6 +15,7 @@ import type {
   WorkOrderSummaryDto,
 } from '@ltl-shop/shared';
 import { catalogJobsPath, fetchAliasOptions } from './job-catalog';
+import { LIVE_REFRESH_MS } from './live-refresh';
 
 export type HomeLists = {
   /** Stage MG-1 (MG1): where my clock runs now; absent on older API responses. */
@@ -61,21 +62,21 @@ export const shopKeys = {
 export function useWorkOrders(enabled: boolean, mode?: 'standard' | 'pm') {
   return useSWR<HomeLists>(enabled ? shopKeys.workOrders(mode) : null, {
     dedupingInterval: 10_000,
-    refreshInterval: 30_000,
+    refreshInterval: LIVE_REFRESH_MS.board,
   });
 }
 
 export function useWorkOrder(id: string, enabled: boolean) {
   return useSWR<WorkOrderDetailDto>(
     enabled && id ? shopKeys.workOrder(id) : null,
-    { dedupingInterval: 5_000, refreshInterval: 15_000 },
+    { dedupingInterval: 5_000, refreshInterval: LIVE_REFRESH_MS.workingOn },
   );
 }
 
 export function usePmService(workOrderId: string, enabled: boolean) {
   return useSWR<PmServiceDto>(
     enabled && workOrderId ? shopKeys.pmService(workOrderId) : null,
-    { dedupingInterval: 5_000, refreshInterval: 15_000 },
+    { dedupingInterval: 5_000, refreshInterval: LIVE_REFRESH_MS.workingOn },
   );
 }
 

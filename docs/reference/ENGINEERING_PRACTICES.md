@@ -125,9 +125,11 @@ Current freshness policy:
 | --- | --- |
 | Trucks, categories, job aliases | Deduplicate for 5 minutes; no focus revalidation |
 | Mechanics | Deduplicate for 1 minute |
-| Work-order lists | Deduplicate for 10 seconds; refresh every 30 seconds |
-| Work-order detail | Deduplicate for 5 seconds; refresh every 15 seconds |
+| Lists and boards (Dashboard, Yard, Admin Work Orders, My work, team queue, To inspect, Safety queue) | Refresh every 30 seconds (`LIVE_REFRESH_MS.board`) |
+| A Work Order someone is working on (Admin detail, mechanic detail, PM service) | Deduplicate for 2–5 seconds; refresh every 15 seconds (`LIVE_REFRESH_MS.workingOn`) |
+| Dispatch data badge (Dashboard, Yard) | Refresh every 60 seconds (`LIVE_REFRESH_MS.status`) |
 | Admin paged lists (Work Orders, Trucks, Mechanics, History, Yard, repair history) | Refresh on every mount; keep the rows on screen while a new page or filter loads (`keepPreviousData`); skeleton only when there is nothing yet |
+| Repair history | Deduplicate for 30 seconds |
 
 Two rules that follow from the 2026-10-12 review (OPEN_ISSUES §1s):
 
@@ -137,7 +139,12 @@ Two rules that follow from the 2026-10-12 review (OPEN_ISSUES §1s):
   the cache (`mutate(result, { revalidate: false })`) instead of refetching it. The
   Admin Work Order actions do this through `workOrderDetailFromResult`; the mechanic
   detail does it in `run()`.
-| Repair history | Deduplicate for 30 seconds |
+
+Automatic refresh (LTR-212): the cadences live in `apps/web/src/lib/live-refresh.ts`.
+Do not write a new number in a hook; pick the cadence of the screen. Every feed on
+the same screen then refreshes together, one burst of requests per tick instead of
+one every few seconds. Hidden tabs do not refresh (SWR default), and coming back to a
+tab refreshes at most once every 15 seconds (`FOCUS_REFRESH_THROTTLE_MS`).
 
 After a mutation, update the affected detail cache from the response and
 invalidate only related keys. Background list/history revalidation must not

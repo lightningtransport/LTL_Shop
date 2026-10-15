@@ -24,7 +24,6 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
 | Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
-| Plataforma y Go-live | LTR-212 | Polling superpuesto; logo del Admin pesado | E |
 | Integraciones V3 | LTR-46, 54, 55, 56 | Integraciones en espera (Gated): contratos, geocerca, trailers | — |
 
 ## Preguntas abiertas
