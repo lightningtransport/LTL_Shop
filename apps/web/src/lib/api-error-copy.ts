@@ -7,6 +7,17 @@ import type { ShopLocale } from './shop-locale';
  * Keys with a shared audience avoid the Truck/unidad noun; the QC keys are Safety copy (unidad).
  */
 export type ApiErrorCode =
+  | 'TRUCK_NUMBER_TAKEN'
+  | 'TRUCK_VIN_TAKEN'
+  | 'TRUCK_HAS_OPEN_WORK_ORDER'
+  | 'TRUCK_HAS_HISTORY'
+  | 'TRUCK_INACTIVE'
+  | 'SAMSARA_VEHICLE_TAKEN'
+  | 'SAMSARA_VEHICLE_NOT_FOUND'
+  | 'SAMSARA_CHOICE_REQUIRED'
+  | 'SAMSARA_NOT_CONFIGURED'
+  | 'SAMSARA_UNAUTHORIZED'
+  | 'SAMSARA_UNAVAILABLE'
   | 'LABOR_RATE_DATE_TAKEN'
   | 'LABOR_RATE_NOT_LATEST'
   | 'LABOR_RATE_IN_USE'
@@ -115,6 +126,18 @@ export type ApiErrorCopy = Record<ApiErrorCode | 'network' | 'timeout', string>;
 export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
   en: {
     network: 'Unable to reach the Shop. Please try again.',
+    // D44: trucks and Connect Samsara.
+    TRUCK_NUMBER_TAKEN: 'Another truck already has this number.',
+    TRUCK_VIN_TAKEN: 'Another truck already has this VIN.',
+    TRUCK_HAS_OPEN_WORK_ORDER: 'Close or cancel the truck\'s open Work Order before deactivating it.',
+    TRUCK_HAS_HISTORY: 'This truck has history in the Shop, so it cannot be deleted. Deactivate it instead.',
+    TRUCK_INACTIVE: 'This truck is deactivated. Reactivate it in Trucks first.',
+    SAMSARA_VEHICLE_TAKEN: 'Another truck is already connected to this Samsara vehicle.',
+    SAMSARA_VEHICLE_NOT_FOUND: 'Samsara does not list this vehicle any more. Refresh the list.',
+    SAMSARA_CHOICE_REQUIRED: 'Some fields differ from Samsara. Choose which value stays.',
+    SAMSARA_NOT_CONFIGURED: 'Samsara is not connected to the Shop in this environment.',
+    SAMSARA_UNAUTHORIZED: 'Samsara rejected the Shop\'s token. Ask the System Admin to check it.',
+    SAMSARA_UNAVAILABLE: 'Samsara did not answer. Try again in a minute.',
     LABOR_RATE_DATE_TAKEN: 'There is already a rate from that date. Pick another date.',
     LABOR_RATE_NOT_LATEST: 'Only the latest rate can be removed.',
     LABOR_RATE_IN_USE: 'Labor priced with this rate is already on a sent invoice. Set a new rate from another date instead.',
@@ -220,6 +243,18 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     WO_CLOSED: 'This Work Order is closed.',
   },
   es: {
+    // D44: camiones y Conectar Samsara.
+    TRUCK_NUMBER_TAKEN: 'Otro camión ya tiene este número.',
+    TRUCK_VIN_TAKEN: 'Otro camión ya tiene este VIN.',
+    TRUCK_HAS_OPEN_WORK_ORDER: 'Cierra o cancela la Work Order abierta del camión antes de desactivarlo.',
+    TRUCK_HAS_HISTORY: 'Este camión tiene historial en el taller, así que no se puede borrar. Desactívalo en su lugar.',
+    TRUCK_INACTIVE: 'Este camión está desactivado. Reactívalo primero en Trucks.',
+    SAMSARA_VEHICLE_TAKEN: 'Otro camión ya está conectado a este vehículo de Samsara.',
+    SAMSARA_VEHICLE_NOT_FOUND: 'Samsara ya no lista este vehículo. Actualiza la lista.',
+    SAMSARA_CHOICE_REQUIRED: 'Algunos datos difieren de Samsara. Elige cuál se queda.',
+    SAMSARA_NOT_CONFIGURED: 'Samsara no está conectado al Shop en este entorno.',
+    SAMSARA_UNAUTHORIZED: 'Samsara rechazó el token del Shop. Pide al System Admin que lo revise.',
+    SAMSARA_UNAVAILABLE: 'Samsara no respondió. Inténtalo de nuevo en un minuto.',
     network: 'No se pudo conectar con el Shop. Inténtalo de nuevo.',
     LABOR_RATE_DATE_TAKEN: 'Ya hay una tarifa desde esa fecha. Elige otra fecha.',
     LABOR_RATE_NOT_LATEST: 'Solo se puede quitar la última tarifa.',

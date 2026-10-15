@@ -4,8 +4,8 @@ import type {
   SamsaraPairingMethod,
   SamsaraPairingSummaryDto,
   SamsaraPairingWarning,
+  SamsaraProposedTruckDto,
   SamsaraTruckRefDto,
-  SamsaraUnpairedReason,
   SamsaraUnpairedTruckDto,
   SamsaraVehicleRefDto,
 } from '@ltl-shop/shared';
@@ -17,17 +17,41 @@ export type PairingVehicle = SamsaraVehicle & { odometer?: SamsaraOdometerDto | 
 export type PairingTruck = SamsaraTruckRefDto & {
   /** `trucks.samsara_id` (filled once from Ninox), as a digit string. */
   samsaraId: string | null;
+  /** D44: `trucks.samsara_vehicle_id`, the stored connection. Set means connected. */
+  samsaraVehicleId?: string | null;
+  /** D44: a deactivated truck keeps its vehicle (nobody else gets it) but is left out of every list. */
+  active?: boolean;
 };
 
 export type PairingResult = {
   summary: SamsaraPairingSummaryDto;
   paired: SamsaraPairedTruckDto[];
+  proposed: SamsaraProposedTruckDto[];
   unpairedTrucks: SamsaraUnpairedTruckDto[];
   unpairedVehicles: SamsaraVehicleRefDto[];
 };
 
-/** Strongest first: a stored Samsara id beats a VIN, a VIN beats the truck number. */
-const METHOD_RANK: Record<SamsaraPairingMethod, number> = { samsara_id: 0, vin: 1, number: 2 };
+/** D44: what the pairing reads of every truck (the sync and Connect Samsara read the same). */
+export const PAIRING_TRUCK_SELECT = {
+  id: true, truckNumber: true, vin: true, samsaraId: true, samsaraVehicleId: true, deactivatedAt: true, owner: true, company: true, mileage: true,
+} as const;
+
+export function toPairingTruck(truck: {
+  id: string; truckNumber: string; vin: string | null; samsaraId: { toFixed(digits: number): string } | null; samsaraVehicleId: string | null;
+  deactivatedAt: Date | null; owner: string | null; company: string | null; mileage: number | null;
+}): PairingTruck {
+  return {
+    id: truck.id,
+    truckNumber: truck.truckNumber,
+    vin: truck.vin,
+    owner: truck.owner,
+    company: truck.company,
+    mileage: truck.mileage,
+    samsaraId: truck.samsaraId == null ? null : truck.samsaraId.toFixed(0),
+    samsaraVehicleId: truck.samsaraVehicleId,
+    active: !truck.deactivatedAt,
+  };
+}
 
 /** VINs are 17 characters; anything shorter than 11 is a placeholder, not a VIN to match on. */
 export function normalizeVin(vin: string | null | undefined): string | null {
@@ -46,98 +70,101 @@ export function normalizeTruckNumber(value: string | null | undefined): string |
   return cleaned || null;
 }
 
-type Candidate = { truck: PairingTruck; vehicle: PairingVehicle; method: SamsaraPairingMethod; staleId: boolean };
-
 /**
- * D35 / S-1: match our trucks to Samsara vehicles by Samsara id, then VIN, then number. Never guesses: a VIN or number
- * that fits several vehicles, or a vehicle claimed by several trucks, leaves the trucks unpaired with the reason.
+ * D35 / S-1, D44: which trucks are connected to which Samsara vehicle. Pure: nothing is read or written here.
+ * 1. A stored `samsaraVehicleId` is the decision: connected, even when Samsara stopped listing the vehicle.
+ * 2. Without one, the Samsara id that came from Ninox connects it (an id in our own data, not a guess).
+ * 3. Otherwise a vehicle with exactly the truck's VIN is only **proposed**; the Manager connects it from the truck.
+ *    A number match is never proposed (Connect Samsara only marks it "Suggested").
+ * Never guesses: a VIN that fits several vehicles, or a vehicle wanted by several trucks, stays unpaired with the reason.
  */
 export function pairTrucks(trucks: PairingTruck[], vehicles: PairingVehicle[]): PairingResult {
   const byId = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
   const byVin = groupBy(vehicles, (vehicle) => normalizeVin(vehicle.vin));
-  const byNumber = groupBy(vehicles, (vehicle) => normalizeTruckNumber(vehicle.name));
+  const active = trucks.filter((truck) => truck.active !== false);
 
-  const candidates: Candidate[] = [];
+  // Vehicles already taken: stored on any truck (a deactivated one too), then by the Ninox id.
+  const claimed = new Set(trucks.map((truck) => truck.samsaraVehicleId).filter((id): id is string => Boolean(id)));
+  const paired: SamsaraPairedTruckDto[] = [];
   const unpaired: SamsaraUnpairedTruckDto[] = [];
 
-  for (const truck of trucks) {
-    const stored = truck.samsaraId ? byId.get(truck.samsaraId) : undefined;
-    if (stored) {
-      candidates.push({ truck, vehicle: stored, method: 'samsara_id', staleId: false });
-      continue;
-    }
-    const staleId = Boolean(truck.samsaraId);
+  for (const truck of active) {
+    if (!truck.samsaraVehicleId) continue;
+    const vehicle = byId.get(truck.samsaraVehicleId);
+    const ref = vehicle ? vehicleRef(vehicle) : { id: truck.samsaraVehicleId, name: '', vin: null, odometer: null };
+    paired.push({ truck: truckRef(truck), vehicle: ref, method: 'connected', warnings: warningsOf(truck, vehicle) });
+  }
 
-    const vin = normalizeVin(truck.vin);
-    const vinMatches = vin ? byVin.get(vin) ?? [] : [];
-    if (vinMatches.length === 1) {
-      candidates.push({ truck, vehicle: vinMatches[0], method: 'vin', staleId });
-      continue;
-    }
-    if (vinMatches.length > 1) {
-      unpaired.push({ truck: ref(truck), reason: 'ambiguous' });
-      continue;
-    }
-
-    const number = normalizeTruckNumber(truck.truckNumber);
-    const numberMatches = number ? byNumber.get(number) ?? [] : [];
-    if (numberMatches.length === 1) {
-      candidates.push({ truck, vehicle: numberMatches[0], method: 'number', staleId });
+  const legacy = new Map<string, PairingTruck[]>();
+  const rest: PairingTruck[] = [];
+  for (const truck of active) {
+    if (truck.samsaraVehicleId) continue;
+    const vehicle = truck.samsaraId ? byId.get(truck.samsaraId) : undefined;
+    if (!vehicle) rest.push(truck);
+    else if (claimed.has(vehicle.id)) unpaired.push({ truck: truckRef(truck), reason: 'shared' });
+    else legacy.set(vehicle.id, [...(legacy.get(vehicle.id) ?? []), truck]);
+  }
+  for (const [vehicleId, claims] of legacy) {
+    if (claims.length === 1) {
+      const vehicle = byId.get(vehicleId)!;
+      paired.push({ truck: truckRef(claims[0]), vehicle: vehicleRef(vehicle), method: 'samsara_id', warnings: warningsOf(claims[0], vehicle) });
+      claimed.add(vehicleId);
     } else {
-      unpaired.push({ truck: ref(truck), reason: numberMatches.length > 1 ? 'ambiguous' : 'no_match' });
+      for (const truck of claims) unpaired.push({ truck: truckRef(truck), reason: 'shared' });
     }
   }
 
-  const paired: SamsaraPairedTruckDto[] = [];
-  for (const claims of groupBy(candidates, (candidate) => candidate.vehicle.id).values()) {
-    const best = Math.min(...claims.map((claim) => METHOD_RANK[claim.method]));
-    const winners = claims.filter((claim) => METHOD_RANK[claim.method] === best);
-    if (winners.length === 1) {
-      const [winner] = winners;
-      paired.push({ truck: ref(winner.truck), vehicle: vehicleRef(winner.vehicle), method: winner.method, warnings: warningsOf(winner) });
-    }
-    for (const claim of claims) {
-      if (winners.length === 1 && claim === winners[0]) continue;
-      unpaired.push({ truck: ref(claim.truck), reason: 'shared' satisfies SamsaraUnpairedReason });
-    }
+  const proposals = new Map<string, PairingTruck[]>();
+  for (const truck of rest) {
+    const vin = normalizeVin(truck.vin);
+    const matches = vin ? byVin.get(vin) ?? [] : [];
+    if (matches.length > 1) unpaired.push({ truck: truckRef(truck), reason: 'ambiguous' });
+    else if (matches.length === 0) unpaired.push({ truck: truckRef(truck), reason: 'no_match' });
+    else if (claimed.has(matches[0].id)) unpaired.push({ truck: truckRef(truck), reason: 'shared' });
+    else proposals.set(matches[0].id, [...(proposals.get(matches[0].id) ?? []), truck]);
+  }
+  const proposed: SamsaraProposedTruckDto[] = [];
+  for (const [vehicleId, claims] of proposals) {
+    if (claims.length === 1) proposed.push({ truck: truckRef(claims[0]), vehicle: vehicleRef(byId.get(vehicleId)!) });
+    else for (const truck of claims) unpaired.push({ truck: truckRef(truck), reason: 'shared' });
   }
 
-  const claimed = new Set(paired.map((row) => row.vehicle.id));
   const unpairedVehicles = vehicles.filter((vehicle) => !claimed.has(vehicle.id)).map(vehicleRef);
 
   paired.sort((a, b) => compareNumbers(a.truck.truckNumber, b.truck.truckNumber));
+  proposed.sort((a, b) => compareNumbers(a.truck.truckNumber, b.truck.truckNumber));
   unpaired.sort((a, b) => compareNumbers(a.truck.truckNumber, b.truck.truckNumber));
   unpairedVehicles.sort((a, b) => compareNumbers(a.name, b.name));
 
-  const pairedBy: Record<SamsaraPairingMethod, number> = { samsara_id: 0, vin: 0, number: 0 };
+  const pairedBy: Record<SamsaraPairingMethod, number> = { connected: 0, samsara_id: 0 };
   for (const row of paired) pairedBy[row.method] += 1;
 
   return {
     summary: {
       samsaraVehicles: vehicles.length,
-      trucks: trucks.length,
+      trucks: active.length,
       paired: paired.length,
       pairedBy,
+      proposed: proposed.length,
       unpairedTrucks: unpaired.length,
       unpairedVehicles: unpairedVehicles.length,
       warnings: paired.filter((row) => row.warnings.length > 0).length,
     },
     paired,
+    proposed,
     unpairedTrucks: unpaired,
     unpairedVehicles,
   };
 }
 
-function warningsOf(candidate: Candidate): SamsaraPairingWarning[] {
-  const warnings: SamsaraPairingWarning[] = [];
-  if (candidate.staleId) warnings.push('stale_samsara_id');
-  const ours = normalizeVin(candidate.truck.vin);
-  const theirs = normalizeVin(candidate.vehicle.vin);
-  if (ours && theirs && ours !== theirs) warnings.push('vin_mismatch');
-  return warnings;
+function warningsOf(truck: PairingTruck, vehicle: PairingVehicle | undefined): SamsaraPairingWarning[] {
+  if (!vehicle) return ['vehicle_missing'];
+  const ours = normalizeVin(truck.vin);
+  const theirs = normalizeVin(vehicle.vin);
+  return ours && theirs && ours !== theirs ? ['vin_mismatch'] : [];
 }
 
-function ref(truck: PairingTruck): SamsaraTruckRefDto {
+function truckRef(truck: PairingTruck): SamsaraTruckRefDto {
   return { id: truck.id, truckNumber: truck.truckNumber, vin: truck.vin, owner: truck.owner, company: truck.company, mileage: truck.mileage };
 }
 

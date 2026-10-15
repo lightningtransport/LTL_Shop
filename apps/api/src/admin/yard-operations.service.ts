@@ -100,8 +100,10 @@ const ACTIVE_YARD_ENGAGEMENT: Prisma.TruckWhereInput = {
  */
 function activeYardEngagement(): Prisma.TruckWhereInput {
   const since = yardReadyToGoSince();
-  if (!since) return ACTIVE_YARD_ENGAGEMENT;
+  // D44: a deactivated truck is out of the fleet, so out of the Yard and its counts.
+  if (!since) return { AND: [ACTIVE_YARD_ENGAGEMENT, { deactivatedAt: null }] };
   return {
+    deactivatedAt: null,
     OR: [
       ...(ACTIVE_YARD_ENGAGEMENT.OR as Prisma.TruckWhereInput[]),
       { workOrders: { some: { status: WorkOrderStatus.completed, completedAt: { gte: since } } } },
@@ -900,7 +902,7 @@ export class YardOperationsService {
 
   /** The whole board plus the Truck count, read together; shared by the page and the counts (PF9 c). */
   private async loadBoard(): Promise<Board> {
-    const [presenceUnknown, rows] = await Promise.all([this.prisma.truck.count(), this.boardRows(null)]);
+    const [presenceUnknown, rows] = await Promise.all([this.prisma.truck.count({ where: { deactivatedAt: null } }), this.boardRows(null)]);
     return { presenceUnknown, rows };
   }
 
@@ -911,7 +913,7 @@ export class YardOperationsService {
 
   private async getWorkPlanBoardCounts() {
     const [presenceUnknown, rows] = await Promise.all([
-      this.prisma.truck.count(),
+      this.prisma.truck.count({ where: { deactivatedAt: null } }),
       this.prisma.truck.findMany({
         where: activeYardEngagement(),
         include: yardTruckInclude as never,

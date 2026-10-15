@@ -20,6 +20,8 @@ export class TrucksService {
 
   async list() {
     const trucks = await this.prisma.truck.findMany({
+      // D44: a deactivated truck is out of the fleet: not in pickers nor in New Work Order.
+      where: { deactivatedAt: null },
       orderBy: { truckNumber: 'asc' },
       // LTR-140: one open Work Order per Truck, so search results can say "Open WO-009".
       include: {
@@ -45,6 +47,7 @@ export class TrucksService {
     if (!term) return [];
     const primary = await this.prisma.truck.findMany({
       where: {
+        deactivatedAt: null,
         OR: [
           { truckNumber: { equals: term, mode: 'insensitive' } },
           { truckNumber: { startsWith: term, mode: 'insensitive' } },
@@ -54,7 +57,7 @@ export class TrucksService {
     if (primary.length) return rankTruckMatches(primary, term).map(toTruckDto);
 
     const fallback = await this.prisma.truck.findMany({
-      where: { truckNumber: { contains: term, mode: 'insensitive' } },
+      where: { deactivatedAt: null, truckNumber: { contains: term, mode: 'insensitive' } },
     });
     return rankTruckMatches(fallback, term).map(toTruckDto);
   }
@@ -246,6 +249,10 @@ export function toTruckDto(truck: {
   samsaraProtectLamp?: boolean | null;
   samsaraEmissionsLamp?: boolean | null;
   samsaraLampsAt?: Date | null;
+  licensePlate?: string | null;
+  dispatcher?: string | null;
+  insurance?: string | null;
+  deactivatedAt?: Date | null;
 }): TruckDto {
   // D35 / S-2: the sync's GPS point replaces the one-time Ninox copy when there is one. Still not Yard Presence.
   const live = Boolean(truck.samsaraLocationAt && (truck.samsaraAddress?.trim() || truck.samsaraLatitude != null));
@@ -275,6 +282,11 @@ export function toTruckDto(truck: {
           lamps: dashLamps(truck),
         }
       : null,
+    // D44: the rest of the card, when the row was read with it.
+    ...(truck.licensePlate !== undefined ? { licensePlate: emptyToNull(truck.licensePlate) } : {}),
+    ...(truck.dispatcher !== undefined ? { dispatcher: emptyToNull(truck.dispatcher) } : {}),
+    ...(truck.insurance !== undefined ? { insurance: emptyToNull(truck.insurance) } : {}),
+    ...(truck.deactivatedAt !== undefined ? { deactivatedAt: truck.deactivatedAt?.toISOString() ?? null } : {}),
   };
 }
 

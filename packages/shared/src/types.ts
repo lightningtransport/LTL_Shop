@@ -97,6 +97,12 @@ export interface TruckDto {
   samsara?: TruckSamsaraDto | null;
   /** LTR-140: the Truck's open Work Order, sent by `GET /trucks` so search results can mark it. */
   openWorkOrder?: TruckOpenWorkOrderRefDto | null;
+  /** D44: the rest of the truck's card (Admin → Trucks). */
+  licensePlate?: string | null;
+  dispatcher?: string | null;
+  insurance?: string | null;
+  /** D44: set when the truck left the fleet; it is out of the lists and of New Work Order. */
+  deactivatedAt?: string | null;
 }
 
 export interface TruckOpenWorkOrderRefDto {
@@ -674,6 +680,8 @@ export interface AdminTruckSummaryDto {
   nextStep?: TruckNextStepDto | null;
   /** D35 / S-3: active Samsara faults (count and the worst). */
   faults?: TruckFaultSummaryDto;
+  /** D44: the sync proposes this Samsara vehicle (exact VIN); the Manager connects it. */
+  samsaraProposedVehicleId?: string | null;
 }
 
 export interface AdminTruckDetailDto extends YardOperationsTruckDto {
@@ -685,6 +693,27 @@ export interface AdminTruckDetailDto extends YardOperationsTruckDto {
   workPlan: TruckWorkPlanDto;
   /** LTR-158 / D14: the one thing the Manager should do next on this Truck. */
   nextStep?: TruckNextStepDto | null;
+  /** D44: what the Manager and the System Admin can do with the truck's card. */
+  admin?: AdminTruckAdminDto;
+}
+
+/** D44: delete only a truck created by mistake (no history at all); Samsara connection and the sync's proposal. */
+export interface AdminTruckAdminDto {
+  canDelete: boolean;
+  samsara: {
+    /** Connected iff set: the Manager's decision (or the old Ninox Samsara id), kept by the sync. */
+    connectedVehicleId: string | null;
+    connectedVehicleName: string | null;
+    /** The sync saw a vehicle with this exact VIN; it is only proposed, the Manager connects it. */
+    proposedVehicleId: string | null;
+  };
+}
+
+/** D44: the `TRUCK_HAS_OPEN_WORK_ORDER` body — the Work Order to close before deactivating. */
+export interface AdminTruckOpenWorkOrderConflictDto {
+  code: 'TRUCK_HAS_OPEN_WORK_ORDER';
+  message: string;
+  workOrder: { id: string; displayId: string };
 }
 
 export interface WorkPlanJobDto {

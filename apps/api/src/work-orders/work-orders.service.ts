@@ -234,6 +234,7 @@ export class WorkOrdersService {
       where: { id: input.truckId },
     });
     if (!truck) throw new BadRequestException('Invalid truck');
+    assertTruckActive(truck);
 
     const category = input.primaryCategoryId
       ? await this.prisma.jobCategory.findUnique({ where: { id: input.primaryCategoryId } })
@@ -347,6 +348,7 @@ export class WorkOrdersService {
           ? await tx.truck.findUnique({ where: { id: input.truckId } })
           : truck;
         if (!truckAfterLock) throw new BadRequestException('Invalid truck');
+        assertTruckActive(truckAfterLock);
 
         const open = typeof tx.workOrder.findFirst === 'function'
           ? await tx.workOrder.findFirst({
@@ -1965,4 +1967,11 @@ export function byPriorityThenOldest(
 ) {
   const byPriority = (PRIORITY_RANK[left.priority] ?? 9) - (PRIORITY_RANK[right.priority] ?? 9);
   return byPriority || left.createdAt.localeCompare(right.createdAt);
+}
+
+/** D44: a deactivated truck left the fleet; reactivate it before opening a Work Order. */
+function assertTruckActive(truck: { deactivatedAt?: Date | null }) {
+  if (truck.deactivatedAt) {
+    throw new ConflictException({ code: 'TRUCK_INACTIVE', message: 'This truck is deactivated. Reactivate it in Trucks before opening a Work Order.' });
+  }
 }

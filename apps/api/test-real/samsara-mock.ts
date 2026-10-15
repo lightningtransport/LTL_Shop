@@ -5,6 +5,7 @@ import { createServer, type IncomingMessage, type Server } from 'node:http';
  * points `SAMSARA_API_URL` here. Rows set the answer with `POST /__fixture` (see `setSamsaraFixture` in the harness).
  */
 export type SamsaraFixture = {
+  /** `id`, `name`, `vin` and, for D44, `make`, `model`, `year` (a string, as Samsara sends it) and `licensePlate`. */
   vehicles: Array<Record<string, unknown>>;
   /** Rows of `/fleet/vehicles/stats` for odometer and GPS (`id` plus the stat objects). */
   stats: Array<Record<string, unknown>>;

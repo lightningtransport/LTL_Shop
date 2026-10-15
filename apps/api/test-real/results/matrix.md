@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 132 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 147 · FALLA 4 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -80,11 +80,11 @@ PASA 132 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A64 | Enviar a taller externo y Regresó siguen igual, con la factura cargada antes o después | PASA |
 | A65 | Factura repetida entre compra y reparación; corregir y anular con reversas; mecánicos y Safety no entran | PASA |
 | A66 | Totales por tipo y por mes = suma del libro en el período; anular una compra los baja | PASA |
-| A67 | Las horas de mano de obra son las de las sesiones cerradas del camión en el período (el monto llega con la tarifa, A69) | PASA |
+| A67 | Las horas de mano de obra son las de las sesiones cerradas del camión en el período (el monto llega con la tarifa, A69) | **FALLA** — incluye la hora y media cargada |
 | A68 | Mecánicos y Safety no ven los costos del camión; terminar un PM no escribe en el libro (D-PC4) | PASA |
 | A69 | Al completar un WO, su mano de obra (horas × tarifa) entra al costo del camión con su WO | PASA |
-| A70 | Una tarifa nueva recalcula con reversas; reabrir el WO la saca y volver a cerrarlo la pone | PASA |
-| A71 | Sin tarifa no hay monto (solo horas); mecánicos y Safety no ven ni cambian la tarifa | PASA |
+| A70 | Una tarifa nueva recalcula con reversas; reabrir el WO la saca y volver a cerrarlo la pone | **FALLA** — reversa + fila nueva con la tarifa de hoy: se esperaba [3,24000], llegó [3,19000] |
+| A71 | Sin tarifa no hay monto (solo horas); mecánicos y Safety no ven ni cambian la tarifa | **FALLA** — Costs dice que falta la tarifa y muestra las horas: se esperaba [false,true,0], llegó [false,false,0] |
 | A72 | El borrador trae lo no cobrado del camión hasta fin de mes, con subtotales; cada movimiento se cobra una vez | PASA |
 | A73 | Una línea que se saca queda sin cobrar: no vuelve al traer lo nuevo y entra en la factura siguiente | PASA |
 | A74 | Enviada: número SHOP, congelada; una corrección posterior cae en la siguiente; Finanzas la acepta | PASA |
@@ -92,7 +92,7 @@ PASA 132 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A76 | La bandeja agrupa por categoría y nombre (sin mayúsculas ni espacios), con cuántos, en qué WO y sugerencias | PASA |
 | A76 | El Job que volvió sin factura se sigue ofreciendo meses después, y la WO lo marca hasta que la tenga (PCA3) | PASA |
 | A77 | Unir: todo el grupo queda ligado al Job del catálogo de una vez; el nombre queda como alias; el WO no cambia | PASA |
-| A77 | Antes de guardar, la tarifa dice cuántos WOs recalcula; la última se puede quitar mientras nada facturado la use (PCA7) | PASA |
+| A77 | Antes de guardar, la tarifa dice cuántos WOs recalcula; la última se puede quitar mientras nada facturado la use (PCA7) | **FALLA** — la tarifa equivocada recalculó el WO: se esperaba 30000, llegó 19000 |
 | A78 | Agregar al catálogo: crea el Job y le liga el grupo; un nombre que ya existe no se acepta | PASA |
 | A78 | La compra, la reparación y los movimientos dicen en qué factura se cobraron; la corrección de algo facturado dice de cuál viene (PCA4) | PASA |
 | A79 | Dejar como único: sale de la bandeja sin tocar el catálogo; Deshacer lo devuelve | PASA |
@@ -108,6 +108,25 @@ PASA 132 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A88 | El Manager agrega, renombra y desactiva puntos y cambia umbrales; la inspección guardada no cambia y el mecánico no edita | PASA |
 | A89 | En "To inspect" quedan los camiones que inspeccioné (Add defects, IN-7); no los que inspeccionó otro | PASA |
 | A90 | Una visita inspeccionada con los botones viejos lo dice y deja llenar la hoja | PASA |
+| A91 | S-1: Setup → Samsara dice qué vehículo es cada camión sin escribir nada; un mecánico no entra | PASA |
+| A92 | S-2: Sync now guarda millas y ubicación de Samsara en el camión sin tocar las millas del PM; la ficha y Trucks las muestran; otra corrida no duplica nada | PASA |
+| A93 | S-3, S3-4: las luces del tablero (STOP, advertencia) y los códigos que encendieron check engine se ven en Trucks y en Faults; una falla sigue abierta sin duplicarse y se cierra cuando Samsara deja de reportarla; si la lectura de fallas falla no se cierra nada | PASA |
+| A94 | S-2: GitHub Actions corre la sincronización con el secreto de cron; sin secreto 401; un mecánico no puede Sync now | PASA |
+| A95 | S-6: se recomiendan los códigos que encendieron check engine; con la luz STOP también los demás, marcados por la luz | PASA |
+| A96 | S-6: agregar el Job desde Add work lo liga a la falla, aprende el código, el mecánico la ve en su Job; otra falla se agrega al mismo Job; el código aprendido se sugiere en otro camión | PASA |
+| A97 | S-6: "Ahora no" pide razón y saca la falla de las recomendaciones; completado el Job y cerrada la falla queda "Fixed"; si vuelve dentro de 48 h queda "Came back" | PASA |
+| A98 | D44: el Manager agrega un camión con solo el número y lo que sepa; aparece en Trucks y en New Work Order; las millas oficiales no se escriben aquí | PASA |
+| A99 | D44: número repetido o VIN de otro camión no se guardan (dice cuál camión lo tiene); un mecánico o Safety no pueden agregar ni editar (403) | PASA |
+| A100 | D44: editar la ficha cambia solo lo enviado; lo que se borra queda vacío | PASA |
+| A101 | D44: no se desactiva con una Work Order abierta (dice cuál); desactivado sale de Trucks y de New Work Order y no se le abre trabajo; la ficha sigue abriendo; reactivar lo devuelve | PASA |
+| A102 | D44: borrar solo un camión que nunca tuvo nada; con historial se desactiva | PASA |
+| A103 | D44: Connect Samsara lista los vehículos que no son de ningún camión, arriba el que coincide por VIN y luego por número ("Suggested"); un mecánico no la ve | PASA |
+| A104 | D44: al conectar, lo vacío se llena con Samsara; lo que difiere pide elegir; conectado trae millas y ubicación enseguida | PASA |
+| A105 | D44: un vehículo de Samsara que ya es de otro camión no se conecta | PASA |
+| A106 | D44: la sincronización propone por VIN exacto en la ficha y no conecta sola; por número no propone | PASA |
+| A107 | D44: desconectar deja de sincronizar; las últimas lecturas y las fallas quedan; la sincronización no lo vuelve a conectar por el id de Ninox | PASA |
+| A108 | D44: un camión conectado sigue conectado aunque Samsara deje de listar su vehículo; Setup → Samsara lo avisa | PASA |
+| A109 | D44: la propuesta aparece después de una sincronización y se conecta de un toque (sin elegir: nada difiere); la propuesta desaparece | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

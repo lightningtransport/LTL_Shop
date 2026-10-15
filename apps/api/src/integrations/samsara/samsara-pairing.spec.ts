@@ -9,6 +9,11 @@ function truck(id: string, truckNumber: string, vin: string | null = null, samsa
   return { id, truckNumber, vin, owner: null, company: null, mileage: null, samsaraId };
 }
 
+/** D44: the Manager connected it (stored `samsaraVehicleId`). */
+function connected(id: string, truckNumber: string, samsaraVehicleId: string): PairingTruck {
+  return { ...truck(id, truckNumber), samsaraVehicleId };
+}
+
 function truckRef(id: string, truckNumber: string, vin: string | null = null) {
   return { id, truckNumber, vin, owner: null, company: null, mileage: null };
 }
@@ -35,67 +40,76 @@ describe('normalizers', () => {
 });
 
 describe('pairTrucks', () => {
-  it('matches by stored Samsara id, then VIN, then number, and lists the rest', () => {
+  it('connects by the stored vehicle, then by the Ninox Samsara id; a VIN match is only proposed; a number match is neither', () => {
     const result = pairTrucks(
       [
+        connected('t0', '590', 'v-50'),
         truck('t1', '601', null, '100'),
         truck('t2', '614', VIN_B),
         truck('t3', '622'),
         truck('t4', '630'),
       ],
-      [vehicle('100', 'Old name 601'), vehicle('200', 'Some name', VIN_B), vehicle('300', 'Truck 622'), vehicle('400', 'Trailer 9')],
+      [vehicle('v-50', 'Truck 590'), vehicle('100', 'Old name 601'), vehicle('200', 'Some name', VIN_B), vehicle('300', 'Truck 622'), vehicle('400', 'Trailer 9')],
     );
 
     expect(result.paired.map((row) => [row.truck.truckNumber, row.vehicle.id, row.method])).toEqual([
+      ['590', 'v-50', 'connected'],
       ['601', '100', 'samsara_id'],
-      ['614', '200', 'vin'],
-      ['622', '300', 'number'],
     ]);
-    expect(result.unpairedTrucks).toEqual([{ truck: truckRef('t4', '630', null), reason: 'no_match' }]);
-    expect(result.unpairedVehicles.map((row) => row.id)).toEqual(['400']);
+    expect(result.proposed.map((row) => [row.truck.truckNumber, row.vehicle.id])).toEqual([['614', '200']]);
+    // D44: "Truck 622" is not connected nor proposed; Connect Samsara marks it Suggested on the truck.
+    expect(result.unpairedTrucks).toEqual([
+      { truck: truckRef('t3', '622', null), reason: 'no_match' },
+      { truck: truckRef('t4', '630', null), reason: 'no_match' },
+    ]);
+    expect(result.unpairedVehicles.map((row) => row.id)).toEqual(['200', '400', '300']);
     expect(result.summary).toEqual({
-      samsaraVehicles: 4,
-      trucks: 4,
-      paired: 3,
-      pairedBy: { samsara_id: 1, vin: 1, number: 1 },
-      unpairedTrucks: 1,
-      unpairedVehicles: 1,
+      samsaraVehicles: 5,
+      trucks: 5,
+      paired: 2,
+      pairedBy: { connected: 1, samsara_id: 1 },
+      proposed: 1,
+      unpairedTrucks: 2,
+      unpairedVehicles: 3,
       warnings: 0,
     });
   });
 
-  it('falls back when the stored Samsara id is gone and says so', () => {
-    const result = pairTrucks([truck('t1', '601', VIN_A, '999')], [vehicle('100', '601', VIN_A)]);
+  it('keeps a stored connection when Samsara stops listing the vehicle, and says so', () => {
+    const result = pairTrucks([connected('t1', '601', 'gone')], [vehicle('100', 'Other')]);
 
-    expect(result.paired).toHaveLength(1);
-    expect(result.paired[0]).toMatchObject({ method: 'vin', warnings: ['stale_samsara_id'] });
+    expect(result.paired).toEqual([
+      { truck: truckRef('t1', '601', null), vehicle: { id: 'gone', name: '', vin: null, odometer: null }, method: 'connected', warnings: ['vehicle_missing'] },
+    ]);
     expect(result.summary.warnings).toBe(1);
+    expect(result.unpairedVehicles.map((row) => row.id)).toEqual(['100']);
   });
 
-  it('warns when a truck matched by id has a different VIN in Samsara', () => {
+  it('proposes by VIN when the Ninox Samsara id is gone', () => {
+    const result = pairTrucks([truck('t1', '601', VIN_A, '999')], [vehicle('100', '601', VIN_A)]);
+
+    expect(result.paired).toEqual([]);
+    expect(result.proposed.map((row) => [row.truck.truckNumber, row.vehicle.id])).toEqual([['601', '100']]);
+  });
+
+  it('warns when a connected truck has a different VIN in Samsara', () => {
     const result = pairTrucks([truck('t1', '601', VIN_A, '100')], [vehicle('100', '601', VIN_B)]);
 
     expect(result.paired[0]).toMatchObject({ method: 'samsara_id', warnings: ['vin_mismatch'] });
   });
 
-  it('does not guess when a number fits two Samsara vehicles', () => {
-    const result = pairTrucks([truck('t1', '601')], [vehicle('100', '601'), vehicle('200', 'Truck 0601')]);
+  it('does not propose when a VIN fits two Samsara vehicles', () => {
+    const result = pairTrucks([truck('t1', '601', VIN_A)], [vehicle('100', 'A', VIN_A), vehicle('200', 'B', VIN_A)]);
 
-    expect(result.paired).toEqual([]);
-    expect(result.unpairedTrucks).toEqual([{ truck: truckRef('t1', '601', null), reason: 'ambiguous' }]);
+    expect(result.proposed).toEqual([]);
+    expect(result.unpairedTrucks[0].reason).toBe('ambiguous');
     expect(result.unpairedVehicles).toHaveLength(2);
   });
 
-  it('does not guess when a VIN fits two Samsara vehicles', () => {
-    const result = pairTrucks([truck('t1', '601', VIN_A)], [vehicle('100', 'A', VIN_A), vehicle('200', 'B', VIN_A)]);
-
-    expect(result.unpairedTrucks[0].reason).toBe('ambiguous');
-  });
-
-  it('leaves both trucks unpaired when they claim the same vehicle the same way', () => {
+  it('proposes to nobody when two trucks have the same VIN', () => {
     const result = pairTrucks([truck('t1', '601', VIN_A), truck('t2', '602', VIN_A)], [vehicle('100', 'X', VIN_A)]);
 
-    expect(result.paired).toEqual([]);
+    expect(result.proposed).toEqual([]);
     expect(result.unpairedTrucks.map((row) => [row.truck.truckNumber, row.reason])).toEqual([
       ['601', 'shared'],
       ['602', 'shared'],
@@ -103,11 +117,34 @@ describe('pairTrucks', () => {
     expect(result.unpairedVehicles.map((row) => row.id)).toEqual(['100']);
   });
 
-  it('lets the stronger match win a shared vehicle and lists the weaker one as shared', () => {
-    const result = pairTrucks([truck('t1', '601', null, '100'), truck('t2', '700', VIN_A)], [vehicle('100', 'X', VIN_A)]);
+  it('never proposes or re-pairs a vehicle another truck already has', () => {
+    const result = pairTrucks(
+      [connected('t1', '601', '100'), truck('t2', '700', VIN_A), truck('t3', '701', null, '100')],
+      [vehicle('100', 'X', VIN_A)],
+    );
 
-    expect(result.paired.map((row) => [row.truck.truckNumber, row.method])).toEqual([['601', 'samsara_id']]);
-    expect(result.unpairedTrucks).toEqual([{ truck: truckRef('t2', '700', VIN_A), reason: 'shared' }]);
+    expect(result.paired.map((row) => [row.truck.truckNumber, row.method])).toEqual([['601', 'connected']]);
+    expect(result.unpairedTrucks.map((row) => [row.truck.truckNumber, row.reason])).toEqual([['700', 'shared'], ['701', 'shared']]);
+  });
+
+  it('leaves both trucks out when they carry the same Ninox Samsara id', () => {
+    const result = pairTrucks([truck('t1', '601', null, '100'), truck('t2', '602', null, '100')], [vehicle('100', 'X')]);
+
+    expect(result.paired).toEqual([]);
+    expect(result.unpairedTrucks.map((row) => row.reason)).toEqual(['shared', 'shared']);
+  });
+
+  it('leaves deactivated trucks out of every list but keeps their vehicle taken', () => {
+    const result = pairTrucks(
+      [{ ...connected('t1', '601', '100'), active: false }, { ...truck('t2', '602', VIN_A), active: false }, truck('t3', '603', VIN_A)],
+      [vehicle('100', 'X', VIN_A)],
+    );
+
+    expect(result.paired).toEqual([]);
+    expect(result.proposed).toEqual([]);
+    expect(result.unpairedTrucks).toEqual([{ truck: truckRef('t3', '603', VIN_A), reason: 'shared' }]);
+    expect(result.unpairedVehicles).toEqual([]);
+    expect(result.summary.trucks).toBe(1);
   });
 
   it('carries owner, mileage and the Samsara odometer through to the lists', () => {

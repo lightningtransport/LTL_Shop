@@ -1,26 +1,27 @@
 /**
- * D35 / S-1: which Samsara vehicles are our trucks. Read-only: the pairing is computed on every request and nothing
- * is saved; S-2 stores it when the sync starts writing.
+ * D35 / S-1, D44: which Samsara vehicles are our trucks. A truck is connected iff `trucks.samsara_vehicle_id` is set
+ * (the Manager's decision, or the Samsara id that came from Ninox, which the sync stores). An exact VIN match is only
+ * proposed; the Manager connects it from the truck.
  */
 
-/** How a truck was matched, in the order the API tries them. */
-export type SamsaraPairingMethod = 'samsara_id' | 'vin' | 'number';
+/** How a truck is connected: the stored decision, or the Ninox Samsara id the next sync stores. */
+export type SamsaraPairingMethod = 'connected' | 'samsara_id';
 
-/** Why a truck could not be matched without guessing. */
+/** Why a truck is not connected. */
 export type SamsaraUnpairedReason =
-  /** No Samsara vehicle has its Samsara id, VIN or number. */
+  /** Nothing ties it to a Samsara vehicle: connect it from the truck. */
   | 'no_match'
-  /** Its VIN or number matches more than one Samsara vehicle. */
+  /** Its VIN matches more than one Samsara vehicle. */
   | 'ambiguous'
-  /** Another truck matches the same Samsara vehicle. */
+  /** Another truck already has (or proposes) the same Samsara vehicle. */
   | 'shared';
 
-/** Something worth checking on a matched truck. */
+/** Something worth checking on a connected truck. */
 export type SamsaraPairingWarning =
-  /** The Samsara id that came from Ninox is not in Samsara any more; matched by VIN or number instead. */
-  | 'stale_samsara_id'
   /** Both sides have a VIN and they differ. */
-  | 'vin_mismatch';
+  | 'vin_mismatch'
+  /** D44: Samsara no longer lists the connected vehicle; the truck stays connected and keeps its last readings. */
+  | 'vehicle_missing';
 
 export type SamsaraTruckRefDto = {
   id: string;
@@ -59,11 +60,20 @@ export type SamsaraUnpairedTruckDto = {
   reason: SamsaraUnpairedReason;
 };
 
+/** D44: the sync saw a Samsara vehicle with exactly this truck's VIN. The Manager connects it from the truck. */
+export type SamsaraProposedTruckDto = {
+  truck: SamsaraTruckRefDto;
+  vehicle: SamsaraVehicleRefDto;
+};
+
 export type SamsaraPairingSummaryDto = {
   samsaraVehicles: number;
+  /** Active trucks (deactivated ones are left out, D44). */
   trucks: number;
   paired: number;
   pairedBy: Record<SamsaraPairingMethod, number>;
+  /** D44: trucks with a VIN match waiting for the Manager. */
+  proposed: number;
   unpairedTrucks: number;
   unpairedVehicles: number;
   warnings: number;
@@ -107,6 +117,8 @@ export type SamsaraPairingDto = {
   checkedAt: string;
   summary: SamsaraPairingSummaryDto | null;
   paired: SamsaraPairedTruckDto[];
+  /** D44: VIN matches the sync proposes; they are not in `unpairedTrucks`. */
+  proposed: SamsaraProposedTruckDto[];
   unpairedTrucks: SamsaraUnpairedTruckDto[];
   unpairedVehicles: SamsaraVehicleRefDto[];
   /** False when Samsara gave vehicles but not their odometers; the lists still show. */
@@ -225,4 +237,32 @@ export type TruckSamsaraDto = {
   syncedAt: string | null;
   /** S3-4: the dash lights, or null before the first fault reading. */
   lamps: TruckDashLampsDto | null;
+};
+
+/** D44 §3: a Samsara vehicle no other truck has, for Connect Samsara on the truck. */
+export type SamsaraCandidateDto = {
+  id: string;
+  name: string;
+  vin: string | null;
+  make: string | null;
+  model: string | null;
+  year: number | null;
+  licensePlate: string | null;
+  /** `vin`: exactly the truck's VIN; `number`: its name is the truck's number. Suggested ones come first. */
+  suggested: 'vin' | 'number' | null;
+};
+
+export type SamsaraCandidatesDto = {
+  items: SamsaraCandidateDto[];
+  /** The vehicle the sync proposed for this truck, when there is one. */
+  proposedVehicleId: string | null;
+};
+
+/** D44 §4: what the connect wrote, and whether the sync ran right after (miles, location and faults). */
+export type SamsaraConnectResultDto = {
+  connectedVehicleId: string;
+  connectedVehicleName: string;
+  /** The empty fields Samsara filled and the ones where the Manager chose Samsara's value. */
+  updatedFields: Array<'vin' | 'make' | 'model' | 'year' | 'licensePlate'>;
+  synced: boolean;
 };

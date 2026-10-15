@@ -31,6 +31,8 @@ import { SystemAdminWritesService } from './system-admin-writes.service';
 import { ShopWorkflowService } from './shop-workflow.service';
 import { CatalogAdminService } from './catalog-admin.service';
 import { PeopleAdminService } from './people-admin.service';
+import { TrucksAdminService } from './trucks-admin.service';
+import { TruckSamsaraService } from './truck-samsara.service';
 import { CustomJobsReviewService } from './custom-jobs-review.service';
 import { LaborClockService } from '../work-orders/labor-clock.service';
 import { InspectionService } from '../inspection/inspection.service';
@@ -56,6 +58,8 @@ export class AdminController {
     private readonly samsaraSync: SamsaraSyncService,
     private readonly truckFaults: TruckFaultsService,
     private readonly faultJobs: SamsaraFaultJobsService,
+    private readonly trucksAdmin: TrucksAdminService,
+    private readonly truckSamsara: TruckSamsaraService,
   ) {}
 
   @Get('access')
@@ -404,6 +408,45 @@ export class AdminController {
     return this.admin.listTrucks(query);
   }
 
+  // D44 / LTR-215: the Manager and the System Admin add, edit, deactivate and delete trucks (like People, D22/D31).
+  @Post('trucks')
+  @UseGuards(ManagerWritesGuard)
+  createTruck(@Body() body: unknown) {
+    return this.trucksAdmin.create(body);
+  }
+
+  @Patch('trucks/:id')
+  @UseGuards(ManagerWritesGuard)
+  updateTruck(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.trucksAdmin.update(request.user!, id, body);
+  }
+
+  @Delete('trucks/:id')
+  @UseGuards(ManagerWritesGuard)
+  deleteTruck(@Param('id') id: string) {
+    return this.trucksAdmin.delete(id);
+  }
+
+  /** D44 §3: Samsara vehicles no other truck has, the VIN or number match first (live from Samsara). */
+  @Get('trucks/:id/samsara/candidates')
+  @UseGuards(ManagerWritesGuard)
+  truckSamsaraCandidates(@Param('id') id: string) {
+    return this.truckSamsara.candidates(id);
+  }
+
+  /** D44 §4: connect; empty fields are filled from Samsara, differing ones need the Manager's choice. */
+  @Post('trucks/:id/samsara/connect')
+  @UseGuards(ManagerWritesGuard)
+  connectTruckSamsara(@Param('id') id: string, @Body() body: unknown) {
+    return this.truckSamsara.connect(id, body);
+  }
+
+  @Post('trucks/:id/samsara/disconnect')
+  @UseGuards(ManagerWritesGuard)
+  disconnectTruckSamsara(@Param('id') id: string) {
+    return this.truckSamsara.disconnect(id);
+  }
+
   @Get('yard-operations')
   yardOperationsList(@Query() query: Record<string, unknown>) {
     return this.yardOperations.list(query);
@@ -455,12 +498,15 @@ export class AdminController {
 
   @Get('trucks/:id')
   async yardTruck(@Req() request: Request, @Param('id') id: string) {
-    const [detail, workPlan] = await Promise.all([
+    const manager = canDoManagerWrites(request.user);
+    const [detail, workPlan, admin] = await Promise.all([
       this.yardOperations.detail(id),
       this.workPlan.get(request.user!, id),
+      // D44: delete and the Samsara connection, for whoever can edit the truck.
+      manager ? this.trucksAdmin.adminInfo(id).catch(() => undefined) : Promise.resolve(undefined),
     ]);
     // LTR-158 / LTR-159: `detail.nextStep` comes from the one helper every surface uses.
-    return { ...detail, workPlan };
+    return { ...detail, workPlan, ...(admin ? { admin } : {}) };
   }
 
   @Get('trucks/:id/work-plan')

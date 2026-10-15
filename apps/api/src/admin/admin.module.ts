@@ -20,10 +20,12 @@ import { CatalogAdminService } from './catalog-admin.service';
 import { CustomJobsReviewService } from './custom-jobs-review.service';
 import { PeopleAdminService } from './people-admin.service';
 import { ShopWorkflowService } from './shop-workflow.service';
+import { TrucksAdminService } from './trucks-admin.service';
+import { TruckSamsaraService } from './truck-samsara.service';
 
 @Module({
   imports: [AuthModule, TrucksModule, ActivityLogModule, WorkOrdersModule],
   controllers: [AdminController, InspectionsController, SamsaraSyncController],
-  providers: [AdminService, YardOperationsService, YardWorkPlanService, YardDataBoundaryService, SamsaraPairingService, SamsaraSyncService, TruckFaultsService, SamsaraFaultJobsService, SystemAdminWritesService, ShopWorkflowService, CatalogAdminService, PeopleAdminService, CustomJobsReviewService, InspectionService],
+  providers: [AdminService, YardOperationsService, YardWorkPlanService, YardDataBoundaryService, SamsaraPairingService, SamsaraSyncService, TruckFaultsService, SamsaraFaultJobsService, SystemAdminWritesService, ShopWorkflowService, CatalogAdminService, PeopleAdminService, CustomJobsReviewService, InspectionService, TrucksAdminService, TruckSamsaraService],
 })
 export class AdminModule {}

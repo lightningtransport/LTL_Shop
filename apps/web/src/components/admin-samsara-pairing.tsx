@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { RefreshCw, TriangleAlert, Zap } from 'lucide-react';
 import type {
@@ -8,6 +9,7 @@ import type {
   SamsaraPairedTruckDto,
   SamsaraPairingMethod,
   SamsaraPairingWarning,
+  SamsaraProposedTruckDto,
   SamsaraSyncStateDto,
   SamsaraTruckRefDto,
   SamsaraUnpairedReason,
@@ -18,15 +20,15 @@ import { useActionToast } from './action-toast';
 import { useDocumentTitle } from './admin-breadcrumb';
 import { Badge, Button, DataTable, InlineAlert, LoadFailure, PageHeader, PageSkeleton, SectionCard } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
-import { runAdminSamsaraSync, useAdminSamsaraPairing } from '@/lib/admin-data';
+import { connectAdminTruckSamsara, runAdminSamsaraSync, useAdminSamsaraPairing } from '@/lib/admin-data';
+import { apiErrorCode, apiErrorMessage } from '@/lib/api-error-message';
 import { formatAdminAgo } from '@/lib/admin-format';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 const METHOD_KEY: Record<SamsaraPairingMethod, keyof AdminMessages> = {
+  connected: 'samsaraMethodConnected',
   samsara_id: 'samsaraMethodSamsaraId',
-  vin: 'samsaraMethodVin',
-  number: 'samsaraMethodNumber',
 };
 
 const REASON_KEY: Record<SamsaraUnpairedReason, keyof AdminMessages> = {
@@ -36,8 +38,8 @@ const REASON_KEY: Record<SamsaraUnpairedReason, keyof AdminMessages> = {
 };
 
 const WARNING_KEY: Record<SamsaraPairingWarning, keyof AdminMessages> = {
-  stale_samsara_id: 'samsaraWarnStaleId',
   vin_mismatch: 'samsaraWarnVinMismatch',
+  vehicle_missing: 'samsaraWarnVehicleMissing',
 };
 
 /**
@@ -51,6 +53,27 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
   const canSync = useCanShowManagerWrites();
   const { showToast } = useActionToast();
   const [syncing, setSyncing] = useState(false);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const router = useRouter();
+
+  // D44 (owner): one tap when nothing differs; otherwise the truck opens on the "Yours · Samsara" step.
+  async function connectProposed(row: SamsaraProposedTruckDto) {
+    setConnecting(row.truck.id);
+    try {
+      const result = await connectAdminTruckSamsara(row.truck.id, { vehicleId: row.vehicle.id });
+      showToast('success', result.synced ? fillPlaceholders(messages.samsaraConnectedToast, { name: result.connectedVehicleName || row.vehicle.id }) : messages.samsaraConnectedNoSync);
+      await mutate();
+    } catch (failure) {
+      if (apiErrorCode(failure) === 'SAMSARA_CHOICE_REQUIRED') {
+        showToast('error', messages.samsaraChooseInTruck);
+        router.push(`/admin/trucks/${row.truck.id}?connect=${encodeURIComponent(row.vehicle.id)}`);
+      } else {
+        showToast('error', apiErrorMessage(failure, { locale: messages.locale, apiError: messages.apiError }, messages.truckWriteFailed));
+      }
+    } finally {
+      setConnecting(null);
+    }
+  }
 
   // D35 / S-2: run the sync now (GitHub Actions runs it every hour of the shop day).
   async function syncNow() {
@@ -104,10 +127,13 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
   }
 
   const { summary } = data;
+  // Deploy skew: an older API has no `proposed`.
+  const proposed = data.proposed ?? [];
   const stats = [
     { label: messages.samsaraStatVehicles, value: summary.samsaraVehicles },
     { label: messages.samsaraStatTrucks, value: summary.trucks },
-    { label: messages.samsaraStatPaired, value: summary.paired, sub: fillPlaceholders(messages.samsaraPairedBy, { id: String(summary.pairedBy.samsara_id), vin: String(summary.pairedBy.vin), number: String(summary.pairedBy.number) }) },
+    { label: messages.samsaraStatPaired, value: summary.paired, sub: fillPlaceholders(messages.samsaraPairedBy, { connected: String(summary.pairedBy.connected), id: String(summary.pairedBy.samsara_id) }) },
+    { label: messages.samsaraStatProposed, value: summary.proposed ?? data.proposed?.length ?? 0 },
     { label: messages.samsaraStatUnpairedTrucks, value: summary.unpairedTrucks },
     { label: messages.samsaraStatUnpairedVehicles, value: summary.unpairedVehicles },
   ];
@@ -137,7 +163,7 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
     <div className="space-y-6">
       {header}
 
-      <dl className="grid grid-cols-2 gap-3 md:grid-cols-5" data-testid="samsara-summary">
+      <dl className="grid grid-cols-2 gap-3 md:grid-cols-6" data-testid="samsara-summary">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border bg-card px-4 py-3">
             <dt className="text-xs text-muted-foreground">{stat.label}</dt>
@@ -148,6 +174,34 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
       </dl>
 
       {data.odometersAvailable ? null : <p className="rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">{messages.samsaraNoOdometers}</p>}
+
+      {/* D44: the sync's VIN matches wait here (and on each truck) until the Manager connects them; one tap when nothing differs. */}
+      <SectionCard title={messages.samsaraProposedTitle} count={proposed.length} data-testid="samsara-proposed">
+        {proposed.length ? (
+          <>
+            <p className="px-4 pt-3 text-sm text-muted-foreground">{messages.samsaraProposedHint}</p>
+            <DataTable<SamsaraProposedTruckDto>
+              className="md:rounded-none md:border-0"
+              items={proposed}
+              caption={messages.samsaraProposedTitle}
+              getKey={(row) => row.truck.id}
+              getRowLabel={(row) => row.truck.truckNumber}
+              columns={[
+                { key: 'truck', header: messages.samsaraColTruck, primary: true, cell: (row) => truckCell(row.truck) },
+                { key: 'vehicle', header: messages.samsaraColVehicle, cell: (row) => row.vehicle.name || row.vehicle.id },
+                { key: 'vin', header: messages.samsaraColVin, cell: (row) => vinCell(row.vehicle.vin) },
+                {
+                  key: 'connect',
+                  header: '',
+                  cell: (row) => canSync ? (
+                    <Button type="button" size="sm" disabled={connecting === row.truck.id} onClick={() => void connectProposed(row)}>{messages.samsaraConnectAction}</Button>
+                  ) : null,
+                },
+              ]}
+            />
+          </>
+        ) : <p className="px-4 py-3 text-sm text-muted-foreground">{messages.samsaraEmptyProposed}</p>}
+      </SectionCard>
 
       <SectionCard title={messages.samsaraUnpairedTrucksTitle} count={data.unpairedTrucks.length}>
         {data.unpairedTrucks.length ? (
