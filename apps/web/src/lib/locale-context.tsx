@@ -363,6 +363,7 @@ type Copy = {
   mechanicNavLabel: string;
   mechanicTrucksTitle: string;
   mechanicTrucksSubtitle: string;
+  mechanicTrucksMine: string;
   mechanicCompletedTitle: string;
   mechanicCompletedSubtitle: string;
   noCompletedWork: string;
@@ -849,6 +850,7 @@ const copy: Record<ShopLocale, Copy> = {
     mechanicNavLabel: 'Mechanic workspace',
     mechanicTrucksTitle: 'Find a Truck',
     mechanicTrucksSubtitle: 'Search by Truck number to see its repair history.',
+    mechanicTrucksMine: 'Trucks with your Jobs',
     mechanicCompletedTitle: 'Completed work',
     mechanicCompletedSubtitle: 'Jobs you completed in the last 30 days, newest Work Order first.',
     noCompletedWork: 'No completed work yet.',
@@ -1338,6 +1340,7 @@ const copy: Record<ShopLocale, Copy> = {
     mechanicNavLabel: 'Espacio del mecánico',
     mechanicTrucksTitle: 'Buscar una unidad',
     mechanicTrucksSubtitle: 'Busca por número de unidad para ver su historial de reparaciones.',
+    mechanicTrucksMine: 'Unidades con tus Jobs',
     mechanicCompletedTitle: 'Trabajo completado',
     mechanicCompletedSubtitle: 'Jobs que completaste en los últimos 30 días, del Work Order más reciente al más antiguo.',
     noCompletedWork: 'Aún no hay trabajo completado.',
