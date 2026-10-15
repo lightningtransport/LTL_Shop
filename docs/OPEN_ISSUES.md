@@ -26,10 +26,8 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Trucks & Inspección | LTR-214 | Corregir el VIN de 876 y 877 (espera LTR-215) | C |
 | Trucks & Inspección | LTR-113 | Make/Model invertidos en algunos camiones | C |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
-| Mecánicos | LTR-208 | La pestaña Trucks es solo un buscador; mostrar "Trucks with your Jobs" | C |
 | Mecánicos | LTR-209 | "Loading work order" en texto plano; usar `PageSkeleton` | E |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
-| Setup, People & Permisos | LTR-210 | "Add to team" no guarda hasta "Save steps" | C |
 | Demo & Landing | LTR-211 | Avisar que una historia ya se ejecutó en esta base | C |
 | Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
 | Plataforma y Go-live | LTR-212 | Polling superpuesto; logo del Admin pesado | E |
