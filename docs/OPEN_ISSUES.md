@@ -18,7 +18,6 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 
 | Proyecto Linear | Issue | Qué | Clase |
 |---|---|---|---|
-| Work Orders & Jobs | LTR-205 | Add work: tarjeta dentro de tarjeta en `CategoryJobList` | E |
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
 | Yard | LTR-206 | Textos "UNAVAILABLE" y "Unable to load current administrative data." | E |
 | Yard | LTR-207 | La pestaña Dispatch se llama `movement` en la URL | E |
