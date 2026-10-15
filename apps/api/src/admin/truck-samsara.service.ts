@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   SAMSARA_CONNECT_FIELDS,
   adminConnectSamsaraSchema,
+  normalizeMakeModel,
   type SamsaraCandidateDto,
   type SamsaraCandidatesDto,
   type SamsaraConnectField,
@@ -197,6 +198,8 @@ export function mergeCard(
   vehicle: SamsaraVehicle,
   choose: Partial<Record<SamsaraConnectField, 'ours' | 'samsara'>>,
 ) {
+  // LTR-113: Samsara's Make / Model go through the same rule as the truck form.
+  vehicle = { ...vehicle, ...normalizeMakeModel(vehicle.make, vehicle.model) };
   const data: Partial<TruckCard> = {};
   const filled: SamsaraConnectField[] = [];
   const needChoice: SamsaraConnectField[] = [];

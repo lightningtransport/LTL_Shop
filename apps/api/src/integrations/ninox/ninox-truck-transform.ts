@@ -1,3 +1,4 @@
+import { normalizeMakeModel } from '@ltl-shop/shared';
 import { NINOX_TRUCKS_DB } from './ninox.mapping';
 
 export type NinoxRecordLike = {
@@ -99,13 +100,15 @@ export function transformTrucksDbRecord(record: NinoxRecordLike): ShopTruckSeedR
   if (!truckNumber) return null;
 
   const location = locationFromX1An(fields);
+  // LTR-113: TrucksDB has one Make field; some rows hold "Mack Anthem" or a model name.
+  const vehicle = normalizeMakeModel(asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.makeFieldId)), null);
   const ninoxExternalId = record.id == null || record.id === '' ? null : String(record.id);
 
   return {
     truckNumber,
     vin: asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.vinFieldId)),
-    make: asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.makeFieldId)),
-    model: null,
+    make: vehicle.make,
+    model: vehicle.model,
     year: asInteger(fieldValue(fields, NINOX_TRUCKS_DB.modelYearFieldId)),
     licensePlate: asDisplayString(fieldValue(fields, NINOX_TRUCKS_DB.licensePlateFieldId)),
     mileage: asInteger(fieldValue(fields, NINOX_TRUCKS_DB.odometerMilesFieldId)),

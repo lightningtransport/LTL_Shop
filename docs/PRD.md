@@ -147,7 +147,7 @@ empieza sin decisión (etiqueta **Gated** en Linear).
 ## 6. Cómo sabemos que funciona
 
 **Hoy (comprobado):** las pruebas de flujo contra la API real
-(`npm run test:real`, filas A1–A109 de `USER_FLOWS.md`) definen "funciona".
+(`npm run test:real`, filas A1–A110 de `USER_FLOWS.md`) definen "funciona".
 La salida en vivo termina cuando el taller trabaja un día completo con usuarios
 reales sin un defecto B.
 

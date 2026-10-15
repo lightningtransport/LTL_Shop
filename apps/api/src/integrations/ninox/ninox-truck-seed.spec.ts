@@ -4,7 +4,7 @@ import type { NinoxReadOnlyClient } from './ninox.read-only-client';
 
 function prismaMock(options?: {
   completed?: boolean;
-  byNumber?: Record<string, { id: string; truckNumber: string; vin: string | null }>;
+  byNumber?: Record<string, { id: string; truckNumber: string; vin: string | null; model?: string | null }>;
   byVin?: Record<string, Array<{ id: string; truckNumber: string; vin: string | null }>>;
 }) {
   const byNumber = options?.byNumber ?? {};
@@ -76,6 +76,13 @@ describe('runNinoxTruckSeed', () => {
     }));
     expect(prisma.truck.update.mock.calls[0][0].data).not.toHaveProperty('presence');
     expect(prisma.truck.upsert.mock.calls[0][0].create).not.toHaveProperty('yardLocation');
+  });
+
+  it("reads TrucksDB's Make against the Model the truck already has (LTR-113)", async () => {
+    const listTrucksDbRecords = vi.fn().mockResolvedValue([{ id: 1, fields: { A: '277', DG: 'CASCADIA' } }]);
+    const prisma = prismaMock({ byNumber: { '277': { id: 'id-277', truckNumber: '277', vin: null, model: 'Freightliner' } } });
+    await runNinoxTruckSeed({ prisma: prisma as never, client: { listTrucksDbRecords } as unknown as NinoxReadOnlyClient });
+    expect(prisma.truck.update.mock.calls[0][0].data).toMatchObject({ make: 'Freightliner', model: 'CASCADIA' });
   });
 
   it('prefers VIN+truckNumber and reports an ambiguous VIN as skipped', async () => {

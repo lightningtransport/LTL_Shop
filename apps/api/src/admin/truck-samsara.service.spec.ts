@@ -68,6 +68,12 @@ describe('mergeCard (D44 §4)', () => {
     });
   });
 
+  it("reads Samsara's Make / Model with the same rule as the truck form (LTR-113)", () => {
+    const merged = { id: 'v', name: 'X', vin: null, make: 'MACK ANTHEM', model: null };
+    expect(mergeCard({ vin: VIN, make: null, model: null, year: null, licensePlate: null }, merged, {}).data).toEqual({ make: 'Mack', model: 'ANTHEM' });
+    expect(mergeCard({ vin: VIN, make: 'Mack', model: 'Anthem', year: null, licensePlate: null }, merged, {}).filled).toEqual([]);
+  });
+
   it('never empties a field Samsara does not know', () => {
     expect(mergeCard({ vin: VIN, make: 'Volvo', model: null, year: null, licensePlate: null }, { id: 'v', name: 'X', vin: null }, {}).filled).toEqual([]);
   });
