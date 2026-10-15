@@ -1001,6 +1001,11 @@ colores de arranque claros. *(LTR-171, pendiente de fusionar.)*
 - `npm run test:real --workspace=@ltl-shop/api` compila la API, la levanta,
   corre todo y escribe `apps/api/test-real/results/matrix.md`.
 - Un PR que cambia un flujo cambia su prueba y su fila en `USER_FLOWS.md`.
+- **CI (`.github/workflows/ci.yml`, LTR-213):** en cada PR y en `main`, el job
+  `test` corre las pruebas de `packages/shared`, de la API y de la web (vitest),
+  el `tsc` de la API y el build de la web. El job `flows` arma una base de prueba
+  propia y corre `test:real`; la matriz queda en el resumen del job. Las e2e de
+  Playwright siguen corriéndose a mano.
 
 ---
 

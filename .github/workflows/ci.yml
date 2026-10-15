@@ -38,6 +38,46 @@ jobs:
       - run: npm run prisma:generate --workspace=@ltl-shop/api
       - run: npm exec --workspace=@ltl-shop/api -- prisma migrate deploy
       - run: npm run prisma:release-status --workspace=@ltl-shop/api
+      - run: npm test --workspace=@ltl-shop/shared
       - run: npm test --workspace=@ltl-shop/api
       - run: npm run lint --workspace=@ltl-shop/api
+      # LTR-213: the web unit tests (vitest) ran only on laptops.
+      - run: npm test --workspace=@ltl-shop/web
       - run: npm run build --workspace=@ltl-shop/web
+
+  # LTR-213: the flow tests against the real API (apps/api/test-real, the rows of docs/USER_FLOWS.md) define
+  # "works"; they ran only by hand. Own job and own Postgres, in parallel with `test`.
+  flows:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      # test-real/env.ts refuses any database that is not local or whose name lacks "test".
+      REAL_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ltl_shop_test
+      DATA_SOURCE: supabase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run build --workspace=@ltl-shop/shared
+      - run: npm run prisma:generate --workspace=@ltl-shop/api
+      - run: npm run test:real:setup --workspace=@ltl-shop/api
+      - run: npm run test:real --workspace=@ltl-shop/api
+      - name: Flow matrix
+        if: always()
+        run: cat apps/api/test-real/results/matrix.md >> "$GITHUB_STEP_SUMMARY"
