@@ -8,14 +8,18 @@ import { Button } from './ui';
 
 export type ActionToastKind = 'success' | 'error';
 
+/** LTR-218: a one-tap action can offer its way back ("Undo") right in the toast. */
+export type ActionToastAction = { label: string; onAction: () => void };
+
 type ActionToast = {
   id: number;
   kind: ActionToastKind;
   message: string;
+  action?: ActionToastAction;
 };
 
 type ActionToastContextValue = {
-  showToast: (kind: ActionToastKind, message: string) => void;
+  showToast: (kind: ActionToastKind, message: string, action?: ActionToastAction) => void;
   /** Stage MG-5 (UX-1-008): a sheet that opens closes the toast so it never covers the sheet's buttons. */
   dismissToast: () => void;
 };
@@ -48,14 +52,15 @@ export function ActionToastProvider({ children }: { children: React.ReactNode })
     setToast(null);
   }, [clearTimer]);
 
-  const showToast = useCallback((kind: ActionToastKind, message: string) => {
+  const showToast = useCallback((kind: ActionToastKind, message: string, action?: ActionToastAction) => {
     clearTimer();
     nextId.current += 1;
-    setToast({ id: nextId.current, kind, message });
+    setToast({ id: nextId.current, kind, message, action });
+    // With an Undo, a little longer to read and reach it.
     timeoutRef.current = window.setTimeout(() => {
       setToast(null);
       timeoutRef.current = null;
-    }, 6000);
+    }, action ? 8000 : 6000);
   }, [clearTimer]);
 
   useEffect(() => () => clearTimer(), [clearTimer]);
@@ -82,6 +87,17 @@ export function ActionToastProvider({ children }: { children: React.ReactNode })
               ? <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive-text" />
               : <CircleCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />}
             <p className="min-w-0 flex-1">{toast.message}</p>
+            {toast.action ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="-my-1 shrink-0"
+                onClick={() => { const { onAction } = toast.action!; dismiss(); onAction(); }}
+              >
+                {toast.action.label}
+              </Button>
+            ) : null}
             <Button type="button" variant="ghost" size="sm" className="-my-1 -mr-1.5 shrink-0" onClick={dismiss}>
               {messages.dismissNotice}
             </Button>

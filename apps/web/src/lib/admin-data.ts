@@ -498,6 +498,13 @@ export function handleAdminWorkRequest(workOrderId: string, noteId: string) {
   });
 }
 
+/** LTR-218: Undo after Mark handled. */
+export function unhandleAdminWorkRequest(workOrderId: string, noteId: string) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/notes/${noteId}/unhandle`, {
+    method: 'POST',
+  });
+}
+
 export function pauseAdminWorkOrder(
   workOrderId: string,
   input: { reason: string; notes?: string },

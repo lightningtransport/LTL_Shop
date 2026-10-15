@@ -8,7 +8,7 @@ import { NextStepAction } from './next-step-action';
 import { useActionToast } from './action-toast';
 import { Button, LoadFailure, PageSkeleton, PriorityBadge, Textarea } from './ui';
 import { formatAdminDateOnly } from '@/lib/admin-format';
-import { handleAdminWorkRequest, resolveAdminBlocker, useAdminDashboard, useAdminYardDataBoundary } from '@/lib/admin-data';
+import { handleAdminWorkRequest, resolveAdminBlocker, unhandleAdminWorkRequest, useAdminDashboard, useAdminYardDataBoundary } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { cn } from '@/lib/utils';
@@ -363,7 +363,16 @@ function RequestRow({ request, locale, messages, canManage, onChanged }: {
     setPending(true);
     try {
       await handleAdminWorkRequest(request.workOrderId, request.id);
-      showToast('success', messages.workRequestHandledSuccess);
+      // LTR-218 (UX-1-006): one tap removes the request from the list, so the toast offers it back.
+      const { workOrderId, id } = request;
+      showToast('success', fillPlaceholders(messages.workRequestHandledOn, { truck: request.truckNumber }), {
+        label: messages.undo,
+        onAction: () => {
+          void unhandleAdminWorkRequest(workOrderId, id)
+            .then(() => onChanged())
+            .catch(() => showToast('error', messages.workRequestHandleFailed));
+        },
+      });
       await onChanged();
     } catch {
       showToast('error', messages.workRequestHandleFailed);

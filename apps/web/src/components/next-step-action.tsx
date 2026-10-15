@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { CheckCheck, ClipboardCheck, FilePlus, ListPlus, Play, SquareArrowOutUpRight, Truck as TruckIcon, UserPlus, type LucideIcon } from 'lucide-react';
 import { AppCapability, isPmCategory, type AdminWorkOrderDetailDto, type TruckNextStepDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
-import { assignAdminWorkOrderJob, completeAdminJob, completeAdminWorkOrder, resumeAdminWorkOrder, useAdminAssignableMechanics } from '@/lib/admin-data';
+import { assignAdminWorkOrderJob, completeAdminJob, completeAdminWorkOrder, resumeAdminWorkOrder, unassignAdminWorkOrderJob, useAdminAssignableMechanics } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
@@ -214,8 +214,17 @@ function AssignAction({ step, workOrderId, expectedVersion, messages, onChanged 
     setOpen(false);
     setPending(true);
     try {
-      await assignAdminWorkOrderJob(workOrderId, step.jobId!, { mechanicId: mechanic.id, expectedVersion: detail?.version ?? expectedVersion ?? 0 });
-      showToast('success', messages.assignJobSuccess);
+      const jobId = step.jobId!;
+      const assigned = await assignAdminWorkOrderJob(workOrderId, jobId, { mechanicId: mechanic.id, expectedVersion: detail?.version ?? expectedVersion ?? 0 });
+      // LTR-218 (UX-1-007): say which Job went to whom, and offer it back — the row moves to the next Job.
+      showToast('success', fillPlaceholders(messages.assignJobTo, { job: step.jobName ?? '', name: mechanic.name }), {
+        label: messages.undo,
+        onAction: () => {
+          void unassignAdminWorkOrderJob(workOrderId, jobId, assigned.version)
+            .then(() => onChanged())
+            .catch((failure) => showToast('error', workOrderActionErrorMessage(failure, messages, messages.truckNextStepFailed)));
+        },
+      });
       setDetail(null);
       await onChanged();
     } catch (failure) {

@@ -136,6 +136,12 @@ describe('Tablero, Yard, notas y tiempos', () => {
     truthy('queda la fecha de atendido', (workOrder.noteEntries as Json[]).find((note) => note.id === request.id)?.handledAt);
     dashboard = ok('Dashboard', await manager.get('/admin/dashboard'));
     same('sale del Dashboard', (dashboard.openWorkRequests as Json[]).length, 0);
+    // LTR-218 (UX-1-006): Undo después de "Mark handled".
+    refused('el mecánico no deshace', await mechanic.post(`/admin/work-orders/${workOrderId}/notes/${request.id}/unhandle`), 403);
+    ok('deshacer', await manager.post(`/admin/work-orders/${workOrderId}/notes/${request.id}/unhandle`));
+    dashboard = ok('Dashboard', await manager.get('/admin/dashboard'));
+    same('el pedido vuelve al Dashboard', (dashboard.openWorkRequests as Json[]).length, 1);
+    ok('marcar atendido otra vez', await manager.post(`/admin/work-orders/${workOrderId}/notes/${request.id}/handle`));
     ok('nota del Manager', await manager.post(`/admin/work-orders/${workOrderId}/notes`, { kind: 'note', body: 'Llantas pedidas.' }));
 
     await doPm(workOrderId, truck.id);

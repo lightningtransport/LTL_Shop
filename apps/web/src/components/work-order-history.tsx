@@ -226,7 +226,9 @@ function ActivityItem({ entry, locale, messages }: { entry: Activity; locale: Ad
   const useKind = kind && (!kind.job || job);
   const Icon = useKind ? kind.icon : History;
   const tone = useKind ? kind.tone : 'muted';
-  const template = useKind ? String(messages[kind.key]) : messages.activityGeneric;
+  // LTR-218 (UX-1-005): Safety taking the Quality Check is logged as "mechanic added"; it reads as what Safety did.
+  const qcTaken = valueString(entry.relevantValue, 'action') === 'quality_check_taken';
+  const template = qcTaken ? messages.activityQcTaken : useKind ? String(messages[kind.key]) : messages.activityGeneric;
   const detail = valueString(entry.newValue, 'notes') ?? valueString(entry.previousValue, 'notes') ?? (!useKind ? job : null);
   return (
     <li className="relative">

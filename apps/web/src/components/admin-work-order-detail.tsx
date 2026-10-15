@@ -308,7 +308,8 @@ export function AdminWorkOrderDetail({
           {/* PCA10 (UX-5-005): what this Work Order has cost so far (Manager and System Admin only; the API sends it to nobody else). */}
           {data.costs ? (
             <p className="text-muted-foreground" data-testid="wo-costs-so-far">
-              {fillPlaceholders(messages.pcWoCostsSoFar, { labor: formatCents(data.costs.laborCents, locale), outside: formatCents(data.costs.outsideCents, locale) })}
+              {/* LTR-218 (UX-1-004): labor is written when the Work Order completes (D34); before that, "$0.00" reads as free. */}
+              {fillPlaceholders(data.status !== 'completed' && data.costs.laborCents === 0 ? messages.pcWoCostsSoFarOpen : messages.pcWoCostsSoFar, { labor: formatCents(data.costs.laborCents, locale), outside: formatCents(data.costs.outsideCents, locale) })}
               <Dot />
               <Link href={adminTruckCostsHref(truck.id, `/admin/work-orders/${data.id}`)} className="text-primary hover:underline">{messages.pcWoOpenTruckCosts}</Link>
             </p>

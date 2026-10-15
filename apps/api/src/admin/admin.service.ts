@@ -317,6 +317,12 @@ export class AdminService {
     return this.detail(workOrderId);
   }
 
+  async unhandleWorkRequest(user: AuthUser, workOrderId: string, noteId: string): Promise<AdminWorkOrderDetailDto> {
+    if (!isUuid(workOrderId) || !isUuid(noteId)) throw new BadRequestException('Invalid id');
+    await this.workOrders.unhandleWorkRequest(user, workOrderId, noteId);
+    return this.detail(workOrderId);
+  }
+
   async pauseWorkOrder(user: AuthUser, workOrderId: string, body: unknown): Promise<AdminWorkOrderDetailDto> {
     if (!isUuid(workOrderId)) throw new BadRequestException('Invalid Work Order id');
     await this.workOrders.pauseByManager(user, workOrderId, body);

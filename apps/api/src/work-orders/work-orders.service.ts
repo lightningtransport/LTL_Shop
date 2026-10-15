@@ -1242,6 +1242,27 @@ export class WorkOrdersService {
     });
   }
 
+  /** LTR-218 (UX-1-006): "Undo" after Mark handled — the request is open again for the Manager. */
+  async unhandleWorkRequest(user: AuthUser, id: string, noteId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const request = await tx.workOrderNote.findFirst({
+        where: { id: noteId, workOrderId: id, kind: 'work_request' },
+      });
+      if (!request) throw new NotFoundException('Work request not found');
+      if (!request.handledAt) return;
+      await tx.workOrderNote.update({ where: { id: noteId }, data: { handledAt: null, handledById: null } });
+      await this.activity.log(tx, {
+        workOrderId: id,
+        eventType: ActivityEventType.WORK_REQUEST_HANDLED,
+        entityType: 'work_order_note',
+        entityId: noteId,
+        userId: user.id,
+        previousValue: { body: request.body, handled: true },
+        newValue: { handled: false },
+      });
+    });
+  }
+
 
   async completeJob(user: AuthUser, workOrderId: string, jobId: string, raw: unknown = {}) {
     const parsed = completeJobSchema.safeParse(raw ?? {});
