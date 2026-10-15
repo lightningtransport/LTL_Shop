@@ -19,8 +19,6 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Proyecto Linear | Issue | Qué | Clase |
 |---|---|---|---|
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
-| Yard | LTR-206 | Textos "UNAVAILABLE" y "Unable to load current administrative data." | E |
-| Yard | LTR-207 | La pestaña Dispatch se llama `movement` en la URL | E |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
 | Trucks & Inspección | LTR-214 | Corregir el VIN de 876 y 877 (espera LTR-215) | C |
 | Trucks & Inspección | LTR-113 | Make/Model invertidos en algunos camiones | C |

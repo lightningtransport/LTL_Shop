@@ -16,8 +16,8 @@ describe('Yard data-boundary FE mapping', () => {
   it('uses PD-locked EN/ES copy from shared', () => {
     expect(yardDataBoundaryCopy('en')).toBe(YARD_DATA_BOUNDARY_COPY.en);
     expect(yardDataBoundaryCopy('es')).toBe(YARD_DATA_BOUNDARY_COPY.es);
-    expect(yardDataBoundaryCopy('en').badge).toBe('UNAVAILABLE');
-    expect(yardDataBoundaryCopy('es').badge).toBe('NO DISPONIBLE');
+    expect(yardDataBoundaryCopy('en').badge).toBe('No data');
+    expect(yardDataBoundaryCopy('es').badge).toBe('Sin datos');
     expect(yardDataBoundaryCopy('es').incomingTrucks.label).toBe('Incoming Trucks');
     expect(yardDataBoundaryCopy('es').incomingTrucks.empty).toBe('No hay Incoming Trucks.');
     expect(yardDataBoundaryCopy('es').workLocation.label).toBe('Estado de Dispatch');

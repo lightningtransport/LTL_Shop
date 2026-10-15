@@ -96,7 +96,7 @@ test.describe('D36 demo mode', () => {
     await expect(card).toContainText('Step 2 of 5');
 
     await card.getByRole('button', { name: 'Next' }).click();
-    await expect(page).toHaveURL(/\/admin\/yard-operations\?tab=movement$/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/admin\/yard-operations\?tab=dispatch$/, { timeout: 15_000 });
     await expect(card).toContainText('Step 3 of 5');
 
     await card.getByRole('button', { name: 'Back' }).click();
