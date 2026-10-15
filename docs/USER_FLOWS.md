@@ -781,7 +781,7 @@ Una propuesta de la sincronización (VIN exacto) se ve en la ficha (banda con **
 | El número ya existe | No deja guardar y lo dice | ✅ | A99 |
 | El VIN ya es de otro camión | Lo avisa con enlace al otro camión | ✅ | A99 |
 | Edita la ficha | Cambia solo lo que tocó; lo que borra queda vacío | ✅ | A100 |
-| Make y Model al revés o juntos ("CASCADIA / Freightliner", "Mack Anthem") | Se guardan bien (Freightliner / CASCADIA, Mack / Anthem) y la marca se escribe de una sola forma; igual al importar de Ninox y al conectar Samsara (LTR-113) | ✅ | A110 |
+| Make y Model al revés, juntos o repetidos ("CASCADIA / Freightliner", "Mack Anthem", "PETERBILT / PETERBILT 579") | Se guardan bien (Freightliner / CASCADIA, Mack / Anthem, Peterbilt / 579) y la marca se escribe de una sola forma; igual al importar de Ninox y al conectar Samsara (LTR-113) | ✅ | A110 |
 | La sincronización ve un VIN que coincide exacto | Lo propone en la ficha, en Trucks y en Setup → Samsara; no conecta solo; por número no propone | ✅ | A106 |
 | Conecta la propuesta y nada difiere | Se conecta de un toque | ✅ | A109 |
 | Connect Samsara | Arriba el que coincide por VIN y luego por número ("Suggested") | ✅ | A103 |

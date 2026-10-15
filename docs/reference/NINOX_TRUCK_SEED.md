@@ -84,7 +84,7 @@ npm run prisma:seed-ninox-trucks --workspace=@ltl-shop/api
 ## Make / Model of trucks already saved (LTR-113)
 
 The Ninox import, Samsara connect and the Shop's truck form all save Make / Model
-through `normalizeMakeModel` (`packages/shared/src/vehicle.ts`). For trucks saved
+through `normalizeMakeModel` (`packages/shared/src/vehicle.ts`). It turns swapped fields around, splits "Mack Anthem", spells each make one way and drops a make the Model repeats ("PETERBILT 579" → "579"). For trucks saved
 before that rule, one script lists what would change and writes only with `--apply`:
 
 ```bash
