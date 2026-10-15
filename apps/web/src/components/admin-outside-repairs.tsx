@@ -66,6 +66,7 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
         search={search}
         onSearchChange={setSearch}
         searchLabel={messages.pcSearchOutside}
+        searchPlaceholder={messages.pcSearchOutsidePlaceholder}
         filtersLabel={messages.filters}
         closeLabel={messages.closeDialog}
         clearLabel={messages.pcClearFilters}

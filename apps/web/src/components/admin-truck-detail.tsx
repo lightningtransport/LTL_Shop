@@ -159,7 +159,8 @@ function TruckTabs({ truckId, from, active, messages }: { truckId: string; from:
 
 const STATUS_CHIP: Record<ReturnType<typeof truckStatusChip>, BadgeProps['variant']> = {
   ready_to_go: 'success',
-  ready_to_close: 'warning',
+  // UX-4-102: blue everywhere, the same role as the stepper's "Ready" pill.
+  ready_to_close: 'default',
   not_ready: 'warning',
   in_service: 'success',
   no_work_order: 'outline',
@@ -347,7 +348,8 @@ function TruckDetailBody({
       <div role="alert" className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/15 px-4 py-3 text-destructive-text">
         <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
         <p className="flex-1">{actionError}</p>
-        <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => { setActionError(null); void onChanged(); }}>
+        {/* UX-2-006: same color as the alert text, so it is always underlined. */}
+        <button type="button" className="font-medium underline underline-offset-2" onClick={() => { setActionError(null); void onChanged(); }}>
           {messages.reloadTruck}
         </button>
       </div>
@@ -434,7 +436,7 @@ function TruckDetailBody({
                     fillPlaceholders(messages.truckLocationSamsara, { ago: formatAdminAgo(samsara.locationAt, locale) }),
                     samsara.speedMph == null ? null : samsara.speedMph >= 3 ? fillPlaceholders(messages.truckLocationMoving, { speed: String(Math.round(samsara.speedMph)) }) : messages.truckLocationParked,
                   ].filter(Boolean).join(' · ')}
-                  {samsara.latitude != null && samsara.longitude != null ? <> · <a className="text-primary hover:underline" href={mapHref(samsara.latitude, samsara.longitude)} target="_blank" rel="noreferrer">{messages.truckOpenMap}</a></> : null}
+                  {samsara.latitude != null && samsara.longitude != null ? <> · <a className="text-primary underline underline-offset-2" href={mapHref(samsara.latitude, samsara.longitude)} target="_blank" rel="noreferrer">{messages.truckOpenMap}</a></> : null}
                 </span></>
               ) : data.truck.location && data.truck.locationUpdatedOn ? <><br /><span className="text-xs">{fillPlaceholders(messages.reportedOn, { date: formatAdminDateOnly(data.truck.locationUpdatedOn, locale) })}</span></> : null}
             </p>

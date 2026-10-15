@@ -21,6 +21,8 @@ module.exports = {
         'popover-foreground': themed('popover-foreground'),
         primary: themed('primary'),
         'primary-foreground': themed('primary-foreground'),
+        // UX-2-002: primary as text on a primary tint (Badge default, selected chips); AA in both themes.
+        'primary-text': themed('primary-text'),
         secondary: themed('secondary'),
         'secondary-foreground': themed('secondary-foreground'),
         muted: themed('muted'),

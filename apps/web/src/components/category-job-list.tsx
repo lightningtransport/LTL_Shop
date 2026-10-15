@@ -66,7 +66,7 @@ export function CategoryJobList({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="flex items-center gap-2 rounded-md border bg-background px-3 focus-within:border-ring">
+      <label className="flex items-center gap-2 rounded-md border border-input bg-background px-3 focus-within:border-ring">
         <Search aria-hidden="true" className="size-3.5 text-muted-foreground" />
         <span className="sr-only">{copy.searchLabel}</span>
         <input
@@ -92,7 +92,7 @@ export function CategoryJobList({
                   disabled={planned || blocked}
                   className={cn(
                     'inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-full border px-3 sm:min-h-9',
-                    isSelected ? 'border-primary bg-primary/15 text-primary' : planned || blocked ? 'cursor-not-allowed text-muted-foreground opacity-60' : 'hover:bg-accent',
+                    isSelected ? 'border-primary bg-primary/15 text-primary-text' : planned || blocked ? 'cursor-not-allowed text-muted-foreground opacity-60' : 'hover:bg-accent',
                   )}
                   onClick={() => onSelect(job)}
                 >

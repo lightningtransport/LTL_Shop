@@ -274,7 +274,8 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
     case 'qc':
       title = messages.dashQcTitle;
       // D-SET6: the Manager reaches Quality Check as backup from here (D29).
-      detail = <>{messages.dashQcSub} <Link className="tap-inline font-medium text-primary hover:underline" href="/qc">{messages.shopWorkflowQcBackupLink}</Link></>;
+      // UX-2-006: a link inside a sentence is always underlined (the line is muted text; color alone is 1.2:1).
+      detail = <>{messages.dashQcSub} <Link className="tap-inline font-medium text-primary underline underline-offset-2" href="/qc">{messages.shopWorkflowQcBackupLink}</Link></>;
       break;
     case 'add_missing_steps':
       detail = messages.calloutMissingSub;

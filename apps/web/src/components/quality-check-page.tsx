@@ -258,7 +258,7 @@ export function QualityCheckPage() {
                   onClick={() => setReturnJob(returnJob === choice.key ? null : choice.key)}
                   className={cn(
                     'inline-flex min-h-11 items-center rounded-full border px-3 text-sm [@media(pointer:fine)]:min-h-9',
-                    returnJob === choice.key ? 'border-primary bg-primary/15 text-primary' : 'hover:bg-accent',
+                    returnJob === choice.key ? 'border-primary bg-primary/15 text-primary-text' : 'hover:bg-accent',
                   )}
                 >
                   {choice.label}

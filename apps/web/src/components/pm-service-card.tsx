@@ -444,7 +444,8 @@ export function PmServiceCard({
                     aria-describedby={partsLocked ? 'pm-parts-locked' : undefined}
                     disabled={disabled}
                     onClick={() => toggleCategory(category, !on)}
-                    className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-40 ${on ? 'bg-success' : 'bg-muted-foreground/30'}`}
+                    // UX-2-005: the off track reaches 3:1 against the card (it was 1.5:1, the switch looked missing).
+                    className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-40 ${on ? 'bg-success' : 'bg-muted-foreground/75'}`}
                   >
                     <span aria-hidden="true" className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${on ? 'left-[1.375rem]' : 'left-0.5'}`} />
                   </button>

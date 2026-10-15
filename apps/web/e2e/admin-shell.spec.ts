@@ -131,7 +131,8 @@ test.describe('Shop Admin Phase 2A', () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(overflow).toBe(false);
       await expect(page.locator('nav.grid.grid-cols-2')).toHaveCount(0);
-      if (viewport.width < 768) {
+      // UX-4-002: the sidebar is fixed from 1024 px; tablets (834) use the header menu like phones.
+      if (viewport.width < 1024) {
         await expect(page.getByRole('button', { name: 'Open Shop Admin navigation' })).toBeVisible();
         await expect(page.getByRole('complementary', { name: 'Shop Admin navigation' })).toHaveCount(0);
       } else {

@@ -80,7 +80,7 @@ test.describe('Yard Operations Phase 1', () => {
     await expectDataBoundaryRequested();
     await expectPdBoundaryCards(page, 'en');
     await page.getByRole('tab', { name: 'Shop', exact: true }).click();
-    await page.getByRole('searchbox', { name: 'Truck, Work Order or mechanic' }).fill('Y-103');
+    await page.getByRole('searchbox', { name: 'Search by truck, Work Order or mechanic' }).fill('Y-103');
     await expect(page).toHaveURL(/search=Y-103/, { timeout: 5_000 });
     // Stage 8 (owner decision): no "More filters"; the URL still accepts phase from links on other screens.
     await expect(page.getByRole('button', { name: /More filters/ })).toHaveCount(0);
@@ -223,7 +223,7 @@ test.describe('Yard Operations Phase 1', () => {
 
     for (const width of [390, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
-      const search = page.getByRole('searchbox', { name: 'Truck, Work Order or mechanic' });
+      const search = page.getByRole('searchbox', { name: 'Search by truck, Work Order or mechanic' });
       await expect(search).toBeVisible();
       const searchClipped = await search.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
       expect(searchClipped, `search field clips at ${width}px`).toBe(false);

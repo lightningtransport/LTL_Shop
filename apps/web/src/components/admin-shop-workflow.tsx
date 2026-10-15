@@ -143,7 +143,8 @@ function WorkflowSteps({ messages, locale, canWrite }: { messages: AdminMessages
               const usable = members.filter((member) => member.eligible);
               const isQc = step.stepKey === ShopWorkflowStepKey.QUALITY_CHECK;
               return (
-                <li key={step.stepKey} className="grid gap-3 p-4 md:grid-cols-[2rem_minmax(0,16rem)_minmax(0,1fr)]" data-testid={`workflow-step-${step.stepKey}`}>
+                // UX-4-007: three columns only from `xl`; narrower, the team goes under the step name with the full width.
+                <li key={step.stepKey} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 p-4 xl:grid-cols-[2rem_minmax(0,16rem)_minmax(0,1fr)]" data-testid={`workflow-step-${step.stepKey}`}>
                   <span className="text-sm font-semibold text-muted-foreground">{index + 1}</span>
                   <div className="min-w-0 space-y-1">
                     <p className="font-semibold">
@@ -160,20 +161,21 @@ function WorkflowSteps({ messages, locale, canWrite }: { messages: AdminMessages
                     ) : null}
                     {!step.catalogJob.active ? <p className="text-xs text-warning-foreground">{messages.shopWorkflowStepInactive}</p> : null}
                   </div>
-                  <div className="min-w-0 space-y-2">
+                  <div className="col-start-2 min-w-0 space-y-2 xl:col-start-3">
                     <p className="text-xs font-medium text-muted-foreground">{teamLabel(step, messages)}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       {members.map((member) => (
                         <span
                           key={member.id}
                           className={cn(
-                            'inline-flex min-h-9 items-center gap-2 rounded-full border bg-background py-1 pl-1 pr-2 text-sm',
+                            // UX-4-007: one line; a long name is cut with the full name on hover.
+                            'inline-flex min-h-9 max-w-full items-center gap-2 rounded-full border bg-background py-1 pl-1 pr-2 text-sm',
                             !member.eligible && 'border-dashed text-muted-foreground',
                           )}
                           data-testid="workflow-member"
                         >
                           <MechanicAvatar id={member.id} name={member.name} size="sm" />
-                          <span className={cn(!member.eligible && 'line-through')}>{member.name}</span>
+                          <span className={cn('min-w-0 truncate whitespace-nowrap', !member.eligible && 'line-through')} title={member.name}>{member.name}</span>
                           {!member.eligible ? (
                             <span className="text-xs">{member.active ? messages.shopWorkflowMemberWrongType : messages.shopWorkflowMemberInactive}</span>
                           ) : null}
@@ -234,7 +236,7 @@ function WorkflowSteps({ messages, locale, canWrite }: { messages: AdminMessages
       {/* LTR-210: "Add to team" only changes the draft; the bar stays in view until it is saved or discarded
           (same bar as Setup → Inspection checklist). */}
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur app-safe-bottom md:left-[var(--admin-aside)]" data-testid="workflow-unsaved">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur app-safe-bottom lg:left-[var(--admin-aside)]" data-testid="workflow-unsaved">
           <div className="mx-auto flex max-w-[1440px] items-center justify-end gap-2 px-4 py-3 md:px-6">
             <span className="mr-auto text-sm font-medium" role="status">{messages.shopWorkflowUnsaved}</span>
             <Button type="button" variant="ghost" disabled={saving} onClick={() => { setDrafts(Object.fromEntries(data.map((step) => [step.stepKey, step.members.map((member) => member.id)]))); setSaveError(null); }}>{messages.shopWorkflowDiscard}</Button>
@@ -288,6 +290,8 @@ function AddMemberDialog({
                 <label className="flex min-h-11 items-center gap-3 px-3 py-2 text-sm">
                   <input
                     type="checkbox"
+                    // UX-2-015: the checkbox is announced with the person's name, not "on".
+                    aria-label={person.name}
                     checked={picked.includes(person.id)}
                     onChange={(event) => setPicked((current) => (event.target.checked ? [...current, person.id] : current.filter((id) => id !== person.id)))}
                   />

@@ -36,10 +36,11 @@ export const STEP_TONE: Record<TruckStepState, { pill: string; tile: string }> =
   done: { pill: 'border-success/30 bg-success/15 text-success', tile: 'bg-success/15 text-success' },
   pending: { pill: 'border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning', tile: 'bg-warning/10 text-warning-foreground dark:text-warning' },
   blocked: { pill: 'border-warning/50 bg-warning/15 text-warning-foreground dark:text-warning', tile: 'bg-warning/15 text-warning-foreground dark:text-warning' },
-  external: { pill: 'border-primary/40 bg-primary/10 text-primary', tile: 'bg-primary/15 text-primary' },
+  // UX-2-002: blue text on a blue tint uses `primary-text` (AA); the icon tiles keep `primary` (3:1 is enough).
+  external: { pill: 'border-primary/40 bg-primary/10 text-primary-text', tile: 'bg-primary/15 text-primary' },
   missing: { pill: 'border-destructive/40 bg-destructive/15 text-destructive-text', tile: 'bg-destructive/20 text-destructive-text' },
   not_applicable: { pill: 'border-border bg-muted text-muted-foreground', tile: 'bg-muted text-muted-foreground' },
-  ready: { pill: 'border-primary/40 bg-primary/10 text-primary', tile: 'bg-primary/15 text-primary' },
+  ready: { pill: 'border-primary/40 bg-primary/10 text-primary-text', tile: 'bg-primary/15 text-primary' },
   waiting: { pill: 'border-border bg-card text-muted-foreground', tile: 'border border-dashed border-muted-foreground/50 text-muted-foreground' },
 };
 
