@@ -34,7 +34,6 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Demo & Landing | LTR-211 | Avisar que una historia ya se ejecutó en esta base | C |
 | Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
 | Plataforma y Go-live | LTR-212 | Polling superpuesto; logo del Admin pesado | E |
-| Plataforma y Go-live | LTR-213 | CI: correr vitest de la web y `test:real` | C |
 | Integraciones V3 | LTR-46, 54, 55, 56 | Integraciones en espera (Gated): contratos, geocerca, trailers | — |
 
 ## Preguntas abiertas
