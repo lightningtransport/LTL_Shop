@@ -2357,6 +2357,9 @@ export class AdminService {
 
   private buildTruckWhere(query: AdminTrucksQuery, cursor: AdminTruckCursor | null): Prisma.TruckWhereInput {
     const filters: Prisma.TruckWhereInput[] = [];
+    // D44: deactivated trucks are hidden unless the Manager asks for them (Inactive or All).
+    if (query.status === 'active') filters.push({ deactivatedAt: null });
+    if (query.status === 'inactive') filters.push({ deactivatedAt: { not: null } });
     if (query.search) {
       const contains = { contains: query.search, mode: 'insensitive' as const };
       filters.push({
@@ -2681,6 +2684,8 @@ function toTruckSummary(row: {
   serviceStatusEvents: { status: string; occurredAt: Date }[];
   readinessAssessments?: Array<{ requirements: Array<{ outcome: string }> }>;
   faults?: Array<{ severity: TruckFaultSeverity }>;
+  samsaraVehicleId?: string | null;
+  samsaraProposedVehicleId?: string | null;
 }): AdminTruckSummaryDto {
   const open = row.workOrders.find((item) => (OPEN_WORK_ORDER_STATUSES as string[]).includes(item.status)) ?? null;
   const latestEvent = row.serviceStatusEvents[0] ?? null;
@@ -2708,6 +2713,8 @@ function toTruckSummary(row: {
           primaryCategoryName: open.primaryCategory.name,
         }
       : null,
+    // D44: "Samsara: proposed" on the row while the Manager has not connected it.
+    samsaraProposedVehicleId: row.samsaraVehicleId ? null : row.samsaraProposedVehicleId ?? null,
   };
 }
 

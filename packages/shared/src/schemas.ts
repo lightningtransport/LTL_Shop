@@ -146,6 +146,66 @@ export const adminSendJobsToQueueSchema = z.object({
   jobIds: z.array(z.string().uuid()).max(100).optional(),
 });
 
+/**
+ * D44: a truck field the Manager may leave empty. Not sent = unchanged (PATCH); empty text or null = not known.
+ */
+const optionalTruckText = (max: number) => z.union([z.string(), z.null()]).optional()
+  .transform((value) => (value === undefined ? undefined : value?.trim() || null))
+  .refine((value) => value == null || value.length <= max, { message: `At most ${max} characters` });
+
+/** D44: model years a truck can have (1950 to next year's models). */
+export function truckYearRange(now = new Date()) {
+  return { min: 1950, max: now.getFullYear() + 2 };
+}
+
+const truckYearSchema = z.union([z.number().int(), z.null()]).optional().refine(
+  (value) => value == null || (value >= truckYearRange().min && value <= truckYearRange().max),
+  { message: 'Year must be between 1950 and two years from now' },
+);
+
+/** D44: every field on the truck's card. `mileage` is not here: the official mileage changes only at PM (D10). */
+const truckFieldsShape = {
+  truckNumber: z.string().trim().min(1).max(40),
+  // Stored trimmed and in capitals; the duplicate check ignores spaces and dashes (normalizeVin).
+  vin: optionalTruckText(40).transform((value) => (value == null ? value : value.toUpperCase())),
+  make: optionalTruckText(80),
+  model: optionalTruckText(80),
+  year: truckYearSchema,
+  licensePlate: optionalTruckText(40),
+  owner: optionalTruckText(120),
+  company: optionalTruckText(120),
+  dispatcher: optionalTruckText(120),
+  insurance: optionalTruckText(120),
+};
+
+/** D44 / HU-M18: Trucks → Add truck. Only the number is required. */
+export const adminCreateTruckSchema = z.object(truckFieldsShape).strict();
+
+/** D44: edit the card, deactivate (`active: false`) or reactivate. */
+export const adminUpdateTruckSchema = z.object({
+  ...truckFieldsShape,
+  truckNumber: truckFieldsShape.truckNumber.optional(),
+  active: z.boolean().optional(),
+}).strict().refine((value) => Object.values(value).some((field) => field !== undefined), {
+  message: 'Provide at least one field',
+});
+
+/** D44 §4: the fields Samsara can fill when the truck is connected. */
+export const SAMSARA_CONNECT_FIELDS = ['vin', 'make', 'model', 'year', 'licensePlate'] as const;
+const samsaraChoiceSchema = z.enum(['ours', 'samsara']).optional();
+
+/** D44 §3–4: connect a Samsara vehicle; `choose` says which value stays where both sides have a different one. */
+export const adminConnectSamsaraSchema = z.object({
+  vehicleId: z.string().trim().min(1).max(64),
+  choose: z.object({
+    vin: samsaraChoiceSchema,
+    make: samsaraChoiceSchema,
+    model: samsaraChoiceSchema,
+    year: samsaraChoiceSchema,
+    licensePlate: samsaraChoiceSchema,
+  }).strict().optional(),
+}).strict();
+
 const closedWorkOrderStatus = z.enum([WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]);
 
 export const adminHistoryQuerySchema = z.object({
@@ -165,7 +225,10 @@ export const adminHistoryQuerySchema = z.object({
   direction: z.enum(['asc', 'desc']).default('desc'),
 });
 
-export const adminTrucksQuerySchema = adminNamedListQuerySchema;
+/** D44: Trucks → Inactive shows the deactivated trucks (they are hidden by default). */
+export const adminTrucksQuerySchema = adminNamedListQuerySchema.extend({
+  status: z.enum(['active', 'inactive', 'all']).default('active'),
+});
 export const adminTruckCursorSchema = z.object({
   direction: z.enum(['asc', 'desc']),
   truckNumber: z.string().min(1).max(120),
@@ -471,6 +534,10 @@ export type AdminMechanicsQuery = z.infer<typeof adminMechanicsQuerySchema>;
 export type AdminMechanicCursor = z.infer<typeof adminMechanicCursorSchema>;
 export type AdminHistoryQuery = z.infer<typeof adminHistoryQuerySchema>;
 export type AdminTrucksQuery = z.infer<typeof adminTrucksQuerySchema>;
+export type AdminCreateTruckInput = z.input<typeof adminCreateTruckSchema>;
+export type AdminUpdateTruckInput = z.input<typeof adminUpdateTruckSchema>;
+export type AdminConnectSamsaraInput = z.infer<typeof adminConnectSamsaraSchema>;
+export type SamsaraConnectField = (typeof SAMSARA_CONNECT_FIELDS)[number];
 export type AdminTruckCursor = z.infer<typeof adminTruckCursorSchema>;
 export type AdminRepairHistoryQuery = z.infer<typeof adminRepairHistoryQuerySchema>;
 export type AdminYardOperationsQuery = z.infer<typeof adminYardOperationsQuerySchema>;

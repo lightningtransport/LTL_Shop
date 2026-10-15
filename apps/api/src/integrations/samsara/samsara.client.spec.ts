@@ -71,13 +71,13 @@ describe('SamsaraClient.listVehicles', () => {
       .fn()
       .mockResolvedValueOnce(
         jsonResponse({
-          data: [{ id: '281474977075805', name: '601', vin: '3AKJHHDR5MSMN1234' }],
+          data: [{ id: '281474977075805', name: '601', vin: '3AKJHHDR5MSMN1234', make: 'Freightliner', model: 'Cascadia', year: '2021', licensePlate: ' TX 12345 ' }],
           pagination: { endCursor: 'cursor-1', hasNextPage: true },
         }),
       )
       .mockResolvedValueOnce(
         jsonResponse({
-          data: [{ id: 281474977075806, name: ' 614 ', vin: '' }, { name: 'no id' }],
+          data: [{ id: 281474977075806, name: ' 614 ', vin: '', year: 'n/a' }, { name: 'no id' }],
           pagination: { endCursor: '', hasNextPage: false },
         }),
       );
@@ -85,8 +85,9 @@ describe('SamsaraClient.listVehicles', () => {
     const vehicles = await new SamsaraClient(config, fetchImpl as unknown as typeof fetch).listVehicles();
 
     expect(vehicles).toEqual([
-      { id: '281474977075805', name: '601', vin: '3AKJHHDR5MSMN1234' },
-      { id: '281474977075806', name: '614', vin: null },
+      // D44: make, model, year and plates come along; missing or odd ones are null.
+      { id: '281474977075805', name: '601', vin: '3AKJHHDR5MSMN1234', make: 'Freightliner', model: 'Cascadia', year: 2021, licensePlate: 'TX 12345' },
+      { id: '281474977075806', name: '614', vin: null, make: null, model: null, year: null, licensePlate: null },
     ]);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     const [firstUrl, firstInit] = fetchImpl.mock.calls[0] as [URL, RequestInit];

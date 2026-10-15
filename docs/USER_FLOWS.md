@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -24,7 +24,7 @@ La columna **Fila** es el número de la prueba que lo comprueba
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
 **Resultado de la auditoría (2026-09-29):** 61 comprobaciones · 59 funcionan · 0 fallan
-· 2 no aplican. Desde entonces se sumaron filas hasta A97; la cuenta al día la da
+· 2 no aplican. Desde entonces se sumaron filas hasta A109; la cuenta al día la da
 `npm run test:real --workspace=@ltl-shop/api`.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
@@ -754,7 +754,7 @@ Ver la fila E7 en HU-ME2.
 
 **Construido (2026-10-13):** prueba A88; probado a mano en Setup → Inspection checklist.
 
-### HU-M18 · Dar de alta un camión y conectarle Samsara (J12, J15) — 🔲 por construir (D44, LTR-215)
+### HU-M18 · Dar de alta un camión y conectarle Samsara (J12, J15) — ✅ construido (D44, LTR-215)
 
 **Quién:** el Manager y el System Admin.
 
@@ -766,21 +766,30 @@ Ver la fila E7 en HU-ME2.
 **Flujo (conectar Samsara, cuando el camión ya está en el patio)**
 1. En la ficha del camión, **Connect Samsara**.
 2. La lista muestra los vehículos de Samsara sin camión; arriba, el que coincide por VIN o número, marcado "Suggested".
-3. Elige el vehículo. Lo vacío de la ficha se llena con lo de Samsara; lo que difiere aparece lado a lado ("Yours · Samsara") y elige cuál queda.
-4. **Connect.** Desde la próxima sincronización el camión tiene millas, ubicación y fallas.
+3. Elige el vehículo. Si nada difiere se conecta de una vez; si algo difiere, aparece lado a lado ("Yours · Samsara": lo vacío "will be filled", en lo distinto queda lo suyo salvo que elija Samsara).
+4. **Connect.** La app sincroniza enseguida: el camión ya tiene millas, ubicación y fallas.
+
+Una propuesta de la sincronización (VIN exacto) se ve en la ficha (banda con **Connect**), en Trucks ("Samsara: proposed") y en Setup → Samsara (**Proposed**, con **Connect**); se conecta de un toque cuando nada difiere.
 
 **Resultado:** un camión nuevo entra al taller sin pasar por Ninox ni por un script, y su ficha queda completa con Samsara.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
-| El número ya existe | No deja guardar y lo dice | 🔲 | — |
-| El VIN ya es de otro camión | Lo avisa con enlace al otro camión | 🔲 | — |
-| La sincronización ve un VIN que coincide exacto | Lo propone en la ficha ("Samsara vehicle 1234 matches this VIN · Connect"); no conecta solo | 🔲 | — |
-| El vehículo de Samsara ya es de otro camión | No aparece en la lista | 🔲 | — |
-| Se desconecta Samsara | Deja de sincronizar; las últimas lecturas y las fallas quedan en el historial | 🔲 | — |
-| Desactiva un camión con una Work Order abierta | No deja; dice cuál cerrar primero | 🔲 | — |
-| Desactiva un camión sin trabajo abierto | Sale de las listas y de New Work Order; su historial y costos siguen | 🔲 | — |
-| Un mecánico o Safety intenta agregar o editar | No puede (403) | 🔲 | — |
+| Agrega un camión con solo el número | Aparece en Trucks y en New Work Order; las millas no se escriben aquí | ✅ | A98 |
+| El número ya existe | No deja guardar y lo dice | ✅ | A99 |
+| El VIN ya es de otro camión | Lo avisa con enlace al otro camión | ✅ | A99 |
+| Edita la ficha | Cambia solo lo que tocó; lo que borra queda vacío | ✅ | A100 |
+| La sincronización ve un VIN que coincide exacto | Lo propone en la ficha, en Trucks y en Setup → Samsara; no conecta solo; por número no propone | ✅ | A106 |
+| Conecta la propuesta y nada difiere | Se conecta de un toque | ✅ | A109 |
+| Connect Samsara | Arriba el que coincide por VIN y luego por número ("Suggested") | ✅ | A103 |
+| Algo difiere de Samsara | Pide elegir; lo vacío se llena; trae millas y ubicación enseguida | ✅ | A104 |
+| El vehículo de Samsara ya es de otro camión | No aparece en la lista; conectarlo igual se niega | ✅ | A103, A105 |
+| Se desconecta Samsara | Deja de sincronizar; las últimas lecturas y las fallas quedan en el historial | ✅ | A107 |
+| Samsara deja de listar el vehículo de un camión conectado | Sigue conectado con sus últimas lecturas; Setup → Samsara lo avisa | ✅ | A108 |
+| Desactiva un camión con una Work Order abierta | No deja; dice cuál cerrar primero | ✅ | A101 |
+| Desactiva un camión sin trabajo abierto | Sale de las listas y de New Work Order; su historial y costos siguen; se reactiva | ✅ | A101 |
+| Borra un camión | Solo si nunca tuvo nada; si no, se desactiva | ✅ | A102 |
+| Un mecánico o Safety intenta agregar o editar | No puede (403) | ✅ | A99 |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 

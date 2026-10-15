@@ -43,8 +43,10 @@ describe('TrucksService search', () => {
     ]);
     expect(findMany).toHaveBeenCalledTimes(2);
     expect(findMany.mock.calls[1][0]).toEqual(expect.objectContaining({
-      where: { truckNumber: { contains: '05', mode: 'insensitive' } },
+      where: { deactivatedAt: null, truckNumber: { contains: '05', mode: 'insensitive' } },
     }));
+    // D44: a deactivated truck never shows in the search.
+    expect(findMany.mock.calls[0][0].where.deactivatedAt).toBeNull();
   });
 
   it('maps live identity columns onto the current TruckDto without exposing samsaraId', () => {

@@ -218,6 +218,7 @@ model User {
   createdWorkOrderJobSources     WorkOrderJobSource[]       @relation("WorkOrderJobSourceCreatedBy")
   dismissedTruckFaults           TruckFault[]               @relation("TruckFaultDismissedBy")
   samsaraFaultCodeJobs           SamsaraFaultCodeJob[]
+  deactivatedTrucks              Truck[]                    @relation("TruckDeactivatedBy")
 
   @@map("users")
 }
@@ -264,7 +265,7 @@ model Truck {
   insurance                String?
   licensePlate             String?   @map("license_plate")
   /// D35 / S-2: written only by the Samsara sync (OPEN_ISSUES §1x). Never `mileage`, never the Ninox columns above.
-  /// The Samsara vehicle this truck is paired with (by `samsara_id`, VIN or number, §1w).
+  /// D44: the Samsara vehicle this truck is connected to. Set means connected (the Manager, or the Ninox `samsara_id`); the sync never clears it.
   samsaraVehicleId         String?   @map("samsara_vehicle_id")
   /// Samsara's odometer in miles: a reference next to the official PM mileage (D10).
   samsaraOdometerMiles     Int?      @map("samsara_odometer_miles")
@@ -284,6 +285,14 @@ model Truck {
   samsaraProtectLamp       Boolean?  @map("samsara_protect_lamp")
   samsaraEmissionsLamp     Boolean?  @map("samsara_emissions_lamp")
   samsaraLampsAt           DateTime? @map("samsara_lamps_at")
+  /// D44: Samsara's name for the connected vehicle ("Truck 601"), kept by the connect and the sync. Display only.
+  samsaraVehicleName       String?   @map("samsara_vehicle_name")
+  /// D44: the sync saw a Samsara vehicle with this exact VIN. Only a proposal: the Manager connects it from the truck.
+  samsaraProposedVehicleId String?   @map("samsara_proposed_vehicle_id")
+  /// D44: out of the fleet. Hidden from lists, New Work Order and the sync; its history stays.
+  deactivatedAt            DateTime? @map("deactivated_at") @db.Timestamptz(3)
+  deactivatedById          String?   @map("deactivated_by_id") @db.Uuid
+  deactivatedBy            User?     @relation("TruckDeactivatedBy", fields: [deactivatedById], references: [id], onDelete: SetNull)
   createdAt                DateTime  @default(now()) @map("created_at")
   updatedAt                DateTime  @updatedAt @map("updated_at")
 

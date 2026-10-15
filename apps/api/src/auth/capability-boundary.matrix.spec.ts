@@ -195,13 +195,19 @@ describe('Manager writes: roster (D22) and Job catalog (D25)', () => {
 
   it('lists the roster, the two catalog Job writes and the inspection checklist (D41), and no category write', () => {
     expect(MANAGER_WRITES.map((entry) => entry.handler).sort()).toEqual([
+      'connectTruckSamsara',
       'createCatalogJob',
       'createMechanic',
+      'createTruck',
+      'deleteTruck',
+      'disconnectTruckSamsara',
       'resetMechanicPassword',
       'runSamsaraSync',
       'saveInspectionChecklist',
+      'truckSamsaraCandidates',
       'updateCatalogJob',
       'updateMechanic',
+      'updateTruck',
     ]);
   });
 

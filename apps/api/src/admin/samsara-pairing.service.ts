@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { SamsaraPairingDto, SamsaraPairingStatus } from '@ltl-shop/shared';
-import { pairTrucks } from '../integrations/samsara/samsara-pairing';
+import { PAIRING_TRUCK_SELECT, pairTrucks, toPairingTruck } from '../integrations/samsara/samsara-pairing';
 import {
   METERS_PER_MILE,
   SamsaraClient,
@@ -51,21 +51,10 @@ export class SamsaraPairingService {
       throw error;
     }
 
-    const trucks = await this.prisma.truck.findMany({
-      select: { id: true, truckNumber: true, vin: true, samsaraId: true, owner: true, company: true, mileage: true },
-      orderBy: { truckNumber: 'asc' },
-    });
+    const trucks = await this.prisma.truck.findMany({ select: PAIRING_TRUCK_SELECT, orderBy: { truckNumber: 'asc' } });
 
     const result = pairTrucks(
-      trucks.map((truck) => ({
-        id: truck.id,
-        truckNumber: truck.truckNumber,
-        vin: truck.vin,
-        owner: truck.owner,
-        company: truck.company,
-        mileage: truck.mileage,
-        samsaraId: truck.samsaraId == null ? null : truck.samsaraId.toFixed(0),
-      })),
+      trucks.map(toPairingTruck),
       vehicles.map((vehicle) => {
         const odometer = odometers?.get(vehicle.id);
         return {
@@ -89,5 +78,5 @@ export class SamsaraPairingService {
 }
 
 function empty(checkedAt: string, status: SamsaraPairingStatus, sync: SamsaraPairingDto['sync']): SamsaraPairingDto {
-  return { sync, status, checkedAt, summary: null, paired: [], unpairedTrucks: [], unpairedVehicles: [], odometersAvailable: false };
+  return { sync, status, checkedAt, summary: null, paired: [], proposed: [], unpairedTrucks: [], unpairedVehicles: [], odometersAvailable: false };
 }

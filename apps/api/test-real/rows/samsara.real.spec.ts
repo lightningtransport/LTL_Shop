@@ -51,11 +51,19 @@ async function cleanSamsara() {
   await prisma.truckFault.deleteMany({});
   await prisma.truck.updateMany({
     data: {
-      samsaraVehicleId: null, samsaraOdometerMiles: null, samsaraOdometerSource: null, samsaraOdometerAt: null, samsaraAddress: null,
+      samsaraVehicleId: null, samsaraVehicleName: null, samsaraProposedVehicleId: null, samsaraId: null,
+      samsaraOdometerMiles: null, samsaraOdometerSource: null, samsaraOdometerAt: null, samsaraAddress: null,
       samsaraLatitude: null, samsaraLongitude: null, samsaraSpeedMph: null, samsaraLocationAt: null, samsaraSyncedAt: null,
     },
   });
   await setSamsara(EMPTY_SAMSARA_FIXTURE);
+}
+
+/** D44: the Manager connected these trucks to their Samsara vehicles (the sync never connects by number). */
+async function connectTestTrucks(...truckNumbers: string[]) {
+  for (const truckNumber of truckNumbers) {
+    await prisma.truck.update({ where: { truckNumber }, data: { samsaraVehicleId: `v-${truckNumber}` } });
+  }
 }
 
 function cron(method: 'GET' | 'POST', secret?: string) {
@@ -66,6 +74,7 @@ describe('Manager: Samsara (D35, D42)', () => {
   beforeEach(async (context) => {
     if (!inject('samsaraMockUrl')) context.skip();
     await cleanSamsara();
+    await connectTestTrucks(TRUCK);
   });
   afterAll(async () => {
     if (inject('samsaraMockUrl')) await cleanSamsara();
@@ -76,7 +85,7 @@ describe('Manager: Samsara (D35, D42)', () => {
     const before = await prisma.truck.findMany({ select: { id: true, samsaraId: true, samsaraVehicleId: true, mileage: true }, orderBy: { id: 'asc' } });
 
     const pairing = ok('leer Setup → Samsara', await manager.get('/admin/integrations/samsara/pairing')) as Json;
-    same('el 931 casa por número con su vehículo', (pairing.paired as Json[]).map((row) => [row.truck.truckNumber, row.vehicle.id, row.method]), [[TRUCK, `v-${TRUCK}`, 'number']]);
+    same('el 931 está conectado a su vehículo (D44: la conexión guardada)', (pairing.paired as Json[]).map((row) => [row.truck.truckNumber, row.vehicle.id, row.method]), [[TRUCK, `v-${TRUCK}`, 'connected']]);
     same('el trailer queda como vehículo sin camión', (pairing.unpairedVehicles as Json[]).map((row) => row.name), ['Trailer 9001']);
     same('leer no cambió ningún camión', await prisma.truck.findMany({ select: { id: true, samsaraId: true, samsaraVehicleId: true, mileage: true }, orderBy: { id: 'asc' } }), before);
     refused('un mecánico no ve Setup → Samsara', await as(USERS.alignment).get('/admin/integrations/samsara/pairing'), 403);
@@ -170,6 +179,7 @@ describe('Manager: fallas de Samsara → Jobs recomendados (D42, S-6)', () => {
     if (!inject('samsaraMockUrl')) context.skip();
     await resetDb();
     await cleanSamsara();
+    await connectTestTrucks(TRUCK, '944');
   });
   afterAll(async () => {
     if (inject('samsaraMockUrl')) await cleanSamsara();

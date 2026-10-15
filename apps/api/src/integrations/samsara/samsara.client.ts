@@ -64,6 +64,11 @@ export type SamsaraVehicle = {
   id: string;
   name: string;
   vin: string | null;
+  /** D44: what Samsara knows of the vehicle, to complete the truck's card when it is connected. */
+  make?: string | null;
+  model?: string | null;
+  year?: number | null;
+  licensePlate?: string | null;
 };
 
 export type SamsaraOdometer = {
@@ -203,8 +208,15 @@ function toVehicle(row: Record<string, unknown>): SamsaraVehicle | null {
   const id = typeof row.id === 'string' || typeof row.id === 'number' ? String(row.id).trim() : '';
   if (!id) return null;
   const name = typeof row.name === 'string' ? row.name.trim() : '';
-  const vin = typeof row.vin === 'string' && row.vin.trim() ? row.vin.trim() : null;
-  return { id, name, vin };
+  const vin = text(row.vin);
+  // D44: Samsara sends the year as a string ("2021"); anything that is not a plausible year is left out.
+  const rawYear = typeof row.year === 'number' ? row.year : typeof row.year === 'string' ? Number(row.year.trim()) : NaN;
+  const year = Number.isInteger(rawYear) && rawYear >= 1950 && rawYear <= 2100 ? rawYear : null;
+  return { id, name, vin, make: text(row.make), model: text(row.model), year, licensePlate: text(row.licensePlate) };
+}
+
+function text(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 function odometerOf(row: Record<string, unknown>): SamsaraOdometer | null {

@@ -82,9 +82,9 @@ por paso, con filtros y la pestaña Dispatch.
 ### 4.3 Trucks & Inspección — 🟡
 Lista y ficha del camión (trabajo, fallas, ubicación, costos, historial).
 Hoja de inspección de 53 puntos y 10 llantas; cada defecto crea su Job.
-**Pendiente:** crear, editar y desactivar camiones desde el Shop y conectarles
-Samsara desde la ficha (D44, LTR-215), el último paso para no depender de nadie
-para un camión nuevo; y API para terceros (P14).
+Desde D44 (LTR-215) los camiones se crean, editan, desactivan y conectan a
+Samsara desde el Shop; la sincronización solo propone por VIN.
+**Pendiente:** API para terceros (P14).
 **Decisiones:** D10, D41, D43, D44 · **Historias:** HU-M2, HU-M16, HU-M17, HU-M18, HU-ME7.
 
 ### 4.4 Mecánicos — 🟡
@@ -147,7 +147,7 @@ empieza sin decisión (etiqueta **Gated** en Linear).
 ## 6. Cómo sabemos que funciona
 
 **Hoy (comprobado):** las pruebas de flujo contra la API real
-(`npm run test:real`, filas A1–A97 de `USER_FLOWS.md`) definen "funciona".
+(`npm run test:real`, filas A1–A109 de `USER_FLOWS.md`) definen "funciona".
 La salida en vivo termina cuando el taller trabaja un día completo con usuarios
 reales sin un defecto B.
 

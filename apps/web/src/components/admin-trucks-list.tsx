@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { TruckOperationalStatus, type AdminTruckSummaryDto } from '@ltl-shop/shared';
-import { AdminFilterToolbar, Badge, DataTable, PageHeader, Button, EmptyState, LoadFailure, PageSkeleton, WorkOrderStatusBadge } from './ui';
+import { AdminFilterToolbar, Badge, DataTable, PageHeader, Button, EmptyState, LoadFailure, PageSkeleton, Select, WorkOrderStatusBadge } from './ui';
+import { useActionToast } from './action-toast';
+import { TruckFormDialog } from './admin-truck-admin';
+import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { truckNextStepText } from '@/lib/truck-next-step';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { useAdminTrucks } from '@/lib/admin-data';
@@ -26,10 +29,20 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
   const searchParams = useSearchParams();
   const query = searchParams.toString();
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  // D44: deactivated trucks are hidden unless the Manager asks for them.
+  const statusFrom = (params: URLSearchParams) => {
+    const value = params.get('status');
+    return value === 'inactive' || value === 'all' ? value : 'active';
+  };
+  const [status, setStatus] = useState<'active' | 'inactive' | 'all'>(statusFrom(searchParams));
+  const [addOpen, setAddOpen] = useState(false);
+  const canWrite = useCanShowManagerWrites();
+  const { showToast } = useActionToast();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminTrucks(query);
 
   useEffect(() => {
     setSearch(searchParams.get('search') ?? '');
+    setStatus(statusFrom(searchParams));
   }, [searchParams]);
 
   const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
@@ -40,19 +53,35 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
 
   return (
     <div className="space-y-6">
-      <PageHeader title={messages.trucksTitle} subtitle={messages.trucksDescription} />
+      <PageHeader
+        title={messages.trucksTitle}
+        subtitle={messages.trucksDescription}
+        actions={canWrite ? <Button type="button" onClick={() => setAddOpen(true)}>{messages.truckAdd}</Button> : null}
+      />
       <AdminFilterToolbar
         search={search}
         onSearchChange={setSearch}
         searchLabel={messages.searchTrucksShort}
         filtersLabel={messages.filters}
         closeLabel={messages.closeDialog}
+        activeFilterCount={statusFrom(searchParams) === 'active' ? 0 : 1}
+        filters={(
+          <label className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap text-sm">
+            {messages.trucksShow}
+            <Select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="w-auto" data-testid="trucks-status-filter">
+              <option value="active">{messages.trucksShowActive}</option>
+              <option value="inactive">{messages.trucksShowInactive}</option>
+              <option value="all">{messages.trucksShowAll}</option>
+            </Select>
+          </label>
+        )}
         onClear={() => router.replace('/admin/trucks')}
         clearLabel={messages.clearFilters}
         applyLabel={messages.searchAction}
         onSubmit={() => {
           const next = new URLSearchParams();
           if (search.trim()) next.set('search', search.trim());
+          if (status !== 'active') next.set('status', status);
           router.replace(`/admin/trucks${next.size ? `?${next}` : ''}`);
         }}
       />
@@ -76,6 +105,13 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
                 <div>
                   <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/trucks')}>{item.truck.truckNumber}</Link>
                   <p className="text-sm text-muted-foreground">{formatVehicleYmm(item.truck) || '—'}</p>
+                  {item.truck.deactivatedAt || item.samsaraProposedVehicleId ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {item.truck.deactivatedAt ? <Badge variant="secondary">{messages.truckInactiveBadge}</Badge> : null}
+                      {/* D44: the sync proposes a Samsara vehicle (exact VIN); the Manager connects it on the truck. */}
+                      {item.samsaraProposedVehicleId && !item.truck.deactivatedAt ? <Badge variant="default" data-testid="truck-samsara-proposed">{messages.trucksProposedChip}</Badge> : null}
+                    </div>
+                  ) : null}
                 </div>
               ),
             },
@@ -108,6 +144,19 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
         />
       ) : null}
       {hasMore ? <Button type="button" variant="outline" disabled={isValidating} onClick={() => setSize(size + 1)}>{messages.loadMore}</Button> : null}
+      {canWrite ? (
+        <TruckFormDialog
+          open={addOpen}
+          messages={messages}
+          onClose={() => setAddOpen(false)}
+          onSaved={(truck) => {
+            setAddOpen(false);
+            showToast('success', fillPlaceholders(messages.truckCreated, { truck: truck.truckNumber }));
+            void mutate();
+            router.push(adminTruckHref(truck.id, '/admin/trucks'));
+          }}
+        />
+      ) : null}
     </div>
   );
 }

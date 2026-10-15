@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import type {
+  AdminCreateTruckInput,
+  AdminUpdateTruckInput,
+  AdminConnectSamsaraInput,
+  SamsaraCandidatesDto,
+  SamsaraConnectResultDto,
+  TruckDto,
   ShopWorkflowStepDto,
   ShopHoursDto,
   AdminCatalogJobWriteDto,
@@ -1022,6 +1028,39 @@ export function useAdminSamsaraPairing() {
 /** D35 / S-2: "Sync now" on Setup → Samsara. */
 export function runAdminSamsaraSync() {
   return apiFetch<SamsaraSyncResultDto>('/api/admin/integrations/samsara/sync', { method: 'POST', body: '{}' });
+}
+
+/** D44 / HU-M18: Trucks → Add truck. */
+export function createAdminTruck(input: AdminCreateTruckInput) {
+  return apiFetch<TruckDto>('/api/admin/trucks', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** D44: edit the card, or `active: false / true` to deactivate or reactivate. */
+export function updateAdminTruck(truckId: string, input: AdminUpdateTruckInput) {
+  return apiFetch<TruckDto>(`/api/admin/trucks/${truckId}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+/** D44: only a truck that never had anything. */
+export function deleteAdminTruck(truckId: string) {
+  return apiFetch<{ deleted: true }>(`/api/admin/trucks/${truckId}`, { method: 'DELETE' });
+}
+
+/** D44 §3: live Samsara vehicles no other truck has (the dialog loads it when it opens). */
+export function useAdminTruckSamsaraCandidates(truckId: string | null) {
+  const { token } = useAuth();
+  return useSWR<SamsaraCandidatesDto>(token && truckId ? `/api/admin/trucks/${truckId}/samsara/candidates` : null, adminReadFetcher, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
+}
+
+/** D44 §4: connect; `choose` only where the card and Samsara differ. */
+export function connectAdminTruckSamsara(truckId: string, input: AdminConnectSamsaraInput) {
+  return apiFetch<SamsaraConnectResultDto>(`/api/admin/trucks/${truckId}/samsara/connect`, { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function disconnectAdminTruckSamsara(truckId: string) {
+  return apiFetch<{ disconnected: true }>(`/api/admin/trucks/${truckId}/samsara/disconnect`, { method: 'POST', body: '{}' });
 }
 
 /** D35 / S-3: Truck → Faults (and the banner on the Truck). */

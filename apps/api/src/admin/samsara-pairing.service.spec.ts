@@ -23,7 +23,7 @@ describe('SamsaraPairingService', () => {
 
     const result = await pairing.get(NOW, fetchImpl as unknown as typeof fetch);
 
-    expect(result).toEqual({ sync: null, status: 'not_configured', checkedAt: NOW.toISOString(), summary: null, paired: [], unpairedTrucks: [], unpairedVehicles: [], odometersAvailable: false });
+    expect(result).toEqual({ sync: null, status: 'not_configured', checkedAt: NOW.toISOString(), summary: null, paired: [], proposed: [], unpairedTrucks: [], unpairedVehicles: [], odometersAvailable: false });
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(prisma.truck.findMany).not.toHaveBeenCalled();
   });
@@ -44,8 +44,8 @@ describe('SamsaraPairingService', () => {
 
   it('pairs using the stored Samsara id as a digit string, adds odometers in miles and only reads trucks', async () => {
     const { prisma, pairing } = service({ SAMSARA_API_TOKEN: 'token' }, [
-      { id: 't1', truckNumber: '601', vin: null, samsaraId: new Prisma.Decimal('281474977075805'), owner: 'Jose Diaz', company: 'LTL', mileage: 412_040 },
-      { id: 't2', truckNumber: '614', vin: null, samsaraId: null, owner: null, company: null, mileage: null },
+      { id: 't1', truckNumber: '601', vin: null, samsaraId: new Prisma.Decimal('281474977075805'), samsaraVehicleId: null, deactivatedAt: null, owner: 'Jose Diaz', company: 'LTL', mileage: 412_040 },
+      { id: 't2', truckNumber: '614', vin: null, samsaraId: null, samsaraVehicleId: null, deactivatedAt: null, owner: null, company: null, mileage: null },
     ]);
     const fetchImpl = vi.fn((url: URL) =>
       Promise.resolve(
@@ -67,15 +67,18 @@ describe('SamsaraPairingService', () => {
     expect(result.odometersAvailable).toBe(true);
     expect(result.paired.map((row) => [row.truck.truckNumber, row.method, row.truck.mileage, row.vehicle.odometer?.miles ?? null])).toEqual([
       ['601', 'samsara_id', 412_040, 418_590],
-      ['614', 'number', null, null],
     ]);
+    // D44: a number match is not a connection; the truck waits for the Manager.
+    expect(result.unpairedTrucks.map((row) => [row.truck.truckNumber, row.reason])).toEqual([['614', 'no_match']]);
     expect(prisma.truck.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ select: { id: true, truckNumber: true, vin: true, samsaraId: true, owner: true, company: true, mileage: true } }),
+      expect.objectContaining({
+        select: { id: true, truckNumber: true, vin: true, samsaraId: true, samsaraVehicleId: true, deactivatedAt: true, owner: true, company: true, mileage: true },
+      }),
     );
   });
 
   it('still pairs when Samsara gives vehicles but the odometer call fails', async () => {
-    const { pairing } = service({ SAMSARA_API_TOKEN: 'token' }, [{ id: 't1', truckNumber: '601', vin: null, samsaraId: null, owner: null, company: null, mileage: null }]);
+    const { pairing } = service({ SAMSARA_API_TOKEN: 'token' }, [{ id: 't1', truckNumber: '601', vin: null, samsaraId: null, samsaraVehicleId: '1', deactivatedAt: null, owner: null, company: null, mileage: null }]);
     const fetchImpl = vi.fn((url: URL) =>
       Promise.resolve(
         url.pathname === '/fleet/vehicles/stats'

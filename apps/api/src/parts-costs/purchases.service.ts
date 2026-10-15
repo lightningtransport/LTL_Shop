@@ -123,7 +123,8 @@ export class PurchasesService {
   /** What New purchase needs: every truck, the last price paid per part and vendor, and whether files work here. */
   async formData(): Promise<AdminPurchaseFormDataDto> {
     const [trucks, lastPaid] = await Promise.all([
-      this.prisma.truck.findMany({ select: { id: true, truckNumber: true, make: true, model: true }, orderBy: { truckNumber: 'asc' } }),
+      // D44: a deactivated truck is not offered for new purchase lines.
+      this.prisma.truck.findMany({ where: { deactivatedAt: null }, select: { id: true, truckNumber: true, make: true, model: true }, orderBy: { truckNumber: 'asc' } }),
       this.prisma.$queryRaw<Array<{ part_id: string; unit_cost_cents: number; invoice_date: Date; vendor_id: string; vendor_name: string }>>`
         SELECT DISTINCT ON (l.part_id, p.vendor_id) l.part_id, l.unit_cost_cents, p.invoice_date, p.vendor_id, v.name AS vendor_name
         FROM part_purchase_lines l

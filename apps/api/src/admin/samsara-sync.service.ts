@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma, type SamsaraSyncState } from '@prisma/client';
 import type { SamsaraSyncResultDto, SamsaraSyncStateDto } from '@ltl-shop/shared';
 import { parseFaultReading, type DashLamps, type ParsedFault } from '../integrations/samsara/samsara-faults';
-import { pairTrucks } from '../integrations/samsara/samsara-pairing';
+import { PAIRING_TRUCK_SELECT, pairTrucks, toPairingTruck } from '../integrations/samsara/samsara-pairing';
 import {
   METERS_PER_MILE,
   SamsaraClient,
@@ -25,6 +25,9 @@ export type SamsaraSyncTrigger = 'cron' | 'manual';
 
 type Snapshot = {
   vehicleId: string;
+  vehicleName: string;
+  /** D44: the truck's `samsara_vehicle_id` when it was read (null: connected by its Ninox Samsara id, stored now). */
+  storedVehicleId: string | null;
   odometer: SamsaraOdometer | null;
   location: SamsaraLocation | null;
   /** Undefined: Samsara sent no fault reading for this vehicle, so its open faults and lights stay as they are. */
@@ -36,6 +39,10 @@ type Snapshot = {
  * D35 / S-2 + S-3 (OPEN_ISSUES §1x): one Samsara sync. Reads the vehicles, pairs them with our trucks (§1w), and stores
  * on each paired truck Samsara's odometer and last GPS point, and its faults (open new ones, keep the ones still
  * reported, close the ones Samsara stopped reporting).
+ *
+ * D44: it never decides a connection. A truck is connected iff `samsara_vehicle_id` is set (or, until this run stores
+ * it, by its Ninox Samsara id); a vehicle Samsara stops listing leaves the truck connected with its last readings. An
+ * exact VIN match is only written as `samsara_proposed_vehicle_id` for the Manager. Deactivated trucks are skipped.
  *
  * Never writes `trucks.mileage` (the PM's, D10) nor the Ninox columns. Idempotent: running it twice changes nothing new.
  * Only one sync writes at a time (advisory lock); a second one at the same moment answers "skipped".
@@ -86,21 +93,24 @@ export class SamsaraSyncService {
       return { status: code, state: await this.recordFailure(trigger, now, code, started) };
     }
 
-    const trucks = await this.prisma.truck.findMany({
-      select: { id: true, truckNumber: true, vin: true, samsaraId: true, owner: true, company: true, mileage: true },
-    });
-    const pairing = pairTrucks(
-      trucks.map((truck) => ({ ...truck, samsaraId: truck.samsaraId == null ? null : truck.samsaraId.toFixed(0) })),
-      vehicles,
-    );
+    const trucks = await this.prisma.truck.findMany({ select: PAIRING_TRUCK_SELECT });
+    const pairing = pairTrucks(trucks.map(toPairingTruck), vehicles);
+    const storedById = new Map(trucks.map((truck) => [truck.id, truck.samsaraVehicleId]));
 
     const snapshots = new Map<string, Snapshot>();
     for (const row of pairing.paired) {
+      // D44: Samsara stopped listing the connected vehicle: the truck stays connected, nothing new to store.
+      if (row.warnings.includes('vehicle_missing')) {
+        this.logger.warn(`Samsara no longer lists vehicle ${row.vehicle.id} (truck ${row.truck.truckNumber}); it stays connected`);
+        continue;
+      }
       const stat = stats.get(row.vehicle.id);
       const reading = faultCodes?.get(row.vehicle.id);
       const parsed = reading ? parseFaultReading(reading) : undefined;
       snapshots.set(row.truck.id, {
         vehicleId: row.vehicle.id,
+        vehicleName: row.vehicle.name,
+        storedVehicleId: storedById.get(row.truck.id) ?? null,
         odometer: stat?.odometer ?? null,
         location: stat?.location ?? null,
         faults: parsed?.faults,
@@ -112,7 +122,7 @@ export class SamsaraSyncService {
       async (tx) => {
         const [{ locked }] = await tx.$queryRaw<Array<{ locked: boolean }>>`SELECT pg_try_advisory_xact_lock(${SYNC_LOCK_KEY}) AS locked`;
         if (!locked) return null;
-        return this.write(tx, snapshots, now);
+        return this.write(tx, snapshots, new Map(pairing.proposed.map((row) => [row.truck.id, row.vehicle.id])), now);
       },
       { maxWait: 10_000, timeout: 60_000 },
     );
@@ -138,22 +148,24 @@ export class SamsaraSyncService {
     return { status: 'ok', state: toStateDto(state) };
   }
 
-  private async write(tx: Prisma.TransactionClient, snapshots: Map<string, Snapshot>, now: Date) {
+  private async write(tx: Prisma.TransactionClient, snapshots: Map<string, Snapshot>, proposals: Map<string, string>, now: Date) {
     // One statement for every paired truck (not one round trip each). `updated_at` stays: a sync is not an edit.
     // A null odometer or location keeps the last good reading.
-    const rows = [...snapshots].map(([truckId, { vehicleId, odometer, location, lamps }]) => Prisma.sql`(
-      ${truckId}::uuid, ${vehicleId}::text,
+    const rows = [...snapshots].map(([truckId, { vehicleId, vehicleName, storedVehicleId, odometer, location, lamps }]) => Prisma.sql`(
+      ${truckId}::uuid, ${vehicleId}::text, ${vehicleName || null}::text, ${storedVehicleId}::text,
       ${odometer ? Math.round(odometer.meters / METERS_PER_MILE) : null}::int, ${odometer?.source ?? null}::text,
       ${odometer ? (odometer.at || now.toISOString()) : null}::timestamptz,
       ${location?.address ?? null}::text, ${location?.latitude ?? null}::float8, ${location?.longitude ?? null}::float8,
       ${location?.speedMph ?? null}::float8, ${location?.at ?? null}::timestamptz,
       ${lamps ? lamps.stop : null}::boolean, ${lamps ? lamps.warning : null}::boolean,
       ${lamps ? lamps.protect : null}::boolean, ${lamps ? lamps.emissions : null}::boolean)`);
-    let trucksUpdated = 0;
+    const updated = new Set<string>();
     for (let index = 0; index < rows.length; index += 200) {
-      trucksUpdated += await tx.$executeRaw`
+      const written = await tx.$queryRaw<Array<{ id: string }>>`
         UPDATE "trucks" AS t SET
           "samsara_vehicle_id" = v.vehicle_id,
+          "samsara_vehicle_name" = COALESCE(v.vehicle_name, t."samsara_vehicle_name"),
+          "samsara_proposed_vehicle_id" = NULL,
           "samsara_synced_at" = ${now.toISOString()}::timestamptz AT TIME ZONE 'UTC',
           "samsara_odometer_miles" = COALESCE(v.odometer_miles, t."samsara_odometer_miles"),
           "samsara_odometer_source" = COALESCE(v.odometer_source, t."samsara_odometer_source"),
@@ -170,14 +182,33 @@ export class SamsaraSyncService {
           "samsara_emissions_lamp" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_emissions_lamp" ELSE v.emissions_lamp END,
           "samsara_lamps_at" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_lamps_at" ELSE ${now.toISOString()}::timestamptz AT TIME ZONE 'UTC' END
         FROM (VALUES ${Prisma.join(rows.slice(index, index + 200))})
-          AS v(id, vehicle_id, odometer_miles, odometer_source, odometer_at, address, latitude, longitude, speed_mph, location_at,
-            stop_lamp, warning_lamp, protect_lamp, emissions_lamp)
-        WHERE t."id" = v.id`;
+          AS v(id, vehicle_id, vehicle_name, stored_vehicle_id, odometer_miles, odometer_source, odometer_at, address, latitude, longitude,
+            speed_mph, location_at, stop_lamp, warning_lamp, protect_lamp, emissions_lamp)
+        -- D44: only if nobody connected, disconnected or deactivated the truck since it was read.
+        WHERE t."id" = v.id
+          AND t."samsara_vehicle_id" IS NOT DISTINCT FROM v.stored_vehicle_id
+          AND (v.stored_vehicle_id IS NOT NULL OR t."samsara_id" IS NOT NULL)
+          AND t."deactivated_at" IS NULL
+        RETURNING t."id"::text AS id`;
+      for (const row of written) updated.add(row.id);
     }
-    // A truck that is no longer paired keeps its last reading, but no longer points at a Samsara vehicle.
-    await tx.truck.updateMany({ where: { samsaraVehicleId: { not: null }, id: { notIn: [...snapshots.keys()] } }, data: { samsaraVehicleId: null } });
+    // D44: a stored connection is never undone here (no more "no longer paired → null"); the Manager disconnects.
 
-    const reported = [...snapshots].filter(([, snapshot]) => snapshot.faults !== undefined);
+    // D44 §3: an exact VIN match is proposed, never connected; proposals that no longer hold go away.
+    const proposalIds = [...proposals.keys()];
+    await tx.$executeRaw`
+      UPDATE "trucks" SET "samsara_proposed_vehicle_id" = NULL
+      WHERE "samsara_proposed_vehicle_id" IS NOT NULL
+        ${proposalIds.length ? Prisma.sql`AND "id" NOT IN (${Prisma.join(proposalIds.map((id) => Prisma.sql`${id}::uuid`))})` : Prisma.empty}`;
+    if (proposalIds.length) {
+      await tx.$executeRaw`
+        UPDATE "trucks" AS t SET "samsara_proposed_vehicle_id" = v.vehicle_id
+        FROM (VALUES ${Prisma.join([...proposals].map(([truckId, vehicleId]) => Prisma.sql`(${truckId}::uuid, ${vehicleId}::text)`))}) AS v(id, vehicle_id)
+        WHERE t."id" = v.id AND t."samsara_vehicle_id" IS NULL AND t."deactivated_at" IS NULL
+          AND t."samsara_proposed_vehicle_id" IS DISTINCT FROM v.vehicle_id`;
+    }
+
+    const reported = [...snapshots].filter(([truckId, snapshot]) => updated.has(truckId) && snapshot.faults !== undefined);
     const open = await tx.truckFault.findMany({
       where: { clearedAt: null, truckId: { in: reported.map(([truckId]) => truckId) } },
       select: { id: true, truckId: true, faultKey: true },
@@ -226,7 +257,7 @@ export class SamsaraSyncService {
     const toClear = open.filter((fault) => !stillReported.has(`${fault.truckId}|${fault.faultKey}`)).map((fault) => fault.id);
     const cleared = toClear.length ? await tx.truckFault.updateMany({ where: { id: { in: toClear }, clearedAt: null }, data: { clearedAt: now } }) : { count: 0 };
 
-    return { trucksUpdated, faultsOpened, faultsCleared: cleared.count };
+    return { trucksUpdated: updated.size, faultsOpened, faultsCleared: cleared.count };
   }
 
   private async recordFailure(trigger: SamsaraSyncTrigger, now: Date, code: string, started: number) {

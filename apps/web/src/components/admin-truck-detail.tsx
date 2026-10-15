@@ -10,7 +10,9 @@ import {
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { useSWRConfig } from 'swr';
-import { ArrowUpRight, CircleAlert, ClipboardList, Copy, Eye, FileClock, FilePlus, Link2, MapPin, MoreHorizontal, Pause, Plus } from 'lucide-react';
+import { Archive, ArrowUpRight, CircleAlert, ClipboardList, Copy, Eye, FileClock, FilePlus, Link2, MapPin, MoreHorizontal, Pause, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { TruckAdminDialogs, TruckInactiveBanner, TruckSamsaraPanel, reactivateTruck, type TruckAdminDialog } from './admin-truck-admin';
 import { ApiError } from '@/lib/api';
 import { intlLocale } from '@/lib/shop-locale';
 import { isYardRelatedListKey } from '@/lib/swr-cache-keys';
@@ -42,10 +44,12 @@ import { AdminTruckFaults, TruckFaultsBanner } from './admin-truck-faults';
 import { TruckTiresCard } from './truck-tires-card';
 import { Badge, Button, CardListSkeleton, EmptyState, LoadFailure, PageHeader, PageSkeleton, SectionCard, Select, type BadgeProps } from './ui';
 
-export function AdminTruckDetail({ id, from = null, tab = null, locale, messages }: { id: string; from?: string | null; tab?: string | null; locale: AdminLocale; messages: AdminMessages }) {
+export function AdminTruckDetail({ id, from = null, tab = null, connectVehicle = null, locale, messages }: { id: string; from?: string | null; tab?: string | null; connectVehicle?: string | null; locale: AdminLocale; messages: AdminMessages }) {
   const origin = adminTruckOrigin(from, messages);
   const { mutate: mutateRelated } = useSWRConfig();
   const { data, error, isLoading, mutate } = useAdminTruck(id);
+  const { showToast } = useActionToast();
+  const [reactivating, setReactivating] = useState(false);
   const { user } = useAuth();
   const canSeeCosts = useCanShowManagerWrites();
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
@@ -84,10 +88,32 @@ export function AdminTruckDetail({ id, from = null, tab = null, locale, messages
     );
   }
 
+  const refresh = async () => {
+    await mutate();
+    void mutateRelated(isYardRelatedListKey, undefined, { revalidate: true, populateCache: false });
+  };
+
+  async function reactivate() {
+    setReactivating(true);
+    try {
+      await reactivateTruck(id);
+      showToast('success', messages.truckReactivated);
+      await refresh();
+    } catch {
+      showToast('error', messages.truckWriteFailed);
+    } finally {
+      setReactivating(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
     {tabs}
+    {/* D44: a deactivated truck still opens, with its history; the Manager can bring it back. */}
+    {data.truck.deactivatedAt ? <TruckInactiveBanner canWrite={canSeeCosts} busy={reactivating} messages={messages} onReactivate={() => void reactivate()} /> : null}
     {canSeeCosts ? <TruckFaultsBanner truckId={id} href={truckTabHref(id, from, 'tab=faults')} messages={messages} /> : null}
+    {/* D44 §3: Samsara connection and the sync's proposal (Manager and System Admin). */}
+    {canSeeCosts && data.admin ? <TruckSamsaraPanel truck={data.truck} admin={data.admin} openWith={connectVehicle} messages={messages} onChanged={() => void refresh()} /> : null}
     <TruckDetailBody
       data={data}
       origin={origin}
@@ -95,10 +121,8 @@ export function AdminTruckDetail({ id, from = null, tab = null, locale, messages
       locale={locale}
       messages={messages}
       canManage={canManageWorkOrders}
-      onChanged={async () => {
-        await mutate();
-        void mutateRelated(isYardRelatedListKey, undefined, { revalidate: true, populateCache: false });
-      }}
+      canWriteTrucks={canSeeCosts}
+      onChanged={refresh}
       onPlanUpdated={handleWorkPlanUpdated}
     />
     </div>
@@ -154,6 +178,7 @@ function TruckDetailBody({
   locale,
   messages,
   canManage,
+  canWriteTrucks,
   onChanged,
   onPlanUpdated,
 }: {
@@ -163,6 +188,8 @@ function TruckDetailBody({
   locale: AdminLocale;
   messages: AdminMessages;
   canManage: boolean;
+  /** D44: Edit, Deactivate and Delete (Manager and System Admin). */
+  canWriteTrucks: boolean;
   onChanged: () => Promise<unknown> | void;
   onPlanUpdated: (next: TruckWorkPlanDto) => Promise<void> | void;
 }) {
@@ -170,7 +197,9 @@ function TruckDetailBody({
   const truckId = data.truck.id;
   const workPlan = data.workPlan;
   const workOrder = workPlan.workOrder;
-  const canAddWork = workPlan.capabilities.canAddWork;
+  const inactive = Boolean(data.truck.deactivatedAt);
+  // D44: a deactivated truck takes no new work until it is reactivated (the API refuses with TRUCK_INACTIVE).
+  const canAddWork = workPlan.capabilities.canAddWork && !inactive;
   const fromPath = `/admin/trucks/${truckId}${from ? `?from=${encodeURIComponent(from)}` : ''}`;
   // Issues found with no Jobs yet: the Add work panel starts open (D14) — unless the Next step asks for
   // something that comes first (closing, Return to Service, a blocker or a pause): the panel would cover it.
@@ -179,6 +208,8 @@ function TruckDetailBody({
       && !['close', 'return_to_service', 'resolve_blocker', 'resume'].includes(data.nextStep?.kind ?? ''),
   );
   const [newWorkOrderOpen, setNewWorkOrderOpen] = useState(false);
+  const [adminDialog, setAdminDialog] = useState<TruckAdminDialog>(null);
+  const router = useRouter();
   const [actionError, setActionError] = useState<string | null>(null);
   const [stepOverrides, setStepOverrides] = useState<Partial<Record<TruckStepKey, boolean>>>({});
   const steps = useMemo(() => truckSteps(workPlan), [workPlan]);
@@ -232,8 +263,14 @@ function TruckDetailBody({
   const menuItems: MenuItem[] = [];
   if (workOrder && workOrderHref) menuItems.push({ key: 'open', label: fillPlaceholders(messages.truckMenuOpenWorkOrder, { workOrder: workOrder.displayId }), icon: ClipboardList, href: workOrderHref });
   if (canManage && workOrder?.status === 'in_progress' && workOrderHref) menuItems.push({ key: 'pause', label: messages.truckMenuPause, icon: Pause, href: `${workOrderHref}&action=pause` });
-  if (canManage && (!workOrder || workOrder.status === 'completed')) menuItems.push({ key: 'new', label: messages.truckNextStepCreateAction, icon: FilePlus, onSelect: () => setNewWorkOrderOpen(true) });
+  if (canManage && !inactive && (!workOrder || workOrder.status === 'completed')) menuItems.push({ key: 'new', label: messages.truckNextStepCreateAction, icon: FilePlus, onSelect: () => setNewWorkOrderOpen(true) });
   menuItems.push({ key: 'copy', label: messages.copyLink, icon: Link2, separatorBefore: menuItems.length > 0, onSelect: () => void copyText(`${window.location.origin}/admin/trucks/${truckId}`, messages.linkCopied) });
+  // D44: the truck's card — edit, deactivate (reactivate is on the inactive banner) and delete only without history.
+  if (canWriteTrucks) {
+    menuItems.push({ key: 'edit', label: messages.truckEdit, icon: Pencil, separatorBefore: true, onSelect: () => setAdminDialog('edit') });
+    if (!inactive) menuItems.push({ key: 'deactivate', label: messages.truckDeactivate, icon: Archive, onSelect: () => setAdminDialog('deactivate') });
+    if (data.admin?.canDelete) menuItems.push({ key: 'delete', label: messages.truckDelete, icon: Trash2, onSelect: () => setAdminDialog('delete') });
+  }
 
   return <div className="space-y-5">
     {/* Stage 8 (mockup): "Truck 601" with one status chip, the vehicle and the Work Order chip; Add work and "…". */}
@@ -243,6 +280,7 @@ function TruckDetailBody({
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="page-title">{fillPlaceholders(messages.woTitle, { truck: data.truck.truckNumber })}</h1>
             <Badge dot variant={STATUS_CHIP[chip]} data-testid="truck-status-chip">{chipLabel}</Badge>
+            {inactive ? <Badge variant="secondary" data-testid="truck-inactive-badge">{messages.truckInactiveBadge}</Badge> : null}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground">
             <span>{subtitle}</span>
@@ -263,14 +301,14 @@ function TruckDetailBody({
           </div>
           {!canManage ? <p className="flex items-center gap-1.5 text-muted-foreground"><Eye aria-hidden="true" className="size-3.5" />{messages.truckViewOnly}</p> : null}
         </div>
-        {canAddWork || canManage ? (
+        {canAddWork || canManage || canWriteTrucks ? (
           <div className="flex items-center gap-2 sm:shrink-0">
             {canAddWork ? (
               <Button type="button" className="flex-1 sm:flex-none" onClick={() => setAddWorkOpen(true)} aria-controls="work-plan-add-work" aria-haspopup="dialog">
                 <Plus aria-hidden="true" />{messages.workPlanAddWork}
               </Button>
             ) : null}
-            {canManage ? (
+            {canManage || canWriteTrucks ? (
               <ResponsiveMenu
                 label={fillPlaceholders(messages.woTitle, { truck: data.truck.truckNumber })}
                 items={menuItems}
@@ -316,7 +354,7 @@ function TruckDetailBody({
     ) : null}
 
     {/* LTR-158 / D14: the one thing to do next (blocker first). Same rule as the Work Order, Dashboard and Yard. */}
-    <AdminTruckNextStep
+    {inactive ? null : <AdminTruckNextStep
       truck={data}
       locale={locale}
       messages={messages}
@@ -325,7 +363,7 @@ function TruckDetailBody({
       onAddWork={() => setAddWorkOpen(true)}
       onNewWorkOrder={() => setNewWorkOrderOpen(true)}
       onChanged={onChanged}
-    />
+    />}
 
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-5">
@@ -377,6 +415,10 @@ function TruckDetailBody({
               {data.truck.company ?? messages.noValue}
               {data.truck.owner ? <span className="block text-xs font-normal text-muted-foreground">{fillPlaceholders(messages.ownerLine, { owner: data.truck.owner })}</span> : null}
             </dd>
+            {/* D44: the rest of the card. */}
+            <dt className="text-muted-foreground">{messages.truckFieldPlate}</dt><dd className="text-right font-medium">{data.truck.licensePlate ?? messages.noValue}</dd>
+            <dt className="text-muted-foreground">{messages.truckFieldDispatcher}</dt><dd className="text-right font-medium">{data.truck.dispatcher ?? messages.noValue}</dd>
+            <dt className="text-muted-foreground">{messages.truckFieldInsurance}</dt><dd className="text-right font-medium">{data.truck.insurance ?? messages.noValue}</dd>
             <dt className="text-muted-foreground">{messages.operationalShort}</dt>
             <dd className={`text-right font-medium ${data.operationalStatus === TruckOperationalStatus.IN_SERVICE ? 'text-success' : 'text-muted-foreground'}`}>{operationalStatusLabel(data.operationalStatus, messages)}</dd>
           </dl>
@@ -401,6 +443,19 @@ function TruckDetailBody({
         <RepairHistory truckId={truckId} excludeWorkOrderId={workOrder && workOrder.status !== 'completed' ? workOrder.id : ''} first={data.repairHistory} locale={locale} messages={messages} />
       </aside>
     </div>
+
+    {canWriteTrucks ? (
+      <TruckAdminDialogs
+        truck={data.truck}
+        admin={data.admin}
+        dialog={adminDialog}
+        knownOpenWorkOrder={workOrder && workOrder.status !== 'completed' && workOrder.status !== 'cancelled' ? { id: workOrder.id, displayId: workOrder.displayId } : null}
+        messages={messages}
+        onClose={() => setAdminDialog(null)}
+        onChanged={() => void onChanged()}
+        onDeleted={() => router.push('/admin/trucks')}
+      />
+    ) : null}
 
     {canManage ? (
       <NewWorkOrderDialog

@@ -62,7 +62,8 @@ export class PartsCatalogService {
         FROM pm_service_parts psp JOIN pm_services ps ON ps.id = psp.pm_service_id
         GROUP BY psp.part_id`,
       this.openPms(),
-      this.prisma.truck.findMany({ where: { make: { not: null } }, distinct: ['make'], select: { make: true }, orderBy: { make: 'asc' } }),
+      // D44: makes of the trucks still in the fleet.
+      this.prisma.truck.findMany({ where: { make: { not: null }, deactivatedAt: null }, distinct: ['make'], select: { make: true }, orderBy: { make: 'asc' } }),
       // PC-2: the last line of each part on a purchase not voided.
       this.prisma.$queryRaw<Array<{ part_id: string; unit_cost_cents: number; invoice_date: Date; vendor_name: string }>>`
         SELECT DISTINCT ON (l.part_id) l.part_id, l.unit_cost_cents, p.invoice_date, v.name AS vendor_name
