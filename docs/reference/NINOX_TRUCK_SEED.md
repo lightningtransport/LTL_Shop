@@ -31,8 +31,8 @@ Prefer **VIN + truckNumber**:
 |---|---|---|
 | `truckNumber` | `E.A` | Ops key. Skip the record if missing. |
 | `vin` | `E.CG` | When present. |
-| `make` | `E.DG` | When present. Kit calls this make/model display. |
-| `model` | **unresolved** | No declared Ninox field ID. Not invented. |
+| `make` | `E.DG` | When present. Read through `normalizeMakeModel` (LTR-113): a known make is spelled one way, "Mack Anthem" splits into Make + Model, and a model name in `E.DG` is read against the Model the truck already has. |
+| `model` | from `E.DG` only | No Ninox Model field. Filled only when `E.DG` holds make and model together. |
 | `year` | `E.IJ` | When present. |
 | `licensePlate` | `E.HJ` | When present. Shop name is `licensePlate`, not `plate`. |
 | `mileage` | `E.OF` | Odometer miles. |
@@ -80,3 +80,17 @@ npm run prisma:seed-ninox-trucks --workspace=@ltl-shop/api
 5. A completed `ninox_truck_seed_runs` row is the lock. Later runs do not
    query Ninox. Unset `NINOX_TOKEN`.
 6. Do not run demo `db:seed` against production.
+
+## Make / Model of trucks already saved (LTR-113)
+
+The Ninox import, Samsara connect and the Shop's truck form all save Make / Model
+through `normalizeMakeModel` (`packages/shared/src/vehicle.ts`). For trucks saved
+before that rule, one script lists what would change and writes only with `--apply`:
+
+```bash
+npm run prisma:normalize-truck-make-model --workspace=@ltl-shop/api
+```
+
+Run it against production only with the owner's OK, after reading the list. A truck
+the rule does not recognise (two makes, or an unknown make) stays as it is; the
+Manager fixes it in Trucks → Edit.

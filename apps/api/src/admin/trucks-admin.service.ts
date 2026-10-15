@@ -3,6 +3,7 @@ import {
   OPEN_WORK_ORDER_STATUSES,
   adminCreateTruckSchema,
   adminUpdateTruckSchema,
+  normalizeMakeModel,
   type AdminTruckAdminDto,
   type AdminTruckOpenWorkOrderConflictDto,
   type TruckDto,
@@ -50,6 +51,8 @@ export class TrucksAdminService {
     const parsed = adminCreateTruckSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     const input = parsed.data;
+    // LTR-113: swapped or merged Make / Model are put right before they are saved.
+    const vehicle = normalizeMakeModel(input.make, input.model);
     return this.prisma.$transaction(async (tx) => {
       await this.assertNumberFree(tx, input.truckNumber);
       await this.assertVinFree(tx, input.vin ?? null);
@@ -58,8 +61,8 @@ export class TrucksAdminService {
           data: {
             truckNumber: input.truckNumber,
             vin: input.vin ?? null,
-            make: input.make ?? null,
-            model: input.model ?? null,
+            make: vehicle.make,
+            model: vehicle.model,
             year: input.year ?? null,
             licensePlate: input.licensePlate ?? null,
             owner: input.owner ?? null,
@@ -84,7 +87,7 @@ export class TrucksAdminService {
     return this.prisma.$transaction(async (tx) => {
       // Same lock as New Work Order: a Work Order cannot open while the truck is being deactivated.
       await lockTruckMutation(tx, id);
-      const current = await tx.truck.findUnique({ where: { id }, select: { id: true, truckNumber: true, vin: true, deactivatedAt: true } });
+      const current = await tx.truck.findUnique({ where: { id }, select: { id: true, truckNumber: true, vin: true, make: true, model: true, deactivatedAt: true } });
       if (!current) throw new NotFoundException('Truck not found');
 
       if (fields.truckNumber !== undefined && fields.truckNumber !== current.truckNumber) await this.assertNumberFree(tx, fields.truckNumber, id);
@@ -93,6 +96,15 @@ export class TrucksAdminService {
       const data: Prisma.TruckUpdateInput = {};
       for (const [key, value] of Object.entries(fields)) {
         if (value !== undefined) (data as Record<string, unknown>)[key] = value;
+      }
+      if (fields.make !== undefined || fields.model !== undefined) {
+        // LTR-113: one field may change alone; the rule reads the pair as it will be saved.
+        const vehicle = normalizeMakeModel(
+          fields.make !== undefined ? fields.make : current.make,
+          fields.model !== undefined ? fields.model : current.model,
+        );
+        data.make = vehicle.make;
+        data.model = vehicle.model;
       }
       if (active === false && !current.deactivatedAt) {
         const open = await tx.workOrder.findFirst({

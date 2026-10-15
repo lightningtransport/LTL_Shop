@@ -24,8 +24,9 @@ describe('transformTrucksDbRecord', () => {
     })).toEqual({
       truckNumber: '905',
       vin: '1XKYD49X0LJ123456',
-      make: 'Freightliner Cascadia',
-      model: null,
+      // LTR-113: TrucksDB's single Make field is split into Make and Model.
+      make: 'Freightliner',
+      model: 'Cascadia',
       year: 2022,
       licensePlate: 'ABC1234',
       mileage: 142500,

@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 132 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 154 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -108,6 +108,26 @@ PASA 132 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A88 | El Manager agrega, renombra y desactiva puntos y cambia umbrales; la inspección guardada no cambia y el mecánico no edita | PASA |
 | A89 | En "To inspect" quedan los camiones que inspeccioné (Add defects, IN-7); no los que inspeccionó otro | PASA |
 | A90 | Una visita inspeccionada con los botones viejos lo dice y deja llenar la hoja | PASA |
+| A91 | S-1: Setup → Samsara dice qué vehículo es cada camión sin escribir nada; un mecánico no entra | PASA |
+| A92 | S-2: Sync now guarda millas y ubicación de Samsara en el camión sin tocar las millas del PM; la ficha y Trucks las muestran; otra corrida no duplica nada | PASA |
+| A93 | S-3, S3-4: las luces del tablero (STOP, advertencia) y los códigos que encendieron check engine se ven en Trucks y en Faults; una falla sigue abierta sin duplicarse y se cierra cuando Samsara deja de reportarla; si la lectura de fallas falla no se cierra nada | PASA |
+| A94 | S-2: GitHub Actions corre la sincronización con el secreto de cron; sin secreto 401; un mecánico no puede Sync now | PASA |
+| A95 | S-6: se recomiendan los códigos que encendieron check engine; con la luz STOP también los demás, marcados por la luz | PASA |
+| A96 | S-6: agregar el Job desde Add work lo liga a la falla, aprende el código, el mecánico la ve en su Job; otra falla se agrega al mismo Job; el código aprendido se sugiere en otro camión | PASA |
+| A97 | S-6: "Ahora no" pide razón y saca la falla de las recomendaciones; completado el Job y cerrada la falla queda "Fixed"; si vuelve dentro de 48 h queda "Came back" | PASA |
+| A98 | D44: el Manager agrega un camión con solo el número y lo que sepa; aparece en Trucks y en New Work Order; las millas oficiales no se escriben aquí | PASA |
+| A99 | D44: número repetido o VIN de otro camión no se guardan (dice cuál camión lo tiene); un mecánico o Safety no pueden agregar ni editar (403) | PASA |
+| A100 | D44: editar la ficha cambia solo lo enviado; lo que se borra queda vacío | PASA |
+| A101 | D44: no se desactiva con una Work Order abierta (dice cuál); desactivado sale de Trucks y de New Work Order y no se le abre trabajo; la ficha sigue abriendo; reactivar lo devuelve | PASA |
+| A102 | D44: borrar solo un camión que nunca tuvo nada; con historial se desactiva | PASA |
+| A103 | D44: Connect Samsara lista los vehículos que no son de ningún camión, arriba el que coincide por VIN y luego por número ("Suggested"); un mecánico no la ve | PASA |
+| A104 | D44: al conectar, lo vacío se llena con Samsara; lo que difiere pide elegir; conectado trae millas y ubicación enseguida | PASA |
+| A105 | D44: un vehículo de Samsara que ya es de otro camión no se conecta | PASA |
+| A106 | D44: la sincronización propone por VIN exacto en la ficha y no conecta sola; por número no propone | PASA |
+| A107 | D44: desconectar deja de sincronizar; las últimas lecturas y las fallas quedan; la sincronización no lo vuelve a conectar por el id de Ninox | PASA |
+| A108 | D44: un camión conectado sigue conectado aunque Samsara deje de listar su vehículo; Setup → Samsara lo avisa | PASA |
+| A109 | D44: la propuesta aparece después de una sincronización y se conecta de un toque (sin elegir: nada difiere); la propuesta desaparece | PASA |
+| A110 | LTR-113: Make y Model al revés o juntos quedan bien al guardar (CASCADIA / Freightliner → Freightliner / CASCADIA; "Mack Anthem" → Mack / Anthem); la marca se escribe de una sola forma | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |
@@ -138,3 +158,5 @@ PASA 132 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | QC9 | Done: lo que aprobé y devolví, lo más nuevo primero; cada persona ve lo suyo (D-QC6) | PASA |
 | QC10 | Orden por urgencia: Critical y High antes que el que lleva más tiempo listo (D-QC5) | PASA |
 | QC11 | El Manager hace QC como respaldo en la pantalla de Safety: toma y aprueba a su nombre; Safety fuera del equipo no ve la cola; un mecánico sigue sin entrar | PASA |
+| QC12 | LTR-216: el Manager no completa con un toque el QC que Safety devolvió; solo con confirmación y motivo | PASA |
+| QC13 | LTR-217: resolver una devolución sin trabajo nuevo exige decirle a Safety por qué | PASA |

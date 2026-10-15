@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { normalizeMakeModel } from '@ltl-shop/shared';
 import { NINOX_TRUCKS_DB, SHOP_TRUCK_SEED_IDENTITY } from './ninox.mapping';
 import type { NinoxReadOnlyClient } from './ninox.read-only-client';
 import {
@@ -21,7 +22,7 @@ export type NinoxTruckSeedResult = {
   identity: typeof SHOP_TRUCK_SEED_IDENTITY;
 };
 
-type SeedTruck = { id: string; truckNumber: string; vin: string | null };
+type SeedTruck = { id: string; truckNumber: string; vin: string | null; model?: string | null };
 type SeedPrisma = Pick<PrismaClient, 'ninoxTruckSeedRun' | 'truck'>;
 
 export async function hasCompletedNinoxTruckSeed(prisma: SeedPrisma): Promise<boolean> {
@@ -39,7 +40,7 @@ export async function resolveSeedIdentity(
   if (row.vin) {
     const byVin = await prisma.truck.findMany({
       where: { vin: row.vin },
-      select: { id: true, truckNumber: true, vin: true },
+      select: { id: true, truckNumber: true, vin: true, model: true },
     });
     if (byVin.length === 1) return { existing: byVin[0], ambiguousVin: false };
     if (byVin.length > 1) {
@@ -49,7 +50,7 @@ export async function resolveSeedIdentity(
   }
   const byNumber = await prisma.truck.findUnique({
     where: { truckNumber: row.truckNumber },
-    select: { id: true, truckNumber: true, vin: true },
+    select: { id: true, truckNumber: true, vin: true, model: true },
   });
   return { existing: byNumber, ambiguousVin: false };
 }
@@ -103,6 +104,10 @@ export async function runNinoxTruckSeed(options: {
     }
     const fields = presentShopFields(row);
     if (existing) {
+      if (row.make && !row.model && existing.model) {
+        // LTR-113: TrucksDB has no Model; read its Make against the Model the truck already has.
+        Object.assign(fields, normalizeMakeModel(row.make, existing.model));
+      }
       await options.prisma.truck.update({
         where: { id: existing.id },
         data: fields,

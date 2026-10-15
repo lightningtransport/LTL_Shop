@@ -100,6 +100,18 @@ describe('Manager: alta y edición de camiones (D44)', () => {
     refused('las millas no se editan aquí', await manager.patch(`/admin/trucks/${created.id}`, { mileage: 5 }), 400);
   });
 
+  it('A110 | LTR-113: Make y Model al revés o juntos quedan bien al guardar (CASCADIA / Freightliner → Freightliner / CASCADIA; "Mack Anthem" → Mack / Anthem); la marca se escribe de una sola forma', async () => {
+    const swapped = await addTruck({ make: 'CASCADIA', model: 'Freightliner' });
+    same('al revés se da vuelta', [swapped.make, swapped.model], ['Freightliner', 'CASCADIA']);
+    const merged = await addTruck({ make: 'Mack Anthem' });
+    same('juntos se separan', [merged.make, merged.model], ['Mack', 'Anthem']);
+    const onlyModelName = await addTruck({ make: 'CASCADIA' });
+    const edited = ok('editar solo Model', await manager.patch(`/admin/trucks/${onlyModelName.id}`, { model: 'Freightliner' })) as Json;
+    same('al editar un campo se lee junto al otro', [edited.make, edited.model], ['Freightliner', 'CASCADIA']);
+    const spelled = await addTruck({ make: 'FREIGHTLINER', model: 'Cascadia' });
+    same('la marca se escribe de una sola forma', spelled.make, 'Freightliner');
+  });
+
   it('A101 | D44: no se desactiva con una Work Order abierta (dice cuál); desactivado sale de Trucks y de New Work Order y no se le abre trabajo; la ficha sigue abriendo; reactivar lo devuelve', async () => {
     const created = await addTruck();
     const { workOrderId, created: workOrder } = await createWo(created.truckNumber);

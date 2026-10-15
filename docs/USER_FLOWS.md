@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -24,7 +24,7 @@ La columna **Fila** es el número de la prueba que lo comprueba
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
 **Resultado de la auditoría (2026-09-29):** 61 comprobaciones · 59 funcionan · 0 fallan
-· 2 no aplican. Desde entonces se sumaron filas hasta A109; la cuenta al día la da
+· 2 no aplican. Desde entonces se sumaron filas hasta A110; la cuenta al día la da
 `npm run test:real --workspace=@ltl-shop/api`.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
@@ -781,6 +781,7 @@ Una propuesta de la sincronización (VIN exacto) se ve en la ficha (banda con **
 | El número ya existe | No deja guardar y lo dice | ✅ | A99 |
 | El VIN ya es de otro camión | Lo avisa con enlace al otro camión | ✅ | A99 |
 | Edita la ficha | Cambia solo lo que tocó; lo que borra queda vacío | ✅ | A100 |
+| Make y Model al revés o juntos ("CASCADIA / Freightliner", "Mack Anthem") | Se guardan bien (Freightliner / CASCADIA, Mack / Anthem) y la marca se escribe de una sola forma; igual al importar de Ninox y al conectar Samsara (LTR-113) | ✅ | A110 |
 | La sincronización ve un VIN que coincide exacto | Lo propone en la ficha, en Trucks y en Setup → Samsara; no conecta solo; por número no propone | ✅ | A106 |
 | Conecta la propuesta y nada difiere | Se conecta de un toque | ✅ | A109 |
 | Connect Samsara | Arriba el que coincide por VIN y luego por número ("Suggested") | ✅ | A103 |
