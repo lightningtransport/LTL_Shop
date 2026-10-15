@@ -54,7 +54,9 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<YardOperationsFilters>(() => readYardOperationsFilters(searchParams));
   // LTR-120: the Shop's own board and Dispatch are separate tabs.
-  const tab: 'shop' | 'movement' = searchParams.get('tab') === 'movement' ? 'movement' : 'shop';
+  // LTR-207: the URL says what the tab says ("dispatch"); old links with tab=movement still open it.
+  const tabParam = searchParams.get('tab');
+  const tab: 'shop' | 'movement' = tabParam === 'dispatch' || tabParam === 'movement' ? 'movement' : 'shop';
   const [movementSearch, setMovementSearch] = useState('');
   const [closedLanes, setClosedLanes] = useState<Record<string, boolean>>({});
   // D33: the board opens full screen (Esc leaves).
@@ -102,7 +104,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
 
   function commitFilters(next: YardOperationsFilters) {
     const params = buildYardOperationsQuery(next);
-    if (tab === 'movement') params.set('tab', 'movement');
+    if (tab === 'movement') params.set('tab', 'dispatch');
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 
@@ -116,13 +118,13 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
 
   function clearFilters() {
     setFilters(DEFAULT_YARD_OPERATIONS_FILTERS);
-    router.replace(tab === 'movement' ? '/admin/yard-operations?tab=movement' : '/admin/yard-operations');
+    router.replace(tab === 'movement' ? '/admin/yard-operations?tab=dispatch' : '/admin/yard-operations');
   }
 
   function updateTab(nextTab: 'shop' | 'movement') {
     const params = new URLSearchParams(searchParams.toString());
     if (nextTab === 'shop') params.delete('tab');
-    else params.set('tab', nextTab);
+    else params.set('tab', 'dispatch');
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 

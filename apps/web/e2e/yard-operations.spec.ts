@@ -48,7 +48,7 @@ async function expectPdBoundaryCards(page: Page, locale: YardDataBoundaryLocale)
 
 async function openMovementTab(page: Page, name: RegExp = /^Dispatch$/) {
   await page.getByRole('tab', { name }).click();
-  await expect(page).toHaveURL(/tab=movement/);
+  await expect(page).toHaveURL(/tab=dispatch/);
 }
 
 test.describe('Yard Operations Phase 1', () => {

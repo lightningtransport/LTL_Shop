@@ -226,19 +226,25 @@ export function DemoPanel() {
           >
             <option value="">None</option>
             <optgroup label="Demo flow">
-              <option value={DEMO_FLOW.id}>{DEMO_FLOW.title} · {storyChapters(DEMO_FLOW).length} chapters</option>
+              <option value={DEMO_FLOW.id}>{DEMO_FLOW.title} · {storyChapters(DEMO_FLOW).length} chapters{demo.doneStoryIds.includes(DEMO_FLOW.id) ? ' · done' : ''}</option>
             </optgroup>
             {DEMO_WHO_ORDER.map((who) => (
               <optgroup key={who} label={DEMO_WHO_LABELS[who]}>
                 {DEMO_STORIES.filter((story) => story.who === who).map((story) => (
                   <option key={story.id} value={story.id}>
-                    {story.title}{story.trucks.length ? ` (${story.trucks.join(', ')})` : ''} · {story.steps.length} steps
+                    {story.title}{story.trucks.length ? ` (${story.trucks.join(', ')})` : ''} · {story.steps.length} steps{demo.doneStoryIds.includes(story.id) ? ' · done' : ''}
                   </option>
                 ))}
               </optgroup>
             ))}
           </Select>
           </div>
+          {/* LTR-211 (UX-6-006): the story already ran on this data, so its trucks are not where step 1 expects them. */}
+          {demo.story && !demo.state.started && demo.doneStoryIds.includes(demo.story.id) ? (
+            <p className={cn('mt-2 rounded-md border border-warning/50 bg-warning-surface px-2 py-1.5 text-xs text-warning-foreground', phoneHidden)} role="status" data-testid="demo-story-done">
+              Already run on this demo data: its trucks have moved on, so some steps may not match. The data is rebuilt every night (locally: <code>npm run prisma:demo-local</code>).
+            </p>
+          ) : null}
           {demo.story && chapters.length ? (
             <details className={cn('mt-2 rounded-md border px-2 py-1 text-xs', phoneHidden)}>
               <summary className="cursor-pointer select-none text-muted-foreground">Chapters · {chapters.length}{chapterIndex >= 0 ? ` · now ${chapterIndex + 1}` : ''}</summary>

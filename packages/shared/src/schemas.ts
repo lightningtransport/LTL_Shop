@@ -343,6 +343,8 @@ export const adminCancelJobSchema = adminMutationMetaSchema.extend({
 
 export const adminCompleteJobSchema = adminMutationMetaSchema.extend({
   notes: z.string().trim().max(2000).optional(),
+  /** LTR-216: completing a Quality Check that Safety returned needs this and a note. */
+  overrideSafetyReturn: z.boolean().optional(),
 });
 
 /** LTR-148: the PM mechanic switches their PM job between PM Category catalog jobs. */

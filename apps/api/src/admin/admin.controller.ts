@@ -165,6 +165,12 @@ export class AdminController {
     return this.admin.handleWorkRequest(request.user!, id, noteId);
   }
 
+  @Post('work-orders/:id/notes/:noteId/unhandle')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  unhandleWorkRequest(@Req() request: Request, @Param('id') id: string, @Param('noteId') noteId: string) {
+    return this.admin.unhandleWorkRequest(request.user!, id, noteId);
+  }
+
   @Post('work-orders/:id/pause')
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   pauseWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {

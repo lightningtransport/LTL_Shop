@@ -15,12 +15,14 @@ import {
   ListPlus,
   PackageCheck,
   Play,
+  Plus,
   ShieldCheck,
   TriangleAlert,
   Truck,
   Wrench,
 } from 'lucide-react';
-import { isQualityCheckJob, type AdminWorkOrderDetailDto, type PauseEventDto } from '@ltl-shop/shared';
+import { BlockerReason, isQualityCheckJob, type AdminWorkOrderDetailDto, type PauseEventDto } from '@ltl-shop/shared';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { resolveAdminBlocker } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -150,6 +152,7 @@ export function WorkOrderNextStep({
           canResolve={canManage}
           footer={footer}
           onResolved={onChanged}
+          addWorkHref={`${adminTruckHref(data.truck.id, `/admin/work-orders/${data.id}`)}#add-work`}
         />
       </div>
     );
@@ -227,6 +230,8 @@ export function BlockerCallout({
   canResolve,
   footer,
   onResolved,
+  addWorkHref,
+  onAddWork,
 }: {
   testId?: string;
   blocker: Blocker | PauseEventDto;
@@ -237,9 +242,17 @@ export function BlockerCallout({
   canResolve: boolean;
   footer: React.ReactNode;
   onResolved: () => Promise<unknown> | void;
+  /** LTR-217: where "Add work" goes for a Safety return (a link on the Work Order, the panel on the Truck). */
+  addWorkHref?: string;
+  onAddWork?: () => void;
 }) {
   const { showToast } = useActionToast();
   const [resolving, setResolving] = useState(false);
+  // LTR-217 (D19): Safety returned the truck. The answer is work (adding it resolves the return); resolving without
+  // new work is the secondary path and has to tell Safety why.
+  const safetyReturn = blocker.blockerReason === BlockerReason.QUALITY_CHECK_FAILED;
+  const noteLabel = safetyReturn ? messages.resolveSafetyReturnNoteLabel : messages.resolveBlockerNoteLabel;
+  const noteFor = (body: string) => fillPlaceholders(safetyReturn ? messages.calloutSafetyNote : messages.calloutMechanicNote, { body });
   const [note, setNote] = useState('');
   const [pending, setPending] = useState(false);
   const reason = adminPauseReasonLabel(blocker.blockerReason ?? blocker.reason, messages);
@@ -272,28 +285,41 @@ export function BlockerCallout({
       title={blocker.job ? fillPlaceholders(messages.calloutBlockerTitle, { job: blocker.job.displayName, reason }) : reason}
       sub={fillPlaceholders(messages.calloutReportedBy, { name: reporter, date: formatShortDateTime(blocker.startedAt, locale) })}
       actions={canResolve && !resolving ? (
-        <Button type="button" onClick={() => setResolving(true)}><Check aria-hidden="true" />{messages.resolveBlocker}</Button>
+        safetyReturn && (addWorkHref || onAddWork) ? (
+          <div className="flex flex-wrap gap-2">
+            {addWorkHref ? (
+              <Button asChild><Link href={addWorkHref}><Plus aria-hidden="true" />{messages.safetyReturnCompleteAddWork}</Link></Button>
+            ) : (
+              <Button type="button" onClick={onAddWork}><Plus aria-hidden="true" />{messages.safetyReturnCompleteAddWork}</Button>
+            )}
+            <Button type="button" variant="outline" onClick={() => setResolving(true)}>{messages.resolveSafetyReturnWithoutWork}</Button>
+          </div>
+        ) : (
+          <Button type="button" onClick={() => setResolving(true)}><Check aria-hidden="true" />{messages.resolveBlocker}</Button>
+        )
       ) : null}
       extra={(
         <div data-testid="admin-blocker" className="space-y-1">
-          {blocker.notes ? <p className="text-foreground/90">{fillPlaceholders(messages.calloutMechanicNote, { body: blocker.notes })}</p> : null}
+          {blocker.notes ? <p className="text-foreground/90">{noteFor(blocker.notes)}</p> : null}
           {(blocker.blockerNotes ?? []).map((entry) => (
-            <p key={entry.id} className="text-foreground/90">{fillPlaceholders(messages.calloutMechanicNote, { body: entry.body })}</p>
+            <p key={entry.id} className="text-foreground/90">{noteFor(entry.body)}</p>
           ))}
+          {safetyReturn && canResolve && !resolving ? <p className="text-muted-foreground">{messages.safetyReturnAddWorkHint}</p> : null}
           {resolving ? (
             <form className="space-y-2 pt-2" onSubmit={(event) => { event.preventDefault(); void resolve(); }}>
               <Textarea
-                aria-label={messages.resolveBlockerNoteLabel}
-                placeholder={messages.resolveBlockerNoteLabel}
+                aria-label={noteLabel}
+                placeholder={noteLabel}
                 value={note}
                 rows={2}
                 maxLength={1000}
                 disabled={pending}
+                required={safetyReturn}
                 autoFocus
                 onChange={(event) => setNote(event.target.value)}
               />
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1 sm:flex-none" disabled={pending}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
+                <Button type="submit" className="flex-1 sm:flex-none" disabled={pending || (safetyReturn && !note.trim())}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
                 <Button type="button" variant="ghost" disabled={pending} onClick={() => { setResolving(false); setNote(''); }}>{messages.cancel}</Button>
               </div>
             </form>

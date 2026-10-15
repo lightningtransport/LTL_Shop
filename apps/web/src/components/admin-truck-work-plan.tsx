@@ -105,7 +105,8 @@ export function AdminTruckWorkPlan({
       if (errorValue.status === 409) return messages.mutationConflict;
       if (errorValue.status === 400) {
         const code = errorCode(errorValue);
-        if (code === 'OPEN_WORK_ORDER_EXISTS' || /pm/i.test(errorValue.message)) return messages.workPlanPmOpenConflict;
+        // LTR-219: by code only — any message with "PM" in it (e.g. PM_JOB_EXISTS) used to read as this conflict.
+        if (code === 'OPEN_WORK_ORDER_EXISTS' || code === 'PM_WORK_ORDER_OPEN') return messages.workPlanPmOpenConflict;
         return apiErrorMessage(errorValue, messages, messages.mutationBadRequest);
       }
     }

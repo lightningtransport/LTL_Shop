@@ -100,7 +100,8 @@ describe('Safety: Quality Check (D19)', () => {
       ...(await meta(workOrderId)),
       jobs: [{ ...(await catalogRow('Air & Brake System', 'Brake Inspection')), assignedMechanicId: await userId(USERS.general) }],
     }));
-    ok('y resuelve', await manager.post(`/admin/work-orders/${workOrderId}/blockers/${blocker!.id}/resolve`, { notes: 'Trabajo agregado.' }));
+    // LTR-217: agregar el trabajo es la respuesta a Safety; la devolución se resuelve sola con los Jobs nuevos.
+    same('agregar el trabajo resuelve la devolución', await activeBlocker(workOrderId), null);
     same('mientras el trabajo está pendiente, Safety no lo ve', inQueue((await queue()).pending, workOrderId), null);
 
     ok('el mecánico hace el trabajo', await start(USERS.general, workOrderId));
@@ -108,7 +109,7 @@ describe('Safety: Quality Check (D19)', () => {
     truthy('el camión vuelve a la lista de Safety', inQueue((await queue()).pending, workOrderId));
     // Q2: la revisión muestra la devolución anterior con lo que hizo el Manager, y el trabajo nuevo.
     const review = ok('la revisión del camión', await safety2.get(`/qc/${workOrderId}`));
-    same('la devolución anterior, con la respuesta del Manager', (review.previousReturns as Json[]).map((item) => [item.note, item.returnedBy, item.resolution]), [['Fuga en la manguera del freno trasero.', 'Safety 1', 'Trabajo agregado.']]);
+    same('la devolución anterior, con la respuesta del Manager', (review.previousReturns as Json[]).map((item) => [item.note, item.returnedBy, item.resolution]), [['Fuga en la manguera del freno trasero.', 'Safety 1', 'Work added: Brake Inspection']]);
     same('el trabajo nuevo aparece hecho, con quién', (review.jobs as Json[]).find((job) => job.name === 'Brake Inspection')?.mechanic?.id, await userId(USERS.general));
     ok('Safety 2 lo toma esta vez', await safety2.post(`/qc/${workOrderId}/take`));
     ok('y aprueba', await safety2.post(`/qc/${workOrderId}/approve`));
@@ -196,6 +197,43 @@ describe('Safety: la pantalla nueva (bloque B, D-QC1…D-QC6)', () => {
     same('lo más nuevo primero', (history.items as Json[]).map((item) => [item.truck.truckNumber, item.outcome, item.note]), [['922', 'returned', 'Luz trasera fundida.'], ['905', 'approved', null]]);
     same('Safety 2 no tiene nada', (ok('historial de Safety 2', await safety2.get('/qc/history')).items as Json[]).length, 0);
     refused('un mecánico no ve el historial', await as(USERS.general).get('/qc/history'), 403);
+  });
+
+  it('QC12 | LTR-216: el Manager no completa con un toque el QC que Safety devolvió; solo con confirmación y motivo', async () => {
+    const { workOrderId } = await readyForQc('905');
+    ok('tomar', await safety.post(`/qc/${workOrderId}/take`));
+    ok('devolver', await safety.post(`/qc/${workOrderId}/return`, { notes: 'Sigue jalando a la derecha en la prueba de manejo.' }));
+    const qcJobId = laneJob(await adminWo(workOrderId), 'quality_check').id;
+
+    refused('completar sin más: se rechaza y la devolución sigue', await manager.post(`/admin/jobs/${qcJobId}/complete`, { ...(await meta(workOrderId)) }), 409, 'QC_RETURNED_BY_SAFETY');
+    same('el bloqueo de Safety sigue abierto', (await activeBlocker(workOrderId))?.blockerReason, 'quality_check_failed');
+    refused('confirmar sin motivo no alcanza', await manager.post(`/admin/jobs/${qcJobId}/complete`, { ...(await meta(workOrderId)), overrideSafetyReturn: true, notes: '  ' }), 400, 'QC_OVERRIDE_NOTE_REQUIRED');
+
+    ok('confirmar con motivo', await manager.post(`/admin/jobs/${qcJobId}/complete`, {
+      ...(await meta(workOrderId)),
+      overrideSafetyReturn: true,
+      notes: 'Lo revisé en la prueba de manejo: va derecho.',
+    }));
+    const workOrder = await adminWo(workOrderId);
+    same('QC completado', laneJob(workOrder, 'quality_check').status, 'completed');
+    same('la devolución quedó resuelta', await activeBlocker(workOrderId), null);
+    const resolved = await prisma.activityLog.findFirst({ where: { workOrderId, eventType: 'blocker_resolved' }, orderBy: { createdAt: 'desc' } });
+    same('el historial dice que se completó sobre la devolución, con el motivo',
+      (resolved?.newValue as Json | null)?.notes,
+      'Quality Check completed by the Manager over the Safety return: Lo revisé en la prueba de manejo: va derecho.');
+  });
+
+  it('QC13 | LTR-217: resolver una devolución sin trabajo nuevo exige decirle a Safety por qué', async () => {
+    const { workOrderId } = await readyForQc('905');
+    ok('tomar', await safety.post(`/qc/${workOrderId}/take`));
+    ok('devolver', await safety.post(`/qc/${workOrderId}/return`, { notes: 'Falta el tapón del tanque de DEF.' }));
+    const blocker = await activeBlocker(workOrderId);
+    refused('sin nota, no', await manager.post(`/admin/work-orders/${workOrderId}/blockers/${blocker!.id}/resolve`, {}), 400, 'QC_RESOLVE_NOTE_REQUIRED');
+    refused('una nota en blanco tampoco', await manager.post(`/admin/work-orders/${workOrderId}/blockers/${blocker!.id}/resolve`, { notes: '   ' }), 400, 'QC_RESOLVE_NOTE_REQUIRED');
+    ok('con nota, sí', await manager.post(`/admin/work-orders/${workOrderId}/blockers/${blocker!.id}/resolve`, { notes: 'El tapón está puesto; lo revisé.' }));
+    truthy('vuelve a la lista de Safety', inQueue((await queue()).pending, workOrderId));
+    const review = ok('la revisión', await safety.get(`/qc/${workOrderId}`));
+    same('Safety lee la respuesta del Manager', (review.previousReturns as Json[])[0]?.resolution, 'El tapón está puesto; lo revisé.');
   });
 
   it('QC10 | Orden por urgencia: Critical y High antes que el que lleva más tiempo listo (D-QC5)', async () => {

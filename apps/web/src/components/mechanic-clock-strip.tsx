@@ -60,9 +60,10 @@ export function MechanicClockStrip({ className }: { className?: string }) {
     >
       <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-success" />
       <span className="min-w-0 flex-1 truncate">
-        <b className="font-semibold">{messages.clockStripYourClock}</b>{' · '}{messages.truckTitle(clock.truckNumber)}{' · '}{messages.clockStripSince(since)}
+        {/* LTR-218 (UX-1-009): on a phone "Your clock" and "Open" crowded out the time; the green dot and the arrow say it. */}
+        <b className="sr-only font-semibold sm:not-sr-only">{messages.clockStripYourClock}<span aria-hidden="true">{' · '}</span></b>{messages.truckTitle(clock.truckNumber)}{' · '}{messages.clockStripSince(since)}
       </span>
-      <span className="flex shrink-0 items-center text-xs font-medium text-success">{messages.clockStripOpen}<ChevronRight aria-hidden="true" className="size-4" /></span>
+      <span className="flex shrink-0 items-center text-xs font-medium text-success"><span className="sr-only sm:not-sr-only">{messages.clockStripOpen}</span><ChevronRight aria-hidden="true" className="size-4" /></span>
     </Link>
   );
 }

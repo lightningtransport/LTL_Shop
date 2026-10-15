@@ -704,6 +704,11 @@ export class WorkOrdersService {
       if (blocker.resolvedAt) {
         throw new BadRequestException({ code: 'BLOCKER_ALREADY_RESOLVED', message: 'This blocker is already resolved.' });
       }
+      // LTR-217: a Safety return is answered with work (adding it resolves the return); resolving it without new
+      // work tells Safety why, because the same truck goes straight back to their list.
+      if (blocker.blockerReason === BlockerReason.QUALITY_CHECK_FAILED && !notes) {
+        throw new BadRequestException({ code: 'QC_RESOLVE_NOTE_REQUIRED', message: 'Tell Safety why the truck goes back without new work.' });
+      }
       await tx.pauseEvent.update({
         where: { id: blockerId },
         data: { resolvedAt: new Date(), resolvedById: user.id },
@@ -1233,6 +1238,27 @@ export class WorkOrdersService {
         userId: user.id,
         previousValue: { body: request.body },
         newValue: { handled: true },
+      });
+    });
+  }
+
+  /** LTR-218 (UX-1-006): "Undo" after Mark handled — the request is open again for the Manager. */
+  async unhandleWorkRequest(user: AuthUser, id: string, noteId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const request = await tx.workOrderNote.findFirst({
+        where: { id: noteId, workOrderId: id, kind: 'work_request' },
+      });
+      if (!request) throw new NotFoundException('Work request not found');
+      if (!request.handledAt) return;
+      await tx.workOrderNote.update({ where: { id: noteId }, data: { handledAt: null, handledById: null } });
+      await this.activity.log(tx, {
+        workOrderId: id,
+        eventType: ActivityEventType.WORK_REQUEST_HANDLED,
+        entityType: 'work_order_note',
+        entityId: noteId,
+        userId: user.id,
+        previousValue: { body: request.body, handled: true },
+        newValue: { handled: false },
       });
     });
   }

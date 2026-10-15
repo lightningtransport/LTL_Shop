@@ -18,20 +18,11 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 
 | Proyecto Linear | Issue | Qué | Clase |
 |---|---|---|---|
-| Work Orders & Jobs | LTR-205 | Add work: tarjeta dentro de tarjeta en `CategoryJobList` | E |
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
-| Yard | LTR-206 | Textos "UNAVAILABLE" y "Unable to load current administrative data." | E |
-| Yard | LTR-218 | Acciones de un toque que no dicen qué hicieron: Mark handled, Assign, mano de obra en $0 (UX-1-004…009) | E |
-| Yard | LTR-207 | La pestaña Dispatch se llama `movement` en la URL | E |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
-| Trucks & Inspección | LTR-214 | Corregir el VIN de 876 y 877 (espera LTR-215) | C |
 | Trucks & Inspección | LTR-113 | Make/Model invertidos en algunos camiones | C |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
-| Mecánicos | LTR-209 | "Loading work order" en texto plano; usar `PageSkeleton` | E |
-| Safety / QC | LTR-216 | **El Manager completa con un toque el QC que Safety devolvió**, sin ver el motivo (UX-1-001) | B |
-| Safety / QC | LTR-217 | "Resolve" de un camión devuelto por Safety no lleva a agregar o reabrir el trabajo (UX-1-002) | C |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
-| Demo & Landing | LTR-211 | Avisar que una historia ya se ejecutó en esta base | C |
 | Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
 | Plataforma y Go-live | LTR-212 | Polling superpuesto; logo del Admin pesado | E |
 | Plataforma y Go-live | LTR-213 | CI: correr vitest de la web y `test:real` | C |

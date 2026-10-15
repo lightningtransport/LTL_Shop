@@ -35,6 +35,11 @@ describe('demo state (D36)', () => {
     const storage = memoryStorage();
     writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, playing: true, speed: 2 }, storage);
     expect(readDemoState(storage)).toMatchObject({ playing: true, speed: 2 });
+    // LTR-211: the stories walked to the end, and the demo build they belong to.
+    writeDemoState({ ...DEFAULT_DEMO_STATE, enabled: true, doneStories: ['HU-M4', 'demo-flow'], doneBuild: 'build-1' }, storage);
+    expect(readDemoState(storage)).toMatchObject({ doneStories: ['HU-M4', 'demo-flow'], doneBuild: 'build-1' });
+    storage.setItem(DEMO_STATE_KEY, JSON.stringify({ version: 1, enabled: true, doneStories: ['HU-M4', 7, null], doneBuild: 3 }));
+    expect(readDemoState(storage)).toMatchObject({ doneStories: ['HU-M4'], doneBuild: null });
     expect(readDemoState(memoryStorage({ [DEMO_STATE_KEY]: '{"version":1,"enabled":true,"playing":"yes","speed":3}' })))
       .toEqual({ ...DEFAULT_DEMO_STATE, enabled: true });
   });

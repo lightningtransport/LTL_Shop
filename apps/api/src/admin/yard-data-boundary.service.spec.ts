@@ -34,7 +34,7 @@ describe('YardDataBoundaryService', () => {
     });
     expect(dto.incomingTrucks.status).toBe('unavailable');
     expect(dto.upcomingDepartures.status).toBe('unavailable');
-    expect(dto.workLocation.message).toBe('Data unavailable.');
+    expect(dto.workLocation.message).toBe('Dispatch did not answer. The shop board is not affected; try again in a minute.');
     expect(JSON.stringify(dto)).not.toMatch(/NEXT_PUBLIC/);
     expect(JSON.stringify(dto)).not.toContain('AGENT_REPORTING_KEY');
   });
@@ -190,7 +190,7 @@ describe('YardDataBoundaryService', () => {
     expect(dto.upcomingDepartures).toEqual({ status: 'ok', items: [] });
     expect(dto.incomingTrucks.message).toBeUndefined();
     expect(JSON.stringify(dto)).not.toContain('server-only-key');
-    expect(dto.workLocation.message).toBe('Data unavailable.');
+    expect(dto.workLocation.message).toBe('Dispatch did not answer. The shop board is not affected; try again in a minute.');
     expect(dto.workLocation.message).not.toContain('500');
   });
 });

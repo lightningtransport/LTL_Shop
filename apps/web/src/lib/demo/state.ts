@@ -22,6 +22,10 @@ export type DemoState = {
   playing: boolean;
   /** D40: how fast Play goes (1 = the time it takes to read each step's "Why"). */
   speed: DemoSpeed;
+  /** LTR-211: stories walked to their last step on this demo data; their trucks have moved on since. */
+  doneStories: string[];
+  /** LTR-211: the demo build `doneStories` belongs to (the API's `build`); a new build forgets them. */
+  doneBuild: string | null;
 };
 
 export type DemoSpeed = 0.5 | 1 | 2;
@@ -38,6 +42,8 @@ export const DEFAULT_DEMO_STATE: DemoState = {
   welcome: false,
   playing: false,
   speed: 1,
+  doneStories: [],
+  doneBuild: null,
 };
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -67,6 +73,8 @@ export function readDemoState(storage: StorageLike | null = browserStorage()): D
       welcome: parsed.welcome === true,
       playing: parsed.playing === true,
       speed: DEMO_SPEEDS.includes(parsed.speed as DemoSpeed) ? (parsed.speed as DemoSpeed) : 1,
+      doneStories: Array.isArray(parsed.doneStories) ? parsed.doneStories.filter((id): id is string => typeof id === 'string') : [],
+      doneBuild: typeof parsed.doneBuild === 'string' ? parsed.doneBuild : null,
     };
   } catch {
     return DEFAULT_DEMO_STATE;
