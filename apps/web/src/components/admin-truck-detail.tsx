@@ -197,7 +197,9 @@ function TruckDetailBody({
   const truckId = data.truck.id;
   const workPlan = data.workPlan;
   const workOrder = workPlan.workOrder;
-  const canAddWork = workPlan.capabilities.canAddWork;
+  const inactive = Boolean(data.truck.deactivatedAt);
+  // D44: a deactivated truck takes no new work until it is reactivated (the API refuses with TRUCK_INACTIVE).
+  const canAddWork = workPlan.capabilities.canAddWork && !inactive;
   const fromPath = `/admin/trucks/${truckId}${from ? `?from=${encodeURIComponent(from)}` : ''}`;
   // Issues found with no Jobs yet: the Add work panel starts open (D14) — unless the Next step asks for
   // something that comes first (closing, Return to Service, a blocker or a pause): the panel would cover it.
@@ -208,7 +210,6 @@ function TruckDetailBody({
   const [newWorkOrderOpen, setNewWorkOrderOpen] = useState(false);
   const [adminDialog, setAdminDialog] = useState<TruckAdminDialog>(null);
   const router = useRouter();
-  const inactive = Boolean(data.truck.deactivatedAt);
   const [actionError, setActionError] = useState<string | null>(null);
   const [stepOverrides, setStepOverrides] = useState<Partial<Record<TruckStepKey, boolean>>>({});
   const steps = useMemo(() => truckSteps(workPlan), [workPlan]);
@@ -353,7 +354,7 @@ function TruckDetailBody({
     ) : null}
 
     {/* LTR-158 / D14: the one thing to do next (blocker first). Same rule as the Work Order, Dashboard and Yard. */}
-    <AdminTruckNextStep
+    {inactive ? null : <AdminTruckNextStep
       truck={data}
       locale={locale}
       messages={messages}
@@ -362,7 +363,7 @@ function TruckDetailBody({
       onAddWork={() => setAddWorkOpen(true)}
       onNewWorkOrder={() => setNewWorkOrderOpen(true)}
       onChanged={onChanged}
-    />
+    />}
 
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-5">
