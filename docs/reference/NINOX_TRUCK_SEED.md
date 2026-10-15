@@ -91,6 +91,9 @@ before that rule, one script lists what would change and writes only with `--app
 npm run prisma:normalize-truck-make-model --workspace=@ltl-shop/api
 ```
 
-Run it against production only with the owner's OK, after reading the list. A truck
+Against production, run it from GitHub → Actions → **Release safety** → Run workflow,
+with **truck_make_model** = `list` first (writes nothing; the list is in the step log),
+then `apply` with the owner's OK after reading the list. The workflow uses the
+production secrets, so nobody copies the database password. A truck
 the rule does not recognise (two makes, or an unknown make) stays as it is; the
 Manager fixes it in Trucks → Edit.

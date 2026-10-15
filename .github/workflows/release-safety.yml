@@ -11,6 +11,11 @@ on:
         description: Probe unauthenticated API health and root reads after the gate
         type: boolean
         default: true
+      truck_make_model:
+        description: "LTR-113: fix Make / Model of trucks already saved (list only writes nothing; apply saves)"
+        type: choice
+        options: [skip, list, apply]
+        default: skip
 
 permissions:
   contents: read
@@ -43,6 +48,9 @@ jobs:
             echo "DATABASE_URL and DIRECT_URL must be configured on the production GitHub Environment. Values are not printed."
             exit 1
           fi
+      - name: Truck Make / Model (LTR-113)
+        if: ${{ inputs.truck_make_model != 'skip' }}
+        run: npm run prisma:normalize-truck-make-model --workspace=@ltl-shop/api -- ${{ inputs.truck_make_model == 'apply' && '--apply' || '' }}
       - name: Check Prisma migration status
         if: ${{ !inputs.apply_migrations }}
         run: npm run prisma:release-status --workspace=@ltl-shop/api
