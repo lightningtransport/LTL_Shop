@@ -63,6 +63,8 @@ export type DemoMode = {
   /** D40 (DA3): turn Play on (starts the chosen story when it was not started) or off. */
   setPlaying: (on: boolean) => Promise<void>;
   setSpeed: (speed: DemoSpeed) => void;
+  /** LTR-211: stories already walked to the end on this demo data. */
+  doneStoryIds: string[];
   /** Why Play stopped by itself (the screen was not what the step expects); cleared by Play, Next or Back. */
   playError: string | null;
   stopPlaying: (error: string | null) => void;
@@ -141,7 +143,7 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   }, []);
 
   const available = ready && demoPanelAvailable(DEMO_MODE_AVAILABLE, state);
-  const { data, error: usersError } = useSWR<{ users: DemoUserDto[] }>(
+  const { data, error: usersError } = useSWR<{ users: DemoUserDto[]; build?: string | null }>(
     available && token ? DEMO_USERS_KEY : null,
     { revalidateOnFocus: false, dedupingInterval: 60_000 },
   );
@@ -155,6 +157,18 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
   const spotlightDone = !!stepKey && spotlightDoneKey === stepKey;
   const markSpotlightDone = useCallback(() => setSpotlightDoneKey(stepKey), [stepKey]);
   const [playError, setPlayError] = useState<string | null>(null);
+
+  // LTR-211 (UX-6-006): a story walked to its last step changed its trucks. The panel remembers it as done until
+  // the demo data is rebuilt (a new `build` from the API, nightly or by hand), then forgets.
+  const build = data?.build ?? null;
+  useEffect(() => {
+    if (!build || state.doneBuild === build) return;
+    update({ doneBuild: build, doneStories: [] });
+  }, [build, state.doneBuild, update]);
+  useEffect(() => {
+    if (!story || !state.started || stepIndex !== story.steps.length - 1 || state.doneStories.includes(story.id)) return;
+    update({ doneStories: [...state.doneStories, story.id] });
+  }, [story, state.started, stepIndex, state.doneStories, update]);
 
   // UX-1-003: while the demo is on and the account can enter the Admin, keep its server cookie alive.
   const canAdmin = hasCapability(user, AppCapability.ADMIN_ACCESS);
@@ -355,6 +369,7 @@ function DemoModeProviderInner({ children }: { children: React.ReactNode }) {
       markSpotlightDone,
       setPlaying,
       setSpeed: (speed) => update({ speed }),
+      doneStoryIds: state.doneStories,
       playError,
       stopPlaying,
     }),

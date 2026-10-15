@@ -28,7 +28,11 @@ export class DevDemoController {
         capabilities: { select: { capability: true } },
       },
     });
+    // LTR-211 (UX-6-006): every demo build creates its Work Orders with new ids, so the first one tells the panel
+    // which build this is; the stories it remembers as done reset when the data is rebuilt (nightly or by hand).
+    const first = await this.prisma.workOrder.findFirst({ orderBy: { displayId: 'asc' }, select: { id: true } });
     return {
+      build: first?.id ?? null,
       users: users.map((user) => ({
         ...user,
         capabilities: user.capabilities.map(({ capability }) => toSharedCapability(capability)),
