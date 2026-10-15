@@ -82,9 +82,10 @@ por paso, con filtros y la pestaña Dispatch.
 ### 4.3 Trucks & Inspección — 🟡
 Lista y ficha del camión (trabajo, fallas, ubicación, costos, historial).
 Hoja de inspección de 53 puntos y 10 llantas; cada defecto crea su Job.
-**Pendiente:** alta y edición de camiones en el Admin (P13), el último paso para
-no depender de nadie para un camión nuevo, y API para terceros (P14).
-**Decisiones:** D10, D41, D43 · **Historias:** HU-M2, HU-M16, HU-M17, HU-ME7.
+**Pendiente:** crear, editar y desactivar camiones desde el Shop y conectarles
+Samsara desde la ficha (D44, LTR-215), el último paso para no depender de nadie
+para un camión nuevo; y API para terceros (P14).
+**Decisiones:** D10, D41, D43, D44 · **Historias:** HU-M2, HU-M16, HU-M17, HU-M18, HU-ME7.
 
 ### 4.4 Mecánicos — 🟡
 Espacios del Mecánico General y del PM en el teléfono: My work, Trucks,
@@ -165,7 +166,7 @@ reales sin un defecto B.
 
 | Cuándo | Qué | Proyecto Linear |
 |---|---|---|
-| **Ahora** | Pendientes chicos de UX por módulo; alta de camiones (P13) | Yard, Trucks & Inspección, Mecánicos, Setup |
+| **Ahora** | Alta de camiones y conectar Samsara (D44); pendientes chicos de UX por módulo | Yard, Trucks & Inspección, Mecánicos, Setup |
 | **Salida en vivo** | Retomar la checklist, roster real, un día de prueba | Plataforma y Go-live |
 | **Después** | Roles y permisos (LTR-161), trailers, API para terceros (P14), geocerca | Setup, Integraciones V3 |
 

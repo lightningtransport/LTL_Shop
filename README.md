@@ -14,7 +14,7 @@ Start at [`docs/README.md`](docs/README.md). One source of truth per topic
    flows, states, screens, rules).
 3. [`docs/USER_FLOWS.md`](docs/USER_FLOWS.md) — user stories, jobs to be
    done, task flows and edge cases per role, each verified.
-4. [`docs/DECISIONS.md`](docs/DECISIONS.md) — product decisions D1–D43 and
+4. [`docs/DECISIONS.md`](docs/DECISIONS.md) — product decisions D1–D44 and
    open questions.
 5. **Linear** (team LTR, one project per module) — everything still to do.
    [`docs/OPEN_ISSUES.md`](docs/OPEN_ISSUES.md) is a short summary.

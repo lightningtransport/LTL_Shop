@@ -754,6 +754,34 @@ Ver la fila E7 en HU-ME2.
 
 **Construido (2026-10-13):** prueba A88; probado a mano en Setup → Inspection checklist.
 
+### HU-M18 · Dar de alta un camión y conectarle Samsara (J12, J15) — 🔲 por construir (D44, LTR-215)
+
+**Quién:** el Manager y el System Admin.
+
+**Flujo (alta)**
+1. Admin → **Trucks** → **Add truck**.
+2. Escribe el número (obligatorio) y lo que sepa: VIN, marca, modelo, año, placas, dueño, compañía, dispatcher, aseguradora.
+3. **Save.** El camión aparece en Trucks y en New Work Order.
+
+**Flujo (conectar Samsara, cuando el camión ya está en el patio)**
+1. En la ficha del camión, **Connect Samsara**.
+2. La lista muestra los vehículos de Samsara sin camión; arriba, el que coincide por VIN o número, marcado "Suggested".
+3. Elige el vehículo. Lo vacío de la ficha se llena con lo de Samsara; lo que difiere aparece lado a lado ("Yours · Samsara") y elige cuál queda.
+4. **Connect.** Desde la próxima sincronización el camión tiene millas, ubicación y fallas.
+
+**Resultado:** un camión nuevo entra al taller sin pasar por Ninox ni por un script, y su ficha queda completa con Samsara.
+
+| ¿Qué pasa si…? | Respuesta | Estado | Fila |
+|---|---|---|---|
+| El número ya existe | No deja guardar y lo dice | 🔲 | — |
+| El VIN ya es de otro camión | Lo avisa con enlace al otro camión | 🔲 | — |
+| La sincronización ve un VIN que coincide exacto | Lo propone en la ficha ("Samsara vehicle 1234 matches this VIN · Connect"); no conecta solo | 🔲 | — |
+| El vehículo de Samsara ya es de otro camión | No aparece en la lista | 🔲 | — |
+| Se desconecta Samsara | Deja de sincronizar; las últimas lecturas y las fallas quedan en el historial | 🔲 | — |
+| Desactiva un camión con una Work Order abierta | No deja; dice cuál cerrar primero | 🔲 | — |
+| Desactiva un camión sin trabajo abierto | Sale de las listas y de New Work Order; su historial y costos siguen | 🔲 | — |
+| Un mecánico o Safety intenta agregar o editar | No puede (403) | 🔲 | — |
+
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 
 **Flujo**

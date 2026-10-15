@@ -22,8 +22,9 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
 | Yard | LTR-206 | Textos "UNAVAILABLE" y "Unable to load current administrative data." | E |
 | Yard | LTR-207 | La pestaña Dispatch se llama `movement` en la URL | E |
-| Trucks & Inspección | LTR-203 | **Crear y editar camiones desde el Shop** (P13, el dueño dijo sí el 2026-10-14) y API para terceros (P14) | — |
-| Trucks & Inspección | LTR-214 | Corregir el VIN de 876 y 877 (espera LTR-203) | C |
+| Trucks & Inspección | LTR-215 | **Crear, editar y desactivar camiones desde el Shop; conectar Samsara desde la ficha** (D44, HU-M18) | — |
+| Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
+| Trucks & Inspección | LTR-214 | Corregir el VIN de 876 y 877 (espera LTR-215) | C |
 | Trucks & Inspección | LTR-113 | Make/Model invertidos en algunos camiones | C |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
 | Mecánicos | LTR-208 | La pestaña Trucks es solo un buscador; mostrar "Trucks with your Jobs" | C |
@@ -38,9 +39,8 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 
 ## Preguntas abiertas
 
-En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox), **P13**
-(campos de la ficha del camión y emparejado con Samsara) y **P14** (qué datos
-usa la API para terceros).
+En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox) y **P14**
+(qué datos usa la API para terceros). P13 se cerró con D44.
 
 ## Salida en vivo
 
