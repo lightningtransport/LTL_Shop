@@ -31,6 +31,7 @@ export function CategoryJobList({
   onQueryChange,
   selectedIds,
   onPlanIds = [],
+  lockedIds = [],
   onSelect,
   copy,
 }: {
@@ -43,12 +44,15 @@ export function CategoryJobList({
   selectedIds: readonly string[];
   /** Jobs already on the Work Plan: shown, but they cannot be added twice. */
   onPlanIds?: readonly string[];
+  /** LTR-219: Jobs that cannot be added here for a stated reason (`copy.locked`), e.g. a second PM Job. */
+  lockedIds?: readonly string[];
   onSelect: (job: CatalogJobDto) => void;
-  copy: CategoryJobListCopy & { onPlan?: string };
+  copy: CategoryJobListCopy & { onPlan?: string; locked?: string };
 }) {
   const visibleJobs = useMemo(() => filterCatalogJobs(jobs, query), [jobs, query]);
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
   const onPlan = useMemo(() => new Set(onPlanIds), [onPlanIds]);
+  const locked = useMemo(() => new Set(lockedIds), [lockedIds]);
 
   if (error) return <InlineAlert>{copy.loadError}</InlineAlert>;
   if (isLoading && !jobs.length) return <p className="text-muted-foreground">{copy.loading}</p>;
@@ -77,6 +81,7 @@ export function CategoryJobList({
           {visibleJobs.map((job) => {
             const isSelected = selected.has(job.id);
             const planned = onPlan.has(job.id);
+            const blocked = !planned && locked.has(job.id);
             const Icon = isSelected ? Check : planned ? CheckCheck : Plus;
             return (
               <li key={job.id} className="max-w-full">
@@ -84,16 +89,17 @@ export function CategoryJobList({
                   type="button"
                   aria-pressed={isSelected}
                   aria-label={`${copy.addJob} ${job.displayName}`}
-                  disabled={planned}
+                  disabled={planned || blocked}
                   className={cn(
                     'inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-full border px-3 sm:min-h-9',
-                    isSelected ? 'border-primary bg-primary/15 text-primary' : planned ? 'cursor-not-allowed text-muted-foreground opacity-60' : 'hover:bg-accent',
+                    isSelected ? 'border-primary bg-primary/15 text-primary' : planned || blocked ? 'cursor-not-allowed text-muted-foreground opacity-60' : 'hover:bg-accent',
                   )}
                   onClick={() => onSelect(job)}
                 >
                   <Icon aria-hidden="true" className="size-3.5 shrink-0" />
                   <span className="truncate">{job.displayName}</span>
                   {planned && copy.onPlan ? <span className="text-xs">{copy.onPlan}</span> : null}
+                  {blocked && copy.locked ? <span className="text-xs">{copy.locked}</span> : null}
                 </button>
               </li>
             );

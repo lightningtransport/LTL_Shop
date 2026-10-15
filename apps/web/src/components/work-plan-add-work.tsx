@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
-import type { CatalogJobDto, JobCategoryDto, TruckFaultRecommendationDto, TruckWorkPlanDto } from '@ltl-shop/shared';
+import { isPmCategory, type CatalogJobDto, type JobCategoryDto, type TruckFaultRecommendationDto, type TruckWorkPlanDto } from '@ltl-shop/shared';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { adminFaultRecommendationsKey, createAdminCatalogJob, dismissAdminTruckFault, linkAdminTruckFaults, useAdminFaultRecommendations } from '@/lib/admin-data';
 import type { AdminMessages } from '@/lib/admin-messages';
@@ -152,6 +152,10 @@ export function WorkPlanAddWork({
   const standardCategories = categories ?? [];
   const selectedCategory = standardCategories.find((category) => category.id === categoryId) ?? null;
   const existingCatalogIds = useMemo(() => existingWorkPlanCatalogJobIds(plan), [plan]);
+  // LTR-219 (LTR-145): one PM Job per Work Order. With one on the plan, the other PM services cannot be added here
+  // (the API answers PM_JOB_EXISTS); they say so instead of failing after "Add to Work Plan".
+  const planHasPm = plan.jobs.some((job) => isPmCategory(job.category.name) && job.status !== 'cancelled');
+  const pmLocked = Boolean(selectedCategory && isPmCategory(selectedCategory.name) && planHasPm);
   const existingCustomNames = useMemo(() => existingWorkPlanCustomNames(plan), [plan]);
   const selectedCatalogJobIds = useMemo(
     () => drafts.flatMap((job) => (job.catalogJobId ? [job.catalogJobId] : [])),
@@ -163,10 +167,11 @@ export function WorkPlanAddWork({
       || isDuplicateCustomOnPlan(existingCustomNames, customName)
     );
 
-  // Stage 8 (mockup): the first category starts chosen.
+  // Stage 8 (mockup): the first category starts chosen. LTR-219: not PM — every Work Order already has its PM Job,
+  // so opening on PM made the first thing the Manager picked fail.
   useEffect(() => {
     if (categoryId || preferredCategoryName || !standardCategories.length) return;
-    setCategoryId(standardCategories[0].id);
+    setCategoryId((standardCategories.find((category) => !isPmCategory(category.name)) ?? standardCategories[0]).id);
   }, [categoryId, preferredCategoryName, standardCategories]);
 
   useEffect(() => {
@@ -344,7 +349,11 @@ export function WorkPlanAddWork({
                 </button>
               ))}
             </div>
-            {selectedCategory && CATEGORY_HINT[selectedCategory.name] ? (
+            {pmLocked ? (
+              <p className="flex gap-2 rounded-md bg-sunken px-3 py-2 text-muted-foreground" data-testid="add-work-pm-locked">
+                <Info aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />{messages.addWorkPmLockedHint}
+              </p>
+            ) : selectedCategory && CATEGORY_HINT[selectedCategory.name] ? (
               <p className="flex gap-2 rounded-md bg-sunken px-3 py-2 text-muted-foreground">
                 <Info aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />{messages[CATEGORY_HINT[selectedCategory.name]!]}
               </p>
@@ -362,6 +371,7 @@ export function WorkPlanAddWork({
               onQueryChange={setJobQuery}
               selectedIds={selectedCatalogJobIds}
               onPlanIds={existingCatalogIds}
+              lockedIds={pmLocked ? (catalogJobs ?? []).map((job) => job.id) : []}
               onSelect={toggleCatalogJob}
               copy={{
                 searchLabel: messages.searchJobsLabel,
@@ -373,6 +383,7 @@ export function WorkPlanAddWork({
                 listLabel: messages.categoryJobsLabel,
                 addJob: messages.addCatalogJob,
                 onPlan: messages.addWorkOnPlan,
+                locked: messages.addWorkPmLocked,
               }}
             />
             <form className="space-y-1.5" onSubmit={(event) => { event.preventDefault(); addCustomJob(); }}>

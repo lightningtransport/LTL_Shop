@@ -329,9 +329,11 @@ export class YardWorkPlanService {
     input: AddWorkPlanJobsInput,
   ) {
     if (open.primaryCategory.name === 'PM') {
-      throw new BadRequestException(
-        'An open PM Work Order blocks a Standard Work Plan. Complete or cancel it first.',
-      );
+      // LTR-219: a code of its own, so the screen never guesses it from the text.
+      throw new BadRequestException({
+        code: 'PM_WORK_ORDER_OPEN',
+        message: 'An open PM Work Order blocks a Standard Work Plan. Complete or cancel it first.',
+      });
     }
     // A retry of a request that already landed replays before the version check:
     // its own write bumped the version the client sent.
