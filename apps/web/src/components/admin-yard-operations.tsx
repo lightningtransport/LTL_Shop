@@ -35,7 +35,7 @@ import { formatVehicleYmm } from '@/lib/format';
 import { formatAdminDateOnly } from '@/lib/admin-format';
 import { compactAge, dispatchSignalsByTruck, fillYardText, yardCardAlert, type YardCardAlert, type YardDispatchSignal } from '@/lib/yard-card';
 import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
-import { KanbanBoard, KanbanColumn, KanbanFullscreenButton, useKanbanFullscreen } from './kanban';
+import { KanbanBoard, KanbanColumn, KanbanFullscreenButton, KanbanOpenBoardLink, useBrowserFullscreen } from './kanban';
 import { Button, LoadFailure, PageSkeleton, PriorityBadge } from './ui';
 
 const phaseMessageKey = {
@@ -59,9 +59,26 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const tab: 'shop' | 'movement' = tabParam === 'dispatch' || tabParam === 'movement' ? 'movement' : 'shop';
   const [movementSearch, setMovementSearch] = useState('');
   const [closedLanes, setClosedLanes] = useState<Record<string, boolean>>({});
-  // D33: the board opens full screen (Esc leaves).
-  const fullscreen = useKanbanFullscreen();
+  // LTR-228: "Full screen" opens the board alone in a new tab (display=board), so a manager leaves it on another
+  // monitor and keeps using the app here. That tab shows only the board and can go browser full screen (a TV).
+  const boardView = searchParams.get('display') === 'board';
+  const fullscreen = useBrowserFullscreen();
   const query = searchParams.toString();
+  const boardHref = useMemo(() => {
+    const params = new URLSearchParams(query);
+    params.delete('tab');
+    params.set('display', 'board');
+    return `/admin/yard-operations?${params.toString()}`;
+  }, [query]);
+  useEffect(() => {
+    if (!boardView) return undefined;
+    // The board covers the page; the page behind it doesn't scroll.
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, [boardView]);
   // D4 / UX-5-006: the Truck's back link returns here with the same search, filters and tab.
   const yardFromPath = useMemo(() => yardOperationsFromPath(query), [query]);
   const {
@@ -105,6 +122,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   function commitFilters(next: YardOperationsFilters) {
     const params = buildYardOperationsQuery(next);
     if (tab === 'movement') params.set('tab', 'dispatch');
+    if (boardView) params.set('display', 'board');
     router.replace(`/admin/yard-operations${params.size ? `?${params.toString()}` : ''}`);
   }
 
@@ -114,11 +132,11 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
       commitFilters({ ...appliedFilters, search: filters.search });
     }, 300);
     return () => window.clearTimeout(handle);
-  }, [appliedFilters, filters.search, tab, router]);
+  }, [appliedFilters, filters.search, tab, boardView, router]);
 
   function clearFilters() {
     setFilters(DEFAULT_YARD_OPERATIONS_FILTERS);
-    router.replace(tab === 'movement' ? '/admin/yard-operations?tab=dispatch' : '/admin/yard-operations');
+    router.replace(boardView ? '/admin/yard-operations?display=board' : tab === 'movement' ? '/admin/yard-operations?tab=dispatch' : '/admin/yard-operations');
   }
 
   function updateTab(nextTab: 'shop' | 'movement') {
@@ -231,10 +249,10 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         role="tabpanel"
         id="yard-panel-shop"
         aria-labelledby="yard-tab-shop"
-        className={cn('flex flex-col gap-4', fullscreen.active && 'fixed inset-0 z-[45] !mt-0 overflow-y-auto bg-background p-4 lg:overflow-hidden lg:p-6')}
-        data-fullscreen={fullscreen.active || undefined}
+        className={cn('flex flex-col gap-4', boardView && 'fixed inset-0 z-[45] !mt-0 overflow-y-auto bg-background p-4 lg:overflow-hidden lg:p-6')}
+        data-board-view={boardView || undefined}
       >
-        {fullscreen.active ? <p className="text-lg font-semibold" aria-hidden="true">{messages.yardOperationsTitle}</p> : null}
+        {boardView ? <p className="text-lg font-semibold" aria-hidden="true">{messages.yardOperationsTitle}</p> : null}
         {/* Stage 8 (mockup): search and the quick filters on one row; no "More filters" (owner decision). The URL
             still accepts readiness, phase, Work Order status and priority from links on other screens. */}
         <section className="flex flex-col gap-3 lg:flex-row lg:items-center" aria-label={messages.yardQuickFilters}>
@@ -274,13 +292,24 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             ))}
           </div>
           {anyFilter ? <Button type="button" variant="ghost" size="sm" className="self-start lg:ml-auto lg:self-auto" onClick={clearFilters}><X aria-hidden="true" />{messages.clearFilters}</Button> : null}
-          <KanbanFullscreenButton
-            active={fullscreen.active}
-            onClick={fullscreen.toggle}
-            enterLabel={messages.yardFullscreen}
-            exitLabel={messages.yardExitFullscreen}
-            className={cn('hidden shrink-0 lg:inline-flex', !anyFilter && 'lg:ml-auto')}
-          />
+          {boardView ? (
+            fullscreen.supported ? (
+              <KanbanFullscreenButton
+                active={fullscreen.active}
+                onClick={fullscreen.toggle}
+                enterLabel={messages.yardFullscreenTv}
+                exitLabel={messages.yardExitFullscreen}
+                className={cn('hidden shrink-0 lg:inline-flex', !anyFilter && 'lg:ml-auto')}
+              />
+            ) : null
+          ) : (
+            <KanbanOpenBoardLink
+              href={boardHref}
+              label={messages.yardFullscreen}
+              title={messages.yardFullscreenNewTab}
+              className={cn('hidden shrink-0 lg:inline-flex', !anyFilter && 'lg:ml-auto')}
+            />
+          )}
         </section>
 
         <p className="-mt-1 text-xs text-muted-foreground" data-testid="yard-showing">
@@ -308,7 +337,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           <KanbanBoard
             label={messages.yardLanes}
             labelId="yard-lanes-title"
-            className={fullscreen.active ? 'lg:min-h-0 lg:flex-1' : 'lg:h-[max(24rem,calc(100dvh-19rem))]'}
+            className={boardView ? 'lg:min-h-0 lg:flex-1' : 'lg:h-[max(24rem,calc(100dvh-19rem))]'}
             data-testid="yard-lanes"
           >
             {WORK_PLAN_YARD_PHASES.map((phase, index) => {
@@ -379,6 +408,7 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
         aria-describedby={`${describedBy}-line`}
         className="block space-y-1.5 rounded-lg p-3 hover:bg-accent/40"
         data-testid="yard-truck-card"
+        data-kanban-card
       >
         <div className="flex items-start justify-between gap-2">
           <span className="truncate text-base font-semibold">{item.truck.truckNumber}</span>

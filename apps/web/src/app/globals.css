@@ -178,6 +178,32 @@ body {
   }
 }
 
+/* LTR-227: the Kanban board's sideways scrollbar is always shown on desktop, so a mouse (no trackpad swipe) can reach
+   every list. A styled WebKit scrollbar is a classic one (macOS overlay bars hide it until a trackpad scrolls);
+   Firefox takes the standard properties. */
+@media (min-width: 1024px) {
+  .kanban-scrollbar::-webkit-scrollbar {
+    height: 10px;
+  }
+  .kanban-scrollbar::-webkit-scrollbar-track {
+    background: color-mix(in oklch, var(--muted-foreground) 10%, transparent);
+    border-radius: 9999px;
+  }
+  .kanban-scrollbar::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+    border-radius: 9999px;
+  }
+  .kanban-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--muted-foreground) 65%, transparent);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    .kanban-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent) transparent;
+    }
+  }
+}
+
 @layer components {
   .app-shell {
     /* In the installed iPhone app, iOS blurs what sits right under the status bar. Keep the first line

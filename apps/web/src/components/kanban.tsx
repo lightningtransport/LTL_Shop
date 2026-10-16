@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type HTMLAttributes, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type HTMLAttributes, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui';
@@ -10,7 +10,58 @@ import { Button } from './ui';
  * list too); a list is as tall as its cards and, once it reaches the bottom of the board, scrolls its cards inside;
  * the board scrolls sideways inside itself. Phones keep a foldable list per column, empty ones hidden (no sideways
  * scroll on phones, design-system rule).
+ *
+ * LTR-227: with a mouse (no trackpad swipe) the board moves sideways like Trello: a scrollbar always shown at the
+ * bottom, and dragging the empty board (not a card, link or button) pans it. Shift + wheel works as in any browser.
  */
+
+/** Pressed on these, a drag is theirs (a click, a text selection), not the board's. */
+const KANBAN_NO_PAN = 'a,button,input,select,textarea,label,[role="button"],[role="dialog"],[data-kanban-card]';
+/** Pixels a press moves before it counts as a drag (a smaller move stays a click). */
+const KANBAN_PAN_THRESHOLD = 4;
+
+function useKanbanPan() {
+  const pan = useRef<{ pointerId: number; startX: number; startLeft: number; moved: boolean } | null>(null);
+  const [panning, setPanning] = useState(false);
+
+  function onPointerDown(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return;
+    const board = event.currentTarget;
+    // Phones stack the lists (nothing to pan); only a board wider than its box pans.
+    if (board.scrollWidth <= board.clientWidth) return;
+    if ((event.target as Element).closest(KANBAN_NO_PAN)) return;
+    pan.current = { pointerId: event.pointerId, startX: event.clientX, startLeft: board.scrollLeft, moved: false };
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLElement>) {
+    const current = pan.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    const dx = event.clientX - current.startX;
+    if (!current.moved) {
+      if (Math.abs(dx) < KANBAN_PAN_THRESHOLD) return;
+      current.moved = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setPanning(true);
+    }
+    event.preventDefault();
+    event.currentTarget.scrollLeft = current.startLeft - dx;
+  }
+
+  function onPointerEnd(event: ReactPointerEvent<HTMLElement>) {
+    const current = pan.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    pan.current = null;
+    if (current.moved) {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      setPanning(false);
+    }
+  }
+
+  return {
+    panning,
+    handlers: { onPointerDown, onPointerMove, onPointerUp: onPointerEnd, onPointerCancel: onPointerEnd },
+  };
+}
 
 export function KanbanBoard({ children, label, labelId, className, ...rest }: {
   children: ReactNode;
@@ -19,14 +70,20 @@ export function KanbanBoard({ children, label, labelId, className, ...rest }: {
   labelId: string;
   className?: string;
 } & Omit<HTMLAttributes<HTMLElement>, 'children'>) {
+  const { panning, handlers } = useKanbanPan();
   return (
     <section
       aria-labelledby={labelId}
       className={cn(
         'space-y-4',
         'lg:flex lg:items-start lg:gap-3 lg:space-y-0 lg:overflow-x-auto lg:overflow-y-hidden lg:overscroll-x-contain lg:pb-3',
+        // LTR-227: the sideways scrollbar is always shown (globals.css), so a mouse reaches every list.
+        'kanban-scrollbar',
+        panning && 'cursor-grabbing select-none',
         className,
       )}
+      data-panning={panning || undefined}
+      {...handlers}
       {...rest}
     >
       <h2 id={labelId} className="sr-only">{label}</h2>
@@ -81,49 +138,47 @@ export function KanbanColumn({ id, index, title, count, emptyLabel, open = true,
 }
 
 /**
- * Full screen for a board (GitHub Projects / Jira "full screen"). The browser goes full screen on the whole page and
- * the board covers it as a fixed layer, so dialogs (portaled to <body>) still open above it. Where the browser has
- * no Fullscreen API (iPhone Safari) the layer alone covers the window. Esc leaves.
+ * LTR-228: the board alone in its own browser tab (`display=board`) can go full screen for a TV or a second monitor.
+ * The browser asks for a click before it goes full screen, so this follows the button; Esc (the browser's) leaves.
+ * `supported` is false where the browser has no Fullscreen API (iPhone Safari).
  */
-export function useKanbanFullscreen() {
+export function useBrowserFullscreen() {
   const [active, setActive] = useState(false);
-
-  const exit = useCallback(() => {
-    setActive(false);
-    if (typeof document !== 'undefined' && document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-  }, []);
-
-  const enter = useCallback(() => {
-    setActive(true);
-    const root = document.documentElement;
-    if (document.fullscreenEnabled && !document.fullscreenElement) void root.requestFullscreen?.().catch(() => undefined);
-  }, []);
+  const [supported, setSupported] = useState(false);
 
   useEffect(() => {
-    if (!active) return undefined;
-    // The browser's own Esc leaves its full screen; follow it.
+    setSupported(Boolean(document.fullscreenEnabled));
     function onChange() {
-      if (!document.fullscreenElement) setActive(false);
+      setActive(Boolean(document.fullscreenElement));
     }
-    function onKey(event: KeyboardEvent) {
-      // Browsers usually keep Esc for leaving their own full screen; when it reaches the page, leave too. An open
-      // dialog keeps Esc for itself.
-      if (event.key === 'Escape' && !event.defaultPrevented && !document.querySelector('[role="dialog"]')) exit();
-    }
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    onChange();
     document.addEventListener('fullscreenchange', onChange);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = overflow;
-      document.removeEventListener('fullscreenchange', onChange);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [active, exit]);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
 
-  useEffect(() => exit, [exit]);
+  const toggle = useCallback(() => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    else void document.documentElement.requestFullscreen?.().catch(() => undefined);
+  }, []);
 
-  return { active, enter, exit, toggle: active ? exit : enter };
+  return { active, supported, toggle };
+}
+
+/** LTR-228: "Full screen" opens the board alone in a new browser tab (a link, so middle click works too). */
+export function KanbanOpenBoardLink({ href, label, title, className }: {
+  href: string;
+  label: string;
+  /** Says it opens a new tab. */
+  title: string;
+  className?: string;
+}) {
+  return (
+    <Button asChild variant="outline" size="sm" className={className}>
+      <a href={href} target="_blank" rel="noopener" title={title} data-testid="kanban-fullscreen">
+        <Maximize2 aria-hidden="true" />{label}
+      </a>
+    </Button>
+  );
 }
 
 export function KanbanFullscreenButton({ active, onClick, enterLabel, exitLabel, className }: {
@@ -135,7 +190,7 @@ export function KanbanFullscreenButton({ active, onClick, enterLabel, exitLabel,
 }) {
   const Icon = active ? Minimize2 : Maximize2;
   return (
-    <Button type="button" variant="outline" size="sm" className={className} aria-pressed={active} onClick={onClick} data-testid="kanban-fullscreen">
+    <Button type="button" variant="outline" size="sm" className={className} aria-pressed={active} onClick={onClick} data-testid="kanban-browser-fullscreen">
       <Icon aria-hidden="true" />{active ? exitLabel : enterLabel}
     </Button>
   );
