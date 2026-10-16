@@ -57,7 +57,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
     router.replace(`${pathname}${next.size ? `?${next}` : ''}`, { scroll: false });
   }, [params, canWrite, router, pathname]);
   const { data: formData } = useAdminPurchaseFormData(true);
-  const { data: catalog } = useAdminPartsCatalog('includeInactive=true');
+  const { data: catalog, mutate: mutateCatalog } = useAdminPartsCatalog('includeInactive=true');
   const { data: vendors, mutate: mutateVendors } = useAdminVendors();
   // PCA9 (UX-5-004): only vendors that sell parts; an inactive one stays only while it is the filter.
   const vendorOptions = (vendors ?? []).filter((vendor) => (vendor.doesParts && vendor.active) || vendor.id === filters.vendorId);
@@ -189,6 +189,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
           messages={messages}
           onClose={() => { setFormOpen(false); setPresetTruckId(undefined); setPresetJobId(undefined); if (returnTo) router.push(returnTo); setReturnTo(null); }}
           onVendorAdded={() => void mutateVendors()}
+          onCatalogChanged={() => mutateCatalog()}
           // PCA2: opened from a Truck's Costs, saving goes back there (where the new cost shows); otherwise to the purchase.
           onSaved={(id) => { setFormOpen(false); void mutate(); router.push(returnTo ?? `/admin/parts/purchases/${id}?from=${encodeURIComponent(here)}`); setReturnTo(null); }}
         />

@@ -849,6 +849,11 @@ export function createAdminPart(input: AdminCreatePartInput) {
   return apiFetch<{ id: string }>('/api/admin/parts-costs/parts', { method: 'POST', body: JSON.stringify(input) });
 }
 
+/** D45 / ST-2: a repair or tire category. */
+export function createAdminPartCategory(input: { name: string; kind: 'repair' | 'tire' }) {
+  return apiFetch<{ id: string }>('/api/admin/parts-costs/part-categories', { method: 'POST', body: JSON.stringify(input) });
+}
+
 export function updateAdminPart(id: string, input: AdminUpdatePartInput) {
   return apiFetch<{ id: string }>(`/api/admin/parts-costs/parts/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
 }

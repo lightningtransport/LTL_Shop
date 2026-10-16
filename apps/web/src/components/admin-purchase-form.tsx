@@ -23,7 +23,7 @@ import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { duplicateText, invoiceHref } from './admin-outside-repair-form';
 import { MissingSummary, OptionalTag, RequiredNote, StickyFormFooter, focusField, type MissingField } from './parts-costs-form-ui';
-import { partsCostsFailure } from './admin-parts-catalog';
+import { PartDialog, partsCostsFailure } from './admin-parts-catalog';
 import { Button, Input, Label, Modal, Select, Textarea, InlineAlert } from './ui';
 import {
   checkAdminInvoice,
@@ -126,6 +126,7 @@ export function PurchaseForm({
   onClose,
   onSaved,
   onVendorAdded,
+  onCatalogChanged,
   notice,
 }: {
   purchase: AdminPurchaseDetailDto | null;
@@ -142,8 +143,11 @@ export function PurchaseForm({
   onClose: () => void;
   onSaved: (id: string) => void;
   onVendorAdded: () => void;
+  /** D45 / ST-2 (HU-R2): reloads the catalog after "Add to catalog" on an "Other" line. */
+  onCatalogChanged?: () => Promise<unknown> | void;
 }) {
   const { showToast } = useActionToast();
+  const [cataloging, setCataloging] = useState<number | null>(null);
   const restored = useRef(false);
   const [state, setState] = useState<FormState>(() => {
     const draft = !purchase && !presetTruckId ? readDraft() : null;
@@ -448,7 +452,12 @@ export function PurchaseForm({
                       {/* UX-7-028 / PC3: an "Other" line stays on this invoice; parts are added to the catalog in Parts. */}
                       <p className="text-xs text-muted-foreground" data-testid="other-hint">
                         {messages.pcOtherHint}{' '}
-                        <a className="tap-inline underline" href="/admin/parts/catalog" target="_blank" rel="noopener">{messages.pcOtherCatalogLink}</a>
+                        {onCatalogChanged ? (
+                          // D45 / ST-2 (HU-R2): the part goes into the catalog and this line uses it.
+                          <button type="button" className="tap-inline font-medium text-primary underline" onClick={() => setCataloging(index)} disabled={busy} data-testid="add-to-catalog">{messages.pcAddToCatalog}</button>
+                        ) : (
+                          <a className="tap-inline underline" href="/admin/parts/catalog" target="_blank" rel="noopener">{messages.pcOtherCatalogLink}</a>
+                        )}
                       </p>
                     </>
                   ) : null}
@@ -570,6 +579,27 @@ export function PurchaseForm({
           messages={messages}
         />
       </form>
+      {/* Outside the purchase's <form>: React bubbles a portal's submit to its parent form. */}
+      {cataloging !== null ? (
+        <PartDialog
+          part={null}
+          categories={categories}
+          truckMakes={[...new Set(formData.trucks.map((truck) => truck.make).filter((make): make is string => Boolean(make)))]}
+          vendors={vendors}
+          locale={locale}
+          messages={messages}
+          preset={{ displayName: state.lines[cataloging]?.description ?? '' }}
+          onClose={() => setCataloging(null)}
+          onSaved={(partId) => {
+            const index = cataloging;
+            setCataloging(null);
+            void Promise.resolve(onCatalogChanged?.()).then(() => {
+              setLine(index, { partId, description: '' });
+              showToast('success', messages.pcAddedToCatalog);
+            });
+          }}
+        />
+      ) : null}
     </Modal>
   );
 }

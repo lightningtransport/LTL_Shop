@@ -33,7 +33,7 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
   const [voiding, setVoiding] = useState(false);
   const [filing, setFiling] = useState(false);
   const { data: formData } = useAdminPurchaseFormData(canWrite);
-  const { data: catalog } = useAdminPartsCatalog('includeInactive=true');
+  const { data: catalog, mutate: mutateCatalog } = useAdminPartsCatalog('includeInactive=true');
   const { data: vendors, mutate: mutateVendors } = useAdminVendors();
   // PCA2 (UX-5-002): back to the Truck's costs, the invoice or the filtered list this purchase was opened from.
   const from = useSearchParams().get('from');
@@ -203,6 +203,7 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
           messages={messages}
           onClose={() => setEditing(false)}
           onVendorAdded={() => void mutateVendors()}
+          onCatalogChanged={() => mutateCatalog()}
           onSaved={() => { setEditing(false); void mutate(); }}
           notice={chargedWarning('edit', 'purchase', data.chargedOn, messages)}
         />

@@ -58,6 +58,15 @@ export const adminPartFitSchema = z.object({
   model: z.string().trim().max(60).transform((value) => value || null).nullable().optional(),
 }).refine((value) => Boolean(value.make || value.model), { message: 'A make or a model' });
 
+export const PART_KINDS = ['pm', 'repair', 'tire'] as const;
+export type PartKind = (typeof PART_KINDS)[number];
+export const TIRE_TYPES = ['new', 'recap'] as const;
+export type TireType = (typeof TIRE_TYPES)[number];
+
+/** D45 / ST-2: "11R22.5", "295/75R22.5" — written as on the tire, spaces dropped and capitals kept. */
+const tireSize = z.string().trim().max(30).transform((value) => value.replace(/\s+/g, '').toUpperCase() || null).nullable().optional();
+const minStock = z.number().int().min(0).max(100000).nullable().optional();
+
 export const adminCreatePartSchema = z.object({
   categoryId: z.string().uuid(),
   partNumber: optionalText(80),
@@ -65,6 +74,16 @@ export const adminCreatePartSchema = z.object({
   fits: z.array(adminPartFitSchema).max(20).default([]),
   unitCostCents: moneyCents.nullable().optional(),
   defaultVendorId: z.string().uuid().nullable().optional(),
+  /** D45 / ST-2: required in a tire category, ignored elsewhere. */
+  tireSize,
+  tireType: z.enum(TIRE_TYPES).nullable().optional(),
+  minStock,
+});
+
+/** D45 / ST-2: the Manager adds a repair or tire category (the PM categories come from the base list). */
+export const adminCreatePartCategorySchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  kind: z.enum(['repair', 'tire']),
 });
 
 export const adminUpdatePartSchema = z.object({
@@ -74,10 +93,15 @@ export const adminUpdatePartSchema = z.object({
   unitCostCents: moneyCents.nullable().optional(),
   defaultVendorId: z.string().uuid().nullable().optional(),
   active: z.boolean().optional(),
+  tireSize,
+  tireType: z.enum(TIRE_TYPES).nullable().optional(),
+  minStock,
 }).refine((value) => Object.values(value).some((field) => field !== undefined), { message: 'Nothing to change' });
 
 export const adminPartsQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
+  /** D45 / ST-2: PM · Repair · Tires (none = all). */
+  kind: z.enum(PART_KINDS).optional(),
   make: z.string().trim().max(60).optional(),
   includeInactive: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
 });
@@ -104,6 +128,7 @@ export const adminUpdateVendorSchema = z.object({
 }).refine((value) => Object.values(value).some((field) => field !== undefined), { message: 'Nothing to change' });
 
 export type AdminCreatePartInput = z.input<typeof adminCreatePartSchema>;
+export type AdminCreatePartCategoryInput = z.input<typeof adminCreatePartCategorySchema>;
 export type AdminUpdatePartInput = z.input<typeof adminUpdatePartSchema>;
 export type AdminCreateVendorInput = z.input<typeof adminCreateVendorSchema>;
 export type AdminUpdateVendorInput = z.input<typeof adminUpdateVendorSchema>;
@@ -138,11 +163,17 @@ export interface AdminPartDto {
   openPms: AdminPartOpenPmDto[];
   /** PC-2: the last purchase line of this part ("$24.10 · Oct 6 · FleetPride"), voided purchases left out. */
   lastPaid: { unitCostCents: number; invoiceDate: string; vendorName: string } | null;
+  /** D45 / ST-2: tires only. */
+  tireSize: string | null;
+  tireType: TireType | null;
+  minStock: number | null;
 }
 
 export interface AdminPartCategoryDto {
   id: string;
   name: string;
+  /** D45 / ST-2: pm feeds the PM picker; repair and tire are only for buying. */
+  kind: PartKind;
   parts: AdminPartDto[];
 }
 

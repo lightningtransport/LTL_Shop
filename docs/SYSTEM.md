@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-16 (compra atada al Job, D45 / ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-16 (catálogo con repuestos y llantas, D45 / ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -357,7 +357,21 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   exige al menos una.
 
 ### Partes y proveedores (`parts`, `part_fitments`, `vendors`; LTR-200 / D32, PC-1)
-- **El catálogo de partes es el del PM.** Admin → Parts & costs → **Parts**
+- **Repuestos y llantas** (D45 / ST-2, LTR-222): cada categoría tiene un tipo
+  (`part_categories.kind`: `pm`, `repair` o `tire`). Las 9 del PM son `pm`; la
+  migración agrega **Repair parts** y **Tires**, y el Manager agrega más con
+  **Add category** (`POST /part-categories`, solo `repair` o `tire`; nombre
+  repetido → `PART_CATEGORY_EXISTS`). Una llanta exige **medida** (`tire_size`,
+  sin espacios y en mayúsculas: "11R22.5") y **New o Recap** (`tire_type`;
+  si falta, `TIRE_FIELDS_REQUIRED`); las demás no los llevan. Toda parte puede
+  tener un **mínimo en stock** (`min_stock`, opcional; lo usará Stock en ST-3).
+  Un **número de parte es de una sola parte** en todo el catálogo (sin
+  mayúsculas, espacios ni guiones): 409 `PART_NUMBER_EXISTS` dice cuál es. Parts
+  filtra por **Type** (PM · Repair · Tires; `?kind=`). **El PM solo ve
+  categorías `pm`** y rechaza una parte de otra. En New purchase, una línea
+  "Other" tiene **Add to catalog**: abre Agregar parte con su descripción y una
+  categoría de repuestos, y al guardar la línea usa la parte nueva.
+- **El catálogo del PM.** Admin → Parts & costs → **Parts**
   (`/admin/parts/catalog`) lo muestra por las 9 categorías del PM con su costo
   de referencia (`unit_cost_cents`, centavos; "No cost yet" si falta), su
   proveedor habitual y **Sirve para** (`part_fitments`: sin filas = todos los

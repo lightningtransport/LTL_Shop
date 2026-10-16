@@ -39,6 +39,12 @@ export class PartsCostsController {
     return this.catalog.createPart(request.user!, body);
   }
 
+  // D45 / ST-2: a repair or tire category.
+  @Post('part-categories')
+  createPartCategory(@Req() request: Request, @Body() body: unknown) {
+    return this.catalog.createCategory(request.user!, body);
+  }
+
   @Patch('parts/:id')
   updatePart(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.catalog.updatePart(request.user!, id, body);
