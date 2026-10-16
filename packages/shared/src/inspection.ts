@@ -277,6 +277,17 @@ export type TruckInspectionStateDto = {
    * is no saved sheet. The sheet can still be filled; the screen says so instead of showing an empty report.
    */
   legacyInspection: { outcome: 'issues_found' | 'no_issues_found'; recordedAt: string | null; byName: string | null } | null;
+  /** D45 / ST-4: the last tire put at each position (from a confirmed Tires Job, still in place). */
+  installedTires?: InstalledTireDto[];
+};
+
+/** D45 / ST-4: what is mounted at a position, from the last tire taken from stock for it. */
+export type InstalledTireDto = {
+  position: TirePosition;
+  tireType: 'new' | 'recap';
+  tireSize: string | null;
+  installedAt: string;
+  workOrderDisplayId: string;
 };
 
 /** D41 / HU-ME7: a Truck waiting for inspection, for "To inspect" in My work. */

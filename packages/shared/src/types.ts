@@ -165,6 +165,8 @@ export interface WorkOrderJobDto {
   samsaraFaults?: Array<{ code: string; description: string }>;
   /** D45 / ST-1: the parts bought for this Job (name and quantity; the mechanic never sees costs). */
   parts?: Array<{ description: string; partNumber: string | null; quantity: string }>;
+  /** D45 / ST-4: the tires to put, as the Manager confirmed them ("RF · New 11R22.5"), never their cost. */
+  tires?: Array<{ position: string; tireType: 'new' | 'recap'; tireSize: string | null; status: 'proposed' | 'issued' | 'to_buy' }>;
 }
 
 /** LTR-188 / D24: a Job at an external shop — what went out, the Manager's note and since when. */
@@ -486,6 +488,8 @@ export interface AdminWorkOrderJobDto {
   parts?: Array<{ purchaseId: string; description: string; partNumber: string | null; quantity: string; vendorName: string; lineTotalCents?: number }>;
   /** D45 / ST-3: what left the stock for this Job (`valueCents` only for Manager and System Admin). */
   stockParts?: Array<{ movementId: string; partId: string; description: string; quantity: string; returned: boolean; valueCents?: number }>;
+  /** D45 / ST-4: the tires to put on this Job, one per position (`valueCents` only for Manager and System Admin). */
+  tires?: import('./parts-costs').AdminJobTireDto[];
   /** PCA3 (UX-10-001): the Job went to an external shop at some point (out now or already back), so its invoice can still be loaded. */
   wentExternal?: boolean;
 }

@@ -780,6 +780,10 @@ function MyJobRow({ job, next, currentUserId }: { job: WorkOrderJobDto; next: bo
             {messages.jobParts(job.parts.map((part) => `${part.description} × ${Number(part.quantity)}`).join(', '))}
           </p>
         ) : null}
+        {/* D45 / ST-4: which tire goes where (the Manager confirms it; never its cost). */}
+        {job.tires?.map((tire) => (
+          <p key={tire.position} className="text-xs text-muted-foreground" data-testid="job-tire">{messages.jobTire(tire.position, tire.tireType, tire.tireSize, tire.status)}</p>
+        ))}
         {blocked ? (
           <p className="text-xs font-medium text-warning-foreground dark:text-warning">
             {messages.blockedWithReason(pauseLabel(job.activeBlocker!.reason, messages.pauseReason) ?? '')} · {messages.waitingOnManagerShort}

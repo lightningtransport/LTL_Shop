@@ -10,6 +10,7 @@ import { isPmCategory, jobWorkStatus, type BlockerReason, type JobExternalKind }
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals } from './work-order.timing';
 import { workOrderTeam } from './work-order-team';
+import { tireChangeStatus } from '../parts-costs/tire-changes';
 
 type JobRow = {
   id: string;
@@ -34,6 +35,7 @@ type JobRow = {
   sources?: Array<{ truckFault: { code: string; description: string } | null }>;
   purchaseLines?: Array<{ description: string; partNumber: string | null; quantity: { toFixed(digits: number): string } }>;
   stockMovements?: Array<{ quantity: { abs(): { toFixed(digits: number): string } }; part: { displayName: string; partNumber: string | null } }>;
+  tireChanges?: Array<{ position: string; tireType: 'new' | 'recap'; confirmedAt: Date | null; part: { tireSize: string | null } | null; stockMovement: { reversals: Array<{ id: string }> } | null }>;
 };
 
 /** LTR-188 / D24: a Job at an external shop, as the DTOs carry it (null when in the shop). */
@@ -302,9 +304,16 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
     // D45 / ST-1: what was bought for the Job, never its cost (D32).
     parts: [
       ...(j.purchaseLines ?? []).map((line) => ({ description: line.description, partNumber: line.partNumber, quantity: line.quantity.toFixed(2) })),
-      // D45 / ST-3: parts taken from the stock for this Job (and not returned).
+      // D45 / ST-3: parts taken from the stock for this Job (and not returned). Tires show as `tires` below.
       ...(j.stockMovements ?? []).map((movement) => ({ description: movement.part.displayName, partNumber: movement.part.partNumber, quantity: movement.quantity.abs().toFixed(2) })),
     ],
+    // D45 / ST-4: "RF · New 11R22.5" — what to put, never its cost.
+    tires: (j.tireChanges ?? []).map((change) => ({
+      position: change.position,
+      tireType: change.tireType,
+      tireSize: change.part?.tireSize ?? null,
+      status: tireChangeStatus(change),
+    })),
     };
   });
   const viewerOwnsJobs = !!viewerId && wo.jobs.some((j) => jobAssigneeId(j) === viewerId);
@@ -501,9 +510,14 @@ export const workOrderDetailInclude = {
         orderBy: [{ purchase: { invoiceDate: 'asc' as const } }, { sortOrder: 'asc' as const }],
       },
       stockMovements: {
-        where: { kind: 'issue' as const, reversals: { none: {} } },
+        // A tire taken for a Tires Job shows in `tires`, not twice.
+        where: { kind: 'issue' as const, reversals: { none: {} }, tireChange: null },
         select: { quantity: true, part: { select: { displayName: true, partNumber: true } } },
         orderBy: { createdAt: 'asc' as const },
+      },
+      tireChanges: {
+        select: { position: true, tireType: true, confirmedAt: true, part: { select: { tireSize: true } }, stockMovement: { select: { reversals: { select: { id: true } } } } },
+        orderBy: { position: 'asc' as const },
       },
     },
     orderBy: { addedAt: 'asc' as const },

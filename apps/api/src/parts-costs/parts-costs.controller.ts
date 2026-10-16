@@ -140,6 +140,12 @@ export class PartsCostsController {
     return this.stock.returnToStock(request.user!, id, body);
   }
 
+  // D45 / ST-4: confirm the tires the inspection proposed on a Tires Job.
+  @Post('jobs/:jobId/tires')
+  confirmTires(@Req() request: Request, @Param('jobId') jobId: string, @Body() body: unknown) {
+    return this.stock.confirmTires(request.user!, jobId, body);
+  }
+
   @Get('stock/:partId')
   stockPart(@Param('partId') partId: string) {
     return this.stock.part(partId);

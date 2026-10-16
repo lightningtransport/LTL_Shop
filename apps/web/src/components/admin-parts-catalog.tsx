@@ -49,6 +49,10 @@ export function partsCostsFailure(failure: unknown, messages: AdminMessages) {
   }
   if (failure instanceof ApiError && apiErrorCode(failure) === 'TIRE_FIELDS_REQUIRED') return messages.pcTireNeedsFields;
   if (failure instanceof ApiError && apiErrorCode(failure) === 'STOCK_ALREADY_USED') return messages.pcStockAlreadyUsed;
+  if (failure instanceof ApiError && ['STEER_NEEDS_NEW', 'TIRE_PART_MISMATCH', 'TIRE_ALREADY_ISSUED', 'TIRE_NOT_PROPOSED'].includes(apiErrorCode(failure) ?? '')) {
+    const message = (failure.body as { message?: string } | undefined)?.message;
+    if (message) return message;
+  }
   if (failure instanceof ApiError && apiErrorCode(failure) === 'NOT_ENOUGH_STOCK') {
     const onHand = (failure.body as { onHand?: string } | undefined)?.onHand;
     if (onHand) return fillPlaceholders(messages.pcStockNotEnough, { qty: String(Number(onHand)) });

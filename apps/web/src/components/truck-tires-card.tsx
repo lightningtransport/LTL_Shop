@@ -60,6 +60,20 @@ export function TruckTiresCard({ truckId, locale }: { truckId: string; locale: I
           </p>
         </>
       ) : <p className="p-4 text-muted-foreground">{copy.noTireReadings}</p>}
+      {/* D45 / ST-4: what each position has mounted, from the tires taken from stock for it. */}
+      {data.installedTires?.length ? (
+        <div className="mx-4 mb-4 border-t pt-3" data-testid="truck-installed-tires">
+          <p className="mb-1.5 text-xs font-medium text-muted-foreground">{copy.installedTitle}</p>
+          <ul className="space-y-1">
+            {TIRE_POSITIONS.map((position) => data.installedTires!.find((tire) => tire.position === position)).filter(Boolean).map((tire) => (
+              <li key={tire!.position} className="flex items-center justify-between gap-2">
+                <span className="font-medium">{tire!.position}</span>
+                <span className="text-muted-foreground">{copy.installedLine(tire!.tireType, tire!.tireSize, date(tire!.installedAt), tire!.workOrderDisplayId)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </SectionCard>
   );
 }

@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, WorkOrderStatus } from '@prisma/client';
+import { Prisma, WorkOrderStatus, type TirePosition as DbTirePosition } from '@prisma/client';
 import {
   ActivityEventType,
   AppCapability,
@@ -15,6 +15,7 @@ import {
   ShopWorkflowStepKey,
   TIRE_POSITIONS,
   TireReadingStatus,
+  tireAxle,
   WorkOrderJobSourceKind,
   WorkPlanInspectionOutcome,
   WorkPlanJobLane,
@@ -46,6 +47,7 @@ import { joinWorkOrderTeam } from '../work-orders/work-order-team';
 import { classifyWorkPlanLane } from '../admin/yard-work-plan-derivation';
 import { YardWorkPlanService, childIdempotencyKey } from '../admin/yard-work-plan.service';
 import { InspectionPlanError, planInspectionFindings, type InspectionPlan, type PlanFinding } from './inspection-plan';
+import { installedTires } from '../parts-costs/tire-changes';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TIRES_CATEGORY = 'Tires & Wheels';
@@ -151,6 +153,8 @@ export class InspectionService {
       limits,
       inspection: inspection ? await this.toInspectionDto(inspection) : null,
       previousTires: previous.map(toTireDto),
+      // D45 / ST-4: what each position has mounted, from confirmed Tires Jobs.
+      installedTires: await installedTires(this.prisma, truckId),
       canInspect: actor !== null,
       canAssign: actor === 'manager',
       legacyInspection: legacy
@@ -294,6 +298,7 @@ export class InspectionService {
           })),
         ];
         const summary = await this.applyFindings(tx, user, wo, findings, actor === 'manager' ? input.assignments ?? [] : []);
+        await this.proposeTires(tx, tireRows.filter((row) => row.status === TireReadingStatus.FIX && row.reason === 'tread'));
         await this.activity.log(tx, {
           workOrderId: wo.id,
           eventType: ActivityEventType.INSPECTION_SAVED,
@@ -466,6 +471,25 @@ export class InspectionService {
     for (const item of plan.attach) await this.linkSources(tx, item.jobId, item.sources, user.id);
     await tx.workOrder.update({ where: { id: wo.id }, data: { version: { increment: plan.create.length + plan.attach.length } } });
     return { jobsCreated: plan.create.length, jobsUpdated: plan.attach.length };
+  }
+
+  /**
+   * D45 / ST-4 (LTR-224): a tire worn past the minimum gets a tire to put on the Tires Job it went to: steer always
+   * New, drive Recap (the Manager can make it New when confirming). One per position per Job.
+   */
+  private async proposeTires(tx: Tx, worn: Array<{ id: string; position: string }>) {
+    if (!worn.length) return;
+    const sources = await tx.workOrderJobSource.findMany({ where: { tireReadingId: { in: worn.map((row) => row.id) } }, select: { tireReadingId: true, workOrderJobId: true } });
+    const jobOf = new Map(sources.map((source) => [source.tireReadingId!, source.workOrderJobId]));
+    await tx.jobTireChange.createMany({
+      data: worn.filter((row) => jobOf.has(row.id)).map((row) => ({
+        workOrderJobId: jobOf.get(row.id)!,
+        tireReadingId: row.id,
+        position: row.position as DbTirePosition,
+        tireType: tireAxle(row.position as TirePosition) === 'steer' ? ('new' as const) : ('recap' as const),
+      })),
+      skipDuplicates: true,
+    });
   }
 
   private async linkSources(tx: Tx, workOrderJobId: string, sources: InspectionPlan['create'][number]['sources'], createdById: string) {
