@@ -10,6 +10,7 @@ import { classifyWorkPlanLane } from '../admin/yard-work-plan-derivation';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { addLocalDays, localDateTimeIn, SHOP_TIME_ZONE, type LocalDate } from '../common/shop-time';
 import { YardDataBoundaryService } from '../admin/yard-data-boundary.service';
+import { buildInspectionDto, inspectionInclude } from '../inspection/inspection.service';
 
 /**
  * LTR-185 / D19: Safety does the Quality Check.
@@ -22,11 +23,22 @@ import { YardDataBoundaryService } from '../admin/yard-data-boundary.service';
  * then comes back to Safety once that work is done. Safety keeps no labor clock.
  */
 
+/** D46 / SQ-3: one thing Safety found, with the catalog Job that would fix it when they know it. */
+const qcFindingSchema = z.object({
+  text: z.string().trim().min(1).max(300),
+  catalogJobId: z.string().uuid().nullable().optional(),
+});
+
 export const returnQualityCheckSchema = z.object({
-  notes: z.string().trim().min(1).max(1000),
+  notes: z.string().trim().max(1000).optional(),
   /** D-QC3: the Job Safety found the problem in (optional; "Other" sends none). */
   jobId: z.string().uuid().optional(),
-});
+  /** D46 / SQ-3: what has to be fixed; each one the Manager turns into a Job. A note or a finding is required. */
+  findings: z.array(qcFindingSchema).max(10).optional(),
+}).refine((value) => Boolean(value.notes?.trim()) || Boolean(value.findings?.length), { message: 'Say what you found' });
+
+/** D46 / SQ-3: approving can leave findings that do not hold the truck. */
+export const approveQualityCheckSchema = z.object({ findings: z.array(qcFindingSchema).max(10).optional() });
 
 const historyDaysSchema = z.coerce.number().int().min(1).max(31).default(7);
 
@@ -241,8 +253,12 @@ export class QualityCheckService {
   }
 
   /** Safety approves: the QC Job completes and the Work Order is ready to close. */
-  async approve(user: AuthUser, workOrderId: string) {
+  async approve(user: AuthUser, workOrderId: string, raw: unknown = {}) {
     await this.assertOnQualityCheckTeam(user);
+    const parsed = approveQualityCheckSchema.safeParse(raw ?? {});
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const findings = parsed.data.findings ?? [];
+    await this.assertCatalogJobs(findings);
     return this.prisma.$transaction(async (tx) => {
       const row = await this.requireMine(tx, workOrderId, user);
       const qcJob = qcJobOf(row)!;
@@ -266,8 +282,9 @@ export class QualityCheckService {
         userId: user.id,
         previousValue: { status: 'to_do', displayName: qcJob.displayName },
         newValue: { status: 'completed', displayName: qcJob.displayName },
-        relevantValue: { action: 'quality_check_approved', displayName: qcJob.displayName, actor: qcActor(user) },
+        relevantValue: { action: 'quality_check_approved', displayName: qcJob.displayName, actor: qcActor(user), ...(findings.length ? { findings: findings.length } : {}) },
       });
+      await this.saveFindings(tx, user, workOrderId, 'note', findings);
       return this.getQueue(user, tx);
     });
   }
@@ -277,6 +294,8 @@ export class QualityCheckService {
     await this.assertOnQualityCheckTeam(user);
     const parsed = returnQualityCheckSchema.safeParse(raw ?? {});
     if (!parsed.success) throw new BadRequestException({ code: 'QC_NOTE_REQUIRED', message: 'Say what you found before returning the truck.' });
+    const findings = parsed.data.findings ?? [];
+    await this.assertCatalogJobs(findings);
     return this.prisma.$transaction(async (tx) => {
       const row = await this.requireMine(tx, workOrderId, user);
       const qcJob = qcJobOf(row)!;
@@ -286,7 +305,9 @@ export class QualityCheckService {
       if (parsed.data.jobId && !failedJob) {
         throw new BadRequestException({ code: 'QC_JOB_NOT_DONE', message: 'Pick a Job that was done on this truck, or Other.' });
       }
-      const notes = failedJob ? `${failedJob.displayName}: ${parsed.data.notes}` : parsed.data.notes;
+      // D46 / SQ-3: with findings and no note, the note lists them (the Manager reads it where blockers show).
+      const said = parsed.data.notes?.trim() || findings.map((finding) => finding.text).join('; ');
+      const notes = failedJob ? `${failedJob.displayName}: ${said}` : said;
       const blocker = await tx.pauseEvent.create({
         data: {
           workOrderId,
@@ -315,9 +336,26 @@ export class QualityCheckService {
           jobId: qcJob.id, jobName: qcJob.displayName, reason: BlockerReason.QUALITY_CHECK_FAILED,
           notes, laborStopped: false, actor: qcActor(user),
           ...(failedJob ? { failedJobId: failedJob.id, failedJobName: failedJob.displayName } : {}),
+          ...(findings.length ? { findings: findings.length } : {}),
         },
       });
+      await this.saveFindings(tx, user, workOrderId, 'blocking', findings);
       return this.getQueue(user, tx);
+    });
+  }
+
+  /** D46 / SQ-3: a suggested catalog Job must exist and be active. */
+  private async assertCatalogJobs(findings: Array<{ catalogJobId?: string | null }>) {
+    const ids = [...new Set(findings.map((finding) => finding.catalogJobId).filter((id): id is string => Boolean(id)))];
+    if (!ids.length) return;
+    const found = await this.prisma.catalogJob.count({ where: { id: { in: ids }, status: 'active' } });
+    if (found !== ids.length) throw new BadRequestException({ code: 'QC_FINDING_JOB_INVALID', message: 'Pick a Job from the catalog, or leave it empty.' });
+  }
+
+  private async saveFindings(tx: Prisma.TransactionClient, user: AuthUser, workOrderId: string, kind: 'blocking' | 'note', findings: Array<{ text: string; catalogJobId?: string | null }>) {
+    if (!findings.length) return;
+    await tx.qcFinding.createMany({
+      data: findings.map((finding) => ({ workOrderId, kind, text: finding.text, catalogJobId: finding.catalogJobId ?? null, createdById: user.id })),
     });
   }
 
@@ -389,6 +427,18 @@ export class QualityCheckService {
       ? 'issues_found'
       : inspectionRequirement && ['completed', 'waived', 'not_required'].includes(inspectionRequirement.outcome) ? 'no_issues_found' : 'not_recorded';
     const pmJob = row.jobs.find((job, index) => lanes[index] === WorkPlanJobLane.PM && job.status === 'completed') ?? null;
+    // D46 / SQ-2 (LTR-231): the sheet the truck was inspected with on this visit, to read (Safety does not inspect).
+    const sheetRow = await this.prisma.truckInspection.findFirst({ where: { workOrderId }, include: inspectionInclude, orderBy: { inspectedAt: 'desc' } });
+    const sheet = sheetRow ? await buildInspectionDto(this.prisma, sheetRow) : null;
+    // D46 / SQ-3: the catalog to suggest a Job for a finding, and what was already found on this truck's visit.
+    const [catalogJobs, findings] = await Promise.all([
+      this.prisma.catalogJob.findMany({
+        where: { status: 'active', category: { status: 'active' } },
+        select: { id: true, displayName: true, category: { select: { name: true, sortOrder: true } } },
+        orderBy: [{ category: { sortOrder: 'asc' } }, { displayName: 'asc' }],
+      }),
+      this.prisma.qcFinding.findMany({ where: { workOrderId }, orderBy: { createdAt: 'asc' }, select: { id: true, kind: true, text: true, resolution: true, createdAt: true, catalogJob: { select: { displayName: true } } } }),
+    ]);
 
     return {
       ...listed,
@@ -418,7 +468,9 @@ export class QualityCheckService {
               .map((item) => ({ category: item.partCategory.name, partNumber: item.part.partNumber, name: item.part.displayName })),
           }
         : null,
-      inspection: { outcome: inspectionOutcome, recordedAt: inspectionRequirement?.evaluatedAt?.toISOString() ?? null },
+      inspection: { outcome: sheet ? (sheet.issuesFound ? 'issues_found' : 'no_issues_found') : inspectionOutcome, recordedAt: sheet?.inspectedAt ?? inspectionRequirement?.evaluatedAt?.toISOString() ?? null, sheet },
+      catalogJobs: catalogJobs.map((job) => ({ id: job.id, displayName: job.displayName, categoryName: job.category.name })),
+      findings: findings.map((finding) => ({ id: finding.id, kind: finding.kind, text: finding.text, job: finding.catalogJob?.displayName ?? null, resolution: finding.resolution, createdAt: finding.createdAt.toISOString() })),
       blockers: row.pauseEvents
         .filter((event) => event.jobId !== qcJobId && event.resolvedAt)
         .map((event) => ({

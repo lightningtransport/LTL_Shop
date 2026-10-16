@@ -760,7 +760,7 @@ export function resetAdminMechanicPassword(mechanicId: string) {
 export function addAdminWorkPlanJobs(
   truckId: string,
   input: {
-    jobs: Array<Pick<WorkPlanJobDraft, 'catalogJobId' | 'categoryId' | 'displayName' | 'customDescription' | 'assignedMechanicId' | 'samsaraFaultIds'>>;
+    jobs: Array<Pick<WorkPlanJobDraft, 'catalogJobId' | 'categoryId' | 'displayName' | 'customDescription' | 'assignedMechanicId' | 'samsaraFaultIds' | 'qcFindingIds'>>;
     expectedVersion?: number;
   },
   idempotencyKey = adminMutationIdempotencyKey(),
@@ -856,6 +856,16 @@ export function countAdminStock(input: AdminStockCountInput) {
 
 export function issueAdminStock(input: AdminStockIssueInput) {
   return apiFetch<{ id: string; valueCents: number }>('/api/admin/parts-costs/stock/issue', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** D46 / SQ-3: a Safety finding goes to a Job already on the Work Order. */
+export function addAdminQcFindingToJob(workOrderId: string, findingId: string, jobId: string) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/qc-findings/${findingId}/add-to-job`, { method: 'POST', body: JSON.stringify({ jobId }) });
+}
+
+/** D46 / SQ-3: a Safety finding is set aside, saying why. */
+export function dismissAdminQcFinding(workOrderId: string, findingId: string, reason: string) {
+  return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/qc-findings/${findingId}/dismiss`, { method: 'POST', body: JSON.stringify({ reason }) });
 }
 
 /** D45 / ST-5: the flat price of a PM's oil change. */

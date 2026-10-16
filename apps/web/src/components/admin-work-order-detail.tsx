@@ -48,6 +48,7 @@ import {
   Select,
   Textarea,
 } from './ui';
+import { AdminQcFindingsCard } from './admin-qc-findings-card';
 
 type WorkOrderDialog = 'pause' | 'cancel' | 'reopen' | 'return' | null;
 
@@ -445,6 +446,8 @@ export function AdminWorkOrderDetail({
             onReturnExternal={(jobId, input) => void runMutation(`return-external-${jobId}`, messages.externalReturnSuccess, () => returnAdminJobExternal(id, jobId, { ...input, expectedVersion: data.version }), (failure) => jobChangeError(failure, messages))}
           />
         </SectionCard>
+        {/* D46 / SQ-3: what Safety found, to add as work or set aside. */}
+        <AdminQcFindingsCard data={data} messages={messages} canManage={canManageWorkOrders} onChanged={(next) => void mutate(next, { revalidate: false })} />
         <SafetyReturnCompleteDialog
           open={Boolean(safetyReturn)}
           safetyNote={safetyReturn?.notes ?? null}

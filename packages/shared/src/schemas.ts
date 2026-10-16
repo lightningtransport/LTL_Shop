@@ -489,6 +489,8 @@ export const addWorkPlanJobsSchema = z.object({
   jobs: z.array(createWorkOrderJobSchema.extend({
     // D42 / S-6: the Samsara faults this Job takes care of (recommended in Add work).
     samsaraFaultIds: z.array(z.string().uuid()).min(1).max(20).optional(),
+    // D46 / SQ-3: the Safety findings this Job takes care of.
+    qcFindingIds: z.array(z.string().uuid()).min(1).max(20).optional(),
   })).min(1).max(50),
 });
 
@@ -580,3 +582,8 @@ export const updateShopWorkflowStepsSchema = z.object({
     message: 'Send memberIds for each step.',
   })).min(1),
 });
+
+/** D46 / SQ-3: add a Safety finding to a Job already on the Work Order. */
+export const qcFindingAddToJobSchema = z.object({ jobId: z.string().uuid() });
+/** D46 / SQ-3: set a Safety finding aside, saying why. */
+export const qcFindingDismissSchema = z.object({ reason: z.string().trim().min(1).max(300) });

@@ -7,13 +7,17 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { WorkOrdersService } from './work-orders.service';
 import type { Request } from 'express';
+import { SafetyMaskInterceptor } from '../quality-check/safety-mask.interceptor';
 
 @Controller('work-orders')
 @UseGuards(AuthGuard)
+// D46 / SQ-1: mechanics see "Safety" too, never the person.
+@UseInterceptors(SafetyMaskInterceptor)
 export class WorkOrdersController {
   constructor(private readonly workOrders: WorkOrdersService) {}
 

@@ -39,8 +39,8 @@ export class QualityCheckController {
   }
 
   @Post(':workOrderId/approve')
-  approve(@Req() req: Request, @Param('workOrderId') workOrderId: string) {
-    return this.qualityCheck.approve(req.user!, workOrderId);
+  approve(@Req() req: Request, @Param('workOrderId') workOrderId: string, @Body() body: unknown) {
+    return this.qualityCheck.approve(req.user!, workOrderId, body);
   }
 
   @Post(':workOrderId/return')

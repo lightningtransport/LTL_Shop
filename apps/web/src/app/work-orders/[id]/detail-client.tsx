@@ -774,6 +774,10 @@ function MyJobRow({ job, next, currentUserId }: { job: WorkOrderJobDto; next: bo
             {messages.jobSamsaraFault(fault.code, fault.description)}
           </p>
         ))}
+        {/* D46 / SQ-3: what Safety found that this Job takes care of (never who). */}
+        {job.qcFindings?.map((text) => (
+          <p key={text} className="text-xs text-muted-foreground" data-testid="job-qc-finding">{messages.jobQcFinding(text)}</p>
+        ))}
         {/* D45 / ST-1: what the Manager bought for this Job (never its cost). */}
         {job.parts?.length ? (
           <p className="text-xs text-muted-foreground" data-testid="job-parts">

@@ -204,6 +204,8 @@ model User {
   voidedPartPurchases            PartPurchase[]             @relation("PartPurchaseVoidedBy")
   stockMovements                 StockMovement[]            @relation("StockMovementCreatedBy")
   confirmedTireChanges           JobTireChange[]            @relation("JobTireChangeConfirmedBy")
+  qcFindings                     QcFinding[]                @relation("QcFindingCreatedBy")
+  qcFindingsResolved             QcFinding[]                @relation("QcFindingResolvedBy")
   pmOilPrices                    PmOilPrice[]               @relation("PmOilPriceCreatedBy")
   createdOutsideRepairs          OutsideRepair[]            @relation("OutsideRepairCreatedBy")
   createdLaborRates              LaborRate[]                @relation("LaborRateCreatedBy")
@@ -523,6 +525,7 @@ model CatalogJob {
   workflowSteps            ShopWorkflowStep[]
   inspectionChecklistItems InspectionChecklistItem[]
   samsaraFaultCodes        SamsaraFaultCodeJob[]
+  qcFindings               QcFinding[]
   inspectionItems          TruckInspectionItem[]
 
   @@index([categoryId, status])
@@ -620,6 +623,7 @@ model WorkOrder {
   serviceStatusEvents           TruckServiceStatusEvent[]
   costEntries                   TruckCostEntry[]
   outsideRepairs                OutsideRepair[]
+  qcFindings                    QcFinding[]
   inspections                   TruckInspection[]
   cameBackFaults                TruckFault[]              @relation("TruckFaultCameBack")
 
@@ -1172,23 +1176,24 @@ model WorkOrderJob {
   // LTR-198 / SW5: the catalog System Job's key (pm_a, pm_b, alignment, detailing, quality_check); lanes read it first.
   systemKey          String?          @map("system_key")
 
-  workOrder        WorkOrder            @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  catalogJob       CatalogJob?          @relation(fields: [catalogJobId], references: [id])
-  category         JobCategory          @relation(fields: [categoryId], references: [id])
-  addedBy          User                 @relation("JobAddedBy", fields: [addedById], references: [id])
-  completedBy      User?                @relation("JobCompletedBy", fields: [completedById], references: [id])
-  assignedMechanic User?                @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
-  externalBy       User?                @relation("JobSentExternalBy", fields: [externalById], references: [id], onDelete: SetNull)
-  helperOf         WorkOrderJob?        @relation("JobHelperOf", fields: [helperOfJobId], references: [id], onDelete: SetNull)
-  helpers          WorkOrderJob[]       @relation("JobHelperOf")
-  pmService        PmService?
-  outsideRepairs   OutsideRepair[]
-  purchaseLines    PartPurchaseLine[]
-  stockMovements   StockMovement[]
-  tireChanges      JobTireChange[]
-  blockers         PauseEvent[]
+  workOrder          WorkOrder            @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalogJob         CatalogJob?          @relation(fields: [catalogJobId], references: [id])
+  category           JobCategory          @relation(fields: [categoryId], references: [id])
+  addedBy            User                 @relation("JobAddedBy", fields: [addedById], references: [id])
+  completedBy        User?                @relation("JobCompletedBy", fields: [completedById], references: [id])
+  assignedMechanic   User?                @relation("JobAssignedTo", fields: [assignedMechanicId], references: [id])
+  externalBy         User?                @relation("JobSentExternalBy", fields: [externalById], references: [id], onDelete: SetNull)
+  helperOf           WorkOrderJob?        @relation("JobHelperOf", fields: [helperOfJobId], references: [id], onDelete: SetNull)
+  helpers            WorkOrderJob[]       @relation("JobHelperOf")
+  pmService          PmService?
+  outsideRepairs     OutsideRepair[]
+  purchaseLines      PartPurchaseLine[]
+  stockMovements     StockMovement[]
+  tireChanges        JobTireChange[]
+  qcFindingsResolved QcFinding[]          @relation("QcFindingResolvedJob")
+  blockers           PauseEvent[]
   // D41 (and D42 later): the findings this Job came from — several per Job.
-  sources          WorkOrderJobSource[]
+  sources            WorkOrderJobSource[]
 
   @@index([workOrderId, status])
   @@index([assignedMechanicId])
@@ -1416,6 +1421,7 @@ enum WorkOrderJobSourceKind {
   inspection_item
   tire_reading
   samsara_fault
+  qc_finding
 
   @@map("work_order_job_source_kind")
 }
@@ -1569,6 +1575,49 @@ model TireReading {
 /// D41 / D42: a finding a Work Order Job came from. One Job can have several (Fog lamps + Brake lights
 /// → Lights). Exactly one source id per row, matching `kind` (CHECK in SQL); Samsara S-6 adds
 /// `samsaraFaultId`. Rows stay when the Job is cancelled: readers filter by the Job's status.
+/// D46 / SQ-3 (LTR-232): what Safety found at the Quality Check. `blocking` = the truck was returned for it;
+/// `note` = left when approving (the truck went out). The Manager adds it as a Job, adds it to an open Job, or
+/// sets it aside with a reason. The Shop never sees who wrote it (D46).
+model QcFinding {
+  id            String               @id @default(uuid()) @db.Uuid
+  workOrderId   String               @map("work_order_id") @db.Uuid
+  kind          QcFindingKind
+  text          String
+  catalogJobId  String?              @map("catalog_job_id") @db.Uuid
+  createdById   String               @map("created_by_id") @db.Uuid
+  createdAt     DateTime             @default(now()) @map("created_at")
+  resolution    QcFindingResolution?
+  resolvedJobId String?              @map("resolved_job_id") @db.Uuid
+  dismissReason String?              @map("dismiss_reason")
+  resolvedById  String?              @map("resolved_by_id") @db.Uuid
+  resolvedAt    DateTime?            @map("resolved_at")
+
+  workOrder   WorkOrder            @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  catalogJob  CatalogJob?          @relation(fields: [catalogJobId], references: [id], onDelete: SetNull)
+  createdBy   User                 @relation("QcFindingCreatedBy", fields: [createdById], references: [id])
+  resolvedJob WorkOrderJob?        @relation("QcFindingResolvedJob", fields: [resolvedJobId], references: [id], onDelete: SetNull)
+  resolvedBy  User?                @relation("QcFindingResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  sources     WorkOrderJobSource[]
+
+  @@index([workOrderId, resolvedAt])
+  @@map("qc_findings")
+}
+
+enum QcFindingKind {
+  blocking
+  note
+
+  @@map("qc_finding_kind")
+}
+
+enum QcFindingResolution {
+  job_added
+  added_to_job
+  dismissed
+
+  @@map("qc_finding_resolution")
+}
+
 model WorkOrderJobSource {
   id               String                 @id @default(uuid()) @db.Uuid
   workOrderJobId   String                 @map("work_order_job_id") @db.Uuid
@@ -1577,6 +1626,8 @@ model WorkOrderJobSource {
   tireReadingId    String?                @map("tire_reading_id") @db.Uuid
   /// D42 / S-6: the Samsara fault this Job takes care of.
   truckFaultId     String?                @map("truck_fault_id") @db.Uuid
+  /// D46 / SQ-3: the Safety finding this Job takes care of.
+  qcFindingId      String?                @map("qc_finding_id") @db.Uuid
   /// The finding as written ("Left hazard lamp lens cracked"), shown on the Job.
   note             String?
   createdAt        DateTime               @default(now()) @map("created_at")
@@ -1586,8 +1637,10 @@ model WorkOrderJobSource {
   inspectionItem TruckInspectionItem? @relation(fields: [inspectionItemId], references: [id], onDelete: Cascade)
   tireReading    TireReading?         @relation(fields: [tireReadingId], references: [id], onDelete: Cascade)
   truckFault     TruckFault?          @relation(fields: [truckFaultId], references: [id], onDelete: Cascade)
+  qcFinding      QcFinding?           @relation(fields: [qcFindingId], references: [id], onDelete: Cascade)
   createdBy      User?                @relation("WorkOrderJobSourceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
+  @@unique([workOrderJobId, qcFindingId])
   @@unique([workOrderJobId, inspectionItemId])
   @@unique([workOrderJobId, tireReadingId])
   @@unique([workOrderJobId, truckFaultId])

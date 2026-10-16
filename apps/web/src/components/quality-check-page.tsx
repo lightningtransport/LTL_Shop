@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useSWRConfig } from 'swr';
 import {
-  CalendarClock, Check, CheckCheck, CircleAlert, ClipboardCheck, Ellipsis, Hand, HandHelping, History, RotateCw, Undo2,
+  CalendarClock, Check, CheckCheck, CircleAlert, ClipboardCheck, Ellipsis, Hand, HandHelping, History, Plus, RotateCw, Undo2, X,
 } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
@@ -30,11 +30,17 @@ import { SessionSignInFallback } from './session-sign-in-fallback';
 import { SideSheet } from './side-sheet';
 import { OfflineStrip } from './offline-strip';
 import {
-  Badge, Button, CardListSkeleton, CountChip, DialogActions, HomeTopBar, InlineAlert, Label, Modal, PageHeader, PriorityBadge,
-  SectionCard, Textarea,
+  Badge, Button, CardListSkeleton, CountChip, DialogActions, HomeTopBar, InlineAlert, Input, Label, Modal, PageHeader, PriorityBadge,
+  SectionCard, Select, Textarea,
 } from './ui';
 
 type Tab = 'review' | 'returned' | 'done';
+/** D46 / SQ-3: one thing Safety found, with the catalog Job that fixes it when they know it. */
+type FindingDraft = { key: string; text: string; catalogJobId: string };
+const newFinding = (): FindingDraft => ({ key: crypto.randomUUID(), text: '', catalogJobId: '' });
+const sendable = (findings: FindingDraft[]) => findings
+  .filter((finding) => finding.text.trim())
+  .map((finding) => ({ text: finding.text.trim(), ...(finding.catalogJobId ? { catalogJobId: finding.catalogJobId } : {}) }));
 type Action = 'take' | 'approve' | 'return' | 'release';
 const OTHER = '__other__';
 
@@ -66,6 +72,10 @@ export function QualityCheckPage() {
   // Block A (Q9): the return note is a draft per truck, kept on this phone until the truck is returned.
   const [note, setNote, clearNote] = useLocalDraft(returning && openId ? draftKeys.qcReturn(openId) : null);
   const [noteError, setNoteError] = useState(false);
+  // D46 / SQ-3: findings on return (they hold the truck) and on approve (they do not).
+  const [returnFindings, setReturnFindings] = useState<FindingDraft[]>([]);
+  const [approveFindings, setApproveFindings] = useState<FindingDraft[]>([]);
+  const { data: openReview } = useQualityCheckReview(returning || confirmApprove ? openId : null);
   const reviewTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -220,8 +230,8 @@ export function QualityCheckPage() {
         onClose={() => { if (!busy) { setOpenId(null); setActionError(null); } }}
         onTake={() => openItem && void run(openItem, 'take')}
         onRelease={() => openItem && void run(openItem, 'release')}
-        onApprove={() => setConfirmApprove(true)}
-        onReturn={() => { setReturnJob(null); setNoteError(false); setReturning(true); }}
+        onApprove={() => { setApproveFindings([]); setConfirmApprove(true); }}
+        onReturn={() => { setReturnJob(null); setNoteError(false); setReturnFindings([newFinding()]); setReturning(true); }}
       />
 
       <Modal
@@ -231,9 +241,18 @@ export function QualityCheckPage() {
         closeLabel={messages.closeDialog}
         onClose={() => { if (!busy) setConfirmApprove(false); }}
       >
-        <DialogActions>
+        <FindingsEditor
+          label={t.approveFindingsLabel}
+          hint={t.approveFindingsHint}
+          findings={approveFindings}
+          onChange={setApproveFindings}
+          catalogJobs={openReview?.catalogJobs ?? []}
+          disabled={busy !== null}
+        />
+        {actionError && confirmApprove ? <InlineAlert className="mt-2">{actionError}</InlineAlert> : null}
+        <DialogActions className="mt-4">
           <Button variant="outline" disabled={busy !== null} onClick={() => setConfirmApprove(false)}>{t.back}</Button>
-          <Button disabled={busy !== null} onClick={() => openItem && void run(openItem, 'approve')} data-testid="qc-confirm-approve">
+          <Button disabled={busy !== null} onClick={() => openItem && void run(openItem, 'approve', sendable(approveFindings).length ? { findings: sendable(approveFindings) } : undefined)} data-testid="qc-confirm-approve">
             <CheckCheck aria-hidden="true" />{t.approve}
           </Button>
         </DialogActions>
@@ -277,15 +296,26 @@ export function QualityCheckPage() {
           aria-describedby={noteError ? 'qc-return-note-error' : undefined}
           onChange={(event) => { setNote(event.target.value); setNoteError(false); }}
         />
-        {noteError ? <p id="qc-return-note-error" className="mt-2 text-sm text-destructive-text" role="alert">{t.returnNoteRequired}</p> : null}
+        <div className="mt-4">
+          <FindingsEditor
+            label={t.findingsLabel}
+            hint={t.findingsHint}
+            findings={returnFindings}
+            onChange={(next) => { setReturnFindings(next); setNoteError(false); }}
+            catalogJobs={openReview?.catalogJobs ?? []}
+            disabled={busy !== null}
+          />
+        </div>
+        {noteError ? <p id="qc-return-note-error" className="mt-2 text-sm text-destructive-text" role="alert">{t.returnNeedsSomething}</p> : null}
         {actionError && returning ? <InlineAlert className="mt-2">{actionError}</InlineAlert> : null}
         <DialogActions className="mt-4">
           <Button variant="outline" disabled={busy !== null} onClick={() => setReturning(false)}>{t.back}</Button>
           <Button
             disabled={busy !== null}
             onClick={() => {
-              if (!note.trim()) { setNoteError(true); return; }
-              if (openItem) void run(openItem, 'return', { notes: note.trim(), ...(returnJob && returnJob !== OTHER ? { jobId: returnJob } : {}) });
+              const findings = sendable(returnFindings);
+              if (!note.trim() && !findings.length) { setNoteError(true); return; }
+              if (openItem) void run(openItem, 'return', { ...(note.trim() ? { notes: note.trim() } : {}), ...(returnJob && returnJob !== OTHER ? { jobId: returnJob } : {}), ...(findings.length ? { findings } : {}) });
             }}
           >
             <Undo2 aria-hidden="true" />{t.returnConfirm}
@@ -293,6 +323,58 @@ export function QualityCheckPage() {
         </DialogActions>
       </Modal>
     </div>
+  );
+}
+
+/**
+ * D46 / SQ-3: what Safety found, one row per thing: the text, and the catalog Job when Safety knows it. The Manager
+ * turns each one into work. Never shows or sends who wrote it to the Shop.
+ */
+function FindingsEditor({ label, hint, findings, onChange, catalogJobs, disabled }: {
+  label: string;
+  hint: string;
+  findings: FindingDraft[];
+  onChange: (next: FindingDraft[]) => void;
+  catalogJobs: Array<{ id: string; displayName: string; categoryName: string }>;
+  disabled: boolean;
+}) {
+  const { messages } = useShopLocale();
+  const t = messages.qc;
+  const categories = [...new Set(catalogJobs.map((job) => job.categoryName))];
+  const update = (key: string, patch: Partial<FindingDraft>) => onChange(findings.map((finding) => (finding.key === key ? { ...finding, ...patch } : finding)));
+  return (
+    <fieldset className="space-y-2" data-testid="qc-findings">
+      <legend className="text-sm font-medium">{label} <span className="font-normal text-muted-foreground">{t.optional}</span></legend>
+      <p className="text-xs text-muted-foreground">{hint}</p>
+      {findings.map((finding, index) => (
+        <div key={finding.key} className="space-y-1.5 rounded-lg border p-2" data-testid="qc-finding">
+          <div className="flex items-start gap-2">
+            <Input
+              aria-label={`${label} ${index + 1}`}
+              value={finding.text}
+              placeholder={t.findingPlaceholder}
+              disabled={disabled}
+              maxLength={300}
+              onChange={(event) => update(finding.key, { text: event.target.value })}
+            />
+            <Button type="button" variant="ghost" size="sm" aria-label={t.removeFinding} disabled={disabled} onClick={() => onChange(findings.filter((item) => item.key !== finding.key))}>
+              <X aria-hidden="true" />
+            </Button>
+          </div>
+          <Select aria-label={`${t.findingJob} ${index + 1}`} value={finding.catalogJobId} disabled={disabled} onChange={(event) => update(finding.key, { catalogJobId: event.target.value })}>
+            <option value="">{t.findingJob}: {t.findingNoJob}</option>
+            {categories.map((category) => (
+              <optgroup key={category} label={category}>
+                {catalogJobs.filter((job) => job.categoryName === category).map((job) => <option key={job.id} value={job.id}>{job.displayName}</option>)}
+              </optgroup>
+            ))}
+          </Select>
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" disabled={disabled || findings.length >= 10} onClick={() => onChange([...findings, newFinding()])}>
+        <Plus aria-hidden="true" />{t.addFinding}
+      </Button>
+    </fieldset>
   );
 }
 
@@ -530,7 +612,61 @@ function ReviewBody({ review }: { review: QualityCheckReview }) {
           {t.inspection[review.inspection.outcome]}
           {review.inspection.recordedAt ? <span className="text-xs text-muted-foreground">· {when(review.inspection.recordedAt)}</span> : null}
         </p>
+        {/* D46 / SQ-2: the sheet itself — what the inspector found, the tires and the notes (read only). */}
+        {review.inspection.sheet ? (
+          <div className="space-y-3 border-t px-4 py-3 text-sm" data-testid="qc-inspection-sheet">
+            <p className="text-xs text-muted-foreground">{t.inspectionBy(review.inspection.sheet.inspectedBy.name)}</p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.inspectionDefects}</p>
+              {review.inspection.sheet.items.some((item) => item.result === 'defect') ? (
+                <ul className="mt-1 space-y-1.5">
+                  {review.inspection.sheet.items.filter((item) => item.result === 'defect').map((item) => (
+                    <li key={item.id}>
+                      <span className="font-medium">{item.label}</span>
+                      {item.catalogJobName ? <span className="text-muted-foreground"> → {item.catalogJobName}</span> : null}
+                      {item.addedLater ? <span className="text-xs text-muted-foreground"> · {t.inspectionAddedLater}</span> : null}
+                      {item.note ? <span className="block text-muted-foreground">“{item.note}”</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="mt-1 text-muted-foreground">{t.inspectionNoDefects}</p>}
+            </div>
+            {review.inspection.sheet.tires.some((tire) => tire.status !== 'ok') ? (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.inspectionTires}</p>
+                <ul className="mt-1 space-y-1">
+                  {review.inspection.sheet.tires.filter((tire) => tire.status !== 'ok').map((tire) => (
+                    <li key={tire.position} className="flex justify-between gap-2">
+                      <span className="font-medium">{tire.position}</span>
+                      <span className={cn('tabular-nums', tire.status === 'fix' ? 'text-destructive-text' : 'text-warning-foreground dark:text-warning')}>{tire.psi} PSI · {tire.tread}/32</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {review.inspection.sheet.notes ? (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.inspectionNotes}</p>
+                <p className="mt-1">{review.inspection.sheet.notes}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </SectionCard>
+
+      {/* D46 / SQ-3: what Safety already found on this visit. */}
+      {review.findings?.length ? (
+        <SectionCard title={t.previousFindings} count={review.findings.length}>
+          <ul className="divide-y text-sm" data-testid="qc-previous-findings">
+            {review.findings.map((finding) => (
+              <li key={finding.id} className="px-4 py-2.5">
+                “{finding.text}”
+                {finding.job ? <span className="text-muted-foreground"> → {finding.job}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      ) : null}
 
       {review.blockers.length ? (
         <SectionCard title={t.blockersSection} count={review.blockers.length}>

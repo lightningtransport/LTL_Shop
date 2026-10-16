@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 171 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 176 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -145,6 +145,11 @@ PASA 171 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A125 | Al completar el WO, la parte del PM sale del estante y el aceite se cobra; reabrir lo deshace | PASA |
 | A126 | Una parte del PM que no está en el estante no se cobra; sin precio de aceite, no hay cargo de aceite | PASA |
 | A127 | El precio del aceite empieza hoy o después, uno por día; mecánicos y Safety no lo ven | PASA |
+| A128 | Tomar, devolver y aprobar: el Manager y el mecánico ven "Safety", nunca la persona; Safety sí la ve | PASA |
+| A129 | La revisión trae la hoja de inspección: defectos con su nota, llantas a vigilar y notas; sin hoja, nada | PASA |
+| A130 | Devolver con dos hallazgos: uno entra como Job por Add work, el otro se suma a un Job abierto; el mecánico lo lee | PASA |
+| A131 | Aprobar con un hallazgo que no frena: el camión queda listo y el hallazgo espera al Manager; descartarlo pide motivo | PASA |
+| A132 | Un hallazgo pide texto; un Job sugerido tiene que existir; devolver sin nota ni hallazgo, no | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |
@@ -154,7 +159,7 @@ PASA 171 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | E7 | Un mecánico con trabajo en dos Trucks: su reloj corre en uno solo; Start en el segundo cierra el del primero ("cambio de camión") y al volver toca Continue (D21) | PASA |
 | E8 | Quitar o cambiar el dueño de un Job en curso detiene el tiempo de ese mecánico | PASA |
 | E9 | Asignar a quien no corresponde | PASA |
-| E9b | Solo una persona de Safety puede ser dueño del Quality Check (D19) | PASA |
+| E9b | El Quality Check no se asigna: Safety lo toma de su cola (D19, D46) | PASA |
 | E10 | Bloqueo: motivos que no son bloqueo, Job ajeno, Job terminado | PASA |
 | E11 | PM: millaje menor, salto grande, terminar sin millaje o sin partes (D10) | PASA |
 | E12 | Agregar trabajo a un Truck sin WO abierto crea el WO completo | PASA |
@@ -168,7 +173,7 @@ PASA 171 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | QC2 | Tomar y aprobar: el primero gana; aprobar deja el camión listo para cerrar | PASA |
 | QC3 | Devolver con nota: el Manager lo ve, agrega el trabajo y el camión vuelve a Safety | PASA |
 | QC4 | Safety no puede hacer nada más; el motivo "Devuelto por Safety" es solo suyo; un mecánico no entra a la lista de Safety | PASA |
-| QC5 | El Manager conserva "Mark QC complete" como respaldo, y puede dar el QC a alguien de Safety | PASA |
+| QC5 | El Manager conserva "Mark QC complete" como respaldo; el QC no se asigna, Safety lo toma (D46) | PASA |
 | QC6 | Let go: Safety suelta el camión que tomó y la otra persona lo puede tomar (D-QC2) | PASA |
 | QC7 | Revisión del camión: qué se hizo, con quién, cuándo y la nota; el PM; solo para camiones de la lista (Q2) | PASA |
 | QC8 | Devolver diciendo qué Job falló: el Manager lo lee al principio de la nota (D-QC3) | PASA |

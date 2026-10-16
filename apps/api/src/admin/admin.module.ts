@@ -22,10 +22,11 @@ import { PeopleAdminService } from './people-admin.service';
 import { ShopWorkflowService } from './shop-workflow.service';
 import { TrucksAdminService } from './trucks-admin.service';
 import { TruckSamsaraService } from './truck-samsara.service';
+import { QcFindingsService } from './qc-findings.service';
 
 @Module({
   imports: [AuthModule, TrucksModule, ActivityLogModule, WorkOrdersModule],
   controllers: [AdminController, InspectionsController, SamsaraSyncController],
-  providers: [AdminService, YardOperationsService, YardWorkPlanService, YardDataBoundaryService, SamsaraPairingService, SamsaraSyncService, TruckFaultsService, SamsaraFaultJobsService, SystemAdminWritesService, ShopWorkflowService, CatalogAdminService, PeopleAdminService, CustomJobsReviewService, InspectionService, TrucksAdminService, TruckSamsaraService],
+  providers: [AdminService, YardOperationsService, YardWorkPlanService, YardDataBoundaryService, SamsaraPairingService, SamsaraSyncService, TruckFaultsService, SamsaraFaultJobsService, SystemAdminWritesService, ShopWorkflowService, CatalogAdminService, PeopleAdminService, CustomJobsReviewService, InspectionService, TrucksAdminService, TruckSamsaraService, QcFindingsService],
 })
 export class AdminModule {}

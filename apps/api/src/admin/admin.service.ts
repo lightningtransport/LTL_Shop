@@ -87,6 +87,7 @@ import { getShopDashboardWindows } from './admin-time';
 import { syncWorkOrderLabor } from '../parts-costs/labor-ledger';
 import { syncWorkOrderPmCharges } from '../parts-costs/pm-charges';
 import { installedTires, suggestedSizes, tireChangeInclude, toJobTireDto } from '../parts-costs/tire-changes';
+import { openQcFindingsForDashboard, qcFindingInclude, toQcFindingDto } from './qc-findings.service';
 
 const ATTENTION_LIMIT = 8;
 // D1 / UX-5-002 (stage 3): the Dashboard queue lists everything that waits on the Manager. A shop has
@@ -211,6 +212,8 @@ const summaryInclude = {
 
 const detailInclude = {
   ...summaryInclude,
+  // D46 / SQ-3: what Safety found at the Quality Check.
+  qcFindings: { include: qcFindingInclude, orderBy: { createdAt: 'asc' as const } },
   createdBy: { select: { id: true, name: true } },
   completedBy: { select: { id: true, name: true } },
   jobs: {
@@ -396,6 +399,8 @@ export class AdminService {
         this.yard?.countReadyToGoTrucks().then((count) => count ?? 0) ?? Promise.resolve(0),
         this.getDashboardQueue(openWhere),
       ]);
+    // D46 / SQ-3: Safety findings still waiting for the Manager.
+    const openQcFindings = await openQcFindingsForDashboard(this.prisma);
 
     return {
       generatedAt: now.toISOString(),
@@ -420,6 +425,7 @@ export class AdminService {
         // Stage 8: the Dashboard row links to the Truck.
         truckId: request.workOrder.truck.id,
       })),
+      openQcFindings,
     };
   }
 
@@ -837,6 +843,8 @@ export class AdminService {
     const isPmJob = isPmCategory(job.category.name);
     // LTR-185 / D19: the Quality Check belongs to Safety, who is not on the team either.
     const isQcJob = classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey) === WorkPlanJobLane.QUALITY_CHECK;
+    // D46 / SQ-1: the Quality Check is never assigned; Safety takes it from their queue (the Manager does it from /qc as backup).
+    if (isQcJob) throw new BadRequestException({ code: 'QC_ASSIGN_NOT_ALLOWED', message: 'Safety takes the Quality Check from their queue; it is not assigned.' });
     if (isPmJob && (job.status !== JobStatus.to_do || job.startedAt)) {
       throw new BadRequestException('A started or finished PM job cannot be reassigned');
     }
@@ -2623,6 +2631,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     // LTR-94: live totals from persisted segments (open session/pause counted to now).
     ...liveTotals(row),
     jobs,
+    qcFindings: (row.qcFindings ?? []).map(toQcFindingDto),
     laborSessions: row.sessions.map((session) => ({
       id: session.id,
       startedAt: session.startedAt.toISOString(),

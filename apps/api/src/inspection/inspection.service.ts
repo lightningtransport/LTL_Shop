@@ -61,7 +61,7 @@ type Tx = Prisma.TransactionClient;
 const checklistInclude = { catalogJob: { select: { id: true, displayName: true, status: true, category: { select: { name: true } } } } } as const;
 type ChecklistRow = Prisma.InspectionChecklistItemGetPayload<{ include: typeof checklistInclude }>;
 
-const inspectionInclude = {
+export const inspectionInclude = {
   inspectedBy: { select: { id: true, name: true, role: true } },
   workOrder: { select: { id: true, status: true } },
   items: {
@@ -70,7 +70,7 @@ const inspectionInclude = {
   },
   tires: true,
 } satisfies Prisma.TruckInspectionInclude;
-type InspectionRow = Prisma.TruckInspectionGetPayload<{ include: typeof inspectionInclude }>;
+export type InspectionRow = Prisma.TruckInspectionGetPayload<{ include: typeof inspectionInclude }>;
 
 /**
  * D41: the inspection sheet. The Manager always inspects; a Standard or PM mechanic with "Can inspect trucks"
@@ -576,53 +576,8 @@ export class InspectionService {
 
   // ───────────────────────── Helpers ─────────────────────────
 
-  private async toInspectionDto(row: InspectionRow): Promise<TruckInspectionDto> {
-    const sources = await this.prisma.workOrderJobSource.findMany({
-      where: { OR: [{ inspectionItemId: { in: row.items.map((item) => item.id) } }, { tireReadingId: { in: row.tires.map((tire) => tire.id) } }] },
-      orderBy: { createdAt: 'asc' },
-      include: { workOrderJob: { select: { id: true, displayName: true, status: true, assignedMechanic: { select: { name: true } } } } },
-    });
-    const itemById = new Map(row.items.map((item) => [item.id, item]));
-    const tireById = new Map(row.tires.map((tire) => [tire.id, tire]));
-    const jobs = new Map<string, TruckInspectionDto['jobs'][number]>();
-    for (const source of sources) {
-      const job = source.workOrderJob;
-      const entry = jobs.get(job.id) ?? { jobId: job.id, displayName: job.displayName, status: job.status, assignedMechanicName: job.assignedMechanic?.name ?? null, sources: [] };
-      const item = source.inspectionItemId ? itemById.get(source.inspectionItemId) : undefined;
-      const tire = source.tireReadingId ? tireById.get(source.tireReadingId) : undefined;
-      entry.sources.push({
-        kind: source.kind as WorkOrderJobSourceKind,
-        label: item?.label ?? (tire ? `Tire ${tire.position}` : ''),
-        note: source.note,
-        addedLater: Boolean(item?.addedLaterAt),
-      });
-      jobs.set(job.id, entry);
-    }
-    const order = TIRE_POSITIONS as readonly string[];
-    return {
-      id: row.id,
-      inspectedAt: row.inspectedAt.toISOString(),
-      inspectedBy: { id: row.inspectedBy.id, name: row.inspectedBy.name, isMechanic: row.inspectedBy.role === 'mechanic' },
-      workOrderId: row.workOrderId,
-      notes: row.notes,
-      items: row.items.map((item) => ({
-        id: item.id,
-        checklistItemId: item.checklistItemId,
-        section: item.section as InspectionSection,
-        label: item.label,
-        result: item.result as InspectionItemResult,
-        note: item.note,
-        catalogJobName: item.catalogJob?.displayName ?? null,
-        catalogJobId: item.catalogJobId,
-        catalogCategoryName: item.catalogJob?.category.name ?? null,
-        workflowStepKey: item.workflowStepKey,
-        addedLater: item.addedLaterAt ? { at: item.addedLaterAt.toISOString(), byName: item.addedLaterBy?.name ?? null } : null,
-      })),
-      tires: [...row.tires].sort((a, b) => order.indexOf(a.position) - order.indexOf(b.position)).map(toTireDto),
-      jobs: [...jobs.values()],
-      issuesFound: sources.length > 0,
-      workOrderOpen: Boolean(row.workOrder && (OPEN as string[]).includes(row.workOrder.status)),
-    };
+  private toInspectionDto(row: InspectionRow): Promise<TruckInspectionDto> {
+    return buildInspectionDto(this.prisma, row);
   }
 
   private async limits(client: Tx | PrismaService): Promise<InspectionTireLimits> {
@@ -744,4 +699,54 @@ function translatePlanError(error: unknown) {
       : new ConflictException({ code: 'INSPECTION_CHECK_WITHOUT_JOB', message: 'A check points to no Job. Fix it in Setup → Inspection checklist.' });
   }
   return error;
+}
+
+/** D41: a saved sheet as the screens read it. D46 / SQ-2: Safety's review reads it too. */
+export async function buildInspectionDto(prisma: Pick<PrismaService, 'workOrderJobSource'>, row: InspectionRow): Promise<TruckInspectionDto> {
+  const sources = await prisma.workOrderJobSource.findMany({
+    where: { OR: [{ inspectionItemId: { in: row.items.map((item) => item.id) } }, { tireReadingId: { in: row.tires.map((tire) => tire.id) } }] },
+    orderBy: { createdAt: 'asc' },
+    include: { workOrderJob: { select: { id: true, displayName: true, status: true, assignedMechanic: { select: { name: true } } } } },
+  });
+  const itemById = new Map(row.items.map((item) => [item.id, item]));
+  const tireById = new Map(row.tires.map((tire) => [tire.id, tire]));
+  const jobs = new Map<string, TruckInspectionDto['jobs'][number]>();
+  for (const source of sources) {
+    const job = source.workOrderJob;
+    const entry = jobs.get(job.id) ?? { jobId: job.id, displayName: job.displayName, status: job.status, assignedMechanicName: job.assignedMechanic?.name ?? null, sources: [] };
+    const item = source.inspectionItemId ? itemById.get(source.inspectionItemId) : undefined;
+    const tire = source.tireReadingId ? tireById.get(source.tireReadingId) : undefined;
+    entry.sources.push({
+      kind: source.kind as WorkOrderJobSourceKind,
+      label: item?.label ?? (tire ? `Tire ${tire.position}` : ''),
+      note: source.note,
+      addedLater: Boolean(item?.addedLaterAt),
+    });
+    jobs.set(job.id, entry);
+  }
+  const order = TIRE_POSITIONS as readonly string[];
+  return {
+    id: row.id,
+    inspectedAt: row.inspectedAt.toISOString(),
+    inspectedBy: { id: row.inspectedBy.id, name: row.inspectedBy.name, isMechanic: row.inspectedBy.role === 'mechanic' },
+    workOrderId: row.workOrderId,
+    notes: row.notes,
+    items: row.items.map((item) => ({
+      id: item.id,
+      checklistItemId: item.checklistItemId,
+      section: item.section as InspectionSection,
+      label: item.label,
+      result: item.result as InspectionItemResult,
+      note: item.note,
+      catalogJobName: item.catalogJob?.displayName ?? null,
+      catalogJobId: item.catalogJobId,
+      catalogCategoryName: item.catalogJob?.category.name ?? null,
+      workflowStepKey: item.workflowStepKey,
+      addedLater: item.addedLaterAt ? { at: item.addedLaterAt.toISOString(), byName: item.addedLaterBy?.name ?? null } : null,
+    })),
+    tires: [...row.tires].sort((a, b) => order.indexOf(a.position) - order.indexOf(b.position)).map(toTireDto),
+    jobs: [...jobs.values()],
+    issuesFound: sources.length > 0,
+    workOrderOpen: Boolean(row.workOrder && (OPEN as string[]).includes(row.workOrder.status)),
+  };
 }
