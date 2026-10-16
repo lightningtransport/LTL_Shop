@@ -165,23 +165,51 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByTestId('yard-lanes').getByRole('link', { name: 'Y-108', exact: true })).toBeVisible();
   });
 
-  test('the board opens full screen and Esc or the button brings it back (D33)', async ({ page }) => {
+  test('Full screen opens the board alone in a new tab with the same filters; the app stays here (LTR-228)', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1024 });
-    const panel = page.locator('#yard-panel-shop');
+    await page.getByTestId('yard-quick-high').click();
+    await expect(page).toHaveURL(/priority=/);
+    const popupPromise = page.context().waitForEvent('page');
     await page.getByTestId('kanban-fullscreen').click();
-    await expect(panel).toHaveAttribute('data-fullscreen', 'true');
-    // The board covers the whole window (a fixed layer over the menu and the header).
+    const board = await popupPromise;
+    await board.waitForLoadState();
+    expect(board.url()).toMatch(/display=board/);
+    expect(board.url()).toMatch(/priority=/);
+    // The first tab keeps the app as it was.
+    await expect(page.locator('#yard-panel-shop')).not.toHaveAttribute('data-board-view', 'true');
+    // The new tab: only the board, covering the whole window (no menu), with search and filters working.
+    await board.setViewportSize({ width: 1440, height: 1024 });
+    const panel = board.locator('#yard-panel-shop');
+    await expect(panel).toHaveAttribute('data-board-view', 'true');
     expect(await panel.boundingBox()).toMatchObject({ x: 0, y: 0, width: 1440 });
-    await expect(page.getByTestId('kanban-fullscreen')).toHaveText('Exit full screen');
-    // Search and quick filters keep working in full screen.
-    await expect(page.getByTestId('yard-quick-high')).toBeVisible();
-    await expect(page.getByTestId('yard-lanes').getByRole('link', { name: 'Y-101', exact: true })).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(panel).not.toHaveAttribute('data-fullscreen', 'true');
-    await page.getByTestId('kanban-fullscreen').click();
-    await expect(panel).toHaveAttribute('data-fullscreen', 'true');
-    await page.getByTestId('kanban-fullscreen').click();
-    await expect(panel).not.toHaveAttribute('data-fullscreen', 'true');
+    await expect(board.getByTestId('yard-quick-high')).toHaveAttribute('aria-pressed', 'true');
+    await expect(board.getByTestId('kanban-fullscreen')).toHaveCount(0);
+    await board.getByTestId('yard-quick-all').click();
+    await expect(board).toHaveURL(/display=board/);
+    await expect(board.getByTestId('yard-lanes').getByRole('link', { name: 'Y-101', exact: true })).toBeVisible();
+    await board.close();
+  });
+
+  test('a mouse drags the empty board sideways; a drag that starts on a card does not (LTR-227)', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1024 });
+    const lanes = page.getByTestId('yard-lanes');
+    await expect(lanes.getByRole('link', { name: 'Y-101', exact: true })).toBeVisible();
+    const scrollLeft = () => lanes.evaluate((element) => element.scrollLeft);
+    expect(await lanes.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+    // A drag from a card leaves the board where it is.
+    const card = await lanes.getByTestId('yard-truck-card').first().boundingBox();
+    await page.mouse.move(card!.x + 20, card!.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(card!.x - 200, card!.y + 10, { steps: 5 });
+    await page.mouse.up();
+    expect(await scrollLeft()).toBe(0);
+    // A drag from an empty list's background moves the board left.
+    const empty = await lanes.getByText('No trucks', { exact: true }).first().boundingBox();
+    await page.mouse.move(empty!.x + 40, empty!.y + 40);
+    await page.mouse.down();
+    await page.mouse.move(empty!.x - 260, empty!.y + 40, { steps: 8 });
+    await page.mouse.up();
+    expect(await scrollLeft()).toBeGreaterThan(200);
   });
 
   test('cards: Truck number, one alert line, no repeated phase badge (UX-4-005)', async ({ page }) => {
