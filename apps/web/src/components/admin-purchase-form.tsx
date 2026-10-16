@@ -45,7 +45,8 @@ const OTHER = '__other__';
 const ADD_VENDOR = '__add_vendor__';
 
 /** `costFrom`: where the unit cost was filled from when the part was picked (shown until the cost is changed). */
-type LineState = { partId: string; description: string; quantity: string; unitCost: string; truckId: string; jobId?: string; costFrom?: 'last' | 'reference' | null };
+/** `destination`: for a line without a truck; '' = a catalog part goes to stock, an "Other" is a Shop supply (D45 / ST-3). */
+type LineState = { partId: string; description: string; quantity: string; unitCost: string; truckId: string; jobId?: string; destination?: '' | 'stock' | 'shop_supplies'; costFrom?: 'last' | 'reference' | null };
 type FormState = {
   vendorId: string;
   invoiceNumber: string;
@@ -58,6 +59,12 @@ type FormState = {
   notes: string;
 };
 type FileState = { id: string | null; name: string; percent: number; error: string | null };
+
+/** D45 / ST-3: a catalog part without a truck goes to stock unless the Manager says Shop supplies; an "Other", the reverse. */
+function lineDestination(line: LineState): 'stock' | 'shop_supplies' {
+  if (line.destination) return line.destination;
+  return line.partId && line.partId !== OTHER ? 'stock' : 'shop_supplies';
+}
 
 const today = () => {
   const now = new Date();
@@ -84,6 +91,7 @@ function initialState(purchase: AdminPurchaseDetailDto | null, presetTruckId?: s
       unitCost: centsToInput(line.unitCostCents),
       truckId: line.truck?.id ?? '',
       jobId: line.job?.id ?? '',
+      destination: line.destination === 'truck' ? '' : line.destination,
     })),
     tax: purchase.taxCents ? centsToInput(purchase.taxCents) : '',
     freight: purchase.freightCents ? centsToInput(purchase.freightCents) : '',
@@ -201,6 +209,8 @@ export function PurchaseForm({
       needsPart,
       total: hundredths !== undefined && typeof unit === 'number' ? lineTotalCents(hundredths, unit) : null,
       truckId: (state.split ? line.truckId : state.truckId) || null,
+      // D45 / ST-3: where a line without a truck goes.
+      destination: lineDestination(line),
     };
   });
   const tax = parseMoneyToCents(state.tax);
@@ -210,7 +220,8 @@ export function PurchaseForm({
   const total = subtotal + extra;
   const shares = truckAmounts(computed.map((line) => ({ truckId: line.truckId, lineTotalCents: line.total ?? 0 })), extra);
   const toTrucks = shares.filter((row) => row.truckId).reduce((sum, row) => sum + row.amountCents, 0);
-  const linesValid = computed.every((line) => !line.needsPart && line.hundredths !== undefined && typeof line.unit === 'number');
+  const stockNeedsPart = (index: number) => !computed[index].truckId && computed[index].destination === 'stock' && state.lines[index].partId === OTHER;
+  const linesValid = computed.every((line, index) => !line.needsPart && line.hundredths !== undefined && typeof line.unit === 'number' && !stockNeedsPart(index));
   const moneyValid = tax !== undefined && freight !== undefined;
   const uploading = Boolean(file && !file.id && !file.error);
   const valid = Boolean(state.vendorId && state.invoiceNumber.trim() && state.invoiceDate && linesValid && moneyValid);
@@ -225,6 +236,7 @@ export function PurchaseForm({
         ...(line.needsPart ? [{ label: fillPlaceholders(messages.pcMissingLinePart, { n }), fieldId: state.lines[index].partId === OTHER ? `line-description-${index}` : `line-part-${index}` }] : []),
         ...(line.hundredths === undefined ? [{ label: fillPlaceholders(messages.pcMissingLineQty, { n }), fieldId: `line-qty-${index}` }] : []),
         ...(typeof line.unit !== 'number' ? [{ label: fillPlaceholders(messages.pcMissingLineCost, { n }), fieldId: `line-cost-${index}` }] : []),
+        ...(stockNeedsPart(index) ? [{ label: messages.pcLineStockNeedsPart, fieldId: `line-goes-${index}` }] : []),
       ];
     }),
     ...(tax === undefined ? [{ label: messages.pcMissingTax, fieldId: 'purchase-tax' }] : []),
@@ -296,6 +308,7 @@ export function PurchaseForm({
         unitCostCents: computed[index].unit as number,
         truckId: computed[index].truckId,
         workOrderJobId: computed[index].truckId && line.jobId ? line.jobId : null,
+        destination: computed[index].truckId ? 'truck' : computed[index].destination,
       })),
     };
     try {
@@ -472,6 +485,16 @@ export function PurchaseForm({
                       <option value="">{messages.pcNoTruckOption}</option>
                       {formData.trucks.map((truck) => <option key={truck.id} value={truck.id}>{fillPlaceholders(messages.pcTruckLabel, { truck: truck.truckNumber })}</option>)}
                     </Select>
+                  ) : null}
+                  {!row.truckId ? (
+                    <div className="space-y-1">
+                      <Label htmlFor={`line-goes-${index}`} className="text-xs">{messages.pcLineGoesTo}</Label>
+                      <Select id={`line-goes-${index}`} value={row.destination} onChange={(event) => setLine(index, { destination: event.target.value as 'stock' | 'shop_supplies' })} disabled={busy} data-testid="line-goes-to" aria-invalid={stockNeedsPart(index) || undefined}>
+                        <option value="stock">{messages.pcLineToStock}</option>
+                        <option value="shop_supplies">{messages.pcLineShopSupplies}</option>
+                      </Select>
+                      {stockNeedsPart(index) ? <p className="text-xs text-destructive-text">{messages.pcLineStockNeedsPart}</p> : null}
+                    </div>
                   ) : null}
                   {row.truckId ? (
                     <LineJobSelect

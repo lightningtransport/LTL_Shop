@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 160 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 165 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -134,6 +134,11 @@ PASA 160 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A114 | Un repuesto y una llanta (medida, New o Recap) entran al catálogo; el PM no los ve ni los acepta | PASA |
 | A115 | Un número de parte es de una sola parte; el Manager agrega categorías; mecánicos y Safety no | PASA |
 | A116 | Una línea "Other" pasa al catálogo y la siguiente compra la usa con su último precio | PASA |
+| A117 | Una línea "To stock" entra al stock con su parte del impuesto; "Shop supplies" no; un "Other" no entra | PASA |
+| A118 | El Manager cuenta el estante: lo que sobra entra a su costo, lo que falta sale al promedio | PASA |
+| A119 | Sale a un Job al costo promedio: cuesta al camión en esa WO; el Job la muestra; sin stock o Job cancelado, no | PASA |
+| A120 | Return to stock: vuelve al mismo costo, el camión recibe la reversa; una sola vez | PASA |
+| A121 | Una compra cuyo stock ya salió no se anula ni se corrige a menos; devuelto, sí | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

@@ -229,6 +229,9 @@ export const INVOICE_FILE_MAX_BYTES = 10 * 1024 * 1024;
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)), 'Invalid date');
 
+export const PURCHASE_LINE_DESTINATIONS = ['truck', 'stock', 'shop_supplies'] as const;
+export type PurchaseLineDestination = (typeof PURCHASE_LINE_DESTINATIONS)[number];
+
 export const adminPurchaseLineSchema = z.object({
   partId: z.string().uuid().nullable().optional(),
   /** "Other (not in catalog)": its description. With a part, the part's name is copied. */
@@ -238,8 +241,13 @@ export const adminPurchaseLineSchema = z.object({
   truckId: z.string().uuid().nullable().optional(),
   /** D45 / ST-1: the Job of the line's truck this part was bought for (optional; needs a truck). */
   workOrderJobId: z.string().uuid().nullable().optional(),
+  /** D45 / ST-3: a line without a truck goes to stock or is a Shop supply (the default). With a truck: `truck`. */
+  destination: z.enum(PURCHASE_LINE_DESTINATIONS).optional(),
 }).refine((line) => Boolean(line.partId || line.description?.trim()), { message: 'Pick a part or describe it', path: ['description'] })
-  .refine((line) => !line.workOrderJobId || Boolean(line.truckId), { message: 'Pick the truck before its Job', path: ['workOrderJobId'] });
+  .refine((line) => !line.workOrderJobId || Boolean(line.truckId), { message: 'Pick the truck before its Job', path: ['workOrderJobId'] })
+  .refine((line) => !line.truckId || !line.destination || line.destination === 'truck', { message: 'A line with a truck goes to that truck', path: ['destination'] })
+  .refine((line) => line.truckId || line.destination !== 'truck', { message: 'Pick the truck', path: ['truckId'] })
+  .refine((line) => line.destination !== 'stock' || Boolean(line.partId), { message: 'Only catalog parts go to stock', path: ['partId'] });
 
 export const adminSavePurchaseSchema = z.object({
   vendorId: z.string().uuid(),
@@ -319,6 +327,8 @@ export interface AdminPurchaseLineDto {
   truck: AdminTruckRefDto | null;
   /** D45 / ST-1: the Job of that truck the line was bought for. */
   job: AdminPurchaseJobRefDto | null;
+  /** D45 / ST-3: truck, stock or Shop supplies. */
+  destination: PurchaseLineDestination;
 }
 
 export interface AdminPurchaseJobRefDto {
@@ -707,4 +717,90 @@ export interface AdminInternalInvoiceDetailDto extends AdminInternalInvoiceSumma
   removedLines: AdminInternalInvoiceLineDto[];
   /** Draft only: movements of this truck up to the period end that are not on the invoice and not charged elsewhere. */
   availableCount: number;
+}
+
+
+// ── D45 / ST-3: the Shop's stock ───────────────────────────────────────────────────────────────────────────
+
+const quantity = z.union([z.string(), z.number()]).refine((value) => parseQuantityToHundredths(value) !== undefined, 'Quantity must be more than 0, with at most 2 decimals');
+/** A count can be 0 (nothing left on the shelf). */
+const count = z.union([z.string(), z.number()]).refine((value) => String(value).trim() === '0' || Number(value) === 0 || parseQuantityToHundredths(value) !== undefined, 'Count must be 0 or more, with at most 2 decimals');
+
+export const adminStockQuerySchema = z.object({
+  q: z.string().trim().max(120).optional(),
+  kind: z.enum(PART_KINDS).optional(),
+  low: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+});
+
+/** P25: the Manager counts the shelf; the difference enters or leaves at a cost (in: the one typed, else the average). */
+export const adminStockCountSchema = z.object({
+  partId: z.string().uuid(),
+  counted: count,
+  unitCostCents: moneyCents.nullable().optional(),
+  reason: z.string().trim().min(1).max(300),
+});
+
+export const adminStockIssueSchema = z.object({
+  partId: z.string().uuid(),
+  quantity,
+  workOrderJobId: z.string().uuid(),
+});
+
+export const adminStockReturnSchema = z.object({ reason: z.string().trim().min(1).max(300) });
+
+export type AdminStockCountInput = z.input<typeof adminStockCountSchema>;
+export type AdminStockIssueInput = z.input<typeof adminStockIssueSchema>;
+
+export interface AdminStockItemDto {
+  partId: string;
+  displayName: string;
+  partNumber: string | null;
+  categoryName: string;
+  kind: PartKind;
+  tireSize: string | null;
+  tireType: TireType | null;
+  active: boolean;
+  /** "4.00". */
+  onHand: string;
+  /** P27: the average cost of what is on hand (null when nothing is). */
+  avgCostCents: number | null;
+  valueCents: number;
+  minStock: number | null;
+  low: boolean;
+  lastMovementAt: string | null;
+}
+
+export interface AdminStockListDto {
+  items: AdminStockItemDto[];
+  totals: { valueCents: number; lowCount: number };
+}
+
+export interface AdminStockMovementDto {
+  id: string;
+  kind: 'purchase_in' | 'issue' | 'return' | 'adjust' | 'reversal';
+  quantity: string;
+  valueCents: number;
+  createdAt: string;
+  createdBy: string;
+  reason: string | null;
+  purchase: { id: string; invoiceNumber: string; vendorName: string } | null;
+  job: AdminPurchaseJobRefDto | null;
+  truck: AdminTruckRefDto | null;
+  /** An issue that went back to stock, or a purchase line that was corrected. */
+  undone: boolean;
+}
+
+export interface AdminStockPartDto {
+  item: AdminStockItemDto;
+  movements: AdminStockMovementDto[];
+}
+
+/** On the Work Order: what left the stock for a Job. The value goes to Manager and System Admin only. */
+export interface AdminJobStockPartDto {
+  movementId: string;
+  partId: string;
+  description: string;
+  quantity: string;
+  returned: boolean;
+  valueCents?: number;
 }

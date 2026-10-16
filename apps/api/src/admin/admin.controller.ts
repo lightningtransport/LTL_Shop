@@ -91,10 +91,11 @@ export class AdminController {
     const { costs: _costs, ...rest } = detail;
     return {
       ...rest,
-      jobs: detail.jobs.map(({ outsideInvoices: _invoices, parts, ...job }) => ({
+      jobs: detail.jobs.map(({ outsideInvoices: _invoices, parts, stockParts, ...job }) => ({
         ...job,
-        // D45 / ST-1: what was bought for the Job, without its cost.
+        // D45 / ST-1, ST-3: what was bought or taken from stock for the Job, without its cost.
         parts: parts?.map(({ lineTotalCents: _cost, ...part }) => part),
+        stockParts: stockParts?.map(({ valueCents: _value, ...part }) => part),
       })),
     };
   }

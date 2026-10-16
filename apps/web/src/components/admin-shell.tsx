@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Building2, ChevronLeft, Clock, FileText, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Receipt, Satellite, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
+import { Boxes, Building2, ChevronLeft, Clock, FileText, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Receipt, Satellite, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { AdminNavLink } from './admin-nav-link';
@@ -33,6 +33,8 @@ const navigationGroups = [
       { message: 'pcPurchases', icon: Receipt, href: '/admin/parts/purchases' },
       { message: 'pcOutsideRepairs', icon: Building2, href: '/admin/parts/outside-repairs' },
       { message: 'pcInvoices', icon: FileText, href: '/admin/parts/internal-invoices' },
+      // D45 / ST-3: what the Shop has on the shelf.
+      { message: 'pcStock', icon: Boxes, href: '/admin/parts/stock' },
       { message: 'pcParts', icon: Package, href: '/admin/parts/catalog' },
       { message: 'pcVendors', icon: Store, href: '/admin/parts/vendors' },
     ],
@@ -70,6 +72,7 @@ const FULL_WIDTH_PATHS = new Set([
   '/admin/parts/outside-repairs',
   '/admin/parts/internal-invoices',
   '/admin/parts/catalog',
+  '/admin/parts/stock',
   '/admin/parts/vendors',
   '/admin/mechanics',
   '/admin/catalog',

@@ -21,7 +21,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
-| Parts, Costs & Finance | LTR-220 (Epic), LTR-223–226 | Repuestos, stock y llantas (D45; ST-1 y ST-2 hechas, LTR-221 y LTR-222): ST-3 stock, ST-4 llantas desde la inspección, ST-5 PM, ST-6 leer facturas | — |
+| Parts, Costs & Finance | LTR-220 (Epic), LTR-224–226 | Repuestos, stock y llantas (D45; ST-1 a ST-3 hechas, LTR-221–223): ST-4 llantas desde la inspección, ST-5 PM, ST-6 leer facturas | — |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
 | Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
 | Integraciones V3 | LTR-46, 54, 55, 56 | Integraciones en espera (Gated): contratos, geocerca, trailers | — |
@@ -29,7 +29,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 ## Preguntas abiertas
 
 En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox), **P14**
-(qué datos usa la API para terceros) y **P24–P31** (stock y llantas, D45, para Randy). P13 se cerró con D44.
+(qué datos usa la API para terceros) y **P24, P26, P28–P31** (stock y llantas, D45, para Randy; P25 y P27 cerradas). P13 se cerró con D44.
 
 ## Demo congelada (desde 2026-10-16)
 

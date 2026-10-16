@@ -33,6 +33,7 @@ type JobRow = {
   workflowStepKey?: string | null;
   sources?: Array<{ truckFault: { code: string; description: string } | null }>;
   purchaseLines?: Array<{ description: string; partNumber: string | null; quantity: { toFixed(digits: number): string } }>;
+  stockMovements?: Array<{ quantity: { abs(): { toFixed(digits: number): string } }; part: { displayName: string; partNumber: string | null } }>;
 };
 
 /** LTR-188 / D24: a Job at an external shop, as the DTOs carry it (null when in the shop). */
@@ -299,7 +300,11 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
     external: jobExternal(j),
     samsaraFaults: (j.sources ?? []).flatMap((source) => (source.truckFault ? [{ code: source.truckFault.code, description: source.truckFault.description }] : [])),
     // D45 / ST-1: what was bought for the Job, never its cost (D32).
-    parts: (j.purchaseLines ?? []).map((line) => ({ description: line.description, partNumber: line.partNumber, quantity: line.quantity.toFixed(2) })),
+    parts: [
+      ...(j.purchaseLines ?? []).map((line) => ({ description: line.description, partNumber: line.partNumber, quantity: line.quantity.toFixed(2) })),
+      // D45 / ST-3: parts taken from the stock for this Job (and not returned).
+      ...(j.stockMovements ?? []).map((movement) => ({ description: movement.part.displayName, partNumber: movement.part.partNumber, quantity: movement.quantity.abs().toFixed(2) })),
+    ],
     };
   });
   const viewerOwnsJobs = !!viewerId && wo.jobs.some((j) => jobAssigneeId(j) === viewerId);
@@ -494,6 +499,11 @@ export const workOrderDetailInclude = {
         where: { purchase: { voidedAt: null } },
         select: { description: true, partNumber: true, quantity: true },
         orderBy: [{ purchase: { invoiceDate: 'asc' as const } }, { sortOrder: 'asc' as const }],
+      },
+      stockMovements: {
+        where: { kind: 'issue' as const, reversals: { none: {} } },
+        select: { quantity: true, part: { select: { displayName: true, partNumber: true } } },
+        orderBy: { createdAt: 'asc' as const },
       },
     },
     orderBy: { addedAt: 'asc' as const },

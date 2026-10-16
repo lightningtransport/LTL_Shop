@@ -228,6 +228,12 @@ const detailInclude = {
         select: { purchaseId: true, description: true, partNumber: true, quantity: true, lineTotalCents: true, purchase: { select: { vendor: { select: { name: true } } } } },
         orderBy: [{ purchase: { invoiceDate: 'asc' as const } }, { sortOrder: 'asc' as const }],
       },
+      // D45 / ST-3: parts that left the stock for the Job (the controller drops their value for non-Managers).
+      stockMovements: {
+        where: { kind: 'issue' as const },
+        select: { id: true, partId: true, quantity: true, valueCents: true, part: { select: { displayName: true } }, reversals: { select: { id: true } } },
+        orderBy: { createdAt: 'asc' as const },
+      },
     },
     orderBy: { addedAt: 'asc' as const },
   },
@@ -2578,6 +2584,14 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       quantity: line.quantity.toFixed(2),
       vendorName: line.purchase.vendor.name,
       lineTotalCents: line.lineTotalCents,
+    })),
+    stockParts: (job.stockMovements ?? []).map((movement) => ({
+      movementId: movement.id,
+      partId: movement.partId,
+      description: movement.part.displayName,
+      quantity: movement.quantity.abs().toFixed(2),
+      returned: movement.reversals.length > 0,
+      valueCents: -movement.valueCents,
     })),
     // PCA3 (UX-10-001): the outside shop's invoice usually arrives after "Returned"; the Job keeps offering to load it.
     wentExternal: Boolean(job.externalSince) || row.activityLogs.some((entry) => entry.entityId === job.id && logAction(entry.relevantValue) === 'job_sent_external'),
