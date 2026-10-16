@@ -21,9 +21,11 @@ import {
   Users,
   XCircle,
   Boxes,
+  CircleDot,
 } from 'lucide-react';
 import { formatCents, isPmCategory, isQualityCheckJob, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
 import { JobStockDialog } from './admin-job-stock-dialog';
+import { JobTiresDialog } from './admin-job-tires-dialog';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { intlLocale } from '@/lib/shop-locale';
 import { formatAdminDate } from '@/lib/admin-format';
@@ -112,6 +114,7 @@ export function AdminJobTable({
 }) {
   const [dialog, setDialog] = useState<JobDialog | null>(null);
   const [stockJobId, setStockJobId] = useState<string | null>(null);
+  const [tiresJobId, setTiresJobId] = useState<string | null>(null);
   const [pickerJobId, setPickerJobId] = useState<string | null>(null);
   // Stage 8 (mockup): the done and cancelled group starts open.
   const [closedOpen, setClosedOpen] = useState(true);
@@ -198,6 +201,8 @@ export function AdminJobTable({
       items.push({ key: 'parts-invoice', label: messages.pcAddPartsForJob, icon: Package, testId: 'admin-wo-job-parts-invoice', href: partsInvoiceHref });
       // D45 / ST-3: take a part off the shelf for this Job (or give one back).
       if (onStockChanged) items.push({ key: 'parts-stock', label: messages.pcStockFromJob, icon: Boxes, testId: 'admin-wo-job-parts-stock', onSelect: () => setStockJobId(job.id) });
+      // D45 / ST-4: the tires the inspection proposed on this Job.
+      if (onStockChanged && job.tires?.length) items.push({ key: 'tires', label: messages.pcTiresAction, icon: CircleDot, testId: 'admin-wo-job-tires', onSelect: () => setTiresJobId(job.id) });
     }
     if (canEdit) items.push({ key: 'cancel', label: messages.cancelJobAction, icon: XCircle, destructive: true, separatorBefore: items.length > 0, onSelect: () => onJobDialog('cancel', job.id) });
 
@@ -355,6 +360,26 @@ export function AdminJobTable({
                 })}
               </p>
             ) : null}
+            {job.tires?.length ? (
+              <p className="mt-0.5" data-testid="admin-wo-job-tires-chip">
+                {(() => {
+                  const pending = job.tires.filter((tire) => tire.status === 'proposed').length;
+                  const issued = job.tires.filter((tire) => tire.status === 'issued').length;
+                  const toBuy = job.tires.filter((tire) => tire.status === 'to_buy').length;
+                  const text = pending
+                    ? fillPlaceholders(messages.pcTiresChip, { count: String(pending) })
+                    : fillPlaceholders(messages.pcTiresChipDone, { issued: String(issued), toBuy: String(toBuy) });
+                  const tone = pending || toBuy ? 'border-warning/50 bg-warning/10 text-foreground' : 'text-muted-foreground';
+                  return canSeeCosts && onStockChanged ? (
+                    <button type="button" onClick={() => setTiresJobId(job.id)} className={`tap-inline inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs hover:bg-warning/20 ${tone}`}>
+                      <CircleDot aria-hidden="true" className="size-3" />{text}
+                    </button>
+                  ) : (
+                    <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs ${tone}`}><CircleDot aria-hidden="true" className="size-3" />{text}</span>
+                  );
+                })()}
+              </p>
+            ) : null}
             {job.stockParts?.some((part) => !part.returned) ? (
               <p className="mt-0.5 flex flex-wrap gap-1" data-testid="admin-wo-job-stock-parts">
                 {job.stockParts.filter((part) => !part.returned).map((part) => {
@@ -459,6 +484,15 @@ export function AdminJobTable({
           </button>
           {closedOpen ? <ul id="admin-wo-closed-jobs" className="divide-y border-t" aria-label={closedLabel}>{closed.map(closedRow)}</ul> : null}
         </>
+      ) : null}
+      {tiresJobId && onStockChanged && data.jobs.some((job) => job.id === tiresJobId) ? (
+        <JobTiresDialog
+          job={data.jobs.find((job) => job.id === tiresJobId)!}
+          locale={locale}
+          messages={messages}
+          onClose={() => setTiresJobId(null)}
+          onChanged={onStockChanged}
+        />
       ) : null}
       {stockJobId && onStockChanged && data.jobs.some((job) => job.id === stockJobId) ? (
         <JobStockDialog

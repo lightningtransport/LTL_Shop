@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-16 (ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-16 (ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -24,7 +24,7 @@ La columna **Fila** es el número de la prueba que lo comprueba
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
 **Resultado de la auditoría (2026-09-29):** 61 comprobaciones · 59 funcionan · 0 fallan
-· 2 no aplican. Desde entonces se sumaron filas hasta A121; la cuenta al día la da
+· 2 no aplican. Desde entonces se sumaron filas hasta A124; la cuenta al día la da
 `npm run test:real --workspace=@ltl-shop/api`.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
@@ -709,6 +709,9 @@ Ver la fila E7 en HU-ME2.
 | El defecto es de limpieza (Windows, Interior o Exterior clean) | No crea Job: va como nota al paso **Detailing**, que la WO ya trae (D13) | ✅ | A82 |
 | Una llanta a más de ±20 % del objetivo o bajo el tread mínimo | Crea **Flat Repair** (presión) o **Tires** (tread) | ✅ | A82 (presión) |
 | Una llanta a ±10–20 % o con el tread cerca del mínimo | "Watch": se ve en el reporte y en Tires, sin Job | ✅ | A82 |
+| Una llanta con el tread bajo el mínimo (D45 / ST-4) | El Job Tires trae además la llanta a poner en esa posición: steer New, drive Recap. La presión sola (Flat Repair) no | ✅ | A122 |
+| El Manager confirma las llantas | Steer no puede ser recap. La que hay en el estante sale al costo promedio a ese camión en esa WO; la que no hay queda "to buy". El mecánico ve "RF · New 11R22.5", sin costo | ✅ | A123 |
+| Llega la llanta que faltaba, o se devuelve una | Se toma desde el mismo lugar; la tarjeta Tires del camión dice qué tiene montado cada posición y la próxima vez propone esa medida. Devuelta al stock, vuelve a "to buy" | ✅ | A124 |
 | Deja un Job sin dueño | El siguiente paso de hoy: "Nobody is assigned to Lights · Assign" (A3) | 👁 revisado en pantalla | — |
 | Cierra la app a mitad de la hoja | Lo marcado sigue en el teléfono hasta guardar | sin prueba | — |
 | Encuentra algo después de guardar | **Add defects** reabre la hoja solo para agregar. El defecto nuevo crea su Job o suma su nota, y el reporte lo marca "Added later · quién · hora" | ✅ | A85 |
@@ -822,7 +825,7 @@ Las historias completas, con su "¿qué pasa si…?", están en
 | HU-C1, HU-C2 | Cada línea de compra va a un camión y, si se quiere, a su Job; el Job muestra sus partes (To stock y Shop supplies llegan con ST-3) | ST-1 | ✅ (LTR-221, A111–A113) |
 | HU-S1–HU-S4 | Stock: entra con la compra, sale a un Job, devoluciones, ajustes y reversas; pantalla Stock con "Low" | ST-3 | ✅ (LTR-223, A117–A121) |
 | HU-S5 | El PM descuenta del stock | ST-5 | 🔲 (P29) |
-| HU-T1–HU-T4 | La inspección propone la llanta (steer New, drive Recap); el Manager confirma y sale del stock; historial por posición | ST-4 | 🔲 |
+| HU-T1–HU-T4 | La inspección propone la llanta (steer New, drive Recap); el Manager confirma y sale del stock; historial por posición | ST-4 | ✅ (LTR-224, A122–A124) |
 | HU-F2 | Leer la factura del proveedor (PDF o foto) y confirmar | ST-6 | 🔲 (P30) |
 
 Las filas de prueba se agregan con cada etapa.

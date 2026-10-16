@@ -203,6 +203,7 @@ model User {
   createdPartPurchases           PartPurchase[]             @relation("PartPurchaseCreatedBy")
   voidedPartPurchases            PartPurchase[]             @relation("PartPurchaseVoidedBy")
   stockMovements                 StockMovement[]            @relation("StockMovementCreatedBy")
+  confirmedTireChanges           JobTireChange[]            @relation("JobTireChangeConfirmedBy")
   createdOutsideRepairs          OutsideRepair[]            @relation("OutsideRepairCreatedBy")
   createdLaborRates              LaborRate[]                @relation("LaborRateCreatedBy")
   createdInternalInvoices        InternalInvoice[]          @relation("InternalInvoiceCreatedBy")
@@ -689,6 +690,7 @@ model Part {
   pmServiceParts PmServicePart[]
   purchaseLines  PartPurchaseLine[]
   stockMovements StockMovement[]
+  tireChanges    JobTireChange[]
 
   @@unique([categoryId, partNumber, displayName])
   @@index([categoryId, active])
@@ -735,6 +737,7 @@ model StockMovement {
   truck        Truck?          @relation(fields: [truckId], references: [id], onDelete: Restrict)
   reverses     StockMovement?  @relation("StockMovementReverses", fields: [reversesId], references: [id], onDelete: Restrict)
   reversals    StockMovement[] @relation("StockMovementReverses")
+  tireChange   JobTireChange?
   createdBy    User            @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
 
   @@index([partId, createdAt])
@@ -1162,6 +1165,7 @@ model WorkOrderJob {
   outsideRepairs   OutsideRepair[]
   purchaseLines    PartPurchaseLine[]
   stockMovements   StockMovement[]
+  tireChanges      JobTireChange[]
   blockers         PauseEvent[]
   // D41 (and D42 later): the findings this Job came from — several per Job.
   sources          WorkOrderJobSource[]
@@ -1493,6 +1497,31 @@ model TruckInspectionItem {
   @@map("truck_inspection_items")
 }
 
+/// D45 / ST-4 (LTR-224): the tire to put at one position, on the Tires Job the inspection created. Steer is always
+/// New; drive is proposed Recap and the Manager can make it New. Confirming takes it from the stock
+/// (`stock_movement_id`); with none on the shelf it stays "to buy".
+model JobTireChange {
+  id              String       @id @default(uuid()) @db.Uuid
+  workOrderJobId  String       @map("work_order_job_id") @db.Uuid
+  tireReadingId   String?      @map("tire_reading_id") @db.Uuid
+  position        TirePosition
+  tireType        TireType     @map("tire_type")
+  partId          String?      @map("part_id") @db.Uuid
+  stockMovementId String?      @unique @map("stock_movement_id") @db.Uuid
+  confirmedAt     DateTime?    @map("confirmed_at")
+  confirmedById   String?      @map("confirmed_by_id") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  workOrderJob  WorkOrderJob   @relation(fields: [workOrderJobId], references: [id], onDelete: Cascade)
+  tireReading   TireReading?   @relation(fields: [tireReadingId], references: [id], onDelete: SetNull)
+  part          Part?          @relation(fields: [partId], references: [id], onDelete: Restrict)
+  stockMovement StockMovement? @relation(fields: [stockMovementId], references: [id], onDelete: Restrict)
+  confirmedBy   User?          @relation("JobTireChangeConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@unique([workOrderJobId, position])
+  @@map("job_tire_changes")
+}
+
 /// D41: PSI and tread of one tire at one inspection, with the target and limit used then.
 model TireReading {
   id           String            @id @default(uuid()) @db.Uuid
@@ -1507,9 +1536,10 @@ model TireReading {
   status       TireReadingStatus
   readAt       DateTime          @default(now()) @map("read_at")
 
-  inspection TruckInspection      @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
-  truck      Truck                @relation(fields: [truckId], references: [id])
-  jobSources WorkOrderJobSource[]
+  inspection  TruckInspection      @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  truck       Truck                @relation(fields: [truckId], references: [id])
+  jobSources  WorkOrderJobSource[]
+  tireChanges JobTireChange[]
 
   @@unique([inspectionId, position])
   @@index([truckId, position, readAt])

@@ -1,13 +1,16 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   ActivityEventType,
+  adminConfirmJobTiresSchema,
   adminStockCountSchema,
   adminStockIssueSchema,
   adminStockQuerySchema,
   adminStockReturnSchema,
   normalizeCatalogText,
   parseQuantityToHundredths,
+  tireAxle,
   type AdminStockItemDto,
+  type TirePosition,
   type AdminStockListDto,
   type AdminStockMovementDto,
   type AdminStockPartDto,
@@ -164,24 +167,9 @@ export class StockService {
       if (job.status === 'cancelled' || job.workOrder.status === 'cancelled') {
         throw new BadRequestException({ code: 'JOB_CANCELLED', message: 'That Job was cancelled.' });
       }
-      await lockPart(tx, part.id);
-      const onHand = await balance(tx, part.id);
-      if (hundredths > onHand.hundredths) {
-        throw new ConflictException({ code: 'NOT_ENOUGH_STOCK', message: `Only ${qty(Math.max(0, onHand.hundredths))} in stock.`, onHand: qty(Math.max(0, onHand.hundredths)) });
-      }
-      const valueCents = outValue(onHand, hundredths);
-      const movement = await writeMovement(tx, {
-        partId: part.id, kind: 'issue', hundredths: -hundredths, valueCents: -valueCents,
-        workOrderJobId: job.id, truckId: job.workOrder.truckId, actorId: actor.id,
+      const { movement, valueCents } = await this.issueInTx(tx, actor.id, { id: part.id, displayName: part.displayName, partNumber: part.partNumber }, hundredths, {
+        id: job.id, displayName: job.displayName, workOrderId: job.workOrder.id, truckId: job.workOrder.truckId,
       });
-      await writeEntries(tx, {
-        sourceType: ISSUE_SOURCE, sourceId: movement.id, kind: 'part_purchase', occurredOn: new Date(new Date().toISOString().slice(0, 10)),
-        vendorId: null, workOrderId: job.workOrder.id, actorId: actor.id,
-      }, [{
-        truckId: job.workOrder.truckId,
-        amountCents: valueCents,
-        description: `Stock · ${part.displayName}${part.partNumber ? ` ${part.partNumber}` : ''} × ${hundredths / 100} → ${job.displayName}`,
-      }]);
       await this.activity.log(tx, {
         eventType: ActivityEventType.PART_CATALOG_UPDATED,
         entityType: 'stock_movement',
@@ -193,6 +181,104 @@ export class StockService {
       });
       return { id: movement.id, valueCents };
     });
+  }
+
+  /**
+   * D45 / ST-4 (LTR-224): the Manager confirms the tires the inspection proposed on a Tires Job. Steer stays New;
+   * each tire must be a tire part of that type. With one on the shelf it is taken now (average cost, to this truck
+   * on this Work Order); with none it is confirmed "to buy" and can be taken later the same way.
+   */
+  async confirmTires(actor: AuthUser, jobId: string, raw: unknown) {
+    this.assertId(jobId);
+    const input = parse(adminConfirmJobTiresSchema, raw);
+    return this.prisma.$transaction(async (tx) => {
+      // Two confirmations at once never take two tires for the same position.
+      await tx.$queryRaw`SELECT id FROM job_tire_changes WHERE work_order_job_id = ${jobId}::uuid FOR UPDATE`;
+      const job = await tx.workOrderJob.findUnique({
+        where: { id: jobId },
+        select: {
+          id: true, displayName: true, status: true,
+          workOrder: { select: { id: true, status: true, truckId: true } },
+          tireChanges: { include: { stockMovement: { select: { reversals: { select: { id: true } } } } } },
+        },
+      });
+      if (!job) throw new NotFoundException('Job not found');
+      if (job.status === 'cancelled' || job.workOrder.status === 'cancelled') throw new BadRequestException({ code: 'JOB_CANCELLED', message: 'That Job was cancelled.' });
+      const parts = await tx.part.findMany({
+        where: { id: { in: input.tires.map((tire) => tire.partId) } },
+        select: { id: true, displayName: true, partNumber: true, tireType: true, active: true, category: { select: { kind: true } } },
+      });
+      let issued = 0;
+      let toBuy = 0;
+      for (const tire of input.tires) {
+        const row = job.tireChanges.find((change) => change.position === tire.position);
+        if (!row) throw new BadRequestException({ code: 'TIRE_NOT_PROPOSED', message: `No tire to put at ${tire.position} on this Job.` });
+        if (row.confirmedAt && row.stockMovement && !row.stockMovement.reversals.length) {
+          throw new ConflictException({ code: 'TIRE_ALREADY_ISSUED', message: `The ${tire.position} tire was already taken from stock.` });
+        }
+        if (tireAxle(tire.position as TirePosition) === 'steer' && tire.tireType !== 'new') {
+          throw new BadRequestException({ code: 'STEER_NEEDS_NEW', message: 'Steer tires are always new.' });
+        }
+        const part = parts.find((item) => item.id === tire.partId);
+        if (!part || part.category.kind !== 'tire' || part.tireType !== tire.tireType || !part.active) {
+          throw new BadRequestException({ code: 'TIRE_PART_MISMATCH', message: `Pick an active ${tire.tireType === 'new' ? 'new' : 'recap'} tire from the catalog.` });
+        }
+        await lockPart(tx, part.id);
+        const onHand = await balance(tx, part.id);
+        const movement = onHand.hundredths >= 100
+          ? (await this.issueInTx(tx, actor.id, part, 100, { id: job.id, displayName: `${job.displayName} ${tire.position}`, workOrderId: job.workOrder.id, truckId: job.workOrder.truckId })).movement
+          : null;
+        if (movement) issued += 1;
+        else toBuy += 1;
+        await tx.jobTireChange.update({
+          where: { id: row.id },
+          data: { tireType: tire.tireType, partId: part.id, stockMovementId: movement?.id ?? null, confirmedAt: new Date(), confirmedById: actor.id },
+        });
+      }
+      await this.activity.log(tx, {
+        eventType: ActivityEventType.PART_CATALOG_UPDATED,
+        entityType: 'work_order_job',
+        entityId: job.id,
+        userId: actor.id,
+        workOrderId: job.workOrder.id,
+        newValue: { action: 'tires_confirmed', tires: input.tires, issued, toBuy },
+        relevantValue: { action: 'tires_confirmed', job: job.displayName, issued, toBuy },
+      });
+      return { issued, toBuy };
+    });
+  }
+
+  /**
+   * Takes `hundredths` of a part off the shelf for a Job inside the caller's transaction: locks the part, refuses
+   * more than is on hand, writes the movement at the average cost (P27) and the truck's cost row on that Work Order.
+   * ST-4 uses it to confirm tires.
+   */
+  async issueInTx(
+    tx: Prisma.TransactionClient,
+    actorId: string,
+    part: { id: string; displayName: string; partNumber: string | null },
+    hundredths: number,
+    job: { id: string; displayName: string; workOrderId: string; truckId: string },
+  ) {
+    await lockPart(tx, part.id);
+    const onHand = await balance(tx, part.id);
+    if (hundredths > onHand.hundredths) {
+      throw new ConflictException({ code: 'NOT_ENOUGH_STOCK', message: `Only ${qty(Math.max(0, onHand.hundredths))} in stock.`, onHand: qty(Math.max(0, onHand.hundredths)) });
+    }
+    const valueCents = outValue(onHand, hundredths);
+    const movement = await writeMovement(tx, {
+      partId: part.id, kind: 'issue', hundredths: -hundredths, valueCents: -valueCents,
+      workOrderJobId: job.id, truckId: job.truckId, actorId,
+    });
+    await writeEntries(tx, {
+      sourceType: ISSUE_SOURCE, sourceId: movement.id, kind: 'part_purchase', occurredOn: new Date(new Date().toISOString().slice(0, 10)),
+      vendorId: null, workOrderId: job.workOrderId, actorId,
+    }, [{
+      truckId: job.truckId,
+      amountCents: valueCents,
+      description: `Stock · ${part.displayName}${part.partNumber ? ` ${part.partNumber}` : ''} × ${hundredths / 100} → ${job.displayName}`,
+    }]);
+    return { movement, valueCents, onHand };
   }
 
   /** "Return to stock": the part comes back at the same cost and the truck's cost is reversed. Once per issue. */

@@ -177,6 +177,8 @@ export type InspectionCopy = {
   startInspection: string;
   noOneAssigned: string;
   tiresCard: string;
+  installedTitle: string;
+  installedLine: (type: 'new' | 'recap', size: string | null, date: string, wo: string) => string;
   tiresOk: (ok: number) => string;
   noTireReadings: string;
   sinceLast: (psi: number, date: string) => string;
@@ -361,6 +363,8 @@ const en: InspectionCopy = {
   startInspection: 'Start inspection',
   noOneAssigned: 'Assign',
   tiresCard: 'Tires',
+  installedTitle: 'Mounted',
+  installedLine: (type, size, date, wo) => `${type === 'new' ? 'New' : 'Recap'}${size ? ` ${size}` : ''} · ${date} · ${wo}`,
   tiresOk: (ok) => `${ok}/10 OK`,
   noTireReadings: 'No tire readings for this visit yet. They are recorded in the inspection.',
   sinceLast: (psi, date) => `${Math.abs(psi)} PSI since ${date}`,
@@ -545,6 +549,8 @@ const es: InspectionCopy = {
   startInspection: 'Empezar inspección',
   noOneAssigned: 'Asignar',
   tiresCard: 'Llantas',
+  installedTitle: 'Montadas',
+  installedLine: (type, size, date, wo) => `${type === 'new' ? 'Nueva' : 'Recap'}${size ? ` ${size}` : ''} · ${date} · ${wo}`,
   tiresOk: (ok) => `${ok}/10 OK`,
   noTireReadings: 'Todavía no hay lecturas de llantas en esta visita. Se anotan en la inspección.',
   sinceLast: (psi, date) => `${Math.abs(psi)} PSI desde ${date}`,

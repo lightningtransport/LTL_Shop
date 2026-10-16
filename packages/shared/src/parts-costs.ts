@@ -804,3 +804,33 @@ export interface AdminJobStockPartDto {
   returned: boolean;
   valueCents?: number;
 }
+
+
+// ── D45 / ST-4: tires from the inspection ──────────────────────────────────────────────────────────────────
+
+export const adminConfirmJobTiresSchema = z.object({
+  tires: z.array(z.object({
+    position: z.enum(['LF', 'RF', 'LFO', 'LFI', 'RFI', 'RFO', 'LRO', 'LRI', 'RRI', 'RRO']),
+    tireType: z.enum(TIRE_TYPES),
+    partId: z.string().uuid(),
+  })).min(1).max(10),
+});
+
+export type AdminConfirmJobTiresInput = z.input<typeof adminConfirmJobTiresSchema>;
+
+/**
+ * A tire to put at one position of a Tires Job: proposed by the inspection (steer New, drive Recap), confirmed by the
+ * Manager. `issued` = taken from stock; `to_buy` = confirmed with none on the shelf (or given back to stock).
+ */
+export interface AdminJobTireDto {
+  id: string;
+  position: string;
+  axle: 'steer' | 'drive';
+  tireType: TireType;
+  status: 'proposed' | 'issued' | 'to_buy';
+  part: { id: string; displayName: string; tireSize: string | null; tireType: TireType | null } | null;
+  /** The size last put on this axle of this truck (P26 not answered: the truck remembers it). */
+  suggestedSize: string | null;
+  reading: { psi: number; tread: number } | null;
+  valueCents?: number;
+}

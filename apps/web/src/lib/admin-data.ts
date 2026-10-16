@@ -53,6 +53,7 @@ import type {
   AdminStockPartDto,
   AdminStockCountInput,
   AdminStockIssueInput,
+  AdminConfirmJobTiresInput,
   AdminOutsideRepairDetailDto,
   AdminOutsideRepairListDto,
   AdminSaveOutsideRepairInput,
@@ -853,6 +854,11 @@ export function countAdminStock(input: AdminStockCountInput) {
 
 export function issueAdminStock(input: AdminStockIssueInput) {
   return apiFetch<{ id: string; valueCents: number }>('/api/admin/parts-costs/stock/issue', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** D45 / ST-4: confirm the tires the inspection proposed on a Tires Job. */
+export function confirmAdminJobTires(jobId: string, input: AdminConfirmJobTiresInput) {
+  return apiFetch<{ issued: number; toBuy: number }>(`/api/admin/parts-costs/jobs/${jobId}/tires`, { method: 'POST', body: JSON.stringify(input) });
 }
 
 export function returnAdminStock(movementId: string, reason: string) {

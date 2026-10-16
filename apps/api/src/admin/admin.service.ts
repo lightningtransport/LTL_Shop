@@ -85,6 +85,7 @@ import { LaborClockService } from '../work-orders/labor-clock.service';
 import { blockerActivityLogsInclude, blockerLogDetails, toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
 import { syncWorkOrderLabor } from '../parts-costs/labor-ledger';
+import { installedTires, suggestedSizes, tireChangeInclude, toJobTireDto } from '../parts-costs/tire-changes';
 
 const ATTENTION_LIMIT = 8;
 // D1 / UX-5-002 (stage 3): the Dashboard queue lists everything that waits on the Manager. A shop has
@@ -228,6 +229,8 @@ const detailInclude = {
         select: { purchaseId: true, description: true, partNumber: true, quantity: true, lineTotalCents: true, purchase: { select: { vendor: { select: { name: true } } } } },
         orderBy: [{ purchase: { invoiceDate: 'asc' as const } }, { sortOrder: 'asc' as const }],
       },
+      // D45 / ST-4: the tires to put on a Tires Job.
+      tireChanges: { include: tireChangeInclude, orderBy: { position: 'asc' as const } },
       // D45 / ST-3: parts that left the stock for the Job (the controller drops their value for non-Managers).
       stockMovements: {
         where: { kind: 'issue' as const },
@@ -453,7 +456,13 @@ export class AdminService {
     // PCA10 (UX-5-005): what the Work Order has cost so far (its labor and outside repairs in the truck's ledger).
     const entries = await this.prisma.truckCostEntry.findMany({ where: { workOrderId: id }, select: { kind: true, amountCents: true } });
     const sum = (kind: string) => entries.filter((entry) => entry.kind === kind).reduce((total, entry) => total + entry.amountCents, 0);
-    return { ...toAdminDetail(row), costs: { partsCents: sum('part_purchase'), outsideCents: sum('outside_repair'), laborCents: sum('labor') } };
+    const detail = toAdminDetail(row);
+    // D45 / ST-4: the size last put on each axle is the one proposed (P26).
+    if (detail.jobs.some((job) => job.tires?.length)) {
+      const suggested = suggestedSizes(await installedTires(this.prisma, row.truckId));
+      for (const job of detail.jobs) for (const tire of job.tires ?? []) tire.suggestedSize = suggested[tire.axle];
+    }
+    return { ...detail, costs: { partsCents: sum('part_purchase'), outsideCents: sum('outside_repair'), laborCents: sum('labor') } };
   }
 
   async listMechanics(rawQuery: unknown): Promise<AdminPage<AdminMechanicSummaryDto>> {
@@ -2585,6 +2594,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       vendorName: line.purchase.vendor.name,
       lineTotalCents: line.lineTotalCents,
     })),
+    tires: (job.tireChanges ?? []).map((change) => toJobTireDto(change, { steer: null, drive: null })),
     stockParts: (job.stockMovements ?? []).map((movement) => ({
       movementId: movement.id,
       partId: movement.partId,

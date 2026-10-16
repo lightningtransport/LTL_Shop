@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-16 (stock del taller, D45 / ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-16 (llantas desde la inspección, D45 / ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -464,6 +464,24 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
     `STOCK_ALREADY_USED`. Primero se devuelve o se cuenta.
   - Cada parte se bloquea (`FOR UPDATE`) mientras se mueve, así dos salidas a la
     vez no sacan la misma unidad.
+- **Llantas desde la inspección** (D45 / ST-4, LTR-224): una llanta con el tread
+  bajo el mínimo (la que ya creaba el Job **Tires**, D41) deja además en ese Job
+  la **llanta a poner** en esa posición (`job_tire_changes`): **steer siempre
+  New**, **drive Recap** propuesta. La presión sola (Flat Repair) no. Add defects
+  no cambia llantas.
+  - En la WO, el Job dice "Tires · N to confirm"; **Tires to put** (Manager y
+    System Admin) muestra cada posición con su lectura. Drive se puede pasar a New;
+    steer no (`STEER_NEEDS_NEW`). Se elige la llanta del catálogo de ese tipo
+    (`TIRE_PART_MISMATCH` si no); primero sale la medida que el camión llevó la
+    última vez en ese eje (P26 sin responder: el camión la recuerda).
+  - **Confirm tires** (`POST /jobs/:jobId/tires`): con una en el estante sale del
+    stock al costo promedio a ese camión en esa WO (igual que Parts from stock);
+    sin stock queda **to buy** y se toma después desde el mismo lugar. Una ya
+    tomada no se toma otra vez (`TIRE_ALREADY_ISSUED`). Si se devuelve al stock,
+    vuelve a "to buy".
+  - El mecánico ve en su Job "RF · New 11R22.5" (y "esperando la llanta" si
+    falta), nunca el costo. La tarjeta **Tires** del camión dice qué tiene montado
+    cada posición (tipo, medida, fecha, WO).
 - **El archivo adjunto por separado** (PCA6): `PATCH /purchases/:id/attachment` y
   `PATCH /outside-repairs/:id/attachment` (`{ attachmentId | null }`) agregan,
   reemplazan o quitan el archivo sin pasar por Edit; en pantalla, "Add invoice
