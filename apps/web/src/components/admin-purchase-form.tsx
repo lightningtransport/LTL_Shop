@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Paperclip, Plus, Trash2, X } from 'lucide-react';
+import { FileSearch, Paperclip, Plus, Trash2, X } from 'lucide-react';
 import {
   INVOICE_FILE_MAX_BYTES,
   INVOICE_FILE_TYPES,
@@ -10,6 +10,7 @@ import {
   lineTotalCents,
   parseMoneyToCents,
   parseQuantityToHundredths,
+  readInvoiceLines,
   truckAmounts,
   type AdminInvoiceMatchDto,
   type AdminPartCategoryDto,
@@ -39,6 +40,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { ApiError } from '@/lib/api';
 import { apiErrorCode } from '@/lib/api-error-message';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
+import { pdfTextLines } from '@/lib/pdf-text';
 
 const DRAFT_KEY = 'ltl.admin.purchase-draft';
 const OTHER = '__other__';
@@ -156,6 +158,8 @@ export function PurchaseForm({
 }) {
   const { showToast } = useActionToast();
   const [cataloging, setCataloging] = useState<number | null>(null);
+  // D45 / ST-6: what the PDF reader filled, said until the Manager saves (nothing is saved on its own).
+  const [reading, setReading] = useState<{ busy: boolean; note: string | null; warn: boolean }>({ busy: false, note: null, warn: false });
   const restored = useRef(false);
   const [state, setState] = useState<FormState>(() => {
     const draft = !purchase && !presetTruckId ? readDraft() : null;
@@ -268,6 +272,63 @@ export function PurchaseForm({
     }
   }
 
+  /**
+   * D45 / ST-6 (LTR-226, P30): reads the supplier's PDF and fills what it finds — vendor, invoice #, date, lines, tax
+   * and freight. Fields the Manager already typed stay; lines are replaced only while the form has none filled in.
+   * The same file is attached as the invoice file when files are on.
+   */
+  async function readPdf(chosen: File | undefined) {
+    if (!chosen) return;
+    setReading({ busy: true, note: null, warn: false });
+    try {
+      const textLines = await pdfTextLines(chosen);
+      if (!textLines.length) {
+        setReading({ busy: false, note: messages.pcPdfNoText, warn: true });
+        return;
+      }
+      const parts = categories.flatMap((category) => category.parts).filter((part) => part.active);
+      const proposal = readInvoiceLines(textLines, {
+        vendors: vendors.filter((vendor) => vendor.active && vendor.doesParts).map((vendor) => ({ id: vendor.id, name: vendor.name })),
+        parts: parts.map((part) => ({ id: part.id, partNumber: part.partNumber, displayName: part.displayName })),
+      });
+      const linesEmpty = state.lines.every((line) => !line.partId && !line.description.trim() && !line.unitCost.trim());
+      setState((current) => ({
+        ...current,
+        vendorId: current.vendorId || proposal.vendorId || '',
+        invoiceNumber: current.invoiceNumber.trim() ? current.invoiceNumber : proposal.invoiceNumber ?? '',
+        invoiceDate: proposal.invoiceDate && current.invoiceDate === today() ? proposal.invoiceDate : current.invoiceDate,
+        tax: current.tax.trim() || proposal.taxCents === null ? current.tax : centsToInput(proposal.taxCents),
+        freight: current.freight.trim() || proposal.freightCents === null ? current.freight : centsToInput(proposal.freightCents),
+        lines: linesEmpty && proposal.lines.length
+          ? proposal.lines.map((line) => ({
+              ...emptyLine(),
+              truckId: current.split ? '' : current.truckId,
+              partId: line.partId ?? OTHER,
+              description: line.partId ? '' : line.description,
+              quantity: line.quantity,
+              unitCost: centsToInput(line.unitCostCents),
+            }))
+          : current.lines,
+      }));
+      const linesTotal = proposal.lines.reduce((sum, line) => sum + Math.round(Number(line.quantity) * line.unitCostCents), 0);
+      const expected = proposal.totalCents;
+      const off = expected !== null && linesTotal + (proposal.taxCents ?? 0) + (proposal.freightCents ?? 0) !== expected;
+      setReading({
+        busy: false,
+        warn: off || !proposal.lines.length,
+        note: [
+          fillPlaceholders(messages.pcPdfRead, { lines: String(proposal.lines.length) }),
+          !proposal.vendorId ? messages.pcPdfNoVendor : null,
+          off && expected !== null ? fillPlaceholders(messages.pcPdfTotalOff, { total: formatCents(expected, locale) }) : null,
+          !linesEmpty && proposal.lines.length ? messages.pcPdfKeptLines : null,
+        ].filter(Boolean).join(' '),
+      });
+      if (formData.filesEnabled && !file) void pickFile(chosen);
+    } catch {
+      setReading({ busy: false, note: messages.pcPdfFailed, warn: true });
+    }
+  }
+
   async function pickFile(chosen: File | undefined) {
     if (!chosen) return;
     if (!(INVOICE_FILE_TYPES as readonly string[]).includes(chosen.type)) return setFile({ id: null, name: chosen.name, percent: 0, error: messages.pcFileTypeInvalid });
@@ -346,6 +407,19 @@ export function PurchaseForm({
       <form className="space-y-5" onSubmit={(event) => void submit(event)} data-testid="purchase-form" noValidate>
         {notice ? <InlineAlert data-testid="purchase-charged-notice">{notice}</InlineAlert> : null}
         {showErrors ? <MissingSummary missing={missing} messages={messages} /> : null}
+        {!purchase ? (
+          <div className="space-y-1.5 rounded-lg border border-dashed px-3 py-3" data-testid="purchase-read-pdf">
+            <label className="flex cursor-pointer flex-wrap items-center gap-2 text-sm has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring">
+              <FileSearch aria-hidden="true" className="size-4 text-primary" />
+              <span className="font-medium text-primary">{reading.busy ? messages.pcPdfReading : messages.pcPdfRead_action}</span>
+              <span className="text-xs text-muted-foreground">{messages.pcPdfHint}</span>
+              <input type="file" className="sr-only" accept="application/pdf" disabled={busy || reading.busy} onChange={(event) => { void readPdf(event.target.files?.[0]); event.target.value = ''; }} />
+            </label>
+            {reading.note ? (
+              <p className={reading.warn ? 'text-xs text-warning-foreground dark:text-warning' : 'text-xs text-muted-foreground'} role="status" data-testid="purchase-read-pdf-note">{reading.note}</p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="purchase-vendor">{messages.pcVendorField}</Label>

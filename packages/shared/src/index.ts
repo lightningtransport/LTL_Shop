@@ -15,3 +15,4 @@ export * from './yard-data-boundary-copy';
 export * from './shop-hours';
 export * from './demo-roster';
 export * from './vehicle';
+export * from './invoice-reader';
