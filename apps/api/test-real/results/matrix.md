@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 168 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 171 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -142,6 +142,9 @@ PASA 168 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A122 | La inspección pone en el Job Tires la llanta a cambiar: steer New, drive Recap; la presión sola no | PASA |
 | A123 | El Manager confirma: steer siempre New; la recap sale del stock al promedio, la nueva sin stock queda "to buy" | PASA |
 | A124 | Llega la nueva y se toma después; la tarjeta del camión sabe qué tiene cada posición; devuelta, vuelve a "to buy" | PASA |
+| A125 | Al completar el WO, la parte del PM sale del estante y el aceite se cobra; reabrir lo deshace | PASA |
+| A126 | Una parte del PM que no está en el estante no se cobra; sin precio de aceite, no hay cargo de aceite | PASA |
+| A127 | El precio del aceite empieza hoy o después, uno por día; mecánicos y Safety no lo ven | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

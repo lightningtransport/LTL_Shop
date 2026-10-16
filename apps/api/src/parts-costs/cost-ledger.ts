@@ -10,7 +10,8 @@ import type { Prisma, TruckCostKind } from '@prisma/client';
 export { allocateExtra, truckAmounts } from '@ltl-shop/shared';
 
 // D45 / ST-3: `stock_issue` = a part that left the Shop's stock for a Job (kind `part_purchase`, at the average cost).
-type Source = { sourceType: 'part_purchase' | 'outside_repair' | 'work_order_labor' | 'stock_issue'; sourceId: string };
+// D45 / ST-5: `pm_oil_change` = the flat oil change price of a completed PM Work Order.
+type Source = { sourceType: 'part_purchase' | 'outside_repair' | 'work_order_labor' | 'stock_issue' | 'pm_oil_change'; sourceId: string };
 
 /** The rows of a source that still count: not reversals, and not reversed yet. */
 export async function liveEntries(tx: Prisma.TransactionClient, source: Source) {

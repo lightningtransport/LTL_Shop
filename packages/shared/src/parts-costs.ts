@@ -834,3 +834,26 @@ export interface AdminJobTireDto {
   reading: { psi: number; tread: number } | null;
   valueCents?: number;
 }
+
+
+// ── D45 / ST-5: the PM's oil change price ──────────────────────────────────────────────────────────────────
+
+export const adminSetPmOilPriceSchema = z.object({
+  amountCents: moneyCents,
+  effectiveFrom: isoDate,
+});
+
+export type AdminSetPmOilPriceInput = z.input<typeof adminSetPmOilPriceSchema>;
+
+export interface AdminPmOilPriceDto {
+  id: string;
+  amountCents: number;
+  effectiveFrom: string;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface AdminPmOilPricesDto {
+  prices: AdminPmOilPriceDto[];
+  current: AdminPmOilPriceDto | null;
+}

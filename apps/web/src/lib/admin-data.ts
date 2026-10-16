@@ -54,6 +54,8 @@ import type {
   AdminStockCountInput,
   AdminStockIssueInput,
   AdminConfirmJobTiresInput,
+  AdminPmOilPricesDto,
+  AdminSetPmOilPriceInput,
   AdminOutsideRepairDetailDto,
   AdminOutsideRepairListDto,
   AdminSaveOutsideRepairInput,
@@ -854,6 +856,16 @@ export function countAdminStock(input: AdminStockCountInput) {
 
 export function issueAdminStock(input: AdminStockIssueInput) {
   return apiFetch<{ id: string; valueCents: number }>('/api/admin/parts-costs/stock/issue', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** D45 / ST-5: the flat price of a PM's oil change. */
+export function useAdminPmOilPrices() {
+  const { token } = useAuth();
+  return withAdminReadPending(token, useSWR<AdminPmOilPricesDto>(token ? '/api/admin/parts-costs/pm-oil-prices' : null, adminReadFetcher, { dedupingInterval: 10_000, ...adminReadRetry }));
+}
+
+export function setAdminPmOilPrice(input: AdminSetPmOilPriceInput) {
+  return apiFetch<{ id: string }>('/api/admin/parts-costs/pm-oil-prices', { method: 'POST', body: JSON.stringify(input) });
 }
 
 /** D45 / ST-4: confirm the tires the inspection proposed on a Tires Job. */

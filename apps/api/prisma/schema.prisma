@@ -204,6 +204,7 @@ model User {
   voidedPartPurchases            PartPurchase[]             @relation("PartPurchaseVoidedBy")
   stockMovements                 StockMovement[]            @relation("StockMovementCreatedBy")
   confirmedTireChanges           JobTireChange[]            @relation("JobTireChangeConfirmedBy")
+  pmOilPrices                    PmOilPrice[]               @relation("PmOilPriceCreatedBy")
   createdOutsideRepairs          OutsideRepair[]            @relation("OutsideRepairCreatedBy")
   createdLaborRates              LaborRate[]                @relation("LaborRateCreatedBy")
   createdInternalInvoices        InternalInvoice[]          @relation("InternalInvoiceCreatedBy")
@@ -728,6 +729,8 @@ model StockMovement {
   reason         String?
   /// A reversal (purchase corrected or voided) or a return names the movement it undoes.
   reversesId     String?           @map("reverses_id") @db.Uuid
+  /// D45 / ST-5: a part a PM took off the shelf (written when the Work Order is completed).
+  pmServiceId    String?           @map("pm_service_id") @db.Uuid
   createdById    String            @map("created_by_id") @db.Uuid
   createdAt      DateTime          @default(now()) @map("created_at")
 
@@ -738,11 +741,13 @@ model StockMovement {
   reverses     StockMovement?  @relation("StockMovementReverses", fields: [reversesId], references: [id], onDelete: Restrict)
   reversals    StockMovement[] @relation("StockMovementReverses")
   tireChange   JobTireChange?
+  pmService    PmService?      @relation(fields: [pmServiceId], references: [id], onDelete: SetNull)
   createdBy    User            @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
 
   @@index([partId, createdAt])
   @@index([purchaseId])
   @@index([workOrderJobId])
+  @@index([pmServiceId])
   @@map("stock_movements")
 }
 
@@ -900,6 +905,20 @@ model InternalInvoiceLine {
 
 /// LTR-201 / D34 (LB-1): the shop's labor rate per hour, from a date. A new rate starts a new row; a rate already
 /// used is never edited. Labor = hours of closed sessions × the rate in effect the day each session started.
+/// D45 / ST-5 (LTR-225): what a PM's oil change costs the truck (a flat service, like a shop; P29). A new price
+/// starts on a date; each completed PM Work Order is charged the price in effect the day it was completed.
+model PmOilPrice {
+  id            String   @id @default(uuid()) @db.Uuid
+  amountCents   Int      @map("amount_cents")
+  effectiveFrom DateTime @unique @map("effective_from") @db.Date
+  createdById   String?  @map("created_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  createdBy User? @relation("PmOilPriceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("pm_oil_prices")
+}
+
 model LaborRate {
   id               String   @id @default(uuid()) @db.Uuid
   rateCentsPerHour Int      @map("rate_cents_per_hour")
@@ -1077,9 +1096,10 @@ model PmService {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  workOrder    WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  workOrderJob WorkOrderJob?   @relation(fields: [workOrderJobId], references: [id], onDelete: SetNull)
-  parts        PmServicePart[]
+  workOrder      WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrderJob   WorkOrderJob?   @relation(fields: [workOrderJobId], references: [id], onDelete: SetNull)
+  parts          PmServicePart[]
+  stockMovements StockMovement[]
 
   @@map("pm_services")
 }

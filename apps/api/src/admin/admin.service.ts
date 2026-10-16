@@ -85,6 +85,7 @@ import { LaborClockService } from '../work-orders/labor-clock.service';
 import { blockerActivityLogsInclude, blockerLogDetails, toWorkOrderNoteDto, workOrderNoteInclude } from '../work-orders/work-order.mapper';
 import { getShopDashboardWindows } from './admin-time';
 import { syncWorkOrderLabor } from '../parts-costs/labor-ledger';
+import { syncWorkOrderPmCharges } from '../parts-costs/pm-charges';
 import { installedTires, suggestedSizes, tireChangeInclude, toJobTireDto } from '../parts-costs/tire-changes';
 
 const ATTENTION_LIMIT = 8;
@@ -1039,6 +1040,8 @@ export class AdminService {
         });
         // LTR-201 / D34: the Work Order's labor in the truck's costs follows its status and its time.
         await syncWorkOrderLabor(tx, workOrderId, user.id);
+        // D45 / ST-5: the PM's parts from stock and its oil change, written and undone with the Work Order like labor.
+        await syncWorkOrderPmCharges(tx, workOrderId, user.id);
         return persisted;
       });
     } catch (error) {
@@ -1142,6 +1145,8 @@ export class AdminService {
         });
         // LTR-201 / D34: the Work Order's labor in the truck's costs follows its status and its time.
         await syncWorkOrderLabor(tx, workOrderId, user.id);
+        // D45 / ST-5: the PM's parts from stock and its oil change, written and undone with the Work Order like labor.
+        await syncWorkOrderPmCharges(tx, workOrderId, user.id);
         return persisted;
       });
     } catch (error) {
@@ -1261,6 +1266,8 @@ export class AdminService {
         });
         // LTR-201 / D34: the Work Order's labor in the truck's costs follows its status and its time.
         await syncWorkOrderLabor(tx, workOrderId, user.id);
+        // D45 / ST-5: the PM's parts from stock and its oil change, written and undone with the Work Order like labor.
+        await syncWorkOrderPmCharges(tx, workOrderId, user.id);
         return persisted;
       });
     } catch (error) {

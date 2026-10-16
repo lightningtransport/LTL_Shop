@@ -8,7 +8,7 @@ import { partsCostsFailure } from './admin-parts-catalog';
 import { useDocumentTitle } from './admin-breadcrumb';
 import { Button, Card, CardContent, DataTable, DialogActions, InlineAlert, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
-import { removeAdminLaborRate, setAdminLaborRate, useAdminLaborRatePreview, useAdminLaborRates } from '@/lib/admin-data';
+import { removeAdminLaborRate, setAdminLaborRate, setAdminPmOilPrice, useAdminLaborRatePreview, useAdminLaborRates, useAdminPmOilPrices } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
@@ -152,6 +152,78 @@ export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; mess
           </DialogActions>
         </Modal>
       ) : null}
+      <PmOilPriceCard locale={locale} messages={messages} canWrite={canWrite} />
     </div>
+  );
+}
+
+/**
+ * D45 / ST-5 (LTR-225): the flat price a PM's oil change costs the truck (like a shop charges it). It starts today
+ * or later; each PM Work Order is charged the price in effect the day the Manager completes it.
+ */
+function PmOilPriceCard({ locale, messages, canWrite }: { locale: AdminLocale; messages: AdminMessages; canWrite: boolean }) {
+  const { showToast } = useActionToast();
+  const { data, mutate } = useAdminPmOilPrices();
+  const [price, setPrice] = useState('');
+  const [from, setFrom] = useState(today);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const cents = parseMoneyToCents(price);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (typeof cents !== 'number' || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await setAdminPmOilPrice({ amountCents: cents, effectiveFrom: from });
+      showToast('success', messages.pcOilPriceSaved);
+      setPrice('');
+      void mutate();
+    } catch (failure) {
+      setError(partsCostsFailure(failure, messages));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <SectionCard title={messages.pcOilPriceTitle} data-testid="pm-oil-price">
+      <div className="space-y-3 px-4 py-3">
+        <p className="text-sm text-muted-foreground">{messages.pcOilPriceHelp}</p>
+        <p className="text-sm">
+          {data?.current
+            ? fillPlaceholders(messages.pcOilPriceCurrent, { amount: formatCents(data.current.amountCents, locale), date: formatInvoiceDate(data.current.effectiveFrom, locale) })
+            : messages.pcOilPriceNone}
+        </p>
+        {canWrite ? (
+          <form className="flex flex-wrap items-end gap-4" onSubmit={(event) => void submit(event)} noValidate>
+            <div className="space-y-1.5">
+              <Label htmlFor="oil-price">{messages.pcOilPrice}</Label>
+              <div className="relative w-40">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">$</span>
+                <Input id="oil-price" className="pl-7 tabular-nums" inputMode="decimal" placeholder="0.00" value={price} onChange={(event) => setPrice(event.target.value)} disabled={busy} aria-invalid={cents === undefined || undefined} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="oil-price-from">{messages.pcLaborRateFrom}</Label>
+              <Input id="oil-price-from" type="date" min={today()} value={from} onChange={(event) => setFrom(event.target.value)} disabled={busy} />
+            </div>
+            <Button type="submit" disabled={busy || typeof cents !== 'number'}>{busy ? messages.pcSaving : messages.pcOilPriceSave}</Button>
+          </form>
+        ) : null}
+        {error ? <InlineAlert>{error}</InlineAlert> : null}
+        {data?.prices.length ? (
+          <ul className="divide-y text-sm">
+            {data.prices.map((item) => (
+              <li key={item.id} className="flex justify-between gap-3 py-1.5">
+                <span>{formatInvoiceDate(item.effectiveFrom, locale)}{item.createdBy ? <span className="text-muted-foreground"> · {item.createdBy}</span> : null}</span>
+                <span className="tabular-nums">{formatCents(item.amountCents, locale)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </SectionCard>
   );
 }

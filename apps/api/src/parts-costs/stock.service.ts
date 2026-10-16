@@ -20,10 +20,9 @@ import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { reverseSource, writeEntries } from './cost-ledger';
-import { averageCents, balance, fromHundredths, lockPart, outValue, toHundredths, writeMovement } from './stock-ledger';
+import { averageCents, balance, fromHundredths, issueToJob, lockPart, outValue, toHundredths, undoIssue, writeMovement } from './stock-ledger';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ISSUE_SOURCE = 'stock_issue' as const;
 
 function parse<T>(schema: { safeParse(raw: unknown): { success: true; data: T } | { success: false; error: { flatten(): unknown } } }, raw: unknown): T {
   const parsed = schema.safeParse(raw ?? {});
@@ -248,37 +247,15 @@ export class StockService {
     });
   }
 
-  /**
-   * Takes `hundredths` of a part off the shelf for a Job inside the caller's transaction: locks the part, refuses
-   * more than is on hand, writes the movement at the average cost (P27) and the truck's cost row on that Work Order.
-   * ST-4 uses it to confirm tires.
-   */
-  async issueInTx(
+  /** ST-3 / ST-4: see `issueToJob`. */
+  issueInTx(
     tx: Prisma.TransactionClient,
     actorId: string,
     part: { id: string; displayName: string; partNumber: string | null },
     hundredths: number,
     job: { id: string; displayName: string; workOrderId: string; truckId: string },
   ) {
-    await lockPart(tx, part.id);
-    const onHand = await balance(tx, part.id);
-    if (hundredths > onHand.hundredths) {
-      throw new ConflictException({ code: 'NOT_ENOUGH_STOCK', message: `Only ${qty(Math.max(0, onHand.hundredths))} in stock.`, onHand: qty(Math.max(0, onHand.hundredths)) });
-    }
-    const valueCents = outValue(onHand, hundredths);
-    const movement = await writeMovement(tx, {
-      partId: part.id, kind: 'issue', hundredths: -hundredths, valueCents: -valueCents,
-      workOrderJobId: job.id, truckId: job.truckId, actorId,
-    });
-    await writeEntries(tx, {
-      sourceType: ISSUE_SOURCE, sourceId: movement.id, kind: 'part_purchase', occurredOn: new Date(new Date().toISOString().slice(0, 10)),
-      vendorId: null, workOrderId: job.workOrderId, actorId,
-    }, [{
-      truckId: job.truckId,
-      amountCents: valueCents,
-      description: `Stock · ${part.displayName}${part.partNumber ? ` ${part.partNumber}` : ''} × ${hundredths / 100} → ${job.displayName}`,
-    }]);
-    return { movement, valueCents, onHand };
+    return issueToJob(tx, actorId, part, hundredths, job);
   }
 
   /** "Return to stock": the part comes back at the same cost and the truck's cost is reversed. Once per issue. */
@@ -292,21 +269,7 @@ export class StockService {
       });
       if (!issue || issue.kind !== 'issue') throw new NotFoundException('That part did not leave the stock.');
       if (issue.reversals.length) throw new ConflictException({ code: 'STOCK_ALREADY_RETURNED', message: 'That part is already back in stock.' });
-      await lockPart(tx, issue.partId);
-      let movement;
-      try {
-        movement = await writeMovement(tx, {
-          partId: issue.partId, kind: 'return', hundredths: -toHundredths(issue.quantity), valueCents: -issue.valueCents,
-          workOrderJobId: issue.workOrderJobId, truckId: issue.truckId, reversesId: issue.id, reason, actorId: actor.id,
-        });
-      } catch (error) {
-        // Two returns at once: the unique index on reverses_id lets only one through.
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-          throw new ConflictException({ code: 'STOCK_ALREADY_RETURNED', message: 'That part is already back in stock.' });
-        }
-        throw error;
-      }
-      await reverseSource(tx, { sourceType: ISSUE_SOURCE, sourceId: issue.id }, actor.id);
+      const movement = await undoIssue(tx, issue, actor.id, reason);
       await this.activity.log(tx, {
         eventType: ActivityEventType.PART_CATALOG_UPDATED,
         entityType: 'stock_movement',
