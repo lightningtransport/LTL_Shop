@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-16 (D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -57,6 +57,11 @@ respuestas confirman lo construido y 7 muestran huecos (sección 7).
 | J19 | Mecánico PM | anoto las millas del tablero | ver lo que dice Samsara como referencia | detectar un tablero o un sensor mal |
 | J20 | Manager o mecánico con permiso | inspecciono un camión que llega | recorrer la misma hoja de siempre (53 puntos y 10 llantas) y que cada defecto quede como trabajo | no olvidar nada ni escribir dos veces lo que encontré |
 | J21 | Manager | miro un camión | ver la presión y el tread de sus llantas y si empeoraron desde la última vez | reparar o cambiar a tiempo, antes de que falle en la ruta |
+| J22 | Manager | cargo una factura de un proveedor | decir, línea por línea, si es para un camión (y su Job) o para el taller | saber después qué compré, para qué y cuánto costó cada trabajo |
+| J23 | Manager | voy a comprar o un mecánico pide una parte | ver qué hay en el taller y qué se está acabando | no comprar dos veces ni quedarme sin lo que más se usa |
+| J24 | Manager | se usa algo del taller en un camión | que salga del stock y cueste a ese camión una sola vez | que el costo por camión y la factura a Finanzas digan la verdad |
+| J25 | Manager | una inspección encuentra llantas malas | que el Job ya diga qué llanta va en cada posición (nueva o recap) y si la tengo | cambiarla ese mismo día sin escribir nada dos veces |
+| J26 | Manager | llegan muchas facturas de proveedores | cargarlas rápido, y más adelante que se lean solas y yo solo confirme | dejar de teclear facturas enteras |
 
 Cada historia se puede recorrer con el **modo demo local** (D36, [`reference/DEMO.md`](reference/DEMO.md)): el panel cambia de cuenta sin cerrar sesión y guía cada HU paso a paso; el **Demo flow** encadena los pasos de las HU en 14 capítulos (un día del taller). En el panel las historias se muestran con títulos en lenguaje de usuario y agrupadas por quién las hace; el guion vive en `apps/web/src/lib/demo/scripts.ts` y usa estos mismos ids (J y HU) como clave: mantenerlos estables.
 
@@ -574,7 +579,7 @@ Ver la fila E7 en HU-ME2.
 | Quiere saber si una compra o un movimiento ya se cobró a Finanzas | El detalle y Truck → Costs dicen "Charged on SHOP-… · Sent" o "Not charged yet"; editar o anular algo facturado avisa que la corrección cae en la factura siguiente (PCA4) | ✅ | A78 |
 | Adjunta la factura (PDF, JPG, PNG o HEIC, hasta 10 MB) | Se guarda en un lugar privado y se abre con un enlace que dura 5 minutos. Otro tipo de archivo, o uno más grande, no se acepta. Sin archivo también se guarda, marcada "No invoice file" (D-PC10) | ✅ | A62 |
 | Un mecánico o Safety intenta ver o cargar compras | No puede (403) | ✅ | A62 |
-| Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock) | ✅ | A60 |
+| Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock). Con D45 la línea elige **To stock** o **Shop supplies** (HU-M19, 🔲) | ✅ | A60 |
 | Carga la factura de un taller externo por un Job que mandó afuera (PC-3) | La liga al Job (afuera ahora o ya de regreso, sin límite de tiempo) y el monto va al camión; el Job muestra "Factura $… · proveedor" en el Work Order (solo Manager y System Admin), y mientras no tenga factura, "Regresó · sin factura todavía" con la acción para cargarla. Un Job de otro camión no se puede ligar | ✅ | A63, A76 |
 | Manda un Job afuera, carga la factura y después marca Regresó (o al revés) | "Enviar a taller externo" y "Regresó" funcionan igual que antes, con o sin factura cargada; la factura sigue ligada al Job | ✅ | A64 |
 | Carga como reparación una factura que ya cargó como compra (mismo proveedor y número) | La app avisa y no deja guardar: dice cuál es (D-PC8) | ✅ | A65 |
@@ -794,6 +799,24 @@ Una propuesta de la sincronización (VIN exacto) se ve en la ficha (banda con **
 | Borra un camión | Solo si nunca tuvo nada; si no, se desactiva | ✅ | A102 |
 | Un mecánico o Safety intenta agregar o editar | No puede (403) | ✅ | A99 |
 
+### HU-M19 · Repuestos, stock y llantas (J22–J26) — 🔲 propuesta (D45, sin construir)
+
+**Quién:** el Manager (Randy). El mecánico ve qué parte o llanta va en su Job, nunca su costo.
+
+Las historias completas, con su "¿qué pasa si…?", están en
+[`proposals/parts-stock-tires/README.md`](proposals/parts-stock-tires/README.md) §4:
+
+| Historia | Qué | Etapa | Estado |
+|---|---|---|---|
+| HU-R1, HU-R2 | Catálogo con repuestos y llantas (medida, New o Recap); pasar una línea "Other" al catálogo | ST-2 | 🔲 |
+| HU-C1, HU-C2 | Cada línea de compra va a un camión (y, si se quiere, su Job), al stock o a Shop supplies; el Job muestra sus partes | ST-1 | 🔲 |
+| HU-S1–HU-S4 | Stock: entra con la compra, sale a un Job, devoluciones, ajustes y reversas; pantalla Stock con "Low" | ST-3 | 🔲 |
+| HU-S5 | El PM descuenta del stock | ST-5 | 🔲 (P29) |
+| HU-T1–HU-T4 | La inspección propone la llanta (steer New, drive Recap); el Manager confirma y sale del stock; historial por posición | ST-4 | 🔲 |
+| HU-F2 | Leer la factura del proveedor (PDF o foto) y confirmar | ST-6 | 🔲 (P30) |
+
+Las filas de prueba se agregan con cada etapa.
+
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 
 **Flujo**
@@ -883,4 +906,5 @@ resumen en [`OPEN_ISSUES.md`](OPEN_ISSUES.md) e historial en
 | ~~G7~~ | El reloj corre en un solo camión a la vez — **hecho (D21, HU-ME6, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | ~~G3, G4~~ | Ayudante en un Job y taller externo — **hechos (D23, D24, HU-M10, HU-M11, 2026-10-05)** | Manager | LTR-188 |
 | G6 | Trailers — después de salir en vivo (P11) | Manager | LTR-56 |
+| G9 | Repuestos fuera del PM, compra atada al Job, stock y llantas desde la inspección — propuesta D45 (HU-M19) | Manager | LTR-220 (ST: LTR-221–226) |
 | ~~G8~~ | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — **hecho (D35, D42, HU-M14, HU-M15)** | Manager, mecánico | LTR-202 |
