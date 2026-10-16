@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-16 (ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-16 (ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -572,6 +572,8 @@ Ver la fila E7 en HU-ME2.
 | Agrega un repuesto o una llanta (D45 / ST-2) | Entra en su categoría (Repair parts, Tires o una que agregue con **Add category**). La llanta pide medida y New o Recap; cualquiera puede llevar un mínimo en stock. **Type** filtra PM · Repair · Tires. El PM del mecánico no los ve y no los acepta | ✅ | A114 |
 | Carga un número de parte que ya es de otra parte, o una categoría con un nombre que ya existe | No deja y dice cuál es. Mecánicos y Safety no agregan categorías (403) | ✅ | A115 |
 | Una línea "Other" de una compra se repite | **Add to catalog** la pasa al catálogo y la línea la usa; la próxima compra trae su último precio | ✅ | A116 |
+| Llega la factura del proveedor en PDF por correo (D45 / ST-6, P30) | En New purchase, **Read the invoice PDF**: propone proveedor, número, fecha, líneas, impuesto y flete; no guarda nada, el Manager revisa y elige a dónde va cada línea. Si las líneas no suman el total del PDF, lo avisa | ✅ | `invoice-reader.spec.ts` (sin fila de API: se lee en el navegador) |
+| El PDF es un escaneo o una foto | Dice que no tiene texto; se escribe a mano | 👁 revisado con un PDF de prueba | — |
 | El PM usa una parte | La elige del mismo catálogo; el PM sigue igual que hoy | ✅ | A53 |
 | Carga una compra de 3 líneas con impuesto y flete (PC-2) | La app calcula el total; si el total que manda la pantalla no cuadra, no guarda | ✅ | A57 |
 | Carga dos veces la misma factura (mismo proveedor y número, sin importar espacios ni mayúsculas) | La app avisa al escribir el número y no deja guardar: dice cuál es y la abre. Anulada la primera, sí se puede cargar (D-PC8) | ✅ | A58 |
@@ -829,7 +831,7 @@ Las historias completas, con su "¿qué pasa si…?", están en
 | HU-S1–HU-S4 | Stock: entra con la compra, sale a un Job, devoluciones, ajustes y reversas; pantalla Stock con "Low" | ST-3 | ✅ (LTR-223, A117–A121) |
 | HU-S5 | El PM descuenta del stock y cobra el cambio de aceite | ST-5 | ✅ (LTR-225, A125–A127) |
 | HU-T1–HU-T4 | La inspección propone la llanta (steer New, drive Recap); el Manager confirma y sale del stock; historial por posición | ST-4 | ✅ (LTR-224, A122–A124) |
-| HU-F2 | Leer la factura del proveedor (PDF o foto) y confirmar | ST-6 | 🔲 (P30) |
+| HU-F2 | Leer la factura del proveedor en PDF y confirmar (las fotos y escaneos se escriben a mano) | ST-6 | ✅ (LTR-226, `invoice-reader.spec.ts`) |
 
 Las filas de prueba se agregan con cada etapa.
 

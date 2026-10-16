@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-16 (el PM descuenta del stock y cobra el aceite, D45 / ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-16 (leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -495,6 +495,16 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
     vigente el día que se completó (`source_type` `pm_oil_change`, como parte). Un
     precio nuevo empieza hoy o después (`PM_OIL_PRICE_PAST`), uno por día. El aceite a
     granel se compra como Shop supplies; no se cuenta por galón.
+- **Leer el PDF de la factura** (D45 / ST-6, LTR-226; P30: los proveedores mandan
+  PDF por correo): en **New purchase**, "Read the invoice PDF" lee el texto del PDF
+  **en el navegador** (`unpdf`, `apps/web/src/lib/pdf-text.ts`; el archivo no pasa por
+  el API) y `readInvoiceLines` (`packages/shared/src/invoice-reader.ts`) propone
+  proveedor (el nombre que aparece), número, fecha, líneas (cantidad × precio =
+  importe; un número de parte del catálogo elige la parte), impuesto, flete y total.
+  **No guarda nada**: llena el formulario y el Manager revisa y elige a dónde va cada
+  línea. Lo que ya escribió no se pisa; si las líneas no suman el total del PDF, lo
+  avisa. Un PDF escaneado (sin texto) no se lee: se escribe a mano. Con los archivos
+  activos, el mismo PDF queda adjunto.
 - **El archivo adjunto por separado** (PCA6): `PATCH /purchases/:id/attachment` y
   `PATCH /outside-repairs/:id/attachment` (`{ attachmentId | null }`) agregan,
   reemplazan o quitan el archivo sin pasar por Edit; en pantalla, "Add invoice
