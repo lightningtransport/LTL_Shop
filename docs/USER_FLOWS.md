@@ -906,5 +906,5 @@ resumen en [`OPEN_ISSUES.md`](OPEN_ISSUES.md) e historial en
 | ~~G7~~ | El reloj corre en un solo camión a la vez — **hecho (D21, HU-ME6, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | ~~G3, G4~~ | Ayudante en un Job y taller externo — **hechos (D23, D24, HU-M10, HU-M11, 2026-10-05)** | Manager | LTR-188 |
 | G6 | Trailers — después de salir en vivo (P11) | Manager | LTR-56 |
-| G9 | Repuestos fuera del PM, compra atada al Job, stock y llantas desde la inspección — propuesta D45 (HU-M19) | Manager | pendiente de OK |
+| G9 | Repuestos fuera del PM, compra atada al Job, stock y llantas desde la inspección — propuesta D45 (HU-M19) | Manager | LTR-220 (ST: LTR-221–226) |
 | ~~G8~~ | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — **hecho (D35, D42, HU-M14, HU-M15)** | Manager, mecánico | LTR-202 |

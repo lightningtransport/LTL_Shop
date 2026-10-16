@@ -232,6 +232,8 @@ El mecánico **nunca ve costos** (D32). Ve qué parte o llanta va, nunca su prec
 
 ## 8. Etapas (cada una se entrega y sirve sola)
 
+Linear: Epic **LTR-220**; ST-1 a ST-6 son **LTR-221 a LTR-226**. La demo no se actualiza con estas etapas hasta que el dueño avise (2026-10-16).
+
 | Etapa | Qué | Historias | Depende de |
 |---|---|---|---|
 | **ST-1** | La compra se ata al Job; el Job muestra sus partes | HU-C1 (sin stock), HU-C2 | — |
