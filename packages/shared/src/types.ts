@@ -165,6 +165,8 @@ export interface WorkOrderJobDto {
   samsaraFaults?: Array<{ code: string; description: string }>;
   /** D45 / ST-1: the parts bought for this Job (name and quantity; the mechanic never sees costs). */
   parts?: Array<{ description: string; partNumber: string | null; quantity: string }>;
+  /** D46 / SQ-3: what Safety found that this Job takes care of ("Plate light out"), never who. */
+  qcFindings?: string[];
   /** D45 / ST-4: the tires to put, as the Manager confirmed them ("RF · New 11R22.5"), never their cost. */
   tires?: Array<{ position: string; tireType: 'new' | 'recap'; tireSize: string | null; status: 'proposed' | 'issued' | 'to_buy' }>;
 }
@@ -505,6 +507,8 @@ export interface AdminWorkOrderDetailDto extends AdminWorkOrderSummaryDto {
   totalActiveLaborMs: number;
   totalWaitingMs: number;
   jobs: AdminWorkOrderJobDto[];
+  /** D46 / SQ-3: what Safety found at the Quality Check, handled or not. */
+  qcFindings?: AdminQcFindingDto[];
   laborSessions: AdminTimeSegmentDto[];
   pauseHistory: (PauseEventDto & {
     createdBy: { id: string; name: string };
@@ -567,6 +571,35 @@ export interface AdminDashboardDto {
   queue?: AdminWorkOrderSummaryDto[];
   /** LTR-126: mechanic work requests the Manager has not handled yet (newest first). */
   openWorkRequests?: AdminOpenWorkRequestDto[];
+  /** D46 / SQ-3: Safety findings the Manager has not added or set aside yet. */
+  openQcFindings?: AdminOpenQcFindingDto[];
+}
+
+/** D46 / SQ-3: something Safety found at the Quality Check (never who found it). */
+export interface AdminQcFindingDto {
+  id: string;
+  workOrderId: string;
+  /** `blocking` = the truck was returned for it; `note` = left when approving. */
+  kind: 'blocking' | 'note';
+  text: string;
+  catalogJob: { id: string; displayName: string; categoryId: string; categoryName: string } | null;
+  createdAt: string;
+  resolution: 'job_added' | 'added_to_job' | 'dismissed' | null;
+  resolvedJob: { id: string; displayName: string } | null;
+  dismissReason: string | null;
+  resolvedAt: string | null;
+}
+
+/** D46 / SQ-3: Safety findings still waiting for the Manager, on the Dashboard. */
+export interface AdminOpenQcFindingDto {
+  id: string;
+  kind: 'blocking' | 'note';
+  text: string;
+  createdAt: string;
+  workOrderId: string;
+  workOrderDisplayId: string;
+  truckId: string;
+  truckNumber: string;
 }
 
 export interface AdminOpenWorkRequestDto {
@@ -794,6 +827,8 @@ export interface TruckWorkPlanDto {
     assessmentId: string | null;
     gatesRemainDefault: true;
   };
+  /** D46 / SQ-3: what Safety found on this Work Order and the Manager has not handled yet. */
+  qcFindings?: AdminQcFindingDto[];
 }
 
 export interface YardOperationsUnavailableDto {

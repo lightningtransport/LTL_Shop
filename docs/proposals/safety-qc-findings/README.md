@@ -64,9 +64,9 @@
 
 | Etapa | Qué | Migración |
 |---|---|---|
-| **SQ-1** | Nombre oculto para el Manager; el QC no se asigna | No |
-| **SQ-2** | Safety ve la inspección de la WO (solo lectura) | No |
-| **SQ-3** | Hallazgos al devolver y al aprobar → el Manager los agrega como Job | Sí |
+| **SQ-1** ✅ | Nombre oculto para el Manager; el QC no se asigna (A128) | No |
+| **SQ-2** ✅ | Safety ve la inspección de la WO (solo lectura, A129) | No |
+| **SQ-3** ✅ | Hallazgos al devolver y al aprobar → el Manager los agrega como Job (construida, filas A130–A132) | Sí |
 | **SQ-4** | Fotos y videos (**declarada, no se construye todavía**) | Sí |
 
 ### SQ-4 · Fotos y videos (diseño para cuando se pida)

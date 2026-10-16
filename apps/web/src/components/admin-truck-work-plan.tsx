@@ -140,6 +140,7 @@ export function AdminTruckWorkPlan({
           ...(job.assignedMechanicId ? { assignedMechanicId: job.assignedMechanicId } : {}),
           // D42 / S-6: the faults this Job takes care of.
           ...(job.samsaraFaultIds?.length ? { samsaraFaultIds: job.samsaraFaultIds } : {}),
+          ...(job.qcFindingIds?.length ? { qcFindingIds: job.qcFindingIds } : {}),
         })),
         expectedVersion: plan.workOrder?.version,
       }));

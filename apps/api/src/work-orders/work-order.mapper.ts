@@ -32,7 +32,7 @@ type JobRow = {
   externalKind?: string | null;
   externalNote?: string | null;
   workflowStepKey?: string | null;
-  sources?: Array<{ truckFault: { code: string; description: string } | null }>;
+  sources?: Array<{ kind?: string; note?: string | null; truckFault: { code: string; description: string } | null }>;
   purchaseLines?: Array<{ description: string; partNumber: string | null; quantity: { toFixed(digits: number): string } }>;
   stockMovements?: Array<{ quantity: { abs(): { toFixed(digits: number): string } }; part: { displayName: string; partNumber: string | null } }>;
   tireChanges?: Array<{ position: string; tireType: 'new' | 'recap'; confirmedAt: Date | null; part: { tireSize: string | null } | null; stockMovement: { reversals: Array<{ id: string }> } | null }>;
@@ -301,6 +301,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
     workflowStepKey: j.workflowStepKey ?? null,
     external: jobExternal(j),
     samsaraFaults: (j.sources ?? []).flatMap((source) => (source.truckFault ? [{ code: source.truckFault.code, description: source.truckFault.description }] : [])),
+    qcFindings: (j.sources ?? []).flatMap((source) => (source.kind === 'qc_finding' && source.note ? [source.note] : [])),
     // D45 / ST-1: what was bought for the Job, never its cost (D32).
     parts: [
       ...(j.purchaseLines ?? []).map((line) => ({ description: line.description, partNumber: line.partNumber, quantity: line.quantity.toFixed(2) })),
@@ -499,9 +500,10 @@ export const workOrderDetailInclude = {
       assignedMechanic: { select: { id: true, name: true } },
       completedBy: { select: { id: true, name: true } },
       // D42 / S-6: the Samsara faults a Job takes care of, shown to the mechanic.
+      // D46 / SQ-3: and the Safety findings it takes care of.
       sources: {
-        where: { kind: 'samsara_fault' as const },
-        select: { truckFault: { select: { code: true, description: true } } },
+        where: { kind: { in: ['samsara_fault' as const, 'qc_finding' as const] } },
+        select: { kind: true, note: true, truckFault: { select: { code: true, description: true } } },
       },
       // D45 / ST-1: the parts bought for the Job (names only on this side).
       purchaseLines: {

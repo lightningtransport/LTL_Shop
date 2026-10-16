@@ -45,6 +45,9 @@ export type QualityCheckReview = (QualityCheckItem | QualityCheckReturnedItem) &
   pm: { service: string; observedMileage: number | null; parts: Array<{ category: string; partNumber: string | null; name: string }> } | null;
   /** D46 / SQ-2: `sheet` = the inspection sheet saved for this visit (D41), to read; null when there was none. */
   inspection: { outcome: 'issues_found' | 'no_issues_found' | 'not_recorded'; recordedAt: string | null; sheet?: TruckInspectionDto | null };
+  /** D46 / SQ-3: the catalog to suggest a Job, and what was already found on this visit. */
+  catalogJobs?: Array<{ id: string; displayName: string; categoryName: string }>;
+  findings?: Array<{ id: string; kind: 'blocking' | 'note'; text: string; job: string | null; resolution: string | null; createdAt: string }>;
   blockers: Array<{ job: string | null; reason: string; note: string | null; reportedBy: string | null; startedAt: string; resolvedAt: string; resolvedBy: string | null; resolution: string | null }>;
   previousReturns: Array<{ note: string | null; returnedBy: string | null; returnedAt: string; resolvedAt: string; resolvedBy: string | null; resolution: string | null }>;
 };

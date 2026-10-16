@@ -67,6 +67,8 @@ export enum WorkOrderJobSourceKind {
   TIRE_READING = 'tire_reading',
   /** D42 / Samsara S-6. */
   SAMSARA_FAULT = 'samsara_fault',
+  /** D46 / SQ-3: a Safety finding at the Quality Check. */
+  QC_FINDING = 'qc_finding',
 }
 
 export type InspectionTireLimits = {

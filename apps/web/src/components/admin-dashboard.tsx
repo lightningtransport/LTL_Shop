@@ -176,6 +176,25 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
           </section>
         );
       })}
+      {/* D46 / SQ-3: Safety findings the Manager has not added or set aside yet. */}
+      {!focus && data.openQcFindings?.length ? (
+        <section aria-label={messages.dashQcFindings} data-testid="dashboard-group-qc-findings">
+          <h3 className="flex items-center gap-2 border-b bg-sunken px-4 py-2 text-xs font-medium text-primary">
+            <ShieldCheck aria-hidden="true" className="size-3.5" />{messages.dashQcFindings}
+            <span className="tnum text-muted-foreground">{data.openQcFindings.length}</span>
+          </h3>
+          <ul className="divide-y">
+            {data.openQcFindings.map((finding) => (
+              <li key={finding.id} className="px-4 py-2.5 text-sm">
+                <Link href={`/admin/work-orders/${finding.workOrderId}`} className="tap-inline hover:underline">
+                  <span className="font-medium">{finding.truckNumber}</span> · “{finding.text}”
+                </Link>
+                <p className="text-xs text-muted-foreground">{finding.kind === 'blocking' ? messages.qcFindingBlocking : messages.qcFindingNote} · {finding.workOrderDisplayId}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {requests.length ? (
         <section aria-label={messages.dashboardWorkRequests} data-testid="dashboard-group-requests">
           <h3 className="flex items-center gap-2 border-b bg-sunken px-4 py-2 text-xs font-medium text-primary">

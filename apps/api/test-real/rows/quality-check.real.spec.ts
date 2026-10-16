@@ -326,3 +326,66 @@ describe('Safety: ve la inspección de la Work Order que revisa (D46, SQ-2)', ()
     same('sin hoja, no trae hoja', ok('otra revisión', await safety.get(`/qc/${other.workOrderId}`)).inspection.sheet, null);
   });
 });
+
+describe('Safety: hallazgos que el Manager convierte en Jobs (D46, SQ-3)', () => {
+  beforeEach(resetDb);
+
+  const lightsJob = () => prisma.catalogJob.findFirstOrThrow({ where: { displayName: 'Lights', status: 'active' }, select: { id: true, displayName: true, categoryId: true } });
+
+  it('A130 | Devolver con dos hallazgos: uno entra como Job por Add work, el otro se suma a un Job abierto; el mecánico lo lee', async () => {
+    const { truck, workOrderId } = await readyForQc('905');
+    const lights = await lightsJob();
+    ok('Safety lo toma', await safety.post(`/qc/${workOrderId}/take`));
+    const review = ok('revisión', await safety.get(`/qc/${workOrderId}`));
+    truthy('Safety tiene el catálogo para sugerir', (review.catalogJobs as Json[]).some((job) => job.id === lights.id));
+    ok('devolver con hallazgos', await safety.post(`/qc/${workOrderId}/return`, {
+      findings: [{ text: 'Luz de placa no prende.', catalogJobId: lights.id }, { text: 'Falta un tornillo del guardafango.' }],
+    }));
+    const wo = await adminWo(workOrderId);
+    same('el Manager ve los dos, sin nombre', (wo.qcFindings as Json[]).map((finding) => [finding.kind, finding.text, finding.catalogJob?.displayName ?? null, finding.resolution]), [
+      ['blocking', 'Luz de placa no prende.', 'Lights', null],
+      ['blocking', 'Falta un tornillo del guardafango.', null, null],
+    ]);
+    same('la nota de la devolución los lista', (await activeBlocker(workOrderId))?.blockerReason, 'quality_check_failed');
+    const plan = ok('plan', await manager.get(`/admin/trucks/${truck.id}/work-plan`));
+    same('Add work los ofrece', (plan.qcFindings as Json[]).length, 2);
+
+    const [plate, bolt] = wo.qcFindings as Json[];
+    ok('Add work: Lights por el hallazgo', await manager.post(`/admin/trucks/${truck.id}/work-plan/jobs`, {
+      ...(await meta(workOrderId)),
+      jobs: [{ catalogJobId: lights.id, categoryId: lights.categoryId, displayName: lights.displayName, qcFindingIds: [plate.id], assignedMechanicId: await userId(USERS.general) }],
+    }));
+    const after = await adminWo(workOrderId);
+    const newLights = namedJob(after, 'Lights');
+    same('el hallazgo quedó en el Job nuevo', (after.qcFindings as Json[]).find((finding) => finding.id === plate.id)?.resolvedJob?.id, newLights.id);
+    same('la devolución quedó respondida', await activeBlocker(workOrderId), null);
+
+    ok('el otro, al mismo Job', await manager.post(`/admin/work-orders/${workOrderId}/qc-findings/${bolt.id}/add-to-job`, { jobId: newLights.id }));
+    refused('otra vez, no', await manager.post(`/admin/work-orders/${workOrderId}/qc-findings/${bolt.id}/add-to-job`, { jobId: newLights.id }), 409, 'QC_FINDING_HANDLED');
+    const mechanic = ok('el mecánico', await as(USERS.general).get(`/work-orders/${workOrderId}`));
+    same('el mecánico lee los hallazgos en su Job', namedJob(mechanic, 'Lights').qcFindings, ['Luz de placa no prende.', 'Falta un tornillo del guardafango.']);
+  });
+
+  it('A131 | Aprobar con un hallazgo que no frena: el camión queda listo y el hallazgo espera al Manager; descartarlo pide motivo', async () => {
+    const { workOrderId } = await readyForQc('905');
+    ok('Safety lo toma', await safety.post(`/qc/${workOrderId}/take`));
+    ok('aprueba con un hallazgo', await safety.post(`/qc/${workOrderId}/approve`, { findings: [{ text: 'Calcomanía DOT despegada, revisar en la próxima visita.' }] }));
+    same('el QC quedó aprobado', laneJob(await adminWo(workOrderId), 'quality_check').status, 'completed');
+    const dashboard = ok('Dashboard', await manager.get('/admin/dashboard'));
+    const waiting = (dashboard.openQcFindings as Json[]).find((finding) => finding.workOrderId === workOrderId);
+    same('el Dashboard lo muestra', [waiting?.kind, waiting?.text], ['note', 'Calcomanía DOT despegada, revisar en la próxima visita.']);
+    refused('descartar sin motivo, no', await manager.post(`/admin/work-orders/${workOrderId}/qc-findings/${waiting.id}/dismiss`, { reason: ' ' }), 400);
+    refused('el mecánico no descarta', await as(USERS.general).post(`/admin/work-orders/${workOrderId}/qc-findings/${waiting.id}/dismiss`, { reason: 'x' }), 403);
+    ok('descartar', await manager.post(`/admin/work-orders/${workOrderId}/qc-findings/${waiting.id}/dismiss`, { reason: 'Se cambia en la próxima visita.' }));
+    same('ya no espera', ok('Dashboard', await manager.get('/admin/dashboard')).openQcFindings.some((finding: Json) => finding.id === waiting.id), false);
+  });
+
+  it('A132 | Un hallazgo pide texto; un Job sugerido tiene que existir; devolver sin nota ni hallazgo, no', async () => {
+    const { workOrderId } = await readyForQc('905');
+    ok('Safety lo toma', await safety.post(`/qc/${workOrderId}/take`));
+    refused('sin nota ni hallazgo', await safety.post(`/qc/${workOrderId}/return`, {}), 400, 'QC_NOTE_REQUIRED');
+    refused('un hallazgo vacío', await safety.post(`/qc/${workOrderId}/return`, { findings: [{ text: '  ' }] }), 400, 'QC_NOTE_REQUIRED');
+    refused('un Job que no existe', await safety.post(`/qc/${workOrderId}/return`, { findings: [{ text: 'x', catalogJobId: crypto.randomUUID() }] }), 400, 'QC_FINDING_JOB_INVALID');
+    same('nada se guardó', await prisma.qcFinding.count({ where: { workOrderId } }), 0);
+  });
+});

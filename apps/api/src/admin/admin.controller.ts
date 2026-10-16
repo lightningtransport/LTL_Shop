@@ -21,6 +21,7 @@ import { CapabilitiesGuard } from '../auth/capabilities.guard';
 import { ManagerWritesGuard, canDoManagerWrites } from '../auth/manager-writes.guard';
 import { TrucksService } from '../trucks/trucks.service';
 import { AdminService } from './admin.service';
+import { QcFindingsService } from './qc-findings.service';
 import { YardOperationsService } from './yard-operations.service';
 import { YardWorkPlanService } from './yard-work-plan.service';
 import { YardDataBoundaryService } from './yard-data-boundary.service';
@@ -64,6 +65,7 @@ export class AdminController {
     private readonly faultJobs: SamsaraFaultJobsService,
     private readonly trucksAdmin: TrucksAdminService,
     private readonly truckSamsara: TruckSamsaraService,
+      private readonly qcFindings: QcFindingsService,
   ) {}
 
   // D46: People and Setup manage the Safety accounts and teams by name.
@@ -155,6 +157,21 @@ export class AdminController {
   @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
   cancelWorkOrder(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.admin.cancelWorkOrder(request.user!, id, body);
+  }
+
+  // D46 / SQ-3: a Safety finding goes to a Job already on the Work Order, or is set aside with a reason.
+  @Post('work-orders/:id/qc-findings/:findingId/add-to-job')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  async addQcFindingToJob(@Req() request: Request, @Param('id') id: string, @Param('findingId') findingId: string, @Body() body: unknown) {
+    await this.qcFindings.addToJob(request.user!, id, findingId, body);
+    return this.admin.detail(id);
+  }
+
+  @Post('work-orders/:id/qc-findings/:findingId/dismiss')
+  @Capabilities(AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE)
+  async dismissQcFinding(@Req() request: Request, @Param('id') id: string, @Param('findingId') findingId: string, @Body() body: unknown) {
+    await this.qcFindings.dismiss(request.user!, id, findingId, body);
+    return this.admin.detail(id);
   }
 
   @Post('work-orders/:id/blockers/:blockerId/resolve')

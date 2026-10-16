@@ -70,6 +70,8 @@ function createPrisma() {
     workOrderNote: {
       findMany: vi.fn().mockResolvedValue([]),
     },
+    // D46 / SQ-3: Safety findings on the Dashboard.
+    qcFinding: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(),
   };
 }
@@ -1674,6 +1676,7 @@ describe('Dashboard Ready to Go (LTR-164 #12)', () => {
     const prisma = {
       workOrder: { count: vi.fn().mockResolvedValue(0), findMany: vi.fn().mockResolvedValue([]) },
       workOrderNote: { findMany: vi.fn().mockResolvedValue([]) },
+      qcFinding: { findMany: vi.fn().mockResolvedValue([]) },
       truck: { findMany: vi.fn().mockResolvedValue([]) },
     };
     const service = new AdminService(prisma as never, { log: vi.fn() } as never, {} as never, yard as never);

@@ -79,6 +79,51 @@ export function WorkPlanAddWork({
   const preselected = useRef(false);
   const checkedFaultIds = useMemo(() => new Set(drafts.flatMap((draft) => draft.samsaraFaultIds ?? [])), [drafts]);
   const pickingFault = recommendations?.items.find((item) => item.fault.id === pickingFaultId) ?? null;
+  // D46 / SQ-3: Safety findings waiting on this Work Order; one with a suggested Job adds that Job, the rest are picked.
+  const qcFindings = plan.qcFindings ?? [];
+  const [pickingFindingId, setPickingFindingId] = useState<string | null>(null);
+  const pickingFinding = qcFindings.find((finding) => finding.id === pickingFindingId) ?? null;
+  const checkedFindingIds = useMemo(() => new Set(drafts.flatMap((draft) => draft.qcFindingIds ?? [])), [drafts]);
+
+  /** Adds the finding to the draft of that Job (one Job for several findings), creating the draft if needed. */
+  function addFindingToJob(finding: { id: string; text: string }, category: Pick<JobCategoryDto, 'id' | 'name'>, job: Pick<CatalogJobDto, 'id' | 'displayName'>) {
+    setDrafts((current) => {
+      const existing = current.find((draft) => draft.catalogJobId === job.id);
+      if (existing) {
+        if (existing.qcFindingIds?.includes(finding.id)) return current;
+        return current.map((draft) => (draft === existing
+          ? { ...draft, qcFindingIds: [...(draft.qcFindingIds ?? []), finding.id], qcFindingTexts: [...(draft.qcFindingTexts ?? []), finding.text] }
+          : draft));
+      }
+      return [...current, {
+        key: crypto.randomUUID(), catalogJobId: job.id, categoryId: category.id, categoryName: category.name, displayName: job.displayName,
+        qcFindingIds: [finding.id], qcFindingTexts: [finding.text], fromQc: true,
+      }];
+    });
+  }
+
+  function removeFinding(findingId: string) {
+    setDrafts((current) => current.flatMap((draft) => {
+      if (!draft.qcFindingIds?.includes(findingId)) return [draft];
+      const index = draft.qcFindingIds.indexOf(findingId);
+      const ids = draft.qcFindingIds.filter((id) => id !== findingId);
+      const texts = (draft.qcFindingTexts ?? []).filter((_, i) => i !== index);
+      if (!ids.length && draft.fromQc) return [];
+      return [{ ...draft, qcFindingIds: ids.length ? ids : undefined, qcFindingTexts: ids.length ? texts : undefined }];
+    }));
+  }
+
+  function toggleFinding(finding: (typeof qcFindings)[number]) {
+    if (disabled) return;
+    if (checkedFindingIds.has(finding.id)) return removeFinding(finding.id);
+    if (finding.catalogJob) {
+      addFindingToJob(finding, { id: finding.catalogJob.categoryId, name: finding.catalogJob.categoryName }, { id: finding.catalogJob.id, displayName: finding.catalogJob.displayName });
+      return;
+    }
+    setPickingFaultId(null);
+    setPickingFindingId(finding.id);
+    document.getElementById('add-work-category-label')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
 
   useEffect(() => {
     if (preselected.current || !recommendations) return;
@@ -201,6 +246,12 @@ export function WorkPlanAddWork({
       setPickingFaultId(null);
       return;
     }
+    // D46 / SQ-3: the same for a Safety finding with no suggested Job.
+    if (pickingFinding) {
+      addFindingToJob(pickingFinding, selectedCategory, job);
+      setPickingFindingId(null);
+      return;
+    }
     setDrafts((current) => {
       if (draftContainsCatalogJob(current, job.id)) {
         return current.filter((draft) => draft.catalogJobId !== job.id);
@@ -213,6 +264,11 @@ export function WorkPlanAddWork({
     if (pickingFault) {
       addFaultToJob(pickingFault, category, job);
       setPickingFaultId(null);
+      return;
+    }
+    if (pickingFinding) {
+      addFindingToJob(pickingFinding, category, job);
+      setPickingFindingId(null);
       return;
     }
     setDrafts((current) => (draftContainsCatalogJob(current, job.id) ? current : [...current, catalogDraft(category, job)]));
@@ -274,8 +330,10 @@ export function WorkPlanAddWork({
       displayName: name,
       customDescription: name,
       ...(pickingFault ? { samsaraFaultIds: [pickingFault.fault.id], samsaraFaultCodes: [pickingFault.fault.code], fromSamsara: true } : {}),
+      ...(pickingFinding ? { qcFindingIds: [pickingFinding.id], qcFindingTexts: [pickingFinding.text], fromQc: true } : {}),
     }]);
     setPickingFaultId(null);
+    setPickingFindingId(null);
     setCustomName('');
   }
 
@@ -315,6 +373,29 @@ export function WorkPlanAddWork({
             onDismiss={dismissFault}
             error={faultError}
           />
+        ) : null}
+        {qcFindings.length ? (
+          <section className="space-y-2 rounded-xl border border-warning/40 bg-warning/5 p-3" data-testid="add-work-qc-findings">
+            <p className="font-medium">{messages.qcFindingsTitle}</p>
+            <p className="text-xs text-muted-foreground">{messages.qcFindingsAddHint}</p>
+            <ul className="space-y-1.5">
+              {qcFindings.map((finding) => (
+                <li key={finding.id}>
+                  <label className="flex min-h-11 items-start gap-2 text-sm">
+                    <input type="checkbox" className="mt-1" checked={checkedFindingIds.has(finding.id) || pickingFindingId === finding.id} disabled={disabled} onChange={() => (pickingFindingId === finding.id ? setPickingFindingId(null) : toggleFinding(finding))} />
+                    <span>
+                      “{finding.text}”
+                      <span className="block text-xs text-muted-foreground">
+                        {finding.kind === 'blocking' ? messages.qcFindingBlocking : messages.qcFindingNote}
+                        {' · '}
+                        {finding.catalogJob ? fillPlaceholders(messages.qcFindingSuggests, { job: finding.catalogJob.displayName }) : pickingFindingId === finding.id ? messages.qcFindingPickNow : messages.qcFindingPickJob}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
         {categoriesError ? <InlineAlert>{messages.loadError}</InlineAlert> : null}
         {categoriesLoading && !categories ? <p className="text-muted-foreground">{messages.loadingCategories}</p> : null}

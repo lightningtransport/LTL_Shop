@@ -17,6 +17,11 @@ export type WorkPlanJobDraft = {
   samsaraFaultCodes?: string[];
   /** The draft was added for a recommended fault: it goes away when its last fault is unchecked. */
   fromSamsara?: boolean;
+  /** D46 / SQ-3: the Safety findings this Job takes care of, and their text for the list. */
+  qcFindingIds?: string[];
+  qcFindingTexts?: string[];
+  /** The draft was added for a Safety finding: it goes away when its last finding is unchecked. */
+  fromQc?: boolean;
 };
 
 export function workPlanJobUiStatusVariant(status: string): ChipVariant {

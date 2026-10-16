@@ -29,6 +29,7 @@ import { YardOperationsService } from './yard-operations.service';
 import { SamsaraFaultJobsService } from './samsara-fault-jobs.service';
 import { deriveWorkPlan } from './yard-work-plan-derivation';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
+import { QcFindingsService } from './qc-findings.service';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -83,6 +84,7 @@ export class YardWorkPlanService {
     private readonly yardOperations: YardOperationsService,
     private readonly clock?: LaborClockService,
     @Optional() private readonly samsaraFaults?: SamsaraFaultJobsService,
+    @Optional() private readonly qcFindings?: QcFindingsService,
   ) {}
 
   async get(user: AuthUser, truckId: string): Promise<TruckWorkPlanDto> {
@@ -171,6 +173,8 @@ export class YardWorkPlanService {
         assessmentId: assessment?.id ?? null,
         gatesRemainDefault: true,
       },
+      // D46 / SQ-3: what Safety found and the Manager has not handled yet (Add work offers it).
+      qcFindings: workOrder && this.qcFindings ? await this.qcFindings.openFor(workOrder.id) : [],
     };
   }
 
@@ -191,8 +195,12 @@ export class YardWorkPlanService {
     if (open?.idempotencyKey === input.idempotencyKey) {
       return this.get(user, truckId);
     }
+    // D46 / SQ-3: Safety findings a Job takes care of are checked first, then tied to the new Jobs.
+    const findingIds = input.jobs.flatMap((job) => job.qcFindingIds ?? []);
+    if (findingIds.length) await this.qcFindings?.assertLinkable(open?.id ?? null, findingIds);
     if (open) {
       await this.addJobsToOpenWorkOrder(user, open, input);
+      await this.qcFindings?.linkToNewJobs(user, open.id, input.jobs, before);
       await this.linkFaultsToNewJobs(user, truckId, input, faults, before);
       await this.answerSafetyReturn(user, open.id, before);
       return this.get(user, truckId);

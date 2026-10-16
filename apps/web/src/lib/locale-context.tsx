@@ -297,6 +297,7 @@ type Copy = {
   /** D42 / S-6: the Samsara fault behind a Job. */
   jobSamsaraFault: (code: string, description: string) => string;
   jobParts: (parts: string) => string;
+  jobQcFinding: (text: string) => string;
   jobTire: (position: string, type: 'new' | 'recap', size: string | null, status: 'proposed' | 'issued' | 'to_buy') => string;
   pmSamsaraGap: (gap: string, samsara: string) => string;
   mileageJumpWarning: (current: string) => string;
@@ -523,6 +524,17 @@ type Copy = {
     optional: string;
     otherJob: string;
     returnNoteLabel: string;
+    findingsLabel: string;
+    findingsHint: string;
+    approveFindingsLabel: string;
+    approveFindingsHint: string;
+    findingPlaceholder: string;
+    findingJob: string;
+    findingNoJob: string;
+    addFinding: string;
+    removeFinding: string;
+    returnNeedsSomething: string;
+    previousFindings: string;
     returnPlaceholder: string;
     returnNoteRequired: string;
     returnConfirm: string;
@@ -796,6 +808,7 @@ const copy: Record<ShopLocale, Copy> = {
     pmSamsaraReference: (miles, ago) => `Samsara: ${miles} · ${ago}`,
     jobSamsaraFault: (code, description) => `Samsara fault ${code}: ${description}`,
     jobParts: (parts) => `Parts: ${parts}`,
+    jobQcFinding: (text) => `From Safety QC: ${text}`,
     jobTire: (position, type, size, status) => `${position} · ${type === 'new' ? 'New' : 'Recap'}${size ? ` ${size}` : ''}${status === 'to_buy' ? ' · waiting for the tire' : status === 'proposed' ? ' · to confirm' : ''}`,
     pmSamsaraGap: (gap, samsara) => `This is ${gap} away from Samsara (${samsara}). Check the dashboard; you can still save.`,
     mileageJumpWarning: (current) => `This is more than 50,000 mi above the truck's current mileage (${current}). Confirm the odometer reading.`,
@@ -1023,6 +1036,17 @@ const copy: Record<ShopLocale, Copy> = {
       optional: '(optional)',
       otherJob: 'Other',
       returnNoteLabel: 'What did you find?',
+      findingsLabel: 'Findings for the Shop',
+      findingsHint: 'One per thing to fix. Pick the Job if you know it; the Manager adds it as work.',
+      approveFindingsLabel: 'Anything for the Shop?',
+      approveFindingsHint: 'It does not hold the truck. The Manager decides if it becomes a Job.',
+      findingPlaceholder: 'E.g. plate light out',
+      findingJob: 'Job',
+      findingNoJob: 'Not sure',
+      addFinding: 'Add a finding',
+      removeFinding: 'Remove this finding',
+      returnNeedsSomething: 'Write what you found, or add a finding.',
+      previousFindings: 'Found before on this truck',
       returnPlaceholder: 'E.g. rear brake hose is leaking',
       returnNoteRequired: 'Say what you found before returning the truck.',
       returnConfirm: 'Return truck',
@@ -1294,6 +1318,7 @@ const copy: Record<ShopLocale, Copy> = {
     pmSamsaraReference: (miles, ago) => `Samsara: ${miles} · ${ago}`,
     jobSamsaraFault: (code, description) => `Falla de Samsara ${code}: ${description}`,
     jobParts: (parts) => `Partes: ${parts}`,
+    jobQcFinding: (text) => `Del QC de Safety: ${text}`,
     jobTire: (position, type, size, status) => `${position} · ${type === 'new' ? 'Nueva' : 'Recap'}${size ? ` ${size}` : ''}${status === 'to_buy' ? ' · esperando la llanta' : status === 'proposed' ? ' · por confirmar' : ''}`,
     pmSamsaraGap: (gap, samsara) => `Hay ${gap} de diferencia con Samsara (${samsara}). Revisa el tablero; igual puedes guardar.`,
     mileageJumpWarning: (current) => `Son más de 50,000 mi sobre el millaje actual del truck (${current}). Confirma la lectura del odómetro.`,
@@ -1520,6 +1545,17 @@ const copy: Record<ShopLocale, Copy> = {
       optional: '(opcional)',
       otherJob: 'Otro',
       returnNoteLabel: '¿Qué encontraste?',
+      findingsLabel: 'Hallazgos para el shop',
+      findingsHint: 'Uno por cada cosa a arreglar. Elige el Job si lo sabes; el Manager lo agrega como trabajo.',
+      approveFindingsLabel: '¿Algo para el shop?',
+      approveFindingsHint: 'No frena el camión. El Manager decide si se vuelve un Job.',
+      findingPlaceholder: 'Ej. luz de placa no prende',
+      findingJob: 'Job',
+      findingNoJob: 'No sé',
+      addFinding: 'Agregar un hallazgo',
+      removeFinding: 'Quitar este hallazgo',
+      returnNeedsSomething: 'Escribe lo que encontraste, o agrega un hallazgo.',
+      previousFindings: 'Encontrado antes en este camión',
       returnPlaceholder: 'Ej.: fuga en la manguera del freno trasero',
       returnNoteRequired: 'Di qué encontraste antes de devolver la unidad.',
       returnConfirm: 'Devolver unidad',
