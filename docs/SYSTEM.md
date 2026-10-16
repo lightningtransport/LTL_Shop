@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-16 (compra atada al Job, D45 / ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -405,6 +405,21 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   (proveedor, número, fecha, líneas, camiones, impuesto, flete; PCA6); cambiar
   solo el archivo o las notas no toca el libro. Anular (con motivo) escribe
   solo reversas. Nada se borra; una compra anulada queda tachada y libera su número.
+- **La línea atada a un Job** (D45 / ST-1, LTR-221; cambia P16): cada línea con
+  camión puede nombrar, si se quiere, un Job de ese camión
+  (`part_purchase_lines.work_order_job_id`). La pantalla ofrece los Jobs del
+  camión (`GET /truck-jobs`): primero los de Work Orders abiertas, después los de
+  cerradas (la factura llega tarde); no los cancelados. Un Job de otro camión →
+  400 `JOB_NOT_ON_TRUCK`; uno cancelado → 400 `JOB_CANCELLED` (salvo que la compra
+  ya lo tuviera). El libro escribe **una fila por camión y Work Order**: el camión
+  recibe lo mismo que antes y su parte del impuesto y el flete se reparte entre sus
+  WOs igual que entre camiones; la fila lleva el WO y su descripción dice
+  "→ Job". Así el costo del WO (PCA10) cuenta las partes. Cambiar el Job escribe
+  reversas. En la Work Order el Job muestra sus partes ("Fuel filter × 2 · $48.00",
+  que abre la compra) al Manager y al System Admin; los demás del Admin y el
+  mecánico ven solo nombre y cantidad, nunca el costo (D32). El menú del Job
+  tiene **Add parts invoice**, que abre New purchase con el camión y el Job ya
+  elegidos (`?new=1&forTruck=&jobId=&from=`).
 - **El archivo adjunto por separado** (PCA6): `PATCH /purchases/:id/attachment` y
   `PATCH /outside-repairs/:id/attachment` (`{ attachmentId | null }`) agregan,
   reemplazan o quitan el archivo sin pasar por Edit; en pantalla, "Add invoice

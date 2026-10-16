@@ -32,6 +32,7 @@ type JobRow = {
   externalNote?: string | null;
   workflowStepKey?: string | null;
   sources?: Array<{ truckFault: { code: string; description: string } | null }>;
+  purchaseLines?: Array<{ description: string; partNumber: string | null; quantity: { toFixed(digits: number): string } }>;
 };
 
 /** LTR-188 / D24: a Job at an external shop, as the DTOs carry it (null when in the shop). */
@@ -297,6 +298,8 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
     workflowStepKey: j.workflowStepKey ?? null,
     external: jobExternal(j),
     samsaraFaults: (j.sources ?? []).flatMap((source) => (source.truckFault ? [{ code: source.truckFault.code, description: source.truckFault.description }] : [])),
+    // D45 / ST-1: what was bought for the Job, never its cost (D32).
+    parts: (j.purchaseLines ?? []).map((line) => ({ description: line.description, partNumber: line.partNumber, quantity: line.quantity.toFixed(2) })),
     };
   });
   const viewerOwnsJobs = !!viewerId && wo.jobs.some((j) => jobAssigneeId(j) === viewerId);
@@ -485,6 +488,12 @@ export const workOrderDetailInclude = {
       sources: {
         where: { kind: 'samsara_fault' as const },
         select: { truckFault: { select: { code: true, description: true } } },
+      },
+      // D45 / ST-1: the parts bought for the Job (names only on this side).
+      purchaseLines: {
+        where: { purchase: { voidedAt: null } },
+        select: { description: true, partNumber: true, quantity: true },
+        orderBy: [{ purchase: { invoiceDate: 'asc' as const } }, { sortOrder: 'asc' as const }],
       },
     },
     orderBy: { addedAt: 'asc' as const },

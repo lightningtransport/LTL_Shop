@@ -205,7 +205,10 @@ export const adminPurchaseLineSchema = z.object({
   quantity: z.union([z.string(), z.number()]).refine((value) => parseQuantityToHundredths(value) !== undefined, 'Quantity must be more than 0, with at most 2 decimals'),
   unitCostCents: moneyCents,
   truckId: z.string().uuid().nullable().optional(),
-}).refine((line) => Boolean(line.partId || line.description?.trim()), { message: 'Pick a part or describe it', path: ['description'] });
+  /** D45 / ST-1: the Job of the line's truck this part was bought for (optional; needs a truck). */
+  workOrderJobId: z.string().uuid().nullable().optional(),
+}).refine((line) => Boolean(line.partId || line.description?.trim()), { message: 'Pick a part or describe it', path: ['description'] })
+  .refine((line) => !line.workOrderJobId || Boolean(line.truckId), { message: 'Pick the truck before its Job', path: ['workOrderJobId'] });
 
 export const adminSavePurchaseSchema = z.object({
   vendorId: z.string().uuid(),
@@ -283,6 +286,37 @@ export interface AdminPurchaseLineDto {
   unitCostCents: number;
   lineTotalCents: number;
   truck: AdminTruckRefDto | null;
+  /** D45 / ST-1: the Job of that truck the line was bought for. */
+  job: AdminPurchaseJobRefDto | null;
+}
+
+export interface AdminPurchaseJobRefDto {
+  id: string;
+  displayName: string;
+  workOrderId: string;
+  workOrderDisplayId: string;
+}
+
+// ── D45 / ST-1: the Jobs a purchase line can be tied to ─────────────────────────────────────────────────────
+
+export const adminTruckJobsQuerySchema = z.object({ truckId: z.string().uuid() });
+
+/** A Job of the truck a purchase line can name: from its open Work Orders, then its recent closed ones. */
+export interface AdminTruckJobDto extends AdminPurchaseJobRefDto {
+  status: string;
+  workOrderStatus: string;
+  /** The Work Order is still open (not completed or cancelled). */
+  open: boolean;
+}
+
+/** On the Work Order: the parts bought for a Job. The cost goes to Manager and System Admin only. */
+export interface AdminJobPartDto {
+  purchaseId: string;
+  description: string;
+  partNumber: string | null;
+  quantity: string;
+  vendorName: string;
+  lineTotalCents?: number;
 }
 
 export interface AdminAttachmentDto {

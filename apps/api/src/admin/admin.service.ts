@@ -222,6 +222,12 @@ const detailInclude = {
         select: { id: true, amountCents: true, vendor: { select: { name: true } } },
         orderBy: { createdAt: 'asc' as const },
       },
+      // D45 / ST-1: parts bought for the Job (the controller drops their cost for non-Managers).
+      purchaseLines: {
+        where: { purchase: { voidedAt: null } },
+        select: { purchaseId: true, description: true, partNumber: true, quantity: true, lineTotalCents: true, purchase: { select: { vendor: { select: { name: true } } } } },
+        orderBy: [{ purchase: { invoiceDate: 'asc' as const } }, { sortOrder: 'asc' as const }],
+      },
     },
     orderBy: { addedAt: 'asc' as const },
   },
@@ -2565,6 +2571,14 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     // LTR-197 / D28: an unowned Job born in a team queue reads "In team queue", not "Unassigned".
     workflowStepKey: job.workflowStepKey ?? null,
     outsideInvoices: (job.outsideRepairs ?? []).map((repair) => ({ id: repair.id, amountCents: repair.amountCents, vendorName: repair.vendor.name })),
+    parts: (job.purchaseLines ?? []).map((line) => ({
+      purchaseId: line.purchaseId,
+      description: line.description,
+      partNumber: line.partNumber,
+      quantity: line.quantity.toFixed(2),
+      vendorName: line.purchase.vendor.name,
+      lineTotalCents: line.lineTotalCents,
+    })),
     // PCA3 (UX-10-001): the outside shop's invoice usually arrives after "Returned"; the Job keeps offering to load it.
     wentExternal: Boolean(job.externalSince) || row.activityLogs.some((entry) => entry.entityId === job.id && logAction(entry.relevantValue) === 'job_sent_external'),
   }));

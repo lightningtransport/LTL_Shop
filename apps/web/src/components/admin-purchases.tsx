@@ -30,6 +30,7 @@ export function purchaseTrucksLabel(item: AdminPurchaseSummaryDto, messages: Adm
  * ("No truck" included), period and "without invoice file". The line above the table totals what is filtered
  * (voided purchases do not count) and what has no truck. PCA1: the filters live in the URL, so Back keeps them.
  * PCA2: `?new=1&forTruck=<id>&from=<path>` opens New purchase for that truck and goes back to `from` when it closes.
+ * D45 / ST-1: `&jobId=<id>` (from a Job on the Work Order) ties the first line to that Job.
  */
 export function AdminPurchases({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
@@ -40,6 +41,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
   const { data, error, isLoading, mutate } = useAdminPurchases(query);
   const [formOpen, setFormOpen] = useState(false);
   const [presetTruckId, setPresetTruckId] = useState<string | undefined>();
+  const [presetJobId, setPresetJobId] = useState<string | undefined>();
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const pathname = usePathname();
   const params = useSearchParams();
@@ -47,10 +49,11 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
   useEffect(() => {
     if (params.get('new') !== '1' || !canWrite) return;
     setPresetTruckId(params.get('forTruck') ?? undefined);
+    setPresetJobId(params.get('jobId') ?? undefined);
     setReturnTo(safeAdminPath(params.get('from')));
     setFormOpen(true);
     const next = new URLSearchParams(params.toString());
-    for (const key of ['new', 'forTruck', 'from']) next.delete(key);
+    for (const key of ['new', 'forTruck', 'jobId', 'from']) next.delete(key);
     router.replace(`${pathname}${next.size ? `?${next}` : ''}`, { scroll: false });
   }, [params, canWrite, router, pathname]);
   const { data: formData } = useAdminPurchaseFormData(true);
@@ -178,12 +181,13 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
         <PurchaseForm
           purchase={null}
           presetTruckId={presetTruckId}
+          presetJobId={presetJobId}
           categories={catalog.categories}
           vendors={vendors}
           formData={formData}
           locale={locale}
           messages={messages}
-          onClose={() => { setFormOpen(false); setPresetTruckId(undefined); if (returnTo) router.push(returnTo); setReturnTo(null); }}
+          onClose={() => { setFormOpen(false); setPresetTruckId(undefined); setPresetJobId(undefined); if (returnTo) router.push(returnTo); setReturnTo(null); }}
           onVendorAdded={() => void mutateVendors()}
           // PCA2: opened from a Truck's Costs, saving goes back there (where the new cost shows); otherwise to the purchase.
           onSaved={(id) => { setFormOpen(false); void mutate(); router.push(returnTo ?? `/admin/parts/purchases/${id}?from=${encodeURIComponent(here)}`); setReturnTo(null); }}

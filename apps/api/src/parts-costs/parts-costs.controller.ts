@@ -111,6 +111,12 @@ export class PartsCostsController {
     return this.purchases.openAttachment(id);
   }
 
+  // D45 / ST-1: the Jobs of a truck a purchase line can be tied to.
+  @Get('truck-jobs')
+  truckJobs(@Query() query: Record<string, unknown>) {
+    return this.purchases.truckJobs(query);
+  }
+
   // PC-3: outside repairs. Static paths come before `outside-repairs/:id`.
   @Get('external-jobs')
   externalJobs(@Query() query: Record<string, unknown>) {

@@ -48,6 +48,7 @@ import type {
   AdminRequestAttachmentInput,
   AdminSavePurchaseInput,
   AdminExternalJobDto,
+  AdminTruckJobDto,
   AdminOutsideRepairDetailDto,
   AdminOutsideRepairListDto,
   AdminSaveOutsideRepairInput,
@@ -978,6 +979,18 @@ export function useAdminOutsideRepair(id: string) {
 }
 
 /** The truck's Jobs that went to an external shop (out now, or within 90 days). */
+/** D45 / ST-1: the Jobs of a truck a purchase line can be tied to (open Work Orders first). */
+export function useAdminTruckJobs(truckId: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminTruckJobDto[]>(token && truckId ? `/api/admin/parts-costs/truck-jobs?truckId=${truckId}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      ...adminReadRetry,
+    }),
+  );
+}
+
 export function useAdminExternalJobs(truckId: string) {
   const { token } = useAuth();
   return withAdminReadPending(

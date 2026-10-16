@@ -186,6 +186,11 @@ export function AdminJobTable({
     if (canSeeCosts && (isExternal || job.wentExternal || job.outsideInvoices?.length)) {
       items.push({ key: 'outside-invoice', label: messages.pcAddOutsideInvoice, icon: Receipt, testId: 'admin-wo-job-outside-invoice', href: outsideInvoiceHref });
     }
+    // D45 / ST-1: a parts invoice for this Job, with the truck and the Job already picked.
+    if (canSeeCosts && job.status !== 'cancelled') {
+      const partsInvoiceHref = `/admin/parts/purchases?new=1&forTruck=${data.truck.id}&jobId=${job.id}&from=${encodeURIComponent(`/admin/work-orders/${data.id}`)}`;
+      items.push({ key: 'parts-invoice', label: messages.pcAddPartsForJob, icon: Package, testId: 'admin-wo-job-parts-invoice', href: partsInvoiceHref });
+    }
     if (canEdit) items.push({ key: 'cancel', label: messages.cancelJobAction, icon: XCircle, destructive: true, separatorBefore: items.length > 0, onSelect: () => onJobDialog('cancel', job.id) });
 
     let mechanic;
@@ -325,6 +330,21 @@ export function AdminJobTable({
                     {fillPlaceholders(messages.pcJobInvoiceChip, { amount: formatCents(invoice.amountCents, locale), vendor: invoice.vendorName })}
                   </AdminNavLink>
                 ))}
+              </p>
+            ) : null}
+            {job.parts?.length ? (
+              <p className="mt-0.5 flex flex-wrap gap-1" data-testid="admin-wo-job-parts">
+                {job.parts.map((part, at) => {
+                  const text = fillPlaceholders(messages.pcJobPartChip, { part: part.description, qty: String(Number(part.quantity)) });
+                  const chip = <><Package aria-hidden="true" className="size-3" />{text}{canSeeCosts && part.lineTotalCents !== undefined ? ` · ${formatCents(part.lineTotalCents, locale)}` : ''}</>;
+                  return canSeeCosts ? (
+                    <AdminNavLink key={at} href={`/admin/parts/purchases/${part.purchaseId}?from=${encodeURIComponent(`/admin/work-orders/${data.id}`)}`} className="tap-inline inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground">
+                      {chip}
+                    </AdminNavLink>
+                  ) : (
+                    <span key={at} className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground">{chip}</span>
+                  );
+                })}
               </p>
             ) : null}
             {job.customDescription ? <p className="mt-1 text-muted-foreground">{job.customDescription}</p> : null}

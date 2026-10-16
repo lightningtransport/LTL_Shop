@@ -89,7 +89,14 @@ export class AdminController {
     // LTR-200 / D-PC7: money is for the Shop Manager and the System Admin only.
     if (canDoManagerWrites(request.user)) return detail;
     const { costs: _costs, ...rest } = detail;
-    return { ...rest, jobs: detail.jobs.map(({ outsideInvoices: _invoices, ...job }) => job) };
+    return {
+      ...rest,
+      jobs: detail.jobs.map(({ outsideInvoices: _invoices, parts, ...job }) => ({
+        ...job,
+        // D45 / ST-1: what was bought for the Job, without its cost.
+        parts: parts?.map(({ lineTotalCents: _cost, ...part }) => part),
+      })),
+    };
   }
 
   @Patch('work-orders/:id')
