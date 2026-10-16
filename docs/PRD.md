@@ -109,7 +109,11 @@ checklist de inspección, Setup → Samsara.
 Catálogo de partes, proveedores, compras y reparaciones externas con su factura,
 costo por camión, tarifa de mano de obra, cierre del mes y factura interna
 `SHOP-AAAA-NNNN` en PDF para Finanzas. Sin inventario (stock).
-**Decisiones:** D32, D34, D37, D-PC1–10 · **Historias:** HU-M12, HU-M13.
+**Propuesto (D45):** repuestos fuera del PM, compra atada al Job, stock de
+repuestos y llantas, llantas propuestas desde la inspección (steer nueva,
+drive recap) y lectura de facturas de proveedores; etapas ST-1 a ST-6 en
+[`proposals/parts-stock-tires/`](proposals/parts-stock-tires/README.md).
+**Decisiones:** D32, D34, D37, D45 (propuesta), D-PC1–10 · **Preguntas:** P24–P31 · **Historias:** HU-M12, HU-M13, HU-M19.
 
 ### 4.8 Samsara — ✅
 Sincronización cada hora (millas, ubicación, fallas) solo de lectura. Las fallas
@@ -138,7 +142,7 @@ empieza sin decisión (etiqueta **Gated** en Linear).
 
 - Despachar cargas, nómina, reemplazar un sistema completo de flotas.
 - Off Duty, notificaciones push (solo avisos dentro de la app).
-- Inventario de partes (stock): diseñado, no se construye todavía.
+- Inventario de partes (stock): propuesto en D45, no se construye hasta el OK y P25–P27.
 - Rendimiento o tiempos por Job, espera por motivo.
 - Espacios propios para Detailing, Body Shop, Trailer o Inspector.
 - Escribir en Samsara o en Ninox (solo lectura).

@@ -1,6 +1,6 @@
 # Pendientes (resumen)
 
-**Actualizado:** 2026-10-14
+**Actualizado:** 2026-10-16
 
 **Lo pendiente vive en Linear** (equipo LTR, un proyecto por módulo; ver
 [`PRD.md`](PRD.md) §4). Esta página es solo un resumen para leer de un vistazo.
@@ -21,14 +21,15 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
+| Parts, Costs & Finance | — (tras el OK) | Repuestos, stock y llantas: propuesta D45, etapas ST-1 a ST-6 | — |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
 | Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
 | Integraciones V3 | LTR-46, 54, 55, 56 | Integraciones en espera (Gated): contratos, geocerca, trailers | — |
 
 ## Preguntas abiertas
 
-En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox) y **P14**
-(qué datos usa la API para terceros). P13 se cerró con D44.
+En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox), **P14**
+(qué datos usa la API para terceros) y **P24–P31** (stock y llantas, D45, para Randy). P13 se cerró con D44.
 
 ## Salida en vivo
 
