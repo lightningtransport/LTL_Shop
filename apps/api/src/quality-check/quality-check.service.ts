@@ -10,6 +10,7 @@ import { classifyWorkPlanLane } from '../admin/yard-work-plan-derivation';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { addLocalDays, localDateTimeIn, SHOP_TIME_ZONE, type LocalDate } from '../common/shop-time';
 import { YardDataBoundaryService } from '../admin/yard-data-boundary.service';
+import { buildInspectionDto, inspectionInclude } from '../inspection/inspection.service';
 
 /**
  * LTR-185 / D19: Safety does the Quality Check.
@@ -389,6 +390,9 @@ export class QualityCheckService {
       ? 'issues_found'
       : inspectionRequirement && ['completed', 'waived', 'not_required'].includes(inspectionRequirement.outcome) ? 'no_issues_found' : 'not_recorded';
     const pmJob = row.jobs.find((job, index) => lanes[index] === WorkPlanJobLane.PM && job.status === 'completed') ?? null;
+    // D46 / SQ-2 (LTR-231): the sheet the truck was inspected with on this visit, to read (Safety does not inspect).
+    const sheetRow = await this.prisma.truckInspection.findFirst({ where: { workOrderId }, include: inspectionInclude, orderBy: { inspectedAt: 'desc' } });
+    const sheet = sheetRow ? await buildInspectionDto(this.prisma, sheetRow) : null;
 
     return {
       ...listed,
@@ -418,7 +422,7 @@ export class QualityCheckService {
               .map((item) => ({ category: item.partCategory.name, partNumber: item.part.partNumber, name: item.part.displayName })),
           }
         : null,
-      inspection: { outcome: inspectionOutcome, recordedAt: inspectionRequirement?.evaluatedAt?.toISOString() ?? null },
+      inspection: { outcome: sheet ? (sheet.issuesFound ? 'issues_found' : 'no_issues_found') : inspectionOutcome, recordedAt: sheet?.inspectedAt ?? inspectionRequirement?.evaluatedAt?.toISOString() ?? null, sheet },
       blockers: row.pauseEvents
         .filter((event) => event.jobId !== qcJobId && event.resolvedAt)
         .map((event) => ({

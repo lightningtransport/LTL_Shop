@@ -503,6 +503,12 @@ type Copy = {
     whatWasDone: string;
     pmLine: (mileage: string, parts: number) => string;
     inspectionSection: string;
+    inspectionBy: (name: string) => string;
+    inspectionDefects: string;
+    inspectionNoDefects: string;
+    inspectionTires: string;
+    inspectionNotes: string;
+    inspectionAddedLater: string;
     inspection: Record<'issues_found' | 'no_issues_found' | 'not_recorded', string>;
     blockersSection: string;
     resolvedBy: (who: string, when: string) => string;
@@ -997,6 +1003,12 @@ const copy: Record<ShopLocale, Copy> = {
       whatWasDone: 'What was done',
       pmLine: (mileage, parts) => `Mileage ${mileage} · ${parts} ${parts === 1 ? 'part' : 'parts'}`,
       inspectionSection: 'Arrival inspection',
+      inspectionBy: (name) => `Inspected by ${name}`,
+      inspectionDefects: 'Defects found',
+      inspectionNoDefects: 'No defects on the sheet.',
+      inspectionTires: 'Tires to watch or fix',
+      inspectionNotes: 'Notes',
+      inspectionAddedLater: 'added later',
       inspection: { issues_found: 'Issues found', no_issues_found: 'No issues found', not_recorded: 'Not recorded' },
       blockersSection: 'Blockers on this truck',
       resolvedBy: (who, when) => `Resolved by ${who} · ${when}`,
@@ -1488,6 +1500,12 @@ const copy: Record<ShopLocale, Copy> = {
       whatWasDone: 'Qué se hizo',
       pmLine: (mileage, parts) => `Millaje ${mileage} · ${parts} ${parts === 1 ? 'pieza' : 'piezas'}`,
       inspectionSection: 'Inspección de llegada',
+      inspectionBy: (name) => `Inspeccionó ${name}`,
+      inspectionDefects: 'Defectos encontrados',
+      inspectionNoDefects: 'La hoja no tiene defectos.',
+      inspectionTires: 'Llantas a vigilar o arreglar',
+      inspectionNotes: 'Notas',
+      inspectionAddedLater: 'agregado después',
       inspection: { issues_found: 'Con hallazgos', no_issues_found: 'Sin hallazgos', not_recorded: 'Sin registrar' },
       blockersSection: 'Bloqueos de esta unidad',
       resolvedBy: (who, when) => `Lo resolvió ${who} · ${when}`,

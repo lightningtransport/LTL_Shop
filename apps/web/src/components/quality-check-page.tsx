@@ -530,6 +530,46 @@ function ReviewBody({ review }: { review: QualityCheckReview }) {
           {t.inspection[review.inspection.outcome]}
           {review.inspection.recordedAt ? <span className="text-xs text-muted-foreground">· {when(review.inspection.recordedAt)}</span> : null}
         </p>
+        {/* D46 / SQ-2: the sheet itself — what the inspector found, the tires and the notes (read only). */}
+        {review.inspection.sheet ? (
+          <div className="space-y-3 border-t px-4 py-3 text-sm" data-testid="qc-inspection-sheet">
+            <p className="text-xs text-muted-foreground">{t.inspectionBy(review.inspection.sheet.inspectedBy.name)}</p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.inspectionDefects}</p>
+              {review.inspection.sheet.items.some((item) => item.result === 'defect') ? (
+                <ul className="mt-1 space-y-1.5">
+                  {review.inspection.sheet.items.filter((item) => item.result === 'defect').map((item) => (
+                    <li key={item.id}>
+                      <span className="font-medium">{item.label}</span>
+                      {item.catalogJobName ? <span className="text-muted-foreground"> → {item.catalogJobName}</span> : null}
+                      {item.addedLater ? <span className="text-xs text-muted-foreground"> · {t.inspectionAddedLater}</span> : null}
+                      {item.note ? <span className="block text-muted-foreground">“{item.note}”</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="mt-1 text-muted-foreground">{t.inspectionNoDefects}</p>}
+            </div>
+            {review.inspection.sheet.tires.some((tire) => tire.status !== 'ok') ? (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.inspectionTires}</p>
+                <ul className="mt-1 space-y-1">
+                  {review.inspection.sheet.tires.filter((tire) => tire.status !== 'ok').map((tire) => (
+                    <li key={tire.position} className="flex justify-between gap-2">
+                      <span className="font-medium">{tire.position}</span>
+                      <span className={cn('tabular-nums', tire.status === 'fix' ? 'text-destructive-text' : 'text-warning-foreground dark:text-warning')}>{tire.psi} PSI · {tire.tread}/32</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {review.inspection.sheet.notes ? (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.inspectionNotes}</p>
+                <p className="mt-1">{review.inspection.sheet.notes}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </SectionCard>
 
       {review.blockers.length ? (

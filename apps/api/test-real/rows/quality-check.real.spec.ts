@@ -293,3 +293,36 @@ describe('Safety: el Shop no sabe quién de Safety hizo el QC (D46, SQ-1)', () =
     truthy('People sigue mostrando a Safety por nombre', (roster.items as Json[]).some((item) => item.name === person.name));
   });
 });
+
+describe('Safety: ve la inspección de la Work Order que revisa (D46, SQ-2)', () => {
+  beforeEach(resetDb);
+
+  it('A129 | La revisión trae la hoja de inspección: defectos con su nota, llantas a vigilar y notas; sin hoja, nada', async () => {
+    const { truck, workOrderId } = await plannedWo('905');
+    const current = ok('leer la hoja', await manager.get(`/admin/trucks/${truck.id}/inspection`));
+    const positions = ['LF', 'RF', 'LFO', 'LFI', 'RFI', 'RFO', 'LRO', 'LRI', 'RRI', 'RRO'];
+    ok('guardar la hoja', await manager.post(`/admin/trucks/${truck.id}/inspection`, {
+      idempotencyKey: crypto.randomUUID(),
+      items: current.checklist.map((item: Json) => item.label === 'Interior clean'
+        ? { checklistItemId: item.id, result: 'defect', note: 'Barro en el piso de la cabina.' }
+        : { checklistItemId: item.id, result: 'ok' }),
+      // LRO at 3/32 is near the drive minimum (2/32): "watch", no Job.
+      tires: positions.map((position) => ({ position, psi: position === 'LF' || position === 'RF' ? 110 : 95, tread: position === 'LRO' ? 3 : 9 })),
+      notes: 'El chofer dice que jala a la derecha.',
+    }));
+    await doPm(workOrderId, truck.id);
+    await doLane(USERS.alignment, workOrderId, 'alignment');
+    await doLane(USERS.detailing, workOrderId, 'detailing');
+
+    const review = ok('la revisión de Safety', await safety.get(`/qc/${workOrderId}`));
+    const sheet = review.inspection.sheet;
+    same('trae la hoja', Boolean(sheet), true);
+    same('el defecto con su nota', sheet.items.filter((item: Json) => item.result === 'defect').map((item: Json) => [item.label, item.note]), [['Interior clean', 'Barro en el piso de la cabina.']]);
+    same('la llanta a vigilar', sheet.tires.filter((tire: Json) => tire.status !== 'ok').map((tire: Json) => [tire.position, tire.status]), [['LRO', 'watch']]);
+    same('las notas', sheet.notes, 'El chofer dice que jala a la derecha.');
+    refused('Safety sigue sin poder inspeccionar (D41)', await safety.get(`/inspections/trucks/${truck.id}`), 403);
+
+    const other = await readyForQc('922');
+    same('sin hoja, no trae hoja', ok('otra revisión', await safety.get(`/qc/${other.workOrderId}`)).inspection.sheet, null);
+  });
+});
