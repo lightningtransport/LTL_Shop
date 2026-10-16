@@ -23,7 +23,8 @@ import { Prisma } from '@prisma/client';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
-import { chargedOnBySource, reverseSource, truckAmounts, writeEntries } from './cost-ledger';
+import { allocateExtra, chargedOnBySource, reverseSource, truckAmounts, writeEntries } from './cost-ledger';
+import { assertNotBelowZero, lockPart, toHundredths, writeMovement } from './stock-ledger';
 import { INVOICE_BUCKET, InvoiceFiles } from './invoice-files';
 import { assertNewInvoice, currentAttachment, duplicateInvoice, filedOwners, findInvoice, linkAttachment, lockVendorInvoices } from './invoice-registry';
 
@@ -119,6 +120,7 @@ export class PurchasesService {
         job: line.workOrderJob
           ? { id: line.workOrderJob.id, displayName: line.workOrderJob.displayName, workOrderId: line.workOrderJob.workOrder.id, workOrderDisplayId: line.workOrderJob.workOrder.displayId }
           : null,
+        destination: line.destination,
       })),
       truckShares: shares,
       noTruckCents,
@@ -220,6 +222,7 @@ export class PurchasesService {
           include: purchaseInclude,
         });
         await this.writeLedger(tx, purchase, actor.id);
+        await this.writeStockIns(tx, purchase, actor.id);
         await linkAttachment(tx, 'part_purchase', purchase.id, input.attachmentId);
         await this.activity.log(tx, {
           eventType: ActivityEventType.PART_PURCHASE_SAVED,
@@ -272,6 +275,12 @@ export class PurchasesService {
       if (this.ledgerKey(before) !== this.ledgerKey(purchase)) {
         await reverseSource(tx, { sourceType: SOURCE, sourceId: id }, actor.id);
         await this.writeLedger(tx, purchase, actor.id);
+      }
+      // D45 / ST-3: what entered the stock is corrected the same way, and nothing may be left below zero.
+      if (this.stockKey(before) !== this.stockKey(purchase)) {
+        const touched = await this.reverseStockIns(tx, id, actor.id);
+        const added = await this.writeStockIns(tx, purchase, actor.id);
+        await assertNotBelowZero(tx, [...touched, ...added]);
       }
       if (input.attachmentId !== undefined) await linkAttachment(tx, 'part_purchase', id, input.attachmentId);
       await this.activity.log(tx, {
@@ -326,6 +335,7 @@ export class PurchasesService {
     await this.prisma.$transaction(async (tx) => {
       await tx.partPurchase.update({ where: { id }, data: { voidedAt: new Date(), voidedById: actor.id, voidReason: reason } });
       await reverseSource(tx, { sourceType: SOURCE, sourceId: id }, actor.id);
+      await assertNotBelowZero(tx, await this.reverseStockIns(tx, id, actor.id));
       await this.activity.log(tx, {
         eventType: ActivityEventType.PART_PURCHASE_VOIDED,
         entityType: SOURCE,
@@ -385,6 +395,7 @@ export class PurchasesService {
         lineTotalCents: lineTotalCents(hundredths, line.unitCostCents),
         truckId: line.truckId ?? null,
         workOrderJobId: line.workOrderJobId ?? null,
+        destination: line.truckId ? ('truck' as const) : (line.destination ?? 'shop_supplies'),
         sortOrder: index,
       };
     });
@@ -394,6 +405,46 @@ export class PurchasesService {
       throw new BadRequestException({ code: 'TOTAL_MISMATCH', message: 'The total does not match the lines, tax and freight.', totalCents });
     }
     return { lines, subtotalCents, totalCents, invoiceNorm: normalizeInvoiceNumber(input.invoiceNumber) || input.invoiceNumber.toUpperCase() };
+  }
+
+  /** D45 / ST-3: what the stock got from this purchase; two purchases with the same key wrote the same movements. */
+  private stockKey(row: PurchaseRow) {
+    return JSON.stringify(this.stockIns(row).map((line) => [line.partId, line.hundredths, line.valueCents]));
+  }
+
+  /**
+   * D45 / ST-3: the "To stock" lines, each with its share of the tax and freight that fell on the lines without a
+   * truck (D-PC2), so the stock carries what the parts really cost.
+   */
+  private stockIns(row: PurchaseRow) {
+    const loose = row.lines.filter((line) => !line.truckId);
+    const extra = this.amounts(row).noTruckCents - loose.reduce((sum, line) => sum + line.lineTotalCents, 0);
+    const shares = allocateExtra(loose.map((line) => ({ truckId: line.id, baseCents: line.lineTotalCents })), extra);
+    return loose
+      .filter((line) => line.destination === 'stock' && line.partId)
+      .map((line) => ({ partId: line.partId!, hundredths: toHundredths(line.quantity), valueCents: line.lineTotalCents + (shares.get(line.id) ?? 0) }));
+  }
+
+  private async writeStockIns(tx: Prisma.TransactionClient, purchase: PurchaseRow, actorId: string) {
+    const ins = this.stockIns(purchase);
+    for (const line of ins) {
+      await lockPart(tx, line.partId);
+      await writeMovement(tx, { partId: line.partId, kind: 'purchase_in', hundredths: line.hundredths, valueCents: line.valueCents, purchaseId: purchase.id, actorId });
+    }
+    return ins.map((line) => line.partId);
+  }
+
+  /** Undoes what this purchase put in the stock (still counted); returns the parts touched. */
+  private async reverseStockIns(tx: Prisma.TransactionClient, purchaseId: string, actorId: string) {
+    const live = await tx.stockMovement.findMany({ where: { purchaseId, kind: 'purchase_in', reversals: { none: {} } } });
+    for (const movement of live) {
+      await lockPart(tx, movement.partId);
+      await writeMovement(tx, {
+        partId: movement.partId, kind: 'reversal', hundredths: -toHundredths(movement.quantity), valueCents: -movement.valueCents,
+        purchaseId, reversesId: movement.id, actorId,
+      });
+    }
+    return live.map((movement) => movement.partId);
   }
 
   /**

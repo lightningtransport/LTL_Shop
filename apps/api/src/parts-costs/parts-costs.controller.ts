@@ -8,6 +8,7 @@ import { ManagerWritesGuard } from '../auth/manager-writes.guard';
 import { PartsCatalogService } from './parts-catalog.service';
 import { OutsideRepairsService } from './outside-repairs.service';
 import { PurchasesService } from './purchases.service';
+import { StockService } from './stock.service';
 import { InternalInvoicesService } from './internal-invoices.service';
 import { LaborRatesService } from './labor-rates.service';
 import { TruckCostsService } from './truck-costs.service';
@@ -23,6 +24,7 @@ export class PartsCostsController {
   constructor(
     private readonly catalog: PartsCatalogService,
     private readonly purchases: PurchasesService,
+    private readonly stock: StockService,
     private readonly repairs: OutsideRepairsService,
     private readonly truckCosts: TruckCostsService,
     private readonly laborRates: LaborRatesService,
@@ -115,6 +117,32 @@ export class PartsCostsController {
   @Get('attachments/:id')
   openAttachment(@Param('id') id: string) {
     return this.purchases.openAttachment(id);
+  }
+
+  // D45 / ST-3: the Shop's stock. Static paths come before `stock/:partId`.
+  @Get('stock')
+  stockList(@Query() query: Record<string, unknown>) {
+    return this.stock.list(query);
+  }
+
+  @Post('stock/count')
+  stockCount(@Req() request: Request, @Body() body: unknown) {
+    return this.stock.count(request.user!, body);
+  }
+
+  @Post('stock/issue')
+  stockIssue(@Req() request: Request, @Body() body: unknown) {
+    return this.stock.issue(request.user!, body);
+  }
+
+  @Post('stock/movements/:id/return')
+  stockReturn(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
+    return this.stock.returnToStock(request.user!, id, body);
+  }
+
+  @Get('stock/:partId')
+  stockPart(@Param('partId') partId: string) {
+    return this.stock.part(partId);
   }
 
   // D45 / ST-1: the Jobs of a truck a purchase line can be tied to.

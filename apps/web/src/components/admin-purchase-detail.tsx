@@ -152,7 +152,10 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
               header: messages.pcLineTruck,
               cell: (line: (typeof data.lines)[number]) => line.truck
                 ? <AdminNavLink className="tap-inline text-primary hover:underline" href={adminTruckCostsHref(line.truck.id, here)}>{fillPlaceholders(messages.pcTruckLabel, { truck: line.truck.truckNumber })}</AdminNavLink>
-                : <span className="text-muted-foreground">{messages.pcNoTruckOption}</span>,
+                // D45 / ST-3: a line without a truck went to stock or is a Shop supply.
+                : line.destination === 'stock'
+                  ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/parts/stock?q=${encodeURIComponent(line.description)}`} data-testid="purchase-line-stock">{messages.pcLineToStock}</AdminNavLink>
+                  : <span className="text-muted-foreground">{messages.pcLineShopSupplies}</span>,
             }] : []),
             // D45 / ST-1: the Job each line was bought for, when any line has one.
             ...(data.lines.some((line) => line.job) ? [{

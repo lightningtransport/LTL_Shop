@@ -20,8 +20,10 @@ import {
   UserPlus,
   Users,
   XCircle,
+  Boxes,
 } from 'lucide-react';
 import { formatCents, isPmCategory, isQualityCheckJob, type AdminWorkOrderDetailDto } from '@ltl-shop/shared';
+import { JobStockDialog } from './admin-job-stock-dialog';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { intlLocale } from '@/lib/shop-locale';
 import { formatAdminDate } from '@/lib/admin-format';
@@ -80,6 +82,7 @@ export function AdminJobTable({
   blockedJobIds = [],
   returnRequest = null,
   onReturnRequestHandled,
+  onStockChanged,
 }: {
   data: AdminWorkOrderDetailDto;
   locale: AdminLocale;
@@ -104,8 +107,11 @@ export function AdminJobTable({
   /** Stage 8: "Returned" in the Next step opens this table's dialog for that Job. */
   returnRequest?: string | null;
   onReturnRequestHandled?: () => void;
+  /** D45 / ST-3: a part left the stock for a Job, or went back; the Work Order reloads. */
+  onStockChanged?: () => void;
 }) {
   const [dialog, setDialog] = useState<JobDialog | null>(null);
+  const [stockJobId, setStockJobId] = useState<string | null>(null);
   const [pickerJobId, setPickerJobId] = useState<string | null>(null);
   // Stage 8 (mockup): the done and cancelled group starts open.
   const [closedOpen, setClosedOpen] = useState(true);
@@ -190,6 +196,8 @@ export function AdminJobTable({
     if (canSeeCosts && job.status !== 'cancelled') {
       const partsInvoiceHref = `/admin/parts/purchases?new=1&forTruck=${data.truck.id}&jobId=${job.id}&from=${encodeURIComponent(`/admin/work-orders/${data.id}`)}`;
       items.push({ key: 'parts-invoice', label: messages.pcAddPartsForJob, icon: Package, testId: 'admin-wo-job-parts-invoice', href: partsInvoiceHref });
+      // D45 / ST-3: take a part off the shelf for this Job (or give one back).
+      if (onStockChanged) items.push({ key: 'parts-stock', label: messages.pcStockFromJob, icon: Boxes, testId: 'admin-wo-job-parts-stock', onSelect: () => setStockJobId(job.id) });
     }
     if (canEdit) items.push({ key: 'cancel', label: messages.cancelJobAction, icon: XCircle, destructive: true, separatorBefore: items.length > 0, onSelect: () => onJobDialog('cancel', job.id) });
 
@@ -347,6 +355,20 @@ export function AdminJobTable({
                 })}
               </p>
             ) : null}
+            {job.stockParts?.some((part) => !part.returned) ? (
+              <p className="mt-0.5 flex flex-wrap gap-1" data-testid="admin-wo-job-stock-parts">
+                {job.stockParts.filter((part) => !part.returned).map((part) => {
+                  const text = `${fillPlaceholders(messages.pcJobPartChip, { part: part.description, qty: String(Number(part.quantity)) })}${canSeeCosts && part.valueCents !== undefined ? ` · ${formatCents(part.valueCents, locale)}` : ''}`;
+                  return canSeeCosts && onStockChanged ? (
+                    <button key={part.movementId} type="button" onClick={() => setStockJobId(job.id)} className="tap-inline inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground">
+                      <Boxes aria-hidden="true" className="size-3" />{text}
+                    </button>
+                  ) : (
+                    <span key={part.movementId} className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground"><Boxes aria-hidden="true" className="size-3" />{text}</span>
+                  );
+                })}
+              </p>
+            ) : null}
             {job.customDescription ? <p className="mt-1 text-muted-foreground">{job.customDescription}</p> : null}
             {isPmJob && job.startedAt ? (
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -437,6 +459,15 @@ export function AdminJobTable({
           </button>
           {closedOpen ? <ul id="admin-wo-closed-jobs" className="divide-y border-t" aria-label={closedLabel}>{closed.map(closedRow)}</ul> : null}
         </>
+      ) : null}
+      {stockJobId && onStockChanged && data.jobs.some((job) => job.id === stockJobId) ? (
+        <JobStockDialog
+          job={data.jobs.find((job) => job.id === stockJobId)!}
+          locale={locale}
+          messages={messages}
+          onClose={() => setStockJobId(null)}
+          onChanged={onStockChanged}
+        />
       ) : null}
       {dialog?.kind === 'helper' && dialogJob && onAddHelper ? (
         <AddHelperDialog

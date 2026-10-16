@@ -421,6 +421,8 @@ export function AdminWorkOrderDetail({
             assignableMechanics={assignableMechanics}
             returnRequest={returnRequest}
             onReturnRequestHandled={clearReturnRequest}
+            // D45 / ST-3: a part taken from (or given back to) the stock changes the Job and the Work Order's costs.
+            onStockChanged={() => void mutate()}
             onAssign={(jobId, mechanicId) => {
               if (mechanicId) {
                 void runMutation(`assign-job-${jobId}`, messages.assignJobSuccess, () => assignAdminWorkOrderJob(id, jobId, { mechanicId, expectedVersion: data.version }), (failure) => jobChangeError(failure, messages));

@@ -39,6 +39,8 @@ function sourceHref(line: AdminInternalInvoiceLineDto, from: string) {
   if (line.sourceType === 'part_purchase') return `/admin/parts/purchases/${line.sourceId}${back}`;
   if (line.sourceType === 'outside_repair') return `/admin/parts/outside-repairs/${line.sourceId}${back}`;
   if (line.sourceType === 'work_order_labor') return `/admin/work-orders/${line.sourceId}${back}`;
+  // D45 / ST-3: a part taken from stock opens its Work Order.
+  if (line.sourceType === 'stock_issue' && line.workOrder) return `/admin/work-orders/${line.workOrder.id}${back}`;
   return null;
 }
 

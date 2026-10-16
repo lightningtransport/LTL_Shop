@@ -484,6 +484,8 @@ export interface AdminWorkOrderJobDto {
   outsideInvoices?: Array<{ id: string; amountCents: number; vendorName: string }>;
   /** D45 / ST-1: parts bought for this Job on a purchase; `lineTotalCents` only for Manager and System Admin. */
   parts?: Array<{ purchaseId: string; description: string; partNumber: string | null; quantity: string; vendorName: string; lineTotalCents?: number }>;
+  /** D45 / ST-3: what left the stock for this Job (`valueCents` only for Manager and System Admin). */
+  stockParts?: Array<{ movementId: string; partId: string; description: string; quantity: string; returned: boolean; valueCents?: number }>;
   /** PCA3 (UX-10-001): the Job went to an external shop at some point (out now or already back), so its invoice can still be loaded. */
   wentExternal?: boolean;
 }

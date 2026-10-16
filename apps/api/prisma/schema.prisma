@@ -202,6 +202,7 @@ model User {
   createdVendors                 Vendor[]                   @relation("VendorCreatedBy")
   createdPartPurchases           PartPurchase[]             @relation("PartPurchaseCreatedBy")
   voidedPartPurchases            PartPurchase[]             @relation("PartPurchaseVoidedBy")
+  stockMovements                 StockMovement[]            @relation("StockMovementCreatedBy")
   createdOutsideRepairs          OutsideRepair[]            @relation("OutsideRepairCreatedBy")
   createdLaborRates              LaborRate[]                @relation("LaborRateCreatedBy")
   createdInternalInvoices        InternalInvoice[]          @relation("InternalInvoiceCreatedBy")
@@ -302,6 +303,7 @@ model Truck {
   serviceStatusEvents  TruckServiceStatusEvent[]
   costEntries          TruckCostEntry[]
   partPurchaseLines    PartPurchaseLine[]
+  stockMovements       StockMovement[]
   outsideRepairs       OutsideRepair[]
   internalInvoices     InternalInvoice[]
   inspections          TruckInspection[]
@@ -686,6 +688,7 @@ model Part {
   fitments       PartFitment[]
   pmServiceParts PmServicePart[]
   purchaseLines  PartPurchaseLine[]
+  stockMovements StockMovement[]
 
   @@unique([categoryId, partNumber, displayName])
   @@index([categoryId, active])
@@ -697,6 +700,57 @@ enum PartSource {
   app
 
   @@map("part_source")
+}
+
+enum PurchaseLineDestination {
+  truck
+  stock
+  shop_supplies
+
+  @@map("purchase_line_destination")
+}
+
+/// D45 / ST-3 (LTR-223): the Shop's stock is a list of movements that is only added to. On hand = the sum of
+/// `quantity`; its value = the sum of `value_cents`; a part leaves at the average cost (P27).
+model StockMovement {
+  id             String            @id @default(uuid()) @db.Uuid
+  partId         String            @map("part_id") @db.Uuid
+  kind           StockMovementKind
+  /// Signed: + comes in, - goes out.
+  quantity       Decimal           @db.Decimal(10, 2)
+  /// Signed, in cents: what came in or went out.
+  valueCents     Int               @map("value_cents")
+  purchaseId     String?           @map("purchase_id") @db.Uuid
+  workOrderJobId String?           @map("work_order_job_id") @db.Uuid
+  truckId        String?           @map("truck_id") @db.Uuid
+  reason         String?
+  /// A reversal (purchase corrected or voided) or a return names the movement it undoes.
+  reversesId     String?           @map("reverses_id") @db.Uuid
+  createdById    String            @map("created_by_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  part         Part            @relation(fields: [partId], references: [id], onDelete: Restrict)
+  purchase     PartPurchase?   @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  workOrderJob WorkOrderJob?   @relation(fields: [workOrderJobId], references: [id], onDelete: SetNull)
+  truck        Truck?          @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  reverses     StockMovement?  @relation("StockMovementReverses", fields: [reversesId], references: [id], onDelete: Restrict)
+  reversals    StockMovement[] @relation("StockMovementReverses")
+  createdBy    User            @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
+
+  @@index([partId, createdAt])
+  @@index([purchaseId])
+  @@index([workOrderJobId])
+  @@map("stock_movements")
+}
+
+enum StockMovementKind {
+  purchase_in
+  issue
+  return
+  adjust
+  reversal
+
+  @@map("stock_movement_kind")
 }
 
 enum PartKind {
@@ -761,10 +815,11 @@ model PartPurchase {
   voidedById     String?   @map("voided_by_id") @db.Uuid
   voidReason     String?   @map("void_reason")
 
-  vendor    Vendor             @relation(fields: [vendorId], references: [id], onDelete: Restrict)
-  createdBy User?              @relation("PartPurchaseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  voidedBy  User?              @relation("PartPurchaseVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
-  lines     PartPurchaseLine[]
+  vendor         Vendor             @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  createdBy      User?              @relation("PartPurchaseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  voidedBy       User?              @relation("PartPurchaseVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  lines          PartPurchaseLine[]
+  stockMovements StockMovement[]
 
   @@index([invoiceDate])
   @@index([vendorId, invoiceNorm])
@@ -897,18 +952,20 @@ model OutsideRepair {
 
 /// One line of a parts invoice. The truck is per line (D-PC9); description and part number are copies.
 model PartPurchaseLine {
-  id             String  @id @default(uuid()) @db.Uuid
-  purchaseId     String  @map("purchase_id") @db.Uuid
-  partId         String? @map("part_id") @db.Uuid
+  id             String                  @id @default(uuid()) @db.Uuid
+  purchaseId     String                  @map("purchase_id") @db.Uuid
+  partId         String?                 @map("part_id") @db.Uuid
   description    String
-  partNumber     String? @map("part_number")
-  quantity       Decimal @db.Decimal(10, 2)
-  unitCostCents  Int     @map("unit_cost_cents")
-  lineTotalCents Int     @map("line_total_cents")
-  truckId        String? @map("truck_id") @db.Uuid
+  partNumber     String?                 @map("part_number")
+  quantity       Decimal                 @db.Decimal(10, 2)
+  unitCostCents  Int                     @map("unit_cost_cents")
+  lineTotalCents Int                     @map("line_total_cents")
+  truckId        String?                 @map("truck_id") @db.Uuid
   // D45 / ST-1 (LTR-221): the Job of its truck this part was bought for, if any. Changes P16 (D37).
-  workOrderJobId String? @map("work_order_job_id") @db.Uuid
-  sortOrder      Int     @default(0) @map("sort_order")
+  workOrderJobId String?                 @map("work_order_job_id") @db.Uuid
+  // D45 / ST-3 (LTR-223): a line without a truck goes to the Shop's stock or is a Shop supply (counts nowhere).
+  destination    PurchaseLineDestination @default(truck)
+  sortOrder      Int                     @default(0) @map("sort_order")
 
   purchase     PartPurchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   part         Part?         @relation(fields: [partId], references: [id], onDelete: SetNull)
@@ -1104,6 +1161,7 @@ model WorkOrderJob {
   pmService        PmService?
   outsideRepairs   OutsideRepair[]
   purchaseLines    PartPurchaseLine[]
+  stockMovements   StockMovement[]
   blockers         PauseEvent[]
   // D41 (and D42 later): the findings this Job came from — several per Job.
   sources          WorkOrderJobSource[]

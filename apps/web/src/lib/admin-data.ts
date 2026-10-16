@@ -49,6 +49,10 @@ import type {
   AdminSavePurchaseInput,
   AdminExternalJobDto,
   AdminTruckJobDto,
+  AdminStockListDto,
+  AdminStockPartDto,
+  AdminStockCountInput,
+  AdminStockIssueInput,
   AdminOutsideRepairDetailDto,
   AdminOutsideRepairListDto,
   AdminSaveOutsideRepairInput,
@@ -821,6 +825,39 @@ export function updateAdminWorkflowSteps(steps: Array<{ stepKey: string; memberI
 }
 
 // ── LTR-200 / D32: Parts & costs (PC-1: the part catalog and the vendors) ──────────────────────────────────
+
+/** D45 / ST-3: the Shop's stock. */
+export function useAdminStock(query: string) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminStockListDto>(token ? `/api/admin/parts-costs/stock${query ? `?${query}` : ''}` : null, adminReadFetcher, {
+      dedupingInterval: 5_000,
+      keepPreviousData: true,
+      ...adminReadRetry,
+    }),
+  );
+}
+
+export function useAdminStockPart(partId: string | null) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminStockPartDto>(token && partId ? `/api/admin/parts-costs/stock/${partId}` : null, adminReadFetcher, { dedupingInterval: 5_000, ...adminReadRetry }),
+  );
+}
+
+export function countAdminStock(input: AdminStockCountInput) {
+  return apiFetch<{ id: string; onHand: string }>('/api/admin/parts-costs/stock/count', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function issueAdminStock(input: AdminStockIssueInput) {
+  return apiFetch<{ id: string; valueCents: number }>('/api/admin/parts-costs/stock/issue', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function returnAdminStock(movementId: string, reason: string) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/stock/movements/${movementId}/return`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
 
 export function useAdminPartsCatalog(query: string) {
   const { token } = useAuth();

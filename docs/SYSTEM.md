@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-16 (catálogo con repuestos y llantas, D45 / ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-16 (stock del taller, D45 / ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -434,6 +434,36 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   mecánico ven solo nombre y cantidad, nunca el costo (D32). El menú del Job
   tiene **Add parts invoice**, que abre New purchase con el camión y el Job ya
   elegidos (`?new=1&forTruck=&jobId=&from=`).
+- **Stock del taller** (D45 / ST-3, LTR-223; P25 y P27): cada línea **sin
+  camión** dice a dónde va (`part_purchase_lines.destination`): **To stock** (solo
+  partes del catálogo; un "Other" no entra) o **Shop supplies** (no cuenta en
+  ningún lado). Las líneas guardadas antes de ST-3 quedaron como Shop supplies.
+  El stock es una lista de movimientos que solo crece (`stock_movements`:
+  `purchase_in`, `issue`, `return`, `adjust`, `reversal`); lo que hay es la suma
+  de cantidades y su valor la suma de `value_cents`. Una línea To stock entra con
+  su parte del impuesto y el flete que cayeron en las líneas sin camión. **Sale al
+  costo promedio** (P27); la última unidad se lleva todo el valor que queda.
+  - **Parts & costs → Stock** (`/admin/parts/stock`): por parte, lo que hay, su
+    costo promedio, su valor y **Low** si está bajo el mínimo (`min_stock`, ST-2);
+    filtros por tipo y "solo bajos"; cada parte abre sus movimientos.
+  - **Count** (P25: el primer día el Manager escribe lo que hay): más de lo que
+    dice el stock entra al costo que escribe (si no, el promedio o el de
+    referencia; sin ninguno, `STOCK_COST_REQUIRED`); menos sale al promedio. Pide
+    motivo; el mismo número → `STOCK_COUNT_SAME`.
+  - **Parts from stock** en el menú del Job (Manager y System Admin): saca una parte
+    para ese Job (`POST /stock/issue`). El camión carga su costo en esa Work Order
+    como una parte más (`truck_cost_entries` kind `part_purchase`, `source_type`
+    `stock_issue`), así entra en la factura interna. Más de lo que hay →
+    `NOT_ENOUGH_STOCK`; un Job cancelado → `JOB_CANCELLED`. El Job la muestra (con
+    valor solo al Manager; el mecánico ve nombre y cantidad).
+  - **Return to stock** (con motivo): vuelve al mismo costo y el camión recibe la
+    reversa; una sola vez (`STOCK_ALREADY_RETURNED`). Cancelar el Job o la WO no la
+    devuelve sola.
+  - **Corregir o anular una compra** reversa lo que metió al stock y escribe lo
+    nuevo; si alguna parte quedaría bajo cero (ya salió), no deja:
+    `STOCK_ALREADY_USED`. Primero se devuelve o se cuenta.
+  - Cada parte se bloquea (`FOR UPDATE`) mientras se mueve, así dos salidas a la
+    vez no sacan la misma unidad.
 - **El archivo adjunto por separado** (PCA6): `PATCH /purchases/:id/attachment` y
   `PATCH /outside-repairs/:id/attachment` (`{ attachmentId | null }`) agregan,
   reemplazan o quitan el archivo sin pasar por Edit; en pantalla, "Add invoice

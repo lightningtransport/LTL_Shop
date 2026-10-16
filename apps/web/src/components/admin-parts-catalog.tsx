@@ -48,6 +48,11 @@ export function partsCostsFailure(failure: unknown, messages: AdminMessages) {
     if (name) return fillPlaceholders(messages.pcCategoryExists, { name });
   }
   if (failure instanceof ApiError && apiErrorCode(failure) === 'TIRE_FIELDS_REQUIRED') return messages.pcTireNeedsFields;
+  if (failure instanceof ApiError && apiErrorCode(failure) === 'STOCK_ALREADY_USED') return messages.pcStockAlreadyUsed;
+  if (failure instanceof ApiError && apiErrorCode(failure) === 'NOT_ENOUGH_STOCK') {
+    const onHand = (failure.body as { onHand?: string } | undefined)?.onHand;
+    if (onHand) return fillPlaceholders(messages.pcStockNotEnough, { qty: String(Number(onHand)) });
+  }
   if (failure instanceof ApiError && apiErrorCode(failure) === 'VENDOR_NAME_TAKEN') {
     const name = (failure.body as { vendorName?: string } | undefined)?.vendorName;
     if (name) return fillPlaceholders(messages.pcVendorNameTaken, { name });

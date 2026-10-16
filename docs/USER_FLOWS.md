@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-16 (ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-16 (ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -24,7 +24,7 @@ La columna **Fila** es el número de la prueba que lo comprueba
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
 **Resultado de la auditoría (2026-09-29):** 61 comprobaciones · 59 funcionan · 0 fallan
-· 2 no aplican. Desde entonces se sumaron filas hasta A116; la cuenta al día la da
+· 2 no aplican. Desde entonces se sumaron filas hasta A121; la cuenta al día la da
 `npm run test:real --workspace=@ltl-shop/api`.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
@@ -582,7 +582,11 @@ Ver la fila E7 en HU-ME2.
 | Quiere saber si una compra o un movimiento ya se cobró a Finanzas | El detalle y Truck → Costs dicen "Charged on SHOP-… · Sent" o "Not charged yet"; editar o anular algo facturado avisa que la corrección cae en la factura siguiente (PCA4) | ✅ | A78 |
 | Adjunta la factura (PDF, JPG, PNG o HEIC, hasta 10 MB) | Se guarda en un lugar privado y se abre con un enlace que dura 5 minutos. Otro tipo de archivo, o uno más grande, no se acepta. Sin archivo también se guarda, marcada "No invoice file" (D-PC10) | ✅ | A62 |
 | Un mecánico o Safety intenta ver o cargar compras | No puede (403) | ✅ | A62 |
-| Compra partes para stock, sin camión | Se guarda sin camión (en la etapa 1 no hay stock). Con D45 la línea elige **To stock** o **Shop supplies** (HU-M19, 🔲) | ✅ | A60 |
+| Compra partes para stock, sin camión (D45 / ST-3) | La línea elige **To stock** (solo partes del catálogo) o **Shop supplies**. To stock entra al stock con su parte del impuesto; Shop supplies no cuenta en ningún lado. Ninguna cuenta en un camión hasta que sale a un Job | ✅ | A60, A117 |
+| Arranca el stock, o cuenta el estante (P25) | **Count** en Stock: escribe cuántas hay; lo que sobra entra al costo que escribe, lo que falta sale al promedio. Pide motivo | ✅ | A118 |
+| Usa una parte del stock en un Job (P27) | **Parts from stock** en el Job: sale al costo promedio y cuesta a ese camión en esa WO. Más de lo que hay, o un Job cancelado, no. El mecánico ve la parte sin costo | ✅ | A119 |
+| La parte no se usó | **Return to stock**: vuelve al mismo costo y el camión recibe la reversa; una sola vez | ✅ | A120 |
+| Anula o corrige una compra cuyo stock ya salió | No deja hasta devolver la parte o contar el estante; corregir el precio sí | ✅ | A121 |
 | Compra una parte para un trabajo de un camión (D45 / ST-1) | Ata la línea al Job de ese camión (o abre **Add parts invoice** desde el Job). El camión recibe lo mismo; el costo cuenta en esa WO; el Job muestra la parte (con costo solo al Manager y al System Admin; el mecánico ve nombre y cantidad) | ✅ | A111 |
 | Elige un Job de otro camión, uno cancelado, o un Job sin camión | No guarda y dice por qué | ✅ | A112 |
 | Se equivocó de Job, o anula la compra | Cambiar el Job escribe reversas y la parte pasa al otro Job; anular la quita del Job. Cambiar solo las notas no toca el costo | ✅ | A113 |
@@ -816,7 +820,7 @@ Las historias completas, con su "¿qué pasa si…?", están en
 |---|---|---|---|
 | HU-R1, HU-R2 | Catálogo con repuestos y llantas (medida, New o Recap); pasar una línea "Other" al catálogo | ST-2 | ✅ (LTR-222, A114–A116) |
 | HU-C1, HU-C2 | Cada línea de compra va a un camión y, si se quiere, a su Job; el Job muestra sus partes (To stock y Shop supplies llegan con ST-3) | ST-1 | ✅ (LTR-221, A111–A113) |
-| HU-S1–HU-S4 | Stock: entra con la compra, sale a un Job, devoluciones, ajustes y reversas; pantalla Stock con "Low" | ST-3 | 🔲 |
+| HU-S1–HU-S4 | Stock: entra con la compra, sale a un Job, devoluciones, ajustes y reversas; pantalla Stock con "Low" | ST-3 | ✅ (LTR-223, A117–A121) |
 | HU-S5 | El PM descuenta del stock | ST-5 | 🔲 (P29) |
 | HU-T1–HU-T4 | La inspección propone la llanta (steer New, drive Recap); el Manager confirma y sale del stock; historial por posición | ST-4 | 🔲 |
 | HU-F2 | Leer la factura del proveedor (PDF o foto) y confirmar | ST-6 | 🔲 (P30) |
