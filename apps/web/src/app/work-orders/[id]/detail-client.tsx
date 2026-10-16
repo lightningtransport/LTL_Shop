@@ -774,6 +774,12 @@ function MyJobRow({ job, next, currentUserId }: { job: WorkOrderJobDto; next: bo
             {messages.jobSamsaraFault(fault.code, fault.description)}
           </p>
         ))}
+        {/* D45 / ST-1: what the Manager bought for this Job (never its cost). */}
+        {job.parts?.length ? (
+          <p className="text-xs text-muted-foreground" data-testid="job-parts">
+            {messages.jobParts(job.parts.map((part) => `${part.description} × ${Number(part.quantity)}`).join(', '))}
+          </p>
+        ) : null}
         {blocked ? (
           <p className="text-xs font-medium text-warning-foreground dark:text-warning">
             {messages.blockedWithReason(pauseLabel(job.activeBlocker!.reason, messages.pauseReason) ?? '')} · {messages.waitingOnManagerShort}

@@ -884,15 +884,19 @@ model PartPurchaseLine {
   unitCostCents  Int     @map("unit_cost_cents")
   lineTotalCents Int     @map("line_total_cents")
   truckId        String? @map("truck_id") @db.Uuid
+  // D45 / ST-1 (LTR-221): the Job of its truck this part was bought for, if any. Changes P16 (D37).
+  workOrderJobId String? @map("work_order_job_id") @db.Uuid
   sortOrder      Int     @default(0) @map("sort_order")
 
-  purchase PartPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  part     Part?        @relation(fields: [partId], references: [id], onDelete: SetNull)
-  truck    Truck?       @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  purchase     PartPurchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  part         Part?         @relation(fields: [partId], references: [id], onDelete: SetNull)
+  truck        Truck?        @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  workOrderJob WorkOrderJob? @relation(fields: [workOrderJobId], references: [id], onDelete: SetNull)
 
   @@index([purchaseId])
   @@index([partId])
   @@index([truckId])
+  @@index([workOrderJobId])
   @@map("part_purchase_lines")
 }
 
@@ -1077,6 +1081,7 @@ model WorkOrderJob {
   helpers          WorkOrderJob[]       @relation("JobHelperOf")
   pmService        PmService?
   outsideRepairs   OutsideRepair[]
+  purchaseLines    PartPurchaseLine[]
   blockers         PauseEvent[]
   // D41 (and D42 later): the findings this Job came from — several per Job.
   sources          WorkOrderJobSource[]

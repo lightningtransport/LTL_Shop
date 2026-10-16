@@ -7,6 +7,7 @@ import {
   adminRequestAttachmentSchema,
   adminSavePurchaseSchema,
   adminSetAttachmentSchema,
+  adminTruckJobsQuerySchema,
   adminVoidSchema,
   lineTotalCents,
   normalizeInvoiceNumber,
@@ -16,6 +17,7 @@ import {
   type AdminPurchaseFormDataDto,
   type AdminPurchaseListDto,
   type AdminPurchaseSummaryDto,
+  type AdminTruckJobDto,
 } from '@ltl-shop/shared';
 import { Prisma } from '@prisma/client';
 import { ActivityLogService } from '../activity-log/activity-log.service';
@@ -39,7 +41,13 @@ const asDate = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 const purchaseInclude = {
   vendor: { select: { id: true, name: true } },
-  lines: { orderBy: { sortOrder: 'asc' }, include: { truck: { select: { id: true, truckNumber: true } } } },
+  lines: {
+    orderBy: { sortOrder: 'asc' },
+    include: {
+      truck: { select: { id: true, truckNumber: true } },
+      workOrderJob: { select: { id: true, displayName: true, workOrder: { select: { id: true, displayId: true } } } },
+    },
+  },
   createdBy: { select: { id: true, name: true } },
   voidedBy: { select: { id: true, name: true } },
 } satisfies Prisma.PartPurchaseInclude;
@@ -108,6 +116,9 @@ export class PurchasesService {
         unitCostCents: line.unitCostCents,
         lineTotalCents: line.lineTotalCents,
         truck: line.truck,
+        job: line.workOrderJob
+          ? { id: line.workOrderJob.id, displayName: line.workOrderJob.displayName, workOrderId: line.workOrderJob.workOrder.id, workOrderDisplayId: line.workOrderJob.workOrder.displayId }
+          : null,
       })),
       truckShares: shares,
       noTruckCents,
@@ -144,6 +155,31 @@ export class PurchasesService {
       })),
       filesEnabled: this.files.isConfigured(),
     };
+  }
+
+  /**
+   * D45 / ST-1: the Jobs of a truck a purchase line can be tied to. Open Work Orders first, then the closed ones
+   * (an invoice can arrive after the Job is done). Cancelled Jobs and Work Orders are not offered.
+   */
+  async truckJobs(raw: unknown): Promise<AdminTruckJobDto[]> {
+    const { truckId } = parse(adminTruckJobsQuerySchema, raw);
+    const jobs = await this.prisma.workOrderJob.findMany({
+      where: { status: { not: 'cancelled' }, workOrder: { truckId, status: { not: 'cancelled' } } },
+      select: { id: true, displayName: true, status: true, workOrder: { select: { id: true, displayId: true, status: true, createdAt: true } } },
+      orderBy: [{ workOrder: { createdAt: 'desc' } }, { addedAt: 'asc' }],
+      take: 80,
+    });
+    return jobs
+      .map((job) => ({
+        id: job.id,
+        displayName: job.displayName,
+        workOrderId: job.workOrder.id,
+        workOrderDisplayId: job.workOrder.displayId,
+        status: job.status,
+        workOrderStatus: job.workOrder.status,
+        open: job.workOrder.status !== 'completed',
+      }))
+      .sort((left, right) => Number(right.open) - Number(left.open));
   }
 
   /** The warning when leaving the invoice # field (D-PC8). */
@@ -211,7 +247,8 @@ export class PurchasesService {
     if (before.voidedAt) throw new ConflictException({ code: 'PURCHASE_VOIDED', message: 'This purchase is voided. Load it again instead.' });
     const input = parse(adminSavePurchaseSchema, raw);
     return this.prisma.$transaction(async (tx) => {
-      const prepared = await this.prepare(tx, input, before.vendorId);
+      const keptJobIds = new Set(before.lines.map((line) => line.workOrderJobId).filter((value): value is string => Boolean(value)));
+      const prepared = await this.prepare(tx, input, before.vendorId, keptJobIds);
       await assertNewInvoice(tx, input.vendorId, prepared.invoiceNorm, id);
       await tx.partPurchaseLine.deleteMany({ where: { purchaseId: id } });
       const purchase = await tx.partPurchase.update({
@@ -277,7 +314,7 @@ export class PurchasesService {
       taxCents: row.taxCents,
       freightCents: row.freightCents,
       lines: row.lines
-        .map((line) => [line.partId, line.description, line.partNumber, line.quantity.toString(), line.unitCostCents, line.truckId])
+        .map((line) => [line.partId, line.description, line.partNumber, line.quantity.toString(), line.unitCostCents, line.truckId, line.workOrderJobId])
         .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
     });
   }
@@ -322,7 +359,7 @@ export class PurchasesService {
   }
 
   /** Lines with their totals in cents, the invoice total, and the parts' names and numbers copied. */
-  private async prepare(tx: Prisma.TransactionClient, input: SaveInput, keepVendorId?: string) {
+  private async prepare(tx: Prisma.TransactionClient, input: SaveInput, keepVendorId?: string, keptJobIds = new Set<string>()) {
     const vendor = await tx.vendor.findUnique({ where: { id: input.vendorId }, select: { active: true } });
     // A purchase being corrected keeps its vendor even if that vendor was turned off since.
     if (!vendor || (!vendor.active && input.vendorId !== keepVendorId)) throw new BadRequestException({ code: 'VENDOR_NOT_ACTIVE', message: 'Pick an active vendor.' });
@@ -334,6 +371,7 @@ export class PurchasesService {
     ]);
     if (parts.length !== partIds.length) throw new BadRequestException({ code: 'PART_NOT_FOUND', message: 'A part on this purchase is no longer in the catalog.' });
     if (trucks !== truckIds.length) throw new BadRequestException({ code: 'TRUCK_NOT_FOUND', message: 'A truck on this purchase does not exist.' });
+    await this.assertJobs(tx, input.lines, keptJobIds);
     const partById = new Map(parts.map((part) => [part.id, part]));
     const lines = input.lines.map((line, index) => {
       const part = line.partId ? partById.get(line.partId)! : null;
@@ -346,6 +384,7 @@ export class PurchasesService {
         unitCostCents: line.unitCostCents,
         lineTotalCents: lineTotalCents(hundredths, line.unitCostCents),
         truckId: line.truckId ?? null,
+        workOrderJobId: line.workOrderJobId ?? null,
         sortOrder: index,
       };
     });
@@ -357,23 +396,55 @@ export class PurchasesService {
     return { lines, subtotalCents, totalCents, invoiceNorm: normalizeInvoiceNumber(input.invoiceNumber) || input.invoiceNumber.toUpperCase() };
   }
 
+  /**
+   * D45 / ST-1: a line's Job must be a Job of that line's truck. A cancelled Job (or one on a cancelled Work Order)
+   * is refused, unless the purchase already had it (correcting an old purchase keeps working).
+   */
+  private async assertJobs(tx: Prisma.TransactionClient, lines: SaveInput['lines'], keptJobIds: Set<string>) {
+    const jobIds = [...new Set(lines.map((line) => line.workOrderJobId).filter((value): value is string => Boolean(value)))];
+    if (!jobIds.length) return;
+    const jobs = await tx.workOrderJob.findMany({
+      where: { id: { in: jobIds } },
+      select: { id: true, status: true, workOrder: { select: { truckId: true, status: true } } },
+    });
+    const byId = new Map(jobs.map((job) => [job.id, job]));
+    for (const line of lines) {
+      if (!line.workOrderJobId) continue;
+      const job = byId.get(line.workOrderJobId);
+      if (!job || job.workOrder.truckId !== line.truckId) {
+        throw new BadRequestException({ code: 'JOB_NOT_ON_TRUCK', message: 'That Job is not on the truck of its line.' });
+      }
+      const cancelled = job.status === 'cancelled' || job.workOrder.status === 'cancelled';
+      if (cancelled && !keptJobIds.has(job.id)) {
+        throw new BadRequestException({ code: 'JOB_CANCELLED', message: 'That Job was cancelled. Pick another Job or leave it empty.' });
+      }
+    }
+  }
+
+  /**
+   * One ledger row per truck and Work Order (D45 / ST-1): each truck keeps its share of tax and freight (D-PC2),
+   * and that share is split among its Work Orders the same way, so a Job's parts count on its Work Order.
+   */
   private async writeLedger(tx: Prisma.TransactionClient, purchase: PurchaseRow, actorId: string) {
     const { shares } = this.amounts(purchase);
-    await writeEntries(tx, {
-      sourceType: SOURCE,
-      sourceId: purchase.id,
-      kind: 'part_purchase',
-      occurredOn: purchase.invoiceDate,
-      vendorId: purchase.vendorId,
-      actorId,
-    }, shares.map((share) => ({
-      truckId: share.id,
-      amountCents: share.amountCents,
-      description: `${purchase.vendor.name} · ${purchase.invoiceNumber} · ${purchase.lines
-        .filter((line) => line.truckId === share.id)
-        .map((line) => `${line.description}${line.partNumber ? ` ${line.partNumber}` : ''} × ${Number(line.quantity)}`)
-        .join(', ')}`,
-    })));
+    const source = { sourceType: SOURCE, sourceId: purchase.id, kind: 'part_purchase' as const, occurredOn: purchase.invoiceDate, vendorId: purchase.vendorId, actorId };
+    for (const share of shares) {
+      const truckLines = purchase.lines.filter((line) => line.truckId === share.id);
+      const groups = truckAmounts(
+        truckLines.map((line) => ({ truckId: line.workOrderJob?.workOrder.id ?? null, lineTotalCents: line.lineTotalCents })),
+        share.amountCents - truckLines.reduce((sum, line) => sum + line.lineTotalCents, 0),
+      );
+      for (const group of groups) {
+        const lines = truckLines.filter((line) => (line.workOrderJob?.workOrder.id ?? null) === group.truckId);
+        await writeEntries(tx, { ...source, workOrderId: group.truckId }, [{
+          truckId: share.id,
+          amountCents: group.amountCents,
+          description: `${purchase.vendor.name} · ${purchase.invoiceNumber} · ${lines
+            .map((line) => `${line.description}${line.partNumber ? ` ${line.partNumber}` : ''} × ${Number(line.quantity)}${line.workOrderJob ? ` → ${line.workOrderJob.displayName}` : ''}`)
+            .join(', ')}`,
+        }]);
+      }
+    }
   }
 
   /** Each truck's amount (lines + share of tax and freight) and what has no truck. */
@@ -415,7 +486,7 @@ export class PurchasesService {
       taxCents: row.taxCents,
       freightCents: row.freightCents,
       totalCents: row.totalCents,
-      lines: row.lines.map((line) => ({ partId: line.partId, description: line.description, quantity: line.quantity.toFixed(2), unitCostCents: line.unitCostCents, truckId: line.truckId })),
+      lines: row.lines.map((line) => ({ partId: line.partId, description: line.description, quantity: line.quantity.toFixed(2), unitCostCents: line.unitCostCents, truckId: line.truckId, workOrderJobId: line.workOrderJobId })),
     };
   }
 

@@ -15,6 +15,7 @@ import {
   type AdminPartCategoryDto,
   type AdminPurchaseDetailDto,
   type AdminPurchaseFormDataDto,
+  type AdminPurchaseJobRefDto,
   type AdminSavePurchaseInput,
   type AdminVendorDto,
 } from '@ltl-shop/shared';
@@ -31,6 +32,7 @@ import {
   requestAdminAttachment,
   updateAdminPurchase,
   uploadInvoiceFile,
+  useAdminTruckJobs,
 } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -43,7 +45,7 @@ const OTHER = '__other__';
 const ADD_VENDOR = '__add_vendor__';
 
 /** `costFrom`: where the unit cost was filled from when the part was picked (shown until the cost is changed). */
-type LineState = { partId: string; description: string; quantity: string; unitCost: string; truckId: string; costFrom?: 'last' | 'reference' | null };
+type LineState = { partId: string; description: string; quantity: string; unitCost: string; truckId: string; jobId?: string; costFrom?: 'last' | 'reference' | null };
 type FormState = {
   vendorId: string;
   invoiceNumber: string;
@@ -63,9 +65,10 @@ const today = () => {
 };
 const emptyLine = (): LineState => ({ partId: '', description: '', quantity: '1', unitCost: '', truckId: '' });
 
-function initialState(purchase: AdminPurchaseDetailDto | null, presetTruckId?: string): FormState {
+function initialState(purchase: AdminPurchaseDetailDto | null, presetTruckId?: string, presetJobId?: string): FormState {
   if (!purchase) {
-    return { vendorId: '', invoiceNumber: '', invoiceDate: today(), truckId: presetTruckId ?? '', split: false, lines: [emptyLine()], tax: '', freight: '', notes: '' };
+    const line = { ...emptyLine(), jobId: presetTruckId && presetJobId ? presetJobId : '' };
+    return { vendorId: '', invoiceNumber: '', invoiceDate: today(), truckId: presetTruckId ?? '', split: false, lines: [line], tax: '', freight: '', notes: '' };
   }
   const truckIds = [...new Set(purchase.lines.map((line) => line.truck?.id ?? ''))];
   return {
@@ -80,6 +83,7 @@ function initialState(purchase: AdminPurchaseDetailDto | null, presetTruckId?: s
       quantity: String(Number(line.quantity)),
       unitCost: centsToInput(line.unitCostCents),
       truckId: line.truck?.id ?? '',
+      jobId: line.job?.id ?? '',
     })),
     tax: purchase.taxCents ? centsToInput(purchase.taxCents) : '',
     freight: purchase.freightCents ? centsToInput(purchase.freightCents) : '',
@@ -113,6 +117,7 @@ function writeDraft(state: FormState | null) {
 export function PurchaseForm({
   purchase,
   presetTruckId,
+  presetJobId,
   categories,
   vendors,
   formData,
@@ -127,6 +132,8 @@ export function PurchaseForm({
   /** PCA4 (UX-10-002): said above the fields when the purchase is already on a sent invoice. */
   notice?: string | null;
   presetTruckId?: string;
+  /** D45 / ST-1: opened from a Job on the Work Order; the first line is tied to it. */
+  presetJobId?: string;
   categories: AdminPartCategoryDto[];
   vendors: AdminVendorDto[];
   formData: AdminPurchaseFormDataDto;
@@ -141,7 +148,7 @@ export function PurchaseForm({
   const [state, setState] = useState<FormState>(() => {
     const draft = !purchase && !presetTruckId ? readDraft() : null;
     restored.current = Boolean(draft);
-    return draft ?? initialState(purchase, presetTruckId);
+    return draft ?? initialState(purchase, presetTruckId, presetJobId);
   });
   const [idempotencyKey] = useState(() => globalThis.crypto.randomUUID());
   const [file, setFile] = useState<FileState | null>(
@@ -153,7 +160,7 @@ export function PurchaseForm({
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
-  const pristine = useRef(JSON.stringify(initialState(purchase, presetTruckId)));
+  const pristine = useRef(JSON.stringify(initialState(purchase, presetTruckId, presetJobId)));
 
   useEffect(() => {
     if (restored.current) showToast('success', messages.pcDraftRestored);
@@ -284,6 +291,7 @@ export function PurchaseForm({
         quantity: line.quantity.trim(),
         unitCostCents: computed[index].unit as number,
         truckId: computed[index].truckId,
+        workOrderJobId: computed[index].truckId && line.jobId ? line.jobId : null,
       })),
     };
     try {
@@ -379,7 +387,7 @@ export function PurchaseForm({
           {!state.split ? (
             <div className="min-w-56 space-y-1.5">
               <Label htmlFor="purchase-truck">{messages.pcTruckOptional}</Label>
-              <Select id="purchase-truck" value={state.truckId} onChange={(event) => set('truckId', event.target.value)} disabled={busy}>
+              <Select id="purchase-truck" value={state.truckId} onChange={(event) => { const truckId = event.target.value; setState((current) => ({ ...current, truckId, lines: current.lines.map((line) => ({ ...line, jobId: '' })) })); }} disabled={busy}>
                 <option value="">{messages.pcNoTruckOption}</option>
                 {formData.trucks.map((truck) => <option key={truck.id} value={truck.id}>{fillPlaceholders(messages.pcTruckLabel, { truck: truck.truckNumber })}</option>)}
               </Select>
@@ -393,7 +401,10 @@ export function PurchaseForm({
               onChange={(event) => setState((current) => ({
                 ...current,
                 split: event.target.checked,
-                lines: current.lines.map((line) => ({ ...line, truckId: event.target.checked ? current.truckId : line.truckId })),
+                // A Job stays only while its line keeps the same truck (D45 / ST-1).
+                lines: current.lines.map((line) => (event.target.checked
+                  ? { ...line, truckId: current.truckId }
+                  : { ...line, jobId: line.truckId === current.truckId ? line.jobId : '' })),
               }))}
             />
             {messages.pcSplitTrucks}
@@ -448,10 +459,21 @@ export function PurchaseForm({
                   ) : paid ? <p className="text-xs text-muted-foreground">{fillPlaceholders(messages.pcLastPaidHint, { amount: formatCents(paid.unitCostCents, locale), date: formatInvoiceDate(paid.invoiceDate, locale) })}</p> : null}
                   {showErrors && row.needsPart ? <p className="text-xs text-destructive-text">{messages.pcLineNeedsPart}</p> : null}
                   {state.split ? (
-                    <Select aria-label={`${messages.pcLineTruck} ${index + 1}`} value={line.truckId} onChange={(event) => setLine(index, { truckId: event.target.value })} disabled={busy}>
+                    <Select aria-label={`${messages.pcLineTruck} ${index + 1}`} value={line.truckId} onChange={(event) => setLine(index, { truckId: event.target.value, jobId: '' })} disabled={busy}>
                       <option value="">{messages.pcNoTruckOption}</option>
                       {formData.trucks.map((truck) => <option key={truck.id} value={truck.id}>{fillPlaceholders(messages.pcTruckLabel, { truck: truck.truckNumber })}</option>)}
                     </Select>
+                  ) : null}
+                  {row.truckId ? (
+                    <LineJobSelect
+                      index={index}
+                      truckId={row.truckId}
+                      value={line.jobId ?? ''}
+                      current={purchase?.lines[index]?.job ?? null}
+                      disabled={busy}
+                      messages={messages}
+                      onChange={(jobId) => setLine(index, { jobId })}
+                    />
                   ) : null}
                 </div>
                 <div className="space-y-1">
@@ -549,5 +571,45 @@ export function PurchaseForm({
         />
       </form>
     </Modal>
+  );
+}
+
+/**
+ * D45 / ST-1: the Job of the line's truck this part was bought for (optional). Open Work Orders come first; a Job
+ * the purchase already had stays listed even if it is no longer offered.
+ */
+function LineJobSelect({
+  index,
+  truckId,
+  value,
+  current,
+  disabled,
+  messages,
+  onChange,
+}: {
+  index: number;
+  truckId: string;
+  value: string;
+  current: AdminPurchaseJobRefDto | null;
+  disabled: boolean;
+  messages: AdminMessages;
+  onChange: (jobId: string) => void;
+}) {
+  const { data } = useAdminTruckJobs(truckId);
+  const jobs = data ?? [];
+  const extra = value && current?.id === value && !jobs.some((job) => job.id === value) ? [current] : [];
+  const open = jobs.filter((job) => job.open);
+  const closed = jobs.filter((job) => !job.open);
+  const label = (job: AdminPurchaseJobRefDto) => fillPlaceholders(messages.pcLineJobOption, { job: job.displayName, wo: job.workOrderDisplayId });
+  return (
+    <div className="space-y-1">
+      <Label htmlFor={`line-job-${index}`} className="text-xs">{messages.pcLineJob}<OptionalTag messages={messages} /></Label>
+      <Select id={`line-job-${index}`} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} data-testid="line-job">
+        <option value="">{messages.pcLineNoJob}</option>
+        {extra.map((job) => <option key={job.id} value={job.id}>{label(job)}</option>)}
+        {open.length ? <optgroup label={messages.pcLineJobsOpen}>{open.map((job) => <option key={job.id} value={job.id}>{label(job)}</option>)}</optgroup> : null}
+        {closed.length ? <optgroup label={messages.pcLineJobsClosed}>{closed.map((job) => <option key={job.id} value={job.id}>{label(job)}</option>)}</optgroup> : null}
+      </Select>
+    </div>
   );
 }

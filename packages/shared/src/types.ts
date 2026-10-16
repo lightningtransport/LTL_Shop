@@ -163,6 +163,8 @@ export interface WorkOrderJobDto {
   workflowStepKey?: string | null;
   /** D42 / S-6: the Samsara faults this Job takes care of, so the mechanic sees why. */
   samsaraFaults?: Array<{ code: string; description: string }>;
+  /** D45 / ST-1: the parts bought for this Job (name and quantity; the mechanic never sees costs). */
+  parts?: Array<{ description: string; partNumber: string | null; quantity: string }>;
 }
 
 /** LTR-188 / D24: a Job at an external shop — what went out, the Manager's note and since when. */
@@ -480,6 +482,8 @@ export interface AdminWorkOrderJobDto {
   workflowStepKey?: string | null;
   /** LTR-200 / PC-3: outside shop invoices tied to this Job (Manager and System Admin only; others get none). */
   outsideInvoices?: Array<{ id: string; amountCents: number; vendorName: string }>;
+  /** D45 / ST-1: parts bought for this Job on a purchase; `lineTotalCents` only for Manager and System Admin. */
+  parts?: Array<{ purchaseId: string; description: string; partNumber: string | null; quantity: string; vendorName: string; lineTotalCents?: number }>;
   /** PCA3 (UX-10-001): the Job went to an external shop at some point (out now or already back), so its invoice can still be loaded. */
   wentExternal?: boolean;
 }

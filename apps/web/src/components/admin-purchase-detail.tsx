@@ -154,6 +154,14 @@ export function AdminPurchaseDetail({ id, locale, messages }: { id: string; loca
                 ? <AdminNavLink className="tap-inline text-primary hover:underline" href={adminTruckCostsHref(line.truck.id, here)}>{fillPlaceholders(messages.pcTruckLabel, { truck: line.truck.truckNumber })}</AdminNavLink>
                 : <span className="text-muted-foreground">{messages.pcNoTruckOption}</span>,
             }] : []),
+            // D45 / ST-1: the Job each line was bought for, when any line has one.
+            ...(data.lines.some((line) => line.job) ? [{
+              key: 'job',
+              header: messages.pcLineJob,
+              cell: (line: (typeof data.lines)[number]) => line.job
+                ? <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/work-orders/${line.job.workOrderId}`} data-testid="purchase-line-job">{fillPlaceholders(messages.pcLineJobOption, { job: line.job.displayName, wo: line.job.workOrderDisplayId })}</AdminNavLink>
+                : <span className="text-muted-foreground">—</span>,
+            }] : []),
           ]}
         />
       </SectionCard>
