@@ -837,6 +837,8 @@ export class AdminService {
     const isPmJob = isPmCategory(job.category.name);
     // LTR-185 / D19: the Quality Check belongs to Safety, who is not on the team either.
     const isQcJob = classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey) === WorkPlanJobLane.QUALITY_CHECK;
+    // D46 / SQ-1: the Quality Check is never assigned; Safety takes it from their queue (the Manager does it from /qc as backup).
+    if (isQcJob) throw new BadRequestException({ code: 'QC_ASSIGN_NOT_ALLOWED', message: 'Safety takes the Quality Check from their queue; it is not assigned.' });
     if (isPmJob && (job.status !== JobStatus.to_do || job.startedAt)) {
       throw new BadRequestException('A started or finished PM job cannot be reassigned');
     }

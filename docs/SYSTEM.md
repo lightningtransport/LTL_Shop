@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-16 (leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -58,7 +58,7 @@ su pantalla inicial y separa al System Admin.
 | `inspection.perform` | D41: un mecánico Standard o PM inspecciona con la hoja: "To inspect" en My work y `/api/inspections/*`. Sus defectos crean Jobs **sin dueño** (única excepción a "el mecánico no agrega Jobs"). Se da en People → Extra permissions; Safety no la recibe y pasar a Safety la quita. |
 | `mechanic.standard` | Pantallas y acciones del mecánico Standard. |
 | `mechanic.pm` | Pantallas y acciones del mecánico PM. |
-| `quality_check.perform` | La pantalla de Safety (`/qc`): tomar, aprobar o devolver el Quality Check. Nada más. |
+| `quality_check.perform` | La pantalla de Safety (`/qc`): tomar, aprobar o devolver el Quality Check. Nada más. **D46:** el resto del Shop no sabe quién de Safety lo hizo: `SafetyMaskInterceptor` (`apps/api/src/quality-check/safety-mask.interceptor.ts`) cambia en las respuestas del Admin y de las Work Orders del mecánico a toda persona de Safety por `{ id: 'safety', name: 'Safety' }` (también sus ids en `…Id` y su nombre en `…By`/`…Name`). Lo ven solo los de Safety; People y Setup (`@ShowSafetyPeople`) muestran los nombres para administrar cuentas y equipos. El Job de QC **no se asigna** (`QC_ASSIGN_NOT_ALLOWED`): Safety lo toma de su cola. |
 
 El mecánico **nunca** crea WOs, cambia prioridad, agrega Jobs, pausa el WO ni
 la termina. La API responde 403. Única excepción (D41): con `inspection.perform`

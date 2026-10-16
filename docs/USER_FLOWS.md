@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-16 (ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-16 (D46 / SQ-1: el Shop ve "Safety" y el QC no se asigna, fila A128; ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -24,7 +24,7 @@ La columna **Fila** es el número de la prueba que lo comprueba
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
 **Resultado de la auditoría (2026-09-29):** 61 comprobaciones · 59 funcionan · 0 fallan
-· 2 no aplican. Desde entonces se sumaron filas hasta A127; la cuenta al día la da
+· 2 no aplican. Desde entonces se sumaron filas hasta A128; la cuenta al día la da
 `npm run test:real --workspace=@ltl-shop/api`.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
@@ -152,7 +152,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Cambia el dueño de un Job que ya está en curso | El reloj del mecánico anterior se detiene y ya no puede completarlo | ✅ | E8 |
 | Asigna un mecánico PM a un Job normal, o al revés | No deja | ✅ | E9 |
 | Asigna a una cuenta de administrador o a un usuario inactivo | No deja | ✅ | E9 |
-| Asigna un dueño a Quality Check | Solo acepta a alguien de Safety | ✅ | E9b |
+| Asigna un dueño a Quality Check | No se asigna: Safety lo toma de su cola (D46) | ✅ | E9b |
 | Queda un Job sin dueño | Aparece en "Needs attention" y en el siguiente paso | ✅ | A3, A20 |
 
 ### HU-M4 · Destrabar un camión (J3)
@@ -463,7 +463,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 |---|---|---|---|
 | Un camión todavía tiene trabajo pendiente | No aparece en la lista; tampoco se puede tomar | ✅ | QC1 |
 | Los dos toman el mismo camión | Gana el primero; el otro lo ve como tomado | ✅ | QC2 |
-| Aprueba | El QC queda a su nombre; el Manager ve "listo para cerrar". Safety no registra tiempo | ✅ | QC2 |
+| Aprueba | El QC queda a su nombre (solo lo ven los de Safety; el Manager ve "Safety", D46); el Manager ve "listo para cerrar". Safety no registra tiempo | ✅ | QC2 |
 | Devuelve sin decir qué encontró | No deja | ✅ | QC3 |
 | Cierra la hoja de devolver con la nota escrita | La nota queda en el teléfono, por camión, hasta devolverlo | ✅ | e2e bloque A |
 | Devuelve con nota | Pasa a "Devueltos"; el Manager lo ve como bloqueo "Devuelto por Safety" con la nota; nadie lo puede tomar hasta que el Manager resuelva | ✅ | QC3 |
@@ -474,7 +474,8 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Un mecánico intenta usar la lista de Safety | No puede | ✅ | QC4 |
 | Una persona de Safety no está en el equipo de Quality Check (D-SET7) | No ve camiones y la pantalla le dice que pida que la agreguen | ✅ | QC11 |
 | Un mecánico elige el motivo "Devuelto por Safety" | No se le ofrece y la API lo rechaza | ✅ | QC4 |
-| El Manager asigna el QC a alguien de Safety | Puede; esa persona lo ve como suyo | ✅ | QC5, E9b |
+| El Manager intenta asignar el QC a alguien (D46) | No se puede: el QC no se asigna, Safety lo toma de su cola y el primero que lo toma lo hace | ✅ | QC5, E9b |
+| El Manager o un mecánico miran la WO, el plan del camión, el Dashboard o el historial después del QC (D46, SQ-1) | Ven "Safety", nunca quién de Safety lo tomó, devolvió o aprobó; los de Safety sí se ven entre ellos; People sigue mostrando los nombres | ✅ | A128 |
 | No hay nadie de Safety y el Manager entra a la lista de Safety (D29) | Entra con una franja "respaldo de Safety"; toma, aprueba o devuelve, y queda a su nombre como respaldo. Llega desde Shop workflow, el Dashboard y el Truck (D-SET6) | ✅ | QC11 |
 | Idioma | La pantalla existe en inglés y español | 👁 revisado 2026-09-29 | — |
 | Toca Approve | Pide confirmar antes ("Approve Truck 606?") | ✅ | e2e qc-redesign |

@@ -67,8 +67,8 @@ describe('Manager: dar de alta al personal (HU-M9, D22)', () => {
     const qcJob = laneJob(wo, 'quality_check');
     const pmJob = laneJob(wo, 'pm');
     const lights = (wo.jobs as Json[]).find((job) => job.displayName === 'Lights');
-    ok('el Safety nuevo puede ser dueño del QC', await assign(workOrderId, qcJob.id, email('safety')));
-    refused('el Standard nuevo no puede ser dueño del QC', await assign(workOrderId, qcJob.id, email('std')), 400, 'QC_OWNER_MUST_BE_SAFETY');
+    // D46: the Quality Check is never assigned; the new Safety person takes it from the queue.
+    refused('el QC no se asigna, ni al Safety nuevo', await assign(workOrderId, qcJob.id, email('safety')), 400, 'QC_ASSIGN_NOT_ALLOWED');
     refused('el Safety nuevo no toma Jobs de mecánico', await assign(workOrderId, lights.id, email('safety')), 400);
     ok('el PM nuevo puede ser dueño del paso PM', await assign(workOrderId, pmJob.id, email('pm')));
     ok('el Standard nuevo toma un Job Standard', await assign(workOrderId, lights.id, email('std')));

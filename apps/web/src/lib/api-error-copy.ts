@@ -106,6 +106,7 @@ export type ApiErrorCode =
   | 'QC_NOT_READY'
   | 'QC_NOT_TAKEN'
   | 'QC_OWNER_MUST_BE_SAFETY'
+  | 'QC_ASSIGN_NOT_ALLOWED'
   | 'QC_RETURNED'
   | 'QC_RETURNED_BY_SAFETY'
   | 'QC_OVERRIDE_NOTE_REQUIRED'
@@ -230,6 +231,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     QC_NOT_READY: 'This truck is not ready for Quality Check yet.',
     QC_NOT_TAKEN: 'Take the truck before approving or returning it.',
     QC_OWNER_MUST_BE_SAFETY: 'Quality Check is done by Safety.',
+    QC_ASSIGN_NOT_ALLOWED: 'Safety takes the Quality Check from their queue; it is not assigned.',
     QC_RETURNED: 'This truck was returned to the Manager.',
     QC_RETURNED_BY_SAFETY: 'Safety returned this truck. Add the work Safety asked for, or complete Quality Check with a reason.',
     QC_OVERRIDE_NOTE_REQUIRED: 'Say why Quality Check is completed over the Safety return.',
@@ -351,6 +353,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     QC_NOT_READY: 'Esta unidad todavía no está lista para Quality Check.',
     QC_NOT_TAKEN: 'Toma la unidad antes de aprobarla o devolverla.',
     QC_OWNER_MUST_BE_SAFETY: 'El Quality Check lo hace Safety.',
+    QC_ASSIGN_NOT_ALLOWED: 'Safety toma el Quality Check de su cola; no se asigna.',
     QC_RETURNED: 'Esta unidad fue devuelta al Manager.',
     QC_RETURNED_BY_SAFETY: 'Safety devolvió esta unidad. Agrega el trabajo que pidió Safety o completa el Quality Check con un motivo.',
     QC_OVERRIDE_NOTE_REQUIRED: 'Di por qué se completa el Quality Check sobre la devolución de Safety.',

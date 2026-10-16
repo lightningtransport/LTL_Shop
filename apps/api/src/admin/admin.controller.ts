@@ -11,6 +11,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AppCapability, adminRepairHistoryQuerySchema } from '@ltl-shop/shared';
 import type { Request } from 'express';
@@ -36,9 +37,12 @@ import { TruckSamsaraService } from './truck-samsara.service';
 import { CustomJobsReviewService } from './custom-jobs-review.service';
 import { LaborClockService } from '../work-orders/labor-clock.service';
 import { InspectionService } from '../inspection/inspection.service';
+import { SafetyMaskInterceptor, ShowSafetyPeople } from '../quality-check/safety-mask.interceptor';
 
 @Controller('admin')
 @UseGuards(AuthGuard, CapabilitiesGuard)
+// D46 / SQ-1: the Shop sees "Safety", never which Safety person did a Quality Check.
+@UseInterceptors(SafetyMaskInterceptor)
 @Capabilities(AppCapability.ADMIN_ACCESS)
 export class AdminController {
   constructor(
@@ -62,6 +66,8 @@ export class AdminController {
     private readonly truckSamsara: TruckSamsaraService,
   ) {}
 
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Get('access')
   access(@Req() request: Request) {
     return { user: request.user };
@@ -261,24 +267,32 @@ export class AdminController {
     return this.admin.returnJobExternal(request.user!, id, jobId, body);
   }
 
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Get('mechanics')
   mechanics(@Query() query: Record<string, unknown>) {
     return this.admin.listMechanics(query);
   }
 
   // D22 / LTR-187: the Shop Manager manages the roster; the System Admin keeps role access.
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Post('mechanics')
   @UseGuards(ManagerWritesGuard)
   createMechanic(@Req() request: Request, @Body() body: unknown) {
     return this.systemAdminWrites.createMechanic(request.user!, body);
   }
 
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Patch('mechanics/:id')
   @UseGuards(ManagerWritesGuard)
   updateMechanic(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.systemAdminWrites.updateMechanic(request.user!, id, body);
   }
 
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Post('mechanics/:id/reset-password')
   @UseGuards(ManagerWritesGuard)
   resetMechanicPassword(@Param('id') id: string) {
@@ -286,24 +300,32 @@ export class AdminController {
   }
 
   // LTR-199 / D31: Remove from Shop, delete (never did anything) and send queue Jobs back to their team queue.
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Post('mechanics/:id/remove')
   @UseGuards(ManagerWritesGuard)
   removeMechanic(@Req() request: Request, @Param('id') id: string) {
     return this.people.remove(request.user!, id);
   }
 
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Delete('mechanics/:id')
   @UseGuards(ManagerWritesGuard)
   deleteMechanic(@Param('id') id: string) {
     return this.people.delete(id);
   }
 
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Post('mechanics/:id/send-to-queue')
   @UseGuards(ManagerWritesGuard)
   sendMechanicJobsToQueue(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.people.sendJobsToQueue(request.user!, id, body);
   }
 
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Get('mechanics/:id')
   mechanic(@Param('id') id: string) {
     return this.admin.mechanicDetail(id);
@@ -315,22 +337,30 @@ export class AdminController {
   }
 
   // LTR-157 / D16: Setup → Shop workflow. Writes: work_orders.manage or System Admin (service check).
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Get('setup/workflow-steps')
   workflowSteps() {
     return this.shopWorkflow.list();
   }
 
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Put('setup/workflow-steps')
   updateWorkflowSteps(@Req() request: Request, @Body() body: unknown) {
     return this.shopWorkflow.update(request.user!, body);
   }
 
   // LTR-186 / D20: Setup → Shop workflow → Shop hours (day close). Writes: same gate as the workflow steps.
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Get('setup/shop-hours')
   shopHours() {
     return this.clock.getShopHours();
   }
 
+  // D46: People and Setup manage the Safety accounts and teams by name.
+  @ShowSafetyPeople()
   @Put('setup/shop-hours')
   updateShopHours(@Req() request: Request, @Body() body: unknown) {
     return this.clock.updateShopHours(request.user!, body);

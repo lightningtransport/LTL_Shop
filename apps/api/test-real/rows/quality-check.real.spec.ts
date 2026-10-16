@@ -55,7 +55,9 @@ describe('Safety: Quality Check (D19)', () => {
     let item = inQueue((await queue(safety2)).pending, workOrderId);
     same('Safety 2 lo ve tomado por Safety 1', item.takenBy?.name, 'Safety 1');
     same('para Safety 2 no es suyo', item.mine, false);
-    same('el Job de QC es de Safety 1', laneJob(await adminWo(workOrderId), 'quality_check').assignedMechanic?.id, await userId(USERS.safety));
+    // D46: the Shop sees "Safety", not the person; the database keeps who took it.
+    same('el Manager ve que lo tiene Safety', laneJob(await adminWo(workOrderId), 'quality_check').assignedMechanic, { id: 'safety', name: 'Safety' });
+    same('el Job de QC es de Safety 1', (await prisma.workOrderJob.findFirstOrThrow({ where: { workOrderId, systemKey: 'quality_check' } })).assignedMechanicId, await userId(USERS.safety));
     refused('Safety 2 no puede aprobar lo que no tomó', await safety2.post(`/qc/${workOrderId}/approve`), 400, 'QC_NOT_TAKEN');
     await sameNextStepEverywhere('esperando QC', workOrderId, truck.id, 'qc');
 
@@ -64,7 +66,8 @@ describe('Safety: Quality Check (D19)', () => {
     const workOrder = await adminWo(workOrderId);
     const qc = laneJob(workOrder, 'quality_check');
     same('QC completado', qc.status, 'completed');
-    same('por Safety 1', qc.completedBy?.id, await userId(USERS.safety));
+    same('el Manager ve "Safety" (D46)', qc.completedBy?.name, 'Safety');
+    same('por Safety 1 (en la base)', (await prisma.workOrderJob.findUniqueOrThrow({ where: { id: qc.id } })).completedById, await userId(USERS.safety));
     same('Safety no registra tiempo', await openSessionUsers(workOrderId), []);
     same('sin registro en la tabla de equipo (solo aparece derivado, como el PM)', await prisma.mechanicAssignment.count({ where: { workOrderId, mechanicId: await userId(USERS.safety) } }), 0);
     await sameNextStepEverywhere('listo para cerrar', workOrderId, truck.id, 'close');
@@ -84,7 +87,7 @@ describe('Safety: Quality Check (D19)', () => {
     let workOrder = await adminWo(workOrderId);
     same('el QC queda libre para cualquiera de Safety', laneJob(workOrder, 'quality_check').assignedMechanic, null);
     const reported = (workOrder.reportedBlockers as Json[])[0];
-    same('con la nota y quién', [reported.notes, reported.reportedBy?.name], ['Fuga en la manguera del freno trasero.', 'Safety 1']);
+    same('con la nota, firmada como "Safety" (D46)', [reported.notes, reported.reportedBy?.name], ['Fuga en la manguera del freno trasero.', 'Safety']);
     const list = await queue();
     same('ya no está por revisar', inQueue(list.pending, workOrderId), null);
     same('está en devueltos, con la nota', inQueue(list.returned, workOrderId)?.note, 'Fuga en la manguera del freno trasero.');
@@ -113,7 +116,8 @@ describe('Safety: Quality Check (D19)', () => {
     same('el trabajo nuevo aparece hecho, con quién', (review.jobs as Json[]).find((job) => job.name === 'Brake Inspection')?.mechanic?.id, await userId(USERS.general));
     ok('Safety 2 lo toma esta vez', await safety2.post(`/qc/${workOrderId}/take`));
     ok('y aprueba', await safety2.post(`/qc/${workOrderId}/approve`));
-    same('QC por Safety 2', laneJob(await adminWo(workOrderId), 'quality_check').completedBy?.id, await userId(USERS.safety2));
+    same('QC por "Safety" para el Manager (D46)', laneJob(await adminWo(workOrderId), 'quality_check').completedBy?.name, 'Safety');
+    same('QC por Safety 2 (en la base)', (await prisma.workOrderJob.findFirstOrThrow({ where: { workOrderId, systemKey: 'quality_check' } })).completedById, await userId(USERS.safety2));
     same('sin bloqueos', await activeBlocker(workOrderId), null);
     await sameNextStepEverywhere('listo para cerrar', workOrderId, truck.id, 'close');
   });
@@ -132,10 +136,11 @@ describe('Safety: Quality Check (D19)', () => {
     refused('un mecánico no puede usar el motivo de Safety', await reportBlocker(USERS.general, other.workOrderId, namedJob(await adminWo(other.workOrderId), 'Lights').id, 'quality_check_failed'), 400, 'BLOCKER_REASON_NOT_ALLOWED');
   });
 
-  it('QC5 | El Manager conserva "Mark QC complete" como respaldo, y puede dar el QC a alguien de Safety', async () => {
+  it('QC5 | El Manager conserva "Mark QC complete" como respaldo; el QC no se asigna, Safety lo toma (D46)', async () => {
     const { truck, workOrderId } = await readyForQc('905');
     const qc = laneJob(await adminWo(workOrderId), 'quality_check');
-    ok('asignar QC a Safety 2', await assign(workOrderId, qc.id, USERS.safety2));
+    refused('el Manager no asigna el QC (D46)', await assign(workOrderId, qc.id, USERS.safety2), 400, 'QC_ASSIGN_NOT_ALLOWED');
+    ok('Safety 2 lo toma de su cola', await safety2.post(`/qc/${workOrderId}/take`));
     same('Safety 2 lo ve como suyo', inQueue((await queue(safety2)).pending, workOrderId)?.mine, true);
     const roster = ok('roster', await manager.get('/admin/mechanics'));
     truthy('el roster muestra a Safety', (roster.items as Json[]).some((item) => item.email === USERS.safety), roster.items?.map((i: Json) => i.email));
@@ -252,3 +257,39 @@ async function catalogRow(category: string, job: string) {
   const row = await prisma.catalogJob.findFirstOrThrow({ where: { displayName: job, status: 'active', category: { name: category, status: 'active' } } });
   return { catalogJobId: row.id, categoryId: row.categoryId, displayName: row.displayName };
 }
+
+describe('Safety: el Shop no sabe quién de Safety hizo el QC (D46, SQ-1)', () => {
+  beforeEach(resetDb);
+
+  it('A128 | Tomar, devolver y aprobar: el Manager y el mecánico ven "Safety", nunca la persona; Safety sí la ve', async () => {
+    const { truck, workOrderId } = await readyForQc('905');
+    const person = await prisma.user.findUniqueOrThrow({ where: { email: USERS.safety }, select: { id: true, name: true } });
+    ok('Safety 1 lo toma', await safety.post(`/qc/${workOrderId}/take`));
+    ok('y lo devuelve', await safety.post(`/qc/${workOrderId}/return`, { notes: 'Fuga en la manguera del freno trasero.' }));
+    const leaks = (step: string, body: unknown) => {
+      const text = JSON.stringify(body);
+      truthy(`${step}: sin el nombre de Safety`, !text.includes(person.name));
+      truthy(`${step}: sin su id`, !text.includes(person.id));
+    };
+    leaks('Work Order del Manager', await adminWo(workOrderId));
+    leaks('plan del camión', ok('work plan', await manager.get(`/admin/trucks/${truck.id}/work-plan`)));
+    leaks('Dashboard', ok('dashboard', await manager.get('/admin/dashboard')));
+    leaks('detalle del camión', ok('camión', await manager.get(`/admin/trucks/${truck.id}`)));
+    leaks('historial', ok('historial', await manager.get(`/admin/history?workOrderId=${workOrderId}`)));
+    const qc = laneJob(await adminWo(workOrderId), 'quality_check');
+    truthy('la devolución dice "Safety"', JSON.stringify(await adminWo(workOrderId)).includes('"name":"Safety"'));
+    leaks('Work Order del mecánico', ok('mecánico', await as(USERS.alignment).get(`/work-orders/${workOrderId}`)));
+
+    // The Manager resolves without new work; Safety takes it again and approves.
+    const blocker = await activeBlocker(workOrderId);
+    ok('resolver sin trabajo', await manager.post(`/admin/work-orders/${workOrderId}/blockers/${blocker!.id}/resolve`, { notes: 'Revisado, no gotea.' }));
+    ok('Safety 2 lo toma', await safety2.post(`/qc/${workOrderId}/take`));
+    ok('y lo aprueba', await safety2.post(`/qc/${workOrderId}/approve`));
+    const approved = await adminWo(workOrderId);
+    same('aprobado por "Safety"', laneJob(approved, 'quality_check').completedBy?.name, 'Safety');
+    leaks('Work Order aprobada', approved);
+    truthy('Safety sí ve quién fue', JSON.stringify(ok('historial de Safety', await safety.get('/qc/history'))).length > 0);
+    const roster = ok('People', await manager.get('/admin/mechanics'));
+    truthy('People sigue mostrando a Safety por nombre', (roster.items as Json[]).some((item) => item.name === person.name));
+  });
+});
