@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-16 (ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-16 (ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -24,7 +24,7 @@ La columna **Fila** es el número de la prueba que lo comprueba
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
 **Resultado de la auditoría (2026-09-29):** 61 comprobaciones · 59 funcionan · 0 fallan
-· 2 no aplican. Desde entonces se sumaron filas hasta A124; la cuenta al día la da
+· 2 no aplican. Desde entonces se sumaron filas hasta A127; la cuenta al día la da
 `npm run test:real --workspace=@ltl-shop/api`.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
@@ -596,7 +596,10 @@ Ver la fila E7 en HU-ME2.
 | Corrige o anula una reparación externa | Igual que una compra: reversas en el costo del camión, nada se borra; anular pide motivo | ✅ | A65 |
 | Abre Truck → Costs y elige un período (este mes, 3 meses, este año, todo) (PC-4) | Ve el total de partes, de reparaciones externas y el total; las barras por mes; y cada movimiento (compra o reparación) con su WO, que abre su compra o reparación. Lo anulado o corregido sale como reversa en negativo y baja el total | ✅ | A66 |
 | Quiere ver la mano de obra del camión | Las horas registradas en el período (sesiones cerradas, D18, D21) y, con la tarifa del taller (D34), su monto | ✅ | A67, A69 |
-| Un mecánico o Safety intenta ver los costos de un camión; un PM se termina | No puede (403); terminar un PM no escribe nada en el costo del camión (D-PC4) | ✅ | A68 |
+| Un mecánico o Safety intenta ver los costos de un camión; un PM se termina | No puede (403); terminar el Job de PM no escribe nada en el costo del camión: se escribe al completar la WO (D45 / ST-5) | ✅ | A68 |
+| El Manager completa una WO con PM (D45 / ST-5, P29) | Cada parte que eligió el mecánico sale del estante al costo promedio y cuesta al camión; se cobra el cambio de aceite al precio del día. Reabrir o cancelar lo deshace | ✅ | A125 |
+| La parte del PM no estaba en el estante, o no hay precio de aceite | No se cobra (la parte ya se cargó al camión al comprarla); sin precio no hay cargo de aceite | ✅ | A126 |
+| El Manager pone el precio del cambio de aceite | Setup → Labor rate → PM oil change: desde hoy o después, uno por día; mecánicos y Safety no lo ven | ✅ | A127 |
 | Quiere cobrarle a Finanzas | Factura interna por camión y mes con partes al costo, reparaciones externas y mano de obra (HU-M13, D34) | ✅ | A72–A75 |
 
 ### HU-M13 · Cobrarle a Finanzas lo que hizo el taller (J14) — ✅ construido (D34: LB-1 tarifa y mano de obra, LB-2 factura interna)
@@ -824,7 +827,7 @@ Las historias completas, con su "¿qué pasa si…?", están en
 | HU-R1, HU-R2 | Catálogo con repuestos y llantas (medida, New o Recap); pasar una línea "Other" al catálogo | ST-2 | ✅ (LTR-222, A114–A116) |
 | HU-C1, HU-C2 | Cada línea de compra va a un camión y, si se quiere, a su Job; el Job muestra sus partes (To stock y Shop supplies llegan con ST-3) | ST-1 | ✅ (LTR-221, A111–A113) |
 | HU-S1–HU-S4 | Stock: entra con la compra, sale a un Job, devoluciones, ajustes y reversas; pantalla Stock con "Low" | ST-3 | ✅ (LTR-223, A117–A121) |
-| HU-S5 | El PM descuenta del stock | ST-5 | 🔲 (P29) |
+| HU-S5 | El PM descuenta del stock y cobra el cambio de aceite | ST-5 | ✅ (LTR-225, A125–A127) |
 | HU-T1–HU-T4 | La inspección propone la llanta (steer New, drive Recap); el Manager confirma y sale del stock; historial por posición | ST-4 | ✅ (LTR-224, A122–A124) |
 | HU-F2 | Leer la factura del proveedor (PDF o foto) y confirmar | ST-6 | 🔲 (P30) |
 

@@ -34,7 +34,7 @@ function sourceHref(entry: AdminTruckCostEntryDto, from: string) {
   if (entry.sourceType === 'outside_repair') return `/admin/parts/outside-repairs/${entry.sourceId}${back}`;
   if (entry.sourceType === 'work_order_labor') return `/admin/work-orders/${entry.sourceId}${back}`;
   // D45 / ST-3: a part taken from stock opens its Work Order.
-  if (entry.sourceType === 'stock_issue' && entry.workOrder) return `/admin/work-orders/${entry.workOrder.id}${back}`;
+  if ((entry.sourceType === 'stock_issue' || entry.sourceType === 'pm_oil_change') && entry.workOrder) return `/admin/work-orders/${entry.workOrder.id}${back}`;
   return null;
 }
 

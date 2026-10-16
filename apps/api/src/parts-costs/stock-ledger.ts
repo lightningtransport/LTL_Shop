@@ -1,5 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { Prisma, type StockMovementKind } from '@prisma/client';
+import { reverseSource, writeEntries } from './cost-ledger';
 
 /**
  * D45 / ST-3 (LTR-223): the Shop's stock is a list of movements that is only added to. On hand = the sum of the
@@ -43,6 +44,7 @@ export async function writeMovement(
     truckId?: string | null;
     reason?: string | null;
     reversesId?: string | null;
+    pmServiceId?: string | null;
   },
 ) {
   return tx.stockMovement.create({
@@ -56,6 +58,7 @@ export async function writeMovement(
       truckId: data.truckId ?? null,
       reason: data.reason ?? null,
       reversesId: data.reversesId ?? null,
+      pmServiceId: data.pmServiceId ?? null,
       createdById: data.actorId,
     },
   });
@@ -74,4 +77,65 @@ export async function assertNotBelowZero(tx: Prisma.TransactionClient, partIds: 
       });
     }
   }
+}
+
+export const ISSUE_SOURCE = 'stock_issue' as const;
+const qty = (hundredths: number) => (hundredths / 100).toFixed(2);
+
+/**
+ * Takes `hundredths` of a part off the shelf for a Job inside the caller's transaction: locks the part, refuses
+ * more than is on hand, writes the movement at the average cost (P27) and the truck's cost row on that Work Order.
+ */
+export async function issueToJob(
+  tx: Prisma.TransactionClient,
+  actorId: string,
+  part: { id: string; displayName: string; partNumber: string | null },
+  hundredths: number,
+  job: { id: string | null; displayName: string; workOrderId: string; truckId: string },
+  pmServiceId: string | null = null,
+) {
+  await lockPart(tx, part.id);
+  const onHand = await balance(tx, part.id);
+  if (hundredths > onHand.hundredths) {
+    throw new ConflictException({ code: 'NOT_ENOUGH_STOCK', message: `Only ${qty(Math.max(0, onHand.hundredths))} in stock.`, onHand: qty(Math.max(0, onHand.hundredths)) });
+  }
+  const valueCents = outValue(onHand, hundredths);
+  const movement = await writeMovement(tx, {
+    partId: part.id, kind: 'issue', hundredths: -hundredths, valueCents: -valueCents,
+    workOrderJobId: job.id, truckId: job.truckId, pmServiceId, actorId,
+  });
+  await writeEntries(tx, {
+    sourceType: ISSUE_SOURCE, sourceId: movement.id, kind: 'part_purchase', occurredOn: new Date(new Date().toISOString().slice(0, 10)),
+    vendorId: null, workOrderId: job.workOrderId, actorId,
+  }, [{
+    truckId: job.truckId,
+    amountCents: valueCents,
+    description: `Stock · ${part.displayName}${part.partNumber ? ` ${part.partNumber}` : ''} × ${hundredths / 100} → ${job.displayName}`,
+  }]);
+  return { movement, valueCents, onHand };
+}
+
+/** Puts an issued part back on the shelf at the same cost and reverses the truck's cost row. Once per issue. */
+export async function undoIssue(
+  tx: Prisma.TransactionClient,
+  issue: { id: string; partId: string; quantity: Prisma.Decimal; valueCents: number; workOrderJobId: string | null; truckId: string | null; pmServiceId?: string | null },
+  actorId: string,
+  reason: string,
+) {
+  await lockPart(tx, issue.partId);
+  let movement;
+  try {
+    movement = await writeMovement(tx, {
+      partId: issue.partId, kind: 'return', hundredths: -toHundredths(issue.quantity), valueCents: -issue.valueCents,
+      workOrderJobId: issue.workOrderJobId, truckId: issue.truckId, pmServiceId: issue.pmServiceId ?? null, reversesId: issue.id, reason, actorId,
+    });
+  } catch (error) {
+    // Two returns at once: the unique index on reverses_id lets only one through.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new ConflictException({ code: 'STOCK_ALREADY_RETURNED', message: 'That part is already back in stock.' });
+    }
+    throw error;
+  }
+  await reverseSource(tx, { sourceType: ISSUE_SOURCE, sourceId: issue.id }, actorId);
+  return movement;
 }

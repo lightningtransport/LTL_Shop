@@ -240,7 +240,7 @@ Linear: Epic **LTR-220**; ST-1 a ST-6 son **LTR-221 a LTR-226**. La demo no se a
 | **ST-2** ✅ | Catálogo de repuestos y llantas (construida, LTR-222, filas A114–A116) | HU-R1, HU-R2 | — |
 | **ST-3** ✅ | Stock: entra con la compra, sale a un Job, ajustes y reversas, pantalla Stock (construida, LTR-223, filas A117–A121) | HU-S1–S4, HU-C1 completo | ST-1, ST-2, P25, P27 |
 | **ST-4** ✅ | Llantas desde la inspección (construida, LTR-224, filas A122–A124; sin P26, el camión recuerda la medida) | HU-T1–T4 | ST-3, P26 |
-| **ST-5** | El PM descuenta del stock | HU-S5 | ST-3, P29 |
+| **ST-5** ✅ | El PM descuenta del stock y cobra el aceite a precio fijo (construida, LTR-225, filas A125–A127) | HU-S5 | ST-3, P29 |
 | **ST-6** | Leer facturas | HU-F2 | ST-2, P30 |
 
 **Recomendación:** empezar por **ST-1**, que es chica, no necesita stock y cumple la parte de Randy que dice "atar la compra al camión y al trabajo". **ST-2** puede ir en paralelo. ST-3 y ST-4 van después de que Randy responda P25–P27.

@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-16 (llantas desde la inspección, D45 / ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-16 (el PM descuenta del stock y cobra el aceite, D45 / ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -482,6 +482,19 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   - El mecánico ve en su Job "RF · New 11R22.5" (y "esperando la llanta" si
     falta), nunca el costo. La tarjeta **Tires** del camión dice qué tiene montado
     cada posición (tipo, medida, fecha, WO).
+- **El PM descuenta del stock y cobra el aceite** (D45 / ST-5, LTR-225; P29): igual
+  que la mano de obra (D34), se escribe **cuando el Manager completa la Work Order**
+  y se deshace al reabrirla o cancelarla (`syncWorkOrderPmCharges`,
+  `apps/api/src/parts-costs/pm-charges.ts`). El teléfono del PM no cambia.
+  - **Partes:** cada parte que el mecánico eligió sale del estante (una unidad) al
+    costo promedio y cuesta al camión en esa WO (`stock_movements.pm_service_id`).
+    **Si no está en el estante no se cobra**: vino de una compra que ya se cargó a
+    ese camión. Un Job de PM cancelado no descuenta nada.
+  - **Aceite:** un precio fijo por PM, como lo cobra un shop (`pm_oil_prices`, desde
+    una fecha; Setup → Labor rate → **PM oil change**). Cada WO con PM paga el precio
+    vigente el día que se completó (`source_type` `pm_oil_change`, como parte). Un
+    precio nuevo empieza hoy o después (`PM_OIL_PRICE_PAST`), uno por día. El aceite a
+    granel se compra como Shop supplies; no se cuenta por galón.
 - **El archivo adjunto por separado** (PCA6): `PATCH /purchases/:id/attachment` y
   `PATCH /outside-repairs/:id/attachment` (`{ attachmentId | null }`) agregan,
   reemplazan o quitan el archivo sin pasar por Edit; en pantalla, "Add invoice

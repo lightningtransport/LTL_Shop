@@ -8,6 +8,7 @@ import { ManagerWritesGuard } from '../auth/manager-writes.guard';
 import { PartsCatalogService } from './parts-catalog.service';
 import { OutsideRepairsService } from './outside-repairs.service';
 import { PurchasesService } from './purchases.service';
+import { PmOilPricesService } from './pm-oil-prices.service';
 import { StockService } from './stock.service';
 import { InternalInvoicesService } from './internal-invoices.service';
 import { LaborRatesService } from './labor-rates.service';
@@ -25,6 +26,7 @@ export class PartsCostsController {
     private readonly catalog: PartsCatalogService,
     private readonly purchases: PurchasesService,
     private readonly stock: StockService,
+    private readonly oilPrices: PmOilPricesService,
     private readonly repairs: OutsideRepairsService,
     private readonly truckCosts: TruckCostsService,
     private readonly laborRates: LaborRatesService,
@@ -138,6 +140,17 @@ export class PartsCostsController {
   @Post('stock/movements/:id/return')
   stockReturn(@Req() request: Request, @Param('id') id: string, @Body() body: unknown) {
     return this.stock.returnToStock(request.user!, id, body);
+  }
+
+  // D45 / ST-5: the flat price of a PM's oil change.
+  @Get('pm-oil-prices')
+  pmOilPrices() {
+    return this.oilPrices.list();
+  }
+
+  @Post('pm-oil-prices')
+  setPmOilPrice(@Req() request: Request, @Body() body: unknown) {
+    return this.oilPrices.set(request.user!, body);
   }
 
   // D45 / ST-4: confirm the tires the inspection proposed on a Tires Job.
