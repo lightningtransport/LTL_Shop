@@ -237,7 +237,7 @@ Linear: Epic **LTR-220**; ST-1 a ST-6 son **LTR-221 a LTR-226**. La demo no se a
 | Etapa | Qué | Historias | Depende de |
 |---|---|---|---|
 | **ST-1** ✅ | La compra se ata al Job; el Job muestra sus partes (construida, LTR-221, filas A111–A113) | HU-C1 (sin stock), HU-C2 | — |
-| **ST-2** | Catálogo de repuestos y llantas | HU-R1, HU-R2 | — |
+| **ST-2** ✅ | Catálogo de repuestos y llantas (construida, LTR-222, filas A114–A116) | HU-R1, HU-R2 | — |
 | **ST-3** | Stock: entra con la compra, sale a un Job, ajustes y reversas, pantalla Stock | HU-S1–S4, HU-C1 completo | ST-1, ST-2, P25, P27 |
 | **ST-4** | Llantas desde la inspección | HU-T1–T4 | ST-3, P26 |
 | **ST-5** | El PM descuenta del stock | HU-S5 | ST-3, P29 |

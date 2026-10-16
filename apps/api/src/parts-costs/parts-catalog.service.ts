@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import {
   ActivityEventType,
   OPEN_WORK_ORDER_STATUSES,
+  adminCreatePartCategorySchema,
   adminCreatePartSchema,
   adminCreateVendorSchema,
   adminPartsQuerySchema,
@@ -47,8 +48,8 @@ export class PartsCatalogService {
     const query = parse(adminPartsQuerySchema, raw);
     const [categories, usage, openPms, makes, lastPaid] = await Promise.all([
       this.prisma.partCategory.findMany({
-        where: { active: true },
-        orderBy: { sortOrder: 'asc' },
+        where: { active: true, ...(query.kind ? { kind: query.kind } : {}) },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
         include: {
           parts: {
             where: query.includeInactive ? {} : { active: true },
@@ -81,6 +82,7 @@ export class PartsCatalogService {
     const result = categories.map((category) => ({
       id: category.id,
       name: category.name,
+      kind: category.kind,
       parts: category.parts
         .filter((part) => !needle || normalizeCatalogText(`${part.displayName} ${part.partNumber ?? ''}`).includes(needle))
         .filter((part) => !make || !part.fitments.length || part.fitments.some((fit) => fit.make && normalizeCatalogText(fit.make) === normalizeCatalogText(make.make)))
@@ -97,6 +99,9 @@ export class PartsCatalogService {
             unitCostCents: part.unitCostCents,
             defaultVendor: part.defaultVendor,
             fits: part.fitments.map((fit) => ({ make: fit.make, model: fit.model })),
+            tireSize: part.tireSize,
+            tireType: part.tireType,
+            minStock: part.minStock,
             usedInPmCount: Number(used?.uses ?? 0),
             lastUsedAt: used?.last_used_at ? used.last_used_at.toISOString() : null,
             openPms: (openPms.get(part.id) ?? []).map(({ make: _make, model: _model, ...pm }) => pm),
@@ -115,12 +120,14 @@ export class PartsCatalogService {
 
   async createPart(actor: AuthUser, raw: unknown) {
     const input = parse(adminCreatePartSchema, raw);
-    const category = await this.prisma.partCategory.findUnique({ where: { id: input.categoryId }, select: { id: true } });
+    const category = await this.prisma.partCategory.findUnique({ where: { id: input.categoryId }, select: { id: true, kind: true } });
     if (!category) throw new BadRequestException({ code: 'PART_CATEGORY_NOT_FOUND', message: 'That category does not exist.' });
     if (input.defaultVendorId) await this.activeVendor(input.defaultVendorId);
     const fits = this.uniqueFits(input.fits);
+    const tire = this.tireFields(category.kind, input.tireSize ?? null, input.tireType ?? null);
     return this.prisma.$transaction(async (tx) => {
       await this.assertNoTwin(tx, category.id, input.partNumber ?? null, input.displayName);
+      await this.assertNumberFree(tx, input.partNumber ?? null);
       const part = await tx.part.create({
         data: {
           categoryId: category.id,
@@ -129,6 +136,8 @@ export class PartsCatalogService {
           unitCostCents: input.unitCostCents ?? null,
           defaultVendorId: input.defaultVendorId ?? null,
           source: 'app',
+          ...tire,
+          minStock: input.minStock ?? null,
           fitments: { create: fits },
         },
       });
@@ -137,7 +146,7 @@ export class PartsCatalogService {
         entityType: 'part',
         entityId: part.id,
         userId: actor.id,
-        newValue: { action: 'part_created', displayName: part.displayName, partNumber: part.partNumber, unitCostCents: part.unitCostCents, fits },
+        newValue: { action: 'part_created', displayName: part.displayName, partNumber: part.partNumber, unitCostCents: part.unitCostCents, fits, tireSize: part.tireSize, tireType: part.tireType, minStock: part.minStock },
         relevantValue: { action: 'part_created', displayName: part.displayName },
       });
       return { id: part.id };
@@ -147,7 +156,7 @@ export class PartsCatalogService {
   async updatePart(actor: AuthUser, id: string, raw: unknown) {
     this.assertId(id, 'Part');
     const input = parse(adminUpdatePartSchema, raw);
-    const part = await this.prisma.part.findUnique({ where: { id }, include: { fitments: true } });
+    const part = await this.prisma.part.findUnique({ where: { id }, include: { fitments: true, category: { select: { kind: true } } } });
     if (!part) throw new NotFoundException('Part not found');
     if (input.defaultVendorId && input.defaultVendorId !== part.defaultVendorId) await this.activeVendor(input.defaultVendorId);
     const fits = input.fits ? this.uniqueFits(input.fits) : null;
@@ -171,11 +180,17 @@ export class PartsCatalogService {
       if (partNumber !== part.partNumber || displayName !== part.displayName) {
         await this.assertNoTwin(tx, part.categoryId, partNumber, displayName, part.id);
       }
+      if (partNumber !== part.partNumber) await this.assertNumberFree(tx, partNumber, part.id);
+      const tire = input.tireSize !== undefined || input.tireType !== undefined
+        ? this.tireFields(part.category.kind, input.tireSize !== undefined ? input.tireSize : part.tireSize, input.tireType !== undefined ? input.tireType : part.tireType)
+        : {};
       const updated = await tx.part.update({
         where: { id },
         data: {
           partNumber,
           displayName,
+          ...tire,
+          ...(input.minStock !== undefined ? { minStock: input.minStock } : {}),
           ...(input.unitCostCents !== undefined ? { unitCostCents: input.unitCostCents } : {}),
           ...(input.defaultVendorId !== undefined ? { defaultVendorId: input.defaultVendorId } : {}),
           ...(input.active !== undefined ? { active: input.active } : {}),
@@ -193,15 +208,50 @@ export class PartsCatalogService {
         previousValue: {
           displayName: part.displayName, partNumber: part.partNumber, unitCostCents: part.unitCostCents,
           defaultVendorId: part.defaultVendorId, active: part.active, fits: part.fitments.map(({ make, model }) => ({ make, model })),
+          tireSize: part.tireSize, tireType: part.tireType, minStock: part.minStock,
         },
         newValue: {
           displayName: updated.displayName, partNumber: updated.partNumber, unitCostCents: updated.unitCostCents,
           defaultVendorId: updated.defaultVendorId, active: updated.active, ...(fits ? { fits } : {}),
+          tireSize: updated.tireSize, tireType: updated.tireType, minStock: updated.minStock,
         },
         relevantValue: { action: 'part_updated', displayName: updated.displayName },
       });
       return { id };
     });
+  }
+
+  /** D45 / ST-2: a repair or tire category; the PM categories come from the base list and are not added here. */
+  async createCategory(actor: AuthUser, raw: unknown) {
+    const input = parse(adminCreatePartCategorySchema, raw);
+    const existing = await this.prisma.partCategory.findMany({ select: { id: true, name: true, slug: true, sortOrder: true } });
+    const twin = existing.find((category) => normalizeCatalogText(category.name) === normalizeCatalogText(input.name));
+    if (twin) throw new ConflictException({ code: 'PART_CATEGORY_EXISTS', message: `"${twin.name}" already exists.`, categoryId: twin.id, categoryName: twin.name });
+    const base = input.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'category';
+    const slugs = new Set(existing.map((category) => category.slug));
+    let slug = base;
+    for (let n = 2; slugs.has(slug); n += 1) slug = `${base}-${n}`;
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const category = await tx.partCategory.create({
+          data: { name: input.name, slug, kind: input.kind, sortOrder: Math.max(0, ...existing.map((row) => row.sortOrder)) + 10 },
+        });
+        await this.activity.log(tx, {
+          eventType: ActivityEventType.PART_CATALOG_UPDATED,
+          entityType: 'part_category',
+          entityId: category.id,
+          userId: actor.id,
+          newValue: { action: 'part_category_created', name: category.name, kind: category.kind },
+          relevantValue: { action: 'part_category_created', name: category.name },
+        });
+        return { id: category.id };
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException({ code: 'PART_CATEGORY_EXISTS', message: 'A category with that name already exists.' });
+      }
+      throw error;
+    }
   }
 
   async vendors(): Promise<AdminVendorDto[]> {
@@ -328,6 +378,32 @@ export class PartsCatalogService {
       normalizeCatalogText(part.partNumber ?? '') === normalizeCatalogText(partNumber ?? '')
       && normalizeCatalogText(part.displayName) === normalizeCatalogText(displayName));
     if (twin) throw new ConflictException({ code: 'PART_EXISTS', message: 'That part is already in this category.', partId: twin.id });
+  }
+
+  /** D45 / ST-2: a tire needs its size and New or Recap; other kinds never carry them. */
+  private tireFields(kind: string, size: string | null, type: 'new' | 'recap' | null) {
+    if (kind !== 'tire') return { tireSize: null, tireType: null };
+    if (!size || !type) throw new BadRequestException({ code: 'TIRE_FIELDS_REQUIRED', message: 'A tire needs its size and New or Recap.' });
+    return { tireSize: size, tireType: type };
+  }
+
+  /** D45 / ST-2 (HU-R2): a part number belongs to one part in the whole catalog (ignoring capitals, spaces and dashes). */
+  private async assertNumberFree(tx: Prisma.TransactionClient, partNumber: string | null, exceptId?: string) {
+    if (!partNumber) return;
+    const wanted = normalizeCatalogText(partNumber).replace(/[^a-z0-9]/g, '');
+    if (!wanted) return;
+    const others = await tx.part.findMany({
+      where: { partNumber: { not: null }, ...(exceptId ? { id: { not: exceptId } } : {}) },
+      select: { id: true, partNumber: true, displayName: true, category: { select: { name: true } } },
+    });
+    const twin = others.find((other) => normalizeCatalogText(other.partNumber!).replace(/[^a-z0-9]/g, '') === wanted);
+    if (twin) {
+      throw new ConflictException({
+        code: 'PART_NUMBER_EXISTS',
+        message: `Part number ${twin.partNumber} is already "${twin.displayName}" in ${twin.category.name}.`,
+        partId: twin.id, partName: twin.displayName, categoryName: twin.category.name,
+      });
+    }
   }
 
   private async activeVendor(id: string) {

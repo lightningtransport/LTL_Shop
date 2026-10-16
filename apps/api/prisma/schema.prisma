@@ -651,6 +651,8 @@ model PartCategory {
   aliases   String[] @default([])
   sortOrder Int      @default(0) @map("sort_order")
   active    Boolean  @default(true)
+  /// D45 / ST-2 (LTR-222): PM categories feed the PM picker; repair and tire categories are only for buying.
+  kind      PartKind @default(pm)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -671,6 +673,11 @@ model Part {
   defaultVendorId String?    @map("default_vendor_id") @db.Uuid
   /// `seed` = from the base list; `app` = created by the Manager. Loading the base list never turns off or rewrites a part.
   source          PartSource @default(seed)
+  /// D45 / ST-2: a tire's size ("11R22.5") and whether it is new or a recap; only in tire categories.
+  tireSize        String?    @map("tire_size")
+  tireType        TireType?  @map("tire_type")
+  /// D45 / ST-2: below this the Stock screen will say "Low" (ST-3). Optional.
+  minStock        Int?       @map("min_stock")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
@@ -690,6 +697,21 @@ enum PartSource {
   app
 
   @@map("part_source")
+}
+
+enum PartKind {
+  pm
+  repair
+  tire
+
+  @@map("part_kind")
+}
+
+enum TireType {
+  new
+  recap
+
+  @@map("tire_type")
 }
 
 /// LTR-200 / D32: who the Shop buys parts from or pays for outside repairs. Unique by lower(name) (SQL index).

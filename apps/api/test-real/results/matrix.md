@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 157 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 160 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -131,6 +131,9 @@ PASA 157 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A111 | Una línea se ata al Job de su camión: el Job muestra la parte, el costo va al camión con su WO | PASA |
 | A112 | Un Job de otro camión, uno cancelado o un Job sin camión: no se guarda | PASA |
 | A113 | Cambiar el Job de una línea escribe reversas; editar solo las notas no toca el costo | PASA |
+| A114 | Un repuesto y una llanta (medida, New o Recap) entran al catálogo; el PM no los ve ni los acepta | PASA |
+| A115 | Un número de parte es de una sola parte; el Manager agrega categorías; mecánicos y Safety no | PASA |
+| A116 | Una línea "Other" pasa al catálogo y la siguiente compra la usa con su último precio | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

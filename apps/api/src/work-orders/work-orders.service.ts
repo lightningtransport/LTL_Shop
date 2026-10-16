@@ -1645,8 +1645,9 @@ export class WorkOrdersService {
       : wo.status === 'completed' ? wo.completedAt : null;
 
     const [categories, lastCompletedPmCandidates, modelParts] = await Promise.all([
+      // D45 / ST-2: only PM categories; repair parts and tires are bought, never picked in a PM.
       this.prisma.partCategory.findMany({
-        where: { active: true },
+        where: { active: true, kind: 'pm' },
         orderBy: { sortOrder: 'asc' },
         include: {
           parts: {
@@ -1770,7 +1771,7 @@ export class WorkOrdersService {
       });
 
       const selectedParts = await tx.part.findMany({
-        where: { id: { in: parsed.data.selections.map((selection) => selection.partId) }, active: true },
+        where: { id: { in: parsed.data.selections.map((selection) => selection.partId) }, active: true, category: { kind: 'pm' } },
         include: { fitments: true },
       });
       if (selectedParts.length !== parsed.data.selections.length || parsed.data.selections.some((selection) =>
