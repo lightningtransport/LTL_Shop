@@ -21,7 +21,7 @@ import {
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { countAdminStock, useAdminPartsCatalog, useAdminStock, useAdminStockPart } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminCountLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { formatShortDateTime } from '@/lib/work-order-view';
 import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
 
@@ -75,7 +75,7 @@ export function AdminStock({ locale, messages }: { locale: AdminLocale; messages
       {isLoading && !data ? <PageSkeleton label={messages.pcStock} header={false} /> : null}
       {data ? (
         <p className="text-sm text-muted-foreground" data-testid="stock-totals">
-          {fillPlaceholders(messages.pcStockTotal, { count: String(data.items.length), value: formatCents(data.totals.valueCents, locale), low: String(data.totals.lowCount) })}
+          {fillPlaceholders(messages.pcStockTotal, { parts: adminCountLabel(data.items.length, messages.pcStockPartsOne, messages.pcStockParts), value: formatCents(data.totals.valueCents, locale), low: String(data.totals.lowCount) })}
         </p>
       ) : null}
       {data && !data.items.length ? <EmptyState><p>{messages.pcStockEmpty}</p></EmptyState> : null}
