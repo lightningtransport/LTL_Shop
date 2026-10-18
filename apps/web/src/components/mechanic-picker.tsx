@@ -99,7 +99,8 @@ export function MechanicPicker({
           <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
           <DialogPrimitive.Content
             aria-describedby={undefined}
-            className="anim-sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t bg-card p-2 pb-[calc(0.5rem+var(--app-safe-bottom))] text-card-foreground shadow-2xl focus:outline-none"
+            data-sheet=""
+            className="anim-sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-2xl border-t bg-card p-2 pb-[calc(0.5rem+var(--app-safe-bottom))] text-card-foreground shadow-2xl focus:outline-none"
           >
             <div aria-hidden="true" className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-muted-foreground/40" />
             <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>

@@ -519,7 +519,6 @@ function SheetFlow({
       </div>
       {tireOpen ? (
         <TireDialog
-          key={tireOpen}
           copy={copy}
           locale={locale}
           position={tireOpen}
@@ -553,7 +552,8 @@ function SheetFlow({
 
 function FixedBar({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur', className)}>
+    // LTR-234: hidden while the keyboard is open, so it never sits over a field.
+    <div data-hide-on-keyboard="" className={cn('fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur', className)}>
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-end gap-2 px-4 py-3 md:px-6">{children}</div>
     </div>
   );
@@ -753,6 +753,10 @@ function TireButton({ copy, position, tire, tone, onClick }: { copy: InspectionC
   );
 }
 
+/**
+ * D41: one tire's PSI and tread. LTR-234: the sheet stays open from one tire to the next (only its body changes), so
+ * the phone keyboard does not close and reopen; on phones it is compact so both fields and Next fit above it.
+ */
 function TireDialog({
   copy,
   locale,
@@ -770,11 +774,40 @@ function TireDialog({
   onClose: () => void;
   onSave: (tire: TireAnswer, move: -1 | 0 | 1) => void;
 }) {
+  const index = TIRE_POSITIONS.indexOf(position);
+  const last = state.previousTires.find((tire) => tire.position === position);
+  return (
+    <Modal
+      open
+      title={`${position} · ${axleLabel(tireAxle(position) === 'steer' ? 'steer' : index < 6 ? 'd1' : 'd2', copy)}`}
+      description={<>{copy.tireOf(index + 1)} · {last ? copy.lastCheck(formatWhen(last.readAt, locale, false), last.psi, last.tread) : copy.noPreviousReading}</>}
+      onClose={onClose}
+      closeLabel={copy.close}
+    >
+      <TireForm key={position} copy={copy} position={position} state={state} value={value} onSave={onSave} />
+    </Modal>
+  );
+}
+
+function TireForm({
+  copy,
+  position,
+  state,
+  value,
+  onSave,
+}: {
+  copy: InspectionCopy;
+  position: TirePosition;
+  state: TruckInspectionStateDto;
+  value: TireAnswer | undefined;
+  onSave: (tire: TireAnswer, move: -1 | 0 | 1) => void;
+}) {
   const target = tireTargets(position, state.limits);
   const [psi, setPsi] = useState(value?.psi !== null && value?.psi !== undefined ? String(value.psi) : '');
   const [tread, setTread] = useState(value?.tread !== null && value?.tread !== undefined ? String(value.tread) : '');
+  const treadRef = useRef<HTMLInputElement>(null);
   const index = TIRE_POSITIONS.indexOf(position);
-  const last = state.previousTires.find((tire) => tire.position === position);
+  const hasNext = index < TIRE_POSITIONS.length - 1;
   const parsed: TireAnswer = { psi: psi === '' ? null : Math.max(0, Math.round(Number(psi))), tread: tread === '' ? null : Math.max(0, Math.round(Number(tread))) };
   const status = tireStatusOf(position, parsed, state.limits)?.status ?? null;
   const step = (field: 'psi' | 'tread', delta: number) => {
@@ -784,20 +817,28 @@ function TireDialog({
     if (field === 'psi') setPsi(next); else setTread(next);
   };
   const stepper = (field: 'psi' | 'tread', label: string, unit: string, current: string, set: (value: string) => void) => (
-    <label className="block space-y-1.5">
+    <label className="block space-y-1">
       <span className="text-sm font-medium">{label}</span>
       <div className="flex items-stretch gap-1.5">
         <Button type="button" variant="outline" size="icon" className="size-12 [@media(pointer:fine)]:size-12" aria-label={copy.less} onClick={() => step(field, -1)}><Minus aria-hidden="true" /></Button>
         <div className="relative flex-1">
           <input
+            ref={field === 'tread' ? treadRef : undefined}
             type="number"
             inputMode="numeric"
             autoFocus={field === 'psi'}
+            enterKeyHint={field === 'psi' || hasNext ? 'next' : 'done'}
             aria-label={`${position} ${field === 'psi' ? 'PSI' : 'tread'}`}
             className="field tnum !min-h-12 text-center !text-xl font-semibold"
             value={current}
             onChange={(event) => set(event.target.value)}
-            onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); onSave(parsed, index < TIRE_POSITIONS.length - 1 ? 1 : 0); } }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return;
+              event.preventDefault();
+              // PSI → tread → next tire, like the paper sheet.
+              if (field === 'psi') treadRef.current?.focus();
+              else onSave(parsed, hasNext ? 1 : 0);
+            }}
           />
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{unit}</span>
         </div>
@@ -806,14 +847,8 @@ function TireDialog({
     </label>
   );
   return (
-    <Modal
-      open
-      title={`${position} · ${axleLabel(tireAxle(position) === 'steer' ? 'steer' : index < 6 ? 'd1' : 'd2', copy)}`}
-      description={<>{copy.tireOf(index + 1)} · {last ? copy.lastCheck(formatWhen(last.readAt, locale, false), last.psi, last.tread) : copy.noPreviousReading}</>}
-      onClose={onClose}
-      closeLabel={copy.close}
-    >
-      <div className="space-y-4">
+    <>
+      <div className="space-y-3 sm:space-y-4">
         {stepper('psi', copy.pressureTarget(target.targetPsi), 'PSI', psi, setPsi)}
         {stepper('tread', copy.treadMin(target.minTread), '/32', tread, setTread)}
         <div className="min-h-6">
@@ -824,12 +859,12 @@ function TireDialog({
           ) : null}
         </div>
       </div>
-      <div className="mt-5 flex gap-2">
+      <div className="mt-3 flex gap-2 sm:mt-5">
         {index > 0 ? <Button type="button" variant="outline" aria-label={copy.previousTire} onClick={() => onSave(parsed, -1)}><ArrowLeft aria-hidden="true" /></Button> : null}
         <Button type="button" variant="outline" className="flex-1" onClick={() => onSave(parsed, 0)}>{copy.done}</Button>
-        {index < TIRE_POSITIONS.length - 1 ? <Button type="button" className="flex-1" onClick={() => onSave(parsed, 1)}>{copy.nextTire}<ArrowRight aria-hidden="true" /></Button> : null}
+        {hasNext ? <Button type="button" className="flex-1" onClick={() => onSave(parsed, 1)}>{copy.nextTire}<ArrowRight aria-hidden="true" /></Button> : null}
       </div>
-    </Modal>
+    </>
   );
 }
 

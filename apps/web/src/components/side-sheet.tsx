@@ -50,7 +50,10 @@ export function SideSheet({
           data-testid={testId}
           aria-describedby={undefined}
           onOpenAutoFocus={(event) => event.preventDefault()}
-          className="anim-sheet-in fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-2xl border-t bg-card text-card-foreground shadow-2xl focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[460px] sm:rounded-none sm:border-l sm:border-t-0"
+          // LTR-234: on phones it stands on top of the keyboard (globals.css).
+          data-sheet=""
+          data-sheet-side=""
+          className="anim-sheet-in fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-2xl border-t bg-card text-card-foreground shadow-2xl focus:outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[460px] sm:rounded-none sm:border-l sm:border-t-0"
         >
           <div className="flex items-start justify-between gap-3 border-b px-5 py-4">
             <div className="min-w-0 space-y-1">
@@ -64,7 +67,7 @@ export function SideSheet({
             </DialogPrimitive.Close>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-          {footer ? <div className="border-t px-5 py-3 pb-[calc(0.75rem+var(--app-safe-bottom))]">{footer}</div> : null}
+          {footer ? <div data-sheet-footer="" className="border-t px-5 py-3 pb-[calc(0.75rem+var(--app-safe-bottom))]">{footer}</div> : null}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

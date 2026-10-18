@@ -221,7 +221,7 @@ export function AdminInspectionChecklist({ locale, leaveConfirm }: { locale: Adm
       </div>
 
       {dirty ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur app-safe-bottom lg:left-[var(--admin-aside)]" data-testid="checklist-unsaved">
+        <div data-hide-on-keyboard="" className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur app-safe-bottom lg:left-[var(--admin-aside)]" data-testid="checklist-unsaved">
           <div className="mx-auto flex max-w-[1440px] items-center justify-end gap-2 px-4 py-3 md:px-6">
             <span className="mr-auto text-sm font-medium" role="status">{copy.unsaved}</span>
             <Button type="button" variant="ghost" disabled={pending} onClick={() => { setRows(rowsOf(data)); setLimits(data.limits); setFailure(null); }}>{copy.discard}</Button>

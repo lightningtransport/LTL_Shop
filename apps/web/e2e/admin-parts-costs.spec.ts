@@ -175,14 +175,14 @@ test('manager sets the shop labor rate from a date; the same date twice is refus
   await page.getByRole('button', { name: 'Save rate' }).click();
   await expect(page.getByText('Enter the rate per hour.')).toBeVisible();
   await page.getByLabel('Rate per hour (USD)').fill('95');
-  await page.getByLabel('From').fill('2026-09-01');
+  await page.getByLabel('From', { exact: true }).fill('2026-09-01');
   // PCA7 (UX-10-005): before saving, the screen says what the date recalculates and what is already invoiced.
   await expect(page.getByTestId('labor-rate-preview')).toHaveText('Saving recalculates 3 completed Work Orders with work from Sep 1, 2026. 1 of them are already on sent invoices: the difference lands on the next invoice for each truck.');
   await page.getByRole('button', { name: 'Save rate' }).click();
   await expect(page.getByText('Rate saved · 3 Work Orders recalculated')).toBeVisible();
   await expect(page.getByTestId('labor-rate-current')).toContainText('$95.00 per hour, since Sep 1, 2026');
   await page.getByLabel('Rate per hour (USD)').fill('100');
-  await page.getByLabel('From').fill('2026-09-01');
+  await page.getByLabel('From', { exact: true }).fill('2026-09-01');
   await page.getByRole('button', { name: 'Save rate' }).click();
   await expect(page.getByText('There is already a rate from that date. Pick another date.')).toBeVisible();
 

@@ -57,7 +57,8 @@ export function ResponsiveMenu({
           <DialogPrimitive.Content
             aria-describedby={undefined}
             data-testid={contentTestId}
-            className="anim-sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t bg-card p-2 pb-[calc(0.5rem+var(--app-safe-bottom))] text-card-foreground shadow-2xl focus:outline-none"
+            data-sheet=""
+            className="anim-sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-2xl border-t bg-card p-2 pb-[calc(0.5rem+var(--app-safe-bottom))] text-card-foreground shadow-2xl focus:outline-none"
           >
             <div aria-hidden="true" className="mx-auto mb-1 mt-1 h-1 w-10 rounded-full bg-muted-foreground/40" />
             <DialogPrimitive.Title className="px-2.5 pb-1 pt-1.5 text-xs font-normal text-muted-foreground">{label}</DialogPrimitive.Title>

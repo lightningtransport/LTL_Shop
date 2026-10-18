@@ -14,6 +14,7 @@ import { ActionToastProvider } from '@/components/action-toast';
 import { ShopLocaleProvider } from '@/lib/locale-context';
 import { DemoMode } from '@/components/demo-mode';
 import { parseShopLocale, SHOP_LOCALE_COOKIE } from '@/lib/shop-locale';
+import { KeyboardInset } from '@/components/keyboard-inset';
 
 const bodyFont = Inter({
   subsets: ['latin'],
@@ -53,6 +54,8 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  // LTR-234: Android Chrome shrinks the page for the keyboard (iOS is handled by <KeyboardInset />).
+  interactiveWidget: 'resizes-content',
 };
 
 export default async function RootLayout({
@@ -78,6 +81,7 @@ export default async function RootLayout({
             <PathScrollReset />
           </Suspense>
           <ObservabilityProvider />
+          <KeyboardInset />
           <ShopLocaleProvider initialLocale={locale}>
             <ActionToastProvider>
               <AuthProvider>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { CircleAlert, Link2, Search, Unlink } from 'lucide-react';
+import { CircleAlert, Link2, Search } from 'lucide-react';
 import {
   truckYearRange,
   type AdminTruckAdminDto,
@@ -186,7 +186,8 @@ export function TruckFormDialog({
   );
 }
 
-export type TruckAdminDialog = 'edit' | 'deactivate' | 'delete' | null;
+// LTR-235: disconnecting Samsara lives in the "…" with the other truck-card actions, not as a button on top.
+export type TruckAdminDialog = 'edit' | 'deactivate' | 'delete' | 'disconnect-samsara' | null;
 
 /** D44: Edit, Deactivate / Reactivate and Delete from the truck's "…" (confirmations like People, D31). */
 export function TruckAdminDialogs({
@@ -270,6 +271,18 @@ export function TruckAdminDialogs({
           </DialogActions>
         </div>
       </Modal>
+      <Modal open={dialog === 'disconnect-samsara' && Boolean(admin?.samsara.connectedVehicleId)} title={fillPlaceholders(messages.samsaraDisconnectTitle, { truck: truck.truckNumber })} onClose={onClose} closeLabel={messages.closeDialog}>
+        <div className="space-y-4" data-testid="truck-samsara-disconnect-dialog">
+          <p className="text-sm text-muted-foreground">{messages.samsaraDisconnectBody}</p>
+          {error ? <InlineAlert>{error}</InlineAlert> : null}
+          <DialogActions>
+            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
+            <Button type="button" variant="destructive" disabled={busy} onClick={() => void run(() => disconnectAdminTruckSamsara(truck.id), messages.samsaraDisconnected, onChanged)}>
+              {messages.samsaraDisconnect}
+            </Button>
+          </DialogActions>
+        </div>
+      </Modal>
       <Modal open={dialog === 'delete' && Boolean(admin?.canDelete)} title={fillPlaceholders(messages.truckDeleteTitle, { truck: truck.truckNumber })} onClose={onClose} closeLabel={messages.closeDialog}>
         <div className="space-y-4" data-testid="truck-delete-dialog">
           <p className="text-sm text-muted-foreground">{messages.truckDeleteBody}</p>
@@ -313,7 +326,6 @@ export function TruckSamsaraPanel({
   const { showToast } = useActionToast();
   const [connectOpen, setConnectOpen] = useState(Boolean(openWith));
   const [preselect, setPreselect] = useState<string | null>(openWith);
-  const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { connectedVehicleId, connectedVehicleName, proposedVehicleId } = admin.samsara;
@@ -340,22 +352,10 @@ export function TruckSamsaraPanel({
     }
   }
 
-  async function disconnect() {
-    setBusy(true);
-    setError(null);
-    try {
-      await disconnectAdminTruckSamsara(truck.id);
-      showToast('success', messages.samsaraDisconnected);
-      setDisconnectOpen(false);
-      onChanged();
-    } catch (failure) {
-      setError(adminWriteFailureMessage(failure, truckCopy(messages)));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const proposed = !connectedVehicleId && proposedVehicleId && !inactive;
+  // LTR-235: once connected there is nothing to do here; Disconnect is in the truck's "…" (an accidental tap on top
+  // of the page should never cut the truck off Samsara). The Faults tab and the header already show the link.
+  if (connectedVehicleId) return null;
   return (
     <div
       data-testid="truck-samsara"
@@ -370,11 +370,7 @@ export function TruckSamsaraPanel({
             : <span className="text-muted-foreground">{messages.samsaraNotConnectedLine}</span>}
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        {connectedVehicleId ? (
-          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => setDisconnectOpen(true)}>
-            <Unlink aria-hidden="true" />{messages.samsaraDisconnect}
-          </Button>
-        ) : inactive ? null : (
+        {inactive ? null : (
           <>
             {proposed ? <Button type="button" size="sm" disabled={busy} onClick={() => void connectProposed()}>{messages.samsaraConnectAction}</Button> : null}
             <Button type="button" variant={proposed ? 'outline' : 'secondary'} size="sm" disabled={busy} onClick={() => { setPreselect(null); setConnectOpen(true); }}>
@@ -383,7 +379,7 @@ export function TruckSamsaraPanel({
           </>
         )}
       </div>
-      {error && !connectOpen && !disconnectOpen ? <InlineAlert className="w-full">{error}</InlineAlert> : null}
+      {error && !connectOpen ? <InlineAlert className="w-full">{error}</InlineAlert> : null}
 
       <ConnectSamsaraDialog
         open={connectOpen}
@@ -396,16 +392,6 @@ export function TruckSamsaraPanel({
           onChanged();
         }}
       />
-      <Modal open={disconnectOpen} title={fillPlaceholders(messages.samsaraDisconnectTitle, { truck: truck.truckNumber })} onClose={() => setDisconnectOpen(false)} closeLabel={messages.closeDialog}>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{messages.samsaraDisconnectBody}</p>
-          {error ? <InlineAlert>{error}</InlineAlert> : null}
-          <DialogActions>
-            <Button type="button" variant="outline" onClick={() => setDisconnectOpen(false)} disabled={busy}>{messages.cancel}</Button>
-            <Button type="button" variant="destructive" disabled={busy} onClick={() => void disconnect()}>{messages.samsaraDisconnect}</Button>
-          </DialogActions>
-        </div>
-      </Modal>
     </div>
   );
 }

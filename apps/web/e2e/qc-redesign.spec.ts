@@ -136,7 +136,8 @@ test.describe('Safety redesign', () => {
     const dialog = page.getByRole('dialog', { name: 'Return Truck 606' });
     await dialog.getByRole('button', { name: 'Alignment' }).click();
     await dialog.getByRole('button', { name: 'Return truck' }).click();
-    await expect(dialog.getByText('Say what you found before returning the truck.')).toBeVisible();
+    // D46 / SQ-3: a note or a finding is required.
+    await expect(dialog.getByText('Write what you found, or add a finding.')).toBeVisible();
     await dialog.getByLabel('What did you find?').fill('Steering wheel off center');
     await dialog.getByRole('button', { name: 'Back' }).click();
     await page.getByTestId('qc-review').getByRole('button', { name: 'Return', exact: true }).click();

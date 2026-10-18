@@ -412,8 +412,9 @@ export function PurchaseForm({
             <label className="flex cursor-pointer flex-wrap items-center gap-2 text-sm has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring">
               <FileSearch aria-hidden="true" className="size-4 text-primary" />
               <span className="font-medium text-primary">{reading.busy ? messages.pcPdfReading : messages.pcPdfRead_action}</span>
-              <span className="text-xs text-muted-foreground">{messages.pcPdfHint}</span>
-              <input type="file" className="sr-only" accept="application/pdf" disabled={busy || reading.busy} onChange={(event) => { void readPdf(event.target.files?.[0]); event.target.value = ''; }} />
+              <span id="purchase-read-pdf-hint" className="text-xs text-muted-foreground">{messages.pcPdfHint}</span>
+              {/* Its own name: the hint ("Fills vendor, invoice #…") is a description, not the field's label. */}
+              <input type="file" className="sr-only" accept="application/pdf" aria-label={messages.pcPdfRead_action} aria-describedby="purchase-read-pdf-hint" disabled={busy || reading.busy} onChange={(event) => { void readPdf(event.target.files?.[0]); event.target.value = ''; }} />
             </label>
             {reading.note ? (
               <p className={reading.warn ? 'text-xs text-warning-foreground dark:text-warning' : 'text-xs text-muted-foreground'} role="status" data-testid="purchase-read-pdf-note">{reading.note}</p>
