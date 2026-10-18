@@ -312,7 +312,14 @@ Usa 60 de las 141 consultas del Dashboard. Ejecuta seis `findMany` con `summaryI
 
 ### PR-B — índice QC (LTR-239)
 
-Pendiente; se completa al cerrar el PR.
+**ID:** PF22
+**Qué cambió:** `schema.prisma` modelo `QcFinding`: nuevo `@@index([resolvedAt, createdAt])` (se conserva `[workOrderId, resolvedAt]`, que siguen usando las lecturas por Work Order); migración `20261027140000_qc_findings_open_created_idx` con `CREATE INDEX "qc_findings_resolved_at_created_at_idx"`.
+**Por qué:** `openQcFindingsForDashboard` (cada carga del Dashboard, 30 s) filtra `resolved_at IS NULL` + `created_at >= 30 días` y ordena por `created_at`; sin índice que empiece por `resolved_at` el plan era un Seq Scan que crece con la tabla.
+**Cómo se midió:** base desechable `ltl_shop_idx` con 300 Work Orders y 20 000 hallazgos sintéticos en 400 días (1 000 abiertos, 69 en la ventana); `EXPLAIN (ANALYZE, BUFFERS)` de la SQL que genera Prisma, tercera ejecución en caliente. Planes en `/tmp/perf-after/explain-qc-*.txt` del día de la medición (no versionados).
+**Antes → Después:** Seq Scan + Hash Join + Sort, 1.894 ms, 331 buffers → Bitmap Index Scan sobre el índice nuevo + Hash Join + Sort sobre 69 filas, 0.490 ms, 78 buffers. Un índice parcial `(created_at DESC) WHERE resolved_at IS NULL` sería aún mejor (0.242 ms, sin Sort) pero Prisma no lo expresa en el esquema; queda anotado para cuando la tabla crezca.
+**Cómo revertir:** `git revert 03fb206` en código; en una base ya migrada, nueva migración con `DROP INDEX "qc_findings_resolved_at_created_at_idx"` (el repo no usa migraciones down).
+
+Aplicación en producción: esta migración llega a producción solo mediante el workflow Release safety (`.github/workflows/release-safety.yml`), no mediante el deploy de Vercel. El `CREATE INDEX` sin opciones mantiene un bloqueo de escritura sobre `qc_findings` durante milisegundos con el tamaño actual; `CONCURRENTLY` no es posible dentro de la transacción de migración de Prisma y ninguna migración del repositorio lo usa. Revisado por el revisor de riesgo: seguro, sin cambios requeridos.
 
 ### PR-C — bundle web y limpieza (LTR-240)
 
