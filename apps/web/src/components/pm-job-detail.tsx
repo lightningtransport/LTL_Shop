@@ -250,6 +250,7 @@ export function PmJobDetail({
       {started && !finished ? (
         // Stage PM-2 (UX-4-001, UX-7-006): Finish stays at hand, and says exactly what it waits for.
         <section
+          data-hide-on-keyboard=""
           className="sticky bottom-0 z-30 -mx-4 mt-4 space-y-2 border-t bg-card/95 px-4 pb-[calc(0.75rem+var(--app-safe-bottom))] pt-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border"
           aria-label="PM job actions"
           data-testid="pm-finish-bar"

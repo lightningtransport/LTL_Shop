@@ -918,6 +918,7 @@ export function AdminWorkOrderDetail({
       <div
         role="region"
         aria-label={messages.completeWorkOrderTitle}
+        data-hide-on-keyboard=""
         className="anim-sheet-in fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 px-4 py-3 shadow-2xl backdrop-blur app-safe-bottom lg:left-[var(--admin-aside)]"
         data-testid="admin-wo-next-action"
       >

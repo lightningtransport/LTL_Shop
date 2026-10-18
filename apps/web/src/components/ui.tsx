@@ -233,6 +233,9 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
     <DialogPrimitive.Content
       ref={ref}
+      // LTR-234: stands on top of the phone keyboard (globals.css).
+      data-sheet=""
+      data-sheet-center=""
       className={cn(
         // Stage 8 (F3): a bottom sheet on phones, a centered 480px card from `sm`; the card color, not the page's.
         'anim-sheet-in fixed inset-x-0 bottom-0 z-50 max-h-[calc(100dvh-1rem-var(--app-safe-top)-var(--app-safe-bottom))] overflow-y-auto rounded-t-2xl border bg-card p-5 pb-[calc(1.25rem+var(--app-safe-bottom))] text-card-foreground shadow-2xl focus:outline-none sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-[480px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:pb-5 sm:[animation-name:shop-pop-in]',

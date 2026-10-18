@@ -72,7 +72,7 @@ export function ActionToastProvider({ children }: { children: React.ReactNode })
         // Stage 8 (F4, mockups): a neutral card with a colored icon, bottom-right from `sm`; it rises above a
         // fixed bar at the bottom (the Work Order's "Confirm completion") through --toast-lift.
         <div
-          className="pointer-events-none fixed inset-x-3 bottom-[calc(0.75rem+var(--app-safe-bottom)+var(--toast-lift,0px))] z-[60] flex justify-center sm:inset-x-auto sm:right-4 sm:justify-end"
+          className="pointer-events-none fixed inset-x-3 bottom-[calc(0.75rem+var(--app-safe-bottom)+var(--toast-lift,0px)+var(--keyboard-inset,0px))] z-[60] flex justify-center sm:inset-x-auto sm:right-4 sm:justify-end"
         >
           <div
             key={toast.id}

@@ -10,7 +10,7 @@ import {
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { useSWRConfig } from 'swr';
-import { Archive, ArrowUpRight, CircleAlert, ClipboardList, Copy, Eye, FileClock, FilePlus, Link2, MapPin, MoreHorizontal, Pause, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Archive, ArrowUpRight, CircleAlert, ClipboardList, Copy, Eye, FileClock, FilePlus, Link2, MapPin, MoreHorizontal, Pause, Pencil, Plus, Trash2, Unlink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { TruckAdminDialogs, TruckInactiveBanner, TruckSamsaraPanel, reactivateTruck, type TruckAdminDialog } from './admin-truck-admin';
 import { ApiError } from '@/lib/api';
@@ -270,6 +270,8 @@ function TruckDetailBody({
   if (canWriteTrucks) {
     menuItems.push({ key: 'edit', label: messages.truckEdit, icon: Pencil, separatorBefore: true, onSelect: () => setAdminDialog('edit') });
     if (!inactive) menuItems.push({ key: 'deactivate', label: messages.truckDeactivate, icon: Archive, onSelect: () => setAdminDialog('deactivate') });
+    // LTR-235: Disconnect Samsara with the truck-card actions, behind a confirmation (no longer a button on top).
+    if (data.admin?.samsara.connectedVehicleId) menuItems.push({ key: 'samsara-disconnect', label: messages.samsaraDisconnect, icon: Unlink, onSelect: () => setAdminDialog('disconnect-samsara') });
     if (data.admin?.canDelete) menuItems.push({ key: 'delete', label: messages.truckDelete, icon: Trash2, onSelect: () => setAdminDialog('delete') });
   }
 

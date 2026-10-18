@@ -315,6 +315,41 @@ select.field {
   }
 }
 
+/* LTR-234: the on-screen keyboard. <KeyboardInset /> sets --keyboard-inset (px it covers, 0 without it) and
+   html[data-keyboard-open]. Bottom sheets stand on top of it and shrink to what is left; fixed bottom bars hide
+   while typing, so they never sit over the field. Android Chrome resizes the page itself (inset stays 0). */
+@media (max-width: 639px) {
+  [data-sheet] {
+    bottom: var(--keyboard-inset, 0px) !important;
+    max-height: calc(100dvh - var(--keyboard-inset, 0px) - 1rem - var(--app-safe-top)) !important;
+    transition: bottom 120ms ease-out;
+  }
+  html[data-keyboard-open] [data-sheet] {
+    padding-bottom: 0.75rem !important;
+  }
+  html[data-keyboard-open] [data-sheet-footer] {
+    padding-bottom: 0.75rem !important;
+  }
+}
+/* Tablets: a centered dialog moves up into the part the keyboard leaves free; a side panel ends above it. */
+@media (min-width: 640px) {
+  html[data-keyboard-open] [data-sheet-side] {
+    bottom: var(--keyboard-inset, 0px) !important;
+  }
+  html[data-keyboard-open] [data-sheet-center] {
+    top: calc((100dvh - var(--keyboard-inset, 0px)) / 2) !important;
+    max-height: calc(100dvh - var(--keyboard-inset, 0px) - 2rem) !important;
+    overflow-y: auto;
+  }
+}
+html[data-keyboard-open] [data-hide-on-keyboard],
+html[data-keyboard-open] [data-bottom-tabs] {
+  display: none !important;
+}
+html[data-keyboard-open] body:has([data-bottom-tabs]) main {
+  padding-bottom: 1rem;
+}
+
 /* D36: the local Demo panel (360px + 16px gap on the right) keeps its own column on wide screens, so it never
    covers the page's buttons. The mechanic column (36rem) fits next to it from 1000px; the Admin, with its sidebar,
    from 1200px. Narrower screens float it as before; the presenter closes it with X and reopens it with Demo. */

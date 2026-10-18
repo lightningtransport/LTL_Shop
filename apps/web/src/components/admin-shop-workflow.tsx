@@ -236,7 +236,7 @@ function WorkflowSteps({ messages, locale, canWrite }: { messages: AdminMessages
       {/* LTR-210: "Add to team" only changes the draft; the bar stays in view until it is saved or discarded
           (same bar as Setup → Inspection checklist). */}
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur app-safe-bottom lg:left-[var(--admin-aside)]" data-testid="workflow-unsaved">
+        <div data-hide-on-keyboard="" className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur app-safe-bottom lg:left-[var(--admin-aside)]" data-testid="workflow-unsaved">
           <div className="mx-auto flex max-w-[1440px] items-center justify-end gap-2 px-4 py-3 md:px-6">
             <span className="mr-auto text-sm font-medium" role="status">{messages.shopWorkflowUnsaved}</span>
             <Button type="button" variant="ghost" disabled={saving} onClick={() => { setDrafts(Object.fromEntries(data.map((step) => [step.stepKey, step.members.map((member) => member.id)]))); setSaveError(null); }}>{messages.shopWorkflowDiscard}</Button>

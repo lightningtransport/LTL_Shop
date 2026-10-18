@@ -127,3 +127,24 @@ A `PageSkeleton` is only legal while `sessionLoading` or the first authorized
 fetch is in flight. If the session is ready and the user cannot use the
 route, show `EmptyState` or `LoadFailure`. Redirects may still run; the
 visible exit must exist before navigation finishes.
+
+## Phone keyboard (LTR-234)
+
+The on-screen keyboard must never cover the field being typed in, nor the button that saves it.
+
+- **`<KeyboardInset />`** is mounted once in `app/layout.tsx`. It reads `visualViewport` and sets two things:
+  - `--keyboard-inset`: the pixels the keyboard covers, 0 without it.
+  - `html[data-keyboard-open]`.
+- **Android Chrome** resizes the page itself (`interactive-widget=resizes-content` in `viewport`), so the inset stays 0 there.
+- **Bottom sheets** carry `data-sheet`: `DialogContent`/`Modal`, `SideSheet`, `ResponsiveMenu` and `mechanic-picker`.
+  - On phones they stand on the keyboard (`bottom: var(--keyboard-inset)`) and shrink to what is left.
+  - Their content scrolls; a sticky footer (`StickyFormFooter`, `data-sheet-footer`) stays visible.
+  - A centered dialog (`data-sheet-center`) and a side panel (`data-sheet-side`) do the same on tablets.
+- **Fixed bottom bars** carry `data-hide-on-keyboard`, or are tab bars with `data-bottom-tabs`. They hide while the keyboard is open, so they never sit over a field.
+  - A bar that holds its own input must **not** carry it.
+- **Focus brings the field into view:** `scrollIntoView({ block: 'nearest' })` once the keyboard has opened.
+- **Toasts** rise above the keyboard.
+- **New screens:** any new bottom sheet uses the shared primitives (or `data-sheet`), and any new `fixed bottom-0` bar gets `data-hide-on-keyboard`.
+- **A sheet that steps through records** (the tire sheet) stays open and swaps its body, so the keyboard does not close and reopen.
+- **Tests:** `e2e/mobile-keyboard.spec.ts` simulates the keyboard with a stubbed `visualViewport`. It is no replacement for checking on a real phone.
+
