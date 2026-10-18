@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { ActivityEventType, JobStatus, Priority, ReadinessPhase, WorkOrderStatus } from '@ltl-shop/shared';
 import { getAdminMessages } from './admin-messages-catalog';
 import {
-  adminActivityEventDetail,
   adminActivityEventLabel,
   adminPriorityLabel,
-  jobStatusLabel,
   jobStatusVariant,
   phaseLabel,
   phaseVariant,
@@ -35,8 +33,6 @@ describe('LTR-23 status chips', () => {
     expect(jobStatusVariant(JobStatus.TO_DO)).toBe('outline');
     expect(jobStatusVariant(JobStatus.COMPLETED)).toBe('success');
     expect(jobStatusVariant(JobStatus.CANCELLED)).toBe('secondary');
-    expect(jobStatusLabel(JobStatus.TO_DO, en)).toBe('To do');
-    expect(jobStatusLabel(JobStatus.TO_DO, es)).toBe('Por hacer');
   });
 
   it('maps Priority to distinct variants', () => {
@@ -68,15 +64,5 @@ describe('LTR-23 status chips', () => {
     expect(adminActivityEventLabel('unknown_event', en)).toBe('Activity recorded');
     expect(adminActivityEventLabel('unknown_event', es)).toBe('Actividad registrada');
     expect(adminActivityEventLabel(ActivityEventType.PM_DETAILS_UPDATED, en)).not.toMatch(/_/);
-  });
-
-  it('surfaces Job name and mechanic finish notes from Activity Log payloads', () => {
-    expect(adminActivityEventDetail({
-      newValue: { displayName: 'Inspect brakes', status: 'completed', notes: 'Replaced the air hose' },
-    })).toBe('Inspect brakes — Replaced the air hose');
-    expect(adminActivityEventDetail({
-      newValue: { displayName: 'Inspect brakes', status: 'completed', notes: null },
-    })).toBe('Inspect brakes');
-    expect(adminActivityEventDetail({ newValue: { status: 'completed' } })).toBeNull();
   });
 });

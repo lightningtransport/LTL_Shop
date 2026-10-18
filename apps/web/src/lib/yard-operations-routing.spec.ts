@@ -3,7 +3,6 @@ import { WorkPlanPhase } from '@ltl-shop/shared';
 import {
   buildYardOperationsQuery,
   countActiveYardOperationsFilters,
-  countOverflowYardOperationsFilters,
   DEFAULT_YARD_OPERATIONS_FILTERS,
   readYardOperationsFilters,
   WORK_PLAN_YARD_PHASES,
@@ -35,12 +34,6 @@ describe('Yard Operations URL filters', () => {
       ...DEFAULT_YARD_OPERATIONS_FILTERS,
       phase: 'required_work',
       blocked: 'true',
-    })).toBe(2);
-    expect(countOverflowYardOperationsFilters({
-      ...DEFAULT_YARD_OPERATIONS_FILTERS,
-      phase: 'required_work',
-      workOrderStatus: 'in_progress',
-      priority: 'critical',
     })).toBe(2);
   });
 });

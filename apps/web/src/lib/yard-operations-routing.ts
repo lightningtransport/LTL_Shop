@@ -1,4 +1,4 @@
-import { Priority, WorkPlanPhase, YardReadinessFilter, WorkOrderStatus } from '@ltl-shop/shared';
+import { Priority, WorkPlanPhase } from '@ltl-shop/shared';
 
 export type YardOperationsFilters = {
   search: string;
@@ -45,18 +45,10 @@ export function buildYardOperationsQuery(filters: YardOperationsFilters) {
 }
 
 const YARD_FILTER_KEYS = ['readiness', 'phase', 'workOrderStatus', 'priority', 'blocked'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
-export const YARD_TOOLBAR_FILTER_KEYS = ['readiness', 'phase', 'blocked'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
-/** Stage 6: the filters in the "More filters" sheet (the quick filters cover blocked, high priority and out of shop). */
-export const YARD_SHEET_FILTER_KEYS = ['readiness', 'phase', 'workOrderStatus', 'priority'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
-export const YARD_OVERFLOW_FILTER_KEYS = ['workOrderStatus', 'priority'] as const satisfies ReadonlyArray<keyof YardOperationsFilters>;
 
 /** Count of readiness/phase/WO status/priority/blocked values that are not defaults. Search is excluded. */
 export function countActiveYardOperationsFilters(filters: YardOperationsFilters) {
   return YARD_FILTER_KEYS.filter((key) => filters[key] !== DEFAULT_YARD_OPERATIONS_FILTERS[key]).length;
-}
-
-export function countOverflowYardOperationsFilters(filters: YardOperationsFilters) {
-  return YARD_OVERFLOW_FILTER_KEYS.filter((key) => filters[key] !== DEFAULT_YARD_OPERATIONS_FILTERS[key]).length;
 }
 
 /**
@@ -75,22 +67,6 @@ export const WORK_PLAN_YARD_PHASES = [
 ] as const;
 
 export type YardBoardColumnPhase = (typeof WORK_PLAN_YARD_PHASES)[number];
-
-export const YARD_READINESS_FILTERS = [
-  YardReadinessFilter.NOT_STARTED,
-  YardReadinessFilter.UNDER_REVIEW,
-  YardReadinessFilter.READY,
-] as const;
-
-export const YARD_WORK_ORDER_STATUSES = [
-  WorkOrderStatus.CREATED,
-  WorkOrderStatus.IN_PROGRESS,
-  WorkOrderStatus.WAITING_PAUSED,
-  WorkOrderStatus.COMPLETED,
-  WorkOrderStatus.CANCELLED,
-] as const;
-
-export const YARD_PRIORITIES = [Priority.LOW, Priority.NORMAL, Priority.HIGH, Priority.CRITICAL] as const;
 
 /**
  * D4 / UX-5-006: where the Truck's back link returns from a Yard card — the Yard with its current
