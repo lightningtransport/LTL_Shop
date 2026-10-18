@@ -36,7 +36,7 @@ export class TeamQueueService {
   async list(user: AuthUser): Promise<TeamQueueItemDto[]> {
     const stepKeys = await this.myStepKeys(user);
     if (!stepKeys.length) return [];
-    const [jobs, teamSizes] = await Promise.all([
+    const [jobs, teamSizes, steps] = await Promise.all([
       this.prisma.workOrderJob.findMany({
         where: {
           workflowStepKey: { in: stepKeys },
@@ -66,8 +66,8 @@ export class TeamQueueService {
         where: { step: { stepKey: { in: stepKeys } } },
         _count: { _all: true },
       }),
+      this.prisma.shopWorkflowStep.findMany({ where: { stepKey: { in: stepKeys } }, select: { id: true, stepKey: true } }),
     ]);
-    const steps = await this.prisma.shopWorkflowStep.findMany({ where: { stepKey: { in: stepKeys } }, select: { id: true, stepKey: true } });
     const sizeByKey = new Map(steps.map((step) => [step.stepKey, teamSizes.find((row) => row.stepId === step.id)?._count._all ?? 0]));
     return jobs.map((job) => ({
       jobId: job.id,
