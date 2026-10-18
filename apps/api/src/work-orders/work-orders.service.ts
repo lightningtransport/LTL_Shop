@@ -1650,11 +1650,15 @@ export class WorkOrdersService {
       this.prisma.partCategory.findMany({
         where: { active: true, kind: 'pm' },
         orderBy: { sortOrder: 'asc' },
-        include: {
+        // The sheet shows each category's id/slug/name and its parts' id/number/name; fitments only feed `partFitsTruck` (make/model).
+        select: {
+          id: true,
+          slug: true,
+          name: true,
           parts: {
             where: { active: true },
             orderBy: [{ partNumber: 'asc' }, { displayName: 'asc' }],
-            include: { fitments: true },
+            select: { id: true, partNumber: true, displayName: true, fitments: { select: { make: true, model: true } } },
           },
         },
       }),
