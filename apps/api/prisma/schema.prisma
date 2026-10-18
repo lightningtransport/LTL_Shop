@@ -1600,6 +1600,7 @@ model QcFinding {
   sources     WorkOrderJobSource[]
 
   @@index([workOrderId, resolvedAt])
+  @@index([resolvedAt, createdAt])
   @@map("qc_findings")
 }
 
