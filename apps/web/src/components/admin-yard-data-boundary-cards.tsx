@@ -216,7 +216,7 @@ function movementPreview(
 }
 
 const LIST_PREVIEW = 12;
-// LTR-245 (UX-5-006): the Dispatch tab's own name in the URL (`movement` still opens it, LTR-207).
+// LTR-245 (UX-5-006): the URL says what the tab says (LTR-207).
 const DISPATCH_FROM = '/admin/yard-operations?tab=dispatch';
 
 type Chip = { key: string; label: string; title?: string; href?: string; inShop?: boolean };

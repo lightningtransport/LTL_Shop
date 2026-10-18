@@ -8,9 +8,9 @@ import { AdminNavLink } from './admin-nav-link';
 import { Button, InlineAlert, Input, SectionCard, Select } from './ui';
 import { addAdminQcFindingToJob, dismissAdminQcFinding } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
-import { adminTruckHref } from '@/lib/admin-truck-origin';
 
 /**
  * D46 / SQ-3 (LTR-232): what Safety found at the Quality Check, on the Work Order. Each open finding goes to a new Job

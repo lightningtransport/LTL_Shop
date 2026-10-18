@@ -545,6 +545,26 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
   });
 
+  test('Trucks: going back from a truck keeps the list search (LTR-245 / UX-5-008)', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await page.goto('/admin/trucks');
+    const search = page.getByRole('searchbox', { name: 'Search Trucks' }).or(page.getByRole('textbox', { name: 'Search Trucks' }));
+    await search.fill('T-102');
+    await search.press('Enter');
+    await expect(page).toHaveURL(/\/admin\/trucks\?search=T-102$/);
+    await expect(page.getByRole('link', { name: 'T-101', exact: true })).toHaveCount(0);
+    await page.getByRole('link', { name: 'T-102', exact: true }).first().click();
+    await expect(page).toHaveURL(/\/admin\/trucks\/[0-9a-f-]+\?from=%2Fadmin%2Ftrucks%3Fsearch%3DT-102/);
+    // The breadcrumb names where the Manager came from and goes back there with the same search.
+    const parent = page.getByTestId('admin-breadcrumb').getByRole('link', { name: /Trucks/ });
+    await expect(parent).toHaveAttribute('href', '/admin/trucks?search=T-102');
+    await parent.click();
+    await expect(page).toHaveURL(/\/admin\/trucks\?search=T-102$/);
+    await expect(search).toHaveValue('T-102');
+    await expect(page.getByRole('link', { name: 'T-102', exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'T-101', exact: true })).toHaveCount(0);
+  });
+
   test('People: the Show filter reads ?status=all from the URL (DM2, LTR-204)', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);

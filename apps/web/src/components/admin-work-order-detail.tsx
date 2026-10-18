@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
 import { ArrowUpRight, Check, CheckCheck, CircleAlert, CircleCheck, CircleX, Clock, Copy, Eye, FileClock, Lock, MapPin, MoreHorizontal, Pause, Play, Plus, RotateCcw, RotateCw, Truck as TruckIcon } from 'lucide-react';
 import { AppCapability, BlockerReason, OPEN_WORK_ORDER_STATUSES, PauseReason, Priority, WorkOrderNoteKind, formatCents } from '@ltl-shop/shared';
-import { adminTruckCostsHref, adminTruckHref } from '@/lib/admin-truck-origin';
+import { adminTruckCostsHref, adminTruckHref, adminWorkOrderParentCrumb } from '@/lib/admin-truck-origin';
 import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { ApiError } from '@/lib/api';
 import { intlLocale } from '@/lib/shop-locale';
@@ -149,11 +149,10 @@ export function AdminWorkOrderDetail({
   }, [data, user, action, canManageWorkOrders]);
 
   // Stage 8 (F6, mockup): "Work Orders › WO-010", or "Trucks › 601 › WO-010" when opened from the Truck.
+  // LTR-245 (UX-5-008): otherwise the parent is where it was opened from, with that list's filters.
   const fromTruck = Boolean(data && from?.startsWith('/admin/trucks/'));
-  // LTR-245 (UX-5-008): opened from a filtered Work Orders list, the crumb goes back to those filters.
-  const fromList = from && from.split(/[?#]/)[0] === '/admin/work-orders' && !from.startsWith('//') ? from : '/admin/work-orders';
   useAdminBreadcrumb(data ? [
-    ...(fromTruck ? [{ label: messages.trucks, href: '/admin/trucks' }, { label: data.truck.truckNumber, href: from! }] : [{ label: messages.workOrders, href: fromList }]),
+    ...(fromTruck ? [{ label: messages.trucks, href: '/admin/trucks' }, { label: data.truck.truckNumber, href: from! }] : [adminWorkOrderParentCrumb(from, messages)]),
     { label: data.displayId },
   ] : null);
 

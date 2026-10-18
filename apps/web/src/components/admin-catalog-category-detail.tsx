@@ -6,12 +6,12 @@ import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
 import { CatalogJobRow, CategoryMenu, CategoryStatusNote } from './admin-catalog-manage';
 import { AdminWriteTip } from './admin-write-tip';
+import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { AdminBackLink, PageHeader, Badge, Button, EmptyState, LoadFailure, PageSkeleton, SectionCard } from './ui';
 import { ApiError } from '@/lib/api';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
-import { useAdminBreadcrumb } from './admin-breadcrumb';
 
 /**
  * LTR-198 / D30: one Category — its Jobs with status, the System Job lock, "Used by", alias chips and a "…" per Job;

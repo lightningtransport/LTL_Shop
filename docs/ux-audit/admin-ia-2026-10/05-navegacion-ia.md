@@ -104,6 +104,7 @@
 - **Severidad:** 2
 - **Recomendación:** que esos tres enlaces pasen `from`. En `admin-truck-origin.ts`, un origen desconocido cae a "Trucks" (que es lo que marca el menú), no a "Yard Operations".
 - **Esfuerzo:** S
+- **Estado:** hecho en LTR-245 (2026-10-18). Samsara pairing y el hallazgo de QC pasan `from`; los chips de Dispatch usan `?tab=dispatch`; un origen desconocido o ausente cae a "Trucks".
 
 #### UX-5-007 · Tres pantallas de Setup de nivel 2 sin breadcrumb
 - **Dónde:** `admin-catalog-category-detail.tsx`, `admin-custom-jobs-review.tsx`, `admin-mechanic-detail.tsx` (se ve solo "Job Catalog" o "People" como texto)
@@ -112,6 +113,7 @@
 - **Severidad:** 1
 - **Recomendación:** `useAdminCrumbs`: "Jobs › {categoría}", "Jobs › Custom Jobs to review", "People › {nombre}".
 - **Esfuerzo:** S
+- **Estado:** hecho en LTR-245 (2026-10-18). "Job Catalog › {categoría}", "Job Catalog › Custom Jobs to review" y "People › {nombre}" (con los nombres actuales del menú; "Jobs" llega con LTR-248).
 
 ### ¿Cómo vuelvo?
 
@@ -122,6 +124,7 @@
 - **Severidad:** 3 · Trucks y Work Orders son listas de uso diario, y el Yard ya lo resuelve bien (pasa la consulta entera).
 - **Recomendación:** usar el mismo patrón del Yard (`admin-yard-operations.tsx:82`): `from` con `pathname + search`. En la WO, el breadcrumb usa `from` cuando existe.
 - **Esfuerzo:** S
+- **Estado:** hecho en LTR-245 (2026-10-18). Trucks, Work Orders y History pasan `from` con la consulta; el Dashboard pasa `/admin`. El breadcrumb de la WO usa `from` (Work Orders, Trucks, Dashboard, History o Parts & costs).
 
 ### ¿A dónde puedo ir? (roles)
 

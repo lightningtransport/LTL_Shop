@@ -8,6 +8,7 @@ import { MechanicAccessCard, MechanicCapabilityEditor } from './admin-mechanic-r
 import { personTypeLabel } from './admin-mechanics-list';
 import { stepLabel } from './admin-shop-workflow';
 import { AdminWriteTip } from './admin-write-tip';
+import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { MechanicAvatar } from './mechanic-avatar';
 import { AdminBackLink, PageHeader, Badge, Button, CompactEmpty, EmptyState, InlineAlert, LoadFailure, PageSkeleton, SectionCard } from './ui';
 import { ApiError } from '@/lib/api';
@@ -17,7 +18,6 @@ import { sendAdminMechanicJobsToQueue, updateAdminMechanic, useAdminMechanic } f
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatShortDateTime } from '@/lib/work-order-view';
-import { useAdminBreadcrumb } from './admin-breadcrumb';
 
 /**
  * LTR-199 / D31: one person of the Shop — a status header, their pending Jobs (send a queue Job back to its team
@@ -27,7 +27,7 @@ import { useAdminBreadcrumb } from './admin-breadcrumb';
 export function AdminMechanicDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
   const { data, error, isLoading, mutate } = useAdminMechanic(id);
-  // LTR-245 (UX-5-007): "People › Anthony" in the top bar.
+  // LTR-245 (UX-5-007): "People › Ana Ruiz" in the top bar.
   useAdminBreadcrumb(data ? [{ label: messages.mechanics, href: '/admin/mechanics' }, { label: data.name }] : null);
   const canEditRoster = canWrite && data?.role === UserRole.MECHANIC && !data.removedAt;
   if (isLoading) return <PageSkeleton label={messages.mechanicsTitle} />;

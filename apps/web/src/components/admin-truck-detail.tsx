@@ -24,7 +24,7 @@ import { useCategories } from '@/lib/shop-data';
 import { formatVehicleYmm } from '@/lib/format';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import { adminTruckOrigin, type AdminTruckOrigin } from '@/lib/admin-truck-origin';
+import { adminTruckOrigin, adminTruckOriginCrumb, type AdminTruckOrigin } from '@/lib/admin-truck-origin';
 import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { MechanicAvatarStack } from './mechanic-avatar';
 import { ResponsiveMenu, type MenuItem } from './responsive-menu';
@@ -54,7 +54,7 @@ export function AdminTruckDetail({ id, from = null, tab = null, connectVehicle =
   const canSeeCosts = useCanShowManagerWrites();
   const canManageWorkOrders = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   // Stage 8 (F6, mockup): "Trucks › 601", or where the Truck was opened from (Yard, Dashboard…).
-  useAdminBreadcrumb(data ? [{ label: originCrumb(origin.href, messages), href: origin.href }, { label: data.truck.truckNumber }] : null);
+  useAdminBreadcrumb(data ? [{ label: adminTruckOriginCrumb(origin.href, messages), href: origin.href }, { label: data.truck.truckNumber }] : null);
 
   if (isLoading) return <PageSkeleton label={messages.loadingTruck} />;
   if (error instanceof ApiError && error.status === 404) return <TruckNotFound messages={messages} />;
@@ -576,23 +576,6 @@ function RepairHistory({
   );
 }
 
-/** The breadcrumb's parent: the screen the Truck was opened from. */
-function originCrumb(href: string, messages: AdminMessages) {
-  const path = href.split(/[?#]/)[0];
-  if (path === '/admin/trucks') return messages.trucks;
-  if (path === '/admin/work-orders') return messages.workOrders;
-  if (path.startsWith('/admin/work-orders/')) return messages.workOrder;
-  if (path === '/admin') return messages.dashboard;
-  // PCA2: opened from Parts & costs.
-  if (path.startsWith('/admin/parts/purchases')) return messages.pcPurchases;
-  if (path.startsWith('/admin/parts/outside-repairs')) return messages.pcOutsideRepairs;
-  if (path.startsWith('/admin/parts/internal-invoices')) return messages.pcInvoices;
-  if (path === '/admin/yard-operations') return messages.yardOperations;
-  if (path === '/admin/setup/samsara') return messages.samsaraNav;
-  // LTR-245 (UX-5-006): an unknown origin is Trucks, the item the sidebar highlights.
-  return messages.trucks;
-}
-
 function operationalStatusLabel(status: TruckOperationalStatus, messages: AdminMessages) {
   if (status === TruckOperationalStatus.IN_SERVICE) return messages.operationalStatusInService;
   if (status === TruckOperationalStatus.OFF_DUTY) return messages.operationalStatusOffDuty;
@@ -603,4 +586,4 @@ function formatNumber(value: number | null, locale: AdminLocale, messages: Admin
   return value === null ? messages.noValue : new Intl.NumberFormat(intlLocale(locale)).format(value);
 }
 
-function TruckNotFound({ messages }: { messages: AdminMessages }) { return <EmptyState><p>{messages.notFoundTruck}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/yard-operations">{messages.backToYardOperations}</Link></Button></EmptyState>; }
+function TruckNotFound({ messages }: { messages: AdminMessages }) { return <EmptyState><p>{messages.notFoundTruck}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/trucks">{messages.backToTrucks}</Link></Button></EmptyState>; }

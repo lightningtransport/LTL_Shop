@@ -24,10 +24,8 @@ import { connectAdminTruckSamsara, runAdminSamsaraSync, useAdminSamsaraPairing }
 import { apiErrorCode, apiErrorMessage } from '@/lib/api-error-message';
 import { formatAdminAgo } from '@/lib/admin-format';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
-/** LTR-245 (UX-5-006): a Truck opened from here goes back to Samsara. */
-const SAMSARA_FROM = '/admin/setup/samsara';
+import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 const METHOD_KEY: Record<SamsaraPairingMethod, keyof AdminMessages> = {
   connected: 'samsaraMethodConnected',
@@ -49,6 +47,9 @@ const WARNING_KEY: Record<SamsaraPairingWarning, keyof AdminMessages> = {
  * D35 / S-1 (OPEN_ISSUES §1w): Setup → Samsara. Shows which Samsara vehicles are our trucks before anything syncs:
  * totals, the matched trucks with how they matched, and the two "left over" lists. Nothing here writes.
  */
+/** LTR-245 (UX-5-006): a Truck opened from here says "Samsara › 601" and goes back here. */
+const SAMSARA_FROM = '/admin/setup/samsara';
+
 export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   useDocumentTitle(messages.samsaraTitle);
   const { data, error, isLoading, isValidating, mutate } = useAdminSamsaraPairing();
