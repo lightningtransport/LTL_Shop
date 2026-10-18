@@ -37,6 +37,7 @@ import {
   toWorkOrderDetail,
   toWorkOrderSummary,
   workOrderDetailInclude,
+  workOrderSummaryInclude,
 } from './work-order.mapper';
 import {
   canCompleteJob,
@@ -139,7 +140,7 @@ export class WorkOrdersService {
           },
         ],
       },
-      include: workOrderDetailInclude,
+      include: workOrderSummaryInclude,
       orderBy: { updatedAt: 'desc' },
       }),
     ]);
