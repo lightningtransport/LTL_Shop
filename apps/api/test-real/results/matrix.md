@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 176 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 178 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -150,6 +150,8 @@ PASA 176 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A130 | Devolver con dos hallazgos: uno entra como Job por Add work, el otro se suma a un Job abierto; el mecánico lo lee | PASA |
 | A131 | Aprobar con un hallazgo que no frena: el camión queda listo y el hallazgo espera al Manager; descartarlo pide motivo | PASA |
 | A132 | Un hallazgo pide texto; un Job sugerido tiene que existir; devolver sin nota ni hallazgo, no | PASA |
+| A133 | Una parte del PM comprada directo al camión no se cobra otra vez al cerrar, aunque también haya en el estante | PASA |
+| A134 | Una parte del PM que el Manager ya sacó del estante al Job de PM ("Parts from stock") no sale otra vez al cerrar | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |
