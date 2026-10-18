@@ -3,8 +3,8 @@
  * shelf (one unit, average cost) and costs the truck on that Work Order; a part not on the shelf is not charged. The
  * oil change is a flat price set by the Manager. Reopening or cancelling undoes both, like labor.
  *
- * A133 and A134 FAIL on purpose until LTR-242 is fixed: a PM part already bought straight to the truck (A133) or
- * already issued to the PM Job with "Parts from stock" (A134) is charged again from the shelf. The repo has no expected-failing marker; the row stays red, marked ❌ in docs/USER_FLOWS.md.
+ * LTR-242: a PM part already charged to the PM Job is not charged again, whether it was bought straight to the truck
+ * for that Job (A133) or taken from stock with "Parts from stock" (A134).
  */
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeEach, describe, it } from 'vitest';
@@ -122,5 +122,9 @@ describe('Manager: el PM descuenta del stock y cobra el cambio de aceite (D45, S
     ok('cerrar el WO', await closeWo(workOrderId));
     same('el costo de la WO cuenta el filtro una sola vez', (await adminWo(workOrderId)).costs?.partsCents, 2400);
     same('el estante bajó una sola vez', ok('stock', await manager.get(`${STOCK}/${partId}`)).item.onHand, '2.00');
+
+    ok('reabrir', await manager.post(`/admin/work-orders/${workOrderId}/reopen`, { ...(await meta(workOrderId)), reason: 'Falta un ajuste' }));
+    same('reabrir no devuelve lo que sacó el Manager', ok('stock', await manager.get(`${STOCK}/${partId}`)).item.onHand, '2.00');
+    same('y el camión lo sigue pagando una vez', (await adminWo(workOrderId)).costs?.partsCents, 2400);
   });
 });
