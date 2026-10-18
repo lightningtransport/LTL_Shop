@@ -1,6 +1,6 @@
 # Propuesta: Parts como inventario del taller, gestión del stock y retoques del menú (IA 2026-10)
 
-**Estado:** propuesta. **No se construye nada** hasta que el dueño responda P32–P36 (`docs/DECISIONS.md`).
+**Estado:** **aprobada el 2026-10-18 → D47** (el dueño aceptó P32–P36 como se recomendaban, y además puso las llantas dentro de "Parts…" del Job). Lista para construir en el orden de §5.
 **Fecha:** 2026-10-18 · **Origen:** el dueño ve Parts & costs confuso y redundante. Hay un "Count" que no es gestionar el stock, y las "partes del PM" parecen una cosa y Stock otra. También pidió revisar la IA de todo el panel.
 **Evidencia:** [`docs/ux-audit/admin-ia-2026-10/`](../../ux-audit/admin-ia-2026-10/):
 - [`09-informe-final.md`](../../ux-audit/admin-ia-2026-10/09-informe-final.md)
@@ -75,7 +75,7 @@ El menú del Job cambia "Add parts invoice" y "Parts from stock" por **Parts…*
   - Si no hay stock, la hoja lo dice y ofrece **Buy for this Job** ahí mismo, sin mandar a Count.
 - **Buy for this Job:** abre New purchase con el camión y el Job ya puestos (lo mismo de hoy).
 - **En el Job del PM**, la hoja dice "PM parts leave stock when the Work Order is completed" y no ofrece las partes de tipo PM ya elegidas por el mecánico. Esto evita el caso A134 de LTR-242.
-- **Tires to put** se queda aparte, porque nace de la inspección.
+- **Las llantas también van aquí** (D47: "tires es una parte"). Arriba de la hoja sale **Tires from the inspection**, con lo que propuso la inspección por posición (RF · New 11R22.5) y **Confirm**, que saca la llanta del stock como hoy. **"Tires to put" sale del menú del Job.**
 
 ### 2.4 Retoques del menú (P34, P36)
 

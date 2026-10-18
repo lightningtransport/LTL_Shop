@@ -842,7 +842,7 @@ Las historias completas, con su "¿qué pasa si…?", están en
 
 Las filas de prueba se agregan con cada etapa. **Defecto abierto:** LTR-242 (B), el PM cobra dos veces una parte ya comprada al camión (filas A133 y A134).
 
-### HU-M20 · Cuidar el stock — 🔲 propuesta (P32, P33; sin construir)
+### HU-M20 · Cuidar el stock — 🔲 aprobada (D47), sin construir
 
 **Quién:** el Manager. **Por qué:** la auditoría de 2026-10-18
 ([`ux-audit/admin-ia-2026-10/10-jtbd-parts-costs.md`](ux-audit/admin-ia-2026-10/10-jtbd-parts-costs.md),
@@ -954,5 +954,5 @@ resumen en [`OPEN_ISSUES.md`](OPEN_ISSUES.md) e historial en
 | ~~G3, G4~~ | Ayudante en un Job y taller externo — **hechos (D23, D24, HU-M10, HU-M11, 2026-10-05)** | Manager | LTR-188 |
 | G6 | Trailers — después de salir en vivo (P11) | Manager | LTR-56 |
 | ~~G9~~ | Repuestos fuera del PM, compra atada al Job, stock y llantas desde la inspección — **hecho (D45, HU-M19, 2026-10-16)** | Manager | LTR-220 (ST: LTR-221–226) |
-| G10 | Cuidar el stock (cargar, ajustar con motivo, mínimos) en una sola pantalla Parts — propuesta P32, P33 (HU-M20) | Manager | LTR-243 (LTR-246) |
+| G10 | Cuidar el stock (cargar, ajustar con motivo, mínimos) en una sola pantalla Parts — aprobada D47 (HU-M20) | Manager | LTR-243 (LTR-246) |
 | ~~G8~~ | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — **hecho (D35, D42, HU-M14, HU-M15)** | Manager, mecánico | LTR-202 |

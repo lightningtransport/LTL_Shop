@@ -115,10 +115,10 @@ mano, sale a un Job o con el PM al costo promedio), llantas propuestas desde la
 inspección y lectura de facturas de proveedores en PDF
 ([`proposals/parts-stock-tires/`](proposals/parts-stock-tires/README.md)).
 **Defecto abierto:** LTR-242 (B), el PM cobra dos veces una parte ya comprada al camión.
-**Propuesto (P32–P36):** Parts como inventario único (sin menú Stock aparte),
+**Aprobado (D47, sin construir):** Parts como inventario único (sin menú Stock aparte),
 acciones de stock con nombre (Add to stock, Adjust, Edit minimum) y un solo
 "Parts…" en el Job ([`proposals/parts-stock-ia-v2/`](proposals/parts-stock-ia-v2/README.md)).
-**Decisiones:** D32, D34, D37, D45, D-PC1–10 · **Preguntas:** P24, P26, P28, P31, P32–P36 · **Historias:** HU-M12, HU-M13, HU-M19, HU-M20.
+**Decisiones:** D32, D34, D37, D45, D-PC1–10 · **Preguntas:** P24, P26, P28, P31 · **Decisión:** D47 · **Historias:** HU-M12, HU-M13, HU-M19, HU-M20.
 
 ### 4.8 Samsara — ✅
 Sincronización cada hora (millas, ubicación, fallas) solo de lectura. Las fallas
