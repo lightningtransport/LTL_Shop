@@ -1,6 +1,6 @@
 # Propuesta: Parts como inventario del taller, gestión del stock y retoques del menú (IA 2026-10)
 
-**Estado:** **aprobada el 2026-10-18 → D47** (el dueño aceptó P32–P36 como se recomendaban, y además puso las llantas dentro de "Parts…" del Job). Lista para construir en el orden de §5.
+**Estado:** **aprobada el 2026-10-18 → D47**. El dueño aceptó P32–P36 como se recomendaban y además metió las llantas en "Parts…" del Job. El mismo día se hizo una **revisión de UX/UI de la maqueta**, que el dueño aceptó: "Adjust" se divide en **Count stock** (en lote) y **Remove from stock**; hay una sola columna de costo y un panel de la parte; la hoja del Job del PM muestra qué se va a cobrar; las llantas aparecen solo en el Job de llantas. Lista para construir en el orden de §5.
 **Fecha:** 2026-10-18 · **Origen:** el dueño ve Parts & costs confuso y redundante. Hay un "Count" que no es gestionar el stock, y las "partes del PM" parecen una cosa y Stock otra. También pidió revisar la IA de todo el panel.
 **Evidencia:** [`docs/ux-audit/admin-ia-2026-10/`](../../ux-audit/admin-ia-2026-10/):
 - [`09-informe-final.md`](../../ux-audit/admin-ia-2026-10/09-informe-final.md)
@@ -39,43 +39,60 @@ El defecto es LTR-242.
 
 ### 2.1 Parts = el inventario del taller (P32)
 
-- **Una sola pantalla Parts** (`/admin/parts/catalog`) reemplaza a Parts + Stock. Stock sale del menú y `/admin/parts/stock` redirige a `?view=stock`.
+- **Una sola pantalla Parts** (`/admin/parts/catalog`) reemplaza a Parts y Stock. Stock sale del menú y `/admin/parts/stock` redirige a `?view=stock`.
 - **Arriba:**
-  - un buscador (nombre, número o medida);
-  - Type (All, PM, Repair, Tires) y Fits;
-  - los filtros **In stock** y **Low only**;
-  - el total "N parts · $X in stock · N low".
-- **Botones:** Add part · Add category · **Add to stock**.
-- **Cada fila muestra:** Part (nombre y número) · Type · Fits · **In stock** · Minimum · **Avg cost** · Reference cost · Usual vendor · menú "…".
-  - El menú "…" tiene: Edit part · Add to stock · Adjust · Movements · Deactivate.
-- **Una parte nueva sale en la lista enseguida, con 0 en stock.** Hoy aparece en Stock solo cuando se mueve.
-- **Avg cost vs Reference cost:** Avg cost es "what the truck pays". Reference cost es "used when stock is empty or for Other lines". Si hay promedio, no se muestra "No cost yet" (UX-10-008).
+  - un buscador por nombre, número o medida;
+  - los filtros Type (All, PM, Repair, Tires), Fits, **In stock** y **Low only**;
+  - el total: "N parts · N in stock · $X in stock · N low".
+- **Botones:** **Count stock** es el principal. También están Add part, Add category y Add to stock.
+- **Orden por defecto:** primero lo que hay en stock y lo que está Low, después el resto. Con un catálogo de 128 partes casi todas en 0, la vista no se llena de ceros. *(Revisión de UX, 2026-10-18.)*
+- **Cada fila muestra:** Part (nombre y número) · Type · Fits · **In stock** · Minimum · **Cost** · Usual vendor.
+  - **Cost es una sola columna.** Si hay stock, muestra el promedio ("what the truck pays"). Si no hay, muestra el de referencia en gris con la marca "ref". Así no hay dos costos lado a lado (UX-10-008).
+  - El badge de Type es igual para PM, Repair y Tires. Ninguno se ve más importante.
+- **Al hacer clic en la fila se abre el panel de la parte.** Muestra:
+  - In stock, Cost (promedio y referencia, explicados);
+  - **Minimum editable ahí mismo**;
+  - Fits y Usual vendor;
+  - **Movements** (de dónde viene cada número, con el motivo);
+  - las acciones Add to stock · Remove from stock · Edit part · Deactivate.
+
+  El menú "…" de la fila se va.
+- **Una parte nueva sale en la lista enseguida, con 0 en stock.** Hoy solo aparece en Stock cuando se mueve.
+- **En el teléfono, la tabla se vuelve tarjetas:** nombre, número, In stock y Low.
 - Los datos no cambian: `Part` + `StockMovement`. Es un cambio de pantalla.
 
-### 2.2 Cuidar el stock: acciones con nombre (P33)
+### 2.2 Cuidar el stock: tres acciones, cada una con un solo significado (P33, ajustado tras la revisión de UX)
 
 | Acción | Para qué | Pide | Movimiento que escribe (ya existe) |
 |---|---|---|---|
-| **Add to stock** | Carga inicial, una parte que llegó sin factura, una devolución del proveedor que vuelve al estante | Part, Qty, Cost of each one (sugiere el promedio o el de referencia), Note opcional | `adjust` positivo con costo |
-| **Adjust** | El conteo físico, o sacar lo dañado o perdido | Part, **New count** o **Remove N**, **Reason**: Count · Damaged · Lost · Other (con nota) | `adjust` positivo o negativo al costo promedio |
-| **Edit minimum** | Cuándo sale "Low" | Minimum | Edita `Part.minStock` (hoy solo desde Edit part) |
-| **Movements** | Ver de dónde viene cada número | — | Lista que ya existe; agrega el motivo del ajuste |
+| **Count stock** (en lote) | **El primer día** y cada conteo físico | Una lista filtrable por tipo o categoría, con un campo **Counted** por parte. Al final muestra un resumen ("12 changed · +$1,240 · −$25 · 3 need a cost") y se guarda con un solo **Save count**. Pide el costo **solo** para las partes que suben y no tienen promedio ni costo de referencia | Un `adjust` por cada parte que cambió (motivo Count): sube al costo indicado, baja al promedio |
+| **Add to stock** | Partes que llegaron **sin factura** | Part, Qty, Cost of each one (sugiere el promedio o el de referencia), Note opcional | `adjust` positivo con costo (motivo Received) |
+| **Remove from stock** | Algo **dañado, perdido** u otro motivo | Part, **Qty to remove**, **Reason**: Damaged · Lost · Other (con nota). Muestra la vista previa "2 leave stock at $12.50 · −$25.00 · no truck is charged" | `adjust` negativo al costo promedio |
 
-- **"Count" deja de ser un botón** y queda como motivo de Adjust.
-- P25 (conteo inicial a mano) sigue valiendo, ahora con Add to stock.
-- Los ajustes no se borran: se corrigen con otro ajuste, como hoy.
+- **Cada campo significa una sola cosa.** Count escribe **cuántas hay**; Remove escribe **cuántas salen**. La primera versión de la propuesta tenía "Adjust" con un solo campo que cambiaba de significado según el motivo, y eso arriesgaba sacar 8 en vez de 2. Además "Add to stock" y "Adjust → Count" hacían lo mismo con saldo 0.
+- **"Count" vuelve como pantalla en lote**, no como el botón por parte de hoy. P25 (el conteo inicial a mano) se hace aquí.
+- **El mínimo** se edita en el panel de la parte o en Edit part.
+- Los movimientos no se borran: se corrigen con otro, como hoy.
 - **Lo que no cambia:** el costo promedio (P27), las reversas de compras, y que solo el Manager mueve el stock (P28 sigue abierta para Randy).
 
 ### 2.3 Un solo "Parts…" en el Job (P35)
 
-El menú del Job cambia "Add parts invoice" y "Parts from stock" por **Parts…**, que abre una hoja con:
+El menú del Job reemplaza "Add parts invoice", "Parts from stock" y "Tires to put" por **Parts…**. Se abre una hoja con:
 
-- **On this Job:** las partes que ya tiene, con su origen (compra o stock) y **Return to stock**.
-- **From stock:** buscar una parte → "3 in stock · $12.50 each" → Qty → **Take from stock**.
-  - Si no hay stock, la hoja lo dice y ofrece **Buy for this Job** ahí mismo, sin mandar a Count.
-- **Buy for this Job:** abre New purchase con el camión y el Job ya puestos (lo mismo de hoy).
-- **En el Job del PM**, la hoja dice "PM parts leave stock when the Work Order is completed" y no ofrece las partes de tipo PM ya elegidas por el mecánico. Esto evita el caso A134 de LTR-242.
-- **Las llantas también van aquí** (D47: "tires es una parte"). Arriba de la hoja sale **Tires from the inspection**, con lo que propuso la inspección por posición (RF · New 11R22.5) y **Confirm**, que saca la llanta del stock como hoy. **"Tires to put" sale del menú del Job.**
+- **Tires from the inspection**, **solo en el Job de llantas**, que es el Job donde la inspección (ST-4) deja la llanta a cambiar. Muestra lo propuesto por posición (RF · New 11R22.5 · 4 in stock · $410) con **Confirm**, que saca la llanta del stock como hoy (D47: "tires es una parte"). En los demás Jobs esta sección no aparece.
+- **On this Job:** las partes que ya tiene, con su origen (stock o compra) y su costo.
+  - **Return to stock** pide **cuántas** (puede ser 1 de 2) y **por qué**.
+  - Una compra muestra "Open purchase".
+- **From stock:** buscar una parte → "3 in stock · $12.50 each" → **Qty** (con etiqueta) → **Take from stock**.
+  - Si no hay stock, la hoja lo dice y ofrece **Buy for this Job** ahí mismo.
+- **Buy for this Job:** abre New purchase con el camión y el Job ya puestos. **Al guardar, vuelve a la WO** con la hoja abierta (`from`).
+- **Abajo, el total:** "Parts on this Job · $224.40".
+- **En el Job del PM**, la hoja dice qué va a pasar con **cada** parte elegida por el mecánico, antes de completar:
+  - "Leaves stock at $12.50 when the WO is completed";
+  - "Already bought for this Job · not charged again";
+  - "Not in stock · not charged".
+
+  También dice que una compra al camión **sin Job** sí se vuelve a cobrar, y ofrece atarla al Job del PM. Es lo que aprendimos de LTR-242. "From stock" no lista las partes de tipo PM ya elegidas, para evitar el caso A134.
 
 ### 2.4 Retoques del menú (P34, P36)
 
@@ -109,8 +126,14 @@ Ninguno cambia datos.
 ## 3. Historias que se escriben (docs primero)
 
 - **HU-M20 · Cuidar el stock** (nueva, en `USER_FLOWS.md`, rol Manager):
-  - "Como Manager, quiero cargar lo que hay en el estante el primer día, recibir partes sin factura, contar y ajustar con motivo, sacar lo dañado y fijar mínimos, para que el número del estante sea el real y sepa qué comprar."
-  - Filas de prueba propuestas: Add to stock con costo; Adjust (Count) arriba y abajo; Adjust (Damaged) sin costo nuevo; Edit minimum hace aparecer Low; una parte nueva sale en Parts con 0 en stock.
+  - "Como Manager, quiero contar todo el estante de una vez (el primer día y cada mes), recibir partes sin factura, sacar lo dañado o perdido con motivo y fijar mínimos, para que el número del estante sea el real y sepa qué comprar."
+  - Filas de prueba propuestas:
+    - Count stock en lote, con partes que suben, bajan y una sin costo;
+    - Add to stock con costo;
+    - Remove from stock (Damaged) al promedio, sin cobrar a ningún camión;
+    - editar el mínimo hace aparecer Low;
+    - una parte nueva sale en Parts con 0 en stock;
+    - la hoja del Job del PM muestra lo que se va a cobrar.
 - **HU-M12** suma: "Poner partes en un Job desde una sola hoja" (P35). El Job del PM no ofrece sacar a mano lo que el PM saca solo.
 - **HU-M19** pasa de "🔲 propuesta" a construida (ST-1 a ST-6). Ya se corrige en este PR.
 
@@ -119,7 +142,7 @@ Ninguno cambia datos.
 | # | Pregunta | Recomendación |
 |---|---|---|
 | **P32** | ¿Parts y Stock se juntan en una sola pantalla Parts (el inventario)? | **Sí.** Es el mismo objeto y hoy cada pantalla edita la mitad. |
-| **P33** | ¿"Count" se reemplaza por **Add to stock**, **Adjust** (Count, Damaged, Lost, Other) y **Edit minimum**? | **Sí.** Cada acción dice lo que hace; el modelo de datos no cambia. |
+| **P33** | ¿"Count" se reemplaza por **Add to stock**, **Adjust** (Count, Damaged, Lost, Other) y **Edit minimum**? | **Sí.** Cada acción dice lo que hace; el modelo de datos no cambia. *(Ajustado tras la revisión de UX: Adjust se divide en **Count stock**, en lote, y **Remove from stock**; ver §2.2.)* |
 | **P34** | ¿History pasa a ser el filtro "Closed" de Work Orders? ¿O el dueño quiere una bitácora de actividad (quién cambió qué)? | **Filtro Closed.** La bitácora, si hace falta, es otra cosa. |
 | **P35** | ¿El menú del Job tiene un solo **Parts…** (lo que tiene, from stock, buy for this Job)? | **Sí.** Una puerta por tarea. |
 | **P36** | Nombres: ¿"Jobs" (por Job Catalog), "Shop rates" (por Labor rate) y **Stock** como única palabra (no "shelf") en botones y destinos? | **Sí** a los tres. |
@@ -128,7 +151,7 @@ Ninguno cambia datos.
 
 1. **LTR-242** (B): el arreglo del cobro doble del PM, con A133 y A134 en verde.
 2. **Quick wins** de textos y de "volver" (§2.5), en un PR chico.
-3. **P32 + P33**: la pantalla Parts única y las acciones de stock (web, más una ruta de API para Add to stock y para el motivo de Adjust), con las filas de HU-M20.
+3. **P32 + P33**: la pantalla Parts única con su panel de parte, Count stock en lote, Add to stock y Remove from stock. Es trabajo de web más una ruta de API para el conteo en lote y el motivo del movimiento. Va con las filas de HU-M20.
 4. **P35**: la hoja Parts… del Job.
 5. **P34 + P36**: el menú.
 

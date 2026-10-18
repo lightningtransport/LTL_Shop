@@ -844,23 +844,28 @@ Las filas de prueba se agregan con cada etapa. **Defecto abierto:** LTR-242 (B),
 
 ### HU-M20 · Cuidar el stock — 🔲 aprobada (D47), sin construir
 
-**Quién:** el Manager. **Por qué:** la auditoría de 2026-10-18
-([`ux-audit/admin-ia-2026-10/10-jtbd-parts-costs.md`](ux-audit/admin-ia-2026-10/10-jtbd-parts-costs.md),
-UX-10-001 y UX-10-009) encontró que este trabajo no tenía historia. Hoy solo existe **Count**, que sirve para cargar, corregir y destrabar.
+**Quién:** el Manager. **Por qué:** la auditoría del 2026-10-18 encontró que este trabajo no tenía historia ([`ux-audit/admin-ia-2026-10/10-jtbd-parts-costs.md`](ux-audit/admin-ia-2026-10/10-jtbd-parts-costs.md), UX-10-001 y UX-10-009). Hoy solo existe **Count**, que sirve para cargar, para corregir y para destrabar.
 
-**Historia:** como Manager, quiero cargar lo que hay en el estante el primer día, recibir partes sin factura, contar y ajustar con motivo, sacar lo dañado o perdido y fijar mínimos, para que el número del estante sea el real y saber qué comprar.
+**Historia:** como Manager, quiero contar todo el estante de una vez (el primer día y cada mes), recibir partes sin factura, sacar lo dañado o perdido con motivo y fijar mínimos, para que el número del estante sea el real y saber qué comprar.
 
-**Flujo propuesto** ([`proposals/parts-stock-ia-v2/`](proposals/parts-stock-ia-v2/README.md)):
-1. Parts & costs → **Parts**: el inventario (Type, In stock, Minimum, Avg cost, Reference cost).
-2. **Add to stock**: elige la parte, la cantidad y el costo de cada una; escribe una entrada al estante.
-3. **Adjust**: motivo Count, Damaged, Lost u Other; con Count escribe el número contado, con Damaged o Lost cuántas salen. Sale al costo promedio y no se cobra a ningún camión.
-4. **Edit minimum** desde la fila: aparece o se va "Low".
+**Flujo** (D47, ajustado tras la revisión de UX/UI; [`proposals/parts-stock-ia-v2/`](proposals/parts-stock-ia-v2/README.md)):
+1. Parts & costs → **Parts**: el inventario. Muestra Type, In stock, Minimum y una sola columna Cost. Lo que hay en stock y lo que está Low sale primero.
+2. **Count stock** (el botón principal): una lista por tipo o categoría con un campo **Counted** por parte. En el teléfono se ve como tarjetas con − / +.
+   - Lo que sube entra al costo indicado. Solo se pide costo si la parte no tiene promedio ni costo de referencia.
+   - Lo que baja sale al promedio.
+   - Se guarda una sola vez, con un resumen antes.
+3. **Add to stock**: para partes que llegaron sin factura. Pide parte, cantidad y costo de cada una.
+4. **Remove from stock**: pide cuántas salen y por qué (Damaged, Lost u Other). Muestra el resultado antes de guardar y no le cobra a ningún camión.
+5. El **panel de la parte**, que se abre con un clic en la fila, muestra los movimientos con su motivo y deja editar el mínimo.
 
 | ¿Qué pasa si…? | Debería | Estado | Fila |
 |---|---|---|---|
-| Agrega 10 a $13 una parte con 0 | Quedan 10, promedio $13 | 🔲 | — |
-| Ajusta por Count de 10 a 8 | Salen 2 al promedio; ningún camión paga | 🔲 (hoy: Count, A118) | — |
-| Ajusta por Damaged 1 | Sale 1 con motivo Damaged en Movements | 🔲 | — |
+| Cuenta el primer día 3 partes con 0 (una sin costo) | Las 2 con costo entran; la tercera pide costo antes de guardar | 🔲 | — |
+| Cuenta 8 una parte que tenía 10 | Salen 2 al promedio; ningún camión paga; motivo Count | 🔲 (hoy: Count, A118) | — |
+| Deja vacía una fila en Count stock | Esa parte no cambia | 🔲 | — |
+| Agrega 2 a $12.50 (sin factura) | Suben 2; el promedio se recalcula | 🔲 | — |
+| Saca 2 por Damaged | Salen 2 al promedio con motivo Damaged en Movements | 🔲 | — |
+| Intenta sacar más de las que hay | No deja; dice cuántas hay | 🔲 | — |
 | Fija el mínimo en 4 con 3 en stock | Sale "Low" en Parts | 🔲 | — |
 | Crea una parte nueva | Sale en Parts con 0 en stock, sin moverse | 🔲 | — |
 
