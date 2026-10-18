@@ -3,8 +3,8 @@
  * shelf (one unit, average cost) and costs the truck on that Work Order; a part not on the shelf is not charged. The
  * oil change is a flat price set by the Manager. Reopening or cancelling undoes both, like labor.
  *
- * A133 FAILS on purpose until LTR-242 is fixed: a PM part already bought straight to the truck is charged again from
- * the shelf. The repo has no expected-failing marker; the row stays red, marked ❌ in docs/USER_FLOWS.md.
+ * A133 and A134 FAIL on purpose until LTR-242 is fixed: a PM part already bought straight to the truck (A133) or
+ * already issued to the PM Job with "Parts from stock" (A134) is charged again from the shelf. The repo has no expected-failing marker; the row stays red, marked ❌ in docs/USER_FLOWS.md.
  */
 import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeEach, describe, it } from 'vitest';
@@ -110,5 +110,17 @@ describe('Manager: el PM descuenta del stock y cobra el cambio de aceite (D45, S
     same('el costo de la WO cuenta el filtro una sola vez', (await adminWo(workOrderId)).costs?.partsCents, 3000);
     same('el estante no se toca: el filtro del PM ya vino del camión', ok('stock', await manager.get(`${STOCK}/${partId}`)).item.onHand, '2.00');
     same('el camión no recibe un stock_issue por ese filtro', (await ledger(workOrderId)).filter((row) => row.sourceType === 'stock_issue').length, 0);
+  });
+
+  it('A134 | Una parte del PM que el Manager ya sacó del estante al Job de PM ("Parts from stock") no sale otra vez al cerrar', async () => {
+    const { workOrderId, partId } = await pmReadyToClose('931');
+    const pmJob = laneJob(await adminWo(workOrderId), 'pm');
+    ok('hay 3 en el estante a $24', await manager.post(`${STOCK}/count`, { partId, counted: 3, unitCostCents: 2400, reason: 'Conteo inicial' }));
+    ok('Parts from stock: 1 filtro al Job de PM', await manager.post(`${STOCK}/issue`, { partId, quantity: 1, workOrderJobId: pmJob.id }));
+    same('antes de cerrar, la WO ya tiene el filtro una vez', (await adminWo(workOrderId)).costs?.partsCents, 2400);
+
+    ok('cerrar el WO', await closeWo(workOrderId));
+    same('el costo de la WO cuenta el filtro una sola vez', (await adminWo(workOrderId)).costs?.partsCents, 2400);
+    same('el estante bajó una sola vez', ok('stock', await manager.get(`${STOCK}/${partId}`)).item.onHand, '2.00');
   });
 });

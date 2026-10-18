@@ -24,7 +24,7 @@ La columna **Fila** es el número de la prueba que lo comprueba
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
 **Resultado de la auditoría (2026-09-29):** 61 comprobaciones · 59 funcionan · 0 fallan
-· 2 no aplican. Desde entonces se sumaron filas hasta A133 (A133 falla: LTR-242); la cuenta al día la da
+· 2 no aplican. Desde entonces se sumaron filas hasta A134 (A133 y A134 fallan: LTR-242); la cuenta al día la da
 `npm run test:real --workspace=@ltl-shop/api`.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
@@ -607,6 +607,7 @@ Ver la fila E7 en HU-ME2.
 | El Manager completa una WO con PM (D45 / ST-5, P29) | Cada parte que eligió el mecánico sale del estante al costo promedio y cuesta al camión; se cobra el cambio de aceite al precio del día. Reabrir o cancelar lo deshace | ✅ | A125 |
 | La parte del PM no estaba en el estante, o no hay precio de aceite | No se cobra (la parte ya se cargó al camión al comprarla); sin precio no hay cargo de aceite | ✅ | A126 |
 | La parte del PM ya se compró directo al camión (o a su Job de PM) y también hay en el estante (P29) | Al completar la WO no se cobra otra vez: el costo cuenta la compra una sola vez y el estante no baja. **Hoy falla:** saca una del estante y la WO cuenta $54 en vez de $30 (LTR-242, B · bloquea) | ❌ | A133 |
+| El Manager ya sacó la parte del estante al Job de PM (**Parts from stock**) y el mecánico eligió la misma en el PM (P29) | Al completar la WO no sale otra vez: el camión paga una vez y el estante baja una. **Hoy falla:** sale dos veces y la WO cuenta $48 en vez de $24 (LTR-242, B · bloquea) | ❌ | A134 |
 | El Manager pone el precio del cambio de aceite | Setup → Labor rate → PM oil change: desde hoy o después, uno por día; mecánicos y Safety no lo ven | ✅ | A127 |
 | Quiere cobrarle a Finanzas | Factura interna por camión y mes con partes al costo, reparaciones externas y mano de obra (HU-M13, D34) | ✅ | A72–A75 |
 
