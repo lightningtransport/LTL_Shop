@@ -108,12 +108,17 @@ checklist de inspección, Setup → Samsara.
 ### 4.7 Parts, Costs & Finance — ✅
 Catálogo de partes, proveedores, compras y reparaciones externas con su factura,
 costo por camión, tarifa de mano de obra, cierre del mes y factura interna
-`SHOP-AAAA-NNNN` en PDF para Finanzas. Sin inventario (stock).
-**Propuesto (D45):** repuestos fuera del PM, compra atada al Job, stock de
-repuestos y llantas, llantas propuestas desde la inspección (steer nueva,
-drive recap) y lectura de facturas de proveedores; etapas ST-1 a ST-6 en
-[`proposals/parts-stock-tires/`](proposals/parts-stock-tires/README.md).
-**Decisiones:** D32, D34, D37, D45 (propuesta), D-PC1–10 · **Preguntas:** P24–P31 · **Historias:** HU-M12, HU-M13, HU-M19.
+`SHOP-AAAA-NNNN` en PDF para Finanzas.
+**Construido (D45, ST-1 a ST-6, en producción desde el 2026-10-16):** repuestos y
+llantas en el catálogo, compra atada al Job, **stock** (entra con la compra o a
+mano, sale a un Job o con el PM al costo promedio), llantas propuestas desde la
+inspección y lectura de facturas de proveedores en PDF
+([`proposals/parts-stock-tires/`](proposals/parts-stock-tires/README.md)).
+**Defecto abierto:** LTR-242 (B), el PM cobra dos veces una parte ya comprada al camión.
+**Propuesto (P32–P36):** Parts como inventario único (sin menú Stock aparte),
+acciones de stock con nombre (Add to stock, Adjust, Edit minimum) y un solo
+"Parts…" en el Job ([`proposals/parts-stock-ia-v2/`](proposals/parts-stock-ia-v2/README.md)).
+**Decisiones:** D32, D34, D37, D45, D-PC1–10 · **Preguntas:** P24, P26, P28, P31, P32–P36 · **Historias:** HU-M12, HU-M13, HU-M19, HU-M20.
 
 ### 4.8 Samsara — ✅
 Sincronización cada hora (millas, ubicación, fallas) solo de lectura. Las fallas

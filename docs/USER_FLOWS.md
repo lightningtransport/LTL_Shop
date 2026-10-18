@@ -822,7 +822,7 @@ Una propuesta de la sincronización (VIN exacto) se ve en la ficha (banda con **
 | Borra un camión | Solo si nunca tuvo nada; si no, se desactiva | ✅ | A102 |
 | Un mecánico o Safety intenta agregar o editar | No puede (403) | ✅ | A99 |
 
-### HU-M19 · Repuestos, stock y llantas (J22–J26) — 🔲 propuesta (D45, sin construir)
+### HU-M19 · Repuestos, stock y llantas (J22–J26) — ✅ construida (D45, ST-1 a ST-6)
 
 **Quién:** el Manager (Randy). El mecánico ve qué parte o llanta va en su Job, nunca su costo.
 
@@ -838,7 +838,29 @@ Las historias completas, con su "¿qué pasa si…?", están en
 | HU-T1–HU-T4 | La inspección propone la llanta (steer New, drive Recap); el Manager confirma y sale del stock; historial por posición | ST-4 | ✅ (LTR-224, A122–A124) |
 | HU-F2 | Leer la factura del proveedor en PDF y confirmar (las fotos y escaneos se escriben a mano) | ST-6 | ✅ (LTR-226, `invoice-reader.spec.ts`) |
 
-Las filas de prueba se agregan con cada etapa.
+Las filas de prueba se agregan con cada etapa. **Defecto abierto:** LTR-242 (B), el PM cobra dos veces una parte ya comprada al camión (filas A133 y A134).
+
+### HU-M20 · Cuidar el stock — 🔲 propuesta (P32, P33; sin construir)
+
+**Quién:** el Manager. **Por qué:** la auditoría de 2026-10-18
+([`ux-audit/admin-ia-2026-10/10-jtbd-parts-costs.md`](ux-audit/admin-ia-2026-10/10-jtbd-parts-costs.md),
+UX-10-001 y UX-10-009) encontró que este trabajo no tenía historia. Hoy solo existe **Count**, que sirve para cargar, corregir y destrabar.
+
+**Historia:** como Manager, quiero cargar lo que hay en el estante el primer día, recibir partes sin factura, contar y ajustar con motivo, sacar lo dañado o perdido y fijar mínimos, para que el número del estante sea el real y saber qué comprar.
+
+**Flujo propuesto** ([`proposals/parts-stock-ia-v2/`](proposals/parts-stock-ia-v2/README.md)):
+1. Parts & costs → **Parts**: el inventario (Type, In stock, Minimum, Avg cost, Reference cost).
+2. **Add to stock**: elige la parte, la cantidad y el costo de cada una; escribe una entrada al estante.
+3. **Adjust**: motivo Count, Damaged, Lost u Other; con Count escribe el número contado, con Damaged o Lost cuántas salen. Sale al costo promedio y no se cobra a ningún camión.
+4. **Edit minimum** desde la fila: aparece o se va "Low".
+
+| ¿Qué pasa si…? | Debería | Estado | Fila |
+|---|---|---|---|
+| Agrega 10 a $13 una parte con 0 | Quedan 10, promedio $13 | 🔲 | — |
+| Ajusta por Count de 10 a 8 | Salen 2 al promedio; ningún camión paga | 🔲 (hoy: Count, A118) | — |
+| Ajusta por Damaged 1 | Sale 1 con motivo Damaged en Movements | 🔲 | — |
+| Fija el mínimo en 4 con 3 en stock | Sale "Low" en Parts | 🔲 | — |
+| Crea una parte nueva | Sale en Parts con 0 en stock, sin moverse | 🔲 | — |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 
@@ -929,5 +951,6 @@ resumen en [`OPEN_ISSUES.md`](OPEN_ISSUES.md) e historial en
 | ~~G7~~ | El reloj corre en un solo camión a la vez — **hecho (D21, HU-ME6, 2026-10-05)** | Mecánico, costeo | LTR-186 |
 | ~~G3, G4~~ | Ayudante en un Job y taller externo — **hechos (D23, D24, HU-M10, HU-M11, 2026-10-05)** | Manager | LTR-188 |
 | G6 | Trailers — después de salir en vivo (P11) | Manager | LTR-56 |
-| G9 | Repuestos fuera del PM, compra atada al Job, stock y llantas desde la inspección — propuesta D45 (HU-M19) | Manager | LTR-220 (ST: LTR-221–226) |
+| ~~G9~~ | Repuestos fuera del PM, compra atada al Job, stock y llantas desde la inspección — **hecho (D45, HU-M19, 2026-10-16)** | Manager | LTR-220 (ST: LTR-221–226) |
+| G10 | Cuidar el stock (cargar, ajustar con motivo, mínimos) en una sola pantalla Parts — propuesta P32, P33 (HU-M20) | Manager | LTR-243 (LTR-246) |
 | ~~G8~~ | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — **hecho (D35, D42, HU-M14, HU-M15)** | Manager, mecánico | LTR-202 |

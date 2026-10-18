@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Parts Inventory Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      colors: Object.fromEntries(['background','foreground','card','muted','muted-foreground','primary','primary-foreground','accent','border','success','warning','warning-foreground','destructive-text','sunken'].map((n) => [n, tok(n)])),
+      borderColor: { DEFAULT: 'var(--border)' },
+      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+    } },
+  };
+</script>
+<style>
+  /* Same tokens as apps/web/src/app/globals.css (copied from docs/proposals/samsara-trucks/mockup.html). */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--background); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; border-width: 1px; padding: 1px 8px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .b-warn { border-color: color-mix(in oklch, var(--warning) 40%, transparent); background: color-mix(in oklch, var(--warning) 10%, transparent); color: var(--warning-foreground); }
+  .b-info { border-color: color-mix(in oklch, var(--primary) 30%, transparent); background: color-mix(in oklch, var(--primary) 10%, transparent); color: var(--primary); }
+  .b-out { color: var(--muted-foreground); }
+  .screen { display: none; } .screen.on { display: block; }
+  .note { border-left: 3px solid var(--primary); background: color-mix(in oklch, var(--primary) 8%, transparent); }
+  .btn { display:inline-flex; align-items:center; gap:6px; border-radius:8px; border-width:1px; padding:6px 12px; font-size:14px; font-weight:500; min-height:36px; }
+  .btn-p { background: var(--primary); color: var(--primary-foreground); border-color: transparent; }
+  .field { width:100%; border-radius:8px; border-width:1px; background: var(--background); padding:8px 10px; font-size:14px; }
+  label { font-size: 13px; font-weight: 500; }
+  .navi { display:flex; align-items:center; gap:10px; border-radius:8px; padding:6px 10px; font-size:14px; color: var(--muted-foreground); }
+  .navi.on { background: var(--accent); color: var(--foreground); font-weight: 600; }
+  .new { font-size: 10px; font-weight: 600; border-radius: 4px; padding: 0 5px; background: color-mix(in oklch, var(--success) 18%, transparent); color: var(--success); }
+  @media (max-width: 1023px) { aside.side { display: none; } }
+</style>
+</head>
+<body class="font-sans">
+<div class="flex min-h-screen">
+  <!-- Proposed menu (P34, P36): 19 entries, 3 groups. -->
+  <aside class="side w-60 shrink-0 border-r bg-card p-3 text-sm">
+    <div class="px-2 pb-3 font-semibold">LTL Shop <span class="text-muted-foreground font-normal">Admin</span></div>
+    <div class="px-2 pt-2 pb-1 text-xs text-muted-foreground">Operations</div>
+    <div class="navi"><i data-lucide="gauge"></i>Dashboard</div>
+    <div class="navi"><i data-lucide="warehouse"></i>Yard Operations</div>
+    <div class="navi"><i data-lucide="clipboard-list"></i>Work Orders <span class="new">+ Closed</span></div>
+    <div class="navi"><i data-lucide="truck"></i>Trucks</div>
+    <div class="px-2 pt-3 pb-1 text-xs text-muted-foreground">Parts &amp; costs</div>
+    <div class="navi"><i data-lucide="receipt"></i>Purchases</div>
+    <div class="navi"><i data-lucide="building-2"></i>Outside repairs</div>
+    <div class="navi on"><i data-lucide="package"></i>Parts <span class="new">+ Stock</span></div>
+    <div class="navi"><i data-lucide="store"></i>Vendors</div>
+    <div class="navi"><i data-lucide="file-text"></i>Internal invoices</div>
+    <div class="px-2 pt-3 pb-1 text-xs text-muted-foreground">Setup</div>
+    <div class="navi"><i data-lucide="users-round"></i>People</div>
+    <div class="navi"><i data-lucide="library"></i>Jobs <span class="new">rename</span></div>
+    <div class="navi"><i data-lucide="list-checks"></i>Shop workflow</div>
+    <div class="navi"><i data-lucide="clipboard-check"></i>Inspection checklist</div>
+    <div class="navi"><i data-lucide="satellite"></i>Samsara</div>
+    <div class="navi"><i data-lucide="clock"></i>Shop rates <span class="new">rename</span></div>
+  </aside>
+
+  <main class="min-w-0 flex-1 p-4 sm:p-6">
+    <div class="mb-4 flex flex-wrap gap-2 text-sm" role="tablist" aria-label="Mockup screens">
+      <button class="btn" data-s="inv" aria-selected="true">1 · Parts (inventory)</button>
+      <button class="btn" data-s="add">2 · Add to stock</button>
+      <button class="btn" data-s="adj">3 · Adjust</button>
+      <button class="btn" data-s="job">4 · Job → Parts…</button>
+      <button class="btn" data-s="pm">5 · PM Job → Parts…</button>
+    </div>
+
+    <!-- 1. One Parts screen (P32) -->
+    <section class="screen on" id="inv">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-semibold">Parts</h1>
+          <p class="text-sm text-muted-foreground max-w-2xl">Every part the Shop uses (PM, repair and tires): how many are in stock, what each one costs the truck, and what it fits.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn"><i data-lucide="folder-plus"></i>Add category</button>
+          <button class="btn"><i data-lucide="plus"></i>Add part</button>
+          <button class="btn btn-p" data-go="add"><i data-lucide="package-plus"></i>Add to stock</button>
+        </div>
+      </div>
+      <div class="mt-4 flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
+        <input class="field flex-1 min-w-[220px]" placeholder="Search name, part number or tire size" />
+        <div><label class="block">Type</label><select class="field"><option>All</option><option>PM</option><option>Repair</option><option>Tires</option></select></div>
+        <div><label class="block">Fits</label><select class="field"><option>Any truck</option><option>Peterbilt</option><option>Volvo</option></select></div>
+        <label class="flex items-center gap-2 pb-2"><input type="checkbox" /> In stock</label>
+        <label class="flex items-center gap-2 pb-2"><input type="checkbox" /> Low only</label>
+      </div>
+      <p class="mt-3 text-sm text-muted-foreground tnum">128 parts · 14 in stock · $3,412.50 in stock · 2 low</p>
+      <div class="mt-2 overflow-x-auto rounded-xl border">
+        <table class="w-full min-w-[860px] text-sm">
+          <thead class="bg-sunken text-left text-muted-foreground"><tr>
+            <th class="p-2.5">Part</th><th class="p-2.5">Type</th><th class="p-2.5">Fits</th>
+            <th class="p-2.5 text-right">In stock</th><th class="p-2.5 text-right">Minimum</th>
+            <th class="p-2.5 text-right">Avg cost <span class="block text-[11px] font-normal">what the truck pays</span></th>
+            <th class="p-2.5 text-right">Reference cost <span class="block text-[11px] font-normal">when stock is empty</span></th>
+            <th class="p-2.5">Usual vendor</th><th class="p-2.5"></th></tr></thead>
+          <tbody class="divide-y">
+            <tr><td class="p-2.5"><div class="font-medium">Fleetguard Oil Filter</div><div class="text-xs text-muted-foreground">LF3654</div></td><td class="p-2.5"><span class="badge b-info">PM</span></td><td class="p-2.5">All trucks</td><td class="p-2.5 text-right tnum">10</td><td class="p-2.5 text-right tnum">4</td><td class="p-2.5 text-right tnum">$12.50</td><td class="p-2.5 text-right tnum text-muted-foreground">$13.00</td><td class="p-2.5">FleetPride</td><td class="p-2.5 text-right"><button class="btn" aria-label="Actions for Fleetguard Oil Filter"><i data-lucide="more-horizontal"></i></button></td></tr>
+            <tr><td class="p-2.5"><div class="font-medium">Peterbilt Fuel Filter Paccar</div><div class="text-xs text-muted-foreground">2242964</div></td><td class="p-2.5"><span class="badge b-info">PM</span></td><td class="p-2.5">Peterbilt</td><td class="p-2.5 text-right tnum">1 <span class="badge b-warn ml-1">Low</span></td><td class="p-2.5 text-right tnum">3</td><td class="p-2.5 text-right tnum">$38.20</td><td class="p-2.5 text-right tnum text-muted-foreground">$40.00</td><td class="p-2.5">Rush Truck</td><td class="p-2.5 text-right"><button class="btn" aria-label="Actions"><i data-lucide="more-horizontal"></i></button></td></tr>
+            <tr><td class="p-2.5"><div class="font-medium">Brake chamber 30/30</div><div class="text-xs text-muted-foreground">GC3030L</div></td><td class="p-2.5"><span class="badge b-out">Repair</span></td><td class="p-2.5">All trucks</td><td class="p-2.5 text-right tnum">2</td><td class="p-2.5 text-right tnum text-muted-foreground">—</td><td class="p-2.5 text-right tnum">$64.00</td><td class="p-2.5 text-right tnum text-muted-foreground">$64.00</td><td class="p-2.5">FleetPride</td><td class="p-2.5 text-right"><button class="btn" aria-label="Actions"><i data-lucide="more-horizontal"></i></button></td></tr>
+            <tr><td class="p-2.5"><div class="font-medium">Drive tire 11R22.5</div><div class="text-xs text-muted-foreground">Recap</div></td><td class="p-2.5"><span class="badge b-out">Tires</span></td><td class="p-2.5">All trucks</td><td class="p-2.5 text-right tnum">0 <span class="badge b-warn ml-1">Low</span></td><td class="p-2.5 text-right tnum">4</td><td class="p-2.5 text-right tnum text-muted-foreground">—</td><td class="p-2.5 text-right tnum">$210.00</td><td class="p-2.5">Bandag</td><td class="p-2.5 text-right"><button class="btn" aria-label="Actions"><i data-lucide="more-horizontal"></i></button></td></tr>
+            <tr><td class="p-2.5"><div class="font-medium">Wiper Blades</div><div class="text-xs text-muted-foreground">ANC31-22 · new part, never moved</div></td><td class="p-2.5"><span class="badge b-info">PM</span></td><td class="p-2.5">All trucks</td><td class="p-2.5 text-right tnum">0</td><td class="p-2.5 text-right tnum text-muted-foreground">—</td><td class="p-2.5 text-right tnum text-muted-foreground">—</td><td class="p-2.5 text-right tnum text-muted-foreground">No cost yet</td><td class="p-2.5 text-muted-foreground">No vendor</td><td class="p-2.5 text-right"><button class="btn" aria-label="Actions"><i data-lucide="more-horizontal"></i></button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3 inline-block rounded-lg border bg-card p-2 text-sm shadow">
+        <div class="px-2 pb-1 text-xs text-muted-foreground">Row menu "…"</div>
+        <div class="px-2 py-1">Edit part</div><div class="px-2 py-1" data-go="add">Add to stock</div><div class="px-2 py-1" data-go="adj">Adjust</div><div class="px-2 py-1">Edit minimum</div><div class="px-2 py-1">Movements</div><div class="px-2 py-1 text-destructive-text">Deactivate</div>
+      </div>
+      <p class="note mt-4 rounded p-3 text-sm max-w-3xl"><b>What changes:</b> Stock leaves the menu and its columns come here. A part added with Add part shows up right away with 0 in stock. "Count" is no longer a button: see 2 and 3. The data stays the same (<code>Part</code> + <code>StockMovement</code>).</p>
+    </section>
+
+    <!-- 2. Add to stock (P33) -->
+    <section class="screen" id="add">
+      <div class="max-w-md rounded-xl border bg-card p-5">
+        <h2 class="text-lg font-semibold">Add to stock</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Parts that are on the shelf without a purchase: today's count when you start, or parts that came in without an invoice. A purchase "To stock" adds them by itself.</p>
+        <div class="mt-4 space-y-3">
+          <div><label class="block">Part</label><input class="field" value="Fleetguard Oil Filter · LF3654" /><p class="mt-1 text-xs text-muted-foreground">Type to search · 0 in stock now</p></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block">Qty</label><input class="field tnum" value="10" /></div>
+            <div><label class="block">Cost of each one</label><input class="field tnum" value="13.00" /><p class="mt-1 text-xs text-muted-foreground">Suggested: reference cost</p></div>
+          </div>
+          <div><label class="block">Note <span class="text-muted-foreground font-normal">(optional)</span></label><input class="field" placeholder="First count of the shelf" /></div>
+        </div>
+        <div class="mt-5 flex justify-end gap-2"><button class="btn">Cancel</button><button class="btn btn-p">Add 10 to stock · $130.00</button></div>
+      </div>
+    </section>
+
+    <!-- 3. Adjust (P33) -->
+    <section class="screen" id="adj">
+      <div class="max-w-md rounded-xl border bg-card p-5">
+        <h2 class="text-lg font-semibold">Adjust stock · Fleetguard Oil Filter</h2>
+        <p class="mt-1 text-sm text-muted-foreground">10 in stock · avg $12.50</p>
+        <div class="mt-4 space-y-3">
+          <fieldset><legend class="text-[13px] font-medium">Reason</legend>
+            <div class="mt-1 grid grid-cols-2 gap-2 text-sm">
+              <label class="flex items-center gap-2 rounded-lg border p-2"><input type="radio" name="r" checked /> Count</label>
+              <label class="flex items-center gap-2 rounded-lg border p-2"><input type="radio" name="r" /> Damaged</label>
+              <label class="flex items-center gap-2 rounded-lg border p-2"><input type="radio" name="r" /> Lost</label>
+              <label class="flex items-center gap-2 rounded-lg border p-2"><input type="radio" name="r" /> Other</label>
+            </div>
+          </fieldset>
+          <div><label class="block">How many are on the shelf now</label><input class="field tnum" value="8" /><p class="mt-1 text-xs text-muted-foreground">Count: type what you counted. Damaged or Lost: type how many to remove.</p></div>
+          <div><label class="block">Note</label><input class="field" placeholder="Shelf B2 recount" /></div>
+          <p class="rounded-lg bg-sunken p-2 text-sm tnum">2 leave stock at $12.50 · −$25.00 · no truck is charged</p>
+        </div>
+        <div class="mt-5 flex justify-end gap-2"><button class="btn">Cancel</button><button class="btn btn-p">Adjust to 8</button></div>
+      </div>
+    </section>
+
+    <!-- 4. One Parts… sheet on a Job (P35) -->
+    <section class="screen" id="job">
+      <p class="text-sm text-muted-foreground">WO-009 · Truck 991 · Job <b>Brakes, front axle</b> → menu "…" → <b>Parts…</b></p>
+      <div class="mt-3 max-w-lg rounded-xl border bg-card p-5">
+        <h2 class="text-lg font-semibold">Parts · Brakes, front axle</h2>
+        <h3 class="mt-4 text-sm font-semibold">On this Job</h3>
+        <ul class="mt-1 divide-y rounded-lg border text-sm">
+          <li class="flex items-center justify-between p-2.5"><span>Brake chamber 30/30 × 2 <span class="text-muted-foreground">· from stock · $128.00</span></span><button class="btn">Return to stock</button></li>
+          <li class="flex items-center justify-between p-2.5"><span>Slack adjuster × 1 <span class="text-muted-foreground">· purchase INV-4471 · $96.40</span></span><a class="text-primary underline">Open purchase</a></li>
+        </ul>
+        <h3 class="mt-5 text-sm font-semibold">From stock</h3>
+        <div class="mt-1 grid grid-cols-[1fr_80px] gap-2"><input class="field" placeholder="Search a part in stock" value="Brake shoe kit" /><input class="field tnum" value="1" /></div>
+        <p class="mt-1 text-sm text-muted-foreground tnum">0 in stock</p>
+        <div class="note mt-2 rounded p-2 text-sm">Nothing in stock for this part. <button class="btn btn-p ml-1"><i data-lucide="shopping-cart"></i>Buy for this Job</button> <span class="block mt-1 text-xs text-muted-foreground">Opens New purchase with Truck 991 and this Job already set.</span></div>
+        <div class="mt-5 flex justify-end"><button class="btn">Done</button></div>
+      </div>
+      <p class="note mt-4 rounded p-3 text-sm max-w-3xl"><b>What changes:</b> "Add parts invoice" and "Parts from stock" become one <b>Parts…</b>. "Tires to put" stays on its own, because it comes from the inspection.</p>
+    </section>
+
+    <!-- 5. PM Job (LTR-242 case B, P35) -->
+    <section class="screen" id="pm">
+      <p class="text-sm text-muted-foreground">WO-009 · Truck 991 · Job <b>PM A Service</b> → Parts…</p>
+      <div class="mt-3 max-w-lg rounded-xl border bg-card p-5">
+        <h2 class="text-lg font-semibold">Parts · PM A Service</h2>
+        <div class="note mt-3 rounded p-2 text-sm">PM parts leave stock when you complete the Work Order: <b>Fleetguard Oil Filter</b>, <b>Peterbilt Fuel Filter Paccar</b> (picked by Daniel). A part already bought for this truck is not charged again.</div>
+        <h3 class="mt-5 text-sm font-semibold">Other parts from stock</h3>
+        <input class="field mt-1" placeholder="Search a part in stock (PM parts picked above are not listed)" />
+        <div class="mt-5 flex justify-end"><button class="btn">Done</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+  lucide.createIcons();
+  const show = (id) => {
+    document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === id));
+    document.querySelectorAll('[data-s]').forEach((b) => { const on = b.dataset.s === id; b.setAttribute('aria-selected', on); b.classList.toggle('btn-p', on); });
+  };
+  document.querySelectorAll('[data-s]').forEach((b) => b.addEventListener('click', () => show(b.dataset.s)));
+  document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)));
+  show('inv');
+</script>
+</body>
+</html>
