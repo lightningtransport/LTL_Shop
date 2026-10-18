@@ -371,8 +371,9 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   categorías `pm`** y rechaza una parte de otra. En New purchase, una línea
   "Other" tiene **Add to catalog**: abre Agregar parte con su descripción y una
   categoría de repuestos, y al guardar la línea usa la parte nueva.
-- **El catálogo del PM.** Admin → Parts & costs → **Parts**
-  (`/admin/parts/catalog`) lo muestra por las 9 categorías del PM con su costo
+- **Las partes del PM son las de tipo PM del mismo catálogo** (no hay un
+  catálogo aparte). Admin → Parts & costs → **Parts**
+  (`/admin/parts/catalog`) las muestra por las 9 categorías del PM con su costo
   de referencia (`unit_cost_cents`, centavos; "No cost yet" si falta), su
   proveedor habitual y **Sirve para** (`part_fitments`: sin filas = todos los
   camiones; si no, marca y/o modelo). La misma regla (`partFitsTruck`, en

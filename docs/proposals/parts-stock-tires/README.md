@@ -1,6 +1,6 @@
 # Propuesta: repuestos, stock y llantas en Parts & costs (D45)
 
-**Clasificación:** PROPUESTA, **pendiente del OK del dueño y de las respuestas de Randy (P24–P31)**. No se construye nada hasta entonces.
+**Clasificación:** CONSTRUIDA (ST-1 a ST-6, PRs 348–353, en producción desde el 2026-10-16). Siguen abiertas P24, P26, P28 y P31 para Randy. La revisión de pantallas y nombres que vino después está en [`../parts-stock-ia-v2/`](../parts-stock-ia-v2/README.md) (P32–P36).
 **Fecha:** 2026-10-16 · **Rama:** `claude/parts-stock-tires-proposal`
 **Origen:** pedido de Randy (Manager del taller), traído por el dueño el 2026-10-16:
 
@@ -153,10 +153,10 @@ El mecánico **nunca ve costos** (D32). Ve qué parte o llanta va, nunca su prec
 | Se usa una parte del stock en un Job y luego se cancela la WO | La parte no vuelve sola: el Job la muestra con **Return to stock** |
 | El primer día no hay stock cargado | Conteo inicial con **Adjust** (P25) |
 
-**HU-S5 · El PM descuenta del stock (etapa ST-5, decisión abierta P29).**
-- Hoy el PM elige partes sin cantidad y sin costo (D-PC4).
-- Para que salgan del stock hay que decidir si el mecánico dice la cantidad o si se usa una por categoría, y si el costo del PM empieza a contar en el camión. Eso cambia D-PC4.
-- **No se toca el teléfono del PM hasta que el dueño lo decida.**
+**HU-S5 · El PM descuenta del stock (etapa ST-5; P29 cerrada el 2026-10-16, construida en PR 352; defecto abierto LTR-242).**
+- Como se construyó: el mecánico sigue eligiendo una parte por categoría, sin cantidad ni costo, y el teléfono del PM no cambió.
+- Al **completar** la WO, cada parte elegida sale del estante (una unidad, al costo promedio) y se cobra al camión. Una parte que no está en el estante no se cobra. El aceite se cobra a precio fijo. Reabrir o cancelar deshace las dos cosas.
+- **Defecto abierto (LTR-242, B):** si esa parte ya se compró directo para el camión y además hay en el estante, se cobra otra vez (filas A133 y A134).
 
 ### D. Llantas desde la inspección (J25)
 
