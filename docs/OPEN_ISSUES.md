@@ -25,7 +25,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Safety / QC | LTR-229 (Epic), LTR-233 | Ajustes de Safety (D46): SQ-1 a SQ-3 hechas (LTR-230–232); fotos y videos para más adelante (LTR-233, Gated) | — |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
 | Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
-| Plataforma y Go-live | LTR-237 (Epic) | Rendimiento ronda 2026-10 (PF15–PF26): PR-A API abierto (LTR-238); PR-B índice QC (LTR-239) y PR-C bundle web (LTR-240) esperan su CI; getAttention solo medido (LTR-241) | E |
+| Plataforma y Go-live | LTR-237 (Epic) | Rendimiento ronda 2026-10 (PF15–PF26): PR-A API #356, PR-B índice QC #357 y PR-C limpieza abiertos; getAttention solo medido (LTR-241); 10 e2e de Chromium ya fallan en main (specs desactualizados) | E |
 | Integraciones V3 | LTR-46, 54, 55, 56 | Integraciones en espera (Gated): contratos, geocerca, trailers | — |
 
 ## Preguntas abiertas

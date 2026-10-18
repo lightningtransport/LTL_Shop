@@ -26,10 +26,6 @@ export function filterCatalogJobs(jobs: CatalogJobDto[], q: string): CatalogJobD
   );
 }
 
-export async function fetchCatalogJobs(categoryId: string): Promise<CatalogJobDto[]> {
-  return apiFetch<CatalogJobDto[]>(catalogJobsPath(categoryId));
-}
-
 export function flattenJobAliases(jobs: CatalogJobDto[]): JobAliasOptionDto[] {
   const rows: JobAliasOptionDto[] = [];
   for (const job of jobs) {
@@ -44,31 +40,6 @@ export function flattenJobAliases(jobs: CatalogJobDto[]): JobAliasOptionDto[] {
     }
   }
   return rows.sort((a, b) => a.aliasText.localeCompare(b.aliasText));
-}
-
-export function filterAliasOptions(
-  aliases: JobAliasOptionDto[],
-  q: string,
-): JobAliasOptionDto[] {
-  const query = q.trim();
-  if (!query) return aliases;
-  const norm = query.toLowerCase().replace(/[^a-z0-9]/g, '');
-  return aliases.filter((a) => {
-    const text = a.aliasText.toLowerCase();
-    const textNorm = text.replace(/[^a-z0-9]/g, '');
-    return text.includes(query.toLowerCase()) || textNorm.includes(norm);
-  });
-}
-
-export function canonicalAliasOptions(
-  aliases: JobAliasOptionDto[],
-  query = '',
-): JobAliasOptionDto[] {
-  const byCatalogId = new Map<string, JobAliasOptionDto>();
-  for (const alias of filterAliasOptions(aliases, query)) {
-    if (!byCatalogId.has(alias.catalogJobId)) byCatalogId.set(alias.catalogJobId, alias);
-  }
-  return [...byCatalogId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 export async function fetchAliasOptions(

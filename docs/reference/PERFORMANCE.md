@@ -323,4 +323,47 @@ Aplicación en producción: esta migración llega a producción solo mediante el
 
 ### PR-C — bundle web y limpieza (LTR-240)
 
-Pendiente; se completa al cerrar el PR.
+**ID:** PF26a
+**Qué cambió:** El commit `98b1a4a` quita `class-validator` y `class-transformer` de `apps/api/package.json`.
+**Por qué:** Nada los importa; el API valida con Zod y no hay `ValidationPipe`.
+**Cómo se midió:** Búsqueda con `rg` en `apps/` y `packages/`, build, 682 pruebas y `tsc` del API. `package-lock.json` cambia 13 líneas; ambos paquetes quedan como peers opcionales de `@nestjs/common`.
+**Antes → Después:** Dos dependencias menos en el API.
+**Cómo revertir:** `git revert 98b1a4a`
+
+**ID:** PF26b
+**Qué cambió:** El commit `b67274f` quita exports de la web que nada importaba, comprobados uno a uno con `rg` (solo aparecían en su definición y, en algunos casos, en su propio spec):
+- `yard-operations-routing.ts`: `YARD_TOOLBAR_FILTER_KEYS`, `YARD_SHEET_FILTER_KEYS`, `YARD_OVERFLOW_FILTER_KEYS`, `YARD_READINESS_FILTERS`, `YARD_WORK_ORDER_STATUSES`, `YARD_PRIORITIES` y `countOverflowYardOperationsFilters`.
+- `status-chips.ts`: `jobStatusLabel`, `ADMIN_JOB_STATUS_KEY`, `adminActivityEventDetail` y `activityString`.
+- `job-catalog.ts`: `fetchCatalogJobs`, `filterAliasOptions` y `canonicalAliasOptions`.
+**Cómo se midió:** Búsqueda de cada símbolo con `rg` y pruebas de la web.
+**Antes → Después:** 100 líneas menos; pruebas web 271 → 270 porque se quitó el caso que solo probaba `adminActivityEventDetail`.
+**Candidatos que se dejaron por duda:** `getAuthToken`, `useMechanics`, `useAliasOptions`, `recordAdminWorkPlanInspection`, `DialogTrigger`, `MultiSelect`, `JobStatusBadge`, `PhaseBadge` y `AdminReadinessTracker`.
+**Cómo revertir:** `git revert b67274f`
+
+#### Descartados en PR-C
+
+- PF23, `lucide-react` en `optimizePackageImports`: `next build` fue idéntico ruta por ruta al baseline (compartido 187 kB, `/admin` 346 kB, `/admin/trucks/[id]` 411 kB, entre otras). Next ya importa los iconos uno a uno. No se cambió nada, la misma conclusión que con `radix-ui` en LTR-212.
+- PF13 ya estaba hecho desde LTR-212: los tres `<Image src="/ltl-logo.png">` (`admin-shell`, `HomeTopBar` 69×40 y `AuthBrandHeader` 160×93) declaran su tamaño y `/login` sirve `w=256`/`w=384`, no el original de 1536 px. Se da por cerrado.
+- PF24, Yard duplicado en el Dashboard: no existía. `useAdminYardDataBoundary` lee el endpoint de Dispatch cada 60 s, no el tablero.
+- PF25, `React.memo` en listas: no se hizo porque la regla era aplicarlo solo si un profiler mostraba re-renders por polling, y no se corrió.
+
+### Verificación de la web (e2e con fixture, fuera del sandbox)
+
+De 324 pruebas, 152 pasan y 172 fallan. De los fallos, 162 son de `mobile-webkit` porque el navegador WebKit de Playwright no está instalado en esta máquina; el baseline da el mismo número.
+
+Las 10 pruebas de Chromium también fallan en `main`, comprobado en un worktree: `admin-parts-costs` (4), `admin-shell` (lista de enlaces del menú móvil y filtros de Work Orders), `demo-mode` (2; una cuenta 57 pasos frente a 56), `qc-redesign` (Return nombra el Job) y `ui-consistency` (acciones de filtros). Ninguna la causa esta ronda; parecen specs desactualizados frente a la UI actual.
+
+`perf-feel.spec.ts` en Chromium: PF2 2.1 s, PF4 1.6 s y PF5 2.5 s.
+
+### Resumen de la ronda
+
+| Medida | Antes | Después |
+| --- | ---: | ---: |
+| `GET /api/work-orders` (mecánico) | 23 consultas | 17 consultas |
+| `GET /api/admin/dashboard` | 141 consultas, 0.069 s | 113 consultas, 0.045 s |
+| Consulta QC del Dashboard (20 000 filas sintéticas) | 1.89 ms | 0.49 ms |
+| Dependencias del API | — | −2 |
+| Código web muerto | — | −100 líneas |
+| First Load JS | baseline | Sin cambio |
+
+Pendiente para otra ronda: `getAttention` (60 consultas, LTR-241); índice parcial `WHERE resolved_at IS NULL` cuando `qc_findings` crezca; los 10 e2e de Chromium que ya fallan en main.

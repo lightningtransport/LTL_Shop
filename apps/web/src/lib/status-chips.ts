@@ -58,12 +58,6 @@ export const ADMIN_WO_STATUS_KEY = {
   [WorkOrderStatus.CANCELLED]: 'woStatusCancelled',
 } as const;
 
-export const ADMIN_JOB_STATUS_KEY = {
-  [JobStatus.TO_DO]: 'jobStatusToDo',
-  [JobStatus.COMPLETED]: 'jobStatusCompleted',
-  [JobStatus.CANCELLED]: 'jobStatusCancelled',
-} as const;
-
 export const ADMIN_PRIORITY_KEY = {
   [Priority.LOW]: 'lowPriority',
   [Priority.NORMAL]: 'normalPriority',
@@ -156,12 +150,6 @@ export function workOrderStatusLabel(status: string, catalog: AdminMessages): st
     : status;
 }
 
-export function jobStatusLabel(status: string, catalog: AdminMessages): string {
-  return status in ADMIN_JOB_STATUS_KEY
-    ? catalog[ADMIN_JOB_STATUS_KEY[status as JobStatus]]
-    : status;
-}
-
 export function adminPriorityLabel(priority: string, catalog: AdminMessages): string {
   return priority in ADMIN_PRIORITY_KEY
     ? catalog[ADMIN_PRIORITY_KEY[priority as Priority]]
@@ -178,19 +166,6 @@ export function adminActivityEventLabel(eventType: string, catalog: AdminMessage
   return eventType in ADMIN_ACTIVITY_EVENT_KEY
     ? catalog[ADMIN_ACTIVITY_EVENT_KEY[eventType as ActivityEventType]]
     : catalog.activityUnknown;
-}
-
-function activityString(value: unknown, key: string): string | null {
-  if (!value || typeof value !== 'object') return null;
-  const field = (value as Record<string, unknown>)[key];
-  return typeof field === 'string' && field.trim() ? field : null;
-}
-
-export function adminActivityEventDetail(entry: { newValue: unknown; previousValue?: unknown }): string | null {
-  const displayName = activityString(entry.newValue, 'displayName');
-  const notes = activityString(entry.newValue, 'notes') ?? activityString(entry.previousValue, 'notes');
-  const parts = [displayName, notes].filter(Boolean);
-  return parts.length ? parts.join(' — ') : null;
 }
 
 /** LTR-121: shared attention reason → Admin copy (null for plain open or closed work). */
