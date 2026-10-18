@@ -169,6 +169,39 @@ const yardTruckInclude = {
   },
 } as const;
 
+/**
+ * PF16: what the Ready to Go count (`countReadyToGoTrucks`) reads of a Work Order: the fields and relations
+ * `workPlanInputFromYardRow` maps (Category name, Jobs with their Category). Not the Truck, the Job owners, the
+ * team, the pauses or the blocker notes — those only draw the cards. Same where / order as `summaryWorkOrderInclude`.
+ */
+const readyToGoCountWorkOrderInclude = {
+  primaryCategory: true,
+  jobs: {
+    include: { category: { select: { id: true, name: true } } },
+    orderBy: { addedAt: 'asc' as const },
+  },
+} as const;
+
+/** PF16: the Truck relations the Ready to Go count reads (same rows as `yardTruckInclude`, fewer relations). */
+const readyToGoCountTruckInclude = {
+  workOrders: {
+    where: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } },
+    include: readyToGoCountWorkOrderInclude,
+    orderBy: { createdAt: 'desc' as const },
+  },
+  // `workPlanInputFromYardRow` reads the first assessment's requirements only (not its Work Orders).
+  readinessAssessments: {
+    where: ACTIVE_OR_RESIDUAL_READY,
+    orderBy: { updatedAt: 'desc' as const },
+    take: 1,
+    include: { requirements: { orderBy: { type: 'asc' as const } } },
+  },
+  serviceStatusEvents: {
+    orderBy: { occurredAt: 'desc' as const },
+    take: 1,
+  },
+} as const;
+
 type SummaryWorkOrderRow = Prisma.WorkOrderGetPayload<{ include: typeof summaryWorkOrderInclude }>;
 type YardAssessmentRow = {
   id: string;
@@ -914,17 +947,17 @@ export class YardOperationsService {
   private async getWorkPlanBoardCounts() {
     const [presenceUnknown, rows] = await Promise.all([
       this.prisma.truck.count({ where: { deactivatedAt: null } }),
+      // PF16: same Trucks as the board, with only the relations the derivation below reads.
       this.prisma.truck.findMany({
         where: activeYardEngagement(),
-        include: yardTruckInclude as never,
+        include: readyToGoCountTruckInclude as never,
       }) as unknown as Promise<YardTruckRow[]>,
     ]);
-    await this.attachReadyWorkOrders(rows);
+    await this.attachReadyWorkOrders(rows, readyToGoCountWorkOrderInclude);
 
     let notStarted = 0;
     let underReview = 0;
     let readyToGo = 0;
-    let blocked = 0;
     for (const row of rows) {
       if (isCompletedOnlyWithoutReadyWork(row)) continue;
       const workPlan = deriveWorkPlan(workPlanInputFromYardRow(row));
@@ -933,9 +966,8 @@ export class YardOperationsService {
       if (readiness === YardReadinessFilter.NOT_STARTED) notStarted += 1;
       if (readiness === YardReadinessFilter.UNDER_REVIEW) underReview += 1;
       if (readiness === YardReadinessFilter.READY) readyToGo += 1;
-      if (isWorkPlanBoardBlocked(row.workOrders.map(toAdminWorkOrderSummary))) blocked += 1;
     }
-    return { notStarted, underReview, readyToGo, blocked, presenceUnknown };
+    return { notStarted, underReview, readyToGo, presenceUnknown };
   }
 
   /**
@@ -943,7 +975,10 @@ export class YardOperationsService {
    * completed since `YARD_READY_TO_GO_SINCE` unless the truck was Returned to
    * Service afterwards. One batched query per page.
    */
-  private async attachReadyWorkOrders(rows: YardTruckRow[]): Promise<void> {
+  private async attachReadyWorkOrders(
+    rows: YardTruckRow[],
+    include: Prisma.WorkOrderInclude = summaryWorkOrderInclude,
+  ): Promise<void> {
     const since = yardReadyToGoSince();
     const candidates = since ? rows.filter((row) => row.workOrders.length === 0) : [];
     if (!since || !candidates.length) return;
@@ -953,7 +988,7 @@ export class YardOperationsService {
         status: WorkOrderStatus.completed,
         completedAt: { gte: since },
       },
-      include: summaryWorkOrderInclude,
+      include,
       orderBy: { completedAt: 'desc' },
     }) as unknown as Array<SummaryWorkOrderRow & { truckId: string; completedAt: Date | null }>;
     const latestByTruck = new Map<string, (typeof completed)[number]>();

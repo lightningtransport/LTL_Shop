@@ -233,3 +233,87 @@ chunk `next/dynamic` que producción no pide. `optimizePackageImports` para
 Ningún chunk cliente contiene ya textos del catálogo (se buscó una cadena en y
 una es en todos los `.js` del build). El ahorro se suma al de PR 6 (compartido
 225 → 187 kB, arriba).
+
+## Ronda 2026-10 (segunda) — over-fetching en API, bundle web y limpieza (PF15–PF26, LTR-237)
+
+Segunda ronda de velocidad después de PF1–PF14.
+Solo toca código de producto; la demo está congelada desde 2026-10-16.
+Se divide en tres PR acotados: PR-A API (LTR-238), PR-B índice QC (LTR-239) y PR-C bundle web y limpieza (LTR-240). `getAttention` solo se midió (LTR-241).
+Cada cambio ocupa un commit, se mide antes y después y se revierte si no mejora. La base es `perf/optimizacion-sin-demo`, creada desde `main` en `66ab98a`.
+
+### Línea base — 2026-10-17 (local)
+
+El API se compiló con `nest build` y se ejecutó con `node dist/src/main.js` contra la base Postgres local `ltl_shop`, después de `prisma migrate deploy`. Había 9 Work Orders, 41 Jobs, 9 Trucks, 11 usuarios, 0 hallazgos QC y 90 filas de actividad. Se usaron `AUTH_DEV_BYPASS=true`, `AUTH_USER_CACHE_TTL_MS=0` y tokens `dev:`; así cada petición paga las 2 consultas de autenticación.
+
+TTFB es la mediana de 5 ejecuciones de `curl -w` después de una de calentamiento. Las consultas Prisma por petición se contaron con un script pequeño que instancia el servicio Nest con un `PrismaClient` contador; se usó el mismo método en todas las mediciones. El conjunto de datos es pequeño, por lo que el número de consultas es la métrica principal y TTFB solo es indicativo.
+
+| Endpoint | Consultas/petición | TTFB mediana | Bytes |
+| --- | ---: | ---: | ---: |
+| `GET /api/work-orders` (mecánico) | 23 | 0.026 s | 23 520 |
+| `GET /api/admin/dashboard` (Manager) | 141[^dashboard-yard] | 0.069 s | 18 406 |
+| `GET /api/admin/work-orders/:id` | 24 | 0.027 s | 4 011 |
+| `GET /api/team-queue` (mecánico) | 3 | 0.005 s | 2 (vacío para este usuario) |
+| `GET /api/work-orders/:id/pm` | 15 | 0.023 s | 7 580 |
+| `GET /api/admin/parts-costs/stock` | 4 | 0.006 s | 51 (vacío) |
+
+[^dashboard-yard]: Una primera medición dio 87 porque el servicio Yard no estaba conectado en el script. El valor 141 usa `YARD_READY_TO_GO_SINCE` como en `.env`. Subconsultas: `getAttention` 60, `getDashboardQueue` 30, `countReadyToGoTrucks` 41, seis conteos 6, work requests 1 y hallazgos QC 1.
+
+Las pruebas unitarias pasaron: shared 79, api 682 y web 271. `tsc` quedó limpio en los tres workspaces. `next build` reportó First Load JS de 187 kB compartidos, `/login` 316 kB, `/admin` 346 kB, `/admin/work-orders` 345 kB, `/admin/work-orders/[id]` 385 kB, `/admin/trucks/[id]` 411 kB, `/admin/yard-operations` 335 kB, `/qc` 344 kB, `/work-orders/[id]` 351 kB, `/mechanic/standard` 329 kB y middleware 100 kB.
+
+`test:real` pasó 32 archivos y 176 pruebas en la rama de PR-A. Playwright e2e en modo fixture no pudo ejecutarse dentro del sandbox del agente porque Chrome terminó con `SIGABRT`; solo prueba la web y queda diferido a PR-C.
+
+El `EXPLAIN` de la consulta de hallazgos QC del Dashboard sobre la tabla vacía mostró `Bitmap Index Scan` sobre `qc_findings_work_order_id_resolved_at_idx` (`resolved_at IS NULL`) y filtro por `created_at`; tardó 0.15 ms. El índice se añade en PR-B.
+
+### PR-A — la API deja de cargar de más (LTR-238)
+
+**ID:** PF15
+**Qué cambió:** En `work-order.mapper.ts`, el nuevo `workOrderSummaryInclude` exportado deriva de `workOrderDetailInclude` sin `noteEntries` y, por Job, sin `sources`, `purchaseLines`, `stockMovements` ni `tireChanges`; `listForMechanic` lo usa.
+**Por qué:** Home del mecánico consulta esta lista cada 30 s y `toWorkOrderSummary` no lee esas relaciones.
+**Cómo se midió:** Conteo Prisma, TTFB local y comparación con el archivo dorado.
+**Antes → Después:** 23 → 17 consultas; 0.026 → 0.027 s; JSON idéntico, 23 520 bytes.
+**Cómo revertir:** `git revert e491529`
+
+**ID:** PF17
+**Qué cambió:** En `admin.service.ts`, `openQcFindingsForDashboard` pasó al `Promise.all` existente de `dashboard()`.
+**Por qué:** Esperaba a que terminara todo lo demás.
+**Cómo se midió:** Conteo Prisma, TTFB local y comparación de JSON.
+**Antes → Después:** 141 → 141 consultas, con una ida secuencial menos; 0.069 → 0.072 s, ruido; JSON idéntico salvo `generatedAt` y `windows.openOlderThan24h.before`.
+**Cómo revertir:** `git revert 3ffa919`
+
+**ID:** PF16
+**Qué cambió:** En `yard-operations.service.ts`, `getWorkPlanBoardCounts` carga los mismos Trucks con los includes acotados `readyToGoCountTruckInclude` y `readyToGoCountWorkOrderInclude`; `attachReadyWorkOrders` acepta un include opcional, el board no cambia y se eliminó el contador muerto `blocked`.
+**Por qué:** `countReadyToGoTrucks`, usado por el conteo Ready to Go del Dashboard, derivaba `deriveWorkPlan` cargando relaciones de tarjetas que no lee: truck, owners, team, pauses y blocker notes. El `counts.blocked` de Yard viene de `getCounts` y conserva sus especificaciones.
+**Cómo se midió:** Conteo Prisma, TTFB local y comparación de las respuestas del Dashboard y Yard operations.
+**Antes → Después:** `countReadyToGoTrucks` 41 → 13 consultas; Dashboard 141 → 113; 0.069 → 0.045 s; JSON idéntico y `readyToGo` 1 en ambos.
+**Cómo revertir:** `git revert 359fb9a`
+
+**ID:** PF19
+**Qué cambió:** En `team-queue.service.ts`, el `shopWorkflowStep.findMany` que esperaba después del `Promise.all` se incorporó al mismo bloque porque solo depende de `stepKeys`.
+**Por qué:** Era una ida secuencial innecesaria.
+**Cómo se midió:** Copia temporal de la base con 3 miembros de equipo y 2 Jobs en cola; conteo del handler, TTFB y comparación para 4 usuarios.
+**Antes → Después:** 9 → 9 consultas, con una ida secuencial menos; 16.7 → 13.2 ms, ruido; JSON idéntico para 4 usuarios.
+**Cómo revertir:** `git revert 65dd9a8`
+
+**ID:** PF20
+**Qué cambió:** En `getPmService`, el `include` del catálogo PM pasó a un `select` de lo que muestra la hoja: id, slug y nombre de categoría; partNumber y displayName de la pieza; make y model del fitment.
+**Por qué:** Las demás columnas no llegan a la respuesta. El filtrado de fitment sigue en memoria porque `partFitsTruck` normaliza make y model.
+**Cómo se midió:** Conteo Prisma, TTFB local y comparación con el JSON dorado.
+**Antes → Después:** 15 → 15 consultas, con menos columnas; 17.8 → 17.8 ms; JSON idéntico, 7 580 bytes.
+**Cómo revertir:** `git revert e56f479`
+
+#### Descartados en PR-A
+
+- PF18, acotar `activityLogs` del detalle de WO del Admin: la web muestra toda la pestaña Activity Log en `work-order-history.tsx` y deriva estados de la lista completa en `work-order-view.ts`. El `select` ya coincide con lo que se mapea. Limitarlo cambiaría el comportamiento y no hay una mejora segura.
+- PF21, filtrar `q` o `low` del stock en la base: la comparación en memoria normaliza NFD, quita diacríticos y caracteres no alfanuméricos, y busca en `displayName + partNumber + tireSize`. `contains` de Prisma no reproduce casos como `11r22.5` frente a `11R22.5`, `oil filter` frente a `Oil-Filter` ni la búsqueda cruzada `filter123`; `low` depende de un agregado. Se deja igual.
+
+#### Medido, sin cambio: getAttention (LTR-241)
+
+Usa 60 de las 141 consultas del Dashboard. Ejecuta seis `findMany` con `summaryInclude` sobre unas 10 filas cada uno; cada relación genera una consulta separada, seis veces. Candidato para la siguiente ronda: una consulta de Work Orders abiertos y ranking en memoria.
+
+### PR-B — índice QC (LTR-239)
+
+Pendiente; se completa al cerrar el PR.
+
+### PR-C — bundle web y limpieza (LTR-240)
+
+Pendiente; se completa al cerrar el PR.

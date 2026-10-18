@@ -561,3 +561,21 @@ export const workOrderDetailInclude = {
     orderBy: { createdAt: 'desc' as const },
   },
 };
+
+/**
+ * PF15: what `toWorkOrderSummary` reads, nothing more — the mechanic list (polled every 30 s) does not
+ * need the notes nor, per Job, the Samsara/QC sources, purchased parts, stock issues or tire changes.
+ * Derived from the detail include so any other relation added there stays in the list.
+ */
+const { noteEntries: _noteEntries, ...detailIncludeWithoutNotes } = workOrderDetailInclude;
+const {
+  sources: _sources,
+  purchaseLines: _purchaseLines,
+  stockMovements: _stockMovements,
+  tireChanges: _tireChanges,
+  ...jobSummaryInclude
+} = workOrderDetailInclude.jobs.include;
+export const workOrderSummaryInclude = {
+  ...detailIncludeWithoutNotes,
+  jobs: { ...workOrderDetailInclude.jobs, include: jobSummaryInclude },
+};

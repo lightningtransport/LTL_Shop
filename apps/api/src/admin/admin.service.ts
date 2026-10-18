@@ -362,7 +362,7 @@ export class AdminService {
     const windows = getShopDashboardWindows(now);
     const olderThan24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     // PF9: every read here is independent; they all go out together (Ready to Go and the queue used to wait).
-    const [open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days, attention, workRequests, readyToGo, queue] =
+    const [open, waitingPaused, highCriticalOpen, openOlderThan24h, completedToday, completedLast7Days, attention, workRequests, readyToGo, queue, openQcFindings] =
       await Promise.all([
         this.prisma.workOrder.count({ where: openWhere }),
         this.prisma.workOrder.count({ where: { status: WorkOrderStatus.waiting_paused } }),
@@ -398,9 +398,9 @@ export class AdminService {
         // LTR-164 (#12): one Ready to Go rule, the Yard's (Work Plan phase), so both surfaces agree.
         this.yard?.countReadyToGoTrucks().then((count) => count ?? 0) ?? Promise.resolve(0),
         this.getDashboardQueue(openWhere),
+        // D46 / SQ-3: Safety findings still waiting for the Manager. PF17: read with the rest, not after.
+        openQcFindingsForDashboard(this.prisma),
       ]);
-    // D46 / SQ-3: Safety findings still waiting for the Manager.
-    const openQcFindings = await openQcFindingsForDashboard(this.prisma);
 
     return {
       generatedAt: now.toISOString(),
