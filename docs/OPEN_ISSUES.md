@@ -22,7 +22,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
 | Parts, Costs & Finance | LTR-220 (Epic) | Repuestos, stock y llantas (D45): ST-1 a ST-6 hechas (LTR-221–226); faltan P24, P26, P28 y P31 de Randy | — |
-| Parts, Costs & Finance | LTR-243 (Epic), LTR-244–248 | Parts como inventario único, acciones de stock con nombre, un solo "Parts…" en el Job y retoques del menú; auditoría `ux-audit/admin-ia-2026-10`, propuesta `proposals/parts-stock-ia-v2`; espera P32–P36 | C |
+| Parts, Costs & Finance | LTR-243 (Epic), LTR-244–248 | Parts como inventario único, acciones de stock con nombre, un solo "Parts…" en el Job (con las llantas) y retoques del menú; **aprobado (D47)**; auditoría `ux-audit/admin-ia-2026-10`, propuesta `proposals/parts-stock-ia-v2` | C |
 | Safety / QC | LTR-229 (Epic), LTR-233 | Ajustes de Safety (D46): SQ-1 a SQ-3 hechas (LTR-230–232); fotos y videos para más adelante (LTR-233, Gated) | — |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
 | Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
@@ -32,7 +32,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 ## Preguntas abiertas
 
 En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox), **P14**
-(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas) y **P32–P36** (Parts como inventario, acciones de stock, History, "Parts…" en el Job y nombres; para el dueño). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44.
+(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas). P32–P36 se cerraron con **D47** (2026-10-18). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44.
 
 ## Demo congelada (desde 2026-10-16)
 

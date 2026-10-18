@@ -19,13 +19,14 @@
 | **Shop supplies** — destino de una línea | Gasto del taller (aceite a granel, trapos). No se cuenta en ningún camión ni en el estante | "stock" |
 | **No truck** | La compra no va entera a un camión; cada línea dice si va al estante o a Shop supplies | "No truck · shop stock" |
 | **Add to stock** | Entra al estante sin compra, con costo (carga inicial, una parte que llegó sin factura) | "Count" |
-| **Adjust** | Corregir el saldo con un motivo: Count (conteo), Damaged, Lost u Other | "Count" como botón |
+| **Count stock** | Contar el estante en lote (el primer día y cada mes): se escribe **cuántas hay** | "Adjust" |
+| **Remove from stock** | Sacar con motivo (Damaged, Lost u Other): se escribe **cuántas salen** | "Count" con un número menor |
 | **Take from stock** | Una parte del estante pasa a un Job y se cobra al camión al costo promedio | — |
 | **Return to stock** | Deshace un Take from stock, con motivo | — |
 | **Average cost** | Lo que paga el camión cuando la parte sale del estante (P27) | "cost" a secas |
 | **Reference cost** | El precio de referencia; se usa cuando el estante está vacío o la línea es "Other" | "unit cost" |
 
-**Decisión pendiente (P36 en la propuesta):** decir **Shelf** o **Stock** en todo el panel. Hoy conviven "Stock" (menú, título), "To stock" (línea), "Parts from stock" y "Return to stock" (Job), y "shelf" en la ayuda. La recomendación es mantener **Stock** como nombre del concepto (es la palabra del taller y la de Randy) y usar "shelf" solo en frases. Así: "Goes to: **Stock** · Shop supplies", "**From stock**", "Add to stock" y "Adjust stock".
+**Decisión pendiente (P36 en la propuesta):** decir **Shelf** o **Stock** en todo el panel. Hoy conviven "Stock" (menú, título), "To stock" (línea), "Parts from stock" y "Return to stock" (Job), y "shelf" en la ayuda. La recomendación es mantener **Stock** como nombre del concepto (es la palabra del taller y la de Randy) y usar "shelf" solo en frases. Así: "Goes to: **Stock** · Shop supplies", "**From stock**", "Add to stock", "Count stock" y "Remove from stock" (D47; "Adjust" se descartó en la revisión de UX).
 
 ## Hallazgos
 

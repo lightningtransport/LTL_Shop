@@ -1,6 +1,6 @@
 # Propuesta: repuestos, stock y llantas en Parts & costs (D45)
 
-**Clasificación:** CONSTRUIDA (ST-1 a ST-6, PRs 348–353, en producción desde el 2026-10-16). Siguen abiertas P24, P26, P28 y P31 para Randy. La revisión de pantallas y nombres que vino después está en [`../parts-stock-ia-v2/`](../parts-stock-ia-v2/README.md) (P32–P36).
+**Clasificación:** CONSTRUIDA (ST-1 a ST-6, PRs 348–353, en producción desde el 2026-10-16). Siguen abiertas P24, P26, P28 y P31 para Randy. La revisión de pantallas y nombres que vino después está en [`../parts-stock-ia-v2/`](../parts-stock-ia-v2/README.md) (D47).
 **Fecha:** 2026-10-16 · **Rama:** `claude/parts-stock-tires-proposal`
 **Origen:** pedido de Randy (Manager del taller), traído por el dueño el 2026-10-16:
 
