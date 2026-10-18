@@ -8,13 +8,32 @@ import { balance, issueToJob, lockPart, undoIssue } from './stock-ledger';
  * Order is **completed** and undone when it is reopened or cancelled; calling it twice changes nothing.
  *
  * - **Parts:** each part the mechanic picked leaves the shelf (one unit) at the average cost (P27). A part that is not
- *   on the shelf is not charged: it came from a purchase already charged to that truck (or was not put).
+ *   on the shelf is not charged: it came from a purchase already charged to that truck (or was not put). A part
+ *   already charged to the PM Job is not charged again (LTR-242): a live purchase line to the truck tied to that Job,
+ *   or a "Parts from stock" issue to that Job. A truck purchase with no Job does not count: nothing says it was for
+ *   this PM, so the Manager ties it to the PM Job when it was.
  * - **Oil:** a flat "Oil change" price (`pm_oil_prices`, the one in effect the day the Work Order was completed), as a
  *   shop charges it; bulk oil is bought as Shop supplies, not counted by the gallon.
  */
 export const OIL_SOURCE = 'pm_oil_change' as const;
 
 const dateOnly = (value: Date) => value.toISOString().slice(0, 10);
+
+/** LTR-242 (P29): the picked parts the truck already pays for on the PM Job, bought for it or taken from stock by hand. */
+async function chargedToPmJob(tx: Prisma.TransactionClient, pmJobId: string | null, partIds: string[]) {
+  if (!pmJobId || partIds.length === 0) return new Set<string>();
+  const [bought, issued] = await Promise.all([
+    tx.partPurchaseLine.findMany({
+      where: { workOrderJobId: pmJobId, partId: { in: partIds }, destination: 'truck', quantity: { gt: 0 }, purchase: { voidedAt: null } },
+      select: { partId: true },
+    }),
+    tx.stockMovement.findMany({
+      where: { workOrderJobId: pmJobId, partId: { in: partIds }, kind: 'issue', pmServiceId: null, reversals: { none: {} } },
+      select: { partId: true },
+    }),
+  ]);
+  return new Set([...bought, ...issued].map((row) => row.partId!));
+}
 
 export async function syncWorkOrderPmCharges(tx: Prisma.TransactionClient, workOrderId: string, actorId: string) {
   const workOrder = await tx.workOrder.findUnique({
@@ -39,7 +58,8 @@ export async function syncWorkOrderPmCharges(tx: Prisma.TransactionClient, workO
   // Parts.
   if (service) {
     const live = await tx.stockMovement.findMany({ where: { pmServiceId: service.id, kind: 'issue', reversals: { none: {} } } });
-    const wanted = completed ? service.parts : [];
+    const covered = completed ? await chargedToPmJob(tx, service.workOrderJobId, service.parts.map((row) => row.partId)) : new Set<string>();
+    const wanted = completed ? service.parts.filter((row) => !covered.has(row.partId)) : [];
     const wantedIds = new Set(wanted.map((row) => row.partId));
     for (const issue of live.filter((row) => !wantedIds.has(row.partId))) {
       await undoIssue(tx, issue, actorId, completed ? 'PM part changed' : `${workOrder.displayId} ${workOrder.status === 'cancelled' ? 'cancelled' : 'reopened'}`);

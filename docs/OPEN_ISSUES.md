@@ -22,7 +22,6 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
 | Parts, Costs & Finance | LTR-220 (Epic) | Repuestos, stock y llantas (D45): ST-1 a ST-6 hechas (LTR-221–226); faltan P24, P26, P28 y P31 de Randy | — |
-| Parts, Costs & Finance | LTR-242 | El PM cobra dos veces una parte ya comprada al camión (filas A133 y A134, PR 360) | B |
 | Parts, Costs & Finance | LTR-243 (Epic), LTR-244–248 | Parts como inventario único, acciones de stock con nombre, un solo "Parts…" en el Job y retoques del menú; auditoría `ux-audit/admin-ia-2026-10`, propuesta `proposals/parts-stock-ia-v2`; espera P32–P36 | C |
 | Safety / QC | LTR-229 (Epic), LTR-233 | Ajustes de Safety (D46): SQ-1 a SQ-3 hechas (LTR-230–232); fotos y videos para más adelante (LTR-233, Gated) | — |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
